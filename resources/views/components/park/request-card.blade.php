@@ -14,16 +14,17 @@
 @endphp
 <x-park.card :vehicle="$v" :href="'/cars/'.$v->id" :facts="false" link>
     {{-- Одна строка текста: госномер, логотип страховой с номером убытка (не влезают — строка ужимается,
-         fitline), шаг словом, телефон, исполнитель, парковка перестановки. --}}
+         fitline), телефон, исполнитель, парковка перестановки — данные, хвост может уйти в многоточие. Шаг словом —
+         свой текст, он не режется (05.10.2026): справа вместо типа. --}}
     <span class="card-sub" data-controller="fitline">
         <span class="fit-core"><x-park.ref :vehicle="$v"/></span>
-        @if ($word)<span class="text-ink">{{ mb_strtolower($word) }}</span>@endif
         @if ($req->contact_phone)<a href="tel:+{{ preg_replace('/\D+/', '', $req->contact_phone) }}" class="text-accent-text">{{ $req->contact_phone }}</a>@endif
         @if ($req->assignee)<span>{{ $req->assignee->shortName() }}</span>@endif
         @if ($req->type === RequestType::Move && $req->yard)<span>{{ $req->yard->name }}</span>@endif
     </span>
     <x-slot:aside>
-        <x-ui.state :tone="$tone">{{ $req->type->label() }}</x-ui.state>
+        {{-- Шаг словом точнее типа («нужен эвакуатор», а не «Эвакуация») — он и стоит на месте типа, целиком. --}}
+        <x-ui.state :tone="$tone" class="max-w-24 whitespace-normal sm:max-w-none">{{ $word ? mb_strtolower($word) : $req->type->label() }}</x-ui.state>
         @if ($req->planned_at)<span class="nums text-xs {{ $req->isOverdue() ? 'text-danger' : 'text-ink-dim' }}">{{ $req->planned_at->translatedFormat('j M, H:i') }}</span>@endif
     </x-slot:aside>
 </x-park.card>

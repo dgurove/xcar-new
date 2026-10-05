@@ -974,7 +974,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Вторая строка — чаще системная фраза (состояние, «удерживаете из оплаты»): она не режется многоточием, а переносится
      (05.10.2026, владелец: режем только данные извне — марку, имя, номер, — свой текст обязан помещаться). */
   .list .row-sub { display: block; margin-top: .125rem; }
-  .list .row-sub > * + * { margin-left: .5rem; }
+  /* Отступ между частями — справа от каждой, кроме последней: перенесённая часть начинается от края, а не со сдвигом. */
+  .list .row-sub > :not(:last-child) { margin-right: .5rem; }
   /* Факт-тег во второй строке списка — просто текст: подложка на каждом факте и давала стену чипов. Цвет тега
      (срочно, опасно, лайм) остаётся цветом текста. */
   .list .row-sub .tag, .list .row-sub .chip { display: inline; padding: 0; border-radius: 0; background: none; font-size: inherit; font-weight: inherit; color: var(--tag-text, inherit); }
@@ -1065,6 +1066,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (max-width: 639.98px) { .pick-all { padding-left: 0; } }
   /* Ячейка в два этажа; от 640 второй этаж встаёт в линию за названием. */
   .cell-title, .cell-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Второй этаж столбца названия — обычно состояние словом («автомобиль у владельца, 1 день», «ждём менеджера…»): свой
+     текст не режется, переносится; само название (данные) режется по-прежнему. */
+  .table td.grow > .cell-sub { white-space: normal; }
   .cell-sub { margin-top: 0; font-size: var(--text-sm); color: var(--color-ink-muted); }
   /* Ровный шаг строк ячейки: у каждой своя высота строки, а иконка типа, логотип и плашка номера её не распирают —
      иначе расстояние от первой строки до второй было не таким, как от второй до третьей. */
@@ -1807,6 +1811,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .task-step.is-done .task-step-title { @apply text-ink-muted; }
   .task-step-body > :not(:first-child) { margin-top: .75rem; }
   .reply-more > summary { @apply cursor-pointer list-none; }
+  /* Таймер — одно целое: «2 д 6 ч» не рвётся на «2 д» и «6 ч» при переносе строки. */
+  [data-controller~="timer"] { white-space: nowrap; }
   .reply-more > summary::-webkit-details-marker { display: none; }
   .toasts { @apply pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4;
     top: calc(.75rem + env(safe-area-inset-top)); }

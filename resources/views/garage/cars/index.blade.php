@@ -8,7 +8,8 @@
     use App\Support\Money;
     use App\Support\Plural;
     $staff = auth()->user()->isAdmin();
-    $days = fn (int $d) => $d.' '.Plural::of($d, ['день', 'дня', 'дней']);
+    // Число и слово не разрываются переносом («3 / дня»): неразрывный пробел.
+    $days = fn (int $d) => $d."\u{00A0}".Plural::of($d, ['день', 'дня', 'дней']);
     [$closed, $open] = $cars->partition(fn ($c) => $c->state === CarState::Settled);
     $open = $open->sortBy(fn ($c) => [$c->deal?->openRequirement ? 0 : 1, $c->state->order(), $c->stage_at?->timestamp ?? 0])->values();
     // Над «Вывозом» своя группа машин гаража тоже подписана — иначе она читалась бы продолжением вывоза.
