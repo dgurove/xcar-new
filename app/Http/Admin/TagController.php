@@ -40,6 +40,14 @@ class TagController
         return redirect('/settings/tags')->with('toast', 'Сохранено');
     }
 
+    /** Перекрасить метку из редактора предложения («Цвет» у меток): сразу, без «Сохранить», и везде. */
+    public function color(Request $request, Tag $tag)
+    {
+        $tag->update($request->validate(['color' => ['required', Rule::in(array_keys(Tag::COLORS))]]));
+
+        return response()->json(['style' => Tag::style($tag->color)]);
+    }
+
     public function destroy(Tag $tag)
     {
         DB::transaction(function () use ($tag) {

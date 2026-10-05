@@ -390,15 +390,24 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .dark .choice input:checked + span { background: #fff; color: var(--color-chrome); }
   .choice input:focus-visible + span { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .choice-danger input:checked + span { @apply bg-danger-soft text-danger; }
-  /* Метка предложения в форме — своим цветом: отмеченная — цвет метки, снятая — серая. */
+  /* Метка предложения в форме — своим цветом всегда (05.10.2026, владелец: «не видно цветов»): у снятой — точка цвета
+     перед названием, отмеченная — залита цветом метки. «Цвет» (`is-recolor`) — нажатие по метке не отмечает её, а
+     открывает палитру под рядом; выбранная для перекраски — с обводкой. */
+  .choice-tag span::before { content: ''; flex: none; width: .5rem; height: .5rem; margin-right: .4rem; border-radius: 9999px; background: var(--tag-text); }
+  .dark .choice-tag span::before { background: var(--tag-text-d); }
   .choice-tag input:checked + span { background: var(--tag-bg); color: var(--tag-text); }
   .dark .choice-tag input:checked + span { background: var(--tag-bg-d); color: var(--tag-text-d); }
+  .is-recolor .choice-tag input { pointer-events: none; }
+  .is-recolor .choice-tag span { outline: 1.5px dashed color-mix(in oklab, var(--color-ink) 30%, transparent); outline-offset: -1.5px; }
+  .choice-tag.is-painting span { outline: 2px solid var(--color-ink); outline-offset: 1px; }
   .tag-dot { @apply size-7 shrink-0 rounded-full; background: var(--tag-bg); box-shadow: inset 0 0 0 7px var(--tag-bg), inset 0 0 0 20px var(--tag-text); }
   .dark .tag-dot { background: var(--tag-bg-d); box-shadow: inset 0 0 0 7px var(--tag-bg-d), inset 0 0 0 20px var(--tag-text-d); }
   .tag-dot[aria-pressed="true"] { outline: 2px solid var(--color-ink); outline-offset: 2px; }
   /* Своя метка: «+» в ряду чипов, по нажатию — поле ввода того же размера. */
   .choice-add { @apply inline-flex min-w-9 items-center justify-center rounded-full bg-surface-3 px-3.5 py-2 text-sm text-ink-muted; }
   .choice-add:hover { @apply text-ink; }
+  .choice-add[aria-pressed="true"] { background: var(--color-chrome); color: #fff; }
+  .dark .choice-add[aria-pressed="true"] { background: #fff; color: var(--color-chrome); }
   .choice-input { @apply w-40 rounded-full bg-surface-3 px-3.5 py-2 sm:text-sm text-ink outline-none; }
   .choice-input:focus { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .tri input:checked + span { @apply bg-surface text-ink; }

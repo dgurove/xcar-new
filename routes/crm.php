@@ -279,6 +279,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::post('/tags', [TagController::class, 'store']);
             Route::post('/tags/order', [TagController::class, 'reorder']);
             Route::put('/tags/{tag}', [TagController::class, 'update']);
+            Route::post('/tags/{tag}/color', [TagController::class, 'color']);
             Route::delete('/tags/{tag}', [TagController::class, 'destroy']);
 
             Route::get('/watermarks', [WatermarkController::class, 'index']);
