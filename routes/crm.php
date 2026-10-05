@@ -79,6 +79,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Кадры письма прикрепляются: строка хода и ряд фото, пока ImportThreadFiles идёт (attach_controller).
         Route::get('/offers/{offer}/attach', [AttachController::class, 'offer']);
         Route::put('/offers/{offer}', [OfferController::class, 'update']);
+        // «Закупочная» сверху карточки во вкладке «Без закупочной цены» — дело модератора.
+        Route::post('/offers/{offer}/floor', [OfferController::class, 'floor']);
         // Черновик из писем до первого сохранения: «Отменить» и «Не заявка» (decline) — черновика не было, письма снова ждут.
         Route::post('/offers/{offer}/drop', [MailController::class, 'dropDraft'])->middleware('ability:canCrmMail');
         // Ушли из пустого черновика «+ Новый» — его нет (sendBeacon при уходе; не пустой сервер не трогает).

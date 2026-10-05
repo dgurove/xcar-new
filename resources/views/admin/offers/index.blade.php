@@ -1,6 +1,6 @@
-{{-- Предложения CRM — вкладки по шагам (владелец 04.10.2026): «Без цены» (оценка: ни чипов, ни сортировки, ни вида —
-     только строки и карточка), «Оцененные» (галочки и «Отправить в продажу»), «Публикация» (группы по слотам, раньше —
-     выше), «Опубликованные» (группы: выбрать, идёт приём, без подтверждений), «Архив». Галочки — pick_controller,
+{{-- Предложения CRM — вкладки по шагам (владелец 04.10.2026): «Без закупочной цены» (модератор), «Без продажной цены»
+     (админ; 05.10.2026 «Без цены» разделена надвое) — строки и карточка, к следующей по делу, «Оцененные» (галочки и
+     «Отправить в продажу»), «Публикация» (группы по слотам, раньше — выше), «Опубликованные» (группы: выбрать, идёт приём, без подтверждений), «Архив». Галочки — pick_controller,
      форма `offers-pick` вне таблицы: строки к ней приписаны атрибутом form. --}}
 @php
     use App\Http\Admin\OfferController;
@@ -32,12 +32,12 @@
     <x-ui.toolbar :sorts="$sorts" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
         <x-slot:extra>@unless ($searching)<x-ui.view-switch :current="$view"/>@endunless</x-slot:extra>
         <x-slot:actions>
-            {{-- «Оценить»: по одной — первая без цены в карточке; из текста — сообщение с оценочными стоимостями. --}}
-            @if ($preset === 'unpriced' && ! $searching)
+            {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями. --}}
+            @if (in_array($preset, ['nofloor', 'unpriced'], true) && ! $searching)
                 <div class="contents" data-controller="menu sheet">
                     <button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="menu#toggle" aria-haspopup="menu" aria-controls="rate-menu">Оценить<x-ui.icon name="chevron-down" class="size-4"/></button>
                     <div id="rate-menu" class="menu" popover data-menu-target="list" role="menu">
-                        <a href="/?preset=unpriced&peek=first" class="menu-item" role="menuitem" data-action="menu#close">По одной</a>
+                        <a href="/?preset={{ $preset }}&peek=first" class="menu-item" role="menuitem" data-action="menu#close">По одной</a>
                         <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close sheet#open">Из текста</button>
                     </div>
                     <x-offer.valuation-sheet/>
@@ -50,7 +50,7 @@
 
     <div class="mt-6" id="list" @if ($pick) data-controller="pick" @endif>
         @if ($offers->isEmpty())
-            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', default => 'Предложений нет' } }}</x-ui.empty>
+            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)
                 <form id="offers-pick" method="post" action="/offers/schedule">@csrf</form>
@@ -75,9 +75,13 @@
                 @endforeach
             @endif
             <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
+            {{-- Сделали последнюю — тост ведёт дальше по шагу (detail_controller#advance); модератору дальше ничего нет. --}}
             @if ($preset === 'unpriced' && ! $searching)
-                {{-- Оценили последнюю — тост ведёт дальше по шагу (detail_controller#advance). --}}
                 <a href="/?preset=priced" data-advance-done hidden>Все оценены, дальше «Оцененные»</a>
+            @elseif ($preset === 'nofloor' && ! $searching && $admin)
+                <a href="/?preset=unpriced" data-advance-done hidden>Закупочные заполнены, дальше «Без продажной цены»</a>
+            @elseif ($preset === 'nofloor' && ! $searching)
+                <span data-advance-done hidden>Закупочные заполнены</span>
             @endif
             @if ($pick && $preset === 'priced')
                 <x-ui.action-bar data-pick-target="bar" hidden>

@@ -17,6 +17,20 @@ Turbo.StreamActions.toast = function () {
 Turbo.StreamActions.advance = function () {
     document.dispatchEvent(new CustomEvent('detail:advance'));
 };
+// Число у пилюли вкладки после дела в карточке: выросло — пилюля коротко вспыхивает, видно, куда уехала строка.
+Turbo.StreamActions.count = function () {
+    const n = Number(this.getAttribute('count')) || 0;
+    this.targetElements.forEach((el) => {
+        const was = Number(el.textContent.replace(/\D/g, '')) || 0;
+        el.textContent = n ? String(n) : '';
+        if (n <= was) return;
+        const pill = el.closest('a, button') ?? el;
+        pill.classList.remove('is-bumped');
+        void pill.offsetWidth;
+        pill.classList.add('is-bumped');
+        pill.addEventListener('animationend', () => pill.classList.remove('is-bumped'), { once: true });
+    });
+};
 
 const application = Application.start();
 window.Stimulus = application;

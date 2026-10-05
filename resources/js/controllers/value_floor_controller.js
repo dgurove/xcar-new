@@ -14,11 +14,13 @@ const nums = (n) => n.toLocaleString('ru-RU').replace(/\s/g, ' ');
 export default class extends Controller {
     static targets = ['value', 'floor'];
 
+    // Оценочной в форме может не быть (не Альфа, или она сверху карточки) — тогда считать нечего.
     connect() {
-        this.was = digits(this.valueTarget.value);
+        this.was = this.hasValueTarget ? digits(this.valueTarget.value) : 0;
     }
 
     sync() {
+        if (!this.hasValueTarget || !this.hasFloorTarget) return;
         const value = digits(this.valueTarget.value);
         const floor = digits(this.floorTarget.value);
         const auto = !floor || (this.was && floor === floorFrom(this.was));

@@ -21,6 +21,10 @@
     $transitions = $transitions->except(OfferState::Open->value);
     // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
     $rate = $admin && $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled();
+    // Закупочной нет — сначала она (вкладка «Без закупочной цены», 05.10.2026): у всех, и у модератора; у админа — на месте
+    // «Оценить», цену продажи без закупочной не ставят. У Альфы первой — оценочная, закупочная от неё на лету.
+    $floorFirst = $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->floor_price && ! $offer->isScheduled();
+    $byValue = $floorFirst && \App\Vendors\Vendor::ratesByValue($offer->vendor_id);
     // Рядом с «Оценить» — «В гараж»: менеджеру без цены продажи (04.10.2026), та же форма, что в «···» редактора.
     $garage = $rate && $offer->state->allows(OfferState::Garage);
     // И «Вывоз»: кто забирает ТС и куда (`AssignPickup`) — пока не забрали; цену после него всё равно ставить.
@@ -57,7 +61,7 @@
         <x-slot:actions>
             @if ($admin && $offer->isScheduled())
                 <x-offer.slot-menu :offer="$offer"/>
-            @elseif ($rate)
+            @elseif ($rate || $floorFirst)
                 {{-- «Оценить» (вкладка «Без цены»): только цена продажи — машина уходит в «Оцененные», карточка переходит к
                      следующей без цены; пустое поле — просто дальше. В продажу отправляют пачкой из «Оцененных». Под полем
                      ориентиры из закупки, если черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
@@ -66,12 +70,28 @@
                 <div class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3" @if ($ways) data-controller="reveal" @endif>
                     @if ($ways)
                         <div class="segment">
-                            <label><input type="radio" name="_way" value="rate" @checked($way === 'rate') data-action="reveal#pick"><span>Оценить</span></label>
+                            <label><input type="radio" name="_way" value="rate" @checked($way === 'rate') data-action="reveal#pick"><span>{{ $floorFirst ? 'Закупочная' : 'Оценить' }}</span></label>
                             @if ($garage)<label><input type="radio" name="_way" value="garage" @checked($way === 'garage') data-action="reveal#pick"><span>В гараж</span></label>@endif
                             @if ($pickup)<label><input type="radio" name="_way" value="pickup" @checked($way === 'pickup') data-action="reveal#pick"><span>Вывоз</span></label>@endif
                         </div>
                     @endif
                     <div data-reveal-target="pane" data-reveal-key="rate">
+                        @if ($floorFirst)
+                        {{-- Закупочная (у Альфы — оценочная и посчитанная от неё закупочная): машина уходит в «Без продажной
+                             цены», карточка — к следующей; пустое поле — просто дальше. --}}
+                        <form method="post" action="/offers/{{ $n }}/floor" class="flex flex-col gap-2" data-controller="value-floor">
+                            @csrf
+                            @if ($byValue)
+                                <input type="text" name="value" inputmode="numeric" autocomplete="off" enterkeyhint="next" class="field-input field-s nums !bg-surface" placeholder="Оценочная, ₽" aria-label="Оценочная, ₽"
+                                    data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" value="{{ $offer->value ? \App\Support\Money::nums($offer->value) : '' }}" data-detail-focus>
+                            @endif
+                            <div class="flex gap-2">
+                                <input type="text" name="floor_price" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Закупочная, ₽" aria-label="Закупочная, ₽"
+                                    data-controller="digits" data-action="input->digits#format" data-value-floor-target="floor" value="" @unless ($byValue) data-detail-focus @endunless>
+                                <button type="submit" class="btn btn-s btn-accent shrink-0">Сохранить</button>
+                            </div>
+                        </form>
+                        @else
                         <form method="post" action="/offers/{{ $n }}/rate" class="flex gap-2" data-controller="bid" data-bid-asking-value="0">
                             @csrf
                             <input type="hidden" name="asking_price" data-bid-target="amount" value="">
@@ -79,6 +99,7 @@
                                 data-bid-target="display" data-action="input->bid#input" value="" data-detail-focus data-save-into="detail-edit-{{ $n }}" data-save-name="asking_price">
                             <button type="submit" class="btn btn-s btn-accent shrink-0">Оценить</button>
                         </form>
+                        @endif
                         @if ($car = $offer->purchaseCar)
                             @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
                             @if ($car->price_final || $named->isNotEmpty())
@@ -194,10 +215,13 @@
         @endif
         <form method="post" action="/offers/{{ $n }}" id="detail-edit-{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar migtorg-diff" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
             @csrf @method('put')
+            {{-- Модератору в «Ценах» только закупочная — она уже сверху, пустой блок не рисуется. --}}
+            @unless ($floorFirst && ! $admin)
             <section>
                 <h2 class="detail-section">Цены</h2>
-                @include('admin.offers.fields.money', ['askingElsewhere' => $rate])
+                @include('admin.offers.fields.money', ['askingElsewhere' => $rate && ! $floorFirst, 'floorElsewhere' => $floorFirst])
             </section>
+            @endunless
             <section>
                 <h2 class="detail-section">Транспортное средство</h2>
                 @include('admin.offers.fields.car')

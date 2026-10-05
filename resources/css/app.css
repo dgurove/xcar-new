@@ -564,6 +564,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .spark-busy .spark-3 { --dx: 2px; --dy: 2px; animation: spark-blink 1.6s ease-in-out infinite .55s; }
     .spark-busy .spark-4 { --dx: -2px; --dy: -2px; animation: spark-blink 1.6s ease-in-out infinite 1.1s; }
   }
+  /* Пилюля вкладки, куда уехала строка из карточки (StreamActions.count): коротко лаймом и чуть крупнее. */
+  @media (prefers-reduced-motion: no-preference) {
+    .is-bumped { animation: pill-bump .9s cubic-bezier(.2,.8,.2,1) 1; }
+  }
+  @keyframes pill-bump { 25% { background-color: var(--color-accent); color: #fff; scale: 1.08; } }
   @keyframes vin-knock { 40% { translate: -3px 0; } }
   @keyframes vin-shimmer { to { background-position: -200% 0; } }
   /* Искра переливается: большая звезда дышит и медленно вращается (четыре

@@ -22,7 +22,9 @@
     {{-- Сначала закупочная, потом продажи (владелец 04.10.2026: так логичнее). --}}
     {{-- Оценочная — до закупочной: у Альфы закупочная из неё (владелец 05.10.2026: «оценочные тоже надо видеть»). --}}
     @if ($cols !== null && $has('value'))<th class="num col-detail-hide hidden sm:table-cell">Оценочная</th>@endif
-    @if ($has('floor'))<th class="num col-detail-hide hidden sm:table-cell">Закупочная</th>@endif
+    {{-- Без цены продажи («Без закупочной цены») закупочная встаёт на её место: видна всегда, с карточкой рядом тоже. --}}
+    @if ($has('floor') && $cols !== null && ! $has('price'))<th class="num">Закупочная</th>
+    @elseif ($has('floor'))<th class="num col-detail-hide hidden sm:table-cell">Закупочная</th>@endif
     @if ($has('price'))<th class="num">Цена</th>@endif
     @if ($cols !== null && $has('published'))<th class="num col-detail-hide hidden sm:table-cell">Вышло</th>
     @elseif ($has('created'))<th class="num col-detail-hide hidden sm:table-cell">Создано</th>@endif

@@ -419,13 +419,13 @@ final class Nav
                 ], 'fresh' => []];
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
-                // Таб — как список без вкладки: «Без цены» его группы.
-                return ['totals' => ['/' => OfferController::scopeFor('unpriced', Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft()))->count()], 'fresh' => []];
+                // Таб — как список без вкладки: «Без закупочной цены» его группы.
+                return ['totals' => ['/' => OfferController::scopeFor(OfferController::home($user), Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft()))->count()], 'fresh' => []];
             }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
-                    // Как список без вкладки — «Без цены», вместе с черновиками из закупок.
-                    '/' => OfferController::scopeFor('unpriced', Offer::whereNot(fn ($o) => $o->emptyDraft()))->count(),
+                    // Как список без вкладки — «Без продажной цены», вместе с черновиками из закупок.
+                    '/' => OfferController::scopeFor(OfferController::home($user), Offer::whereNot(fn ($o) => $o->emptyDraft()))->count(),
                     '/gallery' => Offer::where('state', OfferState::Gallery)->count(),
                     '/work' => Deal::where('state', DealState::Active)->count(),
                     '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),

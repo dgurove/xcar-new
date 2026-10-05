@@ -52,12 +52,13 @@ use Illuminate\Validation\ValidationException;
 class OfferController
 {
     /**
-     * Вкладки — шаги работы (владелец 04.10.2026): оценили — машина ушла в «Оцененные», отправили пачкой — в «Публикацию»
-     * (по слотам), вышла — в «Опубликованные», где выбирают победителя. Черновики из закупок идут со всеми. Модератору
-     * те же вкладки, но без действий: цены, галочек и отправки у него нет.
+     * Вкладки — шаги работы (владелец 04.10.2026): модератор заполнил закупочную — машина ушла в «Без продажной цены»
+     * (05.10.2026: «Без цены» разделена — администратору нужен список только своего), админ оценил — в «Оцененные»,
+     * отправили пачкой — в «Публикацию» (по слотам), вышла — в «Опубликованные», где выбирают победителя. Черновики из
+     * закупок идут со всеми. Модератору те же вкладки: цены продажи, галочек и отправки у него нет.
      */
     public const PRESETS = [
-        'unpriced' => 'Без цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные', 'archive' => 'Архив',
+        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные', 'archive' => 'Архив',
     ];
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
@@ -66,7 +67,22 @@ class OfferController
     ];
 
     /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
-    private const STEPS = ['unpriced', 'priced', 'slots', 'published'];
+    private const STEPS = ['nofloor', 'unpriced', 'priced', 'slots', 'published'];
+
+    /** Вкладки, где карточка после дела идёт к следующей строке. */
+    private const TODO = ['nofloor', 'unpriced'];
+
+    /** Вкладка по умолчанию — дело человека: модератору закупочная, админу цена продажи. */
+    public static function home(User $user): string
+    {
+        return $user->canManageCrm() ? 'unpriced' : 'nofloor';
+    }
+
+    /** Есть ли у человека дело по черновику на его шаге: закупочная — у всех, цена продажи — у админа. */
+    public static function todo(Offer $offer, User $user): bool
+    {
+        return $offer->state === OfferState::Draft && ! $offer->slot_at && ! $offer->asking_price && (! $offer->floor_price || $user->canManageCrm());
+    }
 
     public const SORTS = ['fresh' => 'Сначала новые', 'number' => 'По номеру'];
 
@@ -84,7 +100,7 @@ class OfferController
             return $detail->response();
         }
         $admin = $request->user()->canManageCrm();
-        $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? (string) $request->query('preset') : 'unpriced';
+        $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? (string) $request->query('preset') : self::home($request->user());
         $step = in_array($preset, self::STEPS, true);
         // «Без цены» — без сортировки и вида, чипы есть (владелец 04.10.2026: «не хватает фильтров»), по умолчанию — без
         // Каркаде. «Рекомендуем» — переключатель у опубликованных.
@@ -111,7 +127,7 @@ class OfferController
             self::scopeFor($preset, $q);
             match ($preset) {
                 // Порядок прохода не меняется от правки поля: по заведению, новые сверху.
-                'unpriced', 'priced' => $q->orderByDesc('offers.id'),
+                'nofloor', 'unpriced', 'priced' => $q->orderByDesc('offers.id'),
                 'slots' => $q->orderBy('slot_at')->orderByDesc('offers.id'),
                 'published' => $admin ? self::byPick($q) : $q->orderByDesc('published_at'),
                 default => $sort === 'number' ? $q->orderByDesc('number') : $q->orderByDesc('updated_at'),
@@ -135,9 +151,9 @@ class OfferController
         }
         // Кто завёл — аватар только у черновика: остальным строкам люди не нужны.
         $offers->getCollection()->where('state', OfferState::Draft)->load('moderator.media');
-        // «Оценить» с чипа или из закупки: first — первая строка без цены.
+        // «Оценить» с чипа или из закупки: first — первая строка, где у человека есть дело.
         if (Detail::key($request) === 'first') {
-            $first = $offers->first(fn ($o) => $o->state === OfferState::Draft && ! $o->asking_price) ?? $offers->first();
+            $first = $offers->first(fn ($o) => self::todo($o, $request->user())) ?? $offers->first();
 
             return redirect($request->fullUrlWithQuery(['peek' => $first?->number]));
         }
@@ -182,7 +198,9 @@ class OfferController
     public static function scopeFor(string $preset, Builder $q): Builder
     {
         return match ($preset) {
-            'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0)),
+            'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
+                ->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
+            'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
             'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0),
             'slots' => $q->scheduled(),
             'published' => $q->where('offers.state', OfferState::Open),
@@ -231,6 +249,8 @@ class OfferController
         $admin = $user->canManageCrm();
 
         return match ($preset ?? 'unpriced') {
+            // Закупочную заполняют — цены продажи здесь не бывает.
+            'nofloor' => ['vendor', 'city', 'floor', 'created'],
             // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»). Оценочной в таблице нет
             // (владелец 05.10.2026: «скрой») — она в карточке строки, в «Деньгах».
@@ -255,7 +275,7 @@ class OfferController
         foreach (array_diff(array_keys(self::PRESETS), ['archive']) as $key) {
             $q = self::scopeFor($key, $base());
             // Без чипов (поток после «Оценить») «Без цены» считается как вид по умолчанию — без Каркаде.
-            if (! $facets && $key === 'unpriced' && ($carcade = self::carcadeId())) {
+            if (! $facets && in_array($key, self::TODO, true) && ($carcade = self::carcadeId())) {
                 $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
             }
             if ($facets) {
@@ -404,6 +424,7 @@ class OfferController
     public function update(OfferRequest $request, Offer $offer, UpdateOffer $update, ScheduleOffer $schedule, CreateOffer $create)
     {
         $unpriced = $offer->state === OfferState::Draft && ! $offer->asking_price;
+        $hadFloor = (bool) $offer->floor_price;
         $update($offer, $request->payload(), $request->user());
         session()->forget("mail-draft.{$offer->id}");
         // Нажали знак Мигторга в поле номера убытка: несохранённые правки формы (вендор, цены) легли вместе с номером.
@@ -425,12 +446,15 @@ class OfferController
             return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer));
         }
 
-        // «Сохранить изменения» с ценой из «Оценить» — то же, что «Оценить» (владелец 05.10.2026): строка уходит из «Без
-        // цены», карточка — к следующей. Тихое сохранение перед другой кнопкой (save_bar, ajax) этого не делает.
-        if ($unpriced && $offer->refresh()->asking_price && ! $request->ajax()) {
-            $gone = $this->gone($request, $offer);
-
-            return back()->with('toast', 'Оценено: '.Money::rub($offer->asking_price))->with($gone + ($gone ? ['detail-advance' => true] : []));
+        // Сохранили из карточки, и строка больше не подходит под вкладку (заполнили закупочную — уехала в «Без продажной
+        // цены», поставили цену — в «Оцененные», стёрли — назад): строка уходит, на вкладках дела карточка — к следующей.
+        // Тихое сохранение перед другой кнопкой (save_bar, ajax) этого не делает.
+        if (! $request->ajax() && ($gone = $this->gone($request, $offer->refresh()))) {
+            return back()->with('toast', match (true) {
+                $unpriced && (bool) $offer->asking_price => 'Оценено: '.Money::rub($offer->asking_price),
+                ! $hadFloor && (bool) $offer->floor_price => 'Закупочная: '.Money::rub($offer->floor_price),
+                default => 'Сохранено',
+            })->with($gone);
         }
 
         // «Сохранить изменения» — остаёмся там же (04.10.2026: кнопка выезжает после правки, экран не меняется); из
@@ -510,6 +534,26 @@ class OfferController
 
         return back()->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', self::counts($request->user()))
             ->with('toast', 'Оценено: '.Money::rub($raw));
+    }
+
+    /**
+     * «Закупочная» сверху карточки во вкладке «Без закупочной цены» (05.10.2026): модератор вписал закупочную (у Альфы —
+     * оценочную, закупочная посчитана на лету) — машина уходит в «Без продажной цены», карточка — к следующей. Пустое
+     * поле — просто дальше.
+     */
+    public function floor(Request $request, Offer $offer, UpdateOffer $update)
+    {
+        $data = $request->validate(['floor_price' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'string', 'max:20']]);
+        $money = fn (?string $v) => (int) preg_replace('/\D+/', '', (string) $v) ?: null;
+        $floor = $money($data['floor_price'] ?? null);
+        $value = $money($data['value'] ?? null);
+        if (! $floor || $offer->state !== OfferState::Draft) {
+            return back()->with('detail-advance', true);
+        }
+        $update($offer, array_filter(['floor_price' => $floor, 'value' => $value]), $request->user());
+        $gone = $this->gone($request, $offer->refresh());
+
+        return back()->with('detail-advance', true)->with($gone)->with('toast', 'Закупочная: '.Money::rub($floor));
     }
 
     /**
@@ -603,13 +647,16 @@ class OfferController
         if (! isset($q['peek']) || filled($q['q'] ?? null)) {
             return [];
         }
+        $preset = array_key_exists((string) ($q['preset'] ?? ''), self::PRESETS) ? (string) $q['preset'] : self::home($request->user());
         $still = match ($ref['path'] ?? '/') {
-            '/' => self::scopeFor(array_key_exists((string) ($q['preset'] ?? ''), self::PRESETS) ? (string) $q['preset'] : 'unpriced', Offer::whereKey($offer->id))->exists(),
+            '/' => self::scopeFor($preset, Offer::whereKey($offer->id))->exists(),
             '/gallery' => $offer->fresh()?->state === OfferState::Gallery,
             default => true,
         };
 
-        return $still ? [] : ['detail-gone' => true, 'detail-counts' => self::counts($request->user())];
+        // На вкладках дела карточка идёт к следующей строке, на остальных строка просто уходит.
+        return $still ? [] : ['detail-gone' => true, 'detail-counts' => self::counts($request->user())]
+            + (($ref['path'] ?? '/') === '/' && in_array($preset, self::TODO, true) ? ['detail-advance' => true] : []);
     }
 
     /** «Убрать из слота»: остаётся черновиком или галереей. */

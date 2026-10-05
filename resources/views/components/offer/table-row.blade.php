@@ -32,6 +32,12 @@
     $unpriced = $draft && ! $offer->asking_price;
     // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
     $rate = $unpriced && auth()->user()?->canManageCrm();
+    // Закупочной нет — «Заполнить» в её ячейке (вкладка «Без закупочной цены», дело модератора); там же столбца цены нет,
+    // и на телефоне справа стоит закупочная.
+    $nofloor = $unpriced && ! $offer->floor_price && ! $offer->isScheduled();
+    $floorSide = $cols !== null && ! in_array('price', $cols, true);
+    // data-unpriced — у человека по строке есть дело (OfferController::todo): по таким карточка идёт «Дальше».
+    $todo = auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user());
     // Поставлено в слот — «выйдет сегодня в 16:00» на месте состояния.
     $slot = $offer->isScheduled() ? 'выйдет '.\App\Offers\Slots::phrase($offer->slot_at) : null;
     // Чего не хватает для продажи — у оценённого черновика: галочки у такого нет.
@@ -42,7 +48,7 @@
     $noVin = blank($offer->vin) && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     $late = $checkable && $draft && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
 @endphp
-<tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($rate) data-unpriced @endif>
+<tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($todo) data-unpriced @endif>
     @if ($checkable)<td class="pick-cell">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>@endif
     <td class="grow">
         <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/>@if ($noVin)<span class="ml-1.5 text-sm text-danger">Нет VIN</span>@endif</span></x-ui.row-link>
@@ -79,7 +85,8 @@
     {{-- Закупочная, справа от неё цена продажи (у черновика без неё — чип «Оценить»); на телефоне столбца закупочной нет —
          она под ценой. --}}
     @if ($cols !== null && $has('value'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->value && \App\Vendors\Vendor::ratesByValue($offer->vendor_id) ? \App\Support\Money::nums($offer->value) : '' }}</td>@endif
-    @if ($has('floor'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>@endif
+    @if ($has('floor') && $floorSide)<td class="num nums">@if ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price){{ \App\Support\Money::nums($offer->floor_price) }}@endif</td>
+    @elseif ($has('floor'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>@endif
     @if ($has('price'))<td class="num nums">
         @if ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)

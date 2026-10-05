@@ -119,16 +119,22 @@ export default class extends Controller {
         if (form === this.element || !this.touched || this.saving || (form.method || '').toLowerCase() === 'get') return;
         const frame = this.element.closest('turbo-frame');
         if (frame ? !frame.contains(form) : form.closest('turbo-frame#detail')) return;
+        // Тронута только цена из «Оценить» — её несёт сама та форма: пусть уходит как есть. Повторная отправка изнутри
+        // этого же submit браузером молча пропускается (форма ещё «отправляется») — «Оценить» тогда не делало ничего.
+        const fields = this.silentFields();
+        if (this.partialValue && !fields.length) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        this.saveThen(form, event.submitter);
+        this.saveThen(form, event.submitter, fields);
     }
 
-    async saveThen(form, submitter) {
-        // Цена из «Оценить» в тихое сохранение не идёт: её несёт сама та форма, а другой кнопке она ни к чему.
+    // Цена из «Оценить» в тихое сохранение не идёт: её несёт сама та форма, а другой кнопке она ни к чему.
+    silentFields() {
         const extra = new Set([...document.querySelectorAll(`[data-save-into="${CSS.escape(this.element.id || '-')}"][data-save-name]`)].map((el) => el.dataset.saveName));
-        const fields = [...this.dirty].filter((name) => !extra.has(name));
-        if (this.partialValue && !fields.length) { this.saving = true; form.requestSubmit(submitter && submitter.form === form ? submitter : undefined); this.saving = false; return; }
+        return [...this.dirty].filter((name) => !extra.has(name));
+    }
+
+    async saveThen(form, submitter, fields) {
         this.saving = true;
         this.element.querySelectorAll('input[data-save-extra]').forEach((i) => i.remove());
         const data = new FormData(this.element);

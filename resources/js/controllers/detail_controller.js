@@ -184,9 +184,10 @@ export default class extends Controller {
             return;
         }
         const more = document.querySelector('a[rel="next"]');
-        // Кончились — куда дальше, говорит список (`data-advance-done`: «Без цены» → «Оцененные»).
-        const done = document.querySelector('a[data-advance-done]');
-        if (!more) { window.toast?.(done?.textContent || 'Все оценены', done ? { href: done.getAttribute('href') } : undefined); return; }
+        // Кончились — куда дальше, говорит список (`data-advance-done`: «Без продажной цены» → «Оцененные»; без ссылки —
+        // дальше не его шаг).
+        const done = document.querySelector('[data-advance-done]');
+        if (!more) { window.toast?.(done?.textContent || 'Все оценены', done?.getAttribute('href') ? { href: done.getAttribute('href') } : undefined); return; }
         const url = new URL(more.href);
         url.searchParams.set('peek', 'first');
         window.toast?.('На этой странице все оценены, дальше следующая', { href: url.pathname + url.search });
