@@ -1,35 +1,63 @@
 {{-- Деньги сделки одной формой: цена подтверждения, закупочная, разница, поле
      «Агентское вознаграждение» с живым «нам остаётся» и режим — выплачиваем или
-     менеджер удерживает сам. Та же форма принимает подтверждение и правит сделку. --}}
-@props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null])
+     менеджер удерживает сам. Та же форма принимает подтверждение и правит сделку.
+     С `scheme` — ещё кому платят за ТС (05.10.2026): «нам» или «страхователю по ДКП». По ДКП — сколько собственнику
+     (меньше закупочной — взаимозачёт), нам — подбор (цена минус собственнику минус вознаграждение), режим — удерживает сам. --}}
+@props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
+    'scheme' => null, 'ownerPrice' => null])
 @php
     use App\Offers\CommissionMode;
+    use App\Offers\DealScheme;
     use App\Support\Money;
     $margin = $cost === null ? null : $amount - $cost;
     $current = old('commission', $commission);
     $id ??= 'commission-'.uniqid();
+    $scheme = DealScheme::tryFrom((string) old('scheme', $scheme?->value ?? '')) ?? $scheme;
+    $dkp = $scheme === DealScheme::OwnerDkp;
+    $owner = old('owner_price', $ownerPrice ?? $cost);
 @endphp
-<form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="commission" @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
+<form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="commission" data-commission-amount-value="{{ $amount }}" @if ($cost !== null) data-commission-cost-value="{{ $cost }}" @endif
+    @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
     @csrf
     @if ($method !== 'post')@method($method)@endif
     {{ $slot }}
+    @if ($scheme)
+        <div class="flex flex-col gap-1.5">
+            <span class="field-label">За ТС платят</span>
+            <div class="flex flex-wrap gap-2">
+                @foreach (DealScheme::cases() as $s)
+                    <label class="choice"><input type="radio" name="scheme" value="{{ $s->value }}" @checked($scheme === $s) data-action="commission#scheme"><span>{{ $s->label() }}</span></label>
+                @endforeach
+            </div>
+        </div>
+    @endif
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
         <dt class="text-sm text-ink-dim">Цена подтверждения</dt><dd class="nums text-right font-medium">{{ Money::rub($amount) }}</dd>
         <dt class="text-sm text-ink-dim">Закупочная</dt><dd class="nums text-right">{{ $cost === null ? 'не указана' : Money::rub($cost) }}</dd>
-        @if ($margin !== null)<dt class="text-sm text-ink-dim">Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}">{{ Money::rub($margin) }}</dd>@endif
+        @if ($margin !== null)<dt class="text-sm text-ink-dim" data-commission-target="oursOnly" @if ($dkp) hidden @endif>Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}" data-commission-target="oursOnly" @if ($dkp) hidden @endif>{{ Money::rub($margin) }}</dd>@endif
     </dl>
+    @if ($scheme)
+        <div class="field" data-commission-target="dkpOnly" @unless ($dkp) hidden @endunless>
+            <label for="{{ $id }}-owner" class="field-label">Собственнику по ДКП, ₽</label>
+            <input type="hidden" name="owner_price" data-commission-target="ownerAmount" value="{{ $owner }}">
+            <input id="{{ $id }}-owner" type="text" class="field-input nums text-lg" data-commission-target="ownerDisplay" data-action="input->commission#input" value="{{ $owner ? Money::nums((int) $owner) : '' }}" autocomplete="off">
+            <p class="mt-1 text-sm text-ink-muted" data-commission-target="offset"></p>
+            @error('owner_price')<p class="field-error">{{ $message }}</p>@enderror
+        </div>
+    @endif
     <div class="field">
         <label for="{{ $id }}" class="field-label">Агентское вознаграждение, ₽</label>
         <input type="hidden" name="commission" data-commission-target="amount" value="{{ $current }}">
         <input id="{{ $id }}" type="text" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
         @error('commission')<p class="field-error">{{ $message }}</p>@enderror
     </div>
-    @if ($margin !== null)
+    @if ($margin !== null || $scheme)
         <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4">
-            <dt class="text-sm text-ink-dim">Нам остаётся</dt><dd class="nums text-right text-lg font-semibold" data-commission-target="ours">{{ Money::rub($margin - (int) $current) }}</dd>
+            <dt class="text-sm text-ink-dim" data-commission-target="oursLabel" data-ours="Нам остаётся" data-dkp="Менеджер платит нам">{{ $dkp ? 'Менеджер платит нам' : 'Нам остаётся' }}</dt>
+            <dd class="nums text-right text-lg font-semibold" data-commission-target="ours">{{ $margin !== null ? Money::rub($margin - (int) $current) : '' }}</dd>
         </dl>
     @endif
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap gap-2" data-commission-target="oursOnly" @if ($dkp) hidden @endif>
         @foreach (CommissionMode::cases() as $m)
             <label class="choice"><input type="radio" name="mode" value="{{ $m->value }}" @checked(old('mode', $mode->value) === $m->value)><span>{{ $m->label() }}</span></label>
         @endforeach

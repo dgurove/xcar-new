@@ -25,6 +25,15 @@ class InsurerReplyTextTest extends TestCase
         $this->assertSame(['+7 900 123-45-67'], Patterns::phones(Intent::reply(self::FORWARDED)));
     }
 
+    /** «Цена за Лот … 779 000, предлагаем забрать за 750 000»: закупочная своя, собственнику — дешевле (взаимозачёт). */
+    public function test_tinkoff_offer_price_and_owner_price(): void
+    {
+        $fields = (new \App\Mail\Extraction\Templates\Tinkoff)->extract('2019 Ford Kuga', "*Цена за Лот* по победному ОП 779 000, предлагаем забрать за 750 000\n*Местонахождение :* Самара");
+
+        $this->assertSame(779000, $fields['floor_price']['value']);
+        $this->assertSame(750000, $fields['owner_price']['value']);
+    }
+
     public function test_cloud_link_and_password_from_reply(): void
     {
         $text = Intent::reply("> В архиве https://data.example.test/s/AbCdEf123456\n> пароль: Z*9aK(W]-\n>\n> С уважением,\n> Мария", marks: true);

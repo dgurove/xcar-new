@@ -11,6 +11,9 @@
     <div data-deal-offer="{{ $offer->number }}">
     <x-offer.object :offer="$offer" :photos="$offer->visiblePhotos()" :docs="\App\Offers\OfferFiles::forManagers($offer, auth()->user())">
         <x-slot:aside>
+            @if ($deal->isDkp())
+                @include('cabinet.deals.money')
+            @else
             <div class="box">
                 <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</a>
                 @if ($deal->state !== DealState::Active)<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="mt-2">{{ mb_strtolower($deal->state->label()) }}</x-ui.state>@endif
@@ -24,12 +27,15 @@
                     @endif
                 </dl>
             </div>
+            @endif
             @if ($offer->chatOpenFor(auth()->user()))
                 <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать по сделке</a>
             @endif
         </x-slot:aside>
 
         @include('cabinet.deals.step')
+
+        @if ($deal->isDkp())@include('cabinet.deals.contract')@endif
 
         @if ($pastInvoices->isNotEmpty())
             {{-- Счета и ответы — группами строк, как в «Настройках», а не списком внутри коробки. --}}

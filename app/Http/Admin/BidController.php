@@ -10,6 +10,7 @@ use App\Offers\Actions\PlaceBidFor;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\CommissionMode;
+use App\Offers\DealScheme;
 use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Users\User;
@@ -20,7 +21,8 @@ use Illuminate\Validation\Rule;
 class BidController
 {
     /**
-     * Принять подтверждение вместе с деньгами: вознаграждение менеджеру суммой и режим. Гаражное — без денег, с тем,
+     * Принять подтверждение вместе с деньгами: кому платят за ТС (нам или страхователю по ДКП — тогда и сколько),
+     * вознаграждение менеджеру суммой и режим. Гаражное — без денег, с тем,
      * кто платит поставщику: вознаграждение назначают, когда машину продадут из гаража.
      */
     public function accept(Request $request, Bid $bid, AcceptBid $accept)
@@ -41,17 +43,26 @@ class BidController
 
             return back()->with('toast', ($switch ? 'Отдали ' : 'В гараж — ').$bid->user->shortName());
         }
+        $request->merge(['owner_price' => preg_replace('/\D+/', '', (string) $request->input('owner_price')) ?: null]);
         $data = $request->validate([
             'commission' => ['nullable', 'integer', 'min:0', 'max:'.$bid->amount],
             'mode' => ['nullable', Rule::enum(CommissionMode::class)],
+            'scheme' => ['nullable', Rule::enum(DealScheme::class)],
+            // По ДКП — что покупатель отдаст страхователю: меньше цены подтверждения, иначе подбору не из чего.
+            'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.$bid->amount],
             'pickup' => ['nullable', Rule::in(['manager', 'us'])],
         ]);
-        DB::transaction(function () use ($bid, $data, $request, $accept) {
+        $scheme = DealScheme::tryFrom($data['scheme'] ?? '') ?? DealScheme::Ours;
+        if ($scheme === DealScheme::OwnerDkp && ! isset($data['owner_price']) && ! $bid->offer->owner_price && ! $bid->offer->floor_price) {
+            return back()->withErrors(['owner_price' => 'Сколько покупатель отдаёт страхователю по ДКП'])->withInput();
+        }
+        DB::transaction(function () use ($bid, $data, $request, $accept, $scheme) {
             $offer = $bid->offer->loadMissing('vendor.workflows', 'parkVehicle');
             $choosable = isset($data['pickup']) && $offer->pickupChoosable();
             // Отдаём другому, а забирать должен был прежний: отмена сделки поручение снимет, «Мы» вернёт вывоз на парковку.
             $wasPicker = $offer->deal && $offer->evacuator_id === $offer->deal->buyer_id && $offer->pickupDestination() === Destination::Keeper;
-            $accept($bid, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout);
+            $accept($bid, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout,
+                scheme: $scheme, ownerPrice: isset($data['owner_price']) ? (int) $data['owner_price'] : null);
             if (! $choosable) {
                 return;
             }

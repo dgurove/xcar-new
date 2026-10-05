@@ -20,7 +20,7 @@ final class DealMoney
     private function __construct(
         public readonly string $phrase,
         public readonly ?float $amount,
-        public readonly string $tone,      // urgent | accent | plain | muted
+        public readonly string $tone,      // urgent | accent | profit | plain | muted
         public readonly string $preset,    // pay | payout | closed | open
         public readonly string $caption = '', // подпись над числом в шапке расчёта
     ) {}
@@ -46,7 +46,8 @@ final class DealMoney
             if ($unpaid->isOverdue()) {
                 return new self('Просрочен на '.$unpaid->overdueDays().' дн', $left, 'urgent', 'pay', 'К оплате');
             }
-            $paid = $unpaid->paid > 0 ? 'Оплачено '.Money::rub($unpaid->paid).', остаток до ' : 'Оплатите до ';
+            // По ДКП менеджер платит нам только подбор: так и говорим.
+            $paid = $unpaid->paidMoney() > 0 ? 'Оплачено '.Money::rub($unpaid->paidMoney()).', остаток до ' : ($deal->isDkp() ? 'Оплатите подбор до ' : 'Оплатите до ');
 
             return new self($paid.$unpaid->due_at->translatedFormat('j M'), $left, $unpaid->light() === 'urgent' ? 'urgent' : 'plain', 'pay', 'К оплате');
         }
@@ -54,6 +55,11 @@ final class DealMoney
             return $deal->state === DealState::Done
                 ? new self('Сделка закрыта', (float) $deal->base(), 'muted', 'closed', $label)
                 : new self('Счёт ещё не выставлен', (float) $deal->base(), 'muted', 'open', $label);
+        }
+
+        // По ДКП вознаграждение — его прибыль, оставленная себе: зелёным, а не серым «удержано».
+        if ($deal->isDkp() && $deal->commission) {
+            return new self('Ваше вознаграждение', (float) $deal->commission, 'profit', 'closed', 'Вознаграждение');
         }
 
         return match ($state) {
@@ -103,7 +109,7 @@ final class DealMoney
             } elseif ($unpaid->isOverdue()) {
                 $steps[] = $step('Оплата', 'current', null, 'Просрочена на '.$unpaid->overdueDays().' дн', 'danger');
             } else {
-                $steps[] = $step('Оплата', 'current', null, ($unpaid->paid > 0 ? 'Оплачено '.Money::rub($unpaid->paid).', остаток ' : 'Ждём оплату ').'до '.$unpaid->due_at->translatedFormat('j M'));
+                $steps[] = $step('Оплата', 'current', null, ($unpaid->paidMoney() > 0 ? 'Оплачено '.Money::rub($unpaid->paidMoney()).', остаток ' : 'Ждём оплату ').'до '.$unpaid->due_at->translatedFormat('j M'));
             }
         }
 
@@ -131,6 +137,7 @@ final class DealMoney
         return match ($this->tone) {
             'urgent' => 'font-semibold text-urgent',
             'accent' => 'font-semibold text-accent-text',
+            'profit' => 'font-semibold text-open',
             'muted' => 'text-ink-muted',
             default => 'font-semibold',
         };
@@ -141,6 +148,7 @@ final class DealMoney
         return match ($this->tone) {
             'urgent' => 'text-urgent',
             'accent' => 'text-accent-text',
+            'profit' => 'text-open',
             default => 'text-ink-muted',
         };
     }

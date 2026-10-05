@@ -3,7 +3,9 @@
 namespace App\Offers\Actions;
 
 use App\Billing\Actions\VoidInvoice;
+use App\Billing\ChargeKind;
 use App\Billing\InvoiceState;
+use App\Billing\PaymentSource;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
@@ -18,7 +20,7 @@ use App\Workflow\Requirement;
 
 /**
  * Сделка сорвалась: закрыта, подтверждение победителя отклонено, просьбы к нему сняты,
- * невыплаченное вознаграждение гаснет (выплаченное остаётся историей), ждущая машина гаражной уходит из гаража.
+ * невыплаченное вознаграждение и неоплаченные счета гаснут (оплаченное остаётся историей), ждущая машина гаражной уходит из гаража.
  */
 final class CancelDeal
 {
@@ -43,6 +45,13 @@ final class CancelDeal
         }
         if (($fee = $deal->agentFee()->first()) && $fee->state === InvoiceState::Issued && $fee->paid == 0) {
             app(VoidInvoice::class)($fee, $by, 'Сделка отменена');
+        }
+        // Счёт менеджеру, за который ещё не платили (подбор по ДКП выставляется при принятии), гаснет вместе со сделкой —
+        // и ссылка на оплату с ним (`CloseLinksWhenSettled`). Оплаченное — история: возврат решает человек.
+        foreach ($deal->issuedInvoices()->where('state', InvoiceState::Issued)->where('kind', '!=', ChargeKind::Reward)->get() as $invoice) {
+            if (! $invoice->payments()->where('source', '!=', PaymentSource::Offset)->exists()) {
+                app(VoidInvoice::class)($invoice, $by, 'Сделка отменена');
+            }
         }
 
         return $deal;

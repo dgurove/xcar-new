@@ -60,7 +60,7 @@
                             <x-ui.button type="submit" variant="primary" block>{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.button>
                         </form>
                     @else
-                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null">
+                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :scheme="$offer->vendor?->deal_format === \App\Vendors\DealFormat::Direct ? \App\Offers\DealScheme::OwnerDkp : \App\Offers\DealScheme::Ours" :owner-price="$offer->owner_price" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null">
                             <input type="hidden" name="bid" value="{{ $bid->id }}">
                             {{-- ТС ещё у владельца — кто её забирает (04.10.2026): менеджер сделки по умолчанию; поручено
                                  другому — по умолчанию «Мы», то есть как назначено. --}}

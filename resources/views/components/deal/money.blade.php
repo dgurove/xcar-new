@@ -1,4 +1,5 @@
-{{-- Деньги сделки для сотрудника: расклад (цена, закупочная снимком, разница, вознаграждение, нам), чипы —
+{{-- Деньги сделки для сотрудника: расклад (цена, закупочная снимком, разница, вознаграждение, нам; по ДКП — взаимозачёт,
+     собственнику, подбор), чипы —
      режим, состояние вознаграждения, «Изменить» до счёта, «Счёт»; ниже счета строками, заявка менеджера
      об оплате с решением под своим счётом, у вознаграждения к выплате — «Выплатить» в самой строке. Под неоплаченным
      счётом — его ссылка на оплату с адресом и «Отправить» (`x-billing.pay-status`): начальник открыл сделку и сразу
@@ -26,20 +27,26 @@
             <dt class="text-sm text-ink-dim">Цена подтверждения</dt><dd class="nums text-right font-medium">{{ Money::rub($deal->amount) }}</dd>
         @endif
         <dt class="text-sm text-ink-dim">Закупочная</dt><dd class="nums text-right">{{ $deal->cost === null ? 'не указана' : Money::rub($deal->cost) }}</dd>
-        @if ($deal->margin() !== null)<dt class="text-sm text-ink-dim">Разница</dt><dd class="nums text-right {{ $deal->margin() < 0 ? 'text-danger' : '' }}">{{ Money::rub($deal->margin()) }}</dd>@endif
+        @if ($deal->isDkp())
+            {{-- По ДКП: собственнику платит покупатель менеджера, меньше закупочной — взаимозачёт со страховой. --}}
+            @if ($deal->offset())<dt class="text-sm text-ink-dim">Взаимозачёт</dt><dd class="nums text-right">{{ Money::rub($deal->offset()) }}</dd>@endif
+            <dt class="text-sm text-ink-dim">Собственнику по ДКП</dt><dd class="nums text-right">{{ Money::rub((int) $deal->ownerPrice()) }}</dd>
+            <dt class="text-sm text-ink-dim">Подбор</dt><dd class="nums text-right {{ $deal->selectionBase() < 0 ? 'text-danger' : '' }}">{{ Money::rub((int) $deal->selectionBase()) }}</dd>
+        @elseif ($deal->margin() !== null)<dt class="text-sm text-ink-dim">Разница</dt><dd class="nums text-right {{ $deal->margin() < 0 ? 'text-danger' : '' }}">{{ Money::rub($deal->margin()) }}</dd>@endif
         <dt class="text-sm text-ink-dim">Вознаграждение</dt><dd class="nums text-right">{{ $deal->commission ? Money::rub($deal->commission) : 'нет' }}</dd>
         @if ($deal->ours() !== null)<dt class="text-sm text-ink-dim">Нам</dt><dd class="nums text-right text-lg font-semibold {{ $deal->ours() < 0 ? 'text-danger' : '' }}">{{ Money::rub($deal->ours()) }}</dd>@endif
     </dl>
     <div class="mt-3 flex flex-wrap items-center gap-1.5">
-        @if ($deal->commission)<span class="tag">{{ mb_strtolower($deal->commission_mode->label()) }}</span>@endif
+        @if ($deal->isDkp())<span class="tag">страхователю по ДКП</span>@elseif ($deal->commission)<span class="tag">{{ mb_strtolower($deal->commission_mode->label()) }}</span>@endif
         @if ($state !== CommissionState::Hidden)<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.$fee->paid_at->translatedFormat('j M') : '' }}</x-ui.state>@endif
-        @if ($deal->commission && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
+        @if ($deal->commission && ! $deal->withholds() && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
         @if ($deal->isActive())
-            @if ($deal->commissionEditable() && ! $deal->isGarage())
+            @if ($deal->moneyEditable() && ! $deal->isGarage())
                 <div data-controller="sheet" class="contents">
                     <button type="button" class="chip" data-action="sheet#open">Изменить</button>
-                    <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Агентское вознаграждение" :open="$errors->has('commission')">
-                        <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :mode="$deal->commission_mode" submit="Сохранить"/>
+                    <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки" :open="$errors->hasAny(['commission', 'owner_price'])">
+                        <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :mode="$deal->commission_mode"
+                            :scheme="$deal->scheme ?? \App\Offers\DealScheme::Ours" :owner-price="$deal->owner_price" submit="Сохранить"/>
                     </x-ui.sheet>
                 </div>
             @endif

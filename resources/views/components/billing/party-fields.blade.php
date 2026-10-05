@@ -36,7 +36,9 @@
     </div>
     <div class="{{ $g }}" data-reveal-target="pane" data-reveal-key="person">
         <x-ui.field name="passport" id="passport-person" label="Паспорт, серия и номер" :value="$party?->passport"/>
-        <x-ui.field name="passport_issued" id="passport_issued-person" label="Кем и когда выдан" :value="$party?->passport_issued"/>
+        <x-ui.field name="passport_issued" id="passport_issued-person" label="Кем выдан" :value="$party?->passport_issued"/>
+        <x-ui.field name="passport_issued_at" id="passport_issued_at-person" label="Дата выдачи" type="date" :value="$party?->passport_issued_at?->toDateString()"/>
+        <x-ui.field name="passport_code" id="passport_code-person" label="Код подразделения" :value="$party?->passport_code"/>
         <x-ui.field name="reg_address" id="reg_address-person" label="Адрес регистрации" :value="$party?->reg_address"/>
         <x-ui.field name="birth_at" id="birth_at-person" label="Дата рождения" type="date" :value="$party?->birth_at?->toDateString()"/>
     </div>

@@ -78,6 +78,7 @@ final class PromoteCandidate
             'engine_power' => $v('engine_power'),
             'color' => $v('color'),
             'floor_price' => $v('floor_price'),
+            'owner_price' => $v('owner_price'),
             'inspection_address' => $v('location'),
             // Город письма, а нет его — место из адреса осмотра («Пермский край, д. Ванюки, …»).
             'settlement_id' => ($v('city') ? Settlement::named($v('city'))['id'] ?? null : null) ?? Settlement::inAddress($v('location'))['id'] ?? null,

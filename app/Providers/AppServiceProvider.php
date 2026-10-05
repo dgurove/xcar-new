@@ -92,6 +92,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(PaymentRecorded::class, CloseWhenPaid::class);
         Event::listen(PaymentClaimed::class, AdvanceOnClaim::class);
         Event::listen(PaymentConfirmed::class, AdvanceOnPayment::class);
+        Event::listen(StageEntered::class, [AdvanceOnPayment::class, 'entered']);
         Event::listen(PaymentRejected::class, ReturnOnReject::class);
         Event::listen([PaymentRecorded::class, InvoiceVoided::class], CloseLinksWhenSettled::class);
         Event::listen([InvoiceIssued::class, PaymentRecorded::class, PaymentVoided::class], KeepPayLink::class);

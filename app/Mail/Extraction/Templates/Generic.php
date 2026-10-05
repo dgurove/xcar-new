@@ -27,6 +27,7 @@ class Generic extends Template
             $this->put($fields, 'plate', $this->match(Patterns::PLATE, $body), 'body');
         }
         $this->put($fields, 'floor_price', $this->price($body), 'body');
+        $this->put($fields, 'owner_price', $this->ownerPrice($body), 'body');
         $this->put($fields, 'location', $this->location($body), 'body');
 
         return $fields;

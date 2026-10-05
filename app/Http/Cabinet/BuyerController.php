@@ -2,6 +2,9 @@
 
 namespace App\Http\Cabinet;
 
+use App\Billing\Party;
+use App\Billing\PartyKind;
+use App\Billing\PartyRules;
 use App\Chats\Chat;
 use App\Chats\Message;
 use App\Offers\Interest;
@@ -65,7 +68,7 @@ class BuyerController
     {
         $me = $request->user();
         abort_unless($user->manager_id === $me->id && $user->isBuyer(), 404);
-        $user->load('groups');
+        $user->load(['groups', 'party']);
 
         $direct = Showing::where('manager_id', $me->id)->where('user_id', $user->id)->pluck('offer_id')->all();
         $offers = Offer::with(['brand', 'model', 'settlement', 'media', 'favorites'])->where('state', OfferState::Open)->visibleTo($user)->orderByDesc('published_at')->get();
@@ -99,6 +102,17 @@ class BuyerController
         $user->groups()->sync(collect($allowed)->mapWithKeys(fn ($id) => [$id => ['created_at' => now()]])->all());
 
         return back()->with('toast', 'Группы сохранены');
+    }
+
+    /** Паспорт покупателя для ДКП — у его контрагента (физлицо). */
+    public function passport(Request $request, User $user)
+    {
+        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer(), 404);
+        $data = $request->validate(PartyRules::passport('buyer'), [], ['buyer.name' => 'ФИО'])['buyer'];
+        $party = Party::forUser($user);
+        $party->fill(['kind' => PartyKind::Person] + array_map(fn ($v) => is_string($v) && trim($v) === '' ? null : $v, $data))->save();
+
+        return back()->with('toast', 'Паспорт сохранён');
     }
 
     public function passwordLink(Request $request, User $user, IssuePasswordLink $issue)

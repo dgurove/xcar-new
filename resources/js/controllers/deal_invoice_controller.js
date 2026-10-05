@@ -5,7 +5,7 @@ import { Controller } from '@hotwired/stimulus';
 // и «Агентское вознаграждение»; «вознаграждение от поставщика» идёт вендору одной строкой.
 // «Новый плательщик» раскрывает поля контрагента.
 export default class extends Controller {
-    static targets = ['kind', 'amount', 'party', 'newParty', 'first', 'firstSum', 'fee', 'feeSum', 'total', 'withheld'];
+    static targets = ['kind', 'amount', 'party', 'newParty', 'first', 'firstSum', 'fee', 'feeSum', 'total', 'withheld', 'due'];
     static values = { bases: Object, fee: Number, withheld: Boolean, vendorParty: Number };
 
     connect() {
@@ -36,6 +36,7 @@ export default class extends Controller {
         this.feeSumTarget.textContent = this.money(fee);
         this.totalTarget.textContent = this.money(base);
         if (this.hasWithheldTarget) this.withheldTarget.hidden = !(fee > 0 && this.withheldValue);
+        if (this.hasDueTarget) this.dueTarget.textContent = this.money(base - fee);
         this.firstTarget.classList.toggle('text-danger', base - fee < 0);
     }
 

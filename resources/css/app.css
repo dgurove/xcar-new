@@ -979,6 +979,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .list-head .nums { @apply font-normal text-ink-dim; }
   /* Подпись группы строк, как в «Настройках» iOS: мелко и серым над плашкой, справа — состояние словом. */
   .list-cap { @apply flex items-baseline gap-2 px-4 pb-1.5 text-sm font-medium text-ink-dim; }
+  /* Вознаграждение менеджера по ДКП — его прибыль (05.10.2026): строка в зелёном, сумма с мягким свечением и одним
+     проходом блика при показе; без движения — просто зелёным. */
+  .row.profit { @apply bg-open-soft; }
+  .profit-sum { @apply text-xl font-bold; color: var(--color-open); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-open) 45%, transparent)); }
+  @media (prefers-reduced-motion: no-preference) {
+    .profit-sum { background: linear-gradient(100deg, var(--color-open) 40%, color-mix(in srgb, var(--color-open) 30%, white) 50%, var(--color-open) 60%) 100% 0 / 250% 100%;
+      -webkit-background-clip: text; background-clip: text; color: transparent; animation: profit-shine 1.4s ease-out .4s both; }
+  }
+  @keyframes profit-shine { to { background-position: 0 0; } }
 
   /* Таблица (вид списка «Таблицей»): читают с телефона весь день, поэтому она устроена как список iOS.
      Первый столбец — название в два этажа (.cell-title 15, под ним .cell-sub 13 тусклым: номер, факты,

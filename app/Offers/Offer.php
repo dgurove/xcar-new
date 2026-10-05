@@ -43,7 +43,7 @@ use Spatie\MediaLibrary\HasMedia;
 #[Fillable([
     'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'body', 'transmission', 'drive', 'fuel',
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
-    'incident_date', 'description', 'settlement_id', 'inspection_address', 'show_address', 'floor_price', 'value', 'publish_price',
+    'incident_date', 'description', 'settlement_id', 'inspection_address', 'show_address', 'floor_price', 'owner_price', 'value', 'publish_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',

@@ -6,8 +6,8 @@ import { Controller } from '@hotwired/stimulus';
 // меняется на data-negative: тогда отдаём мы. payout — сколько выплатим менеджеру, когда за машину из гаража платит
 // его покупатель: его расходы (spent) плюс вознаграждение.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'ours', 'due', 'dueLabel', 'payout'];
-    static values = { margin: Number, base: Number, spent: Number };
+    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset'];
+    static values = { margin: Number, base: Number, spent: Number, amount: Number, cost: Number };
 
     connect() {
         this.input();
@@ -18,11 +18,37 @@ export default class extends Controller {
         return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: kopecks ? 2 : 0, maximumFractionDigits: 2 }).format(v) + ' ₽';
     }
 
+    // «За ТС платят»: нам — разница и режим; страхователю по ДКП — сколько собственнику, нам — подбор (05.10.2026).
+    get dkp() {
+        return this.element.querySelector('input[name=scheme]:checked')?.value === 'owner_dkp';
+    }
+
+    scheme() {
+        this.oursOnlyTargets.forEach((el) => { el.hidden = this.dkp; });
+        this.dkpOnlyTargets.forEach((el) => { el.hidden = !this.dkp; });
+        if (this.hasOursLabelTarget) this.oursLabelTarget.textContent = this.dkp ? this.oursLabelTarget.dataset.dkp : this.oursLabelTarget.dataset.ours;
+        this.input();
+    }
+
     input() {
         const digits = this.displayTarget.value.replace(/\D/g, '');
         const value = digits ? Number(digits) : 0;
         this.displayTarget.value = digits ? new Intl.NumberFormat('ru-RU').format(value) : '';
         this.amountTarget.value = digits ? value : '';
+        if (this.hasOwnerDisplayTarget) {
+            const ownerDigits = this.ownerDisplayTarget.value.replace(/\D/g, '');
+            const owner = ownerDigits ? Number(ownerDigits) : 0;
+            this.ownerDisplayTarget.value = ownerDigits ? new Intl.NumberFormat('ru-RU').format(owner) : '';
+            this.ownerAmountTarget.value = ownerDigits ? owner : '';
+            const offset = this.hasCostValue ? this.costValue - owner : 0;
+            if (this.hasOffsetTarget) this.offsetTarget.textContent = owner && offset > 0 ? 'Взаимозачёт ' + this.money(offset) : '';
+            if (this.dkp && this.hasOursTarget) {
+                const ours = this.amountValue - owner - value;
+                this.oursTarget.textContent = this.money(ours);
+                this.oursTarget.classList.toggle('text-danger', ours < 0);
+                return;
+            }
+        }
         if (this.hasOursTarget && this.hasMarginValue) {
             const ours = this.marginValue - value;
             this.oursTarget.textContent = this.money(ours);

@@ -29,8 +29,8 @@
         </x-ui.card>
         <x-ui.card title="За что">
             <div class="grid grid-cols-2 gap-3">
-                <x-ui.field name="kind" label="Вид" :options="$kinds" value="sale" data-deal-invoice-target="kind" data-action="deal-invoice#kind"/>
-                <x-ui.field name="amount" label="Сумма, ₽" :value="\App\Support\Money::nums((int) $bases['sale'])" required data-controller="digits" data-deal-invoice-target="amount" data-action="input->digits#format input->deal-invoice#lines"/>
+                <x-ui.field name="kind" label="Вид" :options="$kinds" :value="$kind" data-deal-invoice-target="kind" data-action="deal-invoice#kind"/>
+                <x-ui.field name="amount" label="Сумма, ₽" :value="\App\Support\Money::nums((int) $bases[$kind])" required data-controller="digits" data-deal-invoice-target="amount" data-action="input->digits#format input->deal-invoice#lines"/>
                 <x-ui.field name="title" label="Первая строка счёта" placeholder="Транспортное средство {{ $offer->titleWithYear() }}" span="col-span-2"/>
             </div>
             {{-- Как это будет в счёте: строки и итог; удержание — сразу видно, сколько к оплате. --}}
@@ -38,7 +38,7 @@
                 <dt class="text-sm" data-deal-invoice-target="first">Транспортное средство</dt><dd class="nums text-right" data-deal-invoice-target="firstSum"></dd>
                 <div class="contents" data-deal-invoice-target="fee"><dt class="text-sm">Агентское вознаграждение</dt><dd class="nums text-right">{{ Money::rub($fee) }}<span hidden data-deal-invoice-target="feeSum"></span></dd></div>
                 <dt class="font-medium">Итого</dt><dd class="nums text-right font-semibold" data-deal-invoice-target="total"></dd>
-                <div class="contents" data-deal-invoice-target="withheld" hidden><dt class="text-sm text-ink-muted">Удерживает сам, к оплате</dt><dd class="nums text-right text-ink-muted">{{ Money::rub($bases['sale'] - $fee) }}</dd></div>
+                <div class="contents" data-deal-invoice-target="withheld" hidden><dt class="text-sm text-ink-muted">Удерживает сам, к оплате</dt><dd class="nums text-right text-ink-muted" data-deal-invoice-target="due"></dd></div>
             </dl>
         </x-ui.card>
         <x-ui.field name="notes" label="Заметка в счёт" type="textarea"/>

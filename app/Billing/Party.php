@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** Контрагент счёта: юрлицо, ИП, самозанятый или физлицо с паспортом. Строки `is_self` — мы, по одной на продавца (`seller`). */
 #[Fillable(['kind', 'name', 'is_self', 'seller', 'inn', 'kpp', 'ogrn', 'legal_address', 'director', 'director_basis', 'bank_name', 'bik', 'account', 'corr_account',
-    'passport', 'passport_issued', 'reg_address', 'birth_at', 'phone', 'email', 'card', 'payment_purpose', 'notes', 'vat_on_top'])]
+    'passport', 'passport_issued', 'passport_issued_at', 'passport_code', 'reg_address', 'birth_at', 'birth_place', 'phone', 'email', 'card', 'payment_purpose', 'notes', 'vat_on_top'])]
 class Party extends Model
 {
     use HidesDemo;
@@ -23,7 +23,7 @@ class Party extends Model
 
     protected function casts(): array
     {
-        return ['kind' => PartyKind::class, 'is_self' => 'bool', 'seller' => Seller::class, 'birth_at' => 'date', 'vat_on_top' => 'bool'];
+        return ['kind' => PartyKind::class, 'is_self' => 'bool', 'seller' => Seller::class, 'birth_at' => 'date', 'passport_issued_at' => 'date', 'vat_on_top' => 'bool'];
     }
 
     public function invoices(): HasMany
@@ -52,6 +52,12 @@ class Party extends Model
     public function signerTitle(): string
     {
         return $this->kind === PartyKind::Entrepreneur ? 'Индивидуальный предприниматель' : 'Руководитель';
+    }
+
+    /** Паспорт для договора: ФИО, дата рождения, серия и номер, кем и когда выдан, адрес регистрации (ДКП). */
+    public function hasPassport(): bool
+    {
+        return filled($this->name) && $this->birth_at && filled($this->passport) && filled($this->passport_issued) && $this->passport_issued_at && filled($this->reg_address);
     }
 
     /** Реквизитов для счёта не хватает — печатается с прочерком. */

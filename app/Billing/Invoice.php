@@ -163,7 +163,20 @@ class Invoice extends Model implements HasMedia
 
     public function isPartial(): bool
     {
-        return $this->state === InvoiceState::Issued && $this->paid > 0 && $this->remaining() > 0;
+        return $this->state === InvoiceState::Issued && $this->paidMoney() > 0 && $this->remaining() > 0;
+    }
+
+    /**
+     * Оплачено деньгами: без зачёта удержанного вознаграждения (`PaymentSource::Offset`) — это не оплата, а строка счёта,
+     * которую менеджер оставил себе. Иначе счёт «удерживает сам» с порога горел «Частично».
+     */
+    public function paidMoney(): float
+    {
+        $offset = $this->relationLoaded('payments')
+            ? $this->payments->where('source', PaymentSource::Offset)->sum('amount')
+            : ($this->paid > 0 ? (float) $this->payments()->where('source', PaymentSource::Offset)->sum('amount') : 0);
+
+        return max(0, round((float) $this->paid - $offset, 2));
     }
 
     /** Светофор: зелёный — оплачен, жёлтый — срок в три дня, красный — просрочен, серый — аннулирован, без тона — ждём. */

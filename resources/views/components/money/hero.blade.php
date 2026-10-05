@@ -2,7 +2,7 @@
      экрана — правило 6) и под ним словом, что с ним сейчас, цветом состояния. --}}
 @props(['offer' => null, 'caption' => null, 'amount', 'phrase' => null, 'tone' => null])
 @php
-    $cls = match ($tone) { 'urgent' => 'text-urgent', 'danger' => 'text-danger', 'accent' => 'text-accent-text', default => 'text-ink-muted' };
+    $cls = match ($tone) { 'urgent' => 'text-urgent', 'danger' => 'text-danger', 'accent' => 'text-accent-text', 'profit' => 'text-open', default => 'text-ink-muted' };
 @endphp
 <div {{ $attributes->class('money-hero') }}>
     @if ($offer)<span class="money-hero-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="64px"/></span>@endif

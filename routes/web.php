@@ -4,6 +4,7 @@ use App\Http\Admin\UserController;
 use App\Http\Cabinet\BuyerController;
 use App\Http\Cabinet\BuyerInterestController;
 use App\Http\Cabinet\ChatController as CabinetChatController;
+use App\Http\Cabinet\DealContractController;
 use App\Http\Cabinet\DealController;
 use App\Http\Cabinet\GroupController;
 use App\Http\Cabinet\InviteController;
@@ -160,6 +161,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/deals/{deal}', [DealController::class, 'show']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
         Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
+        Route::put('/deals/{deal}/contract', [DealContractController::class, 'update']);
+        Route::get('/deals/{deal}/dkp', [DealContractController::class, 'show']);
+        Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
         Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
         Route::get('/buyers', [BuyerController::class, 'index']);
@@ -177,6 +181,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/buyers/{user}', [BuyerController::class, 'show'])->whereNumber('user');
         Route::put('/buyers/{user}/groups', [BuyerController::class, 'groups'])->whereNumber('user');
         Route::post('/buyers/{user}/password', [BuyerController::class, 'passwordLink'])->whereNumber('user');
+        Route::put('/buyers/{user}/passport', [BuyerController::class, 'passport'])->whereNumber('user');
     });
 
     // Гараж — машины, выведенные из продажи менеджеру на ремонт (до 30.09.2026 — хост garage.xcar.ru).

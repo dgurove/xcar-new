@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\CommissionMode;
+use App\Offers\DealScheme;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\OfferFiles;
@@ -116,11 +117,14 @@ class DealController
         ];
     }
 
-    /** Вознаграждение и режим — пока по сделке нет счёта. */
+    /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */
     public function money(Request $request, Deal $deal, UpdateDealMoney $update)
     {
-        $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['required', Rule::enum(CommissionMode::class)]]);
-        $update($deal, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::from($data['mode']));
+        $request->merge(['owner_price' => preg_replace('/\D+/', '', (string) $request->input('owner_price')) ?: null]);
+        $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['nullable', Rule::enum(CommissionMode::class)],
+            'scheme' => ['nullable', Rule::enum(DealScheme::class)], 'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.(int) $deal->amount]]);
+        $update($deal, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
+            DealScheme::tryFrom($data['scheme'] ?? ''), isset($data['owner_price']) ? (int) $data['owner_price'] : null);
 
         return back()->with('toast', 'Сохранено');
     }

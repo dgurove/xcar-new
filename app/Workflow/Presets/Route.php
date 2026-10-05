@@ -249,6 +249,26 @@ abstract class Route
         ];
     }
 
+    /**
+     * Оплата подбора по ДКП (05.10.2026, Т-Страхование): счёт «Подбор ТС» выставлен ещё при принятии, со ссылкой на
+     * оплату; после ДКП сделка ждёт его оплату. Проверяем сами, поставщику писать не о чем. Оплатили раньше — оба шага
+     * проходят сразу (`AdvanceOnPayment::entered`).
+     */
+    protected function selectionSegment(string $next): array
+    {
+        return [
+            'selection_pay' => [
+                'name' => 'Оплата подбора', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY, 'asks' => 'document',
+                'ask_title' => 'Оплатите подбор', 'ask_text' => 'Оплатите по ссылке под счётом картой, СБП или SberPay: оплата отметится сама. Или по реквизитам из счёта, тогда приложите платёжное поручение',
+                'exits' => [['Платёжное поручение приложено', 'manager', 'selection_check']],
+            ],
+            'selection_check' => [
+                'name' => 'Проверка оплаты подбора', 'block' => 'payment', 'waits_for' => 'us', 'limit_minutes' => self::DAY,
+                'exits' => [['Оплата получена', 'staff', $next], ['Оплата не поступила', 'staff', 'selection_pay']],
+            ],
+        ];
+    }
+
     /** Где подписывает покупатель: в Москве — приём, иначе оригиналы СДЭКом. $picks — как у `confirmed()`. */
     protected function signingSegment(string $next, string $suffix = '', string $intro = '', ?string $picks = null): array
     {

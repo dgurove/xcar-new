@@ -6,7 +6,10 @@ use App\Billing\ChargeKind;
 use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\InvoiceState;
+use App\Offers\Deal;
 use App\Offers\OfferEventType;
+use App\Users\User;
+use App\Workflow\Events\StageEntered;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Track;
@@ -29,22 +32,42 @@ final class AdvanceOnPayment
         if ($invoice->state !== InvoiceState::Paid || ! $invoice->deal_id || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
             return;
         }
-        $deal = $invoice->deal;
+        $this->advance($invoice->deal, $e->by);
+    }
+
+    /**
+     * Пришли на шаг оплаты, а счета сделки уже оплачены (подбор по ДКП выставлен при принятии, менеджер заплатил сразу) —
+     * шаг проходит тут же: ждать нечего.
+     */
+    public function entered(StageEntered $e): void
+    {
+        if ($e->track !== Track::Sale || ! $e->exit || ! $e->to->isPayStep()) {
+            return;
+        }
+        $deal = $e->deal ?? $e->offer->deal()->first();
+        if ($deal?->isActive() && $deal->fullyPaid()) {
+            $this->advance($deal->setRelation('offer', $e->offer), $e->by);
+        }
+    }
+
+    private function advance(?Deal $deal, ?User $by): void
+    {
         $offer = $deal?->offer;
         if (! $offer || ! $deal->isActive()) {
             return;
         }
+        $offer->unsetRelation('positions');
         $position = $offer->position(Track::Sale);
         $slip = $position?->stage->payExit($deal);
         if ($slip) {
             $deal->openRequirement()->where('stage_id', $position->stage_id)->first()?->update(['done_at' => now(), 'answer' => ['exit' => $slip->label, 'fields' => []]]);
-            ($this->take)($offer, $slip, Actor::Manager, $e->by);
-            $offer->log(OfferEventType::RequirementAnswered, $e->by, ['exit' => $slip->label, 'fields' => []]);
+            ($this->take)($offer, $slip, Actor::Manager, $by);
+            $offer->log(OfferEventType::RequirementAnswered, $by, ['exit' => $slip->label, 'fields' => []]);
             $position = $offer->fresh()->position(Track::Sale);
         }
         $exit = $position?->stage->exitsFor(Actor::Staff, $deal)->first(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата получена'));
         if ($exit) {
-            ($this->take)($offer, $exit, Actor::Staff, $e->by);
+            ($this->take)($offer, $exit, Actor::Staff, $by);
         }
     }
 }

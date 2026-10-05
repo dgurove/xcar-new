@@ -73,6 +73,16 @@
                 </x-ui.action-bar>
             </section>
 
+            {{-- Паспорт — для ДКП, когда покупатель покупает у страхователя напрямую (05.10.2026). --}}
+            <section class="mt-6" id="passport">
+                <h2 class="list-head">Паспорт</h2>
+                <form method="post" action="/buyers/{{ $buyer->id }}/passport" class="box flex flex-col gap-3" data-controller="save-bar">
+                    @csrf @method('put')
+                    <x-billing.passport-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" prefix="buyer"/>
+                    <x-ui.save-bar page/>
+                </form>
+            </section>
+
             @if ($chats->isNotEmpty())
                 <section class="mt-6">
                     <h2 class="list-head">Чаты</h2>

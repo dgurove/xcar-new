@@ -3,6 +3,7 @@
 use App\Http\Admin\BankController;
 use App\Http\Admin\BidController;
 use App\Http\Admin\ChatController;
+use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
@@ -194,6 +195,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/pickups', [PickupController::class, 'index']);
         Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
+        Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
+        Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
+        Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         // Деньги по сделкам: заявки менеджеров об оплате, вознаграждения к выплате, счета; карточка счёта — общая со стоянкой.
         Route::get('/work/money', [MoneyController::class, 'index']);
         Route::get('/work/money/managers', [MoneyController::class, 'managers']);

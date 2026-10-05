@@ -22,14 +22,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'commission', 'commission_mode', 'garage_payer', 'state', 'notes', 'closed_at'])]
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'owner_price', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at'])]
 class Deal extends Model
 {
     use HidesDemo;
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime'];
+        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'owner_price' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -55,6 +55,39 @@ class Deal extends Model
     public function openRequirement(): HasOne
     {
         return $this->hasOne(Requirement::class)->whereNull('done_at')->latestOfMany();
+    }
+
+    /** Договор купли-продажи страхователя с покупателем менеджера — у сделки «страхователю по ДКП». */
+    public function contract(): HasOne
+    {
+        return $this->hasOne(DealContract::class);
+    }
+
+    /**
+     * Покупатель менеджера платит закупочную страхователю сам по ДКП, менеджер нам — разницу за подбор, вознаграждение
+     * оставляет себе (05.10.2026, Т-Страхование).
+     */
+    public function isDkp(): bool
+    {
+        return $this->scheme === DealScheme::OwnerDkp;
+    }
+
+    /** По ДКП — сколько покупатель отдаёт собственнику: своя сумма, а без неё закупочная. */
+    public function ownerPrice(): ?int
+    {
+        return $this->isDkp() ? ($this->owner_price ?? $this->cost) : null;
+    }
+
+    /** Взаимозачёт: закупочная больше того, что получает собственник, — страховая гасит разницей долг перед нами. */
+    public function offset(): int
+    {
+        return $this->isDkp() && $this->cost !== null ? max(0, $this->cost - (int) $this->ownerPrice()) : 0;
+    }
+
+    /** Подбор по ДКП: цена подтверждения минус то, что отдают собственнику, — менеджер платит это нам (с вознаграждением). */
+    public function selectionBase(): ?int
+    {
+        return $this->amount === null || $this->ownerPrice() === null ? null : $this->amount - $this->ownerPrice();
     }
 
     /** Живые счета по сделке в обе стороны, старые первыми. */
@@ -131,10 +164,10 @@ class Deal extends Model
         return $this->cost === null || $this->amount === null ? null : $this->amount - $this->cost;
     }
 
-    /** Что остаётся нам после вознаграждения менеджера. */
+    /** Что остаётся нам после вознаграждения менеджера; по ДКП — что менеджер платит нам за подбор (взаимозачёт внутри). */
     public function ours(): ?int
     {
-        $margin = $this->margin();
+        $margin = $this->isDkp() ? $this->selectionBase() : $this->margin();
 
         return $margin === null ? null : $margin - (int) $this->commission;
     }
@@ -170,6 +203,21 @@ class Deal extends Model
     {
         // Проверка перед записью (UpdateDealMoney) — всегда из базы: загруженные счета могли устареть.
         return ! $this->invoices()->exists();
+    }
+
+    /**
+     * Деньги сделки правятся: счетов нет — или живые только «Подбор ТС» по ДКП, за которые ещё не платили (зачёт
+     * удержанного вознаграждения — не оплата): их перевыставит `IssueSelectionInvoice`.
+     */
+    public function moneyEditable(): bool
+    {
+        if (! $this->isDkp()) {
+            return $this->commissionEditable();
+        }
+        $invoices = $this->invoices()->with('payments')->get();
+
+        return $invoices->every(fn (Invoice $i) => $i->kind === ChargeKind::Selection && $i->direction === 'issued'
+            && $i->payments->every(fn ($p) => $p->source === \App\Billing\PaymentSource::Offset));
     }
 
     public function commissionState(): CommissionState
