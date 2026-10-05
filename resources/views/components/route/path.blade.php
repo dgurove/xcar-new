@@ -131,7 +131,10 @@
                         <div class="mt-2 text-sm">@foreach ($position->payload as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
                     @endif
                     @if (! $wantsInvoice && $stage->awaitsManager($deal) && ($req = $requirements->first(fn ($r) => ! $r->done_at && $r->stage_id === $stage->id)))
-                        <div class="mt-1 text-sm text-ink-muted">Менеджеру: «{{ $req->title }}»@if ($req->due_at) до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</div>
+                        {{-- Что ждём от менеджера — его ответами, а не текстом просьбы: «Подтвердите покупку» в CRM читалось как
+                             команда админу (05.10.2026, «что такое „проверьте покупку“?»). Один ответ — он же: «Ждём от менеджера «Платёжное поручение приложено»». --}}
+                        @php $replies = $stage->exitsFor(\App\Workflow\Actor::Manager, $deal)->pluck('label')->map(fn ($l) => '«'.$l.'»'); @endphp
+                        <div class="mt-1 text-sm text-ink-muted">@if ($replies->count() > 1)Менеджер ответит {{ $replies->slice(0, -1)->implode(', ') }} или {{ $replies->last() }}@else Ждём от менеджера {{ $replies->first() }}@endif @if ($req->due_at) до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</div>
                     @endif
                     @foreach ($answers as $r)
                         <div class="mt-1 text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['exit'] ?? $r->title }}</div>
