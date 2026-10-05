@@ -100,6 +100,11 @@ class OfferController
             return $detail->response();
         }
         $admin = $request->user()->canManageCrm();
+        // У каждой вкладки своя ссылка у всех; без вкладки в адресе — на вкладку человека по умолчанию (модератору
+        // «Без закупочной цены», админу «Без продажной цены»). Поиск лупой вкладки не знает — его не уводим.
+        if (! array_key_exists((string) $request->query('preset'), self::PRESETS) && blank($request->query('q'))) {
+            return redirect($request->fullUrlWithQuery(['preset' => self::home($request->user())]));
+        }
         $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? (string) $request->query('preset') : self::home($request->user());
         $step = in_array($preset, self::STEPS, true);
         // «Без цены» — без сортировки и вида, чипы есть (владелец 04.10.2026: «не хватает фильтров»), по умолчанию — без
@@ -167,8 +172,6 @@ class OfferController
             'presets' => self::PRESETS,
             'sorts' => $preset === 'archive' ? self::SORTS : [],
             'preset' => $preset,
-            // Вкладка по умолчанию у человека — у её пилюли ключа в адресе нет; остальные, и первая тоже, — с ключом.
-            'home' => self::home($request->user()),
             'sort' => $sort,
             'facets' => $facets,
             // Галочки и отправка — админу, в «Оцененных» и «Публикации».

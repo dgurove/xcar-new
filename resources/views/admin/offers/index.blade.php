@@ -29,7 +29,7 @@
     };
 @endphp
 <x-ui.shell title="Предложения" :count="$step ? null : $offers->total()" :phone-heading="false" :detail="$detail">
-    <x-ui.toolbar :sorts="$sorts" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :pill-home="$home" :counts="$counts" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
+    <x-ui.toolbar :sorts="$sorts" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
         <x-slot:extra>@unless ($searching)<x-ui.view-switch :current="$view"/>@endunless</x-slot:extra>
         <x-slot:actions>
             {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями. --}}
