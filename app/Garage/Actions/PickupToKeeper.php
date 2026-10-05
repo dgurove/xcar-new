@@ -5,6 +5,7 @@ namespace App\Garage\Actions;
 use App\Offers\Actions\AssignPickup;
 use App\Offers\Destination;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Users\User;
 use App\Workflow\Track;
 
@@ -19,7 +20,8 @@ final class PickupToKeeper
     public function __invoke(Offer $offer, User $by): void
     {
         $offer->loadMissing('vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests', 'evacuator');
-        if (! $offer->position(Track::Service) || $offer->pickedUp() || $offer->pickupDestination() === Destination::Keeper) {
+        // «В гараже» вывоз уже не правится (`AssignPickup`): такие машины — у менеджера, как их отдали.
+        if ($offer->state === OfferState::Garage || ! $offer->position(Track::Service) || $offer->pickedUp() || $offer->pickupDestination() === Destination::Keeper) {
             return;
         }
         ($this->assign)($offer, $offer->evacuator, Destination::Keeper, $by);
