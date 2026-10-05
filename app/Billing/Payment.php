@@ -35,6 +35,14 @@ class Payment extends Model implements HasMedia
         return $this->belongsTo(Invoice::class);
     }
 
+    /** Номер платёжки без «п/п» и «№», которые вписывают вместе с ним: «п/п п/п 15» на экране было. */
+    public function refNumber(): ?string
+    {
+        $ref = trim((string) preg_replace('/^\s*(п\s*\/?\s*п\.?|№)\s*№?\s*/ui', '', (string) $this->ref));
+
+        return $ref !== '' ? $ref : null;
+    }
+
     public function slip(): ?Media
     {
         return $this->getFirstMedia('slip');

@@ -3,7 +3,6 @@
      Сотруднику пройденные этапы работы с машиной — с «Вернуть» (`GarageView` → `back`, `MoveCar`). --}}
 @php
     use App\Garage\CarState;
-    use App\Support\Money;
     use App\Support\Plural;
     $days = fn (int $d) => $d.' '.Plural::of($d, ['день', 'дня', 'дней']);
     $hint = match ($car->state) {
@@ -11,9 +10,10 @@
         CarState::Delivery, CarState::Repair, CarState::Selling => $days($car->stageDays()),
         CarState::Sold => match (true) {
             ! $invoice => $staff ? 'выставить счёт' : 'готовим счёт',
-            $unpaid && $current->isOwed() => ($staff ? 'отдаём менеджеру ' : 'вам к выплате ').Money::exact($current->remaining()),
+            // Сумма — крупно в деньгах справа: здесь только что и до когда.
+            $unpaid && $current->isOwed() => $staff ? 'отдаём менеджеру' : 'выплата вам',
             $unpaid && $car->invoice_to === 'buyer' => 'ждём оплату покупателя',
-            $unpaid => ($staff ? 'менеджер отдаёт ' : 'отдать нам ').Money::exact($current->remaining()).' до '.$current->due_at->translatedFormat('j M'),
+            $unpaid => ($staff ? 'менеджер отдаёт' : 'оплата').' до '.$current->due_at->translatedFormat('j M'),
             default => null,
         },
         default => null,

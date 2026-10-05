@@ -27,7 +27,7 @@ final class PaymentClaimed extends Message
         $i = $p->invoice;
 
         return Text::lines($i->deal?->offer ?? Car::ofInvoice($i)?->offer,
-            Money::rub($p->amount).' от '.$p->paid_at->translatedFormat('j M').($p->ref ? ', п/п № '.$p->ref : '').($p->slip() ? ', платёжка приложена' : ''),
+            Money::rub($p->amount).' от '.$p->paid_at->translatedFormat('j M').($p->refNumber() ? ', п/п № '.$p->refNumber() : '').($p->slip() ? ', платёжка приложена' : ''),
             'Счёт '.$i->label().', '.$i->party->name);
     }
 

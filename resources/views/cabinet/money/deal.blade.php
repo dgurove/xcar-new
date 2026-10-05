@@ -12,6 +12,10 @@
     [$phrase, $tone] = $m->preset === 'pay' && $unpaid
         ? ($unpaid->isOverdue() ? ['просрочен на '.$unpaid->overdueDays().' дн', 'urgent'] : ['до '.$unpaid->due_at->translatedFormat('j F'), $unpaid->light() === 'urgent' ? 'urgent' : null])
         : [$m->phrase, $m->tone];
+    // Подпись над числом уже говорит «Вам к выплате» — под числом только срок.
+    if ($m->preset === 'payout') {
+        $phrase = preg_replace('/^К выплате /u', '', $phrase);
+    }
 @endphp
 <x-ui.cabinet :title="$offer->titleWithYear()" :back="['Деньги', '/account/money']">
     <div class="flex max-w-[30rem] flex-col gap-6">

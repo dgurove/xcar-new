@@ -2,10 +2,12 @@
 
 namespace App\Billing;
 
+use App\Garage\Car as GarageCar;
 use App\Offers\CommissionState;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Support\Money;
+use App\Users\User;
 use Carbon\CarbonInterface;
 
 /**
@@ -75,6 +77,34 @@ final class DealMoney
             CommissionState::Awaiting => new self('Счёт оплачен', (float) $deal->commission, 'muted', 'closed', 'Вознаграждение'),
             default => new self('Счёт оплачен', (float) $deal->base(), 'muted', 'closed', $label),
         };
+    }
+
+    /**
+     * Расчёт машины в гараже строкой «Денег» (05.10.2026: пилюля «Оплатить» считала гаражный счёт, а строки у него не
+     * было — сумма над списком не сходилась со списком). Счёт «отдать нам» или выплата менеджеру — только его; счёт его
+     * покупателю менеджеру не платить. Нечего показать — null.
+     */
+    public static function garage(GarageCar $car, User $manager): ?self
+    {
+        $mine = fn (?Invoice $i) => $i && $i->state !== InvoiceState::Void && $manager->party_id && $i->party_id === $manager->party_id;
+        $invoice = $car->invoice;
+        $payout = $car->payoutInvoice;
+        if ($mine($invoice) && $invoice->state === InvoiceState::Issued) {
+            $left = $invoice->remaining();
+
+            return match (true) {
+                $invoice->claimed() > 0 => new self('Оплата ждёт подтверждения', $left, 'muted', 'pay', 'Отдать нам'),
+                $invoice->isOverdue() => new self('Просрочен на '.$invoice->overdueDays().' дн', $left, 'urgent', 'pay', 'Отдать нам'),
+                default => new self('Оплатите до '.$invoice->due_at->translatedFormat('j M'), $left, $invoice->light() === 'urgent' ? 'urgent' : 'plain', 'pay', 'Отдать нам'),
+            };
+        }
+        if ($mine($payout)) {
+            return $payout->state === InvoiceState::Issued
+                ? new self('К выплате до '.$payout->due_at->translatedFormat('j M'), $payout->remaining(), 'accent', 'payout', 'Вам к выплате')
+                : new self('Выплачено '.$payout->paid_at?->translatedFormat('j M'), (float) $payout->total, 'muted', 'closed', 'Вам выплачено');
+        }
+
+        return $mine($invoice) ? new self('Оплачено', (float) $invoice->total, 'muted', 'closed', 'Отдали нам') : null;
     }
 
     /**

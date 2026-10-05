@@ -15,7 +15,7 @@
             .($staff && $a?->fee() > 0 ? ', комиссия '.\App\Support\Money::exact($a->fee()) : '')
             .($staff && $a ? ($a->payout ? ', на счёте с '.$a->payout->booked_at->translatedFormat('j M') : ', ждёт зачисления') : ''), 'open'],
         $p->source === PaymentSource::Cash => ['cash', 'Наличные', $day, 'open'],
-        default => ['bank', 'Оплата по счёту', $day.($p->ref ? ', п/п '.$p->ref : ''), 'open'],
+        default => ['bank', 'Оплата по счёту', $day.($p->refNumber() ? ', п/п '.$p->refNumber() : ''), 'open'],
     };
 @endphp
 <x-money.line :icon="$icon ?? $ico" :title="$title ?? $head" :sub="$sub" :amount="$p->amount" :tone="$tone" :strike="$p->state === PaymentState::Rejected" {{ $attributes }}>

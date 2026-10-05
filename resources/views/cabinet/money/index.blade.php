@@ -1,5 +1,5 @@
 {{-- Деньги менеджера: пилюли пресетов с суммами (оплатить, к выплате), «Реквизиты не указаны» строкой над ними и
-     список сделок-расчётов — одна сделка, одна фраза, одно число; сроки — в строках сделок. Реквизиты и документы —
+     список сделок-расчётов и машин гаража со счётом (их суммы — в тех же пилюлях) — одна строка, одна фраза, одно число; сроки — в строках сделок. Реквизиты и документы —
      в «···» справа от пилюль. Строки узкой колонкой и на компьютере. --}}
 @php
     use App\Support\Money; use App\Billing\DealMoney;
@@ -55,8 +55,12 @@
                 <x-ui.empty class="max-w-[30rem]">{{ match ($preset) { 'pay' => 'Платить нечего', 'payout' => 'Выплат не ждёт', 'closed' => 'Закрытых ещё нет', default => 'Сделок с деньгами пока нет' } }}</x-ui.empty>
             @else
                 <div class="list max-w-[30rem]">
-                    @foreach ($deals as $deal)
-                        <x-money.deal-row :deal="$deal" :href="'/account/money/deals/'.$deal->id"/>
+                    @foreach ($deals as $row)
+                        @if ($row instanceof \App\Garage\Car)
+                            <x-money.deal-row :deal="$row" :href="$row->url()"/>
+                        @else
+                            <x-money.deal-row :deal="$row" :href="'/account/money/deals/'.$row->id"/>
+                        @endif
                     @endforeach
                 </div>
             @endif

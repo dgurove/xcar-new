@@ -13,25 +13,27 @@
     $mine = $me->buyers()->orderBy('name')->get(['id', 'name']);
     $prime = $deal->isPrime();
     $editable = $deal->isActive();
+    // Гаражная «платит менеджер»: ДКП ПРАЙМ с ним самим — выбирать покупателя нечего, нужны только его данные.
+    $garage = $deal->isGarage();
     $current = $isMe ? 'me' : $buyer?->id;
     // Ошибки формы открывают ту шторку, откуда она ушла: поля у новой и у данных одни (`buyer.*`), различает `buyer_id`.
     $newErrors = $errors->any() && old('buyer_id') === 'new';
     $dataErrors = $errors->any() && ! old('buyer_id') && ! old('payer');
 @endphp
 <section id="dkp-buyer">
-    <h2 class="list-head">{{ $prime ? 'Покупатель: счёт и ДКП' : 'Покупатель по ДКП' }}</h2>
+    <h2 class="list-head">{{ $garage ? 'Договор купли-продажи' : ($prime ? 'Покупатель: счёт и ДКП' : 'Покупатель по ДКП') }}</h2>
     <div class="list">
         @if ($buyer)
             @if ($ready || ! $editable)
                 <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" class="row">
-                    <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? 'Я сам' : ($buyer->party?->name ?: $buyer->name) }}</span>
+                    <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
                         <span class="row-sub">@if ($ready)<span class="text-open">данные есть</span>@else<span class="text-urgent">нужны данные для договора</span>@endif</span></span>
                     <x-ui.chevron/>
                 </a>
             @else
                 <div data-controller="sheet" class="contents">
                     <button type="button" class="row w-full text-left" data-action="sheet#open">
-                        <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? 'Я сам' : ($buyer->party?->name ?: $buyer->name) }}</span>
+                        <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
                             <span class="row-sub text-urgent">нужны данные для договора</span></span>
                         <x-ui.chevron/>
                     </button>
@@ -56,7 +58,7 @@
                 </form>
             @endif
         @endif
-        @if ($editable)
+        @if ($editable && ! ($garage && $buyer))
             <div data-controller="sheet" data-action="buyer:open@window->sheet#open" class="contents">
                 <button type="button" class="row w-full text-left" data-action="sheet#open">
                     <span @class(['min-w-0 flex-1', 'font-medium text-accent-text' => ! $buyer])>{{ $buyer ? 'Другой покупатель' : 'Выбрать покупателя' }}</span>

@@ -285,6 +285,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       transition-colors select-none disabled:opacity-50 disabled:pointer-events-none;
     height: 3.5rem;
   }
+  /* Иконка в кнопке не сжимается: в узкой кнопке плашки (min-w-0 flex-1) «+» у «Расход» сплющивался до 7 px. */
+  .btn > svg { flex-shrink: 0; }
   /* Неактивная, но нажимаемая — нажатие объясняет, почему нельзя (шеринг под запретом). */
   .btn[aria-disabled="true"] { @apply opacity-50; }
   .btn-s { @apply px-[1.125rem] text-sm; height: 2.75rem; }

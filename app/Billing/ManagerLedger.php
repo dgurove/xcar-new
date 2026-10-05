@@ -60,12 +60,38 @@ final class ManagerLedger
         return $deals->sortBy([fn (Deal $a, Deal $b) => ($b->money->needsAction() <=> $a->money->needsAction()) ?: ($b->created_at <=> $a->created_at)])->values();
     }
 
+    /** Машины гаража с его счётом или выплатой — строками рядом со сделками (`DealMoney::garage`). */
+    private ?Collection $cars = null;
+
+    /** @return Collection<int, GarageCar> с `money` */
+    public function cars(string $preset = 'all'): Collection
+    {
+        $this->cars ??= GarageCar::where('manager_id', $this->manager->id)
+            ->where(fn ($q) => $q->whereNotNull('invoice_id')->orWhereNotNull('payout_invoice_id'))
+            ->with(['offer.brand', 'offer.model', 'offer.media', 'invoice.claims', 'payoutInvoice'])->latest('stage_at')->get()
+            ->each(fn (GarageCar $c) => $c->setAttribute('money', DealMoney::garage($c, $this->manager)))
+            ->filter(fn (GarageCar $c) => $c->money)->values();
+
+        return $preset === 'all' ? $this->cars : $this->cars->filter(fn (GarageCar $c) => $c->money->preset === $preset)->values();
+    }
+
+    /**
+     * Строки «Денег»: сделки и машины гаража одним списком — требующие действия первыми, дальше свежие.
+     *
+     * @return Collection<int, Deal|GarageCar>
+     */
+    public function rows(string $preset = 'all'): Collection
+    {
+        return $this->deals($preset)->concat($this->cars($preset))
+            ->sortBy([fn ($a, $b) => ($b->money->needsAction() <=> $a->money->needsAction()) ?: (($b->created_at ?? $b->stage_at) <=> ($a->created_at ?? $a->stage_at))])->values();
+    }
+
     /** Числа для пилюль пресетов, нули не отдаются. */
     public function counts(): array
     {
-        $all = $this->deals();
+        $all = $this->deals()->concat($this->cars());
 
-        return array_filter(['all' => $all->count()] + $all->countBy(fn (Deal $d) => $d->money->preset)->all());
+        return array_filter(['all' => $all->count()] + $all->countBy(fn ($r) => $r->money->preset)->all());
     }
 
     /**

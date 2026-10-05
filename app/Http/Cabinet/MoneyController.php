@@ -40,7 +40,7 @@ class MoneyController
         $preset = array_key_exists($request->query('preset', ''), DealMoney::PRESETS) ? $request->query('preset') : 'all';
 
         return view('cabinet.money.index', [
-            'deals' => $ledger->deals($preset), 'counts' => $ledger->counts(), 'preset' => $preset,
+            'deals' => $ledger->rows($preset), 'counts' => $ledger->counts(), 'preset' => $preset,
             'position' => $ledger->position(), 'party' => Party::forUser($me, false),
         ]);
     }
