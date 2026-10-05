@@ -28,7 +28,7 @@
                     <form method="post" action="{{ $base }}" class="mt-2 flex flex-col gap-3">
                         @csrf @method('put')
                         <div class="grid grid-cols-2 gap-3">
-                            <x-ui.field name="due_at" :label="$i->isOwed() ? ($fee ? 'Выплатить до' : 'Перечислить до') : 'Оплатить до'" type="date" :value="$i->due_at->toDateString()" required/>
+                            <x-ui.field name="due_at" :label="$i->isOwed() ? ($fee ? 'Выплатить до' : 'Перечислить до') : 'Оплатить до'" type="date" :value="$i->due_at?->toDateString()" required/>
                             <x-ui.field name="external_no" :label="$i->isOwed() ? 'Чужой номер' : 'Чужой номер'" :value="$i->external_no"/>
                             <x-ui.field name="notes" label="Заметка в счёт" type="textarea" :value="$i->notes" span="col-span-2"/>
                         </div>

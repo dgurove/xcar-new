@@ -10,7 +10,7 @@
     // Под числом к оплате — срок: что происходит с оплатой, говорит путь ниже.
     $unpaid = $invoices->first(fn ($i) => $i->state === InvoiceState::Issued && $i->kind !== \App\Billing\ChargeKind::Reward);
     [$phrase, $tone] = $m->preset === 'pay' && $unpaid
-        ? ($unpaid->isOverdue() ? ['просрочен на '.$unpaid->overdueDays().' дн', 'urgent'] : ['до '.$unpaid->due_at->translatedFormat('j F'), $unpaid->light() === 'urgent' ? 'urgent' : null])
+        ? ($unpaid->isOverdue() ? ['просрочен на '.$unpaid->overdueDays().' дн', 'urgent'] : [$unpaid->due_at ? 'до '.$unpaid->due_at->translatedFormat('j F') : 'после договора с покупателем', $unpaid->light() === 'urgent' ? 'urgent' : null])
         : [$m->phrase, $m->tone];
     // Подпись над числом уже говорит «Вам к выплате» — под числом только срок.
     if ($m->preset === 'payout') {

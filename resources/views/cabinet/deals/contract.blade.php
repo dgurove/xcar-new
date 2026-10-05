@@ -114,13 +114,22 @@
         @endif
         @endif
         @if ($part !== 'buyer')
-            {{-- ДКП — документ, а не строка «Расчёта»: открыть и распечатать; пока не готов — чего не хватает. --}}
-            <x-ui.doc :doc="$pdf" class="row">
-                <x-ui.row-icon name="file" size="s" :tone="$missing ? 'muted' : 'open'"/>
-                <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП ПРАЙМ' : 'ДКП' }}</span>
-                    <span class="row-sub !whitespace-normal">@if (! $missing)<span class="text-open">готов, распечатайте</span>@elseif ($ours)готовим: {{ implode(', ', $ours) }}@else ждёт покупателя@endif</span></span>
-                <x-ui.chevron/>
-            </x-ui.doc>
+            {{-- ДКП — документ, а не строка «Расчёта»: готов — открыть и распечатать; не готов — строка без ссылки и чего не
+                 хватает (06.10.2026, владелец: «почему даём скачать договор, если не указан покупатель»). --}}
+            @if (! $missing)
+                <x-ui.doc :doc="$pdf" class="row">
+                    <x-ui.row-icon name="file" size="s" tone="open"/>
+                    <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП ПРАЙМ' : 'ДКП' }}</span><span class="row-sub text-open">готов, распечатайте</span></span>
+                    <x-ui.chevron/>
+                </x-ui.doc>
+            @else
+                <div class="row">
+                    <x-ui.row-icon name="file" size="s" tone="muted"/>
+                    <span class="min-w-0 flex-1"><span class="block text-ink-muted">{{ $prime ? 'ДКП ПРАЙМ' : 'ДКП' }}</span>
+                        @php $need = array_values(array_filter([in_array('покупатель', $missing, true) ? 'выберите покупателя' : null, in_array('данные покупателя', $missing, true) ? 'нужны данные покупателя' : null, $ours ? 'готовим: '.implode(', ', $ours) : null])); @endphp
+                        <span class="row-sub !whitespace-normal">{{ implode(', ', $need) }}</span></span>
+                </div>
+            @endif
         @endif
     </div>
 </section>

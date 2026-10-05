@@ -3,6 +3,7 @@
 namespace App\Http\Cabinet;
 
 use App\Billing\Acquiring\Actions\CancelPayLink;
+use App\Billing\Acquiring\Actions\ChangePayLinkPayer;
 use App\Billing\Acquiring\Actions\CreatePayLink;
 use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayerKind;
@@ -25,6 +26,7 @@ use App\Support\OfficePreview;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 
 /**
  * «Деньги» менеджера: положение (оплатить / к выплате), сделки-расчёты по пресетам,
@@ -110,6 +112,30 @@ class MoneyController
         $link = $create($invoice, $me, isset($data['amount']) ? (float) $data['amount'] : PayLink::defaultAmount($invoice), PayerKind::Other, null, $party->name, $party->phone, $party->email);
 
         return back()->with('toast', 'Ссылка готова')->with('open-link', $link->id);
+    }
+
+    /** Кто платит по ссылке: я, мой покупатель или новый по ФИО (заводится в «Покупателях»). Адрес ссылки тот же. */
+    public function payer(Request $request, PayLink $link, ChangePayLinkPayer $change)
+    {
+        $me = $request->user();
+        abort_unless($link->invoice->isVisibleToManager($me) && ! $link->invoice->isOwed(), 404);
+        if (ctype_digit((string) $request->input('payer'))) {
+            $request->merge(['payer_user_id' => $request->input('payer'), 'payer' => 'buyer']);
+        }
+        $data = $request->validate([
+            'payer' => ['required', Rule::in(['self', 'buyer', 'other'])],
+            'payer_user_id' => ['exclude_unless:payer,buyer', 'required', Rule::exists('users', 'id')->where('manager_id', $me->id)],
+            'name' => ['exclude_unless:payer,other', 'required', 'string', 'max:160'],
+            'email' => ['nullable', 'email', 'max:120'],
+        ], ['payer_user_id.required' => 'Выберите покупателя', 'name.required' => 'Укажите ФИО', 'email.email' => 'Проверьте почту']);
+        $buyer = match ($data['payer']) {
+            'buyer' => User::find($data['payer_user_id']),
+            'other' => PayChoice::newBuyer($me, $data['name'], $data['email'] ?? null),
+            default => null,
+        };
+        $link = $change($link, $me, $buyer ? PayerKind::Buyer : PayerKind::Self, $buyer, $data['email'] ?? null);
+
+        return back()->with('toast', 'Платит '.($buyer ? $buyer->name : 'вы'));
     }
 
     public function cancelLink(Request $request, PayLink $link, CancelPayLink $cancel)

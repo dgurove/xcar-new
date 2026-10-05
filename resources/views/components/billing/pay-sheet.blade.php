@@ -4,7 +4,7 @@
      только у того, у кого её нет в профиле: чек ЮKassa приходит только на почту. По счёту — PDF с QR строкой документа,
      дата, номер и платёжка; наличными — дата. Кнопка одна внизу и называет исход (reveal подменяет подпись).
      Поля в скрытых панелях reveal выключает; обязательность проверяет сервер, `required` на них заблокировал бы отправку. --}}
-@props(['id' => 'pay', 'invoices', 'action', 'pdf', 'buyers' => collect(), 'open' => false, 'otherName' => null])
+@props(['id' => 'pay', 'invoices', 'action', 'pdf', 'buyers' => collect(), 'open' => false, 'otherName' => null, 'offline' => false])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayLink;
     $first = $invoices->first();
@@ -12,7 +12,8 @@
     // Без договора эквайринга способа «Ссылкой» нет вовсе. Ссылка у счёта уже есть (заводится вместе с ним на менеджера) —
     // «Ссылкой» всё равно здесь: выбрать, кто платит (05.10.2026, владелец), новая заменит прежнюю.
     // У счёта ПРАЙМ по сделке ссылки нет вовсе (Совкомбанк: «ссылка не используется», `PayLink::eligible`).
-    $online = app(\App\Billing\Acquiring\Gateway::class)->configured() && $invoices->every(fn ($i) => PayLink::eligible($i));
+    // offline — ссылка уже стоит рядом (расчёт сделки): здесь только «по счёту» и «наличными».
+    $online = ! $offline && app(\App\Billing\Acquiring\Gateway::class)->configured() && $invoices->every(fn ($i) => PayLink::eligible($i));
     $current = $one ? $first->openLink() : null;
     $left = $one ? max(0, round($first->remaining() - $first->claimed(), 2)) : null;
     $max = (float) config('xcar.yookassa.max_amount');
@@ -20,8 +21,7 @@
     // Поле не зовётся `method`: оно перекрыло бы form.method, и Turbo с обработчиками отправки ломались бы.
     $way = old('way', $online ? 'link' : 'transfer');
     $ways = array_filter(['link' => $online ? ['Ссылкой', 'Получить ссылку'] : null, 'transfer' => ['По счёту', 'Я оплатил'], 'cash' => ['Наличными', 'Отдал наличными']]);
-    $payer = (string) old('payer', $current?->payer_user_id ? (string) $current->payer_user_id : 'self');
-    $picked = fn ($b) => $payer === (string) $b->id || ($payer === 'buyer' && (int) old('payer_user_id') === $b->id);
+    $payer = (string) old('payer', $current?->payer_kind === \App\Billing\Acquiring\PayerKind::Buyer && $current->payer_user_id ? (string) $current->payer_user_id : 'self');
     $me = auth()->user();
     $submit = $id.'-submit';
 @endphp
@@ -57,39 +57,7 @@
 
         @if ($online)
             <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="link" @if ($way !== 'link') hidden @endif>
-                <div data-controller="reveal">
-                    <div class="list-cap">Кто платит</div>
-                    <div class="list max-h-72 overflow-y-auto">
-                        <label class="row row-check">
-                            <x-ui.avatar :user="$me" :size="36"/>
-                            <span class="min-w-0 flex-1"><span class="block truncate">Я</span>@if ($me->email)<span class="row-sub">{{ $me->email }}</span>@endif</span>
-                            <span class="check"><input type="radio" name="payer" value="self" @checked($payer === 'self') data-action="reveal#pick"></span>
-                        </label>
-                        @foreach ($buyers as $b)
-                            <label class="row row-check">
-                                <x-ui.avatar :user="$b" :size="36"/>
-                                <span class="min-w-0 flex-1"><span class="block truncate">{{ $b->name }}</span>@if ($b->email)<span class="row-sub">{{ $b->email }}</span>@endif</span>
-                                <span class="check"><input type="radio" name="payer" value="{{ $b->id }}" @checked($picked($b)) data-action="reveal#pick"></span>
-                            </label>
-                        @endforeach
-                        <label class="row row-check">
-                            <x-ui.row-icon name="plus" size="s"/>
-                            <span class="min-w-0 flex-1">Новый покупатель</span>
-                            <span class="check"><input type="radio" name="payer" value="other" @checked($payer === 'other') data-action="reveal#pick"></span>
-                        </label>
-                    </div>
-                    @error('payer_user_id')<div class="mt-2 text-sm text-danger">{{ $message }}</div>@enderror
-                    @unless ($me->email)
-                        <div class="mt-3" data-reveal-target="pane" data-reveal-key="self" @if ($payer !== 'self') hidden @endif><x-ui.field name="email" id="{{ $id }}-email-self" label="Почта для чека" type="email"/></div>
-                    @endunless
-                    @foreach ($buyers->reject(fn ($b) => $b->email) as $b)
-                        <div class="mt-3" data-reveal-target="pane" data-reveal-key="{{ $b->id }}" @unless ($picked($b)) hidden @endunless><x-ui.field name="email" id="{{ $id }}-email-{{ $b->id }}" label="Почта для чека" type="email"/></div>
-                    @endforeach
-                    <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" data-reveal-target="pane" data-reveal-key="other" @if ($payer !== 'other') hidden @endif>
-                        <x-ui.field name="name" id="{{ $id }}-name" label="ФИО" :value="$otherName"/>
-                        <x-ui.field name="email" id="{{ $id }}-email-other" label="Почта для чека" type="email"/>
-                    </div>
-                </div>
+                <x-billing.payer-pick :id="$id" :buyers="$buyers" :payer="$payer" :other-name="$otherName"/>
             </div>
         @endif
 

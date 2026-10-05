@@ -57,7 +57,7 @@
         <tr><td class="l">Плательщик</td><td><b>{{ $p->name }}</b>@if ($p->details())<br>{{ $p->details() }}@endif</td></tr>
         @if ($invoice->vehicle)<tr><td class="l">Основание</td><td>{{ $invoice->vehicle->titleWithYear() }}{{ $invoice->vehicle->vin ? ', VIN '.$invoice->vehicle->vin : '' }}{{ $invoice->vehicle->ref ? ', убыток '.$invoice->vehicle->ref : '' }}{{ $invoice->vehicle->contract_no ? ', договор № '.$invoice->vehicle->contract_no : '' }}</td></tr>@endif
         @if ($invoice->deal)<tr><td class="l">Основание</td><td>Сделка по предложению № {{ $invoice->deal->offer?->number }}{{ $invoice->deal->offer ? ', '.$invoice->deal->offer->titleWithYear() : '' }}</td></tr>@endif
-        <tr><td class="l">Оплатить до</td><td>{{ $invoice->due_at->format('d.m.Y') }}</td></tr>
+        @if ($invoice->due_at)<tr><td class="l">Оплатить до</td><td>{{ $invoice->due_at->format('d.m.Y') }}</td></tr>@endif
     </table>
     <table class="lines">
         <thead><tr><th style="width:24px">№</th><th>Наименование</th><th class="n">Кол-во</th><th class="n">Ед.</th><th class="n">Цена</th><th class="n">Сумма</th></tr></thead>

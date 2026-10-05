@@ -154,13 +154,13 @@ class Invoice extends Model implements HasMedia
 
     public function isOverdue(): bool
     {
-        return $this->state === InvoiceState::Issued && $this->remaining() > 0 && $this->due_at->isPast() && ! $this->due_at->isToday();
+        return $this->state === InvoiceState::Issued && $this->remaining() > 0 && $this->due_at && $this->due_at->isPast() && ! $this->due_at->isToday();
     }
 
     /** Сколько полных дней прошло после срока. */
     public function overdueDays(): int
     {
-        return (int) $this->due_at->startOfDay()->diffInDays(now()->startOfDay());
+        return $this->due_at ? (int) $this->due_at->startOfDay()->diffInDays(now()->startOfDay()) : 0;
     }
 
     public function isPartial(): bool
@@ -188,7 +188,7 @@ class Invoice extends Model implements HasMedia
             $this->state === InvoiceState::Void => 'closed',
             $this->state === InvoiceState::Paid => 'open',
             $this->isOverdue() => 'danger',
-            $this->due_at->lte(now()->addDays(3)) => 'urgent',
+            $this->due_at?->lte(now()->addDays(3)) => 'urgent',
             default => null,
         };
     }

@@ -15,6 +15,9 @@ use App\Offers\Deal;
 use App\Offers\OfferEventType;
 use App\Support\Money;
 use App\Users\User;
+use App\Workflow\Stage;
+use App\Workflow\Track;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -111,11 +114,35 @@ final class SyncDealInvoices
         if ($keep) {
             return;
         }
-        $invoice = ($this->issue)($want['party'], $by, 'issued', $kind, now()->addDays(self::DAYS), lines: $want['lines'], dealId: $deal->id, offerId: $deal->offer_id);
+        $invoice = ($this->issue)($want['party'], $by, 'issued', $kind, $this->dueFor($deal, $kind), lines: $want['lines'], dealId: $deal->id, offerId: $deal->offer_id);
         if ($want['offset'] > 0) {
             ($this->record)($invoice, $by, $want['offset'], null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
             $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));
         }
         $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).' — '.$want['party']->name]);
+    }
+
+    /**
+     * Срок счёта. Подбор не гаражной сделки — без срока, пока маршрут не дошёл до шага оплаты (06.10.2026, владелец: до
+     * договора с покупателем менеджер нам не должник): срок поставит сам шаг (`StartSelectionDue`). На шаге оплаты — его
+     * часы; маршрут без шага оплаты — три дня, как было.
+     */
+    private function dueFor(Deal $deal, ChargeKind $kind): ?Carbon
+    {
+        $default = Carbon::now()->addDays(self::DAYS);
+        if ($kind !== ChargeKind::Selection || $deal->isGarage()) {
+            return $default;
+        }
+        $deal->offer->unsetRelation('positions');
+        $position = $deal->offer->position(Track::Sale);
+        if (! $position) {
+            return $default;
+        }
+        if ($position->stage->isPayStep()) {
+            return $position->deadline_at ?? $default;
+        }
+        $stages = Stage::where('workflow_id', $position->stage->workflow_id)->with('exits')->get();
+
+        return $stages->contains(fn (Stage $s) => $s->isPayStep()) ? null : $default;
     }
 }

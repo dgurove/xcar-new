@@ -31,8 +31,8 @@ use Tests\TestCase;
 
 /**
  * Сделка «страхователю по ДКП» (05.10.2026, Т-Страхование, Ford Kuga): закупочная 779 000, собственнику 750 000
- * (взаимозачёт), цена 850 000, вознаграждение 20 000 — менеджер платит нам 80 000, счёт сразу при принятии; после ДКП
- * сделка ждёт оплату и закрывается ею, оплатил раньше — закрывается сразу; отменили — неоплаченный счёт гаснет. Ошибка
+ * (взаимозачёт), цена 850 000, вознаграждение 20 000 — менеджер платит нам 80 000, счёт сразу при принятии без срока;
+ * после ДКП сделка ждёт оплату (срок — с этого шага) и закрывается ею, оплатил раньше — закрывается сразу; отменили — неоплаченный счёт гаснет. Ошибка
  * здесь — деньги: менеджер платит не ту сумму или сделка закрывается неоплаченной.
  */
 class DkpDealFlowTest extends TestCase
@@ -89,8 +89,12 @@ class DkpDealFlowTest extends TestCase
         $this->assertEqualsWithDelta(80000, $invoice->remaining(), 0.01);
         $this->assertSame(1, $invoice->charges()->count());
         $this->assertFalse($invoice->isPartial());
+        // До договора с покупателем срока нет — он не должник (06.10.2026); срок ставит шаг оплаты.
+        $this->assertNull($invoice->due_at);
+        $this->assertFalse($invoice->isOverdue());
 
         $this->walkTo($offer, $deal, 'Оплата подбора');
+        $this->assertNotNull($invoice->fresh()->due_at);
         app(RecordPayment::class)($invoice->fresh(), $this->admin, 80000, now(), PaymentSource::Bank);
 
         $this->assertSame(InvoiceState::Paid, $invoice->fresh()->state);
@@ -103,7 +107,8 @@ class DkpDealFlowTest extends TestCase
         [$offer, $deal] = $this->deal();
         app(RecordPayment::class)($deal->issuedInvoices()->sole(), $this->admin, 80000, now(), PaymentSource::Bank);
 
-        $this->walkTo($offer, $deal, 'Контакты владельца переданы менеджеру');
+        // Получение тремя шагами (06.10.2026): «Связался с владельцем» → «Автомобиль забрал» → «Договор приложен».
+        $this->walkTo($offer, $deal, 'Подписанный договор');
         $stage = $offer->fresh()->stage();
         app(TakeExit::class)($offer->fresh(), $stage->exitsFor(Actor::Manager, $deal)->firstWhere('label', 'Договор приложен'), Actor::Manager, $this->manager);
 

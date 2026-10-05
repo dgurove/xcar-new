@@ -12,7 +12,7 @@
      второй суммы (она строкой выше; другая — словами «на N ₽»): «Ссылка на оплату», под ней кто платит и что с ней,
      справа круглые «Скопировать» и «Отправить»; нажатие — та же шторка с QR (05.10.2026, владелец про карточку на три
      строки текста и две кнопки во всю ширину). --}}
-@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null, 'compact' => false])
+@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null, 'compact' => false, 'inline' => false])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayMethod;
     $i = $invoice;
@@ -26,8 +26,12 @@
         [$state, $tone] = $link->stateLine();
         // Менеджер платит сам — «платите вы», а не своё имя (06.10.2026).
         // Ссылка, заведённая вместе со счётом, — на имя плательщика счёта: если это он сам, тоже «вы».
-        $self = ! $staff && ($link->payer_kind === \App\Billing\Acquiring\PayerKind::Self
-            || (auth()->user()?->party_id && $i->party_id === auth()->user()->party_id && in_array($link->payer_name, [null, '', $i->party->name], true)));
+        // Сам выбрал себя (`ChangePayLinkPayer`) — по `payer_user_id`, а не по имени: сотрудник, открывший ту же страницу,
+        // «вы» не видит.
+        $viewer = auth()->user();
+        $self = ! $staff && $viewer && (
+            ($link->payer_kind === \App\Billing\Acquiring\PayerKind::Self && in_array($viewer->id, [$link->created_by, $link->payer_user_id], true))
+            || ($link->payer_kind === \App\Billing\Acquiring\PayerKind::Other && $viewer->party_id && $i->party_id === $viewer->party_id && in_array($link->payer_name, [null, '', $i->party->name], true)));
         $pays = $self ? 'платите вы' : 'платит '.($link->payer_name ?: $i->party->name);
         $offer = $i->deal?->offer ?? \App\Garage\Car::ofInvoice($i)?->offer;
         $text = 'Оплата по счёту '.$i->label().($offer ? ' за '.$offer->titleWithYear() : '').': '.Money::exact($link->amount).'. Картой, СБП или SberPay по ссылке:';
@@ -43,6 +47,26 @@
                     <span class="block">Ссылка на оплату@if ($other) <span class="nums">на {{ Money::rub($link->amount) }}</span>@endif</span>
                     <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $pays }}, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</span>
                 </button>
+                <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="copy#copy" aria-label="Скопировать ссылку"><x-ui.icon name="copy" class="size-5"/></button>
+                <button type="button" class="btn btn-accent btn-round shrink-0" data-action="copy#share" data-copy-target="share" aria-label="Отправить ссылку"><x-ui.icon name="share" class="size-5"/></button>
+            </div>
+        @elseif ($inline)
+            {{-- Расчёт сделки (06.10.2026, владелец: «ссылку сразу, а не в отдельном окне»): сумма и кто платит — строками
+                 выше, здесь что с ссылкой и сам адрес с «Скопировать» и «Отправить». --}}
+            @php $other = abs($link->amount - ($i->remaining() - $i->claimed())) >= 0.01; @endphp
+            <button type="button" class="row w-full text-left" data-action="sheet#open">
+                <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'accent'" size="s"/>
+                <span class="min-w-0 flex-1">
+                    <span class="block">Ссылка на оплату@if ($other) <span class="nums">на {{ Money::rub($link->amount) }}</span>@endif</span>
+                    <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ preg_replace('/^ждём оплату, /u', '', $state) }}</span>
+                </span>
+                <x-ui.chevron/>
+            </button>
+            {{-- Адрес целиком (нажатие копирует) и круглые «Скопировать» / «Отправить»: в узкой колонке расчёта кнопки
+                 словами уезжали под адрес. --}}
+            <div class="row pay-link" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по счёту {{ $i->label() }}">
+                <input type="hidden" value="{{ $text }}" data-copy-target="message">
+                <button type="button" class="min-w-0 flex-1 break-all text-left text-accent-text" data-action="copy#copy" title="Скопировать">{{ $link->shortUrl() }}</button>
                 <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="copy#copy" aria-label="Скопировать ссылку"><x-ui.icon name="copy" class="size-5"/></button>
                 <button type="button" class="btn btn-accent btn-round shrink-0" data-action="copy#share" data-copy-target="share" aria-label="Отправить ссылку"><x-ui.icon name="share" class="size-5"/></button>
             </div>

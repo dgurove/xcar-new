@@ -37,11 +37,12 @@ final class IssueInvoice
     public function __construct(private InvoicePdf $pdf) {}
 
     /**
+     * @param  ?CarbonInterface  $dueAt  null — срок ещё не начался (подбор до шага оплаты, `SyncDealInvoices::dueFor`)
      * @param  ?CarbonInterface  $storageUntil  хранение по этот день включительно (null — без хранения)
      * @param  list<int>  $chargeIds  невыставленные начисления
      * @param  list<array{title: string, qty: float, unit: string, price: float, kind?: string}>  $lines  свободные строки
      */
-    public function __invoke(Party $party, User $by, string $direction, ChargeKind $kind, CarbonInterface $dueAt, ?CarbonInterface $storageUntil = null, array $chargeIds = [], array $lines = [],
+    public function __invoke(Party $party, User $by, string $direction, ChargeKind $kind, ?CarbonInterface $dueAt, ?CarbonInterface $storageUntil = null, array $chargeIds = [], array $lines = [],
         ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null): Invoice
     {
         Nav::forgetStaffCounts();
@@ -54,7 +55,7 @@ final class IssueInvoice
             $invoice = Invoice::create([
                 'seller' => $seller, 'direction' => $direction, 'year' => $issued ? $year : null, 'number' => $issued ? Numbering::next($seller, $year) : null,
                 'external_no' => $externalNo, 'kind' => $kind, 'party_id' => $party->id, 'vehicle_id' => $vehicle?->id, 'deal_id' => $dealId, 'offer_id' => $offerId,
-                'issued_at' => now()->toDateString(), 'due_at' => Carbon::instance($dueAt)->toDateString(), 'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $vatOnTop, 'state' => InvoiceState::Issued, 'notes' => $notes, 'created_by' => $by->id,
+                'issued_at' => now()->toDateString(), 'due_at' => $dueAt ? Carbon::instance($dueAt)->toDateString() : null, 'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $vatOnTop, 'state' => InvoiceState::Issued, 'notes' => $notes, 'created_by' => $by->id,
             ]);
             $total = 0.0;
             if ($vehicle && $storageUntil) {

@@ -16,6 +16,7 @@ use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
 use App\Workflow\Path;
+use App\Workflow\Requirement;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -115,7 +116,7 @@ class DealController
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return Stream::view('cabinet.deals.files-stream', ['requirement' => $requirement->fresh()]);
+        return $this->filesStream($deal, $requirement);
     }
 
     public function removeFile(Request $request, Deal $deal, Media $media)
@@ -125,6 +126,16 @@ class DealController
         abort_unless($media->model_id === $requirement->id && $media->model_type === $requirement::class, 404);
         $media->delete();
 
-        return Stream::view('cabinet.deals.files-stream', ['requirement' => $requirement->fresh()]);
+        return $this->filesStream($deal, $requirement);
+    }
+
+    /** Файлы шага, его кнопки (появляются с первым файлом) и галка «Подписанный договор» — одним потоком. */
+    private function filesStream(Deal $deal, Requirement $requirement)
+    {
+        $requirement = $requirement->fresh();
+        $stage = $deal->offer->position(Track::Sale)?->stage;
+
+        return Stream::view('cabinet.deals.files-stream', ['requirement' => $requirement, 'deal' => $deal,
+            'exits' => $stage ? $stage->exitsFor(Actor::Manager, $deal) : collect()]);
     }
 }

@@ -79,7 +79,7 @@ class MoneyController
         }
         $facets->apply($q);
         $sort = $request->query('sort') === 'fresh' ? 'fresh' : 'due';
-        $sort === 'fresh' ? $q->latest('issued_at')->latest('id') : $q->orderBy('due_at')->orderBy('id');
+        $sort === 'fresh' ? $q->latest('issued_at')->latest('id') : $q->orderByRaw('due_at asc nulls last')->orderBy('id');
 
         return view('admin.money.index', [
             'detail' => $detail,

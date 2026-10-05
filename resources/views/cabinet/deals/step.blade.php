@@ -18,6 +18,9 @@
     // Строки счетов — только в гараже, где «Расчёта» нет; на странице сделки счёт в «Расчёте», а здесь — сама оплата.
     // На шаге оплаты — только сама оплата (ссылка и «Оплатить N ₽»), строка счёта повторяла бы ту же сумму.
     $stepInvoices = ($withInvoices ?? false) && ! $payStep ? $unpaid : collect();
+    // Подбор (ДКП, «страховой напрямую») на шаге оплаты — группой «Оплатите XCar за подбор», как в «Расчёте».
+    $selectionPay = $payStep && ! ($withInvoices ?? false) && $deal->paysSelection()
+        ? $unpaid->first(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection) : null;
     $claimable = $payStep ? $unpaid->filter(fn ($i) => $i->kind !== \App\Billing\ChargeKind::Reward && $i->remaining() - $i->claimed() > 0)->values() : collect();
     // Вернули на оплату («Оплата не поступила») — менеджер видит почему, пока не сообщил об оплате заново.
     $rejected = $payStep && $unpaid->every(fn ($i) => $i->claimed() == 0)
@@ -46,7 +49,8 @@
 
             @if ($needsBuyer)
                 <h3 class="mt-5 text-lg">Укажите покупателя</h3>
-            @elseif ($requirement)
+            @elseif ($requirement && ! ($pickupSteps ?? null))
+                {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
                 <h3 class="mt-5 text-lg">{{ $requirement->title }}</h3>
                 @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ $rejected->paid_at->translatedFormat('j M') }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                 {{-- Срок просьбы — тот же, что часы в шапке шага: второй раз его не пишем. --}}
@@ -60,21 +64,39 @@
             @if ($contractStep ?? false)
                 {{-- Шаг договора — чек-лист в том порядке, в каком всё делается (05.10.2026, владелец: «просит приложить
                      договор, хотя договора у него нет, он ниже формируется»): связаться с владельцем → покупатель → ДКП
-                     (открыть, распечатать) → подписанный договор и кнопка шага. Сделанное — галочкой. --}}
+                     (открыть, распечатать) → подписанный договор и кнопка шага. Сделанное — галочкой. У ДКП Т-Страхования
+                     (06.10.2026, владелец: «сначала отмечает, что связался, потом — что забрал») ещё «Заберите
+                     автомобиль», и «Связался» / «Забрал» — шаги маршрута: кнопка стоит у текущего пункта, будущие
+                     приглушены. Покупателя и ДКП готовят когда угодно — их подписывают при передаче. --}}
                 @php
                     $contract = \App\Offers\DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
                     $contact = $showHandover || $payload->isNotEmpty() || $replies->isNotEmpty();
-                    $items = array_values(array_filter([
-                        $contact ? ['contact', $handover?->where === 'У владельца' || $replies->isNotEmpty() ? 'Свяжитесь с владельцем' : 'Где автомобиль', false] : null,
-                        ['buyer', $deal->isPrime() ? 'Покупатель' : 'Покупатель по ДКП', (bool) $contract->buyer?->party?->readyForContract()],
-                        ['doc', 'Договор купли-продажи', $contract->isReady()],
-                        ['signed', 'Подписанный договор', $requirement->getMedia('files')->isNotEmpty()],
+                    $flow = $pickupSteps ?? null;
+                    $signedFiles = $requirement->asks === Asks::Document && $requirement->getMedia('files')->isNotEmpty();
+                    $state = fn (bool $done) => $done ? 'done' : 'open';
+                    $items = array_values(array_filter($flow ? [
+                        ['contact', 'Свяжитесь с владельцем', $flow['contact']],
+                        ['pickup', 'Заберите автомобиль', $flow['pickup']],
+                        ['buyer', 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyForContract())],
+                        ['doc', 'Договор купли-продажи', $state($contract->isReady())],
+                        ['signed', 'Подписанный договор', $flow['signed'] === 'current' && $signedFiles ? 'done' : $flow['signed']],
+                    ] : [
+                        $contact ? ['contact', $handover?->where === 'У владельца' || $replies->isNotEmpty() ? 'Свяжитесь с владельцем' : 'Где автомобиль', 'open'] : null,
+                        ['buyer', $deal->isPrime() ? 'Покупатель' : 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyForContract())],
+                        ['doc', 'Договор купли-продажи', $state($contract->isReady())],
+                        ['signed', 'Подписанный договор', $state($signedFiles)],
                     ]));
+                    // Кнопка шага — у пункта, что сейчас: «Связался», «Забрал» или «Договор приложен».
+                    $here = $flow ? ($flow['contact'] === 'current' ? 'contact' : ($flow['pickup'] === 'current' ? 'pickup' : 'signed')) : 'signed';
                 @endphp
                 <ol class="task-steps">
-                    @foreach ($items as $k => [$key, $title, $done])
-                        <li @class(['task-step', 'is-done' => $done])>
-                            <span class="task-step-mark">@if ($done)<x-ui.icon name="check" class="size-3.5"/>@else{{ $k + 1 }}@endif</span>
+                    @foreach ($items as $k => [$key, $title, $mark])
+                        <li @class(['task-step', 'is-done' => $mark === 'done', 'is-later' => $mark === 'later'])>
+                            @if ($key === 'signed')
+                                @include('cabinet.deals.signed-mark', ['done' => $mark === 'done', 'n' => $k + 1])
+                            @else
+                                <span class="task-step-mark">@if ($mark === 'done')<x-ui.icon name="check" class="size-3.5"/>@else{{ $k + 1 }}@endif</span>
+                            @endif
                             <div class="task-step-body">
                                 <h4 class="task-step-title">{{ $title }}</h4>
                                 @if ($key === 'contact')
@@ -85,9 +107,8 @@
                                     @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])
                                 @elseif ($key === 'doc')
                                     @include('cabinet.deals.contract', ['part' => 'doc', 'embedded' => true])
-                                @else
-                                    @include('cabinet.deals.answer')
                                 @endif
+                                @if ($key === $here)@include('cabinet.deals.answer')@endif
                             </div>
                         </li>
                     @endforeach
@@ -101,6 +122,9 @@
                 <div class="list mt-5">
                     @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])<x-billing.pay-status :invoice="$i" compact/>@endforeach
                 </div>
+            @elseif ($selectionPay)
+                {{-- Подбор по ДКП и «страховой напрямую» — та же группа, что в «Расчёте» (там её на этом шаге нет). --}}
+                @include('cabinet.deals.selection-pay', ['invoice' => $selectionPay])
             @elseif ($payStep && $unpaid->isNotEmpty())
                 {{-- Ссылка на оплату — тут, с «Отправить»; ждёт подтверждения — словом. --}}
                 @php $links = $unpaid->filter(fn ($i) => $i->openLink() || \App\Billing\Acquiring\PayLink::eligible($i)); @endphp
@@ -112,7 +136,7 @@
             @if ($needsBuyer)
                 <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])</div>
             @endif
-            @if ($requirement && ! $needsBuyer)
+            @if ($requirement && ! $needsBuyer && ! $selectionPay)
                 @if ($payStep && $unpaid->isNotEmpty())
                     @if ($claimable->isNotEmpty())
                         {{-- Та же шторка, что в «Деньгах»: ссылкой (кто платит), по счёту с платёжкой, наличными. Ответ — сюда же. --}}

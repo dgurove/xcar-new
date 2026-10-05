@@ -64,7 +64,11 @@ final class Handover
         $place = $service?->stage->car_place;
 
         $saleExit = $sale?->stage->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $e) => self::picked($e));
-        $servicePick = $picks && ! $saleExit && $service && $service->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty();
+        // «Забрал» вывоза — только когда у продажи своего шага получения нет вовсе (Альфа): есть — жмут там и в свой черёд
+        // (06.10.2026, Т-Страхование: сначала «Связался», потом «Забрал»).
+        $routePicks = $sale && Stage::where('workflow_id', $sale->stage->workflow_id)->with('exits')->get()
+            ->contains(fn (Stage $s) => $s->exitsFor(Actor::Manager, $deal)->contains(fn (Outcome $e) => self::picked($e)));
+        $servicePick = $picks && ! $routePicks && $service && $service->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty();
         // Шаг продажи сам про получение: просит забрать (Каркаде, гараж, «Менеджер забирает автомобиль») или вписали ему,
         // где и у кого (Т-Страхование).
         $saleAsks = $saleExit || ($sale && $sale->stage->awaitsManager($deal) && self::mapped($sale->stage) !== []);
@@ -202,6 +206,33 @@ final class Handover
         }
 
         return $out;
+    }
+
+    /**
+     * Получение по ДКП чек-листом (06.10.2026, Т-Страхование): шаги «Связался с владельцем» → «Автомобиль забрал» →
+     * «Подписанный договор» — где сейчас сделка и что уже сделано. Не этот маршрут или сделка не на этих шагах — null.
+     *
+     * @return array{contact: string, pickup: string, signed: string}|null  done | current | later
+     */
+    public static function checklist(Deal $deal, ?Position $sale): ?array
+    {
+        if (! $sale || ! $deal->isActive() || ! $deal->hasContract() || $deal->isPrime()) {
+            return null;
+        }
+        $stages = Stage::where('workflow_id', $sale->stage->workflow_id)->with('exits')->get();
+        $contact = $stages->first(fn (Stage $s) => $s->exitsFor(Actor::Manager, $deal)->contains(fn (Outcome $e) => mb_strtolower(trim($e->label)) === 'связался с владельцем'));
+        $pick = $stages->first(fn (Stage $s) => $s->exitsFor(Actor::Manager, $deal)->contains(fn (Outcome $e) => self::picked($e)));
+        $signed = $pick ? $stages->firstWhere('id', $pick->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $e) => self::picked($e))->to_stage_id) : null;
+        $at = $sale->stage_id;
+        if (! $contact || ! $signed || ! in_array($at, [$contact->id, $pick->id, $signed->id], true)) {
+            return null;
+        }
+
+        return [
+            'contact' => $at === $contact->id ? 'current' : 'done',
+            'pickup' => match ($at) { $pick->id => 'current', $contact->id => 'later', default => 'done' },
+            'signed' => $at === $signed->id ? 'current' : 'later',
+        ];
     }
 
     public static function picked(Outcome $exit): bool

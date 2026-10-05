@@ -77,8 +77,11 @@ final class MoneyNotice extends Notice
 
     public static function invoiceIssued(Invoice $i): self
     {
-        return (new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'), $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number))
-            ->tg($i, 'Счёт по :car', 'Счёт '.$i->label(), Money::rub($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'))->about($i);
+        // Подбор до шага оплаты срока не имеет: платить после договора с покупателем (`SyncDealInvoices::dueFor`).
+        $when = $i->due_at ? ', оплатить до '.$i->due_at->translatedFormat('j M') : ', оплатить после договора с покупателем';
+
+        return (new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).$when, $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number))
+            ->tg($i, 'Счёт по :car', 'Счёт '.$i->label(), Money::rub($i->remaining()).$when)->about($i);
     }
 
     /** Расчёт по машине в гараже: счёт к оплате или то, что мы должны ему, — ведёт на машину. */

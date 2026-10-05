@@ -48,6 +48,16 @@ enum DealScheme: string
         };
     }
 
+    /** То же глаголом для менеджера — что ему сделать (06.10.2026, владелец: «прям явно: оплатить собственнику по ДКП»). */
+    public function payLabel(): ?string
+    {
+        return match ($this) {
+            self::OwnerDkp => 'Оплатить собственнику по ДКП',
+            self::Insurer => 'Оплатить страховой',
+            self::Prime => null,
+        };
+    }
+
     public static function forVendor(?DealFormat $format): self
     {
         // «Страховой напрямую» — только выбором админа: по умолчанию счёт ничей не уходит менеджеру сам (ревью 05.10.2026).

@@ -140,7 +140,8 @@ class PayLink extends Model
     public function payerLabel(?User $viewer = null): string
     {
         if ($this->payer_kind === PayerKind::Self) {
-            return $viewer && $viewer->id === $this->created_by ? 'вы' : ($this->creator?->name ?? 'менеджер');
+            // Сам за себя: завёл ссылку он или выбрал себя плательщиком (`ChangePayLinkPayer` пишет его в `payer_user_id`).
+            return $viewer && in_array($viewer->id, [$this->created_by, $this->payer_user_id], true) ? 'вы' : ($this->payer_name ?: $this->creator?->name ?? 'менеджер');
         }
 
         return $this->payer_name ?: $this->payerUser?->name ?: 'покупатель';

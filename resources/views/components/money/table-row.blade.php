@@ -12,7 +12,7 @@
     $what = $offer?->titleWithYear() ?? ($i->isService() ? $i->charges->first()?->title : null);
     $claim = $i->claims->isNotEmpty();
     $owed = $i->isOwed();
-    $due = $i->state === InvoiceState::Issued ? 'до '.$i->due_at->translatedFormat('j M') : ($owed && $i->state === InvoiceState::Paid ? 'выплачено' : mb_strtolower($i->state->label()));
+    $due = $i->state === InvoiceState::Issued ? ($i->due_at ? 'до '.$i->due_at->translatedFormat('j M') : 'после договора') : ($owed && $i->state === InvoiceState::Paid ? 'выплачено' : mb_strtolower($i->state->label()));
     $tone = match ($i->light()) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => '' };
     $left = $i->remaining();
     $manager = $i->manager();

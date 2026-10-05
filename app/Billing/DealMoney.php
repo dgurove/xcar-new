@@ -42,7 +42,7 @@ final class DealMoney
     public static function payable($invoices)
     {
         return $invoices->filter(fn (Invoice $i) => ! $i->isOwed() && $i->kind !== ChargeKind::Reward && $i->state === InvoiceState::Issued)
-            ->sortBy(fn (Invoice $i) => [$i->due_at, $i->id])->values();
+            ->sortBy(fn (Invoice $i) => [$i->due_at ? 0 : 1, $i->due_at?->timestamp ?? 0, $i->id])->values();
     }
 
     public static function of(Deal $deal, bool $staff = false): self
@@ -58,6 +58,11 @@ final class DealMoney
 
         if ($deal->state === DealState::Cancelled) {
             return new self('Сделка отменена', null, 'muted', 'closed');
+        }
+        // Подбор до шага оплаты срока не имеет (`SyncDealInvoices::dueFor`): он не должник, пока не продал (06.10.2026).
+        if ($open->isNotEmpty() && $open->every(fn (Invoice $i) => ! $i->due_at && $i->claimed() == 0)) {
+            return new self($staff ? 'Оплатит подбор после договора с покупателем' : 'Оплатите подбор после договора с покупателем',
+                round($open->sum(fn (Invoice $i) => $i->remaining()), 2), 'plain', 'open', $staff ? 'будет должен' : 'К оплате позже');
         }
         if ($open->isNotEmpty()) {
             // Число — остаток всех его счетов по сделке (у гаражной ПРАЙМ их два: машина и доля), фраза — по ближнему сроку.

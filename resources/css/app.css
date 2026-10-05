@@ -1805,10 +1805,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .task-step { @apply relative flex gap-3 pb-6 last:pb-0; }
   .task-step:not(:last-child)::before { content: ""; position: absolute; left: .8125rem; top: 1.875rem; bottom: .375rem; width: 1.5px; background: var(--color-line); }
   .task-step-mark { @apply flex size-[1.625rem] shrink-0 items-center justify-center rounded-full bg-surface-3 text-sm font-medium text-ink; }
-  .task-step.is-done .task-step-mark { @apply bg-accent text-white; }
+  .task-step.is-done .task-step-mark, .task-step-mark.is-done { @apply bg-accent text-white; }
   .task-step-body { @apply min-w-0 flex-1 pt-0.5; }
   .task-step-title { @apply font-medium; }
   .task-step.is-done .task-step-title { @apply text-ink-muted; }
+  /* Пункт, до которого ещё не дошли (чек-лист получения): приглушён, без кнопки. */
+  .task-step.is-later .task-step-title, .task-step.is-later .task-step-mark { @apply text-ink-dim; }
   .task-step-body > :not(:first-child) { margin-top: .75rem; }
   .reply-more > summary { @apply cursor-pointer list-none; }
   /* Таймер — одно целое: «2 д 6 ч» не рвётся на «2 д» и «6 ч» при переносе строки. */

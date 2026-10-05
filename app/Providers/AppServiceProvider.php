@@ -16,6 +16,7 @@ use App\Billing\Listeners\AdvanceOnPayment;
 use App\Billing\Listeners\CloseLinksWhenSettled;
 use App\Billing\Listeners\KeepPayLink;
 use App\Billing\Listeners\PassTurnOnInvoice;
+use App\Billing\Listeners\StartSelectionDue;
 use App\Billing\Listeners\PayoutWhenPaid;
 use App\Billing\Listeners\ReturnOnReject;
 use App\Billing\Listeners\RevokeAgentFee;
@@ -93,6 +94,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(PaymentClaimed::class, AdvanceOnClaim::class);
         Event::listen(PaymentConfirmed::class, AdvanceOnPayment::class);
         Event::listen(StageEntered::class, [AdvanceOnPayment::class, 'entered']);
+        Event::listen(StageEntered::class, StartSelectionDue::class);
         Event::listen(PaymentRejected::class, ReturnOnReject::class);
         Event::listen([PaymentRecorded::class, InvoiceVoided::class], CloseLinksWhenSettled::class);
         Event::listen([InvoiceIssued::class, PaymentRecorded::class, PaymentVoided::class], KeepPayLink::class);

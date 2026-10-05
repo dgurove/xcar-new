@@ -30,7 +30,7 @@ final class PayChoice
      * Покупатель менеджера по ФИО и почте (телефон ссылке не нужен — чек приходит только на почту): свой с этой почтой — он
      * же, чужой — ошибка, иначе новый без пароля.
      */
-    private function newBuyer(User $me, string $name, ?string $email): User
+    public static function newBuyer(User $me, string $name, ?string $email): User
     {
         $email = $email ? mb_strtolower(trim($email)) : null;
         if ($email && ($known = User::whereRaw('lower(email) = ?', [$email])->first())) {
@@ -79,7 +79,7 @@ final class PayChoice
             $buyer = $kind === PayerKind::Buyer ? User::find($data['payer_user_id']) : null;
             // Новый покупатель — сразу в «Покупатели» менеджера (05.10.2026): платит он, а не безымянный «другой человек».
             if ($kind === PayerKind::Other) {
-                [$buyer, $kind] = [$this->newBuyer($me, $data['name'], $data['email'] ?? null), PayerKind::Buyer];
+                [$buyer, $kind] = [self::newBuyer($me, $data['name'], $data['email'] ?? null), PayerKind::Buyer];
             }
             $link = ($this->link)($invoice, $me, $amount, $kind, $buyer, $data['name'] ?? null, null, $data['email'] ?? null);
 

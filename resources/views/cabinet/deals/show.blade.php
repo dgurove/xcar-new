@@ -10,7 +10,9 @@
     $photos = $offer->visiblePhotos();
     // Шаг договора (просьба приложить документ, у сделки есть ДКП): покупатель и сам ДКП — пунктами задачи, а не блоком
     // ниже неё (05.10.2026, владелец: «просит приложить договор, а он где-то ниже формируется»).
-    $contractStep = $deal->isActive() && $deal->hasContract() && $requirement && $requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep();
+    // Получение по ДКП (Т-Страхование, 06.10.2026): «Связался» → «Забрал» → подписанный договор — тот же чек-лист с первого шага.
+    $pickupSteps = \App\Offers\Handover::checklist($deal, $position);
+    $contractStep = $deal->isActive() && $deal->hasContract() && $requirement && ($pickupSteps || ($requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep()));
     // ПРАЙМ без покупателя: задача и есть выбор покупателя — он в ней, а не вторым блоком с той же кнопкой.
     $needsBuyer = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() && $deal->invoiceGap() === 'buyer';
 @endphp
@@ -27,7 +29,7 @@
          заголовка. --}}
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
-            <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep])</div>
+            <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps])</div>
             @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer)<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
