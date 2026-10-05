@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class OpenChat
 {
-    public const GREETING = 'Добрый день! Спрашивайте про ТС — ответим здесь.';
+    public const GREETING = 'Добрый день! Спрашивайте про ТС, ответим здесь';
 
     /** @param  bool  $greet  приветствие площадки; сотрудник, что пишет менеджеру первым (05.10.2026), обходится без него */
     public function __invoke(Offer $offer, User $user, bool $greet = true): Chat

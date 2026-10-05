@@ -22,23 +22,33 @@
     $status = $mine ? false : \App\Chats\Hours::presence(feminine: $other === null);
     $others = $mine || ! $other ? collect() : $chats->filter(fn ($c) => $c->manager_id === $other->id && $c->id !== $chat?->id);
     // «Администрация XCar» в списке есть всегда: обращения ещё нет — строка ведёт на пустой экран.
-    $support = !$me->isAdmin() && $chats->doesntContain(fn ($c) => $c->isEnquiry());
+    $q ??= '';
+    // При поиске строку «Администрации» без обращения не рисуем: она не совпала ни с чем.
+    $support = !$me->isAdmin() && $q === '' && $chats->doesntContain(fn ($c) => $c->isEnquiry());
 @endphp
 <x-ui.cabinet :title="$current ? $name : 'Чаты'">
     <div class="chat-split {{ $current ? 'has-current' : '' }}" data-controller="split">
-        <div class="chat-rows">
-            <div class="chat-rows-list" data-fresh-on-back>
-                @foreach ($chats as $c)
-                    <x-chat.row :chat="$c" :me="$me" :href="'/account/chats/'.$c->id" :current="$c->id === $current"/>
-                @endforeach
-                @if ($support)
-                    <a href="/account/chats/support" class="chat-row" @if ($current === 'support') aria-current="true" @endif data-turbo-action="advance">
-                        <x-chat.avatar :size="44"/>
-                        <div class="min-w-0 flex-1 truncate">{{ \App\Chats\Chat::PLATFORM }}</div>
-                    </a>
+        <div class="chat-rows" id="chat-rows">
+            <x-chat.list-head search="Имя, ТС, номер" url="/account/chats" :count="$chats->total() + ($support ? 1 : 0)" :q="$q ?? ''"/>
+            <div class="chat-rows-body" id="chat-rows-body">
+                @if ($chats->isEmpty() && ! $support)
+                    <x-ui.empty>{{ ($q ?? '') !== '' ? 'Ничего не нашли' : 'Чатов нет' }}</x-ui.empty>
+                @else
+                    <div class="chat-rows-list" data-fresh-on-back>
+                        @foreach ($chats as $c)
+                            <x-chat.row :chat="$c" :me="$me" :href="'/account/chats/'.$c->id" :current="$c->id === $current"/>
+                        @endforeach
+                        {{-- Обращения ещё нет — та же строка, что у чата: аватар площадки и имя, пустой экран по нажатию. --}}
+                        @if ($support)
+                            <a href="/account/chats/support" class="chat-row" data-search-row @if ($current === 'support') aria-current="true" @endif data-turbo-action="advance">
+                                <x-chat.avatar :size="44"/>
+                                <div class="min-w-0 flex-1"><span class="truncate">{{ \App\Chats\Chat::PLATFORM }}</span></div>
+                            </a>
+                        @endif
+                    </div>
+                    <x-ui.pager :of="$chats" :sizes="[]"/>
                 @endif
             </div>
-            <x-ui.pager :of="$chats" :sizes="[]"/>
         </div>
         <turbo-frame id="chat-screen" class="chat-pane" target="_top">
             @if ($current)

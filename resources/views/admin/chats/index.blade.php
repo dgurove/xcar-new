@@ -1,6 +1,6 @@
-{{-- Чаты в CRM: пресеты и поиск сверху, ниже панель «список | переписка». Чат площадки — с полем
-     ответа; переписка покупателя с менеджером — только читается (readonly: поля нет, счётчики не
-     трогаются), в баре — покупатель и чип его менеджера. --}}
+{{-- Чаты в CRM: панель «список | переписка», лупа — над строками (x-chat.list-head), пилюль нет. Чат площадки — с
+     полем ответа; переписка покупателя с менеджером (открывают из карточки пользователя) — только читается (readonly:
+     поля нет, счётчики не трогаются), в баре — покупатель и чип его менеджера. --}}
 @php
     $current ??= null;
     $chat ??= null;
@@ -10,20 +10,22 @@
 <x-ui.shell :title="$chat ? $chat->displayName() : 'Чаты'" :heading="false" :back="$chat ? ['Чаты', '/work/chats'.$qs] : null" :back-row="false">
     <div class="chat-crm-top">
         <x-admin.work-titles current="chats" :count="$chats->total()"/>
-        <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\ChatController::PRESETS" :pill="$preset" pill-param="preset" :counts="['unread' => $unread]" name="chats" :facets="$facets" search="Имя, телефон, менеджер, номер" search-target="#chat-rows" search-url="/work/chats"/>
     </div>
     <div class="chat-split chat-split-crm mt-6 {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows" id="chat-rows">
-            @if ($chats->isEmpty())
-                <x-ui.empty>Чатов нет</x-ui.empty>
-            @else
-                <div class="chat-rows-list" data-fresh-on-back>
-                    @foreach ($chats as $c)
-                        <x-chat.row :chat="$c" :me="$me" :href="'/work/chats/'.$c->id.$qs" :current="$c->id === $current" staff/>
-                    @endforeach
-                </div>
-                <x-ui.pager :of="$chats"/>
-            @endif
+            <x-chat.list-head search="Имя, телефон, ТС, номер" url="/work/chats" :count="$chats->total()" :q="$q"/>
+            <div class="chat-rows-body" id="chat-rows-body">
+                @if ($chats->isEmpty())
+                    <x-ui.empty>{{ $q !== '' ? 'Ничего не нашли' : 'Чатов нет' }}</x-ui.empty>
+                @else
+                    <div class="chat-rows-list" data-fresh-on-back>
+                        @foreach ($chats as $c)
+                            <x-chat.row :chat="$c" :me="$me" :href="'/work/chats/'.$c->id.$qs" :current="$c->id === $current" staff/>
+                        @endforeach
+                    </div>
+                    <x-ui.pager :of="$chats"/>
+                @endif
+            </div>
         </div>
         <turbo-frame id="chat-screen" class="chat-pane" target="_top">
             @if ($chat)

@@ -20,7 +20,7 @@ class ChatController
 {
     public function index(Request $request)
     {
-        return view('cabinet.chats', ['chats' => $this->list($request->user()), 'current' => null]);
+        return view('cabinet.chats', ['chats' => $this->list($request->user(), $request), 'current' => null, 'q' => trim((string) $request->query('q'))]);
     }
 
     /** Экран чата: собеседник в шапке, плашка ТС, последние сообщения; на широком экране слева список. */
@@ -38,7 +38,7 @@ class ChatController
         return view('cabinet.chats', [
             'chat' => $chat, 'messages' => $messages, 'user' => $user, 'firstUnread' => $firstUnread,
             'more' => $messages->isNotEmpty() && $messages->first()->seq > 1,
-            'chats' => $this->list($user), 'current' => $chat->id,
+            'chats' => $this->list($user, $request), 'current' => $chat->id,
         ]);
     }
 
@@ -57,7 +57,7 @@ class ChatController
 
         return view('cabinet.chats', [
             'chat' => null, 'offer' => $offer, 'messages' => collect(), 'user' => $user, 'firstUnread' => 0, 'more' => false,
-            'chats' => $this->list($user), 'current' => 'new',
+            'chats' => $this->list($user, $request), 'current' => 'new',
         ]);
     }
 
@@ -72,13 +72,20 @@ class ChatController
 
         return view('cabinet.chats', [
             'chat' => null, 'offer' => null, 'messages' => collect(), 'user' => $user, 'firstUnread' => 0, 'more' => false,
-            'chats' => $this->list($user), 'current' => 'support',
+            'chats' => $this->list($user, $request), 'current' => 'support',
         ]);
     }
 
-    private function list(User $me)
+    /** Мои чаты; лупа над списком (`q`) — имя собеседника, марка или модель ТС, номер предложения. */
+    private function list(User $me, ?Request $request = null)
     {
+        $q = trim((string) $request?->query('q'));
+        $like = '%'.mb_strtolower($q).'%';
+
         return Chat::where('messages_count', '>', 0)->where(fn ($w) => $w->where('user_id', $me->id)->orWhere('manager_id', $me->id)->when($me->isAdmin(), fn ($w) => $w->orWhereNull('manager_id')))
-            ->withLast()->orderByDesc('last_message_at')->paginate(30)->withPath('/account/chats');
+            ->when($q !== '', fn ($c) => $c->where(fn ($w) => $w->whereHas('user', fn ($u) => $u->whereRaw('lower(name) like ?', [$like]))
+                ->orWhereHas('manager', fn ($u) => $u->whereRaw('lower(name) like ?', [$like]))
+                ->orWhereHas('offer', fn ($o) => $o->where('number', (int) $q)->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$like]))->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$like])))))
+            ->withLast()->orderByDesc('last_message_at')->paginate(30)->withPath('/account/chats')->withQueryString();
     }
 }

@@ -7,25 +7,27 @@
     $qs = request()->getQueryString() ? '?'.request()->getQueryString() : '';
 @endphp
 <x-ui.cabinet :title="$chat ? $chat->displayName() : 'Бот Telegram'">
-    <x-ui.toolbar search="Имя, @username, текст" search-target="#chat-rows" search-url="/settings/telegram" name="telegram"/>
     <div class="chat-split {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows" id="chat-rows">
-            @if ($chats->isEmpty())
-                <x-ui.empty>{{ $q !== '' ? 'Ничего не нашли' : 'Чатов пока нет' }}</x-ui.empty>
-            @else
-                <div class="chat-rows-list">
-                    @foreach ($chats as $c)
-                        <x-telegram.chat-row :chat="$c" :href="'/settings/telegram/'.$c->id.$qs" :current="$c->id === $current"/>
-                    @endforeach
-                </div>
-                <x-ui.pager :of="$chats" :sizes="[]"/>
-            @endif
+            <x-chat.list-head search="Имя, @username, текст" url="/settings/telegram" :count="$chats->total()" :q="$q"/>
+            <div class="chat-rows-body" id="chat-rows-body">
+                @if ($chats->isEmpty())
+                    <x-ui.empty>{{ $q !== '' ? 'Ничего не нашли' : 'Чатов нет' }}</x-ui.empty>
+                @else
+                    <div class="chat-rows-list">
+                        @foreach ($chats as $c)
+                            <x-telegram.chat-row :chat="$c" :href="'/settings/telegram/'.$c->id.$qs" :current="$c->id === $current"/>
+                        @endforeach
+                    </div>
+                    <x-ui.pager :of="$chats" :sizes="[]"/>
+                @endif
+            </div>
         </div>
         <turbo-frame id="chat-screen" class="chat-pane" target="_top">
             @if ($chat)
                 <x-telegram.dialog :chat="$chat" :messages="$messages" :more="$more" :back="'/settings/telegram'.$qs"/>
             @else
-                <div class="chat-none"><x-telegram.logo class="size-12"/>Выберите чат</div>
+                <div class="chat-none"><x-ui.icon name="chat" class="size-10 text-ink-dim"/>Выберите чат</div>
             @endif
         </turbo-frame>
     </div>
