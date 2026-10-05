@@ -17,13 +17,18 @@ use App\Vendors\Vendor;
  * - `check` — VIN в сообщении не тот, что у предложения: без галки, решает человек;
  * - `dispute` — тот же номер дважды с разными суммами: не берётся;
  * - `missing` — предложения с таким номером нет.
+ *
+ * Заодно VIN и город из текста (05.10.2026): Мигторг заполняет их как раньше, а текст от страховой главнее (владелец):
+ * `vin_fill` — VIN только в пустой (другой VIN, хоть от Мигторга, — тревожный знак, `check`: перепроверить),
+ * `city_fill` — город в пустой или вместо другого, `gaps` — чего не будет и после сохранения (нет ни у предложения, ни в тексте):
+ * их вписывают тут же. Сумма та же, а дописать есть что — строка не «Уже так», а «Заполним».
  */
 final class MatchValuations
 {
     public const ORDER = ['conflict', 'fill', 'check', 'dispute', 'same', 'missing'];
 
     /**
-     * @param  list<array{ref: string, key: string, amount: ?int, vin: ?string}>  $rows
+     * @param  list<array{ref: string, key: string, amount: ?int, vin: ?string, city?: ?array}>  $rows
      * @return list<array{status: string, ref: string, amount: ?int, vin: ?string, offer: ?Offer, floor: ?int, value_differs?: bool, floor_differs?: bool}>
      */
     public function __invoke(User $user, array $rows): array
@@ -37,7 +42,7 @@ final class MatchValuations
         $offers = $rows ? Offer::query()->inCrm($user)->whereIn('claim_ref_key', array_keys($amounts))
             ->whereIn('vendor_id', Vendor::where('rate_by_value', true)->select('id'))
             ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])
-            ->with(['brand', 'model', 'vendor'])->get()->groupBy('claim_ref_key') : collect();
+            ->with(['brand', 'model', 'vendor', 'settlement'])->get()->groupBy('claim_ref_key') : collect();
 
         $out = [];
         $seen = [];
@@ -49,7 +54,7 @@ final class MatchValuations
             $seen[$r['key']][$r['amount']] = true;
             $found = $offers->get($r['key'], collect());
             if ($found->isEmpty()) {
-                $out[] = $r + ['status' => 'missing', 'offer' => null, 'floor' => null, 'value_differs' => false, 'floor_differs' => false];
+                $out[] = $r + ['status' => 'missing', 'offer' => null, 'floor' => null, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'city_fill' => null, 'gaps' => []];
 
                 continue;
             }
@@ -61,18 +66,24 @@ final class MatchValuations
                 $valueDiffers = $offer->value !== null && (int) $offer->value !== $r['amount'];
                 $floorDiffers = $offer->floor_price !== null && (int) $offer->floor_price !== $floor
                     && ! ($offer->value && (int) $offer->floor_price === Sale::floorFrom((int) $offer->value));
+                $city = $r['city'] ?? null;
+                $vinFill = $vin === '' && $r['vin'] ? $r['vin'] : null;
+                $cityFill = $city && $city['id'] !== $offer->settlement_id ? $city + ['from' => $offer->settlement?->title()] : null;
+                $gaps = array_values(array_filter([$vin === '' && ! $r['vin'] ? 'vin' : null, ! $offer->settlement_id && ! $city ? 'city' : null]));
                 $status = match (true) {
                     count($amounts[$r['key']]) > 1 => 'dispute',
                     $vin !== '' && $r['vin'] && $vin !== $r['vin'] => 'check',
-                    (int) $offer->value === $r['amount'] && (int) $offer->floor_price === $floor => 'same',
+                    (int) $offer->value === $r['amount'] && (int) $offer->floor_price === $floor => $vinFill || $cityFill || $gaps ? 'fill' : 'same',
                     $valueDiffers || $floorDiffers => 'conflict',
                     default => 'fill',
                 };
-                $out[] = $r + ['status' => $status, 'offer' => $offer, 'floor' => $floor, 'value_differs' => $valueDiffers, 'floor_differs' => $floorDiffers];
+                $out[] = $r + ['status' => $status, 'offer' => $offer, 'floor' => $floor, 'value_differs' => $valueDiffers, 'floor_differs' => $floorDiffers,
+                    'vin_fill' => $vinFill, 'city_fill' => $cityFill, 'gaps' => $gaps];
             }
         }
         usort($out, fn ($a, $b) => array_search($a['status'], self::ORDER, true) <=> array_search($b['status'], self::ORDER, true));
 
         return $out;
     }
+
 }

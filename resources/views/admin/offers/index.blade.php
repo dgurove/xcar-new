@@ -57,7 +57,7 @@
                 <div class="pick-all"><label class="row-check gap-3"><span class="check"><input type="checkbox" id="pick-all-{{ $preset }}" data-turbo-permanent data-pick-target="all" data-action="pick#pickAll"></span><span>Выбрать все</span></label></div>
             @endif
             @if ($table)
-                <x-ui.table id="offers" :view="$view" :titles="$offers->getCollection()->map(fn ($o) => mb_strlen($o->titleWithYear()) + ($o->recommended ? 3 : 0) + (\App\Support\CarLinks::shows($o, auth()->user()) ? 3 : 0))" :rest="$rest">
+                <x-ui.table id="offers" :view="$view" :titles="$offers->getCollection()->map(fn ($o) => mb_strlen($o->titleWithYear()) + ($o->recommended ? 3 : 0) + (\App\Support\CarLinks::shows($o, auth()->user()) ? 3 : 0) + (blank($o->vin) && in_array($o->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery, \App\Offers\OfferState::Open], true) ? 7 : 0))" :rest="$rest">
                     <x-slot:head><x-offer.table-head :pick="$pick" :cols="$cols"/></x-slot:head>
                     @foreach ($groups as $key => $list)
                         @if ($title = $groupTitle($key, $list))

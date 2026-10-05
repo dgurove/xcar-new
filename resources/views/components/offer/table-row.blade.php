@@ -38,12 +38,14 @@
     $missing = $checkable && $draft && ! $slot ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
     $has = fn (string $k) => $cols === null || in_array($k, $cols, true);
     $when = $cols !== null && $has('published') ? $offer->published_at : ($has('created') ? $offer->created_at : null);
+    // VIN на Мигторге не дают — его запрашивают у страховой (05.10.2026): красным у названия, пока продажа жива.
+    $noVin = blank($offer->vin) && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     $late = $checkable && $draft && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($rate) data-unpriced @endif>
     @if ($checkable)<td class="pick-cell">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>@endif
     <td class="grow">
-        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/></span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/>@if ($noVin)<span class="ml-1.5 text-sm text-danger">Нет VIN</span>@endif</span></x-ui.row-link>
         {{-- Телефон: строка переносится, а не режется «…» (владелец 04.10.2026: «поля не должны исчезать»); город, даты и
              прочие столбцы — в «Подробной таблице». --}}
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">

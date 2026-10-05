@@ -89,7 +89,8 @@ export default class extends Controller {
         rows.forEach((r) => r.classList.remove('is-pending'));
         this.count();
         await sleep(600);
-        this.summaryTarget.textContent = [`${counts.refs} ${plural(counts.refs, 'номер', 'номера', 'номеров')} в тексте`, `нашли ${counts.found}`, counts.missing ? `нет в CRM ${counts.missing}` : null].filter(Boolean).join(', ');
+        this.summaryTarget.textContent = [`${counts.refs} ${plural(counts.refs, 'номер', 'номера', 'номеров')} в тексте`, `нашли ${counts.found}`, counts.missing ? `нет в CRM ${counts.missing}` : null,
+            counts.no_vin ? `без VIN ${counts.no_vin}` : null, counts.no_city ? `без города ${counts.no_city}` : null].filter(Boolean).join(', ');
         if (!calm()) await this.workTarget.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).finished.catch(() => {});
         this.workTarget.hidden = true;
         this.doneTarget.hidden = false;
@@ -182,11 +183,14 @@ export default class extends Controller {
         this.count();
     }
 
-    // Сколько предложений изменится: отмеченные и расхождения — оставленное целиком не меняется, если спорит оценочная.
+    // Сколько предложений изменится: отмеченные и расхождения — оставленное целиком не меняется, если спорит оценочная
+    // и нечего дописать (VIN, город).
     count() {
         const n = this.rowsTarget.querySelectorAll('input[type=checkbox][name="offers[]"]:checked').length
             + [...this.rowsTarget.querySelectorAll('.valuation-conflict')].filter((row) => row.querySelector('input[value="overwrite"]').checked
-                || !row.querySelector('.valuation-diff dt')?.textContent.includes('Оценочная')).length;
+                || !row.querySelector('.valuation-diff dt')?.textContent.includes('Оценочная')
+                // Сумму оставили, а VIN или город из текста всё равно лягут.
+                || 'extra' in row.dataset).length;
         this.saveTarget.disabled = n === 0;
         this.saveTarget.textContent = n ? `Всё верно, сохранить (${n})` : 'Нечего сохранять';
     }
