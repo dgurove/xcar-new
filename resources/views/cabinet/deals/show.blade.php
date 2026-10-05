@@ -8,15 +8,27 @@
     $replyIds = ($replies ?? collect())->pluck('id')->all();
     $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user())->reject(fn ($m) => in_array($m->getCustomProperty('letter'), $replyIds));
     $photos = $offer->visiblePhotos();
+    // Шаг договора (просьба приложить документ, у сделки есть ДКП): покупатель и сам ДКП — пунктами задачи, а не блоком
+    // ниже неё (05.10.2026, владелец: «просит приложить договор, а он где-то ниже формируется»).
+    $contractStep = $deal->isActive() && $deal->hasContract() && $requirement && $requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep();
+    // ПРАЙМ без покупателя: задача и есть выбор покупателя — он в ней, а не вторым блоком с той же кнопкой.
+    $needsBuyer = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() && $deal->invoiceGap() === 'buyer';
 @endphp
-<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
+<x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
+    {{-- Написать по сделке — частое действие, место ему в строке заголовка, а не под расчётом за краем экрана. --}}
+    @if ($offer->chatOpenFor(auth()->user()))
+        <x-slot:actions>
+            <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-s btn-quiet"><x-ui.icon name="chat" class="size-4"/> Написать по сделке</a>
+        </x-slot:actions>
+    @endif
     {{-- Сделка — не объявление (05.10.2026, владелец): первым делом задача, справа расчёт, кадры — плиткой в самом низу
          колонки. ПК: слева работа (задача, покупатель, путь, счета), справа липко расчёт, характеристики, документы, фото.
-         Телефон — одна колонка: задача, расчёт, покупатель, «Написать», путь, характеристики, документы, фото. --}}
+         Телефон — одна колонка: задача, расчёт, покупатель, путь, характеристики, документы, фото. «Написать» — в строке
+         заголовка. --}}
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
-            <div class="order-1 min-w-0">@include('cabinet.deals.step')</div>
-            @if ($deal->hasContract())<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif
+            <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep])</div>
+            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer)<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
             @if ($pastInvoices->isNotEmpty())
@@ -29,12 +41,12 @@
                 </section>
             @endif
 
-            @if ($deal->requirements->whereNotNull('done_at')->isNotEmpty())
+            @php $answered = $deal->requirements->whereNotNull('done_at')->filter(fn ($r) => ! empty($r->answer['exit'])); @endphp
+            @if ($answered->isNotEmpty())
                 <section class="order-6 min-w-0">
                     <h2 class="list-head">Ваши ответы</h2>
                     <div class="list">
-                        @foreach ($deal->requirements->whereNotNull('done_at') as $req)
-                            @if (!empty($req->answer['exit']))
+                        @foreach ($answered as $req)
                                 <div class="px-4 py-3">
                                     <div class="flex items-baseline justify-between gap-3">
                                         <span class="min-w-0 break-words">{{ $req->title }}: «{{ $req->answer['exit'] }}»@if (!empty($req->answer['fields'])), {{ implode(', ', $req->answer['fields']) }}@endif</span>
@@ -45,7 +57,6 @@
                                         <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" class="mt-2"/>
                                     @endforeach
                                 </div>
-                            @endif
                         @endforeach
                     </div>
                 </section>
@@ -71,9 +82,6 @@
                     </div>
                 @endif
             </div>
-            @if ($offer->chatOpenFor(auth()->user()))
-                <a href="/account/chats/offer/{{ $offer->number }}" class="order-4 btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать по сделке</a>
-            @endif
             <x-offer.facts :offer="$offer" :full="true" class="order-7"/>
             @if ($docs->isNotEmpty())
                 <section class="order-8 min-w-0">
@@ -93,4 +101,4 @@
             @endif
         </aside>
     </div>
-</x-ui.cabinet>
+</x-ui.shell>

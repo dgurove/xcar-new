@@ -57,16 +57,44 @@
                 <p class="mt-3 font-medium">Готовим счёт</p>
             @endif
 
-            @if ($showHandover)@include('cabinet.deals.handover')@endif
-
-            @if ($payload->isNotEmpty())
-                <dl class="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-                    @foreach ($payload as $k => $v)
-                        <div class="min-w-0"><dt class="text-sm text-ink-dim">{{ collect($position->stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}</dt><dd class="nums mt-0.5 break-words font-normal">{{ $v }}</dd></div>
+            @if ($contractStep ?? false)
+                {{-- Шаг договора — чек-лист в том порядке, в каком всё делается (05.10.2026, владелец: «просит приложить
+                     договор, хотя договора у него нет, он ниже формируется»): связаться с владельцем → покупатель → ДКП
+                     (открыть, распечатать) → подписанный договор и кнопка шага. Сделанное — галочкой. --}}
+                @php
+                    $contract = \App\Offers\DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
+                    $contact = $showHandover || $payload->isNotEmpty() || $replies->isNotEmpty();
+                    $items = array_values(array_filter([
+                        $contact ? ['contact', $handover?->where === 'У владельца' || $replies->isNotEmpty() ? 'Свяжитесь с владельцем' : 'Где автомобиль', false] : null,
+                        ['buyer', $deal->isPrime() ? 'Покупатель' : 'Покупатель по ДКП', (bool) $contract->buyer?->party?->readyForContract()],
+                        ['doc', 'Договор купли-продажи', $contract->isReady()],
+                        ['signed', 'Подписанный договор', $requirement->getMedia('files')->isNotEmpty()],
+                    ]));
+                @endphp
+                <ol class="task-steps">
+                    @foreach ($items as $k => [$key, $title, $done])
+                        <li @class(['task-step', 'is-done' => $done])>
+                            <span class="task-step-mark">@if ($done)<x-ui.icon name="check" class="size-3.5"/>@else{{ $k + 1 }}@endif</span>
+                            <div class="task-step-body">
+                                <h4 class="task-step-title">{{ $title }}</h4>
+                                @if ($key === 'contact')
+                                    @if ($showHandover)@include('cabinet.deals.handover')@endif
+                                    @include('cabinet.deals.payload')
+                                    @if ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
+                                @elseif ($key === 'buyer')
+                                    @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])
+                                @elseif ($key === 'doc')
+                                    @include('cabinet.deals.contract', ['part' => 'doc', 'embedded' => true])
+                                @else
+                                    @include('cabinet.deals.answer')
+                                @endif
+                            </div>
+                        </li>
                     @endforeach
-                </dl>
-            @endif
-
+                </ol>
+            @else
+            @if ($showHandover)@include('cabinet.deals.handover')@endif
+            @include('cabinet.deals.payload')
             @if ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
 
             @if ($stepInvoices->isNotEmpty())
@@ -82,7 +110,7 @@
 
             {{-- Действия — после всего, что нужно прочитать. --}}
             @if ($needsBuyer)
-                <x-ui.button type="button" block class="mt-5" data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open">Выбрать покупателя</x-ui.button>
+                <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])</div>
             @endif
             @if ($requirement && ! $needsBuyer)
                 @if ($payStep && $unpaid->isNotEmpty())
@@ -95,34 +123,9 @@
                         </div>
                     @endif
                 @else
-                    @if ($requirement->asks === Asks::Document)
-                        <div class="mt-5" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files">
-                            <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-photos-target="input" data-action="change->photos#upload">
-                            @include('cabinet.deals.files', ['requirement' => $requirement])
-                            <div hidden data-photos-target="progress" class="my-2">
-                                <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                                <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-                            </div>
-                            <x-ui.button type="button" variant="secondary" size="s" data-action="photos#pick"><x-ui.icon name="camera" class="size-4"/> Приложить</x-ui.button>
-                            @if ($errors->has('files'))<p class="field-error mt-2">{{ $errors->first('files') }}</p>@endif
-                        </div>
-                    @endif
-                    <form method="post" action="/deals/{{ $deal->id }}/reply" class="mt-5 flex flex-col gap-4">
-                        @csrf
-                        @if ($requirement->asks === Asks::Fields)
-                            @foreach ($requirement->fields as $field)
-                                <x-route.field :field="$field" :name="'fields['.$field['key'].']'"/>
-                            @endforeach
-                        @endif
-                        @if ($errors->has('exit'))<p class="field-error">{{ $errors->first('exit') }}</p>@endif
-                        {{-- Один исход — во всю ширину, два — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
-                        <div @class(['gap-3', 'grid' => $exits->count() <= 2, 'grid-cols-2' => $exits->count() === 2, 'flex flex-wrap' => $exits->count() > 2])>
-                            @foreach ($exits as $exit)
-                                <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="$exit->confirm" class="min-w-0 px-4">{{ $exit->label }}</x-ui.button>
-                            @endforeach
-                        </div>
-                    </form>
+                    @include('cabinet.deals.answer')
                 @endif
+            @endif
             @endif
             @if ($handover?->servicePick && $showHandover)
                 <form method="post" action="/deals/{{ $deal->id }}/picked" class="mt-5" data-turbo-confirm="Забрали автомобиль?" data-turbo-confirm-label="Забрал">

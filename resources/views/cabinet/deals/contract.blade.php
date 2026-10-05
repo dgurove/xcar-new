@@ -3,7 +3,9 @@
      паспорта во весь экран. «Покупатель»: «Я сам» и свои покупатели строками с галкой (нажатие сохраняет), новый — формой
      внизу, «Пригласить по ссылке». Данных для договора нет — строка открывает «Данные для договора». У ПРАЙМ — кто платит
      по счёту: покупатель или менеджер за вычетом своего вознаграждения. Счёт и договор собираются сами
-     (`SaveDealContract` → `SyncDealInvoices`). Шторку выбора открывает и задача («Укажите покупателя», событие `buyer:open`). --}}
+     (`SaveDealContract` → `SyncDealInvoices`). Шторку выбора открывает и задача («Укажите покупателя», событие `buyer:open`).
+     Куски ($part): buyer — покупатель (и кто платит), doc — сам ДКП строкой (открыть, распечатать; не готов — чего нет),
+     all — оба под заголовком. В задаче на шаге договора ($embedded) — пунктами чек-листа, без своего заголовка. --}}
 @php
     $contract = \App\Offers\DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
     $buyer = $contract->buyer;
@@ -19,10 +21,17 @@
     // Ошибки формы открывают ту шторку, откуда она ушла: поля у новой и у данных одни (`buyer.*`), различает `buyer_id`.
     $newErrors = $errors->any() && old('buyer_id') === 'new';
     $dataErrors = $errors->any() && ! old('buyer_id') && ! old('payer');
+    $part ??= 'all';
+    $embedded ??= false;
+    $pdf = ['url' => '/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => 'ДКП '.$deal->offer->titleWithYear().'.pdf', 'label' => 'ДКП'];
+    $missing = $contract->missing();
+    // Покупатель — пункт менеджера выше; у договора называем то, что вносим мы (продавец, документы ТС, цена).
+    $ours = array_values(array_diff($missing, ['покупатель', 'данные покупателя']));
 @endphp
-<section id="dkp-buyer">
-    <h2 class="list-head">{{ $garage ? 'Договор купли-продажи' : ($prime ? 'Покупатель: счёт и ДКП' : 'Покупатель по ДКП') }}</h2>
+<section @if ($part !== 'doc') id="dkp-buyer" @endif class="min-w-0">
+    @unless ($embedded)<h2 class="list-head">{{ $garage ? 'Договор купли-продажи' : ($prime ? 'Покупатель: счёт и ДКП' : 'Покупатель по ДКП') }}</h2>@endunless
     <div class="list">
+        @if ($part !== 'doc')
         @if ($buyer)
             @if ($ready || ! $editable)
                 <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" class="row">
@@ -96,6 +105,16 @@
                     </div>
                 </x-ui.sheet>
             </div>
+        @endif
+        @endif
+        @if ($part !== 'buyer')
+            {{-- ДКП — документ, а не строка «Расчёта»: открыть и распечатать; пока не готов — чего не хватает. --}}
+            <x-ui.doc :doc="$pdf" class="row">
+                <x-ui.row-icon name="file" size="s" :tone="$missing ? 'muted' : 'open'"/>
+                <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП ПРАЙМ' : 'ДКП' }}</span>
+                    <span class="row-sub !whitespace-normal">@if (! $missing)<span class="text-open">готов, распечатайте</span>@elseif ($ours)готовим: {{ implode(', ', $ours) }}@else ждёт покупателя@endif</span></span>
+                <x-ui.chevron/>
+            </x-ui.doc>
         @endif
     </div>
 </section>

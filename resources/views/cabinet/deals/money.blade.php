@@ -1,8 +1,9 @@
 {{-- Расчёт сделки менеджеру (05.10.2026) по схеме оплаты, вознаграждение — зелёным, это его прибыль:
-     — ДКП и «страховой напрямую»: продажа, закупочная, взаимозачёт со страховой, собственнику по ДКП (договор в шторке)
-       или страховой, XCar за подбор с оплатой. Закупочную тут менеджер видит — она в его ДКП (исключение из «закупочной
+     — ДКП и «страховой напрямую»: продажа, закупочная, взаимозачёт со страховой, собственнику по ДКП или страховой, XCar за подбор с оплатой. Закупочную тут менеджер видит — она в его ДКП (исключение из «закупочной
        на xcar нет»);
-     — ПРАЙМ: продажа, счёт ПРАЙМ (кому, сколько, оплачен ли), ДКП ПРАЙМ; закупочной нет. --}}
+     — ПРАЙМ: продажа, счёт ПРАЙМ (кому, сколько, оплачен ли); закупочной нет.
+     Только деньги: договор — в задаче или своим блоком (`cabinet.deals.contract`). Ссылка — внутри `.list`, иначе её
+     стили не срабатывают и адрес в узкой колонке шёл по букве в строку. --}}
 @php
     use App\Support\Money;
     use App\Billing\ChargeKind;
@@ -11,9 +12,6 @@
     $live = $invoices->reject(fn ($i) => $i->state === InvoiceState::Void);
     $selection = $live->first(fn ($i) => $i->kind === ChargeKind::Selection);
     $sale = $live->first(fn ($i) => $i->kind === ChargeKind::Sale);
-    $contract = $deal->hasContract() ? \App\Offers\DealContract::for($deal)->loadMissing(['seller', 'buyer.party']) : null;
-    $pdf = ['url' => '/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => 'ДКП '.$offer->titleWithYear().'.pdf', 'label' => 'ДКП'];
-    $dkpLine = fn () => $contract->isReady() ? '<span class="text-open">договор готов</span>' : e('договор: нет '.implode(', ', $contract->missing()));
     $state = $deal->commissionState();
     $feeWord = match (true) {
         $deal->paysSelection() || $deal->withholds() => 'удерживаете из оплаты',
@@ -32,14 +30,7 @@
             @if ($deal->offset())
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Взаимозачёт со страховой</span><span class="nums text-ink-muted">−{{ Money::rub($deal->offset()) }}</span></div>
             @endif
-            @if ($contract)
-                <x-ui.doc :doc="$pdf" class="row">
-                    <span class="min-w-0 flex-1"><span class="block">{{ $deal->schemeOf()->payeeLabel() }}</span><span class="row-sub">{!! $dkpLine() !!}</span></span>
-                    <span class="nums font-semibold">{{ Money::rub((int) $deal->ownerPrice()) }}</span>
-                </x-ui.doc>
-            @else
-                <div class="row"><span class="min-w-0 flex-1">{{ $deal->schemeOf()->payeeLabel() }}</span><span class="nums font-semibold">{{ Money::rub((int) $deal->ownerPrice()) }}</span></div>
-            @endif
+            <div class="row"><span class="min-w-0 flex-1">{{ $deal->schemeOf()->payeeLabel() }}</span><span class="nums font-semibold">{{ Money::rub((int) $deal->ownerPrice()) }}</span></div>
             <a href="{{ $pay($selection) }}" class="row">
                 <span class="min-w-0 flex-1">
                     <span class="block">XCar за подбор</span>
@@ -55,12 +46,6 @@
                 </span>
                 @if ($sale)<span class="nums font-semibold">{{ Money::rub($sale->state === InvoiceState::Paid ? $sale->total : $sale->remaining()) }}</span>@endif
             </a>
-            @if ($contract)
-                <x-ui.doc :doc="$pdf" class="row">
-                    <span class="min-w-0 flex-1"><span class="block">ДКП ПРАЙМ с покупателем</span><span class="row-sub">{!! $dkpLine() !!}</span></span>
-                    <x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/>
-                </x-ui.doc>
-            @endif
         @endif
         @if ($deal->commission)
             <div class="row profit">
@@ -70,5 +55,5 @@
         @endif
     </div>
     {{-- На шаге оплаты ссылка стоит в задаче вместе с «Оплатить» — второй раз её здесь нет. --}}
-    @if ($selection && $selection->state === InvoiceState::Issued && ! ($requirement && $position?->stage->isPayStep()))<div class="mt-3"><x-billing.pay-status :invoice="$selection"/></div>@endif
+    @if ($selection && $selection->state === InvoiceState::Issued && ! ($requirement && $position?->stage->isPayStep()))<div class="list mt-3"><x-billing.pay-status :invoice="$selection"/></div>@endif
 </div>
