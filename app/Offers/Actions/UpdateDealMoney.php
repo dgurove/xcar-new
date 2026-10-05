@@ -40,8 +40,11 @@ final class UpdateDealMoney
                 $selection => $scheme->payeeLabel().' '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),
                 default => 'ПРАЙМ по счёту, вознаграждение '.($commission ? Money::rub($commission) : 'нет').', '.mb_strtolower($deal->commission_mode->label()),
             }]);
-            // Ушли со схемы, где менеджер платит подбор, — неоплаченный подбор гаснет (ссылка с ним).
-            if ($wasSelection && ! $deal->fresh()->paysSelection()) {
+            // Ушли со схемы, где менеджер платит подбор, или стёрли гаражную долю — неоплаченный подбор гаснет (ссылка с ним).
+            $fresh = $deal->fresh();
+            // Договор — по новым деньгам: сумма собственнику или схема сменились, ДКП с прежней ценой не печатаем.
+            $fresh->contract?->update(['price' => \App\Offers\DealContract::priceFor($fresh)]);
+            if (($wasSelection && ! $fresh->paysSelection()) || ($fresh->isGarageManager() && ! $fresh->share)) {
                 foreach ($deal->issuedInvoices()->where('kind', \App\Billing\ChargeKind::Selection)->where('state', \App\Billing\InvoiceState::Issued)->get() as $old) {
                     if ($old->paidMoney() == 0) {
                         app(\App\Billing\Actions\VoidInvoice::class)($old, $by, 'Схема оплаты изменена');

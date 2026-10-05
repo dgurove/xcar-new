@@ -134,5 +134,24 @@ class PrimeDealFlowTest extends TestCase
         $this->assertEqualsWithDelta(50000, $invoices['selection']->total, 0.01);
         $this->assertNotNull($invoices['selection']->openLink());
         $this->assertSame(InvoiceState::Issued, $invoices['selection']->state);
+
+        // Заплатил долю — шаг оплаты ждёт, пока не оплачена и машина (ревью 05.10.2026).
+        $stage = $offer->fresh()->stage()->name;
+        app(RecordPayment::class)($invoices['selection']->fresh(), $this->admin, 50000, now(), PaymentSource::Acquiring);
+        $this->assertSame($stage, $offer->fresh()->stage()->name);
+    }
+
+    /** ПРАЙМ «удерживает сам», а платит покупатель — вознаграждение к выплате; вернули «плачу я» — снова за вычетом. */
+    public function test_prime_withheld_follows_payer(): void
+    {
+        $offer = $this->offer();
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Withheld, scheme: DealScheme::Prime);
+        app(SaveDealContract::class)(DealContract::for($deal->fresh()), $this->buyerData(), $this->manager);
+        $this->assertEqualsWithDelta(1050000, $deal->fresh()->issuedInvoices()->sole()->remaining(), 0.01);
+        $this->assertFalse($deal->fresh()->withholds());
+
+        app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['payer' => 'manager'], $this->manager);
+        $this->assertSame(CommissionMode::Withheld, $deal->fresh()->commission_mode);
+        $this->assertEqualsWithDelta(1020000, $deal->fresh()->issuedInvoices()->sole()->remaining(), 0.01);
     }
 }

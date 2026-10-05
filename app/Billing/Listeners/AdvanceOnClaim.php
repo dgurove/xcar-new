@@ -23,6 +23,11 @@ final class AdvanceOnClaim
         if (! $deal || ! $deal->isActive()) {
             return;
         }
+        // Сообщил об оплате одного счёта, а другой (машина или доля) ещё не оплачен и не заявлен — шаг ждёт.
+        $open = $deal->issuedInvoices()->where('kind', '!=', \App\Billing\ChargeKind::Reward)->where('state', \App\Billing\InvoiceState::Issued)->with('claims')->get();
+        if ($open->contains(fn ($i) => $i->claims->isEmpty() && $i->remaining() > 0)) {
+            return;
+        }
         $offer = $deal->offer;
         $position = $offer->position(Track::Sale);
         $exit = $position?->stage->payExit($deal);

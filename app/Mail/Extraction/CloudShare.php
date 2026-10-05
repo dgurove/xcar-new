@@ -17,6 +17,9 @@ use RuntimeException;
  */
 final class CloudShare
 {
+    /** Больше — не наш архив документов: скачивание обрывается, чтобы письмо не забило диск. */
+    private const MAX_BYTES = 300 * 1024 * 1024;
+
     private const AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
     /**
@@ -26,14 +29,29 @@ final class CloudShare
      */
     public static function links(string $text): array
     {
-        preg_match_all('~(https?://[^\s/<>"]+)/(?:index\.php/)?s/([A-Za-z0-9]{8,})~u', $text, $m, PREG_SET_ORDER);
+        // Только https и публичный адрес: ссылку пишет внешний отправитель, по ней ходит наш сервер.
+        preg_match_all('~(https://[^\s/<>"]+)/(?:index\.php/)?s/([A-Za-z0-9]{8,})~u', $text, $m, PREG_SET_ORDER);
         $password = preg_match('/парол[ьяе]\w*\s*[:\-–—]?\s*(\S+)/iu', $text, $p) ? $p[1] : null;
         $links = [];
         foreach ($m as $hit) {
+            if (! self::publicHost((string) parse_url($hit[1], PHP_URL_HOST))) {
+                continue;
+            }
             $links[$hit[2]] = ['url' => $hit[0], 'base' => $hit[1], 'token' => $hit[2], 'password' => $password];
         }
 
         return array_values($links);
+    }
+
+    /** Имя хоста, а не IP, и все его адреса — публичные (не localhost, не внутренняя сеть сервера). */
+    private static function publicHost(string $host): bool
+    {
+        if ($host === '' || filter_var($host, FILTER_VALIDATE_IP) || ! str_contains($host, '.')) {
+            return false;
+        }
+        $ips = gethostbynamel($host) ?: [];
+
+        return $ips !== [] && collect($ips)->every(fn ($ip) => filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE));
     }
 
     /**
@@ -57,7 +75,12 @@ final class CloudShare
     private function fetch(array $link, string $to, bool|string $verify): string
     {
         $jar = new CookieJar;
-        $http = fn (): PendingRequest => Http::withOptions(['cookies' => $jar, 'verify' => $verify])->withHeaders(['User-Agent' => self::AGENT])->timeout(60);
+        $http = fn (): PendingRequest => Http::withOptions(['cookies' => $jar, 'verify' => $verify, 'allow_redirects' => ['max' => 5, 'protocols' => ['https']],
+            'progress' => function ($total, $now) {
+                if ($total > self::MAX_BYTES || $now > self::MAX_BYTES) {
+                    throw new RuntimeException('Архив по ссылке больше 300 МБ');
+                }
+            }])->withHeaders(['User-Agent' => self::AGENT])->timeout(60);
         $share = $link['base'].'/s/'.$link['token'];
 
         $page = $http()->get($share);

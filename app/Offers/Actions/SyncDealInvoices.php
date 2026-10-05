@@ -11,7 +11,6 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\OfferEventType;
 use App\Support\Money;
@@ -76,11 +75,8 @@ final class SyncDealInvoices
         if (! $contract?->buyer_user_id || $deal->amount === null) {
             return null;
         }
-        $managerPays = $contract->payer === 'manager' || $contract->buyer_user_id === $deal->buyer_id;
-        // Платит покупатель — менеджеру удерживать не из чего: вознаграждение выплачиваем после оплаты.
-        if (! $managerPays && $deal->withholds()) {
-            $deal->update(['commission_mode' => CommissionMode::Payout]);
-        }
+        // Платит покупатель — удерживать не из чего, `Deal::withholds` тогда ложь: вознаграждение выплачиваем после оплаты.
+        $managerPays = $contract->managerPays();
         $party = Party::forUser($managerPays ? $deal->buyer : $contract->buyer);
         $fee = max(0, (int) $deal->amount - (int) $deal->cost);
         $lines = [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]];

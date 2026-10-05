@@ -32,7 +32,11 @@ final class AdvanceOnPayment
         if ($invoice->state !== InvoiceState::Paid || ! $invoice->deal_id || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
             return;
         }
-        $this->advance($invoice->deal, $e->by);
+        // Счетов у сделки бывает два (гаражная «платит менеджер»: машина и наша доля) — шаг оплаты проходит, только когда
+        // оплачены все, а не тот, что заплатили первым.
+        if ($invoice->deal?->fullyPaid()) {
+            $this->advance($invoice->deal, $e->by);
+        }
     }
 
     /**

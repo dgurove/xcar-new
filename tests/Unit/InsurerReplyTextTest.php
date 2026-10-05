@@ -34,11 +34,14 @@ class InsurerReplyTextTest extends TestCase
         $this->assertSame(750000, $fields['owner_price']['value']);
     }
 
-    public function test_cloud_link_and_password_from_reply(): void
+    /** Ссылку пишет внешний отправитель, ходит по ней наш сервер: только https и не внутренние адреса. */
+    public function test_cloud_link_rejects_private_and_plain_http(): void
     {
-        $text = Intent::reply("> В архиве https://data.example.test/s/AbCdEf123456\n> пароль: Z*9aK(W]-\n>\n> С уважением,\n> Мария", marks: true);
-
-        $this->assertSame([['url' => 'https://data.example.test/s/AbCdEf123456', 'base' => 'https://data.example.test', 'token' => 'AbCdEf123456', 'password' => 'Z*9aK(W]-']], CloudShare::links($text));
+        $this->assertSame([], CloudShare::links("В архиве http://data.tbank.ru/s/AbCdEf123456\nпароль: Z*9aK"));
+        $this->assertSame([], CloudShare::links("В архиве https://10.0.0.5/s/AbCdEf123456\nпароль: Z*9aK"));
+        $this->assertSame([], CloudShare::links("В архиве https://localhost/s/AbCdEf123456"));
+        $text = Intent::reply("> пароль: Z*9aK(W]-\n>\n> С уважением,\n> Мария", marks: true);
         $this->assertSame([], Patterns::phones($text));
+        $this->assertStringContainsString('Z*9aK(W]-', $text);
     }
 }

@@ -66,9 +66,14 @@ class Position extends Model
         if (! $this->awaitsInvoice()) {
             return null;
         }
-        $deal = \App\Offers\Deal::where('offer_id', $this->offer_id)->where('state', \App\Offers\DealState::Active)->first();
+        // Через связь: списки, где часы стоят в каждой строке, грузят её разом (`with('deal')`).
+        return $this->deal?->invoiceGap() === 'share' ? 'share' : 'invoice';
+    }
 
-        return $deal?->invoiceGap() === 'share' ? 'share' : 'invoice';
+    /** Идущая сделка оффера этой позиции. */
+    public function deal(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Offers\Deal::class, 'offer_id', 'offer_id')->where('state', \App\Offers\DealState::Active);
     }
 
     /** Позиции, где ход за этим участником, — тем же правилом, что `waitsFor()`, в SQL. */

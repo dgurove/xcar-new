@@ -50,10 +50,7 @@ enum DealScheme: string
 
     public static function forVendor(?DealFormat $format): self
     {
-        return match ($format) {
-            DealFormat::Direct => self::OwnerDkp,
-            DealFormat::Commission => self::Prime,
-            default => self::Insurer,
-        };
+        // «Страховой напрямую» — только выбором админа: по умолчанию счёт ничей не уходит менеджеру сам (ревью 05.10.2026).
+        return $format === DealFormat::Direct ? self::OwnerDkp : self::Prime;
     }
 }

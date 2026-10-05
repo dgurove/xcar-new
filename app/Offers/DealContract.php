@@ -47,14 +47,20 @@ class DealContract extends Model
      */
     public static function for(Deal $deal): self
     {
-        $price = match (true) {
+        $price = self::priceFor($deal);
+        $defaults = ['price' => $price] + ($deal->isGarageManager() ? ['buyer_user_id' => $deal->buyer_id, 'payer' => 'manager'] : []);
+
+        return $deal->contract ?? tap(self::firstOrCreate(['deal_id' => $deal->id], $defaults), fn ($c) => $deal->setRelation('contract', $c));
+    }
+
+    /** Цена договора по деньгам сделки: собственнику (ДКП), закупочная (гаражная), иначе цена подтверждения. */
+    public static function priceFor(Deal $deal): ?int
+    {
+        return match (true) {
             $deal->isDkp() => $deal->ownerPrice(),
             $deal->isGarage() => $deal->cost,
             default => $deal->amount,
         };
-        $defaults = ['price' => $price] + ($deal->isGarageManager() ? ['buyer_user_id' => $deal->buyer_id, 'payer' => 'manager'] : []);
-
-        return $deal->contract ?? tap(self::firstOrCreate(['deal_id' => $deal->id], $defaults), fn ($c) => $deal->setRelation('contract', $c));
     }
 
     /** Продавец: у ДКП — собственник по СТС (вносит сотрудник), у ПРАЙМ — сам ПРАЙМ. */

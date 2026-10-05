@@ -225,9 +225,17 @@ class Deal extends Model
         return $margin === null ? null : $margin - (int) $this->commission;
     }
 
+    /**
+     * Менеджер удерживает вознаграждение. У ПРАЙМ — только когда по счёту платит он сам: платит покупатель — удерживать
+     * не из чего, вознаграждение выплачиваем (режим, что выбрал админ, при этом не теряется).
+     */
     public function withholds(): bool
     {
-        return $this->commission_mode === CommissionMode::Withheld;
+        if ($this->commission_mode !== CommissionMode::Withheld) {
+            return false;
+        }
+
+        return ! ($this->isPrime() && ! $this->isGarage() && $this->contract?->buyer_user_id && ! $this->contract->managerPays());
     }
 
     /** Менеджеру вознаграждение открывается с первого живого счёта по сделке. */

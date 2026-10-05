@@ -124,7 +124,9 @@ class DealController
         $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['nullable', Rule::enum(CommissionMode::class)],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)], 'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.(int) ($deal->amount ?? PHP_INT_MAX)],
             'share' => ['nullable', 'integer', 'min:1']]);
-        $update($deal, $request->user(), isset($data['commission']) ? (int) $data['commission'] : $deal->commission, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
+        // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
+        $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
+        $update($deal, $request->user(), $commission, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
             DealScheme::tryFrom($data['scheme'] ?? ''), isset($data['owner_price']) ? (int) $data['owner_price'] : null, isset($data['share']) ? (int) $data['share'] : null);
 
         return back()->with('toast', 'Сохранено');
