@@ -51,6 +51,14 @@ class DealController
         return view('cabinet.deals.show', self::stepData($deal));
     }
 
+    /** Карточка чата по сделке — фрейм перечитывает её по новому сообщению. */
+    public function chat(Request $request, Deal $deal)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id && $deal->offer->chatOpenFor($request->user()), 404);
+
+        return view('cabinet.deals.chat-card', ['deal' => $deal, 'offer' => $deal->offer]);
+    }
+
     /** Сделка с текущим шагом, путём и счетами — для её страницы и карточки машины в гараже. */
     public static function stepData(Deal $deal): array
     {

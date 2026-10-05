@@ -2941,6 +2941,8 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
   /* Строки — скруглённые плашки внутри списка (как пилюли кабинета): открытая и наведённая не упираются в края,
      линия между строками прячется рядом с ними. */
   .chat-rows-list { display: flex; flex-direction: column; overflow: hidden; padding: .375rem; border-radius: var(--radius-l); background: var(--color-surface); }
+  /* Карточка чата на странице сделки — строка диалога плашкой. */
+  .deal-chat { @apply flex items-center gap-3 !py-3; }
   .chat-row { position: relative; display: flex; align-items: center; gap: .75rem; padding: .625rem .75rem; border-radius: var(--radius-m); color: var(--color-ink); }
   .chat-row + .chat-row::before { content: ''; position: absolute; top: 0; right: .75rem; left: 5rem; height: 1px; background: var(--color-line); }
   .chat-row:not(:has(.chat-row-photo)) + .chat-row::before, .chat-row + .chat-row:not(:has(.chat-row-photo))::before { left: 4.25rem; }

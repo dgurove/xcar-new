@@ -17,16 +17,10 @@
     $needsBuyer = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() && $deal->invoiceGap() === 'buyer';
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
-    {{-- Написать по сделке — частое действие, место ему в строке заголовка, а не под расчётом за краем экрана. --}}
-    @if ($offer->chatOpenFor(auth()->user()))
-        <x-slot:actions>
-            <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-s btn-quiet"><x-ui.icon name="chat" class="size-4"/> Написать по сделке</a>
-        </x-slot:actions>
-    @endif
     {{-- Сделка — не объявление (05.10.2026, владелец): первым делом задача, справа расчёт, кадры — плиткой в самом низу
          колонки. ПК: слева работа (задача, покупатель, путь, счета), справа липко расчёт, характеристики, документы, фото.
-         Телефон — одна колонка: задача, расчёт, покупатель, путь, характеристики, документы, фото. «Написать» — в строке
-         заголовка. --}}
+         Телефон — одна колонка: задача, чат, расчёт, покупатель, путь, характеристики, документы, фото. Чат — карточкой над
+         расчётом (`cabinet.deals.chat-card`). --}}
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
             <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps])</div>
@@ -66,7 +60,9 @@
         </section>
 
         <aside class="contents lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">
-            <div class="order-2 min-w-0">
+            <div class="order-2 flex min-w-0 flex-col gap-6">
+                {{-- Чат — над «Расчётом», как диалог мессенджера, а не кнопкой в заголовке (06.10.2026, владелец). --}}
+                @if ($offer->chatOpenFor(auth()->user()))@include('cabinet.deals.chat-card')@endif
                 @if (! $deal->isGarage())
                     @include('cabinet.deals.money')
                 @else

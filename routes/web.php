@@ -159,6 +159,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         // Сделки — раздел таб-бара; покупатели — его вторая пилюля (интерес, группы, показы внутри).
         Route::get('/deals', [DealController::class, 'index']);
         Route::get('/deals/{deal}', [DealController::class, 'show']);
+        Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
         Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
         Route::put('/deals/{deal}/contract', [DealContractController::class, 'update']);
