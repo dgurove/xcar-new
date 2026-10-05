@@ -30,7 +30,7 @@
                         <span class="row-photo flex items-center justify-center text-ink-dim">@if ($photo)<x-offer.photo :media="$photo" sizes="72px"/>@else<x-ui.icon name="cat-car" class="size-7"/>@endif</span>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate">{{ $offer->titleWithYear() }}</span>
-                            <span class="row-sub block truncate"><span class="{{ $color }}">{{ $word }}</span>@if ($d), {{ $days($d) }}@endif</span>
+                            <span class="row-sub block"><span class="{{ $color }}">{{ $word }}</span>@if ($d), {{ $days($d) }}@endif</span>
                         </span>
                         <x-ui.chevron/>
                     </a>
@@ -73,7 +73,7 @@
                             <span class="row-photo flex items-center justify-center text-ink-dim">@if ($photo)<x-offer.photo :media="$photo" sizes="72px"/>@else<x-ui.icon name="cat-car" class="size-7"/>@endif</span>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate">{{ $offer->titleWithYear() }}</span>
-                                <span class="row-sub block truncate"><span class="{{ $tone }}">{{ $word }}</span>@if ($sub), {{ implode(', ', $sub) }}@endif</span>
+                                <span class="row-sub block"><span class="{{ $tone }}">{{ $word }}</span>@if ($sub), {{ implode(', ', $sub) }}@endif</span>
                             </span>
                             @if ($caption && (float) $value > 0)
                                 <span class="shrink-0 text-right">

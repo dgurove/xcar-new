@@ -971,7 +971,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Линия между строками со значком — от текста, как в iOS, а не от края значка. */
   .list > * + :has(> .row-icon)::after, .list > * + .contents > .row:first-of-type:has(> .row-icon)::after { left: 4.5rem; }
   .list > * + :has(> .row-icon-s)::after, .list > * + .contents > .row:first-of-type:has(> .row-icon-s)::after { left: 4rem; }
-  .list .row-sub { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Вторая строка — чаще системная фраза (состояние, «удерживаете из оплаты»): она не режется многоточием, а переносится
+     (05.10.2026, владелец: режем только данные извне — марку, имя, номер, — свой текст обязан помещаться). */
+  .list .row-sub { display: block; margin-top: .125rem; }
   .list .row-sub > * + * { margin-left: .5rem; }
   /* Факт-тег во второй строке списка — просто текст: подложка на каждом факте и давала стену чипов. Цвет тега
      (срочно, опасно, лайм) остаётся цветом текста. */

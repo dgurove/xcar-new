@@ -8,7 +8,7 @@
 <{{ $tag }} @if ($href) href="{{ $href }}" @endif {{ $attributes->class('row money-line') }}>
     <x-ui.row-icon :name="$icon" :tone="$tone" size="s"/>
     <span class="min-w-0 flex-1">
-        <span class="block truncate {{ $strike ? 'text-ink-muted line-through' : '' }}">{{ $title }}</span>
+        <span class="block {{ $strike ? 'text-ink-muted line-through' : '' }}">{{ $title }}</span>
         @if ($sub !== null && $sub !== '')<span class="row-sub">{{ $sub }}</span>@endif
     </span>
     @if ($amount !== null)<span class="nums shrink-0 {{ $amountClass }}">{{ \App\Support\Money::rub($amount) }}</span>@endif

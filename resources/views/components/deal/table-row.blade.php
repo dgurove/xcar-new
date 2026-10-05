@@ -21,7 +21,7 @@
         <span class="cell-sub" data-controller="fitline">
             <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy/><span>№ {{ $offer->number }}</span></span>
         </span>
-        @if ($active && $position)<x-route.clock :position="$position" side="staff" class="cell-sub line-clamp-2 sm:hidden"/>@endif
+        @if ($active && $position)<x-route.clock :position="$position" side="staff" class="cell-sub !whitespace-normal sm:hidden"/>@endif
     </td>
     <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>
     <td class="cell-dim nums hidden sm:table-cell">{{ $offer->number }}</td>
@@ -32,6 +32,6 @@
     </td>
     <td class="num nums">
         {{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}
-        <span class="cell-sub max-w-32 truncate sm:hidden {{ $tone }}">{{ $word }}</span>
+        <span class="cell-sub !whitespace-normal sm:hidden {{ $tone }}">{{ $word }}</span>
     </td>
 </tr>

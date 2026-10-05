@@ -54,7 +54,7 @@
                         @php $external = str_starts_with($link['href'], 'http'); @endphp
                         <a href="{{ $link['href'] }}" class="row" @if ($external) data-turbo="false" @endif>
                             <x-ui.row-icon :name="$link['icon']" size="s"/>
-                            <span class="min-w-0 flex-1 truncate">{{ $link['label'] }}</span>
+                            <span class="min-w-0 flex-1">{{ $link['label'] }}</span>
                             <x-ui.badge :href="$link['href']" :badges="$badges"/>
                             <x-ui.chevron/>
                         </a>

@@ -15,9 +15,9 @@
         <span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>
         <span class="row-sub"><span class="tag nums">№ {{ $offer->number }}</span></span>
         @if ($req)
-            <span class="mt-1 line-clamp-3 text-sm font-medium text-urgent sm:truncate">{{ $req->title }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), <span class="nums whitespace-nowrap">до {{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</span>
+            <span class="mt-1 text-sm font-medium text-urgent">{{ $req->title }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), <span class="nums whitespace-nowrap">до {{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</span>
         @elseif ($position && $active)
-            <x-route.clock :position="$position" class="mt-1 line-clamp-2 sm:truncate"/>
+            <x-route.clock :position="$position" class="mt-1"/>
         @endif
     </span>
     <span class="flex max-w-[45%] shrink-0 flex-col items-end gap-1.5">
@@ -26,7 +26,7 @@
             <x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.state>
         @else
             {{-- Этап в покое серый: лайм — глагол. Оранжевым становится просрочка. --}}
-            <x-ui.state :tone="$alarm ? 'urgent' : 'plain'" class="max-w-full overflow-hidden max-sm:!hidden"><span class="min-w-0 truncate">{{ $position?->stage->block?->name ?? 'Идёт работа' }}</span></x-ui.state>
+            <x-ui.state :tone="$alarm ? 'urgent' : 'plain'" class="max-w-full max-sm:!hidden"><span class="min-w-0">{{ $position?->stage->block?->name ?? 'Идёт работа' }}</span></x-ui.state>
         @endif
     </span>
 </a>
