@@ -388,7 +388,8 @@ function relaunchScroll() {
 function keyboardInset() {
     const vv = window.visualViewport;
     if (!vv) return;
-    const field = () => document.activeElement?.matches('input, textarea, select, [contenteditable="true"], trix-editor');
+    // Календарь и список — не клавиатура: их шторка viewport не ужимает, и сдвигать под неё ничего не надо.
+    const field = () => document.activeElement?.matches('input:not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not([type=checkbox]):not([type=radio]), textarea, [contenteditable="true"], trix-editor');
     const update = () => {
         // Без поля в фокусе клавиатуры нет — разница высот от резины или зума не считается за неё.
         const kb = vv.scale > 1.01 || !field() ? 0 : Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));

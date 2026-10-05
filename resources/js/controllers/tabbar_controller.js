@@ -13,7 +13,10 @@ document.addEventListener('turbo:load', () => {
     requestAnimationFrame(() => scrollTo(0, y));
 });
 
-const isField = (el) => el instanceof HTMLElement && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select, [contenteditable="true"], trix-editor');
+// Только поля с клавиатурой. Дата, время и выбор из списка открывают свою шторку: таб-бар, уехавший в этот момент, сдвигал
+// раскладку, и Safari на iPhone терял календарь — «Приём подтверждений до» не открывался, а открывался по следующему
+// нажатию где угодно («Кому показывать»), 05.10.2026.
+const isField = (el) => el instanceof HTMLElement && el.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not([type=week]):not([type=color]):not([type=range]):not([type=button]):not([type=submit]):not([type=reset]), textarea, [contenteditable="true"], trix-editor');
 
 // Бар постоянный (data-turbo-permanent): Turbo переносит живой узел, а бар новой страницы выбрасывает. Из него
 // берём числа, бейджи и текущий таб — морфом детей, чтобы не трогать сам fixed-узел: пересозданный бар iOS
