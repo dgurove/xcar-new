@@ -34,7 +34,7 @@ final class Caption
             ['fuel', 'Топливо', $offer->fuel?->label(), true],
             ['engine', 'Двигатель', $offer->engine_volume ? number_format($offer->engine_volume / 1000, 1, ',', '').' л'.($offer->engine_power ? ', '.$offer->engine_power.' л. с.' : '') : null, true],
             ['mileage', 'Пробег', $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null, false],
-            ['vin', 'VIN', $offer->vin ? 'VIN '.($staff ? $offer->vin : $offer->vinFor($user)) : null, true],
+            ['vin', 'VIN', $offer->vin ? ($staff ? $offer->vin : $offer->vinFor($user)) : null, true],
             ['tags', 'Метки', $offer->tags ? implode(', ', $offer->tags) : null, false],
             // Строкой с глаголом, а не голой датой (владелец 04.10.2026): в тексте без подписей «07.10.2026 17:00» ни о чём не говорит.
             ['until', 'Приём подтверждений до', $offer->bids_close_at ? 'Подтвердить до '.$offer->bids_close_at->translatedFormat('d.m.Y H:i') : null, false],
@@ -61,7 +61,7 @@ final class Caption
             ['specs', 'КПП, топливо', implode(', ', array_filter([$car->transmission?->label(), $car->fuel?->label()])) ?: null, true],
             ['engine', 'Двигатель', $car->engine_volume ? number_format($car->engine_volume / 1000, 1, ',', '').' л'.($car->engine_power ? ', '.$car->engine_power.' л. с.' : '') : null, true],
             ['mileage', 'Пробег', $car->mileage !== null ? number_format($car->mileage, 0, '', ' ').' км' : null, false],
-            ['vin', 'VIN', $car->vin ? 'VIN '.$car->vin : null, true],
+            ['vin', 'VIN', $car->vin ?: null, true],
             ['encumbrance', 'Обременения', $car->encumbrance, false],
             ['until', 'Приём цен до', $car->purchase?->offers_close_at?->translatedFormat('d.m.Y H:i'), false],
             ['price', 'Наша цена', $prices ? $money($car->price_listing) : null, true],
@@ -83,8 +83,9 @@ final class Caption
             array_filter($rows, fn ($r) => $r[2] !== null && $r[2] !== '')));
     }
 
+    /** Метка НДС у цены — только «с НДС»; без НДС ничего не пишем (владелец 05.10.2026). VIN в тексте — без слова «VIN». */
     public static function vatMark(Offer $offer): string
     {
-        return $offer->prices_include_vat ? ' с НДС' : ' без НДС';
+        return $offer->prices_include_vat ? ' с НДС' : '';
     }
 }
