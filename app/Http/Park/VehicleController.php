@@ -181,7 +181,7 @@ class VehicleController
     public function letters(Request $request, Vehicle $vehicle, MarkThreadRead $markRead)
     {
         abort_unless(Scope::allows($request->user(), $vehicle), 404);
-        $threads = Thread::where('vehicle_id', $vehicle->id)->park()->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
+        $threads = Thread::ofCar($vehicle, $request->user())->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
         // Открыли со строки почты (?at=) — письма прочитаны, как у окна ветки.
         if ($request->query('at') && ! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $threads->each(fn (Thread $t) => $markRead($t));

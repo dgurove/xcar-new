@@ -558,6 +558,14 @@ class OfferController
             ->with('toast', 'Оценено: '.Money::rub($raw));
     }
 
+    /** «!» Мигторга: «Взять» его значение или «Отклонить» (`MigtorgDiff`); ответ — новый список разниц. */
+    public function migtorg(Request $request, Offer $offer, string $field, string $act)
+    {
+        $done = $act === 'take' ? \App\Offers\MigtorgDiff::take($offer, $field, $request->user()) : \App\Offers\MigtorgDiff::reject($offer, $field, $request->user());
+
+        return response()->json(['ok' => $done, 'fields' => (object) \App\Offers\MigtorgDiff::of($offer->refresh())]);
+    }
+
     /**
      * «Закупочная» сверху карточки во вкладке «Без закупочной цены» (05.10.2026): модератор вписал закупочную (у Альфы —
      * оценочную, закупочная посчитана на лету) — машина уходит в «Без продажной цены», карточка — к следующей. Пустое

@@ -62,13 +62,15 @@ final class CaseView
         $open = ($requestId ? $vehicle->requests->first(fn (Request $r) => $r->id === $requestId && $r->isOpen()) : null) ?? self::current($vehicle);
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;
-        $threads = Thread::where('vehicle_id', $vehicle->id)->park()->get(['id', 'needs_reply_at']);
+        // Письма машины — и ветки её предложения в CRM, если у человека есть почта CRM (`Thread::ofCar`); «ждём ответа» —
+        // только своих ящиков: на письма CRM отвечает CRM.
+        $threads = Thread::ofCar($vehicle, $user)->with('account:id,scope')->get(['id', 'needs_reply_at', 'account_id']);
         // Выдача по QR: живой пропуск (анкета покупателя) — один запрос на экран и таймлайн.
         $pass = $vehicle->releasesByQr() ? $vehicle->pass() : null;
         $ids = $threads->pluck('id');
         // Ждёт ответа — одно правило на почту, дело и ленту: последнее письмо ветки их, с вопросом, и после него
         // мы не писали и не нажимали «Сделано» (`Threads::refresh` → `needs_reply_at`). Само письмо — последнее входящее.
-        $waiting = $threads->whereNotNull('needs_reply_at')->pluck('id');
+        $waiting = $threads->whereNotNull('needs_reply_at')->filter(fn (Thread $t) => $t->account?->scope === \App\Mail\Scope::Park)->pluck('id');
         $asks = $waiting->isEmpty() ? collect() : Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)
             ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'subject', 'from_name', 'from_email', 'date_at', 'text_body', 'html_body', 'intent'])
             ->groupBy('thread_id')->map->last()->sortBy('date_at')->values();
@@ -84,7 +86,7 @@ final class CaseView
             'asks' => $asks,
             // Текст письма о приёме — в шаг «Нужно позвонить»: «клиент сам свяжется», «документы в офисе СК», «со СТОА по адресу…».
             'letterText' => $open?->thread_id ? Intent::excerpt(Message::where('thread_id', $open->thread_id)->where('direction', Direction::In)->orderBy('date_at')->value('text_body')) : null,
-            'threads' => Thread::where('vehicle_id', $vehicle->id)->park()->orderByDesc('last_message_at')->get(['id', 'subject']),
+            'threads' => Thread::ofCar($vehicle, $user)->orderByDesc('last_message_at')->get(['id', 'subject']),
             // Блок «Письма» над таймлайном: последнее письмо словами, этапы — из цепочки кандидата этой ТС.
             'lastLetter' => $ids->isEmpty() ? null : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
             'docs' => self::docs($vehicle, $ids),

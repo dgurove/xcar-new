@@ -97,6 +97,7 @@ class Offer extends Model implements HasMedia
     {
         return [
             'state' => OfferState::class,
+            'migtorg_rejected' => 'array',
             'car_place' => CarPlace::class,
             'insurer_deadline_at' => 'date',
             'answer_by' => 'datetime',

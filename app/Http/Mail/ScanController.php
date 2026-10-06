@@ -111,6 +111,11 @@ final class ScanController
         return response()->json(Reader::stop($this->chain($candidate)));
     }
 
+    public function readerReject(Request $request, Candidate $candidate)
+    {
+        return response()->json(Reader::reject($this->chain($candidate), ...$this->rejected($request)));
+    }
+
     /** Читалка в блоке «Документы» редактора предложения. */
     public function offerLive(Request $request, Offer $offer)
     {
@@ -127,9 +132,27 @@ final class ScanController
         return response()->json(Reader::stop(OfferSubject::for($offer, $request->user())));
     }
 
+    public function offerReject(Request $request, Offer $offer)
+    {
+        return response()->json(Reader::reject(OfferSubject::for($offer, $request->user()), ...$this->rejected($request)));
+    }
+
+    /** @return array{string, string} поле и текст отклонённого варианта */
+    private function rejected(Request $request): array
+    {
+        $data = $request->validate(['field' => ['required', 'string', 'max:40'], 'text' => ['required', 'string', 'max:300']]);
+
+        return [$data['field'], $data['text']];
+    }
+
     /** Чип «в документе …» у поля дела: взять значение документа вместо карточки (`FillFromDocs::take`). */
     public function vehicleTake(Request $request, Vehicle $vehicle, FillFromDocs $fill)
     {
+        if ($request->filled('reject')) {
+            [$field, $value] = array_pad(explode('|', (string) $request->input('reject'), 2), 2, '');
+
+            return redirect('/cars/'.$vehicle->id)->with('toast', $fill->reject($vehicle, $field, $value) ? 'Отклонено' : 'Уже не так — обновите');
+        }
         [$field, $value] = array_pad(explode('|', (string) $request->input('take'), 2), 2, '');
         $done = in_array($field, ['vin', 'plate', 'year', 'color', 'value', 'model'], true) && $fill->take($vehicle, $field, $value, $request->user());
 

@@ -112,6 +112,8 @@ final class FillFromDocs
 
             return $out;
         });
+        $rejected = array_flip(self::rejected($vehicle));
+        $out = array_filter($out, fn ($d, $field) => ! isset($rejected[$field.'|'.$d['value']]), ARRAY_FILTER_USE_BOTH);
         // Метка — и при попадании в кеш: расхождения, посчитанные раньше метки, иначе её бы не ставили.
         if (self::flagged($vehicle) !== (bool) $out) {
             Cache::memo()->forever(self::flagKey($vehicle->id), (bool) $out);
@@ -148,6 +150,27 @@ final class FillFromDocs
     private static function flagKey(int $id): string
     {
         return "park:docdiff:has:{$id}";
+    }
+
+    /**
+     * «Отклонить» (владелец 06.10.2026: документ бывает неправ): это значение поля больше не предлагается; другое значение
+     * того же поля из нового документа придёт снова.
+     */
+    public function reject(Vehicle $vehicle, string $field, string $value): bool
+    {
+        if (($this->differences($vehicle)[$field]['value'] ?? null) !== $value) {
+            return false;
+        }
+        Cache::forever("park:docdiff:rejected:{$vehicle->id}", array_values(array_unique([...self::rejected($vehicle), $field.'|'.$value])));
+        self::forget($vehicle);
+
+        return true;
+    }
+
+    /** @return list<string> */
+    private static function rejected(Vehicle $vehicle): array
+    {
+        return (array) Cache::get("park:docdiff:rejected:{$vehicle->id}", []);
     }
 
     /** Взять значение документа вместо карточки: только то, что `differences` и показывает. */

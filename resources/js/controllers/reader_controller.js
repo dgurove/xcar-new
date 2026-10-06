@@ -6,7 +6,7 @@ import { liveOpen } from '../live.js';
 // Читалка «Завести» (x-mail.reader-body, Scan\Reader) — блок «Документы» разбора письма парковки и редактора
 // предложения. Документы читаются сами по порядку (autoValue: открыли из «Завести»), поля формы formValue
 // заполняются по мере чтения: пустое — со вспышкой (fill.js), совпадающее — молча, другое — строкой расхождения
-// «в форме → в документе» с «Взять» в [data-reader-diffs="<форма>"] над полями; документы спорят о пустом поле —
+// «в форме → в документе» с «Взять» и «Отклонить» в [data-reader-diffs="<форма>"] над полями; документы спорят о пустом поле —
 // строка на каждый вариант. Взятое и снятое не возвращается. Ход чтения — строка хода с сервера морфом и отметки на
 // строках документов (`data-scan`). Новое — по событию live:scan своего предмета, при возврате на вкладку и, пока хаб недоступен, раз в 3 с.
 // Искра шторки документов дописывает открытый файл в чтение (reader:add, docs_controller).
@@ -23,7 +23,11 @@ export default class extends Controller {
         this.onAdd = (e) => this.read([e.detail.id]);
         this.onChange = () => this.compare();
         // Строки расхождений стоят над полями, вне читалки: data-action до неё не дойдёт — ловим нажатие на группе.
-        this.onTake = (e) => { const row = e.target.closest('[data-index]'); if (row) this.take(row.dataset.index); };
+        this.onTake = (e) => {
+            const act = e.target.closest('[data-act]');
+            const row = act?.closest('[data-index]');
+            if (row) act.dataset.act === 'reject' ? this.reject(row.dataset.index) : this.take(row.dataset.index);
+        };
         this.box?.addEventListener('click', this.onTake);
         document.addEventListener('live:scan', this.onScan);
         document.addEventListener('visibilitychange', this.onVisible);
@@ -189,6 +193,19 @@ export default class extends Controller {
         row.f.options.forEach((o) => this.dropped.add(this.key(row.field, o)));
         await fill.run();
         this.compare();
+    }
+
+    // «Отклонить»: документ неправ — вариант уходит сразу, сервер помнит его для всех (Scan\Reader::reject).
+    reject(index) {
+        const row = this.rows?.[index];
+        if (!row) return;
+        this.dropped.add(this.key(row.field, row.o));
+        this.compare();
+        const body = new FormData();
+        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+        body.append('field', row.field);
+        body.append('text', row.o.text);
+        fetch(`${this.urlValue}/reject`, { method: 'POST', body, headers: { Accept: 'application/json' } }).catch(() => {});
     }
 
     key(field, option) {

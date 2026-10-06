@@ -9,12 +9,15 @@
 <script type="application/json" data-reader-target="values">@json($live['values'])</script>
 <script type="application/json" data-reader-target="marks">@json((object) $live['marks'])</script>
 <template data-reader-target="row">
-    <button type="button" class="row scan-field text-left">
+    <div class="row scan-field text-left">
         <span class="scan-label" data-slot="label"></span>
         <span class="min-w-0 flex-1">
             <span class="scan-value scan-change"><span class="text-ink-muted" data-slot="now"></span><span class="text-ink-dim" aria-hidden="true" data-slot="arrow">→</span><span data-slot="doc"></span></span>
             <span class="scan-from" data-slot="from"></span>
         </span>
-        <span class="shrink-0 self-center text-sm text-accent-text">Взять</span>
-    </button>
+        <span class="flex shrink-0 items-center gap-3 self-center text-sm">
+            <button type="button" class="text-ink-muted" data-act="reject">Отклонить</button>
+            <button type="button" class="text-accent-text" data-act="take">Взять</button>
+        </span>
+    </div>
 </template>

@@ -77,6 +77,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/offers/{offer}/scan/live', [ScanController::class, 'offerLive']);
         Route::post('/offers/{offer}/scan/read', [ScanController::class, 'offerRead']);
         Route::post('/offers/{offer}/scan/stop', [ScanController::class, 'offerStop']);
+        Route::post('/offers/{offer}/scan/reject', [ScanController::class, 'offerReject']);
         // Кадры письма прикрепляются: строка хода и ряд фото, пока ImportThreadFiles идёт (attach_controller).
         Route::get('/offers/{offer}/attach', [AttachController::class, 'offer']);
         Route::put('/offers/{offer}', [OfferController::class, 'update']);
@@ -94,6 +95,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/media', [OfferPhotoController::class, 'store']);
         Route::post('/offers/{offer}/media/migtorg', [OfferPhotoController::class, 'migtorg']);
         Route::get('/offers/{offer}/migtorg', [OfferPhotoController::class, 'migtorgChip']);
+        Route::post('/offers/{offer}/migtorg/{field}/{act}', [OfferController::class, 'migtorg'])->whereIn('act', ['take', 'reject']);
         Route::post('/offers/{offer}/media/order', [OfferPhotoController::class, 'reorder']);
         Route::post('/offers/{offer}/media/visibility', [OfferPhotoController::class, 'visibility']);
         Route::post('/offers/{offer}/media/{media}/hide', [OfferPhotoController::class, 'toggle']);

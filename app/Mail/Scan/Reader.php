@@ -95,8 +95,45 @@ final class Reader
             'state' => $state,
             'marks' => $files->mapWithKeys(fn (ScanFile $f) => [self::mark($f) => $states[$f->scanId()]])->all(),
             'html' => view('admin.mail.reader-sheets', ['subject' => $subject, 'files' => $files, 'states' => $states, 'state' => $state, 'auto' => $open])->render(),
-            'values' => FormValues::of($found, $subject->fields()),
+            'values' => self::unrejected($subject, FormValues::of($found, $subject->fields())),
         ];
+    }
+
+    /**
+     * «Отклонить» у строки «в форме → в документе» (владелец 06.10.2026: документ бывает неправ): вариант поля больше
+     * не предлагается — ни после обновления, ни другому человеку. Другой текст того же поля придёт снова.
+     */
+    public static function reject(Subject $subject, string $field, string $text): array
+    {
+        Cache::forever(self::rejectedKey($subject), array_values(array_unique([...self::rejected($subject), $field.'|'.$text])));
+
+        return self::live($subject);
+    }
+
+    private static function unrejected(Subject $subject, array $values): array
+    {
+        $rejected = array_flip(self::rejected($subject));
+        foreach ($values as $field => $f) {
+            $f['options'] = array_values(array_filter($f['options'], fn ($o) => ! isset($rejected[$field.'|'.$o['text']])));
+            if ($f['options']) {
+                $values[$field] = $f;
+            } else {
+                unset($values[$field]);
+            }
+        }
+
+        return $values;
+    }
+
+    /** @return list<string> */
+    private static function rejected(Subject $subject): array
+    {
+        return (array) Cache::get(self::rejectedKey($subject), []);
+    }
+
+    private static function rejectedKey(Subject $subject): string
+    {
+        return "scan:rejected:{$subject->key()}";
     }
 
     /**

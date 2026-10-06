@@ -38,6 +38,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/requests/from-mail/{candidate}/scan/live', [ScanController::class, 'readerLive']);
     Route::post('/requests/from-mail/{candidate}/scan/read', [ScanController::class, 'readerRead']);
     Route::post('/requests/from-mail/{candidate}/scan/stop', [ScanController::class, 'readerStop']);
+    Route::post('/requests/from-mail/{candidate}/scan/reject', [ScanController::class, 'readerReject']);
     Route::post('/requests', [RequestController::class, 'store']);
     Route::get('/requests/{req}', [RequestController::class, 'show']);
     Route::post('/requests/{req}/intake', [RequestController::class, 'intake']);

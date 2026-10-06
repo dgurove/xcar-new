@@ -3,7 +3,9 @@
 namespace App\Mail;
 
 use App\Offers\Offer;
+use App\Park\Area;
 use App\Park\Vehicle;
+use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -74,10 +76,33 @@ class Thread extends Model
         return $this->belongsTo(Candidate::class, 'candidate_id');
     }
 
-    /** Ветки ящиков парковки: письма CRM (offer@, deal@) в деле ТС не показываются, даже если к нему привязаны. */
+    /**
+     * Ветки ящиков парковки. Сами по себе письма CRM (offer@, deal@) к делу ТС не относятся; вместе их показывает
+     * `ofCar` — тем, у кого есть почта другой стороны.
+     */
     public function scopePark($query)
     {
         return $query->whereHas('account', fn ($q) => $q->where('scope', Scope::Park));
+    }
+
+    /**
+     * Все письма одной машины (владелец 06.10.2026: «в CRM по парковке и на парковке по CRM»): ветки ТС из ящиков
+     * парковки и ветки её предложения из ящиков CRM — пара через `park_vehicles.offer_id`. Ветки другой стороны видит
+     * только тот, у кого есть её почта (`canCrmMail`, «Почта» парковки); отвечают на них её ящиком, как и раньше.
+     */
+    public function scopeOfCar($query, Offer|Vehicle $car, ?User $user)
+    {
+        $offers = fn ($q) => $q->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'));
+        if ($car instanceof Vehicle) {
+            $crm = $car->offer_id && $user?->canCrmMail();
+
+            return $query->where(fn ($w) => $w->where(fn ($p) => $p->where('vehicle_id', $car->id)->park())
+                ->when($crm, fn ($w) => $w->orWhere(fn ($o) => $offers($o->where('offer_id', $car->offer_id)))));
+        }
+        $park = $user?->canPark(Area::Mail);
+
+        return $query->where(fn ($w) => $w->where(fn ($o) => $offers($o->where('offer_id', $car->id)))
+            ->when($park, fn ($w) => $w->orWhere(fn ($p) => $p->whereIn('vehicle_id', Vehicle::where('offer_id', $car->id)->select('id'))->park())));
     }
 
     /** Ветки с любым из номеров (`keys` пересекаются с `$keys`). */

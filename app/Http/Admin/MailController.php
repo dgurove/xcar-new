@@ -393,8 +393,7 @@ class MailController
     public function offerLetters(Request $request, Offer $offer, MarkThreadRead $markRead)
     {
         abort_if($this->scope !== Scope::Offers, 404);
-        $threads = Thread::where('offer_id', $offer->id)->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'))
-            ->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
+        $threads = Thread::ofCar($offer, $request->user())->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
         // Открыли со строки списка (?at=) — письма прочитаны, как у окна ветки.
         if ($request->query('at') && ! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $threads->each(fn (Thread $t) => $markRead($t));
@@ -930,12 +929,25 @@ class MailController
 
     private function guard(Thread $thread): void
     {
-        abort_unless($thread->account->scope === $this->scope, 404);
+        abort_unless($thread->account->scope === $this->scope || $this->across($thread), 404);
     }
 
-    /** Письмо — только из ящика своей стороны: повтор, флажок, разбор и вложения чужих ящиков — 404. */
+    /**
+     * Письмо — только из ящика своей стороны: повтор, флажок, разбор и вложения чужих ящиков — 404. Исключение — письма
+     * той же машины с другой стороны (`Thread::ofCar`): их окно писем показывает, файлы и тело открываются.
+     */
     private function guardMessage(Message $message): void
     {
-        abort_unless($message->account?->scope === $this->scope, 404);
+        abort_unless($message->account?->scope === $this->scope || ($message->thread && $this->across($message->thread)), 404);
+    }
+
+    /** Ветка другой стороны той же машины, и у человека есть почта той стороны. */
+    private function across(Thread $thread): bool
+    {
+        $user = auth()->user();
+
+        return $this->scope === Scope::Park
+            ? $thread->offer_id && $user?->canCrmMail() && \App\Park\Vehicle::where('offer_id', $thread->offer_id)->exists()
+            : $thread->vehicle_id && $user?->canPark(\App\Park\Area::Mail) && \App\Park\Vehicle::whereKey($thread->vehicle_id)->whereNotNull('offer_id')->exists();
     }
 }
