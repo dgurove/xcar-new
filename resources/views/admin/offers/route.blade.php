@@ -1,4 +1,6 @@
 {{-- Маршрут предложения — карточка на ветку («Продажа», «Вывоз»): путь по блокам, как таймлайн дела ТС (x-route.path).
+     `$only` — одна ветка (дорожка редактора: «Вывоз» здесь, «Продажа» — `lane-sale` с хвостом гаража); без него — обе
+     (карточка строки «Сделок»). `$tail` — шаги после маршрута в пути продажи.
      У вывоза под заголовком — кто вывозит и куда (`AssignPickup`): на парковку вывоз кончается строкой-ссылкой на дело
      на парковке, к менеджеру и к нам — «Стоит у …». «Нужен вывоз», «Изменить» и «Вывоз не нужен» — в «···» у заголовка
      (шторка `x-offer.pickup-form`); выбора этапа из списка нет: вернуть назад можно только на пройденный шаг. --}}
@@ -9,18 +11,23 @@
     $pickup = $offer->position(Track::Service);
     $pv = $offer->parkVehicle;
     $to = $offer->pickupDestination();
-    $canPickup = $service?->is_active && ! $pickup && ! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived, OfferState::Garage], true);
+    $only ??= null;
+    // Гаражную машину везут всегда (06.10.2026): «В гараже» вывоз назначают, маршрута у вендора нет — заведётся сам.
+    $garaged = $offer->state === OfferState::Garage && $offer->garageCar;
+    $canPickup = ($service?->is_active || $garaged) && ! $pickup && ! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)
+        && ($offer->state !== OfferState::Garage || $garaged);
     $canDrop = $pickup && ! $service?->auto_start && $pickup->stage->is($service?->startStage());
     // Кто и куда правится, пока ТС не забрали: потом место — факт.
-    $canEdit = $pickup && ! $offer->pickedUp() && $offer->state !== OfferState::Garage;
-    $positions = $offer->positions->sortBy(fn ($p) => $p->track === Track::Sale ? 0 : 1)->values();
-    $sheet = $canPickup || $canEdit;
+    $canEdit = $pickup && ! $offer->pickedUp();
+    $positions = $offer->positions->sortBy(fn ($p) => $p->track === Track::Sale ? 0 : 1)->filter(fn ($p) => ! $only || $p->track === $only)->values();
+    $withService = ! $only || $only === Track::Service;
+    $sheet = $withService && ($canPickup || $canEdit);
     $pickupManagers = $sheet ? ($managers ?? \App\Users\User::withRole(\App\Users\Role::Manager)->orderBy('name')->get()) : collect();
     $openSheet = 'data-controller="emit" data-action="emit#send" data-emit-event-param="pickup-'.$offer->number.':open"';
 @endphp
 @foreach ($positions as $position)
-    @php $isService = $position->track === Track::Service; $more = $isService ? $canDrop || $canEdit : $canPickup; @endphp
-    <x-ui.card :title="$position->track->label()" class="order-1">
+    @php $isService = $position->track === Track::Service; $more = $isService ? $canDrop || $canEdit : $canPickup && ! $only; @endphp
+    <x-ui.card :title="$position->track->label()" class="{{ $cardClass ?? 'order-1' }}" :id="$isService ? 'pickup' : 'sale'">
         @if ($more)
             <x-slot:actions>
                 <div class="contents" data-controller="menu">
@@ -42,7 +49,11 @@
                 <span class="text-ink-muted">{{ $to === Destination::Keeper && $offer->garageCar ? 'к '.$offer->keeper()?->shortName().' в гараж' : mb_strtolower($to->label()) }}</span>
             </div>
         @endif
-        <x-route.path :offer="$offer" :position="$position"/>
+        @if ($isService && ($deal ?? null)?->isActive() && ! $deal->isGarage())
+            {{-- Кто забирает у владельца и с кем говорить — внутри вывоза: это он и есть (06.10.2026). --}}
+            <x-deal.handover :deal="$deal" compact lane class="mb-4"/>
+        @endif
+        <x-route.path :offer="$offer" :position="$position">{!! ! $isService ? ($tail ?? '') : '' !!}</x-route.path>
         @if ($isService && $pv && $to === Destination::Yard)
             {{-- ТС на парковке: где она и эвакуация словом, всё остальное — в деле на парковке. --}}
             @php $tow = $pv->openRequest(\App\Park\RequestType::Tow); @endphp
@@ -57,8 +68,8 @@
         @if ($errors->has('exit'))<p class="field-error mt-2">{{ $errors->first('exit') }}</p>@endif
     </x-ui.card>
 @endforeach
-@if ($positions->isEmpty() && $canPickup)
-    <x-ui.card title="Вывоз" class="order-1">
+@if ($withService && ! $pickup && $canPickup)
+    <x-ui.card title="Вывоз" class="{{ $cardClass ?? 'order-1' }}" id="pickup">
         <x-ui.button type="button" size="sm" variant="secondary" data-controller="emit" data-action="emit#send" data-emit-event-param="pickup-{{ $offer->number }}:open">Нужен вывоз</x-ui.button>
     </x-ui.card>
 @endif

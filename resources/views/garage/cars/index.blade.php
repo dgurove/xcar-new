@@ -1,4 +1,4 @@
-{{-- Машины одним списком, как в приложении: сначала то, где ход менеджера, дальше по пути (ждёт страховую → … →
+{{-- Машины одним списком, как в приложении: сначала то, где ход менеджера, дальше по пути (ждёт машину → … →
      продана), внутри — дольше стоящие первыми; рассчитанные — своей группой ниже. Строка — кадр, название, этап цветным
      словом с днями на нём (ждут ответа — «ваш ход» и что сделать) и справа главное число: расходы, отдать нам, к выплате.
      Менеджер закупочную не видит: у него расходы, а не «вложено». Сотрудник видит всех и чьи. Сверху — «Вывоз»: ТС,
@@ -53,7 +53,12 @@
                             $current = $car->payoutInvoice ?? $car->invoice;
                             $asks = $car->manager_id === auth()->id() ? $car->deal?->openRequirement : null;
                             $tone = $asks ? 'text-urgent' : match ($car->state->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' };
-                            $word = $asks ? 'ваш ход: '.mb_strtolower($asks->title) : mb_strtolower($car->state->label());
+                            // Ждёт машину — словом вывоза: «забрать» (везёт сам — его ход), «стоит у вас», «готовим документы».
+                            [$pickWord, $pickTone] = $car->isWaiting() ? \App\Offers\PickupState::of($offer, auth()->user()) : [null, null];
+                            if ($pickTone === 'urgent' && $offer->evacuator_id === auth()->id()) {
+                                $tone = 'text-urgent';
+                            }
+                            $word = $asks ? 'ваш ход: '.mb_strtolower($asks->title) : ($pickWord ? 'ждёт машину, '.$pickWord : mb_strtolower($car->state->label()));
                             $when = match ($car->state) {
                                 CarState::Settled => ($car->settled_at ?? $car->sold_at)?->translatedFormat('j M'),
                                 CarState::Sold => 'с '.$car->sold_at?->translatedFormat('j M'),
@@ -61,7 +66,7 @@
                             };
                             [$value, $caption] = match ($car->state) {
                                 CarState::Waiting => [null, null],
-                                CarState::Delivery, CarState::Repair, CarState::Selling => [$staff ? $car->invested() : $car->spent(), $staff ? 'вложено' : 'расходы'],
+                                CarState::Repair, CarState::Ready, CarState::Selling => [$staff ? $car->invested() : $car->spent(), $staff ? 'вложено' : 'расходы'],
                                 CarState::Sold => $current && $current->remaining() > 0
                                     ? [$current->remaining(), $current->isOwed() ? ($staff ? 'отдаём' : 'к выплате') : ($car->invoice_to === 'buyer' ? 'платит покупатель' : ($staff ? 'отдаёт нам' : 'отдать нам'))]
                                     : [$car->sold_price, $staff ? 'счёта нет' : 'продана за'],

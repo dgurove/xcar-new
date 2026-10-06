@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\PaymentSource;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
 use App\Support\Demo\HidesDemo;
@@ -157,7 +158,7 @@ class Deal extends Model
         return $this->hasOne(Invoice::class)->ofMany(['id' => 'max'], fn ($q) => $q->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', '!=', InvoiceState::Void));
     }
 
-    /** Машина в гараже по этой сделке: пока ждёт страховую, маршрут сделки и есть её этап. */
+    /** Машина в гараже по этой сделке: пока сделка идёт, бумаги со страховой ведёт её маршрут. */
     public function garageCar(): HasOne
     {
         return $this->hasOne(GarageCar::class);
@@ -277,7 +278,7 @@ class Deal extends Model
         $invoices = $this->invoices()->with(['payments', 'claims'])->get();
 
         return $invoices->every(fn (Invoice $i) => $i->direction === 'issued' && $i->kind !== ChargeKind::Reward && $i->claims->isEmpty()
-            && $i->payments->every(fn ($p) => $p->source === \App\Billing\PaymentSource::Offset));
+            && $i->payments->every(fn ($p) => $p->source === PaymentSource::Offset));
     }
 
     public function commissionState(): CommissionState

@@ -9,14 +9,17 @@ use App\Garage\Actions\UpdateCost;
 use App\Garage\Car;
 use App\Garage\Cost;
 use App\Garage\GarageView;
+use App\Garage\Payer;
 use App\Http\Cabinet\DealController;
+use App\Offers\Actions\PickUp;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\PickupState;
-use App\Workflow\Track;
 use App\Support\Money;
 use App\Support\Surface;
+use App\Workflow\Track;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CarController
 {
@@ -24,7 +27,7 @@ class CarController
     public function index(Request $request)
     {
         $cars = Car::of($request->user())
-            ->with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.openRequirement'])
+            ->with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.openRequirement'])
             ->orderBy('stage_at')
             ->get();
 
@@ -39,9 +42,9 @@ class CarController
     public function show(Request $request, Offer $offer)
     {
         $car = $this->car($request, $offer);
-        // Ждёт страховую — шаг сделки и путь, как на её странице: просьбы менеджеру («Забираю», «Отказываюсь») — тут.
+        // Сделка со страховой идёт — шаг сделки и путь, как на её странице: просьбы менеджеру («Забираю», «Отказываюсь») — тут.
         // Сотрудник ведёт маршрут в CRM — ему шаг не нужен.
-        $step = $car->isWaiting() && $car->deal && ! $request->user()->isAdmin() ? DealController::stepData($car->deal) : null;
+        $step = $car->dealOpen() && ! $request->user()->isAdmin() ? DealController::stepData($car->deal) : null;
 
         return view('garage.cars.show', [
             'view' => GarageView::for($car, $request->user(), $step),
@@ -53,7 +56,6 @@ class CarController
     public function storeCost(Request $request, Offer $offer, AddCost $add)
     {
         $car = $this->car($request, $offer);
-        abort_if($car->isSold() && ! $request->user()->isAdmin(), 403);
         $data = $this->costData($request);
         $add($car, $data, $request->user());
 
@@ -64,7 +66,7 @@ class CarController
     {
         $this->car($request, $cost->car->offer);
         abort_unless($cost->editableBy($request->user()), 403);
-        $update($cost, $this->costData($request));
+        $update($cost, $this->costData($request), $request->user());
 
         return back()->with('toast', 'Сохранено');
     }
@@ -73,9 +75,17 @@ class CarController
     {
         $this->car($request, $cost->car->offer);
         abort_unless($cost->editableBy($request->user()), 403);
-        $remove($cost);
+        $remove($cost, $request->user());
 
         return back()->with('toast', 'Расход убран');
+    }
+
+    /** «Забрал» своей машины: менеджер везёт её в свой гараж сам — вывоз отмечается со страницы машины. */
+    public function picked(Request $request, Offer $offer, PickUp $pick)
+    {
+        $pick($this->car($request, $offer)->offer, $request->user());
+
+        return back()->with('toast', 'Забрали');
     }
 
     /** «Отдали по ошибке»: только сотрудник и только пока ничего не записано. */
@@ -106,6 +116,8 @@ class CarController
             'title' => ['required', 'string', 'max:120'],
             'amount' => ['required', 'numeric', 'min:0.01', 'max:99999999'],
             'spent_at' => ['nullable', 'date', 'before_or_equal:today'],
+            // Кто платил — выбирает только сотрудник (`AddCost`, `UpdateCost`); от менеджера поле не берётся.
+            'paid_by' => ['nullable', Rule::enum(Payer::class)],
         ]);
     }
 }

@@ -24,7 +24,7 @@ final class CloseWhenPaid
             ->where(fn ($m) => $m->where('invoice_id', $e->invoice->id)->where(fn ($t) => $t->whereNull('invoice_to')->orWhere('invoice_to', 'manager')))
             ->orWhere('payout_invoice_id', $e->invoice->id))->first();
         if ($car) {
-            $car->moveTo(CarState::Settled, ['settled_at' => now()]);
+            $car->moveTo(CarState::Settled, ['settled_at' => now()], $e->by);
             GarageChanged::dispatch($car);
         }
     }

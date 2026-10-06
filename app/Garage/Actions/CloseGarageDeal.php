@@ -7,26 +7,22 @@ use App\Garage\Cost;
 use App\Garage\Events\GarageChanged;
 use App\Garage\GaragePayer;
 use App\Garage\Payer;
-use App\Offers\CarPlace;
 use App\Offers\Deal;
 use App\Users\User;
-use App\Workflow\Track;
 
 /**
- * Маршрут гаражной сделки дошёл до конца: со страховой всё, машину можно везти — этап «Доставка» (довёз её к
- * менеджеру наш вывоз — сразу «Подготовка»). Поставщику
- * платил менеджер — его оплата встаёт расходом сама, на закупочную (решение владельца 03.10.2026).
+ * Маршрут гаражной сделки дошёл до конца — бумаги со страховой закрыты (06.10.2026: где машина, решает вывоз, а не
+ * сделка). Подготовленная машина («Готова») сама встаёт в продажу. Поставщику платил менеджер — его оплата встаёт
+ * расходом сама, на закупочную (решение владельца 03.10.2026), на каком бы этапе машина ни была.
  */
-final class ReceiveFromRoute
+final class CloseGarageDeal
 {
     public function __invoke(Deal $deal, ?User $by = null): void
     {
         $car = $deal->garageCar()->first();
-        if (! $car || $car->state !== CarState::Waiting) {
+        if (! $car) {
             return;
         }
-        // Вывоз уже довёз её к менеджеру — «Привёз» жать нечего, сразу подготовка.
-        $car->moveTo($deal->offer?->position(Track::Service)?->stage->car_place === CarPlace::Keeper ? CarState::Repair : CarState::Delivery);
         if ($deal->garage_payer === GaragePayer::Manager && $deal->cost && ! $car->costs()->where('kind', Cost::SUPPLIER)->exists()) {
             $car->costs()->create([
                 'title' => 'Оплата поставщику',
@@ -36,6 +32,9 @@ final class ReceiveFromRoute
                 'kind' => Cost::SUPPLIER,
                 'created_by' => $by?->id,
             ]);
+        }
+        if ($car->state === CarState::Ready) {
+            $car->moveTo(CarState::Selling, by: $by);
         }
         GarageChanged::dispatch($car);
     }

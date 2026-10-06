@@ -282,6 +282,15 @@ class Offer extends Model implements HasMedia
         return $this->hasOne(Deal::class)->where('state', DealState::Active);
     }
 
+    /**
+     * Сделка, что сейчас идёт, иначе последняя состоявшаяся — дорожка «Сделка» редактора показывает и выданную
+     * (деньги, вознаграждение, ДКП остаются видны). Сорванные — только «Историей».
+     */
+    public function lastDeal(): HasOne
+    {
+        return $this->hasOne(Deal::class)->ofMany(['id' => 'max'], fn ($q) => $q->whereIn('state', [DealState::Active, DealState::Done]));
+    }
+
     /** Строка гаража: у кого машина «на подготовке» (менеджер продаёт сам). */
     public function garageCar(): HasOne
     {
@@ -380,7 +389,9 @@ class Offer extends Model implements HasMedia
             ->whereHas('positions', fn ($p) => $p->where('track', Track::Service))
             ->when($user->isAdmin(), fn ($q) => $q->whereNotNull('evacuator_id'), fn ($q) => $q->where('evacuator_id', $user->id)
                 // Забирает ТС по своей сделке — это её шаг, а не поручение: живёт на странице сделки (`Handover`).
-                ->whereDoesntHave('deal', fn ($d) => $d->where('buyer_id', $user->id)));
+                ->whereDoesntHave('deal', fn ($d) => $d->where('buyer_id', $user->id))
+                // Везёт свою гаражную машину — «Забрал» на её странице в «Гараже», второй строкой не стоит.
+                ->whereDoesntHave('garageCar', fn ($g) => $g->where('manager_id', $user->id)));
     }
 
     /** Ход ответственного за вывоз — «забрать»: на текущем этапе вывоза есть его кнопка той ветки, куда везём. Одним запросом. */

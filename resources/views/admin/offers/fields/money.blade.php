@@ -20,12 +20,15 @@
         <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
     </x-ui.field>
     @endunless
+    {{-- Гаражной машине цены показа ни к чему: продаёт менеджер сам, своему покупателю (06.10.2026). --}}
+    @unless ($garageOnly ?? false)
     <x-ui.field name="publish_price" data-controller="digits" data-action="input->digits#format" label="Заявленная, ₽" :value="$offer->publish_price" :form="$form" :placeholder="$offer->floor_price ? \App\Support\Money::nums(\App\Offers\Offer::declaredFrom($offer->floor_price)) : null"/>
     {{-- В карточке у черновика цена продажи стоит в «Оценке» рядом с «В продажу» — второй раз не нужна. --}}
     @unless ($askingElsewhere ?? false)<x-ui.field name="asking_price" data-controller="digits" data-action="input->digits#format" label="Цена продажи, ₽" :value="$offer->asking_price" :form="$form"/>@endunless
     <x-ui.field name="min_bid_price" data-controller="digits" data-action="input->digits#format" label="Минимальная, ₽" :value="$offer->min_bid_price" :form="$form" :placeholder="$offer->minBid() ? \App\Support\Money::nums($offer->minBid()) : null"/>
     <x-ui.field name="min_bid_share" label="Доля до продажной" :value="$offer->min_bid_share" :form="$form" placeholder="0,6"/>
     {{-- Метки: в редакторе — в шапке пилюлями, здесь только в карточке строки. --}}
+    @endunless
     @if ($withTags ?? true)<div class="col-span-2">@include('admin.offers.fields.tags')</div>@endif
     @else
     {{-- Оценочная — у вендора, чья закупочная от неё (`rate_by_value`, Альфа); та же, что у ТС парковки (`Sale::MAP`). --}}

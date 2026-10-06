@@ -22,6 +22,10 @@ class PickupController
         if (($deal = $offer->deal) && $deal->buyer_id === $request->user()->id && $deal->buyerPicksUp()) {
             return redirect($deal->href());
         }
+        // Своя гаражная машина — её страница в гараже, «Забрал» там.
+        if (($car = $offer->garageCar) && $car->manager_id === $request->user()->id) {
+            return redirect('/garage/cars/'.$offer->number);
+        }
         $offer = $this->offer($request, $offer);
         $position = $offer->position(Track::Service);
 

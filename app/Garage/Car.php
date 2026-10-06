@@ -5,7 +5,9 @@ namespace App\Garage;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -44,7 +46,7 @@ class Car extends Model
         return $this->belongsTo(User::class, 'manager_id');
     }
 
-    /** Сделка, которой машина пришла из подтверждения «В гараж»: пока ждёт страховую, маршрут идёт по ней. */
+    /** Гаражная сделка машины (подтверждение «В гараж» или «Отдать в гараж»): пока идёт, маршрут со страховой — по ней. */
     public function deal(): BelongsTo
     {
         return $this->belongsTo(Deal::class);
@@ -142,10 +144,19 @@ class Car extends Model
         return $this->state === CarState::Sold || $this->state === CarState::Settled;
     }
 
-    /** Ждёт страховую: машины у менеджера ещё нет, расходов не пишут, двигает маршрут сделки. */
+    /** Машины у менеджера ещё нет: её везёт вывоз (`StartPrepOnArrival` переводит на подготовку). */
     public function isWaiting(): bool
     {
         return $this->state === CarState::Waiting;
+    }
+
+    /**
+     * Сделка со страховой ещё идёт: машину могут уже готовить, но продавать — только после закрытия бумаг (06.10.2026).
+     * Машины без сделки (отданы руками до 06.10.2026) — как закрытые.
+     */
+    public function dealOpen(): bool
+    {
+        return $this->deal_id !== null && $this->deal?->state === DealState::Active;
     }
 
     /** Поставщику платил сам менеджер: документы на нём, счёт по продаже — только ему. */
@@ -161,26 +172,33 @@ class Car extends Model
             && (! $this->payoutInvoice || $this->payoutInvoice->state === InvoiceState::Void);
     }
 
-    /** Перевести на этап: дни на этапе считаются от этого момента, шаг ложится в путь машины. */
-    public function moveTo(CarState $state, array $attributes = []): void
+    /**
+     * Перевести на этап: дни на этапе считаются от этого момента, шаг ложится в путь машины и в «Историю» предложения.
+     */
+    public function moveTo(CarState $state, array $attributes = [], ?User $by = null): void
     {
         $this->update(['state' => $state, 'stage_at' => now(), 'history' => [...($this->history ?? []), [$state->value, now()->toIso8601String()]]] + $attributes);
+        $this->log($by, ['do' => 'stage', 'state' => $state->value] + ($state === CarState::Sold && $this->sold_price ? ['price' => $this->sold_price] : []));
+    }
+
+    /** Строка «Истории» предложения о гараже (`OfferEventType::Garage`). */
+    public function log(?User $by, array $payload): void
+    {
+        $this->offer?->log(OfferEventType::Garage, $by, $payload);
     }
 
     /**
-     * Путь машины для карточки: от этапа, с которого она пришла, до расчёта — пройденные с датой, текущий, впереди.
+     * Путь машины по этапам набора (подготовка — дорожка «Гараж», продажа — хвост дорожки «Продажа»): пройденные с
+     * датой, текущий, впереди. Записи истории со снятыми этапами («Доставка» до 06.10.2026) пропускаются.
      *
+     * @param  list<CarState>  $states
      * @return list<array{state: CarState, at: ?Carbon, status: string}>
      */
-    public function path(): array
+    public function path(array $states): array
     {
-        $history = collect($this->history ?? [])->map(fn ($h) => [CarState::from($h[0]), Carbon::parse($h[1])]);
-        $from = $history->first()[0] ?? $this->state;
+        $history = collect($this->history ?? [])->map(fn ($h) => [CarState::tryFrom($h[0]), Carbon::parse($h[1])])->filter(fn ($h) => $h[0]);
         $path = [];
-        foreach (CarState::cases() as $state) {
-            if ($state->order() < $from->order()) {
-                continue;
-            }
+        foreach ($states as $state) {
             $path[] = [
                 'state' => $state,
                 'at' => $history->last(fn ($h) => $h[0] === $state)[1] ?? null,

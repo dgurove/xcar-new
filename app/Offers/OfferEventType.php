@@ -22,4 +22,5 @@ enum OfferEventType: string
     case Scheduled = 'scheduled';
     case PickupAssigned = 'pickup_assigned';
     case InsurerReplied = 'insurer_replied';
+    case Garage = 'garage';
 }

@@ -34,12 +34,12 @@ class GarageController
         ListPrefs::sync($request, 'crm-garage', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset'), self::PRESETS) ? $request->query('preset') : 'work';
 
-        $q = Car::with(['offer.brand', 'offer.model', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal']);
+        $q = Car::with(['offer.brand', 'offer.model', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal']);
         match ($preset) {
             'sold' => $q->where('state', CarState::Sold),
             'settled' => $q->where('state', CarState::Settled),
             'all' => $q,
-            default => $q->whereIn('state', [CarState::Waiting, CarState::Delivery, CarState::Repair, CarState::Selling]),
+            default => $q->whereIn('state', [CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling]),
         };
         $cars = $facets->apply($q)->orderBy('stage_at')->get();
 

@@ -158,14 +158,13 @@ abstract class Route
     {
         return [
             'agreement_garage' => ['name' => 'Оформляем на нас', 'text' => 'Машина уходит к Вам в гараж: подтверждаем покупку поставщику, оплачиваем и оформляем документы на нас'],
-            'handover_garage' => ['name' => 'Забрать в гараж', 'text' => 'Автомобиль оплачен и оформлен. Заберите его и отметьте, что забрали'],
         ];
     }
 
     /**
-     * Гаражная ветка «платим мы» (03.10.2026): подтвердили поставщику, оплатили, получили документы на нас, менеджер
-     * забрал машину — конец маршрута ставит её ему в гараж на доставку (`ChangeOfferState`). Выдачу с нашей парковки
-     * «Автомобиль передан» жмёт сама (`SyncOffer`). $confirm — со своим письмом поставщику (у Каркаде писем нет).
+     * Гаражная ветка «платим мы» (03.10.2026): подтвердили поставщику, оплатили, получили документы на нас — конец
+     * маршрута, сделка закрыта (`ChangeOfferState` → «В гараже»). Забрать машину — не шаг продажи, а вывоз к менеджеру
+     * (06.10.2026: этап «Выдача автомобиля — в гараж» снят). $confirm — со своим письмом поставщику (у Каркаде писем нет).
      */
     public static function garageSegment(bool $confirm = true): array
     {
@@ -181,13 +180,7 @@ abstract class Route
             ],
             'garage_papers' => [
                 'name' => 'Документы на нас', 'block' => 'agreement_garage', 'waits_for' => 'supplier', 'limit_minutes' => 5 * self::DAY,
-                'exits' => [['Документы получены', 'staff', 'garage_pickup']],
-            ],
-            'garage_pickup' => [
-                'name' => 'Выдача автомобиля', 'block' => 'handover_garage', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY,
-                'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Автомобиль оплачен и оформлен на нас. Заберите его и отметьте, что забрали',
-                'staff_fields' => [['label' => 'Адрес', 'type' => 'textarea'], ['label' => 'Контакт'], ['label' => 'Дата выдачи']],
-                'exits' => [['Автомобиль забрал', 'manager', 'closed_won'], ['Автомобиль передан', 'staff', 'closed_won']],
+                'exits' => [['Документы получены', 'staff', 'closed_won']],
             ],
         ];
         if (! $confirm) {
@@ -215,11 +208,14 @@ abstract class Route
         ];
     }
 
-    /** Исход, раздвоенный по тому, кто забирает автомобиль: без $picks — один, как раньше. */
+    /**
+     * Исход, раздвоенный по тому, кто забирает автомобиль: без $picks — один, как раньше. С $picks — ещё и гаражной
+     * сделке (`Outcome::KEEPS`): машину не передаём, сделка закрыта — её везёт вывоз (06.10.2026).
+     */
     protected static function forked(string $label, string $actor, string $to, ?string $picks): array
     {
         return $picks
-            ? [[$label, $actor, $to, Outcome::WE_HAND], [$label, $actor, $picks, Outcome::BUYER_PICKS]]
+            ? [[$label, $actor, $to, Outcome::WE_HAND], [$label, $actor, $picks, Outcome::BUYER_PICKS], [$label, $actor, 'closed_won', Outcome::KEEPS]]
             : [[$label, $actor, $to]];
     }
 

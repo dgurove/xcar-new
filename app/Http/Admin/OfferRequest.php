@@ -136,12 +136,16 @@ class OfferRequest extends FormRequest
         if ($only !== null) {
             $data = Arr::only($data, $only);
         }
+        // Галки и «кому» блока «Показ» — только когда он был в форме (`_show`): в сделке и в гараже редактор его не
+        // рисует (06.10.2026), и сохранение полей ТС не должно их сбрасывать.
+        $show = $only !== null || $this->has('_show');
+        $showOnly = ['chat_enabled', 'share_locked', 'recommended', 'garage_allowed'];
         foreach (['show_vin', 'show_address', 'chat_enabled', 'share_locked', 'recommended', 'prices_include_vat', 'garage_allowed'] as $flag) {
-            if ($sent($flag)) {
+            if ($sent($flag) && ($show || ! in_array($flag, $showOnly, true))) {
                 $data[$flag] = $this->boolean($flag);
             }
         }
-        if ($sent('audience_rules')) {
+        if ($sent('audience_rules') && $show) {
             // Волны показа приходят JSON-строкой из шторки «Кому»; пустые — «как у вендора» (null).
             $data['audience_rules'] = AudienceRules::normalize($this->input('audience_rules')) ?: null;
         }

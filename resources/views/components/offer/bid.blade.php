@@ -49,8 +49,9 @@
                             <div data-reveal-target="pane" data-reveal-key="manager" @if ($branch && old('payer', 'us') !== 'manager') hidden @endif>
                                 <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')" data-controller="digits" data-action="input->digits#format"/>
                             </div>
-                            {{-- Везут к нему в гараж: сам или мы (05.10.2026); выбрано, кто уже вывозит. --}}
-                            @if ($offer->pickupChoosable())
+                            {{-- Везут к нему в гараж: сам или мы (05.10.2026); выбрано, кто уже вывозит. Вывоз у гаражной
+                                 есть всегда (06.10.2026), даже у вендора без маршрута — заведётся сам. --}}
+                            @if (! $offer->pickedUp() && $offer->parkVehicle?->state !== \App\Park\VehicleState::Stored)
                                 @php $byBuyer = ! $offer->evacuator_id || $offer->evacuator_id === $bid->user_id; @endphp
                                 <div class="flex flex-col gap-1.5">
                                     <span class="field-label">Везёт в гараж</span>

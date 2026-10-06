@@ -36,7 +36,7 @@ final class IssueGaragePayout
         $live = $car->payoutInvoice?->state === InvoiceState::Void ? null : $car->payoutInvoice;
         if ($live) {
             if ($live->state === InvoiceState::Paid) {
-                $car->moveTo(CarState::Settled, ['settled_at' => now()]);
+                $car->moveTo(CarState::Settled, ['settled_at' => now()], $by);
                 GarageChanged::dispatch($car);
             }
 
@@ -47,7 +47,7 @@ final class IssueGaragePayout
         }
         $payout = Settlement::of($car->refresh()->load('costs'))['payout'];
         if (! $car->manager || $payout < 0.005) {
-            $car->moveTo(CarState::Settled, ['settled_at' => now()]);
+            $car->moveTo(CarState::Settled, ['settled_at' => now()], $by);
             GarageChanged::dispatch($car);
 
             return null;
@@ -58,6 +58,7 @@ final class IssueGaragePayout
                 lines: [['title' => 'Расходы и вознаграждение по '.$car->offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => $payout, 'kind' => ChargeKind::AgentFee->value]],
                 offerId: $car->offer_id);
             $car->update(['payout_invoice_id' => $invoice->id]);
+            $car->log($by, ['do' => 'payout', 'amount' => $payout]);
 
             return $invoice;
         });

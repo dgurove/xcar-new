@@ -83,7 +83,7 @@ class MoneyController
         abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed() && $invoice->kind !== ChargeKind::Reward, 404);
 
         [$toast, $link] = $choice($request, $invoice, $me);
-        // «Оплатить» есть и в задаче сделки, и на машине в гараже (гаражная сделка ждёт страховую) — ответ туда, откуда платили.
+        // «Оплатить» есть и в задаче сделки, и на машине в гараже (гаражная сделка ещё идёт) — ответ туда, откуда платили.
         $back = parse_url(url()->previous(), PHP_URL_PATH);
         $car = $deal->isGarage() ? $deal->garageCar : null;
         $from = match (true) {

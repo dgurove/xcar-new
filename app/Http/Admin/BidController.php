@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Garage\Actions\EnsurePickup;
 use App\Garage\GaragePayer;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\AssignPickup;
@@ -34,14 +35,10 @@ class BidController
             $data = $request->validate(['payer' => ['nullable', Rule::enum(GaragePayer::class)], 'pickup' => ['nullable', Rule::in(['manager', 'us'])],
                 'share' => ['nullable', 'integer', 'min:1']]);
             DB::transaction(function () use ($bid, $data, $request, $accept, $default) {
-                $offer = $bid->offer->loadMissing('vendor.workflows', 'parkVehicle');
-                $choosable = $offer->pickupChoosable();
-                $accept($bid, $request->user(), payer: GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us, scheme: $default, share: isset($data['share']) ? (int) $data['share'] : null);
-                // Машина едет к менеджеру в гараж (05.10.2026, Бородин: был вывоз «к нам»), везёт он сам или мы.
-                $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests']);
-                if ($choosable && $offer->pickupChoosable()) {
-                    app(AssignPickup::class)($offer, ($data['pickup'] ?? 'manager') === 'manager' ? $bid->user : null, Destination::Keeper, $request->user());
-                }
+                $deal = $accept($bid, $request->user(), payer: GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us, scheme: $default, share: isset($data['share']) ? (int) $data['share'] : null);
+                // Машина едет к менеджеру в гараж (05.10.2026, Бородин: был вывоз «к нам»), везёт он сам или мы; вывоз у
+                // гаражной есть всегда (06.10.2026).
+                app(EnsurePickup::class)($deal->offer, $request->user(), ($data['pickup'] ?? 'manager') === 'manager' ? $bid->user : null);
             });
 
             return back()->with('toast', ($switch ? 'Отдали ' : 'В гараж — ').$bid->user->shortName());

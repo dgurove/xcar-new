@@ -39,6 +39,9 @@ final class ReopenWhenVoided
         } elseif ($car->state === CarState::Settled && $invoice->fresh()->state !== InvoiceState::Paid) {
             $car->update(['state' => CarState::Sold, 'settled_at' => null]);
         }
+        if ($invoice->state === InvoiceState::Void) {
+            $car->log($e->by, ['do' => 'void', 'amount' => (float) $invoice->total]);
+        }
         GarageChanged::dispatch($car);
     }
 }

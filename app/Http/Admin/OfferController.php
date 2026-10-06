@@ -5,10 +5,8 @@ namespace App\Http\Admin;
 use App\Cars\Vin\Vin;
 use App\Chats\Chat;
 use App\Chats\Message as ChatMessage;
-use App\Garage\Actions\SendViaRoute;
-use App\Garage\Actions\TakeToGarage;
+use App\Garage\Actions\GiveToGarage;
 use App\Garage\Car as GarageCar;
-use App\Garage\CarState;
 use App\Garage\GaragePayer;
 use App\Garage\GarageView;
 use App\Mail\Candidate;
@@ -328,7 +326,7 @@ class OfferController
         // он не видит, и грузить их незачем.
         $admin = $request->user()->canManageCrm();
         $offer->load(['brand', 'model', 'settlement', 'media', 'events.user', ...($admin ? ['bids.user', 'interests.user.manager', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
-            'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer'] : [])]);
+            'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer', 'lastDeal.buyer', 'lastDeal.bid', 'evacuator'] : [])]);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
             app(WarmPhotos::class)($offer);
@@ -359,8 +357,11 @@ class OfferController
             // Черновик только что заведён из писем и ещё ни разу не сохранён: внизу «Отменить» и «Не заявка».
             'fromMail' => $fromMail,
             'empty' => $empty,
-            // Машина в гараже ведётся здесь же, карточкой «Гараж»: путь, деньги, расходы и все действия сотрудника.
+            // Машина в гараже ведётся здесь же, дорожкой «Гараж» (подготовка) и хвостом «Продажи»: путь, деньги, расходы и
+            // все действия сотрудника.
             'garageView' => $admin ? self::garageView($offer, $request->user()) : null,
+            // Сделка — третьей дорожкой (страница сделки CRM с 06.10.2026 — этот редактор): идущая, иначе состоявшаяся.
+            'deal' => $admin ? $offer->lastDeal : null,
         ]);
     }
 
@@ -521,25 +522,20 @@ class OfferController
     }
 
     /**
-     * Отдать машину менеджеру в гараж, минуя подтверждение: с этапа «Ждёт страховую» — гаражной сделкой по маршруту
-     * (`SendViaRoute`), с доставки, подготовки или продажи — сразу (`TakeToGarage`): машина бывает уже у нас или у него.
+     * Отдать машину в гараж, минуя подтверждение (`GiveToGarage`, 06.10.2026): как принятое гаражное — сделка, маршрут
+     * со страховой, вывоз к менеджеру. Без менеджера — «взяли под себя», платим мы. Где машина — с чего начать вывоз.
      */
-    public function garage(Request $request, Offer $offer, TakeToGarage $take, SendViaRoute $send)
+    public function garage(Request $request, Offer $offer, GiveToGarage $give)
     {
         $data = $request->validate([
-            'stage' => ['required', Rule::in([CarState::Waiting->value, CarState::Delivery->value, CarState::Repair->value, CarState::Selling->value])],
-            'manager_id' => [Rule::requiredIf($request->input('stage') === CarState::Waiting->value), 'nullable', 'exists:users,id'],
+            'where' => ['required', Rule::in(array_keys(GiveToGarage::WHERE))],
+            'manager_id' => ['nullable', 'exists:users,id'],
             'payer' => ['nullable', Rule::enum(GaragePayer::class)],
-            'cost' => ['nullable', 'integer', 'min:0'],
-            'note' => ['nullable', 'string', 'max:500'],
-        ], ['manager_id.required' => 'Ждать страховую будет менеджер — выберите кому']);
+            'pickup' => ['nullable', Rule::in(['manager', 'us'])],
+        ]);
         $manager = $data['manager_id'] ? User::findOrFail($data['manager_id']) : null;
-        $stage = CarState::from($data['stage']);
-        if ($stage === CarState::Waiting) {
-            $send($offer, $manager, GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us, $request->user());
-        } else {
-            $take($offer, $manager, $data['cost'] ?? null, $request->user(), $data['note'] ?? null, $stage);
-        }
+        $evacuator = $manager && ($data['pickup'] ?? 'manager') === 'manager' ? $manager : null;
+        $give($offer, $manager, GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us, $request->user(), $data['where'], $evacuator);
 
         // Из карточки «Без цены» (DetailBack): строка уходит из списка, карточка — к следующей без цены.
         return redirect("/offers/{$offer->number}")->with('toast', $manager ? 'В гараже у '.$manager->shortName() : 'В гараже')

@@ -73,16 +73,31 @@ final class SyncOffer
         $this->moveTo($e->vehicle, CarPlace::Owner, $e->by);
     }
 
-    /** Выдали с парковки: если продажа ждёт передачи машины (своя машина, Stock), шаг «Автомобиль передан» делается сам. */
+    /**
+     * Выдали с парковки: если продажа ждёт передачи машины (своя машина, Stock), шаг «Автомобиль передан» делается сам.
+     * Гаражную машину выдали её менеджеру (без менеджера — нам): вывоз встаёт на «Стоит у …», гараж начинает подготовку
+     * (`StartPrepOnArrival`, 06.10.2026: шага «Выдача — в гараж» у продажи больше нет).
+     */
     public function released(VehicleReleased $e): void
     {
         if (! ($offer = $this->offer($e->vehicle))) {
             return;
         }
+        $by = $e->by ?? $this->system();
         $offer->log(OfferEventType::Note, $e->by, ['text' => 'Выдана с парковки'.($e->vehicle->yard ? ' «'.$e->vehicle->yard->name.'»' : '')]);
+        if ($car = $offer->garageCar()->first()) {
+            $to = $car->manager_id ? Destination::Keeper : Destination::Ours;
+            $stage = $offer->position(Track::Service)?->stage->workflow->stageForPlace($to === Destination::Keeper ? CarPlace::Keeper : CarPlace::WithUs);
+            $offer->update(['evacuation_to' => $to->value]);
+            if ($stage) {
+                ($this->place)($offer, $stage, $by);
+            }
+
+            return;
+        }
         $exit = $offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff, $offer->deal)->first(fn ($x) => mb_strtolower($x->label) === 'автомобиль передан');
         if ($exit) {
-            ($this->take)($offer, $exit, Actor::Staff, $e->by ?? $this->system());
+            ($this->take)($offer, $exit, Actor::Staff, $by);
         }
     }
 

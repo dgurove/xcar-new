@@ -1,7 +1,9 @@
 {{-- Машина в гараже — полная страница ТС (`x-offer.object`): кадры листаются и открываются во весь экран, характеристики,
-     документы, открытые менеджеру. Своё у гаража: состояние под заголовком; ждёт страховую — шаг сделки с её кнопками
-     («Забираю», «Отказываюсь»), как на странице сделки; путь, деньги, расходы; внизу кнопка того, что сейчас надо сделать
-     (`GarageView`), редкое — в «⋯». Шторки: расход, «Продаю», «Продана», счёт с вознаграждением, «Поступило», «Оплатить». --}}
+     документы, открытые менеджеру. Своё у гаража: состояние под заголовком; пока идёт сделка со страховой — её шаг с
+     кнопками («Забираю», «Отказываюсь»), как на странице сделки; путь одной лесенкой (сделка, где машина, подготовка,
+     продажа — у сотрудника в CRM это три дорожки); деньги, расходы; внизу кнопка того, что сейчас надо сделать
+     (`GarageView`: «Забрал», если везёт сам, «Готова», «Продаю»), редкое — в «⋯». Шторки: расход, «Продаю», «Продана»,
+     счёт с вознаграждением, «Поступило», «Оплатить». --}}
 @php extract($view); @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Гараж', '/garage']">
     {{-- Состояние — словом в строке заголовка, рядом с названием, а не отдельной строкой под ним. --}}
@@ -9,7 +11,7 @@
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 text-sm">
         <x-ui.state :tone="$car->state->tone()" class="text-sm">{{ mb_strtolower($car->state->label()) }}</x-ui.state>
         @if ($staff)<span class="text-ink-muted">{{ $car->manager?->shortName() ?? 'взяли под себя' }}</span>@endif
-        @if ($staff && $car->deal_id && $car->isWaiting())<a href="{{ \App\Support\Surface::Crm->url('/work/deals/'.$car->deal_id) }}" class="text-accent-text" data-turbo="false">Сделка в CRM</a>@endif
+        @if ($staff && $car->dealOpen())<a href="{{ \App\Support\Surface::Crm->url('/work/deals/'.$car->deal_id) }}" class="text-accent-text" data-turbo="false">Сделка в CRM</a>@endif
     </div>
     </x-slot:actions>
     @error('car')<x-ui.flash tone="danger" class="mb-4">{{ $message }}</x-ui.flash>@enderror
@@ -32,7 +34,7 @@
 
         <div class="box">
             <h2 class="box-title">Путь</h2>
-            <div class="mt-3">@include('garage.cars.path')</div>
+            <div class="mt-3">@include('garage.cars.path', ['set' => 'all'])</div>
         </div>
 
         @include('garage.cars.costs')

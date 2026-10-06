@@ -10,6 +10,7 @@ use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Billing\PaymentSource;
 use App\Garage\Actions\AddCost;
+use App\Garage\Actions\EnsurePickup;
 use App\Garage\Actions\IssueGaragePayout;
 use App\Garage\Actions\MarkGarageSold;
 use App\Garage\Actions\MoveCar;
@@ -18,6 +19,7 @@ use App\Garage\Car;
 use App\Garage\CarState;
 use App\Garage\GaragePayer;
 use App\Offers\Actions\AcceptBid;
+use App\Offers\Actions\PickUp;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\BidKind;
 use App\Offers\CarPlace;
@@ -42,9 +44,10 @@ use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
- * Гараж через подтверждение: гаражная сделка «платим мы» идёт гаражной веткой маршрута и кончается не «Выдан», а машиной
- * в гараже на доставке; продали её покупателю — после его оплаты менеджеру к выплате ровно его расходы плюс
- * вознаграждение, выплатили — расчёт закрыт. Ошибка тут молчалива и дорога (чужая ветка, лишние деньги) — поэтому тест.
+ * Гараж через подтверждение: гаражная сделка «платим мы» идёт гаражной веткой маршрута и кончается не «Выдан», а «В
+ * гараже»; машину везёт вывоз, довёз — подготовка (06.10.2026: «Доставки» нет); продали её покупателю — после его оплаты
+ * менеджеру к выплате ровно его расходы плюс вознаграждение, выплатили — расчёт закрыт. Ошибка тут молчалива и дорога
+ * (чужая ветка, лишние деньги) — поэтому тест.
  */
 class GarageByConfirmationTest extends TestCase
 {
@@ -83,20 +86,26 @@ class GarageByConfirmationTest extends TestCase
         $this->assertSame(OfferState::Garage, $offer->fresh()->state);
         $this->assertSame(DealState::Done, $deal->fresh()->state);
         $car = Car::where('offer_id', $offer->id)->firstOrFail();
-        $this->assertSame(CarState::Delivery, $car->state);
+        $this->assertSame(CarState::Waiting, $car->state);
         $this->assertSame(900000, $car->cost);
 
-        app(MoveCar::class)($car, CarState::Repair, $manager);
+        // Машину везёт вывоз (у вендора его не было — заводится сам), «Забрал» менеджера — подготовка.
+        app(EnsurePickup::class)($offer->fresh(), $admin, $manager, 'collect');
+        app(PickUp::class)($offer->fresh(), $manager);
+        $car->refresh();
+        $this->assertSame(CarState::Repair, $car->state);
         app(AddCost::class)($car, ['title' => 'Запчасти', 'amount' => 50000], $manager);
-        // Сотрудник ведёт этапы в обе стороны, менеджер — только вперёд.
+        // Сотрудник ведёт этапы в обе стороны, менеджер — только вперёд своей кнопкой.
         app(MoveCar::class)($car, CarState::Selling, $admin);
         app(MoveCar::class)($car, CarState::Repair, $admin);
         try {
-            app(MoveCar::class)($car, CarState::Delivery, $manager);
-            $this->fail('менеджер назад не двигает');
+            app(MoveCar::class)($car, CarState::Selling, $manager);
+            $this->fail('менеджер через этап не прыгает');
         } catch (ValidationException) {
         }
-        app(MoveCar::class)($car, CarState::Selling, $manager);
+        // Сделка закрыта — «Готова» ставит сразу в продажу.
+        app(MoveCar::class)($car, CarState::Ready, $manager);
+        $this->assertSame(CarState::Selling, $car->fresh()->state);
         app(MarkGarageSold::class)($car, ['sold_price' => 1500000], $manager);
         $buyer = Party::create(['kind' => PartyKind::Person, 'name' => 'Покупатель']);
         $invoice = app(SettleGarageCar::class)($car->fresh(), $admin, 70000, $buyer);
@@ -161,18 +170,23 @@ class GarageByConfirmationTest extends TestCase
         $this->assertNull($offer->evacuator_id);
         $this->assertSame($manager->id, $offer->keeper()?->id);
 
-        // Вывоз довёз машину к менеджеру раньше оплаты — она ждёт сделку, сделка не перескакивает.
+        // Вывоз довёз машину к менеджеру раньше оплаты — подготовка идёт, сделка не перескакивает, продавать рано.
         $this->drive($offer, Track::Service, $admin, fn (Offer $o) => $o->position(Track::Service)->stage->car_place === CarPlace::Keeper);
         $car = Car::where('offer_id', $offer->id)->firstOrFail();
-        $this->assertSame(CarState::Waiting, $car->state);
+        $this->assertSame(CarState::Repair, $car->state);
         $this->assertSame('Счёт выставлен менеджеру', $offer->fresh()->stage()->name);
+        app(MoveCar::class)($car, CarState::Ready, $manager);
+        $this->assertSame(CarState::Ready, $car->fresh()->state);
 
-        // Сделка дошла до конца — машина сразу на подготовке: «Привёз» уже случился.
+        // Бумаги готовы — сделка закрыта сразу, без передачи автомобиля (его привёз вывоз), машина сама в продаже.
         $deal = $offer->deal()->first();
         $this->drive($offer, Track::Sale, $admin, fn (Offer $o) => $o->state !== OfferState::Sold, $manager);
         $this->assertSame(OfferState::Garage, $offer->fresh()->state);
-        $this->assertSame(CarState::Repair, $car->fresh()->state);
+        $this->assertSame(CarState::Selling, $car->fresh()->state);
         $this->assertSame(DealState::Done, $deal->fresh()->state);
+        $passed = $offer->events()->where('type', 'stage_entered')->get()->map(fn ($e) => $e->payload['to'] ?? null);
+        $this->assertNotContains('Передача автомобиля покупателю', $passed);
+        $this->assertNotContains('Менеджер забирает автомобиль', $passed);
     }
 
     /** Жать первые не тупиковые кнопки ветки, пока не выполнится условие. */

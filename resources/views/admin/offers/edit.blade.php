@@ -6,14 +6,13 @@
     // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
     // Модератор правит только поля черновика: состояния, гаража, подтверждений и круга показа у него нет.
     $transitions = $admin ? collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
-    $garage = $offer->state === OfferState::Garage ? \App\Garage\Car::with('manager')->where('offer_id', $offer->id)->first() : null;
+    $garage = $garageView['car'] ?? null;
     // Машину из гаража уводит только «Отдали по ошибке» там же: кнопки состояния тут отбились бы ошибкой.
     if ($garage) $transitions = collect();
-    // Руками в гараж — не из сделки: идущую сначала отменяют, гаражная сделка сама доводит машину туда маршрутом.
-    $canGarage = $admin && ! $garage && $offer->state !== OfferState::Sold && $offer->state->allows(OfferState::Garage);
+    // Руками в гараж — не из сделки: идущую сначала отменяют; отдают как гаражную сделку (`GiveToGarage`), со страховой — маршрутом.
+    $canGarage = $admin && ! $garage && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     // Подтверждения: ждущие по сумме вниз, потом решённые.
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
-    $waiting = $bids->where('state', BidState::Active);
     $grid = 'grid grid-cols-2 gap-3 @4xl:grid-cols-3';
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
@@ -27,12 +26,13 @@
     @endphp
     <div class="offer-head -mt-3 mb-4 flex flex-wrap items-center gap-1.5">
         @if ($garage)
+            {{-- Отданная в гараж — «в гараже», как в сделке, пока идут и бумаги со страховой (владелец 06.10.2026). --}}
             <x-ui.pill tone="plain" href="#garage">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
         @elseif ($admin && $offer->isScheduled())
             <x-offer.slot-menu :offer="$offer"/>
         @elseif ($admin && $offer->deal)
-            {{-- В сделке пилюля состояния и есть вход в сделку: «Идёт сделка ›». --}}
-            <x-ui.pill :tone="$offer->state->tone()" href="/work/deals/{{ $offer->deal->id }}">{{ $offer->state->label() }} ›</x-ui.pill>
+            {{-- В сделке пилюля состояния ведёт к дорожке «Сделка» ниже. --}}
+            <x-ui.pill :tone="$offer->state->tone()" href="#deal">{{ $offer->state->label() }}</x-ui.pill>
         @else
             <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
         @endif
@@ -73,28 +73,31 @@
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
 
-    {{-- На телефоне блоки идут в одну колонку по order-*, на десктопе обёртки становятся колонками. --}}
-    {{-- Колонки — по ширине содержимого (@container): с открытой справа шторкой документов редактор в одну колонку. --}}
+    {{-- Раскладка (06.10.2026, владелец): сверху «Транспортное средство», справа от него «Цены» и «История»; под ними
+         дорожки в ряд (`admin.offers.lanes`: «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения»); фото, документы и
+         письма — во всю ширину. На телефоне одной колонкой по order-*: дорожки первыми — в них ход. Колонки — по ширине
+         содержимого (@container): с открытой справа шторкой документов редактор в одну колонку. --}}
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
-        <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
-            @if ($bids->isNotEmpty() || ($admin && $offer->state === OfferState::Open))
-            {{-- Подтверждения: без сделки — выбрать победителя (оранжевым, пока ждут). Со сделкой это и есть карточка «Сделка»:
-                 принятое, «Открыть сделку» и резерв; деньги и заметка — на странице сделки. --}}
-            <x-ui.card :title="$offer->deal ? 'Сделка' : 'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" class="order-1 {{ ! $offer->deal && $waiting->isNotEmpty() ? 'box-urgent' : '' }}">
-                @include('admin.offers.bids')
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode(\App\Offers\Jobs\ImportMigtorgLot::glowed($offer)) }}" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 @4xl:order-none @4xl:col-start-1 @4xl:row-start-1">
+            @csrf @method('put')
+
+            <x-ui.card title="Транспортное средство">
+                <x-mail.reader-diffs form="offer-form" class="mb-3"/>
+                @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
+                @include('admin.offers.fields.car')
+                {{-- Показ — пока машину показывают: в сделке и в гараже он ни о чём (галки при сохранении не трогаются, `_show`). --}}
+                @if (in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true))
+                    @include('admin.offers.fields.show', ['summary' => $showingSummary])
+                @endif
             </x-ui.card>
-            @endif
+        </form>
 
-            @if ($garageView)
-                <x-ui.card title="Гараж" id="garage" class="order-1 scroll-mt-24">
-                    @include('admin.offers.garage-card')
-                </x-ui.card>
-            @endif
-
-            @if ($admin && $offer->positions->isNotEmpty())
-                @include('admin.offers.route')
-            @endif
+        <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
+            {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
+            <x-ui.card title="Цены" class="order-3">
+                @include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false, 'garageOnly' => (bool) $garageView])
+            </x-ui.card>
 
             @if ($chats->isNotEmpty())
             <x-ui.card title="Чаты" class="order-5">
@@ -113,30 +116,6 @@
             </x-ui.card>
             @endif
 
-            @if ($admin && $offer->interests->isNotEmpty())
-            <x-ui.card title="Интерес" class="order-5">
-                <div class="flex flex-col gap-2">
-                    @foreach ($offer->interests as $interest)
-                        <div class="box-nested">
-                            <div class="flex flex-wrap items-center gap-1.5"><x-ui.person :user="$interest->user" full/>@if ($interest->user->manager)<span class="text-sm text-ink-muted">покупатель</span><x-ui.person :user="$interest->user->manager"/>@endif @if ($interest->user->phone)<a href="tel:+{{ $interest->user->phone }}" class="tag nums">{{ $interest->user->phoneFormatted() }}</a>@endif<span class="tag">{{ $interest->state->label() }}</span><span class="tag nums">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span></div>
-                            @if ($interest->comment)<div class="mt-1 text-sm">{{ $interest->comment }}</div>@endif
-                            @if ($interest->state === InterestState::New)
-                                <form method="post" action="/interests/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="contacted"><x-ui.button size="sm" variant="secondary">Связались</x-ui.button></form>
-                            @elseif ($interest->state === InterestState::Contacted)
-                                <form method="post" action="/interests/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="closed"><x-ui.button size="sm" variant="ghost">Закрыть</x-ui.button></form>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            </x-ui.card>
-            @endif
-
-            {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС.
-                 Срок приёма, кому показывать и галки показа — «Показ» под описанием ТС. --}}
-            <x-ui.card title="Цены" class="order-3">
-                @include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false])
-            </x-ui.card>
-
             {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. --}}
             @php $events = $offer->events->take(30); @endphp
             <x-ui.card title="История" class="order-6">
@@ -154,32 +133,24 @@
             </x-ui.card>
         </div>
 
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode(\App\Offers\Jobs\ImportMigtorgLot::glowed($offer)) }}" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
-            @csrf @method('put')
-
-            <x-ui.card title="Транспортное средство" class="order-2">
-                <x-mail.reader-diffs form="offer-form" class="mb-3"/>
-                @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
-                @include('admin.offers.fields.car')
-                @include('admin.offers.fields.show', ['summary' => $showingSummary])
-            </x-ui.card>
-
-        </form>
+        @if ($admin)
+            <div class="order-1 min-w-0 @4xl:order-none @4xl:col-span-2">@include('admin.offers.lanes')</div>
+        @endif
 
         {{-- Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и заглушки в ряду, attach_controller
              переспрашивает их, пока строка есть. --}}
-        <x-ui.card title="Фотографии" class="order-3 @4xl:col-span-2" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach">
+        <x-ui.card title="Фотографии" class="order-4 @4xl:order-none @4xl:col-span-2" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach">
             <x-mail.attach-line :model="$offer"/>
             @include('admin.offers.gallery')
         </x-ui.card>
 
-        <x-ui.card title="Документы" class="order-4 @4xl:col-span-2">
+        <x-ui.card title="Документы" class="order-4 @4xl:order-none @4xl:col-span-2">
             @include('admin.offers.papers-block', ['reader' => true, 'auto' => $fromMail])
         </x-ui.card>
 
         {{-- Письма — под документами, как в деле ТС: последнее словами, вся переписка и ответ — окном поверх редактора. --}}
         @if ($lastLetter && auth()->user()->canCrmMail())
-            <x-ui.card title="Письма" :count="$letters" class="order-4 @4xl:col-span-2">
+            <x-ui.card title="Письма" :count="$letters" class="order-4 @4xl:order-none @4xl:col-span-2">
                 <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks"/>
             </x-ui.card>
         @endif

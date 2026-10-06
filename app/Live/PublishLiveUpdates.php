@@ -23,6 +23,7 @@ use App\Offers\Events\OfferStateChanged;
 use App\Offers\Showing;
 use App\Users\User;
 use App\Workflow\Events\StageEntered;
+use App\Workflow\Track;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Notifications\Events\NotificationSent;
 
@@ -112,10 +113,10 @@ final class PublishLiveUpdates
         $n = $e->offer->number;
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/work/garage', '/work/pickups']);
         // Вывоз, порученный менеджеру: его «Гараж» и страница вывоза.
-        if ($e->track === \App\Workflow\Track::Service && $e->offer->evacuator_id) {
+        if ($e->track === Track::Service && $e->offer->evacuator_id) {
             $this->publish->refresh(Topics::user($e->offer->evacuator_id), ['/garage', "/garage/pickups/{$n}"]);
         }
-        if ($deal = $e->deal ?? $e->offer->deal()->first()) {
+        if (($deal = $e->deal ?? $e->offer->deal()->first()) && $deal->buyer_id) {
             // Гаражная сделка живёт в гараже: шаг со страховой менеджер видит в карточке машины.
             $this->publish->refresh(Topics::user($deal->buyer_id), $deal->isGarage() ? ['/garage', "/garage/cars/{$n}"] : ['/deals', "/deals/{$deal->id}"]);
         }

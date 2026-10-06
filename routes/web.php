@@ -191,10 +191,11 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/', [GarageCarController::class, 'index']);
         Route::get('/cars/{offer}', [GarageCarController::class, 'show']);
         Route::post('/cars/{offer}/costs', [GarageCarController::class, 'storeCost']);
+        Route::post('/cars/{offer}/picked', [GarageCarController::class, 'picked']);
         Route::delete('/cars/{offer}', [GarageCarController::class, 'destroy']);
         Route::put('/costs/{cost}', [GarageCarController::class, 'updateCost']);
         Route::delete('/costs/{cost}', [GarageCarController::class, 'destroyCost']);
-        // Этапы: «Привёз», «Готова» — кнопкой; «Продаю» — менеджер ценой, итог и счёт — мы, об оплате сообщает он.
+        // Этапы: «Готова» — кнопкой; «Продаю» — менеджер ценой, итог и счёт — мы, об оплате сообщает он.
         Route::post('/cars/{offer}/stage', [GarageSettlementController::class, 'stage']);
         Route::post('/cars/{offer}/advance', [GarageSettlementController::class, 'stage']);
         Route::post('/cars/{offer}/sold', [GarageSettlementController::class, 'sold']);

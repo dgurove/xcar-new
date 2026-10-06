@@ -4,8 +4,8 @@ namespace App\Http\Admin;
 
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\CommissionMode;
-use App\Offers\DealScheme;
 use App\Offers\Deal;
+use App\Offers\DealScheme;
 use App\Offers\DealState;
 use App\Offers\OfferFiles;
 use App\Support\Detail;
@@ -87,10 +87,13 @@ class DealController
         ]);
     }
 
-    /** Сделка целиком: маршрут с исходами, деньги, письма и документы, просьбы менеджеру и ответы, машина и покупатель, история. */
+    /**
+     * Сделка целиком — это редактор предложения (06.10.2026: одна страница, три дорожки — «Продажа», «Вывоз», «Сделка»
+     * с деньгами, ДКП и заметкой). Старые ссылки и уведомления ведут сюда — отсюда туда.
+     */
     public function show(Deal $deal)
     {
-        return view('admin.deals.show', $this->data($deal));
+        return redirect('/offers/'.$deal->offer->number);
     }
 
     /** Карточка сделки рядом со списком (Detail): путь, деньги, письма, заметка — без истории. */

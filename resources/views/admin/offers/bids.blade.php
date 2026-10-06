@@ -4,7 +4,8 @@
      подтверждение сам, `x-offer.bid-for`), у предложения в продаже и в сделке. --}}
 @php
     use App\Offers\BidState;
-    $deal = $offer->deal;
+    // Идущая сделка, а в редакторе (`inside`) — и состоявшаяся: её принятое подтверждение сверху.
+    $deal = $offer->deal ?? (($inside ?? false) ? ($deal ?? null) : null);
     // Гаражные (без цены) — после ценовых; «Лучшая» — среди цен.
     $active = $offer->bids->where('state', BidState::Active)->sortByDesc('amount')->values();
     $priced = $active->reject->isGarage();
@@ -21,7 +22,7 @@
 <div class="flex flex-col gap-2">
     @if ($accepted)
         <div class="list"><x-offer.bid :bid="$accepted" :offer="$offer" :parked="$parked" :branch="$branch"/></div>
-        <a href="/work/deals/{{ $deal->id }}" class="btn btn-s btn-quiet self-start" data-turbo-frame="_top">{{ $deal->isGarage() ? 'Сделка в гараж' : 'Открыть сделку' }}</a>
+        @unless ($inside ?? false)<a href="/offers/{{ $offer->number }}" class="btn btn-s btn-quiet self-start" data-turbo-frame="_top">Открыть сделку</a>@endunless
         @if ($active->isNotEmpty())<div class="mt-2 px-1 text-sm text-ink-dim">Резерв <span class="nums">{{ $active->count() }}</span></div>@endif
     @endif
     @if ($active->isNotEmpty())

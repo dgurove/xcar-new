@@ -8,6 +8,7 @@ use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\MergeCarsCommand;
 use App\Cars\Console\MergeDuplicatesCommand;
+use App\Garage\Console\GarageReformFixCommand;
 use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\DetailBack;
 use App\Http\Middleware\EnsureAbility;
@@ -111,6 +112,7 @@ return Application::configure(basePath: dirname(__DIR__))
         SeedDemo::class,
         MergeCarsCommand::class,
         MergeDuplicatesCommand::class,
+        GarageReformFixCommand::class,
         FillFromDocsCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {

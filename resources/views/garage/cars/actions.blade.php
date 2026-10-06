@@ -15,7 +15,7 @@
         @if ($more)
             <span data-controller="sheet" class="contents">
                 <button type="button" class="btn btn-quiet btn-round {{ $bar ? 'btn-lg' : 'btn-s' }} {{ $buttons ? '' : 'ml-auto' }}" data-action="sheet#open" aria-label="Ещё"><x-ui.icon name="more" class="{{ $bar ? 'size-6' : 'size-5' }}"/></button>
-                <x-ui.sheet id="car-more-{{ $n }}" title="{{ $offer->titleWithYear() }}">
+                <x-ui.sheet id="car-more-{{ $n }}{{ $menuKey ?? '' }}" title="{{ $offer->titleWithYear() }}">
                     {{-- Меню строками, как «···» в приложении: редкое действие — словом, опасное — красным, не стопка кнопок. --}}
                     <div class="list">
                         @foreach ($more as $item)

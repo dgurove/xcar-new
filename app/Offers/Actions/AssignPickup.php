@@ -34,7 +34,9 @@ final class AssignPickup
         if ($to === Destination::Keeper && ! $evacuator && ! $offer->garageCar()->exists()) {
             throw ValidationException::withMessages(['evacuation_to' => 'К менеджеру — когда вывозит менеджер или машина у него в гараже']);
         }
-        if (in_array($offer->state, [OfferState::Garage, OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)) {
+        // Машину в гараже везут всегда (`Garage\Actions\EnsurePickup`, 06.10.2026): «В гараже» вывоз назначается.
+        if (in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)
+            || ($offer->state === OfferState::Garage && ! $offer->garageCar()->exists())) {
             throw ValidationException::withMessages(['evacuator_id' => 'Предложение '.mb_strtolower($offer->state->label()).', вывоз уже не назначить']);
         }
         $workflow = $offer->vendor?->workflow(Track::Service);

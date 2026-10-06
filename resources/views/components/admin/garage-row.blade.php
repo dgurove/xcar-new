@@ -1,4 +1,5 @@
-{{-- Строка «Работы → Гаража»: название в два этажа (под ним — этап цветным словом и дни на нём, на телефоне ещё вендор
+{{-- Строка «Работы → Гаража»: название в два этажа (под ним — этап цветным словом и дни на нём, у ждущей машины — слово
+     вывоза; пока идёт сделка со страховой — её шаг и чей ход третьей строкой; на телефоне ещё вендор
      с убытком), от 640 вендор столбцом, расходы (его и наши) и главное число этапа справа: вложено (в CRM с
      закупочной), к оплате или цена продажи. Нажатие — карточка с путём, деньгами и расходами. --}}
 @props(['car'])
@@ -10,7 +11,10 @@
     $offer = $car->offer;
     $days = $car->stageDays();
     $tone = match ($car->state->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', 'closed' => 'text-ink-dim', default => 'text-ink-muted' };
-    $stage = mb_strtolower($car->state->label()).', '.$days.' '.Plural::of($days, ['день', 'дня', 'дней']);
+    // Ждёт машину — словом вывоза («забрать», «готовим документы»): где она, решает он.
+    $stage = $car->isWaiting()
+        ? 'ждёт машину, '.\App\Offers\PickupState::of($offer)[0]
+        : mb_strtolower($car->state->label()).', '.$days.' '.Plural::of($days, ['день', 'дня', 'дней']);
     $current = $car->payoutInvoice ?? $car->invoice;
     [$value, $caption] = match ($car->state) {
         CarState::Waiting => [$car->cost ?? $car->deal?->cost, $car->cost === null ? 'платит менеджер' : 'отдали за'],
@@ -22,13 +26,13 @@
     };
     $ref = trim(($offer->vendor?->name ?? '').' '.($offer->claim_ref ?? ''));
     $spent = $car->spent();
-    $sale = $car->isWaiting() ? $offer->positions->first(fn ($p) => $p->track === \App\Workflow\Track::Sale) : null;
+    // Сделка со страховой идёт — её шаг и чей ход строкой ниже, как в «Сделках».
+    $sale = $car->dealOpen() ? $offer->positions->first(fn ($p) => $p->track === \App\Workflow\Track::Sale) : null;
 @endphp
 <tr data-detail-key="{{ $offer->number }}" id="garage-{{ $offer->number }}">
     <td class="grow">
         <x-ui.row-link :key="$offer->number"><span class="cell-title">{{ $offer->titleWithYear() }}</span></x-ui.row-link>
-        <span class="cell-sub"><span class="{{ $tone }}">{{ $sale ? mb_strtolower($car->state->label()).', '.mb_strtolower($sale->stage->block?->name ?? $sale->stage->name) : $stage }}</span>@if ($ref)<span class="sm:hidden">{{ $ref }}</span>@endif</span>
-        {{-- Ждёт страховую — чей ход на шаге сделки, как в «Сделках»: «Выставить счёт», «Ждём поставщика». --}}
+        <span class="cell-sub"><span class="{{ $tone }}">{{ $stage }}</span>@if ($ref)<span class="sm:hidden">{{ $ref }}</span>@endif</span>
         @if ($sale)<x-route.clock :position="$sale" side="staff" class="mt-0.5 line-clamp-2 sm:truncate"/>@endif
     </td>
     <td class="cell-dim hidden sm:table-cell"><span class="block max-w-56 truncate">{{ $ref }}</span></td>

@@ -9,7 +9,7 @@
     $claimed = $unpaid ? $current->claimed() : 0;
     $buyerPays = $car->invoice_to === 'buyer';
     [$label, $value, $tone] = match (true) {
-        ! $car->isSold() => $staff ? ['Вложено в ТС', $s['invested'], ''] : ['Расходы', $s['manager_costs'] + $s['our_costs'], ''],
+        ! $car->isSold() => $staff ? [$car->spent() > 0 || $car->cost === null ? 'Вложено в ТС' : 'Отдали за', $s['invested'], ''] : ['Расходы', $s['manager_costs'] + $s['our_costs'], ''],
         $unpaid && $current->isOwed() => [$staff ? 'Должны менеджеру' : 'Вам к выплате', $current->remaining(), 'text-accent-text'],
         $unpaid && $buyerPays => ['Покупатель платит', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
         $unpaid => [$staff ? 'Менеджер должен нам' : 'Отдать нам', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
@@ -33,14 +33,15 @@
     @if ($car->isSold() && $label !== 'Продана за')
         <div class="{{ $row }}"><span>Продана за</span><span class="nums">{{ Money::rub($car->sold_price) }}</span></div>
     @endif
-    @if ($staff && $car->cost !== null && ! $car->isSold())
+    {{-- Расходов нет — «Вложено» и есть «отдали за»: строки повторили бы главное число. --}}
+    @if ($staff && $car->cost !== null && ! $car->isSold() && $car->spent() > 0)
         <div class="{{ $row }}"><span>Отдали за</span><span class="nums">{{ Money::rub($car->cost) }}</span></div>
     @endif
     @if (! $car->isSold())
         {{-- Строки складываются в главное число: платили мы — отдельной строкой, и менеджеру тоже. У менеджера
              главное число и есть расходы — без наших строка повторила бы его. --}}
-        @if ($staff || $s['our_costs'] > 0)
-            <div class="{{ $row }}"><span>{{ $s['our_costs'] > 0 ? ($staff ? 'Расходы менеджера' : 'Ваши расходы') : 'Расходы' }}</span><span class="nums">{{ Money::exact($s['manager_costs']) }}</span></div>
+        @if ($staff ? $s['manager_costs'] > 0 : $s['our_costs'] > 0)
+            <div class="{{ $row }}"><span>{{ $staff ? 'Расходы менеджера' : 'Ваши расходы' }}</span><span class="nums">{{ Money::exact($s['manager_costs']) }}</span></div>
         @endif
         @if ($s['our_costs'] > 0)<div class="{{ $row }}"><span>{{ $staff ? 'Наши расходы' : 'Платили мы' }}</span><span class="nums">{{ Money::exact($s['our_costs']) }}</span></div>@endif
     @elseif ($staff)

@@ -56,7 +56,7 @@ final class SettleGarageCar
         }
         $due = Settlement::of($car)['due'];
         if (! $car->manager || abs((float) $due) < 0.005) {
-            $car->moveTo(CarState::Settled, ['settled_at' => now()]);
+            $car->moveTo(CarState::Settled, ['settled_at' => now()], $by);
             GarageChanged::dispatch($car);
 
             return null;
@@ -82,6 +82,7 @@ final class SettleGarageCar
                 }
             }
             $car->update(['invoice_id' => $invoice->id, 'invoice_to' => 'manager']);
+            $car->log($by, $due < 0 ? ['do' => 'payout', 'amount' => round(-$due, 2)] : ['do' => 'invoice', 'to' => 'manager', 'amount' => round($due, 2)]);
 
             return $invoice;
         });
@@ -100,6 +101,7 @@ final class SettleGarageCar
             $invoice = ($this->issue)($buyer, $by, 'issued', ChargeKind::Sale, WorkDays::add(now(), 5),
                 lines: [['title' => 'Транспортное средство '.$offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $car->sold_price, 'kind' => ChargeKind::Sale->value]], offerId: $offer->id);
             $car->update(['invoice_id' => $invoice->id, 'invoice_to' => 'buyer']);
+            $car->log($by, ['do' => 'invoice', 'to' => 'buyer', 'amount' => (float) $car->sold_price]);
 
             return $invoice;
         });

@@ -2,7 +2,7 @@
 
 namespace App\Offers\Actions;
 
-use App\Garage\Actions\ReceiveFromRoute;
+use App\Garage\Actions\CloseGarageDeal;
 use App\Garage\Car as GarageCar;
 use App\Offers\BidState;
 use App\Offers\DealState;
@@ -156,7 +156,7 @@ final class ChangeOfferState
             $deal->update(['state' => DealState::Done, 'closed_at' => now()]);
             Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'deal'])]);
             if ($garage) {
-                app(ReceiveFromRoute::class)($deal, $by);
+                app(CloseGarageDeal::class)($deal, $by);
             }
         } else {
             app(CancelDeal::class)($deal, $by);

@@ -1,8 +1,9 @@
 {{-- Получение автомобиля в CRM (04.10.2026): кто забирает ТС у владельца и с кем говорить — те же факты, что менеджер
      видит на своей странице сделки (`Offers\Handover`). Владелец, телефон и адрес — поля предложения: письмо вендора
      заполняет их само (`TakeContactFromLetter`), здесь их правят. Кто забирает — та же шторка «Вывоз» маршрута.
-     compact — карточка строки (раздел), иначе — карточка страницы сделки. --}}
-@props(['deal', 'compact' => false])
+     compact — карточка строки (раздел), иначе — карточка страницы сделки; lane — внутри дорожки «Вывоз» редактора
+     (06.10.2026): без своего заголовка и «Кто забирает» — это «⋯» самой дорожки. --}}
+@props(['deal', 'compact' => false, 'lane' => false])
 @php
     $offer = $deal->offer;
     $handover = \App\Offers\Handover::for($deal);
@@ -11,14 +12,14 @@
 @if ($deal->isActive() && ! $deal->isGarage())
     <section {{ $attributes->class([$compact ? '' : 'box']) }}>
         <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <h2 class="{{ $compact ? 'detail-section !mb-0' : 'box-title' }}">Получение автомобиля</h2>
+            @unless ($lane)<h2 class="{{ $compact ? 'detail-section !mb-0' : 'box-title' }}">Получение автомобиля</h2>@endunless
             @if ($handover->where)<span class="tag">{{ $handover->where === 'У вас' ? 'У менеджера' : $handover->where }}</span>@endif
             @if ($handover->buyerPicks)
                 <x-ui.state :tone="$handover->open ? 'open' : 'muted'">{{ $handover->open ? 'забирает менеджер, ему видно' : 'забирает менеджер' }}</x-ui.state>
             @elseif ($offer->position(\App\Workflow\Track::Service))
                 <x-ui.state tone="muted">забираем мы</x-ui.state>
             @endif
-            @if ($sheet)
+            @if ($sheet && ! $lane)
                 <button type="button" class="btn btn-s btn-quiet ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="pickup-{{ $offer->number }}:open">Кто забирает</button>
             @endif
         </div>

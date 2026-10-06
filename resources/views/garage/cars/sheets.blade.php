@@ -34,7 +34,7 @@
     </div>
 @endif
 
-@if ($staff && $car->state->isWorking())
+@if ($staff && $car->state === \App\Garage\CarState::Selling)
     <div {!! $wrap('sold') !!}>
         <x-ui.sheet id="sold" title="Продана" :open="$errors->has('sold_price')">
             <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-4">

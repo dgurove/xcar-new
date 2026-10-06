@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Garage\CarState;
 use App\Garage\GaragePayer;
 use App\Support\FieldLabels;
 use App\Support\Money;
@@ -81,8 +82,34 @@ class OfferEvent extends Model
             OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Carbon::parse($p['at'])->translatedFormat('j M, H:i') : 'Убрано из слота'),
             OfferEventType::PlaceChanged => 'Автомобиль: '.(CarPlace::labelOf($p['place'] ?? null) ?? 'место не указано'),
             OfferEventType::Note => (string) ($p['text'] ?? ''),
+            OfferEventType::Garage => self::garageText($p),
             OfferEventType::RequirementAnswered => 'Менеджер: «'.($p['exit'] ?? '').'»'.(! empty($p['fields']) ? ' — '.implode(', ', $p['fields']) : ''),
             default => $this->type->value,
+        };
+    }
+
+    /**
+     * Строка истории гаража (06.10.2026): этапы подготовки и продажи, расходы, счёт и выплата — то, что раньше жило
+     * только в пути машины, теперь и в «Истории» предложения.
+     */
+    private static function garageText(array $p): string
+    {
+        $sum = fn (string $key) => isset($p[$key]) ? Money::exact((float) $p[$key]) : '';
+
+        return match ($p['do'] ?? null) {
+            'stage' => match ($state = CarState::tryFrom($p['state'] ?? '')) {
+                CarState::Sold => 'Продана'.(isset($p['price']) ? ' за '.$sum('price') : ''),
+                null => 'Гараж',
+                default => ($state->isPrep() ? 'Гараж: ' : 'Продажа: ').mb_strtolower($state->label()),
+            },
+            'cost' => 'Расход: '.mb_strtolower($p['title'] ?? '').' '.$sum('amount').(($p['payer'] ?? null) === 'xcar' ? ', платили мы' : ''),
+            'cost_edit' => 'Расход изменён: '.mb_strtolower($p['title'] ?? '').' '.$sum('amount').(($p['payer'] ?? null) === 'xcar' ? ', платили мы' : ''),
+            'cost_removed' => 'Расход убран: '.mb_strtolower($p['title'] ?? '').' '.$sum('amount'),
+            'invoice' => (($p['to'] ?? null) === 'buyer' ? 'Счёт покупателю ' : 'Счёт менеджеру ').$sum('amount'),
+            'payout' => 'Выплата менеджеру '.$sum('amount'),
+            'void' => 'Аннулирован документ '.$sum('amount'),
+            'unsold' => 'Не продана',
+            default => 'Гараж',
         };
     }
 }

@@ -478,8 +478,9 @@ final class Nav
                 ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
             $badges['/deals/asks'] = (int) $asks->deals;
             $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];
-            // И «забрать» по вывозу: ход ответственного.
-            $badges['/garage'] = (int) $asks->garage + Offer::pickupsOf($user)->awaitingPickup()->count();
+            // И «забрать» по вывозу: ход ответственного — порученные ему и своя гаражная, которую везёт сам.
+            $badges['/garage'] = (int) $asks->garage + Offer::pickupsOf($user)->awaitingPickup()->count()
+                + Offer::where('evacuator_id', $user->id)->whereHas('garageCar', fn ($g) => $g->where('manager_id', $user->id))->awaitingPickup()->count();
         }
         if ($user->canChat() || $user->isAdmin()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.

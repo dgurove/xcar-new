@@ -46,22 +46,22 @@ class SettlementController
     }
 
     /**
-     * Этап машины: «Привёз», «Готова» — следующий кнопкой (менеджер или сотрудник, без `state`); сотрудник — и на любой
-     * из доставки, подготовки, продажи, назад тоже.
+     * Этап машины: «Готова» — следующий кнопкой (менеджер или сотрудник, без `state`); сотрудник — и на любой
+     * из подготовки, «Готова», продажи, назад тоже.
      */
     public function stage(Request $request, Offer $offer, MoveCar $move)
     {
         $car = $this->car($request, $offer);
         $data = $request->validate(['state' => ['nullable', Rule::enum(CarState::class)]]);
         $to = CarState::tryFrom($data['state'] ?? '') ?? $car->state->advance()[0] ?? $car->state;
-        $move($car, $to, $request->user());
 
-        return back()->with('toast', $to->label());
+        // «Готова» без открытой сделки встаёт сразу в продажу — в тосте то, где машина оказалась.
+        return back()->with('toast', $move($car, $to, $request->user())->state->label());
     }
 
     public function unsold(Request $request, Offer $offer, ClearGarageSold $clear)
     {
-        $clear($this->staffCar($request, $offer));
+        $clear($this->staffCar($request, $offer), $request->user());
 
         return back()->with('toast', 'Не продана');
     }

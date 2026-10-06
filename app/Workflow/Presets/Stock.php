@@ -51,7 +51,8 @@ final class Stock extends Route
             'supplier_payment' => [
                 'name' => 'Оплата поставщику', 'block' => 'payment', 'waits_for' => 'us', 'limit_minutes' => 2 * self::DAY,
                 'staff_fields' => [['label' => 'Дата оплаты'], ['label' => 'Номер платёжки']],
-                'exits' => [['Поставщику оплачено', 'staff', 'pickup']],
+                // Гаражную сделку «платит менеджер» с площадки не выдаём: бумаги готовы — её везёт вывоз (06.10.2026).
+                'exits' => [['Поставщику оплачено', 'staff', 'pickup', 'deal'], ['Поставщику оплачено', 'staff', 'closed_won', 'keeps']],
             ],
             'pickup' => [
                 'name' => 'Выдача на площадке поставщика', 'block' => 'handover', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY,

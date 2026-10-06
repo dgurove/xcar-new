@@ -17,6 +17,7 @@ use App\Offers\Destination;
 use App\Offers\OfferEventType;
 use App\Users\User;
 use App\Workflow\Requirement;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Сделка сорвалась: закрыта, подтверждение победителя отклонено, просьбы к нему сняты,
@@ -24,15 +25,24 @@ use App\Workflow\Requirement;
  */
 final class CancelDeal
 {
-    public function __invoke(Deal $deal, ?User $by = null): Deal
+    /** $keepCar — машину из гаража уберёт вызывающий сам («Отдали по ошибке», `ReturnFromGarage`). */
+    public function __invoke(Deal $deal, ?User $by = null, bool $keepCar = false): Deal
     {
+        // Машина гаражной уже у менеджера или по ней есть расходы — молча её не снять (владелец 06.10.2026): разбираемся
+        // руками, сделка остаётся.
+        $car = $deal->isGarage() ? GarageCar::where('deal_id', $deal->id)->first() : null;
+        if ($car && ! $keepCar && ($car->state !== CarState::Waiting || $car->costs()->exists())) {
+            throw ValidationException::withMessages(['state' => $car->state === CarState::Waiting
+                ? 'По машине уже есть расходы: сначала уберите их'
+                : 'Машина уже у менеджера: сделку так не отменить']);
+        }
         $deal->update(['state' => DealState::Cancelled, 'closed_at' => now()]);
         if ($deal->bid?->state === BidState::Accepted) {
             Bid::whereKey($deal->bid_id)->update(['state' => BidState::Declined]);
         }
         Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'deal'])]);
-        // Гаражная сорвалась, пока ждала страховую («Отказываюсь», отказ поставщика, отдали другому) — из гаража долой.
-        if ($deal->isGarage() && ($car = GarageCar::where('deal_id', $deal->id)->where('state', CarState::Waiting)->first())) {
+        // Гаражная сорвалась, пока машину ещё не привезли («Отказываюсь», отказ поставщика, отдали другому) — из гаража долой.
+        if ($car && ! $keepCar) {
             $car->delete();
             GarageChanged::dispatch($car);
         }

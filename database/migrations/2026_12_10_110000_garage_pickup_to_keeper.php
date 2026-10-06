@@ -1,6 +1,6 @@
 <?php
 
-use App\Garage\Actions\PickupToKeeper;
+use App\Garage\Actions\EnsurePickup;
 use App\Garage\Car;
 use App\Garage\CarState;
 use App\Users\Role;
@@ -19,8 +19,8 @@ return new class extends Migration
         if (! $by) {
             return;
         }
-        Car::whereIn('state', [CarState::Waiting, CarState::Delivery])->whereNotNull('manager_id')->with('offer')->get()
-            ->each(fn (Car $car) => $car->offer && app(PickupToKeeper::class)($car->offer, $by));
+        Car::whereIn('state', [CarState::Waiting, 'delivery'])->whereNotNull('manager_id')->with('offer')->get()
+            ->each(fn (Car $car) => $car->offer && app(EnsurePickup::class)($car->offer, $by));
     }
 
     public function down(): void {}

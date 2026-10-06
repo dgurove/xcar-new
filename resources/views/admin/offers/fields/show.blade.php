@@ -4,6 +4,8 @@
 @if (auth()->user()->canManageCrm())
 <section class="mt-6">
     <h3 class="form-subtitle">Показ</h3>
+    {{-- Блок пришёл в форме: его галки и «кому» без отметки считаются снятыми (`OfferRequest::payload`). --}}
+    <input type="hidden" name="_show" value="1">
     <div class="{{ $grid }}">
         @php($close = old('bids_close_at', $offer->bids_close_at?->format('Y-m-d\TH:i')))
         <div class="field col-span-2 @4xl:col-span-1 {{ $errors->has('bids_close_at') ? 'field-invalid' : '' }}" data-controller="evening">
