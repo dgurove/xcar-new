@@ -1150,6 +1150,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       & .table thead { display: none; }
       & .table :is(th, td).hidden { display: none !important; }
       & .table .sm\:hidden { display: revert !important; }
+      /* revert у span — строчный: закупочная вставала справа от «Оценить», а не под ней, как на телефоне. */
+      & .table td.num > .cell-sub.sm\:hidden { display: block !important; }
       & .table tbody tr { height: 3rem; }
       & .table td.grow .cell-title { display: block; }
       & .table td.grow .cell-title:has(> .cell-name) { display: flex; max-width: none; }
