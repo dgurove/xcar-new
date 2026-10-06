@@ -1,21 +1,43 @@
-{{-- Свёрнутая «Транспортное средство» (06.10.2026, владелец: свёрнутое не больше развёрнутого) — заголовок и одной строкой
-     через запятую, что за машина: топливо с объёмом, мощность, коробка, цвет, пробег, город. Строка целиком —
-     «развернуть» (`unhide`); VIN, номер убытка и остальное — в форме. --}}
+{{-- «Транспортное средство» текстом (06.10.2026, «Изменить / Готово», как в Контактах iOS): та же сетка и подписи, что
+     у полей (`fields.car`), вместо полей — значения; пустые не показываются. «Изменить» в заголовке карточки ставит на это
+     место поля (`edit_card_controller`). --}}
 @php
-    $low = fn ($v) => $v === null || $v === '' ? null : mb_strtolower((string) $v);
-    $line = implode(', ', array_filter([
-        trim(($low($offer->fuel?->label()) ?? '').($offer->engine_volume ? ' '.\App\Support\Liters::format($offer->engine_volume).' л' : '')),
-        $offer->engine_power ? $offer->engine_power.' л. с.' : null,
-        $low($offer->transmission?->label()),
-        $low($offer->color),
-        $offer->mileage !== null ? \App\Support\Money::nums($offer->mileage).' км' : null,
-        $offer->settlement?->title(),
-    ]));
+    $low = fn ($v) => $v === null || $v === '' ? null : $v;
+    $cells = array_filter([
+        'Вендор' => $offer->vendor?->name,
+        ($offer->leaseRef() ? 'Номер ДЛ' : 'Номер убытка') => $offer->claim_ref,
+        'VIN' => $offer->vin,
+        'Марка' => $offer->brand?->name,
+        'Модель' => $offer->model?->name,
+        'Год' => $offer->year,
+        'Пробег' => $offer->mileage !== null ? \App\Support\Money::nums($offer->mileage).' км' : null,
+        'Цвет' => $low($offer->color),
+        'Кузов' => $offer->body?->label(),
+        'Коробка' => $offer->transmission?->label(),
+        'Привод' => $offer->drive?->label(),
+        'Топливо' => $offer->fuel?->label(),
+        'Объём' => $offer->engine_volume ? \App\Support\Liters::format($offer->engine_volume).' л' : null,
+        'Мощность' => $offer->engine_power ? $offer->engine_power.' л. с.' : null,
+        'Город' => $offer->settlement?->title(),
+        'Адрес осмотра' => $low($offer->inspection_address),
+    ], fn ($v) => $v !== null && $v !== '');
+    $description = trim(html_entity_decode(strip_tags(str_replace(['<br>', '</div>', '</p>'], "\n", (string) $offer->description))));
 @endphp
-<button type="button" class="flex w-full items-center gap-3 text-left" data-unhide-target="trigger" data-action="unhide#show">
-    <span class="min-w-0 flex-1">
-        <span class="block text-sm font-medium text-ink-dim">Транспортное средство</span>
-        @if ($line)<span class="mt-1 block">{{ mb_strtoupper(mb_substr($line, 0, 1)).mb_substr($line, 1) }}</span>@endif
-    </span>
-    <x-ui.chevron/>
-</button>
+<div class="{{ $grid }}">
+    @foreach ($cells as $label => $value)
+        <div @class(['min-w-0', 'col-span-2' => $label === 'Адрес осмотра' || $label === 'VIN'])>
+            <div class="field-label">{{ $label }}</div>
+            <div class="mt-1 break-words">
+                @if ($label === 'VIN')<x-ui.vin-code :vin="$value" copy/>
+                @elseif ($label === 'Город')<x-ui.place>{{ $value }}</x-ui.place>
+                @else{{ $value }}@endif
+            </div>
+        </div>
+    @endforeach
+    @if ($description !== '')
+        <div class="col-span-full min-w-0">
+            <div class="field-label">Описание</div>
+            <p class="mt-1 line-clamp-4 whitespace-pre-line text-ink-muted">{{ $description }}</p>
+        </div>
+    @endif
+</div>

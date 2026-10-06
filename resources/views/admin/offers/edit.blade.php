@@ -92,17 +92,18 @@
         <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 @4xl:order-none @4xl:col-start-1 @4xl:row-start-1">
             @csrf @method('put')
 
-            {{-- С публикации ТС свёрнута в одну строку (06.10.2026): нажатие — полная форма (`unhide`); поля остаются в
-                 форме скрытыми, и сохранение «Показа» шлёт их как есть. Раскрыта сама, если в полях есть что смотреть:
-                 ошибки, расхождения и подсветка Мигторга. --}}
-            <x-ui.card :title="$foldCar ? null : 'Транспортное средство'" data-controller="unhide">
-                @if ($foldCar)@include('admin.offers.fields.passport')@endif
-                <x-mail.reader-diffs form="offer-form" @class(['mb-3', 'mt-3' => $foldCar])/>
+            {{-- С публикации — «Изменить / Готово», как в Контактах iOS (06.10.2026): данные текстом в той же сетке, что поля
+                 (`fields.passport`), «Изменить» ставит на их место поля (`edit_card_controller`), «Готово» сохраняет. Поля
+                 всё время в форме, скрытые: сохранение «Показа» шлёт их как есть. Черновик — сразу поля; есть ошибки или
+                 расхождения Мигторга — тоже, с «Готово». --}}
+            <x-ui.card title="Транспортное средство" :data-controller="$published ? 'edit-card' : null" :data-edit-card-editing-value="$published && ! $foldCar ? 'true' : null">
+                @if ($published)
+                    <x-slot:actions><button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $foldCar ? 'Изменить' : 'Готово' }}</button></x-slot:actions>
+                @endif
+                <x-mail.reader-diffs form="offer-form" class="mb-3"/>
                 @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
-                <div data-unhide-target="block" @if ($foldCar) hidden @endif>
-                    @if ($foldCar)<h2 class="box-title mb-3">Транспортное средство</h2>@endif
-                    @include('admin.offers.fields.car')
-                </div>
+                @if ($published)<div data-edit-card-target="view" @unless ($foldCar) hidden @endunless>@include('admin.offers.fields.passport')</div>@endif
+                <div @if ($published) data-edit-card-target="edit" @if ($foldCar) hidden @endif @endif>@include('admin.offers.fields.car')</div>
                 {{-- Показ — пока машину показывают: в сделке и в гараже он ни о чём (галки при сохранении не трогаются, `_show`). --}}
                 @if (in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true))
                     @include('admin.offers.fields.show', ['summary' => $showingSummary])
@@ -112,19 +113,13 @@
 
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
-            {{-- Свёрнутые цены — одна строка «закупочная → продажа» (как цена менеджеру), нажатие — поля. --}}
-            <x-ui.card :title="$foldMoney ? null : 'Цены'" class="order-3" data-controller="unhide">
-                @if ($foldMoney)
-                    <button type="button" class="flex w-full items-center gap-3 text-left" data-unhide-target="trigger" data-action="unhide#show">
-                        <span class="text-sm font-medium text-ink-dim">Цены</span>
-                        <span class="nums ml-auto min-w-0 truncate text-right">@if ($offer->floor_price){{ \App\Support\Money::nums($offer->floor_price) }}@if ($offer->asking_price && ! $garageView) → @endif @endif @if ($offer->asking_price && ! $garageView){{ \App\Support\Money::nums($offer->asking_price) }}@endif ₽</span>
-                        <x-ui.chevron/>
-                    </button>
+            {{-- Цены — так же: суммы текстом, «Изменить» — поля, «Готово» — сохранить (поля привязаны к форме через form=). --}}
+            <x-ui.card title="Цены" class="order-3" :data-controller="$published ? 'edit-card' : null" data-edit-card-form-value="offer-form" :data-edit-card-editing-value="$published && ! $foldMoney ? 'true' : null">
+                @if ($published)
+                    <x-slot:actions><button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $foldMoney ? 'Изменить' : 'Готово' }}</button></x-slot:actions>
+                    <div data-edit-card-target="view" @unless ($foldMoney) hidden @endunless>@include('admin.offers.fields.money-view', ['garageOnly' => (bool) $garageView])</div>
                 @endif
-                <div data-unhide-target="block" @if ($foldMoney) hidden @endif>
-                    @if ($foldMoney)<h2 class="box-title mb-3">Цены</h2>@endif
-                    @include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false, 'garageOnly' => (bool) $garageView])
-                </div>
+                <div @if ($published) data-edit-card-target="edit" @if ($foldMoney) hidden @endif @endif>@include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false, 'garageOnly' => (bool) $garageView])</div>
             </x-ui.card>
 
             @if ($chats->isNotEmpty())

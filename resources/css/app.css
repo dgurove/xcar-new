@@ -220,6 +220,9 @@
   a.row, button.row, a.pill, button.pill, a.chip, button.chip, a.tag, button.tag, .menu a, .menu button, label:has(input) { cursor: pointer; }
   /* Заголовок раздела — подписью группы, как в приложении: мелко, серым, без веса статьи. */
   .box h2.box-title { font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-dim); letter-spacing: .01em; }
+  /* «Изменить / Готово» в заголовке карточки (edit_card_controller): тихой ссылкой, «Готово» плотнее — как в iOS. */
+  .edit-card-toggle { @apply -my-1 rounded-full px-3 py-1 text-sm text-accent-text transition-[background-color,font-weight] duration-200 hover:bg-surface-2 active:scale-[.97]; }
+  [data-editing] .edit-card-toggle { @apply font-semibold; }
   .box-nested > h2, .box-nested > div > h2, .box-nested summary h2 { font-size: var(--text-base); }
 
   /* 16px — ниже iOS приближает страницу при фокусе в поле. Кнопке это не нужно: она не поле,
