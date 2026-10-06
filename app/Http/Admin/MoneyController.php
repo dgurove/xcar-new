@@ -25,6 +25,7 @@ use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\Money;
 use App\Support\Nav;
+use App\Support\Sort;
 use App\Users\User;
 use Closure;
 use Illuminate\Support\Collection;
@@ -44,6 +45,18 @@ use Illuminate\Validation\Rule;
 class MoneyController
 {
     public const TABS = ['links' => 'По ссылкам', 'owed' => 'Нам должны', 'payouts' => 'Мы должны'];
+
+    /**
+     * Сортировка вкладки (07.10.2026): по умолчанию «Срочное» — ждём сверху тех, где по ссылке не вышло, дальше по сроку,
+     * оплаченное свежим; иначе поле столбца в обеих группах. «Проверить» не сортируется — это дела.
+     */
+    public static function sorts(string $tab): array
+    {
+        return ['auto' => ['Срочное', 'desc'], 'created' => ['Создано', 'desc']]
+            + ($tab === 'links' ? [] : ['due' => ['Срок', 'asc']])
+            + ($tab === 'owed' ? ['number' => ['Счёт', 'asc']] : [])
+            + ['payer' => [$tab === 'payouts' ? 'Менеджер' : 'Плательщик', 'asc'], 'amount' => ['Сумма', 'desc']];
+    }
 
     /** Менеджер счёта: покупатель сделки, у гаражной — держатель машины. */
     private const MANAGER = 'coalesce((select buyer_id from deals where deals.id = billing_invoices.deal_id), (select g.manager_id from garage_cars g where g.invoice_id = billing_invoices.id or g.payout_invoice_id = billing_invoices.id limit 1))';
@@ -66,14 +79,15 @@ class MoneyController
         $find = self::find($qs);
         // Лупа — по всем трём вкладкам сразу (мимо пилюли), без страниц у оплаченного.
         $tabs = $qs === '' ? [$tab] : array_keys(self::TABS);
-        $sections = collect($tabs)->mapWithKeys(fn ($t) => [$t => $this->section($t, $facets, $find, $qs === '')])->all();
+        $sort = fn (string $t) => Sort::from($request->query('sort'), self::sorts($t), '-auto');
+        $sections = collect($tabs)->mapWithKeys(fn ($t) => [$t => $this->section($t, $facets, $find, $qs === '', $sort($t))])->all();
         $paid = collect($sections)->flatMap(fn ($s) => $s['paid'] instanceof Collection ? $s['paid'] : $s['paid']->items())->flatMap(fn ($i) => $i->payments->pluck('id'));
 
         // Выбран один менеджер — его расчёт строкой сверху (бывший экран «Расчёты с менеджерами»).
         $picked = $qs === '' && $tab !== 'links' && count($ids = $facets->selected('manager')) === 1 ? User::find((int) $ids[0]) : null;
 
         return view('admin.money.index', [
-            'detail' => $detail, 'facets' => $facets, 'q' => $qs, 'tab' => $tab, 'sections' => $sections,
+            'detail' => $detail, 'facets' => $facets, 'q' => $qs, 'tab' => $tab, 'sections' => $sections, 'sort' => $sort($tab),
             'counts' => self::counts($facets), 'attempts' => AcquiringPayment::whereIn('payment_id', $paid)->get()->keyBy('payment_id'),
             'manager' => $picked ? ['user' => $picked, 'position' => (new ManagerLedger($picked, staff: true))->position()] : null,
         ]);
@@ -101,7 +115,7 @@ class MoneyController
      * Вкладка группами: claims — менеджер пишет, что оплатил (только «Нам должны»); open — ждём, сверху то, где по ссылке
      * пытались и не вышло; paid — оплаченные свежими сверху, по 50 на страницу.
      */
-    private function section(string $tab, Facets $facets, ?Closure $find, bool $paged): array
+    private function section(string $tab, Facets $facets, ?Closure $find, bool $paged, Sort $sort): array
     {
         $q = fn () => self::of($tab, $facets)->when($find, $find)->with(self::WITH);
         $claims = $tab === 'owed'
@@ -109,15 +123,31 @@ class MoneyController
                 ->with(['invoice' => fn ($i) => $i->with(self::WITH)])->orderBy('paid_at')->orderBy('id')->get()
             : collect();
         $tried = $tab === 'payouts' ? collect() : self::tried(self::of($tab, $facets)->when($find, $find))->pluck('billing_invoices.id');
+        $auto = $sort->key === 'auto';
         $open = $q()->where('state', InvoiceState::Issued)->with('payLinks.attempts')
             ->when($tab === 'owed', fn ($w) => $w->whereDoesntHave('claims'))
-            ->when($tried->isNotEmpty(), fn ($w) => $w->orderByRaw('billing_invoices.id in ('.$tried->map(fn ($id) => (int) $id)->implode(',').') desc'))
-            ->when($tab === 'links', fn ($w) => $w->orderByDesc('issued_at'), fn ($w) => $w->orderByRaw('due_at asc nulls last'))
+            ->when($auto && $tried->isNotEmpty(), fn ($w) => $w->orderByRaw('billing_invoices.id in ('.$tried->map(fn ($id) => (int) $id)->implode(',').') desc'))
+            ->when($auto, fn ($w) => $tab === 'links' ? $w->orderByDesc('billing_invoices.created_at') : $w->orderByRaw('due_at asc nulls last'), fn ($w) => self::order($w, $sort, open: true))
             ->orderBy('billing_invoices.id')->get();
         $last = Payment::select('paid_at')->whereColumn('invoice_id', 'billing_invoices.id')->where('state', PaymentState::Confirmed)->whereNull('voided_at')->latest('paid_at')->limit(1);
-        $paid = $q()->where('state', InvoiceState::Paid)->orderByDesc($last)->orderByDesc('billing_invoices.id');
+        $paid = $q()->where('state', InvoiceState::Paid)->when($auto, fn ($w) => $w->orderByDesc($last), fn ($w) => self::order($w, $sort, open: false))->orderByDesc('billing_invoices.id');
 
         return ['claims' => $claims, 'open' => $open, 'tried' => $tried, 'paid' => $paged ? $paid->paginate(50)->withQueryString() : $paid->limit(50)->get()];
+    }
+
+    /** Поле сортировки столбца: у открытых сумма — остаток, у оплаченных — итог. */
+    private static function order($q, Sort $sort, bool $open)
+    {
+        $dir = $sort->dir();
+
+        return match ($sort->key) {
+            'created' => $q->orderBy('billing_invoices.created_at', $dir),
+            'due' => $q->orderByRaw("billing_invoices.due_at {$dir} nulls last"),
+            'number' => $q->orderByRaw("billing_invoices.number {$dir} nulls last"),
+            'payer' => $q->orderBy(Party::select('name')->whereColumn('billing_parties.id', 'billing_invoices.party_id')->limit(1), $dir),
+            'amount' => $q->orderByRaw(($open ? 'greatest(billing_invoices.total - billing_invoices.paid, 0)' : 'billing_invoices.total').' '.$dir),
+            default => $q,
+        };
     }
 
     /** Числа пилюль — сколько открытого; tones — где есть дело: не прошла по ссылке, пишет, что оплатил, выплатить. */

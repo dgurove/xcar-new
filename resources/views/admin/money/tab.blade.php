@@ -39,7 +39,7 @@
                     <x-money.feed-row :key="$i->id" :title="R::line($i)" :amount="Money::rub($i->remaining())">
                         @if ($m = R::via($i))<x-ui.person :user="$m"/>@endif
                         @if ($key === 'links')
-                            <span>взяли {{ $i->issued_at->translatedFormat('j M') }}</span>
+                            <span class="nums">взяли {{ $i->created_at->translatedFormat('j M, H:i') }}</span>
                         @else
                             <span>счёт {{ $i->label() }}</span>
                             @if ($due)<span class="{{ $due[1] }}">{{ $due[0] }}</span>@endif
