@@ -203,7 +203,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
         Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
         Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
-        // Оплаты — лента «Надо сделать / Ждём деньги / История» (06.10.2026); карточка счёта — общая со стоянкой.
+        // Оплаты — вкладки «По ссылкам / Нам должны / Мы должны» (07.10.2026); карточка счёта — общая со стоянкой.
         Route::get('/work/money', [MoneyController::class, 'index']);
         Route::get('/work/money/managers', [MoneyController::class, 'managers']); // бывшие «Расчёты с менеджерами» — редирект
         // Разовая оплата услуг по ссылке без сделки — только админ (05.10.2026).
@@ -213,9 +213,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/money/invoices/{invoice}/links', [PayLinkController::class, 'store']);
         Route::delete('/work/money/links/{link}', [PayLinkController::class, 'destroy']);
         Route::post('/work/money/acquiring/{attempt}/refund', [PayLinkController::class, 'refund']);
-        Route::get('/work/money/bank', [BankController::class, 'index']);
-        Route::post('/work/money/bank/{transaction}/match', [BankController::class, 'match']);
-        Route::post('/work/money/bank/{transaction}/ignore', [BankController::class, 'ignore']);
+        // Выписка СберБизнеса переехала в Настройки → Банк (07.10.2026): связь толком не настроена, в «Оплатах» она была мусором.
+        Route::permanentRedirect('/work/money/bank', '/settings/bank/statement');
         Route::prefix('work/money/invoices/{invoice}')->group(function () {
             Route::get('/', [MoneyController::class, 'show']);
             Route::put('/', [MoneyController::class, 'update']);
@@ -342,6 +341,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/bank/callback', [BankController::class, 'callback']);
             Route::put('/bank', [BankController::class, 'save']);
             Route::post('/bank/sync', [BankController::class, 'sync']);
+            Route::get('/bank/statement', [BankController::class, 'index']);
+            Route::post('/bank/statement/{transaction}/match', [BankController::class, 'match']);
+            Route::post('/bank/statement/{transaction}/ignore', [BankController::class, 'ignore']);
 
             // Переписка бота (Настройки → «Бот Telegram»).
             Route::prefix('telegram')->group(function () {

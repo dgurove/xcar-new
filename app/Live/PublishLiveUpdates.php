@@ -202,7 +202,7 @@ final class PublishLiveUpdates
     public function payment(PaymentRecorded|PaymentClaimed $e): void
     {
         $invoice = $e instanceof PaymentClaimed ? $e->payment->invoice : $e->invoice;
-        $this->publish->refresh(Topics::STAFF, ['/work/money', '/work/money/bank', '/work/deals', '/work/garage']);
+        $this->publish->refresh(Topics::STAFF, ['/work/money', '/settings/bank/statement', '/work/deals', '/work/garage']);
         $garage = $invoice->deal_id ? null : GarageCar::ofInvoice($invoice);
         $manager = $invoice->deal?->buyer_id ?? $garage?->manager_id;
         if ($manager) {

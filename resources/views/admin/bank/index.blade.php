@@ -1,7 +1,7 @@
 {{-- Поступления из выписки Сбера: что легло в счёт само, что ждёт руки, что «не наше». Только таблица с карточкам,
      действия (привязать к счёту, «не наше») — в карточке. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
-<x-ui.shell title="Поступления" :back="['Оплаты', '/work/money']" :detail="$detail">
+<x-ui.shell title="Выписка" :back="['Банк', '/settings/bank']" :detail="$detail">
     <x-ui.toolbar :sort="$sort" :pills="\App\Http\Admin\BankController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['unmatched' => !empty($counts['unmatched']) ? 'pill-urgent' : '']" name="bank" search="Плательщик, ИНН, назначение">
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>
     </x-ui.toolbar>

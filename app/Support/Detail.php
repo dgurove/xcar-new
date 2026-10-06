@@ -22,12 +22,11 @@ final class Detail
 
     private bool $rendered = false;
 
-    private function __construct(private Request $request, private Closure $resolve, private string $keys) {}
+    private function __construct(private Request $request, private Closure $resolve) {}
 
-    /** $keys — какие ключи пускать к resolver: по умолчанию только цифры; «Оплаты» пускают ещё `t{id}` — поступление выписки. */
-    public static function of(Request $request, Closure $resolve, string $keys = '/^\d+$/'): self
+    public static function of(Request $request, Closure $resolve): self
     {
-        return new self($request, $resolve, $keys);
+        return new self($request, $resolve);
     }
 
     public static function key(?Request $request = null): ?string
@@ -49,7 +48,7 @@ final class Detail
             $this->rendered = true;
             $key = self::key($this->request);
             // Ключи строк — номера и id: прочее (first, мусор в адресе) карточки не даёт и в запрос не идёт.
-            $this->html = $key === null || ! preg_match($this->keys, $key) ? null : ($this->resolve)($key);
+            $this->html = $key === null || ! ctype_digit($key) ? null : ($this->resolve)($key);
         }
 
         return $this->html ?? self::empty();

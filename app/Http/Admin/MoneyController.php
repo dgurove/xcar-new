@@ -11,7 +11,6 @@ use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\RejectPayment;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\Actions\VoidPayment;
-use App\Billing\Bank\Transaction;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -28,70 +27,120 @@ use App\Support\Money;
 use App\Support\Nav;
 use App\Users\User;
 use Closure;
+use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 /**
- * «Оплаты» в CRM — как история операций в банке (06.10.2026, владелец: «даже я ничего не понимаю», начальник не
- * находил оплаты по ссылкам среди счетов). Одна страница без пилюль, три блока:
- * - «Надо сделать» — ждёт нашей руки: менеджер сообщил об оплате, не прошла по ссылке, выплатить менеджеру, в банк
- *   пришло без счёта;
- * - «Ждём деньги» — кто нам должен и что с его ссылкой;
- * - «История» — что пришло и ушло, по дням, со знаком.
- * Чип менеджера сужает всё (его позиция — строкой сверху), лупа ищет во всех блоках. Карточка строки — счёт или
- * поступление выписки (`t{id}`) рядом; карточка счёта — общая со стоянкой.
+ * «Оплаты» в CRM — три вкладки по трём вопросам начальника (07.10.2026, владелец: «начальник не догадается вниз
+ * пролистать»; до того 06.10 — лента «Надо сделать / Ждём деньги / История»):
+ * - «По ссылкам» — разовые оплаты, что мы взяли кнопкой «Взять ссылку на оплату»: ждём (что со ссылкой) и оплачено;
+ * - «Нам должны» — счета менеджерам и их покупателям по сделкам и гаражу: пишет, что оплатил; ждём; оплачено;
+ * - «Мы должны» — вознаграждения менеджерам: выплатить и выплачено.
+ * Выписки СберБизнеса здесь нет — она в Настройки → Банк. Чип менеджера — на двух последних (один выбран — его расчёт
+ * строкой сверху), лупа ищет во всех трёх. Карточка строки — счёт рядом, общая со стоянкой.
  */
 class MoneyController
 {
+    public const TABS = ['links' => 'По ссылкам', 'owed' => 'Нам должны', 'payouts' => 'Мы должны'];
+
     /** Менеджер счёта: покупатель сделки, у гаражной — держатель машины. */
     private const MANAGER = 'coalesce((select buyer_id from deals where deals.id = billing_invoices.deal_id), (select g.manager_id from garage_cars g where g.invoice_id = billing_invoices.id or g.payout_invoice_id = billing_invoices.id limit 1))';
 
-    private const WITH = ['party', 'charges', 'offer.brand', 'offer.model', 'deal.offer.brand', 'deal.offer.model', 'deal.buyer', 'garageCar.manager', 'garageCar.offer.brand', 'garageCar.offer.model', 'garagePayoutCar.manager', 'garagePayoutCar.offer.brand', 'garagePayoutCar.offer.model'];
+    private const WITH = ['party', 'charges', 'payments', 'offer.brand', 'offer.model', 'deal.offer.brand', 'deal.offer.model', 'deal.buyer', 'garageCar.manager', 'garageCar.offer.brand', 'garageCar.offer.model', 'garagePayoutCar.manager', 'garagePayoutCar.offer.brand', 'garagePayoutCar.offer.model'];
 
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => str_starts_with($key, 't')
-            ? (($tx = Transaction::find((int) substr($key, 1))) ? app(BankController::class)->detail($tx) : null)
-            : (($invoice = Invoice::find($key)) ? $this->detail($invoice) : null), '/^t?\d+$/');
+        $detail = Detail::of($request, fn (string $key) => ($invoice = Invoice::find($key)) ? $this->detail($invoice) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
         $facets = Facets::for($request, 'crm-money', Common::manager(self::MANAGER));
         ListPrefs::sync($request, 'crm-money', keep: $facets->keys());
-        $facets->apply(Invoice::crmMoney());
+        // Варианты чипа — менеджеры счетов двух вкладок с менеджером («Нам должны», «Мы должны»).
+        $facets->apply(Invoice::crmMoney()->where(fn ($w) => $w->where(fn ($x) => $x->where('direction', 'issued')->whereNot(self::oneOff()))
+            ->orWhere(fn ($x) => $x->where('direction', 'owed')->where('kind', ChargeKind::AgentFee))));
+        $tab = array_key_exists((string) $request->query('tab'), self::TABS) ? (string) $request->query('tab') : 'links';
         $qs = trim((string) $request->query('q'));
         $find = self::find($qs);
-        // Счета раздела с выбранным менеджером и лупой — основа всех трёх блоков.
-        $scope = fn ($i) => $facets->applyTo($i->crmMoney())->when($find, $find);
-        $invoices = fn () => $scope(Invoice::query())->with(self::WITH);
-        $withInvoice = ['invoice' => fn ($i) => $i->with(self::WITH)];
+        // Лупа — по всем трём вкладкам сразу (мимо пилюли), без страниц у оплаченного.
+        $tabs = $qs === '' ? [$tab] : array_keys(self::TABS);
+        $sections = collect($tabs)->mapWithKeys(fn ($t) => [$t => $this->section($t, $facets, $find, $qs === '')])->all();
+        $paid = collect($sections)->flatMap(fn ($s) => $s['paid'] instanceof Collection ? $s['paid'] : $s['paid']->items())->flatMap(fn ($i) => $i->payments->pluck('id'));
 
-        $claims = Payment::where('state', PaymentState::Claimed)->whereHas('invoice', $scope)->with($withInvoice)->orderBy('paid_at')->orderBy('id')->get();
-        $tried = self::tried($invoices())->with('payLinks.attempts')->orderBy('id')->get();
-        $payouts = $invoices()->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued)->orderByRaw('due_at asc nulls last')->orderBy('id')->get();
-        // Выписка к менеджеру не относится: выбран менеджер — её нет; лупа ищет и в ней.
-        $bank = $qs === '' && $facets->on('manager') ? collect() : Transaction::where('direction', 'in')->where('state', Transaction::UNMATCHED)
-            ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s->where('counterparty', 'ilike', "%{$qs}%")->orWhere('purpose', 'ilike', "%{$qs}%")->orWhere('counterparty_inn', $qs)))
-            ->latest('booked_at')->latest('id')->get();
-
-        $waiting = $invoices()->where('direction', 'issued')->where('state', InvoiceState::Issued)
-            ->whereDoesntHave('claims')->whereNotIn('id', $tried->pluck('id'))->with('payLinks.attempts')
-            ->orderByRaw('due_at asc nulls last')->orderBy('id')->get();
-
-        $history = Payment::where('state', PaymentState::Confirmed)->whereNull('voided_at')->whereHas('invoice', $scope)->with($withInvoice)
-            ->orderByDesc('paid_at')->orderByDesc('id')->paginate(50)->withQueryString();
-        $attempts = AcquiringPayment::whereIn('payment_id', $history->pluck('id'))->get()->keyBy('payment_id');
-
-        // Выбран один менеджер — его позиция строкой сверху (бывший экран «Расчёты с менеджерами»).
-        $picked = $qs === '' && count($ids = $facets->selected('manager')) === 1 ? User::find((int) $ids[0]) : null;
+        // Выбран один менеджер — его расчёт строкой сверху (бывший экран «Расчёты с менеджерами»).
+        $picked = $qs === '' && $tab !== 'links' && count($ids = $facets->selected('manager')) === 1 ? User::find((int) $ids[0]) : null;
 
         return view('admin.money.index', [
-            'detail' => $detail, 'facets' => $facets, 'q' => $qs,
-            'claims' => $claims, 'tried' => $tried, 'payouts' => $payouts, 'bank' => $bank,
-            'waiting' => $waiting, 'history' => $history, 'attempts' => $attempts,
+            'detail' => $detail, 'facets' => $facets, 'q' => $qs, 'tab' => $tab, 'sections' => $sections,
+            'counts' => self::counts($facets), 'attempts' => AcquiringPayment::whereIn('payment_id', $paid)->get()->keyBy('payment_id'),
             'manager' => $picked ? ['user' => $picked, 'position' => (new ManagerLedger($picked, staff: true))->position()] : null,
         ]);
+    }
+
+    /** Счета вкладки: разовые по ссылке, нам по сделкам и гаражу (с чипом менеджера), выплаты менеджерам (с чипом). */
+    private static function of(string $tab, ?Facets $facets = null)
+    {
+        $q = Invoice::crmMoney();
+
+        return match ($tab) {
+            'links' => $q->where('direction', 'issued')->where(self::oneOff()),
+            'owed' => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')->whereNot(self::oneOff()),
+            default => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'owed')->where('kind', ChargeKind::AgentFee),
+        };
+    }
+
+    /** Разовая оплата по ссылке — счёт услуги без сделки и ТС (`Invoice::isService`). */
+    private static function oneOff(): Closure
+    {
+        return fn ($w) => $w->where('billing_invoices.kind', ChargeKind::Service)->whereNull('billing_invoices.deal_id')->whereNull('billing_invoices.vehicle_id');
+    }
+
+    /**
+     * Вкладка группами: claims — менеджер пишет, что оплатил (только «Нам должны»); open — ждём, сверху то, где по ссылке
+     * пытались и не вышло; paid — оплаченные свежими сверху, по 50 на страницу.
+     */
+    private function section(string $tab, Facets $facets, ?Closure $find, bool $paged): array
+    {
+        $q = fn () => self::of($tab, $facets)->when($find, $find)->with(self::WITH);
+        $claims = $tab === 'owed'
+            ? Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereIn('billing_invoices.id', self::of('owed', $facets)->when($find, $find)->select('billing_invoices.id')))
+                ->with(['invoice' => fn ($i) => $i->with(self::WITH)])->orderBy('paid_at')->orderBy('id')->get()
+            : collect();
+        $tried = $tab === 'payouts' ? collect() : self::tried(self::of($tab, $facets)->when($find, $find))->pluck('billing_invoices.id');
+        $open = $q()->where('state', InvoiceState::Issued)->with('payLinks.attempts')
+            ->when($tab === 'owed', fn ($w) => $w->whereDoesntHave('claims'))
+            ->when($tried->isNotEmpty(), fn ($w) => $w->orderByRaw('billing_invoices.id in ('.$tried->map(fn ($id) => (int) $id)->implode(',').') desc'))
+            ->when($tab === 'links', fn ($w) => $w->orderByDesc('issued_at'), fn ($w) => $w->orderByRaw('due_at asc nulls last'))
+            ->orderBy('billing_invoices.id')->get();
+        $last = Payment::select('paid_at')->whereColumn('invoice_id', 'billing_invoices.id')->where('state', PaymentState::Confirmed)->whereNull('voided_at')->latest('paid_at')->limit(1);
+        $paid = $q()->where('state', InvoiceState::Paid)->orderByDesc($last)->orderByDesc('billing_invoices.id');
+
+        return ['claims' => $claims, 'open' => $open, 'tried' => $tried, 'paid' => $paged ? $paid->paginate(50)->withQueryString() : $paid->limit(50)->get()];
+    }
+
+    /** Числа пилюль — сколько открытого; tones — где есть дело: не прошла по ссылке, пишет, что оплатил, выплатить. */
+    private static function counts(Facets $facets): array
+    {
+        $open = fn (string $t) => self::of($t, $facets)->where('state', InvoiceState::Issued);
+
+        return [
+            'counts' => ['links' => $open('links')->count(), 'owed' => $open('owed')->count(), 'payouts' => $n = $open('payouts')->count()],
+            'tones' => array_filter([
+                'links' => self::tried($open('links'))->exists() ? 'pill-urgent' : '',
+                'owed' => self::tried($open('owed'))->exists() || $open('owed')->whereHas('claims')->exists() ? 'pill-urgent' : '',
+                'payouts' => $n ? 'pill-urgent' : '',
+            ]),
+        ];
+    }
+
+    /** Адрес счёта в «Оплатах» — на своей вкладке, с карточкой (уведомления, Telegram). */
+    public static function url(Invoice $i): string
+    {
+        $tab = $i->isService() ? null : ($i->isOwed() ? 'payouts' : 'owed');
+
+        return '/work/money?'.($tab ? 'tab='.$tab.'&' : '').'peek='.$i->id;
     }
 
     /** Лупа по счёту: номер счёта или предложения, плательщик, менеджер, марка, модель, текст услуги. */
@@ -119,13 +168,12 @@ class MoneyController
         return array_diff_key(PaymentSource::options(), [PaymentSource::Offset->value => true]);
     }
 
-    /** Число у «Оплат»: строки «Надо сделать» — заявки, не прошла по ссылке, выплатить, в банк пришло без счёта. */
+    /** Число у «Оплат»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки в счёте нет (07.10.2026). */
     public static function todo(): int
     {
         return Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->crmMoney())->count()
             + self::tried(Invoice::crmMoney())->count()
-            + Invoice::crmMoney()->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued)->count()
-            + Transaction::where('direction', 'in')->where('state', Transaction::UNMATCHED)->count();
+            + Invoice::crmMoney()->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued)->count();
     }
 
     /**

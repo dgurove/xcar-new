@@ -55,10 +55,11 @@ final class SyncBank extends Command
                     $this->error($e->getMessage());
                 }
             }
-            if ($fresh->isNotEmpty()) {
+            // Пока СберБизнес толком не настроен, о выписке не шумим (07.10.2026, владелец): `BANK_NOTIFY=true` вернёт.
+            if ($fresh->isNotEmpty() && config('xcar.bank.notify')) {
                 Notification::send(User::withRole(Role::Admin)->get(), MoneyNotice::bankUnmatched($fresh->count(), $fresh->sum('amount')));
             }
-            if ($this->option('digest')) {
+            if ($this->option('digest') && config('xcar.bank.notify')) {
                 $open = Transaction::where('state', Transaction::UNMATCHED);
                 $digest = new BankDigest((clone $open)->count(), (float) (clone $open)->sum('amount'), $connection->fresh()->last_error,
                     $connection->refresh_expires_at ? (int) now()->diffInDays($connection->refresh_expires_at) : null);

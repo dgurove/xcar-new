@@ -36,6 +36,6 @@ final class BankDigest extends Message
 
     protected function link(): array
     {
-        return ['text' => 'В CRM', 'url' => Surface::Crm->url($this->unmatched > 0 ? '/work/money/bank' : '/settings/bank')];
+        return ['text' => 'В CRM', 'url' => Surface::Crm->url($this->unmatched > 0 ? '/settings/bank/statement' : '/settings/bank')];
     }
 }

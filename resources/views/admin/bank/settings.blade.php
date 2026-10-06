@@ -30,7 +30,8 @@
                         </button>
                     </form>
                 @endif
-                <a href="/work/money/bank" class="row justify-between"><span>Поступления</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
+                @php $unmatched = \App\Billing\Bank\Transaction::where('direction', 'in')->where('state', \App\Billing\Bank\Transaction::UNMATCHED)->count(); @endphp
+                <a href="/settings/bank/statement" class="row justify-between"><span class="min-w-0 flex-1">Выписка</span>@if ($unmatched)<span class="nums text-ink-dim">{{ $unmatched }}</span>@endif<x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
             </div>
             @if ($admin)
                 <form method="post" action="/settings/bank" class="mt-3 flex items-end gap-2">

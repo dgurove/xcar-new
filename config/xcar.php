@@ -99,6 +99,11 @@ return [
         'ca' => env('SBER_CA'),                      // корневой «Russian Trusted Root CA»; пусто — системный набор
     ],
 
+    // Выписка СберБизнеса: уведомление «Поступление без счёта» и дайджест владельцу. Выключены, пока связь не настроена.
+    'bank' => [
+        'notify' => (bool) env('BANK_NOTIFY', false),
+    ],
+
     // Исходящий прокси для carcade.com: адрес прода у них в бане.
     'carcade_proxy' => env('CARCADE_PROXY'),
 
