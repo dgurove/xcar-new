@@ -1,10 +1,18 @@
 import { Controller } from '@hotwired/stimulus';
 
-// «Приём подтверждений до»: выбрали день — время по умолчанию 17:00 (владелец 04.10.2026; было 21:00), а не полночь, которую подставляет календарь.
-// Время, поставленное руками, не трогаем: меняется только ровно 00:00.
+// «Приём подтверждений до» — день и время раздельно: выбрали день, а времени ещё нет — сразу 17:30 (владелец 06.10.2026),
+// его можно поменять. Одно поле datetime-local в Chrome без времени значения не отдаёт. В форму уходит скрытое `bids_close_at`.
 export default class extends Controller {
-    fix() {
-        const v = this.element.value;
-        if (/T00:00$/.test(v)) this.element.value = v.replace(/T00:00$/, 'T17:00');
+    static targets = ['day', 'time', 'out'];
+
+    day() {
+        if (this.dayTarget.value && !this.timeTarget.value) this.timeTarget.value = '17:30';
+        this.sync();
+    }
+
+    sync() {
+        const day = this.dayTarget.value;
+        this.outTarget.value = day ? `${day}T${this.timeTarget.value || '17:30'}` : '';
+        this.outTarget.dispatchEvent(new Event('change', { bubbles: true }));
     }
 }
