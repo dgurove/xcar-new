@@ -2,6 +2,8 @@
 
 namespace App\Park\Listeners;
 
+use App\Garage\CarState;
+use App\Garage\Events\GarageChanged;
 use App\Offers\CarPlace;
 use App\Offers\Destination;
 use App\Offers\Offer;
@@ -16,6 +18,7 @@ use App\Park\Vehicle;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Actions\DropRoute;
+use App\Workflow\Actions\EnsureServiceWorkflow;
 use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\SetCarPlace;
 use App\Workflow\Actions\TakeExit;
@@ -86,11 +89,17 @@ final class SyncOffer
         $by = $e->by ?? $this->system();
         $offer->log(OfferEventType::Note, $e->by, ['text' => 'Выдана с парковки'.($e->vehicle->yard ? ' «'.$e->vehicle->yard->name.'»' : '')]);
         if ($car = $offer->garageCar()->first()) {
+            // Вывоза могло и не быть (машина пришла на парковку раньше гаража) — встаёт сразу на «Стоит у …»; нет и
+            // маршрута — подготовка начинается без него.
             $to = $car->manager_id ? Destination::Keeper : Destination::Ours;
-            $stage = $offer->position(Track::Service)?->stage->workflow->stageForPlace($to === Destination::Keeper ? CarPlace::Keeper : CarPlace::WithUs);
+            $workflow = $offer->position(Track::Service)?->stage->workflow ?? ($offer->vendor ? app(EnsureServiceWorkflow::class)($offer->vendor) : null);
+            $stage = $workflow?->stageForPlace($to === Destination::Keeper ? CarPlace::Keeper : CarPlace::WithUs);
             $offer->update(['evacuation_to' => $to->value]);
             if ($stage) {
                 ($this->place)($offer, $stage, $by);
+            } elseif ($car->state === CarState::Waiting) {
+                $car->moveTo(CarState::Repair, by: $by);
+                GarageChanged::dispatch($car);
             }
 
             return;
