@@ -1,11 +1,10 @@
-{{-- «Характеристики» ТС коробкой: витрина, гараж, вывоз, сделка. full — VIN целиком с копированием и адрес осмотра.
-     bare — только сетка фактов, без своей карточки и заголовка (паспорт ТС в редакторе CRM); cols — колонок на широкой. --}}
-@props(['offer', 'full' => false, 'bare' => false])
+{{-- «Характеристики» ТС коробкой: витрина, гараж, вывоз, сделка. full — VIN целиком с копированием и адрес осмотра. --}}
+@props(['offer', 'full' => false])
 @php $facts = \App\Offers\OfferFacts::for($offer, $full); @endphp
 @if ($facts)
-    <section {{ $attributes->merge(['class' => $bare ? '' : 'box']) }}>
-        @unless ($bare)<h2 class="box-title">Характеристики</h2>@endunless
-        <dl @class(['grid grid-cols-2 gap-x-6 gap-y-3', 'mt-3' => ! $bare, '@2xl:grid-cols-3' => $bare])>
+    <section {{ $attributes->merge(['class' => 'box']) }}>
+        <h2 class="box-title">Характеристики</h2>
+        <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">
             @foreach ($facts as $label => $value)
                 <div @class(['min-w-0', 'col-span-2' => in_array($label, \App\Offers\OfferFacts::WIDE, true)])>
                     <dt class="text-sm text-ink-dim">{{ $label }}</dt>

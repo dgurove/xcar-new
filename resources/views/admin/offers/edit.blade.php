@@ -23,7 +23,7 @@
     $hints = [...array_keys($migDiff), ...$glow];
     $published = $offer->state !== OfferState::Draft;
     $foldCar = $published && ! $errors->hasAny($carKeys) && ! array_intersect($hints, $carKeys);
-    $foldMoney = $published && ! $errors->hasAny($moneyKeys) && ! array_intersect($hints, $moneyKeys);
+    $foldMoney = $published && ($offer->floor_price || $offer->asking_price) && ! $errors->hasAny($moneyKeys) && ! array_intersect($hints, $moneyKeys);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
     <x-slot:badge><x-ui.links :offer="$offer"/></x-slot:badge>
@@ -92,17 +92,17 @@
         <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 @4xl:order-none @4xl:col-start-1 @4xl:row-start-1">
             @csrf @method('put')
 
-            {{-- С публикации ТС свёрнута в паспорт (06.10.2026): «Развернуть» — полная форма (`unhide`); поля остаются в
+            {{-- С публикации ТС свёрнута в одну строку (06.10.2026): нажатие — полная форма (`unhide`); поля остаются в
                  форме скрытыми, и сохранение «Показа» шлёт их как есть. Раскрыта сама, если в полях есть что смотреть:
                  ошибки, расхождения и подсветка Мигторга. --}}
-            <x-ui.card title="Транспортное средство" data-controller="unhide">
-                @if ($foldCar)
-                    <x-slot:actions><button type="button" class="btn btn-s btn-quiet" data-unhide-target="trigger" data-action="unhide#show">Развернуть</button></x-slot:actions>
-                @endif
-                <x-mail.reader-diffs form="offer-form" class="mb-3"/>
+            <x-ui.card :title="$foldCar ? null : 'Транспортное средство'" data-controller="unhide">
+                @if ($foldCar)@include('admin.offers.fields.passport')@endif
+                <x-mail.reader-diffs form="offer-form" @class(['mb-3', 'mt-3' => $foldCar])/>
                 @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
-                @if ($foldCar)<div data-unhide-target="trigger">@include('admin.offers.fields.passport')</div>@endif
-                <div data-unhide-target="block" @if ($foldCar) hidden @endif>@include('admin.offers.fields.car')</div>
+                <div data-unhide-target="block" @if ($foldCar) hidden @endif>
+                    @if ($foldCar)<h2 class="box-title mb-3">Транспортное средство</h2>@endif
+                    @include('admin.offers.fields.car')
+                </div>
                 {{-- Показ — пока машину показывают: в сделке и в гараже он ни о чём (галки при сохранении не трогаются, `_show`). --}}
                 @if (in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true))
                     @include('admin.offers.fields.show', ['summary' => $showingSummary])
@@ -112,12 +112,19 @@
 
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
-            <x-ui.card title="Цены" class="order-3" data-controller="unhide">
+            {{-- Свёрнутые цены — одна строка «закупочная → продажа» (как цена менеджеру), нажатие — поля. --}}
+            <x-ui.card :title="$foldMoney ? null : 'Цены'" class="order-3" data-controller="unhide">
                 @if ($foldMoney)
-                    <x-slot:actions><button type="button" class="btn btn-s btn-quiet" data-unhide-target="trigger" data-action="unhide#show">Развернуть</button></x-slot:actions>
-                    <div data-unhide-target="trigger">@include('admin.offers.fields.money-passport', ['garageOnly' => (bool) $garageView])</div>
+                    <button type="button" class="flex w-full items-center gap-3 text-left" data-unhide-target="trigger" data-action="unhide#show">
+                        <span class="text-sm font-medium text-ink-dim">Цены</span>
+                        <span class="nums ml-auto min-w-0 truncate text-right">@if ($offer->floor_price){{ \App\Support\Money::nums($offer->floor_price) }}@if ($offer->asking_price && ! $garageView) → @endif @endif @if ($offer->asking_price && ! $garageView){{ \App\Support\Money::nums($offer->asking_price) }}@endif ₽</span>
+                        <x-ui.chevron/>
+                    </button>
                 @endif
-                <div data-unhide-target="block" @if ($foldMoney) hidden @endif>@include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false, 'garageOnly' => (bool) $garageView])</div>
+                <div data-unhide-target="block" @if ($foldMoney) hidden @endif>
+                    @if ($foldMoney)<h2 class="box-title mb-3">Цены</h2>@endif
+                    @include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false, 'garageOnly' => (bool) $garageView])
+                </div>
             </x-ui.card>
 
             @if ($chats->isNotEmpty())
