@@ -15,8 +15,8 @@ use App\Users\User;
 final class CarLinks
 {
     /**
-     * Значок есть, когда машина есть ещё где-то, кроме этого экрана. Только админу. ТС парковки считается, когда её уже
-     * приняли (`accepted_at`, владелец 04.10.2026): заявка на приём — ещё не машина в «Наличии», значка нет.
+     * Значок есть, когда машина есть ещё где-то, кроме этого экрана. Только админу. ТС парковки считается, как только
+     * заявку на приём завели, даже до приёма (владелец 06.10.2026).
      */
     public static function shows(Offer|Vehicle $from, ?User $user): bool
     {
@@ -24,9 +24,9 @@ final class CarLinks
             return false;
         }
         if ($from instanceof Vehicle) {
-            return $from->offer_id && $from->accepted_at;
+            return (bool) $from->offer_id;
         }
-        $parked = $from->relationLoaded('parkVehicle') ? (bool) $from->parkVehicle?->accepted_at : $from->parkVehicle()->whereNotNull('accepted_at')->exists();
+        $parked = $from->relationLoaded('parkVehicle') ? (bool) $from->parkVehicle : $from->parkVehicle()->exists();
 
         return $parked || ($from->relationLoaded('purchaseCar') && $from->purchaseCar);
     }
