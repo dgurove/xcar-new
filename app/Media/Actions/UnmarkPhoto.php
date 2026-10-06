@@ -73,13 +73,28 @@ final class UnmarkPhoto
                 throw new RuntimeException("Кадр {$media->id}: копия со знаком не записалась");
             }
         }
+        // Тот же шаг листа, что у приёма: оригинал Мигторга бывает листом A4 с полями — на место встаёт первый снимок.
+        $bands = $ingest->pages($file);
+        try {
+            $media->setCustomProperty('unmarked', self::MANUAL);
+            $this->swap($media, $bands[0] ?? $file, $ingest);
+        } finally {
+            array_map('unlink', $bands);
+        }
+    }
+
+    /**
+     * Другой файл в тот же кадр: тот же media — порядок, «скрыт», главный кадр; наш знак — заново поверх, конверсии с
+     * нуля. Ею меняют файл замена своим, оригинал Мигторга и обрезка листа (`media:crop-pages`).
+     */
+    public function swap(Media $media, string $file, PhotoIngest $ingest): void
+    {
         $webp = $ingest->shrink($file);
         try {
-            $this->encode($webp, $source);
+            $this->encode($webp, $this->source($media));
         } finally {
             @unlink($webp);
         }
-        $media->setCustomProperty('unmarked', self::MANUAL);
         $this->refresh($media);
     }
 

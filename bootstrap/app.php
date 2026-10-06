@@ -35,6 +35,7 @@ use App\Mail\Console\RebuildChains;
 use App\Mail\Console\ReconcileMail;
 use App\Mail\Console\SyncMail;
 use App\Mail\Console\WatchMail;
+use App\Media\Console\CropPages;
 use App\Media\Console\MoveConversionsHot;
 use App\Media\Console\Restamp;
 use App\Media\Console\TuneWatermarks;
@@ -99,6 +100,7 @@ return Application::configure(basePath: dirname(__DIR__))
         MakeKeys::class,
         Restamp::class,
         UnmarkPhotos::class,
+        CropPages::class,
         TuneWatermarks::class,
         MoveConversionsHot::class,
         Gc::class,

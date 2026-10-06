@@ -11,14 +11,14 @@ use Spatie\MediaLibrary\HasMedia;
 use Throwable;
 
 /**
- * Вложения письма → медиатека машины: документы как есть, фото через приём,
- * архивы распаковываются, листы со снимками режутся. Что уже лежит (по
+ * Вложения письма → медиатека машины: документы как есть, фото через приём
+ * (листы со снимками режет он же), архивы распаковываются. Что уже лежит (по
  * отпечатку `sha` исходника) — пропускается: повторное письмо, ручная
  * загрузка того же файла или второй запуск дублей не дают.
  */
 final class AttachmentImporter
 {
-    public function __construct(private AttachmentClassifier $classifier, private ArchivePhotoExtractor $archives, private PageScanCropper $cropper, private PhotoIngest $photos) {}
+    public function __construct(private AttachmentClassifier $classifier, private ArchivePhotoExtractor $archives, private PhotoIngest $photos) {}
 
     /**
      * @param  array|callable(Attachment): array  $photoProperties  свойства кадра: одни на всех (оффер) либо по письму
@@ -64,17 +64,9 @@ final class AttachmentImporter
         }
         foreach ($sources as $i => $photo) {
             $progress && $progress('Разбираем фотографии', $i, count($sources));
+            // Лист со снимками режет сам приём (`PhotoIngest` → `PageScan`) — у всех дверей одинаково.
             $this->guard(function () use ($model, $photosCollection, $photo, &$added) {
-                $cropped = $this->cropper->crop($photo['contents']);
-                if (! $cropped) {
-                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $photo['contents'], $photo['name'], $photo['properties']);
-
-                    return;
-                }
-                $base = pathinfo($photo['name'], PATHINFO_FILENAME);
-                foreach ($cropped as $n => $contents) {
-                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $contents, $base.(count($cropped) > 1 ? '-'.($n + 1) : '').'.jpg', $photo['properties']);
-                }
+                $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $photo['contents'], $photo['name'], $photo['properties']);
             });
         }
 

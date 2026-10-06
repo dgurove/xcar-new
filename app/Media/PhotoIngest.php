@@ -17,11 +17,20 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
 /**
- * Приём фотографии. Оригинал не хранится: кадр с телефона ужимается до 1600 px
- * в webp (2 МБ → ~200 КБ) и только потом попадает в медиатеку.
+ * Приём фотографии — единственный путь кадра в медиатеку, у любой модели и любой двери (письмо, архив, телефон,
+ * Мигторг, закупка, парковка). Шаги по порядку (06.10.2026: обрезка листа жила только в почте, и кадры Мигторга
+ * ложились с белыми полями):
+ * 1. оригинал Мигторга вместо кадра с их сайта со знаком;
+ * 2. HEIC → JPEG;
+ * 3. лист со снимками → снимки (`PageScan`): по кадру на каждый, тот же лист второй раз не ляжет (`page_sha`);
+ * 4. чужой знак площадки снимается (`Unmark`, только у предложения);
+ * 5. сжатие до 1600 px в webp (2 МБ → ~200 КБ) — оригинал не хранится;
+ * 6. наш знак ставит `StampOnAdd` при добавлении.
  */
 final class PhotoIngest
 {
+    public function __construct(private PageScan $pages) {}
+
     public const MAX_DIMENSION = 1600;
 
     public const QUALITY = 80;
@@ -51,11 +60,10 @@ final class PhotoIngest
         return $this->add($model, $collection, $temp, $name, $properties, $max);
     }
 
+    /** Кадр (или все снимки с листа) в коллекцию; возвращает первый. */
     public function add(HasMedia $model, string $collection, string $path, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
-        $webp = null;
-        $clean = null;
-        $marked = null;
+        $bands = [];
         try {
             // Кадр, скачанный с сайта Мигторга со знаком (`{файл}_watermark.webp`), лот которого в индексе, — их
             // оригинал без знака и крупнее.
@@ -67,6 +75,53 @@ final class PhotoIngest
             $this->checkSize($path);
             // Отпечаток исходника — чтобы тот же файл (из письма, с телефона, из архива) не лёг второй раз.
             $properties += ['sha' => hash_file('sha256', $path)];
+            $bands = $collection === 'photos' ? $this->pages($path) : [];
+            if (! $bands) {
+                return $this->place($model, $collection, $path, $name, $properties, $max);
+            }
+            // Лист со снимками: каждый снимок — свой кадр; отпечаток у вырезки свой, у всех — отпечаток листа.
+            $base = pathinfo($name, PATHINFO_FILENAME);
+            $first = null;
+            foreach ($bands as $n => $band) {
+                $media = $this->place($model, $collection, $band, $base.(count($bands) > 1 ? '-'.($n + 1) : '').'.jpg',
+                    ['sha' => hash_file('sha256', $band), 'page_sha' => $properties['sha']] + $properties, $max);
+                $first ??= $media;
+            }
+
+            return $first;
+        } finally {
+            @unlink($path);
+            foreach ($bands as $band) {
+                @unlink($band);
+            }
+        }
+    }
+
+    /**
+     * Снимки с листа во временные JPEG; не лист — пустой список (`PageScan` ничего не выбрасывает молча). Тем же шагом
+     * пользуется замена файла кадра (`UnmarkPhoto::replace`) и дочистка `media:crop-pages`.
+     *
+     * @return list<string>
+     */
+    public function pages(string $path): array
+    {
+        $out = [];
+        foreach ($this->pages->crop((string) file_get_contents($path)) as $contents) {
+            $file = tempnam(sys_get_temp_dir(), 'kadr-');
+            file_put_contents($file, $contents);
+            $out[] = $file;
+        }
+
+        return $out;
+    }
+
+    /** Один кадр: снятие чужого знака, сжатие, в медиатеку. Исходник не трогает — его убирает `add`. */
+    private function place(HasMedia $model, string $collection, string $path, string $name, array $properties, int $max): Media
+    {
+        $webp = null;
+        $clean = null;
+        $marked = null;
+        try {
             // Чужой знак площадки снимается до сжатия: webp размывает край знака, и формула снятия перестаёт сходиться.
             // Оригинал Мигторга (`migtorg`) приходит без их знака — снимать нечего.
             if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ($clean = app(Unmark::class)($path))) {
@@ -89,7 +144,6 @@ final class PhotoIngest
 
             return $media;
         } finally {
-            @unlink($path);
             if ($clean) {
                 @unlink($clean['path']);
             }

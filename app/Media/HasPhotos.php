@@ -65,7 +65,8 @@ trait HasPhotos
      */
     public function hasFile(string $sha): bool
     {
-        return $this->media()->where(fn ($q) => $q->where('custom_properties->sha', $sha)->orWhere('custom_properties->sent_sha', $sha))->exists();
+        // `page_sha` — лист, с которого вырезан кадр (`PhotoIngest`): тот же лист второй раз не режется.
+        return $this->media()->where(fn ($q) => $q->where('custom_properties->sha', $sha)->orWhere('custom_properties->sent_sha', $sha)->orWhere('custom_properties->page_sha', $sha))->exists();
     }
 
     /** @return Collection<int, Media> */
