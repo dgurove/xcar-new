@@ -65,6 +65,13 @@ final class PageScan
      */
     private const MIN_INK_SHARE = 0.78;
 
+    /**
+     * Разброс яркости внутри вырезанного, ниже которого это заливка, а не снимок (06.10.2026: лист Мигторга с бледно-серыми
+     * прямоугольниками-заглушками давал «снимки» ровного серого цвета — по доле содержимого их не отличить). У фото на
+     * листах проекта — десятки уровней, у заглушки — единицы.
+     */
+    private const MIN_DETAIL = 8.0;
+
     /** Отступ внутрь от найденной границы: рамка и ореол JPEG. */
     private const INSET = 2;
 
@@ -237,6 +244,22 @@ final class PageScan
         return $total === 0 ? 0.0 : $white / $total;
     }
 
+    /** Разброс яркости (стандартное отклонение) по уменьшенной копии. */
+    private function detail(GdImage $image): float
+    {
+        $probe = $this->probe($image);
+        [$sum, $squares, $n] = [0, 0, 0];
+        for ($y = 0, $height = imagesy($probe); $y < $height; $y++) {
+            for ($x = 0, $width = imagesx($probe); $x < $width; $x++) {
+                $l = $this->luminance($probe, $x, $y);
+                [$sum, $squares, $n] = [$sum + $l, $squares + $l * $l, $n + 1];
+            }
+        }
+        $mean = $sum / max(1, $n);
+
+        return sqrt(max(0, $squares / max(1, $n) - $mean * $mean));
+    }
+
     /** Доля пикселей, отличных от бумаги. */
     private function inkShare(GdImage $image): float
     {
@@ -327,8 +350,7 @@ final class PageScan
             return null;
         }
 
-        if ($this->inkShare($cut) < self::MIN_INK_SHARE) {
-
+        if ($this->inkShare($cut) < self::MIN_INK_SHARE || $this->detail($cut) < self::MIN_DETAIL) {
             return null;
         }
 
