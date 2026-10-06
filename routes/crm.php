@@ -203,9 +203,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
         Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
         Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
-        // Деньги по сделкам: заявки менеджеров об оплате, вознаграждения к выплате, счета; карточка счёта — общая со стоянкой.
+        // Оплаты — лента «Надо сделать / Ждём деньги / История» (06.10.2026); карточка счёта — общая со стоянкой.
         Route::get('/work/money', [MoneyController::class, 'index']);
-        Route::get('/work/money/managers', [MoneyController::class, 'managers']);
+        Route::get('/work/money/managers', [MoneyController::class, 'managers']); // бывшие «Расчёты с менеджерами» — редирект
         // Разовая оплата услуг по ссылке без сделки — только админ (05.10.2026).
         Route::post('/work/money/service', [MoneyController::class, 'service'])->middleware('ability:isAdmin');
         Route::post('/work/payments/{payment}/confirm', [MoneyController::class, 'confirm']);

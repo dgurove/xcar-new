@@ -35,6 +35,6 @@ final class AgentFeeDue extends Message
 
     protected function link(): array
     {
-        return ['text' => 'В CRM', 'url' => Surface::Crm->url('/work/money?preset=payouts')];
+        return ['text' => 'В CRM', 'url' => Surface::Crm->url('/work/money?peek='.$this->fee->id)];
     }
 }

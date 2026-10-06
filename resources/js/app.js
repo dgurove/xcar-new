@@ -17,6 +17,13 @@ Turbo.StreamActions.toast = function () {
 Turbo.StreamActions.advance = function () {
     document.dispatchEvent(new CustomEvent('detail:advance'));
 };
+// Дело в карточке поменяло весь список (лента «Оплат»: строка уходит из «Надо сделать» в «Историю») — страница
+// перечитывается морфом с той же карточкой. Штатный refresh Turbo молча пропускает, пока идёт визит фрейма карточки
+// (у фрейма turbo-action="replace"), поэтому ждём его конца, но не дольше секунды.
+Turbo.StreamActions.reload = function () {
+    const go = (n) => (Turbo.session.navigator.currentVisit && n < 60 ? requestAnimationFrame(() => go(n + 1)) : Turbo.session.refresh(document.baseURI));
+    go(0);
+};
 // Число у пилюли вкладки после дела в карточке: выросло — пилюля коротко вспыхивает, видно, куда уехала строка.
 Turbo.StreamActions.count = function () {
     const n = Number(this.getAttribute('count')) || 0;

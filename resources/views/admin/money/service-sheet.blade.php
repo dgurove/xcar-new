@@ -1,6 +1,6 @@
-{{-- Разовая оплата по ссылке (только админ): сумма крупно, «За что» — услуга в чек, чипы — наши услуги по подбору ТС
+{{-- «Взять ссылку на оплату» (только админ, 06.10.2026: начальник искал, где взять ссылку): сумма крупно, «За что» — услуга в чек, чипы — наши услуги по подбору ТС
      (ServiceTitle: в чеке конкретная услуга, займов, возвратов и денег за машину ссылкой не принимаем), плательщик из
-     заведённых или новый. Выставляет счёт ПРАЙМ, ссылка заводится сама, после — карточка счёта со ссылкой. --}}
+     заведённых или новый. Выставляет счёт ПРАЙМ, ссылка заводится сама, после — карточка счёта со ссылкой («Скопировать», «Отправить»). --}}
 @php
     use App\Billing\ServiceTitle;
     // Кто уже платил ПРАЙМ (менеджеры, покупатели, прошлые разовые) — а не все контрагенты, включая парковку.
@@ -9,8 +9,8 @@
     $partyId = (string) old('party_id', 'new');
 @endphp
 <div data-controller="sheet" class="contents">
-    <button type="button" class="btn btn-s btn-accent rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Оплата по ссылке</span></button>
-    <x-ui.sheet id="service-pay" title="Оплата по ссылке" :open="$errors->hasAny(['amount', 'title', 'party_id', 'party_name', 'party_email'])">
+    <button type="button" class="btn btn-s btn-accent rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span>Взять ссылку на оплату</span></button>
+    <x-ui.sheet id="service-pay" title="Ссылка на оплату" :open="$errors->hasAny(['amount', 'title', 'party_id', 'party_name', 'party_email'])">
         <form method="post" action="/work/money/service" class="flex flex-col gap-5" data-controller="reveal">
             @csrf
             <div class="flex flex-col items-center gap-2">
@@ -33,7 +33,7 @@
                 <x-ui.field name="party_name" label="ФИО или название"/>
                 <x-ui.field name="party_email" label="Почта для чека" type="email"/>
             </div>
-            <x-ui.button block>Выставить и получить ссылку</x-ui.button>
+            <x-ui.button block>Получить ссылку</x-ui.button>
         </form>
     </x-ui.sheet>
 </div>

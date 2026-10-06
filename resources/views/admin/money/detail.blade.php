@@ -26,7 +26,7 @@
         <x-slot:actions>
             @if ($issued)
                 <div data-controller="sheet" class="contents">
-                    <button type="button" class="btn btn-s btn-accent" data-action="sheet#open">{{ $i->isOwed() ? 'Выплатить' : 'Оплачен' }}</button>
+                    <button type="button" class="btn btn-s btn-accent" data-action="sheet#open">{{ $i->isOwed() ? 'Выплатить' : 'Деньги пришли' }}</button>
                     <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : 'Оплата по счёту '.$i->label()" :open="$errors->hasAny(['source', 'paid_at', 'slip'])">
                         <x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources"/>
                     </x-ui.sheet>
@@ -92,6 +92,7 @@
                 </x-money.line>
             @endforeach
         </div>
-        <x-slot:row><x-money.table-row :invoice="$i"/></x-slot:row>
     </x-ui.row-card>
+    {{-- Действие в карточке (поступило, выплатили, аннулировали) меняет всю ленту «Оплат» — строка уходит из «Надо сделать» в «Историю»: страница перечитывается морфом с той же карточкой. --}}
+    @if (session('toast'))<turbo-stream action="reload"></turbo-stream>@endif
 </x-ui.detail>

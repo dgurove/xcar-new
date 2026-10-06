@@ -2,11 +2,8 @@
 
 namespace App\Support;
 
-use App\Billing\Bank\Transaction as BankTransaction;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
-use App\Billing\Payment;
-use App\Billing\PaymentState;
 use App\Billing\Seller;
 use App\Chats\Chat;
 use App\Garage\Car as GarageCar;
@@ -517,9 +514,8 @@ final class Nav
                     ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
                     ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)))
                     ->count(),
-                // Деньги горят, когда менеджер сообщил об оплате, а мы ещё не подтвердили.
-                '/work/money' => Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->crmMoney())->count()
-                    + BankTransaction::where('state', BankTransaction::UNMATCHED)->count(),
+                // Деньги горят строками «Надо сделать» в «Оплатах»: сообщили об оплате, не прошла по ссылке, выплатить, банк без счёта.
+                '/work/money' => \App\Http\Admin\MoneyController::todo(),
             ];
             // На табе «Работа» — только сделки (владелец, 04.10.2026): почта, чаты и деньги горят у своих разделов.
             $badges['/work'] = $badges['/work/deals'];

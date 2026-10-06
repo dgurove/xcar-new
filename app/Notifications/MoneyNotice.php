@@ -127,7 +127,7 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        $notice = (new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->crmUrl() ?? '/work/money', $i->deal?->offer?->number, true))->about($i);
+        $notice = (new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->crmUrl() ?? '/work/money?peek='.$i->id, $i->deal?->offer?->number, true))->about($i);
         $notice->loud = true;
         $notice->actor = $i->deal?->buyer;
 
@@ -150,7 +150,7 @@ final class MoneyNotice extends Notice
         $i = $p->invoice;
 
         return (new self('По ссылке оплачено '.Money::rub($p->amount).', счёт '.$i->label().', платил '.$link->payerLabel(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(),
-            Car::ofInvoice($i)?->crmUrl() ?? '/work/money?preset=paid', $i->deal?->offer?->number, true))->about($i);
+            Car::ofInvoice($i)?->crmUrl() ?? '/work/money?peek='.$i->id, $i->deal?->offer?->number, true))->about($i);
     }
 
     /** Банк отклонил оплату по ссылке — менеджеру: покупатель пытался, не вышло; почему — словами ЮKassa. */
@@ -192,7 +192,7 @@ final class MoneyNotice extends Notice
 
     public static function feeDue(Invoice $fee): self
     {
-        return (new self('К выплате '.Money::rub($fee->total).' — '.$fee->party->name, $fee->deal?->offer?->titleWithYear().', до '.$fee->due_at->translatedFormat('j M'), '/work/money?preset=payouts', $fee->deal?->offer?->number, true))->about($fee);
+        return (new self('К выплате '.Money::rub($fee->total).' — '.$fee->party->name, $fee->deal?->offer?->titleWithYear().', до '.$fee->due_at->translatedFormat('j M'), '/work/money?peek='.$fee->id, $fee->deal?->offer?->number, true))->about($fee);
     }
 
     public function title(): string

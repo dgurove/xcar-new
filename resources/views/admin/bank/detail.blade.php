@@ -1,6 +1,6 @@
 {{-- Карточка поступления: плательщик, сумма, дата, ИНН и назначение целиком. Не привязано — счета на выбор (сначала
      совпавшие по ИНН и сумме) и «Не наше»; «не наше» можно вернуть; привязанное ведёт в свой счёт. --}}
-@php use App\Support\Money; @endphp
+@php use App\Support\Money; $href = '/work/money/bank/'.$tx->id; @endphp
 <x-ui.detail>
     <x-ui.row-card :title="$tx->counterparty ?: 'Плательщик не указан'" :photo="false">
         <x-slot:marks>
@@ -50,4 +50,6 @@
         @endif
         <x-slot:row><x-bank.table-row :tx="$tx"/></x-slot:row>
     </x-ui.row-card>
+    {{-- Привязали или «не наше» — строка уходит из «Надо сделать» в «Оплатах» и из «Не привязаны» здесь: страница перечитывается морфом. --}}
+    @if (session('toast'))<turbo-stream action="reload"></turbo-stream>@endif
 </x-ui.detail>
