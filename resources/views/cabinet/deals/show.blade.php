@@ -19,8 +19,8 @@
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
     {{-- Сделка — не объявление (05.10.2026, владелец): первым делом задача, справа расчёт, кадры — плиткой в самом низу
          колонки. ПК: слева работа (задача, покупатель, путь, счета), справа липко расчёт, характеристики, документы, фото.
-         Телефон — одна колонка: задача, чат, расчёт, покупатель, путь, характеристики, документы, фото. Чат — карточкой над
-         расчётом (`cabinet.deals.chat-card`). --}}
+         Телефон — одна колонка: чат, задача, расчёт, покупатель, путь, характеристики, документы, фото. Чат — карточкой
+         (`cabinet.deals.chat-card`): на ПК первым сбоку, на телефоне самым верхом. --}}
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
             <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps])</div>
@@ -60,9 +60,10 @@
         </section>
 
         <aside class="contents lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">
-            <div class="order-2 flex min-w-0 flex-col gap-6">
-                {{-- Чат — над «Расчётом», как диалог мессенджера, а не кнопкой в заголовке (06.10.2026, владелец). --}}
-                @if ($offer->chatOpenFor(auth()->user()))@include('cabinet.deals.chat-card')@endif
+            {{-- Чат — как диалог мессенджера, а не кнопкой в заголовке (06.10.2026, владелец): на ПК первым в боковой
+                 колонке, на телефоне — самым верхом, над задачей. --}}
+            @if ($offer->chatOpenFor(auth()->user()))<div class="order-first min-w-0">@include('cabinet.deals.chat-card')</div>@endif
+            <div class="order-2 min-w-0">
                 @if (! $deal->isGarage())
                     @include('cabinet.deals.money')
                 @else
