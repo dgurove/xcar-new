@@ -25,7 +25,7 @@
                     <x-ui.field name="engine_power" label="Мощность, л. с." :value="$car->engine_power"/>
                     <x-ui.field name="color" label="Цвет" :value="$car->color"/>
                     <x-ui.field name="condition" label="Состояние" :value="$car->condition"/>
-                    <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" :value="$car->settlement_id" :text="$car->settlement?->title()"/>
+                    <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" create="/reference/settlements" :value="$car->settlement_id" :text="$car->settlement?->title()"/>
                     <x-ui.field name="address" label="Адрес" :value="$car->address" span="col-span-2 lg:col-span-1"/>
                     <x-ui.field name="description" label="Описание" type="textarea" :value="$car->description" span="col-span-full"/>
                 </div>

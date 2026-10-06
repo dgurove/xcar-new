@@ -34,7 +34,7 @@
     <x-ui.field name="fuel" label="Топливо" :options="Fuel::options()" placeholder="—" :value="$offer->fuel?->value"/>
     <x-ui.field name="engine_volume" label="Объём, л" placeholder="1,6" :value="\App\Support\Liters::format($offer->engine_volume)"/>
     <x-ui.field name="engine_power" label="Мощность, л. с." :value="$offer->engine_power"/>
-    <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()"/>
+    <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" create="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()"/>
     <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
         <x-slot:after-label><x-ui.eye-check name="show_address" :checked="$offer->show_address"/></x-slot:after-label>
     </x-ui.field>

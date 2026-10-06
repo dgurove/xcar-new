@@ -138,6 +138,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::get('/reference/models', [ReferenceController::class, 'models']);
     Route::get('/reference/settlements', [ReferenceController::class, 'settlements']);
     Route::post('/reference/brands', [ReferenceController::class, 'createBrand']);
+    Route::post('/reference/settlements', [ReferenceController::class, 'createSettlement']);
     Route::post('/reference/models', [ReferenceController::class, 'createModel']);
 
     Route::middleware('ability:canManageCrm')->group(function () {

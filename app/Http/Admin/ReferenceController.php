@@ -93,6 +93,24 @@ class ReferenceController
         ]));
     }
 
+    /**
+     * Место, которого нет в справочнике (владелец 06.10.2026: «для крайне редких случаев»), — свободным текстом: строкой
+     * справочника с типом `своб`, чтобы поле осталось ссылкой и находилось в следующий раз. Номер в конце — регион.
+     */
+    public function createSettlement(Request $request)
+    {
+        $name = trim((string) preg_replace('/\s+/u', ' ', $request->validate(['name' => ['required', 'string', 'max:120']])['name']), ' ,');
+        $plate = preg_match('/[\s,]+(\d{1,3})$/u', $name, $m) ? str_pad($m[1], 2, '0', STR_PAD_LEFT) : null;
+        $name = $plate ? trim((string) preg_replace('/[\s,]+\d{1,3}$/u', '', $name)) : $name;
+        $region = $plate ? \App\Cars\Region::where('plate', $plate)->first() : null;
+        $place = Settlement::firstOrCreate(
+            ['name' => $name, 'type' => 'своб', 'region_code' => $region?->plate],
+            ['region_id' => $region?->id, 'rank' => 9],
+        );
+
+        return response()->json(['id' => $place->id, 'label' => $place->title()]);
+    }
+
     /** Менеджеры по имени или телефону — «Подтверждение за менеджера». */
     public function managers(Request $request)
     {

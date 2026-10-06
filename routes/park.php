@@ -125,6 +125,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/reference/settlements', [ReferenceController::class, 'settlements']);
     Route::get('/reference/models', [ReferenceController::class, 'models']);
     Route::post('/reference/brands', [ReferenceController::class, 'createBrand']);
+    Route::post('/reference/settlements', [ReferenceController::class, 'createSettlement']);
     Route::post('/reference/models', [ReferenceController::class, 'createModel']);
     Route::get('/acts/{vehicle}/{kind}', [ActController::class, 'show'])->where('kind', 'intake|release|contract|handover');
 
