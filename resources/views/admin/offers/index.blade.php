@@ -58,7 +58,7 @@
             @endif
             @if ($table)
                 <x-ui.table id="offers" :view="$view" :titles="$offers->getCollection()->map(fn ($o) => mb_strlen($o->titleWithYear()) + ($o->recommended ? 3 : 0) + (\App\Support\CarLinks::shows($o, auth()->user()) ? 3 : 0) + (blank($o->vin) && in_array($o->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery, \App\Offers\OfferState::Open], true) ? 7 : 0))" :rest="$rest">
-                    <x-slot:head><x-offer.table-head :pick="$pick" :cols="$cols"/></x-slot:head>
+                    <x-slot:head><x-offer.table-head :pick="$pick" :cols="$cols" :sort="$sort"/></x-slot:head>
                     @foreach ($groups as $key => $list)
                         @if ($title = $groupTitle($key, $list))
                             <tr class="table-group"><th colspan="{{ $span }}"><span class="table-group-name">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums">{{ $list->count() }}</span></span></th></tr>

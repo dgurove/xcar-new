@@ -2,7 +2,7 @@
      шторка с картой и формой); таблица — столбцы и карточка строки. Чип занятых мест ведёт к ТС. Цифр-итогов нет. --}}
 @php use App\Support\ListView; $admin = auth()->user()->isAdmin(); $view = ListView::pick(request(), $yards->count()) ?? ListView::GRID; $free = fn ($y) => $y->capacity ? max(0, $y->capacity - $y->stored_vehicles_count) : null; @endphp
 <x-ui.shell title="Парковки" :count="$yards->count()" :detail="$detail">
-    <x-ui.toolbar :pills="['open' => 'Открытые', 'all' => 'Все']" :pill="$closed ? 'all' : 'open'" pill-param="closed" :counts="['all' => $closedCount ?: null]" name="yards">
+    <x-ui.toolbar :sort="$sort" :pills="['open' => 'Открытые', 'all' => 'Все']" :pill="$closed ? 'all' : 'open'" pill-param="closed" :counts="['all' => $closedCount ?: null]" name="yards">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         <x-slot:actions>
             {{-- Заводит и правит парковки только админ: управляющему это настройки. --}}
@@ -18,7 +18,7 @@
         <x-ui.empty class="mt-6">Парковок нет</x-ui.empty>
     @elseif (ListView::isTable($view))
         <x-ui.table id="yards" class="mt-6" :view="$view">
-            <x-slot:head><tr><th class="grow">Парковка</th><th class="cell-dim hidden sm:table-cell">Город</th><th class="num hidden sm:table-cell">Мест</th><th class="num">Занято</th><th class="num">Свободно</th></tr></x-slot:head>
+            <x-slot:head><tr><x-ui.th :sort="$sort" key="name" class="grow">Парковка</x-ui.th><th class="cell-dim hidden sm:table-cell">Город</th><th class="num hidden sm:table-cell">Мест</th><x-ui.th :sort="$sort" key="stored" class="num">Занято</x-ui.th><x-ui.th :sort="$sort" key="free" class="num">Свободно</x-ui.th></tr></x-slot:head>
             @foreach ($yards as $yard)
                 <tr data-detail-key="{{ $yard->id }}" id="yard-{{ $yard->id }}" class="{{ $yard->is_active ? '' : 'text-ink-dim' }}">
                     <td class="grow">

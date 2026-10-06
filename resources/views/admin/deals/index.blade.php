@@ -12,7 +12,7 @@
     @else
         @if (\App\Support\ListView::isTable($view))
             <x-ui.table id="deals" class="mt-6" :view="$view" :titles="$deals->getCollection()->map(fn ($d) => $d->offer?->titleWithYear())">
-                <x-slot:head><x-deal.table-head/></x-slot:head>
+                <x-slot:head><x-deal.table-head :sort="$sort"/></x-slot:head>
                 @foreach ($deals as $deal)<x-deal.table-row :deal="$deal"/>@endforeach
             </x-ui.table>
         @else

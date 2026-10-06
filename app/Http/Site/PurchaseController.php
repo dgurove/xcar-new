@@ -49,6 +49,7 @@ class PurchaseController
 
         return view('site.purchases.show', [
             'purchase' => $purchase, 'cars' => $cars, 'filters' => $filters, 'total' => $total, 'done' => $done, 'kinds' => $kinds, 'group' => $group, 'detail' => $detail,
+            'sort' => Sort::from($filters['sort'] ?? null, self::SORTS, 'dl'),
         ]);
     }
 

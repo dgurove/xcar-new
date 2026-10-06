@@ -11,6 +11,7 @@ use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
+use App\Support\Sort;
 use Illuminate\Http\Request;
 
 /**
@@ -20,6 +21,9 @@ use Illuminate\Http\Request;
 class GarageController
 {
     public const PRESETS = ['work' => 'В работе', 'sold' => 'Проданы', 'settled' => 'Рассчитались', 'all' => 'Все'];
+
+    /** Внутри группы менеджера: «Этап» — по этапу, потом дольше стоящие; «Дата» — когда машина пришла в гараж. */
+    public const SORTS = ['stage' => ['Этап', 'asc'], 'created' => ['Дата', 'desc']];
 
     public function index(Request $request)
     {
@@ -33,6 +37,7 @@ class GarageController
         );
         ListPrefs::sync($request, 'crm-garage', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset'), self::PRESETS) ? $request->query('preset') : 'work';
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'stage');
 
         $q = Car::with(['offer.brand', 'offer.model', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal']);
         match ($preset) {
@@ -43,8 +48,8 @@ class GarageController
         };
         $cars = $facets->apply($q)->orderBy('stage_at')->get();
 
-        // Группы — менеджеры по имени, взятые под себя — последними; внутри — по этапу, потом дольше стоящие.
-        $groups = $cars->sortBy(fn (Car $c) => [$c->state->order(), $c->stage_at?->timestamp ?? 0])
+        // Группы — менеджеры по имени, взятые под себя — последними; внутри — выбранная сортировка.
+        $groups = $cars->sortBy(fn (Car $c) => $sort->key === 'created' ? [$c->created_at?->timestamp ?? 0, $c->id] : [$c->state->order(), $c->stage_at?->timestamp ?? 0], SORT_REGULAR, $sort->desc)
             ->groupBy(fn (Car $c) => $c->manager_id ?? 0)
             ->sortBy(fn ($rows, $id) => $id ? $rows->first()->manager->name : "\u{FFFF}");
 
@@ -54,6 +59,7 @@ class GarageController
             'total' => $cars->count(),
             'preset' => $preset,
             'facets' => $facets,
+            'sort' => $sort,
         ]);
     }
 

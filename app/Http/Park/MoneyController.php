@@ -38,7 +38,6 @@ class MoneyController
 {
     public const PRESETS = ['unpaid' => 'Не оплачены', 'overdue' => 'Просрочены', 'owed' => 'Мы должны', 'paid' => 'Оплачены', 'all' => 'Все'];
 
-    public const SORTS = ['due' => ['Срок оплаты', 'asc'], 'fresh' => ['Дата счёта', 'desc']];
 
     public function index(Request $request)
     {
@@ -67,8 +66,8 @@ class MoneyController
             };
         }
         $facets->apply($q);
-        $sort = Sort::from($request->query('sort'), self::SORTS, 'due');
-        $sort->key === 'fresh' ? $q->orderBy('issued_at', $sort->dir())->orderBy('id', $sort->dir()) : $q->orderByRaw("due_at {$sort->dir()} nulls last")->orderBy('id');
+        $sort = Sort::from($request->query('sort'), Invoice::SORTS, '-fresh');
+        $q->sorted($sort);
         $open = $facets->applyTo(self::scoped($request->user(), Invoice::query()))->where('state', InvoiceState::Issued)->get();
         $parties = Common::ints($facets->selected('party'));
 

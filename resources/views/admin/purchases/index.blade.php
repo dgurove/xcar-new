@@ -1,6 +1,7 @@
 <x-ui.shell title="Закупки">
     <div class="mb-6 flex items-center gap-2" data-controller="sheet">
         <x-ui.pill tone="plain" href="/purchases/limits">Кому что не показывать@if ($restricted) <span class="badge">{{ $restricted }}</span>@endif</x-ui.pill>
+        <x-ui.sort :sort="$sort" :url="fn ($v) => \App\Support\Sort::url($v)" name="purchases"/>
         <button type="button" class="btn btn-s btn-accent ml-auto rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Закупка</button>
         <x-ui.sheet id="purchase-new" title="Новая закупка">
             <form method="post" action="/purchases" class="flex flex-col gap-4">

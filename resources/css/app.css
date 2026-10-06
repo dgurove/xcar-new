@@ -1041,6 +1041,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (max-width: 639.98px) { .table thead { display: none; } }
   .table thead a { display: inline-block; padding-block: .5rem; }
   .table thead a[aria-current] { color: var(--color-ink); }
+  /* Заголовок с сортировкой (x-ui.th): стрелка направления вплотную к подписи. */
+  .table thead a.th-sort { display: inline-flex; align-items: center; gap: .125rem; }
   @media (hover: hover) { .table thead a:hover { color: var(--color-ink); } }
   .table tbody tr { @apply cursor-pointer; height: 3rem; }
   @media (min-width: 640px) { .table tbody tr { height: 2.25rem; } }

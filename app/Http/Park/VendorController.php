@@ -18,6 +18,7 @@ use App\Park\Yard;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
+use App\Support\Sort;
 use App\Support\Surface;
 use App\Vendors\Actions\SetLogo;
 use App\Vendors\DocRequirement;
@@ -41,15 +42,19 @@ class VendorController
 
     public const PILLS = ['overview' => 'Обзор', 'contacts' => 'Контакты', 'tariffs' => 'Тарифы', 'money' => 'Оплаты'];
 
+    /** Справочник — по имени (владелец 06.10.2026); дата и ТС на парковке — выбором. */
+    public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'stored' => ['ТС на парковке', 'desc']];
+
     public function index(Request $request)
     {
         $facets = Facets::for($request, 'park-vendors', Facet::column('kind', 'Тип', ['тип', 'типа', 'типов'], 'vendors.kind')->enum(Kind::class, 'plural'));
-        ListPrefs::sync($request, 'park-vendors', keep: $facets->keys(), view: false);
+        ListPrefs::sync($request, 'park-vendors', keep: [...$facets->keys(), 'sort'], view: false);
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'active';
         $q = trim((string) $request->query('q'));
         $vendors = $facets->apply(Vendor::onPark())->with(['contacts', 'party'])->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('name', 'ilike', "%{$q}%")->orWhere('legal_name', 'ilike', "%{$q}%")->orWhere('inn', 'like', "%{$q}%")))
-            ->orderBy('name')->get();
+            ->orderBy(match ($sort->key) { 'created' => 'created_at', 'stored' => 'stored_count', default => 'name' }, $sort->dir())->orderBy('id')->get();
         $counts = ['active' => $vendors->where('is_active', true)->count(), 'stored' => $vendors->where('stored_count', '>', 0)->count(), 'inactive' => $vendors->where('is_active', false)->count()];
 
         return view('park.vendors.index', [
@@ -57,7 +62,7 @@ class VendorController
             'vendors' => $q !== '' ? $vendors : match ($preset) {
                 'stored' => $vendors->where('stored_count', '>', 0), 'inactive' => $vendors->where('is_active', false), default => $vendors->where('is_active', true)
             },
-            'preset' => $preset, 'presets' => self::PRESETS, 'counts' => $counts, 'q' => $q, 'facets' => $facets,
+            'preset' => $preset, 'presets' => self::PRESETS, 'counts' => $counts, 'q' => $q, 'facets' => $facets, 'sort' => $sort,
         ]);
     }
 

@@ -42,7 +42,6 @@ class MoneyController
     // «Выплатить» — наш ход (выплата менеджеру), «Ждём оплату» — их (06.10.2026: «к выплате» не говорило, кто кому).
     public const PRESETS = ['claims' => 'Сообщили об оплате', 'tried' => 'Не прошла по ссылке', 'payouts' => 'Выплатить', 'unpaid' => 'Ждём оплату', 'paid' => 'Оплачены', 'all' => 'Все'];
 
-    public const SORTS = ['due' => ['Срок оплаты', 'asc'], 'fresh' => ['Дата счёта', 'desc']];
 
     public function index(Request $request)
     {
@@ -79,8 +78,8 @@ class MoneyController
             };
         }
         $facets->apply($q);
-        $sort = Sort::from($request->query('sort'), self::SORTS, 'due');
-        $sort->key === 'fresh' ? $q->orderBy('issued_at', $sort->dir())->orderBy('id', $sort->dir()) : $q->orderByRaw("due_at {$sort->dir()} nulls last")->orderBy('id');
+        $sort = Sort::from($request->query('sort'), Invoice::SORTS, '-fresh');
+        $q->sorted($sort);
 
         return view('admin.money.index', [
             'detail' => $detail,
@@ -150,15 +149,26 @@ class MoneyController
         return redirect('/work/money?preset=all&peek='.$invoice->id)->with('toast', 'Счёт '.$invoice->label().' выставлен, ссылка готова');
     }
 
+    /** «Срочное» — просрочил, потом сообщил об оплате, потом больше денег; остальное — по полю. */
+    public const MANAGER_SORTS = ['urgent' => ['Срочное', 'desc'], 'pay' => ['Должен нам', 'desc'], 'payout' => ['Должны ему', 'desc'], 'name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc']];
+
     /** Расчёты с менеджерами: должен нам, должны ему, просрочил, сообщил об оплате — строка ведёт в карточку на «Деньги». */
     public function managers(Request $request)
     {
+        ListPrefs::sync($request, 'crm-money-managers');
+        $sort = Sort::from($request->query('sort'), self::MANAGER_SORTS, '-urgent');
         $managers = User::withRole(Role::Manager)->orderBy('name')->get()
             ->map(fn (User $u) => ['user' => $u, 'position' => (new ManagerLedger($u, staff: true))->position()])
             ->filter(fn ($m) => $m['position']['pay'] > 0 || $m['position']['payout'] > 0 || $m['position']['paid_out'] > 0 || $m['position']['claimed'] > 0)
-            ->sortByDesc(fn ($m) => [$m['position']['overdue'] > 0, $m['position']['claimed'] > 0, $m['position']['pay'] + $m['position']['payout']])->values();
+            ->sortBy(fn ($m) => match ($sort->key) {
+                'pay' => $m['position']['pay'],
+                'payout' => $m['position']['payout'],
+                'name' => mb_strtolower($m['user']->name),
+                'created' => $m['user']->created_at?->timestamp ?? 0,
+                default => [$m['position']['overdue'] > 0, $m['position']['claimed'] > 0, $m['position']['pay'] + $m['position']['payout']],
+            }, SORT_REGULAR, $sort->desc)->values();
 
-        return view('admin.money.managers', ['managers' => $managers]);
+        return view('admin.money.managers', ['managers' => $managers, 'sort' => $sort]);
     }
 
     public function show(Invoice $invoice)

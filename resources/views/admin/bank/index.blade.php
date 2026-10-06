@@ -2,7 +2,7 @@
      действия (привязать к счёту, «не наше») — в карточке. --}}
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
 <x-ui.shell title="Поступления" :back="['Оплаты', '/work/money']" :detail="$detail">
-    <x-ui.toolbar :pills="\App\Http\Admin\BankController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['unmatched' => !empty($counts['unmatched']) ? 'pill-urgent' : '']" name="bank" search="Плательщик, ИНН, назначение">
+    <x-ui.toolbar :sort="$sort" :pills="\App\Http\Admin\BankController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['unmatched' => !empty($counts['unmatched']) ? 'pill-urgent' : '']" name="bank" search="Плательщик, ИНН, назначение">
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>
     </x-ui.toolbar>
     @if (! $connection->connected())
@@ -13,7 +13,7 @@
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : ($preset === 'unmatched' ? 'Все поступления разобраны' : 'Поступлений нет') }}</x-ui.empty>
     @else
         <x-ui.table id="bank" class="mt-6" :view="$view">
-            <x-slot:head><tr><th class="grow">Плательщик</th><th class="cell-dim col-detail-hide hidden lg:table-cell">Назначение</th><th class="hidden sm:table-cell">Дата</th><th class="num">Сумма</th></tr></x-slot:head>
+            <x-slot:head><tr><x-ui.th :sort="$sort" key="payer" class="grow">Плательщик</x-ui.th><th class="cell-dim col-detail-hide hidden lg:table-cell">Назначение</th><x-ui.th :sort="$sort" key="booked" class="hidden sm:table-cell">Дата</x-ui.th><x-ui.th :sort="$sort" key="amount" class="num">Сумма</x-ui.th></tr></x-slot:head>
             @foreach ($transactions as $tx)<x-bank.table-row :tx="$tx"/>@endforeach
         </x-ui.table>
     @endif

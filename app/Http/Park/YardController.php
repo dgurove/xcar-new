@@ -7,6 +7,7 @@ use App\Park\Vehicle;
 use App\Park\Yard;
 use App\Support\Detail;
 use App\Support\ListPrefs;
+use App\Support\Sort;
 use App\Users\User;
 use App\Vendors\Tariff;
 use Illuminate\Http\Request;
@@ -14,6 +15,9 @@ use Illuminate\Validation\ValidationException;
 
 class YardController
 {
+    /** Справочник — по имени (владелец 06.10.2026), открытые первыми. */
+    public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'stored' => ['Занято', 'desc'], 'free' => ['Свободно', 'desc']];
+
     public function index(Request $request)
     {
         $detail = Detail::of($request, fn (string $key) => ($yard = Yard::find($key)) ? $this->detail($yard) : null);
@@ -22,11 +26,15 @@ class YardController
         }
         ListPrefs::sync($request, 'park-yards');
         $closed = $request->query('closed') === 'all' || $request->boolean('closed');
-        $yards = Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand'])->orderByDesc('is_active')->orderBy('name')->get();
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
+        $yards = Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand'])->orderByDesc('is_active')
+            ->when($sort->key === 'free', fn ($y) => $y->orderByRaw("(coalesce(capacity, 0) - (select count(*) from park_vehicles v where v.yard_id = park_yards.id and v.state = 'stored')) {$sort->dir()}"))
+            ->orderBy(match ($sort->key) { 'created' => 'created_at', 'stored' => 'stored_vehicles_count', default => 'name' }, $sort->key === 'free' ? 'asc' : $sort->dir())->get();
 
         return view('park.yards.index', [
             'detail' => $detail,
             'yards' => $closed ? $yards : $yards->where('is_active', true), 'closed' => $closed, 'closedCount' => $yards->where('is_active', false)->count(),
+            'sort' => $sort,
         ]);
     }
 

@@ -15,7 +15,7 @@
         </div>
     @endif
 
-    <x-ui.toolbar class="mt-5" :sort="\App\Support\Sort::from($filters['sort'] ?? null, \App\Http\Site\PurchaseController::SORTS, 'dl')" :pills="\App\Http\Site\PurchaseController::PRESETS" :pill="$filters['preset'] ?? 'all'" pill-param="preset" name="purchase" search="ДЛ, VIN, марка">
+    <x-ui.toolbar class="mt-5" :sort="$sort" :pills="\App\Http\Site\PurchaseController::PRESETS" :pill="$filters['preset'] ?? 'all'" pill-param="preset" name="purchase" search="ДЛ, VIN, марка">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
     </x-ui.toolbar>
 
@@ -27,8 +27,8 @@
             <x-ui.table id="cars" :view="$view">
                 <x-slot:head>
                     <tr>
-                        <th class="grow">Марка, модель</th>
-                        <th class="cell-dim hidden sm:table-cell">№</th>
+                        <x-ui.th :sort="$sort" key="brand" class="grow">Марка, модель</x-ui.th>
+                        <x-ui.th :sort="$sort" key="dl" class="cell-dim hidden sm:table-cell">№</x-ui.th>
                         @if (count($kinds) > 1)<th class="cell-dim hidden sm:table-cell">Тип</th>@endif
                         <th class="cell-dim col-detail-hide hidden sm:table-cell">Город</th>
                         <th class="num">Цена</th>

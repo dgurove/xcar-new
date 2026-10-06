@@ -16,6 +16,7 @@ use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\PickupState;
 use App\Support\Money;
+use App\Support\Sort;
 use App\Support\Surface;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
@@ -23,6 +24,9 @@ use Illuminate\Validation\Rule;
 
 class CarController
 {
+    /** «Этап» — где ход менеджера первыми, дальше по пути, дольше стоящие выше; «Дата» — когда машина пришла в гараж. */
+    public const SORTS = ['stage' => ['Этап', 'asc'], 'fresh' => ['Дата', 'desc']];
+
     /** Машины в гараже: менеджеру — свои, сотруднику — все; группами по этапу, внутри — дольше стоящие первыми. */
     public function index(Request $request)
     {
@@ -36,7 +40,7 @@ class CarController
             ->with(['brand', 'model', 'media', 'evacuator', 'positions.stage.exits', 'positions.stage.block'])
             ->get()->sortBy(fn (Offer $o) => [PickupState::awaits($o) ? 0 : 1, $o->position(Track::Service)?->block_entered_at?->timestamp ?? 0])->values();
 
-        return view('garage.cars.index', ['cars' => $cars, 'pickups' => $pickups]);
+        return view('garage.cars.index', ['cars' => $cars, 'pickups' => $pickups, 'sort' => Sort::from($request->query('sort'), self::SORTS, 'stage')]);
     }
 
     public function show(Request $request, Offer $offer)

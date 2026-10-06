@@ -20,7 +20,7 @@
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Счетов нет' }}</x-ui.empty>
     @else
         <x-ui.table id="invoices" class="mt-6" :view="$view">
-            <x-slot:head><tr><th class="grow">Контрагент</th><th class="cell-dim hidden sm:table-cell">№</th><th class="cell-dim col-detail-hide hidden lg:table-cell">За что</th><th class="hidden sm:table-cell">Срок</th><th class="num">Сумма</th><th class="num hidden sm:table-cell">Остаток</th></tr></x-slot:head>
+            <x-slot:head><tr><th class="grow">Контрагент</th><x-ui.th :sort="$sort" key="fresh" class="cell-dim hidden sm:table-cell">№</x-ui.th><th class="cell-dim col-detail-hide hidden lg:table-cell">За что</th><x-ui.th :sort="$sort" key="due" class="hidden sm:table-cell">Срок</x-ui.th><x-ui.th :sort="$sort" key="amount" class="num">Сумма</x-ui.th><x-ui.th :sort="$sort" key="rest" class="num hidden sm:table-cell">Остаток</x-ui.th></tr></x-slot:head>
             @foreach ($invoices as $i)<x-billing.table-row :invoice="$i"/>@endforeach
         </x-ui.table>
     @endif

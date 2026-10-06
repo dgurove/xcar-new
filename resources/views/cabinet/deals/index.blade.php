@@ -6,7 +6,10 @@
 @endphp
 <x-ui.shell title="Сделки" :phone-heading="false" :desktop-heading="false">
 <div class="flex max-w-[56rem] flex-col gap-4">
-    <x-deal.tabs current="/deals"/>
+    <div class="search-head">
+        <div class="min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>
+        @if ($deals->isNotEmpty())<x-ui.toolbar :sort="$sort" name="deals"/>@endif
+    </div>
     <x-telegram.card/>
 
     @if ($pending->isNotEmpty())

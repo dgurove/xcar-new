@@ -12,6 +12,8 @@ use App\Offers\Actions\PickUp;
 use App\Offers\Deal;
 use App\Offers\Handover;
 use App\Offers\InsurerReplies;
+use App\Support\ListPrefs;
+use App\Support\Sort;
 use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -23,13 +25,19 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class DealController
 {
+    /** Внутри разделов «В работе» и «Закончены»: новые сверху (где ждут ответа — первыми, как было); сумма — выбором. */
+    public const SORTS = ['fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
+
     public function index(Request $request)
     {
         $me = $request->user();
+        ListPrefs::sync($request, 'deals', view: false, keep: ['sort']);
+        $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
         // Гаражные сделки живут в «Гараже» (решение владельца 03.10.2026), здесь — только ждущее решения «В гараж».
         $deals = Deal::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
             ->where('buyer_id', $me->id)->whereNull('garage_payer')
-            ->orderByRaw("case when state = 'active' then 0 else 1 end")->latest()->paginate(30);
+            ->orderByRaw("case when state = 'active' then 0 else 1 end")
+            ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id')->paginate(30);
 
         // Подтверждения — на том же экране: ждущие решения — будущие сделки, отклонённые и отозванные —
         // короткая история внизу; принятые уже стоят сделками.
@@ -37,7 +45,7 @@ class DealController
         $pending = $bids()->where('state', BidState::Active)->get();
         $lost = $bids()->whereIn('state', [BidState::Declined, BidState::Withdrawn])->limit(10)->get();
 
-        return view('cabinet.deals.index', ['deals' => $deals, 'pending' => $pending, 'lost' => $lost]);
+        return view('cabinet.deals.index', ['deals' => $deals, 'pending' => $pending, 'lost' => $lost, 'sort' => $sort]);
     }
 
     public function show(Request $request, Deal $deal)

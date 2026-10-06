@@ -22,6 +22,7 @@ use App\Garage\Car as GarageCar;
 use App\Offers\Deal;
 use App\Support\Money;
 use App\Support\OfficePreview;
+use App\Support\Sort;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -33,14 +34,26 @@ use Illuminate\Support\Carbon;
  */
 class MoneyController
 {
+    /** «Срочное» — требующие действия первыми, дальше свежие (`ManagerLedger::rows`); дата и сумма — выбором. */
+    public const SORTS = ['urgent' => ['Срочное', 'desc'], 'fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
+
     public function index(Request $request)
     {
         $me = $request->user();
         $ledger = new ManagerLedger($me);
         $preset = array_key_exists($request->query('preset', ''), DealMoney::PRESETS) ? $request->query('preset') : 'all';
+        $sort = Sort::from($request->query('sort'), self::SORTS, '-urgent');
+        $rows = $ledger->rows($preset);
+        if ($sort->key !== 'urgent' || ! $sort->desc) {
+            $rows = $rows->sortBy(fn ($r) => match ($sort->key) {
+                'fresh' => ($r->created_at ?? $r->stage_at)?->timestamp ?? 0,
+                'amount' => $r->money->amount ?? 0,
+                default => [$r->money->needsAction(), ($r->created_at ?? $r->stage_at)?->timestamp ?? 0],
+            }, SORT_REGULAR, $sort->desc)->values();
+        }
 
         return view('cabinet.money.index', [
-            'deals' => $ledger->rows($preset), 'counts' => $ledger->counts(), 'preset' => $preset,
+            'deals' => $rows, 'counts' => $ledger->counts(), 'preset' => $preset, 'sort' => $sort,
             'position' => $ledger->position(), 'sums' => $ledger->sums(), 'party' => Party::forUser($me, false),
         ]);
     }

@@ -45,11 +45,19 @@ class PurchaseController
 
     public const SORTS = ['dl' => ['Порядок файла', 'asc'], 'best' => ['Лучшая цена', 'desc'], 'final' => ['Наша цена', 'desc'], 'fresh' => ['Дата', 'desc']];
 
-    public function index()
+    /** Закупки — новые сверху (номер сквозной); число ТС — выбором. */
+    public const LIST_SORTS = ['number' => ['Номер', 'desc'], 'cars' => ['Число ТС', 'desc']];
+
+    public function index(Request $request)
     {
+        ListPrefs::sync($request, 'crm-purchases');
+        $sort = Sort::from($request->query('sort'), self::LIST_SORTS, '-number');
+
         return view('admin.purchases.index', [
-            'purchases' => Purchase::withCount(['cars' => fn ($c) => $c->whereNull('offer_id')])->orderByDesc('number')->get(),
+            'purchases' => Purchase::withCount(['cars' => fn ($c) => $c->whereNull('offer_id')])
+                ->orderBy($sort->key === 'cars' ? 'cars_count' : 'number', $sort->dir())->orderByDesc('number')->get(),
             'restricted' => Restriction::count(),
+            'sort' => $sort,
         ]);
     }
 

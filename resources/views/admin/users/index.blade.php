@@ -2,7 +2,7 @@
 {{-- Пользователи; пилюля «Ссылки» — все пригласительные ссылки тем же списком, что в кабинете
      (x-invites.list): первая строка — новая, менеджеру или покупателю от имени менеджера. --}}
 <x-ui.cabinet title="Пользователи">
-    <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" name="users" :facets="$facets" search="Имя, логин, телефон, почта">
+    <x-ui.toolbar :sort="$sort" :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" name="users" :facets="$facets" search="Имя, логин, телефон, почта">
         <x-slot:actions>
             {{-- Руками людей не заводят: только пригласительной ссылкой — кнопка ведёт к ним. --}}
             @if ($preset !== 'invites')<a href="{{ \App\Http\Cabinet\InviteController::home() }}" class="btn btn-s btn-accent shrink-0 rounded-full" data-turbo-action="replace"><x-ui.icon name="link" class="size-4"/><span class="hidden sm:inline">Пригласить</span></a>@endif

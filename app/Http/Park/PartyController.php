@@ -6,6 +6,8 @@ use App\Billing\Charge;
 use App\Billing\Party;
 use App\Billing\PartyRules;
 use App\Park\Vehicle;
+use App\Support\ListPrefs;
+use App\Support\Sort;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
@@ -14,9 +16,19 @@ use Illuminate\Validation\ValidationException;
 /** Реквизиты: мы первой строкой, дальше контрагенты — юрлица и физлица. */
 class PartyController
 {
-    public function index()
+    /** Справочник — по имени (владелец 06.10.2026), мы первой строкой; дата и число счетов — выбором. */
+    public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'invoices' => ['Счета', 'desc']];
+
+    public function index(Request $request)
     {
-        return view('park.money.parties', ['parties' => Party::withCount('invoices')->orderByDesc('is_self')->orderBy('name')->get()]);
+        ListPrefs::sync($request, 'park-parties');
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
+
+        return view('park.money.parties', [
+            'parties' => Party::withCount('invoices')->orderByDesc('is_self')
+                ->orderBy(match ($sort->key) { 'created' => 'created_at', 'invoices' => 'invoices_count', default => 'name' }, $sort->dir())->orderBy('id')->get(),
+            'sort' => $sort,
+        ]);
     }
 
     public function store(Request $request)

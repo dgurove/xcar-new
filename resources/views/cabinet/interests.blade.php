@@ -3,6 +3,7 @@
     @if ($interests->isEmpty())
         <x-ui.empty href="/offers" link="В предложения">Вы ещё ничего не отметили</x-ui.empty>
     @else
+        <x-ui.toolbar :sort="$sort" name="interests" class="mb-4"/>
         <div class="list">
             @foreach ($interests as $interest)
                 @php

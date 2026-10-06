@@ -20,7 +20,7 @@
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
     $url = fn (array $set) => $action.'?'.str_replace('%2C', ',', http_build_query(array_filter(array_merge($query, $set), fn ($v) => $v !== null && $v !== '')));
-    $sortUrl = fn (string $value) => $url([$sortParam => $value, 'page' => null]);
+    $sortUrl = fn (string $value) => \App\Support\Sort::url($value, $sortParam, $action);
     $q ??= is_string(request('q')) ? request('q') : '';
     // searchOpen — поле открыто всегда, без лупы и «Отмена» (колонка чатов, 06.10.2026: «нет смысла сворачивать»).
     $searching = $search && ($searchOpen || trim($q) !== '');

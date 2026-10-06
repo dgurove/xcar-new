@@ -11,6 +11,7 @@ use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
+use App\Support\Sort;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Track;
@@ -25,6 +26,9 @@ class PickupController
 {
     public const PRESETS = ['work' => 'В работе', 'standing' => 'Стоят', 'all' => 'Все'];
 
+    /** Внутри группы: «На шаге» — дольше всех на шаге вывоза сверху; «Дата» — когда заведено предложение. */
+    public const SORTS = ['step' => ['На шаге', 'desc'], 'created' => ['Дата', 'desc']];
+
     public function index(Request $request)
     {
         $detail = Detail::of($request, fn (string $key) => ($offer = OfferNumber::find($key)) ? $this->detail($offer) : null);
@@ -37,6 +41,7 @@ class PickupController
         );
         ListPrefs::sync($request, 'crm-pickups', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset'), self::PRESETS) ? $request->query('preset') : 'work';
+        $sort = Sort::from($request->query('sort'), self::SORTS, '-step');
 
         // Только назначенные вывозы: у вендоров с автозапуском позиция вывоза есть у каждого предложения, а кто и куда
         // везёт, выбирают руками (`AssignPickup`).
@@ -50,7 +55,8 @@ class PickupController
                 'all' => true,
                 default => $o->position(Track::Service)->stage->exits->isNotEmpty(),
             })
-            ->sortBy(fn (Offer $o) => $o->position(Track::Service)->block_entered_at?->timestamp ?? 0);
+            // «На шаге» по убыванию — дольше всех (вошли раньше) сверху.
+            ->sortBy(fn (Offer $o) => $sort->key === 'created' ? $o->id : -($o->position(Track::Service)->block_entered_at?->timestamp ?? 0), SORT_REGULAR, $sort->desc);
 
         // Группы — ответственные по имени, «Мы» — последней.
         $groups = $offers->groupBy(fn (Offer $o) => $o->evacuator_id ?? 0)
@@ -62,6 +68,7 @@ class PickupController
             'total' => $offers->count(),
             'preset' => $preset,
             'facets' => $facets,
+            'sort' => $sort,
         ]);
     }
 

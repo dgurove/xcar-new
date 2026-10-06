@@ -3,10 +3,10 @@
     @if ($offers->isEmpty())
         <x-ui.empty href="/offers" link="В предложения">Пока пусто</x-ui.empty>
     @else
-        <div class="flex justify-end"><x-ui.view-switch :current="$view"/></div>
+        <x-ui.toolbar :sort="$sort" name="favorites"><x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra></x-ui.toolbar>
         @if (\App\Support\ListView::isTable($view))
         <x-ui.table :view="$view">
-            <x-slot:head><x-offer.site-table-head/></x-slot:head>
+            <x-slot:head><x-offer.site-table-head :sort="$sort"/></x-slot:head>
             @foreach ($offers as $offer)<x-offer.site-table-row :offer="$offer"/>@endforeach
         </x-ui.table>
         @else

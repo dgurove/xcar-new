@@ -11,11 +11,12 @@
     // Число и слово не разрываются переносом («3 / дня»): неразрывный пробел.
     $days = fn (int $d) => $d."\u{00A0}".Plural::of($d, ['день', 'дня', 'дней']);
     [$closed, $open] = $cars->partition(fn ($c) => $c->state === CarState::Settled);
-    $open = $open->sortBy(fn ($c) => [$c->deal?->openRequirement ? 0 : 1, $c->state->order(), $c->stage_at?->timestamp ?? 0])->values();
+    $open = $open->sortBy(fn ($c) => $sort->key === 'fresh' ? [$c->created_at?->timestamp ?? 0, $c->id] : [$c->deal?->openRequirement ? 0 : 1, $c->state->order(), $c->stage_at?->timestamp ?? 0], SORT_REGULAR, $sort->desc)->values();
     // Над «Вывозом» своя группа машин гаража тоже подписана — иначе она читалась бы продолжением вывоза.
     $groups = array_filter([($pickups->isNotEmpty() ? 'В гараже' : '') => $open, 'Рассчитались' => $closed], fn ($g) => $g->isNotEmpty());
 @endphp
 <x-ui.shell title="Гараж" :count="$open->count() + $pickups->count() ?: null">
+    @if ($cars->isNotEmpty())<x-ui.toolbar :sort="$sort" name="garage" class="mb-4 max-w-[56rem]"/>@endif
     @if ($pickups->isNotEmpty())
         <div class="flex max-w-[56rem] flex-col">
             <h2 class="list-head">Вывоз<span class="nums text-base font-normal text-ink-muted">{{ $pickups->count() }}</span></h2>

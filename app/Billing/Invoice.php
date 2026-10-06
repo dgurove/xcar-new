@@ -9,8 +9,10 @@ use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Support\Demo\HidesDemo;
+use App\Support\Sort;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -145,6 +147,25 @@ class Invoice extends Model implements HasMedia
     public function isOwed(): bool
     {
         return $this->direction === 'owed';
+    }
+
+    /**
+     * Сортировка списков счетов (CRM «Оплаты», «Деньги» парковки): по умолчанию новые сверху — владелец 06.10.2026: по
+     * сроку счета без срока уходили в конец и порядок выглядел случайным.
+     */
+    public const SORTS = ['fresh' => ['Дата счёта', 'desc'], 'due' => ['Срок оплаты', 'asc'], 'amount' => ['Сумма', 'desc'], 'rest' => ['Остаток', 'desc']];
+
+    public function scopeSorted(Builder $q, Sort $sort): Builder
+    {
+        $dir = $sort->dir();
+        match ($sort->key) {
+            'due' => $q->orderByRaw("billing_invoices.due_at {$dir} nulls last"),
+            'amount' => $q->orderBy('billing_invoices.total', $dir),
+            'rest' => $q->orderByRaw("(case when billing_invoices.state = 'void' then 0 else greatest(billing_invoices.total - billing_invoices.paid, 0) end) {$dir}"),
+            default => $q->orderBy('billing_invoices.issued_at', $dir),
+        };
+
+        return $q->orderBy('billing_invoices.id', $dir);
     }
 
     public function remaining(): float

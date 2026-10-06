@@ -7,6 +7,7 @@
             @if ($counts[$k->value] ?? 0)<x-ui.pill :href="$q('kind='.$k->value)" :current="$kind === $k">{{ $k->plural() }} <span class="nums text-ink-dim">{{ $counts[$k->value] }}</span></x-ui.pill>@endif
         @endforeach
         @if ($offCount)<x-ui.pill :href="$q('off=1')" :current="$off">Выключенные <span class="nums text-ink-dim">{{ $offCount }}</span></x-ui.pill>@endif
+        <span class="ml-auto"><x-ui.sort :sort="$sort" :url="fn ($v) => \App\Support\Sort::url($v)" name="vendors"/></span>
     </div>
     <div class="list">
         <div data-controller="sheet">

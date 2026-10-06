@@ -64,7 +64,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class VehicleController
 {
-    public const SORTS = ['longest' => ['Дата приёма', 'asc'], 'fresh' => ['Дата заведения', 'desc'], 'amount' => ['Начислено', 'desc']];
+    /** «Дней на парковке» по убыванию — дольше всех стоят (принятые раньше) сверху. */
+    public const SORTS = ['days' => ['Дней на парковке', 'desc'], 'fresh' => ['Дата заведения', 'desc'], 'amount' => ['Начислено', 'desc']];
 
     /**
      * «Наличие» — что стоит на парковках сейчас: только stored, пилюли по парковкам.
@@ -105,9 +106,9 @@ class VehicleController
             ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
                 ->orWhere('plate', 'like', '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%')->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
         $facets->apply($vehicles);
-        $sort = Sort::from($request->query('sort'), self::SORTS, 'longest');
+        $sort = Sort::from($request->query('sort'), self::SORTS, '-days');
         $sort->key === 'fresh' ? $vehicles->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir())
-            : $vehicles->orderByRaw('accepted_at '.($sort->key === 'longest' ? $sort->dir() : 'asc').' nulls last')->latest();
+            : $vehicles->orderByRaw('accepted_at '.($sort->key === 'days' && ! $sort->desc ? 'desc' : 'asc').' nulls last')->latest();
 
         // Кадры нужны плиткам и строкам; таблице — нет (миниатюр в ней нет, карточка грузит своё).
         $vehicles->when(! ListView::isTable(ListView::fromRequest($request)), fn ($v) => $v->with('media'));

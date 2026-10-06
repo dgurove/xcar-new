@@ -13,8 +13,10 @@ use App\Billing\Bank\SberApi;
 use App\Billing\Bank\Transaction;
 use App\Billing\Invoice;
 use App\Support\Detail;
+use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
+use App\Support\Sort;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -27,24 +29,30 @@ class BankController
 {
     public const PRESETS = ['unmatched' => 'Не привязаны', 'matched' => 'Привязаны', 'ignored' => 'Не наше', 'all' => 'Все входящие'];
 
+    public const SORTS = ['booked' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc'], 'payer' => ['Плательщик', 'asc']];
+
     public function index(Request $request)
     {
         $detail = Detail::of($request, fn (string $key) => ($tx = Transaction::find($key)) ? $this->detail($tx) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
+        ListPrefs::sync($request, 'crm-bank');
+        $sort = Sort::from($request->query('sort'), self::SORTS, '-booked');
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unmatched';
         $qs = trim((string) $request->query('q'));
         $q = Transaction::where('direction', 'in')->with('invoice')
             // Лупа — по всем поступлениям, мимо пилюли.
             ->when($preset !== 'all' && $qs === '', fn ($w) => $w->where('state', $preset))
             ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s->where('counterparty', 'ilike', "%{$qs}%")->orWhere('purpose', 'ilike', "%{$qs}%")->orWhere('counterparty_inn', $qs)))
-            ->latest('booked_at')->latest('id');
+            ->when($sort->key === 'amount', fn ($w) => $w->orderBy('amount', $sort->dir()))
+            ->when($sort->key === 'payer', fn ($w) => $w->orderBy('counterparty', $sort->dir()))
+            ->orderBy('booked_at', $sort->key === 'booked' ? $sort->dir() : 'desc')->latest('id');
 
         return view('admin.bank.index', [
             'detail' => $detail,
             'transactions' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
-            'preset' => $preset, 'q' => $qs, 'counts' => array_filter(['unmatched' => Transaction::where('state', Transaction::UNMATCHED)->count()]),
+            'preset' => $preset, 'q' => $qs, 'sort' => $sort, 'counts' => array_filter(['unmatched' => Transaction::where('state', Transaction::UNMATCHED)->count()]),
             'connection' => Connection::sber(),
         ]);
     }

@@ -12,6 +12,8 @@ use App\Offers\InterestState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
+use App\Support\ListPrefs;
+use App\Support\Sort;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\BuyerGroup;
 use App\Users\User;
@@ -21,12 +23,18 @@ use Illuminate\Support\Facades\DB;
 /** Покупатели менеджера: группы и люди одним списком, страница человека. */
 class BuyerController
 {
+    /** Справочник — по имени (владелец 06.10.2026); дата и сколько видит — выбором. */
+    public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'seen' => ['Видит предложений', 'desc']];
+
     public function index(Request $request)
     {
         $me = $request->user();
+        ListPrefs::sync($request, 'buyers', view: false, keep: ['sort']);
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
         $term = trim((string) $request->query('q'));
         // «Видит N» — подзапросом в той же выборке (было по два запроса на человека); аватары — сразу.
-        $q = $me->buyers()->with(['groups', 'media' => fn ($m) => $m->where('collection_name', 'avatar')])->orderBy('name')
+        $q = $me->buyers()->with(['groups', 'media' => fn ($m) => $m->where('collection_name', 'avatar')])
+            ->orderBy(match ($sort->key) { 'created' => 'users.created_at', 'seen' => 'seen_count', default => 'users.name' }, $sort->dir())->orderBy('users.id')
             ->addSelect(['seen_count' => Offer::query()->selectRaw('count(*)')->where('state', OfferState::Open)
                 ->whereHas('showings', fn ($s) => $s->where('manager_id', $me->id)->where(fn ($w) => $w->whereColumn('showings.user_id', 'users.id')
                     ->orWhereIn('showings.group_id', DB::table('buyer_group_user')->select('group_id')->whereColumn('buyer_group_user.user_id', 'users.id'))))
@@ -56,6 +64,7 @@ class BuyerController
             'interestNew' => $interestNew,
             'interestAll' => $interestAll,
             'buyers' => $buyers,
+            'sort' => $sort,
             'groups' => $groups,
             'groupSeen' => $groupSeen,
             'term' => $term,

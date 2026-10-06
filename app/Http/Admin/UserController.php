@@ -23,6 +23,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\OfficePreview;
 use App\Support\Phone;
+use App\Support\Sort;
 use App\Support\Surface;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueImpersonation;
@@ -44,6 +45,9 @@ use Illuminate\Validation\ValidationException;
 class UserController
 {
     public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'park' => 'Парковка', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
+
+    /** Люди — по имени (справочник, владелец 06.10.2026); ждущие, покупатели и отклонённые — новые сверху. */
+    public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'seen' => ['Последний вход', 'desc']];
 
     /** Роли, которые админ отмечает галками (ролей у человека может быть несколько); заводят людей только ссылкой. */
     public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Parking, Role::Reviewer];
@@ -94,6 +98,14 @@ class UserController
                 ->when($digits !== '', fn ($w) => $w->orWhere('phone', 'like', "%{$digits}%")));
         }
         $facets->apply($q);
+        $sort = Sort::from($request->query('sort'), self::SORTS, in_array($preset, ['waiting', 'buyers', 'rejected'], true) && ! $searching ? '-created' : 'name');
+        $dir = $sort->dir();
+        match ($sort->key) {
+            'created' => $q->reorder($preset === 'rejected' && ! $searching ? 'rejected_at' : 'created_at', $dir),
+            'seen' => $q->reorder()->orderByRaw("seen_at {$dir} nulls last"),
+            default => $q->reorder('name', $dir),
+        };
+        $q->orderBy('users.id');
         $counts = [
             'staff' => User::withRole(Role::Admin, Role::Moderator)->count(),
             'managers' => User::withRole(Role::Manager)->count(),
@@ -122,6 +134,7 @@ class UserController
             'groups' => $kind ? UserGroup::ofKind($kind)->with('members')->get() : collect(),
             'fresh' => session('invite'),
             'facets' => $facets,
+            'sort' => $preset === 'invites' ? null : $sort,
         ]);
     }
 

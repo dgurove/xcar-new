@@ -6,7 +6,7 @@
     {{-- Лупа — справа от пилюль раздела; в поиске поле встаёт на их место. --}}
     <div class="search-head">
         <div class="min-w-0 flex-1"><x-deal.tabs current="/buyers"/></div>
-        <x-ui.toolbar search="Имя, логин, телефон" name="buyers"/>
+        <x-ui.toolbar :sort="$term ? null : $sort" search="Имя, логин, телефон" name="buyers"/>
     </div>
 
     <div id="list" class="contents">

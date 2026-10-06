@@ -12,6 +12,7 @@ use App\Support\Facets\Facets;
 use App\Support\ListContext;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Sort;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -94,7 +95,8 @@ class CatalogController
             'filters' => $filters,
             'narrowed' => $narrowed,
             'sort' => $sort,
-            'sorts' => CatalogQuery::allowedSorts($gallery, $prices, $user),
+            // Сортировка объектом — тулбару и заголовкам таблицы; строкой `sort` — стрелкам страницы предложения.
+            'sorting' => Sort::from($sort, CatalogQuery::allowedSorts($gallery, $prices, $user), CatalogQuery::DEFAULT_SORT),
             'views' => CatalogQuery::allowedViews($user, $gallery, $recommended),
             'view' => $view,
             'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),

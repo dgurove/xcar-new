@@ -91,10 +91,10 @@
             <x-slot:head>
                 <tr>
                     <th class="grow">Марка, модель</th>
-                    <th class="cell-dim hidden sm:table-cell">ДЛ</th>
+                    <x-ui.th :sort="$sort" key="dl" class="cell-dim hidden sm:table-cell">ДЛ</x-ui.th>
                     <th class="num hidden sm:table-cell">Размещение</th>
-                    <th class="num hidden sm:table-cell">Предложения</th>
-                    <th class="num">Наша цена</th>
+                    <x-ui.th :sort="$sort" key="best" class="num hidden sm:table-cell">Предложения</x-ui.th>
+                    <x-ui.th :sort="$sort" key="final" class="num">Наша цена</x-ui.th>
                 </tr>
             </x-slot:head>
             @foreach ($cars as $car)<x-purchase.table-row :car="$car" :purchase="$purchase"/>@endforeach

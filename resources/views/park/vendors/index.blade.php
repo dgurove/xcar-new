@@ -2,7 +2,7 @@
      для счёта), тип, если не страховая, и контакт по хранению; справа — сколько ТС стоит. --}}
 @php use App\Vendors\ContactRole; use App\Vendors\Kind; @endphp
 <x-ui.shell title="Вендоры">
-    <x-ui.toolbar :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="vendors" :facets="$facets" search="Название, ИНН">
+    <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="vendors" :facets="$facets" search="Название, ИНН">
         @if (auth()->user()->canManagePark())
             <x-slot:actions>
                 <div data-controller="sheet" class="contents">

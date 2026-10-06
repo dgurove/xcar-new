@@ -3,7 +3,7 @@
      страницу» — редактор предложения с карточкой «Гараж». --}}
 <x-ui.shell title="Гараж" :heading="false" :detail="$detail">
     <x-admin.work-titles current="garage" :count="$total"/>
-    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets"/>
+    <x-ui.toolbar class="mt-5" :sort="$sort" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets"/>
 
     @if ($groups->isEmpty())
         <x-ui.empty class="mt-6">В гараже пусто</x-ui.empty>

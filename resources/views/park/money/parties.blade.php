@@ -1,6 +1,7 @@
 {{-- Реквизиты: мы первой строкой, дальше контрагенты; строка — шторка с формой; новая — кнопкой внизу. --}}
 @php use App\Billing\PartyKind; @endphp
 <x-ui.shell title="Реквизиты">
+    <x-ui.toolbar :sort="$sort" name="parties" class="mb-4"/>
     <div class="list">
         @foreach ($parties as $p)
             <div class="row" data-controller="sheet">

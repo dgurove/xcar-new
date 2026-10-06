@@ -4,6 +4,7 @@
      Строка ведёт в карточку менеджера на «Деньги». Менеджеры без денег не показываются. --}}
 @php use App\Support\Money; @endphp
 <x-ui.shell title="Расчёты с менеджерами" :back="['Оплаты', '/work/money']">
+    @if ($managers->isNotEmpty())<x-ui.toolbar :sort="$sort" name="managers"/>@endif
     @if ($managers->isEmpty())
         <x-ui.empty class="mt-6">Расчётов с менеджерами ещё не было</x-ui.empty>
     @else

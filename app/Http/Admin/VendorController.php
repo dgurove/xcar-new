@@ -8,6 +8,8 @@ use App\Offers\Actions\SyncViewers;
 use App\Offers\AudienceRules;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Support\ListPrefs;
+use App\Support\Sort;
 use App\Support\Surface;
 use App\Users\Section;
 use App\Vendors\Actions\SetLogo;
@@ -31,6 +33,9 @@ class VendorController
 {
     public const PILLS = ['overview' => 'Обзор', 'contacts' => 'Контакты', 'routes' => 'Маршруты'];
 
+    /** Справочник — по имени (владелец 06.10.2026), работающие первыми; дата и число предложений — выбором. */
+    public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'offers' => ['Предложения', 'desc']];
+
     /** Пилюли карточки до разделения, уехавшие на парковку: старые ссылки ведут туда. */
     private const PARK_PILLS = ['tariffs', 'money'];
 
@@ -39,8 +44,15 @@ class VendorController
         $kind = Kind::tryFrom($request->query('kind', ''));
         $off = $request->boolean('off');
         // Вендор парковки, который в CRM — другой (`crm_vendor_id`), в списке CRM не стоит.
-        $q = Vendor::with('workflows')->withCount('offers')->whereNull('crm_vendor_id')
-            ->orderByDesc('is_active')->orderBy('name');
+        ListPrefs::sync($request, 'crm-vendors');
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
+        $q = Vendor::with('workflows')->withCount('offers')->whereNull('crm_vendor_id')->orderByDesc('is_active');
+        match ($sort->key) {
+            'created' => $q->orderBy('created_at', $sort->dir()),
+            'offers' => $q->orderBy('offers_count', $sort->dir()),
+            default => $q->orderBy('name', $sort->dir()),
+        };
+        $q->orderBy('id');
         if ($off) {
             $q->where('is_active', false);
         } elseif ($kind) {
@@ -53,6 +65,7 @@ class VendorController
             'off' => $off,
             'counts' => Vendor::where('is_active', true)->whereNull('crm_vendor_id')->selectRaw('kind, count(*) as n')->groupBy('kind')->pluck('n', 'kind'),
             'offCount' => Vendor::where('is_active', false)->count(),
+            'sort' => $sort,
         ]);
     }
 

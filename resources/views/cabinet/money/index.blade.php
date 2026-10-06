@@ -23,7 +23,7 @@
             </div>
         @endif
 
-            <x-ui.toolbar :pills="DealMoney::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['pay' => $overdue ? 'pill-danger' : '']" name="money" action="/account/money">
+            <x-ui.toolbar :sort="$sort" :pills="DealMoney::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['pay' => $overdue ? 'pill-danger' : '']" name="money" action="/account/money">
                 <x-slot:pillsExtra>
                     <div class="ml-1 shrink-0 self-center" data-controller="sheet">
                         <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Реквизиты и документы"><x-ui.icon name="more" class="size-5"/></button>

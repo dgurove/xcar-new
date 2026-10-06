@@ -6,17 +6,23 @@ use App\Live\Stream;
 use App\Offers\Actions\MarkInterest;
 use App\Offers\Interest;
 use App\Offers\InterestState;
+use App\Support\Sort;
 use App\Users\User;
 use Illuminate\Http\Request;
 
 /** Интерес покупателей менеджера: новые сверху, «Связались» смахиванием. */
 class BuyerInterestController
 {
+    public const SORTS = ['fresh' => ['Дата', 'desc'], 'buyer' => ['Покупатель', 'asc']];
+
     public function index(Request $request)
     {
         $me = $request->user();
         $preset = $request->query('preset', 'new');
-        $q = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id))->with(['user', ...User::withAvatar('user.media'), 'offer.brand', 'offer.model', 'offer.media'])->latest();
+        $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
+        $q = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id))->with(['user', ...User::withAvatar('user.media'), 'offer.brand', 'offer.model', 'offer.media'])
+            ->when($sort->key === 'buyer', fn ($i) => $i->orderBy(User::select('name')->whereColumn('users.id', 'interests.user_id'), $sort->dir()))
+            ->orderBy('interests.created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('interests.id');
         if ($preset === 'new') {
             $q->where('state', InterestState::New);
         }
@@ -24,6 +30,7 @@ class BuyerInterestController
         return view('cabinet.buyers.interests', [
             'interests' => $q->paginate(50)->withQueryString(),
             'preset' => $preset,
+            'sort' => $sort,
             'counts' => ['new' => Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id))->where('state', InterestState::New)->count()],
         ]);
     }

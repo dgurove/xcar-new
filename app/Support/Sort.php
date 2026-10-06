@@ -58,4 +58,33 @@ final class Sort
     {
         return ($desc ? '-' : '').$this->key;
     }
+
+    /**
+     * Нажатие на заголовок столбца (владелец 06.10.2026): первое — по убыванию, второе — по возрастанию, третье снимает
+     * сортировку столбца и возвращает умолчание списка. Умолчание — явным значением: пустое `sort=` ListPrefs не забывает.
+     */
+    public function next(string $key): string
+    {
+        return match (true) {
+            $key !== $this->key => '-'.$key,
+            $this->desc => $key,
+            // По возрастанию — это и есть умолчание (срок, порядок файла): снимать нечего, круг начинается заново.
+            $this->value() === $this->default => '-'.$key,
+            default => $this->default,
+        };
+    }
+
+    public function has(string $key): bool
+    {
+        return isset($this->options[$key]);
+    }
+
+    /** Адрес списка с этой сортировкой: тот же путь и запрос, без страницы; запятые значений чипов не кодируются. */
+    public static function url(string $value, string $param = 'sort', ?string $action = null): string
+    {
+        $action ??= '/'.ltrim(request()->path(), '/');
+        $query = array_merge(request()->query(), [$param => $value, 'page' => null]);
+
+        return $action.'?'.str_replace('%2C', ',', http_build_query(array_filter($query, fn ($v) => $v !== null && $v !== '')));
+    }
 }

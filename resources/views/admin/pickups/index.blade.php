@@ -2,7 +2,7 @@
      карточка: путь вывоза с кнопками, «Кто и куда вывозит»; «Открыть страницу» — редактор предложения. --}}
 <x-ui.shell title="Вывоз" :heading="false" :detail="$detail">
     <x-admin.work-titles current="pickups" :count="$total"/>
-    <x-ui.toolbar class="mt-5" :pills="\App\Http\Admin\PickupController::PRESETS" :pill="$preset" pill-param="preset" name="pickups" :facets="$facets"/>
+    <x-ui.toolbar class="mt-5" :sort="$sort" :pills="\App\Http\Admin\PickupController::PRESETS" :pill="$preset" pill-param="preset" name="pickups" :facets="$facets"/>
 
     @if ($groups->isEmpty())
         <x-ui.empty class="mt-6">Вывозить нечего</x-ui.empty>

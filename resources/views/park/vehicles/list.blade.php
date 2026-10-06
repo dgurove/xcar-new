@@ -5,14 +5,11 @@
 @php
     use App\Support\ListView;
     $grouped ??= false;
-    $sort ??= \App\Support\Sort::from(request('sort'), \App\Http\Park\VehicleController::SORTS, 'longest');
+    $sort ??= \App\Support\Sort::from(request('sort'), \App\Http\Park\VehicleController::SORTS, '-days');
     $groups = $grouped
         ? $vehicles->getCollection()->groupBy(fn ($v) => $v->yard_id ?? 0)->sortBy(fn ($g, $id) => $id ? $g->first()->yard->name : "\u{10FFFF}")
         : collect([0 => $vehicles->getCollection()]);
-    // Шапка (она только на ПК, на телефоне три столбца читаются и так) сортирует нажатием, как столбцы в
-    // «Файлах»: сутки — по дате приёма, сумма — по начисленному; нажатие на текущий столбец переворачивает направление.
-    // Набранный поиск адрес не меняет (живой поиск) — и в ссылку не попадает.
-    $sortBy = fn (string $key) => '/cars?'.http_build_query(array_filter(['sort' => $sort->key === $key ? $sort->toward(! $sort->desc) : $sort->of($key)] + \Illuminate\Support\Arr::except(request()->query(), ['sort', 'page', 'q'])));
+    // Шапка сортирует нажатием (x-ui.th): «Дней» и «Начислено».
 @endphp
 @if ($vehicles->isEmpty())
     <x-ui.empty class="py-6">{{ $q !== '' ? 'Ничего не нашлось' : 'ТС нет' }}</x-ui.empty>
@@ -25,9 +22,9 @@
                     <th class="hidden sm:table-cell">Вендор, № убытка</th>
                     <th class="hidden sm:table-cell">Статус</th>
                     <th class="num col-detail-hide hidden lg:table-cell">Принята</th>
-                    <th class="num"><a href="{{ $sortBy('longest') }}" data-turbo-action="replace" @if ($sort->key === 'longest') aria-current="true" @endif>Дней</a></th>
+                    <x-ui.th :sort="$sort" key="days" class="num">Дней</x-ui.th>
                     <th class="num hidden sm:table-cell">Ставка</th>
-                    <th class="num"><a href="{{ $sortBy('amount') }}" data-turbo-action="replace" @if ($sort->key === 'amount') aria-current="true" @endif>Начислено</a></th>
+                    <x-ui.th :sort="$sort" key="amount" class="num">Начислено</x-ui.th>
                 </tr>
             </x-slot:head>
             @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $q !== ''); @endphp
