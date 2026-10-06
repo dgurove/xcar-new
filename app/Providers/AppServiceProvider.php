@@ -39,7 +39,6 @@ use App\Offers\Listeners\SyncHandover;
 use App\Park\Actions\SendPickupLink;
 use App\Park\Events\VehicleSold;
 use App\Park\Listeners\SyncOffer;
-use App\Telegram\Offers\RelayAnswer;
 use App\Users\Auth\WebAuthnProvider;
 use App\Users\Passkeys;
 use App\Workflow\Events\StageEntered;
@@ -78,7 +77,6 @@ class AppServiceProvider extends ServiceProvider
             });
         }
         Event::subscribe(Notify::class);
-        Event::listen(ChatMessagePosted::class, fn (ChatMessagePosted $e) => RelayAnswer::on($e));
         Event::listen(NotificationSent::class, CollapseNotices::class);
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);

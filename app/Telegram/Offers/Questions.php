@@ -11,8 +11,6 @@ use App\Offers\Offer;
 use App\Support\Surface;
 use App\Telegram\Bot;
 use App\Telegram\Text;
-use App\Users\Role;
-use App\Users\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -20,7 +18,8 @@ use Throwable;
 /**
  * Вопросы из бота — в обычный чат по предложению (владелец 03.10.2026): тот же, что на сайте и в CRM «Чаты».
  * Менеджер спрашивает 💬, админ, подписанный на бота, получает вопрос и отвечает реплаем — ответ ложится в чат от его
- * имени и приходит менеджеру реплаем на его вопрос; остальные админы видят под своей копией, кто что ответил.
+ * имени и приходит менеджеру реплаем на его вопрос; другим админам о нашем ответе не пишем (06.10.2026: уведомляем,
+ * только когда пишут нам).
  * Связь «сообщение в Telegram → чат xcar» — `offer_bot_links`: по ней реплай находит свой чат.
  */
 final class Questions
@@ -99,24 +98,6 @@ final class Questions
                 $sub->forceFill(['blocked_at' => now()])->save();
             }
             Log::warning('Бот предложений: сообщение чата не ушло', ['chat' => $chat->id, 'error' => $e->getMessage()]);
-        }
-    }
-
-    /** Ответ сотрудника по переписке из бота — остальным админам тихо под их копией вопроса: кто и что ответил. */
-    public function relay(Message $message): void
-    {
-        $author = $message->author;
-        $chat = $message->chat;
-        $subs = Subscriber::with('user')->whereNull('blocked_at')->where('user_id', '!=', $author?->id)
-            ->whereIn('user_id', User::withRole(Role::Admin)->select('id'))->get();
-        foreach ($subs as $sub) {
-            $question = DB::connection('pgsql_async')->table('offer_bot_links')->where('tg_chat_id', $sub->chat_id)->where('chat_id', $chat->id)
-                ->where('kind', self::QUESTION)->orderByDesc('created_at')->value('tg_message_id');
-            if (! $question) {
-                continue;
-            }
-            $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, e($author?->shortName() ?? 'Сотрудник').' ответил: '.e((string) $message->preview(3000)), null,
-                ['disable_notification' => 'true'] + self::replyTo((int) $question)));
         }
     }
 

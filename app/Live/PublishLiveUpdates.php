@@ -4,6 +4,7 @@ namespace App\Live;
 
 use App\Billing\Events\PaymentClaimed;
 use App\Billing\Events\PaymentRecorded;
+use App\Chats\AuthorKind;
 use App\Chats\Chat;
 use App\Chats\Events\ChatMessageChanged;
 use App\Chats\Events\ChatMessagePosted;
@@ -137,7 +138,9 @@ final class PublishLiveUpdates
         // Карточка — готовой разметкой: кто написал (аватар автора), что, куда вести.
         $card = fn (string $from, string $href) => ['from' => $from, 'href' => $href, 'banner' => Banner::chat($from, $m->preview(120), $href, $m->author_id ? $m->author : null, $chat->id)];
         ($this->publish)($sides[1], 'chat', $data + $card($chat->manager?->shortName() ?? Chat::PLATFORM, ChatNotice::hrefFor($chat, false)));
-        ($this->publish)($other, 'chat', $data + $card($chat->displayName(), ChatNotice::hrefFor($chat, true)));
+        // Карточка второй стороне — только когда пишет участник. Ответ сотрудника в чате площадки остальным сотрудникам —
+        // одни данные для ленты, без карточки (06.10.2026, владелец: «уведомлять надо только если нам пишут»).
+        ($this->publish)($other, 'chat', $m->author_kind === AuthorKind::Participant ? $data + $card($chat->displayName(), ChatNotice::hrefFor($chat, true)) : $data);
         if ($chat->manager_id) {
             ($this->publish)(Topics::STAFF, 'chat', $data);
         }

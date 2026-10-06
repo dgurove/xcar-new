@@ -1603,7 +1603,7 @@ Telegram, с почтой — «Новое из писем» (`OfferLetterNotice
   и дорожки по чатам (`offers-bot:lane`), кадры — один раз и дальше по `file_id` (`PhotoCache`), состояние —
   `pgsql_async`. Разговор — `Handler` (тексты владельца дословно), лента — `Feed`, карточка — `Card`, вопросы 💬 —
   в чат по предложению (`Questions`, `PostMessage(viaBot:)`, `ChatNotice::via` → `OffersBotChannel`, реплай админа
-  — ответ, остальным «ответил», `RelayAnswer`), приглашения — `Invites`. На сайте — строка `x-offers-bot.card` в
+  — ответ; другим админам о нашем ответе не пишем ни ботом, ни карточкой — уведомляем, только когда пишут нам, 06.10.2026), приглашения — `Invites`. На сайте — строка `x-offers-bot.card` в
   начале каталога и шторка `x-offers-bot.connect`; вход по кнопке — `/telegram/open/{цель}` (`LoginUrl`, после
   `/setdomain` и `TELEGRAM_OFFERS_LOGIN=true`). «Опубликовать сейчас» бот не анонсирует.
 - Telegram-бот без SDK (`Telegram\Bot`, IPv6, `telegram:poll`): владельцу и привязанным админам — кнопки решения, менеджерам — принятое подтверждение, ваш ход, сроки, деньги и каждое сообщение чата (с 01.10.2026, админам — чаты площадки; `Notice::toTelegram`/`telegramUrl`, `TelegramChannel`), шторка подключения `x-telegram.connect` (сама — один раз при входе и после подтверждения ценой), профиль, вход через бота (`StartLink`), вся переписка бота — Настройки → «Бот Telegram» админам (`Telegram\Journal` в `Bot::call` и `UpdateHandler::handle`, ответ от имени бота `SendAsBot`) — `notes/telegram-2026-09-30.md`.
