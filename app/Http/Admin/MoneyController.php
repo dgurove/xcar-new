@@ -26,6 +26,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Nav;
+use App\Support\Sort;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -41,7 +42,7 @@ class MoneyController
     // «Выплатить» — наш ход (выплата менеджеру), «Ждём оплату» — их (06.10.2026: «к выплате» не говорило, кто кому).
     public const PRESETS = ['claims' => 'Сообщили об оплате', 'tried' => 'Не прошла по ссылке', 'payouts' => 'Выплатить', 'unpaid' => 'Ждём оплату', 'paid' => 'Оплачены', 'all' => 'Все'];
 
-    public const SORTS = ['due' => 'По сроку', 'fresh' => 'Сначала новые'];
+    public const SORTS = ['due' => ['Срок оплаты', 'asc'], 'fresh' => ['Дата счёта', 'desc']];
 
     public function index(Request $request)
     {
@@ -78,8 +79,8 @@ class MoneyController
             };
         }
         $facets->apply($q);
-        $sort = $request->query('sort') === 'fresh' ? 'fresh' : 'due';
-        $sort === 'fresh' ? $q->latest('issued_at')->latest('id') : $q->orderByRaw('due_at asc nulls last')->orderBy('id');
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'due');
+        $sort->key === 'fresh' ? $q->orderBy('issued_at', $sort->dir())->orderBy('id', $sort->dir()) : $q->orderByRaw("due_at {$sort->dir()} nulls last")->orderBy('id');
 
         return view('admin.money.index', [
             'detail' => $detail,

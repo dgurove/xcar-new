@@ -73,7 +73,7 @@
     @if ($errors->any())<x-ui.flash tone="danger" class="mb-4">{{ $errors->first() }}</x-ui.flash>@endif
 
     @php $kindPills = count($kinds) > 1 ? ['' => 'Все'] + collect(Kind::cases())->filter(fn ($k) => isset($kinds[$k->value]))->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all() : []; @endphp
-    <x-ui.toolbar :sorts="$ctl::SORTS" :sort="$sort" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" name="purchase" :facets="$facets" search="ДЛ, VIN, марка">
+    <x-ui.toolbar :sort="$sort" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" name="purchase" :facets="$facets" search="ДЛ, VIN, марка">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
     </x-ui.toolbar>
 

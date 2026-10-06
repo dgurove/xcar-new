@@ -1,12 +1,12 @@
 {{-- Сам список заявок: таблица с карточкам или карточки, в конце хвост со следующей порцией — его ловит
      endless_controller. Страниц у заявок нет. Этим же куском отвечает лента (заголовок X-List).
-     Таблица при сортировке «По сроку» собрана под заголовками, как «Напоминания»: Просрочено, Сегодня, Завтра,
+     Таблица при сортировке по сроку (ближние сверху) собрана под заголовками, как «Напоминания»: Просрочено, Сегодня, Завтра,
      Позже, Без срока. Таблица целиком на одной странице, поэтому заголовок группы не повторится в ленте. --}}
 @php
     use App\Support\ListView;
-    $sort ??= request('sort', 'planned');
+    $sort ??= \App\Support\Sort::from(request('sort'), \App\Http\Park\RequestController::SORTS, 'planned');
     $groups = collect(['' => $requests->getCollection()]);
-    if (ListView::isTable($view) && $sort === 'planned') {
+    if (ListView::isTable($view) && $sort->value() === 'planned') {
         $today = now()->startOfDay();
         $groups = $requests->getCollection()->groupBy(fn ($r) => match (true) {
             $r->isOverdue() => 'Просрочено',

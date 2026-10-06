@@ -41,6 +41,7 @@ use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
+use App\Support\Sort;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -86,7 +87,34 @@ class OfferController
         return $offer->state === OfferState::Draft && ! $offer->slot_at && ! $offer->asking_price && (! $offer->floor_price || $user->canManageCrm());
     }
 
-    public const SORTS = ['fresh' => 'Сначала новые', 'number' => 'По номеру'];
+    /**
+     * Поля сортировки (App\Support\Sort, владелец 06.10.2026: сортировка на всех вкладках, поле и направление). На вкладке —
+     * только поля её столбцов (`sorts`): подтверждений нет там, где их быть не может.
+     */
+    public const SORTS = [
+        'created' => ['Дата заведения', 'desc'],
+        'published' => ['Дата публикации', 'desc'],
+        'closing' => ['Закрытие приёма', 'asc'],
+        'number' => ['Номер', 'desc'],
+        'vendor' => ['Вендор', 'asc'],
+        'floor' => ['Закупочная', 'asc'],
+        'price' => ['Цена продажи', 'asc'],
+        'bids' => ['Подтверждения', 'desc'],
+    ];
+
+    /** Сортировка вкладки: поля её столбцов, номер всегда, закрытие приёма — у опубликованных. */
+    private static function sortFor(Request $request, string $preset, ?array $cols, bool $admin): Sort
+    {
+        $options = array_filter(self::SORTS, fn ($_, $key) => match ($key) {
+            'number' => true,
+            'closing' => $preset === 'published',
+            default => $cols === null || in_array($key, $cols, true),
+        }, ARRAY_FILTER_USE_BOTH);
+        // Умолчания вкладок прежние: черновики по заведению, новые сверху; опубликованные у админа — по закрытию приёма.
+        $default = $preset === 'published' ? ($admin ? 'closing' : '-published') : '-created';
+
+        return Sort::from($request->query('sort'), $options, $default);
+    }
 
     public function index(Request $request)
     {
@@ -116,7 +144,8 @@ class OfferController
             default => self::facets(),
         })->always();
         ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys());
-        $sort = array_key_exists((string) $request->query('sort'), self::SORTS) ? (string) $request->query('sort') : 'fresh';
+        $cols = self::columns($preset, $request->user());
+        $sort = self::sortFor($request, $preset, $cols, $admin);
         // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.
         $searching = $facets->searching();
         // Вендор ни разу не выбирали — все, кроме Каркаде (их десятки из закупки, оценивают отдельно), на любой вкладке:
@@ -132,13 +161,7 @@ class OfferController
             $q->searchCrm(trim((string) $request->query('q')))->orderByDesc('updated_at');
         } else {
             self::scopeFor($preset, $q);
-            match ($preset) {
-                // Порядок прохода не меняется от правки поля: по заведению, новые сверху.
-                'nofloor', 'unpriced', 'priced' => $q->orderByDesc('offers.id'),
-                'slots' => $q->orderBy('slot_at')->orderByDesc('offers.id'),
-                'published' => $admin ? self::byPick($q) : $q->orderByDesc('published_at'),
-                default => $sort === 'number' ? $q->orderByDesc('number') : $q->orderByDesc('updated_at'),
-            };
+            self::order($q, $preset, $sort, $admin);
         }
         $facets->apply($q);
         // Числа вкладок — с тем же выбором, что и список (и «кроме Каркаде» по умолчанию).
@@ -172,9 +195,8 @@ class OfferController
             'step' => $step,
             'searching' => $searching,
             'presets' => self::PRESETS,
-            'sorts' => $preset === 'archive' ? self::SORTS : [],
             'preset' => $preset,
-            'sort' => $sort,
+            'sort' => $searching ? null : $sort,
             'facets' => $facets,
             // Галочки и отправка — админу, в «Оцененных» и «Публикации».
             'pick' => $admin && ! $searching && in_array($preset, ['priced', 'slots', 'archive'], true),
@@ -221,12 +243,39 @@ class OfferController
      */
     public const PICK_GROUPS = ['Выбрать', 'Идёт приём', 'Без подтверждений'];
 
-    private static function byPick(Builder $q): Builder
-    {
-        $bids = "exists (select 1 from bids where bids.offer_id = offers.id and bids.state = '".BidState::Active->value."')";
-        $group = "case when bids_close_at is not null and bids_close_at <= now() and {$bids} then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
+    private const PICK_GROUP = "case when bids_close_at is not null and bids_close_at <= now() and exists (select 1 from bids where bids.offer_id = offers.id and bids.state = 'active') then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
 
-        return $q->orderByRaw($group)->orderByRaw("case when ({$group}) = 2 then null else bids_close_at end asc nulls last")->orderByDesc('bids_close_at');
+    /**
+     * Порядок вкладки: группы первыми («Публикация» — по слоту, «Опубликованные» у админа — `PICK_GROUP`), внутри —
+     * выбранное поле, последним — заведение. Порядок прохода черновиков не меняется от правки поля: по умолчанию по
+     * заведению, новые сверху.
+     */
+    private static function order(Builder $q, string $preset, Sort $sort, bool $admin): void
+    {
+        $dir = $sort->dir();
+        $pick = $preset === 'published' && $admin;
+        match (true) {
+            $preset === 'slots' => $q->orderBy('slot_at'),
+            $pick => $q->orderByRaw(self::PICK_GROUP),
+            default => null,
+        };
+        // Закрытие приёма у групп опубликованного — как было: в «Выбрать» и «Идёт приём» ближние выше, в «Без
+        // подтверждений» — недавно закрытые.
+        if ($pick && $sort->value() === 'closing') {
+            $q->orderByRaw('case when ('.self::PICK_GROUP.') = 2 then null else bids_close_at end asc nulls last')->orderByDesc('bids_close_at');
+        }
+        $bids = "(select count(*) from bids where bids.offer_id = offers.id and bids.state = '".BidState::Active->value."')";
+        match ($sort->key) {
+            'published' => $q->orderByRaw("published_at {$dir} nulls last"),
+            'closing' => $q->orderByRaw("bids_close_at {$dir} nulls last"),
+            'number' => $q->orderBy('offers.number', $dir),
+            'vendor' => $q->orderByRaw("(select name from vendors where vendors.id = offers.vendor_id) {$dir} nulls last"),
+            'floor' => $q->orderByRaw("offers.floor_price {$dir} nulls last"),
+            'price' => $q->orderByRaw("offers.asking_price {$dir} nulls last"),
+            'bids' => $q->orderByRaw("{$bids} {$dir}"),
+            default => $q->orderBy('offers.id', $dir),
+        };
+        $q->orderByDesc('offers.id');
     }
 
     /** Группа опубликованного (PICK_GROUPS) — то же правило, что у порядка. */

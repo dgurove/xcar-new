@@ -10,12 +10,13 @@ use App\Support\Detail;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Sort;
 use Illuminate\Http\Request;
 
 /** Галерея — предложения «скоро в продаже»: без цены, копят интерес. Новое заводится черновиком, в галерею — с карточки. */
 class GalleryController
 {
-    public const SORTS = ['fresh' => 'Сначала новые', 'interest' => 'По интересу', 'number' => 'По номеру'];
+    public const SORTS = ['fresh' => ['Дата публикации', 'desc'], 'interest' => ['Интерес', 'desc'], 'number' => ['Номер', 'desc']];
 
     public function index(Request $request, OfferController $offers)
     {
@@ -25,17 +26,19 @@ class GalleryController
         }
         $facets = Facets::for($request, 'crm-gallery', ...OfferController::facets());
         ListPrefs::sync($request, 'crm-gallery', keep: $facets->keys());
-        $sort = $request->query('sort', 'fresh');
+        $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
         $q = Offer::query()->where('state', OfferState::Gallery)->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])->withCount(['activeBids', 'interests']);
         if ($term = trim((string) $request->query('q'))) {
             $q->searchCrm($term);
         }
         $facets->apply($q);
-        match ($sort) {
-            'interest' => $q->orderByDesc('interests_count')->orderByDesc('published_at'),
-            'number' => $q->orderByDesc('number'),
-            default => $q->orderByRaw('published_at desc nulls last'),
+        $dir = $sort->dir();
+        match ($sort->key) {
+            'interest' => $q->orderBy('interests_count', $dir)->orderByDesc('published_at'),
+            'number' => $q->orderBy('number', $dir),
+            default => $q->orderByRaw("published_at {$dir} nulls last"),
         };
+        $q->orderByDesc('offers.id');
 
         $offers = ListView::paginate($request, $q);
         // Кадры нужны плиткам и строкам, в таблице их нет.

@@ -4,7 +4,7 @@
 @php use App\Support\ListView; $view = ListView::fromRequest(request()) === ListView::WIDE ? ListView::WIDE : ListView::TABLE; @endphp
 <x-ui.shell :title="$party ? $party->name : 'Оплаты'" :count="$invoices->total()" :back="$party ? ['Долги', '/money/debts'] : false" :phone-heading="(bool) $party" :detail="$detail">
     <x-slot:lead>@if ($partyVendor = $party ? \App\Vendors\Vendor::ofParty($party->id) : null)<x-vendor.logo :vendor="$partyVendor"/>@endif</x-slot:lead>
-    <x-ui.toolbar :sorts="\App\Http\Park\MoneyController::SORTS" :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="money" :facets="$facets" search="Номер, контрагент, убыток, VIN">
+    <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="money" :facets="$facets" search="Номер, контрагент, убыток, VIN">
         {{-- Счета — только таблицей; на телефоне её можно развернуть в подробную. --}}
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::WIDE]" :current="$view"/></x-slot:extra>
     </x-ui.toolbar>

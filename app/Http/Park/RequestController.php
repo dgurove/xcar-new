@@ -44,6 +44,7 @@ use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Phone;
+use App\Support\Sort;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
@@ -52,7 +53,7 @@ use Illuminate\Validation\Rule;
 
 class RequestController
 {
-    public const SORTS = ['planned' => 'По сроку', 'fresh' => 'Сначала новые', 'type' => 'По типу'];
+    public const SORTS = ['planned' => ['Срок', 'asc'], 'fresh' => ['Дата заявки', 'desc'], 'type' => ['Тип', 'asc']];
 
     /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с карточкам строки. */
     public function index(Request $request)
@@ -90,10 +91,12 @@ class RequestController
             $q->where('planned_at', '<', now());
         }
         $facets->apply($q);
-        match ($request->query('sort')) {
-            'fresh' => $q->latest(),
-            'type' => $q->orderBy('type')->orderByRaw('planned_at asc nulls last')->latest(),
-            default => $q->orderByRaw('planned_at asc nulls last')->latest(),
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'planned');
+        $dir = $sort->dir();
+        match ($sort->key) {
+            'fresh' => $q->orderBy('created_at', $dir)->orderBy('id', $dir),
+            'type' => $q->orderBy('type', $dir)->orderByRaw('planned_at asc nulls last')->latest(),
+            default => $q->orderByRaw("planned_at {$dir} nulls last")->latest(),
         };
 
         $open = $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
@@ -106,6 +109,7 @@ class RequestController
         $paginator = ListView::paginate($request, $q);
         $data = [
             'requests' => $paginator,
+            'sort' => $sort,
             'view' => ListView::pick($request, $paginator->total()),
         ];
         // Лента просит только список: тот же кусок, что рисует страницу.
@@ -117,7 +121,6 @@ class RequestController
             'preset' => $type,
             'presets' => $presets,
             'counts' => $counts,
-            'sort' => $request->query('sort', 'planned'),
             'q' => $qs,
             'facets' => $facets,
             'detail' => $detail,

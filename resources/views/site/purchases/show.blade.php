@@ -15,7 +15,7 @@
         </div>
     @endif
 
-    <x-ui.toolbar class="mt-5" :sorts="\App\Http\Site\PurchaseController::SORTS" :sort="$filters['sort'] ?? 'dl'" :pills="\App\Http\Site\PurchaseController::PRESETS" :pill="$filters['preset'] ?? 'all'" pill-param="preset" name="purchase" search="ДЛ, VIN, марка">
+    <x-ui.toolbar class="mt-5" :sort="\App\Support\Sort::from($filters['sort'] ?? null, \App\Http\Site\PurchaseController::SORTS, 'dl')" :pills="\App\Http\Site\PurchaseController::PRESETS" :pill="$filters['preset'] ?? 'all'" pill-param="preset" name="purchase" search="ДЛ, VIN, марка">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
     </x-ui.toolbar>
 

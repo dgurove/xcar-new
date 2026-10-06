@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
+use App\Support\Sort;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -13,16 +14,12 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class CatalogQuery
 {
-    /** ключ → [подпись, есть ли направление] */
-    /** Исходы словами, по ключу на исход: минус — по убыванию. Стрелки-переключателя направления нет. */
+    /** Поля сортировки (App\Support\Sort): в адресе минус — по убыванию, `-published` и `price` как были. */
     public const SORTS = [
-        '-published' => 'Сначала новые',
-        'published' => 'Сначала старые',
-        'price' => 'Сначала дешёвые',
-        '-price' => 'Сначала дорогие',
-        '-year' => 'Сначала свежий год',
-        'year' => 'Сначала старый год',
-        'closing' => 'Скоро закрытие',
+        'published' => ['Дата публикации', 'desc'],
+        'price' => ['Цена', 'asc'],
+        'year' => ['Год', 'desc'],
+        'closing' => ['Закрытие приёма', 'asc'],
     ];
 
     public const VIEWS = ['' => 'Все', 'recommended' => 'Рекомендуем', 'fresh' => 'Новые', 'ending' => 'Горящие', 'favorite' => 'Избранное'];
@@ -73,10 +70,9 @@ final class CatalogQuery
         }
 
         $sort = self::sort($filters, $gallery, $prices, $user);
-        $desc = str_starts_with($sort, '-');
-        $dir = $desc ? 'desc' : 'asc';
+        $dir = str_starts_with($sort, '-') ? 'desc' : 'asc';
         match (ltrim($sort, '-')) {
-            'closing' => $q->orderByRaw('bids_close_at asc nulls last'),
+            'closing' => $q->orderByRaw("bids_close_at {$dir} nulls last"),
             'price' => $q->orderByRaw("asking_price {$dir} nulls last"),
             'year' => $q->orderByRaw("year {$dir} nulls last")->orderByDesc('published_at'),
             default => $q->orderByDesc('sort_weight')->orderByRaw("published_at {$dir} nulls last"),
@@ -94,15 +90,13 @@ final class CatalogQuery
     /** Действующая сортировка: то, что в адресе, если она разрешена, иначе по умолчанию. */
     public static function sort(array $filters, bool $gallery = false, bool $prices = true, ?User $user = null): string
     {
-        $sort = $filters['sort'] ?? self::DEFAULT_SORT;
-
-        return isset(self::allowedSorts($gallery, $prices, $user)[$sort]) ? $sort : self::DEFAULT_SORT;
+        return Sort::from($filters['sort'] ?? null, self::allowedSorts($gallery, $prices, $user), self::DEFAULT_SORT)->value();
     }
 
     /** Сортировки для тулбара: в галерее ни цены, ни срока; покупатель не торгуется — срока у него нет. */
     public static function allowedSorts(bool $gallery, bool $prices, ?User $user = null): array
     {
-        return array_filter(self::SORTS, fn ($_, $key) => match (ltrim($key, '-')) {
+        return array_filter(self::SORTS, fn ($_, $key) => match ($key) {
             'price' => $prices,
             'closing' => ! $gallery && ! $user?->isBuyer(),
             default => true,

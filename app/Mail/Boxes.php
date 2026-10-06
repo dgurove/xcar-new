@@ -12,7 +12,8 @@ final class Boxes
     /** Пилюли почты. `register` сюда не входит: это вшитая выборка «Из писем», снять её нечем. */
     public const BOXES = ['attention' => 'Требуют внимания', 'all' => 'Все', 'other' => 'Прочее', 'sent' => 'Отправленные', 'archive' => 'Архив'];
 
-    public const SORTS = ['fresh' => 'Свежие', 'waiting' => 'Дольше ждут'];
+    /** По последнему письму: по возрастанию — бывшее «Дольше ждут». */
+    public const SORTS = ['fresh' => ['Последнее письмо', 'desc']];
 
     /** Направление и смысл последнего письма ветки — колонки, их держит `Threads::refresh` (было подзапросом на строку). */
     public const LAST_DIRECTION = 'mail_threads.last_direction';

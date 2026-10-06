@@ -28,6 +28,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\OfficePreview;
 use App\Support\Liters;
+use App\Support\Sort;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -42,7 +43,7 @@ class PurchaseController
     /** Пресеты группами в выборе «Все ТС ▾»: из каждой группы выбирают один ответ. */
     public const PRESET_GROUPS = ['' => ['all'], 'Предложения менеджеров' => ['priced', 'unpriced'], 'Наша цена' => ['unfinal', 'final'], 'Служебное' => ['attention', 'nophoto', 'hidden'], 'Контрпредложение' => ['moved']];
 
-    public const SORTS = ['dl' => 'По порядку файла', 'best' => 'Лучшая цена', 'final' => 'Наша цена', 'fresh' => 'Сначала новые'];
+    public const SORTS = ['dl' => ['Порядок файла', 'asc'], 'best' => ['Лучшая цена', 'desc'], 'final' => ['Наша цена', 'desc'], 'fresh' => ['Дата', 'desc']];
 
     public function index()
     {
@@ -94,7 +95,7 @@ class PurchaseController
         $q = trim((string) $request->query('q'));
         $preset = $facets->selected('preset')[0] ?? 'all';
         $preset = array_key_exists($preset, self::PRESETS) ? $preset : 'all';
-        $sort = array_key_exists($request->query('sort', 'dl'), self::SORTS) ? $request->query('sort', 'dl') : 'dl';
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'dl');
         $kind = Kind::tryFrom((string) $request->query('kind'));
         // Лупа — по всей закупке, мимо типа, состояния и менеджера.
         if ($q !== '') {
@@ -141,11 +142,12 @@ class PurchaseController
             default => null,
         };
         $facets->apply($cars);
-        match ($sort) {
-            'best' => $cars->withMax(['offers as top_offer' => $live], 'amount')->orderByDesc('top_offer')->orderBy('dl'),
-            'final' => $cars->orderByRaw('price_final desc nulls last')->orderBy('dl'),
-            'fresh' => $cars->orderByDesc('id'),
-            default => $cars->orderBy('dl'),
+        $dir = $sort->dir();
+        match ($sort->key) {
+            'best' => $cars->withMax(['offers as top_offer' => $live], 'amount')->orderByRaw("top_offer {$dir} nulls last")->orderBy('dl'),
+            'final' => $cars->orderByRaw("price_final {$dir} nulls last")->orderBy('dl'),
+            'fresh' => $cars->orderBy('id', $dir),
+            default => $cars->orderBy('dl', $dir),
         };
 
         $cars = ListView::paginate($request, $cars);

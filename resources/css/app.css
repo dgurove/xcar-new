@@ -1303,6 +1303,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .segment label { @apply relative flex min-h-9 cursor-pointer items-center justify-center rounded-full px-3 text-sm text-ink-muted; }
   .segment input { @apply absolute inset-0 opacity-0; }
   .segment label:has(input:checked) { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
+  /* Сегмент ссылками (направление сортировки, x-ui.sort): тот же вид, выбранное — aria-current. */
+  .segment a { @apply flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm text-ink-muted; }
+  .segment a[aria-current] { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
+  @media (hover: hover) { .segment a:not([aria-current]):hover { @apply text-ink; } }
+  /* Сортировка не по умолчанию — кнопка лаймовая, как выбранный чип фильтра рядом. */
+  .sort-btn[aria-current] { @apply bg-accent text-white; }
+  @media (hover: hover) { .sort-btn[aria-current]:hover { @apply bg-accent-hover; } }
+  .sheet-sort { min-width: 18rem; }
   .pay-methods { @apply flex items-center justify-center gap-4 text-sm text-ink-muted; }
   .pay-methods span { @apply flex items-center gap-1.5; }
   .qr-result-again { @apply flex size-10 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-hover; }

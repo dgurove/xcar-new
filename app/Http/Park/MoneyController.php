@@ -25,6 +25,7 @@ use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Nav;
 use App\Support\Plural;
+use App\Support\Sort;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class MoneyController
 {
     public const PRESETS = ['unpaid' => 'Не оплачены', 'overdue' => 'Просрочены', 'owed' => 'Мы должны', 'paid' => 'Оплачены', 'all' => 'Все'];
 
-    public const SORTS = ['due' => 'По сроку', 'fresh' => 'Сначала новые'];
+    public const SORTS = ['due' => ['Срок оплаты', 'asc'], 'fresh' => ['Дата счёта', 'desc']];
 
     public function index(Request $request)
     {
@@ -66,7 +67,8 @@ class MoneyController
             };
         }
         $facets->apply($q);
-        $request->query('sort') === 'fresh' ? $q->latest('issued_at')->latest('id') : $q->orderBy('due_at')->orderBy('id');
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'due');
+        $sort->key === 'fresh' ? $q->orderBy('issued_at', $sort->dir())->orderBy('id', $sort->dir()) : $q->orderByRaw("due_at {$sort->dir()} nulls last")->orderBy('id');
         $open = $facets->applyTo(self::scoped($request->user(), Invoice::query()))->where('state', InvoiceState::Issued)->get();
         $parties = Common::ints($facets->selected('party'));
 
@@ -74,7 +76,7 @@ class MoneyController
             'detail' => $detail,
             'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset, 'presets' => self::PRESETS,
-            'sort' => $request->query('sort', 'due'),
+            'sort' => $sort,
             'counts' => [
                 'unpaid' => $open->where('direction', 'issued')->count(),
                 'overdue' => $open->filter->isOverdue()->count(),
@@ -201,15 +203,15 @@ class MoneyController
         return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
 
-    public const DEBT_SORTS = ['overdue' => 'Просрочено', 'owed_to_us' => 'Нам должны', 'we_owe' => 'Мы должны', 'unbilled' => 'Не выставлено'];
+    public const DEBT_SORTS = ['overdue' => ['Просрочено', 'desc'], 'owed_to_us' => ['Нам должны', 'desc'], 'we_owe' => ['Мы должны', 'desc'], 'unbilled' => ['Не выставлено', 'desc']];
 
     public function debts(Request $request)
     {
-        $sort = array_key_exists($request->query('sort', ''), self::DEBT_SORTS) ? $request->query('sort') : 'overdue';
+        $sort = Sort::from($request->query('sort'), self::DEBT_SORTS, '-overdue');
         $qs = mb_strtolower(trim((string) $request->query('q')));
         $debts = Ledger::debts()
             ->when($qs !== '', fn ($c) => $c->filter(fn ($d) => str_contains(mb_strtolower($d['party']->name), $qs)))
-            ->sortByDesc(fn ($d) => [$d[$sort], $d['overdue'], $d['owed_to_us']])->values();
+            ->sortBy(fn ($d) => [$d[$sort->key], $d['overdue'], $d['owed_to_us']], SORT_REGULAR, $sort->desc)->values();
         $page = max(1, (int) $request->query('page', 1));
         $per = 30;
 

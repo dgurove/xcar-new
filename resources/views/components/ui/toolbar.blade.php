@@ -3,7 +3,7 @@
      строкой сверху, во второй кнопки, в третьей чипы. Всё состояние — в адресе, кроме поиска: лупа ставит тулбару
      data-searching, ряд кнопок и чипов уходит, на месте — поле с «Отмена» (как в iOS); список сужается по ходу
      набора по всему списку, мимо пилюль и чипов (live_search_controller), адрес не меняется.
-     sorts: ключ → [подпись, есть ли направление] или ключ → подпись;
+     sort — App\Support\Sort списка (поля и текущее значение), пусто — кнопки сортировки нет;
      pills: ключ → подпись; counts: ключ → число или сумма строкой («360 500 ₽» в «Деньгах»); tones: ключ → класс пилюли (pill-danger у «Просрочено»);
      pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра;
      pillHome — пилюля экрана по умолчанию, её ключа нет в адресе (обычно первая; у почты первая «Требуют внимания», а открывается «Все»);
@@ -13,17 +13,14 @@
      слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»);
      слот extra — кнопки экрана в левой группе после сортировки (переключатель вида),
      слот actions — у правого края («+», «Из писем»).
-     Сортировка — только исходы словами, по строке на исход: «Сначала дешёвые», «Дольше ждут».
-     Направления как отдельной кнопки нет — у каталога это два ключа («price» и «-price»): стрелку
-     вверх-вниз никто не находил, а «по возрастанию» ни о чём не говорит. --}}
-@props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false])
+     Сортировка — окошко x-ui.sort: поле и направление (владелец 06.10.2026: «кнопка сортировки, окошко — выбор
+     критерия и ascending/descending»); прежнего меню исходов словами («Сначала дешёвые») больше нет. --}}
+@props(['sort' => null, 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
     $url = fn (array $set) => $action.'?'.str_replace('%2C', ',', http_build_query(array_filter(array_merge($query, $set), fn ($v) => $v !== null && $v !== '')));
-    $norm = collect($sorts)->map(fn ($v) => is_array($v) ? $v[0] : $v);
-    $current = (string) $sort;
-    $sortUrl = fn (string $key) => $url([$sortParam => $key, 'page' => null]);
+    $sortUrl = fn (string $value) => $url([$sortParam => $value, 'page' => null]);
     $q ??= is_string(request('q')) ? request('q') : '';
     // searchOpen — поле открыто всегда, без лупы и «Отмена» (колонка чатов, 06.10.2026: «нет смысла сворачивать»).
     $searching = $search && ($searchOpen || trim($q) !== '');
@@ -54,17 +51,8 @@
     {{-- Без пилюль кнопки слева, действия справа (`ml-auto`), на ПК чипы встают в ту же строку после кнопок. Распорки
          нет: её `md:block` из слоя утилит перебивал правило «спрятать без пилюль», и кнопки с чипами уезжали на середину. --}}
 
-    @if ($norm->isNotEmpty())
-        {{-- Сортировка — круглая кнопка с меню у неё, как вид списка: строки через линию, у текущей лаймовая галка
-             справа (.menu-item[aria-current]), одинаково на телефоне и на компьютере. --}}
-        <div class="contents" data-controller="menu">
-            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="menu#toggle" aria-label="Сортировка: {{ $norm[$current] ?? 'по умолчанию' }}" aria-haspopup="menu" aria-controls="sort-{{ $name }}"><x-ui.icon name="sort" class="size-5"/></button>
-            <div id="sort-{{ $name }}" class="menu" popover data-menu-target="list" role="menu" aria-label="Сортировка">
-                @foreach ($norm as $key => $label)
-                    <a href="{{ $sortUrl($key) }}" class="menu-item" role="menuitem" data-turbo-action="replace" data-action="menu#close" @if ((string) $key === $current) aria-current="true" @endif>{{ $label }}</a>
-                @endforeach
-            </div>
-        </div>
+    @if ($sort)
+        <x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name"/>
     @endif
 
     {{-- Кнопки экрана (переключатель вида) — после сортировки: сначала то, чем список настраивают; лупа — за ними. --}}

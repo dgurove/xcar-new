@@ -14,6 +14,7 @@ use App\Purchases\Restriction;
 use App\Support\Detail;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Sort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -22,7 +23,7 @@ class PurchaseController
 {
     public const PRESETS = ['all' => 'Все', 'mine' => 'С моей ценой', 'none' => 'Без моей цены', 'photos' => 'С фото'];
 
-    public const SORTS = ['dl' => 'По порядку файла', 'fresh' => 'Сначала новые', 'brand' => 'По марке'];
+    public const SORTS = ['dl' => ['Порядок файла', 'asc'], 'fresh' => ['Дата', 'desc'], 'brand' => ['Марка', 'asc']];
 
     public function index(Request $request)
     {
@@ -136,10 +137,12 @@ class PurchaseController
             $q->where(fn ($w) => $w->whereRaw('lower(dl) like ?', [$term])->orWhereRaw('lower(vin) like ?', [$term])->orWhereRaw('lower(brand_raw) like ?', [$term])->orWhereRaw('lower(model_raw) like ?', [$term])
                 ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$term])->orWhereRaw('lower(name_ru) like ?', [$term])));
         }
-        match ($filters['sort'] ?? 'dl') {
-            'fresh' => $q->orderByDesc('id'),
-            'brand' => $q->orderBy('brand_raw')->orderBy('model_raw'),
-            default => $q->orderBy('dl'),
+        $sort = Sort::from($filters['sort'] ?? null, self::SORTS, 'dl');
+        $dir = $sort->dir();
+        match ($sort->key) {
+            'fresh' => $q->orderBy('id', $dir),
+            'brand' => $q->orderBy('brand_raw', $dir)->orderBy('model_raw', $dir),
+            default => $q->orderBy('dl', $dir),
         };
 
         return $q;

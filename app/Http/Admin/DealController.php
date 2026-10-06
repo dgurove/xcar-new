@@ -15,6 +15,7 @@ use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Sort;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ class DealController
 {
     public const PRESETS = ['active' => 'В работе', 'hot' => 'Горит', 'manager' => 'Ждём менеджера', 'done' => 'Закончены'];
 
-    public const SORTS = ['deadline' => 'По сроку', 'fresh' => 'Сначала новые', 'amount' => 'По сумме'];
+    public const SORTS = ['deadline' => ['Срок', 'asc'], 'fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
 
     public function index(Request $request)
     {
@@ -51,7 +52,7 @@ class DealController
         ListPrefs::sync($request, 'crm-deals', keep: $facets->keys());
         $preset = $request->query('preset', 'active');
         $searching = $facets->searching();
-        $sort = $request->query('sort', 'deadline');
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
         $q = Deal::query()->with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'buyer', 'openRequirement']);
         if ($searching) {
@@ -71,11 +72,13 @@ class DealController
             };
         }
         $facets->apply($q);
-        match ($sort) {
-            'fresh' => $q->latest(),
-            'amount' => $q->orderByDesc('amount'),
-            default => $q->orderByRaw('(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) asc nulls last')->latest(),
+        $dir = $sort->dir();
+        match ($sort->key) {
+            'fresh' => $q->orderBy('created_at', $dir),
+            'amount' => $q->orderByRaw("amount {$dir} nulls last"),
+            default => $q->orderByRaw("(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) {$dir} nulls last"),
         };
+        $q->orderByDesc('deals.id');
 
         return view('admin.deals.index', [
             // Таблица — вся на одной странице; строками — постранично.

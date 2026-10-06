@@ -63,7 +63,7 @@
         </x-ui.card>
 
         <x-ui.card title="Тулбар">
-            <x-ui.toolbar :sorts="['published' => ['Дата публикации', true], 'price' => ['Стоимость', true]]" sort="-published" :pills="['' => 'Все', 'fresh' => 'Новые', 'ending' => 'Горящие']" pill="" name="demo" search="Марка, модель, VIN" search-target="#demo-list">
+            <x-ui.toolbar :sort="\App\Support\Sort::from('-published', ['published' => ['Дата публикации', 'desc'], 'price' => ['Стоимость', 'asc']], '-published')" :pills="['' => 'Все', 'fresh' => 'Новые', 'ending' => 'Горящие']" pill="" name="demo" search="Марка, модель, VIN" search-target="#demo-list">
                 <x-slot:extra><x-ui.view-switch/></x-slot:extra>
             </x-ui.toolbar>
         </x-ui.card>

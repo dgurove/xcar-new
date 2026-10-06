@@ -55,6 +55,7 @@ use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Sort;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -63,7 +64,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class VehicleController
 {
-    public const SORTS = ['longest' => 'Дольше всех стоят', 'fresh' => 'Сначала новые', 'amount' => 'Больше набежало'];
+    public const SORTS = ['longest' => ['Дата приёма', 'asc'], 'fresh' => ['Дата заведения', 'desc'], 'amount' => ['Начислено', 'desc']];
 
     /**
      * «Наличие» — что стоит на парковках сейчас: только stored, пилюли по парковкам.
@@ -104,7 +105,9 @@ class VehicleController
             ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
                 ->orWhere('plate', 'like', '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%')->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
         $facets->apply($vehicles);
-        $request->query('sort') === 'fresh' ? $vehicles->latest() : $vehicles->orderByRaw('accepted_at asc nulls last')->latest();
+        $sort = Sort::from($request->query('sort'), self::SORTS, 'longest');
+        $sort->key === 'fresh' ? $vehicles->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir())
+            : $vehicles->orderByRaw('accepted_at '.($sort->key === 'longest' ? $sort->dir() : 'asc').' nulls last')->latest();
 
         // Кадры нужны плиткам и строкам; таблице — нет (миниатюр в ней нет, карточка грузит своё).
         $vehicles->when(! ListView::isTable(ListView::fromRequest($request)), fn ($v) => $v->with('media'));
@@ -113,11 +116,12 @@ class VehicleController
         $totals = Accrual::cachedTotals($page->getCollection());
         // «Больше набежало» — по посчитанному: в базе этой суммы нет. Таблица целиком на одной странице,
         // так что сортировка в памяти честная; у карточек — в пределах страницы.
-        if ($request->query('sort') === 'amount') {
-            $page->setCollection($page->getCollection()->sortByDesc(fn (Vehicle $v) => $totals[$v->id]['amount'] ?? 0)->values());
+        if ($sort->key === 'amount') {
+            $page->setCollection($page->getCollection()->sortBy(fn (Vehicle $v) => $totals[$v->id]['amount'] ?? 0, SORT_REGULAR, $sort->desc)->values());
         }
         $data = [
             'vehicles' => $page,
+            'sort' => $sort,
             'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
             'totals' => $totals,
             // Без выбранной парковки (или с несколькими) и без поиска строки собраны под заголовками парковок.
@@ -133,7 +137,6 @@ class VehicleController
 
         return view('park.vehicles.index', $data + [
             'state' => $state,
-            'sort' => $request->query('sort', 'longest'),
             'yard' => $yard,
             'facets' => $facets,
             'detail' => $detail,

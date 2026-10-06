@@ -1,7 +1,7 @@
 @php $view = \App\Support\ListView::pick(request(), $deals->total()); @endphp
 <x-ui.shell title="Сделки" :heading="false" :detail="$detail">
     <x-admin.work-titles current="deals" :count="$deals->total()"/>
-    <x-ui.toolbar class="mt-5" :sorts="\App\Http\Admin\DealController::SORTS" :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер">
+    <x-ui.toolbar class="mt-5" :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер">
         <x-slot:extra><x-ui.view-switch :views="['list', 'table', 'wide']" :current="$view"/></x-slot:extra>
     </x-ui.toolbar>
 

@@ -19,7 +19,7 @@
         <x-slot:actions class="!ml-auto !w-auto">@include('admin.mail.actions')</x-slot:actions>
     @endif
 
-    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sorts="\App\Mail\Boxes::SORTS" :sort="$sort" :pills="$forced ? [] : \App\Mail\Boxes::BOXES" :pill="$forced ? '' : $box" pill-param="box" pill-home="all" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
+    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sort="$sort" :pills="$forced ? [] : \App\Mail\Boxes::BOXES" :pill="$forced ? '' : $box" pill-param="box" pill-home="all" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
                   search="Найти письмо" search-target="#threads" :q="$q" :facets="$facets">
         {{-- «Проверить почту» — в ряду кнопок списка справа: ящики забираются тут же, тост — сколько пришло. В строке
              заголовка она на телефоне висела одна, а ряд кнопок справа пустовал. --}}
