@@ -9,7 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('offers', fn (Blueprint $t) => $t->jsonb('migtorg_rejected')->nullable());
+        // Колонку могла поставить выкладка соседней сессии, собранная с этой миграцией в дереве до коммита.
+        if (! Schema::hasColumn('offers', 'migtorg_rejected')) {
+            Schema::table('offers', fn (Blueprint $t) => $t->jsonb('migtorg_rejected')->nullable());
+        }
     }
 
     public function down(): void
