@@ -23,11 +23,11 @@
     ], fn ($v) => $v !== null && $v !== '');
     $description = trim(html_entity_decode(strip_tags(str_replace(['<br>', '</div>', '</p>'], "\n", (string) $offer->description))));
 @endphp
-<div class="{{ $grid }}">
+<div class="{{ $grid }} !gap-y-2.5 leading-snug">
     @foreach ($cells as $label => $value)
         <div @class(['min-w-0', 'col-span-2' => $label === 'Адрес осмотра' || $label === 'VIN'])>
             <div class="field-label">{{ $label }}</div>
-            <div class="mt-1 break-words">
+            <div class="mt-0.5 break-words">
                 @if ($label === 'VIN')<x-ui.vin-code :vin="$value" copy/>
                 @elseif ($label === 'Город')<x-ui.place>{{ $value }}</x-ui.place>
                 @else{{ $value }}@endif
@@ -37,7 +37,7 @@
     @if ($description !== '')
         <div class="col-span-full min-w-0">
             <div class="field-label">Описание</div>
-            <p class="mt-1 line-clamp-4 whitespace-pre-line text-ink-muted">{{ $description }}</p>
+            <p class="mt-0.5 line-clamp-2 whitespace-pre-line text-ink-muted">{{ $description }}</p>
         </div>
     @endif
 </div>
