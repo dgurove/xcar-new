@@ -12,21 +12,19 @@ use Illuminate\Support\Facades\DB;
 /**
  * Автоответ администрации: человек написал площадке (чат без менеджера) — через несколько секунд
  * «печатает» и пузырь от «Администрации XCar»: получили, когда ждать, включите уведомления.
- * Один раз: пока сотрудник не ответил сам, повторов нет; после его ответа новое обращение снова
- * получит автоответ. Автоответ — сообщение Staff без автора; такие же — только он.
+ * Один раз на чат (06.10.2026, владелец: повтор через день раздражает): чат — машина и человек, в чате
+ * по другой машине — снова один раз. Автоответ — сообщение Staff без автора; таких больше нет.
  */
 final class AutoReply
 {
-    /** Нужен ли автоответ на это сообщение: чат площадки, написал участник, после последнего живого ответа сотрудника автоответа ещё не было. */
+    /** Нужен ли автоответ на это сообщение: чат площадки, написал участник, автоответа в этом чате ещё не было. */
     public static function due(Message $message): bool
     {
         $chat = $message->chat;
         if ($chat->manager_id || $message->author_kind !== AuthorKind::Participant) {
             return false;
         }
-        $lastStaff = $chat->messages()->where('author_kind', AuthorKind::Staff)->whereNotNull('author_id')->max('seq') ?? 0;
-
-        return ! $chat->messages()->where('author_kind', AuthorKind::Staff)->whereNull('author_id')->where('seq', '>', $lastStaff)->exists();
+        return ! $chat->messages()->where('author_kind', AuthorKind::Staff)->whereNull('author_id')->exists();
     }
 
     public static function text(Chat $chat, ?\DateTimeInterface $at = null): string
