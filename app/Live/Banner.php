@@ -3,6 +3,7 @@
 namespace App\Live;
 
 use App\Notifications\Notice;
+use App\Notifications\NoticeLink;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Support\Facades\Blade;
@@ -13,7 +14,7 @@ use Illuminate\Support\Str;
  * как её показать (banner_controller). surface — приложение, где она живёт: `park` — только на парковке, `crm` — только
  * в CRM, пусто — везде, кроме парковки.
  *
- * @phpstan-type Payload array{id: string, subject: ?string, important: bool, surface: ?string, html: string}
+ * @phpstan-type Payload array{id: string, subject: ?string, important: bool, surface: ?string, hrefs: array<string, string>, html: string}
  */
 final class Banner
 {
@@ -42,6 +43,12 @@ final class Banner
         $html = Blade::render('<x-ui.banner :id="$id" :title="$title" :text="$text" :href="$href" :user="$user" :icon="$icon" :important="$important" :subject="$subject"/>',
             compact('id', 'title', 'text', 'href', 'user', 'icon', 'important', 'subject'));
 
-        return ['id' => $id, 'subject' => $subject, 'important' => $important, 'surface' => $surface?->value, 'html' => trim($html)];
+        // Адрес под каждое приложение: клиент ставит свой (путь сайта в CRM — «Такой страницы нет»).
+        $hrefs = $href === null ? [] : array_combine(
+            array_map(fn (Surface $s) => $s->value, Surface::cases()),
+            array_map(fn (Surface $s) => NoticeLink::for(['href' => $href, 'subject' => $subject], $s), Surface::cases()),
+        );
+
+        return ['id' => $id, 'subject' => $subject, 'important' => $important, 'surface' => $surface?->value, 'hrefs' => $hrefs, 'html' => trim($html)];
     }
 }

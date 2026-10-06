@@ -1,4 +1,4 @@
-@php $href = $item->data['href'] ?? '/account/notifications'; $foreign = str_starts_with($href, 'http') || str_starts_with($href, '/admin'); @endphp
+@php $href = \App\Notifications\NoticeLink::for($item->data); $foreign = str_starts_with($href, 'http') || str_starts_with($href, '/admin'); @endphp
 <x-ui.swipe id="notice-{{ $item->id }}">
     {{-- Ссылка ведёт сразу на объект; чужой хост или старый /admin — полной загрузкой. --}}
     {{-- Строка: непрочитанное — с лаймовой точкой слева, время справа; текст — второй строкой. --}}

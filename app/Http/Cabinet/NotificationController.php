@@ -5,6 +5,7 @@ namespace App\Http\Cabinet;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Notifications\Categories;
+use App\Notifications\NoticeLink;
 use App\Notifications\TestNotice;
 use App\Users\Impersonation;
 use App\Users\User;
@@ -34,7 +35,7 @@ class NotificationController
         $item = $request->user()->notifications()->findOrFail($id);
         Impersonation::active() || $item->markAsRead();
 
-        return redirect($item->data['href'] ?? '/account/notifications');
+        return redirect(NoticeLink::for($item->data));
     }
 
     /** Тап по строке ведёт сразу на объект; прочитанность отмечается маячком с клиента, значки — во всех вкладках. */

@@ -3,6 +3,7 @@
 namespace App\Push;
 
 use App\Notifications\Notice;
+use App\Notifications\NoticeLink;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Support\Facades\Log;
@@ -42,7 +43,9 @@ final class WebPushChannel
         foreach ($subs as $sub) {
             // Адрес — на хосте подписки: у трёх приложений три scope, чужой хост iOS открыл бы во встроенном браузере.
             $surface = $sub->host ? Surface::fromHost($sub->host) : Surface::Site;
-            $navigate = str_starts_with($href, 'http') ? $href : $surface->url($href);
+            // Путь — под приложение подписки (NoticeLink): путь сайта в CRM — «Такой страницы нет».
+            $local = NoticeLink::for(['href' => $href, 'subject' => $notice->subject()], $surface);
+            $navigate = str_starts_with($local, 'http') ? $local : $surface->url($local);
             $badge = $badges[$surface->value] ??= $user->badgeCount($surface);
             // Важное (рядом с web_push, не внутри notification — декларативный пуш Safari его не знает) sw.js держит до нажатия.
             $payload = json_encode(['web_push' => 8030, 'important' => $notice->important(), 'notification' => $notification + ['navigate' => $navigate, 'app_badge' => $badge]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

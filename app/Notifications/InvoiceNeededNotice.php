@@ -25,7 +25,7 @@ final class InvoiceNeededNotice extends Notice
 
     public function href(): string
     {
-        return $this->gap === 'share' ? '/work/deals/'.$this->deal->id.'#money' : '/work/invoices/new?offer='.$this->deal->offer->number;
+        return '/work/deals/'.$this->deal->id.'#money';
     }
 
     public function offerNumber(): ?int

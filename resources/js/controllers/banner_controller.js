@@ -50,6 +50,7 @@ export default class extends Controller {
         template.innerHTML = detail.html;
         const el = template.content.firstElementChild;
         if (!el) return;
+        this.link(el, detail.hrefs);
         if (detail.subject) this.element.querySelectorAll('.banner').forEach((old) => old.dataset.subject === detail.subject && this.drop(old));
         if (restored) el.classList.add('is-restored');
         this.element.append(el);
@@ -62,6 +63,15 @@ export default class extends Controller {
         } else {
             this.arm(el, TTL);
         }
+    }
+
+    // Адрес — под это приложение (NoticeLink на сервере: путь сайта в CRM ведёт в CRM); чужой хост — полной загрузкой.
+    link(el, hrefs) {
+        const a = el.querySelector('.banner-main');
+        const href = hrefs?.[document.querySelector('meta[name="surface"]')?.content || 'site'];
+        if (!a || !href) return;
+        a.setAttribute('href', href);
+        if (/^https?:/.test(href) && new URL(href).host !== location.host) a.dataset.turbo = 'false';
     }
 
     mine(surface) {
