@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Chats\Actions\DeleteChat;
 use App\Chats\Actions\MarkChatRead;
 use App\Chats\Actions\OpenChat;
 use App\Chats\Chat;
@@ -51,6 +52,16 @@ class ChatController
         abort_unless($user->isManager() && ($offer->worksWith($user) || Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->exists()), 404);
 
         return redirect('/work/chats/'.$open($offer, $user, greet: false)->id);
+    }
+
+    /** Спам и реклама в чате площадки — удалить целиком (только админ). Обратно — на список с тем же поиском. */
+    public function destroy(Request $request, Chat $chat, DeleteChat $delete)
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $delete($chat);
+        $back = parse_url(url()->previous(), PHP_URL_QUERY);
+
+        return redirect('/work/chats'.($back ? '?'.$back : ''))->with('toast', 'Чат удалён');
     }
 
     /** Список чатов площадки и поиск из адреса; открытый чат его не меняет. Старый `?preset=` ничего не значит. */

@@ -16,7 +16,7 @@
      Сортировка — только исходы словами, по строке на исход: «Сначала дешёвые», «Дольше ждут».
      Направления как отдельной кнопки нет — у каталога это два ключа («price» и «-price»): стрелку
      вверх-вниз никто не находил, а «по возрастанию» ни о чём не говорит. --}}
-@props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null])
+@props(['sorts' => [], 'sort' => '', 'sortParam' => 'sort', 'pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -25,9 +25,10 @@
     $current = (string) $sort;
     $sortUrl = fn (string $key) => $url([$sortParam => $key, 'page' => null]);
     $q ??= is_string(request('q')) ? request('q') : '';
-    $searching = $search && trim($q) !== '';
+    // searchOpen — поле открыто всегда, без лупы и «Отмена» (колонка чатов, 06.10.2026: «нет смысла сворачивать»).
+    $searching = $search && ($searchOpen || trim($q) !== '');
 @endphp
-<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-2 max-md:gap-y-3']) }} @if ($search) data-controller="live-search" data-live-search-target-value="{{ $searchTarget }}" @if ($searchUrl) data-live-search-url-value="{{ $searchUrl }}" @endif @endif @if ($searching) data-searching @endif>
+<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-2 max-md:gap-y-3']) }} @if ($search) data-controller="live-search" data-live-search-target-value="{{ $searchTarget }}" @if ($searchUrl) data-live-search-url-value="{{ $searchUrl }}" @endif @if ($searchOpen) data-live-search-open-value="true" @endif @endif @if ($searching) data-searching @endif>
     @if ($search)
         <form class="toolbar-search" role="search" data-action="submit->live-search#stop">
             <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
@@ -35,7 +36,7 @@
                    data-live-search-target="input" data-action="input->live-search#input keydown->live-search#key">
             <button type="button" class="toolbar-search-x" data-live-search-target="clear" data-action="live-search#clear" aria-label="Очистить" hidden><x-ui.icon name="x" class="size-4"/></button>
         </form>
-        <button type="button" class="toolbar-cancel" data-action="live-search#cancel">Отмена</button>
+        @unless ($searchOpen)<button type="button" class="toolbar-cancel" data-action="live-search#cancel">Отмена</button>@endunless
     @endif
 
     @if ($pills)
@@ -69,7 +70,7 @@
     {{-- Кнопки экрана (переключатель вида) — после сортировки: сначала то, чем список настраивают; лупа — за ними. --}}
     {{ $extra ?? '' }}
 
-    @if ($search)
+    @if ($search && ! $searchOpen)
         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>
     @endif
 

@@ -22,6 +22,15 @@
             @if ($crm)<a href="/settings/users/{{ $chat->manager_id }}?chat={{ $chat->id }}" class="chip person shrink-0"><x-ui.avatar :user="$chat->manager" :size="20"/>{{ $chat->manager->shortName() }}</a>@else<x-ui.person :user="$chat->manager" class="shrink-0"/>@endif
         @endif
         @if ($other?->phone)<a href="tel:+{{ $other->phone }}" class="btn btn-ghost btn-round" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
+        @if ($crm && ! $readonly && $chat?->exists && $user?->isAdmin())
+            {{-- Спам и реклама — удалить чат целиком (06.10.2026). --}}
+            <div class="contents" data-controller="menu">
+                <button type="button" class="btn btn-ghost btn-round" data-action="menu#toggle" aria-haspopup="menu" aria-controls="chat-more-{{ $chat->id }}" aria-label="Ещё"><x-ui.icon name="more" class="size-5"/></button>
+                <div id="chat-more-{{ $chat->id }}" class="menu" popover data-menu-target="list" role="menu">
+                    <form method="post" action="/work/chats/{{ $chat->id }}" data-turbo-frame="_top" data-turbo-confirm="Удалить чат целиком? Вернуть его нельзя" data-turbo-confirm-label="Удалить">@csrf @method('delete')<button class="menu-item w-full text-danger" role="menuitem" data-action="menu#close">Удалить чат</button></form>
+                </div>
+            </div>
+        @endif
         @if ($sheet)<x-chat.contact :user="$other" :name="$name" :status="$seen" :chats="$chats" :me="$user"/>@endif
     </div>
     @if ($offer)

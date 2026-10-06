@@ -8,7 +8,7 @@ import { Controller } from '@hotwired/stimulus';
 // из неё берётся тот же блок. «Отмена» возвращает список, каким он был, без сети. Устаревшие ответы отбрасываются.
 export default class extends Controller {
     static targets = ['input', 'clear'];
-    static values = { target: { type: String, default: '#list' }, url: String, min: { type: Number, default: 2 }, wait: { type: Number, default: 200 } };
+    static values = { target: { type: String, default: '#list' }, url: String, min: { type: Number, default: 2 }, wait: { type: Number, default: 200 }, open: Boolean };
 
     connect() {
         this.seq = 0;
@@ -23,6 +23,7 @@ export default class extends Controller {
     // Фокус — синхронно в обработчике нажатия: иначе iOS не поднимет клавиатуру.
     open() {
         this.snapshot ??= this.list()?.innerHTML ?? null;
+        if (this.openValue) return;
         this.element.setAttribute('data-searching', '');
         this.inputTarget.focus();
     }
@@ -34,7 +35,8 @@ export default class extends Controller {
         const loaded = this.inputTarget.value.trim() !== '' || this.loaded;
         this.inputTarget.value = '';
         this.inputTarget.blur();
-        this.element.removeAttribute('data-searching');
+        // Открытое поле (колонка чатов) не сворачивается: Esc только очищает.
+        if (!this.openValue) this.element.removeAttribute('data-searching');
         this.element.classList.remove('is-busy');
         this.inputTarget.form && delete this.inputTarget.form.dataset.dirty;
         const list = this.list();
@@ -53,6 +55,8 @@ export default class extends Controller {
     }
 
     input() {
+        // У открытого поля «open» не зовут — список, к которому вернёт Esc, запоминается с первого знака.
+        if (this.openValue) this.snapshot ??= this.list()?.innerHTML ?? null;
         const q = this.query();
         this.sync();
         this.narrow(q);

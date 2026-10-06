@@ -228,6 +228,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/chats', [ChatController::class, 'index']);
         Route::get('/work/chats/{chat}', [ChatController::class, 'show']);
         Route::post('/work/chats/offer/{offer}/{user}', [ChatController::class, 'start']);
+        Route::delete('/work/chats/{chat}', [ChatController::class, 'destroy']);
 
         Route::get('/gallery', [GalleryController::class, 'index']);
         Route::post('/gallery', [GalleryController::class, 'store']);

@@ -716,6 +716,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .toolbar[data-searching] > .toolbar-search { order: 5; flex: 1 1 0; max-width: none; }
   .toolbar[data-searching] .toolbar-pills [aria-current] { @apply bg-surface font-normal text-ink-muted; }
   .toolbar-cancel { @apply shrink-0 px-1 text-sm font-medium text-accent-text; order: 6; }
+  /* Колонка чатов: поле открыто всегда и во всю её ширину (searchOpen) — чуть выше обычного, как поиск мессенджера. */
+  .chat-list-head .toolbar-search { min-height: 2.5rem; }
   @media (hover: hover) { .toolbar-cancel:hover { @apply text-accent; } }
   /* Чипы фильтра — своей строкой под кнопками, листаются вбок от края до края, как пилюли. На ПК без пилюль
      встают в ту же строку после кнопок. */
