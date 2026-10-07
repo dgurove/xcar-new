@@ -50,7 +50,8 @@ return [
      * The maximum file size of an item in bytes.
      * Adding a larger file will result in an exception.
      */
-    'max_file_size' => 1024 * 1024 * 10, // 10MB
+    // 07.10.2026: страховые шлют PDF со снимками и сканы по 12–20 МБ — при 10 МБ они молча не ложились (AUT-26-911955).
+    'max_file_size' => 1024 * 1024 * 100, // 100MB
 
     /*
      * Uploads whose file name contains any of these extensions will be rejected.

@@ -7,6 +7,7 @@ use App\Media\Actions\RotatePhoto;
 use App\Media\Actions\UnmarkPhoto;
 use App\Media\ForManagers;
 use App\Media\Hidden;
+use App\Media\PdfPhotos;
 use App\Media\PhotoBlocks;
 use App\Media\PhotoIngest;
 use App\Media\Unmark;
@@ -41,6 +42,15 @@ class OfferPhotoController
             if ($request->input('collection') !== 'papers' && ArchivePhotoExtractor::isArchiveName($name)) {
                 $path = $file->storeAs('archives', Str::uuid().'.'.strtolower($file->getClientOriginalExtension()), 'private');
                 ImportOfferArchive::dispatch($offer->id, $path, $name);
+            } elseif ($request->input('collection') !== 'papers' && str_ends_with(mb_strtolower($name), '.pdf')
+                && ($pages = PdfPhotos::extract((string) file_get_contents($file->getRealPath()), $name))) {
+                // PDF со снимками по кадру на страницу — это фото машины, а не документ (`PdfPhotos`).
+                $stage = $offer->parkVehicle ? PhotoStage::tryFrom((string) $request->input('stage')) : null;
+                foreach ($pages as $page) {
+                    if (! $offer->hasFile(hash('sha256', $page['contents']))) {
+                        $ingest->fromString($offer, 'photos', $page['contents'], $page['name'], array_filter(['stage' => $stage?->value]) + ['hidden' => true]);
+                    }
+                }
             } elseif ($request->input('collection') === 'papers' || ! $this->isImage($file, $ingest)) {
                 // Отпечаток — как у документов из писем: «✨» читает один и тот же скан один раз (кеш текста по sha).
                 $offer->addMedia($file)->usingFileName(self::safeName($name))->withCustomProperties(['sha' => hash_file('sha256', $file->getRealPath())])->toMediaCollection('papers');

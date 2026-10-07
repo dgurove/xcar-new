@@ -4,6 +4,7 @@ namespace App\Mail\Extraction;
 
 use App\Mail\Attachment;
 use App\Mail\Message;
+use App\Media\PdfPhotos;
 use App\Media\PhotoIngest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -33,11 +34,19 @@ final class AttachmentImporter
             return $added;
         }
         $classified = $this->classifier->classify($attachments);
-        foreach ($classified['documents'] as $document) {
-            $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $document, $documentProperties);
-        }
         $propertiesOf = is_array($photoProperties) ? fn () => $photoProperties : $photoProperties;
         $sources = [];
+        foreach ($classified['documents'] as $document) {
+            // PDF со снимками по кадру на страницу — не документ, а фото машины (`PdfPhotos`).
+            if ($photosCollection !== '' && ($pages = $this->pdfPhotos($document->filename, fn () => $document->contents()))) {
+                foreach ($pages as $page) {
+                    $sources[] = ['name' => $page['name'], 'contents' => $page['contents'], 'properties' => $propertiesOf($document)];
+                }
+
+                continue;
+            }
+            $added['documents'] += (int) $this->addDocument($model, $documentsCollection, $document, $documentProperties);
+        }
         foreach ($classified['photos'] as $photo) {
             if (($contents = $photo->contents()) !== null) {
                 $sources[] = ['name' => $photo->filename, 'contents' => $contents, 'properties' => $propertiesOf($photo)];
@@ -57,6 +66,10 @@ final class AttachmentImporter
                 // Кадры из архива и вырезки из листа — свойства того вложения, в котором они приехали.
                 if ($file['photo'] && ! $this->classifier->looksLikeDocument(mb_strtolower($file['name']))) {
                     $sources[] = ['name' => $file['name'], 'contents' => $file['contents'], 'properties' => $propertiesOf($archive)];
+                } elseif ($pages = $this->pdfPhotos($file['name'], fn () => $file['contents'])) {
+                    foreach ($pages as $page) {
+                        $sources[] = ['name' => $page['name'], 'contents' => $page['contents'], 'properties' => $propertiesOf($archive)];
+                    }
                 } else {
                     $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents'], 'mail', $documentProperties);
                 }
@@ -83,12 +96,42 @@ final class AttachmentImporter
     {
         $added = 0;
         foreach ($this->classifier->classify($attachments)['documents'] as $document) {
-            if ($document->isOnDisk()) {
-                $added += (int) $this->addDocument($model, $collection, $document);
+            // PDF со снимками — фото: его разбирает задача вместе с остальными кадрами.
+            if (! $document->isOnDisk() || $this->isPhotoPdf($document)) {
+                continue;
             }
+            $added += (int) $this->addDocument($model, $collection, $document);
         }
 
         return $added;
+    }
+
+    /** Кадры PDF со снимками по страницам; null — обычный документ. Содержимое читается, только если это PDF. */
+    private function pdfPhotos(?string $name, callable $contents): ?array
+    {
+        if (! $this->isPdfName($name)) {
+            return null;
+        }
+        try {
+            $data = $contents();
+
+            return $data === null ? null : PdfPhotos::extract($data, (string) $name);
+        } catch (Throwable $e) {
+            Log::warning('PDF со снимками не разобран', ['file' => $name, 'error' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    /** PDF со снимками (не разбирая): при «Завести» его не кладут документом — кадры из него достанет задача. */
+    private function isPhotoPdf(Attachment $document): bool
+    {
+        return $this->isPdfName($document->filename) && PdfPhotos::looksLike((string) $document->contents());
+    }
+
+    private function isPdfName(?string $name): bool
+    {
+        return str_ends_with(mb_strtolower((string) $name), '.pdf');
     }
 
     /** Сколько фото и архивов ветки ещё прикрепит `ImportThreadFiles` — заглушки в ряду фото, пока она не дошла. */
@@ -96,7 +139,8 @@ final class AttachmentImporter
     {
         $classified = $this->classifier->classify($attachments);
 
-        return count($classified['photos']) + count($classified['archives']);
+        return count($classified['photos']) + count($classified['archives'])
+            + count(array_filter($classified['documents'], fn (Attachment $a) => $a->isOnDisk() && $this->isPhotoPdf($a)));
     }
 
     /**
