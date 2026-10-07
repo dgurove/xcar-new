@@ -229,19 +229,19 @@
                 <input name="text" class="field-input flex-1" placeholder="Заметка" required>
                 <x-ui.button size="sm" variant="secondary">Записать</x-ui.button>
             </form>
-            {{-- Строка истории: сверху мелко дата и время, ниже текст во всю ширину и справа от него — кто. Заметка —
-                 текст на подложке. --}}
+            {{-- Строка истории: текст во всю ширину (заметка — на подложке), под ним мелко одной строкой «когда кто»
+                 (владелец 07.10.2026: дата своей строкой и чип с именем справа — строка ради одной даты и ужатый текст). --}}
             <div class="flex flex-col gap-3 text-sm">
                 @foreach ($vehicle->events as $event)
                     <div>
-                        <div class="nums text-xs text-ink-dim">{{ $event->created_at->translatedFormat('j M, H:i') }}</div>
-                        <div class="mt-0.5 flex items-start justify-between gap-3">
-                            @if ($event->type === EventType::Note)
-                                <div class="history-note min-w-0 flex-1 whitespace-pre-line">{{ $event->text() }}</div>
-                            @else
-                                <div class="min-w-0 flex-1 leading-snug">{{ $event->text() }}</div>
-                            @endif
-                            @if ($event->user)<x-ui.person :user="$event->user" class="shrink-0"/>@elseif ($event->type === EventType::Note)<span class="shrink-0 text-xs text-ink-dim">Система</span>@endif
+                        @if ($event->type === EventType::Note)
+                            <div class="history-note whitespace-pre-line">{{ $event->text() }}</div>
+                        @else
+                            <div class="leading-snug">{{ $event->text() }}</div>
+                        @endif
+                        <div class="mt-0.5 flex items-center gap-2 text-xs text-ink-dim">
+                            <span class="nums">{{ $event->created_at->translatedFormat('j M, H:i') }}</span>
+                            @if ($event->user)<span>{{ $event->user->shortName() }}</span>@elseif ($event->type === EventType::Note)<span>Система</span>@endif
                         </div>
                     </div>
                 @endforeach

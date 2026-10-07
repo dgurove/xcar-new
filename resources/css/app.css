@@ -1316,11 +1316,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Деньги (x-money.*): строка с кружком способа, шапка расчёта с числом, сумма крупно в шторке оплаты,
      сегмент способа. Кружок — тон состояния: зелёный пришло, оранжевый ждём, красный не поступило. */
   .money-line { flex-wrap: wrap; }
-  .money-acts { @apply flex basis-full flex-wrap items-center gap-2 pl-12; }
+  /* Кнопки под строкой — от левого края строки, не колонкой под кружком (владелец 07.10.2026: отступ под значком ни к чему). */
+  .money-acts { @apply flex basis-full flex-wrap items-center gap-2; }
   .money-hero { @apply flex flex-col items-center gap-0.5 pb-2 text-center; }
-  /* Адрес ссылки на оплату строкой под «Оплата по ссылке» (x-billing.pay-status): текст вровень с названием над ним,
-     нажатие копирует; линии между ними нет — это одна вещь. */
-  .list .row.pay-url { min-height: 0; padding-top: 0; padding-left: 4rem; gap: .5rem; flex-wrap: wrap; }
+  /* Адрес ссылки на оплату строкой под «Оплата по ссылке» (x-billing.pay-status): во всю ширину строки, а не колонкой
+     под значком QR (владелец 07.10.2026); нажатие копирует; линии между ними нет — это одна вещь. */
+  .list .row.pay-url { min-height: 0; padding-top: 0; gap: .5rem; flex-wrap: wrap; }
   .pay-url-text { @apply basis-full break-all text-left text-sm text-accent-text; }
   .list .row.pay-url::after { display: none; }
   /* Ссылка на оплату строкой (compact): текст жмёт шторку, справа две круглые кнопки. */

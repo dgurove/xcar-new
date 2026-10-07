@@ -50,13 +50,15 @@
                 <button type="button" class="btn btn-accent btn-round shrink-0" data-action="copy#share" data-copy-target="share" aria-label="Отправить ссылку"><x-ui.icon name="share" class="size-5"/></button>
             </div>
         @else
+        {{-- Сумма — только если ссылка не на остаток счёта: та же сумма стоит строкой выше, у счёта. --}}
+        @php $other = abs($link->amount - ($i->remaining() - $i->claimed())) >= 0.01; @endphp
         <button type="button" class="row money-line w-full text-left" data-action="sheet#open">
             <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'urgent'" size="s"/>
             <span class="min-w-0 flex-1">
                 <span class="block">Оплата по ссылке<span class="text-ink-muted">, {{ $pays }}</span></span>
                 <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $state }}</span>
             </span>
-            <span class="nums shrink-0 text-urgent">{{ Money::rub($link->amount) }}</span>
+            @if ($other)<span class="nums shrink-0 text-urgent">{{ Money::rub($link->amount) }}</span>@endif
         </button>
         <div class="row pay-url" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по счёту {{ $i->label() }}">
             <input type="hidden" value="{{ $text }}" data-copy-target="message">

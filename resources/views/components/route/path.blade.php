@@ -125,18 +125,20 @@
                     </div>
                     @if ($wantsInvoice)<div>Счёт ещё не выставлен</div>
                     @elseif ($stage->name !== $block->name)<div>{{ $stage->name }}</div>@endif
-                    @if (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock))
+                    @php
+                        // Что ждём от менеджера — его ответами, а не текстом просьбы: «Подтвердите покупку» в CRM читалось как
+                        // команда админу (05.10.2026, «что такое „проверьте покупку“?»). Это и есть подсказка шага — одной строкой
+                        // с таймером: «Ждём менеджера, осталось…» и следом «Ждём от менеджера «…» до …» говорили одно дважды (07.10.2026).
+                        $req = ! $wantsInvoice && $stage->awaitsManager($deal) ? $requirements->first(fn ($r) => ! $r->done_at && $r->stage_id === $stage->id) : null;
+                        $replies = $req ? $stage->exitsFor(\App\Workflow\Actor::Manager, $deal)->pluck('label')->map(fn ($l) => '«'.$l.'»') : collect();
+                        $waitsWord = $replies->count() > 1 ? 'Менеджер ответит '.$replies->slice(0, -1)->implode(', ').' или '.$replies->last() : ($replies->isNotEmpty() ? 'Ждём от менеджера '.$replies->first() : null);
+                    @endphp
+                    @if (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
-                        <p class="step-hint {{ $tone }}">@if ($keeperExits->isNotEmpty() && $evacuator && ! $overdue)Ждём {{ $evacuator->shortName() }}@elseif ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
+                        <p class="step-hint {{ $tone }}">@if ($keeperExits->isNotEmpty() && $evacuator && ! $overdue)Ждём {{ $evacuator->shortName() }}@elseif ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
                     @endif
                     @if ($position->payload)
                         <div class="mt-2 text-sm">@foreach ($position->payload as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
-                    @endif
-                    @if (! $wantsInvoice && $stage->awaitsManager($deal) && ($req = $requirements->first(fn ($r) => ! $r->done_at && $r->stage_id === $stage->id)))
-                        {{-- Что ждём от менеджера — его ответами, а не текстом просьбы: «Подтвердите покупку» в CRM читалось как
-                             команда админу (05.10.2026, «что такое „проверьте покупку“?»). Один ответ — он же: «Ждём от менеджера «Платёжное поручение приложено»». --}}
-                        @php $replies = $stage->exitsFor(\App\Workflow\Actor::Manager, $deal)->pluck('label')->map(fn ($l) => '«'.$l.'»'); @endphp
-                        <div class="mt-1 text-sm text-ink-muted">@if ($replies->count() > 1)Менеджер ответит {{ $replies->slice(0, -1)->implode(', ') }} или {{ $replies->last() }}@else Ждём от менеджера {{ $replies->first() }}@endif @if ($req->due_at) до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</div>
                     @endif
                     @foreach ($answers as $r)
                         <div class="mt-1 text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['exit'] ?? $r->title }}</div>

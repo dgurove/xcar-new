@@ -82,7 +82,7 @@ final class Timeline
         // Продана и ждёт выдачи — выдача важнее, парковка остаётся делом без формы.
         $noYard = $v->state === VehicleState::Stored && ! $v->yard_id;
         if ($noYard) {
-            $steps[] = new Step('yard', 'Нужно указать парковку', Step::CURRENT, 'Где стоит ТС', null, [], ['kind' => 'submit', 'label' => 'Указать']);
+            $steps[] = new Step('yard', 'Нужно указать парковку', Step::CURRENT, null, null, [], ['kind' => 'submit', 'label' => 'Указать']);
         }
 
         if ($v->accepted_at) {
