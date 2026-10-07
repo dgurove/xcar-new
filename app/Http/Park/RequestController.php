@@ -9,6 +9,7 @@ use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
 use App\Mail\Direction;
 use App\Mail\Message;
+use App\Mail\Scan\AutoScan;
 use App\Mail\Scope as MailScope;
 use App\Park\Actions\AssignRequest;
 use App\Park\Actions\CloseRequest;
@@ -53,7 +54,10 @@ use Illuminate\Validation\Rule;
 
 class RequestController
 {
-    public const SORTS = ['planned' => ['Срок', 'asc'], 'fresh' => ['Дата заявки', 'desc'], 'type' => ['Тип', 'asc']];
+    /** По умолчанию — новые сверху по дате письма, из которого заявка, без письма — по дате заявки (владелец 07.10.2026). */
+    public const SORTS = ['fresh' => ['Дата письма', 'desc'], 'planned' => ['Срок', 'asc'], 'type' => ['Тип', 'asc']];
+
+    public const SORT = '-fresh';
 
     /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с карточкам строки. */
     public function index(Request $request)
@@ -91,10 +95,10 @@ class RequestController
             $q->where('planned_at', '<', now());
         }
         $facets->apply($q);
-        $sort = Sort::from($request->query('sort'), self::SORTS, 'planned');
+        $sort = Sort::from($request->query('sort'), self::SORTS, self::SORT);
         $dir = $sort->dir();
         match ($sort->key) {
-            'fresh' => $q->orderBy('created_at', $dir)->orderBy('id', $dir),
+            'fresh' => $q->orderByRaw("coalesce(letter_at, created_at) {$dir}")->orderBy('id', $dir),
             'type' => $q->orderBy('type', $dir)->orderByRaw('planned_at asc nulls last')->latest(),
             default => $q->orderByRaw("planned_at {$dir} nulls last")->latest(),
         };
@@ -111,6 +115,8 @@ class RequestController
             'requests' => $paginator,
             'sort' => $sort,
             'view' => ListView::pick($request, $paginator->total()),
+            // Заявки, которые завела почта и дочитывают документы: силуэт, ход, проявление (`arrive_controller`).
+            'arrive' => AutoScan::states($paginator->getCollection()->pluck('vehicle')->filter()),
         ];
         // Лента просит только список: тот же кусок, что рисует страницу.
         if ($request->header('X-List')) {
@@ -234,6 +240,8 @@ class RequestController
         $candidate = ! empty($data['candidate_id']) ? Candidate::where('scope', MailScope::Park)->find($data['candidate_id']) : null;
         if ($candidate) {
             $data['thread_id'] = $candidate->thread_id;
+            // Список заявок — по дате письма, из которого заявка (`letter_at`).
+            $data['letter_at'] = ($candidate->message ?? $candidate->messages()->orderBy('date_at')->first())?->date_at;
             // Кандидата уже завели (двойное нажатие, вторая вкладка) — второй ТС не будет.
             if ($candidate->state === CandidateState::Promoted && $candidate->vehicle_id) {
                 return redirect("/cars/{$candidate->vehicle_id}")->with('toast', 'Уже заведена');

@@ -38,6 +38,7 @@ use App\Park\Events\RequestCall;
 use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleIdle;
 use App\Park\Events\VehicleSold;
+use App\Park\Request as ParkRequest;
 use App\Park\RequestState;
 use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
@@ -284,8 +285,10 @@ final class Notify
     {
         $c = $e->candidate;
         if ($c->scope === Scope::Park) {
-            Notification::send($this->parkStaff(), ParkNotice::letter($c));
-            NotifyOwner::dispatch(new ParkLetter($c));
+            // Заявку уже завела почта — уведомление о ней, со ссылкой на дело, а не в «Из писем».
+            $request = $c->vehicle_id ? ParkRequest::where('vehicle_id', $c->vehicle_id)->whereIn('state', RequestState::open())->latest('id')->first() : null;
+            Notification::send($this->parkStaff(), $request ? ParkNotice::arrived($request) : ParkNotice::letter($c));
+            NotifyOwner::dispatch(new ParkLetter($c, $request));
 
             return;
         }

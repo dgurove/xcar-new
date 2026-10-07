@@ -9,14 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'planned_at', 'done_at', 'note', 'assignee_id', 'created_by',
-    'contact_name', 'contact_phone', 'from_address', 'carrier', 'distance_km', 'cost', 'started_at', 'done_by', 'cancel_reason', 'delivery', 'contacted_at', 'next_call_at'])]
+    'contact_name', 'contact_phone', 'from_address', 'carrier', 'distance_km', 'cost', 'started_at', 'done_by', 'cancel_reason', 'delivery', 'contacted_at', 'next_call_at', 'letter_at'])]
 class Request extends Model
 {
     protected $table = 'park_requests';
 
     protected function casts(): array
     {
-        return ['type' => RequestType::class, 'state' => RequestState::class, 'planned_at' => 'datetime', 'done_at' => 'datetime', 'started_at' => 'datetime', 'reminded_at' => 'datetime', 'overdue_at' => 'datetime', 'contacted_at' => 'datetime', 'next_call_at' => 'datetime', 'delivery' => Delivery::class];
+        return ['type' => RequestType::class, 'state' => RequestState::class, 'planned_at' => 'datetime', 'done_at' => 'datetime', 'started_at' => 'datetime', 'reminded_at' => 'datetime', 'overdue_at' => 'datetime', 'contacted_at' => 'datetime', 'next_call_at' => 'datetime', 'letter_at' => 'datetime', 'delivery' => Delivery::class];
     }
 
     public function vehicle(): BelongsTo

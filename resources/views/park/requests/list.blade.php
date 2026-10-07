@@ -4,7 +4,8 @@
      Позже, Без срока. Таблица целиком на одной странице, поэтому заголовок группы не повторится в ленте. --}}
 @php
     use App\Support\ListView;
-    $sort ??= \App\Support\Sort::from(request('sort'), \App\Http\Park\RequestController::SORTS, 'planned');
+    $arrive ??= [];
+    $sort ??= \App\Support\Sort::from(request('sort'), \App\Http\Park\RequestController::SORTS, \App\Http\Park\RequestController::SORT);
     $groups = collect(['' => $requests->getCollection()]);
     if (ListView::isTable($view) && $sort->value() === 'planned') {
         $today = now()->startOfDay();
@@ -26,11 +27,11 @@
         </x-slot:head>
         @foreach ($groups as $name => $group)
             @if ($name)<tr class="table-group"><th colspan="6"><span class="table-group-name">{{ $name }} <span class="nums">{{ $group->count() }}</span></span></th></tr>@endif
-            @foreach ($group as $r)<x-park.request-row :req="$r"/>@endforeach
+            @foreach ($group as $r)<x-park.request-row :req="$r" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach
         @endforeach
     </x-ui.table>
 @else
-    @foreach ($requests as $r)<x-park.request-card :req="$r"/>@endforeach
+    @foreach ($requests as $r)<x-park.request-card :req="$r" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach
 @endif
 @if ($requests->hasMorePages())
     <div class="col-span-full py-6 text-center text-sm text-ink-dim" data-endless-next="{{ $requests->appends(request()->query())->nextPageUrl() }}">Ещё заявки…</div>

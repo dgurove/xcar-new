@@ -93,9 +93,9 @@ final class VehicleSubject implements Subject
     /**
      * Выбранное — в карточку тем же путём, что форма: правила `VehicleFields`, госномер слитно заглавными, цвет
      * словарём, VIN — не тот, что уже у другой ТС. Сменили марку без модели — модель прежней марки снимается.
-     * Не прошедшее правила поле пропускается, остальное пишется.
+     * Не прошедшее правила поле пропускается, остальное пишется. `$by` null — вписало фоновое чтение (`AutoScan`).
      */
-    public function apply(array $chosen, User $by): void
+    public function apply(array $chosen, ?User $by): void
     {
         $data = [];
         $sources = [];

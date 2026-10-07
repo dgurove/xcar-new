@@ -59,7 +59,8 @@ final class CreateRequest
                     'flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? [], 'value' => $data['value'] ?? null,
                     'state' => VehicleState::Expected,
                 ]);
-                $vehicle->log(EventType::Created, $by);
+                // Завела почта, а не человек (`AutoRequest`) — в истории «Заведена из письма».
+                $vehicle->log(EventType::Created, $by, ! empty($data['by_mail']) ? ['by_mail' => true] : []);
                 (new RememberVin)($vehicle);
                 (new LinkOffer)($vehicle, null, $by);
             }
@@ -76,6 +77,8 @@ final class CreateRequest
                 'delivery' => $data['delivery'] ?? ($type === RequestType::Tow ? Delivery::Tow : null),
                 'note' => $data['note'] ?? null,
                 'created_by' => $by?->id,
+                // Письмо, из которого заявка: по его дате список заявок (новые сверху), без письма — по дате заявки.
+                'letter_at' => $data['letter_at'] ?? null,
             ]);
         });
     }

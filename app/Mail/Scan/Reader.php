@@ -88,8 +88,7 @@ final class Reader
             ScanAttachments::stopped($subject) => 'stopped',
             default => 'idle',
         };
-        $read = $files->filter(fn (ScanFile $f) => $texts[$f->scanId()] !== null);
-        $found = ScanFields::found($subject->current(), $read->map(fn (ScanFile $f) => [$f, (string) $texts[$f->scanId()], $f->isPhoto()]));
+        $found = ScanFields::found($subject->current(), self::docs($files, $texts));
 
         return [
             'state' => $state,
@@ -97,6 +96,21 @@ final class Reader
             'html' => view('admin.mail.reader-sheets', ['subject' => $subject, 'files' => $files, 'states' => $states, 'state' => $state, 'auto' => $open])->render(),
             'values' => self::unrejected($subject, FormValues::of($found, $subject->fields())),
         ];
+    }
+
+    /**
+     * Прочитанное — для разбора полей (`ScanFields::found`, `::of`): файл, его текст и «это фото», в порядке чтения.
+     *
+     * @param  Collection<int, ScanFile>  $files
+     * @param  ?Collection<string, ?string>  $texts  текст по `scanId`, если уже достали
+     * @return Collection<int, array{0: ScanFile, 1: string, 2: bool}>
+     */
+    public static function docs(Collection $files, ?Collection $texts = null): Collection
+    {
+        $texts ??= $files->mapWithKeys(fn (ScanFile $f) => [$f->scanId() => DocumentText::cached($f)]);
+
+        return $files->filter(fn (ScanFile $f) => $texts[$f->scanId()] !== null)
+            ->map(fn (ScanFile $f) => [$f, (string) $texts[$f->scanId()], $f->isPhoto()])->values();
     }
 
     /**

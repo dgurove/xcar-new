@@ -21,12 +21,14 @@ use App\Mail\Reading\ReadLetter;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Offer;
+use App\Park\Actions\AutoRequest;
 use App\Park\Events\CandidateArrived;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Цепочка «Из писем» (`mail_candidates`) — производное от прочитанных писем: письма, связанные общим номером
@@ -54,10 +56,28 @@ final class ChainBuilder
 
         // Планировщик и воркер IDLE принимают письма одного ящика параллельно: два письма одной ветки на двух
         // процессах не найдут цепочку друг друга — по одному письму за раз на ящик.
-        return Cache::lock('chains:'.$message->account_id, 60)->block(60, fn () => $this->place($message, $force, $quiet, $files));
+        $fresh = false;
+        $candidate = Cache::lock('chains:'.$message->account_id, 60)->block(60, function () use ($message, $force, $quiet, $files, &$fresh) {
+            return $this->place($message, $force, $quiet, $files, $fresh);
+        });
+        // Новая цепочка — людям: парковке сначала заводится заявка (`AutoRequest`, вне замка ящика — там импорт файлов),
+        // и уведомление уже о ней; CRM — «Новое из писем» модераторам (Notify::candidateArrived). История ящика — молча.
+        if ($fresh && ! $quiet && $candidate) {
+            if ($candidate->scope === Scope::Park) {
+                try {
+                    app(AutoRequest::class)($candidate);
+                } catch (Throwable $e) {
+                    // Не завелась сама — цепочка ждёт человека в «Из писем», а письмо всё равно принято.
+                    report($e);
+                }
+            }
+            CandidateArrived::dispatch($candidate->fresh());
+        }
+
+        return $fresh ? $candidate?->fresh() : $candidate;
     }
 
-    private function place(Message $message, bool $force, bool $quiet, bool $files): ?Candidate
+    private function place(Message $message, bool $force, bool $quiet, bool $files, bool &$fresh): ?Candidate
     {
         $park = $message->account->scope === Scope::Park;
         $scope = $park ? Scope::Park : Scope::Offers;
@@ -97,11 +117,6 @@ final class ChainBuilder
                 ImportCandidateFiles::dispatch($candidate->id, $message->id);
             }
         }
-        // Новая цепочка — людям: парковке письмо на приём, CRM — «Новое из писем» модераторам (Notify::candidateArrived).
-        if ($fresh && ! $quiet) {
-            CandidateArrived::dispatch($matches->first());
-        }
-
         return $matches->first();
     }
 

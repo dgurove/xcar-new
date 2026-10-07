@@ -47,7 +47,8 @@ final class OnMessage
         // Ветка уже привязана — это переписка по машине, а не новая: в цепочки «Из писем» не идёт.
         // Иначе письмо (и наше тоже: ответ с актом двигает этап) — в цепочку по номерам и ветке.
         if (! $linked && ! $thread?->offer_id && ! $thread?->vehicle_id && ($candidate = $this->chains->attach($message, quiet: $e->quiet))) {
-            // Мы уже писали вендору, что приняли: ТС заводится сама, цепочка уходит из «Из писем».
+            // Мы уже писали вендору, что приняли: ТС заводится сама, цепочка уходит из «Из писем». Заявку на приём или
+            // эвакуацию по новой цепочке завела сама цепочка (`ChainBuilder::attach` → `AutoRequest`).
             ($this->store)($candidate);
         }
         if ($e->quiet) {
@@ -66,7 +67,8 @@ final class OnMessage
         }
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
         $base = $message->account->scope === Scope::Park ? '/mail' : '/work/mail';
-        $paths = [$base, "{$base}/{$message->thread_id}", '/offers/from-mail', '/requests/from-mail', '/'];
+        // «Заявки» — тоже: заявку из письма могла только что завести почта (`AutoRequest`), её строка входит силуэтом.
+        $paths = [$base, "{$base}/{$message->thread_id}", '/offers/from-mail', '/requests/from-mail', '/requests', '/'];
         // Письмо по привязанной ТС — в её ленту и сотруднику, который ею занят.
         $vehicle = $linked instanceof Vehicle ? $linked : $thread?->vehicle;
         // Наше письмо о выдаче, отправленное не из приложения (ящик в почтовой программе), — так же выдаёт.

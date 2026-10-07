@@ -25,6 +25,14 @@ final class ParkNotice extends Notice
         return new self($what.': '.$c->title(), implode(', ', array_filter([$v('vendor'), $v('location'), $v('insured_phone')])), '/requests/from-mail');
     }
 
+    /** Заявку завела почта (`AutoRequest`): марку и VIN, которых нет в письме, дочитывают документы. */
+    public static function arrived(Request $r): self
+    {
+        $v = $r->vehicle;
+
+        return new self($r->type->label().': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->ref, $r->from_address, $r->contact_phone])), '/cars/'.$v->id, $v->id);
+    }
+
     public static function mail(Vehicle $v, Message $m): self
     {
         // Заголовок — смысл письма («Вендор ждёт документы или фото»), а не тема; у дела — шаг «Нужно ответить».

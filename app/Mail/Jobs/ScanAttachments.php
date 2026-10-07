@@ -8,6 +8,7 @@ use App\Mail\Attachment;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Message;
 use App\Mail\Reading\ReadLetter;
+use App\Mail\Scan\AutoScan;
 use App\Mail\Scan\Paper;
 use App\Mail\Scan\ScanFile;
 use App\Mail\Scan\Subject;
@@ -159,6 +160,11 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
         } finally {
             self::mark($this->ids, false);
             Cache::forget("scan:run:{$this->subject}");
+            // ТС завела почта — найденное вписывается само, без формы (`AutoScan`). После снятия меток: недочитанное
+            // по сроку иначе держало бы предмет «читается», и итог не подвёл бы никто.
+            if (isset($subject)) {
+                AutoScan::finished($subject);
+            }
             $this->ping($publish);
         }
     }
@@ -168,6 +174,7 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
     {
         self::mark($this->ids, false);
         Cache::forget("scan:run:{$this->subject}");
+        AutoScan::abandon($this->subject);
         $this->ping(app(Publisher::class));
     }
 

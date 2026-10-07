@@ -2931,6 +2931,32 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
   .skeleton { display: block; border-radius: var(--radius-s); background: linear-gradient(90deg, var(--color-surface-3), var(--color-hover), var(--color-surface-3)); background-size: 200% 100%; }
   @media (prefers-reduced-motion: no-preference) { .skeleton { animation: shimmer 1.4s ease-in-out infinite; } }
   @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+  /* Заявка из письма входит в список живьём (arrive_controller, AutoScan::states): силуэт полосами → по строке бежит
+     полоса чтения с искрой и «Читаем документы, 2 из 5» → строка проявляется, вписанное вспыхивает. Ячейки таблицы
+     живут своей высотой: у `tr` анимируются только прозрачность и сдвиг. */
+  .arrive-bar { display: inline-block; height: .8em; vertical-align: middle; border-radius: 999px; }
+  .arrive--ghost, .arrive--reading { cursor: default; }
+  .arrive--ghost .cell-sub, .arrive--reading .cell-sub { display: flex; align-items: center; gap: .5rem; }
+  .arrive-progress { display: inline-flex; align-items: center; gap: .3rem; color: var(--color-accent-text); white-space: nowrap; }
+  .card.arrive--ghost, .card.arrive--reading, tr.arrive--reading > td:first-child { position: relative; overflow: hidden; }
+  .card.arrive--reading::after, tr.arrive--reading > td:first-child::after {
+    content: ''; position: absolute; inset-block: 0; width: 40%; left: -40%; pointer-events: none;
+    background: linear-gradient(to right, transparent, color-mix(in oklab, var(--color-accent) 18%, transparent), transparent);
+  }
+  .arrive.is-holding > * { opacity: 0; }
+  .arrive.is-holding { background: linear-gradient(90deg, var(--color-surface-3), var(--color-hover), var(--color-surface-3)); background-size: 200% 100%; }
+  @media (prefers-reduced-motion: no-preference) {
+    .card.arrive--reading::after, tr.arrive--reading > td:first-child::after { animation: arrive-sweep 1.6s ease-in-out infinite; }
+    .arrive.is-holding { animation: shimmer 1.4s ease-in-out infinite; }
+    .arrive.is-entering { animation: arrive-in .7s cubic-bezier(.2, .8, .2, 1) both; }
+    .arrive.is-revealed > * { animation: fade .6s ease-out both; }
+    .arrive.is-revealed .cell-name, .arrive.is-revealed .card-title { animation: arrive-glow 1.2s ease-out 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { .arrive.is-entering, .arrive.is-revealed > * { animation: fade .4s ease-out both; } }
+  @keyframes arrive-in { from { opacity: 0; translate: 0 -6px; } }
+  @keyframes arrive-sweep { to { left: 100%; } }
+  @keyframes arrive-glow { 0% { background-color: var(--color-accent-soft); box-shadow: 0 0 0 3px var(--color-accent-soft); border-radius: var(--radius-s); } 100% { background-color: transparent; box-shadow: 0 0 0 3px transparent; } }
   turbo-frame { display: block; transition: opacity var(--dur-fast); }
   turbo-frame[busy] { opacity: .6; }
 }

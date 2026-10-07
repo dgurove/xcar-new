@@ -48,6 +48,7 @@ use App\Park\Console\FillFromDocsCommand;
 use App\Park\Console\MirrorOffersCommand;
 use App\Park\Console\ParkDigestCommand;
 use App\Park\Console\ReleaseByLettersCommand;
+use App\Park\Console\AutoRequestsCommand;
 use App\Park\Console\StoreByLettersCommand;
 use App\Park\Console\TickPark;
 use App\Push\Console\MakeKeys;
@@ -86,6 +87,7 @@ return Application::configure(basePath: dirname(__DIR__))
         TickPark::class,
         ParkDigestCommand::class,
         StoreByLettersCommand::class,
+        AutoRequestsCommand::class,
         MirrorOffersCommand::class,
         ReleaseByLettersCommand::class,
         TickBilling::class,
