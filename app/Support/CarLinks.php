@@ -15,8 +15,10 @@ use App\Users\User;
 final class CarLinks
 {
     /**
-     * Значок есть, когда машина есть ещё где-то, кроме этого экрана. Только админу. ТС парковки считается, как только
-     * заявку на приём завели, даже до приёма (владелец 06.10.2026).
+     * Значок есть, когда машина физически есть ещё где-то: на парковке, в идущей сделке, в гараже. Только админу. ТС
+     * парковки считается, как только заявку на приём завели, даже до приёма (владелец 06.10.2026). Закупка значок не
+     * зажигает — у Каркаде она у всех (владелец 07.10.2026), её пункт в меню есть, когда значок горит по другой причине.
+     * Связь проверяется, загружена она или нет: раньше значок зависел от того, что подгрузил экран.
      */
     public static function shows(Offer|Vehicle $from, ?User $user): bool
     {
@@ -26,9 +28,9 @@ final class CarLinks
         if ($from instanceof Vehicle) {
             return (bool) $from->offer_id;
         }
-        $parked = $from->relationLoaded('parkVehicle') ? (bool) $from->parkVehicle : $from->parkVehicle()->exists();
+        $has = fn (string $rel) => $from->relationLoaded($rel) ? (bool) $from->getRelation($rel) : $from->{$rel}()->exists();
 
-        return $parked || ($from->relationLoaded('purchaseCar') && $from->purchaseCar);
+        return $has('parkVehicle') || $has('deal') || $has('garageCar');
     }
 
     /** @return list<array{title: string, state: string, href: string}> */

@@ -147,6 +147,15 @@ class Car extends Model implements HasMedia
         return $this->offers->whereIn('state', [OfferState::Active, OfferState::Chosen])->values();
     }
 
+    /**
+     * Оценки машины для цены продажи: последняя цена каждого, кто её называл, в любом состоянии («не выбрана» и отозванная
+     * без замены тоже оценка), по сумме вниз. Цена, которую человек сам заменил новой, не дублируется.
+     */
+    public function latestOfferList(): Collection
+    {
+        return $this->offers->groupBy('user_id')->map(fn (Collection $mine) => $mine->sortByDesc('id')->first())->sortByDesc('amount')->values();
+    }
+
     public function bestOffer(): ?Offer
     {
         return $this->offers->firstWhere('state', OfferState::Chosen) ?? $this->offers->firstWhere('state', OfferState::Active);

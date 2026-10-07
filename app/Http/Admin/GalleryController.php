@@ -27,7 +27,7 @@ class GalleryController
         $facets = Facets::for($request, 'crm-gallery', ...OfferController::facets());
         ListPrefs::sync($request, 'crm-gallery', keep: $facets->keys());
         $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
-        $q = Offer::query()->where('state', OfferState::Gallery)->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at'])->withCount(['activeBids', 'interests']);
+        $q = Offer::query()->where('state', OfferState::Gallery)->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at', 'deal', 'garageCar'])->withCount(['activeBids', 'interests']);
         if ($term = trim((string) $request->query('q'))) {
             $q->searchCrm($term);
         }

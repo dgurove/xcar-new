@@ -101,21 +101,8 @@
                             <button type="submit" class="btn btn-s btn-accent shrink-0">Оценить</button>
                         </form>
                         @endif
-                        @if ($car = $offer->purchaseCar)
-                            @php $named = $car->activeOfferList()->sortByDesc('amount')->values(); @endphp
-                            @if ($car->price_final || $named->isNotEmpty())
-                                <dl class="mt-3 flex flex-col gap-2 text-sm">
-                                    @foreach ($named as $one)
-                                        <div class="flex items-center justify-between gap-3">
-                                            <dt class="flex min-w-0 items-center gap-2"><x-ui.avatar :user="$one->user" :size="20"/><span class="truncate">{{ $one->user->shortName() }}</span></dt>
-                                            <dd class="nums whitespace-nowrap">{{ \App\Support\Money::rub($one->amount) }}</dd>
-                                        </div>
-                                    @endforeach
-                                    @if ($car->price_final)
-                                        <div class="flex items-center justify-between gap-3"><dt class="text-ink-dim">Админская цена</dt><dd class="nums font-medium">{{ \App\Support\Money::rub($car->price_final) }}</dd></div>
-                                    @endif
-                                </dl>
-                            @endif
+                        @if ($offer->purchaseCar)
+                            @include('admin.offers.purchase-prices', ['car' => $offer->purchaseCar])
                         @endif
                     </div>
                     @if ($garage)
@@ -196,6 +183,14 @@
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
         </x-slot:actions>
         {{-- Последнее письмо, как в редакторе и деле ТС; вся переписка — окном поверх списка (x-mail.window на странице). --}}
+        {{-- Оценки из закупки — у машины по контрпредложению всегда, а не только под «Оценить»: цену продажи правят и
+             после оценки. Заголовком номер закупки — рядом подтверждения продажи, их не спутать. --}}
+        @if ($admin && $offer->purchaseCar && ! $rate && ! $floorFirst)
+            <div class="mt-4 rounded-(--radius-l) bg-surface-2 p-3">
+                <div class="text-sm font-medium">Закупка № {{ $offer->purchaseCar->purchase->number }}</div>
+                @include('admin.offers.purchase-prices', ['car' => $offer->purchaseCar])
+            </div>
+        @endif
         @if ($bids->isNotEmpty() || ($admin && $offer->state === OfferState::Open))
             <div class="mt-4">@include('admin.offers.bids')</div>
         @endif

@@ -30,7 +30,7 @@
     $stateWord = $offer->state === OfferState::Open ? ($admin ? ($pick ? ($count ? 'выбрать' : 'приём закрыт') : 'приём') : 'в продаже') : mb_strtolower($offer->state->label());
     // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
-    $offer->loadMissing('parkVehicle:id,offer_id,category,accepted_at,created_at');
+    $offer->loadMissing(['parkVehicle:id,offer_id,category,accepted_at,created_at', 'deal', 'garageCar']);
     $draft = $offer->state === OfferState::Draft;
     $unpriced = $draft && ! $offer->asking_price;
     // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
