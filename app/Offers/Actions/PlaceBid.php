@@ -58,7 +58,8 @@ final class PlaceBid
     public static function record(Offer $offer, User $manager, User $by, ?int $amount, ?string $comment, BidKind $kind): Bid
     {
         $staff = ! $manager->is($by);
-        $offer->bids()->where('user_id', $manager->id)->where('state', BidState::Active)->update(['state' => BidState::Withdrawn]);
+        // Прежнее живое — заменено, а не отозвано: менеджер видел у старой цены «Отозвано» и не понимал, что случилось.
+        $offer->bids()->where('user_id', $manager->id)->where('state', BidState::Active)->update(['state' => BidState::Replaced]);
         $bid = $offer->bids()->create(['user_id' => $manager->id, 'placed_by' => $staff ? $by->id : null, 'kind' => $kind, 'amount' => $amount, 'comment' => $comment, 'state' => BidState::Active]);
         $offer->log(OfferEventType::BidPlaced, $by, ['bid_id' => $bid->id, 'amount' => $amount, ...($kind === BidKind::Garage ? ['garage' => true] : []),
             ...($staff ? ['by_staff' => true, 'manager' => $manager->name] : [])]);

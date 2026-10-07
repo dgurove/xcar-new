@@ -16,7 +16,8 @@
     $branch = $garageBids->isNotEmpty() && $offer->garageBranch();
     $best = $priced->count() > 1 ? $priced->first() : null;
     $accepted = $deal ? $offer->bids->firstWhere('id', $deal->bid_id) : null;
-    $rest = $offer->bids->reject(fn ($b) => $b->state === BidState::Active || $b->is($accepted))->sortByDesc('created_at')->values();
+    // Заменённое новой ценой — не отдельное подтверждение: смена цены видна в «Истории».
+    $rest = $offer->bids->reject(fn ($b) => in_array($b->state, [BidState::Active, BidState::Replaced], true) || $b->is($accepted))->sortByDesc('created_at')->values();
 @endphp
 {{-- Группы строк через линию (.list), а не плашка на каждое подтверждение. --}}
 <div class="flex flex-col gap-2">
