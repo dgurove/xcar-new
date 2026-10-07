@@ -1489,7 +1489,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .step--ask .step-title { color: var(--color-ink); font-weight: 500; }
   .step--current::before { background: var(--color-line); }
   .step-body { min-width: 0; padding-bottom: 1rem; }
-  .step-head { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; min-height: 1.875rem; }
+  /* По буквам, а не по центрам: название шага и дата разного кегля («Письмо 22 сен»), по центрам дата стояла на 5 px ниже. */
+  .step-head { display: flex; flex-wrap: wrap; align-items: baseline; align-content: center; gap: .25rem .5rem; min-height: 1.875rem; }
   .step-title { font-weight: 500; font-size: var(--text-base); }
   .step--next .step-title, .step--todo .step-title { color: var(--color-ink-muted); font-weight: 400; }
   .step--current .step-title { font-size: var(--text-lg); }
@@ -1529,9 +1530,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .letter--ours .letter-who { color: var(--color-ink-muted); }
   .letter-when { grid-column: 2; grid-row: 1; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; }
   .letter-title { grid-column: 1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
-  .letter-clip { grid-column: 2; grid-row: 2; justify-self: end; display: inline-flex; align-items: center; gap: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
+  /* Скрепка с числом: базовая линия — число, а не низ иконки (у inline-flex её даёт первый элемент) — иначе «40» стояло
+     на 5–7 px выше даты и слов. Иконка — по центру строки. */
+  .letter-clip { grid-column: 2; grid-row: 2; justify-self: end; display: inline-flex; align-items: baseline; gap: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
+  .letter-clip > svg { align-self: center; }
   .letter--stage .letter-title, .letter--ask .letter-title, .letter--unread .letter-title { color: var(--color-ink); }
   .letter--unread .letter-title { font-weight: 500; }
+  /* Раскрытая шапка — просто строка текста: высота под нажатие нужна свёрнутой, а у раскрытой конверт «От…» вставал
+     через лишнюю пустую строку. */
+  .letter-body[open] > .letter-head { min-height: 0; }
   .letter-body[open] > .letter-head .letter-title { white-space: normal; }
   .letter-body[open] > .letter-head .letter-title--words { display: none; }
   @media (min-width: 640px) {
@@ -1661,7 +1668,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Конверт раскрытого письма (x-mail.letter): «От адрес», «Переслал адрес», «Кому адрес, адрес» — строками текста,
      подпись через пробел (владелец: «зачем огромный отступ от "От", если достаточно пробела»). Каждый адрес берётся
      нажатием (x-mail.address). Полная дата — в шапке письма вместо короткой (.letter-when-full). */
-  .letter-env { margin-bottom: .5rem; font-size: var(--text-sm); line-height: 1.4; color: var(--color-ink-muted); }
+  .letter-env { margin-bottom: .5rem; font-size: var(--text-sm); line-height: 1.35; color: var(--color-ink-muted); }
   .letter-env-row { overflow-wrap: anywhere; }
   .letter-env-label { color: var(--color-ink-dim); }
   .letter-env .mail-address { display: inline; max-width: none; }
@@ -2639,7 +2646,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 .surface-crm .cards:not(.cards--grid) .card-extra > *, .surface-park .cards:not(.cards--grid) .card-extra > * { flex: none; }
 /* Откуда заявка (x-park.request-source) — своей строкой под номером, а не в ряд с ним. */
 .surface-park .cards .card-extra:has(> .card-source) { flex-wrap: wrap; overflow: visible; row-gap: .125rem; }
-.surface-park .cards .card-extra > .card-source { flex: 1 0 100%; min-width: 0; margin-top: 0; }
+.surface-park .cards .card-extra > .card-source { flex: 1 0 100%; min-width: 0; margin-top: 0; justify-content: flex-start; }
+/* В карточке правый край строки зависит от пилюли справа («нужен эвакуатор» шире «Выдачи»): время справа прыгало от
+   строки к строке. Здесь время первым, от левого края — под номером, ровно у всех. */
+.surface-park .cards .card-extra > .card-source > .req-source-when { order: -1; }
 /* Факты под названием — одной строкой текста (.card-sub), как во второй строке таблицы, а не рядом чипов. */
 .card-sub { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-ink-muted); }
 .card-sub > * + * { margin-left: .5rem; }
