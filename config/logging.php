@@ -65,6 +65,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Сбои шеринга с телефонов (`ShareController::report`) — переживают выкладку, в отличие от stderr.
+        'share' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/share.log'),
+            'level' => 'warning',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

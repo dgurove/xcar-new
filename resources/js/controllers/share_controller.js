@@ -269,17 +269,23 @@ export default class extends Controller {
         }
         if (!this.jpegs) { window.toast?.('Фото ещё качаются'); return; }
         const files = this.jpegs;
-        // Где лист файлы не берёт (компьютер без него) — фото скачиваются.
-        if (!navigator.canShare?.({ files })) { this.download(files); return; }
+        // Листа нет вовсе (компьютер) — фото скачиваются.
+        if (!navigator.share) { this.download(files); return; }
+        const facts = { files: files.length, bytes: files.reduce((s, f) => s + f.size, 0), canshare: !!navigator.canShare?.({ files }) };
+        // canShare не верим: Яндекс Браузер и Samsung Internet на Android отвечают «нет» про несколько картинок, хотя
+        // лист их может взять (Chrome файлы в canShare вовсе не проверяет) — пробуем, отказ пишем в share.log.
+        if (!facts.canshare) this.beacon('photos-canshare', { name: 'canShare false' }, facts);
         this.sending = true;
         try {
             await navigator.share({ files });
             this.close();
         } catch (e) {
             if (e.name === 'AbortError') return;
-            // Жест истёк — лист откроет новое нажатие.
-            if (e.name === 'NotAllowedError') window.toast?.('Фото готовы', { action: { label: 'Отправить', run: () => navigator.share({ files }).then(() => this.close()).catch(() => {}) } });
-            else this.fail('photos', e, 'Лист не открылся');
+            // Первый share() израсходовал жест: PDF — новым нажатием, кнопкой в тосте.
+            this.beacon('photos', e, facts);
+            this.status('Браузер не отдаёт фото пачкой');
+            if (this.pdf) window.toast?.('Браузер не отдаёт фото пачкой', { action: { label: 'Отправить PDF', run: () => this.send() } });
+            else window.toast?.('Браузер не отдаёт фото пачкой', 'danger');
         } finally {
             this.sending = false;
         }
@@ -300,10 +306,14 @@ export default class extends Controller {
     fail(stage, e, text) {
         this.status(text);
         window.toast?.(text, 'danger');
+        this.beacon(stage, e);
+    }
+
+    beacon(stage, e, facts = {}) {
         // _token в теле: заголовков у sendBeacon нет, без него 419.
         navigator.sendBeacon?.('/share/error', new Blob([JSON.stringify({
             _token: document.querySelector('meta[name=csrf-token]')?.content, stage, name: e.name || '?', message: String(e.message ?? '').slice(0, 300),
-            standalone: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
+            standalone: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true, ...facts,
         })], { type: 'application/json' }));
     }
 }

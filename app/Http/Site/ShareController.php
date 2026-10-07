@@ -105,9 +105,13 @@ class ShareController
             'name' => 'nullable|string|max:60',
             'message' => 'nullable|string|max:300',
             'standalone' => 'nullable|boolean',
+            'files' => 'nullable|integer',
+            'bytes' => 'nullable|integer',
+            'canshare' => 'nullable|boolean',
         ]);
 
-        Log::warning('share: '.$data['stage'].' — '.($data['name'] ?? '?'), [
+        // Свой файл: stderr контейнера выкладка стирает, а сбой с чужого телефона нужен и через день.
+        Log::channel('share')->warning('share: '.$data['stage'].' — '.($data['name'] ?? '?'), [
             ...$data,
             'user' => $request->user()?->id,
             'host' => $request->getHost(),
