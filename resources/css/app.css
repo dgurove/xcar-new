@@ -1853,20 +1853,38 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .detail-count { @apply ml-1 text-xs leading-none text-ink-muted; }
   .bar-btn { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .detail-body { @apply px-4 pb-4 pt-1; }
-  /* Заготовка листа, пока карточка в пути (detail_controller#blank), — по форме карточки: кадры плитками, название
-     из строки, метки и поля полосами. Пришла карточка — текст проявляется (is-fresh, одна прозрачность). */
+  /* Заготовка листа, пока карточка в пути (detail_controller#blank), — по форме карточки: полоса как у карточки (‹ › и
+     «4 из 7» на месте), плитки кадров, название из строки, метки, кнопки и поля плашкой строк, как настоящие. Полосы
+     ровные, блик один на всю заготовку и едет transform'ом (своим слоем): у каждой полосы свой градиент мигал вразнобой и
+     перерисовывался каждый кадр. Прозрачности нет нигде (07.10.2026, владелец: «полупрозрачная — некрасиво»). */
   .detail-blank .bar-btn > svg { width: 18px; height: 18px; }
-  /* Как ряд кадров карточки: плитки 64×80 (ряд «Развернуть» над ними бывает не у всех — его не угадать). */
+  .detail-blank .detail-body { position: relative; overflow: hidden; }
+  .detail-blank .detail-body::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .55) 50%, transparent 70%);
+    transform: translateX(-100%);
+  }
+  .dark .detail-blank .detail-body::after { background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .07) 50%, transparent 70%); }
+  @media (prefers-reduced-motion: no-preference) { .detail-blank .detail-body::after { animation: blank-sheen 1.3s ease-in-out infinite; } }
+  @keyframes blank-sheen { to { transform: translateX(100%); } }
+  .blank { display: block; background: var(--color-surface-3); }
   .blank-strip { display: flex; gap: .5rem; overflow: hidden; }
   .blank-tile { flex: none; width: 4rem; height: 5rem; border-radius: var(--radius-m); }
   .detail-blank-title { font-size: var(--text-lg); line-height: 1.375; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .blank-marks { display: flex; gap: .375rem; }
   .blank-mark { height: 1.375rem; width: 4.5rem; border-radius: 999px; }
-  .blank-mark:nth-child(2) { width: 6rem; }
-  .blank-fields { display: grid; grid-template-columns: 7rem 1fr; gap: 1rem .75rem; margin-top: 1.5rem; }
-  .blank-field { height: .875rem; }
-  .blank-field:nth-child(odd) { width: 70%; }
-  .detail-body.is-fresh { animation: fade 160ms ease-out; }
+  .blank-mark:nth-child(2) { width: 6.5rem; }
+  .blank-mark:nth-child(3) { width: 3.5rem; }
+  .blank-acts { display: flex; gap: .5rem; margin-top: .75rem; }
+  .blank-act { height: 1.875rem; width: 4.5rem; border-radius: 999px; }
+  .blank-act + .blank-act { margin-left: auto; width: 6.5rem; }
+  .blank-list { margin-top: 1.25rem; border-radius: var(--radius-l); background: var(--color-surface-2); padding-inline: .875rem; }
+  .blank-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 2.875rem; }
+  .blank-row + .blank-row { box-shadow: inset 0 .5px 0 var(--color-line); }
+  .blank-label { height: .75rem; width: 5.5rem; border-radius: var(--radius-s); }
+  .blank-value { height: .75rem; width: 7.5rem; border-radius: var(--radius-s); }
+  .blank-row:nth-child(2n) .blank-label { width: 4rem; }
+  .blank-row:nth-child(3n) .blank-value { width: 5rem; }
   @media (min-width: 1024px) {
     .split { display: flex; align-items: flex-start; gap: 1rem; }
     .split-main { flex: 1 1 auto; min-width: 0; }
@@ -3094,7 +3112,9 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
   @keyframes arrive-sweep { to { left: 100%; } }
   @keyframes arrive-glow { 0% { background-color: var(--color-accent-soft); box-shadow: 0 0 0 3px var(--color-accent-soft); border-radius: var(--radius-s); } 100% { background-color: transparent; box-shadow: 0 0 0 3px transparent; } }
   turbo-frame { display: block; transition: opacity var(--dur-fast); }
-  turbo-frame[busy] { opacity: .6; }
+  /* Фрейм карточки строки не бледнеет: пока она в пути, в нём заглушка или прежняя карточка, а полупрозрачный лист —
+     «некрасиво» (владелец, 07.10.2026). */
+  turbo-frame[busy]:not(#detail) { opacity: .6; }
 }
 
 /* ------------------------------------------------------------- чат */

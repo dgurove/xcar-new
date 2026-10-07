@@ -22,7 +22,7 @@ function fetchCard(href) {
     if (navigator.onLine === false || navigator.connection?.saveData) return null;
     const entry = { at: Date.now() };
     entry.response = fetch(url, { credentials: 'same-origin', headers: { Accept: 'text/html, application/xhtml+xml', 'Turbo-Frame': 'detail', 'X-Sec-Purpose': 'prefetch' } });
-    entry.response.then((r) => { if (!r.ok || r.redirected) cards.delete(url); }, () => cards.delete(url));
+    entry.response.then((r) => { if (!r.ok || r.redirected) cards.delete(url); else entry.ready = true; }, () => cards.delete(url));
     cards.set(url, entry);
     while (cards.size > 8) cards.delete(cards.keys().next().value);
     return entry;
@@ -173,11 +173,13 @@ export default class extends Controller {
         this.select(row);
         const url = this.urlFor(row);
         this.address(url);
-        this.fresh = true;
         const card = this.frameTarget.querySelector('.detail-card');
         if (card) {
-            // Лист открыт — меняется только содержимое, лист стоит.
-            card.setAttribute('aria-busy', 'true');
+            // Лист открыт — лист стоит, меняется содержимое: карточка уже в памяти — встанет сразу, прежняя стоит до неё;
+            // нет — сразу заглушка новой строки, а не бледная прежняя.
+            const hit = cards.get(url.href);
+            if (!(hit?.ready && Date.now() - hit.at < KEEP)) this.frameTarget.replaceChildren(this.blank(row));
+            this.mark();
             this.reveal(row);
         } else {
             this.frameTarget.replaceChildren(this.blank(row));
@@ -194,20 +196,23 @@ export default class extends Controller {
         else history.replaceState(history.state, '', url);
     }
 
-    // Заготовка листа, пока карточка в пути, — по форме карточки (x-ui.row-card): кадры, название из самой строки,
-    // метки и поля — серыми полосами. Пришла карточка — шапка на тех же местах, проявляется только текст.
+    // Заготовка листа, пока карточка в пути, — по форме карточки (x-ui.row-card): полоса как у карточки (‹ ›, «4 из 7»,
+    // «Закрыть»), плитки кадров, название из самой строки, метки, кнопки и поля плашкой строк.
     blank(row) {
         const card = document.createElement('div');
         card.className = 'detail-card detail-blank';
         card.setAttribute('aria-busy', 'true');
-        const bars = (n, cls) => Array.from({ length: n }, () => `<i class="skeleton ${cls}"></i>`).join('');
+        const bars = (n, cls) => Array.from({ length: n }, () => `<i class="blank ${cls}"></i>`).join('');
+        const icon = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+        const rows = Array.from({ length: 6 }, () => '<div class="blank-row"><i class="blank blank-label"></i><i class="blank blank-value"></i></div>').join('');
         card.innerHTML = '<div class="detail-bar" data-action="pointerdown->detail#grab"><span class="detail-handle" aria-hidden="true"></span>'
-            + '<span class="mr-auto"></span><button type="button" class="bar-btn" data-action="detail#close" aria-label="Закрыть">'
-            + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>'
+            + `<button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая">${icon('m18 15-6-6-6 6')}</button>`
+            + `<button type="button" class="bar-btn" data-action="detail#next" aria-label="Следующая">${icon('m6 9 6 6 6-6')}</button>`
+            + '<span class="detail-count nums mr-auto" data-detail-target="count"></span>'
+            + `<button type="button" class="bar-btn" data-action="detail#close" aria-label="Закрыть">${icon('M18 6 6 18M6 6l12 12')}</button></div>`
             + `<div class="detail-body"><div class="blank-strip">${bars(4, 'blank-tile')}</div>`
-            + '<div class="detail-head mt-3"><p class="detail-blank-title"></p>'
-            + `<div class="detail-marks blank-marks">${bars(3, 'blank-mark')}</div></div>`
-            + `<div class="blank-fields">${bars(6, 'blank-field')}</div></div>`;
+            + `<div class="detail-head mt-3"><p class="detail-blank-title"></p><div class="detail-marks blank-marks">${bars(3, 'blank-mark')}</div></div>`
+            + `<div class="blank-acts">${bars(2, 'blank-act')}</div><div class="blank-list">${rows}</div></div>`;
         const text = (el) => el?.textContent.trim().split('\n')[0].trim() ?? '';
         card.querySelector('.detail-blank-title').textContent = text(row.querySelector('.cell-name') ?? row.querySelector('.cell-title, .card-title') ?? row);
         return card;
@@ -249,9 +254,6 @@ export default class extends Controller {
         if (event.target !== this.frameTarget) return;
         const was = this.element.hasAttribute('data-open');
         this.settle(was);
-        // Заглушка или прежняя строка сменились новой — текст проявляется (одна прозрачность, своим слоем).
-        if (this.fresh && !reduce.matches) this.frameTarget.querySelector('.detail-body')?.classList.add('is-fresh');
-        this.fresh = false;
         this.neighbours();
         // Фокус ждёт карточку, где есть куда его поставить: ответ на «Оценить» сперва рисует уже оценённую (поля нет),
         // следом приходит следующая без цены.
