@@ -19,7 +19,7 @@
         <div class="step step--{{ $isCurrent ? 'current' : ($done ? 'done' : 'next') }}">
             <span class="step-dot">@if ($done)<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
-                <div class="step-head">
+                <div class="step-head items-baseline">
                     <span class="step-title flex-1">{{ $block->name }}</span>
                     @if ($done && $step)<span class="nums shrink-0 text-sm text-ink-dim">{{ $step['at']->translatedFormat('j M') }}</span>@endif
                 </div>

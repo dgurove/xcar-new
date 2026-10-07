@@ -607,7 +607,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Серый чип в потоке: факт, таймер, ссылка-справка. */
   .chip { @apply inline-flex items-center gap-1 rounded-(--radius-s) bg-surface-3 px-2 py-1 text-sm leading-none; }
   /* Человек чипом: аватар слева, имя. */
-  .chip.person { @apply max-w-full gap-1.5 rounded-full py-0.5 pr-2.5 pl-0.5; }
+  .chip.person { @apply max-w-full items-baseline gap-1.5 rounded-full py-0.5 pr-2.5 pl-0.5; }
   .chip.person-current { @apply bg-accent-soft text-accent-text; }
   /* Предложение менеджера — чип-кнопка; выбранное — акцентом с галочкой. */
   .offer-chip { @apply cursor-pointer transition-colors; }
@@ -646,7 +646,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Место (x-ui.place) — метка на карте в размер шрифта перед текстом; VIN (x-ui.vin-code) —
      иконка копирования после, нажатие по всему. Форма — от класса снаружи (tag, chip, mark, текст). */
   /* Длинный адрес в чипе ужимается многоточием, а не растягивает страницу; в тексте и ячейке — переносится как раньше. */
-  .place, .vincode { @apply inline-flex min-w-0 max-w-full items-center gap-1; }
+  .place, .vincode { @apply inline-flex min-w-0 max-w-full items-baseline gap-1; }
   .tag.place > .place-text, .chip.place > .place-text, .mark.place > .place-text, .truncate.place > .place-text { @apply truncate; }
   .place > svg, .vincode > svg { @apply size-[1em] shrink-0 text-ink-dim; }
   .tag.place { padding-left: 7px; }
@@ -1034,6 +1034,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .table th.fill { width: 100%; }
   }
   .table th, .table td { @apply text-left align-middle; padding: .375rem .25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* На ПК строка в одну линию: ячейки по буквам, а не по центру — название крупнее остальных, и по центру номер, дата и
+     сумма вставали на 1–1,5 px ниже него (07.10.2026, «некрасиво, что текст на разной высоте»). */
+  @media (min-width: 640px) { .table tbody td { vertical-align: baseline; } }
   .table th:first-child, .table td:first-child { padding-left: .75rem; }
   .table th:last-child, .table td:last-child { padding-right: .75rem; }
   .table .num { @apply text-right; width: 1%; padding-left: .625rem; }
@@ -1092,7 +1095,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .cell-title > .title-plate { display: none; }
   /* Режется только само название (.cell-name), значки за ним — связь, «Рекомендуем», госномер — стоят целиком: раньше
      многоточие ставила ячейка, и значок связи налезал на точки. */
-  .table td.grow .cell-title:has(> .cell-name) { display: flex; align-items: center; }
+  .table td.grow .cell-title:has(> .cell-name) { display: flex; align-items: baseline; }
+  /* Флекс-строки с иконкой и текстом — по буквам: значки и плашки по центру (align-self), базовая линия у текста. Иначе
+     ячейка таблицы и соседний текст брали линию от иконки, буквы расходились (07.10.2026). */
+  .cell-title:has(> .cell-name) > :not(.cell-name), .ref-line > :is(svg, img, .vendor-logo), .chip.person > .avatar { align-self: center; }
   .cell-title > .cell-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cell-title > .cell-name ~ * { flex-shrink: 0; }
   @media (max-width: 639.98px) {
@@ -1124,7 +1130,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     /* Название лежит в ссылке строки (x-ui.row-link) — правило по потомку, иначе оно вставало своей строкой сверху
        и строка таблицы на ПК раздувалась в два этажа. */
     .table td.grow .cell-title, .table td.grow > .cell-sub { display: inline; }
-    .table td.grow .cell-title:has(> .cell-name) { display: inline-flex; max-width: 100%; vertical-align: bottom; }
+    .table td.grow .cell-title:has(> .cell-name) { display: inline-flex; max-width: 100%; vertical-align: baseline; }
     /* Второй этаж в линию за названием — flex с ровным шагом: скрытые на ПК куски (sm:hidden) и пробелы разметки
        не дают лишнего отступа, как давали margin соседей. */
     .table td.grow > .cell-sub { display: inline-flex; align-items: baseline; gap: .375rem; margin: 0 0 0 .125rem; vertical-align: baseline; }
@@ -1388,7 +1394,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .tag.vendor-name { padding-left: 4px; }
   /* Столбец «Вендор, № убытка»: логотип с именем и номер в одну строку. Логотип перед названием ТС — только пока
      этого столбца нет (краткая таблица телефона). */
-  .vendor-ref { display: inline-flex; align-items: center; gap: .5em; min-width: 0; max-width: 100%; }
+  .vendor-ref { display: inline-flex; align-items: baseline; gap: .5em; min-width: 0; max-width: 100%; }
+  .vendor-ref > .vendor-tip, .vincode > svg, .place > svg, .status-cell::before { align-self: center; }
   /* Имя вендора подсказкой у логотипа: наведение на ПК, нажатие на телефоне (кнопка — карточка строки не открывается).
      Справа от логотипа поверх номера, а не сверху: ячейка таблицы режет всё, что выходит за её высоту. */
   .vendor-tip { position: relative; display: inline-flex; line-height: 1; cursor: default; -webkit-tap-highlight-color: transparent; }
@@ -1402,13 +1409,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { .vendor-tip:hover::after { opacity: 1; } }
   .vendor-tip:focus { outline: none; }
   /* Логотип страховой с номером убытка (x-park.ref): пробел между ними, вместе не разрываются. */
-  .ref-line { display: inline-flex; align-items: center; gap: .25em; white-space: nowrap; }
+  .ref-line { display: inline-flex; align-items: baseline; gap: .25em; white-space: nowrap; }
   .ref-line .vendor-logo { vertical-align: 0; }
   /* Номера строки (fitline_controller): госномер и логотип с номером убытка — одним неразрывным куском. */
   .fit-core { display: inline-flex; align-items: center; gap: .375rem; white-space: nowrap; }
   .fit-core:empty { display: none; }
   /* Статус ТС (Park\Status): ждём — надпись приглушённая; нужно действие — кружок лаймом перед словами, просрочено — красным. */
-  .status-cell { display: inline-flex; align-items: center; gap: .4em; color: var(--color-ink-muted); }
+  .status-cell { display: inline-flex; align-items: baseline; gap: .4em; color: var(--color-ink-muted); }
   .status-cell.is-act { color: var(--color-ink); }
   .status-cell.is-act::before { content: ''; flex-shrink: 0; width: .5em; height: .5em; border-radius: 50%; background: var(--color-accent); }
   .status-cell.is-late::before { background: var(--color-danger); }
@@ -1784,8 +1791,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      (pointer-events). Пустой фрейм не рисуется — таблица во всю ширину. */
   .table-box { @apply rounded-(--radius-l) bg-surface; overflow: clip; }
   /* Срок приёма в строке: секундомер и число вплотную, без слова «осталось». */
-  .cell-timer { display: inline-flex; align-items: center; gap: .1875rem; white-space: nowrap; }
-  .cell-timer > svg { flex: none; translate: 0 -.5px; }
+  .cell-timer { white-space: nowrap; }
+  /* Строчно, не флексом: у inline-flex базовая линия бралась от иконки, и число вставало выше соседнего текста. */
+  .cell-timer > svg { display: inline-block; vertical-align: -.15em; margin-right: .1875rem; }
   .split-detail:empty { display: none; }
   .row-link { color: inherit; }
   .row-link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
