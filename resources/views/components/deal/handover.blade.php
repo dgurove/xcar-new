@@ -17,7 +17,8 @@
 @endphp
 @if ($deal->isActive() && ! $deal->isGarage())
     <section {{ $attributes->class([$compact ? '' : 'box']) }} data-controller="edit-card" data-edit-card-form-value="{{ $form }}" @if ($editing) data-edit-card-editing-value="true" @endif>
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <div class="flex items-start gap-3">
+            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
             @unless ($lane)<h2 class="{{ $compact ? 'detail-section !mb-0' : 'box-title' }}">Получение автомобиля</h2>@endunless
             @if ($handover->where)<span class="tag">{{ $handover->where === 'У вас' ? 'У менеджера' : $handover->where }}</span>@endif
             @if ($handover->buyerPicks)
@@ -25,7 +26,8 @@
             @elseif ($offer->position(\App\Workflow\Track::Service))
                 <x-ui.state tone="muted">забираем мы</x-ui.state>
             @endif
-            <span class="ml-auto flex items-center gap-1">
+            </div>
+            <span class="flex shrink-0 items-center gap-1">
                 @if ($sheet && ! $lane)
                     <button type="button" class="btn btn-s btn-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="pickup-{{ $offer->number }}:open">Кто забирает</button>
                 @endif
@@ -33,9 +35,9 @@
             </span>
         </div>
         <div data-edit-card-target="view" @if ($editing) hidden @endif>
-            @unless ($empty)<div class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 leading-snug">
+            @unless ($empty)<div class="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2.5 leading-snug">
                 @if ($offer->insured_name)<div class="min-w-0"><div class="field-label">Владелец</div><div class="mt-0.5 break-words">{{ $offer->insured_name }}</div></div>@endif
-                @if ($offer->insured_phone)<div class="min-w-0"><div class="field-label">Телефон</div><a href="tel:{{ preg_replace('/[^\d+]/', '', $offer->insured_phone) }}" class="nums mt-0.5 block text-accent-text">{{ $offer->insured_phone }}</a></div>@endif
+                @if ($offer->insured_phone)<div class="min-w-0"><div class="field-label">Телефон</div><a href="tel:{{ preg_replace('/[^\d+]/', '', $offer->insured_phone) }}" class="nums mt-0.5 block whitespace-nowrap text-accent-text">{{ $offer->insured_phone }}</a></div>@endif
                 @if ($offer->inspection_address)<div class="col-span-2 min-w-0"><div class="field-label">Адрес</div><div class="mt-0.5 break-words">{{ $offer->inspection_address }}</div></div>@endif
             </div>@endunless
         </div>

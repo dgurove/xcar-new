@@ -19,6 +19,27 @@
     // Первый счёт на этапе оплаты предлагает сам шаг пути — здесь его второй раз не ставим.
 @endphp
 <x-ui.card title="Деньги" {{ $attributes }}>
+    {{-- «Изменить» — лаймовым словом в заголовке, как у ТС, цен, ДКП и заметки (07.10.2026), а не чипом среди схемы. --}}
+    @if ($deal->isActive() && $deal->moneyEditable() && (! $deal->isGarage() || $deal->isGarageManager()))
+        <x-slot:actions>
+            <div data-controller="sheet" class="contents">
+                <button type="button" class="edit-card-toggle" data-action="sheet#open">{{ $deal->isGarageManager() && ! $deal->share ? 'Вписать долю' : 'Изменить' }}</button>
+                <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки" :open="$errors->hasAny(['commission', 'owner_price', 'share'])">
+                    @if ($deal->isGarageManager())
+                        {{-- Гаражная «платит менеджер»: наша доля — счёт со ссылкой встаёт сам (`SyncDealInvoices`). --}}
+                        <form method="post" action="/work/deals/{{ $deal->id }}/money" class="flex flex-col gap-4">
+                            @csrf @method('put')
+                            <x-ui.field name="share" label="Наша доля, ₽" :value="$deal->share ? Money::nums($deal->share) : null" data-controller="digits" data-action="input->digits#format"/>
+                            <x-ui.button block>Сохранить</x-ui.button>
+                        </form>
+                    @else
+                        <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :mode="$deal->commission_mode"
+                            :scheme="$deal->schemeOf()" :owner-price="$deal->owner_price" submit="Сохранить"/>
+                    @endif
+                </x-ui.sheet>
+            </div>
+        </x-slot:actions>
+    @endif
     @php
         // Строки расклада: [подпись, сумма, класс суммы, главная]. В карточке строки (compact) видны главные — цена и «Нам»,
         // остальное — под «Расклад» (07.10.2026, владелец: «слишком много»), на странице сделки — всё.
@@ -63,24 +84,6 @@
         @if (! in_array($state, [CommissionState::Hidden, CommissionState::Withheld]))<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.$fee->paid_at->translatedFormat('j M') : '' }}</x-ui.state>@endif
         @if ($deal->commission && ! $deal->withholds() && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
         @if ($deal->isActive())
-            @if ($deal->moneyEditable() && (! $deal->isGarage() || $deal->isGarageManager()))
-                <div data-controller="sheet" class="contents">
-                    <button type="button" class="chip" data-action="sheet#open">{{ $deal->isGarageManager() && ! $deal->share ? 'Вписать долю' : 'Изменить' }}</button>
-                    <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки" :open="$errors->hasAny(['commission', 'owner_price', 'share'])">
-                        @if ($deal->isGarageManager())
-                            {{-- Гаражная «платит менеджер»: наша доля — счёт со ссылкой встаёт сам (`SyncDealInvoices`). --}}
-                            <form method="post" action="/work/deals/{{ $deal->id }}/money" class="flex flex-col gap-4">
-                                @csrf @method('put')
-                                <x-ui.field name="share" label="Наша доля, ₽" :value="$deal->share ? Money::nums($deal->share) : null" data-controller="digits" data-action="input->digits#format"/>
-                                <x-ui.button block>Сохранить</x-ui.button>
-                            </form>
-                        @else
-                            <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :mode="$deal->commission_mode"
-                                :scheme="$deal->schemeOf()" :owner-price="$deal->owner_price" submit="Сохранить"/>
-                        @endif
-                    </x-ui.sheet>
-                </div>
-            @endif
             {{-- Счета ставятся сами по схеме (`SyncDealInvoices`); здесь — только «Ещё счёт» для редкого ручного. --}}
             @if ($issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="chip">Ещё счёт</a>@endif
         @endif

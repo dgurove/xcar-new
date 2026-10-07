@@ -210,7 +210,7 @@
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
     @php $deletable = ! $fromMail && $offer->isDeletableBy(auth()->user()); @endphp
-    <x-ui.action-bar data-controller="sheet">
+    <x-ui.action-bar>
         @if ($fromMail)
             <form method="post" action="/offers/{{ $n }}/drop" class="contents">@csrf<x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Отменить</x-ui.button></form>
             <form method="post" action="/offers/{{ $n }}/drop" class="contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<input type="hidden" name="decline" value="1"><x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Не заявка</x-ui.button></form>
@@ -228,6 +228,8 @@
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
         @if (($transitions->isNotEmpty() || $publishItems || ($deletable && $admin)) && ! $fromMail)
+            {{-- Контроллер шторки — только вместе с ней: у сделки «···» нет, и пустой контроллер падал в консоль. --}}
+            <div class="contents" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
             <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
                 <div class="flex flex-col gap-2">
@@ -249,6 +251,7 @@
                     @endif
                 </div>
             </x-ui.sheet>
+            </div>
         @endif
     </x-ui.action-bar>
 </x-ui.shell>

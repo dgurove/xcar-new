@@ -21,7 +21,7 @@
             @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
         </x-slot:actions>
         @if ($errors->has('exit'))<x-ui.flash tone="danger" class="mt-3">{{ $errors->first('exit') }}</x-ui.flash>@endif
-        <div class="mt-4 flex flex-col gap-4">
+        <div class="mt-4 flex flex-col gap-6">
             @if ($deal->buyer)<x-deal.chat-card :deal="$deal"/>@endif
             @if ($offer->positions->isNotEmpty())@include('admin.offers.route', ['cardClass' => ''])@endif
             {{-- Получение — внутри «Вывоза» (`admin.offers.route`); вывоза нет — своим разделом. --}}
