@@ -193,6 +193,16 @@
   /* Треугольник у <summary>: `list-none` его прячет везде, кроме Safari — там нужен свой псевдоэлемент (07.10.2026: на iPhone
      у «Расклада» и «Ещё N» стоял чёрный ▶ рядом с нашей стрелкой). */
   summary.list-none::-webkit-details-marker { display: none; }
+  /* --under — на сколько viewport короче экрана. iOS 26–27 в приложении с экрана «Домой» (black-translucent +
+     viewport-fit=cover, WebKit 301108) то и дело отдаёт viewport короче на верхний вырез: 100dvh, 100% и innerHeight
+     короткие, полную высоту знает только 100lvh. Fixed-низ (таб-бар, плашка, листы) висел над краем экрана, под ним —
+     пустая полоса, и всё прыгало, когда viewport возвращался (07.10.2026, начальник, iPhone 17 Air). Панелей браузера
+     в приложении нет, поэтому без бага lvh = dvh и поправка 0; в браузере и на Android её нет вовсе. С клавиатурой низ
+     считает --kb от innerHeight — он уже верный, поправка снимается. */
+  @media (display-mode: standalone) {
+    :root { --under: calc(100lvh - 100dvh); }
+    html.kb-open { --under: 0px; }
+  }
   html {
     /* Холст под резиновым оверскроллом iOS — цвет полосы, не страницы. */
     background-color: var(--color-bar);
@@ -1707,7 +1717,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     @apply m-0 w-full max-w-none rounded-t-(--radius-xl) bg-surface p-5 text-ink shadow-(--shadow-drop);
     margin-top: auto;
     max-height: calc(100dvh - 2rem - var(--kb, 0px));
-    margin-bottom: var(--kb, 0px);
+    margin-bottom: calc(var(--kb, 0px) - var(--under, 0px));
     /* Нижний отступ — переменной: его же перекрывает липкая кнопка (.sheet-foot); с клавиатурой и на ПК полосы «Домой» нет. */
     --sheet-pad-b: calc(1.25rem + env(safe-area-inset-bottom));
     padding-bottom: var(--sheet-pad-b);
@@ -1725,7 +1735,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet.is-closing::backdrop { animation: fade var(--dur-fast) reverse both; }
   /* Окно чтения на телефоне — экран целиком: без ручки и скруглений, «‹» слева, крестик спрятан. */
   @media (max-width: 639.98px) {
-    .sheet-tall { height: 100dvh; max-height: none; border-radius: 0; padding-top: calc(.75rem + env(safe-area-inset-top)); }
+    .sheet-tall { height: calc(100dvh + var(--under, 0px)); max-height: none; border-radius: 0; padding-top: calc(.75rem + env(safe-area-inset-top)); }
     .sheet-tall::before { display: none; }
     .sheet-tall .sheet-x { display: none; }
   }
@@ -1882,8 +1892,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
        С клавиатурой (kb-open) низ листа встаёт на неё — меняется только низ, поле стоит на месте (app.js keyboardInset). */
     .split-detail {
       @apply block;
-      --sheet-half: calc(50dvh - var(--spacing-header) - env(safe-area-inset-top));
-      position: fixed; inset-inline: 0; bottom: 0; z-index: 45; margin-inline: auto; max-width: 36rem;
+      --sheet-half: calc(50dvh + var(--under, 0px) / 2 - var(--spacing-header) - env(safe-area-inset-top));
+      position: fixed; inset-inline: 0; bottom: calc(0px - var(--under, 0px)); z-index: 45; margin-inline: auto; max-width: 36rem;
       top: calc(var(--spacing-header) + env(safe-area-inset-top)); overflow: hidden;
       transform: translateY(var(--sheet-half)); will-change: transform;
       /* Тень — у самого листа: у карточки внутри её обрезал overflow листа, и тени не было вовсе (07.10.2026). Белый
@@ -2047,15 +2057,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      угол, кнопки действий парят справа. Запас под ней — .impersonation-room в конце страницы. */
   .impersonation { @apply fixed z-50 flex items-center gap-2 rounded-full bg-chrome py-1 pr-1 pl-1.5 text-sm text-white shadow-(--shadow-drop);
     left: 50%; translate: -50% 0; max-width: calc(100% - 2rem);
-    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem); }
+    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem - var(--under, 0px)); }
   .impersonation-name { @apply min-w-0 truncate; }
   .impersonation-exit { @apply shrink-0 rounded-full bg-white/15 px-3 py-1 font-medium transition-colors hover:bg-white/25; }
   .dark .impersonation { @apply bg-white text-chrome; }
   .dark .impersonation-exit { @apply bg-chrome/10 hover:bg-chrome/20; }
   .impersonation-room { @apply h-16 shrink-0; }
-  body:has(.action-bar) .impersonation { bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 5.25rem); }
+  body:has(.action-bar) .impersonation { bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 5.25rem - var(--under, 0px)); }
   @media (max-width: 767px) {
-    body:has(.tabbar.is-hidden) .impersonation { bottom: calc(max(env(safe-area-inset-bottom), 0px) + .75rem); }
+    body:has(.tabbar.is-hidden) .impersonation { bottom: calc(max(env(safe-area-inset-bottom), 0px) + .75rem - var(--under, 0px)); }
     html.kb-open .impersonation { display: none; }
   }
   @media (max-width: 1023px) {
@@ -2183,7 +2193,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 @layer components {
   /* Прикреплён к низу, 49px + safe-area, стекло (блок у шапки), волосяная линия сверху. */
   .tabbar {
-    position: fixed; inset: auto 0 0 0; z-index: 40;
+    position: fixed; inset-inline: 0; bottom: calc(0px - var(--under, 0px)); z-index: 40;
     display: flex; align-items: stretch;
     /* Ширина таба — по подписи плюс равная всем доля свободного места: тогда «Предложения» отстоит от
        левого края ровно на столько же, на сколько «Кабинет» от правого, а между словами — один шаг.
@@ -2245,7 +2255,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* На телефоне — стеклянная плашка над таб-баром с кнопкой во всю ширину, край — волосяная линия. */
   .action-bar {
     position: fixed; inset-inline: 0; z-index: 30;
-    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px));
+    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) - var(--under, 0px));
     border-top: 1px solid rgb(60 60 67 / .29);
   }
   .dark .action-bar { border-top-color: rgb(84 84 88 / .6); }
@@ -2279,7 +2289,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      из модального окна (окно писем) — <dialog> модально в верхнем слое над ним (.docs-modal), страница не сдвигается. */
   .docs {
     @apply fixed z-[45] flex flex-col bg-surface text-ink shadow-(--shadow-drop);
-    inset-inline: 0; top: auto; bottom: var(--kb, 0px); height: var(--docs-h, 55dvh);
+    inset-inline: 0; top: auto; bottom: calc(var(--kb, 0px) - var(--under, 0px)); height: var(--docs-h, 55dvh);
     width: auto; max-width: none; max-height: none; margin: 0; border: 0; padding: 0; overflow: visible;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
@@ -3157,7 +3167,7 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
     /* Отступ сетки (mt-6 утилитой) и запас под таб-бар экрану чата не нужны: поле ввода — на нижнем краю, страница не листается. */
     body:has(.chat-page) .chat-split { margin-top: 0 !important; }
     body:has(.chat-page) .main-app { padding-bottom: 0 !important; }
-    .chat-page { height: calc(100dvh - var(--kb, 0px)); }
+    .chat-page { height: calc(100dvh + var(--under, 0px) - var(--kb, 0px)); }
     .chat-head { padding-top: calc(.375rem + env(safe-area-inset-top)); }
     .chat-back { display: inline-flex; }
     .chat-screen .chat-bar { padding-bottom: max(env(safe-area-inset-bottom), .5rem); }
