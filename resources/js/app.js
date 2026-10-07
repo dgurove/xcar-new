@@ -415,7 +415,7 @@ function keyboardInset() {
     const vv = window.visualViewport;
     if (!vv) return;
     // Календарь и список — не клавиатура: их шторка viewport не ужимает, и сдвигать под неё ничего не надо.
-    const TYPED = 'input:not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not([type=checkbox]):not([type=radio]), textarea, [contenteditable="true"], trix-editor';
+    const TYPED = 'input:not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not([type=checkbox]):not([type=radio]):not([type=file]), textarea, [contenteditable="true"], trix-editor';
     const field = () => document.activeElement?.matches(TYPED);
     const root = document.documentElement;
     const ios = /iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -477,6 +477,7 @@ function keyboardInset() {
             e.preventDefault();
             // Карточка строки — сразу во весь экран, без анимации: лист, который едет, пока в нём каретка, рисует её мимо.
             if (sheet.matches('.split-detail')) {
+                sheet.dispatchEvent(new CustomEvent('detail:hold'));
                 sheet.getAnimations().forEach((a) => a.cancel());
                 sheet.removeAttribute('data-moving');
                 sheet.style.transition = '';

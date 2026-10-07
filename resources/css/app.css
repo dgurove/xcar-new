@@ -617,7 +617,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .eye { @apply relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-dim; width: 1.75rem; height: 1.75rem; margin-block: -.375rem; margin-inline-start: .375rem; }
   .eye::after { content: ''; position: absolute; inset: -.5rem -.5rem -.125rem; }
   .eye:has(input:checked) { background: var(--color-surface-3); color: var(--color-ink); }
-  .eye svg { width: 1.125rem; height: 1.125rem; }
   .eye input { @apply sr-only; }
   .eye .eye-on { display: none; }
   .eye input:checked ~ .eye-on { display: block; }
@@ -1958,6 +1957,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .detail-foot { flex: none; }
     .detail-foot > .save-bar { padding-bottom: max(env(safe-area-inset-bottom), .75rem); }
     html.kb-open .split-detail .detail-foot > .save-bar { padding-bottom: .75rem; }
+    /* «Сохранить» блоков внутри тела листа (сделка CRM: получение, договор, заметка) липнет к низу листа — над полосой
+       «Домой» и во всю ширину плашкой, а не над таб-баром (page) и не в полосу жеста: её нижнюю часть iPhone не нажимал. */
+    .split-detail .detail-body .save-bar { bottom: 0; margin-inline: -1rem; padding-inline: 1rem; padding-bottom: max(env(safe-area-inset-bottom), .75rem); background: var(--color-surface); }
+    html.kb-open .split-detail .detail-body .save-bar { padding-bottom: .75rem; }
     .detail-bar { @apply rounded-t-(--radius-xl) pt-4; touch-action: none; cursor: grab; }
     .detail-handle { display: block; position: absolute; inset-inline: 0; top: .375rem; margin: 0 auto; width: 36px; height: 5px; border-radius: 3px; background: var(--color-line); }
     /* Лист закрывает нижнюю половину — последние строки выезжают из-под него. */

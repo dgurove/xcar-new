@@ -138,7 +138,7 @@
         @if (($byQr ?? false) && $vehicle->state === \App\Park\VehicleState::Stored)@include('park.vehicles.pickup-card')@endif
         {{-- Документы — над фото: их обычно немного. Строками, «+ Документ» сверху, у правого края — искра «Из документов». --}}
         <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
             <div class="mb-2 flex items-center gap-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Документ</x-ui.button>@include('park.vehicles.scan-row')</div>
             <div hidden data-photos-target="progress" class="mb-3">
                 <div class="mb-1 text-sm text-ink-muted" data-label></div>

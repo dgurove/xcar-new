@@ -46,7 +46,7 @@
         </form>
 
         <x-ui.card title="Фотографии" class="order-2 lg:col-span-2" data-controller="photos" data-photos-url-value="/purchases/cars/{{ $car->id }}/media">
-            <input type="file" accept="image/*,.heic" multiple hidden data-photos-target="input" data-action="change->photos#upload">
+            <input type="file" accept="image/*,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
             @if ($car->cloud_url || $car->photos_state->needsAttention())
                 <div class="mb-3 flex flex-wrap items-center gap-2">
                     <span class="chip {{ $car->photos_state->needsAttention() ? 'bg-urgent-soft text-urgent' : '' }}">{{ $car->photos_state->label() }}{{ $car->photos_error ? ': '.$car->photos_error : '' }}</span>

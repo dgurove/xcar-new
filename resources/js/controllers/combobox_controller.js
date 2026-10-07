@@ -11,12 +11,24 @@ export default class extends Controller {
     connect() {
         this.onDocumentClick = (e) => { if (!this.element.contains(e.target)) this.close(); };
         document.addEventListener('click', this.onDocumentClick);
+        // Фокус ушёл из поля («Готово» или «Далее» на клавиатуре iPhone) — список закрывается: иначе он оставался поверх
+        // соседних полей, и нажатие по «Году» под ним выбирало модель из списка (07.10.2026). Нажатие по подсказке уводит
+        // фокус раньше щелчка — закрытие ждёт 150 мс, подсказка успевает выбраться. preventDefault на pointerdown у подсказки
+        // нельзя: WebKit тогда не даёт щелчка от пальца.
+        this.onFocusOut = (e) => {
+            if (this.element.contains(e.relatedTarget)) return;
+            clearTimeout(this.blurTimer);
+            this.blurTimer = setTimeout(() => { if (!this.element.contains(document.activeElement)) this.close(); }, 150);
+        };
+        this.element.addEventListener('focusout', this.onFocusOut);
     }
 
     disconnect() {
         this.close();
         document.removeEventListener('click', this.onDocumentClick);
+        this.element.removeEventListener('focusout', this.onFocusOut);
         clearTimeout(this.timer);
+        clearTimeout(this.blurTimer);
     }
 
     search() {

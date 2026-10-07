@@ -35,7 +35,7 @@
             </div>
             <div class="chat-previews" data-chat-target="previews" hidden></div>
             <form method="post" class="chat-form" data-chat-target="form" data-action="submit->chat#send" data-controller="draft" data-draft-key-value="tg:{{ $chat->id }}">
-                <input type="file" multiple hidden data-chat-target="files" data-action="change->chat#filesPicked">
+                <input type="file" multiple class="sr-only" tabindex="-1" data-chat-target="files" data-action="change->chat#filesPicked">
                 <button type="button" class="btn btn-ghost btn-round" data-action="chat#pick" aria-label="Приложить"><x-ui.icon name="clip" class="size-5"/></button>
                 <div class="chat-input"><textarea name="text" rows="1" placeholder="Сообщение от бота" data-chat-target="input" data-action="keydown->chat#keydown input->chat#typed change->chat#typed paste->chat#paste" enterkeyhint="enter"></textarea></div>
                 <button class="chat-send is-empty" aria-label="Отправить" data-chat-target="submit"><x-ui.icon name="send" class="size-5"/></button>

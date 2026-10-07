@@ -44,12 +44,12 @@
                 @endforeach
                 <form method="post" action="/purchases/{{ $n }}/file" enctype="multipart/form-data" data-controller="autosubmit">
                     @csrf
-                    <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="plus" class="size-5"/> Загрузить файл поставщика<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
+                    <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="plus" class="size-5"/> Загрузить файл поставщика<input type="file" name="file" accept=".xlsx" class="sr-only" tabindex="-1" data-action="change->autosubmit#submit"></label>
                 </form>
                 {{-- Ответ поставщика с итоговыми ценами: строки с ценой станут черновиками предложений. --}}
                 <form method="post" action="/purchases/{{ $n }}/counter" enctype="multipart/form-data" data-controller="autosubmit">
                     @csrf
-                    <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="file" class="size-5"/> Загрузить контрпредложение<input type="file" name="file" accept=".xlsx" hidden data-action="change->autosubmit#submit"></label>
+                    <label class="btn btn-quiet w-full cursor-pointer"><x-ui.icon name="file" class="size-5"/> Загрузить контрпредложение<input type="file" name="file" accept=".xlsx" class="sr-only" tabindex="-1" data-action="change->autosubmit#submit"></label>
                 </form>
                 @if ($purchase->cars()->exists())
                     {{-- Файл — шторкой документов: в установленном приложении download открывает Quick Look без выхода. Галки в адрес

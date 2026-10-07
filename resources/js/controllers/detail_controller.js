@@ -65,6 +65,13 @@ export default class extends Controller {
             e.detail.render = async (stream) => { await render(stream); this.mark(); };
         };
         this.frameTarget.addEventListener('turbo:before-frame-render', this.onRender);
+        // Нажали поле, пока лист ехал (app.js keyboardInset ставит его во весь экран сам): прежнее движение отменяется —
+        // иначе его запасной таймер доехал бы своё и опустил лист на полэкрана или закрыл его под кареткой.
+        this.onHold = () => {
+            if (this.motion?.closing) this.shut = false;
+            this.motion = null;
+        };
+        this.frameTarget.addEventListener('detail:hold', this.onHold);
         document.addEventListener('detail:advance', this.onAdvance);
         document.addEventListener('turbo:before-stream-render', this.onStream);
         // Морф, загрузка страницы и свежая строка приносят строки без выделения (его знает только адрес) — вернуть. Свежую
@@ -81,6 +88,7 @@ export default class extends Controller {
 
     disconnect() {
         this.frameTarget.removeEventListener('turbo:before-frame-render', this.onRender);
+        this.frameTarget.removeEventListener('detail:hold', this.onHold);
         this.frameTarget.removeEventListener('turbo:before-fetch-request', this.onFetch);
         this.unprefetch?.();
         document.removeEventListener('detail:advance', this.onAdvance);
@@ -286,14 +294,14 @@ export default class extends Controller {
     // Лист трогается с места: из покоя (коробка = видимая часть, без transform) — во весь экран и сдвиг transform на то
     // же место, кадр в кадр (data-moving, app.css). Выезд при открытии или прежний переход сняты, их место — в стиле:
     // иначе анимация открытия перебивала бы стиль жеста, а новый переход начинался бы не оттуда. y — px вниз от «во весь
-    // экран».
+    // экран»: место покоя плюс текущий сдвиг — из стиля, без раскладки; раскладка одна, в конце.
     pin() {
-        const frame = this.frameTarget, top = frame.getBoundingClientRect().top;
+        const frame = this.frameTarget;
+        const rest = frame.hasAttribute('data-moving') || frame.hasAttribute('data-full') || document.documentElement.classList.contains('kb-open') ? 0 : this.half;
+        const y = rest + new DOMMatrixReadOnly(getComputedStyle(frame).transform).m42;
         frame.getAnimations().forEach((a) => a.cancel());
         frame.style.transition = 'none';
-        frame.style.transform = 'none';
         frame.setAttribute('data-moving', '');
-        const y = top - frame.getBoundingClientRect().top;
         frame.style.transform = `translateY(${y}px)`;
         frame.offsetHeight;
         return y;
@@ -340,12 +348,20 @@ export default class extends Controller {
         if (document.documentElement.classList.contains('kb-open')) { document.activeElement?.blur(); return; }
         const y0 = event.clientY, wasFull = frame.hasAttribute('data-full'), half = this.half;
         let h, off0, off, pts = [], moving = false;
-        const start = () => {
-            moving = true;
-            this.motion = null;
+        // Палец лёг на полосу покоящегося листа — лист сразу во весь экран со сдвигом на то же место: раскладка и слой
+        // готовы до первого кадра жеста, а не в нём. Не поехал — обратно в покой (still в up). Лист в движении (снап,
+        // выезд) не трогаем, пока палец не поехал: нажатие не должно его останавливать.
+        const ready = !this.motion && !frame.getAnimations().length;
+        const take = () => {
             off0 = off = this.pin();
             // Высота — во весь экран, уже в движении: в покое на полэкрана коробка листа вдвое ниже.
             h = frame.offsetHeight;
+        };
+        if (ready) take();
+        const start = () => {
+            moving = true;
+            this.motion = null;
+            if (!ready) take();
         };
         const move = (e) => {
             if (!moving) { if (Math.abs(e.clientY - y0) < 8) return; start(); }
@@ -358,7 +374,7 @@ export default class extends Controller {
             removeEventListener('pointermove', move);
             removeEventListener('pointerup', up);
             removeEventListener('pointercancel', up);
-            if (!moving) return;
+            if (!moving) { if (ready) this.still(); return; }
             const [t0, p0] = pts[0] ?? [0, 0], [t1, p1] = pts[pts.length - 1] ?? [0, 0];
             const speed = pts.length > 1 ? (p1 - p0) / Math.max(16, t1 - t0) : 0;
             // Куда метили — по видимой высоте листа: весь h, полэкрана h - half.

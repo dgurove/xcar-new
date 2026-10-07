@@ -3,7 +3,7 @@
 @php use App\Workflow\Asks; @endphp
 @if ($requirement->asks === Asks::Document)
     <div class="mt-5" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files">
-        <input type="file" accept="image/*,.pdf,.heic" multiple hidden data-photos-target="input" data-action="change->photos#upload">
+        <input type="file" accept="image/*,.pdf,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
         @include('cabinet.deals.files', ['requirement' => $requirement])
         <div hidden data-photos-target="progress" class="my-2">
             <div class="mb-1 text-sm text-ink-muted" data-label></div>
