@@ -5,6 +5,7 @@ namespace App\Purchases;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Fuel;
+use App\Cars\Region;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Media\HasPhotos;
@@ -148,7 +149,16 @@ class Car extends Model implements HasMedia
      */
     public function townId(): ?int
     {
-        return ($this->city ? Settlement::named($this->city)['id'] ?? null : null) ?? Settlement::inAddress($this->address)['id'] ?? null;
+        // Одноимённые города в разных регионах (Благовещенск Амурский и Башкирский) — сначала регион из адреса.
+        $region = $this->address ? Region::inText($this->address) : null;
+        // С регионом справочник ищет и деревни («Москва» в Московской области) — берём оттуда только город.
+        $inRegion = $this->city && $region ? Settlement::named($this->city, $region) : null;
+        if ($inRegion && (int) Settlement::whereKey($inRegion['id'])->value('rank') > Settlement::TOWN) {
+            $inRegion = null;
+        }
+        $town = $inRegion ?? ($this->city ? Settlement::named($this->city) : null);
+
+        return $town['id'] ?? Settlement::inAddress($this->address)['id'] ?? null;
     }
 
     /** Место не ставили руками и оно пустое или деревня — его можно заменить городом (`townId`). */
