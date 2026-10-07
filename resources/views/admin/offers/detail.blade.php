@@ -223,8 +223,6 @@
                 @include('admin.offers.fields.car')
             </section>
             @include('admin.offers.fields.show')
-            {{-- Тронули поле — снизу выезжает «Сохранить изменения» (save_bar_controller); уходят только тронутые. --}}
-            <x-ui.save-bar/>
         </form>
         <section class="mt-5">
             <h2 class="detail-section">Документы</h2>
@@ -237,6 +235,9 @@
                 <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks" compact/>
             </section>
         @endif
+        {{-- Тронули поле — внизу листа выезжает «Сохранить изменения» (save_bar_controller, кнопка привязана к форме form=):
+             подвалом карточки, вне прокрутки — всегда на экране, а не в конце формы. Уходят только тронутые. --}}
+        <x-slot:foot><x-ui.save-bar :form="'detail-edit-'.$n"/></x-slot:foot>
         {{-- Поделиться — в полосу карточки справа, перед «Развернуть»; нечего отдавать (ни фото, ни цены) — кнопки нет. --}}
         <x-slot:tools>
             @include('admin.offers.detail-tools')

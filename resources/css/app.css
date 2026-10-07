@@ -610,11 +610,17 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @keyframes vin-shake { 25% { translate: -3px 0; } 75% { translate: 3px 0; } }
 
   /* Глазик-переключатель у подписи поля: показывать на сайте или нет. */
-  .eye { @apply inline-flex cursor-pointer items-center text-ink-dim; height: 1em; }
-  .eye svg { width: .9em; height: .9em; }
+  /* Глазик «Показывать на сайте» у подписи поля (адрес, VIN): кружок 28 px, строку подписи не раздвигает (поля по
+     вертикали отрицательные), а пальцу — 44×38 (::after; 07.10.2026, владелец: «кнопка скрытия адреса не нажимается» —
+     мишень была 24×13, палец попадал в подпись и открывал клавиатуру). От подписи — шаг шире зоны нажатия. Показан —
+     глаз цветом текста на подложке, скрыт — перечёркнутый тусклым. */
+  .eye { @apply relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full text-ink-dim; width: 1.75rem; height: 1.75rem; margin-block: -.375rem; margin-inline-start: .375rem; }
+  .eye::after { content: ''; position: absolute; inset: -.5rem -.5rem -.125rem; }
+  .eye:has(input:checked) { background: var(--color-surface-3); color: var(--color-ink); }
+  .eye svg { width: 1.125rem; height: 1.125rem; }
   .eye input { @apply sr-only; }
   .eye .eye-on { display: none; }
-  .eye input:checked ~ .eye-on { display: block; color: var(--color-ink); }
+  .eye input:checked ~ .eye-on { display: block; }
   .eye input:checked ~ .eye-off { display: none; }
   .eye input:focus-visible ~ svg { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
 
@@ -1849,9 +1855,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .save-bar { @apply sticky bottom-0 z-10 -mx-4 bg-surface px-4 pb-3 pt-3; animation: sheet-up var(--dur) var(--ease-out) both; }
   /* На странице — над таб-баром (телефон) или у низа экрана, пока форма на экране; фона нет, только кнопка. */
   .save-bar--page { @apply mx-0 bg-transparent px-0 pb-0; bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem); }
+  /* Подвал карточки строки (слот foot у x-ui.row-card): кнопка всегда на экране, не уходит вместе с концом формы. На ПК
+     колонка листается целиком — подвал липнет к её низу. */
+  .detail-foot { position: sticky; bottom: 0; z-index: 10; }
+  .detail-foot > .save-bar { position: static; margin-inline: 0; box-shadow: inset 0 .5px 0 var(--color-line); }
   @media (min-width: 768px) { .save-bar--page { bottom: 1.5rem; } }
   .detail-count { @apply ml-1 text-xs leading-none text-ink-muted; }
   .bar-btn { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
+  /* Пальцем — 40 px (07.10.2026, владелец: «половина кнопок не работает»): пять кнопок полосы влезают и в 375. */
+  @media (pointer: coarse) { .bar-btn { width: 2.5rem; height: 2.5rem; } }
   .detail-body { @apply px-4 pb-4 pt-1; }
   /* Заготовка листа, пока карточка в пути (detail_controller#blank), — по форме карточки: полоса как у карточки (‹ › и
      «4 из 7» на месте), плитки кадров, название из строки, метки, кнопки и поля плашкой строк, как настоящие. Полосы
@@ -1904,17 +1916,17 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .split[data-open] .table-box { overflow-x: auto; overscroll-behavior-x: contain; }
   }
   @media (max-width: 1023.98px) {
-    /* Лист снизу одной высоты — во весь экран под шапкой; полэкрана и закрыт — сдвиг вниз (transform своим слоем, 07.10.2026,
-       владелец: закрытие «как 2 FPS»). Высота не меняется ни в жесте, ни в снапе: перекладка всей карточки и перерисовка
-       листа с тенью каждый кадр и давали рывки. Тянут за полосу (detail_controller#grab), внутри листается тело.
-       На полэкрана низ листа за краем экрана — тело добирает отступ, «Сохранить изменения» липнет выше на столько же.
-       С клавиатурой (kb-open) низ листа встаёт на неё — меняется только низ, поле стоит на месте (app.js keyboardInset). */
+    /* Лист снизу. В покое коробка листа — ровно видимая часть (07.10.2026, владелец: «половина кнопок не работает»): на
+       полэкрана верх листа на середине экрана, во весь экран — под шапкой, с клавиатурой низ — на ней; transform нет.
+       Раньше полэкрана было сдвигом листа во весь экран, низ листа с прокруткой лежал за краем экрана — «Сохранить
+       изменения» липла к невидимому низу и висела посреди листа поверх полей, нажатия в неё не доходили.
+       В движении (data-moving: жест, снап, закрытие) лист — во весь экран и едет transform своим слоем (владелец: закрытие
+       «как 2 FPS»): ширина та же, текст не перекладывается. Тянут за полосу (detail_controller#grab), листается тело. */
     .split-detail {
       @apply block;
       --sheet-half: calc(50dvh + var(--under, 0px) / 2 - var(--spacing-header) - env(safe-area-inset-top));
       position: fixed; inset-inline: 0; bottom: calc(0px - var(--under, 0px)); z-index: 45; margin-inline: auto; max-width: 36rem;
-      top: calc(var(--spacing-header) + env(safe-area-inset-top)); overflow: hidden;
-      transform: translateY(var(--sheet-half)); will-change: transform;
+      top: calc(var(--spacing-header) + env(safe-area-inset-top) + var(--sheet-half)); overflow: hidden;
       /* Тень — у самого листа: у карточки внутри её обрезал overflow листа, и тени не было вовсе (07.10.2026). Белый
          лист над белой таблицей — край линией и короткой тенью, глубина длинной. */
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -1923,9 +1935,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
          верх листа (кадры, кнопки на них, полоса) — у админа в предложениях, 04.10.2026. touch-action — только у полосы. */
       animation: split-up 280ms var(--ease-sheet) backwards;
     }
-    .split-detail[data-full] { transform: none; }
-    html.kb-open .split-detail { bottom: var(--kb, 0px); transform: none; }
-    .split-detail:not([data-full]) .save-bar { bottom: var(--sheet-half); }
+    .split-detail[data-full], .split-detail[data-moving] { top: calc(var(--spacing-header) + env(safe-area-inset-top)); }
+    .split-detail[data-moving] { will-change: transform; }
+    html.kb-open .split-detail { top: calc(var(--spacing-header) + env(safe-area-inset-top)); bottom: var(--kb, 0px); transform: none; }
     @keyframes split-up { from { transform: translateY(100%); } }
     .detail-card {
       height: 100%; overflow: hidden;
@@ -1941,8 +1953,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
       padding-bottom: max(env(safe-area-inset-bottom), 1rem);
     }
-    .split-detail:not([data-full]) .detail-body { padding-bottom: calc(var(--sheet-half) + max(env(safe-area-inset-bottom), 1rem)); }
     html.kb-open .split-detail .detail-body { padding-bottom: 1rem; }
+    /* Подвал листа («Сохранить изменения») — вне прокрутки, над полосой «Домой»; с клавиатурой — прямо на ней. */
+    .detail-foot { flex: none; }
+    .detail-foot > .save-bar { padding-bottom: max(env(safe-area-inset-bottom), .75rem); }
+    html.kb-open .split-detail .detail-foot > .save-bar { padding-bottom: .75rem; }
     .detail-bar { @apply rounded-t-(--radius-xl) pt-4; touch-action: none; cursor: grab; }
     .detail-handle { display: block; position: absolute; inset-inline: 0; top: .375rem; margin: 0 auto; width: 36px; height: 5px; border-radius: 3px; background: var(--color-line); }
     /* Лист закрывает нижнюю половину — последние строки выезжают из-под него. */
@@ -2921,6 +2936,9 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   /* Плашка действий без размытия фона: на полосе в полсотни кадров backdrop-filter клал телефон. */
   .photo-cell .photo-actions { @apply absolute inset-x-0 bottom-0 flex justify-between text-white; background: rgb(18 18 18 / .65); }
   .photo-cell .photo-actions button { @apply flex flex-1 items-center justify-center py-1 hover:bg-white/15; }
+  /* Полоса действий на кадре низкая (24 px), чтобы не закрывать снимок; пальцу зона выше на 8 px — в кадр. */
+  .photo-cell .photo-actions button { position: relative; }
+  .photo-cell .photo-actions button::after { content: ''; position: absolute; inset: -.5rem 0 0; }
   /* Главное фото — лаймовая звезда в левом верхнем углу; нажатие по ней — выбор: у остальных кадров белые
      контурные звёзды, нажатая становится главной (кадр встаёт первым), контурные исчезают. */
   .photo-star { @apply absolute left-0.5 top-0.5 z-[2] flex size-9 items-center justify-center; }

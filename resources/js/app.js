@@ -478,6 +478,7 @@ function keyboardInset() {
             // Карточка строки — сразу во весь экран, без анимации: лист, который едет, пока в нём каретка, рисует её мимо.
             if (sheet.matches('.split-detail')) {
                 sheet.getAnimations().forEach((a) => a.cancel());
+                sheet.removeAttribute('data-moving');
                 sheet.style.transition = '';
                 sheet.style.transform = '';
                 sheet.setAttribute('data-full', '');

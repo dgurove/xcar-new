@@ -7,8 +7,9 @@
 @endphp
 <div data-controller="photos{{ $reader ? ' reader' : '' }}" data-photos-url-value="/offers/{{ $offer->number }}/media" data-photos-collection-value="papers"
     @if ($reader) data-reader-url-value="{{ $reader->url() }}" data-reader-subject-value="{{ $reader->key() }}" data-reader-form-value="offer-form" @if ($auto ?? false) data-reader-auto-value="true" @endif data-scan-subject="{{ $reader->url() }}" data-scan-reader data-scan-papers @endif>
-    <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx" multiple hidden data-photos-target="input" data-action="change->photos#upload">
-    <div class="mb-2 flex items-center gap-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Добавить документ</x-ui.button>@if ($reader)@if ($readerFiles->isNotEmpty())<x-mail.reader-spark/>@endif @else @include('admin.offers.scan-row')@endif</div>
+    {{-- Выбор файла — подписью у самого поля, а не щелчком скрипта по скрытому: так iOS открывает его всегда
+         (07.10.2026, владелец: «+ Документ не нажимается»). Поле невидимо, но не display: none — иначе подпись его не зовёт. --}}
+    <div class="mb-2 flex items-center gap-2"><label class="btn btn-quiet btn-s relative cursor-pointer"><input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx,.xls,.xlsx" multiple class="sr-only" data-photos-target="input" data-action="change->photos#upload"><x-ui.icon name="plus" class="size-4"/> Добавить документ</label>@if ($reader)@if ($readerFiles->isNotEmpty())<x-mail.reader-spark/>@endif @else @include('admin.offers.scan-row')@endif</div>
     <div hidden data-photos-target="progress" class="mb-3">
         <div class="mb-1 text-sm text-ink-muted" data-label></div>
         <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>

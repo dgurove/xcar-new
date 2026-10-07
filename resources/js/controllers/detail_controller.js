@@ -5,8 +5,9 @@ import { Controller } from '@hotwired/stimulus';
 // всей страницы (снимок, turbo:load у шапки, кадров, таб-бара — «весь интерфейс моргает», 07.10.2026). Открытие: лист
 // выезжает сразу с заготовкой (название строки и полосы), карточка приходит в него. Закрытие без сервера: лист уезжает,
 // фрейм пустеет на месте. Здесь же то, чего Turbo не умеет: нажатие мимо ссылки по строке, выделение строки, ↑/↓ и Esc,
-// формы карточки — в фрейм, «следующий без цены» (поток advance). Телефон: лист одной высоты, полэкрана и «закрыт» —
-// сдвиг transform (app.css .split-detail), тянут за полосу (grab), тело карточки листается внутри само.
+// формы карточки — в фрейм, «следующий без цены» (поток advance). Телефон: лист полэкрана или во весь экран — в покое
+// коробкой ровно видимой части, в движении — сдвигом transform (app.css .split-detail, pin), тянут за полосу (grab), тело
+// карточки листается внутри само.
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 
 // Карточки заранее (07.10.2026, владелец: «быстрее и плавнее»): запрос уходит при касании строки (палец стоит 70 мс или
@@ -282,13 +283,17 @@ export default class extends Controller {
     // лист встанет без сдвига в стиле.
     get half() { return parseFloat(getComputedStyle(this.frameTarget).getPropertyValue('--sheet-half')) || 0; }
 
-    // Лист стоит там, где он сейчас виден: выезд при открытии или прежний переход сняты, их место — в стиле. Иначе
-    // анимация открытия перебивала бы стиль жеста, а новый переход начинался бы не оттуда.
+    // Лист трогается с места: из покоя (коробка = видимая часть, без transform) — во весь экран и сдвиг transform на то
+    // же место, кадр в кадр (data-moving, app.css). Выезд при открытии или прежний переход сняты, их место — в стиле:
+    // иначе анимация открытия перебивала бы стиль жеста, а новый переход начинался бы не оттуда. y — px вниз от «во весь
+    // экран».
     pin() {
-        const frame = this.frameTarget, moving = frame.getAnimations();
-        const y = new DOMMatrixReadOnly(getComputedStyle(frame).transform).m42;
-        moving.forEach((a) => a.cancel());
+        const frame = this.frameTarget, top = frame.getBoundingClientRect().top;
+        frame.getAnimations().forEach((a) => a.cancel());
         frame.style.transition = 'none';
+        frame.style.transform = 'none';
+        frame.setAttribute('data-moving', '');
+        const y = top - frame.getBoundingClientRect().top;
         frame.style.transform = `translateY(${y}px)`;
         frame.offsetHeight;
         return y;
@@ -314,10 +319,11 @@ export default class extends Controller {
         return token;
     }
 
-    // Стиль движения снят: лист стоит там, где его ставит CSS (data-full или полэкрана); своего перехода у листа в CSS
-    // нет, поэтому встаёт без анимации.
+    // Движение кончилось: лист снова в покое — коробкой там, где его ставит CSS (data-full или полэкрана), без transform;
+    // своего перехода у листа в CSS нет, поэтому встаёт без анимации.
     still() {
         this.motion = null;
+        this.frameTarget.removeAttribute('data-moving');
         this.frameTarget.style.transition = '';
         this.frameTarget.style.transform = '';
     }
@@ -332,13 +338,14 @@ export default class extends Controller {
         event.preventDefault();
         // С клавиатурой лист не тянут: жест убирает её, как у шторок.
         if (document.documentElement.classList.contains('kb-open')) { document.activeElement?.blur(); return; }
-        const y0 = event.clientY, wasFull = frame.hasAttribute('data-full');
-        const h = frame.offsetHeight, half = this.half;
-        let off0, off, pts = [], moving = false;
+        const y0 = event.clientY, wasFull = frame.hasAttribute('data-full'), half = this.half;
+        let h, off0, off, pts = [], moving = false;
         const start = () => {
             moving = true;
             this.motion = null;
             off0 = off = this.pin();
+            // Высота — во весь экран, уже в движении: в покое на полэкрана коробка листа вдвое ниже.
+            h = frame.offsetHeight;
         };
         const move = (e) => {
             if (!moving) { if (Math.abs(e.clientY - y0) < 8) return; start(); }

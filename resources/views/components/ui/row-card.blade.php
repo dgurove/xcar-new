@@ -4,8 +4,9 @@
      «Открыть»), дальше тело — формы, характеристики, описание. Ответ после формы несёт потоки Turbo: свежая строка
      таблицы (row — <tr> с тем же data-detail-key), тост из flash, «следующий без цены» (session detail-advance).
      photo — одно фото вместо ленты (старые карточки); :photo="false" — без кадра вовсе (ветка почты).
-     media — свой ряд кадров вместо ленты (карточка предложения CRM: кадры правят прямо тут). --}}
-@props(['href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null])
+     media — свой ряд кадров вместо ленты (карточка предложения CRM: кадры правят прямо тут).
+     foot — подвал под телом, вне прокрутки («Сохранить изменения» формы карточки — всегда на экране). --}}
+@props(['href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null, 'foot' => null])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
     <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
@@ -48,6 +49,7 @@
 {{ $slot }}
 @if (($errors ?? null)?->any())<p class="field-error mt-3">{{ $errors->first() }}</p>@endif
 </div>
+@if ($foot)<div class="detail-foot">{{ $foot }}</div>@endif
 {{-- detail-gone — строка ушла из списка (заполнили закупочную или оценили — она во вкладке дальше; в архив, опубликовали): убрать
      строку таблицы или плитку, а не заменить;
      detail-counts — новые числа у пилюль (выросшее вспыхивает, StreamActions.count). --}}
