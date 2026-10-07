@@ -6,8 +6,10 @@ use App\Support\Phone;
 use App\Support\Surface;
 use App\Telegram\Bot;
 use App\Telegram\StartLink;
+use App\Users\Access\Lock;
 use App\Users\Actions\LeaveImpersonation;
 use App\Users\Impersonation;
+use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -34,6 +36,11 @@ class LoginController
         ]);
 
         [$field, $value] = self::identify(trim($data['login']));
+        // Менеджер с Telegram под замком входит только через него (07.10.2026); пароль хранится и снова работает, когда замок выключат.
+        $user = User::where($field, $value)->first();
+        if (Lock::enabled() && $user?->underLock() && $user->telegram_chat_id !== null) {
+            throw ValidationException::withMessages(['login' => 'Вход по паролю закрыт, войдите через Telegram']);
+        }
 
         if (! Auth::attempt([$field => $value, 'password' => $data['password']], $request->boolean('remember', true))) {
             throw ValidationException::withMessages(['login' => 'Не подходит логин, телефон, почта или пароль']);

@@ -165,6 +165,15 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->hasRole(Role::Manager);
     }
 
+    /**
+     * Менеджер под замком (07.10.2026, владелец: ему видна заявленная — по сути закупочная): одно устройство, вход только
+     * через Telegram, окно 15 минут (`Access\Lock`). Админа, совмещающего менеджера, и демо-кабинет не касается.
+     */
+    public function underLock(): bool
+    {
+        return $this->isManager() && ! $this->isAdmin() && ! $this->is_demo;
+    }
+
     /** Чат по предложению: по роли, а покупателю — только со своим менеджером. */
     public function canChat(): bool
     {

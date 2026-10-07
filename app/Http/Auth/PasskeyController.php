@@ -2,7 +2,9 @@
 
 namespace App\Http\Auth;
 
+use App\Users\Access\Lock;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Laragear\WebAuthn\Http\Requests\AssertedRequest;
 use Laragear\WebAuthn\Http\Requests\AssertionRequest;
@@ -16,6 +18,9 @@ class PasskeyController
 
     public function registerOptions(AttestationRequest $request)
     {
+        if (Lock::applies($request->user())) {
+            return response()->json(['message' => 'Вход только через Telegram'], 422);
+        }
         if ($request->user()->webAuthnCredentials()->count() >= self::MAX_KEYS) {
             return response()->json(['message' => 'Слишком много ключей — удалите лишние'], 422);
         }
@@ -40,6 +45,12 @@ class PasskeyController
     {
         if (! $request->login(remember: true)) {
             return response()->json(['message' => 'Ключ не подошёл'], 422);
+        }
+        // Менеджер с Telegram под замком входит только через него (07.10.2026); ключ снова работает, когда замок выключат.
+        if (Lock::enabled() && $request->user()?->underLock() && $request->user()->telegram_chat_id !== null) {
+            Auth::logout();
+
+            return response()->json(['message' => 'Вход по ключу закрыт, войдите через Telegram'], 422);
         }
 
         return response()->json(['redirect' => LoginController::home()]);

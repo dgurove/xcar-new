@@ -10,21 +10,28 @@ final class Jwt
         return self::sign((string) config('xcar.mercure.publisher_key'), ['mercure' => ['publish' => ['*']]]);
     }
 
-    public static function subscriber(array $topics): string
+    /** `exp` — хаб сам закроет поток в эту секунду (менеджер под замком: конец окна). */
+    public static function subscriber(array $topics, ?int $exp = null): string
     {
-        return self::sign((string) config('xcar.mercure.subscriber_key'), ['mercure' => ['subscribe' => $topics]]);
+        return self::sign((string) config('xcar.mercure.subscriber_key'), ['mercure' => ['subscribe' => $topics]] + ($exp ? ['exp' => $exp] : []));
     }
 
     /** Темы из токена подписчика — чтобы не переписывать cookie на каждом ответе. */
     public static function topicsOf(?string $token): ?array
     {
-        $parts = explode('.', (string) $token);
-        if (count($parts) !== 3) {
-            return null;
-        }
-        $claims = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
+        return self::claims($token)['mercure']['subscribe'] ?? null;
+    }
 
-        return $claims['mercure']['subscribe'] ?? null;
+    public static function expOf(?string $token): ?int
+    {
+        return self::claims($token)['exp'] ?? null;
+    }
+
+    private static function claims(?string $token): array
+    {
+        $parts = explode('.', (string) $token);
+
+        return count($parts) === 3 ? (array) json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true) : [];
     }
 
     private static function sign(string $key, array $claims): string

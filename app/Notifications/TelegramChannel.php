@@ -33,7 +33,7 @@ final class TelegramChannel
             }
         } catch (Throwable $e) {
             if (Bot::chatGone($e)) {
-                app(UnlinkChat::class)($user);
+                app(UnlinkChat::class)->byChat((int) $user->telegram_chat_id);
 
                 return;
             }

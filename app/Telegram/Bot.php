@@ -113,6 +113,12 @@ class Bot
         return $this->logged($chatId, $this->call('sendMessage', $payload));
     }
 
+    /** Как send, но нужен номер сообщения в Telegram (поправить или удалить его потом), а не строка журнала. */
+    public function sendForId(int $chatId, string $text, ?array $keyboard = null): int
+    {
+        return (int) $this->call('sendMessage', $this->payload($chatId, $text, $keyboard))->throw()->json('result.message_id');
+    }
+
     /** Файл из CRM: картинка — фото, остальное — документом. */
     public function sendFile(int $chatId, UploadedFile $file, ?string $caption = null, ?int $replyTo = null): ?ChatMessage
     {

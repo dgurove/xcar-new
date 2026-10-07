@@ -33,6 +33,7 @@ function fetchCard(href) {
 const forget = () => cards.clear();
 document.addEventListener('turbo:submit-start', forget);
 document.addEventListener('turbo:before-stream-render', forget);
+document.addEventListener('lock:freeze', forget);
 
 export default class extends Controller {
     static targets = ['frame', 'close', 'count'];

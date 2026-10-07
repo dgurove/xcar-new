@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Auth\CodeLoginController;
 use App\Http\Auth\ImpersonationController;
 use App\Http\Auth\InviteController;
+use App\Http\Auth\LockController;
 use App\Http\Auth\LoginController;
 use App\Http\Auth\OffersBotController;
 use App\Http\Auth\PasskeyController;
@@ -23,6 +25,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/passkey/login', [PasskeyController::class, 'login'])->middleware('throttle:10,1');
     // Вход через Telegram: ссылка на бота — на самой странице входа, здесь страница узнаёт ответ из чата.
     Route::post('/login/telegram/{token}', [TelegramController::class, 'login'])->middleware('throttle:30,1');
+    // Вход кодом из Telegram: логин → код в бот → цифры или «Войти» в боте.
+    Route::post('/login/code', [CodeLoginController::class, 'send'])->middleware('throttle:10,1');
+    Route::post('/login/code/verify', [CodeLoginController::class, 'verify'])->middleware('throttle:30,1');
 });
 
 Route::middleware('auth')->group(function () {
@@ -35,6 +40,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/account/telegram', [TelegramController::class, 'update']);
     Route::post('/account/telegram/test', [TelegramController::class, 'test'])->middleware('throttle:3,1');
     Route::delete('/account/telegram', [TelegramController::class, 'destroy']);
+    // Замок менеджера: код в Telegram и подтверждение — сторож пропускает их и под замком.
+    Route::get('/lock/state', [LockController::class, 'state']);
+    Route::post('/lock/code', [LockController::class, 'send'])->middleware('throttle:10,1');
+    Route::post('/lock/verify', [LockController::class, 'verify'])->middleware('throttle:30,1');
 });
 
 // Ссылка на новый пароль от менеджера или админа: вошедшего контроллер сам выводит — ссылка должна сработать с любого телефона.

@@ -20,6 +20,15 @@
             <button type="button" class="btn btn-telegram w-full" data-action="telegram#go"><span class="contents" data-telegram-target="label"><x-telegram.logo plain/>Войти через Telegram</span></button>
             <button type="button" class="btn btn-ghost btn-s w-full" data-action="telegram#cancel" data-telegram-target="cancel" hidden>Отмена</button>
         </div>
+        {{-- Код из Telegram: логин из поля выше, бот присылает шесть цифр с кнопкой «Войти». --}}
+        <div data-controller="code-login" class="mt-1 flex flex-col gap-2">
+            <button type="button" class="btn btn-ghost w-full" data-code-login-target="request" data-action="code-login#request">Получить код в Telegram</button>
+            <div data-code-login-target="box" hidden>
+                <input class="field-input lock-code" data-code-login-target="code" data-action="input->code-login#typed" inputmode="numeric"
+                    autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" enterkeyhint="go" placeholder="Код из Telegram" aria-label="Код из Telegram">
+            </div>
+            <p class="lock-note text-center" data-code-login-target="note" aria-live="polite"></p>
+        </div>
     @endif
     <div class="mt-5 flex justify-between text-sm">
         <a href="/password" class="text-ink-muted hover:text-accent-text">Забыли пароль?</a>

@@ -93,7 +93,8 @@ self.addEventListener('fetch', (event) => {
             const network = (async () => {
                 const response = (await event.preloadResponse) || (await fetch(request));
                 if (response.redirected && /\/login(\/|$|\?)/.test(new URL(response.url).pathname)) later(event, caches.delete(PAGES));
-                else if (cacheable && response.ok && (response.headers.get('Content-Type') || '').includes('text/html')) {
+                // `no-store` — экраны менеджера под замком (DeviceGate): с ценами в кэш воркера не ложатся.
+                else if (cacheable && response.ok && (response.headers.get('Content-Type') || '').includes('text/html') && !/no-store/.test(response.headers.get('Cache-Control') || '')) {
                     // Страница отдаётся браузеру сразу, запись в кэш — следом: иначе <head> со стилями ждал бы диска.
                     // Не записалось — страница всё равно показана из сети, а не «нет связи».
                     later(event, store(PAGES, request, response.clone(), PAGES_LIMIT));

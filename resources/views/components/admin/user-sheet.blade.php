@@ -87,12 +87,22 @@
         </form>
     @endif
     @unless ($user->is($me))
+        @if (\App\Users\Access\Lock::enabled() && $user->underLock() && $user->telegram_chat_id)
+            {{-- Под замком вход только через Telegram: потерял его — отвязать, дальше вход паролем и привязка нового. --}}
+            <form method="post" action="{{ $base }}/{{ $user->id }}/telegram/unlink" class="mt-3"
+                data-turbo-confirm="Отвязать Telegram {{ $user->shortName() }}?" data-turbo-confirm-label="Отвязать"
+                data-turbo-confirm-text="Выйдет с устройства, войдёт паролем и привяжет новый Telegram">
+                @csrf
+                <x-ui.button type="submit" variant="secondary" block><x-telegram.logo plain class="size-5"/> Отвязать Telegram</x-ui.button>
+            </form>
+        @else
         <form method="post" action="{{ $base }}/{{ $user->id }}/password" class="mt-3"
             data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
             data-turbo-confirm-text="{{ $user->name }} откроет её и придумает пароль сам. Прежние ссылки погаснут, текущий пароль пока действует.">
             @csrf
             <x-ui.button type="submit" variant="secondary" block><x-ui.icon name="link" class="size-5"/> Ссылка для нового пароля</x-ui.button>
         </form>
+        @endif
         {{-- Ссылка могла уйти не тому: допущенному — закрыть доступ (выйдет отовсюду, вернуть можно из «Отклонённых»);
              отклонённому без истории — удалить насовсем. --}}
         @if ($user->isApproved())

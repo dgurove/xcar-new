@@ -282,11 +282,14 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::post('/users/groups', [UserGroupController::class, 'store']);
             Route::put('/users/groups/{group}', [UserGroupController::class, 'update']);
             Route::delete('/users/groups/{group}', [UserGroupController::class, 'destroy']);
+            // Замок менеджеров (07.10.2026): тумблер над «Менеджерами».
+            Route::put('/users/lock', [UserController::class, 'lock']);
             Route::get('/users/{user}', [UserController::class, 'show'])->whereNumber('user');
             Route::put('/users/{user}', [UserController::class, 'update']);
             Route::post('/users/{user}/access', [UserController::class, 'decide']);
             Route::delete('/users/{user}', [UserController::class, 'destroy']);
             Route::post('/users/{user}/password', [UserController::class, 'passwordLink']);
+            Route::post('/users/{user}/telegram/unlink', [UserController::class, 'unlinkTelegram']);
             Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate']);
             Route::put('/users/{user}/party', [UserController::class, 'party']);
             Route::get('/users/{user}/statement', [UserController::class, 'statement']);

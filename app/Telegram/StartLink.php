@@ -2,6 +2,7 @@
 
 namespace App\Telegram;
 
+use App\Support\UserAgent;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -53,7 +54,7 @@ final class StartLink
             return $token;
         }
         $token = 'I'.Str::random(24);
-        Cache::put(self::key($token), ['state' => 'wait', 'device' => self::device($request)], self::LOGIN_TTL);
+        Cache::put(self::key($token), ['state' => 'wait', 'device' => UserAgent::label($request->userAgent())], self::LOGIN_TTL);
         $request->session()->put('telegram.login', $token);
 
         return $token;
@@ -92,31 +93,6 @@ final class StartLink
     public static function tokenOf(int $number): ?string
     {
         return Cache::get('telegram:login:n:'.$number);
-    }
-
-    /** «Safari, iPhone» — чтобы в чате было видно, какой браузер просит войти. */
-    private static function device(Request $request): string
-    {
-        $ua = (string) $request->userAgent();
-        $browser = match (true) {
-            str_contains($ua, 'YaBrowser') => 'Яндекс Браузер',
-            str_contains($ua, 'Edg/') => 'Edge',
-            str_contains($ua, 'Firefox') || str_contains($ua, 'FxiOS') => 'Firefox',
-            str_contains($ua, 'Chrome') || str_contains($ua, 'CriOS') => 'Chrome',
-            str_contains($ua, 'Safari') => 'Safari',
-            default => 'Браузер',
-        };
-        $system = match (true) {
-            str_contains($ua, 'iPhone') => 'iPhone',
-            str_contains($ua, 'iPad') => 'iPad',
-            str_contains($ua, 'Android') => 'Android',
-            str_contains($ua, 'Mac OS') => 'Mac',
-            str_contains($ua, 'Windows') => 'Windows',
-            str_contains($ua, 'Linux') => 'Linux',
-            default => null,
-        };
-
-        return $system ? $browser.', '.$system : $browser;
     }
 
     private static function key(string $token): string

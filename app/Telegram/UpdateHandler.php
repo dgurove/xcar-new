@@ -20,6 +20,8 @@ use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
 use App\Telegram\Messages\PaymentClaimed;
+use App\Users\Access\AccessCode;
+use App\Users\Access\DecideCode;
 use App\Users\User;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -62,6 +64,12 @@ final class UpdateHandler
         // Вход подтверждает только тот, к чьему аккаунту привязан чат.
         if ($press->topic === 'login') {
             $this->login($press);
+
+            return;
+        }
+        // Код от бота: «Продолжить» / «Войти» или «Это не я» — тоже только хозяин аккаунта.
+        if ($press->topic === 'code') {
+            $this->code($press);
 
             return;
         }
@@ -166,6 +174,28 @@ final class UpdateHandler
         app(DecideLogin::class)($token, $user, $allow);
         $this->bot->answer($press->queryId, $allow ? 'Входим' : 'Вход отклонён');
         $this->bot->edit($press->chatId, $press->messageId, '<b>Вход на xcar.ru</b>'."\n".e($attempt['device'])."\n\n".($allow ? 'Вошли ' : 'Отклонено ').now()->translatedFormat('j M, H:i'));
+    }
+
+    /** Кнопка под кодом (Access\SendCode): браузер, который ждёт, закончит сам. */
+    private function code(Press $press): void
+    {
+        $access = AccessCode::with('user')->find($press->id);
+        if (! $access || (int) $access->user?->telegram_chat_id !== $press->fromId) {
+            $this->bot->answer($press->queryId, 'Код устарел');
+
+            return;
+        }
+        if ($access->approved_at || ! $access->isLive()) {
+            $this->bot->answer($press->queryId, $access->approved_at ? 'Уже подтверждено' : 'Код устарел');
+            $access->approved_at || $this->bot->edit($press->chatId, $press->messageId, 'Код устарел'."\n".e($access->label));
+
+            return;
+        }
+        $allow = $press->action === 'ok';
+        app(DecideCode::class)($access, $allow);
+        $this->bot->answer($press->queryId, $allow ? 'Готово, возвращайтесь в XCar' : 'Отклонено');
+        $word = $allow ? ($access->purpose === 'login' ? 'Вошли ' : 'Подтверждено ') : 'Отклонено ';
+        $this->bot->edit($press->chatId, $press->messageId, $word.now()->format('H:i')."\n".e($access->label));
     }
 
     /** Человек заблокировал бота — уведомлениям туда больше не пробиться. */

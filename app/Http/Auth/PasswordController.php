@@ -3,8 +3,10 @@
 namespace App\Http\Auth;
 
 use App\Support\Surface;
+use App\Users\Access\Lock;
 use App\Users\Actions\SetPasswordByLink;
 use App\Users\PasswordLink;
+use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -41,6 +43,9 @@ class PasswordController
         ]);
 
         $status = Password::reset($data, function ($user, $password) {
+            if (self::telegramOnly($user)) {
+                throw ValidationException::withMessages(['email' => 'Вход только через Telegram']);
+            }
             $user->forceFill(['password' => $password])->save();
             Auth::login($user, true);
         });
@@ -72,6 +77,9 @@ class PasswordController
     {
         $link = PasswordLink::byToken($token);
         abort_unless($link?->isLive(), 404);
+        if (self::telegramOnly($link->user)) {
+            throw ValidationException::withMessages(['password' => 'Вход только через Telegram']);
+        }
 
         $data = $request->validate(['password' => ['required', 'string', 'min:8', 'confirmed']]);
         $user = $set($link, $data['password']);
@@ -89,11 +97,20 @@ class PasswordController
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
         $user = $request->user();
+        if (self::telegramOnly($user)) {
+            return back()->with('toast', 'Вход только через Telegram');
+        }
         if (! $user->password || ! Hash::check($data['current'], $user->password)) {
             throw ValidationException::withMessages(['current' => 'Текущий пароль не подходит']);
         }
         $user->forceFill(['password' => $data['password']])->save();
 
         return back()->with('toast', 'Пароль изменён');
+    }
+
+    /** Менеджер с Telegram под замком (07.10.2026): пароль не меняется, пока замок включён, — входить им всё равно нельзя. */
+    private static function telegramOnly(?User $user): bool
+    {
+        return Lock::enabled() && $user?->underLock() && $user->telegram_chat_id !== null;
     }
 }

@@ -1,6 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { openSheet, closeSheet } from '../sheet';
+import { proof } from '../device-key';
 
 // Telegram у аккаунта. Два режима:
 //   link  — шторка подключения (x-telegram.connect): предложение → ожидание → готово. Открывают её событие
@@ -152,12 +153,17 @@ export default class extends Controller {
         navigator.vibrate?.(20);
     }
 
+    // Браузер подписывает токен попытки своим ключом (device-key.js): менеджер под замком так заводит устройство.
     async check() {
-        const r = await this.post(`/login/telegram/${this.tokenValue}`, {});
+        const signed = await proof(this.tokenValue).catch(() => ({}));
+        const r = await this.post(`/login/telegram/${this.tokenValue}`, signed);
         if (!r) return;
         if (r.status === 200) {
             this.labelTarget.textContent = 'Входим';
             location.href = (await r.json()).href;
+        } else if (r.status === 422) {
+            this.cancel();
+            window.toast?.('Браузер не дал ключ устройства, обновите его', 'danger');
         } else if (r.status === 410) {
             // «Это не я» или ссылка устарела — страница входа выдаст новую.
             Turbo.visit(location.href, { action: 'replace' });

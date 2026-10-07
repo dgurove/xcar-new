@@ -9,6 +9,8 @@ import { fetch as turboFetch } from '@hotwired/turbo';
 
 const TTL = 10_000;
 const pending = new Map();
+// Замок менеджера: загруженное заранее под окном лежать не должно.
+document.addEventListener('lock:freeze', () => pending.clear());
 
 export function prefetch(href, ttl = TTL) {
     const url = new URL(href, location.href);

@@ -4,6 +4,8 @@
     // Тема: cookie на общий домен — одна на три приложения и известна серверу, поэтому
     // <html class="dark"> и цвет полосы приходят готовыми, без мигания и без подмены мета Turbo.
     $theme = in_array(request()->cookie('theme'), ['dark', 'light'], true) ? request()->cookie('theme') : null;
+    // Замок менеджера: состояние и конец окна — свежие на каждой странице (узел замка постоянный и сам их не обновит).
+    $lock = \App\Users\Access\Lock::state();
 @endphp
 <!doctype html>
 <html lang="ru" translate="no" class="h-full{{ $theme === 'dark' ? ' dark' : '' }}">
@@ -39,6 +41,7 @@
     <x-ui.startup/>
     @auth<meta name="badge-count" content="{{ auth()->user()->badgeCount() }}"><meta name="user-id" content="{{ auth()->id() }}">@unless (auth()->user()->wantsSound())<meta name="banner-sound" content="off">@endunless @endauth
     <meta name="surface" content="{{ $surface->value }}">
+    @if ($lock)<meta name="lock" content="{{ $lock }}:{{ \App\Users\Access\Lock::until() ?? 0 }}">@endif
     @if (config('xcar.vapid.public'))<meta name="vapid-key" content="{{ config('xcar.vapid.public') }}">@endif
     <link rel="preload" href="/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin>
     @if ($surface !== \App\Support\Surface::Site && ! $index)
@@ -80,5 +83,6 @@
         </form>
         <div class="impersonation-room" aria-hidden="true"></div>
     @endif
+    @if ($lock)<x-lock.panel/>@endif
 </body>
 </html>

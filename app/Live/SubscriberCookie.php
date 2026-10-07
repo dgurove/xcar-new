@@ -3,6 +3,7 @@
 namespace App\Live;
 
 use App\Chats\GuestEnquiry;
+use App\Users\Access\Lock;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -20,9 +21,12 @@ final class SubscriberCookie
             return $response;
         }
         $topics = Topics::for($request->user(), app(GuestEnquiry::class)->chat($request)?->id);
-        if (Jwt::topicsOf($request->cookie(self::NAME)) !== $topics) {
+        // Менеджер под замком: пропуск в хаб живёт до конца окна, дальше хаб сам рвёт поток (Mercure ≥ 0.14).
+        $exp = Lock::until($request);
+        $token = $request->cookie(self::NAME);
+        if (Jwt::topicsOf($token) !== $topics || Jwt::expOf($token) !== $exp) {
             $response->headers->setCookie(new Cookie(
-                self::NAME, Jwt::subscriber($topics), now()->addMinutes((int) config('session.lifetime')),
+                self::NAME, Jwt::subscriber($topics, $exp), now()->addMinutes((int) config('session.lifetime')),
                 '/.well-known/mercure', config('session.domain'), $request->isSecure(), true, false, 'lax',
             ));
         }

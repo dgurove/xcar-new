@@ -19,6 +19,9 @@ import * as Turbo from '@hotwired/turbo';
 //   telegram {state} — live:telegram для telegram_controller: чат привязан, вход подтверждён или отклонён
 //   scan {candidate} — live:scan для scan_controller: «✨ Распознать» прочитал файл или закончил
 //   tg-chat / tg-chat-edit {chat, seq} — переписка бота (админам): live:tg-chat* для той же ленты chat_controller
+//   lock {state} — замок менеджера (lock_controller): approved / denied — кнопка под кодом в боте, kicked — вошли с другого
+//           устройства. live:retopic {topics} от замка — пересоздать поток: '' — закрыть (заморозка), иначе — с новым
+//           пропуском (после подтверждения у cookie хаба новый срок)
 let source = null;
 let topics = '';
 let lastEventId = '';
@@ -45,6 +48,14 @@ export function live() {
     window.addEventListener('online', () => source?.readyState === EventSource.CLOSED && reopen(0));
     // Человек что-то печатает — refresh от хаба страницу под руками не дёргает.
     document.addEventListener('input', (e) => e.target.form && (e.target.form.dataset.dirty = '1'));
+    document.addEventListener('live:retopic', (e) => {
+        topics = e.detail?.topics || '';
+        clearTimeout(timer);
+        source?.close();
+        source = null;
+        if (!topics) lastEventId = '';
+        open();
+    });
     retopic();
 }
 
@@ -73,7 +84,7 @@ function open() {
     on('notices-read', ({ subjects }) => window.noticesRead?.(subjects));
     on('badges', badges);
     on('chat', chat);
-    ['telegram', 'offers-bot', 'scan'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
+    ['telegram', 'offers-bot', 'scan', 'lock'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     ['chat-edit', 'chat-read', 'chat-typing', 'tg-chat', 'tg-chat-edit'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     source.onopen = () => {
         document.documentElement.removeAttribute('data-net');

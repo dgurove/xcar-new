@@ -2477,6 +2477,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
 @import "./hero.css";
 @import "./telegram.css";
+@import "./lock.css";
 
 @layer components {
 

@@ -6,6 +6,9 @@ use App\Notifications\TelegramChannel;
 use App\Notifications\TestNotice;
 use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\StartLink;
+use App\Users\Access\DeviceKey;
+use App\Users\Access\Enroll;
+use App\Users\Access\Lock;
 use App\Users\Impersonation;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -64,6 +67,10 @@ class TelegramController
 
     public function destroy(Request $request, UnlinkChat $unlink)
     {
+        // Под замком Telegram — единственный вход: отвязать его может только админ в CRM.
+        if (Lock::applies($request->user())) {
+            return back()->with('toast', 'Без Telegram вход закрыт, отвязать его может администратор');
+        }
         Impersonation::active() || $unlink($request->user());
 
         return back()->with('toast', 'Telegram отвязан');
@@ -73,7 +80,7 @@ class TelegramController
      * Страница входа ждёт кнопку в чате. Спрашивает, когда пришло событие из хаба или человек вернулся из Telegram:
      * 202 — ещё ждём, 410 — «Это не я» или срок вышел, иначе вход и куда идти.
      */
-    public function login(Request $request, string $token)
+    public function login(Request $request, string $token, Enroll $enroll)
     {
         $attempt = $request->session()->get('telegram.login') === $token ? StartLink::attempt($token) : null;
         if (! $attempt || $attempt['state'] === 'no') {
@@ -86,10 +93,21 @@ class TelegramController
         if (! $user || $user->isRejected() || $user->telegram_chat_id === null) {
             return response()->json(['state' => 'gone'], 410);
         }
+        // Менеджер под замком: браузер подписывает токен попытки своим ключом и становится устройством.
+        $key = null;
+        if (Lock::enabled() && $user->underLock()) {
+            $key = DeviceKey::parse($request->input('key'));
+            if (! $key || ! DeviceKey::verify($key, $token, $request->input('sig'))) {
+                return response()->json(['state' => 'key'], 422);
+            }
+        }
         StartLink::forget($token);
         $request->session()->forget('telegram.login');
         Auth::login($user, true);
         $request->session()->regenerate();
+        if ($key) {
+            $enroll($request, $user, $key);
+        }
 
         return response()->json(['state' => 'in', 'href' => redirect()->intended(LoginController::home())->getTargetUrl()]);
     }

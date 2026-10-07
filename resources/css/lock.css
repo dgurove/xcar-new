@@ -1,0 +1,51 @@
+/* Замок менеджера (x-lock.panel, 07.10.2026): пилюля отсчёта справа сверху — под шапкой, тем же стеклом, что хром; в
+   последнюю минуту лаймовая (нажатие — «продлить», глагол). Окно подтверждения — модальный <dialog> в верхнем слое,
+   выше любых шторок; на телефоне стоит в верхней трети, чтобы клавиатура с кодом его не закрывала. Под заморозкой
+   страницы под ним нет, затемнение глухое. */
+
+@layer components {
+  .lock-pill {
+    position: fixed; z-index: 45;
+    top: calc(var(--spacing-header) + env(safe-area-inset-top) + .5rem);
+    right: max(.75rem, env(safe-area-inset-right));
+    padding: .375rem .75rem; border-radius: 999px;
+    font-size: var(--text-sm); font-weight: 500; line-height: 1.25; color: var(--color-ink);
+    background: var(--color-bar);
+    transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+  }
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .lock-pill:not(.is-ending) {
+      background: color-mix(in srgb, var(--color-bar) var(--bar-alpha), transparent);
+      -webkit-backdrop-filter: var(--bar-filter); backdrop-filter: var(--bar-filter);
+    }
+  }
+  .lock-pill.is-ending { background: var(--color-accent); color: #fff; }
+  html.kb-open .lock-pill { display: none; }
+
+  dialog.lock {
+    margin: max(12vh, calc(env(safe-area-inset-top) + 1.5rem)) auto auto;
+    width: calc(100% - 2rem); max-width: 24rem; max-height: calc(100dvh - 3rem);
+    padding: 1.5rem 1.25rem 1rem; border: 0; border-radius: var(--radius-xl);
+    background: var(--color-surface); color: var(--color-ink); overflow-y: auto; overscroll-behavior: contain;
+  }
+  dialog.lock[open] { animation: dialog-in var(--dur) var(--ease-out); }
+  /* Продление поверх живого экрана — затемнение шторки; заморозка — глухой фон: страницы под окном уже нет. */
+  dialog.lock::backdrop { background: rgb(18 18 18 / .6); }
+  dialog.lock.is-frozen::backdrop { background: var(--color-ground); }
+  html:has(dialog.lock:modal) { overflow: hidden; }
+
+  .lock-step:not([hidden]) { display: flex; flex-direction: column; align-items: center; gap: 1rem; text-align: center; animation: tg-step var(--dur) var(--ease-out); }
+  .lock-mark { width: 3.5rem; height: 3.5rem; }
+  .lock-code { text-align: center; font-size: 1.5rem; letter-spacing: .35em; text-indent: .35em; font-weight: 500; }
+  .lock-code::placeholder { font-size: var(--text-base); letter-spacing: normal; text-indent: 0; font-weight: 400; }
+  .lock-code.is-wrong { box-shadow: inset 0 0 0 2px var(--color-danger); animation: lock-shake .3s var(--ease-out); }
+  @keyframes lock-shake { 25% { translate: -6px 0; } 75% { translate: 6px 0; } }
+  .lock-note { min-height: 1.25rem; font-size: var(--text-sm); line-height: 1.4; color: var(--color-ink-muted); }
+  .lock-note.is-danger { color: var(--color-danger); }
+  .lock-note:empty { display: none; }
+  .lock-blank { min-height: 100dvh; }
+
+  @media (prefers-reduced-motion: reduce) {
+    dialog.lock[open], .lock-step:not([hidden]), .lock-code.is-wrong { animation: none; }
+  }
+}

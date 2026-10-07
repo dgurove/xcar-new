@@ -3,6 +3,7 @@
 namespace App\Live;
 
 use App\Support\Surface;
+use App\Users\Access\Lock;
 use App\Users\Section;
 use App\Users\User;
 
@@ -46,11 +47,28 @@ final class Topics
         return array_values(array_filter(self::for($user, $guestChat), fn ($t) => $park ? $t !== self::STAFF : $t !== self::PARK));
     }
 
-    /** Что человек вправе слушать. */
+    /**
+     * Что человек вправе слушать. Менеджер под замком (Access\Lock) слушает тему своей сессии — «подтвердили в
+     * Telegram», «вошли с другого устройства», — а остальное только пока окно идёт: за ним и хаб молчит.
+     */
     public static function for(?User $user, ?int $guestChat = null): array
     {
+        $request = request();
+        if ($user && Lock::state($request) !== null) {
+            $own = Lock::topic($request);
+            if (! Lock::passes($request)) {
+                return [$own];
+            }
+        }
         // Покупатель общий каталог не слушает: его лента приходит в личную тему.
         $topics = $user?->isBuyer() ? [] : [self::CATALOG];
+        // Вход кодом: «Войти» в Telegram страница входа узнаёт по теме своей сессии.
+        if (! $user && $request->hasSession()) {
+            $topics[] = Lock::topic($request);
+        }
+        if (isset($own)) {
+            $topics[] = $own;
+        }
         if ($guestChat) {
             $topics[] = self::chat($guestChat);
         }

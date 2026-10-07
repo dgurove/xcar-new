@@ -9,6 +9,7 @@ use App\Billing\Party;
 use App\Billing\PartyRules;
 use App\Chats\Chat;
 use App\Http\Cabinet\InviteController;
+use App\Live\Publisher;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\Bid;
 use App\Offers\Deal;
@@ -25,6 +26,10 @@ use App\Support\OfficePreview;
 use App\Support\Phone;
 use App\Support\Sort;
 use App\Support\Surface;
+use App\Telegram\Actions\UnlinkChat;
+use App\Users\Access\Device;
+use App\Users\Access\Lock;
+use App\Users\Access\SwitchLock;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueImpersonation;
 use App\Users\Actions\IssuePasswordLink;
@@ -250,6 +255,31 @@ class UserController
         abort_unless($request->user()->isAdmin(), 404);
 
         return back()->with('password_link', ['user' => $user->id, 'url' => $issue($user, $request->user())]);
+    }
+
+    /**
+     * Менеджер потерял Telegram (замок): привязка снимается, устройство гаснет, сам он выходит. Дальше он входит паролем
+     * (или по ссылке на новый) и привязывает новый Telegram.
+     */
+    public function unlinkTelegram(Request $request, User $user, UnlinkChat $unlink, Publisher $publish)
+    {
+        abort_unless($request->user()->isAdmin(), 404);
+        $unlink($user);
+        foreach (Device::where('user_id', $user->id)->whereNull('revoked_at')->get() as $device) {
+            $device->update(['revoked_at' => now()]);
+            $publish($device->topic, 'lock', ['state' => Lock::KICKED]);
+        }
+
+        return back()->with('toast', 'Telegram отвязан');
+    }
+
+    /** Замок менеджеров: одно устройство, вход только через Telegram, окно 15 минут (Access\Lock). */
+    public function lock(Request $request, SwitchLock $switch)
+    {
+        abort_unless($request->user()->isAdmin(), 404);
+        $switch($on = $request->boolean('on'), $request->user());
+
+        return back()->with('toast', $on ? 'Защита доступа включена' : 'Защита доступа выключена');
     }
 
     /** «Войти как»: одноразовая ссылка на вход за человека — админу, за не сотрудника. Открывают её в окне инкогнито. */

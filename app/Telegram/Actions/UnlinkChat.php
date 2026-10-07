@@ -3,6 +3,7 @@
 namespace App\Telegram\Actions;
 
 use App\Telegram\Chat;
+use App\Users\Access\Lock;
 use App\Users\User;
 
 /** Отвязать Telegram: из профиля или сам человек заблокировал бота. Сама шторка подключения больше не открывается, карточка в «Сделках» — через 30 дней. */
@@ -20,8 +21,14 @@ final class UnlinkChat
         ])->save();
     }
 
+    /**
+     * Менеджеру под замком привязку не снимаем: Telegram — его единственный вход. Остановил бота — код не уйдёт, окно
+     * скажет «откройте бота и нажмите «Запустить»», и тот же чат заработает снова.
+     */
     public function byChat(int $chatId): void
     {
-        User::where('telegram_chat_id', $chatId)->get()->each(fn (User $user) => $this($user));
+        User::where('telegram_chat_id', $chatId)->get()
+            ->reject(fn (User $user) => Lock::enabled() && $user->underLock())
+            ->each(fn (User $user) => $this($user));
     }
 }

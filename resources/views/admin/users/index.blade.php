@@ -10,6 +10,21 @@
     </x-ui.toolbar>
 
     <div id="list" class="contents">
+    {{-- Замок менеджеров (07.10.2026): одно устройство, вход только через Telegram, окно 15 минут — Access\Lock. --}}
+    @if ($groupKind === \App\Users\UserGroup::MANAGERS && ! request('q') && config('xcar.lock.enabled'))
+        <form method="post" action="{{ $base }}/lock" data-controller="autosubmit">
+            @csrf @method('put')
+            <div class="list-head pt-0">Доступ</div>
+            <div class="list">
+                <label class="row row-switch">
+                    <x-ui.row-icon name="key"/>
+                    <span class="min-w-0 flex-1 font-medium">Одно устройство, вход через Telegram, {{ \App\Users\Access\Lock::minutes() }} минут</span>
+                    <input type="hidden" name="on" value="0">
+                    <input type="checkbox" name="on" value="1" class="switch" @checked(\App\Users\Access\Lock::enabled()) data-action="change->autosubmit#submit">
+                </label>
+            </div>
+        </form>
+    @endif
     @if ($groupKind && ! request('q'))<x-admin.user-groups :groups="$groups" :kind="$groupKind"/>@endif
     @if ($preset === 'invites')
         <x-invites.list :invites="$invites" admin :managers="$managers" :fresh="$fresh"/>
