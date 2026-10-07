@@ -4,14 +4,8 @@ namespace App\Notifications;
 
 use App\Mail\Account;
 use App\Mail\Scope;
-use App\Mail\Sender;
-use App\Users\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\Facades\Log;
-use Symfony\Component\Mime\Address;
-use Symfony\Component\Mime\Email;
-use Throwable;
 
 /**
  * «Забыл пароль» письмом через SMTP боевого ящика (`XCAR_SYSTEM_ACCOUNT`, по умолчанию deal@): системный мейлер
@@ -21,7 +15,7 @@ final class PasswordResetLetter extends ResetPassword
 {
     public function via($notifiable): array
     {
-        return [self::class];
+        return [PasswordMailChannel::class];
     }
 
     public static function account(): ?Account
@@ -39,24 +33,5 @@ final class PasswordResetLetter extends ResetPassword
             ->action('Задать пароль', $this->resetUrl($notifiable))
             ->line("Ссылка работает {$minutes} минут. Если пароль не меняли, просто удалите письмо")
             ->salutation(config('app.name'));
-    }
-
-    public function send(User $user, self $notice): void
-    {
-        $account = self::account();
-        if (! $account || ! $user->email) {
-            Log::warning('password mail: нет ящика или адреса', ['user' => $user->id]);
-
-            return;
-        }
-        $mail = $notice->toMail($user);
-        $email = (new Email)->from(new Address($account->email, $account->fromName()))->to(new Address($user->email, $user->name))
-            ->subject((string) $mail->subject)->html($mail->render()->toHtml());
-        try {
-            Sender::transport($account)->send($email);
-            Log::info('password mail: ушло', ['user' => $user->id, 'from' => $account->email]);
-        } catch (Throwable $e) {
-            Log::warning('password mail: '.$e->getMessage(), ['user' => $user->id]);
-        }
     }
 }
