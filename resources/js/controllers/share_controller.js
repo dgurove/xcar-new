@@ -19,6 +19,8 @@ import { fileName } from '../docs/share';
 // файлов Chrome в лист не пускает.
 const BROKEN = 'share:open';
 const MAX_FILES = 10;
+// iPad с iPadOS 13 представляется Mac — его выдают касания.
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 const PRICES = ['publish_price', 'price'];
 const FROM = ['publish_price'];
@@ -199,8 +201,9 @@ export default class extends Controller {
     }
 
     writeCaption() {
-        // Переносы — U+2028: подпись к файлу в WhatsApp режет \n, а этот разделитель пропускает (проверено на iPhone).
-        const text = this.caption().replace(/\n/g, '\u2028');
+        // Переносы на iPhone — U+2028: подпись к файлу в WhatsApp там режет \n, а этот разделитель пропускает. На Android
+        // у U+2028 нет начертания (квадратик), а подпись многострочная — там и на компьютере обычный \n.
+        const text = IOS ? this.caption().replace(/\n/g, '\u2028') : this.caption();
         if (!text) return false;
         try { navigator.clipboard.writeText(text); return true; } catch { return false; }
     }
