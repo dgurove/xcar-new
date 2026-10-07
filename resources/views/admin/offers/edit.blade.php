@@ -21,7 +21,9 @@
     $glow = \App\Offers\Jobs\ImportMigtorgLot::glowed($offer);
     $migDiff = \App\Offers\MigtorgDiff::of($offer);
     $hints = [...array_keys($migDiff), ...$glow];
-    $published = $offer->state !== OfferState::Draft;
+    // Сворачивание и «Показ» — от дела, а не от одного состояния: у машины в сделке или гараже ТС и цены свёрнуты всегда
+    // (07.10.2026, владелец: «гараж — это тоже как сделка»).
+    $published = $offer->state !== OfferState::Draft || $deal || $garage;
     $foldCar = $published && ! $errors->hasAny($carKeys) && ! array_intersect($hints, $carKeys);
     // Чат сделки — карточкой первой в правой колонке (`x-deal.chat-card`, 07.10.2026); в «Чатах» и пилюле — остальные.
     $dealChat = $deal?->buyer;
@@ -109,7 +111,7 @@
                 @if ($published)<div data-edit-card-target="view" @unless ($foldCar) hidden @endunless>@include('admin.offers.fields.passport')</div>@endif
                 <div @if ($published) data-edit-card-target="edit" @if ($foldCar) hidden @endif @endif>@include('admin.offers.fields.car')</div>
                 {{-- Показ — пока машину показывают: в сделке и в гараже он ни о чём (галки при сохранении не трогаются, `_show`). --}}
-                @if (in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true))
+                @if (! $deal && ! $garage && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true))
                     @include('admin.offers.fields.show', ['summary' => $showingSummary])
                 @endif
             </x-ui.card>

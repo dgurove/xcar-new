@@ -1,7 +1,8 @@
 {{-- Дорожки редактора (06.10.2026, владелец: «как три параллельных маршрута»): одно событие — одно место.
      «Продажа» — вся коммерческая жизнь: маршрут со страховой, у гаражной машины дальше её продажа и расчёт.
      «Вывоз» — только где машина физически (у сделки — и кто забирает у владельца, с контактом).
-     Третья — «Гараж» (подготовка, расходы), «Сделка» (кто взял, деньги, ДКП, резерв, заметка) или «Подтверждения».
+     Третья — «Гараж» (подготовка, расходы), «Сделка» (кто взял, резерв) или «Подтверждения»; у гаража и сделки она
+     одинаково кончается деньгами, ДКП и заметкой (`admin.offers.deal-cards`, 07.10.2026: «гараж — это тоже как сделка»).
      На ПК в ряд в основной колонке (колонок столько, сколько дорожек: две от 34rem, три от 52rem ширины колонки —
      `@container/lanes` в редакторе), на телефоне — столбиком в том же порядке. --}}
 @php
@@ -33,10 +34,6 @@
                 @else
                     <x-ui.card title="Продажа" id="sale"><div class="steps">{!! $tail !!}</div></x-ui.card>
                 @endif
-                {{-- Гаражная «платит менеджер»: наша доля и машина на закупочную — деньги сделки со страховой. --}}
-                @if ($deal?->isGarage() && $deal->garage_payer === \App\Garage\GaragePayer::Manager)
-                    <x-deal.money :deal="$deal" id="money"/>
-                @endif
                 @if ($car?->isSold())
                     <x-ui.card title="Расчёт">
                         @if ($g['moreSale'])
@@ -57,6 +54,7 @@
         @if ($third === 'garage')
             <div class="flex min-w-0 flex-col gap-4">
                 <x-ui.card title="Гараж" id="garage" class="scroll-mt-24">@include('admin.offers.garage-card')</x-ui.card>
+                @if ($car->deal)@include('admin.offers.deal-cards', ['deal' => $car->deal])@endif
                 {{-- Резерв гаражной сделки: передумал — «Отдать» другому подтвердившему. --}}
                 @if ($offer->deal && $bids->where('state', \App\Offers\BidState::Active)->isNotEmpty())
                     <x-ui.card title="Подтверждения">@include('admin.offers.bids', ['inside' => true])</x-ui.card>
@@ -65,9 +63,7 @@
         @elseif ($third === 'deal')
             <div class="flex min-w-0 flex-col gap-4">
                 <x-ui.card title="Сделка" id="deal" class="scroll-mt-24">@include('admin.offers.bids', ['inside' => true])</x-ui.card>
-                <x-deal.money :deal="$deal" id="money"/>
-                @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
-                <x-deal.note :deal="$deal" id="deal-note"/>
+                @include('admin.offers.deal-cards')
             </div>
         @elseif ($third === 'bids')
             @php $waiting = $bids->where('state', \App\Offers\BidState::Active); @endphp

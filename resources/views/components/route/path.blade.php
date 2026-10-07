@@ -78,7 +78,7 @@
                 @if ($step['state'] === Path::DONE)
                     <details class="step-details">
                         <summary class="step-head">
-                            <span class="step-title min-w-0 flex-1 truncate">{{ $blockName($block) }}</span>
+                            <span class="step-title flex-1">{{ $blockName($block) }}</span>
                             <span class="flex shrink-0 items-center gap-1.5">@if ($step['at'])<span class="nums text-sm text-ink-dim">{{ $step['at']->translatedFormat('j M') }}</span>@endif<x-ui.icon name="chevron-down" class="step-chevron size-4 text-ink-dim"/></span>
                         </summary>
                         <div class="mt-1 flex flex-col gap-1">

@@ -47,7 +47,7 @@
                             <span class="step-dot">@if ($step['state'] === Path::DONE)<x-ui.icon name="check" class="size-3"/>@endif</span>
                             <div class="step-body">
                                 <div class="step-head">
-                                    <span class="step-title min-w-0 flex-1">{{ $blockName($step['block']) }}</span>
+                                    <span class="step-title flex-1">{{ $blockName($step['block']) }}</span>
                                     @if ($step['state'] === Path::DONE && $step['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ $step['at']->translatedFormat('j M') }}</span>@endif
                                 </div>
                                 @if ($step['state'] === Path::CURRENT)<p class="step-hint">{{ $canPick ? 'ваш ход' : 'готовим мы' }}</p>@endif
