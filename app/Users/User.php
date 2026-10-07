@@ -5,6 +5,7 @@ namespace App\Users;
 use App\Billing\Party;
 use App\Chats\Chat;
 use App\Media\MediaUrl;
+use App\Notifications\PasswordResetLetter;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\Interest;
 use App\Park\Area;
@@ -437,6 +438,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /** Подписанная ссылка «не присылать на почту» — работает без входа. */
+    /** «Забыл пароль» — с боевого ящика: системный мейлер на проде выключен. */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new PasswordResetLetter($token));
+    }
+
     public function unsubscribeUrl(): string
     {
         return URL::signedRoute('mail.unsubscribe', ['user' => $this->id]);
