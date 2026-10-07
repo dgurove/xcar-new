@@ -9,13 +9,54 @@ import { Controller } from '@hotwired/stimulus';
 // сдвиг transform (app.css .split-detail), тянут за полосу (grab), тело карточки листается внутри само.
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 
+// Карточки заранее (07.10.2026, владелец: «быстрее и плавнее»): запрос уходит при касании строки (палец стоит 70 мс или
+// уже отпущен), при наведении мышью 120 мс и за соседей открытой — к нажатию ответ уже в пути или в руках. Лежит 30 с,
+// не больше 8; отправка формы и поток live память сбрасывают — карточка могла измениться.
+const cards = new Map();
+const KEEP = 30_000;
+
+function fetchCard(href) {
+    const url = new URL(href, location.href).href;
+    const hit = cards.get(url);
+    if (hit && Date.now() - hit.at < KEEP) return hit;
+    if (navigator.onLine === false || navigator.connection?.saveData) return null;
+    const entry = { at: Date.now() };
+    entry.response = fetch(url, { credentials: 'same-origin', headers: { Accept: 'text/html, application/xhtml+xml', 'Turbo-Frame': 'detail', 'X-Sec-Purpose': 'prefetch' } });
+    entry.response.then((r) => { if (!r.ok || r.redirected) cards.delete(url); }, () => cards.delete(url));
+    cards.set(url, entry);
+    while (cards.size > 8) cards.delete(cards.keys().next().value);
+    return entry;
+}
+
+const forget = () => cards.clear();
+document.addEventListener('turbo:submit-start', forget);
+document.addEventListener('turbo:before-stream-render', forget);
+
 export default class extends Controller {
     static targets = ['frame', 'close', 'count'];
 
     connect() {
         this.wide = matchMedia('(min-width: 1024px)');
         this.onAdvance = () => this.advance();
-        this.onRender = () => { this.rendering = true; };
+        // Ответ пришёл, а лист ещё выезжает — вставка ждёт конца выезда: тяжёлая раскладка карточки не делит кадры с
+        // анимацией.
+        this.onRender = (e) => {
+            this.rendering = true;
+            // Пока ждали, лист закрыли — карточку не вставлять, иначе лист вернулся бы.
+            const render = e.detail.render;
+            e.detail.render = (...args) => { if (!this.shut) render(...args); };
+            if (!this.opening) return;
+            e.preventDefault();
+            this.opening.then(() => e.detail.resume());
+        };
+        // Фрейм просит карточку — отдаём уже идущий ответ, если он есть.
+        this.onFetch = (e) => {
+            if (e.target !== this.frameTarget || e.detail.fetchOptions.method !== 'GET') return;
+            const hit = cards.get(e.detail.url.href);
+            if (hit && Date.now() - hit.at < KEEP) e.detail.fetchRequest = { response: hit.response.then((r) => r.clone()) };
+        };
+        this.frameTarget.addEventListener('turbo:before-fetch-request', this.onFetch);
+        this.prefetching();
         this.onStream = (e) => {
             // Место выделенной строки — до потока: «remove» уберёт её, а «advance» продолжит с этого места.
             if (this.current) this.lastIndex = this.rows.indexOf(this.current);
@@ -39,6 +80,8 @@ export default class extends Controller {
 
     disconnect() {
         this.frameTarget.removeEventListener('turbo:before-frame-render', this.onRender);
+        this.frameTarget.removeEventListener('turbo:before-fetch-request', this.onFetch);
+        this.unprefetch?.();
         document.removeEventListener('detail:advance', this.onAdvance);
         document.removeEventListener('turbo:before-stream-render', this.onStream);
         ['turbo:load', 'turbo:morph'].forEach((n) => document.removeEventListener(n, this.onMark));
@@ -46,6 +89,63 @@ export default class extends Controller {
     }
 
     get open() { return this.frameTarget.childElementCount > 0; }
+
+    // Адрес карточки строки — от текущего адреса списка (как show).
+    urlFor(row) {
+        const url = new URL(location.href);
+        url.searchParams.delete('q');
+        url.searchParams.delete('page');
+        url.searchParams.set('peek', row.dataset.detailKey);
+        return url;
+    }
+
+    // Касание строки и наведение мышью — запрос карточки заранее. Палец поехал (прокрутка) — не тап, запроса нет.
+    prefetching() {
+        let touch = null, hover = null;
+        const row = (e) => {
+            const r = e.target.closest?.('[data-detail-key]');
+            return r && this.element.contains(r) && !e.target.closest('button, input, select, textarea, label') ? r : null;
+        };
+        const go = (r) => { if (r && r !== this.current) fetchCard(this.urlFor(r)); };
+        const onTouchStart = (e) => {
+            const r = row(e), t = e.touches[0];
+            clearTimeout(touch?.timer);
+            touch = r && e.touches.length === 1 ? { r, x: t.clientX, y: t.clientY, timer: setTimeout(() => { go(r); touch.done = true; }, 70) } : null;
+        };
+        const onTouchMove = (e) => {
+            const t = e.touches[0];
+            if (touch && Math.hypot(t.clientX - touch.x, t.clientY - touch.y) > 10) { clearTimeout(touch.timer); touch = null; }
+        };
+        const onTouchEnd = () => { if (touch && !touch.done) { clearTimeout(touch.timer); go(touch.r); } touch = null; };
+        const onOver = (e) => {
+            if (e.pointerType !== 'mouse') return;
+            const r = row(e);
+            if (r === hover?.r) return;
+            clearTimeout(hover?.timer);
+            hover = r ? { r, timer: setTimeout(() => go(r), 120) } : null;
+        };
+        const el = this.element, opts = { passive: true };
+        el.addEventListener('touchstart', onTouchStart, opts);
+        el.addEventListener('touchmove', onTouchMove, opts);
+        el.addEventListener('touchend', onTouchEnd, opts);
+        el.addEventListener('pointerover', onOver, opts);
+        this.unprefetch = () => {
+            el.removeEventListener('touchstart', onTouchStart, opts);
+            el.removeEventListener('touchmove', onTouchMove, opts);
+            el.removeEventListener('touchend', onTouchEnd, opts);
+            el.removeEventListener('pointerover', onOver, opts);
+        };
+    }
+
+    // Соседи открытой строки — заранее, когда всё уже нарисовано: ↑/↓ и «Дальше» открываются без ожидания.
+    neighbours() {
+        clearTimeout(this.nearTimer);
+        this.nearTimer = setTimeout(() => {
+            const rows = this.rows, i = rows.indexOf(this.current);
+            if (i < 0) return;
+            [rows[i + 1], rows[i - 1]].forEach((r) => r && fetchCard(this.urlFor(r)));
+        }, 400);
+    }
     get rows() { return [...this.element.querySelectorAll('[data-detail-key]')]; }
     get current() { return this.element.querySelector('[data-detail-key][aria-selected="true"]'); }
 
@@ -68,13 +168,12 @@ export default class extends Controller {
     // Адрес строки — от текущего адреса списка: строки «Наличия» лежат в кэше готовыми, их ссылка могла быть собрана
     // при других чипах. Поиск лупой и номер подгруженной страницы не едут (как App\Support\Detail::url).
     show(row) {
+        this.shut = false;
         this.keep();
         this.select(row);
-        const url = new URL(location.href);
-        url.searchParams.delete('q');
-        url.searchParams.delete('page');
-        url.searchParams.set('peek', row.dataset.detailKey);
+        const url = this.urlFor(row);
         this.address(url);
+        this.fresh = true;
         const card = this.frameTarget.querySelector('.detail-card');
         if (card) {
             // Лист открыт — меняется только содержимое, лист стоит.
@@ -83,6 +182,7 @@ export default class extends Controller {
         } else {
             this.frameTarget.replaceChildren(this.blank(row));
             this.settle(false);
+            this.waitOpening();
         }
         this.frameTarget.src = url.pathname + url.search;
     }
@@ -94,17 +194,34 @@ export default class extends Controller {
         else history.replaceState(history.state, '', url);
     }
 
-    // Заготовка листа, пока карточка в пути: ручка, «Закрыть», название строки и полосы на месте текста.
+    // Заготовка листа, пока карточка в пути, — по форме карточки (x-ui.row-card): кадры, название из самой строки,
+    // метки и поля — серыми полосами. Пришла карточка — шапка на тех же местах, проявляется только текст.
     blank(row) {
         const card = document.createElement('div');
         card.className = 'detail-card detail-blank';
         card.setAttribute('aria-busy', 'true');
+        const bars = (n, cls) => Array.from({ length: n }, () => `<i class="skeleton ${cls}"></i>`).join('');
         card.innerHTML = '<div class="detail-bar" data-action="pointerdown->detail#grab"><span class="detail-handle" aria-hidden="true"></span>'
             + '<span class="mr-auto"></span><button type="button" class="bar-btn" data-action="detail#close" aria-label="Закрыть">'
             + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>'
-            + '<div class="detail-body"><p class="detail-blank-title"></p><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div>';
-        card.querySelector('.detail-blank-title').textContent = (row.querySelector('.cell-title, .card-title') ?? row).textContent.trim().split('\n')[0];
+            + `<div class="detail-body"><div class="blank-strip">${bars(4, 'blank-tile')}</div>`
+            + '<div class="detail-head mt-3"><p class="detail-blank-title"></p>'
+            + `<div class="detail-marks blank-marks">${bars(3, 'blank-mark')}</div></div>`
+            + `<div class="blank-fields">${bars(6, 'blank-field')}</div></div>`;
+        const text = (el) => el?.textContent.trim().split('\n')[0].trim() ?? '';
+        card.querySelector('.detail-blank-title').textContent = text(row.querySelector('.cell-name') ?? row.querySelector('.cell-title, .card-title') ?? row);
         return card;
+    }
+
+    // Выезд листа: обещание, что сбудется по его концу (не дольше 320 мс). Без анимации — сразу.
+    waitOpening() {
+        const frame = this.frameTarget;
+        if (reduce.matches) { this.opening = null; return; }
+        const done = this.opening = new Promise((resolve) => {
+            const end = (e) => { if (!e || e.target === frame) { frame.removeEventListener('animationend', end); resolve(); } };
+            frame.addEventListener('animationend', end);
+            setTimeout(end, 320);
+        }).then(() => { if (this.opening === done) this.opening = null; });
     }
 
     select(row) {
@@ -132,6 +249,10 @@ export default class extends Controller {
         if (event.target !== this.frameTarget) return;
         const was = this.element.hasAttribute('data-open');
         this.settle(was);
+        // Заглушка или прежняя строка сменились новой — текст проявляется (одна прозрачность, своим слоем).
+        if (this.fresh && !reduce.matches) this.frameTarget.querySelector('.detail-body')?.classList.add('is-fresh');
+        this.fresh = false;
+        this.neighbours();
         // Фокус ждёт карточку, где есть куда его поставить: ответ на «Оценить» сперва рисует уже оценённую (поля нет),
         // следом приходит следующая без цены.
         const el = this.wantFocus && this.frameTarget.querySelector('[data-detail-focus]');
@@ -171,11 +292,11 @@ export default class extends Controller {
         return y;
     }
 
-    // Лист едет к y (px вниз от «во весь экран») переходом transform; по концу — then. Новое движение отменяет прежнее.
-    glide(y, then) {
+    // Лист едет к y (px вниз от «во весь экран») переходом transform за ms; по концу — then. Новое движение отменяет прежнее.
+    glide(y, then, ms = 240) {
         const frame = this.frameTarget, token = this.motion = {};
         this.pin();
-        frame.style.transition = 'transform var(--dur) var(--ease-sheet)';
+        frame.style.transition = `transform ${ms}ms var(--ease-sheet)`;
         frame.style.transform = `translateY(${y})`;
         let done = false;
         const end = (e) => {
@@ -187,7 +308,7 @@ export default class extends Controller {
             then();
         };
         frame.addEventListener('transitionend', end);
-        setTimeout(end, 400);
+        setTimeout(end, ms + 160);
         return token;
     }
 
@@ -235,7 +356,8 @@ export default class extends Controller {
             const aim = h - off - Math.max(-120, Math.min(120, speed * 120)), mid = h - half;
             let to = aim > (mid + h) / 2 ? 'full' : aim > mid / 2 ? 'half' : 'gone';
             if (to === 'gone' && wasFull) to = 'half';
-            if (to === 'gone') { this.close(); return; }
+            // Бросили вниз — лист улетает с той скоростью, с какой бросили, а не доезжает свои 200 мс.
+            if (to === 'gone') { this.close(Math.round(Math.max(80, Math.min(200, (h - off) / Math.max(speed, .5))))); return; }
             const full = to === 'full';
             this.glide(`${full ? 0 : half}px`, () => {
                 frame.toggleAttribute('data-full', full);
@@ -249,8 +371,10 @@ export default class extends Controller {
 
     // «Закрыть», жест вниз, Esc, нажатие по открытой строке. На телефоне лист сначала уезжает вниз, потом фрейм пустеет;
     // запроса нет — пустой фрейм и так известен, а ждать ответа сервера и было «закрывается рывком».
-    close() {
+    close(ms) {
         if (!this.open) return;
+        this.opening = null;
+        this.shut = true;
         const empty = () => {
             const frame = this.frameTarget, url = new URL(location.href);
             frame.removeAttribute('src');
@@ -261,7 +385,7 @@ export default class extends Controller {
             this.settle(true);
         };
         if (this.wide.matches || reduce.matches) { empty(); return; }
-        this.glide('100%', empty).closing = true;
+        this.glide('100%', empty, typeof ms === 'number' ? ms : 200).closing = true;
     }
 
     // Пока лист уезжал, открыли строку — он остаётся, едет новая карточка.

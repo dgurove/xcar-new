@@ -1842,12 +1842,20 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .detail-count { @apply ml-1 text-xs leading-none text-ink-muted; }
   .bar-btn { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .detail-body { @apply px-4 pb-4 pt-1; }
-  /* Заготовка листа, пока карточка в пути (detail_controller#blank): название строки и полосы на месте текста. */
+  /* Заготовка листа, пока карточка в пути (detail_controller#blank), — по форме карточки: кадры плитками, название
+     из строки, метки и поля полосами. Пришла карточка — текст проявляется (is-fresh, одна прозрачность). */
   .detail-blank .bar-btn > svg { width: 18px; height: 18px; }
+  /* Как ряд кадров карточки: плитки 64×80 (ряд «Развернуть» над ними бывает не у всех — его не угадать). */
+  .blank-strip { display: flex; gap: .5rem; overflow: hidden; }
+  .blank-tile { flex: none; width: 4rem; height: 5rem; border-radius: var(--radius-m); }
   .detail-blank-title { font-size: var(--text-lg); line-height: 1.375; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .detail-blank .skeleton { height: 1rem; margin-top: .75rem; width: 70%; }
-  .detail-blank .skeleton + .skeleton { width: 90%; }
-  .detail-blank .skeleton:last-child { width: 50%; }
+  .blank-marks { display: flex; gap: .375rem; }
+  .blank-mark { height: 1.375rem; width: 4.5rem; border-radius: 999px; }
+  .blank-mark:nth-child(2) { width: 6rem; }
+  .blank-fields { display: grid; grid-template-columns: 7rem 1fr; gap: 1rem .75rem; margin-top: 1.5rem; }
+  .blank-field { height: .875rem; }
+  .blank-field:nth-child(odd) { width: 70%; }
+  .detail-body.is-fresh { animation: fade 160ms ease-out; }
   @media (min-width: 1024px) {
     .split { display: flex; align-items: flex-start; gap: 1rem; }
     .split-main { flex: 1 1 auto; min-width: 0; }
@@ -1884,7 +1892,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       box-shadow: 0 -.5px 0 var(--color-line), 0 -2px 6px rgb(0 0 0 / .08), 0 -12px 36px rgb(0 0 0 / .2);
       /* backwards, а не both: заполненная анимация оставляла листу сдвиг слоем, и Safari на iPhone не доставлял нажатия в
          верх листа (кадры, кнопки на них, полоса) — у админа в предложениях, 04.10.2026. touch-action — только у полосы. */
-      animation: split-up var(--dur-slow) var(--ease-sheet) backwards;
+      animation: split-up 280ms var(--ease-sheet) backwards;
     }
     .split-detail[data-full] { transform: none; }
     html.kb-open .split-detail { bottom: var(--kb, 0px); transform: none; }
