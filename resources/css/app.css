@@ -1783,6 +1783,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      экран»), тянется пальцем нативной прокруткой; пустая часть пропускает нажатия и прокрутку к таблице
      (pointer-events). Пустой фрейм не рисуется — таблица во всю ширину. */
   .table-box { @apply rounded-(--radius-l) bg-surface; overflow: clip; }
+  /* Срок приёма в строке: секундомер и число вплотную, без слова «осталось». */
+  .cell-timer { display: inline-flex; align-items: center; gap: .1875rem; white-space: nowrap; }
+  .cell-timer > svg { flex: none; translate: 0 -.5px; }
   .split-detail:empty { display: none; }
   .row-link { color: inherit; }
   .row-link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
