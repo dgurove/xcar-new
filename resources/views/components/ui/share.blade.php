@@ -1,4 +1,4 @@
-{{-- Поделиться оффером или машиной закупки: текст из отмеченных строк в буфер, PDF из отмеченных фото — в системный лист или во встроенный браузер. --}}
+{{-- Поделиться оффером или машиной закупки: текст из отмеченных строк в буфер, PDF из отмеченных фото — в системный лист или во встроенный браузер, или те же фото альбомом. --}}
 @props(['subject', 'variant' => 'secondary', 'size' => null, 'icon' => false])
 @php
     $user = auth()->user();
@@ -19,7 +19,7 @@
         @endif
     </div>
 @else
-<div data-controller="share" data-share-url-value="{{ $subject->url }}" data-share-vat-value="{{ $subject->vatMark() }}" data-share-name-value="{{ $subject->fileName() }}" class="contents">
+<div data-controller="share" data-share-url-value="{{ $subject->url }}" data-share-photo-url-value="{{ $subject->photoUrl() }}" data-share-vat-value="{{ $subject->vatMark() }}" data-share-name-value="{{ $subject->fileName() }}" class="contents">
     @if ($icon)
         <button type="button" class="{{ $iconClass }}" data-action="share#open" aria-label="Поделиться" title="Поделиться" {{ $attributes->except('class') }}><x-ui.icon name="share" :class="$iconSize"/></button>
     @else
@@ -57,7 +57,11 @@
             @endif
             <div class="text-sm text-ink-muted" data-share-target="status"></div>
             <div class="flex flex-col gap-2">
-                <x-ui.button type="button" block data-action="share#send" data-share-target="send"><x-ui.icon name="send" class="size-5"/> <span data-share-target="label">Отправить</span></x-ui.button>
+                <div class="flex gap-2">
+                    <x-ui.button type="button" class="flex-1" data-action="share#send" data-share-target="send"><x-ui.icon name="send" class="size-5"/> <span data-share-target="label">Отправить PDF</span></x-ui.button>
+                    {{-- Те же кадры альбомом: где документы не качаются, фото доходят. --}}
+                    @if ($photos->isNotEmpty())<x-ui.button type="button" variant="secondary" data-action="share#sendPhotos" data-share-target="photosSend"><x-ui.icon name="photo" class="size-5"/> Фото</x-ui.button>@endif
+                </div>
                 @php $link = collect($fields)->firstWhere('key', 'link')['value'] ?? null; @endphp
                 <div class="flex flex-wrap gap-2">
                     <x-ui.button type="button" variant="secondary" class="min-w-[9rem] flex-1" data-action="share#copy">Текст в буфер</x-ui.button>

@@ -92,6 +92,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::delete('/offers/{offer}/interest', [InterestController::class, 'destroy']);
     Route::post('/offers/{offer}/favorites', [FavoriteController::class, 'toggle']);
     Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
+    Route::get('/offers/{offer}/photo/{media}', [ShareController::class, 'photo'])->whereNumber('media');
     Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
     Route::get('/offers/{offer}/chat', [OfferController::class, 'chat']);
     Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
@@ -217,6 +218,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->middleware('ability:canSeePurchases');
     Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car'])->middleware('ability:canSeePurchases');
     Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf'])->middleware('ability:canSeePurchases');
+    Route::get('/purchases/{purchase}/{car}/photo/{media}', [ShareController::class, 'carPhoto'])->whereNumber('media')->middleware('ability:canSeePurchases');
     Route::post('/purchases/{purchase}/{car}/price', [PurchaseController::class, 'offer'])->middleware('ability:canSeePurchases');
     Route::post('/purchases/prices/{offer}/withdraw', [PurchaseController::class, 'withdraw'])->middleware('ability:canSeePurchases');
 });

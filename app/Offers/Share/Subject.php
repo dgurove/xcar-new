@@ -63,9 +63,26 @@ final class Subject
 
     public function fileName(): string
     {
+        return $this->baseName().'.pdf';
+    }
+
+    /** Кадр по порядку на карточке: «… 3.jpg» — в галерее получателя фото не путаются между машинами. */
+    public function photoName(int $n): string
+    {
+        return $this->baseName()." {$n}.jpg";
+    }
+
+    /** Адрес кадра для шторки: `{id}` подставляет клиент. */
+    public function photoUrl(): string
+    {
+        return preg_replace('~/pdf$~', '/photo/{id}', $this->url);
+    }
+
+    private function baseName(): string
+    {
         $name = trim(preg_replace('~[\\\\/:*?"<>|%\x00-\x1F]+~u', ' ', $this->label.' '.$this->title));
 
-        return (preg_replace('~\s+~u', ' ', $name) ?: 'xcar').'.pdf';
+        return preg_replace('~\s+~u', ' ', $name) ?: 'xcar';
     }
 
     /** Каталог кэша: по таблице и id — офферы и машины не пересекаются. */

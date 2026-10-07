@@ -148,6 +148,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/invoices', [InvoiceController::class, 'store']);
         // Шеринг PDF: маршруты без домена на хосте CRM отбивает ResolveSurface — свои копии.
         Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
+        Route::get('/offers/{offer}/photo/{media}', [ShareController::class, 'photo'])->whereNumber('media');
         // Карточка «Гаража» зовёт счёт машины и отмену ссылки оплаты путём без хоста — на CRM тоже свои копии.
         Route::get('/garage/cars/{offer}/invoice/pdf', [GarageSettlementController::class, 'pdf']);
         Route::delete('/garage/cars/{offer}/links/{link}', [GarageSettlementController::class, 'cancelLink']);
@@ -263,6 +264,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::redirect('/purchases/{purchase}/offers', '/purchases/{purchase}', 301);
         Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car']);
         Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf']);
+        Route::get('/purchases/{purchase}/{car}/photo/{media}', [ShareController::class, 'carPhoto'])->whereNumber('media');
         Route::put('/purchases/{purchase}/{car}', [PurchaseController::class, 'updateCar']);
         // Оценка — в окошке строки таблицы; старый экран ведёт туда же.
         Route::get('/purchases/{purchase}/{car}/estimate', fn (Purchase $purchase, Car $car) => redirect("/purchases/{$purchase->number}?preset=unfinal&vid=table&peek={$car->ref}", 301));

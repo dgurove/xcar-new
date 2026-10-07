@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { openSheet, closeSheet, backdrop } from '../sheet';
+import { fileName } from '../docs/share';
 
 // Поделиться оффером или машиной закупки. Текст и файл уходят порознь: вместе
 // мессенджеры теряют файл. Текст кладётся в буфер до первого await — share()
@@ -11,18 +12,28 @@ import { openSheet, closeSheet, backdrop } from '../sheet';
 // в шторке документов поверх окна («Открыть PDF», ссылка `a[data-doc]`): у неё
 // свои «Поделиться» и «Скачать». Каждый сбой — тостом и на сервер (/share/error):
 // иначе с чужого телефона не видно ничего.
+//
+// «Фото» — те же кадры JPEG-ами одним вызовом share: так их отдаёт Google Фото, и
+// WhatsApp собирает альбом, а получатель качает картинки там, где документ не
+// качается. Качаются следом за PDF, чтобы не отнимать у него связь. Больше 10
+// файлов Chrome в лист не пускает.
 const BROKEN = 'share:open';
+const MAX_FILES = 10;
 
 const PRICES = ['publish_price', 'price'];
 const FROM = ['publish_price'];
 
 export default class extends Controller {
-    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label', 'all', 'pdfLink'];
-    static values = { url: String, vat: String, name: String, locked: String };
+    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label', 'all', 'pdfLink', 'photosSend'];
+    static values = { url: String, photoUrl: String, vat: String, name: String, locked: String };
 
     connect() {
         this.compose();
         this.ready(!this.hasPhotoTarget);
+        // Где лист не берёт файлы (компьютер), кнопке «Фото» нечего делать.
+        const jpeg = new File([''], 'x.jpg', { type: 'image/jpeg' });
+        if (this.hasPhotosSendTarget && !navigator.canShare?.({ files: [jpeg, jpeg] })) this.photosSendTarget.hidden = true;
+        this.photosReady(false);
     }
 
     // Шеринг запрещён в редакторе оффера: кнопка серая, нажатие объясняет почему.
@@ -109,15 +120,53 @@ export default class extends Controller {
 
     ready(on, text = '') {
         if (this.hasSendTarget) this.sendTarget.disabled = !on;
-        if (this.hasLabelTarget) this.labelTarget.textContent = on ? 'Отправить' : text || 'Отправить';
+        if (this.hasLabelTarget) this.labelTarget.textContent = on ? 'Отправить PDF' : text || 'Отправить PDF';
+    }
+
+    photosReady(on) {
+        if (this.hasPhotosSendTarget) this.photosSendTarget.setAttribute('aria-disabled', on ? 'false' : 'true');
     }
 
     async prepare() {
         // Ответ на прежний набор фото, пришедший после нового, не должен стать «готовым».
         const seq = (this.seq = (this.seq || 0) + 1);
         this.pdf = null;
+        this.jpegs = null;
+        this.photosError = null;
+        this.photosReady(false);
         const photos = this.selectedPhotos();
         if (!photos.length) { this.status(''); this.ready(true); return; }
+        await this.preparePdf(seq, photos);
+        if (seq === this.seq) await this.preparePhotos(seq, photos);
+    }
+
+    // Кадры по одному, по три за раз. Сбой не кричит тостом — его покажет нажатие «Фото».
+    async preparePhotos(seq, photos) {
+        if (!this.hasPhotosSendTarget || this.photosSendTarget.hidden || photos.length > MAX_FILES) return;
+        const files = new Array(photos.length);
+        let next = 0;
+        const worker = async () => {
+            while (next < photos.length && seq === this.seq) {
+                const i = next++;
+                const r = await fetch(`${this.photoUrlValue.replace('{id}', photos[i])}?watermark=${this.watermark()}`, { credentials: 'same-origin' });
+                if (!r.ok) throw Object.assign(new Error(`http ${r.status}`), { name: `http ${r.status}` });
+                const blob = await r.blob();
+                files[i] = new File([blob], fileName(r, `${this.nameValue.replace(/\.pdf$/, '')} ${i + 1}`), { type: 'image/jpeg' });
+            }
+        };
+        try {
+            await Promise.all([worker(), worker(), worker()]);
+            if (seq !== this.seq) return;
+            this.jpegs = files;
+            this.photosReady(true);
+        } catch (e) {
+            if (seq !== this.seq) return;
+            this.photosError = e;
+            this.photosReady(true);
+        }
+    }
+
+    async preparePdf(seq, photos) {
         this.ready(false, 'Собираем PDF…');
         this.status('');
         const form = new FormData();
@@ -198,6 +247,34 @@ export default class extends Controller {
             return;
         }
         window.toast?.('Текст в буфере');
+    }
+
+    async sendPhotos() {
+        if (this.sending) return;
+        this.writeCaption();
+        const count = this.selectedPhotos().length;
+        if (!count) { window.toast?.('Отметьте фото'); return; }
+        if (count > MAX_FILES) { window.toast?.(`Не больше ${MAX_FILES} фото`); return; }
+        if (this.photosError) {
+            this.fail('photos-prepare', this.photosError, 'Фото не скачались');
+            this.prepare();
+            return;
+        }
+        if (!this.jpegs) { window.toast?.('Фото ещё качаются'); return; }
+        const files = this.jpegs;
+        if (!navigator.canShare?.({ files })) { this.fail('photos', { name: 'canShare' }, 'Телефон не отдал фото в лист'); return; }
+        this.sending = true;
+        try {
+            await navigator.share({ files });
+            this.close();
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+            // Жест истёк — лист откроет новое нажатие.
+            if (e.name === 'NotAllowedError') window.toast?.('Фото готовы', { action: { label: 'Отправить', run: () => navigator.share({ files }).then(() => this.close()).catch(() => {}) } });
+            else this.fail('photos', e, 'Лист не открылся');
+        } finally {
+            this.sending = false;
+        }
     }
 
     fail(stage, e, text) {
