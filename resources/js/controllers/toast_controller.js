@@ -56,7 +56,9 @@ export default class extends Controller {
         const href = typeof options === 'object' ? options?.href : null;
         const action = typeof options === 'object' ? options?.action : null;
         const el = document.createElement(href ? 'a' : 'div');
-        el.className = 'toast' + (kind ? ` toast-${kind}` : '');
+        // Тост без ссылки и кнопки нажатия не ловит (toast-pass): он висел 4 с поверх полосы листа карточки — стрелки и
+        // «Закрыть» под ним не нажимались (07.10.2026).
+        el.className = 'toast' + (kind ? ` toast-${kind}` : '') + (href || action ? '' : ' toast-pass');
         el.textContent = text;
         if (href) el.href = href;
         if (action) {

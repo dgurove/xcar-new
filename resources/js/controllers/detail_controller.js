@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { confirmSheet } from '../confirm';
 
 // Список и карточка строки рядом (x-ui.shell :detail). Строка — ссылка (a[data-detail-link]) в фрейм detail; открывает и
 // закрывает контроллер, адрес (?peek=) меняет он же, не Turbo: data-turbo-action у фрейма делал из каждой загрузки визит
@@ -43,6 +44,10 @@ export default class extends Controller {
         // анимацией.
         this.onRender = (e) => {
             this.rendering = true;
+            // Ответ той же карточки (сохранили, оценили с ошибкой, «+15 мин») — прокрутка остаётся, где была: после
+            // «Сохранить» лист прыгал в самый верх, и правленое поле внизу терялось (07.10.2026). Другая строка — сверху.
+            this.keepScroll = this.swap ? null : this.frameTarget.querySelector('.detail-body')?.scrollTop ?? null;
+            this.swap = false;
             // Пока ждали, лист закрыли — карточку не вставлять, иначе лист вернулся бы.
             const render = e.detail.render;
             e.detail.render = (...args) => { if (!this.shut) render(...args); };
@@ -65,6 +70,26 @@ export default class extends Controller {
             e.detail.render = async (stream) => { await render(stream); this.mark(); };
         };
         this.frameTarget.addEventListener('turbo:before-frame-render', this.onRender);
+        this.onRendered = () => this.restore();
+        this.frameTarget.addEventListener('turbo:frame-render', this.onRendered);
+        // Нет связи, пока лист ждёт карточку, — вместо вечной заготовки слова и «Повторить».
+        this.onFail = (e) => { if (e.target === this.frameTarget) this.failed(); };
+        this.frameTarget.addEventListener('turbo:fetch-request-error', this.onFail);
+        // Живое обновление списка (морф страницы, live.js refreshPage) не трогает положение листа: data-full, сдвиг и
+        // адрес фрейма знает только браузер, сервер их не рисует — морф снимал их, и лист сам падал на полэкрана.
+        this.onMorphAttribute = (e) => {
+            const name = e.detail.attributeName;
+            if ((e.target === this.frameTarget && ['data-full', 'data-moving', 'style', 'src', 'busy', 'aria-busy', 'complete'].includes(name))
+                || (e.target === this.element && name === 'data-open')) e.preventDefault();
+        };
+        document.addEventListener('turbo:before-morph-attribute', this.onMorphAttribute);
+        // Уход со страницы с несохранённым в карточке (таб-бар, «Открыть страницу», ссылка) — тот же вопрос, что у листа.
+        this.onVisit = async (e) => {
+            if (!this.dirty) return;
+            e.preventDefault();
+            if (await this.leave()) window.Turbo?.visit(e.detail.url);
+        };
+        document.addEventListener('turbo:before-visit', this.onVisit);
         // Нажали поле, пока лист ехал (app.js keyboardInset ставит его во весь экран сам): прежнее движение отменяется —
         // иначе его запасной таймер доехал бы своё и опустил лист на полэкрана или закрыл его под кареткой.
         this.onHold = () => {
@@ -88,6 +113,10 @@ export default class extends Controller {
 
     disconnect() {
         this.frameTarget.removeEventListener('turbo:before-frame-render', this.onRender);
+        this.frameTarget.removeEventListener('turbo:frame-render', this.onRendered);
+        this.frameTarget.removeEventListener('turbo:fetch-request-error', this.onFail);
+        document.removeEventListener('turbo:before-morph-attribute', this.onMorphAttribute);
+        document.removeEventListener('turbo:before-visit', this.onVisit);
         this.frameTarget.removeEventListener('detail:hold', this.onHold);
         this.frameTarget.removeEventListener('turbo:before-fetch-request', this.onFetch);
         this.unprefetch?.();
@@ -98,6 +127,45 @@ export default class extends Controller {
     }
 
     get open() { return this.frameTarget.childElementCount > 0; }
+
+    // Вписали в карточке и не сохранили: поля формы (save_bar), закупочная, цена «Оценить».
+    get dirty() { return !!this.frameTarget.querySelector('form[data-dirty]'); }
+
+    // Уйти с карточки с несохранённым — только переспросив, как у шторок (07.10.2026, начальник вводил данные, нажимал
+    // другую строку или «Закрыть» — правки молча пропадали). true — можно уходить.
+    async leave() {
+        if (!this.dirty) return true;
+        const ok = await confirmSheet('Не сохранять?', { label: 'Не сохранять', cancel: 'Остаться', danger: true });
+        if (ok) this.frameTarget.querySelectorAll('form[data-dirty]').forEach((f) => { delete f.dataset.dirty; });
+        return ok;
+    }
+
+    // Карточка встала: та же — прокрутка на прежнем месте; вернулась с ошибкой — первое поле с ошибкой посреди листа.
+    restore() {
+        const body = this.frameTarget.querySelector('.detail-body');
+        if (!body) return;
+        if (this.keepScroll != null) body.scrollTop = this.keepScroll;
+        this.keepScroll = null;
+        const bad = body.querySelector('.field-invalid, .field-error');
+        if (bad) bad.scrollIntoView({ block: 'center' });
+    }
+
+    // Карточка не пришла (нет сети): заготовка не мигает вечно — слова и «Повторить» на месте полос.
+    failed() {
+        const body = this.frameTarget.querySelector('.detail-blank .detail-body');
+        if (!body) return;
+        body.closest('.detail-blank').removeAttribute('aria-busy');
+        body.classList.add('detail-failed');
+        body.innerHTML = '<p class="text-ink-muted">Нет связи, карточка не загрузилась</p><button type="button" class="btn btn-quiet btn-s mt-3" data-action="detail#retry">Повторить</button>';
+    }
+
+    retry() {
+        const src = this.frameTarget.getAttribute('src');
+        const row = this.current;
+        if (!src || !row) return;
+        this.frameTarget.replaceChildren(this.blank(row));
+        this.frameTarget.reload();
+    }
 
     // Адрес карточки строки — от текущего адреса списка (как show).
     urlFor(row) {
@@ -159,17 +227,17 @@ export default class extends Controller {
     get current() { return this.element.querySelector('[data-detail-key][aria-selected="true"]'); }
 
     // Нажатие по строке мимо её кнопок — её ссылка; по открытой — закрыть.
-    tap(event) {
+    async tap(event) {
         const row = event.target.closest('[data-detail-key]');
         if (!row || !this.element.contains(row)) return;
         const link = event.target.closest('a[data-detail-link]');
         if (!link && event.target.closest('a, button, input, select, textarea, label, form')) return;
+        event.preventDefault();
         if (row === this.current && this.open) {
-            event.preventDefault();
             this.close();
             return;
         }
-        event.preventDefault();
+        if (!(await this.leave())) return;
         this.wantFocus = matchMedia('(pointer: fine)').matches;
         this.show(row);
     }
@@ -178,6 +246,7 @@ export default class extends Controller {
     // при других чипах. Поиск лупой и номер подгруженной страницы не едут (как App\Support\Detail::url).
     show(row) {
         this.shut = false;
+        this.swap = true;
         this.keep();
         this.select(row);
         const url = this.urlFor(row);
@@ -396,8 +465,13 @@ export default class extends Controller {
 
     // «Закрыть», жест вниз, Esc, нажатие по открытой строке. На телефоне лист сначала уезжает вниз, потом фрейм пустеет;
     // запроса нет — пустой фрейм и так известен, а ждать ответа сервера и было «закрывается рывком».
-    close(ms) {
+    async close(ms) {
         if (!this.open) return;
+        if (!(await this.leave())) {
+            // Отпустили бросок вниз и остались — лист возвращается на место.
+            if (this.frameTarget.hasAttribute('data-moving')) this.glide(`${this.frameTarget.hasAttribute('data-full') ? 0 : this.half}px`, () => this.still());
+            return;
+        }
         this.opening = null;
         this.shut = true;
         const empty = () => {
@@ -432,10 +506,10 @@ export default class extends Controller {
     prev() { this.step(-1); }
     next() { this.step(1); }
 
-    step(delta) {
+    async step(delta) {
         const rows = this.rows, i = rows.indexOf(this.current);
         const row = rows[Math.min(rows.length - 1, Math.max(0, i + delta))];
-        if (row && row !== this.current) this.show(row);
+        if (row && row !== this.current && await this.leave()) this.show(row);
     }
 
     // Оценили — следующий черновик без цены: дальше по таблице, иначе с начала; кончились — тост, со следующей
