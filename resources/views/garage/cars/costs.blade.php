@@ -1,5 +1,6 @@
 {{-- Расходы машины строками, итог — в заголовке; строку правят в её шторке. Сотруднику список виден всегда, «+ Расход»
-     — в заголовке (06.10.2026, владелец: «добавлять, убирать, корректировать»); менеджеру — когда есть что показать. --}}
+     — в заголовке (06.10.2026, владелец: «добавлять, убирать, корректировать»); менеджеру — когда есть что показать.
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot; «Убрать» ниже отдельной формой, отступ шире подложки кнопки. --}}
 @if ($car->costs->isNotEmpty() || ($staff && $canAdd))
     <section>
         <h2 class="list-head lg:pt-0">Расходы@if ($car->costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($car->spent()) }}</span>@endif
@@ -23,10 +24,10 @@
                         </{{ $mine ? 'button' : 'div' }}>
                         @if ($mine)
                             <x-ui.sheet id="cost-{{ $cost->id }}" title="Расход">
-                                <form method="post" action="/garage/costs/{{ $cost->id }}" class="flex flex-col gap-4">
+                                <form method="post" action="/garage/costs/{{ $cost->id }}" class="flex flex-col gap-3">
                                     @csrf @method('put')
                                     @include('garage.cars.cost-fields', ['cost' => $cost])
-                                    <x-ui.button type="submit" variant="primary" block>Сохранить</x-ui.button>
+                                    <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>Сохранить</x-ui.button></div>
                                 </form>
                                 <form method="post" action="/garage/costs/{{ $cost->id }}" class="mt-2" data-turbo-confirm="Убрать расход?">
                                     @csrf @method('delete')

@@ -1,6 +1,7 @@
 {{-- Профиль — корень кабинета, как «Настройки» в телефоне: сверху карточка человека (аватар меняется касанием и
      сохраняется сразу, имя, чем входит; «Изменить» — шторка с полями), ниже строки группами — разделы кабинета
-     (на телефоне), менеджер покупателя, вход и Telegram, отдельной группой «Выйти». Полей на самом экране нет. --}}
+     (на телефоне), менеджер покупателя, вход и Telegram, отдельной группой «Выйти». Полей на самом экране нет.
+     07.10.2026: поля шторок строками (.fields), кнопка .sheet-foot. --}}
 @php
     $menu = \App\Support\Nav::cabinetFor($user, 'phone');
     $badges = \App\Support\Nav::badges($user);
@@ -32,13 +33,17 @@
         <x-ui.sheet id="profile-edit" title="Профиль" :open="$errors->hasAny(['first_name', 'last_name', 'email'])">
             <form method="post" action="/account" class="flex flex-col gap-3 text-left">
                 @csrf @method('put')
-                <x-ui.field name="first_name" label="Имя" :value="$user->first_name" autocomplete="given-name" required/>
-                <x-ui.field name="last_name" label="Фамилия" :value="$user->last_name" autocomplete="family-name" required/>
-                @if ($user->mayHave('email'))<x-ui.field name="email" label="Почта" type="email" :value="$user->email" autocomplete="email"/>@endif
-                <x-ui.button class="mt-2">Сохранить</x-ui.button>
-                @if ($user->avatarUrl())
-                    <button type="submit" name="remove_avatar" value="1" class="btn btn-ghost text-danger" data-turbo-confirm="Удалить фото?" data-turbo-confirm-label="Удалить">Удалить фото</button>
-                @endif
+                <div class="fields">
+                    <x-ui.field name="first_name" label="Имя" :value="$user->first_name" autocomplete="given-name" required/>
+                    <x-ui.field name="last_name" label="Фамилия" :value="$user->last_name" autocomplete="family-name" required/>
+                    @if ($user->mayHave('email'))<x-ui.field name="email" label="Почта" type="email" :value="$user->email" autocomplete="email"/>@endif
+                </div>
+                <div class="sheet-foot flex flex-col gap-2">
+                    <x-ui.button block>Сохранить</x-ui.button>
+                    @if ($user->avatarUrl())
+                        <button type="submit" name="remove_avatar" value="1" class="btn btn-ghost text-danger" data-turbo-confirm="Удалить фото?" data-turbo-confirm-label="Удалить">Удалить фото</button>
+                    @endif
+                </div>
             </form>
         </x-ui.sheet>
     </div>
@@ -87,10 +92,12 @@
                 <x-ui.sheet id="password" title="Новый пароль" :open="$errors->has('current') || $errors->has('password')">
                     <form method="post" action="/account/password" class="flex flex-col gap-3">
                         @csrf
-                        <x-ui.field name="current" label="Текущий пароль" type="password" autocomplete="current-password" required/>
-                        <x-ui.field name="password" label="Новый пароль" type="password" autocomplete="new-password" required/>
-                        <x-ui.field name="password_confirmation" label="Ещё раз" type="password" autocomplete="new-password" required/>
-                        <x-ui.button class="mt-2">Сохранить</x-ui.button>
+                        <div class="fields">
+                            <x-ui.field name="current" label="Текущий" type="password" autocomplete="current-password" required/>
+                            <x-ui.field name="password" label="Новый" type="password" autocomplete="new-password" required/>
+                            <x-ui.field name="password_confirmation" label="Ещё раз" type="password" autocomplete="new-password" required/>
+                        </div>
+                        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                     </form>
                 </x-ui.sheet>
             </div>

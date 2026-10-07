@@ -3,7 +3,7 @@ import * as Turbo from '@hotwired/turbo';
 import { confirmSheet } from '../confirm';
 import { loadSortable } from '../lib/sortable';
 import { openLightbox } from '../lightbox';
-import { openSheet, closeSheet } from '../sheet';
+import { openSheet, closeSheet, outside } from '../sheet';
 
 // Фотографии: загрузка по одному файлу с прогрессом (выбор или drop на карточку), перестановка перетаскиванием,
 // действия глаз, поворот, корзина на плитке и в просмотрщике.
@@ -562,7 +562,7 @@ export default class extends Controller {
         d.dataset.turboTemporary = '';
         d.innerHTML = await r.text();
         document.body.append(d);
-        d.addEventListener('click', (e) => { if (e.target === d) closeSheet(d); });
+        d.addEventListener('click', (e) => { if (outside(d, e)) closeSheet(d); });
         d.addEventListener('close', () => d.remove());
         d.querySelector('[data-mark-close]')?.addEventListener('click', () => closeSheet(d));
 

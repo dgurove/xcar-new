@@ -414,8 +414,18 @@ function keyboardInset() {
     const update = () => {
         // Без поля в фокусе клавиатуры нет — разница высот от резины или зума не считается за неё.
         const kb = vv.scale > 1.01 || !field() ? 0 : Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
-        document.documentElement.style.setProperty('--kb', `${kb}px`);
+        const root = document.documentElement.style;
+        root.setProperty('--kb', `${kb}px`);
+        // Видимая часть над клавиатурой: iOS ещё и сдвигает экран к полю (offsetTop) — шторка в неё влезает целиком,
+        // иначе её верх (сумма) уезжал за экран, а палец вниз «к сумме» закрывал лист (07.10.2026).
+        root.setProperty('--vv-h', `${Math.round(vv.height)}px`);
+        root.setProperty('--vv-top', `${Math.round(vv.offsetTop)}px`);
         document.documentElement.classList.toggle('kb-open', kb > 100);
+    };
+    // Клавиатура встала — поле в фокусе в видимой части своего листа (прокрутка внутри шторки, не страницы).
+    const reveal = () => {
+        const el = document.activeElement;
+        if (el && field() && el.closest('dialog.sheet:modal')) el.scrollIntoView({ block: 'nearest' });
     };
     // iOS: поле с клавиатурой пропало из DOM, не потеряв фокус (ответ формы подменил карточка строки, морф
     // страницы), — клавиатура уходит, а viewport остаётся ужатым: таб-бар висит посреди экрана, строки под ним
@@ -436,7 +446,7 @@ function keyboardInset() {
         open = document.documentElement.classList.contains('kb-open');
         if (was && !open) setTimeout(() => scrollTo(scrollX, scrollY), 80);
     };
-    vv.addEventListener('resize', settle);
+    vv.addEventListener('resize', () => { settle(); requestAnimationFrame(reveal); });
     vv.addEventListener('scroll', update);
     document.addEventListener('focusout', () => requestAnimationFrame(settle));
     update();

@@ -16,7 +16,7 @@
                 @else
                     <x-ui.field name="number" label="Номер предложения" :value="$thread->offer?->number" autofocus/>
                 @endif
-                <div class="flex gap-2">
+                <div class="sheet-foot flex gap-2">
                     <x-ui.button class="flex-1">Привязать</x-ui.button>
                     @if ($park ? $thread->vehicle : $thread->offer)<x-ui.button variant="ghost" name="{{ $park ? 'vehicle_id' : 'number' }}" value="">Отвязать</x-ui.button>@endif
                 </div>

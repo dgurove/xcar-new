@@ -5,7 +5,8 @@
      Деньги в шаге, а не рядом: на оплате, пока счёта нет, главное действие — «Выставить счёт»; менеджер сообщил об
      оплате — его заявка тут же с «Поступило» / «Не поступила» (подтверждение само двигает путь, AdvanceOnPayment),
      и выходов «Оплата получена / не поступила» рядом нет — одно действие, а не два несвязанных. Слот — шаги после
-     маршрута тем же видом (продажа гаражной машины). --}}
+     маршрута тем же видом (продажа гаражной машины).
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @props(['offer', 'position'])
 @php
     use App\Billing\InvoiceState;
@@ -154,7 +155,7 @@
                                 <div data-controller="sheet" class="contents">
                                     <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Не поступила</x-ui.button>
                                     <x-ui.sheet id="reject-{{ $p->id }}" title="Оплата не поступила">
-                                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><x-ui.button variant="secondary" block>Не поступила</x-ui.button></form>
+                                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><div class="sheet-foot"><x-ui.button variant="secondary" block>Не поступила</x-ui.button></div></form>
                                     </x-ui.sheet>
                                 </div>
                                 @if ($slip = $p->slip())<x-ui.doc :doc="\App\Support\Docs::media($slip)" class="btn btn-s btn-ghost"><x-ui.icon name="file" class="size-4"/>Платёжка</x-ui.doc>@endif
@@ -184,10 +185,12 @@
                                                 @csrf
                                                 {{-- Контакт и адрес из письма — уже вписаны (`Handover::prefill`), поправить можно. --}}
                                                 @php $prefill = \App\Offers\Handover::prefill($exit->to, $offer); @endphp
-                                                @foreach ($exit->to->staff_fields as $field)
-                                                    <x-route.field :field="$field" :name="'fields['.$field['key'].']'" :value="$prefill[$field['key']] ?? null"/>
-                                                @endforeach
-                                                <x-ui.button block>{{ $label($exit) }}</x-ui.button>
+                                                <div class="fields">
+                                                    @foreach ($exit->to->staff_fields as $field)
+                                                        <x-route.field :field="$field" :name="'fields['.$field['key'].']'" :value="$prefill[$field['key']] ?? null"/>
+                                                    @endforeach
+                                                </div>
+                                                <div class="sheet-foot"><x-ui.button block>{{ $label($exit) }}</x-ui.button></div>
                                             </form>
                                         </x-ui.sheet>
                                     </div>

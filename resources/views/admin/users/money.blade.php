@@ -1,5 +1,6 @@
 {{-- Деньги менеджера для сотрудника: реквизиты с правкой, сделки-расчёты одной плашкой, акт сверки и Excel. Положение
-     (просрочил, должен нам, должны ему, выплатили — кто кому словом) — словами в строке заголовка «Сделки», а не рядом чипов над экраном. --}}
+     (просрочил, должен нам, должны ему, выплатили — кто кому словом) — словами в строке заголовка «Сделки», а не рядом чипов над экраном.
+     07.10.2026: реквизиты шторкой во весь экран (tall), кнопка .sheet-foot. --}}
 @php use App\Support\Money; $p = $position; @endphp
 
 <div class="box" data-controller="sheet">
@@ -18,11 +19,11 @@
         </div>
         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Изменить реквизиты"><x-ui.icon name="edit" class="size-5"/></button>
     </div>
-    <x-ui.sheet id="party" title="Реквизиты" wide :open="$errors->has('name') || $errors->has('inn')">
+    <x-ui.sheet id="party" title="Реквизиты" wide tall :open="$errors->has('name') || $errors->has('inn')">
         <form method="post" action="{{ $base }}/{{ $user->id }}/party" class="flex flex-col gap-4">
             @csrf @method('put')
             <x-billing.party-fields :party="$party->exists ? $party : null" vat/>
-            <x-ui.button block>Сохранить</x-ui.button>
+            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
         </form>
     </x-ui.sheet>
 </div>

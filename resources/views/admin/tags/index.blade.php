@@ -1,7 +1,8 @@
 @php
     $palette = ['lime' => '#97bf0d', 'orange' => '#ff8800', 'red' => '#ff0037', 'blue' => '#2456b3', 'grey' => '#808080'];
 @endphp
-{{-- Метки: первая строка — новая, ниже список, который переставляют за ручку (строка «новая» вне сортируемого). --}}
+{{-- Метки: первая строка — новая, ниже список, который переставляют за ручку (строка «новая» вне сортируемого).
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 <x-ui.cabinet title="Метки">
     <div class="list">
         <div data-controller="sheet" class="contents">
@@ -12,9 +13,11 @@
             <x-ui.sheet id="tag-new" title="Новая метка">
                 <form method="post" action="/settings/tags" class="flex flex-col gap-4">
                     @csrf
-                    <x-ui.field name="name" label="Название" required maxlength="40" autofocus/>
-                    <x-ui.field name="color" label="Цвет" :options="\App\Offers\Tag::COLORS" value="grey"/>
-                    <x-ui.button block>Добавить</x-ui.button>
+                    <div class="fields">
+                        <x-ui.field name="name" label="Название" required maxlength="40" autofocus/>
+                        <x-ui.field name="color" label="Цвет" :options="\App\Offers\Tag::COLORS" value="grey"/>
+                    </div>
+                    <div class="sheet-foot"><x-ui.button block>Добавить</x-ui.button></div>
                 </form>
             </x-ui.sheet>
         </div>
@@ -29,9 +32,11 @@
                 <x-ui.sheet id="tag-{{ $tag->id }}" title="Метка">
                     <form method="post" action="/settings/tags/{{ $tag->id }}" class="flex flex-col gap-4">
                         @csrf @method('put')
-                        <x-ui.field name="name" label="Название" :value="$tag->name" required maxlength="40"/>
-                        <x-ui.field name="color" label="Цвет" :options="\App\Offers\Tag::COLORS" :value="$tag->color"/>
-                        <x-ui.button block>Сохранить</x-ui.button>
+                        <div class="fields">
+                            <x-ui.field name="name" label="Название" :value="$tag->name" required maxlength="40"/>
+                            <x-ui.field name="color" label="Цвет" :options="\App\Offers\Tag::COLORS" :value="$tag->color"/>
+                        </div>
+                        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                     </form>
                     <form method="post" action="/settings/tags/{{ $tag->id }}" class="mt-2" data-turbo-confirm="Удалить метку «{{ $tag->name }}»?{{ ($used[$tag->name] ?? 0) ? ' Она снимется с '.$used[$tag->name].' предложений.' : '' }}">
                         @csrf @method('delete')

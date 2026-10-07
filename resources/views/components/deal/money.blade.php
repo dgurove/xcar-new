@@ -4,7 +4,7 @@
      об оплате с решением под своим счётом, у вознаграждения к выплате — «Выплатить» в самой строке. Под неоплаченным
      счётом — его ссылка на оплату с адресом и «Отправить» (`x-billing.pay-status`): начальник открыл сделку и сразу
      видит, оплатили ли и чем поделиться. Менеджеру ничего из этого не показывается. compact — карточка строки «Сделок»:
-     цена и «Нам», остальной расклад свёрнут. --}}
+     цена и «Нам», остальной расклад свёрнут. 07.10.2026: кнопки шторок .sheet-foot. --}}
 @props(['deal', 'compact' => false])
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState;
@@ -30,7 +30,7 @@
                         <form method="post" action="/work/deals/{{ $deal->id }}/money" class="flex flex-col gap-4">
                             @csrf @method('put')
                             <x-ui.field name="share" label="Наша доля, ₽" :value="$deal->share ? Money::nums($deal->share) : null" data-controller="digits" data-action="input->digits#format"/>
-                            <x-ui.button block>Сохранить</x-ui.button>
+                            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                         </form>
                     @else
                         <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :mode="$deal->commission_mode"
@@ -102,7 +102,7 @@
                     @if ($i->isAgentFee() && $i->state === InvoiceState::Issued)
                         <span data-controller="sheet" class="contents">
                             <x-ui.button type="button" size="sm" data-action="sheet#open">Выплатить</x-ui.button>
-                            <x-ui.sheet id="pay-{{ $i->id }}" :title="'Выплата '.$i->party->name"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'"/></x-ui.sheet>
+                            <x-ui.sheet id="pay-{{ $i->id }}" :title="'Выплата '.$i->party->name"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" sheet/></x-ui.sheet>
                         </span>
                     @endif
                 </div>

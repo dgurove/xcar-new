@@ -1,4 +1,4 @@
-import { openSheet, closeSheet } from './sheet';
+import { openSheet, closeSheet, outside } from './sheet';
 
 // Долгое нажатие по карточке — своё меню шторкой вместо листа Safari или меню
 // Chrome: открыть, в избранное, поделиться, чат. Пункты берутся из самой
@@ -69,7 +69,7 @@ function open(card) {
     }
     // Палец ещё на экране: клик от его отпускания приходит уже в шторку — не закрывать.
     const openedAt = Date.now();
-    d.addEventListener('click', (e) => { if (e.target === d && Date.now() - openedAt > 600) closeSheet(d); });
+    d.addEventListener('click', (e) => { if (outside(d, e) && Date.now() - openedAt > 600) closeSheet(d); });
     d.addEventListener('close', () => d.remove());
     document.body.append(d);
     openSheet(d, { history: false });

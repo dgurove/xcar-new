@@ -104,31 +104,41 @@ export default class extends Controller {
     }
 
     // Тянут за полосу: лист едет за пальцем (translate, без перекладки содержимого), отпустили — полэкрана, во весь
-    // экран или закрыть, с учётом взмаха; тогда уже меняется высота.
+    // экран или закрыть, с учётом взмаха; тогда уже меняется высота. 07.10.2026 (владелец: окна «норовят закрыться»):
+    // лист трогается после 8 px, скорость — по последним 80 мс, а не по одному замеру, взмах добавляет до 120 px, и с
+    // полного экрана жест вниз ведёт на половину — закрыть можно только с половины, вторым жестом.
     grab(event) {
         const frame = this.frameTarget;
         if (this.wide.matches || event.button > 0 || event.target.closest('a, button')) return;
         event.preventDefault();
-        const h0 = frame.offsetHeight;
-        frame.setAttribute('data-full', '');
-        const full = frame.offsetHeight, half = Math.min(full, innerHeight / 2);
-        const y0 = event.clientY, off0 = full - h0;
-        let off = off0, lastY = y0, lastT = event.timeStamp, speed = 0;
-        frame.style.transition = 'none';
-        frame.style.translate = `0 ${off}px`;
+        const h0 = frame.offsetHeight, y0 = event.clientY, wasFull = frame.hasAttribute('data-full');
+        let full, half, off0, off, pts = [], moving = false;
+        const start = () => {
+            moving = true;
+            frame.setAttribute('data-full', '');
+            full = frame.offsetHeight;
+            half = Math.min(full, innerHeight / 2);
+            off0 = off = full - h0;
+            frame.style.transition = 'none';
+            frame.style.translate = `0 ${off}px`;
+        };
         const move = (e) => {
-            speed = (e.clientY - lastY) / Math.max(1, e.timeStamp - lastT);
-            lastY = e.clientY;
-            lastT = e.timeStamp;
+            if (!moving) { if (Math.abs(e.clientY - y0) < 8) return; start(); }
             off = Math.min(full, Math.max(0, off0 + e.clientY - y0));
             frame.style.translate = `0 ${off}px`;
+            pts.push([e.timeStamp, e.clientY]);
+            while (pts.length > 2 && e.timeStamp - pts[0][0] > 80) pts.shift();
         };
         const up = () => {
             removeEventListener('pointermove', move);
             removeEventListener('pointerup', up);
             removeEventListener('pointercancel', up);
-            const aim = full - off - speed * 250;
-            const to = aim > (half + full) / 2 ? full : aim > half / 2 ? half : 0;
+            if (!moving) return;
+            const [t0, p0] = pts[0] ?? [0, 0], [t1, p1] = pts[pts.length - 1] ?? [0, 0];
+            const speed = pts.length > 1 ? (p1 - p0) / Math.max(16, t1 - t0) : 0;
+            const aim = full - off - Math.max(-120, Math.min(120, speed * 120));
+            let to = aim > (half + full) / 2 ? full : aim > half / 2 ? half : 0;
+            if (!to && wasFull) to = half;
             frame.style.transition = 'translate var(--dur) var(--ease-out)';
             frame.style.translate = `0 ${full - to}px`;
             setTimeout(() => {

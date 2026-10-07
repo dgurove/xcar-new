@@ -20,7 +20,7 @@
                         @csrf @method('put')
                         <x-ui.field name="title" label="Площадка" :value="$mark['title']" required maxlength="40"/>
                         <div class="flags"><x-ui.check name="on" :checked="! $mark['off']">Снимать</x-ui.check></div>
-                        <x-ui.button block>Сохранить</x-ui.button>
+                        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                     </form>
                     @if ($mark['learned'])
                         <form method="post" action="/settings/watermarks/{{ $name }}" class="mt-2" data-turbo-confirm="Удалить знак «{{ $mark['title'] }}»?">

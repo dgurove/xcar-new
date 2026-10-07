@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
-import { openSheet, closeSheet } from '../sheet';
+import { openSheet, closeSheet, dismiss, backdrop } from '../sheet';
 
 // Поповер вместо шторки (x-ui.sheet anchor) — только на ПК с мышью.
 const POP = matchMedia('(min-width: 1024px) and (pointer: fine)');
@@ -55,8 +55,8 @@ export default class extends Controller {
         }
     }
 
-    // Клавиатура выезжает только там, где поле помечено autofocus (поиск);
-    // фильтры и формы открываются целиком.
+    // Клавиатура выезжает только там, где поле помечено autofocus (поиск, пустая сумма — «Ссылка на оплату»);
+    // остальные формы открываются целиком.
     open(event) {
         if (this.media?.matches) return;
         if ('sheetAnchor' in this.dialogTarget.dataset && POP.matches && 'showPopover' in this.dialogTarget) { this.pop(event); return; }
@@ -64,14 +64,17 @@ export default class extends Controller {
         this.dialogTarget.querySelector('[autofocus]')?.focus();
     }
 
-    close() {
+    // «×» и «‹» шапки — просьба человека: набранное в форме листа без вопроса не теряется (dismiss). Остальные
+    // кнопки с sheet#close (действие, после которого лист не нужен, «Отменить» со сбросом) закрывают сразу.
+    close(event) {
         if (this.media?.matches) { this.dialogTarget.close(); this.dialogTarget.show(); return; }
         if (popped(this.dialogTarget)) { this.dialogTarget.hidePopover(); return; }
-        closeSheet(this.dialogTarget);
+        if (event?.currentTarget instanceof Element && event.currentTarget.matches('.sheet-close')) dismiss(this.dialogTarget);
+        else closeSheet(this.dialogTarget);
     }
 
     backdrop(event) {
-        if (event.target === this.dialogTarget && this.dialogTarget.matches(':modal')) this.close();
+        backdrop(this.dialogTarget, event);
     }
 
     // Поповер у нажатой кнопки (её капсулы — у чипа с «×» кнопка внутри). Повторное нажатие закрывает. Где

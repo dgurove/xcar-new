@@ -4,7 +4,8 @@
      только у того, у кого её нет в профиле: чек ЮKassa приходит только на почту. По счёту — PDF с QR строкой документа,
      дата, номер и платёжка; наличными — дата. Кнопка — у каждого способа своя и называет исход; у ссылки её нет: выбор
      плательщика сам заводит новую ссылку, и она тут же, с «Скопировать» и «Отправить».
-     Поля в скрытых панелях reveal выключает; обязательность проверяет сервер, `required` на них заблокировал бы отправку. --}}
+     Поля в скрытых панелях reveal выключает; обязательность проверяет сервер, `required` на них заблокировал бы отправку.
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @props(['id' => 'pay', 'invoices', 'action', 'pdf', 'buyers' => collect(), 'open' => false, 'otherName' => null, 'offline' => false])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayLink;
@@ -26,7 +27,7 @@
     $me = auth()->user();
 @endphp
 <x-ui.sheet :id="$id" title="Оплатить" :open="$open">
-    <form method="post" action="{{ $action }}" enctype="multipart/form-data" class="flex flex-col gap-5" data-controller="reveal pay-amount autosubmit">
+    <form method="post" action="{{ $action }}" enctype="multipart/form-data" class="flex flex-col gap-4" data-controller="reveal pay-amount autosubmit">
         @csrf
         <div class="segment">
             @foreach ($ways as $k => [$label, $verb])
@@ -37,7 +38,9 @@
         @if ($one)
             <input type="hidden" name="invoice" value="{{ $first->id }}">
         @else
-            <x-ui.field name="invoice" label="Счёт" :value="old('invoice', $first->id)" :options="$invoices->mapWithKeys(fn ($i) => [$i->id => $i->label().', к оплате '.Money::rub($i->remaining() - $i->claimed())])->all()"/>
+            <div class="fields">
+                <x-ui.field name="invoice" label="Счёт" :value="old('invoice', $first->id)" :options="$invoices->mapWithKeys(fn ($i) => [$i->id => $i->label().', к оплате '.Money::rub($i->remaining() - $i->claimed())])->all()"/>
+            </div>
         @endif
 
         <div class="flex flex-col items-center gap-2">
@@ -67,7 +70,7 @@
                         <x-ui.copy-link :url="$current->url()" :title="'Оплата по счёту '.$first->label()"/>
                     </div>
                 @else
-                    <x-ui.button block>Получить ссылку</x-ui.button>
+                    <div class="sheet-foot"><x-ui.button block>Получить ссылку</x-ui.button></div>
                 @endif
             </div>
         @endif
@@ -82,17 +85,19 @@
                     </x-ui.doc>
                 </div>
             @endif
-            <div class="grid grid-cols-2 gap-3">
+            <div class="fields">
                 <x-ui.field name="paid_at" id="{{ $id }}-date-transfer" label="Дата оплаты" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
                 <x-ui.field name="ref" id="{{ $id }}-ref" label="№ платёжки"/>
-                <x-ui.file-field name="slip" label="Платёжка" accept=".pdf,.jpg,.jpeg,.png,.heic,image/*" span="col-span-2"/>
+                <x-ui.file-field name="slip" label="Платёжка" accept=".pdf,.jpg,.jpeg,.png,.heic,image/*"/>
             </div>
-            <x-ui.button block>Я оплатил</x-ui.button>
+            <div class="sheet-foot"><x-ui.button block>Я оплатил</x-ui.button></div>
         </div>
 
-        <div data-reveal-target="pane" data-reveal-key="cash" @if ($way !== 'cash') hidden @endif>
-            <x-ui.field name="paid_at" id="{{ $id }}-date-cash" label="Когда отдали" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
-            <x-ui.button block class="mt-5">Отдал наличными</x-ui.button>
+        <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="cash" @if ($way !== 'cash') hidden @endif>
+            <div class="fields">
+                <x-ui.field name="paid_at" id="{{ $id }}-date-cash" label="Когда отдали" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
+            </div>
+            <div class="sheet-foot"><x-ui.button block>Отдал наличными</x-ui.button></div>
         </div>
     </form>
 </x-ui.sheet>

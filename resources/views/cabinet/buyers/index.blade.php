@@ -56,7 +56,7 @@
                         <form method="post" action="/buyers/groups" class="flex flex-col gap-4">
                             @csrf
                             <x-ui.field name="name" label="Название" required maxlength="60" placeholder="Дилеры, Казань, VIP…"/>
-                            <x-ui.button block>Создать</x-ui.button>
+                            <div class="sheet-foot"><x-ui.button block>Создать</x-ui.button></div>
                         </form>
                     </x-ui.sheet>
                 </div>

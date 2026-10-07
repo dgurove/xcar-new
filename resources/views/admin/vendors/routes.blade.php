@@ -1,4 +1,5 @@
-{{-- Маршруты вендора по веткам: редактор блоков и этапов, заготовки для пустого маршрута. --}}
+{{-- Маршруты вендора по веткам: редактор блоков и этапов, заготовки для пустого маршрута.
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @php
     use App\Workflow\{Track, WaitsFor, Actor};
     $w = $workflow;
@@ -49,9 +50,11 @@
                     <x-ui.sheet id="block-{{ $block->id }}" title="Блок">
                         <form method="post" action="/settings/workflows/blocks/{{ $block->id }}" class="flex flex-col gap-4">
                             @csrf @method('put')
-                            <x-ui.field name="name" label="Название для менеджера" :value="$block->name" required/>
-                            <x-ui.field name="text" label="Текст уведомления" type="textarea" :value="$block->text"/>
-                            <x-ui.button block>Сохранить</x-ui.button>
+                            <div class="fields">
+                                <x-ui.field name="name" label="Имя для менеджера" :value="$block->name" required/>
+                                <x-ui.field name="text" label="Текст уведомления" type="textarea" :value="$block->text"/>
+                            </div>
+                            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                         </form>
                         @if ($block->stages->isEmpty())
                             <form method="post" action="/settings/workflows/blocks/{{ $block->id }}" class="mt-3">@csrf @method('delete')<x-ui.button variant="danger" block>Удалить блок</x-ui.button></form>
@@ -101,9 +104,11 @@
         <x-ui.sheet id="block-new" title="Новый блок">
             <form method="post" action="/settings/workflows/{{ $w->id }}/blocks" class="flex flex-col gap-4">
                 @csrf
-                <x-ui.field name="name" label="Название для менеджера" required autofocus/>
-                <x-ui.field name="text" label="Текст уведомления" type="textarea"/>
-                <x-ui.button block>Добавить</x-ui.button>
+                <div class="fields">
+                    <x-ui.field name="name" label="Имя для менеджера" required autofocus/>
+                    <x-ui.field name="text" label="Текст уведомления" type="textarea"/>
+                </div>
+                <div class="sheet-foot"><x-ui.button block>Добавить</x-ui.button></div>
             </form>
         </x-ui.sheet>
     </div>

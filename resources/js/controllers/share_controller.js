@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
-import { openSheet, closeSheet } from '../sheet';
+import { openSheet, closeSheet, backdrop } from '../sheet';
 
 // Поделиться оффером или машиной закупки. Текст и файл уходят порознь: вместе
 // мессенджеры теряют файл. Текст кладётся в буфер до первого await — share()
@@ -41,7 +41,7 @@ export default class extends Controller {
     }
 
     backdrop(event) {
-        if (event.target === this.dialogTarget) this.close();
+        backdrop(this.dialogTarget, event, () => this.close());
     }
 
     // Строки сверху вниз, цены — одной последней строкой: «от → до» и метка НДС.

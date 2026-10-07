@@ -1,5 +1,6 @@
 {{-- Карточка счёта, одна на стоянку и CRM: строки, оплаты и заявленные оплаты слева, контрагент, ТС и сделка справа;
-     плашка — «Оплачен» / «Выплачено» (менеджеру) / «Перечислено» (вендору). base — адрес счёта на этом хосте, claims — адрес действий по заявкам (только CRM). --}}
+     плашка — «Оплачен» / «Выплачено» (менеджеру) / «Перечислено» (вендору). base — адрес счёта на этом хосте, claims — адрес действий по заявкам (только CRM).
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource;
     $i = $invoice; $me = auth()->user();
@@ -27,12 +28,12 @@
                 @if ($i->state === InvoiceState::Issued && $canManage)
                     <form method="post" action="{{ $base }}" class="mt-2 flex flex-col gap-3">
                         @csrf @method('put')
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="fields">
                             <x-ui.field name="due_at" :label="$i->isOwed() ? ($fee ? 'Выплатить до' : 'Перечислить до') : 'Оплатить до'" type="date" :value="$i->due_at?->toDateString()" required/>
                             <x-ui.field name="external_no" :label="$i->isOwed() ? 'Чужой номер' : 'Чужой номер'" :value="$i->external_no"/>
-                            <x-ui.field name="notes" label="Заметка в счёт" type="textarea" :value="$i->notes" span="col-span-2"/>
+                            <x-ui.field name="notes" label="Заметка в счёт" type="textarea" :value="$i->notes"/>
                         </div>
-                        <x-ui.button variant="secondary" block>Сохранить</x-ui.button>
+                        <div class="sheet-foot"><x-ui.button variant="secondary" block>Сохранить</x-ui.button></div>
                     </form>
                 @endif
             </div>
@@ -66,7 +67,7 @@
                                     <div data-controller="sheet" class="contents">
                                         <x-ui.button type="button" size="sm" variant="ghost" data-action="sheet#open">Не поступила</x-ui.button>
                                         <x-ui.sheet id="reject-{{ $p->id }}" title="Оплата не поступила">
-                                            <form method="post" action="{{ $claims }}/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><x-ui.button variant="secondary" block>Не поступила</x-ui.button></form>
+                                            <form method="post" action="{{ $claims }}/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><div class="sheet-foot"><x-ui.button variant="secondary" block>Не поступила</x-ui.button></div></form>
                                         </x-ui.sheet>
                                     </div>
                                 @endif
@@ -129,7 +130,7 @@
     @if ($i->state === InvoiceState::Issued && $canManage)
         <div data-controller="sheet">
             <x-ui.action-bar><x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">{{ $i->isOwed() ? ($fee ? 'Выплачено' : 'Перечислено') : 'Оплачен' }}</x-ui.button></x-ui.action-bar>
-            <x-ui.sheet id="pay" :title="$i->isOwed() ? ($fee ? 'Выплата' : 'Перечисление') : 'Оплата'" :open="$errors->has('amount')"><x-billing.pay-form :invoice="$i" :action="$base.'/payments'" :sources="$sources"/></x-ui.sheet>
+            <x-ui.sheet id="pay" :title="$i->isOwed() ? ($fee ? 'Выплата' : 'Перечисление') : 'Оплата'" :open="$errors->has('amount')"><x-billing.pay-form :invoice="$i" :action="$base.'/payments'" :sources="$sources" sheet/></x-ui.sheet>
         </div>
     @endif
 </x-ui.shell>

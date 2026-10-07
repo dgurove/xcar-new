@@ -1304,7 +1304,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .row.pay-link { @apply gap-2; }
   .money-hero-photo { @apply mb-2 size-16 overflow-hidden rounded-full bg-surface-3; }
   .money-hero-photo img { @apply size-full object-cover; }
-  .pay-amount { @apply bg-transparent text-center font-semibold outline-none; font-size: 32px; line-height: 1.2; field-sizing: content; min-width: 2ch; max-width: 100%; }
+  .pay-amount { @apply bg-transparent text-center font-semibold outline-none; font-size: 30px; line-height: 1.15; field-sizing: content; min-width: 2ch; max-width: 100%; }
   .pay-amount::placeholder { color: var(--color-ink-dim); }
   .segment { @apply grid auto-cols-fr grid-flow-col gap-1 rounded-full bg-surface-3 p-1; }
   .segment label { @apply relative flex min-h-9 cursor-pointer items-center justify-center rounded-full px-3 text-sm text-ink-muted; }
@@ -1670,7 +1670,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     margin-top: auto;
     max-height: calc(100dvh - 2rem - var(--kb, 0px));
     margin-bottom: var(--kb, 0px);
-    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    /* Нижний отступ — переменной: его же перекрывает липкая кнопка (.sheet-foot); с клавиатурой и на ПК полосы «Домой» нет. */
+    --sheet-pad-b: calc(1.25rem + env(safe-area-inset-bottom));
+    padding-bottom: var(--sheet-pad-b);
     overscroll-behavior: contain;
   }
   .sheet::backdrop { background: rgb(18 18 18 / .6); backdrop-filter: blur(4px); }
@@ -1694,7 +1696,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @keyframes fade       { from { opacity: 0; } }
   @media (max-width: 767.98px) { html:has(dialog.sheet:modal) { overflow: hidden; } }
   @media (min-width: 640px) {
-    .sheet { margin: auto; width: calc(100% - 2rem); max-width: 28rem; border-radius: var(--radius-xl); padding-bottom: 1.25rem; }
+    .sheet { margin: auto; width: calc(100% - 2rem); max-width: 28rem; border-radius: var(--radius-xl); --sheet-pad-b: 1.25rem; }
     .sheet::before { display: none; }
     .sheet-wide { max-width: 42rem; }
     /* Окно чтения (письма): шире, в высоту — по содержимому до края экрана, прокрутка внутри. */
@@ -1719,6 +1721,58 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet:popover-open::before { display: none; }
   .sheet:popover-open::backdrop { background: none; backdrop-filter: none; }
   .sheet-close { @apply flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
+  /* Клавиатура на телефоне (07.10.2026): лист целиком в видимой части над ней (--vv-h из app.js). Раньше высота
+     считалась от всего экрана минус клавиатура, а iOS ещё и сдвигал экран к полю — верх листа (сумма) уходил за край. */
+  @media (max-width: 639.98px) {
+    html.kb-open .sheet:modal { max-height: calc(var(--vv-h, 100dvh) - .75rem); }
+    html.kb-open .sheet-tall:modal { height: var(--vv-h, 100dvh); max-height: none; }
+    /* Под клавиатурой полосы «Домой» нет — её отступ снизу был бы пустой щелью. */
+    html.kb-open .sheet:modal { --sheet-pad-b: 1.25rem; }
+  }
+  /* Шапка листа (x-ui.sheet: заголовок и «×») липнет к верху при прокрутке, за неё тянут вниз (sheet.js); кнопка
+     формы (.sheet-foot) — к низу, видна над клавиатурой, как «Сохранить» у save-bar. */
+  .sheet:modal > .sheet-bar { position: sticky; top: -1.25rem; z-index: 3; margin: -1.25rem -1.25rem 1rem; padding: 1.25rem 1.25rem 0; background: var(--color-surface); }
+  .sheet:modal::before { position: relative; z-index: 4; }
+  /* Поле в фокусе (app.js reveal) не встаёт под липкую шапку и кнопку. */
+  .sheet:modal { scroll-padding-block: 4.5rem; }
+  .sheet:modal:has(.sheet-foot) { scroll-padding-bottom: 6rem; }
+  .sheet-foot {
+    position: sticky; z-index: 3; bottom: calc(-1 * var(--sheet-pad-b, 1.25rem));
+    margin: 0 -1.25rem calc(-1 * var(--sheet-pad-b, 1.25rem)); padding: .75rem 1.25rem var(--sheet-pad-b, 1.25rem);
+    background: var(--color-surface);
+  }
+  /* Под кнопкой ещё что-то видимое (форма «Удалить», «Войти как»): низ листа не её — без отрицательного отступа, иначе
+     наползёт на следующее. Скрытые панели reveal не в счёт. */
+  .sheet-foot:has(~ :not([hidden], [type="hidden"])),
+  .sheet :is(form, div):has(~ :not([hidden], [type="hidden"])) > .sheet-foot,
+  .sheet :is(form, div):has(~ :not([hidden], [type="hidden"])) > :is(form, div) > .sheet-foot { margin-bottom: 0; padding-bottom: .75rem; }
+  .sheet:not(:modal) .sheet-foot { position: static; margin: 0; padding: 0; }
+
+  /* Поля строками, как в Настройках iOS (07.10.2026, владелец выбрал из трёх): группа через линию, подпись серым
+     слева — столбец по самой длинной, до 40 %, — ввод справа без рамки, строка 44 px. Обычный x-ui.field внутри
+     div.fields; панели reveal внутри — class="contents" (hidden у них работает). Textarea — во всю ширину под подписью. */
+  .fields { display: grid; grid-template-columns: fit-content(40%) minmax(0, 1fr); overflow: clip; border-radius: var(--radius-l); background: var(--color-surface-2); }
+  .fields .field { position: relative; display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; column-gap: .75rem; min-height: 2.75rem; padding: 0 1rem; }
+  .fields .field::after { content: ''; position: absolute; left: 1rem; right: 0; bottom: -1px; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
+  .fields .field-label { @apply text-[15px] text-ink-muted; grid-column: 1; overflow-wrap: break-word; hyphens: auto; }
+  .fields .field > :is(.field-input, .vin-box, .combobox-input) { grid-column: 2; }
+  .fields .field .field-input { min-height: 2.75rem; padding: 0; border-radius: 0; background-color: transparent; text-align: right; text-overflow: ellipsis; box-shadow: none; }
+  .fields .field select.field-input { padding: 0 1.25rem 0 0; background-position: right 0 center; text-align-last: right; }
+  .fields .field input.field-input::-webkit-date-and-time-value { text-align: right; }
+  .fields .field:has(> textarea) { align-items: start; padding-block: .625rem; row-gap: .25rem; }
+  .fields .field:has(> textarea) > *, .fields .field:has(> textarea) > .field-input { grid-column: 1 / -1; }
+  .fields .field textarea.field-input { min-height: 3rem; text-align: left; }
+  .fields .field-error { grid-column: 1 / -1; padding-bottom: .5rem; text-align: right; }
+  .fields .field-invalid .field-input { box-shadow: none; --tw-ring-shadow: 0 0 #0000; }
+  .fields .field-invalid .field-label { @apply text-danger; }
+  .fields .field:not(:has(> textarea)) > .field-label { padding-block: .625rem; }
+  .fields .vin-box .field-input { padding-right: 2.25rem; }
+  .fields label.field-input { justify-content: flex-end; }
+  /* Чипы-подсказки в шторке — одной строкой с прокруткой вбок от края до края листа; нажатый — цветом. */
+  .sheet-chips { @apply -mx-5 flex gap-2 overflow-x-auto px-5; scrollbar-width: none; scroll-padding-inline: 1.25rem; }
+  .sheet-chips > .chip { @apply shrink-0 whitespace-nowrap px-3 py-2; }
+  .chip[aria-pressed="true"] { background: var(--color-accent-soft); color: var(--color-accent); }
+  .fields .field:focus-within { background: color-mix(in oklab, var(--color-accent) 6%, transparent); }
 
   /* Список и карточка строки рядом (x-ui.shell :detail, x-ui.detail, detail_controller). Карточка — колонка страницы,
      а не коробка поверх: всё раскладывает CSS, скрипт ни высоту, ни положение не считает.

@@ -3,7 +3,8 @@
      менеджер удерживает сам. Та же форма принимает подтверждение и правит сделку.
      С `scheme` — ещё кому платят за ТС (05.10.2026): ПРАЙМ по счёту, страхователю по ДКП или страховой напрямую. У двух
      последних — сколько собственнику или страховой (меньше закупочной — взаимозачёт), нам — подбор (цена минус эта сумма
-     минус вознаграждение), режим — удерживает сам. --}}
+     минус вознаграждение), режим — удерживает сам.
+     07.10.2026: суммы строками (.fields), кнопка .sheet-foot (форма всегда в шторке). --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
     'scheme' => null, 'ownerPrice' => null])
 @php
@@ -39,20 +40,22 @@
         <dt class="text-sm text-ink-dim">Закупочная</dt><dd class="nums text-right">{{ $cost === null ? 'не указана' : Money::rub($cost) }}</dd>
         @if ($margin !== null)<dt class="text-sm text-ink-dim" data-commission-target="oursOnly" @if ($dkp) hidden @endif>Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}" data-commission-target="oursOnly" @if ($dkp) hidden @endif>{{ Money::rub($margin) }}</dd>@endif
     </dl>
-    @if ($scheme)
-        <div class="field" data-commission-target="dkpOnly" @unless ($dkp) hidden @endunless>
-            <label for="{{ $id }}-owner" class="field-label"><span data-commission-target="payee">{{ $payee }}</span>, ₽</label>
-            <input type="hidden" name="owner_price" data-commission-target="ownerAmount" value="{{ $owner }}">
-            <input id="{{ $id }}-owner" type="text" class="field-input nums text-lg" data-commission-target="ownerDisplay" data-action="input->commission#input" value="{{ $owner ? Money::nums((int) $owner) : '' }}" autocomplete="off">
-            <p class="mt-1 text-sm text-ink-muted" data-commission-target="offset"></p>
-            @error('owner_price')<p class="field-error">{{ $message }}</p>@enderror
+    <div class="fields">
+        @if ($scheme)
+            <div class="field @error('owner_price') field-invalid @enderror" data-commission-target="dkpOnly" @unless ($dkp) hidden @endunless>
+                <label for="{{ $id }}-owner" class="field-label"><span data-commission-target="payee">{{ $payee }}</span>, ₽</label>
+                <input type="hidden" name="owner_price" data-commission-target="ownerAmount" value="{{ $owner }}">
+                <input id="{{ $id }}-owner" type="text" class="field-input nums text-lg" data-commission-target="ownerDisplay" data-action="input->commission#input" value="{{ $owner ? Money::nums((int) $owner) : '' }}" autocomplete="off">
+                <p class="col-span-full pb-2 text-right text-sm text-ink-muted empty:hidden" data-commission-target="offset"></p>
+                @error('owner_price')<p class="field-error">{{ $message }}</p>@enderror
+            </div>
+        @endif
+        <div class="field @error('commission') field-invalid @enderror">
+            <label for="{{ $id }}" class="field-label">Вознаграждение, ₽</label>
+            <input type="hidden" name="commission" data-commission-target="amount" value="{{ $current }}">
+            <input id="{{ $id }}" type="text" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
+            @error('commission')<p class="field-error">{{ $message }}</p>@enderror
         </div>
-    @endif
-    <div class="field">
-        <label for="{{ $id }}" class="field-label">Агентское вознаграждение, ₽</label>
-        <input type="hidden" name="commission" data-commission-target="amount" value="{{ $current }}">
-        <input id="{{ $id }}" type="text" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
-        @error('commission')<p class="field-error">{{ $message }}</p>@enderror
     </div>
     @if ($margin !== null || $scheme)
         <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4">
@@ -67,5 +70,5 @@
     </div>
     @error('mode')<p class="field-error">{{ $message }}</p>@enderror
     @if ($note ?? null)<p class="text-sm text-ink-muted">{{ $note }}</p>@endif
-    <x-ui.button block>{{ $submit }}</x-ui.button>
+    <div class="sheet-foot"><x-ui.button block>{{ $submit }}</x-ui.button></div>
 </form>

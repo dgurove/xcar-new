@@ -1,6 +1,7 @@
 {{-- Группы над списком людей в «Пользователях» (вместо раздела «Кому показывать», 02.10.2026): в «Менеджерах» — группы
      менеджеров для волн показа, в «Сотрудниках» — группы модераторов, что видят и правят предложения друг друга.
-     Строка — название, кто в ней и сколько; нажатие — шторка: название, участники чипами, «Удалить». Первая — «Новая группа». --}}
+     Строка — название, кто в ней и сколько; нажатие — шторка: название, участники чипами, «Удалить». Первая — «Новая группа».
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @props(['groups', 'kind'])
 @php
     use App\Users\{User, UserGroup};
@@ -24,9 +25,11 @@
                 @endif
             </button>
             <x-ui.sheet :id="'group-'.($group?->id ?? 'new-'.$kind)" :title="$group?->name ?? 'Новая группа'">
-                <form method="post" action="/settings/users/groups{{ $group ? '/'.$group->id : '' }}" class="flex flex-col gap-4">
+                <form method="post" action="/settings/users/groups{{ $group ? '/'.$group->id : '' }}" class="flex flex-col gap-3">
                     @csrf @if ($group) @method('put') @else <input type="hidden" name="kind" value="{{ $kind }}"> @endif
-                    <x-ui.field name="name" label="Название" :value="$group?->name" required maxlength="60"/>
+                    <div class="fields">
+                        <x-ui.field name="name" label="Название" :value="$group?->name" required maxlength="60"/>
+                    </div>
                     <div class="field">
                         <span class="field-label">{{ $who }}</span>
                         <div class="flex flex-wrap gap-1.5">
@@ -35,7 +38,7 @@
                             @endforeach
                         </div>
                     </div>
-                    <x-ui.button block>{{ $group ? 'Сохранить' : 'Добавить' }}</x-ui.button>
+                    <div class="sheet-foot"><x-ui.button block>{{ $group ? 'Сохранить' : 'Добавить' }}</x-ui.button></div>
                 </form>
                 @if ($group)
                     <form method="post" action="/settings/users/groups/{{ $group->id }}" class="mt-2" data-turbo-confirm="Удалить группу «{{ $group->name }}»?">

@@ -1,6 +1,6 @@
 {{-- Кто платит по ссылке — строками с аватарами: я, мои покупатели, новый покупатель по ФИО (заводится в его
      «Покупателях», `PayChoice`). Почта для чека — только у того, у кого её нет: чек ЮKassa приходит на почту. Одно на
-     шторку «Оплатить» и смену плательщика в расчёте сделки. --}}
+     шторку «Оплатить» и смену плательщика в расчёте сделки. 07.10.2026: поля строками (.fields). --}}
 @props(['id' => 'pay', 'buyers' => collect(), 'payer' => 'self', 'otherName' => null, 'cap' => true, 'autosubmit' => false])
 @php
     $me = auth()->user();
@@ -31,14 +31,16 @@
     </div>
     @error('payer_user_id')<div class="mt-2 text-sm text-danger">{{ $message }}</div>@enderror
     @unless ($me->email)
-        <div class="mt-3" data-reveal-target="pane" data-reveal-key="self" @if ($payer !== 'self') hidden @endif><x-ui.field name="email" id="{{ $id }}-email-self" label="Почта для чека" type="email"/></div>
+        <div class="fields mt-3" data-reveal-target="pane" data-reveal-key="self" @if ($payer !== 'self') hidden @endif><x-ui.field name="email" id="{{ $id }}-email-self" label="Почта для чека" type="email"/></div>
     @endunless
     @foreach ($buyers->reject(fn ($b) => $b->email) as $b)
-        <div class="mt-3" data-reveal-target="pane" data-reveal-key="{{ $b->id }}" @unless ($picked($b)) hidden @endunless><x-ui.field name="email" id="{{ $id }}-email-{{ $b->id }}" label="Почта для чека" type="email"/></div>
+        <div class="fields mt-3" data-reveal-target="pane" data-reveal-key="{{ $b->id }}" @unless ($picked($b)) hidden @endunless><x-ui.field name="email" id="{{ $id }}-email-{{ $b->id }}" label="Почта для чека" type="email"/></div>
     @endforeach
-    <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" data-reveal-target="pane" data-reveal-key="other" @if ($payer !== 'other') hidden @endif>
-        <x-ui.field name="name" id="{{ $id }}-name" label="ФИО" :value="$otherName"/>
-        <x-ui.field name="email" id="{{ $id }}-email-other" label="Почта для чека" type="email"/>
-        @if ($autosubmit)<x-ui.button block class="sm:col-span-2">Получить ссылку</x-ui.button>@endif
+    <div class="mt-3 flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="other" @if ($payer !== 'other') hidden @endif>
+        <div class="fields">
+            <x-ui.field name="name" id="{{ $id }}-name" label="ФИО" :value="$otherName"/>
+            <x-ui.field name="email" id="{{ $id }}-email-other" label="Почта для чека" type="email"/>
+        </div>
+        @if ($autosubmit)<x-ui.button block>Получить ссылку</x-ui.button>@endif
     </div>
 </div>

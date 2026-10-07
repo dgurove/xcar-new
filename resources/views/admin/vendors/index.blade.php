@@ -18,9 +18,11 @@
             <x-ui.sheet id="vendor-new" title="Новый вендор" :open="$errors->has('name')">
                 <form method="post" action="/settings/vendors" class="flex flex-col gap-4">
                     @csrf
-                    <x-ui.field name="name" label="Название" required autofocus/>
-                    <x-ui.field name="kind" label="Тип" :options="Kind::options()" value="insurer"/>
-                    <x-ui.button block>Создать</x-ui.button>
+                    <div class="fields">
+                        <x-ui.field name="name" label="Название" required autofocus/>
+                        <x-ui.field name="kind" label="Тип" :options="Kind::options()" value="insurer"/>
+                    </div>
+                    <div class="sheet-foot"><x-ui.button block>Создать</x-ui.button></div>
                 </form>
             </x-ui.sheet>
         </div>

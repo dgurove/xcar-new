@@ -23,9 +23,11 @@
         <x-ui.sheet id="purchase-actions" title="Закупка № {{ $n }}">
             <form method="post" action="/purchases/{{ $n }}" class="flex flex-col gap-3">
                 @csrf @method('put')
-                <x-ui.field name="title" label="Название для нас" :value="$purchase->title"/>
-                <x-ui.field name="vendor_id" label="Поставщик" :options="$vendors->all()" placeholder="Не выбран" :value="$purchase->vendor_id"/>
-                <x-ui.field name="offers_close_at" label="Цены до" type="datetime-local" :value="$purchase->offers_close_at?->format('Y-m-d\TH:i')"/>
+                <div class="fields">
+                    <x-ui.field name="title" label="Название для нас" :value="$purchase->title"/>
+                    <x-ui.field name="vendor_id" label="Поставщик" :options="$vendors->all()" placeholder="Не выбран" :value="$purchase->vendor_id"/>
+                    <x-ui.field name="offers_close_at" label="Цены до" type="datetime-local" :value="$purchase->offers_close_at?->format('Y-m-d\TH:i')"/>
+                </div>
                 <x-ui.button block variant="secondary">Сохранить</x-ui.button>
             </form>
             {{-- Машины с нашей ценой на xcar не показываем — переключатель сохраняется сам. --}}

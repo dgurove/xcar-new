@@ -1,6 +1,6 @@
 {{-- Деньги менеджера: пилюли пресетов с суммами (оплатить, к выплате), «Реквизиты не указаны» строкой над ними и
      список сделок-расчётов и машин гаража со счётом (их суммы — в тех же пилюлях) — одна строка, одна фраза, одно число; сроки — в строках сделок. Реквизиты и документы —
-     в «···» справа от пилюль. Строки узкой колонкой и на компьютере. --}}
+     в «···» справа от пилюль. Строки узкой колонкой и на компьютере. 07.10.2026: даты периода строками (.fields). --}}
 @php
     use App\Support\Money; use App\Billing\DealMoney;
     $needDetails = ! $party->filled() || ! $party->payoutReady();
@@ -39,7 +39,7 @@
                                 {{-- Акт сверки и Excel за период — шторкой документов; даты в адрес ссылок кладёт doc-query. --}}
                                 @php $period = http_build_query(['from' => now()->startOfMonth()->toDateString(), 'to' => now()->toDateString()]); @endphp
                                 <form method="get" action="/account/money/statement" class="mt-2 flex flex-col gap-3" data-turbo="false" data-controller="doc-query" data-action="change->doc-query#sync submit->doc-query#submit">
-                                    <div class="grid grid-cols-2 gap-3">
+                                    <div class="fields">
                                         <x-ui.field name="from" label="С" type="date" :value="now()->startOfMonth()->toDateString()"/>
                                         <x-ui.field name="to" label="По" type="date" :value="now()->toDateString()"/>
                                     </div>

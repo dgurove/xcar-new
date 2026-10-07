@@ -6,10 +6,12 @@
         <x-ui.sheet id="purchase-new" title="Новая закупка">
             <form method="post" action="/purchases" class="flex flex-col gap-4">
                 @csrf
-                <x-ui.field name="title" label="Название для нас" placeholder="Carcade, сентябрь" autofocus/>
-                <x-ui.field name="supplier" label="Поставщик" placeholder="Carcade"/>
-                <x-ui.field name="offers_close_at" label="Цены до" type="datetime-local"/>
-                <x-ui.button block>Создать</x-ui.button>
+                <div class="fields">
+                    <x-ui.field name="title" label="Название для нас" placeholder="Carcade, сентябрь" autofocus/>
+                    <x-ui.field name="supplier" label="Поставщик" placeholder="Carcade"/>
+                    <x-ui.field name="offers_close_at" label="Цены до" type="datetime-local"/>
+                </div>
+                <div class="sheet-foot"><x-ui.button block>Создать</x-ui.button></div>
             </form>
         </x-ui.sheet>
     </div>

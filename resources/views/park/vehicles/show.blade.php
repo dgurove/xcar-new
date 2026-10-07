@@ -1,6 +1,7 @@
 {{-- Дело ТС одной страницей: шапка чипами, прошедшие фазы строками с раскрытием, текущая заявка — одна форма
      (поля ТС + этап), справа на ПК факты (фото, бумаги, документы, деньги, история). Плашка — глагол этапа и «⋯».
-     Письма — блоком над таймлайном (letters-card) и окном (x-mail.window); после приёма и выдачи окно открыто с черновиком вендору. --}}
+     Письма — блоком над таймлайном (letters-card) и окном (x-mail.window); после приёма и выдачи окно открыто с черновиком вендору.
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @php
     use App\Park\{RequestType, RequestState, VehicleState, EventType, PhotoStage};
     use App\Park\Actions\{UndoIntake, UndoRelease, UnwindVehicle};
@@ -210,14 +211,14 @@
             <x-ui.sheet id="charge" title="Начислить" :open="$errors->has('price')">
                 <form method="post" action="/cars/{{ $vehicle->id }}/charges" class="flex flex-col gap-3" data-controller="price" data-price-prices-value="{{ json_encode((object) $chargePrices) }}">
                     @csrf
-                    <x-ui.field name="kind" label="За что" :options="$chargeKinds" data-price-target="kind" data-action="change->price#sync"/>
-                    @if (count($payers) > 1)<x-ui.field name="party_id" label="Кому" :options="$payers" :value="array_key_first($payers)"/>@endif
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="fields">
+                        <x-ui.field name="kind" label="За что" :options="$chargeKinds" data-price-target="kind" data-action="change->price#sync"/>
+                        @if (count($payers) > 1)<x-ui.field name="party_id" label="Кому" :options="$payers" :value="array_key_first($payers)"/>@endif
                         <x-ui.field name="qty" label="Сколько" value="1"/>
                         <x-ui.field name="price" label="Цена, ₽" required data-price-target="price"/>
+                        <x-ui.field name="title" label="Название в счёте"/>
                     </div>
-                    <x-ui.field name="title" label="Как назвать в счёте"/>
-                    <x-ui.button block>Начислить</x-ui.button>
+                    <div class="sheet-foot"><x-ui.button block>Начислить</x-ui.button></div>
                 </form>
             </x-ui.sheet>
         </x-ui.card>
@@ -253,25 +254,25 @@
     {{-- Шторки: договор, продано, действия «⋯», отмена заявки. --}}
     @if ($canManage)
         <div data-controller="sheet" data-action="contract:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="contract" title="Условия" :open="$errors->hasAny(['contract_kind', 'assigned_price', 'accepted_at', 'released_at', 'storage_rate'])">
+            <x-ui.sheet id="contract" title="Условия" tall :open="$errors->hasAny(['contract_kind', 'assigned_price', 'accepted_at', 'released_at', 'storage_rate'])">
                 <form method="post" action="/cars/{{ $vehicle->id }}" class="flex flex-col gap-3">
                     @csrf @method('put')
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="fields">
                         <x-ui.field name="contract_kind" label="Основание" :options="['storage' => 'Хранение', 'commission' => 'Договор комиссии']" :value="$vehicle->contract_kind"/>
                         <x-ui.field name="contract_no" label="Номер договора" :value="$vehicle->contract_no" :placeholder="$vehicle->ref"/>
                         <x-ui.field name="contract_at" label="Дата" type="date" :value="$vehicle->contract_at?->toDateString()"/>
                         <x-ui.field name="assigned_price" label="Назначенная цена, ₽" :value="$vehicle->assigned_price"/>
                         <x-ui.field name="pts" label="ПТС" :value="$vehicle->pts" copy/>
                         <x-ui.field name="sts" label="СТС" :value="$vehicle->sts" copy/>
-                        <x-ui.field name="owner_party_id" label="Комитент" :options="$owners" placeholder="—" :value="$vehicle->owner_party_id" span="col-span-2"/>
+                        <x-ui.field name="owner_party_id" label="Комитент" :options="$owners" placeholder="—" :value="$vehicle->owner_party_id"/>
                         <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" :value="$vehicle->storage_rate"/>
                         <x-ui.field name="storage_rate_note" label="Почему своя" :value="$vehicle->storage_rate_note"/>
-                        <x-ui.field name="billing_cadence" label="Счёт за хранение" :options="\App\Billing\Cadence::options()" :placeholder="'Как у вендора'.($vehicle->vendor ? ' — '.mb_strtolower($vehicle->vendor->billing_cadence->label()) : '')" :value="$vehicle->billing_cadence?->value" span="col-span-2"/>
+                        <x-ui.field name="billing_cadence" label="Счёт за хранение" :options="\App\Billing\Cadence::options()" :placeholder="'Как у вендора'.($vehicle->vendor ? ' — '.mb_strtolower($vehicle->vendor->billing_cadence->label()) : '')" :value="$vehicle->billing_cadence?->value"/>
                         {{-- Даты приёма и выдачи правятся, пока хранение по ним не выставлено (сервер отобьёт иначе). --}}
                         @if ($vehicle->accepted_at)<x-ui.field name="accepted_at" label="Принята" type="datetime-local" :value="$vehicle->accepted_at->format('Y-m-d\TH:i')"/>@endif
                         @if ($vehicle->released_at)<x-ui.field name="released_at" label="Выдана" type="datetime-local" :value="$vehicle->released_at->format('Y-m-d\TH:i')"/>@endif
                     </div>
-                    <x-ui.button block>Сохранить</x-ui.button>
+                    <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                 </form>
             </x-ui.sheet>
         </div>
@@ -282,15 +283,15 @@
                 {{-- Страховая продала ТС: дата письма, кому выдать; дальше дни за счёт вендора и покупатель по множителю. --}}
                 <form method="post" action="/cars/{{ $vehicle->id }}/sold" class="flex flex-col gap-3">
                     @csrf
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="fields">
                         <x-ui.field name="sold_at" label="Дата реализации" type="date" :value="($vehicle->sold_at ?? now())->toDateString()" required/>
                         <x-ui.field name="pickup_phone" label="Телефон" type="tel" :value="$vehicle->pickup_phone"/>
-                        <x-ui.field name="pickup_name" label="Кто заберёт" :value="$vehicle->pickup_name" span="col-span-2"/>
+                        <x-ui.field name="pickup_name" label="Кто заберёт" :value="$vehicle->pickup_name"/>
                         {{-- Срок из письма страховой: опоздал — дальше сутки идут покупателю по множителю вендора.
                              Поле только у вендоров с этим правилом (ВСК): у остальных платит страховая, сколько бы ни стояло. --}}
-                        @if ($vehicle->vendor?->buyer_pays_late)<x-ui.field name="buyer_free_until" label="Хранение за счёт вендора до" type="date" :value="$vehicle->buyer_free_until?->toDateString()" span="col-span-2"/>@endif
+                        @if ($vehicle->vendor?->buyer_pays_late)<x-ui.field name="buyer_free_until" label="За счёт вендора до" type="date" :value="$vehicle->buyer_free_until?->toDateString()"/>@endif
                     </div>
-                    <div class="flex gap-2">
+                    <div class="sheet-foot flex gap-2">
                         <x-ui.button class="flex-1">{{ $vehicle->sold_at ? 'Сохранить' : 'Записать' }}</x-ui.button>
                         @if ($vehicle->sold_at)<x-ui.button variant="ghost" name="clear" value="1" data-turbo-confirm="Снять выдачу?">Снять выдачу</x-ui.button>@endif
                     </div>
@@ -306,7 +307,7 @@
                 <form method="post" action="/requests/{{ $req->id }}/refuse" class="flex flex-col gap-3">
                     @csrf
                     <x-ui.field name="reason" label="Почему отказался" type="textarea" required/>
-                    <x-ui.button block>Записать отказ</x-ui.button>
+                    <div class="sheet-foot"><x-ui.button block>Записать отказ</x-ui.button></div>
                 </form>
             </x-ui.sheet>
         </div>
@@ -323,7 +324,7 @@
                         <div class="row justify-between"><span class="min-w-0"><span class="block truncate">{{ $pass->name }}</span><span class="block text-sm text-ink-muted">анкета {{ $pass->submitted_at?->translatedFormat('j M, H:i') }}</span></span></div>
                     </div>
                     <x-ui.field name="reason" label="Что ответила страховая" type="textarea" required/>
-                    <x-ui.button block variant="danger">Погасить пропуск</x-ui.button>
+                    <div class="sheet-foot"><x-ui.button block variant="danger">Погасить пропуск</x-ui.button></div>
                 </form>
             </x-ui.sheet>
         </div>
@@ -347,7 +348,7 @@
                         </div>
                         @error('without_qr_reason')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
-                    <button type="submit" form="act-form" name="without_qr" value="1" class="btn btn-danger btn-block disabled:opacity-50" data-min-length-target="submit" data-action="min-length#guard" data-turbo-confirm="Выдать ТС без QR-кода? Об этом узнает владелец">Выдать без QR</button>
+                    <div class="sheet-foot"><button type="submit" form="act-form" name="without_qr" value="1" class="btn btn-danger btn-block disabled:opacity-50" data-min-length-target="submit" data-action="min-length#guard" data-turbo-confirm="Выдать ТС без QR-кода? Об этом узнает владелец">Выдать без QR</button></div>
                 </div>
             </x-ui.sheet>
         </div>
@@ -362,11 +363,13 @@
                     <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="{{ $hadLetters ? 'Отменить заявку? ТС исчезнет, письма вернутся в «Из писем»' : 'Отменить заявку? ТС и заявка исчезнут' }}">@csrf @method('delete')<x-ui.button variant="secondary" block>Отменить заявку</x-ui.button></form>
                 @endif
                 @if ($state === VehicleState::Stored)
-                    <form method="post" action="/cars/{{ $vehicle->id }}/move" class="grid grid-cols-[minmax(0,1fr)_5rem] items-end gap-2">@csrf
-                        <x-ui.field name="yard_id" label="Парковка" :options="$yards" :value="$vehicle->yard_id"/>
-                        <x-ui.field name="spot" label="Место" :value="$vehicle->spot" list="spots-free" autocapitalize="characters"/>
+                    <form method="post" action="/cars/{{ $vehicle->id }}/move" class="flex flex-col gap-2">@csrf
+                        <div class="fields">
+                            <x-ui.field name="yard_id" label="Парковка" :options="$yards" :value="$vehicle->yard_id"/>
+                            <x-ui.field name="spot" label="Место" :value="$vehicle->spot" list="spots-free" autocapitalize="characters"/>
+                        </div>
                         <datalist id="spots-free">@foreach ($spots as $s)<option value="{{ $s }}">@endforeach</datalist>
-                        <x-ui.button variant="secondary" class="col-span-full">Переставить</x-ui.button>
+                        <x-ui.button variant="secondary" block>Переставить</x-ui.button>
                     </form>
                     <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую парковку</x-ui.button>
                 @endif

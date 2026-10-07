@@ -28,7 +28,7 @@
                 <div data-controller="sheet" class="contents">
                     <button type="button" class="btn btn-s btn-accent" data-action="sheet#open">{{ $i->isOwed() ? 'Выплатить' : 'Деньги пришли' }}</button>
                     <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : 'Оплата по счёту '.$i->label()" :open="$errors->hasAny(['source', 'paid_at', 'slip'])">
-                        <x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources"/>
+                        <x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources" sheet/>
                     </x-ui.sheet>
                 </div>
             @endif
@@ -55,7 +55,7 @@
                                     <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-4">
                                         @csrf
                                         <x-ui.field name="reason" :id="'reason-'.$p->id" label="Что не так"/>
-                                        <x-ui.button block variant="secondary">Отметить</x-ui.button>
+                                        <div class="sheet-foot"><x-ui.button block variant="secondary">Отметить</x-ui.button></div>
                                     </form>
                                 </x-ui.sheet>
                             </span>

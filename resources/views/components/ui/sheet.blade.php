@@ -10,7 +10,7 @@
 @props(['id', 'title' => null, 'open' => false, 'wide' => false, 'tall' => false, 'inflow' => false, 'bare' => false, 'tools' => null, 'anchor' => false])
 <dialog id="{{ $id }}" {{ $attributes->class(['sheet', 'sheet-wide' => $wide, 'sheet-tall' => $tall, 'sheet--inflow' => $inflow]) }} data-sheet-target="dialog" data-action="click->sheet#backdrop" @if ($anchor) data-sheet-anchor @endif @if ($open) data-sheet-open-value="true" @endif>
     @if (! $bare && ($title || !$inflow))
-    <div class="mb-4 flex items-center justify-between gap-3{{ $tall ? ' sheet-head' : '' }}">
+    <div class="sheet-bar mb-4 flex items-center justify-between gap-3{{ $tall ? ' sheet-head' : '' }}">
         @if ($tall)<button type="button" class="sheet-close sheet-back -ml-2" data-action="sheet#close" aria-label="Назад"><x-ui.icon name="chevron-left" class="size-5"/></button>@endif
         {{-- Высокое окно: заголовок слева у «‹», даже когда крестик на телефоне спрятан и справа ничего нет. --}}
         @if ($title)<h2 @class(['text-lg', 'min-w-0 flex-1 truncate' => $tall])>{{ $title }}</h2>@endif

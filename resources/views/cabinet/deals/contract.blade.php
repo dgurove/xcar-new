@@ -5,7 +5,8 @@
      по счёту: покупатель или менеджер за вычетом своего вознаграждения. Счёт и договор собираются сами
      (`SaveDealContract` → `SyncDealInvoices`). Шторку выбора открывает и задача («Укажите покупателя», событие `buyer:open`).
      Куски ($part): buyer — покупатель (и кто платит), doc — сам ДКП строкой (открыть, распечатать; не готов — чего нет),
-     all — оба под заголовком. В задаче на шаге договора ($embedded) — пунктами чек-листа, без своего заголовка. --}}
+     all — оба под заголовком. В задаче на шаге договора ($embedded) — пунктами чек-листа, без своего заголовка.
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @php
     $contract = \App\Offers\DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
     $buyer = $contract->buyer;
@@ -46,11 +47,11 @@
                             <span class="row-sub text-urgent">нужны данные для договора</span></span>
                         <x-ui.chevron/>
                     </button>
-                    <x-ui.sheet id="deal-buyer-data" title="Данные для договора" :open="$dataErrors">
-                        <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-4">
+                    <x-ui.sheet id="deal-buyer-data" title="Данные для договора" :open="$dataErrors" tall>
+                        <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3">
                             @csrf @method('put')
                             <x-billing.buyer-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" key="buyer-now"/>
-                            <x-ui.button block>Сохранить</x-ui.button>
+                            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                         </form>
                     </x-ui.sheet>
                 </div>
@@ -103,9 +104,9 @@
                             <form method="post" action="/deals/{{ $deal->id }}/contract" class="mt-2 flex flex-col gap-3">
                                 @csrf @method('put')
                                 <input type="hidden" name="buyer_id" value="new">
-                                <x-ui.field name="new_buyer[phone]" label="Телефон" type="tel"/>
+                                <div class="fields"><x-ui.field name="new_buyer[phone]" label="Телефон" type="tel"/></div>
                                 <x-billing.buyer-fields key="new-buyer"/>
-                                <x-ui.button block>Добавить покупателя</x-ui.button>
+                                <div class="sheet-foot"><x-ui.button block>Добавить покупателя</x-ui.button></div>
                             </form>
                         </details>
                     </div>

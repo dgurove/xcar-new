@@ -1,7 +1,7 @@
 {{-- Подтверждение менеджера — одно на редактор и карточка строки: сумма, насколько она от цены продажи, «Лучшая» и «ниже
      минимальной» (строкой группы .list в bids.blade), менеджер с телефоном, когда, комментарий. У ждущего — «Принять» (у предложения в сделке — «Отдать»:
      прежняя сделка отменится) шторкой с деньгами сделки и «Отклонить» рядом — одинаково в редакторе и карточке строки.
-     Гаражное («В гараж») — без цены: сколько машин у менеджера уже в гараже, в шторке — кто платит поставщику. --}}
+     Гаражное («В гараж») — без цены: сколько машин у менеджера уже в гараже, в шторке — кто платит поставщику. 07.10.2026: доля строкой (.fields), кнопка .sheet-foot. --}}
 @props(['bid', 'offer', 'best' => false, 'parked' => collect(), 'branch' => false])
 @php
     use App\Offers\BidState;
@@ -46,7 +46,7 @@
                                 </div>
                             @endif
                             {{-- Платит поставщику менеджер — нашу долю он платит по ссылке сразу (05.10.2026). --}}
-                            <div data-reveal-target="pane" data-reveal-key="manager" @if ($branch && old('payer', 'us') !== 'manager') hidden @endif>
+                            <div class="fields" data-reveal-target="pane" data-reveal-key="manager" @if ($branch && old('payer', 'us') !== 'manager') hidden @endif>
                                 <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')" data-controller="digits" data-action="input->digits#format"/>
                             </div>
                             {{-- Везут к нему в гараж: сам или мы (05.10.2026); выбрано, кто уже вывозит. Вывоз у гаражной
@@ -62,7 +62,7 @@
                                 </div>
                             @endif
                             @if ($give)<p class="text-sm text-ink-muted">Сделка с {{ $offer->deal->buyer?->shortName() }} отменится</p>@endif
-                            <x-ui.button type="submit" variant="primary" block>{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.button>
+                            <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.button></div>
                         </form>
                     @else
                         <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :scheme="\App\Offers\DealScheme::forVendor($offer->vendor?->deal_format)" :owner-price="$offer->owner_price" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null">

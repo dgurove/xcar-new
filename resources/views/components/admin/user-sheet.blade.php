@@ -1,5 +1,6 @@
 {{-- Шит «Изменить» человека (админ): имя, у покупателя менеджер, у остальных контакты, роли галками и доступ;
-     ниже «Войти как», ссылка на новый пароль, закрыть доступ или удалить. Открывается сам, если ссылка только что выдана. --}}
+     ниже «Войти как», ссылка на новый пароль, закрыть доступ или удалить. Открывается сам, если ссылка только что выдана.
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @props(['user', 'managers', 'link' => null, 'base', 'me'])
 @php
     use App\Http\Admin\UserController;
@@ -14,16 +15,16 @@
     </div>
 @endif
 {{-- Не прошло проверку — шторка этого человека открывается снова с ошибками (old('_user')). --}}
-<x-ui.sheet id="user-{{ $user->id }}" :title="$user->name" :open="($link['user'] ?? null) === $user->id || (int) old('_user') === $user->id">
+<x-ui.sheet id="user-{{ $user->id }}" :title="$user->name" tall :open="($link['user'] ?? null) === $user->id || (int) old('_user') === $user->id">
     @if (($link['user'] ?? null) === $user->id)
         <x-ui.copy-link :url="$link['url']" title="Ссылка для нового пароля" class="mb-6">
             <p class="text-sm text-ink-muted">Действует сутки, один раз. Отдайте её {{ $user->shortName() }} любым способом.</p>
         </x-ui.copy-link>
     @endif
-    <form method="post" action="{{ $base }}/{{ $user->id }}" class="user-form flex flex-col gap-4">
+    <form method="post" action="{{ $base }}/{{ $user->id }}" class="user-form flex flex-col gap-3">
         @csrf @method('put')
         <input type="hidden" name="_user" value="{{ $user->id }}">
-        <div class="grid grid-cols-2 gap-3">
+        <div class="fields">
             <x-ui.field name="first_name" id="user-first-{{ $user->id }}" label="Имя" :value="$user->first_name" required/>
             <x-ui.field name="last_name" id="user-last-{{ $user->id }}" label="Фамилия" :value="$user->last_name" required/>
         </div>
@@ -33,11 +34,15 @@
                 @if ($user->phone)<span class="tag nums">{{ $user->phoneFormatted() }}</span>@endif
                 @if ($user->email)<span class="tag">{{ $user->email }}</span>@endif
             </div>
-            <x-ui.field name="manager_id" label="Менеджер" :options="$managers->mapWithKeys(fn ($m) => [$m->id => $m->name])" :value="$user->manager_id"/>
+            <div class="fields">
+                <x-ui.field name="manager_id" label="Менеджер" :options="$managers->mapWithKeys(fn ($m) => [$m->id => $m->name])" :value="$user->manager_id"/>
+            </div>
         @else
-            <x-ui.field name="phone" label="Телефон" type="tel" :value="$user->phoneFormatted()"/>
-            <x-ui.field name="email" label="Почта" type="email" :value="$user->email"/>
-            <x-ui.field name="login" label="Логин" :value="$user->login" autocapitalize="none"/>
+            <div class="fields">
+                <x-ui.field name="phone" label="Телефон" type="tel" :value="$user->phoneFormatted()"/>
+                <x-ui.field name="email" label="Почта" type="email" :value="$user->email"/>
+                <x-ui.field name="login" label="Логин" :value="$user->login" autocapitalize="none"/>
+            </div>
             {{-- Роли галками: их может быть несколько (менеджер и модератор, админ и менеджер…). Под каждой отмеченной — её
                  настройки. Себе «Админ» не снять. --}}
             @php $checked = old('roles', ($user->roles ?? collect())->map->value->all()); @endphp
@@ -55,8 +60,8 @@
             </div>
             {{-- Сняли «Менеджер» у того, у кого есть покупатели, — к кому они перейдут. --}}
             @if ($user->isManager() && ($buyers = $user->buyers()->count()))
-                <div data-transfer class="flex flex-col gap-3">
-                    <x-ui.field name="transfer_to" :label="'Кому передать покупателей ('.$buyers.')'" :options="$managers->reject(fn ($m) => $m->is($user))->mapWithKeys(fn ($m) => [$m->id => $m->name])" placeholder="Выберите менеджера"/>
+                <div data-transfer class="fields">
+                    <x-ui.field name="transfer_to" :label="'Передать покупателей ('.$buyers.')'" :options="$managers->reject(fn ($m) => $m->is($user))->mapWithKeys(fn ($m) => [$m->id => $m->name])" placeholder="Выберите менеджера"/>
                 </div>
             @endif
             {{-- Парковка — не галка у любой роли, а роль «Парковка» со своим доступом; админу открыто всё. --}}
@@ -71,7 +76,7 @@
             </div>
             <x-ui.check name="mail" :checked="$user->wantsMail()">Письма о событиях</x-ui.check>
         @endif
-        <x-ui.button block>Сохранить</x-ui.button>
+        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
     </form>
     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
         <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="mt-3"

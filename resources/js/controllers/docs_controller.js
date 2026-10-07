@@ -567,7 +567,10 @@ export default class extends Controller {
         const [t0, y0] = d.pts[0], [t1, y1] = d.pts.at(-1);
         const v = (y1 - y0) / Math.max(1, t1 - t0);
         const snaps = this.snaps();
-        const aim = this.height - v * 180;
+        // Взмах добавляет не больше 150 px; с клавиатурой лист низкий и порог закрытия крошечный — жест вниз только
+        // убирает клавиатуру, лист остаётся (07.10.2026, окна «норовят закрыться»).
+        const aim = this.height - Math.max(-150, Math.min(150, v * 180));
+        if (this.kb) { document.activeElement?.blur(); this.settle(Math.max(this.height, snaps[0])); return; }
         if (aim < snaps[0] * .7) { this.close(); return; }
         const h = snaps.reduce((a, b) => (Math.abs(b - aim) < Math.abs(a - aim) ? b : a));
         this.settle(h);
