@@ -6,10 +6,12 @@
     $theme = in_array(request()->cookie('theme'), ['dark', 'light'], true) ? request()->cookie('theme') : null;
 @endphp
 <!doctype html>
-<html lang="ru" class="h-full{{ $theme === 'dark' ? ' dark' : '' }}">
+<html lang="ru" translate="no" class="h-full{{ $theme === 'dark' ? ' dark' : '' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+    {{-- Интерфейс только русский: переводчик браузера ломал обрывки («12 д 5 ч», госномера) — 07.10.2026. --}}
+    <meta name="google" content="notranslate">
     <meta name="theme-color" content="{{ $theme === 'dark' ? '#161616' : '#ffffff' }}">
     <meta name="view-transition" content="same-origin">
     {{-- Без превью из кэша: иначе advance на виденный адрес рисует снимок, а через миг молча

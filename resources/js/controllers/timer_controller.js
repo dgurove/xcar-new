@@ -29,7 +29,12 @@ export default class extends Controller {
     static classes = ['last'];
 
     connect() {
+        // Переводчик браузера (Chrome, Яндекс, Safari) принимал «12 д 5 ч» за чужой язык и подменял текст («с 5 по 12, но
+        // в»), а таймер каждую секунду писал своё обратно — строки прыгали (07.10.2026). Отсчёт не переводится.
+        this.element.translate = false;
+        this.element.classList.add('notranslate');
         this.finished = false;
+        this.text = this.element.textContent;
         this.visible = true; // до первого ответа наблюдателя — как видимый: первый кадр рисуется сразу
         this.tick();
         timers.add(this);
@@ -44,9 +49,12 @@ export default class extends Controller {
         if (!timers.size) { clearInterval(interval); interval = null; }
     }
 
-    // Сверяем с тем, что стоит в DOM (морф мог подставить серверный текст), — чтение раскладку не трогает.
+    // Пишем, только когда отсчёт поменялся, — сверяем со своим последним текстом, а не с DOM: чужая подмена текста
+    // (переводчик) не должна запускать перезапись каждую секунду.
     write(text) {
-        if (this.visible && this.element.textContent !== text) this.element.textContent = text;
+        if (!this.visible || this.text === text) return;
+        this.text = text;
+        this.element.textContent = text;
     }
 
     tick() {
