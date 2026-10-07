@@ -88,8 +88,8 @@ final class Importer
         foreach (['year', 'address'] as $f) {
             $car->{$f} ??= $row[$f];
         }
-        if (! $car->settlement_id && ! $car->isLocked('settlement_id')) {
-            $car->settlement_id = $this->settlement($car->address);
+        if ($car->townReplaceable() && ($town = $car->townId())) {
+            $car->settlement_id = $town;
         }
         if (in_array($car->specs_state, [ImportState::Skipped, ImportState::Gone, ImportState::Failed], true)) {
             foreach (['brand_raw' => $row['brand'], 'model_raw' => $row['model']] as $f => $v) {

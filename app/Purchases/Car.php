@@ -141,6 +141,23 @@ class Car extends Model implements HasMedia
         return $user ? $this->offers->first(fn (Offer $o) => $o->user_id === $user->id && in_array($o->state, [OfferState::Active, OfferState::Chosen], true)) : null;
     }
 
+    /**
+     * Город машины: областной город из карточки Carcade («Пермь»), а не деревня из адреса стоянки («д. Ванюки») —
+     * менеджеры ищут и фильтруют по городу (владелец 07.10.2026). Адрес — когда города в карточке нет или он не в
+     * справочнике.
+     */
+    public function townId(): ?int
+    {
+        return ($this->city ? Settlement::named($this->city)['id'] ?? null : null) ?? Settlement::inAddress($this->address)['id'] ?? null;
+    }
+
+    /** Место не ставили руками и оно пустое или деревня — его можно заменить городом (`townId`). */
+    public function townReplaceable(): bool
+    {
+        return ! $this->isLocked('settlement_id')
+            && (! $this->settlement_id || (int) Settlement::whereKey($this->settlement_id)->value('rank') > Settlement::TOWN);
+    }
+
     /** Активные и выбранные цены из уже загруженной связи, без запроса. */
     public function activeOfferList(): Collection
     {

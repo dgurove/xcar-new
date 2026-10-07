@@ -77,6 +77,9 @@ final class FetchSpecs implements ShouldQueue
         $set('condition', $s['condition']);
         $set('city', $s['city']);
         $set('address', $s['address'] ?? $car->address);
+        if ($car->townReplaceable() && ($town = $car->townId())) {
+            $car->settlement_id = $town;
+        }
         if ($s['fssp'] !== null) {
             $car->fssp = $s['fssp'];
         }
