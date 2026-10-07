@@ -136,10 +136,16 @@
   --ease-out: cubic-bezier(.2, .8, .2, 1);
   --ease-in: cubic-bezier(.4, 0, 1, 1);
   --ease-spring: cubic-bezier(.2, .8, .2, 1);
+  /* Листы (шторки, карточка строки) — только cubic-bezier: его WebKit отдаёт Core Animation, linear() ниже — нет,
+     и движение листа шло главным потоком рывками, пока тот занят. */
+  --ease-sheet: cubic-bezier(.32, .72, 0, 1);
   --dur-fast: 160ms;
   --dur: 240ms;
   --dur-slow: 320ms;
 }
+
+/* Сдвиг листа карточки на полэкрана — длиной, чтобы скрипт читал его в px (detail_controller#half). */
+@property --sheet-half { syntax: '<length>'; inherits: true; initial-value: 0px; }
 
 /* Где умеют linear() (iOS 17.2, Chrome 113) — настоящая экспонента и пружина. */
 @supports (animation-timing-function: linear(0, 1)) {
@@ -1707,11 +1713,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     padding-bottom: var(--sheet-pad-b);
     overscroll-behavior: contain;
   }
-  .sheet::backdrop { background: rgb(18 18 18 / .6); backdrop-filter: blur(4px); }
+  /* Затемнение без размытия (07.10.2026): blur всей страницы, перерисованный каждый кадр выезда и ухода, на iPhone давал
+     несколько кадров в секунду. */
+  .sheet::backdrop { background: rgb(18 18 18 / .6); }
   /* Телефон: ручка, выезд снизу, уход вниз (класс is-closing ставит sheet.js и
      закрывает диалог по концу анимации; --from — откуда падать после свайпа). */
   .sheet::before { content: ''; display: block; width: 36px; height: 5px; margin: -.5rem auto .75rem; border-radius: 3px; background: var(--color-line); }
-  .sheet[open] { animation: sheet-up var(--dur-slow) var(--ease-out) both; }
+  .sheet[open] { animation: sheet-up var(--dur-slow) var(--ease-sheet) both; }
   .sheet[open]::backdrop { animation: fade var(--dur) both; }
   .sheet.is-closing { animation: sheet-down var(--dur) var(--ease-in) both; pointer-events: none; }
   .sheet.is-closing::backdrop { animation: fade var(--dur-fast) reverse both; }
@@ -1751,7 +1759,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     border-radius: var(--radius-l); padding: 1rem 1rem .75rem; animation: dialog-in var(--dur) var(--ease-out);
   }
   .sheet:popover-open::before { display: none; }
-  .sheet:popover-open::backdrop { background: none; backdrop-filter: none; }
+  .sheet:popover-open::backdrop { background: none; }
   .sheet-close { @apply flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   /* Клавиатура на телефоне (07.10.2026): лист целиком в видимой части над ней (--vv-h из app.js). Раньше высота
      считалась от всего экрана минус клавиатура, а iOS ещё и сдвигал экран к полю — верх листа (сумма) уходил за край. */
@@ -1853,21 +1861,29 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .split[data-open] .table-box { overflow-x: auto; overscroll-behavior-x: contain; }
   }
   @media (max-width: 1023.98px) {
-    /* Лист снизу: полэкрана или во весь экран (data-full), высоту меняет только полоса сверху (detail_controller#grab,
-       во время перетаскивания — translate, отпустили — высота); внутри листается только тело карточки, по вертикали. */
+    /* Лист снизу одной высоты — во весь экран под шапкой; полэкрана и закрыт — сдвиг вниз (transform своим слоем, 07.10.2026,
+       владелец: закрытие «как 2 FPS»). Высота не меняется ни в жесте, ни в снапе: перекладка всей карточки и перерисовка
+       листа с тенью каждый кадр и давали рывки. Тянут за полосу (detail_controller#grab), внутри листается тело.
+       На полэкрана низ листа за краем экрана — тело добирает отступ, «Сохранить изменения» липнет выше на столько же.
+       С клавиатурой (kb-open) низ листа встаёт на неё — меняется только низ, поле стоит на месте (app.js keyboardInset). */
     .split-detail {
       @apply block;
+      --sheet-half: calc(50dvh - var(--spacing-header) - env(safe-area-inset-top));
       position: fixed; inset-inline: 0; bottom: 0; z-index: 45; margin-inline: auto; max-width: 36rem;
-      height: 50dvh; overflow: hidden;
+      top: calc(var(--spacing-header) + env(safe-area-inset-top)); overflow: hidden;
+      transform: translateY(var(--sheet-half)); will-change: transform;
       /* Тень — у самого листа: у карточки внутри её обрезал overflow листа, и тени не было вовсе (07.10.2026). Белый
          лист над белой таблицей — край линией и короткой тенью, глубина длинной. */
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
       box-shadow: 0 -.5px 0 var(--color-line), 0 -2px 6px rgb(0 0 0 / .08), 0 -12px 36px rgb(0 0 0 / .2);
       /* backwards, а не both: заполненная анимация оставляла листу сдвиг слоем, и Safari на iPhone не доставлял нажатия в
          верх листа (кадры, кнопки на них, полоса) — у админа в предложениях, 04.10.2026. touch-action — только у полосы. */
-      animation: sheet-up var(--dur-slow) var(--ease-out) backwards;
+      animation: split-up var(--dur-slow) var(--ease-sheet) backwards;
     }
-    .split-detail[data-full] { height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top)); }
+    .split-detail[data-full] { transform: none; }
+    html.kb-open .split-detail { bottom: var(--kb, 0px); transform: none; }
+    .split-detail:not([data-full]) .save-bar { bottom: var(--sheet-half); }
+    @keyframes split-up { from { transform: translateY(100%); } }
     .detail-card {
       height: 100%; overflow: hidden;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -1882,6 +1898,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
       padding-bottom: max(env(safe-area-inset-bottom), 1rem);
     }
+    .split-detail:not([data-full]) .detail-body { padding-bottom: calc(var(--sheet-half) + max(env(safe-area-inset-bottom), 1rem)); }
+    html.kb-open .split-detail .detail-body { padding-bottom: 1rem; }
     .detail-bar { @apply rounded-t-(--radius-xl) pt-4; touch-action: none; cursor: grab; }
     .detail-handle { display: block; position: absolute; inset-inline: 0; top: .375rem; margin: 0 auto; width: 36px; height: 5px; border-radius: 3px; background: var(--color-line); }
     /* Лист закрывает нижнюю половину — последние строки выезжают из-под него. */
@@ -1889,8 +1907,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     /* Чья карточка — видно в таблице (07.10.2026, вариант владельца «строка горит»): выбранная лаймовая с полосой слева,
        остальные строки и заголовки групп бледнеют; нажимаются как раньше. Выбранная встаёт над листом —
        scrollIntoView({block: 'nearest'}) учитывает scroll-margin. */
-    /* Заголовки групп не бледнеют: они липнут друг на друга, и полупрозрачный пропускал нижний насквозь. */
-    .split-main [data-detail-key] { transition: opacity var(--dur) var(--ease-out); }
+    /* Заголовки групп не бледнеют: они липнут друг на друга, и полупрозрачный пропускал нижний насквозь. Бледнеют без
+       перехода: сотни строк, анимированных разом, тормозили закрытие листа. */
     .split[data-open] .split-main [data-detail-key]:not([aria-selected="true"]) { opacity: .45; }
     .split[data-open] .split-main [data-detail-key] { scroll-margin-bottom: calc(50dvh + 1rem); }
     .split[data-open] .split-main tr[aria-selected="true"] > :first-child,

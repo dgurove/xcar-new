@@ -13,7 +13,7 @@
     <span class="detail-count nums mr-auto" data-detail-target="count"></span>
     <span id="detail-tools" class="contents">{{ $tools }}</span>
     @if ($href)<a class="bar-btn" href="{{ $href }}" data-turbo-frame="_top" aria-label="Открыть страницу"><x-ui.icon name="expand" class="size-[18px]"/></a>@endif
-    <a class="bar-btn" href="{{ \App\Support\Detail::close() }}" data-turbo-frame="detail" data-turbo-action="replace" data-turbo-prefetch="false" data-detail-target="close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></a>
+    <a class="bar-btn" href="{{ \App\Support\Detail::close() }}" data-turbo-frame="detail" data-turbo-action="replace" data-turbo-prefetch="false" data-detail-target="close" data-action="detail#close:prevent" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></a>
 </div>
 <div class="detail-body">
 @if ($photos !== null || $media)
