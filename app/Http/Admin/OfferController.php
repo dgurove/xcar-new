@@ -58,18 +58,31 @@ class OfferController
      * (05.10.2026: «Без цены» разделена — администратору нужен список только своего), админ оценил — в «Оцененные»,
      * отправили пачкой — в «Публикацию» (по слотам), вышла — в «Опубликованные», где выбирают победителя. Черновики из
      * закупок идут со всеми. Модератору те же вкладки: цены продажи, галочек и отправки у него нет.
+     * «Есть подтверждения» (07.10.2026, начальник): опубликованное с хотя бы одним активным подтверждением уходит туда само,
+     * последнее отклонили или отозвали — возвращается в «Опубликованные». Модератору подтверждения не видны — этой вкладки
+     * у него нет, «Опубликованные» — всё открытое (`presets`).
      */
     public const PRESETS = [
-        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные', 'archive' => 'Архив',
+        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
+        'bids' => 'Есть подтверждения', 'archive' => 'Архив',
     ];
+
+    /** Опубликованное: «Опубликованные» и «Есть подтверждения» — одни правила групп, сортировки и чипов. */
+    private const OPEN = ['published', 'bids'];
+
+    /** Вкладки человека: подтверждения видит только админ. */
+    public static function presets(User $user): array
+    {
+        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true]);
+    }
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
     private const LEGACY = [
-        'draft' => 'unpriced', 'purchase' => 'unpriced', 'slot' => 'slots', 'open' => 'published', 'bids' => 'published', 'recommended' => 'published',
+        'draft' => 'unpriced', 'purchase' => 'unpriced', 'slot' => 'slots', 'open' => 'published', 'recommended' => 'published',
     ];
 
     /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
-    private const STEPS = ['nofloor', 'unpriced', 'priced', 'slots', 'published'];
+    private const STEPS = ['nofloor', 'unpriced', 'priced', 'slots', 'published', 'bids'];
 
     /** Вкладки, где карточка после дела идёт к следующей строке. */
     private const TODO = ['nofloor', 'unpriced'];
@@ -106,11 +119,11 @@ class OfferController
     {
         $options = array_filter(self::SORTS, fn ($_, $key) => match ($key) {
             'number' => true,
-            'closing' => $preset === 'published',
+            'closing' => in_array($preset, self::OPEN, true),
             default => $cols === null || in_array($key, $cols, true),
         }, ARRAY_FILTER_USE_BOTH);
         // Умолчания вкладок прежние: черновики по заведению, новые сверху; опубликованные у админа — по закрытию приёма.
-        $default = $preset === 'published' ? ($admin ? 'closing' : '-published') : '-created';
+        $default = in_array($preset, self::OPEN, true) ? ($admin ? 'closing' : '-published') : '-created';
 
         return Sort::from($request->query('sort'), $options, $default);
     }
@@ -131,15 +144,16 @@ class OfferController
         $admin = $request->user()->canManageCrm();
         // У каждой вкладки своя ссылка у всех; без вкладки в адресе — на вкладку человека по умолчанию (модератору
         // «Без закупочной цены», админу «Без продажной цены»). Поиск лупой вкладки не знает — его не уводим.
-        if (! array_key_exists((string) $request->query('preset'), self::PRESETS) && blank($request->query('q'))) {
+        $presets = self::presets($request->user());
+        if (! array_key_exists((string) $request->query('preset'), $presets) && blank($request->query('q'))) {
             return redirect($request->fullUrlWithQuery(['preset' => self::home($request->user())]));
         }
-        $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? (string) $request->query('preset') : self::home($request->user());
+        $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : self::home($request->user());
         $step = in_array($preset, self::STEPS, true);
         // «Без цены» — без сортировки и вида, чипы есть (владелец 04.10.2026: «не хватает фильтров»), по умолчанию — без
         // Каркаде. «Рекомендуем» — переключатель у опубликованных.
         $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
-            'published' => [...self::facets(), Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true))],
+            'published', 'bids' => [...self::facets(), Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true))],
             default => self::facets(),
         })->always();
         ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys());
@@ -159,7 +173,7 @@ class OfferController
         if ($searching) {
             $q->searchCrm(trim((string) $request->query('q')))->orderByDesc('updated_at');
         } else {
-            self::scopeFor($preset, $q);
+            self::scopeFor($preset, $q, $admin);
             self::order($q, $preset, $sort, $admin);
         }
         $facets->apply($q);
@@ -193,7 +207,7 @@ class OfferController
             'view' => $view,
             'step' => $step,
             'searching' => $searching,
-            'presets' => self::PRESETS,
+            'presets' => $presets,
             'preset' => $preset,
             'sort' => $searching ? null : $sort,
             'facets' => $facets,
@@ -214,7 +228,7 @@ class OfferController
     private function hideCarcade(Request $request, string $preset): bool
     {
         $carcade = self::carcadeId();
-        if (! $carcade || ! self::scopeFor($preset, Offer::visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft()))->where('vendor_id', $carcade)->exists()) {
+        if (! $carcade || ! self::scopeFor($preset, Offer::visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft()), $request->user()->canManageCrm())->where('vendor_id', $carcade)->exists()) {
             return false;
         }
         $request->query->set('vendor', '!'.$carcade);
@@ -222,25 +236,32 @@ class OfferController
         return true;
     }
 
-    /** Условие вкладки — одно место для списка, чисел у вкладок и таб-бара. */
-    public static function scopeFor(string $preset, Builder $q): Builder
+    /**
+     * Условие вкладки — одно место для списка, чисел у вкладок и таб-бара. admin — видит ли человек подтверждения: без них
+     * «Опубликованные» — всё открытое.
+     */
+    public static function scopeFor(string $preset, Builder $q, bool $admin = true): Builder
     {
+        $bids = fn ($b) => $b->where('state', BidState::Active);
+
         return match ($preset) {
             'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
                 ->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
             'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0),
             'slots' => $q->scheduled(),
-            'published' => $q->where('offers.state', OfferState::Open),
+            'published' => $q->where('offers.state', OfferState::Open)->when($admin, fn ($o) => $o->whereDoesntHave('bids', $bids)),
+            'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
             default => $q->whereIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
         };
     }
 
     /**
      * Опубликованные — группами по тому, что делать: 0 «Выбрать» (приём закрыт, подтверждения есть), 1 «Идёт приём»
-     * (скоро закроются — выше), 2 «Без подтверждений».
+     * (скоро закроются — выше), 2 «Приём закрыт» без подтверждений. С 07.10.2026 подтверждения — своя вкладка: в «Есть
+     * подтверждения» группы 0 и 1, в «Опубликованных» — 1 и 2.
      */
-    public const PICK_GROUPS = ['Выбрать', 'Идёт приём', 'Без подтверждений'];
+    public const PICK_GROUPS = ['Выбрать', 'Идёт приём', 'Приём закрыт'];
 
     private const PICK_GROUP = "case when bids_close_at is not null and bids_close_at <= now() and exists (select 1 from bids where bids.offer_id = offers.id and bids.state = 'active') then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
 
@@ -252,7 +273,7 @@ class OfferController
     private static function order(Builder $q, string $preset, Sort $sort, bool $admin): void
     {
         $dir = $sort->dir();
-        $pick = $preset === 'published' && $admin;
+        $pick = in_array($preset, self::OPEN, true) && $admin;
         match (true) {
             $preset === 'slots' => $q->orderBy('slot_at'),
             $pick => $q->orderByRaw(self::PICK_GROUP),
@@ -313,7 +334,9 @@ class OfferController
             // Когда выйдет — заголовок группы, слова в строке не нужно.
             'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
-            'published' => $admin ? ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'] : ['vendor', 'city', 'floor', 'price', 'published'],
+            // В «Опубликованных» у админа подтверждений нет по определению — столбца тоже.
+            'published' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
+            'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
     }
@@ -327,14 +350,14 @@ class OfferController
     {
         $base = fn () => Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft());
         $counts = [];
-        foreach (array_diff(array_keys(self::PRESETS), ['archive']) as $key) {
-            $q = self::scopeFor($key, $base());
+        foreach (array_diff(array_keys(self::presets($user)), ['archive']) as $key) {
+            $q = self::scopeFor($key, $base(), $user->canManageCrm());
             // Без чипов (поток после «Оценить») «Без цены» считается как вид по умолчанию — без Каркаде.
             if (! $facets && in_array($key, self::TODO, true) && ($carcade = self::carcadeId())) {
                 $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
             }
             if ($facets) {
-                $facets->applyTo($q, $key === 'published' ? null : 'recommended');
+                $facets->applyTo($q, in_array($key, self::OPEN, true) ? null : 'recommended');
             }
             $counts[$key] = $q->count();
         }
@@ -726,9 +749,9 @@ class OfferController
         if (! isset($q['peek']) || filled($q['q'] ?? null)) {
             return [];
         }
-        $preset = array_key_exists((string) ($q['preset'] ?? ''), self::PRESETS) ? (string) $q['preset'] : self::home($request->user());
+        $preset = array_key_exists((string) ($q['preset'] ?? ''), self::presets($request->user())) ? (string) $q['preset'] : self::home($request->user());
         $still = match ($ref['path'] ?? '/') {
-            '/' => self::scopeFor($preset, Offer::whereKey($offer->id))->exists(),
+            '/' => self::scopeFor($preset, Offer::whereKey($offer->id), $request->user()->canManageCrm())->exists(),
             '/gallery' => $offer->fresh()?->state === OfferState::Gallery,
             default => true,
         };

@@ -95,7 +95,8 @@ final class PublishLiveUpdates
     {
         $n = $e->bid->offer->number;
         $this->publish->refresh(Topics::user($e->bid->user_id), ['/deals', "/offers/{$n}"]);
-        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals']);
+        // Отклонили последнее — машина возвращается из «Есть подтверждения» в «Опубликованные»: список перечитывается.
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/']);
     }
 
     public function interest(InterestRegistered $e): void
