@@ -97,6 +97,8 @@ export default class extends Controller {
         this.element.toggleAttribute('data-open', open);
         this.frameTarget.querySelectorAll('form:not([data-turbo-frame])').forEach((f) => { f.dataset.turboFrame = 'detail'; });
         this.mark();
+        // Лист только что открылся — под ним появилось место (padding снизу), и выбранная строка встаёт над листом.
+        if (open && !was) requestAnimationFrame(() => this.current?.scrollIntoView({ block: 'nearest' }));
         // Лист открывается на полэкрана; при смене строки остаётся, каким был.
         if (!open || !was) this.frameTarget.removeAttribute('data-full');
         if (!open) { this.frameTarget.style.translate = ''; this.frameTarget.style.transition = ''; }

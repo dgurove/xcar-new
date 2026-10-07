@@ -1868,7 +1868,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .detail-card {
       height: 100%; overflow: hidden;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      box-shadow: 0 -.5px 0 var(--color-line), 0 -6px 28px rgb(0 0 0 / .2);
+      /* Белый лист над белой таблицей (07.10.2026, владелец: «сливается»): край — линией и короткой тенью, глубина —
+         длинной; тёмная тема переопределяет ниже. */
+      box-shadow: 0 -.5px 0 var(--color-line), 0 -2px 6px rgb(0 0 0 / .08), 0 -12px 36px rgb(0 0 0 / .2);
     }
     /* Лист над таблицей того же цвета сливался с ней. В тёмной теме он на ступень светлее, как приподнятые
        поверхности iOS: всё внутри поднимается вместе с ним (поля, капсулы), тень на тёмном не видна. */
@@ -1884,6 +1886,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .detail-handle { display: block; position: absolute; inset-inline: 0; top: .375rem; margin: 0 auto; width: 36px; height: 5px; border-radius: 3px; background: var(--color-line); }
     /* Лист закрывает нижнюю половину — последние строки выезжают из-под него. */
     .split[data-open] .split-main { padding-bottom: 50dvh; }
+    /* Чья карточка — видно в таблице (07.10.2026, вариант владельца «строка горит»): выбранная лаймовая с полосой слева,
+       остальные строки и заголовки групп бледнеют; нажимаются как раньше. Выбранная встаёт над листом —
+       scrollIntoView({block: 'nearest'}) учитывает scroll-margin. */
+    .split-main [data-detail-key], .split-main tr.table-group { transition: opacity var(--dur) var(--ease-out); }
+    .split[data-open] .split-main :is([data-detail-key]:not([aria-selected="true"]), tr.table-group) { opacity: .45; }
+    .split[data-open] .split-main [data-detail-key] { scroll-margin-bottom: calc(50dvh + 1rem); }
+    .split[data-open] .split-main tr[aria-selected="true"] > :first-child,
+    .split[data-open] .split-main .row[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--color-accent); }
   }
   /* Шапка карточки с лентой: название и цена в одну строку, под ними метки с фактами во всю ширину (колонка рядом с ценой
      ставила теги столбиком); до 640 цена — своей строкой под названием. */
