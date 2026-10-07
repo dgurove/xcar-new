@@ -1,5 +1,5 @@
 {{-- «Взять ссылку на оплату» (только админ, 06.10.2026: начальник искал, где взять ссылку). 07.10.2026 владелец: «на
-     телефоне безумно неудобное» — сумма первой и с клавиатурой сразу, чипы услуг одной строкой вбок, поля строками
+     телефоне безумно неудобное» — сумма первой и с клавиатурой сразу, чипы услуг одной строкой вбок (выбранный и уходит в чек), поля строками
      (.fields), кнопка липнет к низу листа над клавиатурой. «За что» — услуга в чек (ServiceTitle: конкретная услуга,
      займов, возвратов и денег за машину ссылкой не принимаем), плательщик из заведённых или новый. Выставляет счёт
      ПРАЙМ, ссылка заводится сама, после — карточка счёта со ссылкой («Скопировать», «Отправить»). --}}
@@ -24,13 +24,15 @@
                 @error('amount')<span class="text-sm text-danger">{{ $message }}</span>@enderror
             </label>
             <div class="flex flex-col gap-3" data-controller="pay-amount">
+                {{-- Услуга в чек — только чипом (07.10.2026, владелец: строка «За что» дублировала пресеты). --}}
+                <input type="hidden" name="title" value="{{ $title }}" data-pay-amount-target="input">
                 <div class="sheet-chips">
                     @foreach (ServiceTitle::PRESETS as $preset)
                         <button type="button" class="chip" data-action="pay-amount#set" data-pay-amount-value-param="{{ $preset }}" aria-pressed="{{ $preset === $title ? 'true' : 'false' }}">{{ $preset }}</button>
                     @endforeach
                 </div>
+                @error('title')<div class="text-sm text-danger">{{ $message }}</div>@enderror
                 <div class="fields">
-                    <x-ui.field name="title" label="За что" :value="$title" maxlength="128" data-pay-amount-target="input" data-action="input->pay-amount#sync"/>
                     <x-ui.field name="party_id" label="Кто платит" :options="$parties->all()" :value="$partyId" data-action="change->reveal#pick"/>
                     <div class="contents" data-reveal-target="pane" data-reveal-key="new" @if ($partyId !== 'new') hidden @endif>
                         <x-ui.field name="party_name" label="Имя" placeholder="ФИО или название"/>
