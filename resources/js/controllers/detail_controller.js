@@ -59,7 +59,16 @@ export default class extends Controller {
         this.onFetch = (e) => {
             if (e.target !== this.frameTarget || e.detail.fetchOptions.method !== 'GET') return;
             const hit = cards.get(e.detail.url.href);
-            if (hit && Date.now() - hit.at < KEEP) e.detail.fetchRequest = { response: hit.response.then((r) => r.clone()) };
+            if (!hit || Date.now() - hit.at >= KEEP) return;
+            // Готовый ответ — под отменой запроса Turbo: перешли на другую строку — ответ прежней не встаёт поверх
+            // неё (без этого медленный ответ строки A рисовался, когда уже выбрана B) и не пишет «Нет связи» в её заготовку.
+            const signal = e.detail.fetchOptions.signal;
+            e.detail.fetchRequest = { response: new Promise((resolve, reject) => {
+                const abort = () => reject(new DOMException('Перешли на другую строку', 'AbortError'));
+                if (signal?.aborted) { abort(); return; }
+                signal?.addEventListener('abort', abort, { once: true });
+                hit.response.then((r) => resolve(r.clone()), reject);
+            }) };
         };
         this.frameTarget.addEventListener('turbo:before-fetch-request', this.onFetch);
         this.prefetching();
@@ -73,7 +82,10 @@ export default class extends Controller {
         this.onRendered = () => this.restore();
         this.frameTarget.addEventListener('turbo:frame-render', this.onRendered);
         // Нет связи, пока лист ждёт карточку, — вместо вечной заготовки слова и «Повторить».
-        this.onFail = (e) => { if (e.target === this.frameTarget) this.failed(); };
+        this.onFail = (e) => {
+            const url = e.detail.request?.url?.href, src = this.frameTarget.getAttribute('src');
+            if (e.target === this.frameTarget && (!url || !src || url === new URL(src, location.href).href)) this.failed();
+        };
         this.frameTarget.addEventListener('turbo:fetch-request-error', this.onFail);
         // Живое обновление списка (морф страницы, live.js refreshPage) не трогает положение листа: data-full, сдвиг и
         // адрес фрейма знает только браузер, сервер их не рисует — морф снимал их, и лист сам падал на полэкрана.
@@ -84,12 +96,37 @@ export default class extends Controller {
         };
         document.addEventListener('turbo:before-morph-attribute', this.onMorphAttribute);
         // Уход со страницы с несохранённым в карточке (таб-бар, «Открыть страницу», ссылка) — тот же вопрос, что у листа.
+        // Ссылку после «Не сохранять» нажимаем заново — Turbo берёт её действие (replace), фрейм и прочее как было;
+        // визит из скрипта повторяется тем же адресом.
+        this.onLink = async (e) => {
+            if (!this.dirty && !this.guarded) return;
+            const link = e.target;
+            // Отмена turbo:click отменяет только визит Turbo — сам щелчок браузер довёл бы до обычного перехода.
+            e.preventDefault();
+            e.detail.originalEvent?.preventDefault();
+            // Остались — нажатое (is-pending, app.js pressFeedback) снимается: экран никуда не едет.
+            if (!(await this.leave())) { link.closest('.is-pending')?.classList.remove('is-pending'); return; }
+            link.click();
+        };
+        document.addEventListener('turbo:click', this.onLink);
         this.onVisit = async (e) => {
-            if (!this.dirty) return;
+            if (!this.dirty && !this.guarded) return;
             e.preventDefault();
             if (await this.leave()) window.Turbo?.visit(e.detail.url);
         };
         document.addEventListener('turbo:before-visit', this.onVisit);
+        // «Назад» и свайп от края с несохранённым: пока в карточке есть правки, сверху истории — своя запись (как у
+        // шторок, sheet.js); «Назад» снимает её, а мы спрашиваем и, если уходят, делаем шаг назад сами. Без неё
+        // restore-визит Turbo не отменить, и правки пропадали молча.
+        this.onPop = (e) => this.popped(e);
+        addEventListener('popstate', this.onPop);
+        // После обработчиков правки (save_bar показывает кнопку на document — позже фрейма).
+        this.onEdit = () => setTimeout(() => { if (this.dirty) this.guard(); });
+        this.frameTarget.addEventListener('input', this.onEdit);
+        this.frameTarget.addEventListener('change', this.onEdit);
+        // Правили, пока сверху была шторка («Метки», «Кому показывать»), — запись ставится, когда шторка снята.
+        this.onSheetClose = () => setTimeout(() => { if (this.dirty) this.guard(); }, 400);
+        this.frameTarget.addEventListener('close', this.onSheetClose, true);
         // Нажали поле, пока лист ехал (app.js keyboardInset ставит его во весь экран сам): прежнее движение отменяется —
         // иначе его запасной таймер доехал бы своё и опустил лист на полэкрана или закрыл его под кареткой.
         this.onHold = () => {
@@ -104,6 +141,10 @@ export default class extends Controller {
         // и turbo:before-stream-render сюда не доходит — после перезагрузки строка стояла невыделенной.
         this.onMark = () => this.mark();
         ['turbo:load', 'turbo:morph'].forEach((n) => document.addEventListener(n, this.onMark));
+        // После морфа раскладка — по тому, что в фрейме на самом деле: карточку убрали с сервера (предложение удалили) —
+        // data-open снимается, иначе список оставался бледным с отступом под листом, которого нет.
+        this.onMorphed = () => this.settle(this.element.hasAttribute('data-open'));
+        document.addEventListener('turbo:morph', this.onMorphed);
         this.rowsSeen = new MutationObserver((records) => {
             if (records.some((r) => [...r.addedNodes].some((n) => n.nodeType === 1 && n.matches('[data-detail-key]')))) this.mark();
         });
@@ -117,37 +158,103 @@ export default class extends Controller {
         this.frameTarget.removeEventListener('turbo:fetch-request-error', this.onFail);
         document.removeEventListener('turbo:before-morph-attribute', this.onMorphAttribute);
         document.removeEventListener('turbo:before-visit', this.onVisit);
+        document.removeEventListener('turbo:click', this.onLink);
+        removeEventListener('popstate', this.onPop);
+        this.frameTarget.removeEventListener('input', this.onEdit);
+        this.frameTarget.removeEventListener('change', this.onEdit);
+        this.frameTarget.removeEventListener('close', this.onSheetClose, true);
         this.frameTarget.removeEventListener('detail:hold', this.onHold);
         this.frameTarget.removeEventListener('turbo:before-fetch-request', this.onFetch);
         this.unprefetch?.();
         document.removeEventListener('detail:advance', this.onAdvance);
         document.removeEventListener('turbo:before-stream-render', this.onStream);
         ['turbo:load', 'turbo:morph'].forEach((n) => document.removeEventListener(n, this.onMark));
+        document.removeEventListener('turbo:morph', this.onMorphed);
         this.rowsSeen.disconnect();
     }
 
     get open() { return this.frameTarget.childElementCount > 0; }
 
-    // Вписали в карточке и не сохранили: поля формы (save_bar), закупочная, цена «Оценить».
-    get dirty() { return !!this.frameTarget.querySelector('form[data-dirty]'); }
-
-    // Уйти с карточки с несохранённым — только переспросив, как у шторок (07.10.2026, начальник вводил данные, нажимал
-    // другую строку или «Закрыть» — правки молча пропадали). true — можно уходить.
-    async leave() {
-        if (!this.dirty) return true;
-        const ok = await confirmSheet('Не сохранять?', { label: 'Не сохранять', cancel: 'Остаться', danger: true });
-        if (ok) this.frameTarget.querySelectorAll('form[data-dirty]').forEach((f) => { delete f.dataset.dirty; });
-        return ok;
+    // Вписали в карточке и не сохранили: видна «Сохранить изменения» (поля карточки) или в форме действия сверху
+    // (закупочная, цена «Оценить», вывоз, гараж) набрано новое. Формы в шторках внутри карточки не в счёт — шторка
+    // спрашивает сама, а брошенная в ней сумма не держала потом каждую смену строки. После «Не сохранять» — чисто до
+    // следующей карточки (released).
+    get dirty() {
+        if (this.released || !this.open) return false;
+        const f = this.frameTarget;
+        if ([...f.querySelectorAll('.save-bar')].some((b) => !b.hidden)) return true;
+        return [...f.querySelectorAll('form[data-dirty]:not([data-controller~="save-bar"])')].some((form) => !form.closest('dialog')
+            && [...form.elements].some((el) => el.matches?.('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]), textarea') && el.value.trim() !== '' && el.value !== el.defaultValue));
     }
 
-    // Карточка встала: та же — прокрутка на прежнем месте; вернулась с ошибкой — первое поле с ошибкой посреди листа.
+    // Уйти с карточки с несохранённым — только переспросив, как у шторок (07.10.2026, начальник вводил данные, нажимал
+    // другую строку или «Закрыть» — правки молча пропадали). true — можно уходить; запись «Назад» к этому времени снята.
+    async leave() {
+        if (this.dirty && !(await confirmSheet('Не сохранять?', { label: 'Не сохранять', cancel: 'Остаться', danger: true }))) return false;
+        if (this.dirty) this.released = true;
+        await this.unguard();
+        return true;
+    }
+
+    // Своя запись истории над страницей, пока есть несохранённое. Ключ turbo у записи страницы на это время снят: Turbo
+    // не делает restore-визит, когда «Назад» снимает нашу запись (так же sheet.js).
+    guard() {
+        if (this.guarded || history.state?.sheet) return;
+        const { turbo, ...rest } = history.state || {};
+        this.guardTurbo = turbo;
+        history.replaceState(rest, '');
+        history.pushState({ ...rest, detailGuard: true }, '');
+        this.guarded = true;
+    }
+
+    // Снять свою запись (сохранили, ушли с карточки): шаг назад на страницу и вернуть ей ключ turbo.
+    unguard() {
+        if (!this.guarded) return Promise.resolve();
+        this.guarded = false;
+        if (!history.state?.detailGuard) { this.retake(); return Promise.resolve(); }
+        return new Promise((resolve) => { this.unwinding = resolve; history.back(); });
+    }
+
+    retake() {
+        if (this.guardTurbo !== undefined) history.replaceState({ ...(history.state || {}), turbo: this.guardTurbo }, '');
+        this.guardTurbo = undefined;
+    }
+
+    async popped(e) {
+        if (this.unwinding) {
+            const done = this.unwinding;
+            this.unwinding = null;
+            this.retake();
+            done();
+            return;
+        }
+        // Вернулись на нашу запись (шторку над карточкой закрыли «Назад») — это не уход.
+        if (!this.guarded || e.state?.detailGuard || e.state?.sheet) return;
+        // «Назад» снял нашу запись: остаёмся и спрашиваем; уходят — вернуть ключ и шагнуть назад по-настоящему.
+        this.guarded = false;
+        if (this.dirty) {
+            history.pushState({ ...(history.state || {}), detailGuard: true }, '');
+            this.guarded = true;
+            if (!(await this.leave())) return;
+        } else this.retake();
+        history.back();
+    }
+
+    // Карточка встала: та же — прокрутка на прежнем месте; вернулась с ошибкой — первое поле с ошибкой посреди листа
+    // (прокруткой самого листа: scrollIntoView двигал бы и экран под fixed-листом — на iOS каретка рисовалась мимо).
     restore() {
         const body = this.frameTarget.querySelector('.detail-body');
-        if (!body) return;
-        if (this.keepScroll != null) body.scrollTop = this.keepScroll;
-        this.keepScroll = null;
-        const bad = body.querySelector('.field-invalid, .field-error');
-        if (bad) bad.scrollIntoView({ block: 'center' });
+        if (body) {
+            if (this.keepScroll != null) body.scrollTop = this.keepScroll;
+            this.keepScroll = null;
+            const bad = body.querySelector('.field-invalid, .field-error');
+            if (bad) {
+                const r = bad.getBoundingClientRect(), b = body.getBoundingClientRect();
+                body.scrollTop += r.top - b.top - Math.max(0, (b.height - r.height) / 2);
+            }
+        }
+        // Свежая карточка без правок — запись «Назад» больше не нужна; вернулась с ошибкой — правки на месте.
+        if (this.dirty) this.guard(); else this.unguard();
     }
 
     // Карточка не пришла (нет сети): заготовка не мигает вечно — слова и «Повторить» на месте полос.
@@ -247,6 +354,7 @@ export default class extends Controller {
     show(row) {
         this.shut = false;
         this.swap = true;
+        this.released = false;
         this.keep();
         this.select(row);
         const url = this.urlFor(row);

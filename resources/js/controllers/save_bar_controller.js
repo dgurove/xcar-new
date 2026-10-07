@@ -29,6 +29,10 @@ export default class extends Controller {
         // До Turbo (он слушает всплытие): чужая форма ждёт, пока сохранится эта.
         this.onOther = (e) => this.before(e);
         document.addEventListener('submit', this.onOther, true);
+        // Не ушло (нет связи, сбой сервера) — кнопка снова живая с прежней подписью: иначе висела «Сохраняем…»
+        // выключенной навсегда, и повторить было нечем (07.10.2026). Тост «Нет связи» с «Повторить» — net.js.
+        this.onEnd = (e) => { if (e.target === this.element && !e.detail.success) this.unlock(); };
+        this.element.addEventListener('turbo:submit-end', this.onEnd);
         // Черновик формы (draft_controller) вернул набранное до перезагрузки — это несохранённое.
         if (this.element.dataset.dirty === '1') this.touched = true;
         this.show();
@@ -40,6 +44,7 @@ export default class extends Controller {
         document.removeEventListener('trix-change', this.onTrix);
         this.element.removeEventListener('submit', this.onSubmit);
         document.removeEventListener('submit', this.onOther, true);
+        this.element.removeEventListener('turbo:submit-end', this.onEnd);
     }
 
     // scope — считаются только поля внутри этого куска формы (поля ТС в форме шага дела: правка полей шага кнопку не зовёт).
@@ -92,8 +97,16 @@ export default class extends Controller {
         }
         // Кнопку гасим после того, как Turbo собрал форму (выключенная кнопка в данные не попала бы).
         if (button?.matches('[data-save-bar-button]')) {
+            button.dataset.label ??= button.textContent;
             setTimeout(() => { button.disabled = true; button.textContent = 'Сохраняем…'; });
         }
+    }
+
+    unlock() {
+        this.bars.forEach((bar) => bar.querySelectorAll('[data-save-bar-button]').forEach((b) => {
+            b.disabled = false;
+            if (b.dataset.label) b.textContent = b.dataset.label;
+        }));
     }
 
     // Поля вне формы (data-save-into) — скрытыми полями в саму форму: цена из «Оценить» уходит вместе с остальным.
@@ -151,7 +164,9 @@ export default class extends Controller {
                 return;
             }
         } catch {
+            // Нет связи: ни это, ни та форма не ушли — сказать и дать повторить, а не молчать.
             this.saving = false;
+            window.toast?.('Нет связи', { kind: 'danger', action: { label: 'Повторить', run: () => this.saveThen(form, submitter, fields) } });
             return;
         }
         this.touched = false;

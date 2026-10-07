@@ -35,6 +35,9 @@ export function netGuards() {
         const { request } = event.detail;
         const form = event.target instanceof HTMLFormElement ? event.target : null;
         if (!form) Turbo.navigator.stop();
+        // Карточка строки сама пишет «Нет связи» с «Повторить» на месте заготовки (detail_controller#failed); повтор
+        // визитом открыл бы весь список заново.
+        if (!form && event.target?.matches?.('turbo-frame#detail')) return;
         // Мелкие действия (закладка, прочитано) — в очередь: уйдут сами, когда появится сеть.
         if (form?.hasAttribute('data-queue')) { enqueue(form); window.toast?.('Нет связи — отправим, когда появится'); return; }
         retry = form ? () => form.requestSubmit(submitters.get(form) ?? undefined) : () => Turbo.visit(request.url.href);
