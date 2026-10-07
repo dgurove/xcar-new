@@ -1860,6 +1860,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       @apply block;
       position: fixed; inset-inline: 0; bottom: 0; z-index: 45; margin-inline: auto; max-width: 36rem;
       height: 50dvh; overflow: hidden;
+      /* Тень — у самого листа: у карточки внутри её обрезал overflow листа, и тени не было вовсе (07.10.2026). Белый
+         лист над белой таблицей — край линией и короткой тенью, глубина длинной. */
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      box-shadow: 0 -.5px 0 var(--color-line), 0 -2px 6px rgb(0 0 0 / .08), 0 -12px 36px rgb(0 0 0 / .2);
       /* backwards, а не both: заполненная анимация оставляла листу сдвиг слоем, и Safari на iPhone не доставлял нажатия в
          верх листа (кадры, кнопки на них, полоса) — у админа в предложениях, 04.10.2026. touch-action — только у полосы. */
       animation: sheet-up var(--dur-slow) var(--ease-out) backwards;
@@ -1868,16 +1872,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .detail-card {
       height: 100%; overflow: hidden;
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      /* Белый лист над белой таблицей (07.10.2026, владелец: «сливается»): край — линией и короткой тенью, глубина —
-         длинной; тёмная тема переопределяет ниже. */
-      box-shadow: 0 -.5px 0 var(--color-line), 0 -2px 6px rgb(0 0 0 / .08), 0 -12px 36px rgb(0 0 0 / .2);
     }
     /* Лист над таблицей того же цвета сливался с ней. В тёмной теме он на ступень светлее, как приподнятые
        поверхности iOS: всё внутри поднимается вместе с ним (поля, капсулы), тень на тёмном не видна. */
     .dark .split-detail {
       --color-surface: #2c2c2e; --color-surface-2: #3a3a3c; --color-surface-3: #48484a; --color-line: #48484a;
     }
-    .dark .split-detail .detail-card { box-shadow: 0 -.5px 0 var(--color-line), 0 -8px 32px rgb(0 0 0 / .6); }
+    .dark .split-detail { box-shadow: 0 -.5px 0 var(--color-line), 0 -8px 32px rgb(0 0 0 / .6); }
     .detail-body {
       flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
       padding-bottom: max(env(safe-area-inset-bottom), 1rem);
@@ -1889,8 +1890,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     /* Чья карточка — видно в таблице (07.10.2026, вариант владельца «строка горит»): выбранная лаймовая с полосой слева,
        остальные строки и заголовки групп бледнеют; нажимаются как раньше. Выбранная встаёт над листом —
        scrollIntoView({block: 'nearest'}) учитывает scroll-margin. */
-    .split-main [data-detail-key], .split-main tr.table-group { transition: opacity var(--dur) var(--ease-out); }
-    .split[data-open] .split-main :is([data-detail-key]:not([aria-selected="true"]), tr.table-group) { opacity: .45; }
+    /* Заголовки групп не бледнеют: они липнут друг на друга, и полупрозрачный пропускал нижний насквозь. */
+    .split-main [data-detail-key] { transition: opacity var(--dur) var(--ease-out); }
+    .split[data-open] .split-main [data-detail-key]:not([aria-selected="true"]) { opacity: .45; }
     .split[data-open] .split-main [data-detail-key] { scroll-margin-bottom: calc(50dvh + 1rem); }
     .split[data-open] .split-main tr[aria-selected="true"] > :first-child,
     .split[data-open] .split-main .row[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--color-accent); }
@@ -2069,8 +2071,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Заголовок в центре — «‹ Раздел» сжимается до шеврона, как в iOS. */
   .header.is-past-title .header-back span { display: none; }
   .header.is-past-title .header-back { padding-right: .5rem; }
-  /* На сайте центр занят логотипом — он уступает место заголовку. */
+  /* На сайте центр занят логотипом — он уступает место заголовку. В CRM и на парковке на телефоне логотип слева широкий
+     и наезжал на заголовок по центру (07.10.2026) — тоже уступает. */
   .surface-site .header.is-past-title .header-brand { opacity: 0; transition: opacity var(--dur-fast); }
+  @media (max-width: 1023.98px) { .header.is-past-title .header-brand { opacity: 0; } }
   .header-brand { transition: opacity var(--dur-fast); }
   .header--over { @apply fixed inset-x-0; }
 

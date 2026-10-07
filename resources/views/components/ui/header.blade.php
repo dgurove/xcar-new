@@ -50,7 +50,7 @@
             </div>
             <a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>
         @else
-            <a href="{{ $home }}" class="flex min-w-0 items-center justify-self-start" aria-label="XCar"><x-ui.brand class="h-10"/></a>
+            <a href="{{ $home }}" class="header-brand flex min-w-0 items-center justify-self-start" aria-label="XCar"><x-ui.brand class="h-10"/></a>
         @endif
         <div class="flex items-center gap-1">
             <span class="net" aria-live="polite"></span>
