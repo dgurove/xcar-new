@@ -29,23 +29,17 @@
             <span class="letter-who" title="{{ $from }}">{{ $who }}</span>
             <span class="letter-title{{ $titled ? '' : ' letter-title--words' }}">{{ $title }}</span>
             @if ($files->isNotEmpty())<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files->count() }}</span>@endif
-            <span class="letter-when nums">{{ $when }}</span>
+            {{-- Раскрыто — полная дата («21 сентября, 14:26»), свёрнуто — короткая. --}}
+            <span class="letter-when nums"><span class="letter-when-short">{{ $when }}</span><span class="letter-when-full">{{ $m->date_at?->isoFormat($m->date_at->isCurrentYear() ? 'D MMMM, H:mm' : 'D MMMM YYYY, H:mm') }}</span></span>
         </summary>
         <div class="letter-text">
             @unless ($continuation)
+                {{-- Конверт: подпись через пробел, адреса текстом через запятую; каждый берётся нажатием. --}}
                 <div class="letter-env">
-                    <div class="letter-env-row"><span class="letter-env-label">От</span><x-mail.address :email="$from"/><span class="letter-env-when nums">{{ $m->date_at?->isoFormat($m->date_at->isCurrentYear() ? 'D MMMM, H:mm' : 'D MMMM YYYY, H:mm') }}</span></div>
-                    @if ($forwarder && $forwarder !== $from)<div class="letter-env-row"><span class="letter-env-label">Переслал</span><x-mail.address :email="$forwarder"/></div>@endif
+                    <div class="letter-env-row"><span class="letter-env-label">От</span> <x-mail.address :email="$from"/></div>
+                    @if ($forwarder && $forwarder !== $from)<div class="letter-env-row"><span class="letter-env-label">Переслал</span> <x-mail.address :email="$forwarder"/></div>@endif
                     @if ($to->isNotEmpty())
-                        <div class="letter-env-row">
-                            <span class="letter-env-label">Кому</span>
-                            <span class="letter-env-list">
-                                @foreach ($to->take(3) as $address)<x-mail.address :email="$address"/>@endforeach
-                                @if ($to->count() > 3)
-                                    <details class="letter-env-more"><summary>и ещё {{ $to->count() - 3 }}</summary>@foreach ($to->slice(3) as $address)<x-mail.address :email="$address"/>@endforeach</details>
-                                @endif
-                            </span>
-                        </div>
+                        <div class="letter-env-row"><span class="letter-env-label">Кому</span> <span class="letter-env-to">@foreach ($to->take(3) as $address)<x-mail.address :email="$address"/>@endforeach @if ($to->count() > 3)<details class="letter-env-more letter-env-to"><summary>и ещё {{ $to->count() - 3 }}</summary>@foreach ($to->slice(3) as $address)<x-mail.address :email="$address"/>@endforeach</details>@endif</span></div>
                     @endif
                 </div>
             @endunless

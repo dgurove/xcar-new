@@ -57,15 +57,18 @@ class Request extends Model
      * появилось»): письмо — адрес того, кто написал (не имя) и время письма; иначе — кто завёл и когда; завела система
      * (эвакуация из CRM, восстановление) — только когда.
      *
-     * @return array{email: ?string, name: ?string, at: \Carbon\CarbonInterface}
+     * `when` — время всегда с днём: «сегодня, 12:40», «вчера, 9:05», «7 окт, 12:40».
+     *
+     * @return array{email: ?string, name: ?string, at: ?\Carbon\CarbonInterface, when: ?string}
      */
     public function source(): array
     {
-        if ($this->letter) {
-            return ['email' => NodeTitle::email($this->letter), 'name' => null, 'at' => $this->letter->date_at ?? $this->created_at];
-        }
+        [$email, $name, $at] = $this->letter
+            ? [NodeTitle::email($this->letter), null, $this->letter->date_at ?? $this->created_at]
+            : [null, $this->creator?->shortName(), $this->created_at];
+        $day = $at?->isToday() ? 'сегодня' : ($at?->isYesterday() ? 'вчера' : $at?->translatedFormat($at->isCurrentYear() ? 'j M' : 'j M Y'));
 
-        return ['email' => null, 'name' => $this->creator?->shortName(), 'at' => $this->created_at];
+        return ['email' => $email, 'name' => $name, 'at' => $at, 'when' => $at ? $day.', '.$at->format('G:i') : null];
     }
 
     public function doneBy(): BelongsTo

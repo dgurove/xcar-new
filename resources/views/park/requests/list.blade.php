@@ -23,10 +23,10 @@
 @elseif (ListView::isTable($view))
     <x-ui.table id="requests-table" :view="$view">
         <x-slot:head>
-            <tr><th class="grow">Марка, модель</th><th class="cell-dim hidden sm:table-cell">Откуда</th><th class="cell-dim hidden sm:table-cell">№ убытка</th><x-ui.th :sort="$sort" key="type" class="hidden sm:table-cell">Тип</x-ui.th><x-ui.th :sort="$sort" key="planned" class="num">Срок</x-ui.th><th class="cell-dim col-detail-hide hidden lg:table-cell">Исполнитель</th><th class="cell-dim col-detail-hide hidden lg:table-cell">Парковка</th></tr>
+            <tr><th class="grow">Марка, модель</th><x-ui.th :sort="$sort" key="fresh" class="hidden sm:table-cell">Пришла</x-ui.th><th class="cell-dim hidden sm:table-cell">От кого</th><th class="cell-dim hidden sm:table-cell">№ убытка</th><x-ui.th :sort="$sort" key="type" class="hidden sm:table-cell">Тип</x-ui.th><x-ui.th :sort="$sort" key="planned" class="num">Срок</x-ui.th><th class="cell-dim col-detail-hide hidden lg:table-cell">Исполнитель</th><th class="cell-dim col-detail-hide hidden lg:table-cell">Парковка</th></tr>
         </x-slot:head>
         @foreach ($groups as $name => $group)
-            @if ($name)<tr class="table-group"><th colspan="7"><span class="table-group-name">{{ $name }} <span class="nums">{{ $group->count() }}</span></span></th></tr>@endif
+            @if ($name)<tr class="table-group"><th colspan="8"><span class="table-group-name">{{ $name }} <span class="nums">{{ $group->count() }}</span></span></th></tr>@endif
             @foreach ($group as $r)<x-park.request-row :req="$r" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach
         @endforeach
     </x-ui.table>

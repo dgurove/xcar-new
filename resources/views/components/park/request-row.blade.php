@@ -4,7 +4,8 @@
      Заявку завела почта и документы ещё читаются (`AutoScan::states`, `$arrive`) — строка силуэтом: вместо
      названия и номера полосы, тип словом виден сразу; пока читаем — полоса бежит по строке и «Читаем документы, 2 из 5».
      Дочитали — строка обычная, `arrive_controller` проявляет её. Откуда заявка (`x-park.request-source`: адрес и время
-     письма, или кто завёл) — с первой секунды, и у силуэта: на ПК столбцом «Откуда», в краткой таблице третьим этажом. --}}
+     письма, или кто завёл) — с первой секунды, и у силуэта: на ПК столбцами «Пришла» и «От кого», в краткой таблице
+     третьим этажом «кто — время». --}}
 @props(['req', 'arrive' => null])
 @php
     $v = $req->vehicle;
@@ -36,7 +37,10 @@
             <x-park.request-source :req="$req" class="cell-source"/>
         @endif
     </td>
-    <td class="cell-dim hidden sm:table-cell req-source-col"><x-park.request-source :req="$req"/></td>
+    {{-- На ПК «откуда» — двумя столбцами: время цветом текста (по нему список и упорядочен), кто — тише. --}}
+    @php $source = $req->source(); @endphp
+    <td class="hidden sm:table-cell nums whitespace-nowrap req-came">{{ $source['when'] }}</td>
+    <td class="cell-dim hidden sm:table-cell req-from">@if ($source['email'])<x-mail.address :email="$source['email']"/>@else<span class="truncate">{{ $source['name'] }}</span>@endif</td>
     <td class="cell-dim hidden sm:table-cell">
         @if ($busy)
             <span class="skeleton arrive-bar w-28"></span>

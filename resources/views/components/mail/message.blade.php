@@ -15,7 +15,7 @@
                 <x-mail.address :email="\App\Mail\Chains\NodeTitle::email($message)" class="text-sm text-ink-muted"/>
             </div>
             @php $to = $message->addresses->whereIn('kind', [\App\Mail\AddressKind::To->value, \App\Mail\AddressKind::Cc->value])->sortBy('position')->pluck('email')->unique(); @endphp
-            <div class="flex flex-wrap items-baseline gap-x-2 text-sm text-ink-muted"><span class="text-ink-dim">Кому</span>@forelse ($to as $address)<x-mail.address :email="$address"/>@empty{{ $message->to_preview ?: '—' }}@endforelse</div>
+            <div class="letter-env mb-0"><span class="letter-env-label">Кому</span> <span class="letter-env-to">@forelse ($to as $address)<x-mail.address :email="$address"/>@empty{{ $message->to_preview ?: '—' }}@endforelse</span></div>
         </div>
         <div class="flex shrink-0 items-center gap-1">
             <span class="text-sm text-ink-dim">{{ $message->date_at?->translatedFormat('j M, H:i') }}</span>
