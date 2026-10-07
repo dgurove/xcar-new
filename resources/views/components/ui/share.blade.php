@@ -56,9 +56,9 @@
             @endif
             <div class="text-sm text-ink-muted" data-share-target="status"></div>
             <div class="flex flex-col gap-2 sm:flex-row">
-                <x-ui.button type="button" class="sm:flex-1" data-action="share#send" data-share-target="send"><x-ui.icon name="send" class="size-5"/> <span data-share-target="label">Поделиться PDF</span></x-ui.button>
+                <x-ui.button type="button" class="sm:flex-1" data-action="share#send" data-share-target="send"><x-ui.icon name="share" class="size-5"/> <span data-share-target="label">Поделиться PDF</span></x-ui.button>
                 {{-- Те же кадры альбомом: где документы не качаются, фото доходят. --}}
-                @if ($photos->isNotEmpty())<x-ui.button type="button" variant="secondary" class="sm:flex-1" data-action="share#sendPhotos" data-share-target="photosSend"><x-ui.icon name="photo" class="size-5"/> <span data-share-target="photosLabel">Поделиться фото</span></x-ui.button>@endif
+                @if ($photos->isNotEmpty())<x-ui.button type="button" variant="secondary" class="sm:flex-1" data-action="share#sendPhotos" data-share-target="photosSend"><x-ui.icon name="share" class="size-5"/> <span data-share-target="photosLabel">Поделиться фото</span></x-ui.button>@endif
             </div>
             {{-- Получившийся текст — с копированием в углу; PDF поверх окна — только запасным путём, когда лист не открылся. --}}
             <div class="vin-box">

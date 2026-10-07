@@ -30,9 +30,6 @@ export default class extends Controller {
     connect() {
         this.compose();
         this.ready(!this.hasPhotoTarget);
-        // Где лист не берёт файлы (компьютер), кнопке «Фото» нечего делать.
-        const jpeg = new File([''], 'x.jpg', { type: 'image/jpeg' });
-        if (this.hasPhotosSendTarget && !navigator.canShare?.({ files: [jpeg, jpeg] })) this.photosSendTarget.hidden = true;
         this.photosReady(false);
         this.countPhotos();
     }
@@ -149,7 +146,7 @@ export default class extends Controller {
 
     // Кадры по одному, по три за раз. Сбой не кричит тостом — его покажет нажатие «Фото».
     async preparePhotos(seq, photos) {
-        if (!this.hasPhotosSendTarget || this.photosSendTarget.hidden || photos.length > MAX_FILES) return;
+        if (!this.hasPhotosSendTarget || photos.length > MAX_FILES) return;
         const files = new Array(photos.length);
         let next = 0;
         const worker = async () => {
@@ -269,7 +266,8 @@ export default class extends Controller {
         }
         if (!this.jpegs) { window.toast?.('Фото ещё качаются'); return; }
         const files = this.jpegs;
-        if (!navigator.canShare?.({ files })) { this.fail('photos', { name: 'canShare' }, 'Телефон не отдал фото в лист'); return; }
+        // Где лист файлы не берёт (компьютер без него) — фото скачиваются.
+        if (!navigator.canShare?.({ files })) { this.download(files); return; }
         this.sending = true;
         try {
             await navigator.share({ files });
@@ -282,6 +280,18 @@ export default class extends Controller {
         } finally {
             this.sending = false;
         }
+    }
+
+    download(files) {
+        files.forEach((file, i) => setTimeout(() => {
+            const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name });
+            a.dataset.doc = 'off';
+            document.body.append(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        }, i * 250));
+        window.toast?.(files.length > 1 ? `Скачиваем ${files.length} фото` : 'Скачиваем фото');
     }
 
     fail(stage, e, text) {
