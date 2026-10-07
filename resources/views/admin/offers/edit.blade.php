@@ -23,6 +23,9 @@
     $hints = [...array_keys($migDiff), ...$glow];
     $published = $offer->state !== OfferState::Draft;
     $foldCar = $published && ! $errors->hasAny($carKeys) && ! array_intersect($hints, $carKeys);
+    // Чат сделки — карточкой первой в правой колонке (`x-deal.chat-card`, 07.10.2026); в «Чатах» и пилюле — остальные.
+    $dealChat = $deal?->buyer;
+    $otherChats = $dealChat ? $chats->reject(fn ($c) => $c->user_id === $deal->buyer_id && ! $c->manager_id)->values() : $chats;
     $foldMoney = $published && ($offer->floor_price || $offer->asking_price) && ! $errors->hasAny($moneyKeys) && ! array_intersect($hints, $moneyKeys);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
@@ -62,7 +65,7 @@
                 <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
             @endforeach
         @endif
-        @if ($chats->isNotEmpty())<x-ui.pill :tone="$chats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($chats->sum('unread_for_staff')) <span class="badge">{{ $chats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
+        @if ($otherChats->isNotEmpty())<x-ui.pill :tone="$otherChats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $otherChats->count() === 1 ? 'Чат' : 'Чатов: '.$otherChats->count() }}@if ($otherChats->sum('unread_for_staff')) <span class="badge">{{ $otherChats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
         @if ($admin)
             <div class="contents" data-controller="sheet tag-chips" data-action="change->tag-chips#render">
                 <span class="contents" data-tag-chips-target="chips">
@@ -112,6 +115,9 @@
         </form>
 
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
+            {{-- Чат с менеджером сделки — верхом колонки, на телефоне самым верхом страницы, как на странице сделки на xcar
+                 (07.10.2026, владелец: «чуть ли не самая важная кнопка во время сделки»). --}}
+            @if ($dealChat)<x-deal.chat-card :deal="$deal" class="order-first"/>@endif
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
             {{-- Цены — так же: суммы текстом, «Изменить» — поля, «Готово» — сохранить (поля привязаны к форме через form=). --}}
             <x-ui.card title="Цены" class="order-3" :data-controller="$published ? 'edit-card' : null" data-edit-card-form-value="offer-form" :data-edit-card-editing-value="$published && ! $foldMoney ? 'true' : null">
@@ -122,10 +128,10 @@
                 <div @if ($published) data-edit-card-target="edit" @if ($foldMoney) hidden @endif @endif>@include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false, 'garageOnly' => (bool) $garageView])</div>
             </x-ui.card>
 
-            @if ($chats->isNotEmpty())
+            @if ($otherChats->isNotEmpty())
             <x-ui.card title="Чаты" class="order-5">
                 <div class="flex flex-col divide-y divide-line/40">
-                    @foreach ($chats as $chat)
+                    @foreach ($otherChats as $chat)
                         <a href="/work/chats/{{ $chat->id }}" class="flex items-center gap-3 py-2">
                             <x-ui.avatar :user="$chat->user" :size="36"/>
                             <div class="min-w-0 flex-1">

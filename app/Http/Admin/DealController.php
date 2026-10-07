@@ -18,6 +18,7 @@ use App\Support\ListView;
 use App\Support\Sort;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -97,6 +98,14 @@ class DealController
     public function show(Deal $deal)
     {
         return redirect('/offers/'.$deal->offer->number);
+    }
+
+    /** Карточка чата сделки — фрейм перечитывает её по новому сообщению (`x-deal.chat-card`). */
+    public function chat(Deal $deal)
+    {
+        abort_unless($deal->buyer, 404);
+
+        return Blade::render('<x-deal.chat-card :deal="$deal"/>', ['deal' => $deal]);
     }
 
     /** Карточка сделки рядом со списком (Detail): путь, деньги, письма, заметка — без истории. */

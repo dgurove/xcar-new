@@ -26,6 +26,7 @@
     @include('garage.cars.path', $routeHere ? ['set' => 'all', 'withDeal' => false, 'buttonsHere' => [...$prep, ...$sale]] : ['set' => 'prep', 'buttonsHere' => $prep])
     @if ($money && ($routeHere || ! $car->isSold()))@include('garage.cars.money')@endif
     @include('garage.cars.costs')
-    @if ($car->manager)<x-chat.staff-line :offer="$offer" :user="$car->manager"/>@endif
+    {{-- В редакторе чат с ним — карточкой первой в правой колонке (`x-deal.chat-card`), здесь второй раз не нужен. --}}
+    @if ($car->manager && ($routeHere || ($deal ?? null)?->buyer_id !== $car->manager_id))<x-chat.staff-line :offer="$offer" :user="$car->manager"/>@endif
     @include('garage.cars.sheets')
 </div>

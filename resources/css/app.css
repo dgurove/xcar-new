@@ -2963,6 +2963,11 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
   .chat-rows-list { display: flex; flex-direction: column; overflow: hidden; padding: .375rem; border-radius: var(--radius-l); background: var(--color-surface); }
   /* Карточка чата на странице сделки — строка диалога плашкой. */
   .deal-chat { @apply flex items-center gap-3 !py-3; }
+  /* Чат сделки в CRM: аватар менеджера, в углу — лаймовый пузырь, чтобы строка читалась как чат, а не как человек. */
+  .deal-chat-avatar { position: relative; flex-shrink: 0; display: flex; }
+  .deal-chat-bubble { position: absolute; right: -.25rem; bottom: -.25rem; display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 9999px; background: var(--color-accent); color: #fff; box-shadow: 0 0 0 2px var(--color-surface); }
+  /* Пустая заметка — один заголовок с «Добавить», без отступа под пустым текстом. */
+  .deal-note:not([data-editing]):has(> [data-edit-card-target=view]:empty) > div:first-child { margin-bottom: 0; }
   .chat-row { position: relative; display: flex; align-items: center; gap: .75rem; padding: .625rem .75rem; border-radius: var(--radius-m); color: var(--color-ink); }
   .chat-row + .chat-row::before { content: ''; position: absolute; top: 0; right: .75rem; left: 5rem; height: 1px; background: var(--color-line); }
   .chat-row:not(:has(.chat-row-photo)) + .chat-row::before, .chat-row + .chat-row:not(:has(.chat-row-photo))::before { left: 4.25rem; }

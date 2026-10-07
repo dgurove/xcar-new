@@ -36,7 +36,8 @@ export default class extends Controller {
         this.viewTarget.hidden = editing;
         this.editTarget.hidden = !editing;
         card.toggleAttribute('data-editing', editing);
-        for (const b of this.buttonTargets) b.textContent = editing ? 'Готово' : 'Изменить';
+        // Пусто — кнопка зовёт добавить («Добавить», data-idle), а не «Изменить».
+        for (const b of this.buttonTargets) b.textContent = editing ? 'Готово' : (b.dataset.idle || 'Изменить');
         if (!motion) return;
 
         const to = card.getBoundingClientRect().height;

@@ -3,8 +3,9 @@
      режим, состояние вознаграждения, «Изменить» до счёта, «Счёт»; ниже счета строками, заявка менеджера
      об оплате с решением под своим счётом, у вознаграждения к выплате — «Выплатить» в самой строке. Под неоплаченным
      счётом — его ссылка на оплату с адресом и «Отправить» (`x-billing.pay-status`): начальник открыл сделку и сразу
-     видит, оплатили ли и чем поделиться. Менеджеру ничего из этого не показывается. --}}
-@props(['deal'])
+     видит, оплатили ли и чем поделиться. Менеджеру ничего из этого не показывается. compact — карточка строки «Сделок»:
+     цена и «Нам», остальной расклад свёрнут. --}}
+@props(['deal', 'compact' => false])
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState;
     $offer = $deal->offer;
@@ -18,25 +19,44 @@
     // Первый счёт на этапе оплаты предлагает сам шаг пути — здесь его второй раз не ставим.
 @endphp
 <x-ui.card title="Деньги" {{ $attributes }}>
+    @php
+        // Строки расклада: [подпись, сумма, класс суммы, главная]. В карточке строки (compact) видны главные — цена и «Нам»,
+        // остальное — под «Расклад» (07.10.2026, владелец: «слишком много»), на странице сделки — всё.
+        $dd = 'nums text-right';
+        $rows = [];
+        if ($deal->isGarage()) {
+            // Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику.
+            $rows[] = ['В гараж', 'поставщику платит '.mb_strtolower($deal->garage_payer->label()), 'text-right font-medium', true];
+        } else {
+            $rows[] = ['Цена подтверждения', Money::rub($deal->amount), $dd.' font-medium', true];
+        }
+        $rows[] = ['Закупочная', $deal->cost === null ? 'не указана' : Money::rub($deal->cost), $dd, false];
+        if ($deal->isGarageManager()) {
+            $rows[] = ['Наша доля', $deal->share ? Money::rub($deal->share) : 'не вписана', $dd, false];
+        } elseif ($deal->paysSelection()) {
+            // ДКП и страховой: покупатель платит не нам, меньше закупочной — взаимозачёт со страховой.
+            if ($deal->offset()) $rows[] = ['Взаимозачёт', Money::rub($deal->offset()), $dd, false];
+            $rows[] = [$deal->schemeOf()->payeeLabel(), Money::rub((int) $deal->ownerPrice()), $dd, false];
+            $rows[] = ['Разница', Money::rub((int) $deal->selectionBase()), $dd.($deal->selectionBase() < 0 ? ' text-danger' : ''), false];
+        } elseif ($deal->margin() !== null) {
+            $rows[] = ['Разница', Money::rub($deal->margin()), $dd.($deal->margin() < 0 ? ' text-danger' : ''), false];
+        }
+        if (! $deal->isGarage()) $rows[] = ['Вознаграждение', $deal->commission ? Money::rub($deal->commission) : 'нет', $dd, false];
+        if ($deal->ours() !== null) $rows[] = ['Нам', Money::rub($deal->ours()), $dd.' text-lg font-semibold'.($deal->ours() < 0 ? ' text-danger' : ''), true];
+        $rest = $compact ? array_filter($rows, fn ($r) => ! $r[3]) : [];
+        $shown = $compact ? array_filter($rows, fn ($r) => $r[3]) : $rows;
+    @endphp
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
-        @if ($deal->isGarage())
-            {{-- Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику. --}}
-            <dt class="text-sm text-ink-dim">В гараж</dt><dd class="text-right font-medium">поставщику платит {{ mb_strtolower($deal->garage_payer->label()) }}</dd>
-        @else
-            <dt class="text-sm text-ink-dim">Цена подтверждения</dt><dd class="nums text-right font-medium">{{ Money::rub($deal->amount) }}</dd>
-        @endif
-        <dt class="text-sm text-ink-dim">Закупочная</dt><dd class="nums text-right">{{ $deal->cost === null ? 'не указана' : Money::rub($deal->cost) }}</dd>
-        @if ($deal->isGarageManager())
-            <dt class="text-sm text-ink-dim">Наша доля</dt><dd class="nums text-right">{{ $deal->share ? Money::rub($deal->share) : 'не вписана' }}</dd>
-        @elseif ($deal->paysSelection())
-            {{-- ДКП и страховой: покупатель платит не нам, меньше закупочной — взаимозачёт со страховой. --}}
-            @if ($deal->offset())<dt class="text-sm text-ink-dim">Взаимозачёт</dt><dd class="nums text-right">{{ Money::rub($deal->offset()) }}</dd>@endif
-            <dt class="text-sm text-ink-dim">{{ $deal->schemeOf()->payeeLabel() }}</dt><dd class="nums text-right">{{ Money::rub((int) $deal->ownerPrice()) }}</dd>
-            <dt class="text-sm text-ink-dim">Разница</dt><dd class="nums text-right {{ $deal->selectionBase() < 0 ? 'text-danger' : '' }}">{{ Money::rub((int) $deal->selectionBase()) }}</dd>
-        @elseif ($deal->margin() !== null)<dt class="text-sm text-ink-dim">Разница</dt><dd class="nums text-right {{ $deal->margin() < 0 ? 'text-danger' : '' }}">{{ Money::rub($deal->margin()) }}</dd>@endif
-        @unless ($deal->isGarage())<dt class="text-sm text-ink-dim">Вознаграждение</dt><dd class="nums text-right">{{ $deal->commission ? Money::rub($deal->commission) : 'нет' }}</dd>@endunless
-        @if ($deal->ours() !== null)<dt class="text-sm text-ink-dim">Нам</dt><dd class="nums text-right text-lg font-semibold {{ $deal->ours() < 0 ? 'text-danger' : '' }}">{{ Money::rub($deal->ours()) }}</dd>@endif
+        @foreach ($shown as [$dt, $value, $class])<dt class="text-sm text-ink-dim">{{ $dt }}</dt><dd class="{{ $class }}">{{ $value }}</dd>@endforeach
     </dl>
+    @if ($rest)
+        <details class="group mt-1.5">
+            <summary class="flex cursor-pointer list-none items-center gap-1 text-sm text-ink-muted">Расклад<x-ui.icon name="chevron-down" class="size-4 transition-transform group-open:rotate-180"/></summary>
+            <dl class="mt-1.5 grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
+                @foreach ($rest as [$dt, $value, $class])<dt class="text-sm text-ink-dim">{{ $dt }}</dt><dd class="{{ $class }}">{{ $value }}</dd>@endforeach
+            </dl>
+        </details>
+    @endif
     <div class="mt-3 flex flex-wrap items-center gap-1.5">
         <span class="tag">{{ mb_strtolower($deal->schemeOf()->label()) }}</span>
         @if ($deal->commission && $deal->isPrime())<span class="tag">{{ mb_strtolower($deal->commission_mode->label()) }}</span>@endif

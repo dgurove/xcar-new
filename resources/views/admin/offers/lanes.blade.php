@@ -66,13 +66,7 @@
                 <x-ui.card title="Сделка" id="deal" class="scroll-mt-24">@include('admin.offers.bids', ['inside' => true])</x-ui.card>
                 <x-deal.money :deal="$deal" id="money"/>
                 @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
-                <x-ui.card title="Заметка" id="deal-note">
-                    <form method="post" action="/work/deals/{{ $deal->id }}/note" class="flex flex-col gap-2" data-controller="save-bar">
-                        @csrf
-                        <textarea name="notes" class="field-input" placeholder="Что важно помнить по этой сделке">{{ old('notes', $deal->notes) }}</textarea>
-                        <x-ui.save-bar/>
-                    </form>
-                </x-ui.card>
+                <x-deal.note :deal="$deal" id="deal-note"/>
             </div>
         @elseif ($third === 'bids')
             @php $waiting = $bids->where('state', \App\Offers\BidState::Active); @endphp
