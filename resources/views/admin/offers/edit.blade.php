@@ -24,10 +24,14 @@
     // Сворачивание и «Показ» — от дела, а не от одного состояния: у машины в сделке или гараже ТС и цены свёрнуты всегда
     // (07.10.2026, владелец: «гараж — это тоже как сделка»).
     $published = $offer->state !== OfferState::Draft || $deal || $garage;
-    $foldCar = $published && ! $errors->hasAny($carKeys) && ! array_intersect($hints, $carKeys);
+    // Ошибка формы «Получения» (адрес — общее поле) ТС не раскрывает.
+    $ownErrors = ! str_starts_with((string) old('_form'), 'handover-');
+    $foldCar = $published && ! ($ownErrors && $errors->hasAny($carKeys)) && ! array_intersect($hints, $carKeys);
     // Чат сделки — карточкой первой в правой колонке (`x-deal.chat-card`, 07.10.2026); в «Чатах» и пилюле — остальные.
     $dealChat = $deal?->buyer;
-    $otherChats = $dealChat ? $chats->reject(fn ($c) => $c->user_id === $deal->buyer_id && ! $c->manager_id)->values() : $chats;
+    $isDealChat = fn ($c) => $dealChat && $c->user_id === $deal->buyer_id && ! $c->manager_id;
+    // Пустой чат (заведён и брошен) — не строка, как во всех списках чатов.
+    $otherChats = $chats->reject(fn ($c) => $isDealChat($c) || ! $c->messages_count)->values();
     $foldMoney = $published && ($offer->floor_price || $offer->asking_price) && ! $errors->hasAny($moneyKeys) && ! array_intersect($hints, $moneyKeys);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
@@ -126,7 +130,7 @@
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             {{-- Чат с менеджером сделки — верхом колонки, на телефоне самым верхом страницы, как на странице сделки на xcar
                  (07.10.2026, владелец: «чуть ли не самая важная кнопка во время сделки»). --}}
-            @if ($dealChat)<x-deal.chat-card :deal="$deal" class="order-first"/>@endif
+            @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$chats->first(fn ($c) => $isDealChat($c) && $c->messages_count > 0)" class="order-first"/>@endif
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
             {{-- Цены — так же: суммы текстом, «Изменить» — поля, «Готово» — сохранить (поля привязаны к форме через form=). --}}
             <x-ui.card title="Цены" class="order-3" :data-controller="$published ? 'edit-card' : null" data-edit-card-form-value="offer-form" :data-edit-card-editing-value="$published && ! $foldMoney ? 'true' : null">
@@ -145,7 +149,7 @@
                             <x-ui.avatar :user="$chat->user" :size="36"/>
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span></div>
-                                <div class="truncate text-sm text-ink-muted">{{ $chat->last_text ? \Illuminate\Support\Str::limit($chat->last_text, 80) : 'Файл' }}</div>
+                                <div class="truncate text-sm text-ink-muted">{{ $chat->lastPreview(auth()->user()) }}</div>
                             </div>
                             @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
                         </a>

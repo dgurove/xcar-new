@@ -23,7 +23,9 @@ class DealContractController
         $data = $request->validate(($deal->isDkp() ? PartyRules::passport('seller') : []) + [
             'vehicle' => ['required', 'array'], 'vehicle.price' => ['nullable', 'integer', 'min:1'], 'vehicle.city' => ['nullable', 'string', 'max:80'],
         ] + collect(DealContract::VEHICLE)->keys()->mapWithKeys(fn ($k) => ["vehicle.{$k}" => ['nullable', 'string', 'max:'.($k === 'pts_issued' ? 255 : 40)]])->all(),
-            [], ['seller.name' => 'ФИО продавца']);
+            // Подписи полей ТС — те же, что в форме: «Кузов №», а не «vehicle.body_no» (07.10.2026).
+            [], ['seller.name' => 'ФИО продавца', 'vehicle.price' => 'цена по ДКП', 'vehicle.city' => 'город договора']
+                + collect(DealContract::VEHICLE)->mapWithKeys(fn ($label, $k) => ["vehicle.{$k}" => $label])->all());
         $save(DealContract::for($deal), $data, $request->user());
 
         return back()->with('toast', 'ДКП сохранён');

@@ -131,7 +131,7 @@ final class PublishLiveUpdates
     {
         $m = $e->message;
         $chat = $m->chat;
-        $data = ['chat' => $chat->id, 'seq' => $m->seq, 'author' => $m->author_id, 'text' => $m->preview(90)];
+        $data = ['chat' => $chat->id, 'offer' => $chat->offer_id, 'seq' => $m->seq, 'author' => $m->author_id, 'text' => $m->preview(90)];
         $other = $this->otherSide($chat);
         $sides = [$other, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
         // Кому какой адрес: участнику — его экран, второй стороне — свой; тост берёт по своей теме.

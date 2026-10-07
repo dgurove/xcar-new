@@ -4,7 +4,6 @@ namespace App\Http\Admin;
 
 use App\Cars\Vin\Vin;
 use App\Chats\Chat;
-use App\Chats\Message as ChatMessage;
 use App\Garage\Actions\GiveToGarage;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
@@ -397,7 +396,8 @@ class OfferController
             // ?window= — открыть окно писем сразу (ссылка «Вся переписка» из шторки документов).
             'window' => str_starts_with((string) request()->query('window'), "/offers/{$offer->number}/letters") ? request()->query('window') : null,
             'docs' => OfferFiles::docs($offer, $threads),
-            'chats' => $admin ? Chat::with('user')->where('offer_id', $offer->id)->addSelect(['*', 'last_text' => ChatMessage::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get() : collect(),
+            // Все чаты по машине одной выборкой: из неё же карточка чата сделки (`x-deal.chat-card`), без второго запроса.
+            'chats' => $admin ? Chat::withLast()->where('offer_id', $offer->id)->orderByDesc('last_message_at')->get() : collect(),
             'import' => ImportThreadFiles::progress($offer->id),
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'managers' => $admin ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),

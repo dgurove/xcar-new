@@ -12,8 +12,9 @@
     $sheet = $offer->position(\App\Workflow\Track::Service) && ! $offer->pickedUp();
     $keys = ['insured_name', 'insured_phone', 'inspection_address'];
     $empty = ! $offer->insured_name && ! $offer->insured_phone && ! $offer->inspection_address;
-    $editing = $errors->hasAny($keys);
     $form = 'handover-'.$deal->id;
+    // Адрес — то же поле, что в «Транспортном средстве» редактора: открываться только на ошибку своей формы (`_form`).
+    $editing = old('_form') === $form && $errors->hasAny($keys);
 @endphp
 @if ($deal->isActive() && ! $deal->isGarage())
     <section {{ $attributes->class([$compact ? '' : 'box']) }} data-controller="edit-card" data-edit-card-form-value="{{ $form }}" @if ($editing) data-edit-card-editing-value="true" @endif>
@@ -44,6 +45,7 @@
         <div data-edit-card-target="edit" @unless ($editing) hidden @endunless>
             <form method="post" action="/offers/{{ $offer->number }}" id="{{ $form }}" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" data-controller="save-bar">
                 @csrf @method('put')
+                <input type="hidden" name="_form" value="{{ $form }}">
                 <x-ui.field name="insured_name" label="Владелец" :value="$offer->insured_name" id="handover-name-{{ $deal->id }}"/>
                 <x-ui.field name="insured_phone" label="Телефон" :value="$offer->insured_phone" id="handover-phone-{{ $deal->id }}"/>
                 <x-ui.field name="inspection_address" label="Адрес" :value="$offer->inspection_address" span="sm:col-span-2" id="handover-address-{{ $deal->id }}"/>

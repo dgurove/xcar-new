@@ -3,8 +3,7 @@
      нет — «Написать» с именем, чат заводится нажатием (`Admin\ChatController::start`), сообщения менеджер получает и в Telegram. --}}
 @props(['offer', 'user'])
 @php
-    $chat = \App\Chats\Chat::withLast()->where('offer_id', $offer->id)->where('user_id', $user->id)->whereNull('manager_id')
-        ->where('messages_count', '>', 0)->first();
+    $chat = \App\Chats\Chat::withLast()->platformWith($offer, $user)->first();
 @endphp
 <div {{ $attributes->class(['list']) }}>
     @if ($chat)

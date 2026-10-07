@@ -62,6 +62,13 @@ class Chat extends Model
             ->addSelect(['*', 'last_text' => $last('text'), 'last_author_id' => $last('author_id'), 'last_deleted_at' => $last('deleted_at'), 'last_doc' => $doc]);
     }
 
+    /** Чат площадки с участником по машине, где уже есть переписка (пустой — заведён и брошен, не строка). */
+    public function scopePlatformWith(Builder $query, Offer|int $offer, User|int $user): Builder
+    {
+        return $query->where('offer_id', $offer instanceof Offer ? $offer->id : $offer)->where('user_id', $user instanceof User ? $user->id : $user)
+            ->whereNull('manager_id')->where('messages_count', '>', 0);
+    }
+
     /** Превью последнего сообщения в строке списка; me — чтобы своё начиналось с «Вы:». */
     public function lastPreview(?User $me): string
     {

@@ -2,17 +2,20 @@
      в правой колонке (07.10.2026, владелец: «чат на видное место, с аватаркой и последним сообщением, чтобы было прям
      понятно, что это чат»). Как диалог в списке мессенджера: аватар менеджера с пузырём в углу, имя, время, последнее
      сообщение, у непрочитанного — счётчик. Переписки нет — «Написать сообщение», чат заводится нажатием
-     (`Admin\ChatController::start`). Новое сообщение перечитывает карточку само (`reload` по `live:chat`). --}}
-@props(['deal'])
+     (`Admin\ChatController::start`). Новое сообщение по этой машине перечитывает карточку само (`reload` по `live:chat` с
+     отбором по `offer`: сотрудникам идут сообщения всех чатов). chat — уже выбранный (редактор берёт из своих `$chats`),
+     null — переписки нет; не передан — карточка выбирает сама. --}}
+@props(['deal', 'chat' => false])
 @php
     $offer = $deal->offer;
     $buyer = $deal->buyer;
-    $chat = \App\Chats\Chat::withLast()->where('offer_id', $offer->id)->where('user_id', $buyer->id)->whereNull('manager_id')
-        ->where('messages_count', '>', 0)->first();
+    if ($chat === false) {
+        $chat = \App\Chats\Chat::withLast()->platformWith($offer, $buyer)->first();
+    }
     $unread = (int) ($chat?->unread_for_staff ?? 0);
     $at = $chat?->last_message_at;
 @endphp
-<turbo-frame id="deal-chat-{{ $deal->id }}" {{ $attributes->class(['block min-w-0']) }} data-controller="reload" data-reload-url-value="/work/deals/{{ $deal->id }}/chat" data-action="live:chat@document->reload#load">
+<turbo-frame id="deal-chat-{{ $deal->id }}" {{ $attributes->class(['block min-w-0']) }} data-controller="reload" data-reload-url-value="/work/deals/{{ $deal->id }}/chat" data-reload-key-value="offer" data-reload-match-value="{{ $offer->id }}" data-action="live:chat@document->reload#load">
     @if ($chat)
         <a href="/work/chats/{{ $chat->id }}" data-turbo-frame="_top" class="box deal-chat" aria-label="Чат с {{ $buyer->shortName() }}">
     @else

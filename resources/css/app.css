@@ -184,6 +184,9 @@
 }
 
 @layer base {
+  /* Треугольник у <summary>: `list-none` его прячет везде, кроме Safari — там нужен свой псевдоэлемент (07.10.2026: на iPhone
+     у «Расклада» и «Ещё N» стоял чёрный ▶ рядом с нашей стрелкой). */
+  summary.list-none::-webkit-details-marker { display: none; }
   html {
     /* Холст под резиновым оверскроллом iOS — цвет полосы, не страницы. */
     background-color: var(--color-bar);
@@ -2746,7 +2749,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   .detail-section { @apply mb-2 text-base font-medium; }
   /* Карточки внутри карточки строки (дорожки, деньги, ДКП, заметка сделки) — разделами, а не белым по белому с полями:
      вровень с краем, заголовок — как у раздела (07.10.2026: дыры между дорожками и два вида заголовков). Чат — плашкой. */
-  .detail-card .box:not(.deal-chat) { padding: 0; border-radius: 0; background: none; }
+  .detail-card .box:not(.deal-chat):not(.box-urgent) { padding: 0; border-radius: 0; background: none; }
   .detail-card .box h2.box-title { font-size: var(--text-base); font-weight: 500; color: var(--color-ink); letter-spacing: normal; }
   .detail-card .deal-chat { background: var(--color-surface-2); }
   /* Поля в карточке строки: плотнее, чем в редакторе, и не шире своей колонки (дата-время и VIN распирали её). */
