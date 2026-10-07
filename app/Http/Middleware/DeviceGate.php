@@ -24,7 +24,7 @@ class DeviceGate
     {
         $state = Lock::state($request);
         if ($state === null) {
-            return $next($request);
+            return self::lockable($request, $next($request));
         }
         if ($state === Lock::KICKED) {
             // Без смены remember_token: «запомнить меня» на новом устройстве человека остаётся рабочим.
@@ -38,9 +38,6 @@ class DeviceGate
         if ($state === Lock::OPEN || $request->is(...self::OPEN)) {
             return self::private($next($request));
         }
-        if ($state === Lock::LINK && ! $request->session()->has(Lock::SESSION_LINKING)) {
-            $request->session()->put(Lock::SESSION_LINKING, now()->timestamp);
-        }
         if (! $request->isMethodSafe()) {
             return self::private($request->expectsJson() || ! $this->html($request) ? response()->json(['state' => $state], 423) : redirect()->back(303));
         }
@@ -49,6 +46,19 @@ class DeviceGate
         }
 
         return self::private(response()->json(['state' => $state], 423));
+    }
+
+    /**
+     * Экран менеджера, которого замок касается, пока тумблер выключен: кэшируется как обычно, но с меткой — воркер при
+     * запуске с иконки не показывает его сразу, а сначала ждёт сеть (`sw.js`): включат замок — экран с ценами не мелькнёт.
+     */
+    private static function lockable(Request $request, Response $response): Response
+    {
+        if ($request->user()?->underLock()) {
+            $response->headers->set('X-Lockable', '1');
+        }
+
+        return $response;
     }
 
     /** Ответ менеджеру не ложится ни в кэш браузера, ни в «назад» Safari, ни в экраны воркера. */

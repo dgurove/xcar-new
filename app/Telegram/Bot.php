@@ -113,10 +113,15 @@ class Bot
         return $this->logged($chatId, $this->call('sendMessage', $payload));
     }
 
-    /** Как send, но нужен номер сообщения в Telegram (поправить или удалить его потом), а не строка журнала. */
-    public function sendForId(int $chatId, string $text, ?array $keyboard = null): int
+    /**
+     * Как send, но нужен номер сообщения в Telegram (поправить или удалить его потом), а не строка журнала. `$shown` —
+     * текст для журнала вместо настоящего: код входа в «Бот Telegram» CRM лежать не должен.
+     */
+    public function sendForId(int $chatId, string $text, ?array $keyboard = null, ?string $shown = null): int
     {
-        return (int) $this->call('sendMessage', $this->payload($chatId, $text, $keyboard))->throw()->json('result.message_id');
+        $payload = $this->payload($chatId, $text, $keyboard);
+
+        return (int) $this->call('sendMessage', $payload, [], $shown === null ? null : ['text' => $shown] + $payload)->throw()->json('result.message_id');
     }
 
     /** Файл из CRM: картинка — фото, остальное — документом. */
@@ -255,8 +260,9 @@ class Bot
      *
      * @param  array<string, UploadedFile|array{0: string, 1: string}>  $files  файл или [содержимое, имя]
      */
-    protected function call(string $method, array $payload, array $files = []): Response
+    protected function call(string $method, array $payload, array $files = [], ?array $journaled = null): Response
     {
+        $journaled ??= $payload;
         $request = $this->client($files ? 60 : 20)->retry(4,
             fn (int $attempt, Throwable $e) => self::tooMany($e) ? min(10, (int) ($e->response->json('parameters.retry_after') ?? 1)) * 1000 : ($e instanceof ConnectionException ? 200 : 1500),
             fn (Throwable $e) => ! ($e instanceof RequestException && $e->response->clientError()) || self::tooMany($e));
@@ -268,12 +274,12 @@ class Bot
             $response = $this->guard(fn () => ($files ? $request : $request->asForm())->post($method, $payload));
         } catch (RequestException $e) {
             if ($e->response->clientError()) {
-                $this->journal?->failed($method, $payload, (string) ($e->response->json('description') ?? $e->getMessage()));
+                $this->journal?->failed($method, $journaled, (string) ($e->response->json('description') ?? $e->getMessage()));
             }
             throw $e;
         }
         if ($response->successful()) {
-            $this->journal?->sent($method, $payload, (array) $response->json('result'));
+            $this->journal?->sent($method, $journaled, (array) $response->json('result'));
         }
 
         return $response;

@@ -48,7 +48,8 @@ class PasskeyController
         }
         // Менеджер с Telegram под замком входит только через него (07.10.2026); ключ снова работает, когда замок выключат.
         if (Lock::enabled() && $request->user()?->underLock() && $request->user()->telegram_chat_id !== null) {
-            Auth::logout();
+            // Только этот браузер: Auth::logout сменил бы remember_token и выкинул «запомнить меня» на устройстве человека.
+            Auth::guard()->logoutCurrentDevice();
 
             return response()->json(['message' => 'Вход по ключу закрыт, войдите через Telegram'], 422);
         }

@@ -43,9 +43,6 @@ final class Lock
      */
     public const CODE_COOKIE = 'xcar-code';
 
-    /** Когда этой сессии показали привязку Telegram: привязали после — устройство заводится без кода. */
-    public const SESSION_LINKING = 'lock.linking';
-
     private const MEMO = 'lock';
 
     public const SETTING = 'manager_lock';

@@ -3,7 +3,9 @@
 namespace App\Http\Auth;
 
 use App\Live\Topics;
+use App\Support\Qr;
 use App\Telegram\Bot;
+use App\Telegram\StartLink;
 use App\Users\Access\AccessCode;
 use App\Users\Access\CodeRefused;
 use App\Users\Access\Confirm;
@@ -38,7 +40,7 @@ final class LockController
 
     /**
      * Код в Telegram: сам при заморозке и по «Отправить ещё раз». Живой код этого браузера моложе RESEND секунд — он же,
-     * без второго сообщения (замёрзли две вкладки). Telegram привязали из этой сессии только что — код не нужен.
+     * без второго сообщения (замёрзли две вкладки).
      */
     public function send(Request $request, SendCode $send)
     {
@@ -47,11 +49,13 @@ final class LockController
         if (! in_array($state, [Lock::OPEN, Lock::FROZEN, Lock::ENROLL], true)) {
             return response()->json(['state' => $state], 409);
         }
-        $since = (int) $request->session()->get(Lock::SESSION_LINKING);
-        if ($state === Lock::ENROLL && $since && $user->telegram_linked_at && $user->telegram_linked_at->timestamp >= $since - 5) {
-            return response()->json(['nonce' => $send->approved($request, $user)->nonce, 'approved' => true]);
+        // Telegram только что привязали из этого браузера (окно замка, «Запустить» в боте) — запись привязки одобрена,
+        // кода не нужно: браузер подписывает её nonce и становится устройством.
+        $linked = AccessCode::where('user_id', $user->id)->where('purpose', 'link')->find(Lock::codeId($request));
+        if ($state === Lock::ENROLL && $linked?->isLive() && $linked->approved_at) {
+            return response()->json(['nonce' => $linked->nonce, 'approved' => true, 'topics' => implode(',', Topics::here($user))]);
         }
-        $current = AccessCode::where('user_id', $user->id)->find(Lock::codeId($request));
+        $current = AccessCode::where('user_id', $user->id)->where('purpose', 'unlock')->find(Lock::codeId($request));
         $age = $current ? (int) $current->created_at->diffInSeconds(now(), true) : PHP_INT_MAX;
         if ($current?->isLive() && $age < AccessCode::RESEND) {
             return $request->boolean('again')
@@ -71,6 +75,28 @@ final class LockController
         return response()->json(['nonce' => $access->nonce, 'resend' => AccessCode::RESEND, 'topics' => implode(',', Topics::here($user))]);
     }
 
+    /**
+     * «Подключить Telegram» в окне замка: ссылка на бота с номером записи привязки этого браузера (и QR для ПК). `/start`
+     * с ней привязывает чат и одобряет запись — браузер заканчивает сам, без кода.
+     */
+    public function link(Request $request, SendCode $send, Bot $bot)
+    {
+        $user = $request->user();
+        if (Lock::state($request) !== Lock::LINK || ! $bot->username()) {
+            return response()->json(['state' => Lock::state($request)], 409);
+        }
+        $access = $send->link($request, $user);
+        $start = StartLink::code($access);
+
+        return response()->json([
+            'nonce' => $access->nonce,
+            'app' => 'tg://resolve?domain='.$bot->username().'&start='.$start,
+            'web' => $bot->startUrl($start),
+            'qr' => Qr::svg($bot->startUrl($start)),
+            'topics' => implode(',', Topics::here($user)),
+        ]);
+    }
+
     public function verify(Request $request, Confirm $confirm)
     {
         $user = $request->user();
@@ -78,7 +104,7 @@ final class LockController
             return response()->json(['state' => Lock::state($request)], 409);
         }
         try {
-            [$access, $key] = $confirm->check($request, $request->input('code'), $request->input('key'), $request->input('sig'));
+            [$access, $key] = $confirm->check($request, ['unlock', 'link'], $request->input('code'), $request->input('key'), $request->input('sig'));
         } catch (CodeRefused $e) {
             return $e->toResponse();
         }

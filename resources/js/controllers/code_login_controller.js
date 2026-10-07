@@ -2,9 +2,9 @@ import { Controller } from '@hotwired/stimulus';
 import { proof } from '../device-key';
 
 // Вход кодом из Telegram (страница входа, 07.10.2026): логин из поля формы выше → «Получить код» → бот присылает шесть
-// цифр с кнопкой «Войти». Цифры уходят сами на шестой; нажали «Войти» в боте — страница узнаёт событием хаба (live:lock),
-// по возврату на вкладку или опросом раз в 4 с. Браузер подписывает nonce своим ключом (device-key.js): менеджер под
-// замком этим входом заводит браузер устройством.
+// цифр с кнопкой «Войти». Цифры уходят сами на шестой; нажали «Войти» в боте — страница узнаёт событием хаба (live:lock)
+// или, без него, когда человек вернулся на вкладку или в окно (опроса нет, CLAUDE.md). Браузер подписывает nonce своим
+// ключом (device-key.js): менеджер под замком этим входом заводит браузер устройством.
 export default class extends Controller {
     static targets = ['request', 'box', 'code', 'note'];
 
@@ -13,12 +13,13 @@ export default class extends Controller {
         this.onVisible = () => document.visibilityState === 'visible' && this.nonce && this.verify(null);
         document.addEventListener('live:lock', this.onLive);
         document.addEventListener('visibilitychange', this.onVisible);
+        window.addEventListener('focus', this.onVisible);
     }
 
     disconnect() {
         document.removeEventListener('live:lock', this.onLive);
         document.removeEventListener('visibilitychange', this.onVisible);
-        clearInterval(this.poll);
+        window.removeEventListener('focus', this.onVisible);
         clearInterval(this.cooling);
     }
 
@@ -46,8 +47,6 @@ export default class extends Controller {
         this.codeTarget.focus();
         this.note('Код в Telegram');
         this.cool(data.resend ?? 30);
-        clearInterval(this.poll);
-        this.poll = setInterval(() => document.visibilityState === 'visible' && this.verify(null), 4000);
     }
 
     cool(seconds) {
@@ -81,7 +80,6 @@ export default class extends Controller {
         if (!r || r.status === 202) return;
         const data = await r.json().catch(() => ({}));
         if (r.ok) {
-            clearInterval(this.poll);
             this.note('Входим');
             location.href = data.href || '/';
             return;
@@ -93,7 +91,7 @@ export default class extends Controller {
             this.codeTarget.classList.add('is-wrong');
             navigator.vibrate?.([10, 40, 10]);
         }
-        if (r.status === 410) { this.nonce = null; clearInterval(this.poll); this.cool(0); }
+        if (r.status === 410) { this.nonce = null; this.cool(0); }
     }
 
     note(text, danger = false) {

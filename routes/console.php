@@ -1,5 +1,6 @@
 <?php
 
+use App\Users\Access\AccessCode;
 use App\Users\Actions\CloseStaleImpersonations;
 use Illuminate\Support\Facades\Schedule;
 
@@ -26,6 +27,7 @@ Schedule::command('offers:prune-drafts')->dailyAt('04:40');
 Schedule::command('migtorg:sync')->everyThirtyMinutes()->withoutOverlapping()->runInBackground();
 // Архив Мигторга кусками: до 150 карточек раз в 5 минут, пока не пройдены 60 дней торгов назад (потом молчит).
 Schedule::command('migtorg:archive')->everyFiveMinutes()->withoutOverlapping(10)->runInBackground();
+// Коды от бота (замок менеджеров) живут минуты — старше двух дней не нужны.
+Schedule::call(fn () => AccessCode::where('created_at', '<', now()->subDays(2))->delete())->dailyAt('04:50')->name('access-codes:prune');
 // Входы админа за человека, из которых не вышли кнопкой, — закрыть сроком сессии.
 Schedule::call(fn () => app(CloseStaleImpersonations::class)())->hourly()->name('impersonations:close');
-

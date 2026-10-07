@@ -36,15 +36,17 @@ class LoginController
         ]);
 
         [$field, $value] = self::identify(trim($data['login']));
-        // Менеджер с Telegram под замком входит только через него (07.10.2026); пароль хранится и снова работает, когда замок выключат.
-        $user = User::where($field, $value)->first();
-        if (Lock::enabled() && $user?->underLock() && $user->telegram_chat_id !== null) {
-            throw ValidationException::withMessages(['login' => 'Вход по паролю закрыт, войдите через Telegram']);
-        }
-
-        if (! Auth::attempt([$field => $value, 'password' => $data['password']], $request->boolean('remember', true))) {
+        $credentials = [$field => $value, 'password' => $data['password']];
+        if (! Auth::validate($credentials)) {
             throw ValidationException::withMessages(['login' => 'Не подходит логин, телефон, почта или пароль']);
         }
+        // Менеджер с Telegram под замком входит только через него (07.10.2026); пароль хранится и снова работает, когда
+        // замок выключат. Говорим это только тому, кто знает пароль: иначе по ответу узнавали бы, чей это телефон.
+        $user = Auth::getLastAttempted();
+        if (Lock::enabled() && $user instanceof User && $user->underLock() && $user->telegram_chat_id !== null) {
+            throw ValidationException::withMessages(['login' => 'Вход по паролю закрыт, войдите через Telegram']);
+        }
+        Auth::login($user, $request->boolean('remember', true));
 
         $request->session()->regenerate();
 

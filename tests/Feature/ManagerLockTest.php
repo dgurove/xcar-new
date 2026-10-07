@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Support\Settings;
+use App\Telegram\StartLink;
+use App\Telegram\UpdateHandler;
 use App\Users\Access\AccessCode;
 use App\Users\Access\Device;
 use App\Users\Access\Lock;
@@ -90,6 +92,51 @@ class ManagerLockTest extends TestCase
             $this->postJson('/lock/verify', ['code' => $wrong, 'key' => json_encode($jwk), 'sig' => $this->sign($pem, $nonce)]);
         }
         $this->postJson('/lock/verify', ['code' => $code, 'key' => json_encode($jwk), 'sig' => $this->sign($pem, $nonce)])->assertStatus(410);
+    }
+
+    public function test_telegram_linked_from_lock_window_enrolls_only_that_browser(): void
+    {
+        $manager = $this->manager();
+        $manager->forceFill(['telegram_chat_id' => null, 'telegram_linked_at' => null])->save();
+        [$pem, $jwk] = $this->key();
+
+        // Окно привязки: ссылка на бота с записью этого браузера.
+        $link = $this->actingAs($manager)->postJson('/lock/link')->assertOk();
+        $access = AccessCode::latest('id')->first();
+        $this->assertSame('link', $access->purpose);
+        $start = StartLink::code($access);
+        $this->assertStringContainsString($start, $link->json('app'));
+
+        // «Запустить» в боте: чат привязан, запись одобрена.
+        app(UpdateHandler::class)->handle(['update_id' => 1, 'message' => [
+            'message_id' => 1, 'chat' => ['id' => 777, 'type' => 'private'], 'from' => ['id' => 777, 'username' => 'mgr'], 'text' => '/start '.$start,
+        ]]);
+        $this->assertSame(777, (int) $manager->fresh()->telegram_chat_id);
+        $this->assertNotNull($access->fresh()->approved_at);
+
+        // Другой браузер того же человека (без cookie записи) одобрения не получает: ему — обычный код в Telegram.
+        $this->actingAs($manager->fresh())->postJson('/lock/code')->assertOk()->assertJsonMissing(['approved' => true]);
+
+        // Этот браузер — без кода, подписью своего ключа.
+        $this->withCookie(Lock::CODE_COOKIE, (string) $access->id);
+        $nonce = $this->postJson('/lock/code')->assertOk()->assertJson(['approved' => true])->json('nonce');
+        $this->postJson('/lock/verify', ['key' => json_encode($jwk), 'sig' => $this->sign($pem, $nonce)])->assertOk();
+        $this->assertTrue(Device::live($manager)->isOpen());
+    }
+
+    public function test_codes_work_only_for_their_purpose(): void
+    {
+        $manager = $this->manager();
+        [$pem, $jwk] = $this->key();
+        $link = AccessCode::create([
+            'user_id' => $manager->id, 'purpose' => 'link', 'topic' => 'lock/x', 'code_hash' => 'x', 'nonce' => 'n1', 'label' => 'Safari',
+            'approved_at' => now(), 'expires_at' => now()->addMinutes(5),
+        ]);
+
+        // Одобренная запись привязки на странице входа не впускает.
+        $this->withCookie(Lock::CODE_COOKIE, (string) $link->id)
+            ->postJson('/login/code/verify', ['key' => json_encode($jwk), 'sig' => $this->sign($pem, 'n1')])->assertStatus(410);
+        $this->assertGuest();
     }
 
     public function test_password_is_closed_only_while_lock_is_on(): void

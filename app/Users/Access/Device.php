@@ -2,6 +2,7 @@
 
 namespace App\Users\Access;
 
+use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +34,18 @@ class Device extends Model
     public static function live(User $user): ?self
     {
         return self::where('user_id', $user->id)->whereNull('revoked_at')->first();
+    }
+
+    /**
+     * Открытые ключи браузера по хостам: у каждого происхождения своя IndexedDB. Ранняя запись с одним ключом — ключ сайта.
+     *
+     * @return array<string, array{kty: string, crv: string, x: string, y: string}>
+     */
+    public function keys(): array
+    {
+        $keys = $this->public_key ?? [];
+
+        return isset($keys['kty']) ? [Surface::Site->host() => $keys] : $keys;
     }
 
     public function owns(?string $token): bool

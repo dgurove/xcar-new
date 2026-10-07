@@ -2,17 +2,14 @@
      всего. Один узел на весь сеанс (data-turbo-permanent): переходы его не трогают, состояние и конец окна каждая
      страница приносит в meta lock (layout). Окно открывается само, когда окно работы кончилось (экран под ним стирается,
      lock_controller) или сервер ответил 423; по нажатию на пилюлю — продлить заранее, без стирания. Шаги: code — код из
-     Telegram или «Продолжить» в боте; link — привязать Telegram, без него дальше нельзя. --}}
+     Telegram или «Продолжить» в боте; link — привязать Telegram, без него дальше нельзя: ссылку на бота с записью
+     привязки этого браузера окно берёт у сервера (/lock/link), «Запустить» в боте сразу заводит браузер устройством. --}}
 @php
-    $user = auth()->user();
-    $bot = app(\App\Telegram\Bot::class);
-    $name = $bot->username();
-    $start = $user->telegram_chat_id === null && $name ? \App\Telegram\StartLink::link($user) : null;
+    $name = app(\App\Telegram\Bot::class)->username();
 @endphp
 <div id="lock" class="contents" data-turbo-permanent data-controller="lock"
     data-lock-bot-app-value="tg://resolve?domain={{ $name }}" data-lock-bot-web-value="https://t.me/{{ $name }}"
-    data-lock-minutes-value="{{ \App\Users\Access\Lock::minutes() }}"
-    @if ($start) data-lock-link-app-value="tg://resolve?domain={{ $name }}&start={{ $start }}" data-lock-link-web-value="{{ $bot->startUrl($start) }}" @endif>
+    data-lock-minutes-value="{{ \App\Users\Access\Lock::minutes() }}">
     <button type="button" class="lock-pill nums" data-lock-target="pill" data-action="lock#renew" hidden aria-label="Осталось до подтверждения"></button>
 
     <dialog class="lock" data-lock-target="dialog" data-action="cancel->lock#cancel" aria-labelledby="lock-title">
@@ -38,9 +35,9 @@
             <h2 class="text-lg">Подключите Telegram</h2>
             <p class="lock-note" data-lock-target="linkNote" aria-live="polite"></p>
             <div class="flex w-full flex-col gap-1">
-                @if ($start)
-                    <button type="button" class="btn btn-telegram w-full" data-action="lock#link"><x-telegram.logo plain/>Подключить Telegram</button>
-                    <div class="tg-qr mt-2 hidden sm:block">{!! \App\Support\Qr::svg($bot->startUrl($start)) !!}</div>
+                @if ($name)
+                    <button type="button" class="btn btn-telegram w-full" data-lock-target="linkButton" data-action="lock#link" disabled><x-telegram.logo plain/>Подключить Telegram</button>
+                    <div class="tg-qr mt-2 hidden sm:block" data-lock-target="linkQr" hidden></div>
                 @endif
                 <form method="post" action="/logout" data-turbo="false">@csrf<button type="submit" class="btn btn-ghost btn-s w-full text-ink-dim">Выйти</button></form>
             </div>

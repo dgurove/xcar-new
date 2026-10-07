@@ -29,10 +29,11 @@ final class CodeLoginController
         $nonce = Str::random(43);
         if ($user && $user->telegram_chat_id && $user->isApproved() && ! $user->isRejected() && ! RateLimiter::tooManyAttempts($key = 'lock-code:'.$user->id, 12)) {
             RateLimiter::hit($key, 3600);
+            // Сбой отправки — тот же ответ, что и всем: иначе по нему узнавали бы, чей это телефон. Причина — в лог.
             try {
                 $nonce = $send($request, $user, 'login')->nonce;
             } catch (Throwable $e) {
-                return LockController::sendFailed($e, $user->id);
+                LockController::sendFailed($e, $user->id);
             }
         }
 
@@ -42,7 +43,7 @@ final class CodeLoginController
     public function verify(Request $request, Confirm $confirm)
     {
         try {
-            [$access, $key] = $confirm->check($request, $request->input('code'), $request->input('key'), $request->input('sig'));
+            [$access, $key] = $confirm->check($request, ['login'], $request->input('code'), $request->input('key'), $request->input('sig'));
         } catch (CodeRefused $e) {
             return $e->toResponse();
         }

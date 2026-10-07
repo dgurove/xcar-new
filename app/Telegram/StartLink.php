@@ -3,6 +3,7 @@
 namespace App\Telegram;
 
 use App\Support\UserAgent;
+use App\Users\Access\AccessCode;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -26,9 +27,19 @@ final class StartLink
     }
 
     /**
-     * Что за ссылка: `['link', id, просрочена]`, `['login', токен]` или null — чужая строка.
+     * Привязка из окна замка (`Access\SendCode::link`): `K<номер записи>-<подпись>`. Срок и браузер держит сама запись.
+     */
+    public static function code(AccessCode $access): string
+    {
+        $body = 'K'.base_convert((string) $access->id, 10, 36);
+
+        return $body.'-'.self::sign($body);
+    }
+
+    /**
+     * Что за ссылка: `['link', id, просрочена]`, `['login', токен]`, `['code', номер записи]` или null — чужая строка.
      *
-     * @return array{0: 'link', 1: int, 2: bool}|array{0: 'login', 1: string}|null
+     * @return array{0: 'link', 1: int, 2: bool}|array{0: 'login', 1: string}|array{0: 'code', 1: int}|null
      */
     public static function parse(string $payload): ?array
     {
@@ -38,6 +49,9 @@ final class StartLink
             }
 
             return ['link', (int) base_convert($m[1], 36, 10), (int) base_convert($m[2], 36, 10) < now()->timestamp];
+        }
+        if (preg_match('/^K([0-9a-z]+)-([0-9a-zA-Z]{16})$/', $payload, $m) === 1) {
+            return hash_equals(self::sign('K'.$m[1]), $m[2]) ? ['code', (int) base_convert($m[1], 36, 10)] : null;
         }
         if (preg_match('/^I[0-9a-zA-Z]{24}$/', $payload) === 1) {
             return ['login', $payload];

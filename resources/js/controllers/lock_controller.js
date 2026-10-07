@@ -9,17 +9,21 @@ import { proof } from '../device-key';
 //           экраны воркера, предзагрузки, поток хаба), остаются только адрес, прокрутка и набранное в полях — в памяти;
 //           окно не закрыть. Если экран на виду — код в Telegram уходит сам, иначе — когда человек вернётся.
 //   link   — Telegram не привязан: только «Подключить Telegram».
-// Подтверждение — шесть цифр (на шестой уходит само) или «Продолжить» в боте (событие хаба live:lock, возврат на вкладку,
-// опрос раз в 4 с, пока окно открыто). Браузер подписывает nonce своим ключом (device-key.js). После подтверждения тот
-// же адрес перерисовывается, прокрутка и поля возвращаются. «Вы вошли на другом устройстве» — сразу на вход.
+// Подтверждение — шесть цифр (на шестой уходит само) или «Продолжить» в боте: событие хаба live:lock, а без него —
+// вопрос серверу, когда человек вернулся на вкладку или в окно (опроса нет, CLAUDE.md). Браузер подписывает nonce своим
+// ключом (device-key.js). После подтверждения тот же адрес перерисовывается, прокрутка и поля возвращаются.
+// Привязка Telegram: ссылка на бота с записью этого браузера (/lock/link), «Запустить» в боте одобряет её — устройство
+// заводится без кода. «Вы вошли на другом устройстве» — сразу на вход.
 export default class extends Controller {
-    static targets = ['pill', 'dialog', 'step', 'title', 'input', 'note', 'resend', 'close', 'linkNote'];
-    static values = { botApp: String, botWeb: String, linkApp: String, linkWeb: String, minutes: Number };
+    static targets = ['pill', 'dialog', 'step', 'title', 'input', 'note', 'resend', 'close', 'linkNote', 'linkButton', 'linkQr'];
+    static values = { botApp: String, botWeb: String, minutes: Number };
 
     connect() {
         this.offs = [];
         this.on(document, 'turbo:load', () => this.sync());
         this.on(document, 'visibilitychange', () => this.visible());
+        // ПК: подтвердили в Telegram на телефоне и вернулись в окно браузера — вкладка была видна, visibilitychange не будет.
+        this.on(window, 'focus', () => this.dialogTarget.open && this.refresh());
         this.on(window, 'pageshow', (e) => e.persisted && this.refresh());
         this.on(document, 'turbo:before-fetch-response', (e) => this.response(e));
         this.on(document, 'live:lock', (e) => this.live(e.detail || {}));
@@ -29,7 +33,6 @@ export default class extends Controller {
 
     disconnect() {
         clearInterval(this.timer);
-        clearInterval(this.poll);
         clearInterval(this.cooling);
         this.offs.forEach((off) => off());
     }
@@ -85,7 +88,8 @@ export default class extends Controller {
         const fields = [];
         document.querySelectorAll('#main form').forEach((form) => [...form.elements].forEach((el) => {
             if (!el.name || el.name === '_token' || ['hidden', 'password', 'file', 'submit', 'button'].includes(el.type)) return;
-            const changed = ['checkbox', 'radio'].includes(el.type) ? el.checked !== el.defaultChecked : el.value !== (el.defaultValue ?? el.value);
+            const changed = ['checkbox', 'radio'].includes(el.type) ? el.checked !== el.defaultChecked
+                : el instanceof HTMLSelectElement ? [...el.options].some((o) => o.selected !== o.defaultSelected) : el.value !== el.defaultValue;
             if (changed) fields.push({ action: form.getAttribute('action') || '', name: el.name, value: el.value, checked: el.checked });
         }));
         return { url: location.href, y: scrollY, fields };
@@ -125,9 +129,7 @@ export default class extends Controller {
         this.nonce = null;
         if (!this.dialogTarget.open) this.dialogTarget.showModal();
         this.pillTarget.hidden = this.mode === 'freeze';
-        clearInterval(this.poll);
-        this.poll = setInterval(() => document.visibilityState === 'visible' && this.refresh(), 4000);
-        if (link) return;
+        if (link) { this.prepareLink(); return; }
         // Заморозка — сначала спросить сервер: окно могли продлить в другой вкладке. Иначе — код в Telegram.
         if (document.visibilityState !== 'visible') { this.sendOnShow = true; return; }
         if (this.mode === 'freeze') this.refresh().then((open) => !open && this.send());
@@ -146,7 +148,6 @@ export default class extends Controller {
         if (this.mode !== 'renew') return;
         this.mode = null;
         this.nonce = null;
-        clearInterval(this.poll);
         this.dialogTarget.close();
         this.tick();
     }
@@ -247,7 +248,6 @@ export default class extends Controller {
         this.state = 'open';
         this.until = (until || 0) * 1000;
         this.nonce = null;
-        clearInterval(this.poll);
         if (csrf) {
             document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', csrf);
             document.querySelectorAll('input[name="_token"]').forEach((i) => { i.value = csrf; });
@@ -297,8 +297,9 @@ export default class extends Controller {
             this.tick();
             return true;
         }
-        if (this.state === 'link' && state === 'enroll') {
-            this.state = 'enroll';
+        // Telegram привязан: окно кода, а запись привязки этого браузера уже одобрена — /lock/code отдаст её, и вход сам.
+        if (this.state === 'link' && state !== 'link') {
+            this.state = state;
             this.open();
             return false;
         }
@@ -332,9 +333,22 @@ export default class extends Controller {
         this.go(this.botAppValue, this.botWebValue);
     }
 
+    // Ссылку на бота готовим заранее: переход в Telegram должен случиться прямо в нажатии, без ожидания сети (iOS).
+    async prepareLink() {
+        if (!this.hasLinkButtonTarget || this.linking) return;
+        const r = await this.post('/lock/link', {});
+        if (!r?.ok) { this.linkNoteTarget.textContent = r ? 'Не получилось, обновите страницу' : 'Нет связи'; return; }
+        this.linking = await r.json();
+        this.nonce = this.linking.nonce;
+        if (this.linking.topics !== undefined) document.dispatchEvent(new CustomEvent('live:retopic', { detail: { topics: this.linking.topics } }));
+        this.linkButtonTarget.disabled = false;
+        if (this.hasLinkQrTarget && this.linking.qr) { this.linkQrTarget.innerHTML = this.linking.qr; this.linkQrTarget.hidden = false; }
+    }
+
     link() {
+        if (!this.linking) return;
         this.linkNoteTarget.textContent = 'Нажмите «Запустить» и вернитесь сюда';
-        this.go(this.linkAppValue, this.linkWebValue);
+        this.go(this.linking.app, this.linking.web);
     }
 
     // На телефоне — сразу в приложение Telegram, нет его — t.me; на ПК — t.me новой вкладкой.

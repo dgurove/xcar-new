@@ -6,20 +6,26 @@ use App\Telegram\Bot;
 use App\Users\User;
 use Illuminate\Http\Request;
 
+use function Illuminate\Support\defer;
+
 /**
- * Подтверждение этого браузера: код, который он просил (id в его сессии), — введённые цифры или «Продолжить» в Telegram,
- * и подпись `nonce` ключом браузера. Принятый код гаснет, сообщение в Telegram становится «Подтверждено 14:05» без
- * цифр. Дальше — тот же ключ у своего устройства: окно продлевается; иначе этот браузер заводится устройством, прежнее
- * выкидывается.
+ * Подтверждение этого браузера: код, который он просил (id в его cookie), — введённые цифры или «Продолжить» в
+ * Telegram, и подпись `nonce` ключом браузера. Код подходит только для своего дела (`$purposes`): кодом продления не
+ * войти со страницы входа. Принятый код гаснет, сообщение в Telegram становится «Подтверждено 14:05» без цифр (после
+ * ответа — страница Telegram не ждёт). Дальше — свой ключ у своего устройства: окно продлевается; иначе этот браузер
+ * заводится устройством, прежнее выкидывается.
  */
 final class Confirm
 {
     public function __construct(private Bot $bot, private Enroll $enroll) {}
 
-    /** @return array{0: AccessCode, 1: array{kty: string, crv: string, x: string, y: string}} */
-    public function check(Request $request, ?string $typed, ?string $key, ?string $signature): array
+    /**
+     * @param  list<string>  $purposes
+     * @return array{0: AccessCode, 1: array{kty: string, crv: string, x: string, y: string}}
+     */
+    public function check(Request $request, array $purposes, ?string $typed, ?string $key, ?string $signature): array
     {
-        $access = AccessCode::find(Lock::codeId($request));
+        $access = AccessCode::whereIn('purpose', $purposes)->find(Lock::codeId($request));
         if (! $access || ! $access->isLive()) {
             throw new CodeRefused('gone', $access?->denied_at ? 'Отклонено в Telegram' : 'Код устарел, запросите новый');
         }
@@ -51,9 +57,13 @@ final class Confirm
             return null;
         }
 
+        // У каждого хоста (xcar.ru, crm.xcar.ru) своя IndexedDB и свой ключ, а метка устройства — общая cookie: ключ хоста,
+        // которого у устройства ещё нет, привязывается (хост человеку открыт — /lock только там), чужой ключ — новое устройство.
         [, $device] = Lock::check($request);
-        if ($device?->owns(Lock::token($request)) && DeviceKey::same($device->public_key, $jwk)) {
-            $device->update(['verified_until' => now()->addMinutes(Lock::minutes()), 'ip' => $request->ip()]);
+        $host = $request->getHost();
+        $known = $device?->keys()[$host] ?? null;
+        if ($device?->owns(Lock::token($request)) && ($known === null || DeviceKey::same($known, $jwk))) {
+            $device->update(['public_key' => [$host => $jwk] + $device->keys(), 'verified_until' => now()->addMinutes(Lock::minutes()), 'ip' => $request->ip()]);
             Lock::forget($request);
 
             return $device;
@@ -62,12 +72,12 @@ final class Confirm
         return ($this->enroll)($request, $user, $jwk);
     }
 
-    /** Сообщение с кодом после решения: цифры и кнопки уходят. */
+    /** Сообщение с кодом после решения: цифры и кнопки уходят — после ответа, подтверждение Telegram не ждёт. */
     public function settled(AccessCode $access, string $word): void
     {
         if ($access->chat_id && $access->message_id) {
-            $this->bot->edit((int) $access->chat_id, (int) $access->message_id,
-                $word.now()->format('H:i')."\n".e($access->label));
+            [$bot, $chat, $message, $text] = [$this->bot, (int) $access->chat_id, (int) $access->message_id, $word.now()->format('H:i')."\n".e($access->label)];
+            defer(fn () => $bot->edit($chat, $message, $text));
         }
     }
 }

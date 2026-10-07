@@ -43,6 +43,7 @@ Route::middleware('auth')->group(function () {
     // Замок менеджера: код в Telegram и подтверждение — сторож пропускает их и под замком.
     Route::get('/lock/state', [LockController::class, 'state']);
     Route::post('/lock/code', [LockController::class, 'send'])->middleware('throttle:10,1');
+    Route::post('/lock/link', [LockController::class, 'link'])->middleware('throttle:10,1');
     Route::post('/lock/verify', [LockController::class, 'verify'])->middleware('throttle:30,1');
 });
 

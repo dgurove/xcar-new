@@ -3,6 +3,7 @@
 namespace App\Http\Pwa;
 
 use App\Support\Surface;
+use App\Users\Access\Lock;
 
 /** Манифест — свой на каждую поверхность: имя, стартовая страница, ярлыки, иконки. */
 class PwaController
@@ -73,6 +74,8 @@ class PwaController
         }
         $manifest = public_path('build/manifest.json');
         $version = is_file($manifest) ? 'b'.substr(md5_file($manifest), 0, 8) : 'dev';
+        // Тумблер замка менеджеров — в версии: включили, и воркер обновится сам, стерев экраны, накопленные до замка.
+        $version .= Lock::enabled() ? 'L' : '';
         $js = str_replace('__VERSION__', $version, file_get_contents(resource_path('sw.js')));
 
         return response($js, 200, ['Content-Type' => 'text/javascript; charset=utf-8', 'Cache-Control' => 'no-cache']);

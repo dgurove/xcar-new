@@ -18,7 +18,7 @@
             <div class="list">
                 <label class="row row-switch">
                     <x-ui.row-icon name="key"/>
-                    <span class="min-w-0 flex-1 font-medium">Одно устройство, вход через Telegram, {{ \App\Users\Access\Lock::minutes() }} минут</span>
+                    <span class="min-w-0 flex-1 font-medium">Одно устройство, вход через Telegram, {{ \App\Users\Access\Lock::minutes() }} {{ \App\Support\Plural::of(\App\Users\Access\Lock::minutes(), ['минута', 'минуты', 'минут']) }}</span>
                     <input type="hidden" name="on" value="0">
                     <input type="checkbox" name="on" value="1" class="switch" @checked(\App\Users\Access\Lock::enabled()) data-action="change->autosubmit#submit">
                 </label>

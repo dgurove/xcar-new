@@ -102,6 +102,12 @@ self.addEventListener('fetch', (event) => {
                 return response;
             })();
             const cached = cacheable && await caches.match(request);
+            // Экран менеджера, которого касается замок (X-Lockable, DeviceGate): сначала сеть, кэш — только если она не
+            // успела за 0,7 с. Включили замок — сервер отвечает окном подтверждения, и экран с ценами из кэша не мелькает.
+            if (cached && cached.headers.get('X-Lockable')) {
+                const quick = await Promise.race([network.catch(() => null), new Promise((r) => setTimeout(r, 700))]);
+                if (quick) return quick;
+            }
             if (cached) {
                 later(event, network.then((response) => {
                     if (!response.ok || response.redirected) return;

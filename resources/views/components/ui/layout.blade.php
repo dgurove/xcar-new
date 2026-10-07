@@ -5,7 +5,8 @@
     // <html class="dark"> и цвет полосы приходят готовыми, без мигания и без подмены мета Turbo.
     $theme = in_array(request()->cookie('theme'), ['dark', 'light'], true) ? request()->cookie('theme') : null;
     // Замок менеджера: состояние и конец окна — свежие на каждой странице (узел замка постоянный и сам их не обновит).
-    $lock = \App\Users\Access\Lock::state();
+    // Окно замка — только на хосте, открытом человеку: на чужом его встречает стена, а /lock там закрыт.
+    $lock = $surface->opensFor(auth()->user()) ? \App\Users\Access\Lock::state() : null;
 @endphp
 <!doctype html>
 <html lang="ru" translate="no" class="h-full{{ $theme === 'dark' ? ' dark' : '' }}">

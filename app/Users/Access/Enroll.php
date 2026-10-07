@@ -2,7 +2,6 @@
 
 namespace App\Users\Access;
 
-use App\Live\Publisher;
 use App\Support\UserAgent;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -18,25 +17,23 @@ use Illuminate\Support\Str;
  */
 final class Enroll
 {
-    public function __construct(private Publisher $publish) {}
+    public function __construct(private RevokeDevices $revoke) {}
 
     /** @param array{kty: string, crv: string, x: string, y: string} $key */
     public function __invoke(Request $request, User $user, array $key): Device
     {
         $token = Str::random(40);
-        $old = Device::where('user_id', $user->id)->whereNull('revoked_at')->get();
-        $request->session()->forget(Lock::SESSION_LINKING);
         Lock::rememberCode($request, null);
         Lock::remember($request, $user->id, $token);
         $topic = Lock::topic($request);
 
-        $device = DB::connection('pgsql_async')->transaction(function () use ($old, $user, $token, $key, $request, $topic) {
-            Device::whereKey($old->modelKeys())->update(['revoked_at' => now()]);
+        $device = DB::connection('pgsql_async')->transaction(function () use ($user, $token, $key, $request, $topic) {
+            ($this->revoke)($user);
 
             return Device::create([
                 'user_id' => $user->id,
                 'token_hash' => hash('sha256', $token),
-                'public_key' => $key,
+                'public_key' => [$request->getHost() => $key],
                 'label' => UserAgent::label($request->userAgent()),
                 'ip' => $request->ip(),
                 'topic' => $topic,
@@ -44,10 +41,6 @@ final class Enroll
             ]);
         });
         Lock::forget($request);
-
-        foreach ($old as $was) {
-            ($this->publish)($was->topic, 'lock', ['state' => Lock::KICKED]);
-        }
 
         return $device;
     }

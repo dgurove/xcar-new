@@ -176,6 +176,25 @@ final class UpdateHandler
         $this->bot->edit($press->chatId, $press->messageId, '<b>Вход на xcar.ru</b>'."\n".e($attempt['device'])."\n\n".($allow ? 'Вошли ' : 'Отклонено ').now()->translatedFormat('j M, H:i'));
     }
 
+    /**
+     * Привязка из окна замка: чат — к аккаунту, а запись привязки одобрена — браузер, который её просил, сразу заводится
+     * устройством без кода (владение этим Telegram только что доказано нажатием «Запустить»).
+     */
+    private function linkFromLock(int $chatId, int $id, ?string $username): void
+    {
+        $access = AccessCode::with('user')->find($id);
+        if (! $access || $access->purpose !== 'link' || ! $access->isLive() || $access->approved_at || ! $access->user) {
+            $this->reply($chatId, 'Ссылка устарела, нажмите «Подключить Telegram» ещё раз', null);
+
+            return;
+        }
+        $user = $access->user;
+        app(LinkChat::class)($user, $chatId, $username);
+        app(DecideCode::class)($access, true);
+        [$line, $button] = $this->welcome($user);
+        $this->reply($chatId, '<b>'.e($user->firstName()).', готово</b>'."\n".$line, [[$button]]);
+    }
+
     /** Кнопка под кодом (Access\SendCode): браузер, который ждёт, закончит сам. */
     private function code(Press $press): void
     {
@@ -247,6 +266,11 @@ final class UpdateHandler
         }
         if ($link[0] === 'login') {
             $this->askLogin($chatId, $link[1]);
+
+            return;
+        }
+        if ($link[0] === 'code') {
+            $this->linkFromLock($chatId, $link[1], $username);
 
             return;
         }
