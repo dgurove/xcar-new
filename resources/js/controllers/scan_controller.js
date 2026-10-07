@@ -49,7 +49,12 @@ export default class extends Controller {
             // Итог показан — фрейм без адреса: перечитка страницы морфом не должна снова его показать.
             frame?.removeAttribute('src');
             // Открыта карточка строки рядом со списком — перечитывается только она (тот же адрес списка в её фрейм).
-            if (document.querySelector('turbo-frame#detail > .detail-card')) { window.Turbo.visit(location.pathname + location.search, { frame: 'detail', action: 'replace' }); return; }
+            const detail = document.querySelector('turbo-frame#detail');
+            if (detail?.querySelector(':scope > .detail-card')) {
+                if (detail.src === location.href) detail.reload();
+                else detail.src = location.href;
+                return;
+            }
             const refresh = () => {
                 window.dispatchEvent(new CustomEvent('docs:keep'));
                 // Раскрытое под руками (поля ТС в деле) остаётся раскрытым: морф вернул бы свёрнутое с сервера.

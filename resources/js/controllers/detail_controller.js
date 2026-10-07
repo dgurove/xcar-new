@@ -1,8 +1,10 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Список и карточка строки рядом (x-ui.shell :detail). Открывает Turbo: строка — ссылка (a[data-detail-link]) в фрейм
-// detail с data-turbo-action="replace". Закрывает сам контроллер, без сервера: лист уезжает, фрейм пустеет на месте,
-// ?peek= уходит из адреса. Здесь же то, чего Turbo не умеет: нажатие мимо ссылки по строке, выделение строки, ↑/↓ и Esc,
+// Список и карточка строки рядом (x-ui.shell :detail). Строка — ссылка (a[data-detail-link]) в фрейм detail; открывает и
+// закрывает контроллер, адрес (?peek=) меняет он же, не Turbo: data-turbo-action у фрейма делал из каждой загрузки визит
+// всей страницы (снимок, turbo:load у шапки, кадров, таб-бара — «весь интерфейс моргает», 07.10.2026). Открытие: лист
+// выезжает сразу с заготовкой (название строки и полосы), карточка приходит в него. Закрытие без сервера: лист уезжает,
+// фрейм пустеет на месте. Здесь же то, чего Turbo не умеет: нажатие мимо ссылки по строке, выделение строки, ↑/↓ и Esc,
 // формы карточки — в фрейм, «следующий без цены» (поток advance). Телефон: лист одной высоты, полэкрана и «закрыт» —
 // сдвиг transform (app.css .split-detail), тянут за полосу (grab), тело карточки листается внутри само.
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
@@ -23,6 +25,15 @@ export default class extends Controller {
         this.frameTarget.addEventListener('turbo:before-frame-render', this.onRender);
         document.addEventListener('detail:advance', this.onAdvance);
         document.addEventListener('turbo:before-stream-render', this.onStream);
+        // Морф, загрузка страницы и свежая строка приносят строки без выделения (его знает только адрес) — вернуть. Свежую
+        // строку ловит наблюдатель: поток из карточки, пришедшей со страницей, рисуется раньше, чем подключится контроллер,
+        // и turbo:before-stream-render сюда не доходит — после перезагрузки строка стояла невыделенной.
+        this.onMark = () => this.mark();
+        ['turbo:load', 'turbo:morph'].forEach((n) => document.addEventListener(n, this.onMark));
+        this.rowsSeen = new MutationObserver((records) => {
+            if (records.some((r) => [...r.addedNodes].some((n) => n.nodeType === 1 && n.matches('[data-detail-key]')))) this.mark();
+        });
+        this.element.querySelectorAll('.split-main').forEach((main) => this.rowsSeen.observe(main, { childList: true, subtree: true }));
         this.settle(false);
     }
 
@@ -30,6 +41,8 @@ export default class extends Controller {
         this.frameTarget.removeEventListener('turbo:before-frame-render', this.onRender);
         document.removeEventListener('detail:advance', this.onAdvance);
         document.removeEventListener('turbo:before-stream-render', this.onStream);
+        ['turbo:load', 'turbo:morph'].forEach((n) => document.removeEventListener(n, this.onMark));
+        this.rowsSeen.disconnect();
     }
 
     get open() { return this.frameTarget.childElementCount > 0; }
@@ -61,13 +74,47 @@ export default class extends Controller {
         url.searchParams.delete('q');
         url.searchParams.delete('page');
         url.searchParams.set('peek', row.dataset.detailKey);
-        window.Turbo.visit(url.pathname + url.search, { frame: 'detail', action: 'replace' });
+        this.address(url);
+        const card = this.frameTarget.querySelector('.detail-card');
+        if (card) {
+            // Лист открыт — меняется только содержимое, лист стоит.
+            card.setAttribute('aria-busy', 'true');
+            this.reveal(row);
+        } else {
+            this.frameTarget.replaceChildren(this.blank(row));
+            this.settle(false);
+        }
+        this.frameTarget.src = url.pathname + url.search;
+    }
+
+    // Адрес страницы без визита Turbo: запись та же, у Turbo — тот же ключ восстановления.
+    address(url) {
+        const h = window.Turbo?.session?.history;
+        if (h) h.replace(url, h.restorationIdentifier);
+        else history.replaceState(history.state, '', url);
+    }
+
+    // Заготовка листа, пока карточка в пути: ручка, «Закрыть», название строки и полосы на месте текста.
+    blank(row) {
+        const card = document.createElement('div');
+        card.className = 'detail-card detail-blank';
+        card.setAttribute('aria-busy', 'true');
+        card.innerHTML = '<div class="detail-bar" data-action="pointerdown->detail#grab"><span class="detail-handle" aria-hidden="true"></span>'
+            + '<span class="mr-auto"></span><button type="button" class="bar-btn" data-action="detail#close" aria-label="Закрыть">'
+            + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>'
+            + '<div class="detail-body"><p class="detail-blank-title"></p><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div>';
+        card.querySelector('.detail-blank-title').textContent = (row.querySelector('.cell-title, .card-title') ?? row).textContent.trim().split('\n')[0];
+        return card;
     }
 
     select(row) {
         this.current?.removeAttribute('aria-selected');
         row?.setAttribute('aria-selected', 'true');
-        row?.scrollIntoView({ block: 'nearest' });
+    }
+
+    // Строка — над листом (scroll-margin под него стоит при data-open); прокрутка одна и плавная, и только если нужна.
+    reveal(row) {
+        row?.scrollIntoView({ block: 'nearest', behavior: reduce.matches ? 'auto' : 'smooth' });
     }
 
     // Выделение — по ?peek= в адресе (перезагрузка, морф, свежая строка из потока).
@@ -101,7 +148,7 @@ export default class extends Controller {
         this.frameTarget.querySelectorAll('form:not([data-turbo-frame])').forEach((f) => { f.dataset.turboFrame = 'detail'; });
         this.mark();
         // Лист только что открылся — под ним появилось место (padding снизу), и выбранная строка встаёт над листом.
-        if (open && !was) requestAnimationFrame(() => this.current?.scrollIntoView({ block: 'nearest' }));
+        if (open && !was) this.reveal(this.current);
         // Лист открывается на полэкрана; при смене строки остаётся, каким был.
         if (!open || !was) this.frameTarget.removeAttribute('data-full');
         if (!open) this.still();
@@ -204,16 +251,12 @@ export default class extends Controller {
     // запроса нет — пустой фрейм и так известен, а ждать ответа сервера и было «закрывается рывком».
     close() {
         if (!this.open) return;
-        const href = this.hasCloseTarget ? this.closeTarget.href : null;
         const empty = () => {
-            const frame = this.frameTarget;
+            const frame = this.frameTarget, url = new URL(location.href);
             frame.removeAttribute('src');
             frame.replaceChildren();
-            if (href) {
-                const h = window.Turbo?.session?.history, url = new URL(href, location.href);
-                if (h) h.replace(url, h.restorationIdentifier);
-                else history.replaceState(history.state, '', url);
-            }
+            url.searchParams.delete('peek');
+            this.address(url);
             this.current?.removeAttribute('aria-selected');
             this.settle(true);
         };

@@ -1842,6 +1842,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .detail-count { @apply ml-1 text-xs leading-none text-ink-muted; }
   .bar-btn { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   .detail-body { @apply px-4 pb-4 pt-1; }
+  /* Заготовка листа, пока карточка в пути (detail_controller#blank): название строки и полосы на месте текста. */
+  .detail-blank .bar-btn > svg { width: 18px; height: 18px; }
+  .detail-blank-title { font-size: var(--text-lg); line-height: 1.375; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .detail-blank .skeleton { height: 1rem; margin-top: .75rem; width: 70%; }
+  .detail-blank .skeleton + .skeleton { width: 90%; }
+  .detail-blank .skeleton:last-child { width: 50%; }
   @media (min-width: 1024px) {
     .split { display: flex; align-items: flex-start; gap: 1rem; }
     .split-main { flex: 1 1 auto; min-width: 0; }

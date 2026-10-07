@@ -11,7 +11,7 @@
     $n = $offer->number;
     // Нажатие — карточка строки рядом со списком, как в таблице (04.10.2026, владелец), а не страница.
     $href = \App\Support\Detail::url($n);
-    $peek = 'data-detail-link data-turbo-frame="detail" data-turbo-action="replace" data-turbo-prefetch="false"';
+    $peek = 'data-detail-link data-turbo-frame="detail" data-turbo-prefetch="false"';
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     $main = $offer->mainPhoto();
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
