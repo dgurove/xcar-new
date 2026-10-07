@@ -30,6 +30,9 @@
             <x-ui.vin-code :vin="$offer->vinFor(auth()->user())" :copy="$offer->vinOpenTo(auth()->user())" class="tag"/>
             <x-offer.tags :offer="$offer" :facts="false"/>
         </x-slot:marks>
+        <x-slot:tools>
+            @if ($user?->canShare())@include('admin.offers.share-button', ['class' => 'bar-btn'])@endif
+        </x-slot:tools>
         <x-slot:aside>
             @if ($price->shown())
                 <span class="nums block whitespace-nowrap text-lg">@if ($price->withFrom())<span class="text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="font-bold">{{ $price::money($price->to) }}&nbsp;₽</span>@if ($price->vat) <span class="text-xs font-normal text-ink-muted">с НДС</span>@endif</span>

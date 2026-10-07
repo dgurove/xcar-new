@@ -9,7 +9,7 @@ import { fileName } from '../docs/share';
 // PDF собирается заранее (fetch при открытии шторки), «Отправить» до готовности
 // выключена: иначе в лист уходил один текст. Файл уходит через
 // navigator.share({files}); где его нет или он однажды упал — тот же адрес
-// в шторке документов поверх окна («Открыть PDF», ссылка `a[data-doc]`): у неё
+// в шторке документов поверх окна (скрытая ссылка `a[data-doc]`): у неё
 // свои «Поделиться» и «Скачать». Каждый сбой — тостом и на сервер (/share/error):
 // иначе с чужого телефона не видно ничего.
 //
@@ -24,7 +24,7 @@ const PRICES = ['publish_price', 'price'];
 const FROM = ['publish_price'];
 
 export default class extends Controller {
-    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label', 'all', 'pdfLink', 'photosSend'];
+    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label', 'all', 'pdfLink', 'photosSend', 'photosLabel'];
     static values = { url: String, photoUrl: String, vat: String, name: String, locked: String };
 
     connect() {
@@ -34,6 +34,12 @@ export default class extends Controller {
         const jpeg = new File([''], 'x.jpg', { type: 'image/jpeg' });
         if (this.hasPhotosSendTarget && !navigator.canShare?.({ files: [jpeg, jpeg] })) this.photosSendTarget.hidden = true;
         this.photosReady(false);
+        this.countPhotos();
+    }
+
+    countPhotos() {
+        const n = this.selectedPhotos().length;
+        if (this.hasPhotosLabelTarget) this.photosLabelTarget.textContent = n ? `Поделиться ${n} фото` : 'Поделиться фото';
     }
 
     // Шеринг запрещён в редакторе оффера: кнопка серая, нажатие объясняет почему.
@@ -97,6 +103,7 @@ export default class extends Controller {
     }
 
     photosChanged() {
+        this.countPhotos();
         if (this.hasAllTarget) this.allTarget.textContent = this.photoTargets.every((p) => p.checked) ? 'Снять все' : 'Выбрать все';
         clearTimeout(this.timer);
         this.timer = setTimeout(() => this.prepare(), 500);
@@ -120,7 +127,7 @@ export default class extends Controller {
 
     ready(on, text = '') {
         if (this.hasSendTarget) this.sendTarget.disabled = !on;
-        if (this.hasLabelTarget) this.labelTarget.textContent = on ? 'Отправить PDF' : text || 'Отправить PDF';
+        if (this.hasLabelTarget) this.labelTarget.textContent = on ? 'Поделиться PDF' : text || 'Поделиться PDF';
     }
 
     photosReady(on) {
@@ -212,8 +219,7 @@ export default class extends Controller {
         } catch { window.toast?.('Не получилось', 'danger'); }
     }
 
-    // Нажатие «Открыть PDF» — до перехвата шторкой: ссылка уже с отмеченными фото. Без нажатия (лист не открылся) —
-    // нажимаем её сами.
+    // Скрытая ссылка PDF: адрес с отмеченными фото ставится перед нажатием, нажимаем её сами, когда лист не открылся.
     openPdf(event) {
         if (!this.selectedPhotos().length) { event?.preventDefault(); window.toast?.('Отметьте фото'); return; }
         if (!this.hasPdfLinkTarget) return;
@@ -238,7 +244,8 @@ export default class extends Controller {
             } catch (e) {
                 if (e.name === 'AbortError') return;
                 sessionStorage.setItem(BROKEN, '1');
-                this.fail('share', e, 'Лист не открылся, нажмите «Открыть PDF»');
+                this.fail('share', e, 'Лист не открылся, открываем PDF');
+                this.openPdf();
             }
             return;
         }

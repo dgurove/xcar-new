@@ -36,7 +36,6 @@
                     <label class="check"><input type="checkbox" data-share-target="field" data-key="{{ $f['key'] }}" data-value="{{ $f['value'] }}" @if ($f['group'] ?? null) data-group="{{ $f['group'] }}" @endif @checked($f['on']) data-action="share#pick"><span>{{ $f['label'] }} <span class="text-ink-muted">{{ \Illuminate\Support\Str::limit($f['value'], 40) }}</span></span></label>
                 @endforeach
             </div>
-            <pre class="box-nested whitespace-pre-wrap font-sans text-sm" data-share-target="preview"></pre>
             @if ($photos->isNotEmpty())
                 <div class="-mb-1 flex items-center justify-between">
                     <span class="text-sm text-ink-muted">Фото</span>
@@ -56,20 +55,24 @@
                 @endif
             @endif
             <div class="text-sm text-ink-muted" data-share-target="status"></div>
-            <div class="flex flex-col gap-2">
-                <div class="flex gap-2">
-                    <x-ui.button type="button" class="flex-1" data-action="share#send" data-share-target="send"><x-ui.icon name="send" class="size-5"/> <span data-share-target="label">Отправить PDF</span></x-ui.button>
-                    {{-- Те же кадры альбомом: где документы не качаются, фото доходят. --}}
-                    @if ($photos->isNotEmpty())<x-ui.button type="button" variant="secondary" data-action="share#sendPhotos" data-share-target="photosSend"><x-ui.icon name="photo" class="size-5"/> Фото</x-ui.button>@endif
-                </div>
-                @php $link = collect($fields)->firstWhere('key', 'link')['value'] ?? null; @endphp
-                <div class="flex flex-wrap gap-2">
-                    <x-ui.button type="button" variant="secondary" class="min-w-[9rem] flex-1" data-action="share#copy">Текст в буфер</x-ui.button>
-                    @if ($link)<x-ui.button type="button" variant="secondary" class="min-w-[9rem] flex-1" data-action="share#copyLink" data-link="{{ $link }}"><x-ui.icon name="link" class="size-5"/> Скопировать ссылку</x-ui.button>@endif
-                    {{-- PDF — шторкой документов поверх окна; отмеченные фото кладёт в адрес share#openPdf до перехвата. --}}
-                    @if ($photos->isNotEmpty())<x-ui.doc :doc="['url' => $subject->url, 'type' => 'pdf', 'name' => $subject->fileName(), 'label' => \App\Support\Docs::label($subject->fileName())]" class="btn btn-quiet min-w-[9rem] flex-1" data-share-target="pdfLink" data-action="share#openPdf">Открыть PDF</x-ui.doc>@endif
-                </div>
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <x-ui.button type="button" class="sm:flex-1" data-action="share#send" data-share-target="send"><x-ui.icon name="send" class="size-5"/> <span data-share-target="label">Поделиться PDF</span></x-ui.button>
+                {{-- Те же кадры альбомом: где документы не качаются, фото доходят. --}}
+                @if ($photos->isNotEmpty())<x-ui.button type="button" variant="secondary" class="sm:flex-1" data-action="share#sendPhotos" data-share-target="photosSend"><x-ui.icon name="photo" class="size-5"/> <span data-share-target="photosLabel">Поделиться фото</span></x-ui.button>@endif
             </div>
+            {{-- Получившийся текст — с копированием в углу; PDF поверх окна — только запасным путём, когда лист не открылся. --}}
+            <div class="vin-box">
+                <pre class="box-nested min-h-12 whitespace-pre-wrap pr-14 font-sans text-sm" data-share-target="preview"></pre>
+                <button type="button" class="vin-magic field-copy bottom-auto h-12" data-action="share#copy" aria-label="Скопировать текст" title="Скопировать текст"><x-ui.icon name="copy" class="size-5"/></button>
+            </div>
+            @php $link = collect($fields)->firstWhere('key', 'link')['value'] ?? null; @endphp
+            @if ($link)
+                <div class="vin-box" data-controller="copy" data-copy-done-value="Ссылка в буфере">
+                    <input type="text" readonly class="field-input" value="{{ $link }}" aria-label="Ссылка" data-copy-target="field" data-action="click->copy#copy">
+                    <button type="button" class="vin-magic field-copy" data-copy-target="button" data-action="copy#copy" aria-label="Скопировать ссылку" title="Скопировать ссылку"><x-ui.icon name="copy" class="size-5"/></button>
+                </div>
+            @endif
+            @if ($photos->isNotEmpty())<x-ui.doc :doc="['url' => $subject->url, 'type' => 'pdf', 'name' => $subject->fileName(), 'label' => \App\Support\Docs::label($subject->fileName())]" class="hidden" data-share-target="pdfLink" data-action="share#openPdf">Открыть PDF</x-ui.doc>@endif
         </div>
     </dialog>
 </div>
