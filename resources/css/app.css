@@ -1015,7 +1015,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      (срочно, опасно, лайм) остаётся цветом текста. */
   .list .row-sub .tag, .list .row-sub .chip { display: inline; padding: 0; border-radius: 0; background: none; font-size: inherit; font-weight: inherit; color: var(--tag-text, inherit); }
   .dark .list .row-sub .tag, .dark .list .row-sub .chip { background: none; color: var(--tag-text-d, inherit); }
-  .list-head { @apply flex items-baseline gap-1.5 px-1 pb-2 pt-3 text-lg font-medium text-ink; }
+  /* Заголовок прижат к своей группе, а не висит между двумя (07.10.2026: «отступы между блоками гигантские»). */
+  .list-head { @apply flex items-baseline gap-1.5 px-1 pb-2 pt-1 text-lg font-medium text-ink; }
   .list-head .nums { @apply font-normal text-ink-dim; }
   /* Подпись группы строк, как в «Настройках» iOS: мелко и серым над плашкой, справа — состояние словом. */
   .list-cap { @apply flex items-baseline gap-2 px-4 pb-1.5 text-sm font-medium text-ink-dim; }
