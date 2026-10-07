@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -263,7 +264,18 @@ final class ImportMigtorgLot implements ShouldQueue
         $filled = [];
         try {
             Cache::put($key, ['i' => 0, 'n' => null, 'at' => time()], 1800);
-            $card = $migtorg->card($this->lotId);
+            try {
+                $card = $migtorg->card($this->lotId);
+            } catch (RuntimeException $e) {
+                // Лот закрыт или снят (403 со свежим ключом, 404) — это ответ, а не сбой: повторы его не откроют, а каждая
+                // упавшая задача — сообщение владельцу в Telegram (07.10.2026). Придержали нас (пауза Мигторга) — повтор.
+                if (! in_array($e->getCode(), [403, 404], true) || Migtorg::paused()) {
+                    throw $e;
+                }
+                $this->failed($e);
+
+                return;
+            }
             self::noteShape($card);
             $row = Migtorg::row($card);
             $files = $row['photos'];
