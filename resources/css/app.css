@@ -1175,6 +1175,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       & .table td.grow .cell-title { display: block; }
       & .table td.grow .cell-title:has(> .cell-name) { display: flex; max-width: none; }
       & .table td.grow > .cell-sub { display: block; margin: 0; }
+      & .table td.grow > .cell-source { display: flex; }
       & .table td.grow > .cell-sub > * + * { margin-left: .375rem; }
       & .cell-sub--wrap { display: flex; flex-wrap: wrap; align-items: center; column-gap: .375rem; white-space: normal; text-overflow: clip; }
       & .cell-sub--wrap > * { white-space: nowrap; }
@@ -1657,6 +1658,23 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .rail .letter-title { flex: 1 1 0; }
   }
   .letter-text { font-size: var(--text-base); line-height: 1.45; }
+  /* Конверт раскрытого письма (x-mail.letter): «От» адресом и полная дата, «Переслал», «Кому» — адреса, каждый берётся
+     нажатием (x-mail.address). Мелко и тускло: это справка над словами письма, а не его часть. Подпись — колонкой. */
+  .letter-env { display: grid; gap: .125rem; margin-bottom: .625rem; font-size: var(--text-sm); line-height: 1.35; color: var(--color-ink-muted); }
+  .letter-env-row { display: grid; grid-template-columns: 4.25rem minmax(0, 1fr); column-gap: .5rem; align-items: baseline; }
+  .letter-env-label { color: var(--color-ink-dim); }
+  /* На телефоне дата — строкой под адресом: рядом с ней адрес резался («tkachenkoev…»). */
+  .letter-env-when { grid-column: 2; color: var(--color-ink-dim); white-space: nowrap; }
+  @media (min-width: 640px) {
+    .letter-env-row { grid-template-columns: 4.25rem minmax(0, 1fr) auto; }
+    .letter-env-when { grid-column: 3; }
+  }
+  .letter-env-list { display: flex; flex-wrap: wrap; gap: .125rem .75rem; min-width: 0; }
+  .letter-env-more { display: inline-flex; flex-wrap: wrap; gap: .125rem .75rem; }
+  .letter-env-more > summary { cursor: pointer; list-style: none; color: var(--color-ink-dim); }
+  .letter-env-more > summary::-webkit-details-marker { display: none; }
+  .letter-env-more[open] > summary { display: none; }
+  .letter--ours .letter-env { margin-bottom: .5rem; }
   .letter--ours .letter-text { padding: .75rem; border-radius: var(--radius-l); background: var(--color-surface-2); }
   .letter--service .letter-body { padding-bottom: .5rem; }
   .letter--service .letter { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; }
@@ -2618,6 +2636,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 .surface-crm .cards:not(.cards--grid) .card-extra, .surface-park .cards:not(.cards--grid) .card-extra { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 .surface-crm .cards:not(.cards--grid) .card-extra::-webkit-scrollbar, .surface-park .cards:not(.cards--grid) .card-extra::-webkit-scrollbar { display: none; }
 .surface-crm .cards:not(.cards--grid) .card-extra > *, .surface-park .cards:not(.cards--grid) .card-extra > * { flex: none; }
+/* Откуда заявка (x-park.request-source) — своей строкой под номером, а не в ряд с ним. */
+.surface-park .cards .card-extra:has(> .card-source) { flex-wrap: wrap; overflow: visible; row-gap: .125rem; }
+.surface-park .cards .card-extra > .card-source { flex: 1 0 100%; min-width: 0; margin-top: 0; }
 /* Факты под названием — одной строкой текста (.card-sub), как во второй строке таблицы, а не рядом чипов. */
 .card-sub { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-ink-muted); }
 .card-sub > * + * { margin-left: .5rem; }
@@ -2942,6 +2963,28 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
   .skeleton { display: block; border-radius: var(--radius-s); background: linear-gradient(90deg, var(--color-surface-3), var(--color-hover), var(--color-surface-3)); background-size: 200% 100%; }
   @media (prefers-reduced-motion: no-preference) { .skeleton { animation: shimmer 1.4s ease-in-out infinite; } }
   @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+  /* Адрес почты, который берут нажатием (x-mail.address): текст обычный, иконка копирования — по наведению на ПК,
+     на телефоне видна всегда. Внутри строки, шапки письма и карточки нажатие наверх не уходит (copy:stop). */
+  .mail-address { display: inline-flex; align-items: center; gap: .25rem; min-width: 0; max-width: 100%; cursor: pointer; user-select: text; -webkit-user-select: text; }
+  .mail-address-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-address-icon { flex: none; width: .95em; height: .95em; opacity: .55; transition: opacity var(--dur-fast), color var(--dur-fast); }
+  .mail-address:hover, .mail-address:focus-visible { color: var(--color-accent-text); }
+  @media (hover: hover) and (pointer: fine) {
+    .mail-address-icon { opacity: 0; }
+    .mail-address:hover .mail-address-icon, .mail-address:focus-visible .mail-address-icon { opacity: 1; }
+  }
+
+  /* Откуда заявка (x-park.request-source): адрес или кто завёл — и время с днём. Одна строка: адрес ужимается, время
+     целиком. В краткой таблице и в карточках — мелким третьим этажом, на ПК — столбцом «Откуда» обычным размером ячейки. */
+  .req-source { display: flex; align-items: baseline; gap: .5rem; min-width: 0; color: var(--color-ink-dim); }
+  .req-source-who { min-width: 0; color: var(--color-ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .req-source-when { flex: none; white-space: nowrap; }
+  .cell-source, .card-source { font-size: var(--text-xs); line-height: 1.25; margin-top: .125rem; }
+  /* Ширину столбцу задаёт содержимое: у ячеек таблицы width — лишь подсказка, а название (grow) забирает остальное. */
+  .table td.req-source-col .req-source { display: grid; grid-template-columns: 6.75rem minmax(0, 1fr); gap: .5rem; width: 15.5rem; }
+  @media (min-width: 1280px) { .table td.req-source-col .req-source { width: 21rem; } }
+  @media (min-width: 640px) { .table td.grow > .cell-source { display: none; } }
 
   /* Заявка из письма входит в список живьём (arrive_controller, AutoScan::states): силуэт полосами → по строке бежит
      полоса чтения с искрой и «Читаем документы, 2 из 5» → строка проявляется, вписанное вспыхивает. Ячейки таблицы

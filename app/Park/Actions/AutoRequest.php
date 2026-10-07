@@ -83,6 +83,7 @@ final class AutoRequest
             'planned_at' => $candidate->value('planned_at'),
             'from_address' => $type === RequestType::Tow ? $candidate->value('location') : null,
             'letter_at' => $letter->date_at,
+            'letter_id' => $letter->id,
             'by_mail' => true,
         ];
         try {

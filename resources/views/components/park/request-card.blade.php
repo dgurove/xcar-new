@@ -28,6 +28,7 @@
                 <span class="skeleton arrive-bar w-32"></span>
             @endif
         </span>
+        <x-park.request-source :req="$req" class="card-source"/>
     </div>
     <div class="card-aside"><x-ui.state tone="soft" class="max-w-24 whitespace-normal sm:max-w-none">{{ $req->type->label() }}</x-ui.state></div>
 </article>
@@ -43,6 +44,8 @@
         @if ($req->assignee)<span>{{ $req->assignee->shortName() }}</span>@endif
         @if ($req->type === RequestType::Move && $req->yard)<span>{{ $req->yard->name }}</span>@endif
     </span>
+    {{-- Откуда заявка — своей мелкой строкой: адрес и время письма или кто завёл (владелец 07.10.2026). --}}
+    <x-park.request-source :req="$req" class="card-source"/>
     <x-slot:aside>
         {{-- Шаг словом точнее типа («нужен эвакуатор», а не «Эвакуация») — он и стоит на месте типа, целиком. --}}
         <x-ui.state :tone="$tone" class="max-w-24 whitespace-normal sm:max-w-none">{{ $word ? mb_strtolower($word) : $req->type->label() }}</x-ui.state>

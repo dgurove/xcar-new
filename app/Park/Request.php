@@ -2,6 +2,8 @@
 
 namespace App\Park;
 
+use App\Mail\Chains\NodeTitle;
+use App\Mail\Message;
 use App\Mail\Thread;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -9,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'planned_at', 'done_at', 'note', 'assignee_id', 'created_by',
-    'contact_name', 'contact_phone', 'from_address', 'carrier', 'distance_km', 'cost', 'started_at', 'done_by', 'cancel_reason', 'delivery', 'contacted_at', 'next_call_at', 'letter_at'])]
+    'contact_name', 'contact_phone', 'from_address', 'carrier', 'distance_km', 'cost', 'started_at', 'done_by', 'cancel_reason', 'delivery', 'contacted_at', 'next_call_at', 'letter_at', 'letter_id'])]
 class Request extends Model
 {
     protected $table = 'park_requests';
@@ -37,6 +39,33 @@ class Request extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assignee_id');
+    }
+
+    /** Письмо, из которого заявка: его адрес и время — в строке «Заявок» (`source`). */
+    public function letter(): BelongsTo
+    {
+        return $this->belongsTo(Message::class, 'letter_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Откуда заявка — для строки списка с первой секунды (владелец 07.10.2026: «чтобы было понятно откуда это
+     * появилось»): письмо — адрес того, кто написал (не имя) и время письма; иначе — кто завёл и когда; завела система
+     * (эвакуация из CRM, восстановление) — только когда.
+     *
+     * @return array{email: ?string, name: ?string, at: \Carbon\CarbonInterface}
+     */
+    public function source(): array
+    {
+        if ($this->letter) {
+            return ['email' => NodeTitle::email($this->letter), 'name' => null, 'at' => $this->letter->date_at ?? $this->created_at];
+        }
+
+        return ['email' => null, 'name' => $this->creator?->shortName(), 'at' => $this->created_at];
     }
 
     public function doneBy(): BelongsTo

@@ -48,7 +48,7 @@ final class MarkSold
                 : ['fields' => ['sold_at', 'pickup_name']]);
             if ($fresh && $vehicle->state === VehicleState::Stored && ! $vehicle->openRequest(RequestType::Release)) {
                 ($this->create)($by, RequestType::Release, $vehicle,
-                    ['contact_name' => $name, 'contact_phone' => $phone, 'thread_id' => $message?->thread_id, 'letter_at' => $message?->date_at]);
+                    ['contact_name' => $name, 'contact_phone' => $phone, 'thread_id' => $message?->thread_id, 'letter_at' => $message?->date_at, 'letter_id' => $message?->id]);
             }
         });
         if ($fresh) {

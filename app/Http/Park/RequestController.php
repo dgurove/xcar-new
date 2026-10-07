@@ -83,7 +83,7 @@ class RequestController
         // Связаться — то же условие, что `Request::needsCall()`, но запросом.
         $needsCall = fn ($q) => $q->where('state', RequestState::New)->whereIn('type', [RequestType::Intake, RequestType::Tow])
             ->where(fn ($w) => $w->where(fn ($n) => $n->whereNull('delivery')->whereNull('contacted_at')->whereNull('planned_at'))->orWhere('next_call_at', '<=', now()));
-        $q = (Scope::requests($request->user())->with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee']));
+        $q = (Scope::requests($request->user())->with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee', 'letter', 'creator']));
         $q->whereIn('state', RequestState::open());
         if ($qs !== '') {
             $filters($q);
@@ -241,7 +241,9 @@ class RequestController
         if ($candidate) {
             $data['thread_id'] = $candidate->thread_id;
             // Список заявок — по дате письма, из которого заявка (`letter_at`).
-            $data['letter_at'] = ($candidate->message ?? $candidate->messages()->orderBy('date_at')->first())?->date_at;
+            $letter = $candidate->message ?? $candidate->messages()->orderBy('date_at')->first();
+            $data['letter_at'] = $letter?->date_at;
+            $data['letter_id'] = $letter?->id;
             // Кандидата уже завели (двойное нажатие, вторая вкладка) — второй ТС не будет.
             if ($candidate->state === CandidateState::Promoted && $candidate->vehicle_id) {
                 return redirect("/cars/{$candidate->vehicle_id}")->with('toast', 'Уже заведена');

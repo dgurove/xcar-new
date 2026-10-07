@@ -7,25 +7,48 @@
 @props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false])
 @php
     use App\Mail\{ParseState, SendState};
+    use App\Mail\Chains\NodeTitle;
     $m = $message;
     $ours = $m->isOurs();
-    $who = \App\Mail\Chains\NodeTitle::who($m);
+    $who = NodeTitle::who($m);
     $when = $m->date_at?->translatedFormat($m->date_at->isToday() ? 'H:i' : ($m->date_at->isCurrentYear() ? 'j M' : 'j M Y'));
     $files = $m->files();
     [$pictures, $documents] = $files->partition(fn ($f) => $f->isImage() && $f->mime !== 'image/svg+xml');
     $text = trim($m->ownText());
+    // Конверт раскрытого письма: от кого — адресом, полная дата, кому и копия (владелец 07.10.2026: почту «нигде
+    // невозможно посмотреть и скопировать»). Адреса ленте грузит x-mail.chain одним запросом.
+    $from = NodeTitle::email($m);
+    $to = $m->addresses->whereIn('kind', [\App\Mail\AddressKind::To->value, \App\Mail\AddressKind::Cc->value])->sortBy('position')->pluck('email')->unique()->values();
+    $forwarder = $m->isForwardedByStaff() ? mb_strtolower((string) $m->from_email) : null;
 @endphp
 <div class="letter{{ $kind ? ' '.implode(' ', array_map(fn ($k) => 'letter--'.$k, explode(' ', $kind))) : '' }}{{ $m->is_seen ? '' : ' letter--unread' }}" id="msg-{{ $m->id }}" @if ($focus) data-chain-target="focus" @endif>
     {{-- Узел на линии — кружок отправителя; продолжение «ч.2» — точка, это то же письмо. --}}
     @if ($continuation)<span class="letter-dot"></span>@else<span class="letter-face"><x-mail.sender-avatar :message="$m" :size="24"/></span>@endif
     <details class="letter-body" @if ($open) open @endif>
         <summary class="letter-head">
-            <span class="letter-who">{{ $who }}</span>
+            <span class="letter-who" title="{{ $from }}">{{ $who }}</span>
             <span class="letter-title{{ $titled ? '' : ' letter-title--words' }}">{{ $title }}</span>
             @if ($files->isNotEmpty())<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files->count() }}</span>@endif
             <span class="letter-when nums">{{ $when }}</span>
         </summary>
         <div class="letter-text">
+            @unless ($continuation)
+                <div class="letter-env">
+                    <div class="letter-env-row"><span class="letter-env-label">От</span><x-mail.address :email="$from"/><span class="letter-env-when nums">{{ $m->date_at?->isoFormat($m->date_at->isCurrentYear() ? 'D MMMM, H:mm' : 'D MMMM YYYY, H:mm') }}</span></div>
+                    @if ($forwarder && $forwarder !== $from)<div class="letter-env-row"><span class="letter-env-label">Переслал</span><x-mail.address :email="$forwarder"/></div>@endif
+                    @if ($to->isNotEmpty())
+                        <div class="letter-env-row">
+                            <span class="letter-env-label">Кому</span>
+                            <span class="letter-env-list">
+                                @foreach ($to->take(3) as $address)<x-mail.address :email="$address"/>@endforeach
+                                @if ($to->count() > 3)
+                                    <details class="letter-env-more"><summary>и ещё {{ $to->count() - 3 }}</summary>@foreach ($to->slice(3) as $address)<x-mail.address :email="$address"/>@endforeach</details>
+                                @endif
+                            </span>
+                        </div>
+                    @endif
+                </div>
+            @endunless
             @if ($ours && $m->send_state && $m->send_state !== SendState::Sent)
                 <div class="mb-2 flex flex-wrap items-center gap-2">
                     <span class="chip {{ $m->send_state === SendState::Failed ? 'bg-danger-soft text-danger' : 'bg-urgent-soft text-urgent' }}">{{ $m->send_state?->label() }}</span>

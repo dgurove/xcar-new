@@ -79,6 +79,7 @@ final class CreateRequest
                 'created_by' => $by?->id,
                 // Письмо, из которого заявка: по его дате список заявок (новые сверху), без письма — по дате заявки.
                 'letter_at' => $data['letter_at'] ?? null,
+                'letter_id' => $data['letter_id'] ?? null,
             ]);
         });
     }

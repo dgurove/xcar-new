@@ -3,7 +3,8 @@
      ним время. Пересказа «что делать» нет — его говорят тип и срок. Нажатие — карточка.
      Заявку завела почта и документы ещё читаются (`AutoScan::states`, `$arrive`) — строка силуэтом: вместо
      названия и номера полосы, тип словом виден сразу; пока читаем — полоса бежит по строке и «Читаем документы, 2 из 5».
-     Дочитали — строка обычная, `arrive_controller` проявляет её. --}}
+     Дочитали — строка обычная, `arrive_controller` проявляет её. Откуда заявка (`x-park.request-source`: адрес и время
+     письма, или кто завёл) — с первой секунды, и у силуэта: на ПК столбцом «Откуда», в краткой таблице третьим этажом. --}}
 @props(['req', 'arrive' => null])
 @php
     $v = $req->vehicle;
@@ -23,6 +24,7 @@
                     <span class="skeleton arrive-bar w-20"></span>
                 @endif
             </span>
+            <x-park.request-source :req="$req" class="cell-source"/>
         @else
             <x-ui.row-link :key="$req->id"><span class="cell-title"><span class="cell-name">{{ $v->titleWithYear() }}</span><x-ui.plate :value="$v->plate" class="title-plate"/></span></x-ui.row-link>
             <span class="cell-sub" data-controller="fitline">
@@ -30,8 +32,11 @@
                 @if ($req->needsCall())<span class="text-urgent">позвонить</span>@endif
                 <span class="fit-core"><x-park.ref :vehicle="$v" class="sm:hidden"/><x-ui.plate :value="$v->plate" class="sub-plate"/></span>
             </span>
+            {{-- Третий этаж — только в краткой таблице (телефон, ПК с открытой карточкой); на ПК — свой столбец. --}}
+            <x-park.request-source :req="$req" class="cell-source"/>
         @endif
     </td>
+    <td class="cell-dim hidden sm:table-cell req-source-col"><x-park.request-source :req="$req"/></td>
     <td class="cell-dim hidden sm:table-cell">
         @if ($busy)
             <span class="skeleton arrive-bar w-28"></span>

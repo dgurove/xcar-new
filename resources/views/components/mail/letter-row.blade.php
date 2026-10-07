@@ -23,7 +23,7 @@
     <div class="letter-body">
         <button type="button" class="letter-head w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $url }}">
             @unless ($repeat)
-                <span class="letter-who">{{ NodeTitle::who($m) }}</span>
+                <span class="letter-who" title="{{ NodeTitle::email($m) }}">{{ NodeTitle::who($m) }}</span>
             @endunless
             <span class="letter-title">@if ($note)<span class="text-ink">{{ NodeTitle::forwarder($m) }}: {{ preg_replace('/\s+/u', ' ', $note) }}</span> @endif{{ $words }}</span>
             @if ($files)<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif

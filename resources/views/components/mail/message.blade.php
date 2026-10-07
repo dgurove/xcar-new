@@ -12,9 +12,10 @@
         <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-baseline gap-x-2">
                 <span class="font-medium">{{ $out ? ($message->author?->name ?? ($message->from_name ?: $message->from_email)) : ($message->from_name ?: $message->from_email) }}</span>
-                @if (!$out && $message->from_name)<span class="text-sm text-ink-muted">{{ $message->from_email }}</span>@endif
+                <x-mail.address :email="\App\Mail\Chains\NodeTitle::email($message)" class="text-sm text-ink-muted"/>
             </div>
-            <div class="text-sm text-ink-muted">Кому: {{ $message->to_preview ?: '—' }}</div>
+            @php $to = $message->addresses->whereIn('kind', [\App\Mail\AddressKind::To->value, \App\Mail\AddressKind::Cc->value])->sortBy('position')->pluck('email')->unique(); @endphp
+            <div class="flex flex-wrap items-baseline gap-x-2 text-sm text-ink-muted"><span class="text-ink-dim">Кому</span>@forelse ($to as $address)<x-mail.address :email="$address"/>@empty{{ $message->to_preview ?: '—' }}@endforelse</div>
         </div>
         <div class="flex shrink-0 items-center gap-1">
             <span class="text-sm text-ink-dim">{{ $message->date_at?->translatedFormat('j M, H:i') }}</span>

@@ -12,6 +12,8 @@
     use App\Mail\Extraction\Intent;
     use App\Mail\Message;
     $messages = collect($messages)->sortBy(fn (Message $m) => $m->date_at?->getTimestamp() ?? 0)->values();
+    // Адреса «Кому» в конверте раскрытого письма (x-mail.letter) — одним запросом на ленту.
+    \Illuminate\Database\Eloquent\Collection::make($messages->all())->loadMissing('addresses');
     $lastId = $messages->last()?->id;
     // focus — id письма (строка «Из писем» открывает окно на нём) или true: первое непрочитанное, иначе последнее.
     $focusId = is_numeric($focus) && $messages->contains('id', (int) $focus) ? (int) $focus

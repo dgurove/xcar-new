@@ -26,6 +26,8 @@
                 @if ($intent?->short())<span class="tag {{ $ours ? 'tag-dim' : ($intent === Intent::Intake ? 'tag-accent' : '') }}">{{ $intent->short() }}</span>@endif
                 <span class="nums text-sm text-ink-dim">{{ $m->date_at?->translatedFormat($m->date_at->isToday() ? 'H:i' : 'j M, H:i') }}</span>
             </div>
+            {{-- Адрес под именем — видно и берётся нажатием (владелец 07.10.2026). --}}
+            <x-mail.address :email="NodeTitle::email($m)" class="mt-0.5 text-sm text-ink-muted"/>
             @if ($title && $title !== $intent?->short())<div class="mt-1 truncate text-sm text-ink-muted">{{ $title }}</div>@endif
             @if ($note = $m->forwardNote())<div class="history-note mt-2 text-sm"><div class="text-ink-muted">{{ NodeTitle::forwarder($m) }}</div><div class="{{ $compact ? 'line-clamp-3' : '' }} whitespace-pre-line">{{ $note }}</div></div>@endif
             @if ($text !== '')<p class="mt-2 {{ $compact ? 'line-clamp-3' : 'line-clamp-5' }} whitespace-pre-line text-sm">{{ $text }}</p>@endif

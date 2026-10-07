@@ -56,6 +56,17 @@ final class NodeTitle
         return $m->from_name ?: $m->from_email;
     }
 
+    /**
+     * Адрес того, кто написал (владелец 07.10.2026: «почту, а не имя»): у пересылки сотрудником — адрес вендора из
+     * пересланного, иначе отправитель письма (у нашего — ящик, с которого ушло).
+     */
+    public static function email(Message $m): string
+    {
+        $sender = $m->isForwardedByStaff() ? trim((string) $m->field('sender')) : '';
+
+        return mb_strtolower(filter_var($sender, FILTER_VALIDATE_EMAIL) ? $sender : trim((string) $m->from_email));
+    }
+
     /** Кто переслал письмо со своим примечанием: имя ящика сотрудника («Андрей Кузнецов»), иначе адрес. */
     public static function forwarder(Message $m): string
     {
