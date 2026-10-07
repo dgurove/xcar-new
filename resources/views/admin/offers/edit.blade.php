@@ -86,13 +86,14 @@
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
 
-    {{-- Раскладка (06.10.2026, владелец): сверху «Транспортное средство», справа от него «Цены» и «История»; под ними
-         дорожки в ряд (`admin.offers.lanes`: «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения»); фото, документы и
-         письма — во всю ширину. На телефоне одной колонкой по order-*: дорожки первыми — в них ход. Колонки — по ширине
+    {{-- Раскладка (06.10.2026, владелец): слева «Транспортное средство», под ним дорожки в ряд (`admin.offers.lanes`:
+         «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения») — в основной колонке, правую не занимают (07.10.2026);
+         справа чат, «Цены», «Чаты» и «История»; фото, документы и письма — во всю ширину. На телефоне одной колонкой по order-*: дорожки первыми — в них ход. Колонки — по ширине
          содержимого (@container): с открытой справа шторкой документов редактор в одну колонку. --}}
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 @4xl:order-none @4xl:col-start-1 @4xl:row-start-1">
+        <div class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:min-w-0 @4xl:flex-col @4xl:gap-4">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 @4xl:order-none">
             @csrf @method('put')
 
             {{-- С публикации — «Изменить / Готово», как в Контактах iOS (06.10.2026): данные текстом в той же сетке, что поля
@@ -113,6 +114,12 @@
                 @endif
             </x-ui.card>
         </form>
+
+        {{-- Дорожки — от ширины своей колонки (`@container/lanes`): от 52rem три в линию, уже — две, ещё уже — столбиком. --}}
+        @if ($admin)
+            <div class="@container/lanes order-1 min-w-0 @4xl:order-none">@include('admin.offers.lanes')</div>
+        @endif
+        </div>
 
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             {{-- Чат с менеджером сделки — верхом колонки, на телефоне самым верхом страницы, как на странице сделки на xcar
@@ -161,10 +168,6 @@
                 </div>
             </x-ui.card>
         </div>
-
-        @if ($admin)
-            <div class="order-1 min-w-0 @4xl:order-none @4xl:col-span-2">@include('admin.offers.lanes')</div>
-        @endif
 
         {{-- Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и заглушки в ряду, attach_controller
              переспрашивает их, пока строка есть. --}}
