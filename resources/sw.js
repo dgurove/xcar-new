@@ -10,9 +10,12 @@
 // сети, а кэш картинок сбрасывается. Раньше отказ записи ронял сам ответ: у
 // телефона с полным хранилищем не грузились стили и новые фото.
 const VERSION = '__VERSION__';
+// Принудительный сброс у всех (07.10.2026, владелец: «приложение бесконечно обновляется — сделай форс апдейт»): сменили
+// метку — новая версия воркера стирает все свои кэши, экраны и картинки тоже, и открытые окна перезагружаются один раз.
+const RESET = '2026-10-07-1';
 const STATIC = `static-${VERSION}`;
 const MEDIA = `media-${VERSION}`;
-const PAGES = `pages-${VERSION}`;
+const PAGES = `pages-${VERSION}-${RESET}`;
 const MEDIA_LIMIT = 300;
 const PAGES_LIMIT = 30;
 // Экраны, которые нельзя показывать из кэша: вход, выход, служебное.
@@ -45,7 +48,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil((async () => {
         const keys = await caches.keys();
-        const update = keys.some((k) => k.startsWith('static-') && k !== STATIC);
+        const update = keys.some((k) => (k.startsWith('static-') && k !== STATIC) || (k.startsWith('pages-') && k !== PAGES));
         await Promise.all(keys.filter((k) => ![STATIC, MEDIA, PAGES].includes(k)).map((k) => caches.delete(k)));
         await self.registration.navigationPreload?.enable();
         await self.clients.claim();

@@ -40,7 +40,15 @@ export default class extends Controller {
             // Тап по уведомлению (Android): воркер просит окно перейти — обычный визит.
             navigator.serviceWorker.addEventListener('message', (e) => e.data?.navigate && Turbo.visit(e.data.navigate));
             // Вышла новая версия, а окно открыто — воркер просит перезагрузиться (sw.js, activate).
-            navigator.serviceWorker.addEventListener('message', (e) => e.data?.reload && location.reload());
+            // Не чаще раза в полминуты: две версии воркера подряд (выкладки одна за другой) не должны гонять окно по кругу.
+            navigator.serviceWorker.addEventListener('message', (e) => {
+                if (!e.data?.reload) return;
+                let last = 0;
+                try { last = Number(sessionStorage.getItem('sw-reload-at')) || 0; } catch {}
+                if (Date.now() - last < 30_000) return;
+                try { sessionStorage.setItem('sw-reload-at', String(Date.now())); } catch {}
+                location.reload();
+            });
         } catch {}
     }
 
