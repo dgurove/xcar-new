@@ -11,6 +11,7 @@ use App\Park\Vehicle;
 use App\Support\Demo\HidesDemo;
 use App\Support\Sort;
 use App\Users\User;
+use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -75,6 +76,18 @@ class Invoice extends Model implements HasMedia
             (bool) $this->deal_id => 'сделка',
             default => $this->kind->label(),
         };
+    }
+
+    /**
+     * Ждёт письма в бухгалтерию: выставлен страховой стороне (реестр, вендор или страхователь) и ещё не уходил. Счёт
+     * покупателю письмом не шлют — его берут на выдаче, в «Отправить» его нет.
+     */
+    public function scopeToSend(Builder $q): Builder
+    {
+        return $q->where('direction', 'issued')->where('state', InvoiceState::Issued)->whereNull('sent_at')
+            ->where(fn ($w) => $w->where(fn ($r) => $r->whereNull('vehicle_id')->whereNotNull('month'))
+                ->orWhereIn('party_id', Vendor::whereNotNull('party_id')->select('party_id'))
+                ->orWhereIn('party_id', Vehicle::whereNotNull('owner_party_id')->select('owner_party_id')));
     }
 
     /** Счета, где есть эта ТС: свои (`vehicle_id`) и реестры, в строках которых она есть. */

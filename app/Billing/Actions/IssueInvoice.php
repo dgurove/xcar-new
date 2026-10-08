@@ -55,7 +55,6 @@ final class IssueInvoice
         ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null, array $registry = [], ?CarbonInterface $month = null): Invoice
     {
         Nav::forgetStaffCounts();
-        Closing::forgetPending();
         $this->skipped = [];
         $invoice = DB::transaction(function () use ($party, $by, $direction, $kind, $dueAt, $storageUntil, $chargeIds, $lines, $vehicle, $dealId, $offerId, $externalNo, $notes, $registry, $month) {
             $year = (int) now()->format('Y');
@@ -123,6 +122,10 @@ final class IssueInvoice
 
             return $invoice;
         });
+        // Число «выставить» у закрытия месяца считается дорого — сбрасываем только счетами парковки, не сделками CRM.
+        if ($invoice->seller === Seller::Park) {
+            Closing::forgetPending();
+        }
         InvoiceIssued::dispatch($invoice, $by);
 
         return $invoice;

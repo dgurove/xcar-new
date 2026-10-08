@@ -10,6 +10,7 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
+use App\Billing\Seller;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Support\Nav;
@@ -26,7 +27,6 @@ final class VoidInvoice
     public function __invoke(Invoice $invoice, ?User $by, ?string $reason = null): Invoice
     {
         Nav::forgetStaffCounts();
-        Closing::forgetPending();
         $invoice = DB::transaction(function () use ($invoice, $by, $reason) {
             $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             // Зачёт удержанного вознаграждения — не деньги: гаснет вместе со счётом. Живые оплаты — отменить сначала.
@@ -53,6 +53,9 @@ final class VoidInvoice
 
             return $invoice;
         });
+        if ($invoice->seller === Seller::Park) {
+            Closing::forgetPending();
+        }
         InvoiceVoided::dispatch($invoice, $by);
 
         return $invoice;

@@ -90,32 +90,26 @@ final class Closing
     {
         $issued = collect();
         $errors = [];
-        $items = self::items($month)->whereIn('key', $keys)->values();
         $title = fn (Vehicle $v) => $v->titleWithYear().($v->ref ? ' '.$v->ref : '');
-        // Покупатель — по ТС, отрезки идут раньше по ключу (`id:n`), поэтому покупатель после вендора той же ТС.
-        foreach ($items->where('payer', 'buyer') as $item) {
-            $v = $item['vehicle'];
-            try {
-                $party = self::payer($item);
-                $invoice = $issue($party, $by, 'issued', ChargeKind::Storage, now(), $item['to'], $item['charges'], vehicle: $v->fresh());
-                $act->attach($invoice);
-                $issued->push($invoice);
-            } catch (Throwable $e) {
-                $errors[] = $title($v).': '.self::message($e);
-            }
-        }
-        foreach ($items->where('payer', '!=', 'buyer')->groupBy(fn ($i) => self::groupKey($i)) as $group) {
+        // В том же порядке, что отрезки у машины: вендор, страхователь, покупатель. Иначе счёт следующему плательщику
+        // упёрся бы в ещё не выставленный отрезок предыдущего («сначала счёт ему»).
+        $order = ['vendor' => 0, 'owner' => 1, 'buyer' => 2];
+        $groups = self::items($month)->whereIn('key', $keys)->groupBy(fn ($i) => self::groupOf($i))->sortBy(fn ($g) => $order[$g->first()['payer']] ?? 3);
+        foreach ($groups as $group) {
             $first = $group->first();
+            $v = $first['vehicle'];
             try {
                 $party = self::payer($first);
-                $days = $first['vehicle']->vendor?->payment_days ?? 5;
-                $invoice = $issue($party, $by, 'issued', ChargeKind::Storage, now()->addWeekdays($days), month: $month,
-                    registry: $group->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => $i['to'], 'charges' => $i['charges']])->values()->all());
+                $invoice = $first['payer'] === 'buyer'
+                    ? $issue($party, $by, 'issued', ChargeKind::Storage, now(), $first['to'], $first['charges'], vehicle: $v->fresh())
+                    : $issue($party, $by, 'issued', ChargeKind::Storage, now()->addWeekdays($v->vendor?->payment_days ?? 5), month: $month,
+                        registry: $group->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => $i['to'], 'charges' => $i['charges']])->values()->all());
                 $errors = [...$errors, ...$issue->skipped];
                 $act->attach($invoice);
                 $issued->push($invoice);
             } catch (Throwable $e) {
-                $errors = [...$errors, ($first['party']?->name ?? Accrual::payerLabel($first['payer'])).': '.self::message($e), ...$issue->skipped];
+                $who = $first['payer'] === 'buyer' ? $title($v) : ($first['party']?->name ?? Accrual::payerLabel($first['payer']));
+                $errors = [...$errors, $who.': '.self::message($e), ...$issue->skipped];
             }
         }
 
@@ -130,18 +124,27 @@ final class Closing
     {
         $month = now()->subMonth()->startOfMonth();
 
-        return Cache::remember('park.closing:'.$month->format('Y-m'), 600, fn () => self::items($month)
-            ->groupBy(fn ($i) => $i['payer'] === 'buyer' ? 'buyer:'.$i['key'] : self::groupKey($i))->count());
+        // Только то, что можно выставить: без плательщика и реквизитов число висело бы вечно.
+        return Cache::remember('park.closing:'.$month->format('Y-m'), 600, fn () => self::items($month)->where('ready', true)
+            ->groupBy(fn ($i) => self::groupOf($i))->count());
     }
 
+    /** Сбросить число «выставить» — после счёта или аннулирования парковки (CRM его не трогает). */
     public static function forgetPending(): void
     {
         Cache::forget('park.closing:'.now()->subMonth()->format('Y-m'));
     }
 
-    /** Группа реестра — плательщик; у вендора без записанного контрагента — сам вендор (черновик заведётся один раз). */
-    private static function groupKey(array $item): string
+    /**
+     * Будущий счёт строки — одна группа на экране и при выставлении: реестр на плательщика (у вендора без записанного
+     * контрагента — сам вендор, черновик заведётся один раз), покупателю — своя на каждую ТС.
+     */
+    public static function groupOf(array $item): string
     {
+        if ($item['payer'] === 'buyer') {
+            return 'buyer:'.$item['key'];
+        }
+
         return ($id = self::payer($item, false)?->id) ? 'p'.$id : ($item['payer'] === 'vendor' ? 'v'.$item['vehicle']->vendor_id : 'none:'.$item['key']);
     }
 

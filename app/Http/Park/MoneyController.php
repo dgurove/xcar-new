@@ -34,7 +34,7 @@ use Illuminate\Validation\Rule;
 /** Деньги стоянки: счета с пресетами, карточка строки, карточка счёта, долги по контрагентам, месяц. */
 class MoneyController
 {
-    /** «Отправить» — выставленные, письма с которыми ещё не уходили (`sent_at`): очередь управляющего (08.10.2026). */
+    /** «Отправить» — выставленные страховой стороне, письма с которыми ещё не уходили (`Invoice::toSend`): очередь управляющего. */
     public const PRESETS = ['unpaid' => 'Не оплачены', 'send' => 'Отправить', 'overdue' => 'Просрочены', 'owed' => 'Мы должны', 'paid' => 'Оплачены', 'all' => 'Все'];
 
     public function index(Request $request)
@@ -59,7 +59,7 @@ class MoneyController
         if ($qs === '') {
             match ($preset) {
                 'unpaid' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued),
-                'send' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued)->whereNull('sent_at'),
+                'send' => $q->toSend(),
                 'overdue' => $q->where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString()),
                 'owed' => $q->where('direction', 'owed')->where('state', InvoiceState::Issued),
                 'paid' => $q->where('state', InvoiceState::Paid),
@@ -79,7 +79,7 @@ class MoneyController
             'sort' => $sort,
             'counts' => [
                 'unpaid' => $open->where('direction', 'issued')->count(),
-                'send' => $open->where('direction', 'issued')->whereNull('sent_at')->count(),
+                'send' => $facets->applyTo(self::scoped(Invoice::query()))->toSend()->count(),
                 'overdue' => $open->filter->isOverdue()->count(),
                 'owed' => $open->where('direction', 'owed')->count(),
             ],
@@ -227,7 +227,7 @@ class MoneyController
             ->where('state', '!=', InvoiceState::Void)->ofSeller(Seller::Park)->with(['party', 'vehicle.brand', 'vehicle.model'])->latest('id')->get();
 
         return view('park.money.closing', [
-            'month' => $month, 'items' => $items->groupBy(fn ($i) => $i['party']?->name ?? 'Без плательщика'),
+            'month' => $month, 'items' => $items->groupBy(fn ($i) => Closing::groupOf($i)),
             'issued' => $issued,
             'months' => collect(range(0, 5))->map(fn ($n) => now()->subMonths($n)->startOfMonth()),
         ]);

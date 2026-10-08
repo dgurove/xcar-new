@@ -15,14 +15,15 @@
         <form method="post" action="/money/closing" class="flex flex-col gap-2" data-controller="sum" data-sum-verb-value="Выставить" data-sum-words-value="счёт|счета|счетов">
             @csrf
             <input type="hidden" name="month" value="{{ $month->format('Y-m') }}">
-            @foreach ($items as $partyName => $rows)
-                @php $party = $rows->first()['party']; @endphp
+            @foreach ($items as $group => $rows)
+                @php $party = $rows->first()['party']; $partyName = $party?->name ?? 'Без плательщика'; $fill = $party && ! $rows->first()['ready'] && $me->canManagePark() && ($party->exists || $rows->first()['payer'] === 'vendor'); @endphp
                 <section>
                     {{-- Плательщик один на всю группу: и «некому выставить», и «нет реквизитов» — про него, в заголовке.
-                         Реквизиты заполняются тут же шторкой: у вендора без контрагента — новый от его данных. --}}
+                         Реквизиты заполняются тут же шторкой: записанный контрагент — правкой, у вендора без контрагента — новый
+                         от его данных. Покупателю без записанного контрагента — нет: его заводит выдача. --}}
                     <h2 class="list-head flex-wrap">{{ $partyName }} <span class="nums">{{ Money::rub($rows->sum('amount')) }}</span>
                         @if (! $party)<x-ui.state tone="danger">некому выставить</x-ui.state>
-                        @elseif (! $rows->first()['ready'] && $me->canManagePark())
+                        @elseif ($fill)
                             <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs" data-controller="emit" data-action="emit#send" data-emit-event-param="party-{{ $loop->index }}:open">Заполнить реквизиты</button>
                         @elseif (! $rows->first()['ready'])<x-ui.state tone="danger">нет реквизитов</x-ui.state>@endif
                     </h2>
@@ -42,7 +43,7 @@
                                     </span>
                                 </span>
                                 <span class="nums shrink-0">{{ Money::rub($r['amount']) }}</span>
-                                <span class="check"><input type="checkbox" name="items[]" value="{{ $r['key'] }}" data-sum-target="box" data-group="{{ $r['payer'] === 'buyer' ? 'buyer-'.$r['key'] : 'payer-'.$loop->parent->index }}" data-amount="{{ $r['amount'] }}" data-action="sum#update" @checked($can) @disabled(!$can)></span>
+                                <span class="check"><input type="checkbox" name="items[]" value="{{ $r['key'] }}" data-sum-target="box" data-group="{{ $group }}" data-amount="{{ $r['amount'] }}" data-action="sum#update" @checked($can) @disabled(!$can)></span>
                             </label>
                         @endforeach
                     </div>
@@ -54,11 +55,11 @@
         </form>
     @endif
     {{-- Шторки реквизитов — вне формы выставления: формы в форме браузер не допускает. --}}
-    @foreach ($items as $partyName => $rows)
-        @php $party = $rows->first()['party']; @endphp
-        @if ($party && ! $rows->first()['ready'] && $me->canManagePark())
+    @foreach ($items as $rows)
+        @php $party = $rows->first()['party']; $vendorRow = $rows->first()['payer'] === 'vendor'; @endphp
+        @if ($party && ! $rows->first()['ready'] && $me->canManagePark() && ($party->exists || $vendorRow))
             <div data-controller="sheet" data-action="party-{{ $loop->index }}:open@window->sheet#open" class="contents">
-                <x-ui.sheet id="party-{{ $loop->index }}" :title="$partyName" wide tall>@include('park.money.party-form', ['party' => $party, 'vendor' => $rows->first()['vehicle']->vendor])</x-ui.sheet>
+                <x-ui.sheet id="party-{{ $loop->index }}" :title="$party->name" wide tall>@include('park.money.party-form', ['party' => $party, 'vendor' => $vendorRow ? $rows->first()['vehicle']->vendor : null])</x-ui.sheet>
             </div>
         @endif
     @endforeach

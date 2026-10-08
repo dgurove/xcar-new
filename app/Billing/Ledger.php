@@ -104,16 +104,20 @@ final class Ledger
     }
 
     /**
-     * Что держит выдачу из выставленного: неоплаченные счета этой ТС не страховой стороне — покупателю и прочим
-     * (решение владельца 08.10.2026: счета вендора и страхователя, по ТС и реестры, выдачу не держат).
+     * Что держит выдачу из выставленного — неоплаченные счета покупателю этой ТС (решение владельца 08.10.2026: держит
+     * только долг покупателя; вендор и страхователь платят по счёту раз в месяц). Покупатель — тот же плательщик, что
+     * у отрезков покупателя (`payerParty`), а не «всё, кроме нынешних реквизитов вендора»: счёт на прежние реквизиты
+     * вендора выдачу не держит.
      */
     public static function releaseDebt(Vehicle $vehicle): float
     {
-        $vehicle->loadMissing('vendor');
-        $insurer = array_filter([$vehicle->vendor?->party_id, $vehicle->owner_party_id]);
+        $buyer = self::payerParty($vehicle, 'buyer', false);
+        if (! $buyer?->id) {
+            return 0.0;
+        }
 
-        return round(Invoice::where('vehicle_id', $vehicle->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)
-            ->when($insurer, fn ($q) => $q->whereNotIn('party_id', $insurer))->get()->sum(fn (Invoice $i) => $i->remaining()), 2);
+        return round(Invoice::where('vehicle_id', $vehicle->id)->where('party_id', $buyer->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)
+            ->get()->sum(fn (Invoice $i) => $i->remaining()), 2);
     }
 
     /**
