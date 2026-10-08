@@ -91,10 +91,28 @@ abstract class Notice extends Notification implements ShouldQueue
         };
     }
 
-    /** Приложение, где уведомление живёт: парковка — отдельно от CRM и сайта (владелец, 05.10.2026), остальное — null. */
+    /**
+     * Приложение, где уведомление живёт: парковка — отдельно от CRM и сайта (владелец, 05.10.2026); то, что ведёт в CRM
+     * (адрес CRM, `/work/…`, `/settings/…`), — только в CRM (08.10.2026, владелец: «зачем их в xcar показывать… открыл
+     * приложение xcar, а тебя в CRM перекидывает»); остальное — null, сайт и CRM.
+     */
     public function surface(): ?Surface
     {
-        return str_starts_with($this->category(), 'park') ? Surface::Park : null;
+        if (str_starts_with($this->category(), 'park')) {
+            return Surface::Park;
+        }
+
+        return self::leadsToCrm($this->href()) ? Surface::Crm : null;
+    }
+
+    /** Адрес ведёт в CRM: абсолютный на её хост или путь, которого на сайте нет. */
+    public static function leadsToCrm(string $href): bool
+    {
+        if (str_starts_with($href, 'http')) {
+            return parse_url($href, PHP_URL_HOST) === Surface::Crm->host();
+        }
+
+        return str_starts_with($href, '/work/') || str_starts_with($href, '/settings/');
     }
 
     /** Категория для настроек (Categories): что человек может выключить. */

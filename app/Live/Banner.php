@@ -31,10 +31,13 @@ final class Banner
         return self::make((string) Str::uuid(), $title, null, $href, null, $icon, false, null, $surface);
     }
 
-    /** Сообщение чата — важное, тема — чат: следующее сообщение того же чата заменяет карточку. @return Payload */
-    public static function chat(string $from, string $text, string $href, ?User $author, int $chat): array
+    /**
+     * Сообщение чата — важное, тема — чат: следующее сообщение того же чата заменяет карточку. Сотрудникам о чате
+     * площадки — только в CRM (`surface`). @return Payload
+     */
+    public static function chat(string $from, string $text, string $href, ?User $author, int $chat, ?Surface $surface = null): array
     {
-        return self::make((string) Str::uuid(), $from, $text, $href, $author, 'chat', true, '/account/chats/'.$chat, null);
+        return self::make((string) Str::uuid(), $from, $text, $href, $author, 'chat', true, '/account/chats/'.$chat, $surface);
     }
 
     /** @return Payload */

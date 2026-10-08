@@ -8,10 +8,13 @@
     $discounts = array_filter([2, 5], fn ($p) => round($asking * (1 - $p / 100) / 1000) * 1000 >= $min);
 @endphp
 @php
+    // Админ подтверждает за менеджера (08.10.2026): та же форма, в шторке в конце — за кого. Можно ли в гараж, решит
+    // менеджер (`PlaceBidFor`), поэтому админу «В гараж» — по галке предложения.
+    $staff = auth()->user()->isAdmin() && ! auth()->user()->isManager();
     // Можно в гараж — «Подтвердить» спрашивает, куда берёт; без галки — отправляет цену, как раньше.
-    $garage = $offer->garageAllowedFor(auth()->user());
+    $garage = $staff ? (bool) $offer->garage_allowed : $offer->garageAllowedFor(auth()->user());
 @endphp
-<form method="post" action="/offers/{{ $offer->number }}/confirm" class="mt-6" data-telegram-moment="bid" data-controller="bid draft" data-bid-asking-value="{{ $asking }}" data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-action="submit->bid#guard">
+<form method="post" action="/offers/{{ $offer->number }}/confirm" class="mt-6" data-telegram-moment="bid" data-controller="bid draft" data-bid-asking-value="{{ $asking }}" data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-bid-staff-value="{{ $staff ? 'true' : 'false' }}" data-action="submit->bid#guard change->bid#update">
     @csrf
     @if ($myBid?->isGarage())
         <p class="mb-4 text-sm text-ink-muted"><span class="font-semibold text-ink">В гараж</span>, {{ mb_strtolower($myBid->state->label()) }}</p>
@@ -32,7 +35,8 @@
     @error('amount')<p class="mt-1.5 text-sm text-danger">{{ $message }}</p>@enderror
     <textarea name="comment" rows="2" class="field-input mt-4 !min-h-0 sm:text-sm" placeholder="Комментарий">{{ old('comment', $myBid?->comment) }}</textarea>
     <button type="submit" class="btn btn-accent mt-4 w-full" data-bid-target="submit">{{ $myBid ? 'Изменить предложение' : 'Подтвердить предложение' }}</button>
-    @if ($garage)<x-offer.bid-choice :offer="$offer"/>@endif
+    @error('manager_id')<p class="mt-1.5 text-sm text-danger">{{ $message }}</p>@enderror
+    @if ($garage || $staff)<x-offer.bid-choice :offer="$offer" :garage="$garage" :staff="$staff"/>@endif
 </form>
 @if ($myBid)
     <form method="post" action="/confirmations/{{ $myBid->id }}/withdraw" class="mt-2">@csrf<button type="submit" class="w-full py-2 text-sm text-ink-dim hover:text-danger">Отозвать</button></form>

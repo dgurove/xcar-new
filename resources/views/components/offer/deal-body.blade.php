@@ -6,12 +6,11 @@
     $price = \App\Offers\PriceView::for($offer, $user);
     $prices = $price->visible;
     // Срок приёма — тем, кто подтверждает; покупателю таймер ни о чём.
-    $left = $gallery || !($user?->canBid() ?? false) ? null : $offer->secondsLeft();
-    $canBid = ($user?->canBid() ?? false) && ($offer->bidsOpen() || $offer->canBidInDeal($user));
+    $left = $gallery || !($user?->bidsOnSite() ?? false) ? null : $offer->secondsLeft();
+    $canBid = ($user?->bidsOnSite() ?? false) && ($offer->bidsOpen() || $offer->canBidInDeal($user));
     $reserve = !$gallery && !$offer->bidsOpen() && $offer->canBidInDeal($user);
     $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
-    $staff = $user?->isAdmin() && ! $user->isManager();
 @endphp
 @if ($inSheet)
     <div class="mb-2 flex justify-end lg:hidden"><button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>
@@ -32,15 +31,13 @@
         <span class="nums text-base font-semibold {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true" data-timer-word-value="через">{{ \App\Support\Ago::left($offer->bids_close_at, 'через') }}</span>
     </p>
     <p class="mt-3 text-sm text-ink-muted" hidden data-shows-when-closed>Приём подтверждений закрыт</p>
-@elseif (!$gallery && ($user?->canBid() ?? false) && !$canBid && $offer->state !== \App\Offers\OfferState::Draft)
+@elseif (!$gallery && ($user?->bidsOnSite() ?? false) && !$canBid && $offer->state !== \App\Offers\OfferState::Draft)
     <p class="mt-3 text-sm text-ink-muted">Приём подтверждений закрыт</p>
 @endif
 @if ($reserve)
     <p class="mt-3 text-sm text-ink-muted">Идёт сделка — подтверждение встанет резервом</p>
 @endif
 @if ($myBid && ! $canBid)<x-offer.my-bid :offer="$offer" :bid="$myBid" class="mt-3"/>@endif
-
-@if ($staff && ($gallery || $offer->state !== \App\Offers\OfferState::Draft))<x-offer.staff-line :offer="$offer" class="mt-5"/>@endif
 
 @guest
     <a href="/login?intended={{ urlencode(request()->getRequestUri()) }}" class="btn btn-accent mt-6 w-full">{{ $gallery ? 'Войти' : 'Войти, чтобы узнать цену' }}</a>

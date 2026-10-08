@@ -137,6 +137,15 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->roleCan('canBid');
     }
 
+    /**
+     * Форма подтверждения на сайте: у менеджера — своё, у админа — за менеджера (08.10.2026, владелец: «как и менеджеры
+     * жмёт подтвердить… только в финале спрашивает, за какого менеджера»; `Site\BidController` → `PlaceBidFor`).
+     */
+    public function bidsOnSite(): bool
+    {
+        return $this->canBid() || $this->isAdmin();
+    }
+
     public function canShare(): bool
     {
         return $this->roleCan('canShare');
@@ -155,7 +164,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function canInterestIn(Offer $offer): bool
     {
         if ($offer->isGallery()) {
-            return $this->hasRole(Role::Manager, Role::Buyer, Role::Visitor);
+            // Админ на сайте видит галерею как менеджер (08.10.2026) — и интерес оставляет так же.
+            return $this->hasRole(Role::Manager, Role::Buyer, Role::Visitor, Role::Admin);
         }
 
         return $offer->state->acceptsInterest() && $this->canInterest();
@@ -486,16 +496,17 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /**
-     * Уведомления этого приложения: парковка — отдельное (владелец, 05.10.2026), её строки (`data.surface`) видны только
-     * на её хосте, а в CRM и на сайте — всё остальное. Вне запроса хост называют явно (пуш — по хосту подписки).
+     * Уведомления этого приложения (`data.surface`): парковка — только свои строки (владелец, 05.10.2026), CRM — свои и
+     * общие, сайт — только общие: то, что ведёт в CRM, на сайте не показываем (08.10.2026). Вне запроса хост называют
+     * явно (пуш — по хосту подписки).
      */
     public function noticesHere(?Surface $surface = null)
     {
-        $park = ($surface ?? Surface::current()) === Surface::Park;
-
-        return $this->notifications()->when($park,
-            fn ($q) => $q->where('data->surface', 'park'),
-            fn ($q) => $q->whereNull('data->surface'));
+        return match ($surface ?? Surface::current()) {
+            Surface::Park => $this->notifications()->where('data->surface', 'park'),
+            Surface::Crm => $this->notifications()->where(fn ($q) => $q->whereNull('data->surface')->orWhere('data->surface', 'crm')),
+            Surface::Site => $this->notifications()->whereNull('data->surface'),
+        };
     }
 
     /** Непрочитанные уведомления; в запросе считаются раз — их читают значок приложения, шапка и таб-бар. */
@@ -510,13 +521,16 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Бейдж приложения: непрочитанные уведомления и сообщения в чатах вместе; у парковки чатов нет. */
     public function badgeCount(?Surface $surface = null): int
     {
-        return $this->unreadCount($surface) + (($surface ?? Surface::current()) === Surface::Park ? 0 : $this->unreadChats());
+        $here = $surface ?? Surface::current();
+
+        // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).
+        return $this->unreadCount($surface) + ($here === Surface::Park ? 0 : $this->unreadChats(platform: $here === Surface::Crm));
     }
 
-    /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона. */
-    public function unreadChats(): int
+    /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона; сотруднику — и площадки. */
+    public function unreadChats(bool $platform = true): int
     {
-        $staff = $this->isAdmin();
+        $staff = $this->isAdmin() && $platform;
         $own = $this->canChat();
         if (! $staff && ! $own) {
             return 0;

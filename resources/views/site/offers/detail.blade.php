@@ -10,7 +10,7 @@
     $n = $offer->number;
     $gallery = $offer->isGallery();
     $price = \App\Offers\PriceView::for($offer, $user);
-    $bids = $user?->canBid() ?? false;
+    $bids = $user?->bidsOnSite() ?? false;
     $left = $gallery || !$bids ? null : $offer->secondsLeft();
     $href = $context?->offerUrl($offer) ?? "/offers/{$n}";
     $canBid = $bids && $offer->bidsOpen() && $price->visible;
@@ -44,8 +44,12 @@
         </x-slot:aside>
         <x-slot:actions>
             @if ($canBid)
-                @php $garage = $offer->garageAllowedFor(auth()->user()); @endphp
-                <form method="post" action="/offers/{{ $n }}/confirm" class="flex w-full flex-col gap-2" data-telegram-moment="bid" data-controller="bid" data-bid-asking-value="{{ $asking }}" data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-action="submit->bid#guard">
+                @php
+                    // Админ подтверждает за менеджера — как в `x-offer.bid-form`.
+                    $staff = $user->isAdmin() && ! $user->isManager();
+                    $garage = $staff ? (bool) $offer->garage_allowed : $offer->garageAllowedFor($user);
+                @endphp
+                <form method="post" action="/offers/{{ $n }}/confirm" class="flex w-full flex-col gap-2" data-telegram-moment="bid" data-controller="bid" data-bid-asking-value="{{ $asking }}" data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-bid-staff-value="{{ $staff ? 'true' : 'false' }}" data-action="submit->bid#guard change->bid#update">
                     @csrf
                     <div class="flex gap-2">
                         <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $myBid?->amount) }}">
@@ -53,6 +57,7 @@
                         <button type="submit" class="btn btn-s btn-accent shrink-0" data-bid-target="submit">{{ $myBid ? 'Изменить' : 'Подтвердить' }}</button>
                     </div>
                     @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
+                    @error('manager_id')<p class="text-sm text-danger">{{ $message }}</p>@enderror
                     <div class="flex flex-wrap items-center gap-1.5">
                         @if ($asking)
                             <button type="button" class="pill pill-plain nums" data-action="bid#set" data-bid-amount-param="{{ $asking }}">{{ \App\Support\Money::nums($asking) }}</button>
@@ -60,7 +65,7 @@
                         @endif
                         <input name="comment" class="field-input field-s min-w-0 flex-1 sm:text-sm" placeholder="Комментарий" value="{{ old('comment', $myBid?->comment) }}">
                     </div>
-                    @if ($garage)<x-offer.bid-choice :offer="$offer"/>@endif
+                    @if ($garage || $staff)<x-offer.bid-choice :offer="$offer" :garage="$garage" :staff="$staff"/>@endif
                 </form>
                 @if ($myBid)
                     <span class="text-sm text-ink-muted">@if ($myBid->isGarage())<span class="font-semibold text-ink">В гараж</span>@else Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>@endif, {{ mb_strtolower($myBid->state->label()) }}</span>

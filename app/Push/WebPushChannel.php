@@ -23,9 +23,13 @@ final class WebPushChannel
         if ($subs->isEmpty() || ! config('xcar.vapid.public')) {
             return;
         }
-        // Парковка — отдельное приложение: её пуш только на подписки её хоста, остальное — не на них.
-        $park = $notice->surface() === Surface::Park;
-        $subs = $subs->filter(fn ($sub) => ($sub->host && Surface::fromHost($sub->host) === Surface::Park) === $park);
+        // Пуш — в приложение уведомления: парковки и CRM — только на подписки своего хоста, общее — на сайт и CRM.
+        $only = $notice->surface();
+        $subs = $subs->filter(function ($sub) use ($only) {
+            $host = $sub->host ? Surface::fromHost($sub->host) : Surface::Site;
+
+            return $only ? $host === $only : $host !== Surface::Park;
+        });
         if ($subs->isEmpty()) {
             return;
         }

@@ -13,7 +13,7 @@
     $main = $offer->mainPhoto();
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();
-    $canBid = ($user?->canBid() ?? false) && ($offer->bidsOpen() || $offer->state === \App\Offers\OfferState::Sold);
+    $canBid = ($user?->bidsOnSite() ?? false) && ($offer->bidsOpen() || $offer->state === \App\Offers\OfferState::Sold);
     // Интерес уже отмечен? У покупателя, а в галерее у всех (08.10.2026). Каталог грузит его одним запросом, иначе — точечно.
     $myInterest = $user && ($user->isBuyer() || $gallery) ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
     $seen = $user?->isManager() && !$gallery ? \App\Offers\Showing::remembered($offer->id) : null;
@@ -24,7 +24,7 @@
     $nth = request()->attributes->get('card.nth', 0);
     request()->attributes->set('card.nth', $nth + 1);
     $eager = $nth < 2;
-    $bidder = $user?->canBid() ?? false;
+    $bidder = $user?->bidsOnSite() ?? false;
     $hasMarks = $offer->car_place || (!$gallery && ($offer->isFresh() || ($bidder && ($offer->isEndingSoon() || !$offer->bidsOpen() || $offer->secondsLeft()))));
 @endphp
 <article id="offer-{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card group']) }}>
@@ -84,7 +84,7 @@
         @if ($user?->isBuyer())
             {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
             <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
-        @elseif (($gallery && ($user?->canInterestIn($offer) ?? true)) || (!$gallery && !$prices))
+        @elseif ($gallery || !$prices)
             <a href="{{ $href }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $gallery ? ($myInterest ? 'Интерес отмечен' : 'Проявить интерес') : 'Узнать цену' }}</a>
         @elseif ($canBid)
             <a href="{{ $href }}" class="btn btn-get">Подтвердить</a>

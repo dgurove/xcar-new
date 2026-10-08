@@ -497,7 +497,7 @@ final class Nav
         }
         if ($user->canChat() || $user->isAdmin()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.
-            $badges['/account/chats'] = $user->unreadChats();
+            $badges['/account/chats'] = $user->unreadChats(platform: $surface === Surface::Crm);
         }
 
         return array_filter($badges);

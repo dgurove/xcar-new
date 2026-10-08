@@ -22,6 +22,7 @@ use App\Offers\Events\OffersHidden;
 use App\Offers\Events\OffersShown;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Showing;
+use App\Support\Surface;
 use App\Users\User;
 use App\Workflow\Events\StageEntered;
 use App\Workflow\Track;
@@ -137,11 +138,11 @@ final class PublishLiveUpdates
         $sides = [$other, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
         // Кому какой адрес: участнику — его экран, второй стороне — свой; тост берёт по своей теме.
         // Карточка — готовой разметкой: кто написал (аватар автора), что, куда вести.
-        $card = fn (string $from, string $href) => ['from' => $from, 'href' => $href, 'banner' => Banner::chat($from, $m->preview(120), $href, $m->author_id ? $m->author : null, $chat->id)];
+        $card = fn (string $from, string $href, ?Surface $surface = null) => ['from' => $from, 'href' => $href, 'banner' => Banner::chat($from, $m->preview(120), $href, $m->author_id ? $m->author : null, $chat->id, $surface)];
         ($this->publish)($sides[1], 'chat', $data + $card($chat->manager?->shortName() ?? Chat::PLATFORM, ChatNotice::hrefFor($chat, false)));
         // Карточка второй стороне — только когда пишет участник. Ответ сотрудника в чате площадки остальным сотрудникам —
         // одни данные для ленты, без карточки (06.10.2026, владелец: «уведомлять надо только если нам пишут»).
-        ($this->publish)($other, 'chat', $m->author_kind === AuthorKind::Participant ? $data + $card($chat->displayName(), ChatNotice::hrefFor($chat, true)) : $data);
+        ($this->publish)($other, 'chat', $m->author_kind === AuthorKind::Participant ? $data + $card($chat->displayName(), ChatNotice::hrefFor($chat, true), $chat->manager_id ? null : Surface::Crm) : $data);
         if ($chat->manager_id) {
             ($this->publish)(Topics::STAFF, 'chat', $data);
         }

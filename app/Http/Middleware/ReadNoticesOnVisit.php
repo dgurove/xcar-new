@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Notifications\ReadNotices;
+use App\Support\Surface;
 use App\Users\Impersonation;
 use Closure;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class ReadNoticesOnVisit
         $user = $request->user();
         if ($user && $request->isMethod('GET') && ! $request->prefetch() && ! Impersonation::active()) {
             $path = '/'.ltrim($request->path(), '/');
-            ($this->read)([$user->id], array_values(array_unique([$path, $request->getRequestUri()])));
+            ($this->read)([$user->id], array_values(array_unique([$path, $request->getRequestUri()])), Surface::current());
         }
 
         return $next($request);

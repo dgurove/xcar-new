@@ -411,7 +411,7 @@ class Offer extends Model implements HasMedia
     /** Может подтвердить в сделке резервом: идёт сделка и менеджер в белом списке. */
     public function canBidInDeal(?User $user): bool
     {
-        return ($user?->canBid() ?? false) && $this->seesDeal($user);
+        return ($user?->bidsOnSite() ?? false) && $this->seesDeal($user);
     }
 
     public function showings(): HasMany

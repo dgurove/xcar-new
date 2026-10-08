@@ -89,6 +89,12 @@ final class ChatNotice extends Notice
         return $this->message->preview(120);
     }
 
+    /** Чат площадки сотруднику — работа CRM: только там (адрес у него сайтовый, `/account/chats/{id}`). */
+    public function surface(): ?Surface
+    {
+        return $this->forStaff && ! $this->message->chat->isBuyerChat() ? Surface::Crm : parent::surface();
+    }
+
     public function href(): string
     {
         return self::hrefFor($this->message->chat, $this->forStaff);

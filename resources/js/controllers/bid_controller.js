@@ -4,9 +4,10 @@ import { Controller } from '@hotwired/stimulus';
 // полной цены и скидок (сервер показывает только те, что не ниже порога). Сам порог на клиенте не известен намеренно.
 // Можно в гараж — отправка сначала спрашивает, куда берёт (шторка `x-offer.bid-choice`): «Для покупателя за N ₽»
 // (без цены выключена) или «В гараж на подготовку» (цена не нужна). Enter в поле тоже ведёт в шторку.
+// Админ (staff) подтверждает за менеджера: шторка всегда, сверху «Менеджер» — без него кнопки выключены.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'submit', 'choice', 'buyer', 'sum'];
-    static values = { asking: Number, garage: Boolean };
+    static targets = ['display', 'amount', 'submit', 'choice', 'buyer', 'sum', 'garage'];
+    static values = { asking: Number, garage: Boolean, staff: Boolean };
 
     connect() {
         this.rubles = new Intl.NumberFormat('ru-RU');
@@ -65,7 +66,9 @@ export default class extends Controller {
         const value = Number(this.split(this.displayTarget.value)[0]) || 0;
         this.amountTarget.value = value || '';
         if (this.hasSubmitTarget) this.submitTarget.disabled = !value && !this.garageValue;
-        if (this.hasBuyerTarget) this.buyerTarget.disabled = !value;
+        const noManager = this.staffValue && !this.element.querySelector('input[name="manager_id"]')?.value;
+        if (this.hasBuyerTarget) this.buyerTarget.disabled = !value || noManager;
+        if (this.hasGarageTarget) this.garageTarget.disabled = noManager;
         if (this.hasSumTarget) {
             this.sumTarget.textContent = value ? ` за ${this.rubles.format(value)}\u00a0₽` : '';
             this.sumTarget.hidden = !value;
@@ -74,7 +77,7 @@ export default class extends Controller {
 
     // Отправка мимо шторки (кнопка, Enter в поле) — сначала спросить, куда.
     guard(event) {
-        if (!this.garageValue || !this.hasChoiceTarget) return;
+        if (!(this.garageValue || this.staffValue) || !this.hasChoiceTarget) return;
         if (this.choiceTarget.querySelector('dialog')?.open) return;
         event.preventDefault();
         this.ask();

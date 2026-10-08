@@ -8,7 +8,7 @@
     $n = $offer->number;
     $gallery = $offer->isGallery();
     $price = \App\Offers\PriceView::for($offer, $user);
-    $bids = $user?->canBid() ?? false;
+    $bids = $user?->bidsOnSite() ?? false;
     $left = $gallery || !$bids ? null : $offer->secondsLeft();
     $fresh = !$gallery && $offer->isFresh();
     $since = $offer->published_at ?? $offer->created_at;
