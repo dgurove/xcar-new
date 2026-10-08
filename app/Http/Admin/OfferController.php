@@ -87,16 +87,21 @@ class OfferController
     /** Вкладки, где карточка после дела идёт к следующей строке. */
     private const TODO = ['nofloor', 'unpriced'];
 
+    /** Вкладки дела: строка ушла — карточка сама к следующей (оценили, заполнили закупочную, приняли подтверждение). */
+    private const ADVANCE = [...self::TODO, 'bids'];
+
     /** Вкладка по умолчанию — дело человека: модератору закупочная, админу цена продажи. */
     public static function home(User $user): string
     {
         return $user->canManageCrm() ? 'unpriced' : 'nofloor';
     }
 
-    /** Есть ли у человека дело по черновику на его шаге: закупочная — у всех, цена продажи — у админа. */
+    /** Есть ли у человека дело по строке на его шаге: закупочная — у всех, цена продажи и подтверждения — у админа. */
     public static function todo(Offer $offer, User $user): bool
     {
-        return $offer->state === OfferState::Draft && ! $offer->slot_at && ! $offer->asking_price && (! $offer->floor_price || $user->canManageCrm());
+        // Админу дело и у открытого с подтверждениями («Есть подтверждения»): принять — и к следующему.
+        return ($offer->state === OfferState::Draft && ! $offer->slot_at && ! $offer->asking_price && (! $offer->floor_price || $user->canManageCrm()))
+            || ($offer->state === OfferState::Open && $user->canManageCrm() && (int) $offer->active_bids_count > 0);
     }
 
     /**
@@ -553,7 +558,7 @@ class OfferController
             ! $hadFloor && (bool) $offer->floor_price => 'Закупочная: '.Money::rub($offer->floor_price),
             default => 'Сохранено',
         };
-        if (! $request->ajax() && ($gone = $this->gone($request, $offer->refresh()))) {
+        if (! $request->ajax() && ($gone = self::gone($request, $offer->refresh()))) {
             return back()->with('toast', $saved)->with($gone);
         }
 
@@ -659,7 +664,7 @@ class OfferController
             return back()->with('detail-advance', true);
         }
         $update($offer, array_filter(['floor_price' => $floor, 'value' => $value]), $request->user());
-        $gone = $this->gone($request, $offer->refresh());
+        $gone = self::gone($request, $offer->refresh());
 
         return back()->with('detail-advance', true)->with($gone)->with('toast', 'Закупочная: '.Money::rub($floor));
     }
@@ -736,11 +741,11 @@ class OfferController
         if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
             $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user());
 
-            return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer))->with($this->gone($request, $offer));
+            return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer))->with(self::gone($request, $offer));
         }
         $change($offer, $next, $request->user());
 
-        return redirect("/offers/{$offer->number}")->with('toast', $next->label())->with($this->gone($request, $offer));
+        return redirect("/offers/{$offer->number}")->with('toast', $next->label())->with(self::gone($request, $offer));
     }
 
     /**
@@ -748,7 +753,7 @@ class OfferController
      * открытой вкладки — убрать её сразу и поправить числа пилюль (`detail-gone`, как после «Оценить»), а не ждать
      * обновления страницы (владелец 05.10.2026). Вкладку и галерею берём из адреса списка; в поиске строка остаётся.
      */
-    private function gone(Request $request, Offer $offer): array
+    public static function gone(Request $request, Offer $offer): array
     {
         $ref = parse_url((string) $request->header('Referer'));
         parse_str($ref['query'] ?? '', $q);
@@ -764,7 +769,7 @@ class OfferController
 
         // На вкладках дела карточка идёт к следующей строке, на остальных строка просто уходит.
         return $still ? [] : ['detail-gone' => true, 'detail-counts' => self::counts($request->user())]
-            + (($ref['path'] ?? '/') === '/' && in_array($preset, self::TODO, true) ? ['detail-advance' => true] : []);
+            + (($ref['path'] ?? '/') === '/' && in_array($preset, self::ADVANCE, true) ? ['detail-advance' => true] : []);
     }
 
     /** «Убрать из слота»: остаётся черновиком или галереей. */

@@ -573,7 +573,9 @@ class MailController
 
         // В окне писем (Turbo-Frame) — тот же редактор во фрейме, без оболочки.
         return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back') ?? ($invoice ? '/money/invoices/'.$invoice->id : null), 'invoice' => $invoice,
-            'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base]);
+            'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base,
+            // Черновик после «Принять» (BidController::accepted): отправили — окно закрывается, человек идёт дальше по списку.
+            'then' => $request->query('then') === 'close' ? 'close' : null]);
     }
 
     public function reply(Request $request, Thread $thread, Message $message, Composer $composer)
@@ -643,6 +645,11 @@ class MailController
         }
 
         if ($inWindow) {
+            // Письмо вендору после «Принять» — окно закрывается само (поток letters без адреса в admin/mail/window).
+            if ($request->input('then') === 'close') {
+                return redirect("{$this->base}/{$message->thread_id}/window")->with('toast', 'Письмо вендору в очереди')->with('letters-close', true);
+            }
+
             return redirect("{$this->base}/{$message->thread_id}/window")->with('toast', 'Письмо в очереди');
         }
 

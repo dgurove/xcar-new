@@ -203,7 +203,7 @@
                                 @endif
                             @endforeach
                             @if ($stage->template_id)
-                                <a href="/work/mail/new?offer={{ $n }}&template={{ $stage->template_id }}" class="btn btn-quiet btn-s"><x-ui.icon name="send" class="size-4"/>Письмо вендору</a>
+                                <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-quiet btn-s"><x-ui.icon name="send" class="size-4"/>Письмо вендору</a>
                             @endif
                         </div>
                     @endif

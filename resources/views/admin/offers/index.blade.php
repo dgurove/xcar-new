@@ -83,6 +83,8 @@
                 <a href="/?preset=unpriced" data-advance-done hidden>Закупочные заполнены, дальше «Без продажной цены»</a>
             @elseif ($preset === 'nofloor' && ! $searching)
                 <span data-advance-done hidden>Закупочные заполнены</span>
+            @elseif ($preset === 'bids' && ! $searching)
+                <span data-advance-done hidden>Подтверждения разобраны</span>
             @endif
             @if ($pick && $preset === 'priced')
                 <x-ui.action-bar data-pick-target="bar" hidden>

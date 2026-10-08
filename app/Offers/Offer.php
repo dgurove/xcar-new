@@ -217,6 +217,17 @@ class Offer extends Model implements HasMedia
         return $this->position($track)?->stage;
     }
 
+    /**
+     * Черновик письма вендору, которое просит текущий этап продажи (шаблон этапа: «уведомление о покупке» после
+     * принятия подтверждения); null — этап письма не просит. Кнопка «Письмо вендору» на шаге и окно после «Принять».
+     */
+    public function vendorLetterUrl(?Stage $stage = null): ?string
+    {
+        $stage ??= $this->stage();
+
+        return $stage?->template_id ? "/work/mail/new?offer={$this->number}&template={$stage->template_id}" : null;
+    }
+
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);

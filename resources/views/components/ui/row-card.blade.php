@@ -5,7 +5,8 @@
      таблицы (row — <tr> с тем же data-detail-key), тост из flash, «следующий без цены» (session detail-advance).
      photo — одно фото вместо ленты (старые карточки); :photo="false" — без кадра вовсе (ветка почты).
      media — свой ряд кадров вместо ленты (карточка предложения CRM: кадры правят прямо тут).
-     foot — подвал под телом, вне прокрутки («Сохранить изменения» формы карточки — всегда на экране). --}}
+     foot — подвал под телом, вне прокрутки («Сохранить изменения» формы карточки — всегда на экране).
+     Поток letters (session letters) — окно писем с черновиком письма вендору после «Принять». --}}
 @props(['href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null, 'foot' => null])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
@@ -58,3 +59,5 @@
 @elseif ($row)<turbo-stream action="replace" targets="tr[data-detail-key=&quot;{{ \App\Support\Detail::key() }}&quot;]"><template>{{ $row }}</template></turbo-stream>@endif
 @if (session('toast') || session('toast-danger'))<turbo-stream action="toast" data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo @endif></turbo-stream>@endif
 @if (session('detail-advance'))<turbo-stream action="advance"></turbo-stream>@endif
+{{-- letters — открыть окно писем с черновиком (приняли подтверждение — письмо вендору), когда карточка встанет. --}}
+@if (session('letters'))<turbo-stream action="letters" url="{{ session('letters') }}"></turbo-stream>@endif

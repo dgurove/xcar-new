@@ -5,6 +5,7 @@ import * as Turbo from '@hotwired/turbo';
 // с url в detail ставит фрейму src и открывает шторку (сосед-контроллер sheet на том же
 // элементе); тот же адрес, уже загруженный, перечитывается. url в значении — открыть сразу (?window=).
 // Отправили письмо из окна — после закрытия страница перечитывается: шаг «Отчёт вендору» становится сделанным.
+// Письмо из черновика после «Принять» (then=close) — окно закрывается само, без перечитывания (letters:close).
 // Кнопки предмета в заголовок окна — шаблоном data-window-tools во фрейме (✨ у писем ТС и предложения).
 // reload=false — окно перечитывает страницу само (✨ Распознать: итог scan_controller бережёт карточка строки).
 export default class extends Controller {
@@ -22,6 +23,12 @@ export default class extends Controller {
         if (this.urlValue) this.load(this.urlValue);
     }
 
+    // Адрес пришёл морфом той же страницы (приняли подтверждение в редакторе — session letters): контроллер не
+    // переподключается, открываем по смене значения. Первое значение открывает connect().
+    urlValueChanged(url, old) {
+        if (url && old !== undefined && url !== old && this.element.isConnected && this.onClose) this.load(url);
+    }
+
     disconnect() {
         document.removeEventListener('turbo:submit-end', this.onEnd);
         document.removeEventListener('turbo:frame-load', this.onLoad);
@@ -32,6 +39,14 @@ export default class extends Controller {
         // Ответ без шаблона (редактор письма в том же фрейме) — кнопки окна остаются прежними.
         const tools = this.frameTarget.querySelector('template[data-window-tools]');
         if (tools) this.toolsTarget.replaceChildren(...tools.content.cloneNode(true).childNodes);
+    }
+
+    // Письмо ушло из черновика после «Принять» (поток letters без url): окно закрыть, страницу не перечитывать — строка
+    // уже ушла, карточка уже следующая.
+    close() {
+        this.dirty = false;
+        const d = this.element.querySelector('dialog');
+        if (d?.open) this.sheet?.close();
     }
 
     open(event) {
