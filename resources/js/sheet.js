@@ -24,13 +24,18 @@ window.addEventListener('popstate', (event) => {
     if (forward) { history.back(); return; }
     const d = document.getElementById(inHistory);
     // «Назад» (свайп от края, кнопка Android) при набранном в листе: запись вернуть, лист оставить и спросить.
+    // Turbo на этом popstate уже дал записи страницы свой ключ (пустое состояние) — снять и не нести в запись шторки:
+    // иначе шаг назад после «Закрыть» придёт на запись с ключом, и Turbo восстановит снимок с открытыми шторками.
     if (!settle && !lower && d?.open && dirty(d)) {
-        history.pushState({ ...(history.state || {}), sheet: d.id }, '');
+        const { turbo, ...rest } = history.state || {};
+        history.replaceState(rest, '');
+        history.pushState({ ...rest, sheet: d.id }, '');
         dismiss(d);
         return;
     }
     inHistory = lower ? under : null;
-    if (d?.open) closeSheet(d, 0, true);
+    // Шаг назад сделал сам closeSheet — лист уже уезжает, второй вызов оборвал бы анимацию.
+    if (d?.open && !settle) closeSheet(d, 0, true);
     // Под шторкой — запись другой шторки: она остаётся своей (Turbo на пустой записи ставит свой
     // ключ — тогда её не снять «Назад»). Страница снова сверху — ключ turbo на месте, «‹ Раздел» пойдёт шагом по истории.
     if (lower) history.replaceState(event.state, '');

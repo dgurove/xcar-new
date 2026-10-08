@@ -289,7 +289,10 @@ export default class extends Controller {
         // «Назад» снял нашу запись: остаёмся и спрашиваем; уходят — вернуть ключ и шагнуть назад по-настоящему.
         this.guarded = false;
         if (this.dirty) {
-            history.pushState({ ...(history.state || {}), detailGuard: true }, '');
+            // Ключ, что Turbo только что дал записи страницы, — снять (как sheet.js): с ним снятие записи потом — restore-визит.
+            const { turbo, ...rest } = history.state || {};
+            history.replaceState(rest, '');
+            history.pushState({ ...rest, detailGuard: true }, '');
             this.guarded = true;
             if (!(await this.leave())) return;
         } else this.retake();
