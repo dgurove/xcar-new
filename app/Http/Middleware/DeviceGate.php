@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
 class DeviceGate
 {
     /** Открыто под замком: выход, сам замок, привязка Telegram, служебное. */
-    private const OPEN = ['logout', 'lock/*', 'account/telegram/state', 'sw.js', 'manifest.webmanifest', 'offline', 'up', 'passkey/error', 'login/as/*'];
+    private const OPEN = ['logout', 'lock/*', 'account/telegram/state', 'sw.js', 'manifest.webmanifest', 'offline', 'offline/loop', 'up', 'passkey/error', 'login/as/*'];
 
     public function handle(Request $request, Closure $next): Response
     {

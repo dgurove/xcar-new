@@ -1,6 +1,7 @@
 // Оболочка: Turbo делает из серверных страниц приложение, Stimulus отвечает за
 // поведение на месте. Контроллеры лежат в ./controllers/<имя>_controller.js
 // и подключаются по имени файла: photos_controller.js → data-controller="photos".
+import './reload-guard';
 import * as Turbo from '@hotwired/turbo';
 import { Application } from '@hotwired/stimulus';
 import { touchPrefetch, prefetch } from './touch-prefetch';
@@ -714,7 +715,7 @@ function activePillIntoView() {
 // свежие карточки, csrf-token, темы live; выход — воркер забывает экраны.
 function stalePage() {
     const nav = performance.getEntriesByType('navigation')[0];
-    if (['navigate', 'reload'].includes(nav?.type)) {
+    if (['navigate', 'reload'].includes(nav?.type) && !window.reloadStorm) {
         const at = Number(document.querySelector('meta[name="rendered-at"]')?.content || 0) * 1000;
         if (at && Date.now() - at > 5_000 && navigator.onLine !== false) {
             setTimeout(() => { window.xcarRefreshedAt = Date.now(); Turbo.visit(location.href, { action: 'replace' }); }, 300);

@@ -3,6 +3,8 @@
 namespace App\Http\Pwa;
 
 use App\Support\Surface;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use App\Users\Access\Lock;
 
 /** Манифест — свой на каждую поверхность: имя, стартовая страница, ярлыки, иконки. */
@@ -62,6 +64,24 @@ class PwaController
     public function offline()
     {
         return view('site.offline');
+    }
+
+    /**
+     * Сторож петли перезагрузок (resources/js/reload-guard.js) прислал, что гоняло окно: четыре полные загрузки за 30 с,
+     * у каждой — адрес, причина (turbo:…, sw:reload), был ли воркер. Только в лог: по нему ищем, откуда петля.
+     */
+    public function loop(Request $request)
+    {
+        $loads = array_slice((array) $request->input('loads'), 0, 10);
+        Log::warning('pwa: петля перезагрузок', [
+            'host' => $request->getHost(),
+            'user' => $request->user()?->id,
+            'standalone' => $request->boolean('standalone'),
+            'ua' => mb_substr((string) $request->userAgent(), 0, 200),
+            'loads' => array_map(fn ($l) => is_array($l) ? array_intersect_key($l, array_flip(['at', 'url', 'why', 'sw'])) : null, $loads),
+        ]);
+
+        return response()->noContent();
     }
 
     /** Воркер с версией из хэша сборки: новая выкладка — новый кэш, без правки руками. */

@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
+import { why } from '../reload-guard';
 
 // Приложение на телефоне: воркер, бейдж на иконке, установка на экран «Домой».
 export default class extends Controller {
@@ -32,7 +33,8 @@ export default class extends Controller {
     // Скрипт воркера всегда из сети; в standalone полных загрузок нет, поэтому
     // обновление проверяется ещё и при возврате из фона.
     async register() {
-        if (!('serviceWorker' in navigator) || window.swRegistered) return;
+        // Была петля перезагрузок (reload-guard) — до конца сеанса без воркера.
+        if (!('serviceWorker' in navigator) || window.swRegistered || window.reloadStorm) return;
         window.swRegistered = true;
         try {
             const registration = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
@@ -47,6 +49,7 @@ export default class extends Controller {
                 try { last = Number(sessionStorage.getItem('sw-reload-at')) || 0; } catch {}
                 if (Date.now() - last < 30_000) return;
                 try { sessionStorage.setItem('sw-reload-at', String(Date.now())); } catch {}
+                why('sw:reload');
                 location.reload();
             });
         } catch {}
