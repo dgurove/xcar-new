@@ -556,6 +556,11 @@ class OfferController
             })->with($gone);
         }
 
+        // «Оценить» / «Сохранить» закупочной сверху карточки — та же форма с `then=advance`: пустое поле — просто дальше.
+        if ($request->input('then') === 'advance') {
+            return back()->with('detail-advance', true)->with('toast', $request->payload() ? 'Сохранено' : null);
+        }
+
         // «Сохранить изменения» — остаёмся там же (04.10.2026: кнопка выезжает после правки, экран не меняется); из
         // карточки строки DetailBack вернёт в список с той же карточкой.
         return back()->with('toast', 'Сохранено');

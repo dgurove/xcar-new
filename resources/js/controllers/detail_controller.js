@@ -135,6 +135,14 @@ export default class extends Controller {
             this.motion = null;
         };
         this.frameTarget.addEventListener('detail:hold', this.onHold);
+        // Ушла форма карточки (сохранили, «Оценить», «+15 мин») — своя запись «Назад» снимается сразу, до ответа. Иначе
+        // шаг назад шёл тогда же, когда ответ перелистывал на следующую строку и менял адрес, и карточка оставалась в
+        // странном состоянии (08.10.2026). Вернулась с ошибкой — restore() поставит запись снова.
+        this.onSubmitStart = (e) => {
+            const form = e.target;
+            if (this.guarded && (this.frameTarget.contains(form) || form.dataset?.turboFrame === 'detail')) this.unguard();
+        };
+        document.addEventListener('turbo:submit-start', this.onSubmitStart);
         document.addEventListener('detail:advance', this.onAdvance);
         document.addEventListener('turbo:before-stream-render', this.onStream);
         // Морф, загрузка страницы и свежая строка приносят строки без выделения (его знает только адрес) — вернуть. Свежую
@@ -167,6 +175,7 @@ export default class extends Controller {
         this.frameTarget.removeEventListener('detail:hold', this.onHold);
         this.frameTarget.removeEventListener('turbo:before-fetch-request', this.onFetch);
         this.unprefetch?.();
+        document.removeEventListener('turbo:submit-start', this.onSubmitStart);
         document.removeEventListener('detail:advance', this.onAdvance);
         document.removeEventListener('turbo:before-stream-render', this.onStream);
         ['turbo:load', 'turbo:morph'].forEach((n) => document.removeEventListener(n, this.onMark));
@@ -189,12 +198,34 @@ export default class extends Controller {
     }
 
     // Уйти с карточки с несохранённым — только переспросив, как у шторок (07.10.2026, начальник вводил данные, нажимал
-    // другую строку или «Закрыть» — правки молча пропадали). true — можно уходить; запись «Назад» к этому времени снята.
+    // другую строку или «Закрыть» — правки молча пропадали). Как в iOS — три ответа (08.10.2026, владелец: «невозможно
+    // выйти без сохранения, приходится закрывать приложение»): «Сохранить» (тихо, той же отправкой, что перед чужой
+    // формой; не прошло проверку — остаёмся у поля с ошибкой), «Не сохранять», «Остаться». Правка только в форме действия
+    // сверху (вывоз, гараж) — без «Сохранить»: у неё не сохранение, а действие. true — можно уходить; запись «Назад» к этому
+    // времени снята.
     async leave() {
-        if (this.dirty && !(await confirmSheet('Не сохранять?', { label: 'Не сохранять', cancel: 'Остаться', danger: true }))) return false;
-        if (this.dirty) this.released = true;
+        if (!this.dirty) { await this.unguard(); return true; }
+        const bar = this.saveBar;
+        const answer = await confirmSheet(bar ? 'Сохранить изменения?' : 'Не сохранять?', bar
+            ? { label: 'Сохранить', alt: { label: 'Не сохранять', danger: true }, cancel: 'Остаться', danger: false }
+            : { label: 'Не сохранять', cancel: 'Остаться', danger: true });
+        if (!answer) return false;
+        if (answer === 'ok' && bar) {
+            const done = await bar.quiet();
+            if (done === 'offline') window.toast?.('Нет связи', { kind: 'danger' });
+            if (done !== 'ok') return false;
+            forget();
+        } else this.released = true;
         await this.unguard();
         return true;
+    }
+
+    // Форма карточки с выехавшей «Сохранить изменения» — её контроллер.
+    get saveBar() {
+        const bar = [...this.frameTarget.querySelectorAll('.save-bar')].find((b) => !b.hidden);
+        const id = bar?.dataset.saveBar ?? bar?.querySelector('[data-save-bar]')?.dataset.saveBar ?? bar?.closest('form')?.id;
+        const form = id && document.getElementById(id);
+        return form ? this.application.getControllerForElementAndIdentifier(form, 'save-bar') : null;
     }
 
     // Своя запись истории над страницей, пока есть несохранённое. Ключ turbo у записи страницы на это время снят: Turbo
@@ -208,12 +239,19 @@ export default class extends Controller {
         this.guarded = true;
     }
 
-    // Снять свою запись (сохранили, ушли с карточки): шаг назад на страницу и вернуть ей ключ turbo.
+    // Снять свою запись (сохранили, ушли с карточки): шаг назад на страницу и вернуть ей ключ turbo. Не дождались
+    // popstate за 300 мс (WebKit бывает не присылает его на запись без жеста) — уходим всё равно: иначе «Не сохранять»
+    // не делало ничего, и выйти из карточки было нельзя.
     unguard() {
         if (!this.guarded) return Promise.resolve();
         this.guarded = false;
         if (!history.state?.detailGuard) { this.retake(); return Promise.resolve(); }
-        return new Promise((resolve) => { this.unwinding = resolve; history.back(); });
+        return new Promise((resolve) => {
+            const done = () => { clearTimeout(timer); if (this.unwinding === done) this.unwinding = null; resolve(); };
+            const timer = setTimeout(() => { this.retake(); done(); }, 300);
+            this.unwinding = done;
+            history.back();
+        });
     }
 
     retake() {

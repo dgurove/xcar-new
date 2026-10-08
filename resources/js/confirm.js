@@ -4,7 +4,8 @@ import { openSheet, closeSheet, outside } from './sheet';
 // вопрос заголовком, кнопка с глаголом («Удалить», «Отклонить», «Выдать») и
 // «Отмена»; data-turbo-confirm-text у формы — абзац под вопросом, data-turbo-confirm-quote
 // (+ -quote-by) — цитата с подписью, например комментарий менеджера. options.label и options.cancel — свои подписи кнопок
-// («Не сохранять?» → «Закрыть» / «Остаться», sheet.js dismiss).
+// («Не сохранять?» → «Закрыть» / «Остаться», sheet.js dismiss). options.alt — третья кнопка между ними ({ label, danger }:
+// «Сохранить изменения?» → «Сохранить» / «Не сохранять» / «Остаться», как в iOS); с ней ответ — 'ok' | 'alt' | false.
 // Глагол — data-turbo-confirm-label у нажатой кнопки (у кнопки со своим подтверждением, как строка
 // «в документе …»), иначе у формы, иначе подпись нажатой кнопки, иначе первое слово вопроса. Опасное — btn-danger, если кнопка была
 // опасной или вопрос начинается с «Удалить»/«Отклонить»/«Отменить»/«Снять».
@@ -26,11 +27,18 @@ export function confirmSheet(message, options = {}) {
             <blockquote class="-mt-2 mb-5 border-l-2 border-surface-3 pl-3 text-ink-muted" data-quote hidden><span data-quote-text></span> <cite class="block text-sm text-ink-dim not-italic" data-quote-by></cite></blockquote>
             <div class="flex flex-col gap-2 sm:flex-row-reverse">
                 <button type="button" class="btn btn-block sm:flex-1 ${danger ? 'btn-danger' : 'btn-accent'}" data-ok></button>
+                <button type="button" class="btn btn-block sm:flex-1" data-alt hidden></button>
                 <button type="button" class="btn btn-quiet btn-block sm:flex-1" data-cancel></button>
             </div>`;
         d.querySelector('h2').textContent = message;
         d.querySelector('[data-ok]').textContent = label;
         d.querySelector('[data-cancel]').textContent = options.cancel || 'Отмена';
+        if (options.alt) {
+            const alt = d.querySelector('[data-alt]');
+            alt.textContent = options.alt.label;
+            alt.classList.add('btn-quiet', ...(options.alt.danger ? ['text-danger'] : []));
+            alt.hidden = false;
+        }
         const text = form?.dataset.turboConfirmText;
         if (text) { const p = d.querySelector('[data-text]'); p.textContent = text; p.hidden = false; }
         const quote = form?.dataset.turboConfirmQuote;
@@ -43,7 +51,8 @@ export function confirmSheet(message, options = {}) {
         document.body.append(d);
 
         let answer = false;
-        d.querySelector('[data-ok]').addEventListener('click', () => { answer = true; closeSheet(d); });
+        d.querySelector('[data-ok]').addEventListener('click', () => { answer = options.alt ? 'ok' : true; closeSheet(d); });
+        d.querySelector('[data-alt]').addEventListener('click', () => { answer = 'alt'; closeSheet(d); });
         d.querySelector('[data-cancel]').addEventListener('click', () => closeSheet(d));
         d.addEventListener('click', (e) => { if (outside(d, e)) closeSheet(d); });
         d.addEventListener('cancel', (e) => { e.preventDefault(); closeSheet(d); });
