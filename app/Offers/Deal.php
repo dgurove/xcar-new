@@ -184,10 +184,10 @@ class Deal extends Model
         return $this->amount ?? $this->cost;
     }
 
-    /** Сделки в разделе «Сделки» сайта: админу все (как машины в гараже, `Garage\Car::scopeOf`), менеджеру — его. */
+    /** Сделки в разделе «Сделки» сайта: админу все, менеджеру — его; админ, который ещё и менеджер, на сайте менеджер. */
     public function scopeOf(Builder $q, User $user): Builder
     {
-        return $user->isAdmin() ? $q : $q->where('buyer_id', $user->id);
+        return $user->isAdmin() && ! $user->isManager() ? $q : $q->where('buyer_id', $user->id);
     }
 
     /** Сделка в CRM: админ ведёт её в редакторе предложения (`Admin\DealController::show`). */

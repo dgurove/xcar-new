@@ -36,7 +36,7 @@ class DealController
         $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
         // Гаражные сделки живут в «Гараже» (решение владельца 03.10.2026), здесь — только ждущее решения «В гараж».
         $deals = Deal::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
-            ->when($me->isAdmin(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer')
+            ->when(! $me->isManager(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer')
             ->orderByRaw("case when state = 'active' then 0 else 1 end")
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id')->paginate(30);
 
