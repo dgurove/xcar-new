@@ -13,13 +13,13 @@
             @if ($i->isPartial())<div class="nums text-xs text-ink-muted">из {{ Money::rub($i->total) }}</div>@endif
         </x-slot:aside>
         <x-slot:actions>
-            @if ($i->state === InvoiceState::Issued && auth()->user()->canPark(\App\Park\Area::Money))
+            @if ($i->state === InvoiceState::Issued && auth()->user()->canManagePark())
                 <details class="w-full"><summary class="btn btn-s btn-accent inline-flex cursor-pointer">{{ $i->isOwed() ? 'Перечислено' : 'Оплачен' }}</summary><div class="mt-3">@include('park.money.pay-form')</div></details>
             @endif
             @if ($i->number)<x-ui.doc :doc="['url' => $href.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="chip">PDF</x-ui.doc>@endif
             {{-- Акт хранения: PDF, если выставлен закрытием месяца, иначе страница на печать. --}}
             @if ($i->kind === \App\Billing\ChargeKind::Storage)<x-ui.doc :doc="['url' => $href.'/act', 'type' => $i->hasMedia('act') ? 'pdf' : 'html', 'name' => 'Акт хранения']" class="chip"/>@endif
-            @if ($i->state === InvoiceState::Issued && $i->paid == 0 && auth()->user()->canPark(\App\Park\Area::Money))
+            @if ($i->state === InvoiceState::Issued && $i->paid == 0 && auth()->user()->canManagePark())
                 <form method="post" action="{{ $href }}/void" class="contents" data-turbo-confirm="Аннулировать счёт?">@csrf<button class="chip text-ink-muted">Аннулировать</button></form>
             @endif
         </x-slot:actions>

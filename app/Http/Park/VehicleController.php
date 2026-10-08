@@ -44,7 +44,6 @@ use App\Park\DocState;
 use App\Park\EventType;
 use App\Park\PhotoStage;
 use App\Park\RequestType;
-use App\Park\Scope;
 use App\Park\Vehicle;
 use App\Park\VehicleFields;
 use App\Park\VehicleState;
@@ -73,7 +72,7 @@ class VehicleController
      */
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($vehicle = Vehicle::find($key)) && Scope::allows($request->user(), $vehicle) ? $this->detail($request, $vehicle) : null);
+        $detail = Detail::of($request, fn (string $key) => ($vehicle = Vehicle::find($key)) ? $this->detail($request, $vehicle) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -99,7 +98,7 @@ class VehicleController
         $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q === '' ? VehicleState::Stored : null);
         $yards = $facets->selected('yard');
         // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
-        $vehicles = Scope::vehicles($request->user())->withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
+        $vehicles = Vehicle::withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
             ->with(['brand', 'model', 'vendor', 'yard', 'offer.deal', 'requests',
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
             ->when($state, fn ($v, $s) => $v->where('state', $s))
@@ -155,7 +154,7 @@ class VehicleController
     {
         $ids = Common::ints($yards);
 
-        return Scope::vehicles($request->user())->where('state', VehicleState::Stored)
+        return Vehicle::where('state', VehicleState::Stored)
             ->when($yards, fn ($q) => $q->where(fn ($w) => $w->whereIn('yard_id', $ids)->when(in_array('none', $yards, true), fn ($n) => $n->orWhereNull('yard_id'))))
             ->with('vendor')->get(['id', 'vendor_id', 'yard_id', 'category', 'value', 'storage_rate'])
             ->reject(fn (Vehicle $v) => Accrual::hasRate($v))->pluck('id')->all();
@@ -184,7 +183,6 @@ class VehicleController
     /** Окно писем ТС (фрейм letters-frame): письма всех веток одной лентой, этапы — из цепочки кандидата этой ТС. */
     public function letters(Request $request, Vehicle $vehicle, MarkThreadRead $markRead)
     {
-        abort_unless(Scope::allows($request->user(), $vehicle), 404);
         $threads = Thread::ofCar($vehicle, $request->user())->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
         // Открыли со строки почты (?at=) — письма прочитаны, как у окна ветки.
         if ($request->query('at') && ! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
@@ -201,7 +199,6 @@ class VehicleController
     /** Дело ТС одной страницей (CaseView); ?window= — открыть окно писем сразу (ветка, письма ТС или черновик вендору). */
     public function show(Request $request, Vehicle $vehicle)
     {
-        abort_unless(Scope::allows($request->user(), $vehicle), 404);
         $window = (string) $request->query('window');
 
         return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null, $request->boolean('call')) + [
@@ -257,7 +254,7 @@ class VehicleController
     /** Страховая продала ТС: дата и кому выдать — руками или поправить то, что вынул разбор письма. `clear` — не продано. */
     public function sold(Request $request, Vehicle $vehicle, MarkSold $sold)
     {
-        abort_unless(Scope::allows($request->user(), $vehicle) && $request->user()->canManagePark(), 404);
+        abort_unless($request->user()->canManagePark(), 404);
         if ($request->boolean('clear')) {
             // Заявка на выдачу, которую завело «продано», снимается вместе с продажей.
             $sold->clear($vehicle, $request->user(), 'Выдача снята');
@@ -408,7 +405,6 @@ class VehicleController
      */
     public function destroy(Request $request, Vehicle $vehicle, UnwindVehicle $unwind, CloseRequest $close)
     {
-        abort_unless(Scope::allows($request->user(), $vehicle), 404);
         if ($vehicle->state === VehicleState::InTransit && ($tow = $vehicle->openRequest(RequestType::Tow))) {
             $close($tow, $request->user(), false);
             $vehicle->refresh();
@@ -443,7 +439,7 @@ class VehicleController
         return back()->with('toast', 'Снята с продажи');
     }
 
-    /** Связать с предложением CRM: по номеру, руками. */
+    /** Связать с предложением CRM: по номеру, руками; только админу (продажа). */
     public function link(Request $request, Vehicle $vehicle, LinkOffer $link)
     {
         $data = $request->validate(['number' => ['nullable', 'integer']]);
@@ -485,7 +481,6 @@ class VehicleController
     /** «Снова ждём»: отменённая ТС возвращается в ожидание с заявкой на приём. */
     public function restore(Request $request, Vehicle $vehicle, RestoreVehicle $restore)
     {
-        abort_unless(Scope::allows($request->user(), $vehicle), 404);
         $restore($vehicle, $request->user(), $request->input('reason'));
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Снова ждём');
@@ -493,7 +488,6 @@ class VehicleController
 
     public function undoIntake(Request $request, Vehicle $vehicle, UndoIntake $undo)
     {
-        abort_unless(Scope::allows($request->user(), $vehicle), 404);
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
         $undo($vehicle, $request->user(), $data['reason'] ?? null);
 
@@ -502,7 +496,6 @@ class VehicleController
 
     public function undoRelease(Request $request, Vehicle $vehicle, UndoRelease $undo)
     {
-        abort_unless(Scope::allows($request->user(), $vehicle), 404);
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:255']]);
         $undo($vehicle, $request->user(), $data['reason'] ?? null);
 

@@ -60,10 +60,11 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/fields', [VehicleController::class, 'fields'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);
     Route::post('/cars/{vehicle}/media/order', [VehicleController::class, 'reorder']);
-    Route::post('/cars/{vehicle}/media/visibility', [VehicleController::class, 'visibility']);
-    Route::post('/cars/{vehicle}/media/{media}/hide', [VehicleController::class, 'hideMedia']);
-    Route::post('/cars/{vehicle}/media/{media}/rotate', [VehicleController::class, 'rotateMedia']);
-    Route::delete('/cars/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia']);
+    // Глаз — показ кадра в продаже: это продажа, только админу. Поворот и удаление — не помощнику.
+    Route::post('/cars/{vehicle}/media/visibility', [VehicleController::class, 'visibility'])->middleware('ability:isAdmin');
+    Route::post('/cars/{vehicle}/media/{media}/hide', [VehicleController::class, 'hideMedia'])->middleware('ability:isAdmin');
+    Route::post('/cars/{vehicle}/media/{media}/rotate', [VehicleController::class, 'rotateMedia'])->middleware('park.manage');
+    Route::delete('/cars/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/note', [VehicleController::class, 'note']);
     // «✨ Распознать» в деле ТС — то же окно, что у цепочки «Из писем» (ScanController, Scan\VehicleSubject).
     Route::get('/cars/{vehicle}/scan', [ScanController::class, 'vehicleShow'])->middleware('park.manage');
@@ -74,7 +75,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/letters/{message}/done', [VehicleController::class, 'letterDone']);
     Route::post('/cars/{vehicle}/docs', [VehicleController::class, 'doc']);
     Route::post('/cars/{vehicle}/docs/{doc}', [VehicleController::class, 'doc']);
-    Route::post('/cars/{vehicle}/offer', [VehicleController::class, 'link'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/offer', [VehicleController::class, 'link'])->middleware('ability:isAdmin');
     Route::post('/cars/{vehicle}/sell', [VehicleController::class, 'sell'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/unsell', [VehicleController::class, 'unsell'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/cancel', [VehicleController::class, 'cancel'])->middleware('park.manage');
@@ -92,21 +93,21 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/restore', [VehicleController::class, 'restore'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/undo-intake', [VehicleController::class, 'undoIntake'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/undo-release', [VehicleController::class, 'undoRelease'])->middleware('park.manage');
-    Route::get('/cars/{vehicle}/invoices/new', [VehicleInvoiceController::class, 'create'])->middleware('park.area:money');
-    Route::post('/cars/{vehicle}/invoices', [VehicleInvoiceController::class, 'store'])->middleware('park.area:money');
-    Route::post('/cars/{vehicle}/charges', [VehicleInvoiceController::class, 'charge'])->middleware('park.area:money');
-    Route::delete('/cars/{vehicle}/charges/{charge}', [VehicleInvoiceController::class, 'uncharge'])->middleware('park.area:money');
+    Route::get('/cars/{vehicle}/invoices/new', [VehicleInvoiceController::class, 'create'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/invoices', [VehicleInvoiceController::class, 'store'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/charges', [VehicleInvoiceController::class, 'charge'])->middleware('park.manage');
+    Route::delete('/cars/{vehicle}/charges/{charge}', [VehicleInvoiceController::class, 'uncharge'])->middleware('park.manage');
 
-    // Деньги — по галке «Деньги» (админу всегда): счета и долги целиком; реквизиты — настройки, только админу.
-    Route::middleware('park.area:money')->group(function () {
+    // Деньги — управляющему и админу (не помощнику): счета и долги целиком; реквизиты — настройки, только админу.
+    Route::middleware('park.manage')->group(function () {
         Route::get('/money', [MoneyController::class, 'index']);
         Route::get('/money/debts', [MoneyController::class, 'debts']);
         Route::get('/money/closing', [MoneyController::class, 'closing']);
         Route::post('/money/closing', [MoneyController::class, 'close']);
-        Route::get('/money/parties', [PartyController::class, 'index'])->middleware('park.area:admin');
-        Route::post('/money/parties', [PartyController::class, 'store'])->middleware('park.area:admin');
-        Route::put('/money/parties/{party}', [PartyController::class, 'update'])->middleware('park.area:admin');
-        Route::delete('/money/parties/{party}', [PartyController::class, 'destroy'])->middleware('park.area:admin');
+        Route::get('/money/parties', [PartyController::class, 'index'])->middleware('ability:isAdmin');
+        Route::post('/money/parties', [PartyController::class, 'store'])->middleware('ability:isAdmin');
+        Route::put('/money/parties/{party}', [PartyController::class, 'update'])->middleware('ability:isAdmin');
+        Route::delete('/money/parties/{party}', [PartyController::class, 'destroy'])->middleware('ability:isAdmin');
         Route::get('/money/invoices/{invoice}', [MoneyController::class, 'show']);
         Route::get('/money/invoices/{invoice}/pdf', [MoneyController::class, 'file']);
         Route::get('/money/invoices/{invoice}/print', [MoneyController::class, 'print']);
@@ -132,7 +133,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
 
     Route::get('/yards', [YardController::class, 'index']);
     // Настройки парковки — только админу: правка парковок, вендоры, прайс (у управляющего их нет вовсе).
-    Route::middleware('park.area:admin')->group(function () {
+    Route::middleware('ability:isAdmin')->group(function () {
         Route::post('/yards', [YardController::class, 'store']);
         Route::put('/yards/{yard}', [YardController::class, 'update']);
         Route::delete('/yards/{yard}', [YardController::class, 'destroy']);
@@ -152,8 +153,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/tariffs', [TariffController::class, 'index']);
     });
 
-    // Почта парковки разделом — по галке «Почта»; писать и отвечать из дела ТС можно и без неё.
-    Route::get('/mail', [MailController::class, 'index'])->middleware('park.area:mail');
+    // Почта парковки разделом — управляющему и админу; помощник пишет и отвечает из дела ТС.
+    Route::get('/mail', [MailController::class, 'index'])->middleware('park.manage');
     Route::get('/mail/new', [MailController::class, 'compose']);
     Route::post('/mail', [MailController::class, 'send']);
     Route::post('/mail/file', [MailController::class, 'file']);
@@ -164,13 +165,13 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/mail/messages/{message}/flag', [MailController::class, 'flag']);
     Route::post('/mail/messages/{message}/parse', [MailController::class, 'reparse']);
     Route::post('/mail/messages/{message}/retry', [MailController::class, 'resend']);
-    Route::get('/mail/{thread}', [MailController::class, 'show'])->middleware('park.area:mail');
+    Route::get('/mail/{thread}', [MailController::class, 'show'])->middleware('park.manage');
     Route::get('/mail/{thread}/window', [MailController::class, 'window']);
     Route::get('/mail/{thread}/reply/{message}', [MailController::class, 'reply']);
-    Route::post('/mail/{thread}/unread', [MailController::class, 'unread'])->middleware('park.area:mail');
-    Route::post('/mail/archive-other', [MailController::class, 'archiveOther'])->middleware('park.area:mail');
-    Route::post('/mail/{thread}/archive', [MailController::class, 'archive'])->middleware('park.area:mail');
-    Route::post('/mail/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['v', 'c', 't'])->whereNumber('id')->middleware('park.area:mail');
+    Route::post('/mail/{thread}/unread', [MailController::class, 'unread'])->middleware('park.manage');
+    Route::post('/mail/archive-other', [MailController::class, 'archiveOther'])->middleware('park.manage');
+    Route::post('/mail/{thread}/archive', [MailController::class, 'archive'])->middleware('park.manage');
+    Route::post('/mail/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['v', 'c', 't'])->whereNumber('id')->middleware('park.manage');
     Route::post('/mail/{thread}/candidate', [MailController::class, 'candidate']);
     Route::post('/mail/{thread}/link', [MailController::class, 'link']);
 });

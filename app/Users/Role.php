@@ -9,7 +9,7 @@ enum Role: string
     case Manager = 'manager';     // внешний партнёр: цены, подтверждения, закупки, сделки, свои покупатели
     case Moderator = 'moderator'; // сотрудник CRM: заводит черновики предложений, сверх них — галки CrmArea; сайта нет
     case Admin = 'admin';         // владелец: всё
-    case Parking = 'parking';     // управляющий парковкой: только park.xcar, разделы — по галкам (Park\Area), без настроек
+    case Parking = 'parking';     // управляющий парковкой: только park.xcar, вся парковка; «только приёмка» — помощник; без настроек и продаж
     case Reviewer = 'reviewer';   // проверяющий (модерация ЮKassa): открытые предложения с ценой продажи, действий нет
 
     public function label(): string

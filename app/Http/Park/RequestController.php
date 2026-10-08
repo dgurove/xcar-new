@@ -32,7 +32,6 @@ use App\Park\ReleasedTo;
 use App\Park\Request as ParkRequest;
 use App\Park\RequestState;
 use App\Park\RequestType;
-use App\Park\Scope;
 use App\Park\Vehicle;
 use App\Park\VehicleFields;
 use App\Park\VehicleState;
@@ -62,7 +61,7 @@ class RequestController
     /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с карточкам строки. */
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($req = ParkRequest::find($key)) && $req->vehicle && Scope::allows($request->user(), $req->vehicle) ? app(VehicleController::class)->detail($request, $req->vehicle) : null);
+        $detail = Detail::of($request, fn (string $key) => ($req = ParkRequest::find($key)) && $req->vehicle ? app(VehicleController::class)->detail($request, $req->vehicle) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -83,7 +82,7 @@ class RequestController
         // Связаться — то же условие, что `Request::needsCall()`, но запросом.
         $needsCall = fn ($q) => $q->where('state', RequestState::New)->whereIn('type', [RequestType::Intake, RequestType::Tow])
             ->where(fn ($w) => $w->where(fn ($n) => $n->whereNull('delivery')->whereNull('contacted_at')->whereNull('planned_at'))->orWhere('next_call_at', '<=', now()));
-        $q = (Scope::requests($request->user())->with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee', 'letter', 'creator']));
+        $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee', 'letter', 'creator']));
         $q->whereIn('state', RequestState::open());
         if ($qs !== '') {
             $filters($q);
@@ -103,9 +102,9 @@ class RequestController
             default => $q->orderByRaw("planned_at {$dir} nulls last")->latest(),
         };
 
-        $open = $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
-        $counts = $open->all() + ['all' => $open->sum(), 'call' => $needsCall($filters(Scope::requests($request->user())))->count(),
-            'overdue' => $filters(Scope::requests($request->user()))->whereIn('state', RequestState::open())->where('planned_at', '<', now())->count()];
+        $open = $filters(ParkRequest::query())->whereIn('state', RequestState::open())->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
+        $counts = $open->all() + ['all' => $open->sum(), 'call' => $needsCall($filters(ParkRequest::query()))->count(),
+            'overdue' => $filters(ParkRequest::query())->whereIn('state', RequestState::open())->where('planned_at', '<', now())->count()];
         // Пилюля есть, пока есть заявки: «Перестановка» появляется от первой такой и исчезает с последней.
         // Выбранная остаётся и с нулём, иначе активная пилюля исчезала бы из ряда вместе со списком.
         $presets = collect(['all' => 'Все', 'overdue' => 'Просрочено', 'call' => 'Нужно позвонить'] + collect(RequestType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all())
@@ -318,7 +317,6 @@ class RequestController
 
     public function intake(Request $request, ParkRequest $req, Intake $intake)
     {
-        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'], 'accepted_at' => ['nullable', 'date']] + self::inspectionRules());
         $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
@@ -330,7 +328,6 @@ class RequestController
 
     public function move(Request $request, ParkRequest $req, Move $move)
     {
-        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
         $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
@@ -342,7 +339,6 @@ class RequestController
     /** Выдача: когда, кому, ключи и документы в акт, подпись; дальше редактор письма вендору с актом выдачи. */
     public function release(Request $request, ParkRequest $req, Release $release)
     {
-        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['released_at' => ['nullable', 'date'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)],
             // Выдача по QR: код из сканера или причина выдачи без него (от 20 знаков — отписку «так надо» не примем).
             'pass' => ['nullable', 'string', 'max:200'], 'pass_confirm' => ['nullable', 'boolean'],
@@ -355,7 +351,7 @@ class RequestController
         $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
         $qr = $request->boolean('without_qr') ? ['without' => $data['without_qr_reason']] : ['pass' => $data['pass'] ?? null, 'confirm' => $request->boolean('pass_confirm')];
-        $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? '') ?? ($req->vehicle->sold_at ? ReleasedTo::Buyer : null), $data, $req, $request->boolean('force'), $request->boolean('cash'), $qr);
+        $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? '') ?? ($req->vehicle->sold_at ? ReleasedTo::Buyer : null), $data, $req, $request->boolean('force') && $request->user()->canManagePark(), $request->boolean('cash'), $qr);
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
     }
@@ -363,7 +359,7 @@ class RequestController
     /** Покупатель приехал и не взял: продажа снимается, ТС остаётся стоять, вендору уходит письмо об отказе. */
     public function refuse(Request $request, ParkRequest $req, RefuseRelease $refuse)
     {
-        abort_unless(Scope::allows($request->user(), $req->vehicle) && $request->user()->canManagePark(), 404);
+        abort_unless($request->user()->canManagePark(), 404);
         $reason = $request->validate(['reason' => ['required', 'string', 'max:500']])['reason'];
         $refuse($req->vehicle, $request->user(), $reason);
 
@@ -373,7 +369,6 @@ class RequestController
     /** Закрыть заявку сделанной (осмотр, перестановка — старые типы); отмена заявки на приём — «Отменить заявку» на деле (UnwindVehicle). */
     public function close(Request $request, ParkRequest $req, CloseRequest $close)
     {
-        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000']]);
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 
@@ -383,7 +378,6 @@ class RequestController
     /** Звонок страхователю: эвакуатор (с полями назначения), привезёт сам (когда), не дозвонились (когда снова). */
     public function contact(Request $request, ParkRequest $req, Contact $contact)
     {
-        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate([
             'outcome' => ['required', Rule::in(['tow', 'self', 'missed'])],
             'planned_at' => ['nullable', 'date'], 'next_call_at' => ['nullable', 'date'],
@@ -404,7 +398,6 @@ class RequestController
 
     public function schedule(Request $request, ParkRequest $req, ScheduleTow $schedule)
     {
-        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate([
             'planned_at' => ['nullable', 'date'], 'from_address' => ['nullable', 'string', 'max:255'], 'yard_id' => ['nullable', 'exists:park_yards,id'],
             'carrier' => ['nullable', 'string', 'max:120'], 'distance_km' => ['nullable', 'integer', 'between:0,5000'], 'cost' => ['nullable', 'integer', 'min:0'],
@@ -423,7 +416,6 @@ class RequestController
 
     public function start(Request $request, ParkRequest $req, StartTow $start)
     {
-        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $this->claim($request, $req);
         $start($req, $request->user());
 
@@ -432,7 +424,6 @@ class RequestController
 
     public function assign(Request $request, ParkRequest $req, AssignRequest $assign)
     {
-        abort_unless(Scope::allows($request->user(), $req->vehicle), 404);
         $data = $request->validate(['assignee_id' => ['nullable', 'exists:users,id']]);
         $assign($req, ! empty($data['assignee_id']) ? User::find($data['assignee_id']) : null, $request->user());
 

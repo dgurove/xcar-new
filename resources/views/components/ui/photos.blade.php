@@ -5,12 +5,13 @@
      data-controller="photos"; turbo-stream подменяет ряд целиком.
      readonly — только смотреть (кадры из письма рядом с приёмом): без плитки «добавить» и без действий; с hide — остаётся глаз.
      grid — сетка квадратов вместо ленты (дело на стоянке: все кадры видны сразу и в узкой колонке).
+     rotatable=false — без поворота (помощник парковки).
      deletable=false — без корзины (удаляют только в полном редакторе); замыкание — решает по кадру.
      pending — сколько заглушек «качается» в конце ряда. add=false — без плитки «добавить» (карточка строки парковки).
      Кнопка «Показать все» / «Скрыть все» — отдельно, x-ui.photos-all, там, где ей место по вёрстке.
      mainId — главный кадр всей машины, когда кадры разложены блоками по стадиям (PhotoBlocks): звезда у него, в чужом
      блоке — только контурные «сделать главным». --}}
-@props(['photos', 'hide' => true, 'main' => true, 'mainId' => null, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true, 'pending' => 0, 'add' => true])
+@props(['photos', 'hide' => true, 'main' => true, 'mainId' => null, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true, 'rotatable' => true, 'pending' => 0, 'add' => true])
 <div id="{{ $id }}" class="{{ $grid ? 'photo-grid' : 'photo-row' }}">
     @if (! $readonly && $add)<button type="button" class="photo-add" data-action="photos#pick" aria-label="Добавить фото"><x-ui.icon name="camera" class="size-6"/></button>@endif
     <div class="{{ $grid ? 'contents' : 'photo-strip' }}" data-photos-target="grid">
@@ -32,7 +33,7 @@
             <div class="photo-actions">
                 {{-- Обе иконки сразу: глаз переключается классом плитки, не дожидаясь ответа сервера. --}}
                 @if ($hide)<button type="button" data-action="photos#act" data-act="hide" aria-label="{{ $hidden ? 'Показать' : 'Скрыть' }}"><x-ui.icon name="eye-off" class="photo-eye-off size-4"/><x-ui.icon name="eye" class="photo-eye-on size-4"/></button>@endif
-                @unless ($readonly)<button type="button" data-action="photos#act" data-act="rotate" aria-label="Повернуть"><x-ui.icon name="rotate" class="size-4"/></button>@endunless
+                @if (! $readonly && $rotatable)<button type="button" data-action="photos#act" data-act="rotate" aria-label="Повернуть"><x-ui.icon name="rotate" class="size-4"/></button>@endif
                 @if (! $readonly && ($deletable instanceof \Closure ? $deletable($media) : $deletable))<button type="button" data-action="photos#act" data-act="delete" data-confirm="Удалить фото?" aria-label="Удалить"><x-ui.icon name="trash" class="size-4"/></button>@endif
             </div>
             @endif

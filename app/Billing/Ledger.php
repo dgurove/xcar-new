@@ -43,7 +43,8 @@ final class Ledger
                 }
             }
         }
-        foreach (Charge::with('party')->whereNull('invoice_id')->whereNull('voided_at')->get() as $c) {
+        // Начисления сделок (без ТС) — CRM, в долги парковки не идут.
+        foreach (Charge::with('party')->whereNull('invoice_id')->whereNull('voided_at')->whereNotNull('vehicle_id')->get() as $c) {
             $unbilled[$c->party_id] = ['party' => $c->party, 'amount' => ($unbilled[$c->party_id]['amount'] ?? 0) + $c->amount];
         }
         $ids = $open->keys()->merge(array_keys($unbilled))->unique();

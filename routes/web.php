@@ -97,17 +97,20 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
     Route::get('/offers/{offer}/chat', [OfferController::class, 'chat']);
     Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
-    Route::post('/chats/support', [ChatController::class, 'support'])->middleware('throttle:30,1');
+    Route::post('/chats/support', [ChatController::class, 'support'])->middleware(['ability:usesSite', 'throttle:30,1']);
 
     Route::get('/account', [ProfileController::class, 'profile'])->name('cabinet');
     Route::put('/account', [ProfileController::class, 'update']);
     Route::permanentRedirect('/account/profile', '/account');
-    Route::get('/account/favorites', [ListsController::class, 'favorites']);
-    Route::get('/account/chats', [CabinetChatController::class, 'index']);
-    Route::get('/account/chats/offer/{offer}', [CabinetChatController::class, 'offer']);
-    Route::get('/account/chats/support', [CabinetChatController::class, 'support']);
-    Route::get('/account/chats/{chat}', [CabinetChatController::class, 'show']);
-    Route::get('/account/interests', [ListsController::class, 'interests']);
+    // Сайтовое — не тем, у кого только парковка (управляющий в кабинете видит профиль и уведомления).
+    Route::middleware('ability:usesSite')->group(function () {
+        Route::get('/account/favorites', [ListsController::class, 'favorites']);
+        Route::get('/account/chats', [CabinetChatController::class, 'index']);
+        Route::get('/account/chats/offer/{offer}', [CabinetChatController::class, 'offer']);
+        Route::get('/account/chats/support', [CabinetChatController::class, 'support']);
+        Route::get('/account/chats/{chat}', [CabinetChatController::class, 'show']);
+        Route::get('/account/interests', [ListsController::class, 'interests']);
+    });
 
     Route::get('/account/invoices/{invoice}/pdf', [MoneyController::class, 'pdf']);
     // Документы и файлы с закрытого диска — на любом хосте.

@@ -8,7 +8,7 @@
     use App\Support\{Money, Surface};
     $state = $vehicle->state;
     // Деньги дела (счета, начисления, долг) — тем, кому они открыты на парковке (галка «Деньги» у управляющего).
-    $money = auth()->user()->canPark(\App\Park\Area::Money);
+    $money = auth()->user()->canManagePark();
     $open = $req !== null;
     $tow = $req?->isTow() ?? false;
     // Новая заявка на приём без звонка — сначала «Связались»; ?call=1 с чипа доставки — позвонить ещё раз (Contact меняет тип в обе стороны).
@@ -34,7 +34,11 @@
         <x-park.state :vehicle="$vehicle"/>
         @if ($debt > 0 && $money)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ Money::rub($debt) }}</x-ui.pill>@endif
         @if ($vehicle->sold_at)
-            <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs nums" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">На выдачу {{ $vehicle->sold_at->translatedFormat('j M') }}</button>
+            @if ($canManage)
+                <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs nums" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">На выдачу {{ $vehicle->sold_at->translatedFormat('j M') }}</button>
+            @else
+                <span class="pill pill-urgent !min-h-0 !py-1 text-xs nums">На выдачу {{ $vehicle->sold_at->translatedFormat('j M') }}</span>
+            @endif
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'Заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="fact">Заберёт {{ $vehicle->pickup_name }}</span>@endif
         @endif
         {{-- Исполнитель ставится сам первым действием; чип с аватаром, нажатие — передать другому. Контроллер шторки —
@@ -277,7 +281,7 @@
             </x-ui.sheet>
         </div>
     @endif
-    @if ($canManage && in_array($state, [VehicleState::Stored, VehicleState::InTransit], true) || $vehicle->sold_at)
+    @if ($canManage && (in_array($state, [VehicleState::Stored, VehicleState::InTransit], true) || $vehicle->sold_at))
         <div data-controller="sheet" data-action="sold:open@window->sheet#open" class="contents">
             <x-ui.sheet id="sold" title="Покупатель" :open="$errors->hasAny(['sold_at', 'pickup_name', 'pickup_phone'])">
                 {{-- Страховая продала ТС: дата письма, кому выдать; дальше дни за счёт вендора и покупатель по множителю. --}}

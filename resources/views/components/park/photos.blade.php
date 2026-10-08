@@ -23,7 +23,7 @@
     @else
         <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <h2>{{ $stage->label() }}@if ($n) <span class="nums text-sm font-normal text-ink-dim">{{ $n }}</span>@endif</h2>
-            <x-ui.photos-all class="ml-auto"/>
+            @if (auth()->user()->isAdmin())<x-ui.photos-all class="ml-auto"/>@endif
         </div>
         @include('park.vehicles.photo-body')
     @endif

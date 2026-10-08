@@ -2,10 +2,8 @@
 
 namespace App\Http\Mail;
 
-use App\Mail\Scope;
 use App\Offers\Offer;
 use App\Park\Vehicle;
-use Illuminate\Http\Request;
 
 /**
  * Кадры письма прикрепляются (`ImportThreadFiles`): строка хода, ряд фото с заглушками и документы — потоком для
@@ -18,10 +16,8 @@ final class AttachController
         return $this->stream($offer->load('media'));
     }
 
-    public function vehicle(Request $request, Vehicle $vehicle)
+    public function vehicle(Vehicle $vehicle)
     {
-        abort_unless(Scope::allows($request->user(), $vehicle), 404);
-
         return $this->stream($vehicle->load('media'));
     }
 

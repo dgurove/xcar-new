@@ -8,7 +8,6 @@ use App\Park\Yard;
 use App\Support\Detail;
 use App\Support\ListPrefs;
 use App\Support\Sort;
-use App\Users\User;
 use App\Vendors\Tariff;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -29,7 +28,9 @@ class YardController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
         $yards = Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand'])->orderByDesc('is_active')
             ->when($sort->key === 'free', fn ($y) => $y->orderByRaw("(coalesce(capacity, 0) - (select count(*) from park_vehicles v where v.yard_id = park_yards.id and v.state = 'stored')) {$sort->dir()}"))
-            ->orderBy(match ($sort->key) { 'created' => 'created_at', 'stored' => 'stored_vehicles_count', default => 'name' }, $sort->key === 'free' ? 'asc' : $sort->dir())->get();
+            ->orderBy(match ($sort->key) {
+                'created' => 'created_at', 'stored' => 'stored_vehicles_count', default => 'name'
+            }, $sort->key === 'free' ? 'asc' : $sort->dir())->get();
 
         return view('park.yards.index', [
             'detail' => $detail,
@@ -72,8 +73,8 @@ class YardController
     /** Убрать площадку можно пустую и без истории; с ТС — только закрыть. */
     public function destroy(Yard $yard)
     {
-        if (Vehicle::where('yard_id', $yard->id)->exists() || ParkRequest::where('yard_id', $yard->id)->exists() || Tariff::where('yard_id', $yard->id)->exists() || User::where('park_yard_id', $yard->id)->exists()) {
-            throw ValidationException::withMessages(['name' => 'На парковке есть ТС, заявки, прайс или сотрудники, закройте её']);
+        if (Vehicle::where('yard_id', $yard->id)->exists() || ParkRequest::where('yard_id', $yard->id)->exists() || Tariff::where('yard_id', $yard->id)->exists()) {
+            throw ValidationException::withMessages(['name' => 'На парковке есть ТС, заявки или прайс, закройте её']);
         }
         $yard->delete();
 

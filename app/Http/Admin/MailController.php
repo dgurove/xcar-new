@@ -964,7 +964,7 @@ class MailController
         $user = auth()->user();
 
         return $this->scope === Scope::Park
-            ? $thread->offer_id && $user?->canCrmMail() && \App\Park\Vehicle::where('offer_id', $thread->offer_id)->exists()
-            : $thread->vehicle_id && $user?->canPark(\App\Park\Area::Mail) && \App\Park\Vehicle::whereKey($thread->vehicle_id)->whereNotNull('offer_id')->exists();
+            ? $thread->offer_id && $user?->canCrmMail() && Vehicle::where('offer_id', $thread->offer_id)->exists()
+            : $thread->vehicle_id && $user?->canManagePark() && Vehicle::whereKey($thread->vehicle_id)->whereNotNull('offer_id')->exists();
     }
 }

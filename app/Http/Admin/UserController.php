@@ -14,7 +14,6 @@ use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferState;
-use App\Park\Area;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
@@ -412,16 +411,11 @@ class UserController
             $roles[] = Role::Admin;
         }
         $data['roles'] = array_values(array_unique($roles, SORT_REGULAR));
-        // Доступ к парковке — только у роли «Парковка»: что открыто сверх основы, своя парковка, только приёмка.
+        // Роль «Парковка» — управляющий, с галкой «только приёмка» — помощник на воротах.
         $park = in_array(Role::Parking, $data['roles'], true);
-        $request->validate(['areas' => ['nullable', 'array'], 'areas.*' => [Rule::in(Area::values())], 'park_yard_id' => ['nullable', Rule::exists('park_yards', 'id')]]);
         $request->validate(['crm_areas' => ['nullable', 'array'], 'crm_areas.*' => [Rule::in(CrmArea::values())]]);
-        // Галки областей — у каждой роли свои, в одном списке: парковке — разделы парковки, модератору — сверх черновиков (почта CRM).
-        $data['access'] = [
-            ...($park ? array_values(array_intersect(Area::values(), (array) $request->input('areas', []))) : []),
-            ...(in_array(Role::Moderator, $data['roles'], true) ? array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))) : []),
-        ];
-        $data['park_yard_id'] = $park && $request->filled('park_yard_id') ? (int) $request->input('park_yard_id') : null;
+        // Галки областей — модератору сверх черновиков (почта CRM).
+        $data['access'] = in_array(Role::Moderator, $data['roles'], true) ? array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))) : [];
         $data['park_readonly'] = $park && $request->boolean('park_readonly');
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
 

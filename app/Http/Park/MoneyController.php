@@ -16,7 +16,6 @@ use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\Seller;
-use App\Park\Scope;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
@@ -26,7 +25,6 @@ use App\Support\Money;
 use App\Support\Nav;
 use App\Support\Plural;
 use App\Support\Sort;
-use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -38,7 +36,6 @@ class MoneyController
 {
     public const PRESETS = ['unpaid' => 'Не оплачены', 'overdue' => 'Просрочены', 'owed' => 'Мы должны', 'paid' => 'Оплачены', 'all' => 'Все'];
 
-
     public function index(Request $request)
     {
         $detail = Detail::of($request, fn (string $key) => ($invoice = Invoice::find($key)) ? $this->detail($invoice) : null);
@@ -49,7 +46,7 @@ class MoneyController
         ListPrefs::sync($request, 'park-money', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unpaid';
         $qs = trim((string) $request->query('q'));
-        $q = self::scoped($request->user(), Invoice::with(['party', 'vehicle.brand', 'vehicle.model']))
+        $q = self::scoped(Invoice::with(['party', 'vehicle.brand', 'vehicle.model']))
             ->when($request->query('car'), fn ($w, $id) => $w->where('vehicle_id', $id))
             ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s->where('external_no', 'ilike', "%{$qs}%")
                 ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs))
@@ -68,7 +65,7 @@ class MoneyController
         $facets->apply($q);
         $sort = Sort::from($request->query('sort'), Invoice::SORTS, '-fresh');
         $q->sorted($sort);
-        $open = $facets->applyTo(self::scoped($request->user(), Invoice::query()))->where('state', InvoiceState::Issued)->get();
+        $open = $facets->applyTo(self::scoped(Invoice::query()))->where('state', InvoiceState::Issued)->get();
         $parties = Common::ints($facets->selected('party'));
 
         return view('park.money.index', [
@@ -88,21 +85,15 @@ class MoneyController
         ]);
     }
 
-    /** Счета парковки — только ИП (ПРАЙМ со сделками — в CRM); своя площадка — только её счета. */
-    private static function scoped(User $user, Builder $q): Builder
+    /** Счета парковки — только ИП (ПРАЙМ со сделками — в CRM). */
+    private static function scoped(Builder $q): Builder
     {
-        $q->ofSeller(Seller::Park);
-        if ($yard = Scope::yardId($user)) {
-            $q->where(fn ($w) => $w->whereNull('vehicle_id')->orWhereHas('vehicle', fn ($v) => $v->where('yard_id', $yard)->orWhereNull('yard_id')));
-        }
-
-        return $q;
+        return $q->ofSeller(Seller::Park);
     }
 
     private static function guard(Invoice $invoice): void
     {
         abort_unless($invoice->seller === Seller::Park, 404);
-        abort_unless(! $invoice->vehicle || Scope::allows(request()->user(), $invoice->vehicle), 403);
     }
 
     public function detail(Invoice $invoice)
@@ -227,7 +218,7 @@ class MoneyController
         $items = Closing::items($month);
         // Уже выставленное за этот месяц — счета, чьё хранение кончается в нём.
         $issued = Invoice::where('direction', 'issued')->whereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Storage)->whereBetween('period_to', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()]))
-            ->where('state', '!=', InvoiceState::Void)->with(['party', 'vehicle.brand', 'vehicle.model'])->latest('id')->get();
+            ->where('state', '!=', InvoiceState::Void)->ofSeller(Seller::Park)->with(['party', 'vehicle.brand', 'vehicle.model'])->latest('id')->get();
 
         return view('park.money.closing', [
             'month' => $month, 'items' => $items->groupBy(fn ($i) => $i['party']?->name ?? 'Без плательщика'),

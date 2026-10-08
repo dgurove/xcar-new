@@ -40,9 +40,9 @@
         <label class="row justify-between cursor-pointer"><span class="min-w-0"><span class="block">Наличными с покупателя</span><span class="nums block text-sm text-danger">{{ Money::rub($cashDue) }}</span></span><input type="checkbox" switch name="cash" value="1" @checked(old('cash')) class="switch shrink-0" aria-label="Принял наличными"></label>
     @endif
     @if ($hold > 0)
-        @if ($debtBlocks)
+        @if ($debtBlocks && $canManage)
             <label class="row justify-between cursor-pointer"><span>Выдать с долгом</span><input type="checkbox" switch name="force" value="1" @checked(old('force')) class="switch shrink-0"></label>
-        @else
+        @elseif (! $debtBlocks)
             <div class="row justify-between"><span class="text-ink-muted">Вендору можно выдавать без оплаты</span></div>
         @endif
     @endif

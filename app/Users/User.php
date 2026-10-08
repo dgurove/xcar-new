@@ -9,7 +9,6 @@ use App\Notifications\PasswordResetLetter;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\Interest;
 use App\Offers\Offer;
-use App\Park\Area;
 use App\Support\Demo\HidesDemo;
 use App\Support\Phone;
 use App\Support\Surface;
@@ -35,7 +34,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_yard_id', 'park_readonly', 'party_id'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -348,7 +347,11 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return ! $this->isApproved() && ! $this->isRejected();
     }
 
-    /** Стоянка: реквизиты ТС, отмена, удаление, выдача по QR — не «только приёмка». Настройки — `isAdmin`. */
+    /**
+     * Управляющий: вся парковка на всех парковках — заявки, приём, выдача, оплаты, счета, закрытие месяца, почта,
+     * контакты вендоров и реквизиты плательщиков. Не он — помощник «только приёмка» (`isParkHelper`).
+     * Настройки (прайс, правила вендоров, парковки, свои реквизиты) и продажа — `isAdmin`.
+     */
     public function canManagePark(): bool
     {
         return $this->isAdmin() || ($this->isParking() && ! $this->park_readonly);
@@ -360,10 +363,16 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->hasRole(Role::Parking);
     }
 
-    /** Раздел парковки сверх основы (деньги, почта): админу — всё, управляющему — отмеченное. */
-    public function canPark(Area $area): bool
+    /** Помощник на воротах («только приёмка»): заявки, приём и выдача; без оплат, почты, вендоров и правки ТС. */
+    public function isParkHelper(): bool
     {
-        return $this->isAdmin() || ($this->isParking() && in_array($area->value, $this->access ?? [], true));
+        return $this->isParking() && $this->park_readonly && ! $this->isAdmin();
+    }
+
+    /** Сайтовое (избранное, чаты, интересы, поддержка, поток каталога) — всем, кроме тех, у кого только парковка. */
+    public function usesSite(): bool
+    {
+        return Surface::onlyFor($this) !== Surface::Park;
     }
 
     /** Кто работает на парковке: админы и управляющие — список «Кто ведёт», уведомления, закрытие месяца. */

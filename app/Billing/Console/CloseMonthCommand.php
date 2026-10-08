@@ -4,7 +4,6 @@ namespace App\Billing\Console;
 
 use App\Billing\Closing;
 use App\Notifications\ParkNotice;
-use App\Park\Area;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\ClosingReady;
 use App\Users\User;
@@ -28,8 +27,8 @@ class CloseMonthCommand extends Command
             return self::SUCCESS;
         }
         NotifyOwner::dispatch(new ClosingReady($month, $items));
-        // Закрытие месяца — тем, у кого на парковке открыты деньги.
-        $staff = User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->get()->filter(fn (User $u) => $u->canPark(Area::Money));
+        // Закрытие месяца — управляющим и админам.
+        $staff = User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->get()->filter(fn (User $u) => $u->canManagePark());
         Notification::send($staff, ParkNotice::closing($month, $items->count(), (float) $items->sum('amount')));
 
         return self::SUCCESS;

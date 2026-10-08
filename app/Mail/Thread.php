@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use App\Offers\Offer;
-use App\Park\Area;
 use App\Park\Vehicle;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -99,7 +98,7 @@ class Thread extends Model
             return $query->where(fn ($w) => $w->where(fn ($p) => $p->where('vehicle_id', $car->id)->park())
                 ->when($crm, fn ($w) => $w->orWhere(fn ($o) => $offers($o->where('offer_id', $car->offer_id)))));
         }
-        $park = $user?->canPark(Area::Mail);
+        $park = $user?->canManagePark();
 
         return $query->where(fn ($w) => $w->where(fn ($o) => $offers($o->where('offer_id', $car->id)))
             ->when($park, fn ($w) => $w->orWhere(fn ($p) => $p->whereIn('vehicle_id', Vehicle::where('offer_id', $car->id)->select('id'))->park())));

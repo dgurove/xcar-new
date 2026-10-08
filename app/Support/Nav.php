@@ -8,6 +8,7 @@ use App\Billing\Seller;
 use App\Chats\Chat;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
+use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
 use App\Mail\Boxes;
 use App\Mail\Scope;
@@ -20,8 +21,6 @@ use App\Offers\Favorite;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
-use App\Offers\OfferState;
-use App\Park\Area;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -57,8 +56,8 @@ final class Nav
             return array_values(array_filter([
                 self::item('Заявки', '/requests'),
                 self::item('Наличие', '/cars'),
-                $user?->canPark(Area::Money) ? self::item('Оплаты', '/money') : null,
-                $user?->canPark(Area::Mail) ? self::item('Почта', '/mail') : null,
+                $user?->canManagePark() ? self::item('Оплаты', '/money') : null,
+                $user?->canManagePark() ? self::item('Почта', '/mail') : null,
                 self::item('Парковки', '/yards', tab: false),
                 // Вендоры — настройки: управляющему (роль «Парковка») их нет.
                 $user?->isAdmin() ? self::item('Вендоры', '/vendors', tab: false) : null,
@@ -516,7 +515,7 @@ final class Nav
                     ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)))
                     ->count(),
                 // Деньги горят делом в «Оплатах»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки нет.
-                '/work/money' => \App\Http\Admin\MoneyController::todo(),
+                '/work/money' => MoneyController::todo(),
             ];
             // На табе «Работа» — только сделки (владелец, 04.10.2026): почта, чаты и деньги горят у своих разделов.
             $badges['/work'] = $badges['/work/deals'];

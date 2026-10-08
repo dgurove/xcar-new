@@ -93,9 +93,10 @@ class LoginController
         $user = Auth::user();
         $allowed = $surface->opensFor($user);
 
-        // Управляющий парковкой и модератор, вошедшие там, куда им нельзя, — сразу к себе; с открытого хоста не уводим.
+        // Управляющий парковкой и модератор, вошедшие там, куда им нельзя, или на сайте (сайт пускает всех, но им он не
+        // нужен — SiteWall всё равно увёл бы через два перехода), — сразу к себе; с открытого CRM или парковки не уводим.
         $only = Surface::onlyFor($user);
-        if ($only && $only !== $surface && ! $allowed) {
+        if ($only && $only !== $surface && (! $allowed || $surface === Surface::Site)) {
             return $only->url($only->home());
         }
 

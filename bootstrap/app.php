@@ -14,7 +14,6 @@ use App\Http\Middleware\DetailBack;
 use App\Http\Middleware\DeviceGate;
 use App\Http\Middleware\EnsureAbility;
 use App\Http\Middleware\EnsureOfferEditable;
-use App\Http\Middleware\EnsureParkArea;
 use App\Http\Middleware\EnsureParkManager;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\Impersonated;
@@ -123,7 +122,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/');
-        $middleware->alias(['ability' => EnsureAbility::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'park.area' => EnsureParkArea::class, 'offer.edit' => EnsureOfferEditable::class, 'wall' => SiteWall::class]);
+        $middleware->alias(['ability' => EnsureAbility::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'offer.edit' => EnsureOfferEditable::class, 'wall' => SiteWall::class]);
         $middleware->prepend([ServerTiming::class, RedirectLegacyPaths::class, MarkPrefetch::class, ScalarSearch::class]);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);

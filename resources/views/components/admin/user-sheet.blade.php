@@ -66,7 +66,7 @@
             @endif
             {{-- Парковка — не галка у любой роли, а роль «Парковка» со своим доступом; админу открыто всё. --}}
             <div data-park class="flex flex-col gap-3">
-                <x-park.access-fields :areas="$user->access ?? []" :yard="$user->park_yard_id" :readonly="$user->park_readonly"/>
+                <x-park.access-fields :readonly="$user->park_readonly"/>
             </div>
             <div data-managers class="flex flex-col gap-3">
                 <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" :user="$user" name="manager"/>
