@@ -10,8 +10,7 @@
      facets — App\Support\Facets списка (чипы); search — подсказка в поле поиска (пусто — лупы нет),
      searchTarget — что подменять ответом (#list), searchUrl — куда спрашивать, если не сюда (чаты: открытый чат
      читать нельзя);
-     слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»), pillsNext — сразу за первой (на телефоне
-     хвост ленты за краем: «Скоро» галереи в «Предложениях»);
+     слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»);
      слот extra — кнопки экрана в левой группе после сортировки (переключатель вида),
      слот actions — у правого края («+», «Из писем»).
      Сортировка — окошко x-ui.sort: поле и направление (владелец 06.10.2026: «кнопка сортировки, окошко — выбор
@@ -44,7 +43,6 @@
                     <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
                         {{ $label }}@if (array_key_exists($key, $counts)) <span class="nums opacity-70" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                     </a>
-                    @if ($loop->first){{ $pillsNext ?? '' }}@endif
                 @endforeach
                 {{ $pillsExtra ?? '' }}
             </div>

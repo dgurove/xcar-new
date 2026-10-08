@@ -59,13 +59,6 @@ enum Role: string
         return in_array($this, [self::Manager, self::Admin], true);
     }
 
-    /** Галерея «скоро в продаже» — всем авторизованным (владелец 08.10.2026: сначала менеджерам, покупателям и посетителям,
-     *  затем всем). Без сайта ролям (парковка, модератор) её всё равно негде открыть: стоят двери поверхности и `usesSite`. */
-    public function canSeeGallery(): bool
-    {
-        return true;
-    }
-
     /** Чат по предложению: менеджер и посетитель — с площадкой, покупатель — со своим менеджером (нужен manager_id, см. User::canChat). */
     public function canChat(): bool
     {

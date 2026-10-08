@@ -5,12 +5,9 @@
     $selecting = $user?->isManager() && !$gallery;
     // Покупателю та же лента и тот же тулбар: у него нет только первого экрана, а пустая лента — с контактом менеджера.
     $buyer = $user?->isBuyer() ?? false;
-    // Галерея — свой раздел таб-бара (менеджер и админ, 08.10.2026) или пилюля «Скоро» за «Все» в «Предложениях», пока
-    // в ней что-то есть; из пилюли — «‹ Предложения».
-    $galleryTab = collect(\App\Support\Nav::tabs($user))->contains('href', '/gallery');
-    $title = $gallery ? ($galleryTab ? 'Галерея' : 'Скоро в продаже') : 'Предложения';
+    $title = $gallery ? 'Галерея' : 'Предложения';
 @endphp
-<x-ui.shell :title="$title" :heading="false" :trail="$trail" :detail="$detail" :back="$gallery && ! $galleryTab ? ['Предложения', '/offers'] : null">
+<x-ui.shell :title="$title" :heading="false" :trail="$trail" :detail="$detail">
 
     <div id="catalog-section" @if ($selecting) data-controller="selection" data-selection-url-value="/buyers/showings/new" @endif>
         <div>
@@ -21,9 +18,6 @@
 
             {{-- Лупа сайта — в шапке (поиск по разделам); пришли из неё — тулбар сразу в поиске, с полем и «Отмена». --}}
             <x-ui.toolbar class="md:mt-5" :sort="$sorting" :pills="$views" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
-                @if (! $gallery && ! $galleryTab && ($counts['gallery'] ?? 0) && $user?->canSeeGallery())
-                    <x-slot:pillsNext><a href="/gallery" class="pill">Скоро <span class="nums opacity-70">{{ $counts['gallery'] }}</span></a></x-slot:pillsNext>
-                @endif
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && ! \App\Support\ListView::isTable($view))<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
                     <x-ui.view-switch :current="$view"/>

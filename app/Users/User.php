@@ -137,11 +137,6 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->roleCan('canBid');
     }
 
-    public function canSeeGallery(): bool
-    {
-        return $this->roleCan('canSeeGallery');
-    }
-
     public function canShare(): bool
     {
         return $this->roleCan('canShare');

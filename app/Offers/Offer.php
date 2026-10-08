@@ -518,12 +518,9 @@ class Offer extends Model implements HasMedia
                         ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->manager_id)->where('opens_at', '<=', now())));
                 }
             }
-            // Галерея — всем авторизованным (`canSeeGallery`), без волн и показов
-            // (владелец 08.10.2026: сначала «доступ к галерее всем, чтобы все могли оставлять интерес», затем всем).
-            if ($user->canSeeGallery()) {
-                $any = true;
-                $w->orWhere(fn ($g) => $g->inGallery());
-            }
+            // Галерея — всем авторизованным, без волн и показов (владелец 08.10.2026: «чтобы все могли оставлять интерес»).
+            $any = true;
+            $w->orWhere(fn ($g) => $g->inGallery());
         });
 
         return $any ? $q : $q->whereRaw('false');

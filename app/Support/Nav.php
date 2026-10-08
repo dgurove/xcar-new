@@ -104,9 +104,8 @@ final class Nav
         }
 
         // Уведомлений в разделах нет: колокольчик в шапке, лента и настройки — строкой кабинета.
-        // Закупки на сайте скрыты (владелец 03.10.2026). Галерея у менеджера и админа — свой раздел (08.10.2026), у
-        // покупателя и проверяющего — пилюля «Скоро» в «Предложениях», таб «Предложения» горит и на ней. На сайте «сотрудник» —
-        // админ (модератору сайт не нужен); админ, который ещё и менеджер, — менеджер (ветка выше).
+        // Закупки на сайте скрыты (владелец 03.10.2026); галерея — свой раздел у всех авторизованных (08.10.2026).
+        // На сайте «сотрудник» — админ (модератору сайт не нужен); админ, который ещё и менеджер, — менеджер (ветка выше).
         if ($user?->isAdmin()) {
             return [
                 self::item('Предложения', '/offers'),
@@ -117,13 +116,14 @@ final class Nav
 
         // Проверяющий: только посмотреть предложения.
         if ($user?->hasRole(Role::Reviewer)) {
-            return [self::item('Предложения', '/offers', ['/offers', '/gallery'])];
+            return [self::item('Предложения', '/offers'), self::item('Галерея', '/gallery')];
         }
 
         // Покупатель: только то, что открыл менеджер, и его интерес.
         if ($user?->isBuyer()) {
             return [
-                self::item('Предложения', '/offers', ['/offers', '/gallery']),
+                self::item('Предложения', '/offers'),
+                self::item('Галерея', '/gallery'),
                 self::item('Интерес', '/account/interests'),
             ];
         }
@@ -441,7 +441,7 @@ final class Nav
             // Ноль — тоже число («Покупатели 0»), нет только разделов, которых у роли нет.
             return ['totals' => array_filter([
                 '/offers' => (clone $open)->count(),
-                '/gallery' => $user->canSeeGallery() ? (clone $gallery)->count() : null,
+                '/gallery' => (clone $gallery)->count(),
                 '/purchases' => $user->canSeePurchases() ? Purchase::cardCount($user) : null,
                 // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
                 '/deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count() : null,
@@ -453,7 +453,7 @@ final class Nav
                 '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
                 '/offers' => (clone $open)->where('published_at', '>', $day)->count(),
-                '/gallery' => $user->canSeeGallery() ? (clone $gallery)->where('gallery_from', '>', $day)->count() : 0,
+                '/gallery' => (clone $gallery)->where('gallery_from', '>', $day)->count(),
             ]];
         });
     }

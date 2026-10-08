@@ -37,8 +37,6 @@ class CatalogController
 
     public function gallery(Request $request)
     {
-        abort_unless($request->user()?->canSeeGallery() ?? true, 404);
-
         return $this->list($request, gallery: true);
     }
 
@@ -78,7 +76,7 @@ class CatalogController
             : [
                 // Без фильтров «Все» — это и есть длина списка: второй раз не считаем.
                 'offers' => ! $gallery && ! $narrowed ? $count : Offer::visibleTo($user)->onSale()->count(),
-                'gallery' => $user?->canSeeGallery() ? Offer::visibleTo($user)->inGallery()->count() : 0,
+                'gallery' => Offer::visibleTo($user)->inGallery()->count(),
                 'recommended' => Offer::visibleTo($user)->when($gallery, fn ($q) => $q->inGallery(), fn ($q) => $q->onSale())->where('recommended', true)->count(),
             ];
         // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
