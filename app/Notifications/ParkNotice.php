@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Billing\Invoice;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
@@ -10,12 +11,18 @@ use App\Park\Vehicle;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Surface;
+use App\Users\User;
 use Carbon\CarbonInterface;
 
-/** Уведомление стоянки: письмо, назначение, срок, простой — одна категория «Стоянка», метка по ТС, ссылка на хост стоянки. */
+/**
+ * Уведомление парковки: письмо, назначение, срок, простой, оплаты — категории «Заявки и письма» (`park`) и «Оплаты»
+ * (`park_money`), метка по ТС, ссылка на хост парковки. Управляющему (роль «Парковка») то, где нужен он сам, приходит и в
+ * Telegram (`telegram`); админам — только лента, пуш и почта: владельцу парковка пишет в Telegram своё (`NotifyOwner`).
+ */
 final class ParkNotice extends Notice
 {
-    public function __construct(private string $title, private ?string $text, private string $path, private ?int $vehicleId = null, private bool $critical = false) {}
+    public function __construct(private string $title, private ?string $text, private string $path, private ?int $vehicleId = null, private bool $critical = false,
+        private string $category = 'park', private bool $telegram = true) {}
 
     public static function letter(Candidate $c): self
     {
@@ -39,7 +46,8 @@ final class ParkNotice extends Notice
         $intent = Intent::tryFrom((string) $m->intent);
         $title = $intent && $intent->needsReply() ? $intent->title() : 'Письмо';
 
-        return new self($title.': '.$v->titleWithYear(), ($m->from_name ?: $m->from_email).', '.($m->subject ?: 'без темы'), '/cars/'.$v->id, $v->id);
+        return new self($title.': '.$v->titleWithYear(), ($m->from_name ?: $m->from_email).', '.($m->subject ?: 'без темы'), '/cars/'.$v->id, $v->id,
+            telegram: $intent?->needsReply() ?? false);
     }
 
     public static function sold(Vehicle $v, ?Message $m = null): self
@@ -51,7 +59,8 @@ final class ParkNotice extends Notice
 
     public static function closing(CarbonInterface $month, int $count, float $sum): self
     {
-        return new self('Закрытие '.mb_strtolower($month->translatedFormat('F')).': '.$count.' '.Plural::of($count, ['счёт', 'счёта', 'счетов']).' на '.Money::rub($sum), 'Проверьте и выставьте', '/money/closing?month='.$month->format('Y-m'));
+        return new self('Закрытие '.mb_strtolower($month->translatedFormat('F')).': '.$count.' '.Plural::of($count, ['счёт', 'счёта', 'счетов']).' на '.Money::rub($sum), 'Проверьте и выставьте', '/money/closing?month='.$month->format('Y-m'),
+            category: 'park_money');
     }
 
     public static function assigned(Request $r): self
@@ -71,7 +80,20 @@ final class ParkNotice extends Notice
 
     public static function idle(Vehicle $v, int $days): self
     {
-        return new self('Стоит '.$days.' дн: '.$v->titleWithYear(), ($v->vendor?->name ?? '').($v->yard ? ', '.$v->yard->name : ''), '/cars/'.$v->id, $v->id);
+        return new self('Стоит '.$days.' дн: '.$v->titleWithYear(), ($v->vendor?->name ?? '').($v->yard ? ', '.$v->yard->name : ''), '/cars/'.$v->id, $v->id, telegram: false);
+    }
+
+    /** Покупатель заполнил анкету: прочитать ответ страховой и подтвердить. */
+    public static function buyerForm(Vehicle $v, string $name, CarbonInterface $on): self
+    {
+        return new self('Покупатель заполнил анкету: '.$v->titleWithYear(), $name.', заберёт '.$on->translatedFormat('j M'), '/cars/'.$v->id, $v->id);
+    }
+
+    /** Просроченный счёт парковки — управляющему: письмо плательщику он пишет сам, автописьма нет. */
+    public static function overdue(Invoice $i): self
+    {
+        return new self(($i->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$i->label().' — '.$i->party->name, Money::rub($i->remaining()),
+            '/money/invoices/'.$i->id, $i->vehicle_id, true, 'park_money');
     }
 
     public function title(): string
@@ -91,11 +113,30 @@ final class ParkNotice extends Notice
 
     public function category(): string
     {
-        return 'park';
+        return $this->category;
     }
 
     public function critical(): bool
     {
         return $this->critical;
+    }
+
+    /** Важное — только критичное (назначено, срок вышел, просрочка): письма и продажи — карточкой без звука, как раньше. */
+    public function important(): bool
+    {
+        return $this->critical;
+    }
+
+    public function toTelegram(): ?array
+    {
+        return $this->telegram ? ['title' => $this->title, 'lines' => [$this->text ?: null], 'button' => 'Открыть'] : null;
+    }
+
+    /** В Telegram парковка пишет только управляющему (роль «Парковка»); админам хватает ленты, владельцу — `NotifyOwner`. */
+    public function via(User $user): array
+    {
+        $via = parent::via($user);
+
+        return $user->isParking() ? $via : array_values(array_diff($via, [TelegramChannel::class]));
     }
 }

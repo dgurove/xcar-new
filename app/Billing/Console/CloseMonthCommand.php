@@ -27,7 +27,7 @@ class CloseMonthCommand extends Command
             return self::SUCCESS;
         }
         NotifyOwner::dispatch(new ClosingReady($month, $items));
-        // Закрытие месяца — управляющим и админам.
+        // Закрытие месяца — управляющим и админам; управляющему и в Telegram.
         $staff = User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->get()->filter(fn (User $u) => $u->canManagePark());
         Notification::send($staff, ParkNotice::closing($month, $items->count(), (float) $items->sum('amount')));
 

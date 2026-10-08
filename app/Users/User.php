@@ -431,12 +431,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /**
-     * Подключить Telegram можно: менеджеру, админу и модератору (вход в CRM, новое из писем) без привязки. Не за человека —
+     * Подключить Telegram можно: менеджеру, админу, модератору (вход в CRM, новое из писем) и парковке без привязки. Не за человека —
      * админ привязал бы свой чат к чужому аккаунту.
      */
     public function canLinkTelegram(): bool
     {
-        return ($this->isManager() || $this->isAdmin() || $this->isModerator()) && $this->telegram_chat_id === null && ! $this->is_demo
+        return ($this->isManager() || $this->isAdmin() || $this->isModerator() || $this->isParking()) && $this->telegram_chat_id === null && ! $this->is_demo
             && app(Bot::class)->username() !== null;
     }
 

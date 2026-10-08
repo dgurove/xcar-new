@@ -28,6 +28,8 @@ use App\Offers\Events\BidPlaced;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
+use App\Offers\Events\PickupAssigned;
+use App\Offers\Handover;
 use App\Offers\OfferViewer;
 use App\Park\Events\BuyerFormSubmitted;
 use App\Park\Events\CandidateArrived;
@@ -40,13 +42,12 @@ use App\Park\Events\VehicleIdle;
 use App\Park\Events\VehicleSold;
 use App\Park\Request as ParkRequest;
 use App\Park\RequestState;
-use App\Support\Money;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\AgentFeeDue as AgentFeeDueMessage;
-use App\Telegram\Messages\InvoiceNeeded as InvoiceNeededMessage;
-use App\Telegram\Messages\OnlinePayment as OnlinePaymentMessage;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
+use App\Telegram\Messages\InvoiceNeeded as InvoiceNeededMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
+use App\Telegram\Messages\OnlinePayment as OnlinePaymentMessage;
 use App\Telegram\Messages\ParkLetter;
 use App\Telegram\Messages\ParkSold;
 use App\Telegram\Messages\PaymentClaimed as PaymentClaimedMessage;
@@ -55,11 +56,9 @@ use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
 use App\Users\Role;
 use App\Users\User;
+use App\Workflow\Actor;
 use App\Workflow\Events\StageDue;
 use App\Workflow\Events\StageEntered;
-use App\Offers\Events\PickupAssigned;
-use App\Offers\Handover;
-use App\Workflow\Actor;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
 use App\Workflow\Track;
@@ -332,8 +331,7 @@ final class Notify
     {
         $v = $e->pass->vehicle->load(['brand', 'model']);
         $assignee = $v->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
-        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(),
-            new ParkNotice('Покупатель заполнил анкету: '.$v->titleWithYear(), $e->pass->name.', заберёт '.$e->pass->pickup_on->translatedFormat('j M'), '/cars/'.$v->id, $v->id));
+        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(), ParkNotice::buyerForm($v, $e->pass->name, $e->pass->pickup_on));
     }
 
     public function parkWithoutQr(ReleasedWithoutQr $e): void
@@ -352,7 +350,7 @@ final class Notify
         Notification::send($this->parkStaff()->filter->isAdmin(), ParkNotice::idle($e->vehicle, $e->days));
     }
 
-    /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен», админам — в ленту своей стороны. */
+    /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен»; ПРАЙМ — админам, парковки — управляющим и админам. */
     public function invoiceOverdue(InvoiceOverdue $e): void
     {
         $invoice = $e->invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'deal.offer']);
@@ -362,9 +360,7 @@ final class Notify
 
             return;
         }
-        Notification::send($this->parkStaff()->filter->isAdmin(), new ParkNotice(
-            ($invoice->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$invoice->label().' — '.$invoice->party->name,
-            Money::rub($invoice->remaining()), '/money/invoices/'.$invoice->id, $invoice->vehicle_id, true));
+        Notification::send($this->parkStaff()->filter->canManagePark(), ParkNotice::overdue($invoice));
     }
 
     /** Счёт по сделке выставлен — менеджеру сделки (платит он или его покупатель — всё равно ему). */

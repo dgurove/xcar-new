@@ -17,6 +17,9 @@ final class Preview
 {
     public static function for(User $user): array
     {
+        if (! $user->usesSite()) {
+            return ['title' => 'На выдачу: Kia Rio, 2021', 'lines' => ['Заберёт Иван П. +7 900 000-00-00'], 'button' => 'Открыть'];
+        }
         if ($user->isModerator()) {
             return ['title' => 'Новое из писем: Kia Rio, 2021', 'lines' => [new HtmlString('VIN <code>XW8ZZZ61ZNG012345</code>'), 'АльфаСтрахование, 0291/26/0123456'], 'button' => 'Открыть в CRM'];
         }

@@ -37,7 +37,14 @@ final class Categories
             $add(['on' => ['letters' => 'Новые из писем'], 'always' => []]);
         }
         if ($user->hasRole(Role::Admin)) {
-            $add(['on' => ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'deals' => 'Сроки этапов', 'money' => 'Деньги', 'chats' => 'Чаты', 'park' => 'Парковка'], 'always' => []]);
+            $add(['on' => ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'deals' => 'Сроки этапов', 'money' => 'Деньги', 'chats' => 'Чаты', 'park' => 'Парковка', 'park_money' => 'Оплаты парковки'], 'always' => []]);
+        }
+        // Управляющий парковкой: заявки и письма, оплаты; назначенное ему и вышедший срок — всегда. Помощнику оплат нет.
+        if ($user->hasRole(Role::Parking)) {
+            $add([
+                'on' => ['park' => 'Заявки и письма', ...($user->canManagePark() ? ['park_money' => 'Оплаты'] : [])],
+                'always' => ['Вам назначено', 'Срок вышел', ...($user->canManagePark() ? ['Просроченные счета'] : [])],
+            ]);
         }
         if (! $on && ! $always && ! $user->hasRole(Role::Moderator)) {
             $add(['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => []]);
@@ -57,6 +64,7 @@ final class Categories
         $keys = [
             ...($user->hasRole(Role::Manager, Role::Admin) ? ['chats'] : []),
             ...($user->hasRole(Role::Moderator) ? ['letters'] : []),
+            ...($user->hasRole(Role::Parking) ? ['park', 'park_money'] : []),
         ];
 
         return array_intersect_key(self::for($user)['on'], array_flip($keys));

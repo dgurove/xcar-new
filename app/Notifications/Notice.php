@@ -82,6 +82,7 @@ abstract class Notice extends Notification implements ShouldQueue
             'bids', 'deals' => 'deal',
             'money' => 'wallet',
             'park' => 'park',
+            'park_money' => 'wallet',
             'offers', 'purchases', 'interest' => 'car',
             'letters' => 'mail',
             'people' => 'user',
@@ -93,7 +94,7 @@ abstract class Notice extends Notification implements ShouldQueue
     /** Приложение, где уведомление живёт: парковка — отдельно от CRM и сайта (владелец, 05.10.2026), остальное — null. */
     public function surface(): ?Surface
     {
-        return $this->category() === 'park' ? Surface::Park : null;
+        return str_starts_with($this->category(), 'park') ? Surface::Park : null;
     }
 
     /** Категория для настроек (Categories): что человек может выключить. */
@@ -155,7 +156,7 @@ abstract class Notice extends Notification implements ShouldQueue
         }
         if ($user->email && $user->wantsMail()) {
             // Уведомления стоянки — через её ящик, если он есть; остальное — системный мейлер.
-            $via[] = $this->category() === 'park' && MailboxChannel::account() ? MailboxChannel::class : 'mail';
+            $via[] = str_starts_with($this->category(), 'park') && MailboxChannel::account() ? MailboxChannel::class : 'mail';
         }
         // В Telegram — если он включён и эта категория там не выключена; критичное — всегда.
         if ($user->wantsTelegram($this->critical() ? null : $this->category()) && $this->toTelegram() !== null) {
