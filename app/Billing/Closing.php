@@ -152,7 +152,11 @@ final class Closing
             return 'buyer:'.$item['key'];
         }
 
-        return ($id = self::payer($item, false)?->id) ? 'p'.$id : ($item['payer'] === 'vendor' ? 'v'.$item['vehicle']->vendor_id : 'none:'.$item['key']);
+        // Один счёт — один продавец: контрагент, общий у вендоров с разными продавцами (Альфа Москва — ИП, Альфа СПб —
+        // ПРАЙМ), даёт по реестру на каждого.
+        $seller = ':'.Seller::ofVendor($item['vehicle']->vendor)->value;
+
+        return ($id = self::payer($item, false)?->id) ? 'p'.$id.$seller : ($item['payer'] === 'vendor' ? 'v'.$item['vehicle']->vendor_id : 'none:'.$item['key']);
     }
 
     /** Плательщик строки; черновик вендора (без id) записывается, когда выставляем. */

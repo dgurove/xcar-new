@@ -10,6 +10,7 @@ use App\Offers\CarPlace;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
+use App\Park\City;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -37,7 +38,7 @@ final class PutOnSale
         return DB::transaction(function () use ($vehicle, $by) {
             // Предложение этой машины уже завели в CRM (номер убытка или VIN, `Identity`) — связать с ним, второго нет.
             if ($holder = Identity::offerFor($vehicle->ref_key, $vehicle->vin)) {
-                if (Vehicle::where('offer_id', $holder->id)->exists() || in_array($holder->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
+                if (Vehicle::withoutGlobalScope(City::SCOPE)->where('offer_id', $holder->id)->exists() || in_array($holder->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
                     throw ValidationException::withMessages(['vehicle' => 'Эта машина уже в продаже: '.Identity::offerName($holder)]);
                 }
                 $holder->state === OfferState::Archived && ($this->change)($holder, OfferState::Draft, $by);
@@ -71,6 +72,6 @@ final class PutOnSale
         $number = $vehicle->events()->where('type', EventType::Unlinked)->reorder()->latest('id')->first()?->payload['number'] ?? null;
         $offer = $number ? OfferNumber::find($number) : null;
 
-        return $offer && $offer->state === OfferState::Archived && ! Vehicle::where('offer_id', $offer->id)->exists() ? $offer : null;
+        return $offer && $offer->state === OfferState::Archived && ! Vehicle::withoutGlobalScope(City::SCOPE)->where('offer_id', $offer->id)->exists() ? $offer : null;
     }
 }

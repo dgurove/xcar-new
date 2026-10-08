@@ -52,7 +52,7 @@ class VendorController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'active';
         $q = trim((string) $request->query('q'));
-        $vendors = $facets->apply(Vendor::onPark()->when(City::of($request->user()), fn ($q, $city) => $q->ofParkCity($city)))->with(['contacts', 'party'])->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
+        $vendors = $facets->apply(Vendor::onPark())->with(['contacts', 'party'])->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('name', 'ilike', "%{$q}%")->orWhere('legal_name', 'ilike', "%{$q}%")->orWhere('inn', 'like', "%{$q}%")))
             ->orderBy(match ($sort->key) {
                 'created' => 'created_at', 'stored' => 'stored_count', default => 'name'
@@ -199,7 +199,6 @@ class VendorController
             // ИП — по умолчанию: пустое значение, чтобы новый продавец парковки не приходилось вписывать всем.
             'park_seller' => ($data['park_seller'] ?? null) === Seller::Park->value ? null : ($data['park_seller'] ?? null),
         ]));
-        Vehicle::whereNull('yard_id')->where('vendor_id', $vendor->id)->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->get()->each(fn (Vehicle $v) => $v->forceFill(['city_id' => null])->save());
 
         $setLogo($vendor, $request);
 

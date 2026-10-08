@@ -39,7 +39,8 @@ class VehicleEvent extends Model
                 default => 'Заведена',
             },
             EventType::Accepted => 'Принята'.(! empty($p['yard']) ? ' на «'.$p['yard'].'»' : ''),
-            EventType::Moved => 'Переставлена'.(! empty($p['from']) ? ' с «'.$p['from'].'»' : '').(! empty($p['to']) ? ' на «'.$p['to'].'»' : ''),
+            EventType::Moved => ! empty($p['transfer']) ? 'Переведена в другой город'.(! empty($p['from']) ? ' с «'.$p['from'].'»' : '').(! empty($p['to']) ? ' на «'.$p['to'].'»' : '').(! empty($p['note']) ? ': '.$p['note'] : '')
+                : 'Переставлена'.(! empty($p['from']) ? ' с «'.$p['from'].'»' : '').(! empty($p['to']) ? ' на «'.$p['to'].'»' : ''),
             EventType::Inspected => 'Осмотрена'.(! empty($p['note']) ? ': '.$p['note'] : ''),
             EventType::Towed => 'Эвакуация'.(! empty($p['note']) ? ': '.$p['note'] : ''),
             EventType::Released => 'Выдана'.(! empty($p['to']) ? ' — '.$p['to'] : '').(! empty($p['pass']) ? ', по QR' : '').(! empty($p['without_qr']) ? ', без QR: '.$p['without_qr'] : '').(! empty($p['unpaid']) ? ', с долгом '.Money::rub($p['unpaid']) : ''),

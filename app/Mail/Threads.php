@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Mail\Extraction\Intent;
+use App\Park\City;
 use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,11 @@ final class Threads
     public function __construct(private Parser $parser) {}
 
     public function resolve(Account $account, array $parsed): Thread
+    {
+        return City::unscoped(fn () => $this->find($account, $parsed));
+    }
+
+    private function find(Account $account, array $parsed): Thread
     {
         $thread = $this->byReferences($account, $parsed) ?? $this->bySubject($account, $parsed) ?? Thread::create([
             'account_id' => $account->id,
@@ -27,6 +33,11 @@ final class Threads
     }
 
     public function refresh(Thread $thread): void
+    {
+        City::unscoped(fn () => $this->recount($thread));
+    }
+
+    private function recount(Thread $thread): void
     {
         $messages = Message::where('thread_id', $thread->id)->get(['id', 'subject', 'is_seen', 'has_attachments', 'date_at', 'direction', 'intent', 'from_email']);
         if ($messages->isEmpty()) {

@@ -11,6 +11,7 @@ use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Offer;
+use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 
@@ -40,7 +41,7 @@ final class LinkThread
     public function forVehicle(Vehicle $vehicle, bool $files = true): int
     {
         $keys = Keys::ofVehicle($vehicle);
-        $threads = Thread::withAnyKey($keys)->whereNull('vehicle_id')->whereNull('unlinked_at')
+        $threads = Thread::withoutGlobalScope(City::SCOPE)->withAnyKey($keys)->whereNull('vehicle_id')->whereNull('unlinked_at')
             ->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->get();
         foreach ($threads as $thread) {
             $this($thread, $vehicle, $files);
@@ -52,7 +53,7 @@ final class LinkThread
     public function forOffer(Offer $offer): int
     {
         $keys = Keys::ofOffer($offer);
-        $threads = Thread::withAnyKey($keys)->whereNull('offer_id')->whereNull('unlinked_at')
+        $threads = Thread::withoutGlobalScope(City::SCOPE)->withAnyKey($keys)->whereNull('offer_id')->whereNull('unlinked_at')
             ->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->get();
         foreach ($threads as $thread) {
             $this($thread, $offer);
@@ -106,7 +107,7 @@ final class LinkThread
         }
         $fields = $message->fields();
         // Только живая ТС: письмо о выданной или отменённой — новый заезд, ему место в «Из писем».
-        $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
+        $live = fn () => Vehicle::withoutGlobalScope(City::SCOPE)->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
         $vehicle = null;
         if ($code = $fields['code']['value'] ?? null) {
             $vehicle = $live()->where('ref_key', Vehicle::keyFor($code))->first();

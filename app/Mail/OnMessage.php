@@ -15,11 +15,12 @@ use App\Mail\Reading\ReadLetter;
 use App\Offers\Actions\TakeContactFromLetter;
 use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
-use App\Offers\OfferEventType;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\ReleaseByLetters;
 use App\Park\Actions\StoreByLetters;
+use App\Park\City;
 use App\Park\Events\LetterArrived;
 use App\Park\EventType;
 use App\Park\Vehicle;
@@ -36,7 +37,13 @@ final class OnMessage
         return [MessageParsed::class => 'parsed', MessageSent::class => 'sent'];
     }
 
+    /** Разбор письма и его следствия — служебная работа: в запросе управляющего с городом без областей (`City::unscoped`). */
     public function parsed(MessageParsed $e): void
+    {
+        City::unscoped(fn () => $this->onParsed($e));
+    }
+
+    private function onParsed(MessageParsed $e): void
     {
         $message = $e->message;
         if (! $message->isRead()) {
@@ -94,6 +101,11 @@ final class OnMessage
     }
 
     public function sent(MessageSent $e): void
+    {
+        City::unscoped(fn () => $this->onSent($e));
+    }
+
+    private function onSent(MessageSent $e): void
     {
         $park = $e->message->account->scope === Scope::Park;
         // Наше письмо из приложения: прочитать и, если ветка не за ТС, положить в цепочку (этап «принята» / «выдана»).

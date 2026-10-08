@@ -849,7 +849,8 @@ class MailController
         $failed = false;
         foreach (Account::where('scope', $this->scope)->where('is_active', true)->get() as $account) {
             try {
-                $new += $sync->account($account, wait: 30);
+                // Приём почты — служебная работа: ветки и цепочки ищутся по всему ящику, не по городу управляющего.
+                $new += City::unscoped(fn () => $sync->account($account, wait: 30));
             } catch (Throwable $e) {
                 report($e);
                 $failed = true;

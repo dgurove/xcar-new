@@ -22,6 +22,7 @@ use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Offer;
 use App\Park\Actions\AutoRequest;
+use App\Park\City;
 use App\Park\Events\CandidateArrived;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -48,6 +49,11 @@ final class ChainBuilder
      * Возвращает цепочку, куда легло письмо (первую, если о нескольких машинах), или null.
      */
     public function attach(Message $message, bool $force = false, bool $quiet = false, bool $files = true): ?Candidate
+    {
+        return City::unscoped(fn () => $this->attachNow($message, $force, $quiet, $files));
+    }
+
+    private function attachNow(Message $message, bool $force, bool $quiet, bool $files): ?Candidate
     {
         $message->loadMissing(['account', 'thread', 'attachments']);
         if (! $message->isRead()) {
@@ -117,6 +123,7 @@ final class ChainBuilder
                 ImportCandidateFiles::dispatch($candidate->id, $message->id);
             }
         }
+
         return $matches->first();
     }
 
@@ -125,6 +132,11 @@ final class ChainBuilder
      * имён файлов наших ответов; номер, заказчик, тема — оттуда же; этапы — по смыслам писем; выданная — в архив.
      */
     public function fold(Candidate $candidate): void
+    {
+        City::unscoped(fn () => $this->foldNow($candidate));
+    }
+
+    private function foldNow(Candidate $candidate): void
     {
         $messages = $candidate->messages()->with(['account', 'attachments'])->get();
         if ($messages->isEmpty() || $candidate->state === CandidateState::Closed) {

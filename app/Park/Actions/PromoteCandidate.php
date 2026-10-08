@@ -9,6 +9,7 @@ use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Scope;
+use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Support\Nav;
@@ -64,7 +65,7 @@ final class PromoteCandidate
     /** ТС с тем же номером убытка, VIN или госномером, не выданная и не отменённая. */
     public function existing(Candidate $candidate): ?Vehicle
     {
-        $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
+        $live = fn () => Vehicle::withoutGlobalScope(City::SCOPE)->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
         $vin = Vin::full((string) $candidate->value('vin'));
         $plate = Patterns::plateKey($candidate->value('plate'));
 
@@ -86,7 +87,7 @@ final class PromoteCandidate
             return collect();
         }
 
-        return Candidate::where('scope', Scope::Park)->where('state', CandidateState::New)
+        return Candidate::withoutGlobalScope(City::SCOPE)->where('scope', Scope::Park)->where('state', CandidateState::New)
             ->where(function ($q) use ($vehicle, $plate) {
                 $q->whereRaw('false');
                 if ($vehicle->ref_key) {

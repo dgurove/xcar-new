@@ -4,6 +4,7 @@ namespace App\Park\Console;
 
 use App\Cars\CarModel;
 use App\Cars\Category;
+use App\Cars\Colors;
 use App\Cars\IdentityTaken;
 use App\Cars\Names;
 use App\Cars\Vin\Vin;
@@ -196,7 +197,7 @@ final class SpbFactCommand extends Command
             [$claim, $policyFromClaim] = $this->claim((string) $get('Номер убытка/полиса'));
             $out[] = [
                 'line' => $n + 1, 'title' => $title, 'vin' => Vin::normalize((string) $get('Vin номер')) ?: null,
-                'year' => ($y = (int) $get('Год выпуска')) >= 1950 ? $y : null, 'color' => ((string) $get('Цвет')) !== '' ? mb_convert_case(mb_strtolower((string) $get('Цвет')), MB_CASE_TITLE) : null,
+                'year' => ($y = (int) $get('Год выпуска')) >= 1950 ? $y : null, 'color' => $this->color((string) $get('Цвет')),
                 'sts' => $this->doc($get('СТС')), 'pts' => $this->doc($get('(Э)ПТС')), 'plate' => Patterns::plateKey($this->plate((string) $get('Рег.номер'))) ?: null,
                 'plate_raw' => $this->plate((string) $get('Рег.номер')), 'arrival' => $arrival, 'ship' => $ship, 'state' => $state, 'claim' => $claim,
                 'policy' => ((string) $get('№ Полиса')) ?: $policyFromClaim, 'value' => ($v = (int) preg_replace('/\D+/', '', (string) $get('Заявленная стоимость ТС'))) > 0 ? $v : null,
@@ -228,6 +229,14 @@ final class SpbFactCommand extends Command
         $first = preg_replace(['~\s*/\s*~', '~/{2,}~'], ['/', '/'], (string) ($parts[0] ?? ''));
 
         return [$first !== '' ? $first : null, isset($parts[1]) ? trim($parts[1]) : null];
+    }
+
+    /** Цвет словарём с правкой опечаток («Золотимтый» → «Золотистый»); не цвет («/», пусто) — без цвета. */
+    private function color(string $v): ?string
+    {
+        $v = trim($v);
+
+        return preg_match('/\pL/u', $v) ? (Colors::normalize($v, fuzzy: true) ?? mb_convert_case(mb_strtolower($v), MB_CASE_TITLE)) : null;
     }
 
     /** Госномер кириллицей: в таблице его набирали и латиницей («T119TH193»), а в письмах и в базе он кириллицей. */
@@ -422,7 +431,8 @@ final class SpbFactCommand extends Command
     {
         $row = $p['row'];
         $acceptedAt = $row['arrival']->copy()->setTime(12, 0);
-        $releasedAt = $row['ship']?->copy()->setTime(12, 0);
+        // Выбытие раньше приёма — опечатка таблицы: выдача днём приёма (как `ReleasePast`).
+        $releasedAt = $row['ship']?->copy()->max($row['arrival'])->setTime(12, 0);
         $released = $row['state'] === 'released';
         // VIN в таблице с лишним знаком («XW7DFREVX0S0011643») — берём VIN из писем строки, нет — без VIN.
         if ($row['vin'] && strlen($row['vin']) !== 17) {
@@ -434,7 +444,7 @@ final class SpbFactCommand extends Command
         $did = [];
 
         if (! $vehicle = $p['vehicle']) {
-            $vehicle = app(RegisterFromLetters::class)(null, null, $data + ['vendor_id' => $this->vendor->id], ['accepted_at' => $acceptedAt->toDateTimeString(), 'yard_id' => $this->yard->id]);
+            $vehicle = app(RegisterFromLetters::class)(null, null, $data + ['vendor_id' => $this->vendor->id], ['accepted_at' => $acceptedAt->toDateTimeString(), 'yard_id' => $this->yard->id], ['by_fact' => true]);
             $vehicle->log(EventType::Note, null, ['text' => 'Заведена по таблице Питера 09.10.2026, строка '.$row['line']]);
             $this->settleDocs($vehicle, $acceptedAt);
             $did[] = 'заведена';
@@ -514,6 +524,12 @@ final class SpbFactCommand extends Command
     private function changes(Vehicle $v, array $data): array
     {
         $out = [];
+        // Мусор вместо значения («/» в цвете и документах) — снять, если таблица ничего взамен не дала.
+        foreach (['color', 'sts', 'pts'] as $k) {
+            if ($v->{$k} !== null && ! preg_match('/[\pL\d]/u', (string) $v->{$k}) && ! isset($data[$k])) {
+                $out[$k] = null;
+            }
+        }
         foreach ($data as $k => $value) {
             $current = $v->{$k} instanceof \BackedEnum ? $v->{$k}->value : $v->{$k};
             $norm = match ($k) {

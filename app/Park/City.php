@@ -30,6 +30,32 @@ final class City
 
     private static ?int $moscow = null;
 
+    /** Глубина `unscoped`: внутри — служебная работа (приём почты, привязка писем, уникальность), город не режет. */
+    private static int $paused = 0;
+
+    /** @var list<int>|null ящики парковки — на процесс, их набор меняется раз в год */
+    private static ?array $parkAccounts = null;
+
+    /**
+     * Служебная работа в запросе управляющего с городом — без областей: приём почты («Проверить почту»), разбор письма,
+     * цепочки, привязка веток и предложений, проверки уникальности должны видеть весь парк, иначе плодят вторые ветки
+     * и цепочки или привязывают не всё. Город — граница просмотра, а не данных.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $fn
+     * @return T
+     */
+    public static function unscoped(callable $fn): mixed
+    {
+        self::$paused++;
+        try {
+            return $fn();
+        } finally {
+            self::$paused--;
+        }
+    }
+
     /** Основной город: ТС и письма без парковки и без вендора с парковкой — его. */
     public static function main(): ?int
     {
@@ -45,13 +71,13 @@ final class City
     /** Город вошедшего — только уже поднятого из сессии (`hasUser`): проверка не должна запускать вход. */
     public static function viewing(): ?int
     {
-        return Auth::hasUser() ? self::of(Auth::user()) : null;
+        return self::$paused === 0 && Auth::hasUser() ? self::of(Auth::user()) : null;
     }
 
     /** Город ТС по её парковке и вендору — то, что пишет `Vehicle::saving`. */
     public static function forVehicle(Vehicle $v): ?int
     {
-        if ($v->yard_id && ($city = Yard::whereKey($v->yard_id)->value('settlement_id'))) {
+        if ($v->yard_id && ($city = Yard::withoutGlobalScope(self::SCOPE)->whereKey($v->yard_id)->value('settlement_id'))) {
             return (int) $city;
         }
         if (! $v->yard_id && $v->city_id && ! $v->isDirty('vendor_id')) {
@@ -140,7 +166,7 @@ final class City
     /** Города, где есть парковки, — выбор в ссылке и у человека. @return array<int, string> */
     public static function options(): array
     {
-        return Settlement::whereIn('id', Yard::whereNotNull('settlement_id')->select('settlement_id'))->orderBy('name')->pluck('name', 'id')->all();
+        return once(fn () => Settlement::whereIn('id', Yard::withoutGlobalScope(self::SCOPE)->whereNotNull('settlement_id')->select('settlement_id'))->orderBy('name')->pluck('name', 'id')->all());
     }
 
     // Области по городу: каждая вешается моделью в `booted` и молчит без города у вошедшего.
@@ -159,7 +185,7 @@ final class City
     public static function threads(Builder $q, int $city): void
     {
         $t = $q->getModel();
-        $park = once(fn () => Account::where('scope', Scope::Park)->pluck('id')->all());
+        $park = self::$parkAccounts ??= Account::where('scope', Scope::Park)->pluck('id')->all();
         $q->where(fn ($w) => $w->whereNotIn($t->qualifyColumn('account_id'), $park ?: [0])
             ->orWhereIn($t->qualifyColumn('vehicle_id'), Vehicle::query()->select('id'))
             ->orWhere(fn ($n) => $n->whereNull($t->qualifyColumn('vehicle_id'))->where(fn ($c) => $c

@@ -17,6 +17,7 @@ use App\Mail\Extraction\ScanCar;
 use App\Mail\Extraction\ScanFields;
 use App\Mail\Message;
 use App\Mail\Scan\Files;
+use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Users\User;
@@ -343,7 +344,7 @@ final class FillFromDocs
     /** VIN уже стоит у другой ТС: второй раз его не пишем — письма и предложения ищут машину по VIN. */
     public function vinTaken(Vehicle $vehicle, string $vin): ?Vehicle
     {
-        return Vehicle::where('vin', strtoupper($vin))->where('id', '!=', $vehicle->id)->whereNull('cancelled_at')->first();
+        return Vehicle::withoutGlobalScope(City::SCOPE)->where('vin', strtoupper($vin))->where('id', '!=', $vehicle->id)->whereNull('cancelled_at')->first();
     }
 
     private function clean(string $field, mixed $value): ?string

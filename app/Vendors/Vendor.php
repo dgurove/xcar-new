@@ -12,6 +12,7 @@ use App\Media\MediaUrl;
 use App\Offers\Offer;
 use App\Park\City;
 use App\Park\Vehicle;
+use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Workflow\Track;
 use App\Workflow\Workflow;
@@ -48,6 +49,14 @@ class Vendor extends Model implements HasMedia
     protected static function booted(): void
     {
         static::saved(fn () => self::forgetSenders());
+        // Сменили парковку по умолчанию — город ТС вендора без своей парковки следует за ней (`Park\City`).
+        static::saved(function (self $v) {
+            if ($v->wasChanged('home_yard_id')) {
+                $city = City::ofVendor($v->id) ?? City::main();
+                Vehicle::withoutGlobalScope(City::SCOPE)->whereNull('yard_id')->where('vendor_id', $v->id)
+                    ->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->update(['city_id' => $city]);
+            }
+        });
         static::deleted(fn () => self::forgetSenders());
     }
 
@@ -131,9 +140,10 @@ class Vendor extends Model implements HasMedia
     }
 
     /** Вендоры парковки: были ТС или свой прайс, или заведён на парковке. Вендоры одной продажи — только в CRM. */
+    /** Вендоры парковки; управляющему с городом — только своего города (`Park\City`): списки, выбор в деле, реквизиты. */
     public function scopeOnPark($query)
     {
-        return $query->where('on_park', true);
+        return $query->where('on_park', true)->when(City::viewing(), fn ($q, $city) => $q->ofParkCity($city));
     }
 
     /** С вендором начала работать парковка (пришла ТС, завели прайс) — он появляется в её «Вендорах». */

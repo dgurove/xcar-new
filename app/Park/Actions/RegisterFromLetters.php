@@ -32,8 +32,9 @@ final class RegisterFromLetters
 
     /**
      * @param  array{accepted_at?: ?string, yard_id?: ?int, spot?: ?string, sold?: bool, sold_at?: ?string, pickup_name?: ?string, pickup_phone?: ?string, released_at?: ?string, released_note?: ?string}  $stages
+     * @param  array<string, bool>  $mark  откуда заведена: по письмам (по умолчанию) или по таблице (`by_fact`)
      */
-    public function __invoke(?User $by, ?Candidate $candidate, array $data, array $stages): Vehicle
+    public function __invoke(?User $by, ?Candidate $candidate, array $data, array $stages, array $mark = ['by_letters' => true]): Vehicle
     {
         Nav::forgetStaffCounts();
         $stored = $candidate?->stageOf(CandidateStage::Stored);
@@ -41,7 +42,6 @@ final class RegisterFromLetters
         $acceptedAt = ! empty($stages['accepted_at']) ? Carbon::parse($stages['accepted_at']) : (($stored['at'] ?? null) ? Carbon::parse($stored['at']) : null);
         $yard = ! empty($stages['yard_id']) ? Yard::findOrFail($stages['yard_id']) : null;
         $releasedAt = ! empty($stages['released_at']) ? Carbon::parse($stages['released_at']) : null;
-        $mark = ['by_letters' => true];
 
         $vehicle = DB::transaction(function () use ($by, $candidate, $data, $stages, $stored, $yard, $acceptedAt, $mark) {
             $spot = Vehicle::takeSpot($yard, $stages['spot'] ?? null);

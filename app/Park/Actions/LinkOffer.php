@@ -4,6 +4,7 @@ namespace App\Park\Actions;
 
 use App\Cars\IdentityTaken;
 use App\Offers\Offer;
+use App\Park\City;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -18,7 +19,7 @@ final class LinkOffer
             return $vehicle->offer;
         }
         $offer ??= self::guess($vehicle);
-        if (! $offer || Vehicle::where('offer_id', $offer->id)->where('id', '!=', $vehicle->id)->exists()) {
+        if (! $offer || Vehicle::withoutGlobalScope(City::SCOPE)->where('offer_id', $offer->id)->where('id', '!=', $vehicle->id)->exists()) {
             return null;
         }
         try {
@@ -39,7 +40,7 @@ final class LinkOffer
             if (! $value) {
                 continue;
             }
-            $found = Vehicle::where($column, $value)->whereNull('offer_id')->where('state', '!=', VehicleState::Cancelled)->limit(2)->get();
+            $found = Vehicle::withoutGlobalScope(City::SCOPE)->where($column, $value)->whereNull('offer_id')->where('state', '!=', VehicleState::Cancelled)->limit(2)->get();
             if ($found->count() === 1) {
                 return $found->first();
             }

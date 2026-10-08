@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Park\City;
 use App\Park\EventType;
 use App\Park\Pass;
 use App\Park\Vehicle;
@@ -21,7 +22,7 @@ final class RenewPickupLink
             $vehicle->revokePass('ссылка заменена');
             do {
                 $code = Pass::freshCode();
-            } while (Vehicle::where('pickup_code', $code)->exists());
+            } while (Vehicle::withoutGlobalScope(City::SCOPE)->where('pickup_code', $code)->exists());
             $vehicle->forceFill(['pickup_code' => $code])->saveQuietly();
             if ($old) {
                 $vehicle->log(EventType::PickupLinkRenewed, $by, ['old' => $old]);

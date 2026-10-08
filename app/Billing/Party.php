@@ -39,7 +39,7 @@ class Party extends Model
     {
         return $query->where('is_self', false)->where(fn ($w) => $w
             ->whereIn('id', Invoice::ofPark()->select('party_id'))
-            ->orWhereIn('id', Vendor::where('on_park', true)->whereNotNull('party_id')->select('party_id'))
+            ->orWhereIn('id', Vendor::onPark()->whereNotNull('party_id')->select('party_id'))
             ->orWhereIn('id', Vehicle::whereNotNull('owner_party_id')->select('owner_party_id'))
             ->orWhereIn('id', Vehicle::whereNotNull('buyer_party_id')->select('buyer_party_id')));
     }

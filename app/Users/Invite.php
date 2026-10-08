@@ -110,7 +110,7 @@ class Invite extends Model
             Role::Manager => 'менеджером',
             Role::Moderator => 'модератором',
             Role::Admin => 'администратором',
-            Role::Parking => $this->park_readonly ? 'помощником на парковку' : 'управляющим парковкой',
+            Role::Parking => ($this->park_readonly ? 'помощником на парковку' : 'управляющим парковкой').(($city = City::name($this->park_city_id)) ? " ({$city})" : ''),
             default => mb_strtolower($this->role->label()),
         }.'. Ссылка одноразовая';
         if ($this->expires_at) {

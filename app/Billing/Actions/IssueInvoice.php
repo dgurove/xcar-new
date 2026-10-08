@@ -62,7 +62,8 @@ final class IssueInvoice
             $issued = $direction === 'issued';
             // Реестр — только парковка: продавец — вендора-плательщика (без ТС `Seller::for` отдал бы ПРАЙМ сделок).
             $park = $vehicle !== null || $registry !== [];
-            $seller = $registry ? Seller::ofVendor(Vendor::firstWhere('party_id', $party->id) ?? $registry[array_key_first($registry)]['vehicle']->vendor) : Seller::for($vehicle);
+            // Продавец реестра — по вендору его машин: контрагент бывает общим у двух вендоров (одно юрлицо в двух городах).
+            $seller = $registry ? Seller::ofVendor($registry[array_key_first($registry)]['vehicle']->vendor ?? Vendor::firstWhere('party_id', $party->id)) : Seller::for($vehicle);
             $vatRate = $issued ? ($seller->vatRate() ?: null) : null;
             $vatOnTop = $vatRate && $party->vat_on_top;
             $invoice = Invoice::create([

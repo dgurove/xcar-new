@@ -192,7 +192,7 @@ class Vehicle extends Model implements HasMedia
         if (! $this->pickup_code) {
             do {
                 $code = Pass::freshCode();
-            } while (self::where('pickup_code', $code)->exists());
+            } while (self::withoutGlobalScope(City::SCOPE)->where('pickup_code', $code)->exists());
             $this->forceFill(['pickup_code' => $code])->saveQuietly();
         }
 
