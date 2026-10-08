@@ -2,6 +2,7 @@
 
 namespace App\Park\Console;
 
+use App\Mail\Scan\AutoScan;
 use App\Park\Actions\AutoRequest;
 use App\Park\Actions\ReleaseByLetters;
 use App\Park\Actions\StoreByLetters;
@@ -63,7 +64,8 @@ class TickPark extends Command
         $stored = $store->all();
         $released = $release->all();
         $requested = $auto->catchUp();
-        $this->info("напомнено {$soon->count()}, перезвонить {$calls->count()}, просрочено {$late->count()}, стоят долго {$idle->count()}, заведено по письмам {$stored}, выдано по письмам {$released}, заявок из писем {$requested}");
+        $swept = AutoScan::sweep();
+        $this->info("напомнено {$soon->count()}, перезвонить {$calls->count()}, просрочено {$late->count()}, стоят долго {$idle->count()}, заведено по письмам {$stored}, выдано по письмам {$released}, заявок из писем {$requested}, дочитываем {$swept}");
 
         return self::SUCCESS;
     }

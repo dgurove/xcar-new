@@ -169,6 +169,8 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
             if (isset($subject)) {
                 AutoScan::finished($subject);
             }
+            // И ТС, чьи файлы читала эта задача чужого предмета (цепочка «Из писем», исчезнувший предмет).
+            AutoScan::settle($this->ids);
             $this->ping($publish);
         }
     }
@@ -179,6 +181,7 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
         self::mark($this->ids, false);
         Cache::forget("scan:run:{$this->subject}");
         AutoScan::abandon($this->subject);
+        AutoScan::settle($this->ids);
         $this->ping(app(Publisher::class));
     }
 
