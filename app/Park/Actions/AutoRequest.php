@@ -21,6 +21,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Письмо-заявка вендора → ТС и заявка сами (владелец 07.10.2026: «пусть заявки на приём и на эвакуацию автоматически
@@ -98,6 +99,24 @@ final class AutoRequest
         AutoScan::start($request->vehicle);
 
         return $request;
+    }
+
+    /**
+     * Подстраховка часов (`park:tick`): цепочка, что должна была завестись при письме, но не завелась (письмо пришло
+     * посреди выкладки, упал запрос). Свежие две минуты не трогаем — их заводит само письмо. Возвращает число заведённых.
+     */
+    public function catchUp(): int
+    {
+        $done = 0;
+        foreach ($this->waiting()->where('created_at', '<', now()->subMinutes(2)) as $candidate) {
+            try {
+                $done += (int) (bool) $this($candidate);
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        return $done;
     }
 
     /**
