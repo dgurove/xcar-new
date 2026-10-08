@@ -84,11 +84,11 @@
                              своя форма гонялась с ней и оставляла карточку в странном состоянии. --}}
                         <div class="flex flex-col gap-2" data-controller="value-floor">
                             @if ($byValue)
-                                <input type="text" name="value" form="detail-edit-{{ $n }}" inputmode="numeric" autocomplete="off" enterkeyhint="next" class="field-input field-s nums !bg-surface" placeholder="Оценочная, ₽" aria-label="Оценочная, ₽"
+                                <input type="text" name="value" form="detail-edit-{{ $n }}" data-save-own inputmode="decimal" autocomplete="off" enterkeyhint="next" class="field-input field-s nums !bg-surface" placeholder="Оценочная, ₽" aria-label="Оценочная, ₽"
                                     data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" value="{{ $offer->value ? \App\Support\Money::nums($offer->value) : '' }}" data-detail-focus>
                             @endif
                             <div class="flex gap-2">
-                                <input type="text" name="floor_price" form="detail-edit-{{ $n }}" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Закупочная, ₽" aria-label="Закупочная, ₽"
+                                <input type="text" name="floor_price" form="detail-edit-{{ $n }}" data-save-own inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Закупочная, ₽" aria-label="Закупочная, ₽"
                                     data-controller="digits" data-action="input->digits#format" data-value-floor-target="floor" value="" @unless ($byValue) data-detail-focus @endunless>
                                 <button type="submit" form="detail-edit-{{ $n }}" name="then" value="advance" class="btn btn-s btn-accent shrink-0">Сохранить</button>
                             </div>
@@ -96,7 +96,7 @@
                         @else
                         {{-- Цена продажи — поле формы карточки, «Оценить» — её кнопка: одно сохранение с «Сохранить изменения». --}}
                         <div class="flex gap-2">
-                            <input type="text" name="asking_price" form="detail-edit-{{ $n }}" inputmode="numeric" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
+                            <input type="text" name="asking_price" form="detail-edit-{{ $n }}" data-save-own inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
                                 data-controller="digits" data-action="input->digits#format" value="" data-detail-focus>
                             <button type="submit" form="detail-edit-{{ $n }}" name="then" value="advance" class="btn btn-s btn-accent shrink-0">Оценить</button>
                         </div>

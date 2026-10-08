@@ -2886,6 +2886,8 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   /* «Показать все» / «Скрыть все» — текстовая кнопка, как «Выбрать» в «Фото»: в заголовке карточки или под лентой справа. */
   .photos-all { @apply -my-1 inline-flex min-h-8 shrink-0 items-center text-sm font-medium text-accent-text hover:text-accent-hover; }
   .photos-all[hidden] { display: none; }
+  /* Идёт «Скрыть все» — кнопка бледная, а не молчит на повторное нажатие (08.10.2026). */
+  .photos-all[aria-busy="true"] { opacity: .45; pointer-events: none; }
   .photos-over { @apply mb-1.5 flex justify-end gap-4; }
   .photos-over:not(:has(> button:not([hidden]), > .photo-block-title)) { display: none; }
   /* Кадры блоками по стадии (PhotoBlocks): подпись блока слева над лентой, кнопки справа; с подписью ряд виден всегда. */

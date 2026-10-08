@@ -518,12 +518,21 @@ function keyboardInset() {
     document.addEventListener('turbo:before-frame-render', (e) => blurInside(e.target));
     // Морф поле сохраняет вместе с фокусом (чат, поиск) — только полная подмена страницы.
     document.addEventListener('turbo:before-render', (e) => { if (e.detail.renderMethod !== 'morph') blurInside(document.body); });
+    // Прокрутка «на месте» (scrollTo в ту же точку) для WebKit — не прокрутка, он ничего не пересчитывает. iOS 26 после
+    // клавиатуры оставлял нажатия по fixed-листу со сдвигом: кнопки внизу карточки («Сохранить изменения», «Скрыть все»)
+    // рисуются на месте, а нажатие попадает мимо (08.10.2026, начальник: «часто перестают работать»). Настоящий сдвиг на
+    // 1 px и обратно заставляет его пересчитать viewport и места слоёв.
+    const nudge = () => {
+        const x = scrollX, y = scrollY;
+        if (document.documentElement.scrollHeight - innerHeight >= 1) scrollTo(x, y > 0 ? y - 1 : y + 1);
+        requestAnimationFrame(() => { scrollTo(x, y); update(); });
+    };
     let open = false;
     const settle = () => {
         const was = open;
         update();
         open = root.classList.contains('kb-open');
-        if (was && !open) setTimeout(() => scrollTo(scrollX, scrollY), 80);
+        if (was && !open) setTimeout(nudge, 80);
     };
     vv.addEventListener('resize', () => { settle(); requestAnimationFrame(shown); });
     vv.addEventListener('scroll', update);
@@ -595,8 +604,16 @@ function viewportProbe() {
     let vt = 0;
     const start = document.startViewTransition?.bind(document);
     if (start) document.startViewTransition = (...args) => { vt++; return start(...args); };
-    let span = null, until = 0;
+    let span = null, until = 0, tap = 'tap —';
     const r = (n) => Math.round(n * 10) / 10;
+    // Куда пришло касание и что под пальцем по раскладке: разные — нажатия сдвинуты (кнопки «не работают» на iOS 26).
+    const name = (el) => el ? `${el.tagName.toLowerCase()}${el.classList[0] ? '.' + el.classList[0] : ''} «${(el.textContent || '').trim().slice(0, 14)}»` : '—';
+    document.addEventListener('touchend', (e) => {
+        const t = e.changedTouches[0];
+        const under = document.elementFromPoint(t.clientX, t.clientY);
+        tap = `tap ${r(t.clientY)} sY ${r(scrollY)} vv+${r(window.visualViewport?.offsetTop ?? 0)}\n→ ${name(e.target)}\n▢ ${name(under)}${under === e.target ? '' : ' ≠'}`;
+        watch(300);
+    }, { capture: true, passive: true });
     const frame = () => {
         const bar = document.getElementById('tabbar')?.getBoundingClientRect().bottom ?? NaN;
         if (span) { span.min = Math.min(span.min, bar); span.max = Math.max(span.max, bar); }
@@ -607,6 +624,7 @@ function viewportProbe() {
             `vv ${r(vv?.height ?? 0)} +${r(vv?.offsetTop ?? 0)}  lvh ${lvh.offsetHeight} dvh ${dvh.offsetHeight} svh ${svh.offsetHeight}`,
             `safe ${cs.paddingTop} / ${cs.paddingBottom}  bar.bottom ${r(bar)}`,
             span ? `переход: bar ${r(span.min)}…${r(span.max)}  vt ${span.vt}→${vt}` : `vt ${vt}`,
+            tap,
         ].join('\n');
         if (performance.now() < until) requestAnimationFrame(frame);
     };

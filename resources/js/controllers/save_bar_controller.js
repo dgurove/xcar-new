@@ -8,6 +8,9 @@ import { Controller } from '@hotwired/stimulus';
 // Кнопка с formaction (x-ui.save-bar :action) шлёт ту же форму на другой адрес — сохранить часть формы.
 // Одно сохранение на всё (владелец 05.10.2026: «Сохранить» стирало цену в «Оценить», «Оценить» — несохранённые поля):
 // - «Оценить» и «Закупочная» сверху карточки — поля и кнопки этой же формы (form=, кнопка с then=advance, 08.10.2026);
+//   их поля помечены data-save-own: в тихое сохранение перед чужой формой не идут (набрал цену, передумал и отдал «В
+//   гараж» — машина не должна уехать оценённой), Enter в них — своя кнопка, Enter в остальных полях карточки —
+//   «Сохранить изменения», а не первая кнопка формы («Оценить»);
 // - любая другая форма рядом («+15 мин», «Принять», «В гараж», состояние) при несохранённом сначала тихо
 //   сохраняет эту (fetch с теми же полями), потом отправляется сама — ответ любой из них больше ничего не стирает.
 export default class extends Controller {
@@ -32,6 +35,8 @@ export default class extends Controller {
         // выключенной навсегда, и повторить было нечем (07.10.2026). Тост «Нет связи» с «Повторить» — net.js.
         this.onEnd = (e) => { if (e.target === this.element && !e.detail.success) this.unlock(); };
         this.element.addEventListener('turbo:submit-end', this.onEnd);
+        this.onKey = (e) => this.enter(e);
+        document.addEventListener('keydown', this.onKey);
         // Черновик формы (draft_controller) вернул набранное до перезагрузки — это несохранённое.
         if (this.element.dataset.dirty === '1') this.touched = true;
         this.show();
@@ -44,6 +49,18 @@ export default class extends Controller {
         this.element.removeEventListener('submit', this.onSubmit);
         document.removeEventListener('submit', this.onOther, true);
         this.element.removeEventListener('turbo:submit-end', this.onEnd);
+        document.removeEventListener('keydown', this.onKey);
+    }
+
+    // Enter в поле карточки (partial): браузер отправил бы форму первой её кнопкой — у черновика без цены это «Оценить»
+    // сверху, и правка пробега уводила бы к следующей строке. Здесь Enter — «Сохранить изменения»; ничего не тронуто —
+    // ничего. Поля «Оценить» (data-save-own) — как браузер: их кнопкой.
+    enter(e) {
+        const el = e.target;
+        if (!this.partialValue || e.key !== 'Enter' || e.defaultPrevented || e.isComposing || el.tagName !== 'INPUT' || el.form !== this.element || 'saveOwn' in el.dataset) return;
+        e.preventDefault();
+        const button = this.bars.map((b) => b.querySelector('[data-save-bar-button]')).find(Boolean);
+        if (this.touched && button) this.element.requestSubmit(button);
     }
 
     // scope — считаются только поля внутри этого куска формы (поля ТС в форме шага дела: правка полей шага кнопку не зовёт).
@@ -113,9 +130,13 @@ export default class extends Controller {
         if ('saveSkip' in form.dataset) return;
         const frame = this.element.closest('turbo-frame');
         if (frame ? !frame.contains(form) : form.closest('turbo-frame#detail')) return;
+        // Поля «Оценить» несёт только своя кнопка: тронуты только они — чужая форма уходит как есть.
+        const own = new Set([...this.element.elements].filter((el) => 'saveOwn' in el.dataset).map((el) => el.name));
+        const fields = [...this.dirty].filter((name) => !own.has(name));
+        if (this.partialValue && !fields.length) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        this.saveThen(form, event.submitter, [...this.dirty]);
+        this.saveThen(form, event.submitter, fields);
     }
 
     async saveThen(form, submitter, fields) {

@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { confirmSheet } from '../confirm';
+import { refreshPage } from '../live';
 
 // Список и карточка строки рядом (x-ui.shell :detail). Строка — ссылка (a[data-detail-link]) в фрейм detail; открывает и
 // закрывает контроллер, адрес (?peek=) меняет он же, не Turbo: data-turbo-action у фрейма делал из каждой загрузки визит
@@ -135,12 +136,14 @@ export default class extends Controller {
             this.motion = null;
         };
         this.frameTarget.addEventListener('detail:hold', this.onHold);
-        // Ушла форма карточки (сохранили, «Оценить», «+15 мин») — своя запись «Назад» снимается сразу, до ответа. Иначе
-        // шаг назад шёл тогда же, когда ответ перелистывал на следующую строку и менял адрес, и карточка оставалась в
-        // странном состоянии (08.10.2026). Вернулась с ошибкой — restore() поставит запись снова.
+        // Ушла форма, ответ которой встанет в карточку (сохранили, «Оценить», «+15 мин»), — своя запись «Назад» снимается
+        // сразу, до ответа. Иначе шаг назад шёл тогда же, когда ответ перелистывал на следующую строку и менял адрес, и
+        // карточка оставалась в странном состоянии (08.10.2026). Вернулась с ошибкой — restore() поставит запись снова.
+        // Форма в другой фрейм или на всю страницу карточку не перерисует — запись остаётся, «Назад» по-прежнему спросит.
         this.onSubmitStart = (e) => {
-            const form = e.target;
-            if (this.guarded && (this.frameTarget.contains(form) || form.dataset?.turboFrame === 'detail')) this.unguard();
+            const form = e.target, submitter = e.detail.formSubmission?.submitter;
+            const into = submitter?.dataset.turboFrame || form.dataset?.turboFrame || form.closest?.('turbo-frame')?.id;
+            if (this.guarded && into === 'detail') this.unguard();
         };
         document.addEventListener('turbo:submit-start', this.onSubmitStart);
         document.addEventListener('detail:advance', this.onAdvance);
@@ -190,22 +193,25 @@ export default class extends Controller {
     // спрашивает сама, а брошенная в ней сумма не держала потом каждую смену строки. После «Не сохранять» — чисто до
     // следующей карточки (released).
     get dirty() {
-        if (this.released || !this.open) return false;
-        const f = this.frameTarget;
-        if ([...f.querySelectorAll('.save-bar')].some((b) => !b.hidden)) return true;
-        return [...f.querySelectorAll('form[data-dirty]:not([data-controller~="save-bar"])')].some((form) => !form.closest('dialog')
+        return !this.released && this.open && ([...this.frameTarget.querySelectorAll('.save-bar')].some((b) => !b.hidden) || this.actionDirty);
+    }
+
+    // Набрано в форме действия сверху карточки (вывоз, гараж) — у неё не сохранение, а действие.
+    get actionDirty() {
+        return [...this.frameTarget.querySelectorAll('form[data-dirty]:not([data-controller~="save-bar"])')].some((form) => !form.closest('dialog')
             && [...form.elements].some((el) => el.matches?.('input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]), textarea') && el.value.trim() !== '' && el.value !== el.defaultValue));
     }
 
     // Уйти с карточки с несохранённым — только переспросив, как у шторок (07.10.2026, начальник вводил данные, нажимал
     // другую строку или «Закрыть» — правки молча пропадали). Как в iOS — три ответа (08.10.2026, владелец: «невозможно
     // выйти без сохранения, приходится закрывать приложение»): «Сохранить» (тихо, той же отправкой, что перед чужой
-    // формой; не прошло проверку — остаёмся у поля с ошибкой), «Не сохранять», «Остаться». Правка только в форме действия
-    // сверху (вывоз, гараж) — без «Сохранить»: у неё не сохранение, а действие. true — можно уходить; запись «Назад» к этому
-    // времени снята.
+    // формой; не прошло проверку — остаёмся у поля с ошибкой), «Не сохранять», «Остаться». Набрано и в форме действия
+    // сверху (вывоз, гараж) — без «Сохранить»: у неё не сохранение, а действие, и «Сохранить» молча бросило бы набранное.
+    // Сохранили — список перечитывается (строка могла уйти во вкладку дальше, числа пилюль). true — можно уходить; запись
+    // «Назад» к этому времени снята.
     async leave() {
         if (!this.dirty) { await this.unguard(); return true; }
-        const bar = this.saveBar;
+        const bar = this.actionDirty ? null : this.saveBar;
         const answer = await confirmSheet(bar ? 'Сохранить изменения?' : 'Не сохранять?', bar
             ? { label: 'Сохранить', alt: { label: 'Не сохранять', danger: true }, cancel: 'Остаться', danger: false }
             : { label: 'Не сохранять', cancel: 'Остаться', danger: true });
@@ -215,6 +221,7 @@ export default class extends Controller {
             if (done === 'offline') window.toast?.('Нет связи', { kind: 'danger' });
             if (done !== 'ok') return false;
             forget();
+            setTimeout(refreshPage, 400);
         } else this.released = true;
         await this.unguard();
         return true;
@@ -223,8 +230,7 @@ export default class extends Controller {
     // Форма карточки с выехавшей «Сохранить изменения» — её контроллер.
     get saveBar() {
         const bar = [...this.frameTarget.querySelectorAll('.save-bar')].find((b) => !b.hidden);
-        const id = bar?.dataset.saveBar ?? bar?.querySelector('[data-save-bar]')?.dataset.saveBar ?? bar?.closest('form')?.id;
-        const form = id && document.getElementById(id);
+        const form = bar && (bar.dataset.saveBar ? document.getElementById(bar.dataset.saveBar) : bar.closest('form'));
         return form ? this.application.getControllerForElementAndIdentifier(form, 'save-bar') : null;
     }
 
@@ -248,7 +254,8 @@ export default class extends Controller {
         if (!history.state?.detailGuard) { this.retake(); return Promise.resolve(); }
         return new Promise((resolve) => {
             const done = () => { clearTimeout(timer); if (this.unwinding === done) this.unwinding = null; resolve(); };
-            const timer = setTimeout(() => { this.retake(); done(); }, 300);
+            // Шаг назад всё-таки придёт позже — popped() поправит адрес под то, что на экране (late).
+            const timer = setTimeout(() => { this.retake(); this.late = Date.now(); done(); }, 300);
             this.unwinding = done;
             history.back();
         });
@@ -265,6 +272,16 @@ export default class extends Controller {
             this.unwinding = null;
             this.retake();
             done();
+            return;
+        }
+        // Опоздавший шаг назад от unguard (WebKit прислал popstate позже 300 мс): история уже на записи страницы со старым
+        // ?peek= и без ключа turbo — адрес и ключ — под то, что на экране сейчас.
+        if (this.late && Date.now() - this.late < 3000 && !this.guarded && !e.state?.detailGuard && !e.state?.sheet) {
+            this.late = 0;
+            const url = new URL(location.href);
+            if (this.open && this.current) url.searchParams.set('peek', this.current.dataset.detailKey);
+            else url.searchParams.delete('peek');
+            this.address(url);
             return;
         }
         // Вернулись на нашу запись (шторку над карточкой закрыли «Назад») — это не уход.

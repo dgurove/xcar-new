@@ -49,8 +49,11 @@ class OfferRequest extends FormRequest
         if ($this->filled('color')) {
             $this->merge(['color' => Colors::normalize($this->input('color'), fuzzy: false) ?? trim((string) $this->input('color'))]);
         }
+        // Целые рубли: клавиатура с запятой (inputmode="decimal") даёт набрать «1 200 000,5» — копейки отбрасываются, а не
+        // приклеиваются к рублям (было бы 12 000 005). Точка — дробная, только если за ней не три цифры: «1.500.000» из
+        // буфера — разряды (как bid_controller).
         $this->merge(collect($this->only(['mileage', 'floor_price', 'value', 'publish_price', 'asking_price', 'min_bid_price', 'engine_power']))
-            ->map(fn ($v) => $v === null || $v === '' ? null : (int) preg_replace('/\D+/', '', (string) $v))
+            ->map(fn ($v) => $v === null || $v === '' ? null : (int) preg_replace('/\D+/', '', preg_split('/,|\.(?!\d{3}(?:\D|$))/', (string) $v)[0]))
             ->all());
     }
 

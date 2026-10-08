@@ -548,17 +548,18 @@ class OfferController
         // Сохранили из карточки, и строка больше не подходит под вкладку (заполнили закупочную — уехала в «Без продажной
         // цены», поставили цену — в «Оцененные», стёрли — назад): строка уходит, на вкладках дела карточка — к следующей.
         // Тихое сохранение перед другой кнопкой (save_bar, ajax) этого не делает.
+        $saved = match (true) {
+            $unpriced && (bool) $offer->asking_price => 'Оценено: '.Money::rub($offer->asking_price),
+            ! $hadFloor && (bool) $offer->floor_price => 'Закупочная: '.Money::rub($offer->floor_price),
+            default => 'Сохранено',
+        };
         if (! $request->ajax() && ($gone = $this->gone($request, $offer->refresh()))) {
-            return back()->with('toast', match (true) {
-                $unpriced && (bool) $offer->asking_price => 'Оценено: '.Money::rub($offer->asking_price),
-                ! $hadFloor && (bool) $offer->floor_price => 'Закупочная: '.Money::rub($offer->floor_price),
-                default => 'Сохранено',
-            })->with($gone);
+            return back()->with('toast', $saved)->with($gone);
         }
 
         // «Оценить» / «Сохранить» закупочной сверху карточки — та же форма с `then=advance`: пустое поле — просто дальше.
         if ($request->input('then') === 'advance') {
-            return back()->with('detail-advance', true)->with('toast', $request->payload() ? 'Сохранено' : null);
+            return back()->with('detail-advance', true)->with('toast', $request->payload() ? $saved : null);
         }
 
         // «Сохранить изменения» — остаёмся там же (04.10.2026: кнопка выезжает после правки, экран не меняется); из

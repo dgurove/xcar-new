@@ -120,14 +120,26 @@ export default class extends Controller {
         });
         paint(hide);
         this.syncAll();
+        // Пока идёт запрос — кнопка бледная (aria-busy), а не молча глотает нажатия; ответа нет 20 с или нет связи —
+        // разметка возвращается и тост, кнопка снова живая (08.10.2026: висящий запрос держал busy навсегда).
         this.busy = true;
+        this.allTargets.forEach((b) => b.setAttribute('aria-busy', 'true'));
+        const stop = new AbortController(), timer = setTimeout(() => stop.abort(), 20000);
         try {
             const body = `hidden=${hide ? 1 : 0}` + (this.stageValue ? `&stage=${encodeURIComponent(this.stageValue)}` : '');
-            const r = await this.post(`${this.urlValue}/visibility`, body, 'application/x-www-form-urlencoded');
+            const r = await this.post(`${this.urlValue}/visibility`, body, 'application/x-www-form-urlencoded', stop.signal);
             if (!r.ok) { paint(!hide); this.syncAll(); window.toast?.('Не получилось', 'danger'); return; }
             // Карточку только для просмотра ответ не перерисовывает: он вернул бы ей плитку «добавить».
             if (!this.readonlyValue) this.apply(await r.text());
-        } finally { this.busy = false; }
+        } catch {
+            paint(!hide);
+            this.syncAll();
+            window.toast?.('Нет связи', 'danger');
+        } finally {
+            clearTimeout(timer);
+            this.busy = false;
+            this.allTargets.forEach((b) => b.removeAttribute('aria-busy'));
+        }
     }
 
     upload() {
@@ -416,9 +428,10 @@ export default class extends Controller {
         shown?.lb.spin(id, turns);
     }
 
-    post(url, body, type) {
+    post(url, body, type, signal) {
         return fetch(url, {
             method: 'POST',
+            signal,
             headers: { 'Content-Type': type, Accept: 'text/vnd.turbo-stream.html', 'X-CSRF-TOKEN': this.token, 'X-Requested-With': 'XMLHttpRequest', ...(this.rowId ? { 'X-Photos-Target': this.rowId } : {}) },
             body,
         });
