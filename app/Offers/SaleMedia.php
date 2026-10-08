@@ -52,7 +52,11 @@ final class SaleMedia extends MorphMany
         return $dictionary;
     }
 
-    /** Файл предложения с ТС ложится к ТС: стадия «от страховой», источник — CRM (при выдаче не стирается). */
+    /**
+     * Файл предложения с ТС ложится к ТС: стадия «от страховой», источник — CRM, даже если пришёл письмом offer@ или
+     * deal@ (`AttachmentImporter` пишет `mail`): в ящике парковки его нет, поэтому выдача его не стирает
+     * (`PurgeLetters`), а стёртая ТС отдаёт его предложению (`Sale::release`).
+     */
     public function save(Model $model)
     {
         $vehicle = $this->parent->parkVehicle;
@@ -62,9 +66,7 @@ final class SaleMedia extends MorphMany
         if ($model->collection_name === 'photos' && ! $model->getCustomProperty('stage')) {
             $model->setCustomProperty('stage', PhotoStage::Vendor->value);
         }
-        if (! $model->getCustomProperty('source')) {
-            $model->setCustomProperty('source', 'crm');
-        }
+        $model->setCustomProperty('source', 'crm');
 
         return $vehicle->media()->save($model);
     }

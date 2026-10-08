@@ -92,9 +92,10 @@ final class SyncOffer
         }
     }
 
+    /** У предложения свой вывоз в CRM (к менеджеру, к нам) — где машина, решает он, а не приём на парковке. */
     private function moveTo(Vehicle $vehicle, CarPlace $place, ?User $by): void
     {
-        if ($offer = $this->offer($vehicle)) {
+        if (($offer = $this->offer($vehicle)) && ! $offer->position(Track::Service)) {
             ($this->setPlace)($offer, $place, $by);
         }
     }

@@ -41,7 +41,6 @@ use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Park\Actions\MarkDoc;
-use App\Park\Actions\UnwindVehicle;
 use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\Documents\ActPdf;
@@ -364,20 +363,14 @@ class MailController
 
     /**
      * «Отменить» и «Не заявка» у черновика из писем до первого сохранения: черновика не было — он удаляется вместе
-     * с перенесёнными фото и заведённым с ним вывозом, письма отвязываются и цепочка снова ждёт в «Из писем»;
-     * «Не заявка» ещё и уводит её в архив.
+     * с перенесёнными фото (ТС парковки той же машины остаётся, `Sale::end`), письма отвязываются и цепочка снова ждёт
+     * в «Из писем»; «Не заявка» ещё и уводит её в архив.
      */
     public function dropDraft(Request $request, Offer $offer, ArchiveThread $archive, FreezeMessages $freeze, ChainBuilder $chains)
     {
         $candidate = Candidate::where('scope', Scope::Offers)->where('offer_id', $offer->id)->where('state', CandidateState::Promoted)->first();
         abort_if($this->scope !== Scope::Offers || ! $candidate || $offer->state !== OfferState::Draft || $offer->published_at !== null, 404);
-        DB::transaction(function () use ($offer, $candidate, $request) {
-            // Вывоз с маршрутом вендора завёл вместе с черновиком ТС «ожидается» и заявку на парковке — их тоже не было.
-            foreach (Vehicle::where('offer_id', $offer->id)->where('created_at', '>=', $offer->created_at)->get() as $vehicle) {
-                if (UnwindVehicle::allowed($vehicle)) {
-                    app(UnwindVehicle::class)($vehicle, $request->user());
-                }
-            }
+        DB::transaction(function () use ($offer, $candidate) {
             Thread::where('offer_id', $offer->id)->update(['offer_id' => null]);
             $candidate->update(['state' => CandidateState::New, 'offer_id' => null]);
             $offer->delete();

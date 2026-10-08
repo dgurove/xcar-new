@@ -19,11 +19,12 @@ final class PurgeLetters
 
     public function __invoke(Vehicle $vehicle): int
     {
-        // ТС была в продаже — кадры остаются: на них стоят предложение, сделка и гараж.
+        // ТС была в продаже — кадры остаются: на них стоят предложение, сделка и гараж. Документы — только из писем
+        // парковки: принесённые предложением (метка `offer`) в ящике парковки не лежат, `undo` их не вернёт.
         foreach ($vehicle->offer_id ? [] : $vehicle->media()->where('collection_name', 'photos')->where('custom_properties->source', 'mail')->get() as $media) {
             $media->delete();
         }
-        foreach ($vehicle->media()->where('collection_name', 'papers')->where('custom_properties->source', 'mail')->get() as $media) {
+        foreach ($vehicle->media()->where('collection_name', 'papers')->where('custom_properties->source', 'mail')->whereNull('custom_properties->offer')->get() as $media) {
             $media->delete();
         }
         $threads = Thread::where('vehicle_id', $vehicle->id)->park()->pluck('id');

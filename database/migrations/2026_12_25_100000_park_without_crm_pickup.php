@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Schema;
  * - ТС, заведённые вывозом («Вывоз по предложению № …», без письма), стираются как «Заведена по ошибке» (`UnwindVehicle`):
  *   заявки и события — каскадом, файлы предложения возвращаются к нему (`Sale::release`). С приёмом, бумагами, деньгами
  *   или письмами парковки — не трогаем, в лог;
- * - вендор без ТС на парковке уходит из её «Вендоров», адреса заявок у вендоров вне парковки снимаются;
+ * - вендор, у которого на парковке не осталось ТС, уходит из её «Вендоров» вместе с адресами заявок;
  * - выбор шаблона разбора заявок (`park_parser`) снят: заявки storage@ разбирает общий;
  * - из маршрутов вывоза — ветка «Автомобиль вывезен, осмотр проведён» → «Перегон в город присутствия» → «Автомобиль на
  *   площадке»; «куда» у предложений — только к менеджеру или к нам.
@@ -55,8 +55,8 @@ return new class extends Migration
             $vendors[] = $vehicle->vendor_id;
             app(UnwindVehicle::class)($vehicle, $by);
         }
-        Vendor::whereIn('id', array_filter(array_unique($vendors)))->whereDoesntHave('vehicles')->update(['on_park' => false]);
-        Vendor::where('on_park', false)->update(['park_senders' => []]);
+        $gone = Vendor::whereIn('id', array_filter(array_unique($vendors)))->whereDoesntHave('vehicles');
+        $gone->update(['on_park' => false, 'park_senders' => []]);
     }
 
     private function dropYardBranch(): void

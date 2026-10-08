@@ -60,8 +60,10 @@ final class Sale
         if (! $vehicle) {
             return;
         }
+        // Метка `offer` снимается (`relinked` их не увезёт), источник — CRM: в ящике парковки этих писем нет, и выдача
+        // (`PurgeLetters`) не должна их стирать.
         Media::where('model_type', Vehicle::class)->where('model_id', $vehicle->id)->where('custom_properties->offer', (string) $offer->id)->get()
-            ->each(fn (Media $m) => $m->forgetCustomProperty('offer')->save());
+            ->each(fn (Media $m) => $m->forgetCustomProperty('offer')->setCustomProperty('source', 'crm')->save());
         $vehicle->update(['offer_id' => null]);
         $vehicle->log(EventType::Unlinked, $by ?? auth()->user(), ['number' => $offer->number]);
     }

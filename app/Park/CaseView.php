@@ -64,7 +64,7 @@ final class CaseView
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;
         // Письма машины — только ящика парковки (`Thread::ofCar`).
-        $threads = Thread::ofCar($vehicle, $user)->get(['id', 'needs_reply_at', 'account_id']);
+        $threads = Thread::ofCar($vehicle, $user)->orderByDesc('last_message_at')->get(['id', 'subject', 'needs_reply_at', 'account_id']);
         // Выдача по QR: живой пропуск (анкета покупателя) — один запрос на экран и таймлайн.
         $pass = $vehicle->releasesByQr() ? $vehicle->pass() : null;
         $ids = $threads->pluck('id');
@@ -86,7 +86,7 @@ final class CaseView
             'asks' => $asks,
             // Текст письма о приёме — в шаг «Нужно позвонить»: «клиент сам свяжется», «документы в офисе СК», «со СТОА по адресу…».
             'letterText' => $open?->thread_id ? Intent::excerpt(Message::where('thread_id', $open->thread_id)->where('direction', Direction::In)->orderBy('date_at')->value('text_body')) : null,
-            'threads' => Thread::ofCar($vehicle, $user)->orderByDesc('last_message_at')->get(['id', 'subject']),
+            'threads' => $threads,
             // Блок «Письма» над таймлайном: последнее письмо словами, этапы — из цепочки кандидата этой ТС.
             'lastLetter' => $ids->isEmpty() ? null : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
             'docs' => self::docs($vehicle, $ids),

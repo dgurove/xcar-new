@@ -132,8 +132,8 @@ class Workflow extends Model
                 $problems[] = "На этап «{$stage->name}» не ведёт ни один исход";
             }
         }
-        if ($this->track === Track::Service && $stages->every(fn (Stage $s) => $s->car_place !== CarPlace::WithUs)) {
-            $problems[] = 'Ни один этап не доводит автомобиль до нас';
+        if ($this->track === Track::Service && $stages->every(fn (Stage $s) => ! in_array($s->car_place, [CarPlace::WithUs, CarPlace::Keeper], true))) {
+            $problems[] = 'Ни один этап не доводит автомобиль до нас или до менеджера';
         }
 
         return array_values(array_unique($problems));
