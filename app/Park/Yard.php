@@ -4,6 +4,7 @@ namespace App\Park;
 
 use App\Cars\Settlement;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +13,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Yard extends Model
 {
     protected $table = 'park_yards';
+
+    /** Управляющий с городом видит только парковки своего города (`City`); перевод в другой город берёт их без области. */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? $q->where($q->getModel()->qualifyColumn('settlement_id'), $city) : null);
+    }
 
     protected function casts(): array
     {

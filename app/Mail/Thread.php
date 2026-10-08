@@ -3,10 +3,12 @@
 namespace App\Mail;
 
 use App\Offers\Offer;
+use App\Park\City;
 use App\Park\Vehicle;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -20,6 +22,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'buyer', 'unlinked_at', 'keys', 'candidate_id', 'archived_at', 'vendor_id'])]
 class Thread extends Model
 {
+    /** Управляющий с городом видит ветки парковки только своего города (`Park\City`); ветки CRM область не трогает. */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::threads($q, $city) : null);
+    }
+
     protected $table = 'mail_threads';
 
     protected function casts(): array

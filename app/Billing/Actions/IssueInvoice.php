@@ -18,6 +18,7 @@ use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Support\Nav;
 use App\Users\User;
+use App\Vendors\Vendor;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ use Illuminate\Validation\ValidationException;
  * отрезок раньше своего отбивается; невыставленные начисления привязываются,
  * свободные строки добавляются; номер — сквозной в году у продавца; PDF — снимок в той
  * же транзакции, без файла счёта нет. `owed` — наше обязательство (номера и НДС нет, есть чужой номер).
- * Продавец — по счёту (`Seller::for`: ТС парковки — ИП, остальное — ПРАЙМ); НДС — его ставкой внутри
+ * Продавец — по счёту (`Seller::for`: ТС парковки — продавец парковки её вендора, остальное — ПРАЙМ); НДС — его ставкой внутри
  * итога, а у контрагента с «НДС сверху» (`vat_on_top`) — прибавлен к строкам.
  *
  * Реестр за месяц (`$registry`: ТС, по какой день, её начисления) — один счёт плательщику без своей ТС, строки
@@ -59,12 +60,13 @@ final class IssueInvoice
         $invoice = DB::transaction(function () use ($party, $by, $direction, $kind, $dueAt, $storageUntil, $chargeIds, $lines, $vehicle, $dealId, $offerId, $externalNo, $notes, $registry, $month) {
             $year = (int) now()->format('Y');
             $issued = $direction === 'issued';
-            // Реестр — только парковка: без ТС `Seller::for` отдал бы ПРАЙМ.
-            $seller = $registry ? Seller::Park : Seller::for($vehicle);
+            // Реестр — только парковка: продавец — вендора-плательщика (без ТС `Seller::for` отдал бы ПРАЙМ сделок).
+            $park = $vehicle !== null || $registry !== [];
+            $seller = $registry ? Seller::ofVendor(Vendor::firstWhere('party_id', $party->id) ?? $registry[array_key_first($registry)]['vehicle']->vendor) : Seller::for($vehicle);
             $vatRate = $issued ? ($seller->vatRate() ?: null) : null;
             $vatOnTop = $vatRate && $party->vat_on_top;
             $invoice = Invoice::create([
-                'seller' => $seller, 'direction' => $direction, 'year' => $issued ? $year : null, 'number' => $issued ? Numbering::next($seller, $year) : null,
+                'seller' => $seller, 'park' => $park, 'direction' => $direction, 'year' => $issued ? $year : null, 'number' => $issued ? Numbering::next($seller, $year) : null,
                 'external_no' => $externalNo, 'kind' => $kind, 'month' => $registry && $month ? Carbon::instance($month)->startOfMonth()->toDateString() : null, 'party_id' => $party->id, 'vehicle_id' => $vehicle?->id, 'deal_id' => $dealId, 'offer_id' => $offerId,
                 'issued_at' => now()->toDateString(), 'due_at' => $dueAt ? Carbon::instance($dueAt)->toDateString() : null, 'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $vatOnTop, 'state' => InvoiceState::Issued, 'notes' => $notes, 'created_by' => $by->id,
             ]);
@@ -123,7 +125,7 @@ final class IssueInvoice
             return $invoice;
         });
         // Число «выставить» у закрытия месяца считается дорого — сбрасываем только счетами парковки, не сделками CRM.
-        if ($invoice->seller === Seller::Park) {
+        if ($invoice->park) {
             Closing::forgetPending();
         }
         InvoiceIssued::dispatch($invoice, $by);

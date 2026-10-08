@@ -15,7 +15,7 @@ final class ActPdf
         $vehicle->loadMissing(['brand', 'model', 'vendor', 'yard.settlement', 'media', 'inspections']);
 
         return Pdf::render('park.act', [
-            'vehicle' => $vehicle, 'intake' => $intake, 'self' => Seller::Park->party(),
+            'vehicle' => $vehicle, 'intake' => $intake, 'self' => Seller::ofVendor($vehicle->vendor)->party(),
             'inspection' => $vehicle->lastInspection($intake ? InspectionKind::Intake : InspectionKind::Release),
         ], chroot: [storage_path('app/media')]);
     }

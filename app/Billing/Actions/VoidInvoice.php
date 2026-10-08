@@ -10,7 +10,6 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
-use App\Billing\Seller;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Support\Nav;
@@ -53,7 +52,7 @@ final class VoidInvoice
 
             return $invoice;
         });
-        if ($invoice->seller === Seller::Park) {
+        if ($invoice->park) {
             Closing::forgetPending();
         }
         InvoiceVoided::dispatch($invoice, $by);

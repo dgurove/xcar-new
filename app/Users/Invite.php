@@ -2,6 +2,7 @@
 
 namespace App\Users;
 
+use App\Park\City;
 use App\Support\Surface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +17,7 @@ use Illuminate\Support\Str;
  * регистрации). Админ зовёт менеджеров — такая ссылка одноразовая (`max_uses` 1):
  * пришедший сразу становится менеджером — и покупателей от имени менеджера.
  */
-#[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'expires_at', 'disabled_at', 'access', 'park_readonly', 'user_group_id'])]
+#[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'expires_at', 'disabled_at', 'access', 'park_readonly', 'user_group_id', 'park_city_id'])]
 class Invite extends Model
 {
     public const FIELDS = ['phone' => 'Телефон', 'email' => 'Почта'];
@@ -90,7 +91,7 @@ class Invite extends Model
             Role::Manager => 'менеджеру',
             Role::Moderator => 'модератору',
             Role::Admin => 'администратору',
-            Role::Parking => $this->park_readonly ? 'помощнику парковки' : 'управляющему парковкой',
+            Role::Parking => ($this->park_readonly ? 'помощнику парковки' : 'управляющему парковкой').(($city = City::name($this->park_city_id)) ? ', '.$city : ''),
             default => $this->role->label(),
         };
     }

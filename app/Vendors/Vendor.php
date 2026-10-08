@@ -4,12 +4,15 @@ namespace App\Vendors;
 
 use App\Billing\Cadence;
 use App\Billing\Party;
+use App\Billing\Seller;
 use App\Cars\Category;
 use App\Mail\Account;
 use App\Mail\Scope;
 use App\Media\MediaUrl;
 use App\Offers\Offer;
+use App\Park\City;
 use App\Park\Vehicle;
+use App\Park\Yard;
 use App\Workflow\Track;
 use App\Workflow\Workflow;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -34,7 +37,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'agreement_number', 'agreement_date', 'agreement_until',
     'deal_format', 'to_gallery', 'reward_kind', 'reward_value', 'payment_days', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
     'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'rate_by_value', 'buyer_rate_multiplier', 'billing_cadence',
-    'senders', 'parser', 'park_senders', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id',
+    'senders', 'parser', 'park_senders', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id', 'home_yard_id', 'park_seller',
     'intake_docs', 'intake_note', 'audience_rules',
 ])]
 class Vendor extends Model implements HasMedia
@@ -67,6 +70,7 @@ class Vendor extends Model implements HasMedia
             'buyer_pays_late' => 'bool',
             'buyer_rate_multiplier' => 'float',
             'billing_cadence' => Cadence::class,
+            'park_seller' => Seller::class,
             'senders' => 'array',
             'audience_rules' => 'array',
             'parser' => Parser::class,
@@ -186,6 +190,19 @@ class Vendor extends Model implements HasMedia
                 0 => null, 1 => $labels->first(), default => 'по парковкам'
             }];
         })->all();
+    }
+
+    /** Вендоры города парковки (`Park\City`): его письма относятся к городу или его ТС стоят в нём. */
+    public function scopeOfParkCity($q, int $city)
+    {
+        return $q->where(fn ($w) => $w->whereIn('vendors.id', City::vendorIds($city))
+            ->orWhereIn('vendors.id', Vehicle::query()->whereNotNull('vendor_id')->where('city_id', $city)->select('vendor_id')));
+    }
+
+    /** Парковка по умолчанию: на неё встают ТС вендора, чью парковку не назвал контакт, и по ней город его писем. */
+    public function homeYard(): BelongsTo
+    {
+        return $this->belongsTo(Yard::class, 'home_yard_id');
     }
 
     public function party(): BelongsTo

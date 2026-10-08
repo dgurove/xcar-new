@@ -29,10 +29,12 @@ final class SetYard
             }
             $spot = Vehicle::takeSpot($yard, $spot, $vehicle->id);
             $vehicle->update(['yard_id' => $yard->id, 'spot' => $spot]);
+            // Переведена из другого города без парковки (`Transfer`) — парковка с перевода, приём остаётся своим.
             /** @var ?VehicleEvent $accepted */
-            $accepted = $vehicle->events()->where('type', EventType::Accepted)->orderBy('id')->first();
+            $accepted = $vehicle->events()->where('type', EventType::Moved)->whereRaw("(payload->>'transfer')::bool")->whereRaw("payload->>'yard_id' is null")->latest('id')->first()
+                ?? $vehicle->events()->where('type', EventType::Accepted)->orderBy('id')->first();
             if ($accepted) {
-                $accepted->update(['payload' => array_filter(['yard' => $yard->name, 'yard_id' => $yard->id, 'spot' => $spot] + ($accepted->payload ?? []))]);
+                $accepted->update(['payload' => array_filter(['yard_id' => $yard->id, 'spot' => $spot] + ($accepted->type === EventType::Accepted ? ['yard' => $yard->name] : ['to' => $yard->name]) + ($accepted->payload ?? []))]);
             }
             $vehicle->log(EventType::Updated, $by, ['fields' => array_filter(['yard_id' => $yard->name, 'spot' => $spot])]);
 

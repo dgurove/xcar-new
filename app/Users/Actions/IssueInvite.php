@@ -64,13 +64,13 @@ final class IssueInvite
 
     /**
      * Ссылка управляющему или помощнику парковки — от администратора парковки (из «Пользователей» парковки): одноразовая,
-     * со сроком, без названия; «только приёмка» — помощник.
+     * со сроком, без названия; «только приёмка» — помощник; город — что он видит (`Park\City`, пусто — весь парк).
      */
-    public function park(User $by, CarbonInterface $expiresAt, bool $helper): Invite
+    public function park(User $by, CarbonInterface $expiresAt, bool $helper, ?int $city = null): Invite
     {
         return Invite::create([
             'code' => Invite::freshCode(), 'role' => Role::Parking, 'created_by' => $by->id, 'max_uses' => 1,
-            'expires_at' => $expiresAt, 'fields' => ['phone' => true, 'email' => true], 'park_readonly' => $helper,
+            'expires_at' => $expiresAt, 'fields' => ['phone' => true, 'email' => true], 'park_readonly' => $helper, 'park_city_id' => $city,
         ]);
     }
 

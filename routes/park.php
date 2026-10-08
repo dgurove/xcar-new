@@ -54,6 +54,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{req}/contact', [RequestController::class, 'contact']);
 
     Route::get('/cars', [VehicleController::class, 'index']);
+    Route::get('/cars/export', [VehicleController::class, 'export'])->middleware('park.manage');
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
     Route::get('/cars/{vehicle}/letters', [VehicleController::class, 'letters']);
     // Кадры письма прикрепляются: строка хода и ряд «От страховой», пока ImportThreadFiles идёт (attach_controller).
@@ -91,6 +92,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/pickup-link/renew', [PassController::class, 'renew'])->middleware(['park.manage', 'throttle:5,1']);
     Route::delete('/cars/{vehicle}', [VehicleController::class, 'destroy'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/move', [VehicleController::class, 'move']);
+    Route::post('/cars/{vehicle}/transfer', [VehicleController::class, 'transfer'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/yard', [VehicleController::class, 'yard']);
     Route::post('/cars/{vehicle}/restore', [VehicleController::class, 'restore'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/undo-intake', [VehicleController::class, 'undoIntake'])->middleware('park.manage');
@@ -134,7 +136,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/reference/models', [ReferenceController::class, 'createModel']);
     Route::get('/acts/{vehicle}/{kind}', [ActController::class, 'show'])->where('kind', 'intake|release|contract|handover');
 
-    Route::get('/yards', [YardController::class, 'index']);
+    // Раздел «Парковки» — тому, у кого их больше одной (`User::seesYards`): управляющему Питера его нет.
+    Route::get('/yards', [YardController::class, 'index'])->middleware('ability:seesYards');
     // Вендоры управляющему — смотреть карточку и править контакты (кому слать отчёты и счета); всё прочее — админу.
     Route::middleware('park.manage')->group(function () {
         Route::get('/vendors', [VendorController::class, 'index']);

@@ -15,7 +15,6 @@ use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
-use App\Billing\Seller;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
@@ -94,12 +93,12 @@ class MoneyController
     /** Счета парковки — только ИП (ПРАЙМ со сделками — в CRM). */
     private static function scoped(Builder $q): Builder
     {
-        return $q->ofSeller(Seller::Park);
+        return $q->ofPark();
     }
 
     private static function guard(Invoice $invoice): void
     {
-        abort_unless($invoice->seller === Seller::Park, 404);
+        abort_unless($invoice->park, 404);
     }
 
     public function detail(Invoice $invoice)
@@ -224,7 +223,7 @@ class MoneyController
         $items = Closing::items($month);
         // Уже выставленное за этот месяц — счета, чьё хранение кончается в нём.
         $issued = Invoice::where('direction', 'issued')->whereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Storage)->whereBetween('period_to', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()]))
-            ->where('state', '!=', InvoiceState::Void)->ofSeller(Seller::Park)->with(['party', 'vehicle.brand', 'vehicle.model'])->latest('id')->get();
+            ->where('state', '!=', InvoiceState::Void)->ofPark()->with(['party', 'vehicle.brand', 'vehicle.model'])->latest('id')->get();
 
         return view('park.money.closing', [
             'month' => $month, 'items' => $items->groupBy(fn ($i) => Closing::groupOf($i)),

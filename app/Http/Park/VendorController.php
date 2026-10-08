@@ -12,6 +12,7 @@ use App\Cars\Category;
 use App\Http\Admin\OfferPhotoController;
 use App\Mail\Scope;
 use App\Mail\Template;
+use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
@@ -51,7 +52,7 @@ class VendorController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'active';
         $q = trim((string) $request->query('q'));
-        $vendors = $facets->apply(Vendor::onPark())->with(['contacts', 'party'])->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
+        $vendors = $facets->apply(Vendor::onPark()->when(City::of($request->user()), fn ($q, $city) => $q->ofParkCity($city)))->with(['contacts', 'party'])->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('name', 'ilike', "%{$q}%")->orWhere('legal_name', 'ilike', "%{$q}%")->orWhere('inn', 'like', "%{$q}%")))
             ->orderBy(match ($sort->key) {
                 'created' => 'created_at', 'stored' => 'stored_count', default => 'name'
@@ -87,6 +88,7 @@ class VendorController
     public function show(Request $request, Vendor $vendor)
     {
         abort_unless($vendor->on_park, 404);
+        abort_if(($city = City::of($request->user())) && ! Vendor::ofParkCity($city)->whereKey($vendor->id)->exists(), 404);
         // Тарифы вендора — настройки, управляющему их нет; ставки за сутки он видит в обзоре.
         $pills = $request->user()->isParkAdmin() ? self::PILLS : array_diff_key(self::PILLS, ['tariffs' => 1]);
         abort_if($request->query('pill') === 'tariffs' && ! isset($pills['tariffs']), 404);
@@ -115,7 +117,7 @@ class VendorController
                 'debt' => $party->id ? Ledger::debtOf($party) : ['owed_to_us' => 0, 'we_owe' => 0, 'overdue' => 0],
                 'unbilled' => $stored->mapWithKeys(fn (Vehicle $v) => [$v->id => round(collect(Accrual::storage($v))->where('payer', 'vendor')->sum('amount') + (float) $v->charges()->whereNull('invoice_id')->whereNull('voided_at')->when($party->id, fn ($q) => $q->where('party_id', $party->id))->sum('amount'), 2)]),
                 'stored' => $stored,
-                'invoices' => $party->id ? Invoice::ofSeller(Seller::Park)->where('party_id', $party->id)->with(['vehicle.brand', 'vehicle.model'])->latest('issued_at')->latest('id')->get() : collect(),
+                'invoices' => $party->id ? Invoice::ofPark()->where('party_id', $party->id)->with(['vehicle.brand', 'vehicle.model'])->latest('issued_at')->latest('id')->get() : collect(),
             ];
         } elseif ($pill === 'overview') {
             $data += [
@@ -172,6 +174,8 @@ class VendorController
             'rate_by_value' => ['boolean'],
             'buyer_rate_multiplier' => ['required', 'numeric', 'between:0,20'],
             'billing_cadence' => ['required', Rule::enum(Cadence::class)],
+            'park_seller' => ['nullable', Rule::enum(Seller::class)],
+            'home_yard_id' => ['nullable', Rule::exists('park_yards', 'id')],
             'report_template_id' => ['nullable', Rule::exists('mail_templates', 'id')->where('scope', Scope::Park->value)],
             'refusal_template_id' => ['nullable', Rule::exists('mail_templates', 'id')->where('scope', Scope::Park->value)],
             'park_senders' => ['nullable', 'string', 'max:2000'],
@@ -192,7 +196,10 @@ class VendorController
             'release_without_payment' => $request->boolean('release_without_payment'),
             'release_by_qr' => $request->boolean('release_by_qr'),
             'rate_by_value' => $request->boolean('rate_by_value'),
+            // ИП — по умолчанию: пустое значение, чтобы новый продавец парковки не приходилось вписывать всем.
+            'park_seller' => ($data['park_seller'] ?? null) === Seller::Park->value ? null : ($data['park_seller'] ?? null),
         ]));
+        Vehicle::whereNull('yard_id')->where('vendor_id', $vendor->id)->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->get()->each(fn (Vehicle $v) => $v->forceFill(['city_id' => null])->save());
 
         $setLogo($vendor, $request);
 

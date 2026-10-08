@@ -26,6 +26,7 @@ use App\Users\User;
 use App\Vendors\DocRequirement;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -35,7 +36,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 #[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
-    'contact_name', 'contact_phone', 'flags', 'docs_required', 'value', 'policy_no',
+    'contact_name', 'contact_phone', 'flags', 'docs_required', 'value', 'policy_no', 'city_id',
     'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at',
     'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts',
     'sold_at', 'sold_message_id', 'buyer_free_until', 'pickup_name', 'pickup_phone', 'pickup_code', 'buyer_party_id', 'billing_cadence'])]
@@ -53,6 +54,13 @@ class Vehicle extends Model implements HasMedia
 
     protected static function booted(): void
     {
+        // Управляющий с городом видит только ТС своего города (`City`); город ТС — по парковке и вендору.
+        static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::vehicles($q, $city) : null);
+        static::saving(function (self $v) {
+            if (! $v->city_id || $v->isDirty(['yard_id', 'vendor_id'])) {
+                $v->city_id = City::forVehicle($v);
+            }
+        });
         // Одна машина — одна запись: номер убытка или VIN другой ТС не встанет (`Identity`).
         static::saving(fn (self $v) => Identity::guardVehicle($v));
         // ТС вендора на парковке — вендор становится её вендором (раздел «Вендоры» парковки).

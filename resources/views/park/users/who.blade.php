@@ -4,6 +4,7 @@
     <span class="block truncate">{{ $user->name }}</span>
     <span class="row-sub">
         <span @class(['text-accent-text' => $kind === 'admin'])>{{ mb_strtolower(\App\Http\Park\UserController::KINDS[$kind]) }}</span>
+        @if ($kind !== 'admin' && ($city = \App\Park\City::name($user->park_city_id)))<span>{{ $city }}</span>@endif
         @if ($user->phone)<span class="nums">{{ $user->phoneFormatted() }}</span>@endif
     </span>
 </span>

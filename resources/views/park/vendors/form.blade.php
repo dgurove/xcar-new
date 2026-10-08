@@ -37,6 +37,8 @@
                 <div class="fields">
                     <x-ui.field name="storage_payer" label="Платит" :options="['vendor' => 'Вендор', 'owner' => 'Страхователь', 'nobody' => 'Никто']" :value="$vendor->storage_payer"/>
                     <x-ui.field name="billing_cadence" label="Счёт" :options="Cadence::options()" :value="$vendor->billing_cadence->value"/>
+                    <x-ui.field name="park_seller" label="Счета от" :options="\App\Billing\Seller::options()" :value="($vendor->park_seller ?? \App\Billing\Seller::Park)->value"/>
+                    <x-ui.field name="home_yard_id" label="Парковка" :options="['' => 'По контакту'] + $yards->all()" :value="$vendor->home_yard_id"/>
                 </div>
                 {{-- Ставка по оценочной стоимости (договор Альфы): включено — в деле ТС поле «Оценочная стоимость». --}}
                 <x-ui.check name="rate_by_value" :checked="$vendor->rate_by_value">Ставка от оценочной стоимости</x-ui.check>

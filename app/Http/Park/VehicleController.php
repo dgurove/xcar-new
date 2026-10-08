@@ -33,11 +33,13 @@ use App\Park\Actions\PutOnSale;
 use App\Park\Actions\RestoreVehicle;
 use App\Park\Actions\SetYard;
 use App\Park\Actions\TakeOffSale;
+use App\Park\Actions\Transfer;
 use App\Park\Actions\UndoIntake;
 use App\Park\Actions\UndoRelease;
 use App\Park\Actions\UnwindVehicle;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\CaseView;
+use App\Park\City;
 use App\Park\Doc;
 use App\Park\DocKind;
 use App\Park\DocState;
@@ -45,6 +47,7 @@ use App\Park\EventType;
 use App\Park\PhotoStage;
 use App\Park\RequestType;
 use App\Park\Vehicle;
+use App\Park\VehicleExport;
 use App\Park\VehicleFields;
 use App\Park\VehicleState;
 use App\Park\Yard;
@@ -55,6 +58,7 @@ use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Sort;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -63,8 +67,14 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class VehicleController
 {
-    /** «Дней на парковке» по убыванию — дольше всех стоят (принятые раньше) сверху. */
-    public const SORTS = ['days' => ['Дней на парковке', 'desc'], 'fresh' => ['Дата заведения', 'desc'], 'amount' => ['Начислено', 'desc']];
+    /** «Дней на парковке» по убыванию — дольше всех стоят (принятые раньше) сверху; у выбывших — по дате выбытия. */
+    public const SORTS = ['days' => ['Дней на парковке', 'desc'], 'out' => ['Дата выбытия', 'desc'], 'fresh' => ['Дата заведения', 'desc'], 'amount' => ['Начислено', 'desc']];
+
+    /**
+     * Пилюли «Наличия»: стоят и выбыли (09.10.2026 — у Питера таблица приёмов и выбытий, сверку с вендором ведут по
+     * месяцу выбытия). Выбывшие — группами по месяцу выбытия, свежие сверху.
+     */
+    public const PRESETS = ['stored' => 'Стоят', 'out' => 'Выбыли'];
 
     /**
      * «Наличие» — что стоит на парковках сейчас: только stored, пилюли по парковкам.
@@ -77,37 +87,14 @@ class VehicleController
             return $detail->response();
         }
         // «Наличие» — таблицей по умолчанию (решение владельца 22.09.2026); выбор строк или плиток помнится.
-        $noRate = null;
-        $facets = Facets::for($request, 'park-vehicles',
-            Common::vendor('park_vehicles.vendor_id'),
-            Common::yard('park_vehicles.yard_id'),
-            Common::category('park_vehicles.category', 'Без типа'),
-            // «Без ставки» — пока такие ТС есть: у них не заполнены тип или стоимость, либо у вендора нет прайса.
-            // Правят их в карточке строки. Число — в границах выбранных парковок, как и прочие числа.
-            Facet::toggle('gap', 'Без ставки', function ($v) use ($request, &$noRate, &$facets) {
-                $v->whereIn('park_vehicles.id', $noRate ??= $this->noRate($request, $facets->selected('yard')));
-            })->tone('pill-danger')->counted(function () use ($request, &$noRate, &$facets) {
-                return count($noRate ??= $this->noRate($request, $facets->selected('yard')));
-            }),
-        );
+        $facets = $this->facets($request);
         ListPrefs::sync($request, 'park-vehicles', rememberTable: true, keep: $facets->keys());
         if (! $request->query->has(ListView::PARAM)) {
             $request->query->set(ListView::PARAM, ListView::TABLE);
         }
-        $q = trim((string) $request->query('q'));
-        $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q === '' ? VehicleState::Stored : null);
+        [$vehicles, $state, $q, $sort] = $this->listQuery($request, $facets);
+        $out = $state === VehicleState::Released;
         $yards = $facets->selected('yard');
-        // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
-        $vehicles = Vehicle::withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
-            ->with(['brand', 'model', 'vendor', 'yard', 'offer.deal', 'requests',
-                'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
-            ->when($state, fn ($v, $s) => $v->where('state', $s))
-            ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
-                ->orWhere('plate', 'like', '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%')->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
-        $facets->apply($vehicles);
-        $sort = Sort::from($request->query('sort'), self::SORTS, '-days');
-        $sort->key === 'fresh' ? $vehicles->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir())
-            : $vehicles->orderByRaw('accepted_at '.($sort->key === 'days' && ! $sort->desc ? 'desc' : 'asc').' nulls last')->latest();
 
         // Кадры нужны плиткам и строкам; таблице — нет (миниатюр в ней нет, карточка грузит своё).
         $vehicles->when(! ListView::isTable(ListView::fromRequest($request)), fn ($v) => $v->with('media'));
@@ -124,8 +111,10 @@ class VehicleController
             'sort' => $sort,
             'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
             'totals' => $totals,
-            // Без выбранной парковки (или с несколькими) и без поиска строки собраны под заголовками парковок.
-            'grouped' => count($yards) !== 1 && $q === '' && ! $state?->isFinal(),
+            // Без выбранной парковки (или с несколькими) и без поиска строки собраны под заголовками парковок,
+            // выбывшие — под месяцами выбытия.
+            'grouped' => count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1,
+            'byMonth' => $out && $q === '' && $sort->key === 'out',
             'q' => $q,
             'view' => ListView::pick($request, $page->total()),
         ];
@@ -136,6 +125,8 @@ class VehicleController
         $yard = count($yards) === 1 && ctype_digit($yards[0]) ? Yard::find((int) $yards[0]) : null;
 
         return view('park.vehicles.index', $data + [
+            'presets' => self::PRESETS, 'preset' => $out ? 'out' : 'stored',
+            'counts' => ['stored' => Vehicle::where('state', VehicleState::Stored)->count(), 'out' => Vehicle::where('state', VehicleState::Released)->count()],
             'state' => $state,
             'yard' => $yard,
             'facets' => $facets,
@@ -465,6 +456,18 @@ class VehicleController
         return back()->with('toast', 'Переставлена');
     }
 
+    /** Перевод в другой город (`Transfer`): после него управляющий прежнего города ТС не видит — назад в «Наличие». */
+    public function transfer(Request $request, Vehicle $vehicle, Transfer $transfer)
+    {
+        $data = $request->validate(['to' => ['required', Rule::in(array_keys(City::transferTargets($vehicle)))], 'day' => ['required', 'date', 'before_or_equal:today']]);
+        [$kind, $id] = explode(':', $data['to']);
+        $yard = $kind === 'y' ? Yard::withoutGlobalScope(City::SCOPE)->findOrFail((int) $id) : null;
+        $vehicle = $transfer($vehicle, $request->user(), $yard, $kind === 'c' ? (int) $id : null, Carbon::parse($data['day']));
+        $toast = 'Переведена: '.City::name($vehicle->city_id);
+
+        return Vehicle::whereKey($vehicle->id)->exists() ? back()->with('toast', $toast) : redirect('/cars')->with('toast', $toast);
+    }
+
     /** Парковка у ТС, заведённой без неё: со дня приёма, не перестановка. Форма шага несёт и поля ТС. */
     public function yard(Request $request, Vehicle $vehicle, SetYard $setYard)
     {
@@ -503,6 +506,70 @@ class VehicleController
     }
 
     /** Подсказка для комбобокса: по номеру, VIN, госномеру, марке. */
+    /** Чипы «Наличия»: вендор, парковка, тип ТС и «Без ставки» — одни у списка и у выгрузки. */
+    private function facets(Request $request): Facets
+    {
+        $noRate = null;
+        $facets = null;
+
+        return $facets = Facets::for($request, 'park-vehicles',
+            Common::vendor('park_vehicles.vendor_id'),
+            Common::yard('park_vehicles.yard_id'),
+            Common::category('park_vehicles.category', 'Без типа'),
+            // «Без ставки» — пока такие ТС есть: у них не заполнены тип или стоимость, либо у вендора нет прайса.
+            // Правят их в карточке строки. Число — в границах выбранных парковок, как и прочие числа.
+            Facet::toggle('gap', 'Без ставки', function ($v) use ($request, &$noRate, &$facets) {
+                $v->whereIn('park_vehicles.id', $noRate ??= $this->noRate($request, $facets->selected('yard')));
+            })->tone('pill-danger')->counted(function () use ($request, &$noRate, &$facets) {
+                return count($noRate ??= $this->noRate($request, $facets->selected('yard')));
+            }),
+        );
+    }
+
+    /**
+     * Выборка «Наличия» по адресу: пилюля (стоят или выбыли), `?state=`, поиск по всем состояниям, чипы, сортировка.
+     *
+     * @return array{0: Builder, 1: ?VehicleState, 2: string, 3: Sort}
+     */
+    private function listQuery(Request $request, Facets $facets): array
+    {
+        $q = trim((string) $request->query('q'));
+        $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? $request->query('preset') : 'stored';
+        $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q !== '' ? null : ($preset === 'out' ? VehicleState::Released : VehicleState::Stored));
+        $like = '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%';
+        // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
+        $vehicles = Vehicle::withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
+            ->with(['brand', 'model', 'vendor', 'yard', 'offer.deal', 'requests',
+                'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
+            ->when($state, fn ($v, $s) => $v->where('state', $s))
+            ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
+                ->orWhere('plate', 'like', $like)->orWhereRaw("upper(replace(coalesce(sts, ''), ' ', '')) like ?", [$like])->orWhereRaw("upper(replace(coalesce(pts, ''), ' ', '')) like ?", [$like])
+                ->orWhere('policy_no', 'ilike', '%'.$q.'%')
+                ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
+        $facets->apply($vehicles);
+        $sort = Sort::from($request->query('sort'), self::SORTS, $state === VehicleState::Released ? '-out' : '-days');
+        match ($sort->key) {
+            'fresh' => $vehicles->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir()),
+            'out' => $vehicles->orderByRaw('released_at '.$sort->dir().' nulls last')->orderBy('id', $sort->dir()),
+            default => $vehicles->orderByRaw('accepted_at '.($sort->key === 'days' && ! $sort->desc ? 'desc' : 'asc').' nulls last')->latest(),
+        };
+
+        return [$vehicles, $state, $q, $sort];
+    }
+
+    /**
+     * «Скачать» в «Наличии»: тот же список файлом с колонками таблицы парковки — Питер вёл учёт в Excel и сверяет
+     * приёмы и выбытия с вендором по месяцам (09.10.2026).
+     */
+    public function export(Request $request)
+    {
+        [$vehicles, $state] = $this->listQuery($request, $this->facets($request));
+        $name = 'Наличие '.($state === VehicleState::Released ? 'выбыли ' : '').now()->format('d.m.Y').'.xlsx';
+
+        return response()->streamDownload(fn () => VehicleExport::write($vehicles->get(), 'php://output'), $name,
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
     public function suggest(Request $request)
     {
         $q = trim((string) $request->query('q'));

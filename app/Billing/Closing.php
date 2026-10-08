@@ -4,6 +4,7 @@ namespace App\Billing;
 
 use App\Billing\Actions\IssueInvoice;
 use App\Billing\Documents\StorageActPdf;
+use App\Park\City;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -125,14 +126,20 @@ final class Closing
         $month = now()->subMonth()->startOfMonth();
 
         // Только то, что можно выставить: без плательщика и реквизитов число висело бы вечно.
-        return Cache::remember('park.closing:'.$month->format('Y-m'), 600, fn () => self::items($month)->where('ready', true)
+        $city = City::viewing();
+
+        return Cache::remember('park.closing:'.$month->format('Y-m').($city ? ":{$city}" : ''), 600, fn () => self::items($month)->where('ready', true)
             ->groupBy(fn ($i) => self::groupOf($i))->count());
     }
 
     /** Сбросить число «выставить» — после счёта или аннулирования парковки (CRM его не трогает). */
     public static function forgetPending(): void
     {
-        Cache::forget('park.closing:'.now()->subMonth()->format('Y-m'));
+        $month = now()->subMonth()->format('Y-m');
+        Cache::forget("park.closing:{$month}");
+        foreach (array_keys(City::options()) as $city) {
+            Cache::forget("park.closing:{$month}:{$city}");
+        }
     }
 
     /**

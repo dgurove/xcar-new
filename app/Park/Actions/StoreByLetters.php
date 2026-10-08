@@ -11,6 +11,7 @@ use App\Mail\Scope;
 use App\Park\Vehicle;
 use App\Park\Yard;
 use App\Vendors\Contact;
+use App\Vendors\Vendor;
 use Illuminate\Support\Collection;
 
 /**
@@ -92,7 +93,10 @@ final class StoreByLetters
         return $vehicle;
     }
 
-    /** Где стоит: по адресу того, кто из вендора пишет — у каждого эксперта свой город. */
+    /**
+     * Где стоит: по адресу того, кто из вендора пишет — у каждого эксперта свой город; иначе парковка вендора по
+     * умолчанию (`vendors.home_yard_id`: у Альфы СПб — Краснопутиловская, у Филипповой своего контакта нет).
+     */
     public function yard(Candidate $candidate): ?Yard
     {
         foreach ($candidate->messages->sortBy('date_at') as $message) {
@@ -101,7 +105,7 @@ final class StoreByLetters
             }
         }
 
-        return null;
+        return $candidate->vendor_id ? Vendor::find($candidate->vendor_id)?->homeYard : null;
     }
 
     /** Все ждущие разом: письмо пришло, пересчитали цепочки, разгребаем хвост. */

@@ -20,6 +20,6 @@ class ActController
 
         $inspection = $vehicle->lastInspection($kind === 'intake' ? InspectionKind::Intake : InspectionKind::Release);
 
-        return view('park.act', ['vehicle' => $vehicle, 'intake' => $kind === 'intake', 'inspection' => $inspection, 'self' => Seller::Park->party()]);
+        return view('park.act', ['vehicle' => $vehicle, 'intake' => $kind === 'intake', 'inspection' => $inspection, 'self' => Seller::ofVendor($vehicle->vendor)->party()]);
     }
 }

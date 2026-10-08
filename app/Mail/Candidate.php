@@ -8,9 +8,11 @@ use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Jobs\RetractCandidateNotices;
 use App\Offers\Offer;
+use App\Park\City;
 use App\Park\Vehicle;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -36,6 +38,8 @@ class Candidate extends Model
      */
     protected static function booted(): void
     {
+        // Управляющий с городом видит цепочки парковки только своего города (`Park\City`).
+        static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::candidates($q, $city) : null);
         $retract = fn (self $c) => $c->scope === Scope::Offers && RetractCandidateNotices::dispatch($c->id);
         // Только что созданная цепочка ещё не знает своего состояния — в базе оно «Ждёт» по умолчанию.
         static::updated(fn (self $c) => $c->wasChanged('state') && ($c->getOriginal('state') ?? CandidateState::New) === CandidateState::New && $retract($c));

@@ -13,7 +13,7 @@ final class Ledger
     /** @return array{owed_to_us: float, we_owe: float, overdue: float} */
     public static function debtOf(Party $party): array
     {
-        $open = Invoice::ofSeller(Seller::Park)->where('party_id', $party->id)->where('state', InvoiceState::Issued)->get();
+        $open = Invoice::ofPark()->where('party_id', $party->id)->where('state', InvoiceState::Issued)->get();
 
         return [
             'owed_to_us' => round($open->where('direction', 'issued')->sum(fn (Invoice $i) => $i->remaining()), 2),
@@ -30,7 +30,7 @@ final class Ledger
      */
     public static function debts(): Collection
     {
-        $open = Invoice::ofSeller(Seller::Park)->with('party')->where('state', InvoiceState::Issued)->get()->groupBy('party_id');
+        $open = Invoice::ofPark()->with('party')->where('state', InvoiceState::Issued)->get()->groupBy('party_id');
         $unbilled = [];
         $vehicles = Vehicle::with(['vendor.party', 'offer.deal.buyer', 'ownerParty'])->whereIn('state', [VehicleState::Stored, VehicleState::InTransit, VehicleState::Released])->whereNotNull('accepted_at')
             ->where(fn ($q) => $q->whereNull('released_at')->orWhereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at'))->get();

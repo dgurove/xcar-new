@@ -273,8 +273,6 @@
                         <x-ui.field name="contract_no" label="Номер договора" :value="$vehicle->contract_no" :placeholder="$vehicle->ref"/>
                         <x-ui.field name="contract_at" label="Дата" type="date" :value="$vehicle->contract_at?->toDateString()"/>
                         <x-ui.field name="assigned_price" label="Назначенная цена, ₽" :value="$vehicle->assigned_price"/>
-                        <x-ui.field name="pts" label="ПТС" :value="$vehicle->pts" copy/>
-                        <x-ui.field name="sts" label="СТС" :value="$vehicle->sts" copy/>
                         <x-ui.field name="owner_party_id" label="Комитент" :options="$owners" placeholder="—" :value="$vehicle->owner_party_id"/>
                         <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" :value="$vehicle->storage_rate"/>
                         <x-ui.field name="storage_rate_note" label="Почему своя" :value="$vehicle->storage_rate_note"/>
@@ -383,6 +381,17 @@
                         <x-ui.button variant="secondary" block>Переставить</x-ui.button>
                     </form>
                     <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую парковку</x-ui.button>
+                    @php $elsewhere = $canManage ? \App\Park\City::transferTargets($vehicle) : []; @endphp
+                    @if ($elsewhere)
+                        {{-- Перевод в другой город (Питер → база в Москве): ТС та же, город меняется — управляющий этого города её больше не видит. --}}
+                        <form method="post" action="/cars/{{ $vehicle->id }}/transfer" class="flex flex-col gap-2" data-turbo-confirm="Перевести ТС в другой город? Здесь она перестанет числиться">@csrf
+                            <div class="fields">
+                                <x-ui.field name="to" label="В другой город" :options="$elsewhere"/>
+                                <x-ui.field name="day" label="Когда" type="date" :value="now()->toDateString()" :min="$vehicle->accepted_at?->toDateString()" :max="now()->toDateString()"/>
+                            </div>
+                            <x-ui.button variant="ghost" block>Перевести</x-ui.button>
+                        </form>
+                    @endif
                 @endif
                 @if ($state->isBefore() && ! $open)
                     <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="secondary" block>Забрать эвакуатором</x-ui.button>

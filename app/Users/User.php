@@ -9,6 +9,7 @@ use App\Notifications\PasswordResetLetter;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\Interest;
 use App\Offers\Offer;
+use App\Park\City;
 use App\Support\Demo\HidesDemo;
 use App\Support\Phone;
 use App\Support\Surface;
@@ -34,7 +35,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -363,6 +364,23 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /** Управляющий парковкой: только park.xcar, без продаж и настроек. */
+    /**
+     * Город, которым ограничена парковка человека (`Park\City`): видит только его ТС, письма и счета. Пусто — весь парк;
+     * у администратора парковки — всегда весь.
+     */
+    public function parkCity(): ?int
+    {
+        return City::of($this);
+    }
+
+    /** Раздел «Парковки» — тому, у кого их больше одной: управляющему одной парковки он ни к чему (владелец 09.10.2026). */
+    public function seesYards(): bool
+    {
+        $city = $this->parkCity();
+
+        return ! $city || count(City::yardIds($city)) > 1;
+    }
+
     public function isParking(): bool
     {
         return $this->hasRole(Role::Parking);

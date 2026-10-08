@@ -3,6 +3,8 @@
 namespace App\Http\Park;
 
 use App\Http\Cabinet\InviteController;
+use App\Park\City;
+use App\Support\Nav;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueInvite;
 use App\Users\Invite;
@@ -41,10 +43,12 @@ class UserController
     public function update(Request $request, User $user)
     {
         $this->guard($request, $user);
-        $kind = $request->validate(['kind' => ['required', Rule::in(array_keys(self::KINDS))]])['kind'];
+        $data = $request->validate(['kind' => ['required', Rule::in(array_keys(self::KINDS))], 'park_city_id' => self::cityRule()]);
+        $kind = $data['kind'];
         $roles = ($user->roles ?? collect())->reject(fn (Role $r) => in_array($r, [Role::ParkAdmin, Role::Parking], true))->values()->all();
         $roles[] = $kind === 'admin' ? Role::ParkAdmin : Role::Parking;
-        $user->update(['roles' => $roles, 'park_readonly' => $kind === 'helper']);
+        $user->update(['roles' => $roles, 'park_readonly' => $kind === 'helper', 'park_city_id' => $kind === 'admin' ? null : ($data['park_city_id'] ?? null)]);
+        Nav::forgetStaffCounts();
 
         return back()->with('toast', self::KINDS[$kind]);
     }
@@ -66,10 +70,16 @@ class UserController
     /** Ссылка управляющему или помощнику: одноразовая, со сроком; строка ссылки — общий `invites.row`. */
     public function invite(Request $request, IssueInvite $issue)
     {
-        $data = $request->validate(['expires_at' => ['required', 'date', 'after:now']]);
-        $invite = $issue->park($request->user(), Carbon::parse($data['expires_at']), $request->boolean('park_readonly'));
+        $data = $request->validate(['expires_at' => ['required', 'date', 'after:now'], 'park_city_id' => self::cityRule()]);
+        $invite = $issue->park($request->user(), Carbon::parse($data['expires_at']), $request->boolean('park_readonly'), isset($data['park_city_id']) ? (int) $data['park_city_id'] : null);
 
         return redirect(InviteController::home())->with('invite', $invite->id);
+    }
+
+    /** Город управляющего — один из городов парковок; пусто — весь парк. */
+    private static function cityRule(): array
+    {
+        return ['nullable', 'integer', Rule::in(array_keys(City::options()))];
     }
 
     /** Только люди парковки и не сам себя: свою роль администратор не снимет — иначе парковкой некому управлять. */

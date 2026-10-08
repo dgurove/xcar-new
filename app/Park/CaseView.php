@@ -93,7 +93,7 @@ final class CaseView
             'candidate' => $threads->isEmpty() ? null : Candidate::where('vehicle_id', $vehicle->id)->latest('id')->first(),
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),
-            'staff' => User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->orderBy('name')->get(),
+            'staff' => User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->orderBy('name')->get()->filter(fn (User $u) => ! ($city = City::of($u)) || $city === (int) $vehicle->city_id)->values(),
             'vendors' => Vendor::where(fn ($q) => $q->onPark()->where('is_active', true))->orWhere('id', $vehicle->vendor_id)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
             // Персональная ставка важнее прайса: `Accrual` считает по ней, а чип показывал бы лестницу вендора.

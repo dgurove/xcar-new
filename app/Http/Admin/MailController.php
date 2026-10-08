@@ -41,6 +41,7 @@ use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Park\Actions\MarkDoc;
+use App\Park\City;
 use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\Documents\ActPdf;
@@ -968,6 +969,8 @@ class MailController
     private function guardMessage(Message $message): void
     {
         abort_unless($message->account?->scope === $this->scope || ($message->thread && $this->across($message->thread)), 404);
+        // Управляющий с городом: письмо ветки другого города — 404 (ветки сужает область `Park\City`, письма — нет).
+        abort_if($message->thread_id && City::viewing() && ! Thread::whereKey($message->thread_id)->exists(), 404);
     }
 
     /** Ветка другой стороны той же машины, и у человека есть почта той стороны. */

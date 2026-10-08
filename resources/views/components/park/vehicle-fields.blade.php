@@ -13,6 +13,8 @@
     <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$v('vendor_id')"/>
     <x-ui.vin :value="$v('vin')" span="col-span-full sm:col-span-2"/>
     <x-ui.field name="plate" label="Госномер" :value="$v('plate')" autocapitalize="characters" copy/>
+    <x-ui.field name="sts" label="СТС" :value="$v('sts')" autocomplete="off" copy/>
+    <x-ui.field name="pts" label="(Э)ПТС" :value="$v('pts')" autocomplete="off" copy/>
     <div class="col-span-full flex flex-col gap-2 empty:hidden" data-twins-target="box"></div>
     <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="old('brand_id', $brand?->id)" :text="$brand?->name" resets="#cb-model_id" required/>
     <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#cb-brand_id [name=brand_id]" :value="old('model_id', $model?->id)" :text="$model?->name" required/>

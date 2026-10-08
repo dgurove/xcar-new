@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Billing\Closing;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
-use App\Billing\Seller;
 use App\Chats\Chat;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
@@ -22,6 +21,7 @@ use App\Offers\Favorite;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
+use App\Park\City;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -59,7 +59,7 @@ final class Nav
                 self::item('Наличие', '/cars'),
                 $user?->canManagePark() ? self::item('Оплаты', '/money') : null,
                 $user?->canManagePark() ? self::item('Почта', '/mail') : null,
-                self::item('Парковки', '/yards', tab: false),
+                $user->seesYards() ? self::item('Парковки', '/yards', tab: false) : null,
                 // Вендоры управляющему — карточка и контакты; помощнику их нет.
                 $user?->canManagePark() ? self::item('Вендоры', '/vendors', tab: false) : null,
             ]));
@@ -243,7 +243,7 @@ final class Nav
                 $user->canManagePark() ? self::link('Вендоры', '/vendors', icon: 'deal') : null,
                 $user->isParkAdmin() ? self::link('Тарифы', '/tariffs', icon: 'wallet') : null,
                 $user->isParkAdmin() ? self::link('Пользователи', '/users', icon: 'user') : null,
-                self::link('Парковки', '/yards', icon: 'park'),
+                $user->seesYards() ? self::link('Парковки', '/yards', icon: 'park') : null,
                 self::link('Уведомления', '/account/notifications', icon: 'bell'),
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
                 $user->isStaff() ? self::link('Шаблоны', Surface::Crm->url('/settings/templates'), icon: 'link') : null,
@@ -417,8 +417,8 @@ final class Nav
                 return ['totals' => [
                     '/requests' => Request::whereIn('state', RequestState::open())->count(),
                     '/cars' => Vehicle::where('state', VehicleState::Stored)->count(),
-                    '/yards' => Yard::count(),
-                    '/money' => Invoice::ofSeller(Seller::Park)->where('state', InvoiceState::Issued)->count(),
+                    '/yards' => Yard::when(City::of($user), fn ($q, $city) => $q->where('settlement_id', $city))->count(),
+                    '/money' => Invoice::ofPark()->where('state', InvoiceState::Issued)->count(),
                     '/mail' => Boxes::allCount(Scope::Park),
                 ], 'fresh' => []];
             }
@@ -510,7 +510,10 @@ final class Nav
      */
     public static function staffCounts(Surface $surface): array
     {
-        return Cache::remember("nav.staff:{$surface->value}", 30, function () use ($surface) {
+        // У управляющего с городом свои числа (`Park\City`): области моделей сами сужают выборку.
+        $city = $surface === Surface::Park ? City::viewing() : null;
+
+        return Cache::remember("nav.staff:{$surface->value}".($city ? ":{$city}" : ''), 30, function () use ($surface) {
             if ($surface === Surface::Park) {
                 return [
                     // Бейдж «Заявки» — просроченные: то, что горит.
@@ -518,7 +521,7 @@ final class Nav
                     // Бейдж «Из писем» — число дел, которые надо завести: у одинокого письма-заявки цепочки нет.
                     '/requests/from-mail' => Boxes::registerCount(Scope::Park),
                     // Бейдж «Оплаты» — работа управляющего: выставить за прошлый месяц, отправить выставленное, просрочено.
-                    '/money' => Closing::pendingCount() + Invoice::ofSeller(Seller::Park)->where('state', InvoiceState::Issued)
+                    '/money' => Closing::pendingCount() + Invoice::ofPark()->where('state', InvoiceState::Issued)
                         ->where(fn ($w) => $w->whereDate('due_at', '<', now()->toDateString())->orWhereIn('id', Invoice::toSend()->select('id')))->count(),
                     '/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ];
@@ -548,6 +551,9 @@ final class Nav
         foreach (Surface::cases() as $surface) {
             Cache::forget("nav.staff:{$surface->value}");
             Cache::forget("nav.counts:{$surface->value}:staff");
+        }
+        foreach (array_keys(City::options()) as $city) {
+            Cache::forget('nav.staff:'.Surface::Park->value.":{$city}");
         }
     }
 

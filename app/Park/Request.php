@@ -6,7 +6,9 @@ use App\Mail\Chains\NodeTitle;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Users\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -15,6 +17,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Request extends Model
 {
     protected $table = 'park_requests';
+
+    /** Управляющий с городом видит заявки только ТС своего города (`City`). */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::requests($q, $city) : null);
+    }
 
     protected function casts(): array
     {
@@ -59,7 +67,7 @@ class Request extends Model
      *
      * `when` — время всегда с днём: «сегодня, 12:40», «вчера, 9:05», «7 окт, 12:40».
      *
-     * @return array{email: ?string, name: ?string, at: ?\Carbon\CarbonInterface, when: ?string}
+     * @return array{email: ?string, name: ?string, at: ?CarbonInterface, when: ?string}
      */
     public function source(): array
     {

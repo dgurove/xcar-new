@@ -14,7 +14,6 @@ use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\Events\PaymentRejected;
 use App\Billing\PaymentSource;
-use App\Billing\Seller;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
@@ -31,6 +30,7 @@ use App\Offers\Events\OffersShown;
 use App\Offers\Events\PickupAssigned;
 use App\Offers\Handover;
 use App\Offers\OfferViewer;
+use App\Park\City;
 use App\Park\Events\BuyerFormSubmitted;
 use App\Park\Events\CandidateArrived;
 use App\Park\Events\LetterArrived;
@@ -286,7 +286,7 @@ final class Notify
         if ($c->scope === Scope::Park) {
             // Заявку уже завела почта — уведомление о ней, со ссылкой на дело, а не в «Из писем».
             $request = $c->vehicle_id ? ParkRequest::where('vehicle_id', $c->vehicle_id)->whereIn('state', RequestState::open())->latest('id')->first() : null;
-            Notification::send($this->parkStaff(), $request ? ParkNotice::arrived($request) : ParkNotice::letter($c));
+            Notification::send($this->parkStaff(City::ofCandidate($c)), $request ? ParkNotice::arrived($request) : ParkNotice::letter($c));
             NotifyOwner::dispatch(new ParkLetter($c, $request));
 
             return;
@@ -302,7 +302,7 @@ final class Notify
     {
         // У выданной или отменённой ТС занятого нет — всем со стоянки.
         $assignee = $e->vehicle->state->isFinal() ? null : $e->vehicle->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
-        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(), ParkNotice::mail($e->vehicle, $e->message));
+        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff($e->vehicle->city_id), ParkNotice::mail($e->vehicle, $e->message));
     }
 
     public function parkAssigned(RequestAssigned $e): void
@@ -314,7 +314,7 @@ final class Notify
     public function parkCall(RequestCall $e): void
     {
         $r = $e->request->load(['vehicle', 'assignee']);
-        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkStaff(), ParkNotice::call($r));
+        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkStaff($r->vehicle?->city_id), ParkNotice::call($r));
     }
 
     /** Продано: сотруднику, который ведёт ТС (иначе всем на стоянке), и владельцу в Telegram. */
@@ -322,7 +322,7 @@ final class Notify
     {
         $v = $e->vehicle->load(['brand', 'model', 'vendor']);
         $assignee = $v->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
-        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(), ParkNotice::sold($v, $e->message));
+        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff($v->city_id), ParkNotice::sold($v, $e->message));
         NotifyOwner::dispatch(new ParkSold($v));
     }
 
@@ -331,7 +331,7 @@ final class Notify
     {
         $v = $e->pass->vehicle->load(['brand', 'model']);
         $assignee = $v->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
-        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff(), ParkNotice::buyerForm($v, $e->pass->name, $e->pass->pickup_on));
+        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff($v->city_id), ParkNotice::buyerForm($v, $e->pass->name, $e->pass->pickup_on));
     }
 
     public function parkWithoutQr(ReleasedWithoutQr $e): void
@@ -342,7 +342,7 @@ final class Notify
     public function parkDue(RequestDue $e): void
     {
         $r = $e->request->load(['vehicle', 'assignee']);
-        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkStaff(), ParkNotice::due($r, $e->overdue));
+        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkStaff($r->vehicle?->city_id), ParkNotice::due($r, $e->overdue));
     }
 
     public function parkIdle(VehicleIdle $e): void
@@ -350,17 +350,17 @@ final class Notify
         Notification::send($this->parkStaff()->filter->isParkAdmin(), ParkNotice::idle($e->vehicle, $e->days));
     }
 
-    /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен»; ПРАЙМ — админам, парковки — управляющим и админам. */
+    /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен»; CRM — админам, парковки — управляющим её города и админам. */
     public function invoiceOverdue(InvoiceOverdue $e): void
     {
         $invoice = $e->invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'deal.offer']);
         NotifyOwner::dispatch(new \App\Telegram\Messages\InvoiceOverdue($invoice));
-        if ($invoice->seller === Seller::Prime) {
+        if (! $invoice->park) {
             Notification::send($this->staff(), MoneyNotice::overdue($invoice));
 
             return;
         }
-        Notification::send($this->parkStaff()->filter->canManagePark(), ParkNotice::overdue($invoice));
+        Notification::send($this->parkStaff(City::ofInvoice($invoice))->filter->canManagePark(), ParkNotice::overdue($invoice));
     }
 
     /** Счёт по сделке выставлен — менеджеру сделки (платит он или его покупатель — всё равно ему). */
@@ -446,9 +446,10 @@ final class Notify
         NotifyOwner::dispatch(new AgentFeeDueMessage($fee));
     }
 
-    private function parkStaff()
+    /** Люди парковки; с городом объекта — только те, кому он виден (`Park\City`: администраторы и управляющие без города — все). */
+    private function parkStaff(?int $city = null)
     {
-        return User::parkStaff()->whereNotNull('approved_at')->get();
+        return User::parkStaff()->whereNotNull('approved_at')->get()->filter(fn (User $u) => ! $city || ! ($own = City::of($u)) || $own === $city)->values();
     }
 
     /** Сторона площадки: подтверждения, интерес, сроки, деньги, чаты — админам; модератору их нет. */

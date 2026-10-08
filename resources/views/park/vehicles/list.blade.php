@@ -5,10 +5,16 @@
 @php
     use App\Support\ListView;
     $grouped ??= false;
+    $byMonth ??= false;
     $sort ??= \App\Support\Sort::from(request('sort'), \App\Http\Park\VehicleController::SORTS, '-days');
-    $groups = $grouped
-        ? $vehicles->getCollection()->groupBy(fn ($v) => $v->yard_id ?? 0)->sortBy(fn ($g, $id) => $id ? $g->first()->yard->name : "\u{10FFFF}")
-        : collect([0 => $vehicles->getCollection()]);
+    $groups = match (true) {
+        $byMonth => $vehicles->getCollection()->groupBy(fn ($v) => $v->released_at?->format('Y-m') ?? ''),
+        $grouped => $vehicles->getCollection()->groupBy(fn ($v) => $v->yard_id ?? 0)->sortBy(fn ($g, $id) => $id ? $g->first()->yard->name : "\u{10FFFF}"),
+        default => collect([0 => $vehicles->getCollection()]),
+    };
+    $groupName = fn ($key, $group) => $byMonth
+        ? ($key ? mb_convert_case(\Illuminate\Support\Carbon::createFromFormat('Y-m', $key)->translatedFormat('F Y'), MB_CASE_TITLE) : 'Без даты')
+        : ($key ? $group->first()->yard->name : 'Без парковки');
     // Шапка сортирует нажатием (x-ui.th): «Дней» и «Начислено».
 @endphp
 @if ($vehicles->isEmpty())
@@ -27,10 +33,10 @@
                     <x-ui.th :sort="$sort" key="amount" class="num">Начислено</x-ui.th>
                 </tr>
             </x-slot:head>
-            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $q !== ''); @endphp
-            @foreach ($groups as $yardId => $group)
-                @if ($grouped)
-                    <tr class="table-group"><th colspan="7"><span class="table-group-name">{{ $yardId ? $group->first()->yard->name : 'Без парковки' }} <span class="nums">{{ $group->count() }}</span></span></th></tr>
+            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, ($q !== '' || $byMonth) && auth()->user()?->seesYards()); @endphp
+            @foreach ($groups as $key => $group)
+                @if ($grouped || $byMonth)
+                    <tr class="table-group"><th colspan="7"><span class="table-group-name">{{ $groupName($key, $group) }} <span class="nums">{{ $group->count() }}</span></span></th></tr>
                 @endif
                 @foreach ($group as $vehicle){!! $rows[$vehicle->id] !!}@endforeach
             @endforeach

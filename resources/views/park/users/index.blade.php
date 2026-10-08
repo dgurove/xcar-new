@@ -39,6 +39,7 @@
                                         @endforeach
                                     </div>
                                 </div>
+                                <x-park.city-field :city="$user->park_city_id"/>
                                 <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                             </form>
                             <form method="post" action="/users/{{ $user->id }}/revoke" class="mt-2" data-turbo-confirm="Закрыть {{ $user->shortName() }} доступ к парковке?">

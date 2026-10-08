@@ -46,6 +46,7 @@ final class AcceptInvite
                 // Модератор получает доступ, заданный в ссылке; роль «Парковка» — только приёмку или нет.
                 'access' => $invite->role === Role::Moderator ? ($invite->access ?? []) : [],
                 'park_readonly' => $invite->role === Role::Parking && $invite->park_readonly,
+                'park_city_id' => $invite->role === Role::Parking ? $invite->park_city_id : null,
             ]);
             if ($buyer && $invite->group_id) {
                 $user->groups()->attach($invite->group_id, ['created_at' => now()]);
