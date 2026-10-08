@@ -20,16 +20,18 @@ export default class extends Controller {
         document.addEventListener('turbo:submit-end', this.onEnd);
         document.addEventListener('turbo:frame-load', this.onLoad);
         this.element.querySelector('dialog')?.addEventListener('close', this.onClose);
+        this.ready = true;
         if (this.urlValue) this.load(this.urlValue);
     }
 
     // Адрес пришёл морфом той же страницы (приняли подтверждение в редакторе — session letters): контроллер не
-    // переподключается, открываем по смене значения. Первое значение открывает connect().
-    urlValueChanged(url, old) {
-        if (url && old !== undefined && url !== old && this.element.isConnected && this.onClose) this.load(url);
+    // переподключается. До connect() Stimulus тоже зовёт этот метод — первое значение открывает connect().
+    urlValueChanged(url) {
+        if (this.ready && url) this.load(url);
     }
 
     disconnect() {
+        this.ready = false;
         document.removeEventListener('turbo:submit-end', this.onEnd);
         document.removeEventListener('turbo:frame-load', this.onLoad);
     }

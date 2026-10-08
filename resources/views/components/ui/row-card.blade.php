@@ -57,7 +57,7 @@
 @if (session('detail-gone'))<turbo-stream action="remove" targets="tr[data-detail-key=&quot;{{ \App\Support\Detail::key() }}&quot;], article[data-detail-key=&quot;{{ \App\Support\Detail::key() }}&quot;]"></turbo-stream>
 @foreach ((array) session('detail-counts') as $pill => $n)<turbo-stream action="count" count="{{ (int) $n }}" targets="[data-pill-count=&quot;{{ $pill }}&quot;]"></turbo-stream>@endforeach
 @elseif ($row)<turbo-stream action="replace" targets="tr[data-detail-key=&quot;{{ \App\Support\Detail::key() }}&quot;]"><template>{{ $row }}</template></turbo-stream>@endif
-@if (session('toast') || session('toast-danger'))<turbo-stream action="toast" data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo @endif></turbo-stream>@endif
+<x-ui.flash-stream/>
 @if (session('detail-advance'))<turbo-stream action="advance"></turbo-stream>@endif
 {{-- letters — открыть окно писем с черновиком (приняли подтверждение — письмо вендору), когда карточка встанет. --}}
 @if (session('letters'))<turbo-stream action="letters" url="{{ session('letters') }}"></turbo-stream>@endif

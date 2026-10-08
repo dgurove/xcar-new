@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** Заготовка письма: тема и тело с подстановками {{ number }}, {{ car }}, {{ claim_ref }}, {{ price }}, {{ manager }}, {{ insurer }}. */
+/** Заготовка письма: тема и тело с подстановками {{ number }}, {{ car }}, {{ claim_ref }}, {{ floor }}, {{ price }}, {{ manager }}, {{ insurer }}. */
 #[Fillable(['name', 'scope', 'subject', 'body'])]
 class Template extends Model
 {
@@ -18,7 +18,7 @@ class Template extends Model
         return ['scope' => Scope::class];
     }
 
-    public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'price', 'manager', 'insurer', 'today'];
+    public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'floor', 'price', 'manager', 'insurer', 'today'];
 
     public const PARK_PLACEHOLDERS = ['ref', 'car', 'vin', 'plate', 'yard', 'address', 'date', 'days', 'damages', 'client', 'today', 'pickup_link', 'buyer_name', 'buyer_email', 'pickup_date'];
 

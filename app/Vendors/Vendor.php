@@ -234,6 +234,17 @@ class Vendor extends Model implements HasMedia
         return $this->defaultContact(...$roles)?->email;
     }
 
+    /**
+     * Кому письмо по продаже: контакт «Реализация» не из копии, сначала отмеченный основным; нет — null, письмо идёт
+     * ответом тому, кто писал (`MailController::compose`).
+     */
+    public function saleTo(): ?string
+    {
+        $to = $this->sideContacts(true)->filter(fn (Contact $c) => $c->email && ! $c->always_cc);
+
+        return ($to->firstWhere('is_default', true) ?? $to->first())?->email;
+    }
+
     /** @return list<string> адреса, которые вендор всегда держит в копии, — среди контактов своей стороны */
     public function ccEmails(bool $sale = false): array
     {

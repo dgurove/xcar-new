@@ -48,6 +48,7 @@ use App\Park\Documents\ActPdf;
 use App\Park\EventType;
 use App\Park\InspectionKind;
 use App\Park\PhotoStage;
+use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Support\Docs;
 use App\Support\Facets\Common;
@@ -522,6 +523,9 @@ class MailController
             if ($parent && ! $request->query('account') && ! $offer->vendor?->mail_account_id) {
                 $account = $accounts->firstWhere('id', $parent->account->sender()->id) ?? $account;
             }
+            // Контакт «Реализация» у вендора (Альфа — implementation@, 08.10.2026) — адресат письма по продаже, кто бы ни
+            // написал последнее письмо: ответственный по убытку и пересылка Андрея — не те, кто согласует реализацию.
+            $saleTo = $offer->vendor?->saleTo();
         }
         if ($vehicle) {
             // Письмо о машине отвечает в ту ветку, которой приехала заявка.
@@ -539,6 +543,9 @@ class MailController
             $template = (clone $template)->forceFill(['body' => self::withPickupNotice((string) $template->body)]);
         }
         $defaults = $offer && $parent ? $composer->replyWith($parent, $account, $template, $values) : $composer->fresh($account, $template, $values);
+        if ($saleTo ?? null) {
+            $defaults['to'] = $saleTo;
+        }
         if ($parent && ! $offer) {
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
         }
@@ -853,6 +860,8 @@ class MailController
             'car' => $offer->titleWithYear(),
             'vin' => $offer->vin ?? '',
             'claim_ref' => $offer->claim_ref ?? '',
+            // Закупочная с наценкой к оценочной — «Прошу согласовать реализацию за 756 000 ₽ (+10%)» (08.10.2026).
+            'floor' => Sale::floorLabel($offer->floor_price, $offer->value),
             'price' => $offer->deal?->base() ? number_format($offer->deal->base(), 0, '', ' ').' ₽' : ($offer->asking_price ? number_format($offer->asking_price, 0, '', ' ').' ₽' : ''),
             'manager' => $offer->deal?->buyer?->name ?? '',
             'insurer' => $offer->vendor?->name ?? '',

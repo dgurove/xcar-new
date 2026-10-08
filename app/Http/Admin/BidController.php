@@ -15,6 +15,9 @@ use App\Offers\DealScheme;
 use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Users\User;
+use App\Workflow\Position;
+use App\Workflow\Stage;
+use App\Workflow\Track;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -29,7 +32,7 @@ class BidController
     public function accept(Request $request, Bid $bid, AcceptBid $accept)
     {
         $switch = $bid->offer->deal()->exists();
-        $stage = $bid->offer->stage()?->id;
+        $stage = $this->stageId($bid);
         $default = DealScheme::forVendor($bid->offer->vendor?->deal_format);
         if ($bid->isGarage()) {
             $request->merge(['share' => preg_replace('/\D+/', '', (string) $request->input('share')) ?: null]);
@@ -42,7 +45,7 @@ class BidController
                 app(EnsurePickup::class)($deal->offer, $request->user(), ($data['pickup'] ?? 'manager') === 'manager' ? $bid->user : null);
             });
 
-            return $this->accepted($request, $bid, $stage, ($switch ? 'Отдали ' : 'В гараж — ').$bid->user->shortName());
+            return $this->accepted($request, $bid, $switch ? null : $stage, ($switch ? 'Отдали ' : 'В гараж — ').$bid->user->shortName());
         }
         $request->merge(['owner_price' => preg_replace('/\D+/', '', (string) $request->input('owner_price')) ?: null]);
         $data = $request->validate([
@@ -76,23 +79,29 @@ class BidController
             }
         });
 
-        return $this->accepted($request, $bid, $stage, $switch ? 'Сделка передана '.$bid->user->shortName() : 'Подтверждение принято, сделка открыта');
+        return $this->accepted($request, $bid, $switch ? null : $stage, $switch ? 'Сделка передана '.$bid->user->shortName() : 'Подтверждение принято, сделка открыта');
     }
 
     /**
      * Ответ «Принять» (владелец 08.10.2026: «нажал Принять — и сразу окошко с письмом»): строка ушла из «Есть
      * подтверждения», карточка — к следующему (`OfferController::gone`), а этап, на который встала сделка, просит
      * письмо вендору («уведомление о покупке») — окно писем открывается с черновиком (`letters`, x-ui.row-card,
-     * x-mail.window). Письмо не уходит само: его читают перед отправкой. Отдали другому на том же этапе — письмо уже было.
+     * x-mail.window). Письмо не уходит само: его читают перед отправкой. «Отдать» другому ($before null) — вендору о
+     * покупке уже писали, окна нет, даже если ветка сменилась.
      */
     private function accepted(Request $request, Bid $bid, ?int $before, string $toast)
     {
-        $offer = $bid->offer->fresh();
-        $stage = $offer->stage();
-        $letter = $stage && $stage->id !== $before ? $offer->vendorLetterUrl($stage) : null;
+        $after = $before ? $this->stageId($bid) : null;
+        $letter = $after && $after !== $before ? $bid->offer->vendorLetterUrl(Stage::find($after)) : null;
 
-        return back()->with('toast', $toast)->with(OfferController::gone($request, $offer))
+        return back()->with('toast', $toast)->with(OfferController::gone($request, $bid->offer))
             ->with('letters', $letter ? $letter.'&then=close' : null);
+    }
+
+    /** Этап продажи предложения — только номер: сравнить до и после принятия. */
+    private function stageId(Bid $bid): ?int
+    {
+        return Position::where('offer_id', $bid->offer_id)->where('track', Track::Sale)->value('stage_id');
     }
 
     /** Подтверждение за менеджера (`PlaceBidFor`): менеджер без интернета — встаёт в список, принимают обычным «Принять». */

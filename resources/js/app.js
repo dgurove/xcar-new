@@ -18,20 +18,25 @@ Turbo.StreamActions.toast = function () {
 Turbo.StreamActions.advance = function () {
     document.dispatchEvent(new CustomEvent('detail:advance'));
 };
-// Окно писем из ответа (x-ui.row-card, session letters): url — открыть с этим адресом (черновик письма вендору после
-// «Принять»), без url — закрыть (письмо ушло, MailController::send с then=close). Открываем, когда всё встало: шторка
-// «Принять» сняла свою запись в истории, карточка перешла к следующей строке (фрейм пишет адрес в ту же запись) —
-// иначе запись окна перезаписывается, и «Назад» уводит со страницы, а не закрывает окно.
+// Окно писем с черновиком из ответа карточки (x-ui.row-card, session letters — письмо вендору после «Принять»).
+// Открываем, когда карточка встала: поток advance перед этим меняет адрес страницы (detail_controller#address
+// переписывает верхнюю запись истории) — открытое раньше окно потеряло бы свою запись, и «Назад» увёл бы со списка.
+// Карточка не грузится (дальше строк нет) — сразу; ответ не пришёл за 4 с — всё равно открываем.
 Turbo.StreamActions.letters = function () {
     const url = this.getAttribute('url');
-    if (!url) { window.dispatchEvent(new CustomEvent('letters:close')); return; }
-    let quiet = 0;
-    const go = (n) => {
-        quiet = document.querySelector('turbo-frame[busy], dialog[open]:modal:not(#letters), dialog.is-closing') ? 0 : quiet + 1;
-        if (quiet < 8 && n < 240) requestAnimationFrame(() => go(n + 1));
-        else window.dispatchEvent(new CustomEvent('letters:open', { detail: { url } }));
-    };
-    requestAnimationFrame(() => go(0));
+    const open = () => window.dispatchEvent(new CustomEvent('letters:open', { detail: { url } }));
+    requestAnimationFrame(() => {
+        const frame = document.getElementById('detail');
+        if (!frame?.hasAttribute('busy')) { open(); return; }
+        let done = false;
+        const once = () => { if (!done) { done = true; requestAnimationFrame(open); } };
+        frame.addEventListener('turbo:frame-load', once, { once: true });
+        setTimeout(once, 4000);
+    });
+};
+// Письмо из черновика ушло (MailController::send с then=close) — окно писем закрывается без перечитывания страницы.
+Turbo.StreamActions['letters-close'] = function () {
+    window.dispatchEvent(new CustomEvent('letters:close'));
 };
 // Дело в карточке поменяло весь список (лента «Оплат»: строка уходит из «Надо сделать» в «Историю») — страница
 // перечитывается морфом с той же карточкой. Штатный refresh Turbo молча пропускает, пока идёт визит фрейма карточки

@@ -58,11 +58,13 @@ final class Composer
         $reply = $this->reply($parent);
         $rendered = $template?->render($values) ?? ['subject' => '', 'body' => ''];
 
+        // Тема шаблона главнее «Re: …» (08.10.2026: у уведомления о покупке — только номер убытка); переписка
+        // остаётся одной веткой по In-Reply-To.
         return [
             'to' => $reply['to'] ?: ($values['to'] ?? ''),
             'cc' => $values['cc'] ?? '',
-            'subject' => $reply['subject'],
-            'body' => $rendered['body'].$this->signature($account).$this->quote($parent),
+            'subject' => trim($rendered['subject']) ?: $reply['subject'],
+            'body' => $this->text($rendered['body']).$this->signature($account).$this->quote($parent),
         ];
     }
 
@@ -70,7 +72,13 @@ final class Composer
     {
         $rendered = $template?->render($values) ?? ['subject' => '', 'body' => ''];
 
-        return ['to' => $values['to'] ?? '', 'cc' => $values['cc'] ?? '', 'subject' => $rendered['subject'], 'body' => $rendered['body'].$this->signature($account)];
+        return ['to' => $values['to'] ?? '', 'cc' => $values['cc'] ?? '', 'subject' => $rendered['subject'], 'body' => $this->text($rendered['body']).$this->signature($account)];
+    }
+
+    /** Текст шаблона без разметки — абзацами и строками (`Template::html`): редактор письма склеивал его в одну строку. */
+    private function text(string $body): string
+    {
+        return $body === '' || preg_match('/<\/?[a-z][^>]*>/i', $body) ? $body : Template::html($body);
     }
 
     /**

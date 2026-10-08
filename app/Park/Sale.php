@@ -6,6 +6,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Actions\LinkOffer;
 use App\Park\Actions\UpdateVehicle;
+use App\Support\Money;
 use App\Users\User;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -110,6 +111,24 @@ final class Sale
         };
 
         return (int) (ceil(round($price, 2) / 1000) * 1000);
+    }
+
+    /**
+     * Закупочная словами для письма страховой: «756 000 ₽ (+10%)» — наценка к оценочной по тому же правилу, что
+     * `floorFrom` (+50 000 ₽, +10%, +200 000 ₽). Вписанная рукой (не по правилу) или без оценочной — без скобок.
+     */
+    public static function floorLabel(?int $floor, ?int $value): string
+    {
+        if (! $floor) {
+            return '';
+        }
+        $markup = $value && $floor === self::floorFrom($value) ? match (true) {
+            $value < 500_000 => '+'.Money::rub(50_000),
+            $value < 2_000_000 => '+10%',
+            default => '+'.Money::rub(200_000),
+        } : null;
+
+        return Money::rub($floor).($markup ? " ({$markup})" : '');
     }
 
     /**

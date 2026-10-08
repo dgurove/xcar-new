@@ -2,7 +2,7 @@
      (флаг данных, «фото едут», «скрыта»); от 640 ДЛ и размещение встают столбцами. Тип — только иконкой: словом и
      столбцом он повторял её. Логотипа лизинговой перед ДЛ нет — у всей таблицы он один, это закупка одного вендора. Справа наша
      цена или лаймовое «оценить», под ней предложения менеджеров числом. Нажатие — карточка, в нём и оценка;
-     data-unpriced — без нашей цены, по ним карточка идёт «Дальше». Ушедшая в предложение — справа его номер. --}}
+     data-todo — без нашей цены, по ним карточка идёт «Дальше». Ушедшая в предложение — справа его номер. --}}
 @props(['car', 'purchase'])
 @php
     use App\Purchases\ImportState;
@@ -13,7 +13,7 @@
     $flag = $car->specs_state->needsAttention() ? $car->specs_state->label() : ($car->photos_state->needsAttention() ? $car->photos_state->label() : null);
     $note = $flag ? mb_strtolower($flag) : (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true) ? 'фото едут' : (! $car->is_published ? 'скрыта' : null));
 @endphp
-<tr data-detail-key="{{ $car->ref }}" data-search-row id="car-{{ $car->id }}" class="{{ $car->is_published ? '' : 'text-ink-muted' }}" @if (!$car->price_final && !$car->offer_id) data-unpriced @endif>
+<tr data-detail-key="{{ $car->ref }}" data-search-row id="car-{{ $car->id }}" class="{{ $car->is_published ? '' : 'text-ink-muted' }}" @if (!$car->price_final && !$car->offer_id) data-todo @endif>
     <td class="grow">
         <x-ui.row-link :key="$car->ref"><span class="cell-title"><x-ui.cat-icon :category="$car->kind->category()"/>{{ $car->titleWithYear() }}</span></x-ui.row-link>
         <span class="cell-sub">

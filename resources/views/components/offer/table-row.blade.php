@@ -5,7 +5,7 @@
      У черновика нет ни номера (он ещё не выставлен), ни слова «черновик»: его и так видно по чипу «Оценить» и цене.
      Черновик из парковки — исключение: на месте состояния «парковка с …» (дата приёма ТС). Последний столбец —
      когда заведено.
-     В галерее вместо подтверждений — интерес. Нажатие — карточка; data-unpriced — черновик без цены продажи,
+     В галерее вместо подтверждений — интерес. Нажатие — карточка; data-todo — у человека по строке есть дело,
      по ним карточка идёт «Дальше» («Оценить»). checkable — галочка первым столбцом («Оцененные», «Публикация»; group — ключ
      слота для галочки группы); не готовое к продаже вместо галочки получает красное «нет фото» второй строкой, срок
      страховой раньше ближайшего слота — тоже красным. cols — столбцы вкладки (OfferController::columns, null — все):
@@ -39,7 +39,7 @@
     // и на телефоне справа стоит закупочная.
     $nofloor = $unpriced && ! $offer->floor_price && ! $offer->isScheduled();
     $floorSide = $cols !== null && ! in_array('price', $cols, true);
-    // data-unpriced — у человека по строке есть дело (OfferController::todo): по таким карточка идёт «Дальше».
+    // data-todo — у человека по строке есть дело (OfferController::todo): по таким карточка идёт «Дальше».
     $todo = auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user());
     // Поставлено в слот — «выйдет сегодня в 16:00» на месте состояния.
     $slot = $offer->isScheduled() ? 'выйдет '.\App\Offers\Slots::phrase($offer->slot_at) : null;
@@ -51,7 +51,7 @@
     $noVin = blank($offer->vin) && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     $late = $checkable && $draft && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
 @endphp
-<tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($todo) data-unpriced @endif>
+<tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($todo) data-todo @endif>
     @if ($checkable)<td class="pick-cell">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>@endif
     <td class="grow">
         <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/>@if ($noVin)<span class="ml-1.5 text-sm text-danger">Нет VIN</span>@endif</span></x-ui.row-link>

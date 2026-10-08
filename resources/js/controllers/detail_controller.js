@@ -685,7 +685,7 @@ export default class extends Controller {
     advance() {
         const rows = this.rows, cur = this.current;
         const from = cur ? rows.indexOf(cur) + 1 : (this.lastIndex ?? 0);
-        const next = rows.slice(from).find((r) => r.hasAttribute('data-unpriced')) ?? rows.slice(0, from).find((r) => r.hasAttribute('data-unpriced') && r !== cur);
+        const next = rows.slice(from).find((r) => r.hasAttribute('data-todo')) ?? rows.slice(0, from).find((r) => r.hasAttribute('data-todo') && r !== cur);
         if (next) {
             this.wantFocus = true;
             this.show(next);

@@ -2,10 +2,10 @@
      Привязка, архив, «Не прочитано» и в CRM ссылка на страницу ветки — в меню «···». Страницы ветки на стоянке нет. --}}
 @php $park = $base === '/mail'; $who = collect($thread->counterparts())->map(fn ($p) => $p['name'] ?: $p['email'])->take(3); $linked = $park ? $thread->vehicle : $thread->offer; $thread->loadMissing('candidate'); $menu = 'thread-menu-'.$thread->id; @endphp
 <turbo-frame id="letters-frame" target="_top">
-    {{-- Ответ отправки из окна: тост здесь, страница под окном его не нарисует; letters-close — письмо после «Принять»,
+    {{-- Ответ действия из окна: тост здесь, страница под окном его не нарисует; letters-close — письмо после «Принять»,
          окно закрывается. --}}
-    @if (session('toast'))<turbo-stream action="toast" data-message="{{ session('toast') }}" data-kind=""></turbo-stream>@endif
-    @if (session('letters-close'))<turbo-stream action="letters"></turbo-stream>@endif
+    <x-ui.flash-stream/>
+    @if (session('letters-close'))<turbo-stream action="letters-close"></turbo-stream>@endif
     <div class="flex flex-col gap-4" data-controller="unhide">
         <div>
             <div class="flex items-center gap-2">
