@@ -3,7 +3,7 @@
      проверяют и дописывают. Поле без имени — в форму не уходит. --}}
 @props(['span' => 'col-span-full'])
 <div class="field {{ $span }}" data-controller="car-text">
-    <label for="f-car-text" class="field-label">Текст про машину</label>
+    <label for="f-car-text" class="field-label">Текст про ТС</label>
     <div class="vin-box">
         <textarea id="f-car-text" rows="3" autofocus autocomplete="off" spellcheck="false" placeholder="Номер убытка, марка, модель, VIN, год, пробег"
             class="field-input paste-input" data-car-text-target="input" data-action="paste->car-text#pasted input->car-text#check keydown.meta+enter->car-text#parse keydown.ctrl+enter->car-text#parse"></textarea>

@@ -59,7 +59,8 @@
                 @else
                     <div class="chat-rows-list mt-4">
                         @foreach ($chats as $c)
-                            <x-chat.row :chat="$c" :me="$me" :href="($crm ? '/work/chats/' : '/account/chats/').$c->id" staff/>
+                            {{-- Чат покупателя с менеджером на сайте сотруднику не открыть — только в CRM. --}}
+                            <x-chat.row :chat="$c" :me="$me" :href="$crm ? '/work/chats/'.$c->id : ($c->manager_id ? \App\Support\Surface::Crm->url('/work/chats/'.$c->id) : '/account/chats/'.$c->id)" staff/>
                         @endforeach
                     </div>
                 @endif

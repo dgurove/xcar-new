@@ -18,7 +18,7 @@ final class Stock extends Route
             'sale' => $sale['sale'],
             'confirm' => ['name' => 'Согласие на покупку', 'text' => 'Автомобиль Ваш по Вашей цене. Подтвердите покупку'],
             'payment' => ['name' => 'Оплата', 'text' => 'Счёт выставлен. После оплаты передадим автомобиль'],
-            'handover' => ['name' => 'Получение автомобиля', 'text' => 'Автомобиль оплачен, его можно забирать с площадки поставщика'],
+            'handover' => ['name' => 'Получение автомобиля', 'text' => 'Автомобиль оплачен, его можно забирать у поставщика'],
             'won' => $sale['won'],
             'nobody' => $sale['nobody'],
         ]);
@@ -55,8 +55,8 @@ final class Stock extends Route
                 'exits' => [['Поставщику оплачено', 'staff', 'pickup', 'deal'], ['Поставщику оплачено', 'staff', 'closed_won', 'keeps']],
             ],
             'pickup' => [
-                'name' => 'Выдача на площадке поставщика', 'block' => 'handover', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY,
-                'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Автомобиль оплачен поставщику. Заберите его с площадки и отметьте, что забрали',
+                'name' => 'Выдача у поставщика', 'block' => 'handover', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY,
+                'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Автомобиль оплачен поставщику. Заберите его у поставщика и отметьте, что забрали',
                 'staff_fields' => [['label' => 'Адрес площадки', 'type' => 'textarea'], ['label' => 'Контакт на площадке'], ['label' => 'Дата выдачи']],
                 'exits' => [['Автомобиль забрал', 'manager', 'closed_won'], ['Автомобиль передан', 'staff', 'closed_won']],
             ],

@@ -24,7 +24,7 @@ enum CarState: string
     public function label(): string
     {
         return match ($this) {
-            self::Waiting => 'Ждёт машину',
+            self::Waiting => 'Ждёт ТС',
             self::Repair => 'Подготовка',
             self::Ready => 'Готова',
             self::Selling => 'В продаже',

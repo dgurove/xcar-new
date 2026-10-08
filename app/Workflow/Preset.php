@@ -29,7 +29,7 @@ enum Preset: string
             self::Alfa => 'Как у АльфаСтрахования',
             self::Sovcombank => 'Как у Совкомбанка',
             self::Pickup => 'Вывоз от страхователя',
-            self::Stock => 'Своя машина на парковке',
+            self::Stock => 'Своё ТС на парковке',
         };
     }
 

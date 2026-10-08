@@ -23,7 +23,7 @@ final class Sovcombank extends Route
     {
         $blocks = self::withGarageBlocks($this->saleBlocks());
         unset($blocks['agreement'], $blocks['declined']);
-        $blocks['agreement_garage']['text'] = 'Машина уходит к Вам в гараж: оплачиваем её поставщику и оформляем документы на нас';
+        $blocks['agreement_garage']['text'] = 'Автомобиль уходит к Вам в гараж: оплачиваем её поставщику и оформляем документы на нас';
 
         return $blocks + [
             'handover' => ['name' => 'Передача автомобиля', 'text' => 'Осталось передать автомобиль покупателю'],

@@ -39,7 +39,7 @@
                     <input type="hidden" name="audience_rules" value="{{ $vendor->audience_rules ? json_encode($vendor->audience_rules) : '' }}" data-audience-target="rules">
                     <x-audience.editor/>
                 </div>
-                <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание — обязанность купить</x-ui.check>
+                <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание означает покупку</x-ui.check>
                 <x-ui.check name="offers_include_vat" :checked="$vendor->offers_include_vat">Цены предложений с НДС</x-ui.check>
                 <x-ui.check name="to_gallery" :checked="$vendor->to_gallery">Черновики в галерею на {{ config('xcar.gallery_days') }} дня</x-ui.check>
                 <div class="list-head">Почта</div>

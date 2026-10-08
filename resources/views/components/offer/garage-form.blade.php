@@ -22,7 +22,7 @@
     @unless ($picked)
         {{-- Где машина — словами (04.10.2026: бывает, менеджер её уже вывез и она стоит у него). --}}
         <div class="flex flex-col gap-1.5">
-            <span class="field-label">Где машина</span>
+            <span class="field-label">Где ТС</span>
             <div class="flex flex-wrap gap-2">
                 @foreach (\App\Garage\Actions\GiveToGarage::WHERE as $key => $label)
                     <label class="choice"><input type="radio" name="where" value="{{ $key }}" @checked(old('where', 'owner') === $key)><span>{{ $label }}</span></label>

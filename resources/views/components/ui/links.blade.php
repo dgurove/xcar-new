@@ -7,7 +7,7 @@
 @if ($from && \App\Support\CarLinks::shows($from, auth()->user()))
     @php $id = 'links-'.($offer ? 'o'.$offer->id : 'v'.$vehicle->id); @endphp
     <span {{ $attributes->merge(['class' => 'car-links']) }} data-controller="menu">
-        <button type="button" class="car-links-btn" data-action="menu#toggle:stop:prevent" aria-label="Где ещё эта машина" title="Где ещё эта машина" aria-haspopup="menu" aria-controls="{{ $id }}"><x-ui.icon name="chain" class="size-full"/></button>
+        <button type="button" class="car-links-btn" data-action="menu#toggle:stop:prevent" aria-label="Где ещё это ТС" title="Где ещё это ТС" aria-haspopup="menu" aria-controls="{{ $id }}"><x-ui.icon name="chain" class="size-full"/></button>
         <span id="{{ $id }}" class="menu car-links-menu" popover data-menu-target="list" role="menu" data-action="click->menu#close:stop">
             @foreach (\App\Support\CarLinks::for($from) as $link)
                 <span class="menu-item cursor-pointer" role="menuitem" tabindex="0" data-href="{{ $link['href'] }}" data-action="click->menu#go keydown.enter->menu#go">

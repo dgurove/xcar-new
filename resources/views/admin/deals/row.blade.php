@@ -11,7 +11,8 @@
         default => [$offer->state->label(), 'text-ink-muted'],
     };
 @endphp
-<a href="/work/deals/{{ $deal->id }}" class="row" data-search-row>
+{{-- Сделка живёт в CRM: с сайта (карточка человека /account/users) — с хостом, иначе 404. --}}
+<a href="{{ \App\Support\Surface::current() === \App\Support\Surface::Crm ? '/work/deals/'.$deal->id : \App\Support\Surface::Crm->url('/work/deals/'.$deal->id) }}" class="row" data-search-row>
     <div class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="64px"/></div>
     <div class="min-w-0 flex-1">
         <div class="truncate">{{ $offer->titleWithYear() }}</div>

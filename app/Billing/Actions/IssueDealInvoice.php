@@ -50,7 +50,7 @@ final class IssueDealInvoice
                 // PDF печётся при выставлении — перепечь с зачётом и «к оплате».
                 $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));
             }
-            $offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).' — '.$party->name]);
+            $offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).', платит '.$party->name]);
 
             return $invoice;
         });

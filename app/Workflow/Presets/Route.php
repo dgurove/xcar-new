@@ -158,7 +158,7 @@ abstract class Route
     public static function garageBlocks(): array
     {
         return [
-            'agreement_garage' => ['name' => 'Оформляем на нас', 'text' => 'Машина уходит к Вам в гараж: подтверждаем покупку поставщику, оплачиваем и оформляем документы на нас'],
+            'agreement_garage' => ['name' => 'Оформляем на нас', 'text' => 'Автомобиль уходит к Вам в гараж: подтверждаем покупку поставщику, оплачиваем и оформляем документы на нас'],
         ];
     }
 
@@ -189,7 +189,7 @@ abstract class Route
         }
         // Имена этапов в маршруте уникальны: у гаражной ветки — пометка.
         foreach ($rows as &$row) {
-            $row['name'] .= ' — в гараж';
+            $row['name'] .= ', в гараж';
         }
 
         return $rows;
@@ -281,7 +281,7 @@ abstract class Route
             ],
             'sdek_address'.$suffix => [
                 'name' => 'Адрес для отправки оригиналов', 'block' => 'signing'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => self::DAY, 'asks' => 'fields',
-                'ask_title' => 'Укажите адрес для отправки оригиналов', 'ask_text' => 'Сообщите адрес и получателя — направим оригиналы документов курьерской службой СДЭК',
+                'ask_title' => 'Укажите адрес для отправки оригиналов', 'ask_text' => 'Сообщите адрес и получателя, направим оригиналы документов курьерской службой СДЭК',
                 'fields' => [['label' => 'Адрес и получатель', 'type' => 'textarea']],
                 'exits' => [['Адрес получен', 'manager', 'sending'.$suffix]],
             ],
