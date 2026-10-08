@@ -11,7 +11,7 @@
     @unless ($party)
         <div class="list mt-4">
             <a href="/money/debts" class="row"><span class="min-w-0 flex-1">Долги по контрагентам</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
-            <a href="/money/closing" class="row"><span class="min-w-0 flex-1">Закрытие месяца</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
+            <a href="/money/closing" class="row"><span class="min-w-0 flex-1">Закрытие месяца</span>@if ($closing)<span class="nums shrink-0 text-sm text-urgent">выставить {{ $closing }}</span>@endif<x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>
             @if (auth()->user()->canManagePark())<a href="/money/parties" class="row"><span class="min-w-0 flex-1">Реквизиты</span><x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/></a>@endif
         </div>
     @endunless

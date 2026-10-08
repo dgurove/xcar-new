@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Billing\Closing;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Seller;
@@ -502,7 +503,9 @@ final class Nav
                     '/requests' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
                     // Бейдж «Из писем» — число дел, которые надо завести: у одинокого письма-заявки цепочки нет.
                     '/requests/from-mail' => Boxes::registerCount(Scope::Park),
-                    '/money' => Invoice::ofSeller(Seller::Park)->where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString())->count(),
+                    // Бейдж «Оплаты» — работа управляющего: выставить за прошлый месяц, отправить выставленное, просрочено.
+                    '/money' => Closing::pendingCount() + Invoice::ofSeller(Seller::Park)->where('direction', 'issued')->where('state', InvoiceState::Issued)
+                        ->where(fn ($w) => $w->whereNull('sent_at')->orWhereDate('due_at', '<', now()->toDateString()))->count(),
                     '/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ];
             }

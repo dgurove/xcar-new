@@ -4,6 +4,7 @@ namespace App\Billing\Actions;
 
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
+use App\Billing\Closing;
 use App\Billing\Events\InvoiceVoided;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -25,6 +26,7 @@ final class VoidInvoice
     public function __invoke(Invoice $invoice, ?User $by, ?string $reason = null): Invoice
     {
         Nav::forgetStaffCounts();
+        Closing::forgetPending();
         $invoice = DB::transaction(function () use ($invoice, $by, $reason) {
             $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             // Зачёт удержанного вознаграждения — не деньги: гаснет вместе со счётом. Живые оплаты — отменить сначала.

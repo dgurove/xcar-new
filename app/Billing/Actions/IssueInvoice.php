@@ -5,6 +5,7 @@ namespace App\Billing\Actions;
 use App\Billing\Accrual;
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
+use App\Billing\Closing;
 use App\Billing\Documents\InvoicePdf;
 use App\Billing\Events\InvoiceIssued;
 use App\Billing\Invoice;
@@ -54,6 +55,7 @@ final class IssueInvoice
         ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null, array $registry = [], ?CarbonInterface $month = null): Invoice
     {
         Nav::forgetStaffCounts();
+        Closing::forgetPending();
         $this->skipped = [];
         $invoice = DB::transaction(function () use ($party, $by, $direction, $kind, $dueAt, $storageUntil, $chargeIds, $lines, $vehicle, $dealId, $offerId, $externalNo, $notes, $registry, $month) {
             $year = (int) now()->format('Y');

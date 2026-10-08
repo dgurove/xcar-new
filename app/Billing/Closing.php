@@ -11,6 +11,7 @@ use App\Users\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -103,9 +104,7 @@ final class Closing
                 $errors[] = $title($v).': '.self::message($e);
             }
         }
-        // Группа — плательщик; у вендора без записанного контрагента — сам вендор (черновик заведётся один раз).
-        $key = fn ($i) => ($id = self::payer($i, false)?->id) ? 'p'.$id : ($i['payer'] === 'vendor' ? 'v'.$i['vehicle']->vendor_id : 'none:'.$i['key']);
-        foreach ($items->where('payer', '!=', 'buyer')->groupBy($key) as $group) {
+        foreach ($items->where('payer', '!=', 'buyer')->groupBy(fn ($i) => self::groupKey($i)) as $group) {
             $first = $group->first();
             try {
                 $party = self::payer($first);
@@ -121,6 +120,29 @@ final class Closing
         }
 
         return ['issued' => $issued, 'errors' => $errors];
+    }
+
+    /**
+     * Сколько счетов ждёт закрытия прошлого месяца: реестр на плательщика и счёт на ТС покупателя — число у «Закрытия
+     * месяца» и на вкладке «Оплаты». Считать дорого (начисления всех ТС) — в кэше, сбрасывают выставление и аннулирование.
+     */
+    public static function pendingCount(): int
+    {
+        $month = now()->subMonth()->startOfMonth();
+
+        return Cache::remember('park.closing:'.$month->format('Y-m'), 600, fn () => self::items($month)
+            ->groupBy(fn ($i) => $i['payer'] === 'buyer' ? 'buyer:'.$i['key'] : self::groupKey($i))->count());
+    }
+
+    public static function forgetPending(): void
+    {
+        Cache::forget('park.closing:'.now()->subMonth()->format('Y-m'));
+    }
+
+    /** Группа реестра — плательщик; у вендора без записанного контрагента — сам вендор (черновик заведётся один раз). */
+    private static function groupKey(array $item): string
+    {
+        return ($id = self::payer($item, false)?->id) ? 'p'.$id : ($item['payer'] === 'vendor' ? 'v'.$item['vehicle']->vendor_id : 'none:'.$item['key']);
     }
 
     /** Плательщик строки; черновик вендора (без id) записывается, когда выставляем. */

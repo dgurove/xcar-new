@@ -34,7 +34,8 @@ use Illuminate\Validation\Rule;
 /** Деньги стоянки: счета с пресетами, карточка строки, карточка счёта, долги по контрагентам, месяц. */
 class MoneyController
 {
-    public const PRESETS = ['unpaid' => 'Не оплачены', 'overdue' => 'Просрочены', 'owed' => 'Мы должны', 'paid' => 'Оплачены', 'all' => 'Все'];
+    /** «Отправить» — выставленные, письма с которыми ещё не уходили (`sent_at`): очередь управляющего (08.10.2026). */
+    public const PRESETS = ['unpaid' => 'Не оплачены', 'send' => 'Отправить', 'overdue' => 'Просрочены', 'owed' => 'Мы должны', 'paid' => 'Оплачены', 'all' => 'Все'];
 
     public function index(Request $request)
     {
@@ -58,6 +59,7 @@ class MoneyController
         if ($qs === '') {
             match ($preset) {
                 'unpaid' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued),
+                'send' => $q->where('direction', 'issued')->where('state', InvoiceState::Issued)->whereNull('sent_at'),
                 'overdue' => $q->where('state', InvoiceState::Issued)->whereDate('due_at', '<', now()->toDateString()),
                 'owed' => $q->where('direction', 'owed')->where('state', InvoiceState::Issued),
                 'paid' => $q->where('state', InvoiceState::Paid),
@@ -77,11 +79,13 @@ class MoneyController
             'sort' => $sort,
             'counts' => [
                 'unpaid' => $open->where('direction', 'issued')->count(),
+                'send' => $open->where('direction', 'issued')->whereNull('sent_at')->count(),
                 'overdue' => $open->filter->isOverdue()->count(),
                 'owed' => $open->where('direction', 'owed')->count(),
             ],
             // Один контрагент выбран (пришли из «Долгов») — экран называется им.
             'party' => count($parties) === 1 ? Party::find($parties[0]) : null,
+            'closing' => Closing::pendingCount(),
             'q' => $qs,
             'facets' => $facets,
         ]);
