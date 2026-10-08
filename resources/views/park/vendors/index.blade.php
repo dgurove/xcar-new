@@ -3,7 +3,7 @@
 @php use App\Vendors\ContactRole; use App\Vendors\Kind; @endphp
 <x-ui.shell title="Вендоры">
     <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="vendors" :facets="$facets" search="Название, ИНН">
-        @if (auth()->user()->canManagePark())
+        @if (auth()->user()->isAdmin())
             <x-slot:actions>
                 <div data-controller="sheet" class="contents">
                     <button type="button" class="btn btn-accent btn-round" data-action="sheet#open" aria-label="Новый вендор"><x-ui.icon name="plus" class="size-5"/></button>

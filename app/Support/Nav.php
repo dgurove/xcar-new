@@ -59,8 +59,8 @@ final class Nav
                 $user?->canManagePark() ? self::item('Оплаты', '/money') : null,
                 $user?->canManagePark() ? self::item('Почта', '/mail') : null,
                 self::item('Парковки', '/yards', tab: false),
-                // Вендоры — настройки: управляющему (роль «Парковка») их нет.
-                $user?->isAdmin() ? self::item('Вендоры', '/vendors', tab: false) : null,
+                // Вендоры управляющему — карточка и контакты; помощнику их нет.
+                $user?->canManagePark() ? self::item('Вендоры', '/vendors', tab: false) : null,
             ]));
         }
 
@@ -235,7 +235,8 @@ final class Nav
         if ($surface === Surface::Park) {
             return array_filter(['' => array_values(array_filter([
                 self::link('Профиль', '/account', exact: true),
-                ...($user->isAdmin() ? [self::link('Вендоры', '/vendors', icon: 'deal'), self::link('Тарифы', '/tariffs', icon: 'wallet')] : []),
+                $user->canManagePark() ? self::link('Вендоры', '/vendors', icon: 'deal') : null,
+                $user->isAdmin() ? self::link('Тарифы', '/tariffs', icon: 'wallet') : null,
                 self::link('Парковки', '/yards', icon: 'park'),
                 self::link('Уведомления', '/account/notifications', icon: 'bell'),
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.

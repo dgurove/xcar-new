@@ -32,7 +32,7 @@ class VehicleInvoiceController
 
         return view('park.money.create', [
             'vehicle' => $vehicle, 'segments' => $segments->where('payer', $payer)->values(), 'payer' => $payer, 'payers' => $payers,
-            'party' => $party, 'parties' => Party::where('is_self', false)->orderBy('name')->pluck('name', 'id'), 'pending' => $pending,
+            'party' => $party, 'parties' => Party::visibleOnPark($request->user())->orderBy('name')->pluck('name', 'id')->union($party?->exists ? [$party->id => $party->name] : []), 'pending' => $pending,
             'dueDays' => $vehicle->vendor?->payment_days ?? 5,
             'kinds' => collect(ChargeKind::cases())->reject(fn ($k) => in_array($k, [ChargeKind::Sale, ChargeKind::Selection, ChargeKind::Transfer, ChargeKind::Service], true))->mapWithKeys(fn ($k) => [$k->value => $k->label()]),
         ]);
@@ -45,7 +45,7 @@ class VehicleInvoiceController
             'storage_until' => ['nullable', 'date'], 'charges' => ['nullable', 'array'], 'charges.*' => ['integer'],
             'lines' => ['nullable', 'array'], 'lines.*.title' => ['nullable', 'string', 'max:160'], 'lines.*.qty' => ['nullable', 'numeric', 'min:0'], 'lines.*.price' => ['nullable', 'numeric', 'min:0'], 'lines.*.kind' => ['nullable', Rule::enum(ChargeKind::class)],
         ]);
-        $party = Party::findOrFail($data['party_id']);
+        $party = $this->party($request, $vehicle, (int) $data['party_id']);
         $until = $request->boolean('with_storage') && ! empty($data['storage_until']) ? Carbon::parse($data['storage_until']) : null;
         $lines = array_values(array_filter($data['lines'] ?? [], fn ($l) => ($l['title'] ?? '') !== '' && ($l['price'] ?? '') !== ''));
         $kind = $until ? ChargeKind::Storage : (ChargeKind::tryFrom($lines[0]['kind'] ?? '') ?? ChargeKind::Other);
@@ -62,7 +62,7 @@ class VehicleInvoiceController
             'price' => ['required', 'numeric', 'min:0'], 'party_id' => ['nullable', 'exists:billing_parties,id'],
         ]);
         $kind = ChargeKind::from($data['kind']);
-        $party = ! empty($data['party_id']) ? Party::find($data['party_id']) : ($vehicle->vendor ? Party::forVendor($vehicle->vendor) : null);
+        $party = ! empty($data['party_id']) ? $this->party($request, $vehicle, (int) $data['party_id']) : ($vehicle->vendor ? Party::forVendor($vehicle->vendor) : null);
         if (! $party) {
             throw ValidationException::withMessages(['party_id' => 'Некому начислить: у ТС нет вендора']);
         }
@@ -91,5 +91,14 @@ class VehicleInvoiceController
         };
 
         return $service ? Tariff::resolve($vehicle, $service)?->price : null;
+    }
+
+    /** Плательщик счёта или начисления: управляющему — плательщики парковки и плательщики этой ТС, не контрагенты продаж. */
+    private function party(Request $request, Vehicle $vehicle, int $id): Party
+    {
+        $own = collect(['vendor', 'owner', 'buyer'])->map(fn ($p) => Ledger::payerParty($vehicle, $p, false)?->id)->filter()->all();
+        $party = in_array($id, $own, true) ? Party::find($id) : Party::visibleOnPark($request->user())->find($id);
+
+        return $party ?? throw ValidationException::withMessages(['party_id' => 'Такого плательщика нет']);
     }
 }

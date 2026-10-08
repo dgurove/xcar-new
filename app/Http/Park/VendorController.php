@@ -54,7 +54,9 @@ class VendorController
         $q = trim((string) $request->query('q'));
         $vendors = $facets->apply(Vendor::onPark())->with(['contacts', 'party'])->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
             ->when($q !== '', fn ($w) => $w->where(fn ($s) => $s->where('name', 'ilike', "%{$q}%")->orWhere('legal_name', 'ilike', "%{$q}%")->orWhere('inn', 'like', "%{$q}%")))
-            ->orderBy(match ($sort->key) { 'created' => 'created_at', 'stored' => 'stored_count', default => 'name' }, $sort->dir())->orderBy('id')->get();
+            ->orderBy(match ($sort->key) {
+                'created' => 'created_at', 'stored' => 'stored_count', default => 'name'
+            }, $sort->dir())->orderBy('id')->get();
         $counts = ['active' => $vendors->where('is_active', true)->count(), 'stored' => $vendors->where('stored_count', '>', 0)->count(), 'inactive' => $vendors->where('is_active', false)->count()];
 
         return view('park.vendors.index', [
@@ -86,12 +88,15 @@ class VendorController
     public function show(Request $request, Vendor $vendor)
     {
         abort_unless($vendor->on_park, 404);
-        $pill = array_key_exists($request->query('pill', ''), self::PILLS) ? $request->query('pill') : 'overview';
+        // Тарифы вендора — настройки, управляющему их нет; ставки за сутки он видит в обзоре.
+        $pills = $request->user()->isAdmin() ? self::PILLS : array_diff_key(self::PILLS, ['tariffs' => 1]);
+        abort_if($request->query('pill') === 'tariffs' && ! isset($pills['tariffs']), 404);
+        $pill = array_key_exists($request->query('pill', ''), $pills) ? $request->query('pill') : 'overview';
         $vendor->load(['contacts.yard', 'media']);
         $data = [
             'vendor' => $vendor,
             'pill' => $pill,
-            'pills' => self::PILLS,
+            'pills' => $pills,
             'base' => "/vendors/{$vendor->id}",
             'crm' => Surface::Crm->url("/settings/vendors/{$vendor->id}"),
             'templates' => Template::where('scope', Scope::Park)->orderBy('name')->pluck('name', 'id'),

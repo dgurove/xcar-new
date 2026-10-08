@@ -98,16 +98,17 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/charges', [VehicleInvoiceController::class, 'charge'])->middleware('park.manage');
     Route::delete('/cars/{vehicle}/charges/{charge}', [VehicleInvoiceController::class, 'uncharge'])->middleware('park.manage');
 
-    // Деньги — управляющему и админу (не помощнику): счета и долги целиком; реквизиты — настройки, только админу.
+    // Деньги — управляющему и админу (не помощнику): счета, долги, закрытие месяца, реквизиты плательщиков.
     Route::middleware('park.manage')->group(function () {
         Route::get('/money', [MoneyController::class, 'index']);
         Route::get('/money/debts', [MoneyController::class, 'debts']);
         Route::get('/money/closing', [MoneyController::class, 'closing']);
         Route::post('/money/closing', [MoneyController::class, 'close']);
-        Route::get('/money/parties', [PartyController::class, 'index'])->middleware('ability:isAdmin');
-        Route::post('/money/parties', [PartyController::class, 'store'])->middleware('ability:isAdmin');
-        Route::put('/money/parties/{party}', [PartyController::class, 'update'])->middleware('ability:isAdmin');
-        Route::delete('/money/parties/{party}', [PartyController::class, 'destroy'])->middleware('ability:isAdmin');
+        // Реквизиты плательщиков — и управляющему (только парковки, без наших — PartyController::guard).
+        Route::get('/money/parties', [PartyController::class, 'index']);
+        Route::post('/money/parties', [PartyController::class, 'store']);
+        Route::put('/money/parties/{party}', [PartyController::class, 'update']);
+        Route::delete('/money/parties/{party}', [PartyController::class, 'destroy']);
         Route::get('/money/invoices/{invoice}', [MoneyController::class, 'show']);
         Route::get('/money/invoices/{invoice}/pdf', [MoneyController::class, 'file']);
         Route::get('/money/invoices/{invoice}/print', [MoneyController::class, 'print']);
@@ -132,23 +133,26 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/acts/{vehicle}/{kind}', [ActController::class, 'show'])->where('kind', 'intake|release|contract|handover');
 
     Route::get('/yards', [YardController::class, 'index']);
-    // Настройки парковки — только админу: правка парковок, вендоры, прайс (у управляющего их нет вовсе).
+    // Вендоры управляющему — смотреть карточку и править контакты (кому слать отчёты и счета); всё прочее — админу.
+    Route::middleware('park.manage')->group(function () {
+        Route::get('/vendors', [VendorController::class, 'index']);
+        Route::get('/vendors/{vendor}', [VendorController::class, 'show']);
+        Route::post('/vendors/{vendor}/contacts', [VendorContactController::class, 'store']);
+        Route::put('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'update']);
+        Route::delete('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'destroy']);
+    });
+    // Настройки парковки — только админу: правка парковок, вендоров (условия, ставки, договор, адреса), прайс.
     Route::middleware('ability:isAdmin')->group(function () {
         Route::post('/yards', [YardController::class, 'store']);
         Route::put('/yards/{yard}', [YardController::class, 'update']);
         Route::delete('/yards/{yard}', [YardController::class, 'destroy']);
         // Вендоры и прайс — на парковке (с 24.09.2026); прежний адрес /clients — 301.
         Route::get('/clients', fn () => redirect('/vendors', 301));
-        Route::get('/vendors', [VendorController::class, 'index']);
-        Route::get('/vendors/{vendor}', [VendorController::class, 'show']);
         Route::post('/vendors', [VendorController::class, 'store']);
         Route::put('/vendors/{vendor}', [VendorController::class, 'update']);
         Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy']);
         Route::post('/vendors/{vendor}/contract', [VendorController::class, 'contract']);
         Route::delete('/vendors/{vendor}/contract', [VendorController::class, 'dropContract']);
-        Route::post('/vendors/{vendor}/contacts', [VendorContactController::class, 'store']);
-        Route::put('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'update']);
-        Route::delete('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'destroy']);
         Route::post('/tariffs/ladder', [TariffController::class, 'save']);
         Route::get('/tariffs', [TariffController::class, 'index']);
     });

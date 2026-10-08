@@ -2,7 +2,8 @@
      хватает), пилюли Обзор · Контакты · Тарифы · Деньги лентой (не переносятся), «Изменить» — круглой кнопкой справа
      от чипов, шторкой по группам. Условия продажи и маршруты — в CRM, ссылкой в обзоре. --}}
 @php
-    $manage = auth()->user()->canManagePark();
+    // «Изменить» — условия, реквизиты, адреса вендора: только админу; управляющий правит контакты.
+    $manage = auth()->user()->isAdmin();
     $noBank = $vendor->kind->billable() && ! \App\Billing\Party::forVendor($vendor, false)->billable();
 @endphp
 <x-ui.shell :title="$vendor->name" :back="['Вендоры', '/vendors']">

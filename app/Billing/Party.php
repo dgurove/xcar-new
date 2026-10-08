@@ -32,6 +32,25 @@ class Party extends Model
     }
 
     /**
+     * Плательщики парковки — те, чьи реквизиты правит управляющий: со счетами ИП, вендоры парковки, страхователи и
+     * покупатели ТС. Своих реквизитов (`is_self`) и контрагентов продаж тут нет.
+     */
+    public function scopeOfPark($query)
+    {
+        return $query->where('is_self', false)->where(fn ($w) => $w
+            ->whereIn('id', Invoice::where('seller', Seller::Park->value)->select('party_id'))
+            ->orWhereIn('id', Vendor::where('on_park', true)->whereNotNull('party_id')->select('party_id'))
+            ->orWhereIn('id', Vehicle::whereNotNull('owner_party_id')->select('owner_party_id'))
+            ->orWhereIn('id', Vehicle::whereNotNull('buyer_party_id')->select('buyer_party_id')));
+    }
+
+    /** Кому из контрагентов человек на парковке может выставить и чьи реквизиты правит: админу — всем, кроме нас. */
+    public function scopeVisibleOnPark($query, User $user)
+    {
+        return $user->isAdmin() ? $query->where('is_self', false) : $query->ofPark();
+    }
+
+    /**
      * Мы как продавец. Строки нет (свежая база, снесли руками) — заводится из конфига продавца; дальше реквизиты
      * живут в базе и правятся на парковке в «Реквизитах».
      */

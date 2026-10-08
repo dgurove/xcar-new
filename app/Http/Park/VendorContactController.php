@@ -18,6 +18,7 @@ class VendorContactController
 
     public function store(Request $request, Vendor $vendor)
     {
+        abort_unless($this->sale || $vendor->on_park, 404);
         $contact = $vendor->contacts()->create($this->data($request));
         $this->single($vendor, $contact);
 
@@ -43,7 +44,7 @@ class VendorContactController
 
     private function own(Vendor $vendor, Contact $contact): void
     {
-        abort_unless($contact->vendor_id === $vendor->id && $contact->role->isSale() === $this->sale, 404);
+        abort_unless($contact->vendor_id === $vendor->id && $contact->role->isSale() === $this->sale && ($this->sale || $vendor->on_park), 404);
     }
 
     private function data(Request $request): array

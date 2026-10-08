@@ -1,4 +1,5 @@
-{{-- Реквизиты: мы первой строкой, дальше контрагенты; строка — шторка с формой; новая — кнопкой внизу. --}}
+{{-- Реквизиты: мы первой строкой, дальше контрагенты; строка — шторка с формой; новая — кнопкой внизу, только админу
+     (управляющий заводит реквизиты вендора из закрытия месяца). --}}
 @php use App\Billing\PartyKind; @endphp
 <x-ui.shell title="Реквизиты">
     <x-ui.toolbar :sort="$sort" name="parties" class="mb-4"/>
@@ -25,8 +26,10 @@
             </div>
         @endforeach
     </div>
-    <div class="mt-3" data-controller="sheet">
-        <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Контрагент</x-ui.button>
-        <x-ui.sheet id="party-new" title="Контрагент" wide tall :open="$errors->has('name')">@include('park.money.party-form', ['party' => null])</x-ui.sheet>
-    </div>
+    @if ($admin)
+        <div class="mt-3" data-controller="sheet">
+            <x-ui.button type="button" variant="secondary" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Контрагент</x-ui.button>
+            <x-ui.sheet id="party-new" title="Контрагент" wide tall :open="$errors->has('name')">@include('park.money.party-form', ['party' => null])</x-ui.sheet>
+        </div>
+    @endif
 </x-ui.shell>

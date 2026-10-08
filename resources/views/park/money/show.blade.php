@@ -2,6 +2,6 @@
 @php $me = auth()->user(); @endphp
 @include('billing.invoice-page', [
     'base' => '/money/invoices/'.$invoice->id, 'back' => ['Оплаты', '/money'], 'canManage' => $me->canManagePark(),
-    'partiesUrl' => '/money/parties', 'dealUrl' => \App\Support\Surface::Crm->url('/work/deals/'.$invoice->deal_id),
+    'partiesUrl' => $me->canManagePark() ? '/money/parties' : null, 'dealUrl' => \App\Support\Surface::Crm->url('/work/deals/'.$invoice->deal_id),
     'mailUrl' => !$invoice->isOwed() && $invoice->state === \App\Billing\InvoiceState::Issued && $invoice->vehicle && $me->canManagePark() ? '/mail/new?invoice='.$invoice->id : null,
 ])
