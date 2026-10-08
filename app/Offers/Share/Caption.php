@@ -15,11 +15,20 @@ use App\Users\User;
  */
 final class Caption
 {
+    /**
+     * Делится как сотрудник — только админ в CRM: заявленная строкой, полный VIN, знак на фото по выбору. На сайте админ
+     * делится как менеджер (08.10.2026).
+     */
+    public static function staff(?User $user): bool
+    {
+        return ($user?->isAdmin() ?? false) && Surface::current() === Surface::Crm;
+    }
+
     /** @return list<array{key: string, label: string, value: string, on: bool, group: ?string}> */
     public static function fields(Offer $offer, ?User $user): array
     {
         $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
-        $staff = $user?->isAdmin() ?? false;
+        $staff = self::staff($user);
         $price = PriceView::for($offer, $user);
         // Цены — последней строкой: клиент собирает отмеченные сверху вниз, цены склеивает стрелкой «от → до» в конце.
         // VIN — как этому человеку на сайте (`Offer::vinFor`): скрытый уходит маской.

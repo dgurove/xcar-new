@@ -84,7 +84,7 @@
         @if ($user?->isBuyer())
             {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
             <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
-        @elseif ($gallery || !$prices)
+        @elseif (($gallery && ($user?->canInterestIn($offer) ?? true)) || (!$gallery && !$prices))
             <a href="{{ $href }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $gallery ? ($myInterest ? 'Интерес отмечен' : 'Проявить интерес') : 'Узнать цену' }}</a>
         @elseif ($canBid)
             <a href="{{ $href }}" class="btn btn-get">Подтвердить</a>

@@ -8,8 +8,10 @@
     $unpaid = $current && $current->remaining() > 0;
     $claimed = $unpaid ? $current->claimed() : 0;
     $buyerPays = $car->invoice_to === 'buyer';
+    // На сайте закупочной нет и у сотрудника: вместо «Отдали за» — заявленная (`Car::base`, `Settlement` с `declared`).
+    $baseLabel = \App\Support\Surface::current() === \App\Support\Surface::Site ? 'Заявленная' : 'Отдали за';
     [$label, $value, $tone] = match (true) {
-        ! $car->isSold() => $staff ? [$car->spent() > 0 || $car->cost === null ? 'Вложено в ТС' : 'Отдали за', $s['invested'], ''] : ['Расходы', $s['manager_costs'] + $s['our_costs'], ''],
+        ! $car->isSold() => $staff ? [$car->spent() > 0 || $car->cost === null ? 'Вложено в ТС' : $baseLabel, $s['invested'], ''] : ['Расходы', $s['manager_costs'] + $s['our_costs'], ''],
         $unpaid && $current->isOwed() => [$staff ? 'Должны менеджеру' : 'Вам к выплате', $current->remaining(), 'text-accent-text'],
         $unpaid && $buyerPays => ['Покупатель платит', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
         $unpaid => [$staff ? 'Менеджер должен нам' : 'Отдать нам', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
@@ -35,7 +37,7 @@
     @endif
     {{-- Расходов нет — «Вложено» и есть «отдали за»: строки повторили бы главное число. --}}
     @if ($staff && $car->cost !== null && ! $car->isSold() && $car->spent() > 0)
-        <div class="{{ $row }}"><span>Отдали за</span><span class="nums">{{ Money::rub($car->cost) }}</span></div>
+        <div class="{{ $row }}"><span>{{ $baseLabel }}</span><span class="nums">{{ Money::rub($s['base']) }}</span></div>
     @endif
     @if (! $car->isSold())
         {{-- Строки складываются в главное число: платили мы — отдельной строкой, и менеджеру тоже. У менеджера

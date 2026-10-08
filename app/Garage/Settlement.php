@@ -14,17 +14,19 @@ namespace App\Garage;
  */
 final class Settlement
 {
-    public static function of(Car $car): array
+    /** @param  bool  $declared  на сайте: от заявленной, а не от закупочной (`Car::base`) */
+    public static function of(Car $car, bool $declared = false): array
     {
         $mine = $car->spent(Payer::Manager);
         $ours = $car->spent(Payer::Xcar);
-        $profit = $car->profit();
+        $profit = $car->profit($declared);
         $fee = (float) $car->commission;
 
         return [
             'manager_costs' => $mine,
             'our_costs' => $ours,
-            'invested' => $car->invested(),
+            'base' => $car->base($declared),
+            'invested' => $car->invested($declared),
             'profit' => $profit,
             'fee' => $fee,
             'ours' => $profit === null ? null : round($profit - $fee, 2),

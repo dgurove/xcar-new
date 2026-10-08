@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Bid;
+use App\Support\Surface;
 use App\Users\User;
 
 final class BidPlacedNotice extends Notice
@@ -25,7 +26,8 @@ final class BidPlacedNotice extends Notice
 
     public function href(): string
     {
-        return "/offers/{$this->bid->offer->number}";
+        // Сотрудникам: в CRM, в редактор — на сайте тот же путь вёл на витрину.
+        return Surface::Crm->url("/offers/{$this->bid->offer->number}");
     }
 
     public function offerNumber(): ?int

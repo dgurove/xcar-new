@@ -19,7 +19,8 @@
              название с просьбой сжимались в узкий столбик (07.10.2026, владелец: «текст сжатый, нечитабельный»). --}}
         <span class="mt-0.5 flex items-baseline gap-x-2 sm:hidden">
             <span class="nums shrink-0 font-medium">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span>
-            <span class="nums min-w-0 truncate text-sm text-ink-muted">№ {{ $offer->number }}@if ($staff) {{ $deal->buyer?->shortName() }}@endif</span>
+            <span class="nums shrink-0 text-sm text-ink-muted">№ {{ $offer->number }}</span>
+            @if ($staff)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $deal->buyer?->shortName() }}</span>@endif
         </span>
         @unless ($active)<span class="mt-1 block sm:hidden"><x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.state></span>@endunless
         @if ($req)

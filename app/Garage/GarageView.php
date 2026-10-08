@@ -3,6 +3,7 @@
 namespace App\Garage;
 
 use App\Offers\PickupState;
+use App\Support\Surface;
 use App\Users\User;
 use App\Workflow\Track;
 
@@ -59,7 +60,7 @@ final class GarageView
 
         return [
             'car' => $car, 'offer' => $offer, 'n' => $n, 'user' => $user, 'staff' => $staff,
-            's' => Settlement::of($car), 'invoice' => $invoice, 'current' => $current, 'unpaid' => $unpaid,
+            's' => Settlement::of($car, declared: Surface::current() === Surface::Site), 'invoice' => $invoice, 'current' => $current, 'unpaid' => $unpaid,
             'canAdd' => $canAdd, 'prep' => $prep, 'sale' => $sale, 'buttons' => $buttons, 'more' => $more, 'moreSale' => $moreSale, 'morePrep' => $morePrep,
             // Куда сотрудник может вернуть машину кнопкой в пути: пройденные этапы работы с ней.
             // «Готова» после закрытой сделки — та же продажа (`MoveCar`), туда не возвращают.

@@ -3,6 +3,7 @@
 namespace App\Http\Site;
 
 use App\Offers\Offer;
+use App\Offers\Share\Caption;
 use App\Offers\Share\SharePdf;
 use App\Offers\Share\Subject;
 use App\Purchases\Car;
@@ -80,7 +81,7 @@ class ShareController
     // Знак снимает только сотрудник: файл с витрины уходит человеку, которого мы не знаем.
     private function watermark(Request $request): bool
     {
-        return $request->user()->isAdmin() ? $request->boolean('watermark', true) : true;
+        return Caption::staff($request->user()) ? $request->boolean('watermark', true) : true;
     }
 
     private function respond(Request $request, Subject $subject, SharePdf $pdf)

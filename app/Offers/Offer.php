@@ -434,11 +434,12 @@ class Offer extends Model implements HasMedia
         return $q->whereIn('evacuation_to', [Destination::Keeper->value, Destination::Ours->value])
             ->whereNotIn('state', [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived])
             ->whereHas('positions', fn ($p) => $p->where('track', Track::Service))
-            ->when($user->isAdmin(), fn ($q) => $q->whereNotNull('evacuator_id'), fn ($q) => $q->where('evacuator_id', $user->id)
-                // Забирает ТС по своей сделке — это её шаг, а не поручение: живёт на странице сделки (`Handover`).
-                ->whereDoesntHave('deal', fn ($d) => $d->where('buyer_id', $user->id))
-                // Везёт свою гаражную машину — «Забрал» на её странице в «Гараже», второй строкой не стоит.
-                ->whereDoesntHave('garageCar', fn ($g) => $g->where('manager_id', $user->id)));
+            // Админу — все поручения менеджерам, остальным (и админу-менеджеру) — свои.
+            ->when($user->isAdmin() && ! $user->isManager(), fn ($q) => $q->whereNotNull('evacuator_id'), fn ($q) => $q->where('evacuator_id', $user->id))
+            // Вывозчик забирает ТС по своей сделке — это её шаг, а не поручение: живёт на странице сделки (`Handover`).
+            ->whereDoesntHave('deal', fn ($d) => $d->whereColumn('deals.buyer_id', 'offers.evacuator_id'))
+            // Везёт свою гаражную машину — «Забрал» на её странице в «Гараже», второй строкой не стоит.
+            ->whereDoesntHave('garageCar', fn ($g) => $g->whereColumn('garage_cars.manager_id', 'offers.evacuator_id'));
     }
 
     /** Ход ответственного за вывоз — «забрать»: на текущем этапе вывоза есть его кнопка той ветки, куда везём. Одним запросом. */

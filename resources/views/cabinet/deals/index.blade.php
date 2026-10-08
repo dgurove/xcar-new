@@ -12,7 +12,8 @@
         @unless ($staff)<div class="min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>@endunless
         @if ($deals->isNotEmpty())<x-ui.toolbar :sort="$sort" name="deals"/>@endif
     </div>
-    <x-telegram.card/>
+    {{-- «Узнавайте первым, что выбрали вас» — менеджеру; админу Telegram подключают в профиле. --}}
+    @unless ($staff)<x-telegram.card/>@endunless
 
     @if ($pending->isNotEmpty())
         <section>

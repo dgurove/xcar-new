@@ -48,10 +48,10 @@ enum Role: string
         return in_array($this, [self::Buyer, self::Manager, self::Moderator, self::Admin, self::Reviewer], true);
     }
 
-    /** Подтверждает предложение своей ценой менеджер и админ. Покупатель — только интерес. */
+    /** Подтверждает предложение своей ценой только менеджер (08.10.2026: админ — «+ За менеджера» в CRM). Покупатель — интерес. */
     public function canBid(): bool
     {
-        return in_array($this, [self::Manager, self::Admin], true);
+        return $this === self::Manager;
     }
 
     public function canSeePurchases(): bool

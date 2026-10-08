@@ -67,7 +67,7 @@
                             };
                             [$value, $caption] = match ($car->state) {
                                 CarState::Waiting => [null, null],
-                                CarState::Repair, CarState::Ready, CarState::Selling => [$staff ? $car->invested() : $car->spent(), $staff ? 'вложено' : 'расходы'],
+                                CarState::Repair, CarState::Ready, CarState::Selling => [$staff ? $car->invested(declared: true) : $car->spent(), $staff ? 'вложено' : 'расходы'],
                                 CarState::Sold => $current && $current->remaining() > 0
                                     ? [$current->remaining(), $current->isOwed() ? ($staff ? 'отдаём' : 'к выплате') : ($car->invoice_to === 'buyer' ? 'платит покупатель' : ($staff ? 'отдаёт нам' : 'отдать нам'))]
                                     : [$car->sold_price, $staff ? 'счёта нет' : 'продана за'],

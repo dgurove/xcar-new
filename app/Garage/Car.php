@@ -76,10 +76,10 @@ class Car extends Model
         return $this->hasMany(Cost::class, 'garage_car_id')->orderByDesc('spent_at')->orderByDesc('id');
     }
 
-    /** Машины одного человека: менеджеру — его, взятые под себя видит только сотрудник. */
+    /** Машины одного человека: менеджеру — его, взятые под себя видит только сотрудник; админ-менеджер на сайте — менеджер. */
     public function scopeOf(Builder $q, User $user): Builder
     {
-        return $user->isAdmin() ? $q : $q->where('manager_id', $user->id);
+        return $user->isAdmin() && ! $user->isManager() ? $q : $q->where('manager_id', $user->id);
     }
 
     /** Потрачено: все расходы или только чьи-то. */
@@ -90,16 +90,25 @@ class Car extends Model
         return round($costs->when($payer, fn ($c) => $c->where('payer', $payer))->sum('amount'), 2);
     }
 
-    /** Вложено в машину: отдали за плюс все расходы. */
-    public function invested(): float
+    /**
+     * Во что машина нам встала: отдали за (закупочная). На сайте закупочной нет ни у кого (08.10.2026, владелец: «там должна
+     * быть заявленная»), там вместо неё — заявленная предложения.
+     */
+    public function base(bool $declared = false): ?int
     {
-        return round((float) $this->cost + $this->spent(), 2);
+        return $this->cost === null || ! $declared ? $this->cost : ($this->offer->declaredPrice() ?? $this->cost);
+    }
+
+    /** Вложено в машину: отдали за (на сайте — заявленная) плюс все расходы. */
+    public function invested(bool $declared = false): float
+    {
+        return round((float) $this->base($declared) + $this->spent(), 2);
     }
 
     /** Прибыль: цена продажи минус вложенное; не продана — null. */
-    public function profit(): ?float
+    public function profit(bool $declared = false): ?float
     {
-        return $this->sold_price === null ? null : round($this->sold_price - $this->invested(), 2);
+        return $this->sold_price === null ? null : round($this->sold_price - $this->invested($declared), 2);
     }
 
     /** Сколько дней машина в гараже; проданная — по день продажи. */

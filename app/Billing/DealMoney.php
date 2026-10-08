@@ -192,7 +192,9 @@ final class DealMoney
             } elseif ($unpaid->isOverdue()) {
                 $steps[] = $step('Оплата', 'current', null, 'Просрочена на '.$unpaid->overdueDays().' дн', 'danger');
             } else {
-                $steps[] = $step('Оплата', 'current', null, ($unpaid->paidMoney() > 0 ? 'Оплачено '.Money::rub($unpaid->paidMoney()).', остаток ' : 'Ждём оплату ').'до '.$unpaid->due_at->translatedFormat('j M'));
+                // Подбор по ДКП выставлен без срока: срок встаёт с шага оплаты (`StartSelectionDue`).
+                $when = $unpaid->due_at ? 'до '.$unpaid->due_at->translatedFormat('j M') : 'после договора с покупателем';
+                $steps[] = $step('Оплата', 'current', null, ($unpaid->paidMoney() > 0 ? 'Оплачено '.Money::rub($unpaid->paidMoney()).', остаток ' : 'Ждём оплату ').$when);
             }
         }
 
@@ -204,7 +206,7 @@ final class DealMoney
                     ? $step('Оставили себе вознаграждение', 'done', $issued->max('paid_at'))
                     : $step('Вознаграждение', 'todo', null, 'Оставите себе при оплате'),
                 CommissionState::Paid => $step('Вознаграждение выплачено', 'done', $fee?->paid_at),
-                CommissionState::Payable => $step('Выплата вознаграждения', 'current', null, 'До '.$fee?->due_at->translatedFormat('j M'), 'accent'),
+                CommissionState::Payable => $step('Выплата вознаграждения', 'current', null, ($fee?->due_at ? 'До '.$fee->due_at->translatedFormat('j M') : null), 'accent'),
                 default => $step('Выплата вознаграждения', 'todo'),
             };
         }

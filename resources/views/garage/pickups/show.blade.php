@@ -9,6 +9,8 @@
     $stage = $position?->stage;
     $evacuator = $offer->evacuator;
     $mine = $evacuator && $evacuator->id === $user->id;
+    // Админ жмёт «Забрал» за менеджера, которому поручен вывоз: ход не его.
+    $forManager = $user->isAdmin() && $evacuator && ! $mine;
     $blockName = fn ($block) => $block->stages->contains(fn ($s) => $s->car_place === \App\Offers\CarPlace::Keeper)
         ? ($mine ? 'Стоит у вас' : $block->name) : $block->name;
     // Куда и когда ехать: наши поля шага, а без них — страхователь и адрес осмотра из предложения.
@@ -19,7 +21,7 @@
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Гараж', '/garage']">
     <div class="-mt-3 mb-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
         <x-ui.state :tone="$tone" class="text-sm">{{ $word }}</x-ui.state>
-        @if ($user->isAdmin())<span class="text-ink-muted">{{ $evacuator?->shortName() }}, {{ mb_strtolower($offer->pickupDestination()->label()) }}</span>@endif
+        @if ($user->isAdmin())<span class="text-ink-muted">{{ mb_strtolower($offer->pickupDestination()->label()) }}</span>@endif
     </div>
     @error('exit')<x-ui.flash tone="danger" class="mb-4">{{ $message }}</x-ui.flash>@enderror
 
@@ -50,7 +52,7 @@
                                     <span class="step-title flex-1">{{ $blockName($step['block']) }}</span>
                                     @if ($step['state'] === Path::DONE && $step['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ $step['at']->translatedFormat('j M') }}</span>@endif
                                 </div>
-                                @if ($step['state'] === Path::CURRENT)<p class="step-hint">{{ $canPick ? 'ваш ход' : 'готовим мы' }}</p>@endif
+                                @if ($step['state'] === Path::CURRENT)<p class="step-hint">{{ $canPick ? ($forManager ? 'ход менеджера' : 'ваш ход') : 'готовим мы' }}</p>@endif
                             </div>
                         </div>
                     @endforeach
@@ -61,8 +63,8 @@
 
     @if ($canPick)
         <x-ui.action-bar>
-            <form method="post" action="/garage/pickups/{{ $offer->number }}/picked" class="contents" data-turbo-confirm="Забрали ТС?" data-turbo-confirm-label="Забрал">
-                @csrf<button type="submit" class="btn btn-accent min-w-0 flex-1">Забрал</button>
+            <form method="post" action="/garage/pickups/{{ $offer->number }}/picked" class="contents" data-turbo-confirm="{{ $forManager ? $evacuator->shortName().' забрал ТС?' : 'Забрали ТС?' }}" data-turbo-confirm-label="Забрал">
+                @csrf<button type="submit" class="btn btn-accent min-w-0 flex-1">{{ $forManager ? 'Забрал за менеджера' : 'Забрал' }}</button>
             </form>
         </x-ui.action-bar>
     @endif

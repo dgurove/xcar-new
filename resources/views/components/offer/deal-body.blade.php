@@ -11,6 +11,7 @@
     $reserve = !$gallery && !$offer->bidsOpen() && $offer->canBidInDeal($user);
     $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
+    $staff = $user?->isAdmin() && ! $user->isManager();
 @endphp
 @if ($inSheet)
     <div class="mb-2 flex justify-end lg:hidden"><button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>
@@ -38,6 +39,8 @@
     <p class="mt-3 text-sm text-ink-muted">Идёт сделка — подтверждение встанет резервом</p>
 @endif
 @if ($myBid && ! $canBid)<x-offer.my-bid :offer="$offer" :bid="$myBid" class="mt-3"/>@endif
+
+@if ($staff && ($gallery || $offer->state !== \App\Offers\OfferState::Draft))<x-offer.staff-line :offer="$offer" class="mt-5"/>@endif
 
 @guest
     <a href="/login?intended={{ urlencode(request()->getRequestUri()) }}" class="btn btn-accent mt-6 w-full">{{ $gallery ? 'Войти' : 'Войти, чтобы узнать цену' }}</a>
