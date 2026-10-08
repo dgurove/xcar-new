@@ -51,7 +51,7 @@
         <p class="sub">{{ $i->issued_at->format('d.m.Y') }}, за {{ mb_strtolower($i->month->translatedFormat('F Y')) }}</p>
         <p><b>{{ $self->name }}</b> ({{ $self->details() }}), Исполнитель, и <b>{{ $p->name }}</b>{{ $p->details() ? ' ('.$p->details().')' : '' }}, Заказчик, составили настоящий акт о том, что Исполнитель оказал услуги по хранению транспортных средств по реестру:</p>
         <table class="reg">
-            <thead><tr><th style="width:22px">№</th><th>Транспортное средство</th><th>Гос. номер</th><th>VIN</th><th>Номер убытка</th><th>Парковка</th><th>Период</th><th class="n">Сутки</th><th class="n">Ставка</th><th class="n">Сумма</th></tr></thead>
+            <thead><tr><th style="width:22px">№</th><th>Транспортное средство</th><th>Гос. номер</th><th>VIN</th><th>Номер убытка</th><th>№ полиса</th><th>Парковка</th><th>Период</th><th class="n">Сутки</th><th class="n">Ставка</th><th class="n">Сумма</th></tr></thead>
             <tbody>
             @foreach ($byCar as $rows)
                 @php $v = $rows->first()->vehicle; $n++; $storage = $rows->where('kind', ChargeKind::Storage)->values(); $other = $rows->where('kind', '!=', ChargeKind::Storage)->values(); $span = max(1, $storage->count() + $other->count()); @endphp
@@ -63,6 +63,7 @@
                             <td rowspan="{{ $span }}">{{ $v?->plate }}</td>
                             <td rowspan="{{ $span }}">{{ $v?->vin }}</td>
                             <td rowspan="{{ $span }}">{{ $v?->ref }}</td>
+                            <td rowspan="{{ $span }}">{{ $v?->policy_no }}</td>
                             <td rowspan="{{ $span }}">{{ $v?->yard?->name }}</td>
                         @endif
                         @if ($c->kind === ChargeKind::Storage)
@@ -74,8 +75,8 @@
                     </tr>
                 @endforeach
             @endforeach
-            <tr><td colspan="9"><b>Итого, {{ $n }} ТС</b></td><td class="n"><b>{{ Money::nums($i->charges->sum('amount'), 2) }} ₽</b></td></tr>
-            @if ($i->vat_on_top)<tr><td colspan="9">{{ $i->vatLabel() }}</td><td class="n">{{ Money::nums($i->vatAmount(), 2) }} ₽</td></tr><tr><td colspan="9"><b>Всего</b></td><td class="n"><b>{{ Money::nums($i->total, 2) }} ₽</b></td></tr>@endif
+            <tr><td colspan="10"><b>Итого, {{ $n }} ТС</b></td><td class="n"><b>{{ Money::nums($i->charges->sum('amount'), 2) }} ₽</b></td></tr>
+            @if ($i->vat_on_top)<tr><td colspan="10">{{ $i->vatLabel() }}</td><td class="n">{{ Money::nums($i->vatAmount(), 2) }} ₽</td></tr><tr><td colspan="10"><b>Всего</b></td><td class="n"><b>{{ Money::nums($i->total, 2) }} ₽</b></td></tr>@endif
             </tbody>
         </table>
         <p>{{ $i->vatRate() ? ($i->vat_on_top ? '' : $i->vatLabel().', '.Money::nums($i->vatAmount(), 2).' ₽. ') : 'НДС не облагается. ' }}Услуги оказаны в полном объёме, претензий по объёму, качеству и срокам Заказчик не имеет.</p>

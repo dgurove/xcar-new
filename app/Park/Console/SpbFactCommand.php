@@ -650,8 +650,12 @@ final class SpbFactCommand extends Command
             if ($v->state !== $want) {
                 $fail('состояние', $r['line'], $r['title'], $v->state->label(), $want->label());
             }
-            if ($r['ship'] && ! $v->released_at?->isSameDay($r['ship'])) {
+            // Выбытие раньше приёма — опечатка таблицы: выдача не раньше приёма (`ReleasePast`), это не расхождение.
+            $ship = $r['ship']?->max($r['arrival']);
+            if ($ship && ! $v->released_at?->isSameDay($ship)) {
                 $fail('выбытие', $r['line'], $r['title'], $v->released_at?->format('d.m.Y'), $r['ship']->format('d.m.Y'));
+            } elseif ($r['ship'] && $r['ship']->lt($r['arrival'])) {
+                $this->report['Аудит'][] = ['в таблице выбытие раньше приёма — выдана днём приёма', $r['line'], $r['title'], $r['ship']->format('d.m.Y'), $r['arrival']->format('d.m.Y')];
             }
             if ($r['state'] === 'stored' && (int) $v->yard_id !== $this->yard->id) {
                 $fail('парковка', $r['line'], $r['title'], $v->yard_id);
