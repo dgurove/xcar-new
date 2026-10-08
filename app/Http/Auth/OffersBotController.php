@@ -28,7 +28,7 @@ final class OffersBotController
         if ($tgId && Cache::add('offers-bot:login:'.$request->query('hash'), true, 86400)) {
             $user = Subscriber::where('chat_id', $tgId)->first()?->user;
             // Менеджеру под замком кнопка входом не служит: вход в браузере Telegram выкинул бы его приложение.
-            if ($user && Handler::eligible($user) && ! $user->isRejected() && Auth::id() !== $user->id && ! (Lock::enabled() && $user->underLock())) {
+            if ($user && Handler::eligible($user) && ! $user->isRejected() && Auth::id() !== $user->id && ! (Lock::single() && $user->underLock())) {
                 Auth::login($user, true);
                 $request->session()->regenerate();
             }

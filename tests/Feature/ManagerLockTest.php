@@ -152,6 +152,42 @@ class ManagerLockTest extends TestCase
         $this->assertAuthenticatedAs($manager);
     }
 
+    public function test_single_device_without_lock_kicks_previous_on_login(): void
+    {
+        Settings::put(Lock::SETTING, false);
+        Settings::put(Lock::SINGLE, true);
+        $manager = $this->manager();
+        $manager->forceFill(['password' => 'secret-pass', 'telegram_chat_id' => null])->save();
+        $old = $this->device($manager, now());
+
+        // Пароль работает и без Telegram; вход делает этот браузер устройством, прежнее гаснет.
+        $login = $this->post('/login', ['login' => '79000000002', 'password' => 'secret-pass']);
+        $this->assertAuthenticatedAs($manager);
+        $login->assertCookie(Lock::COOKIE);
+        $this->assertNotNull($old->fresh()->revoked_at);
+        $this->assertSame([], Device::live($manager)->public_key);
+
+        // Прежний браузер со своей меткой — выход; без окна и без 423.
+        $this->actingAs($manager)->withCookie(Lock::COOKIE, $manager->id.':tok')->get('/offers', ['Accept' => 'text/html'])->assertRedirect('/login');
+        $this->assertGuest();
+    }
+
+    public function test_single_device_enrolls_old_session_on_page_load_only(): void
+    {
+        Settings::put(Lock::SETTING, false);
+        Settings::put(Lock::SINGLE, true);
+        $manager = $this->manager();
+
+        // Фоновый запрос сессии без метки проходит и устройства не заводит.
+        $this->actingAs($manager)->get('/live/badges', ['Accept' => 'text/vnd.turbo-stream.html'])->assertStatus(200);
+        $this->assertNull(Device::live($manager));
+
+        // Загрузка страницы — заводит; экран обычный, панель только слушает «вошли с другого».
+        $page = $this->actingAs($manager)->get('/offers', ['Accept' => 'text/html'])->assertOk()->assertSee('content="single:0"', false);
+        $page->assertCookie(Lock::COOKIE);
+        $this->assertNotNull(Device::live($manager));
+    }
+
     private function manager(): User
     {
         $user = User::create(['name' => 'Менеджер Тестов', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);

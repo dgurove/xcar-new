@@ -284,6 +284,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::delete('/users/groups/{group}', [UserGroupController::class, 'destroy']);
             // Замок менеджеров (07.10.2026): тумблер над «Менеджерами».
             Route::put('/users/lock', [UserController::class, 'lock']);
+            Route::put('/users/single-device', [UserController::class, 'singleDevice']);
             Route::get('/users/{user}', [UserController::class, 'show'])->whereNumber('user');
             Route::put('/users/{user}', [UserController::class, 'update']);
             Route::post('/users/{user}/access', [UserController::class, 'decide']);

@@ -39,6 +39,7 @@ use App\Offers\Listeners\SyncHandover;
 use App\Park\Actions\SendPickupLink;
 use App\Park\Events\VehicleSold;
 use App\Park\Listeners\SyncOffer;
+use App\Users\Access\EnrollOnLogin;
 use App\Users\Auth\WebAuthnProvider;
 use App\Users\Passkeys;
 use App\Workflow\Events\StageEntered;
@@ -100,6 +101,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen([InvoiceVoided::class, PaymentVoided::class], RevokeAgentFee::class);
         Event::listen([InvoiceVoided::class, PaymentVoided::class], ReopenWhenVoided::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);
+        Event::listen(Login::class, EnrollOnLogin::class);
         Event::listen(ChatMessagePosted::class, ScheduleAutoReply::class);
         Event::subscribe(Passkeys::class);
         Event::listen(MediaHasBeenAddedEvent::class, StampOnAdd::class);

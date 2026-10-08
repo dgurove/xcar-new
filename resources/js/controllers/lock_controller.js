@@ -47,6 +47,8 @@ export default class extends Controller {
         if (!state) return;
         this.state = state;
         this.until = Number(until) * 1000;
+        // Одно устройство без полной защиты: ни пилюли, ни окна — только «вошли с другого» (live:lock, 401).
+        if (state === 'single') { this.tick(); return; }
         if (state !== 'open') this.freeze();
         this.tick();
     }

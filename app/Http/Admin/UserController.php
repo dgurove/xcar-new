@@ -26,6 +26,7 @@ use App\Support\Phone;
 use App\Support\Sort;
 use App\Support\Surface;
 use App\Telegram\Actions\UnlinkChat;
+use App\Users\Access\Lock;
 use App\Users\Access\RevokeDevices;
 use App\Users\Access\SwitchLock;
 use App\Users\Actions\DecideAccess;
@@ -272,9 +273,18 @@ class UserController
     public function lock(Request $request, SwitchLock $switch)
     {
         abort_unless($request->user()->isAdmin(), 404);
-        $switch($on = $request->boolean('on'), $request->user());
+        $switch(Lock::SETTING, $on = $request->boolean('on'), $request->user());
 
         return back()->with('toast', $on ? 'Защита доступа включена' : 'Защита доступа выключена');
+    }
+
+    /** Только одно устройство: вход на новом выкидывает прежние, без Telegram и окна (Access\Lock::lite). */
+    public function singleDevice(Request $request, SwitchLock $switch)
+    {
+        abort_unless($request->user()->isAdmin(), 404);
+        $switch(Lock::SINGLE, $on = $request->boolean('on'), $request->user());
+
+        return back()->with('toast', $on ? 'Вход с одного устройства включён' : 'Вход с одного устройства выключен');
     }
 
     /** «Войти как»: одноразовая ссылка на вход за человека — админу, за не сотрудника. Открывают её в окне инкогнито. */

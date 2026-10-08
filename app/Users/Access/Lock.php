@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\Cookie;
  *   link   — Telegram не привязан: только привязка;
  *   kicked — у сессии было устройство, а теперь другое: вошли с другого — выход.
  * Под «Войти как», у админа и демо замка нет (null). Ответ помнится на запрос: его спрашивают сторож, темы хаба и вид.
+ *
+ * Облегчённый режим (08.10.2026, второй тумблер «Вход только с одного устройства»): без Telegram, окна и заморозки, только
+ * `kicked` — вошли на другом устройстве. Устройство заводится без ключа браузера: при входе (EnrollOnLogin) и у сессий,
+ * открытых до включения, на первой загрузке страницы (DeviceGate). Состояние в нём null или `kicked`.
  */
 final class Lock
 {
@@ -47,10 +51,18 @@ final class Lock
 
     public const SETTING = 'manager_lock';
 
+    public const SINGLE = 'manager_single_device';
+
     /** Переключатель в CRM (Настройки → «Пользователи» → «Менеджеры»); `LOCK_MANAGERS=false` гасит его без CRM. */
     public static function enabled(): bool
     {
         return (bool) config('xcar.lock.enabled') && (bool) Settings::get(self::SETTING, false);
+    }
+
+    /** Одно устройство: свой тумблер или полная защита, она его включает. `LOCK_MANAGERS=false` гасит и его. */
+    public static function single(): bool
+    {
+        return (bool) config('xcar.lock.enabled') && ((bool) Settings::get(self::SINGLE, false) || self::enabled());
     }
 
     public static function minutes(): int
@@ -63,12 +75,19 @@ final class Lock
         return $user !== null && $user->underLock() && self::enabled() && ! Impersonation::active();
     }
 
+    /** Облегчённый режим касается этого человека: одно устройство без полной защиты. */
+    public static function lite(?User $user): bool
+    {
+        return $user !== null && $user->underLock() && ! self::enabled() && self::single() && ! Impersonation::active();
+    }
+
     /** @return array{0: ?string, 1: ?Device} */
     public static function check(?Request $request = null): array
     {
         $request ??= request();
         $user = $request->user();
-        if (! self::applies($user) || ! $request->hasSession()) {
+        $full = self::applies($user);
+        if (! ($full || self::lite($user)) || ! $request->hasSession()) {
             return [null, null];
         }
         $memo = $request->attributes->get(self::MEMO);
@@ -77,13 +96,13 @@ final class Lock
         }
         $token = self::token($request);
         $device = Device::live($user);
-        $result = match (true) {
+        $result = $full ? match (true) {
             // Было устройство, а теперь другое или никакого (вошли с другого, админ отвязал Telegram) — выход.
             is_string($token) && $token !== '' && ! $device?->owns($token) => [self::KICKED, $device],
             $user->telegram_chat_id === null => [self::LINK, null],
             $device?->owns($token) => [$device->isOpen() ? self::OPEN : self::FROZEN, $device],
             default => [self::ENROLL, $device],
-        };
+        } : [is_string($token) && $token !== '' && ! $device?->owns($token) ? self::KICKED : null, $device];
         $request->attributes->set(self::MEMO, [$user->id, $result]);
 
         return $result;

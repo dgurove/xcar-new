@@ -59,6 +59,9 @@ final class Topics
             if (! Lock::passes($request)) {
                 return [$own];
             }
+        } elseif ($user && Lock::lite($user) && Lock::token($request) !== null) {
+            // Одно устройство без полной защиты: тема своего устройства — только «вошли с другого».
+            $own = Lock::topic($request);
         }
         // Покупатель общий каталог не слушает: его лента приходит в личную тему.
         $topics = $user?->isBuyer() ? [] : [self::CATALOG];

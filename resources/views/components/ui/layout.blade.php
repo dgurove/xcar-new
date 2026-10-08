@@ -7,6 +7,8 @@
     // Замок менеджера: состояние и конец окна — свежие на каждой странице (узел замка постоянный и сам их не обновит).
     // Окно замка — только на хосте, открытом человеку: на чужом его встречает стена, а /lock там закрыт.
     $lock = $surface->opensFor(auth()->user()) ? \App\Users\Access\Lock::state() : null;
+    // Одно устройство без полной защиты: окна нет, панель только слушает «вошли с другого».
+    $lock ??= \App\Users\Access\Lock::lite(auth()->user()) && \App\Users\Access\Lock::token(request()) ? 'single' : null;
 @endphp
 <!doctype html>
 <html lang="ru" translate="no" class="h-full{{ $theme === 'dark' ? ' dark' : '' }}">
