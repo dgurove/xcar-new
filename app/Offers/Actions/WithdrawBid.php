@@ -12,8 +12,9 @@ final class WithdrawBid
 {
     public function __invoke(Bid $bid, User $by): Bid
     {
-        // После срока приёма подтверждения — в работе у нас: отозвать уже нельзя.
-        if ($bid->state === BidState::Active && ! $bid->offer->bidsOpen()) {
+        // После срока приёма подтверждения — в работе у нас: отозвать уже нельзя. Резервное в открытой
+        // сделке — можно, пока сделка идёт.
+        if ($bid->state === BidState::Active && ! $bid->offer->bidsOpen() && ! $bid->offer->canBidInDeal($by)) {
             throw ValidationException::withMessages(['bid' => 'Приём закрыт, подтверждение уже нельзя отозвать']);
         }
         if ($bid->state === BidState::Active) {

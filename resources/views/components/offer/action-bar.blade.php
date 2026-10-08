@@ -4,7 +4,7 @@
     $user = auth()->user();
     $gallery = $offer->isGallery();
     $prices = !$gallery && ($user?->canSeePrices() ?? false);
-    $canBid = ($user?->canBid() ?? false) && $offer->bidsOpen();
+    $canBid = ($user?->canBid() ?? false) && ($offer->bidsOpen() || $offer->canBidInDeal($user));
     $interest = ($user?->canInterestIn($offer) ?? false) && !$myInterest;
     $canShow = $user?->isManager() && !$gallery && $offer->state->isPublic();
     // Рядом с кружком «показать» длинная подпись не помещается на 375 px — коротко.

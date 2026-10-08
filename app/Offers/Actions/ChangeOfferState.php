@@ -5,6 +5,7 @@ namespace App\Offers\Actions;
 use App\Garage\Actions\CloseGarageDeal;
 use App\Garage\Car as GarageCar;
 use App\Offers\BidState;
+use App\Offers\DealAudience;
 use App\Offers\DealState;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
@@ -84,6 +85,11 @@ final class ChangeOfferState
 
             $offer->state = $next;
             $offer->save();
+            // Ушли из сделки куда угодно (продажа, черновик, архив) — белый список «Кому показывать в сделке»
+            // стирается: дальше работают обычные волны. «Отдать» другому сделку не трогает — состояние то же.
+            if ($from === OfferState::Sold && $next !== OfferState::Sold) {
+                DealAudience::clear($offer);
+            }
             // Кто видит — до событий: уведомление о публикации берёт наступившие волны.
             app(SyncViewers::class)($offer);
             $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => $next->value]);

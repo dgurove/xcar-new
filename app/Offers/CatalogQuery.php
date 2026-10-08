@@ -38,11 +38,11 @@ final class CatalogQuery
             // каждому предложению поднимались зря; таблице фото не нужны вовсе — их снимает контроллер (`without`).
             ->with(['brand', 'model', 'settlement',
                 'media' => fn ($m) => $m->where('collection_name', 'photos'),
-                'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)])
-            ->visibleTo($user);
-        // Витрина — только то, что в продаже: срок вышел или идёт сделка — с сайта ушло (`Offer::scopeOnSale`).
-        // Галерея — окно показа черновика (`Offer::inGallery`).
-        $gallery ? $q->inGallery() : $q->onSale();
+                'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
+        // Витрина — только то, что в продаже (`Offer::siteList`: открытое без сделки плюс сделка,
+        // открытая менеджеру белым списком — с меткой «Идёт сделка»): срок вышел или идёт сделка —
+        // с сайта ушло. Галерея — окно показа черновика (`Offer::inGallery`).
+        $gallery ? $q->visibleTo($user)->inGallery() : $q->siteList($user);
         if ($user?->isBuyer() || $gallery) {
             // На карточке нужен свой интерес (покупателю, а в галерее и менеджеру) — одним запросом на список.
             $q->with(['interests' => fn ($i) => $i->where('user_id', $user->id)]);

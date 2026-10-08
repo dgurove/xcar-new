@@ -403,7 +403,7 @@ class OfferController
         // он не видит, и грузить их незачем.
         $admin = $request->user()->canManageCrm();
         $offer->load(['brand', 'model', 'settlement', 'media', 'events.user', ...($admin ? ['bids.user', 'interests.user.manager', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
-            'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer', 'lastDeal.buyer', 'lastDeal.bid', 'evacuator'] : [])]);
+            'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer', 'dealAudience', 'lastDeal.buyer', 'lastDeal.bid', 'evacuator'] : [])]);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
             app(WarmPhotos::class)($offer);

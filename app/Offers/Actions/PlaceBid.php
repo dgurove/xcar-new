@@ -14,7 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Подтверждение менеджера: для покупателя — с ценой не ниже порога, в гараж — без цены (там, где у предложения стоит
- * «Можно в гараж»). Живое подтверждение у человека одно: новое, любого вида, заменяет прежнее.
+ * «Можно в гараж»). Живое подтверждение у человека одно: новое, любого вида, заменяет прежнее. В сделке, открытой
+ * менеджеру белым списком, подтверждение встаёт резервом рядом с идущей сделкой.
  */
 final class PlaceBid
 {
@@ -29,7 +30,7 @@ final class PlaceBid
 
         return DB::transaction(function () use ($offer, $by, $amount, $comment, $kind) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
-            if (! $offer->bidsOpen()) {
+            if (! $offer->bidsOpen() && ! $offer->canBidInDeal($by)) {
                 throw ValidationException::withMessages(['amount' => 'Приём подтверждений закрыт']);
             }
             if ($kind === BidKind::Garage) {

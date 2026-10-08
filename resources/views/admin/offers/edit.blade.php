@@ -114,9 +114,12 @@
                 @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
                 @if ($published)<div data-edit-card-target="view" @unless ($foldCar) hidden @endunless>@include('admin.offers.fields.passport')</div>@endif
                 <div @if ($published) data-edit-card-target="edit" @if ($foldCar) hidden @endif @endif>@include('admin.offers.fields.car')</div>
-                {{-- Показ — пока машину показывают: в сделке и в гараже он ни о чём (галки при сохранении не трогаются, `_show`). --}}
+                {{-- Показ — пока машину показывают: в сделке его сменяет «Кому показывать в сделке» (белый список,
+                     волны кончились), в гараже ни того, ни другого (галки при сохранении не трогаются, `_show`). --}}
                 @if (! $deal && ! $garage && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true))
                     @include('admin.offers.fields.show', ['summary' => $showingSummary])
+                @elseif ($offer->deal && $offer->state === OfferState::Sold)
+                    @include('admin.offers.fields.deal-show')
                 @endif
             </x-ui.card>
         </form>

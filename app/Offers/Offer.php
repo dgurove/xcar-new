@@ -381,6 +381,39 @@ class Offer extends Model implements HasMedia
         return $this->hasMany(OfferViewer::class);
     }
 
+    /**
+     * Белый список «Кому показывать в сделке»: менеджеры и группы, которым предложение
+     * в сделке видно в каталоге с меткой «Идёт сделка» (DealAudience). Пусто — никому.
+     */
+    public function dealAudience(): HasMany
+    {
+        return $this->hasMany(OfferDealAudience::class);
+    }
+
+    /**
+     * Видит ли человек сделку как предложение: идёт сделка и он в белом списке
+     * (сам или через группу). Участники сделки видят её своими дверями, не этой.
+     */
+    public function seesDeal(?User $user): bool
+    {
+        if (! $user || $this->state !== OfferState::Sold) {
+            return false;
+        }
+        // Страница дёргает это несколько раз (кнопка, плашка, шторка) — связи грузятся раз.
+        $this->loadMissing(['deal', 'dealAudience']);
+        if (! $this->deal) {
+            return false;
+        }
+
+        return DealAudience::visibleTo($this, $user);
+    }
+
+    /** Может подтвердить в сделке резервом: идёт сделка и менеджер в белом списке. */
+    public function canBidInDeal(?User $user): bool
+    {
+        return ($user?->canBid() ?? false) && $this->seesDeal($user);
+    }
+
     public function showings(): HasMany
     {
         return $this->hasMany(Showing::class);
@@ -462,6 +495,8 @@ class Offer extends Model implements HasMedia
                 $any = true;
                 $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
                     ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now())));
+                // Сделка, открытая ему белым списком: видна в предложениях с меткой «Идёт сделка».
+                $w->orWhere(fn ($m) => $m->dealOpenTo($user));
             }
             // Проверяющий: открытые, которые всем сразу и без исключений; без показов и менеджера.
             if ($user->hasRole(Role::Reviewer)) {
@@ -490,6 +525,31 @@ class Offer extends Model implements HasMedia
         });
 
         return $any ? $q : $q->whereRaw('false');
+    }
+
+    /**
+     * Сделка, открытая менеджеру: идёт сделка и он в белом списке «Кому показывать
+     * в сделке» — сам или через группу. Та же дверь, что `seesDeal`, но запросом.
+     */
+    public function scopeDealOpenTo(Builder $q, ?User $user): Builder
+    {
+        if (! $user || ! $user->hasRole(Role::Manager)) {
+            return $q->whereRaw('false');
+        }
+        $groups = DB::table('user_group_user')->where('user_id', $user->id)->pluck('group_id')->all();
+
+        return $q->where('state', OfferState::Sold)->whereHas('deal')->where(fn ($w) => $w
+            ->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::USER)->where('audience_id', $user->id))
+            ->orWhere(fn ($g) => $g->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::GROUP)->whereIn('audience_id', $groups ?: [0]))));
+    }
+
+    /**
+     * Витрина предложений: в продаже или сделка, открытая этому менеджеру.
+     * Одна дверь каталога и числа таба «Предложения» — расходятся они не должны.
+     */
+    public function scopeSiteList(Builder $q, ?User $user): Builder
+    {
+        return $q->visibleTo($user)->where(fn ($w) => $w->onSale()->orWhere(fn ($d) => $d->dealOpenTo($user)));
     }
 
     /**

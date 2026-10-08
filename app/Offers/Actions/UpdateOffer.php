@@ -8,6 +8,7 @@ use App\Media\Jobs\StampPhotos;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\BidState;
+use App\Offers\DealAudience;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -42,6 +43,18 @@ final class UpdateOffer
         if (array_intersect(['audience_rules', 'vendor_id'], $changed)) {
             app(SyncViewers::class)($offer);
             app(NotifyViewers::class)($offer, live: true);
+        }
+        // Белый список «Кому показывать в сделке»: вновь добавленным — уведомление, как о новом.
+        if (array_key_exists('deal_audience_users', $data) || array_key_exists('deal_audience_groups', $data)) {
+            $sync = DealAudience::sync($offer,
+                (array) ($data['deal_audience_users'] ?? []),
+                (array) ($data['deal_audience_groups'] ?? []));
+            if ($sync['changed']) {
+                $offer->log(OfferEventType::Updated, $by, ['fields' => ['deal_audience']] + $log);
+            }
+            if ($sync['added']) {
+                app(NotifyDealAudience::class)->added($offer->refresh(), $sync['added']);
+            }
         }
         if ($changed) {
             // Ключ номера убытка — производная колонка, в истории это тот же «номер убытка».

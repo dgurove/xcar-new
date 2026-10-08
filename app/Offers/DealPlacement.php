@@ -18,7 +18,7 @@ final class DealPlacement
         }
         $prices = PriceView::for($offer, $user)->visible;
 
-        return ($user->canBid() && $offer->bidsOpen() && $prices)
+        return ($user->canBid() && ($offer->bidsOpen() || $offer->canBidInDeal($user)) && $prices)
             || ($user->canInterestIn($offer) && ! $myInterest);
     }
 }
