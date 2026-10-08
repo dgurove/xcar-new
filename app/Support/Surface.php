@@ -66,7 +66,7 @@ enum Surface: string
 
         return match (true) {
             $user->isModerator() => self::Crm,
-            $user->isParking() => self::Park,
+            $user->isParking() || $user->isParkAdmin() => self::Park,
             default => null,
         };
     }

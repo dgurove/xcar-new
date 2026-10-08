@@ -7,6 +7,6 @@
             @unless ($yard->is_active)<span class="tag">закрыта</span>@endunless
         </x-slot:marks>
         @if ($yard->rows)<div class="mt-4"><x-park.yard-map :yard="$yard" :occupied="$yard->storedVehicles->whereNotNull('spot')->keyBy('spot')"/></div>@endif
-        @if (auth()->user()->isAdmin())<div class="mt-4">@include('park.yards.form', ['yard' => $yard])</div>@endif
+        @if (auth()->user()->isParkAdmin())<div class="mt-4">@include('park.yards.form', ['yard' => $yard])</div>@endif
     </x-ui.row-card>
 </x-ui.detail>

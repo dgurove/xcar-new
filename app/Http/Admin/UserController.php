@@ -52,8 +52,15 @@ class UserController
     /** Люди — по имени (справочник, владелец 06.10.2026); ждущие, покупатели и отклонённые — новые сверху. */
     public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'seen' => ['Последний вход', 'desc']];
 
-    /** Роли, которые админ отмечает галками (ролей у человека может быть несколько); заводят людей только ссылкой. */
-    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Parking, Role::Reviewer];
+    /**
+     * Роли, которые админ CRM отмечает галками (ролей у человека может быть несколько); заводят людей только ссылкой.
+     * Роли парковки (управляющий, администратор парковки) тут не правятся — их ведёт парковка (`Park\UserController`),
+     * CRM их сохраняет как есть (владелец 08.10.2026: админ CRM не админ парковки).
+     */
+    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer];
+
+    /** Роли, которые ведёт парковка. */
+    public const PARK_ROLES = [Role::ParkAdmin, Role::Parking];
 
     /** Один экран на двух хостах: в CRM /settings/users, в кабинете сайта /account/users. */
     public static function base(): string
@@ -386,13 +393,15 @@ class UserController
         ]);
         // У себя роль не меняется — селект отключён и в запрос не попадает.
         $self = $user?->is($request->user()) ?? false;
+        $parkRoles = array_values(array_filter(self::PARK_ROLES, fn (Role $r) => (bool) $user?->hasRole($r)));
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:60'],
             'last_name' => ['required', 'string', 'max:60'],
             'phone' => ['nullable', 'digits:11', Rule::unique('users', 'phone')->ignore($user)],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user)],
             'login' => ['nullable', 'string', \App\Http\Auth\InviteController::LOGIN_RULE, Rule::unique('users', 'login')->ignore($user)],
-            'roles' => [$self ? 'nullable' : 'required', 'array', 'min:1'],
+            // У кого есть роль парковки, CRM-ролей может не быть вовсе.
+            'roles' => [$self || $parkRoles ? 'nullable' : 'required', 'array', 'min:1'],
             'roles.*' => [Rule::in(array_map(fn (Role $r) => $r->value, self::ROLES))],
         ], [
             'login.regex' => 'Логин — латиницей, от трёх знаков: буквы, цифры, точка',
@@ -410,13 +419,11 @@ class UserController
         if ($self && ! in_array(Role::Admin, $roles, true)) {
             $roles[] = Role::Admin;
         }
-        $data['roles'] = array_values(array_unique($roles, SORT_REGULAR));
-        // Роль «Парковка» — управляющий, с галкой «только приёмка» — помощник на воротах.
-        $park = in_array(Role::Parking, $data['roles'], true);
+        // Роли парковки остаются, какими их сделала парковка.
+        $data['roles'] = array_values(array_unique([...$roles, ...$parkRoles], SORT_REGULAR));
         $request->validate(['crm_areas' => ['nullable', 'array'], 'crm_areas.*' => [Rule::in(CrmArea::values())]]);
         // Галки областей — модератору сверх черновиков (почта CRM).
         $data['access'] = in_array(Role::Moderator, $data['roles'], true) ? array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))) : [];
-        $data['park_readonly'] = $park && $request->boolean('park_readonly');
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
 
         return $data;

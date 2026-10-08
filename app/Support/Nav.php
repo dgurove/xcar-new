@@ -237,7 +237,8 @@ final class Nav
             return array_filter(['' => array_values(array_filter([
                 self::link('Профиль', '/account', exact: true),
                 $user->canManagePark() ? self::link('Вендоры', '/vendors', icon: 'deal') : null,
-                $user->isAdmin() ? self::link('Тарифы', '/tariffs', icon: 'wallet') : null,
+                $user->isParkAdmin() ? self::link('Тарифы', '/tariffs', icon: 'wallet') : null,
+                $user->isParkAdmin() ? self::link('Пользователи', '/users', icon: 'user') : null,
                 self::link('Парковки', '/yards', icon: 'park'),
                 self::link('Уведомления', '/account/notifications', icon: 'bell'),
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
@@ -504,8 +505,8 @@ final class Nav
                     // Бейдж «Из писем» — число дел, которые надо завести: у одинокого письма-заявки цепочки нет.
                     '/requests/from-mail' => Boxes::registerCount(Scope::Park),
                     // Бейдж «Оплаты» — работа управляющего: выставить за прошлый месяц, отправить выставленное, просрочено.
-                    '/money' => Closing::pendingCount() + Invoice::ofSeller(Seller::Park)->where('direction', 'issued')->where('state', InvoiceState::Issued)
-                        ->where(fn ($w) => $w->whereNull('sent_at')->orWhereDate('due_at', '<', now()->toDateString()))->count(),
+                    '/money' => Closing::pendingCount() + Invoice::ofSeller(Seller::Park)->where('state', InvoiceState::Issued)
+                        ->where(fn ($w) => $w->whereDate('due_at', '<', now()->toDateString())->orWhereIn('id', Invoice::toSend()->select('id')))->count(),
                     '/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
                 ];
             }

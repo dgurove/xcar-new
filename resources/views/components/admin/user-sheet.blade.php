@@ -64,10 +64,6 @@
                     <x-ui.field name="transfer_to" :label="'Передать покупателей ('.$buyers.')'" :options="$managers->reject(fn ($m) => $m->is($user))->mapWithKeys(fn ($m) => [$m->id => $m->name])" placeholder="Выберите менеджера"/>
                 </div>
             @endif
-            {{-- Парковка — не галка у любой роли, а роль «Парковка» со своим доступом; админу открыто всё. --}}
-            <div data-park class="flex flex-col gap-3">
-                <x-park.access-fields :readonly="$user->park_readonly"/>
-            </div>
             <div data-managers class="flex flex-col gap-3">
                 <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" :user="$user" name="manager"/>
             </div>

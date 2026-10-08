@@ -16,7 +16,7 @@
     </div>
     @if ($vendor->kind->billable())
         <div class="list-head">За сутки</div>
-        <x-vendor.rates :vendor="$vendor" :edit="auth()->user()->isAdmin() ? $base.'?pill=tariffs' : null"/>
+        <x-vendor.rates :vendor="$vendor" :edit="auth()->user()->isParkAdmin() ? $base.'?pill=tariffs' : null"/>
     @endif
 
     @php $bank = array_filter([$row('Юрлицо', $vendor->legal_name), $row('ИНН', $vendor->inn), $row('КПП', $vendor->kpp), $row('Банк', $vendor->bank_name), $row('Р/с', $vendor->bank_account), $row('БИК', $vendor->bank_bic)]); @endphp
@@ -38,10 +38,10 @@
         @if ($contract)
             <div class="row justify-between">
                 <a href="/files/{{ $contract->id }}" class="flex min-w-0 items-center gap-2" target="_blank" data-doc="{{ \App\Support\Docs::type($contract->mime_type, $contract->file_name) }}" data-doc-name="Договор" title="{{ $contract->file_name }}"><x-ui.icon name="file" class="size-5 shrink-0 text-ink-dim"/><span class="truncate">{{ $contract->file_name }}</span></a>
-                @if (auth()->user()->isAdmin())<form method="post" action="{{ $base }}/contract" data-turbo-confirm="Убрать файл договора?">@csrf @method('delete')<button class="btn btn-ghost btn-round btn-s text-ink-muted" aria-label="Убрать"><x-ui.icon name="trash" class="size-4"/></button></form>@endif
+                @if (auth()->user()->isParkAdmin())<form method="post" action="{{ $base }}/contract" data-turbo-confirm="Убрать файл договора?">@csrf @method('delete')<button class="btn btn-ghost btn-round btn-s text-ink-muted" aria-label="Убрать"><x-ui.icon name="trash" class="size-4"/></button></form>@endif
             </div>
         @endif
-        @if (auth()->user()->isAdmin())
+        @if (auth()->user()->isParkAdmin())
             <form method="post" action="{{ $base }}/contract" enctype="multipart/form-data" class="row items-end">
                 @csrf
                 {{-- Поле файла видом поля ввода: голый input показывал системное «Choose File… No file chosen». --}}
@@ -51,7 +51,7 @@
         @endif
     </div>
 
-    @if ($vendor->park_senders && auth()->user()->isAdmin())
+    @if ($vendor->park_senders && auth()->user()->isParkAdmin())
         <div class="list-head">Заявки на приёмку</div>
         <div class="list">
             <div class="row justify-between"><span class="shrink-0 text-ink-muted">Приходят от</span><span class="min-w-0 text-right">{{ implode(', ', $vendor->park_senders) }}</span></div>

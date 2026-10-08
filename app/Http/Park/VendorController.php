@@ -89,7 +89,7 @@ class VendorController
     {
         abort_unless($vendor->on_park, 404);
         // Тарифы вендора — настройки, управляющему их нет; ставки за сутки он видит в обзоре.
-        $pills = $request->user()->isAdmin() ? self::PILLS : array_diff_key(self::PILLS, ['tariffs' => 1]);
+        $pills = $request->user()->isParkAdmin() ? self::PILLS : array_diff_key(self::PILLS, ['tariffs' => 1]);
         abort_if($request->query('pill') === 'tariffs' && ! isset($pills['tariffs']), 404);
         $pill = array_key_exists($request->query('pill', ''), $pills) ? $request->query('pill') : 'overview';
         $vendor->load(['contacts.yard', 'media']);

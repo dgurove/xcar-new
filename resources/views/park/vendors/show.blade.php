@@ -3,7 +3,7 @@
      от чипов, шторкой по группам. Условия продажи и маршруты — в CRM, ссылкой в обзоре. --}}
 @php
     // «Изменить» — условия, реквизиты, адреса вендора: только админу; управляющий правит контакты.
-    $manage = auth()->user()->isAdmin();
+    $manage = auth()->user()->isParkAdmin();
     $noBank = $vendor->kind->billable() && ! \App\Billing\Party::forVendor($vendor, false)->billable();
 @endphp
 <x-ui.shell :title="$vendor->name" :back="['Вендоры', '/vendors']">

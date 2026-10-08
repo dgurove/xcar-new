@@ -1,5 +1,4 @@
-{{-- Форма новой ссылки. Админ: менеджеру, сотруднику или управляющему парковкой (одноразовая, со сроком; управляющему —
-     сразу с доступом: что открыто сверх заявок и наличия, какая парковка, только приёмка; модератору — почта сверх
+{{-- Форма новой ссылки. Админ: менеджеру или сотруднику (одноразовая, со сроком; модератору — почта сверх
      черновиков) или покупателю от имени
      менеджера; менеджер: покупателю, сразу в группу. Что покупатель укажет о себе — по умолчанию ничего.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
@@ -8,10 +7,7 @@
     @csrf
     @if ($admin)
         {{-- Четыре роли в сегменты не помещаются на телефоне — селект. --}}
-        <div class="fields"><x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'parking' => 'Управляющему парковкой', 'buyer' => 'Покупателю']" :value="old('role', 'manager')"/></div>
-        <div data-park class="flex flex-col gap-3">
-            <x-park.access-fields/>
-        </div>
+        <div class="fields"><x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'buyer' => 'Покупателю']" :value="old('role', 'manager')"/></div>
         <div data-managers class="fields">
             <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" name="manager"/>
         </div>

@@ -350,11 +350,11 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /**
      * Управляющий: вся парковка на всех парковках — заявки, приём, выдача, оплаты, счета, закрытие месяца, почта,
      * контакты вендоров и реквизиты плательщиков. Не он — помощник «только приёмка» (`isParkHelper`).
-     * Настройки (прайс, правила вендоров, парковки, свои реквизиты) и продажа — `isAdmin`.
+     * Настройки парковки (прайс, правила вендоров, парковки, свои реквизиты, люди) — `isParkAdmin`; продажа — `isAdmin`.
      */
     public function canManagePark(): bool
     {
-        return $this->isAdmin() || ($this->isParking() && ! $this->park_readonly);
+        return $this->isParkAdmin() || ($this->isParking() && ! $this->park_readonly);
     }
 
     /** Управляющий парковкой: только park.xcar, без продаж и настроек. */
@@ -363,10 +363,19 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->hasRole(Role::Parking);
     }
 
+    /**
+     * Администратор парковки — своя роль (владелец 08.10.2026): админ CRM без неё на парковку не входит, а с ней —
+     * настройки парковки и её люди. У Дмитрия и Андрея она есть, у Екатерины — нет.
+     */
+    public function isParkAdmin(): bool
+    {
+        return $this->hasRole(Role::ParkAdmin);
+    }
+
     /** Помощник на воротах («только приёмка»): заявки, приём и выдача; без оплат, почты, вендоров и правки ТС. */
     public function isParkHelper(): bool
     {
-        return $this->isParking() && $this->park_readonly && ! $this->isAdmin();
+        return $this->isParking() && $this->park_readonly && ! $this->isParkAdmin();
     }
 
     /** Сайтовое (избранное, чаты, интересы, поддержка, поток каталога) — всем, кроме тех, у кого только парковка. */
@@ -375,10 +384,10 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return Surface::onlyFor($this) !== Surface::Park;
     }
 
-    /** Кто работает на парковке: админы и управляющие — список «Кто ведёт», уведомления, закрытие месяца. */
+    /** Кто работает на парковке: администраторы парковки и управляющие — список «Кто ведёт», уведомления, закрытие месяца. */
     public function scopeParkStaff($query)
     {
-        return $query->withRole(Role::Admin, Role::Parking);
+        return $query->withRole(Role::ParkAdmin, Role::Parking);
     }
 
     public function party(): BelongsTo
@@ -386,10 +395,10 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->belongsTo(Party::class, 'party_id');
     }
 
-    /** Парковка — админам и управляющим (роль «Парковка»); менеджерам, покупателям и модераторам её нет. */
+    /** Парковка — администраторам парковки и управляющим; админу CRM без роли «Администратор парковки», менеджерам и прочим — нет. */
     public function canAccess(Section $section): bool
     {
-        return $this->isAdmin() || ($section === Section::Park && $this->isParking());
+        return $section === Section::Park && ($this->isParkAdmin() || $this->isParking());
     }
 
     public function wantsMail(): bool
@@ -436,7 +445,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      */
     public function canLinkTelegram(): bool
     {
-        return ($this->isManager() || $this->isAdmin() || $this->isModerator() || $this->isParking()) && $this->telegram_chat_id === null && ! $this->is_demo
+        return ($this->isManager() || $this->isAdmin() || $this->isModerator() || $this->isParking() || $this->isParkAdmin()) && $this->telegram_chat_id === null && ! $this->is_demo
             && app(Bot::class)->username() !== null;
     }
 

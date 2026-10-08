@@ -7,6 +7,7 @@ use App\Users\Invite;
 use App\Users\Role;
 use App\Users\User;
 use App\Users\UserGroup;
+use Carbon\CarbonInterface;
 use Illuminate\Validation\Rule;
 
 /**
@@ -18,8 +19,8 @@ use Illuminate\Validation\Rule;
  */
 final class IssueInvite
 {
-    /** Кем может стать пришедший по ссылке админа. */
-    public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Parking, Role::Buyer];
+    /** Кем может стать пришедший по ссылке админа CRM. Управляющего и помощника парковки зовёт парковка (`park()`). */
+    public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Buyer];
 
     public function __invoke(User $by, array $data): Invite
     {
@@ -50,8 +51,6 @@ final class IssueInvite
             'max_uses' => $once ? 1 : null,
             'expires_at' => $once ? ($data['expires_at'] ?? null) : null,
             'fields' => $once ? ['phone' => true, 'email' => true] : $fields,
-            // Роль «Парковка» в ссылке: управляющий или помощник «только приёмка».
-            ...($role === Role::Parking ? ['park_readonly' => (bool) ($data['park_readonly'] ?? false)] : []),
             // Модератору — что открыто сверх черновиков.
             ...($role === Role::Moderator ? ['access' => array_values($data['crm_areas'] ?? [])] : []),
             // Менеджер и модератор — сразу в группе своего вида (UserGroup), если выбрана.
@@ -63,6 +62,18 @@ final class IssueInvite
         ]);
     }
 
+    /**
+     * Ссылка управляющему или помощнику парковки — от администратора парковки (из «Пользователей» парковки): одноразовая,
+     * со сроком, без названия; «только приёмка» — помощник.
+     */
+    public function park(User $by, CarbonInterface $expiresAt, bool $helper): Invite
+    {
+        return Invite::create([
+            'code' => Invite::freshCode(), 'role' => Role::Parking, 'created_by' => $by->id, 'max_uses' => 1,
+            'expires_at' => $expiresAt, 'fields' => ['phone' => true, 'email' => true], 'park_readonly' => $helper,
+        ]);
+    }
+
     /** Правила формы — по тому, кто создаёт. */
     public static function rules(User $by): array
     {
@@ -71,7 +82,6 @@ final class IssueInvite
             $rules['role'] = ['required', Rule::in(array_map(fn ($r) => $r->value, self::ROLES))];
             $rules['manager_id'] = ['required_if:role,buyer', 'nullable', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))];
             $rules['expires_at'] = ['exclude_if:role,buyer', 'required', 'date', 'after:now'];
-            $rules['park_readonly'] = ['exclude_unless:role,parking', 'boolean'];
             $rules['crm_areas'] = ['exclude_unless:role,moderator', 'nullable', 'array'];
             $rules['crm_areas.*'] = [Rule::in(CrmArea::values())];
             $rules['manager_group_id'] = ['exclude_unless:role,manager', 'nullable', Rule::exists('user_groups', 'id')->where('kind', UserGroup::MANAGERS)];

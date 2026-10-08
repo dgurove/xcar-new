@@ -64,15 +64,19 @@ class InviteController
         return back()->with('toast', 'Ссылка снова действует');
     }
 
-    /** Куда возвращать после создания: на том же хосте, где сделали. */
+    /** Куда возвращать после создания: на том же хосте, где сделали (на парковке — её «Пользователи»). */
     public static function home(): string
     {
-        return Surface::current() === Surface::Crm ? '/settings/users?preset=invites' : '/account/invites';
+        return match (Surface::current()) {
+            Surface::Crm => '/settings/users?preset=invites', Surface::Park => '/users?preset=invites', default => '/account/invites'
+        };
     }
 
     /** Путь для off/on на текущем хосте. */
     public static function base(): string
     {
-        return Surface::current() === Surface::Crm ? '/settings/users/invites' : '/account/invites';
+        return match (Surface::current()) {
+            Surface::Crm => '/settings/users/invites', Surface::Park => '/users/invites', default => '/account/invites'
+        };
     }
 }

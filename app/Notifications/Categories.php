@@ -37,7 +37,11 @@ final class Categories
             $add(['on' => ['letters' => 'Новые из писем'], 'always' => []]);
         }
         if ($user->hasRole(Role::Admin)) {
-            $add(['on' => ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'deals' => 'Сроки этапов', 'money' => 'Деньги', 'chats' => 'Чаты', 'park' => 'Парковка', 'park_money' => 'Оплаты парковки'], 'always' => []]);
+            $add(['on' => ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'deals' => 'Сроки этапов', 'money' => 'Деньги', 'chats' => 'Чаты'], 'always' => []]);
+        }
+        // Администратор парковки — своя роль, не у каждого админа CRM.
+        if ($user->hasRole(Role::ParkAdmin)) {
+            $add(['on' => ['park' => 'Парковка', 'park_money' => 'Оплаты парковки'], 'always' => []]);
         }
         // Управляющий парковкой: заявки и письма, оплаты; назначенное ему и вышедший срок — всегда. Помощнику оплат нет.
         if ($user->hasRole(Role::Parking)) {

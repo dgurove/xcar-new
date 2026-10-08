@@ -63,11 +63,22 @@ class Invite extends Model
     /** Кто вправе видеть и выключать (scopeManageableBy / isManageableBy): админ — все, менеджер — ссылки своих покупателей (и сделанные для него админом). */
     public function scopeManageableBy(Builder $q, User $user): Builder
     {
-        return $user->isAdmin() ? $q : $q->where('manager_id', $user->id);
+        // Ссылки парковки ведёт парковка: в CRM и кабинете их нет.
+        return ($user->isAdmin() ? $q : $q->where('manager_id', $user->id))->where('role', '!=', Role::Parking->value);
+    }
+
+    /** Ссылки управляющим и помощникам — в «Пользователях» парковки. */
+    public function scopeOfPark(Builder $q): Builder
+    {
+        return $q->where('role', Role::Parking->value);
     }
 
     public function isManageableBy(User $user): bool
     {
+        if ($this->role === Role::Parking) {
+            return $user->isParkAdmin();
+        }
+
         return $user->isAdmin() || $this->manager_id === $user->id;
     }
 
@@ -79,7 +90,7 @@ class Invite extends Model
             Role::Manager => 'менеджеру',
             Role::Moderator => 'модератору',
             Role::Admin => 'администратору',
-            Role::Parking => 'управляющему парковкой',
+            Role::Parking => $this->park_readonly ? 'помощнику парковки' : 'управляющему парковкой',
             default => $this->role->label(),
         };
     }
@@ -98,7 +109,7 @@ class Invite extends Model
             Role::Manager => 'менеджером',
             Role::Moderator => 'модератором',
             Role::Admin => 'администратором',
-            Role::Parking => 'управляющим парковкой',
+            Role::Parking => $this->park_readonly ? 'помощником на парковку' : 'управляющим парковкой',
             default => mb_strtolower($this->role->label()),
         }.'. Ссылка одноразовая';
         if ($this->expires_at) {

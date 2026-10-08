@@ -10,6 +10,7 @@ enum Role: string
     case Moderator = 'moderator'; // сотрудник CRM: заводит черновики предложений, сверх них — галки CrmArea; сайта нет
     case Admin = 'admin';         // владелец: всё
     case Parking = 'parking';     // управляющий парковкой: только park.xcar, вся парковка; «только приёмка» — помощник; без настроек и продаж
+    case ParkAdmin = 'park_admin'; // администратор парковки: вся парковка с настройками и людьми; отдельно от админа CRM (08.10.2026)
     case Reviewer = 'reviewer';   // проверяющий (модерация ЮKassa): открытые предложения с ценой продажи, действий нет
 
     public function label(): string
@@ -21,6 +22,7 @@ enum Role: string
             self::Moderator => 'Модератор',
             self::Admin => 'Администратор',
             self::Parking => 'Парковка',
+            self::ParkAdmin => 'Администратор парковки',
             self::Reviewer => 'Проверяющий',
         };
     }
@@ -60,7 +62,7 @@ enum Role: string
     /** Галерея «скоро в продаже» — всем, кто покупает: менеджеру, покупателю, посетителю и админу (владелец 08.10.2026). */
     public function canSeeGallery(): bool
     {
-        return ! in_array($this, [self::Parking, self::Reviewer, self::Moderator], true);
+        return ! in_array($this, [self::Parking, self::ParkAdmin, self::Reviewer, self::Moderator], true);
     }
 
     /** Чат по предложению: менеджер и посетитель — с площадкой, покупатель — со своим менеджером (нужен manager_id, см. User::canChat). */
@@ -72,7 +74,7 @@ enum Role: string
     /** Поделиться PDF — всем, кроме покупателя (его цена — не для пересылки дальше) и модератора (у него черновики). */
     public function canShare(): bool
     {
-        return ! in_array($this, [self::Buyer, self::Parking, self::Reviewer, self::Moderator], true);
+        return ! in_array($this, [self::Buyer, self::Parking, self::ParkAdmin, self::Reviewer, self::Moderator], true);
     }
 
     /** Гараж — машины на ремонте у менеджеров: сами менеджеры и админ, что вносит итог и счёт. */

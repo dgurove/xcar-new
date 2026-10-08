@@ -26,7 +26,7 @@ class PartyController
     {
         ListPrefs::sync($request, 'park-parties');
         $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
-        $admin = $request->user()->isAdmin();
+        $admin = $request->user()->isParkAdmin();
 
         return view('park.money.parties', [
             'parties' => Party::withCount('invoices')->unless($admin, fn ($q) => $q->ofPark())->orderByDesc('is_self')
@@ -42,7 +42,7 @@ class PartyController
     {
         $user = $request->user();
         $vendor = $request->filled('vendor_id') ? Vendor::onPark()->whereNull('party_id')->find($request->integer('vendor_id')) : null;
-        abort_unless($vendor || $user->isAdmin(), 404);
+        abort_unless($vendor || $user->isParkAdmin(), 404);
         $party = Party::create($this->data($request));
         $vendor?->update(['party_id' => $party->id]);
 
@@ -74,7 +74,7 @@ class PartyController
     /** Управляющему — только плательщики парковки; свои реквизиты и чужие стороны — 404. */
     private function guard(User $user, Party $party): void
     {
-        abort_unless($user->isAdmin() || Party::ofPark()->whereKey($party->id)->exists(), 404);
+        abort_unless($user->isParkAdmin() || Party::ofPark()->whereKey($party->id)->exists(), 404);
     }
 
     private function data(Request $request): array

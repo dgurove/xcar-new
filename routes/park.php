@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Admin\ReferenceController;
+use App\Http\Cabinet\InviteController;
 use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
 use App\Http\Park\ActController;
@@ -10,6 +11,7 @@ use App\Http\Park\PartyController;
 use App\Http\Park\PassController;
 use App\Http\Park\RequestController;
 use App\Http\Park\TariffController;
+use App\Http\Park\UserController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\VehicleInvoiceController;
 use App\Http\Park\VendorContactController;
@@ -141,8 +143,14 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::put('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'update']);
         Route::delete('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'destroy']);
     });
-    // Настройки парковки — только админу: правка парковок, вендоров (условия, ставки, договор, адреса), прайс.
-    Route::middleware('ability:isAdmin')->group(function () {
+    // Настройки парковки — администратору парковки: правка парковок, вендоров (условия, ставки, договор, адреса), прайс, люди.
+    Route::middleware('ability:isParkAdmin')->group(function () {
+        Route::get('/users', [UserController::class, 'index']);
+        Route::post('/users/invites', [UserController::class, 'invite']);
+        Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
+        Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
+        Route::put('/users/{user}', [UserController::class, 'update'])->whereNumber('user');
+        Route::post('/users/{user}/revoke', [UserController::class, 'revoke'])->whereNumber('user');
         Route::post('/yards', [YardController::class, 'store']);
         Route::put('/yards/{yard}', [YardController::class, 'update']);
         Route::delete('/yards/{yard}', [YardController::class, 'destroy']);

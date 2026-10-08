@@ -47,7 +47,7 @@ class Party extends Model
     /** Кому из контрагентов человек на парковке может выставить и чьи реквизиты правит: админу — всем, кроме нас. */
     public function scopeVisibleOnPark($query, User $user)
     {
-        return $user->isAdmin() ? $query->where('is_self', false) : $query->ofPark();
+        return $user->isParkAdmin() ? $query->where('is_self', false) : $query->ofPark();
     }
 
     /**

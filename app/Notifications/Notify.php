@@ -347,7 +347,7 @@ final class Notify
 
     public function parkIdle(VehicleIdle $e): void
     {
-        Notification::send($this->parkStaff()->filter->isAdmin(), ParkNotice::idle($e->vehicle, $e->days));
+        Notification::send($this->parkStaff()->filter->isParkAdmin(), ParkNotice::idle($e->vehicle, $e->days));
     }
 
     /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен»; ПРАЙМ — админам, парковки — управляющим и админам. */
