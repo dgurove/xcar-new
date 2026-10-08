@@ -14,7 +14,7 @@
     $left = $gallery || !$bids ? null : $offer->secondsLeft();
     $href = $context?->offerUrl($offer) ?? "/offers/{$n}";
     $canBid = $bids && $offer->bidsOpen() && $price->visible;
-    $wantsInterest = ($user?->canInterest() ?? false) && $offer->state->acceptsInterest();
+    $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
     $asking = (int) $offer->asking_price;
     $min = (int) ($offer->minBid() ?? 0);
@@ -39,6 +39,7 @@
                 @if ($price->declared)<span class="text-xs text-ink-dim nums">заявленная {{ $price::money($price->declared) }}</span>@endif
             @elseif ($gallery)
                 <span class="text-sm text-accent-text">Скоро в продаже</span>
+                <x-offer.gallery-left :offer="$offer" class="block text-xs"/>
             @endif
         </x-slot:aside>
         <x-slot:actions>
@@ -69,8 +70,8 @@
                 <x-offer.my-bid :offer="$offer" :bid="$myBid" class="w-full"/>
             @elseif ($wantsInterest)
                 @if ($myInterest)
-                    <span class="flash flash-accent w-full text-sm">{{ $gallery ? 'Сообщим, когда откроется приём' : ($myInterest->state === InterestState::New ? ($manager ? $manager->shortName().' свяжется с вами' : 'Менеджер свяжется с Вами') : 'С Вами связались') }}</span>
-                    <form method="post" action="/offers/{{ $n }}/interest" class="contents" data-turbo-confirm="Снять интерес?" data-turbo-confirm-label="Снять" data-turbo-confirm-text="{{ $manager?->shortName() ?? 'Менеджер' }} увидит, что вы передумали.">
+                    <span class="flash flash-accent w-full text-sm">{{ $gallery ? 'Интерес отправлен' : ($myInterest->state === InterestState::New ? ($manager ? $manager->shortName().' свяжется с вами' : 'Менеджер свяжется с Вами') : 'С Вами связались') }}</span>
+                    <form method="post" action="/offers/{{ $n }}/interest" class="contents" data-turbo-confirm="Снять интерес?" data-turbo-confirm-label="Снять" @unless ($gallery && ! $manager) data-turbo-confirm-text="{{ $manager?->shortName() ?? 'Менеджер' }} увидит, что вы передумали" @endunless>
                         @csrf @method('delete')
                         <button type="submit" class="pill pill-plain">Передумал</button>
                     </form>

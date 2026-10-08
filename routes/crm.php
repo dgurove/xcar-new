@@ -234,7 +234,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::delete('/work/chats/{chat}', [ChatController::class, 'destroy']);
 
         Route::get('/gallery', [GalleryController::class, 'index']);
-        Route::post('/gallery', [GalleryController::class, 'store']);
         // Старые адреса разделов — закладки и ссылки из уведомлений.
         Route::get('/deals', fn () => redirect('/work/deals', 301));
         // Только корень и экран чата: `/chats/{id}/messages|files|typing` из web.php должны дойти до ленты.

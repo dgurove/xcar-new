@@ -10,7 +10,7 @@ enum OfferState: string
     use HasLabels;
 
     case Draft = 'draft';
-    case Gallery = 'gallery';       // «скоро в продаже»: без цены, принимаем интерес
+    case Gallery = 'gallery';       // прежняя галерея-состояние; с 08.10.2026 галерея — окно показа черновика (`Offer::isGallery`)
     case Open = 'open';             // в каталоге; подтверждения принимаются, пока не прошёл bids_close_at
     case Garage = 'garage';         // отдана менеджеру в гараж: из продажи ушла, на витрину не вернётся
     case Sold = 'sold';             // идёт сделка
@@ -63,9 +63,10 @@ enum OfferState: string
         return $this === self::Open;
     }
 
+    /** Интерес на открытом; в галерее — по окну показа черновика (`Offer::acceptsInterest`). */
     public function acceptsInterest(): bool
     {
-        return in_array($this, [self::Open, self::Gallery], true);
+        return $this === self::Open;
     }
 
     /**
@@ -78,7 +79,8 @@ enum OfferState: string
     public function actions(): array
     {
         return match ($this) {
-            self::Draft => [self::Open->value => 'Опубликовать', self::Gallery->value => 'В галерею «скоро»', self::Archived->value => 'В архив'],
+            // «В галерею» — не переход: черновик остаётся черновиком, у него открывается окно показа (`ShowInGallery`).
+            self::Draft => [self::Open->value => 'Опубликовать', self::Gallery->value => 'В галерею', self::Archived->value => 'В архив'],
             self::Gallery => [self::Open->value => 'Опубликовать', self::Draft->value => 'Снять с продажи', self::Archived->value => 'В архив'],
             self::Open => [self::Draft->value => 'Снять с продажи', self::Archived->value => 'В архив'],
             self::Delivered, self::Cancelled => [self::Archived->value => 'В архив'],
@@ -90,7 +92,7 @@ enum OfferState: string
     public function allows(self $next): bool
     {
         return in_array($next, match ($this) {
-            self::Draft => [self::Gallery, self::Open, self::Sold, self::Garage, self::Cancelled, self::Archived],
+            self::Draft => [self::Open, self::Sold, self::Garage, self::Cancelled, self::Archived],
             self::Gallery => [self::Draft, self::Open, self::Sold, self::Garage, self::Cancelled, self::Archived],
             self::Open => [self::Draft, self::Sold, self::Garage, self::Cancelled, self::Archived],
             // Из гаража машина на витрину не возвращается: «отдали по ошибке» — обратно в черновик.

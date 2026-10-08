@@ -4,7 +4,6 @@ namespace App\Http\Live;
 
 use App\Live\Stream;
 use App\Offers\Offer;
-use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Support\Nav;
 use Illuminate\Http\Request;
@@ -22,7 +21,7 @@ class FragmentController
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites']);
         Showing::remember($request->user(), [$offer->id]);
         // Карточка живёт в ленте, только если человеку положено её видеть: чужому — remove.
-        $visible = ($request->query('list') === 'gallery' ? $offer->state === OfferState::Gallery : $offer->state->isPublic())
+        $visible = ($request->query('list') === 'gallery' ? $offer->isGallery() : $offer->state->isPublic())
             && $offer->isVisibleTo($request->user());
         $present = $request->boolean('present');
 

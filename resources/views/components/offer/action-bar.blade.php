@@ -5,7 +5,7 @@
     $gallery = $offer->isGallery();
     $prices = !$gallery && ($user?->canSeePrices() ?? false);
     $canBid = ($user?->canBid() ?? false) && $offer->bidsOpen();
-    $interest = ($user?->canInterest() ?? false) && $offer->state->acceptsInterest() && !$myInterest;
+    $interest = ($user?->canInterestIn($offer) ?? false) && !$myInterest;
     $canShow = $user?->isManager() && !$gallery && $offer->state->isPublic();
     // Рядом с кружком «показать» длинная подпись не помещается на 375 px — коротко.
     $label = $canBid && $prices ? ($myBid ? ($canShow ? 'Изменить' : 'Изменить предложение') : ($canShow ? 'Подтвердить' : 'Подтвердить предложение')) : ($interest ? ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') : null);

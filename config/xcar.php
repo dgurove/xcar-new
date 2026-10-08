@@ -126,5 +126,7 @@ return [
     'slot_hour' => 16,
     'bids_window_days' => 3,
     'bids_close_hour' => 17,
+    // Черновик вендора с `to_gallery` висит в галерее столько дней, до 23:59 последнего (владелец 08.10.2026).
+    'gallery_days' => 3,
     'remind_before_minutes' => 60,
 ];

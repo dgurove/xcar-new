@@ -23,4 +23,5 @@ enum OfferEventType: string
     case PickupAssigned = 'pickup_assigned';
     case InsurerReplied = 'insurer_replied';
     case Garage = 'garage';
+    case Gallery = 'gallery_window';
 }

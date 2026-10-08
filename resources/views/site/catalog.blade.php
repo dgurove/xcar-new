@@ -6,17 +6,21 @@
     // Покупателю та же лента и тот же тулбар: у него нет только первого экрана, а пустая лента — с контактом менеджера.
     $buyer = $user?->isBuyer() ?? false;
 @endphp
-<x-ui.shell :title="$gallery ? 'Скоро в продаже' : 'Предложения'" :heading="false" :trail="$trail" :detail="$detail">
+{{-- Галерея (08.10.2026) — пилюлей «Скоро» за «Все» в ленте «Предложений», пока в ней что-то есть; из неё — «‹ Предложения». --}}
+<x-ui.shell :title="$gallery ? 'Скоро в продаже' : 'Предложения'" :heading="false" :trail="$trail" :detail="$detail" :back="$gallery ? ['Предложения', '/offers'] : null">
 
     <div id="catalog-section" @if ($selecting) data-controller="selection" data-selection-url-value="/buyers/showings/new" @endif>
         <div>
             {{-- Только название раздела: соседние разделы уже в шапке, а на телефоне и его место — лента пилюль тулбара. --}}
             <div class="hidden md:block">
-                <x-ui.section-title level="h1" :count="$gallery ? $counts['gallery'] : $counts['offers']">{{ $gallery ? 'Галерея' : 'Предложения' }}</x-ui.section-title>
+                <x-ui.section-title level="h1" :count="$gallery ? $counts['gallery'] : $counts['offers']">{{ $gallery ? 'Скоро в продаже' : 'Предложения' }}</x-ui.section-title>
             </div>
 
             {{-- Лупа сайта — в шапке (поиск по разделам); пришли из неё — тулбар сразу в поиске, с полем и «Отмена». --}}
             <x-ui.toolbar class="md:mt-5" :sort="$sorting" :pills="$views" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
+                @if (! $gallery && ($counts['gallery'] ?? 0) && $user?->canSeeGallery())
+                    <x-slot:pillsNext><a href="/gallery" class="pill">Скоро <span class="nums opacity-70">{{ $counts['gallery'] }}</span></a></x-slot:pillsNext>
+                @endif
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && ! \App\Support\ListView::isTable($view))<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
                     <x-ui.view-switch :current="$view"/>

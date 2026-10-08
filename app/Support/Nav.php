@@ -91,36 +91,37 @@ final class Nav
 
         // Демо-кабинет менеджера: каталог вместо закупок — закупки настоящие и ему закрыты; гаража у демо нет.
         if ($user?->hasRole(Role::Manager) && $user->is_demo) {
-            return [self::item('Предложения', '/offers'), $deals];
+            return [self::item('Предложения', '/offers', ['/offers', '/gallery']), $deals];
         }
 
         if ($user?->hasRole(Role::Manager)) {
             return [
-                self::item('Предложения', '/offers'),
+                self::item('Предложения', '/offers', ['/offers', '/gallery']),
                 $deals,
                 self::item('Гараж', '/garage'),
             ];
         }
 
         // Уведомлений в разделах нет: колокольчик в шапке, лента и настройки — строкой кабинета.
-        // Закупки и галерея на сайте пока скрыты (владелец 03.10.2026): прямые ссылки работают. На сайте «сотрудник» —
+        // Закупки на сайте скрыты (владелец 03.10.2026), галерея — пилюлей «Скоро» в «Предложениях» (08.10.2026), таб
+        // «Предложения» горит и на ней. На сайте «сотрудник» —
         // админ (модератору сайт не нужен); админ, который ещё и менеджер, — менеджер (ветка выше).
         if ($user?->isAdmin()) {
             return [
-                self::item('Предложения', '/offers'),
+                self::item('Предложения', '/offers', ['/offers', '/gallery']),
                 self::item('Гараж', '/garage'),
             ];
         }
 
         // Проверяющий: только посмотреть предложения.
         if ($user?->hasRole(Role::Reviewer)) {
-            return [self::item('Предложения', '/offers')];
+            return [self::item('Предложения', '/offers', ['/offers', '/gallery'])];
         }
 
         // Покупатель: только то, что открыл менеджер, и его интерес.
         if ($user?->isBuyer()) {
             return [
-                self::item('Предложения', '/offers'),
+                self::item('Предложения', '/offers', ['/offers', '/gallery']),
                 self::item('Интерес', '/account/interests'),
             ];
         }
@@ -423,14 +424,14 @@ final class Nav
                 return ['totals' => [
                     // Как список без вкладки — «Без продажной цены», вместе с черновиками из закупок.
                     '/' => OfferController::scopeFor(OfferController::home($user), Offer::whereNot(fn ($o) => $o->emptyDraft()))->count(),
-                    '/gallery' => Offer::where('state', OfferState::Gallery)->count(),
+                    '/gallery' => Offer::inGallery()->count(),
                     '/work' => Deal::where('state', DealState::Active)->count(),
                     '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),
                 ], 'fresh' => []];
             }
             // Таб «Предложения» — то же, что в каталоге: срок вышел или идёт сделка — с сайта ушло (`Offer::scopeOnSale`).
             $open = Offer::visibleTo($user)->onSale();
-            $gallery = Offer::visibleTo($user)->where('state', OfferState::Gallery);
+            $gallery = Offer::visibleTo($user)->inGallery();
 
             // Ноль — тоже число («Покупатели 0»), нет только разделов, которых у роли нет.
             return ['totals' => array_filter([
@@ -447,7 +448,7 @@ final class Nav
                 '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
                 '/offers' => (clone $open)->where('published_at', '>', $day)->count(),
-                '/gallery' => $user->canSeeGallery() ? (clone $gallery)->where('published_at', '>', $day)->count() : 0,
+                '/gallery' => $user->canSeeGallery() ? (clone $gallery)->where('gallery_from', '>', $day)->count() : 0,
             ]];
         });
     }

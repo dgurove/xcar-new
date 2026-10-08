@@ -51,6 +51,12 @@ final class Slots
         return $published->copy()->startOfDay()->addDays($days ?? (int) config('xcar.bids_window_days'))->setTime((int) config('xcar.bids_close_hour'), 0);
     }
 
+    /** Конец показа в галерее: через `gallery_days` дней после входа, в 23:59 (владелец 08.10.2026). */
+    public static function galleryUntil(Carbon $from): Carbon
+    {
+        return $from->copy()->startOfDay()->addDays((int) config('xcar.gallery_days'))->setTime(23, 59);
+    }
+
     /** «Сегодня, 16:00», «Завтра, 16:00», «Пн, 6 окт, 16:00». */
     public static function label(Carbon $at): string
     {

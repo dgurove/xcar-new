@@ -14,7 +14,7 @@
     $left = $gallery || ! auth()->user()->canManageCrm() ? null : $offer->secondsLeft();
     // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
     // Модератору — поля, кадры и документы: оценки, состояния, подтверждений, интереса и круга показа у него нет.
-    $transitions = $admin ? collect($offer->state->actions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
+    $transitions = $admin ? collect($offer->stateActions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
     // «Опубликовать» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
     // Без цены продажи публиковать нечего — пунктов нет, пока её не поставили.
     $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled() && $offer->asking_price;
@@ -53,12 +53,12 @@
             @if ($offer->car_place)<x-ui.place class="tag">{{ $offer->car_place->label() }}</x-ui.place>@endif
             @if ($offer->settlement)<x-ui.place class="tag">{{ $offer->settlement->title() }}</x-ui.place>@endif
             <x-ui.vin-code :vin="$offer->vin" class="tag"/>
-            @if ($gallery && $offer->interests_count)<span class="tag text-accent-text nums">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</span>@endif
+            {{-- Окно галереи (08.10.2026): висит — сколько осталось, кончилось — до какого числа висело. --}}
+            @if ($gallery)<span class="tag nums {{ $offer->isGalleryEndingSoon() ? 'text-urgent' : 'text-accent-text' }}">Галерея,&nbsp;<span data-controller="timer" data-timer-until-value="{{ $offer->gallery_until->toIso8601String() }}" data-timer-done-value="закрыта" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->gallery_until) }}</span></span>
+            @elseif ($offer->gallery_from)<span class="tag nums">Галерея до {{ $offer->gallery_until->translatedFormat('j M, H:i') }}</span>@endif
+            @if ($offer->interests_count)<span class="tag text-accent-text nums">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</span>@endif
         </x-slot:marks>
         {{-- Цен в шапке нет: закупочная, заявленная и продажи — поля «Деньги» ниже. --}}
-        <x-slot:aside>
-            @if ($gallery)<span class="text-sm text-accent-text">Скоро в продаже</span>@endif
-        </x-slot:aside>
         <x-slot:actions>
             @if ($admin && $offer->isScheduled())
                 <x-offer.slot-menu :offer="$offer"/>
@@ -243,6 +243,6 @@
             @include('admin.offers.detail-tools')
         </x-slot:tools>
         {{-- Свежая строка — с галочкой, если список с галочками («Оцененные», «Публикация»). --}}
-        <x-slot:row><x-offer.table-row :offer="$offer" :gallery="$list" :checkable="$admin && ! $list && in_array(request('preset'), ['priced', 'slots'], true) && blank(request('q'))" :group="$offer->slot_at?->format('YmdHi')" :cols="$list ? null : \App\Http\Admin\OfferController::columns(request('preset'), auth()->user(), filled(request('q')))"/></x-slot:row>
+        <x-slot:row>@if ($list)<x-offer.gallery-row :offer="$offer"/>@else<x-offer.table-row :offer="$offer" :checkable="$admin && ! $list && in_array(request('preset'), ['priced', 'slots'], true) && blank(request('q'))" :group="$offer->slot_at?->format('YmdHi')" :cols="$list ? null : \App\Http\Admin\OfferController::columns(request('preset'), auth()->user(), filled(request('q')))"/>@endif</x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

@@ -77,7 +77,7 @@ final class ChangeOfferState
                 $offer->slot_by = null;
             }
             if ($next === OfferState::Gallery) {
-                $this->readyForGallery($offer);
+                self::readyForGallery($offer);
                 OfferNumber::issue($offer);
                 $offer->published_at ??= now();
             }
@@ -103,7 +103,7 @@ final class ChangeOfferState
     }
 
     /** В галерее без цены, но с чем показать: марка, модель, фото. */
-    private function readyForGallery(Offer $offer): void
+    public static function readyForGallery(Offer $offer): void
     {
         $missing = array_keys(array_filter([
             'марка' => ! $offer->brand_id,

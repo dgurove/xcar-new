@@ -14,7 +14,7 @@ final class RegisterInterest
 {
     public function __invoke(Offer $offer, User $by, ?string $comment = null): Interest
     {
-        if (! $offer->state->acceptsInterest()) {
+        if (! $offer->acceptsInterest()) {
             throw ValidationException::withMessages(['interest' => 'ТС уже недоступно']);
         }
 

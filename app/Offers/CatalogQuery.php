@@ -41,9 +41,10 @@ final class CatalogQuery
                 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)])
             ->visibleTo($user);
         // Витрина — только то, что в продаже: срок вышел или идёт сделка — с сайта ушло (`Offer::scopeOnSale`).
-        $gallery ? $q->where('state', OfferState::Gallery) : $q->onSale();
-        if ($user?->isBuyer()) {
-            // Покупателю на карточке нужен его собственный интерес — грузим одним запросом на список.
+        // Галерея — окно показа черновика (`Offer::inGallery`).
+        $gallery ? $q->inGallery() : $q->onSale();
+        if ($user?->isBuyer() || $gallery) {
+            // На карточке нужен свой интерес (покупателю, а в галерее и менеджеру) — одним запросом на список.
             $q->with(['interests' => fn ($i) => $i->where('user_id', $user->id)]);
         }
 
@@ -62,7 +63,7 @@ final class CatalogQuery
         if ($search === '') {
             match ($filters['view'] ?? '') {
                 'recommended' => $q->where('recommended', true),
-                'fresh' => $q->where('published_at', '>=', now()->subDay()),
+                'fresh' => $q->where($gallery ? 'gallery_from' : 'published_at', '>=', now()->subDay()),
                 'ending' => $q->where('state', OfferState::Open)->whereBetween('bids_close_at', [now(), now()->addDay()]),
                 'favorite' => $user ? $q->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id)) : $q->whereRaw('false'),
                 default => null,
@@ -72,10 +73,11 @@ final class CatalogQuery
         $sort = self::sort($filters, $gallery, $prices, $user);
         $dir = str_starts_with($sort, '-') ? 'desc' : 'asc';
         match (ltrim($sort, '-')) {
-            'closing' => $q->orderByRaw("bids_close_at {$dir} nulls last"),
+            // В галерее «скоро закроется» — конец окна показа, «свежие» — когда появилось.
+            'closing' => $q->orderByRaw(($gallery ? 'gallery_until' : 'bids_close_at')." {$dir} nulls last"),
             'price' => $q->orderByRaw("asking_price {$dir} nulls last"),
             'year' => $q->orderByRaw("year {$dir} nulls last")->orderByDesc('published_at'),
-            default => $q->orderByDesc('sort_weight')->orderByRaw("published_at {$dir} nulls last"),
+            default => $q->orderByDesc('sort_weight')->orderByRaw(($gallery ? 'gallery_from' : 'published_at')." {$dir} nulls last"),
         };
 
         return $q->orderByDesc('id');
@@ -96,9 +98,12 @@ final class CatalogQuery
     /** Сортировки для тулбара: в галерее ни цены, ни срока; покупатель не торгуется — срока у него нет. */
     public static function allowedSorts(bool $gallery, bool $prices, ?User $user = null): array
     {
-        return array_filter(self::SORTS, fn ($_, $key) => match ($key) {
+        // В галерее даты — окна показа: когда появилось и когда закроется.
+        $sorts = $gallery ? ['published' => ['Появилось', 'desc'], 'closing' => ['Скоро закроется', 'asc']] + self::SORTS : self::SORTS;
+
+        return array_filter($sorts, fn ($_, $key) => match ($key) {
             'price' => $prices,
-            'closing' => ! $gallery && ! $user?->isBuyer(),
+            'closing' => $gallery || ! $user?->isBuyer(),
             default => true,
         }, ARRAY_FILTER_USE_BOTH);
     }

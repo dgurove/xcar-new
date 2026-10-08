@@ -126,6 +126,8 @@ class Offer extends Model implements HasMedia
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
             'slot_at' => 'datetime',
+            'gallery_from' => 'datetime',
+            'gallery_until' => 'datetime',
             'floor_price' => 'int',
             'value' => 'int',
             'publish_price' => 'int',
@@ -437,10 +439,9 @@ class Offer extends Model implements HasMedia
 
     /**
      * Одна дверь видимости. Админ видит всё; модератор — заведённое им и его группой (`User::teamIds`) в любом
-     * состоянии, кроме перенесённого из закупки (там цены Carcade и менеджеров); менеджер — открытые и галерею
-     * из своего круга, когда его волна показа наступила; покупатель — открытые, которые ему показал его менеджер
-     * (лично или группе) и которые этому менеджеру доступны; посетитель —
-     * галерею; гость — ничего.
+     * состоянии, кроме перенесённого из закупки (там цены Carcade и менеджеров); менеджер — открытые из своего
+     * круга, когда его волна показа наступила; покупатель — открытые, которые ему показал его менеджер (лично или
+     * группе) и которые этому менеджеру доступны; галерею (окно черновика) — все, кому `canSeeGallery`; гость — ничего.
      */
     public function scopeVisibleTo(Builder $q, ?User $user): Builder
     {
@@ -459,7 +460,7 @@ class Offer extends Model implements HasMedia
             }
             if ($user->hasRole(Role::Manager)) {
                 $any = true;
-                $w->orWhere(fn ($m) => $m->whereIn('state', [OfferState::Open, OfferState::Gallery])
+                $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
                     ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now())));
             }
             // Проверяющий: открытые, которые всем сразу и без исключений; без показов и менеджера.
@@ -480,10 +481,15 @@ class Offer extends Model implements HasMedia
                         ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->manager_id)->where('opens_at', '<=', now())));
                 }
             }
+            // Галерея — всем, кому она открыта (`canSeeGallery`: менеджер, покупатель, посетитель), без волн и показов
+            // (владелец 08.10.2026: «доступ к галерее всем, чтобы все могли оставлять интерес»).
+            if ($user->canSeeGallery()) {
+                $any = true;
+                $w->orWhere(fn ($g) => $g->inGallery());
+            }
         });
 
-        // Ни одной роли с предложениями (посетитель, «Парковка») — только галерея.
-        return $any ? $q : $q->where('state', OfferState::Gallery);
+        return $any ? $q : $q->whereRaw('false');
     }
 
     /**
@@ -622,7 +628,7 @@ class Offer extends Model implements HasMedia
     public function chatOpenFor(?User $user): bool
     {
         return $user && $user->canChat()
-            && (($this->chat_enabled && ($this->state->isPublic() || $this->state->acceptsInterest())) || $this->worksWith($user));
+            && (($this->chat_enabled && $this->state->isPublic()) || $this->worksWith($user));
     }
 
     /** Номер договора лизинга (ДЛ) — у предложений лизинговых вендоров в claim_ref; его видят и менеджеры. */
@@ -708,9 +714,51 @@ class Offer extends Model implements HasMedia
 
     // -------------------------------------------------------------- метки
 
+    /**
+     * В галерее: черновик в окне показа (`gallery_from`…`gallery_until`, владелец 08.10.2026). Не состояние — черновик
+     * идёт своим путём; опубликовали раньше срока — из галереи ушло, интерес остался.
+     */
     public function isGallery(): bool
     {
-        return $this->state === OfferState::Gallery;
+        return $this->state === OfferState::Draft && $this->gallery_until?->isFuture();
+    }
+
+    /** Принимает интерес: открытое или черновик в окне галереи. */
+    public function acceptsInterest(): bool
+    {
+        return $this->state->acceptsInterest() || $this->isGallery();
+    }
+
+    /**
+     * Пункты «Действий» по состоянию; «В галерею» у черновика — окно показа: висит — «Убрать из галереи».
+     *
+     * @return array<string, string>
+     */
+    public function stateActions(): array
+    {
+        $actions = $this->state->actions();
+        if ($this->isGallery() && isset($actions[OfferState::Gallery->value])) {
+            $actions[OfferState::Gallery->value] = 'Убрать из галереи';
+        }
+
+        return $actions;
+    }
+
+    public function scopeInGallery(Builder $q): Builder
+    {
+        return $q->where('offers.state', OfferState::Draft)->where('offers.gallery_until', '>', now());
+    }
+
+    /** Окно показа было и закончилось (или черновик ушёл дальше) — для «Откликов» в CRM. */
+    public function galleryClosed(): bool
+    {
+        return $this->gallery_from !== null && ! $this->isGallery();
+    }
+
+    /** До конца показа меньше суток. */
+    public function isGalleryEndingSoon(): bool
+    {
+        return $this->isGallery() && $this->gallery_until->lt(now()->addDay());
     }
 
     /** Опубликован меньше суток назад. */

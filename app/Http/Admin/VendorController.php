@@ -134,6 +134,7 @@ class VendorController
             'binding_days' => ['nullable', 'integer', 'between:1,365'],
             'silence_means_buy' => ['boolean'],
             'offers_include_vat' => ['boolean'],
+            'to_gallery' => ['boolean'],
             'audience_rules' => ['nullable', 'json'],
             // Ящик продажи — только из ящиков CRM: парковочный отсюда не выбрать.
             'mail_account_id' => ['nullable', Rule::exists('mail_accounts', 'id')->where('scope', Scope::Offers->value)->whereNull('reply_account_id')],
@@ -152,6 +153,7 @@ class VendorController
             'is_active' => $request->boolean('is_active'),
             'silence_means_buy' => $request->boolean('silence_means_buy'),
             'offers_include_vat' => $request->boolean('offers_include_vat'),
+            'to_gallery' => $request->boolean('to_gallery'),
         ]));
 
         $setLogo($vendor, $request);

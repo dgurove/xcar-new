@@ -8,6 +8,7 @@ use App\Media\MediaUrl;
 use App\Notifications\PasswordResetLetter;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\Interest;
+use App\Offers\Offer;
 use App\Park\Area;
 use App\Support\Demo\HidesDemo;
 use App\Support\Phone;
@@ -151,6 +152,19 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function canInterest(): bool
     {
         return $this->roleCan('canInterest') && ! $this->canBid();
+    }
+
+    /**
+     * Интерес к этому предложению: в галерее — менеджеру, покупателю и посетителю (владелец 08.10.2026: «чтобы все могли
+     * оставлять интерес»), на открытом — тем, кто не подтверждает ценой.
+     */
+    public function canInterestIn(Offer $offer): bool
+    {
+        if ($offer->isGallery()) {
+            return $this->hasRole(Role::Manager, Role::Buyer, Role::Visitor);
+        }
+
+        return $offer->state->acceptsInterest() && $this->canInterest();
     }
 
     // -------------------------------------------------------------- покупатели и менеджер

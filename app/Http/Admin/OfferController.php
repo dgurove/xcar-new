@@ -16,6 +16,7 @@ use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\MergeOffers;
+use App\Offers\Actions\ShowInGallery;
 use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Actions\UnlistParkOffer;
@@ -738,6 +739,13 @@ class OfferController
         if ($next === OfferState::Sold) {
             return back()->withErrors(['state' => 'Примите подтверждение менеджера — сделка заведётся сама']);
         }
+        // «В галерею» — окно показа черновика, не переход; висит — «Убрать из галереи».
+        if ($next === OfferState::Gallery) {
+            $gallery = app(ShowInGallery::class);
+            $offer->isGallery() ? $gallery->hide($offer, $request->user()) : $gallery($offer, $request->user());
+
+            return redirect("/offers/{$offer->number}")->with('toast', $offer->isGallery() ? 'В галерее до '.$offer->gallery_until->translatedFormat('j M, H:i') : 'Убрано из галереи')->with(self::gone($request, $offer));
+        }
         if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
             $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user());
 
@@ -763,12 +771,14 @@ class OfferController
         $preset = array_key_exists((string) ($q['preset'] ?? ''), self::presets($request->user())) ? (string) $q['preset'] : self::home($request->user());
         $still = match ($ref['path'] ?? '/') {
             '/' => self::scopeFor($preset, Offer::whereKey($offer->id), $request->user()->canManageCrm())->exists(),
-            '/gallery' => $offer->fresh()?->state === OfferState::Gallery,
+            '/gallery' => GalleryController::listed($q['preset'] ?? null, $offer->fresh()),
             default => true,
         };
 
         // На вкладках дела карточка идёт к следующей строке, на остальных строка просто уходит.
-        return $still ? [] : ['detail-gone' => true, 'detail-counts' => self::counts($request->user())]
+        $counts = ($ref['path'] ?? '/') === '/gallery' ? GalleryController::counts() : self::counts($request->user());
+
+        return $still ? [] : ['detail-gone' => true, 'detail-counts' => $counts]
             + (($ref['path'] ?? '/') === '/' && in_array($preset, self::ADVANCE, true) ? ['detail-advance' => true] : []);
     }
 

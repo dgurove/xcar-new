@@ -57,10 +57,10 @@ enum Role: string
         return in_array($this, [self::Manager, self::Admin], true);
     }
 
-    /** Галерея «скоро в продаже» — для тех, кто торгуется, и посетителя; покупателю только открытое ему. */
+    /** Галерея «скоро в продаже» — всем, кто покупает: менеджеру, покупателю, посетителю и админу (владелец 08.10.2026). */
     public function canSeeGallery(): bool
     {
-        return ! in_array($this, [self::Buyer, self::Parking, self::Reviewer, self::Moderator], true);
+        return ! in_array($this, [self::Parking, self::Reviewer, self::Moderator], true);
     }
 
     /** Чат по предложению: менеджер и посетитель — с площадкой, покупатель — со своим менеджером (нужен manager_id, см. User::canChat). */

@@ -14,8 +14,8 @@
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
     $hasMedia = $photos->isNotEmpty();
     $canBid = ($user?->canBid() ?? false) && $offer->bidsOpen();
-    // Покупатель: интерес уже отмечен? Каталог грузит его интерес одним запросом, иначе — точечно.
-    $myInterest = $user?->isBuyer() ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
+    // Интерес уже отмечен? У покупателя, а в галерее у всех (08.10.2026). Каталог грузит его одним запросом, иначе — точечно.
+    $myInterest = $user && ($user->isBuyer() || $gallery) ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
     $seen = $user?->isManager() && !$gallery ? \App\Offers\Showing::remembered($offer->id) : null;
     // «Показать покупателям» — значком рядом с «Подтвердить», число открытых — бейджем на нём (чипа «видят N» тогда нет).
     $canShow = $user?->isManager() && $offer->state === \App\Offers\OfferState::Open;
@@ -72,7 +72,7 @@
             @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
             @if ($price->declared)<span class="tag nums">заявленная {{ $price::money($price->declared) }}</span>@endif
         @elseif ($gallery)
-            <span class="text-sm text-accent-text">Скоро в продаже</span>
+            <x-offer.gallery-left :offer="$offer" class="text-sm"/>
         @else
             <span class="text-sm text-accent-text">Узнать цену</span>
         @endif
@@ -85,7 +85,7 @@
             {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
             <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
         @elseif ($gallery || !$prices)
-            <a href="{{ $href }}" class="btn btn-get {{ $offer->state->acceptsInterest() ? '' : 'btn-get-quiet' }}">{{ $gallery ? 'Проявить интерес' : 'Узнать цену' }}</a>
+            <a href="{{ $href }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $gallery ? ($myInterest ? 'Интерес отмечен' : 'Проявить интерес') : 'Узнать цену' }}</a>
         @elseif ($canBid)
             <a href="{{ $href }}" class="btn btn-get">Подтвердить</a>
         @else

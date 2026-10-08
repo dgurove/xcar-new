@@ -1,27 +1,16 @@
-@php $view = \App\Support\ListView::pick(request(), $offers->total()); @endphp
+{{-- Галерея CRM (08.10.2026): «В галерее» — черновики в окне показа, когда появились и сколько осталось; «Отклики» —
+     у кого есть интерес, кто и что — в карточке строки. Только таблица. --}}
 <x-ui.shell title="Галерея" :count="$offers->total()" :phone-heading="false" :detail="$detail">
-    <x-ui.toolbar :sort="$sort" name="gallery" :facets="$facets" search="Номер, марка, VIN, убыток">
-        <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
-        <x-slot:actions>
-            <form method="post" action="/gallery" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
-        </x-slot:actions>
-    </x-ui.toolbar>
+    <x-ui.toolbar :sort="$sort" :pills="\App\Http\Admin\GalleryController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="gallery" :facets="$facets" search="Номер, марка, VIN, убыток"/>
 
     <div class="mt-6" id="list">
         @if ($offers->isEmpty())
-            <x-ui.empty>В галерее пусто</x-ui.empty>
+            <x-ui.empty>{{ $searching ? 'Ничего не нашлось' : ($preset === 'interest' ? 'Откликов нет' : 'В галерее пусто') }}</x-ui.empty>
         @else
-            @if (\App\Support\ListView::isTable($view))
-                <x-ui.table id="gallery" :view="$view" :titles="$offers->getCollection()->map->titleWithYear()">
-                    <x-slot:head><x-offer.table-head gallery :sort="$sort"/></x-slot:head>
-                    @foreach ($offers as $offer)<x-offer.table-row :offer="$offer" gallery/>@endforeach
-                </x-ui.table>
-            @else
-            <div id="gallery" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
-                @foreach ($offers as $offer)<x-offer.crm-card :offer="$offer" gallery/>@endforeach
-            </div>
-            @endif
-            <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
+            <x-ui.table id="gallery" :view="\App\Support\ListView::TABLE" :titles="$offers->getCollection()->map->titleWithYear()" :rest="38">
+                <x-slot:head><x-offer.gallery-head :sort="$sort"/></x-slot:head>
+                @foreach ($offers as $offer)<x-offer.gallery-row :offer="$offer"/>@endforeach
+            </x-ui.table>
         @endif
     </div>
     {{-- Окно писем для карточки «Письма» в карточке строки. --}}

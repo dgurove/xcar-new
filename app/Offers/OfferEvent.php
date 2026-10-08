@@ -80,6 +80,8 @@ class OfferEvent extends Model
             OfferEventType::PickupAssigned => 'Вывоз: '.($p['who'] ?? 'мы').', '.mb_strtolower(Destination::tryFrom($p['to'] ?? '')?->label() ?? ''),
             // Слот: поставили («В слот 4 окт, 16:00»), убрали или часы не смогли выпустить (`error` — чего не хватило).
             OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Carbon::parse($p['at'])->translatedFormat('j M, H:i') : 'Убрано из слота'),
+            // Окно галереи: открыли («В галерее до 11 окт, 23:59») или убрали руками.
+            OfferEventType::Gallery => isset($p['until']) ? 'В галерее до '.Carbon::parse($p['until'])->translatedFormat('j M, H:i') : 'Убрано из галереи',
             OfferEventType::PlaceChanged => 'Автомобиль: '.(CarPlace::labelOf($p['place'] ?? null) ?? 'место не указано'),
             OfferEventType::Note => (string) ($p['text'] ?? ''),
             OfferEventType::Garage => self::garageText($p),

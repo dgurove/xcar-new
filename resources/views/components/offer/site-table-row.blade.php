@@ -19,7 +19,7 @@
         <x-ui.row-link :key="$n"><span class="cell-title">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
             @if ($ref = $offer->leaseRef())<span>ДЛ {{ $ref }}</span>@else<span class="sm:hidden">№ {{ $n }}</span>@endif
-            @if ($gallery)<span class="sm:hidden text-accent-text">скоро в продаже</span>
+            @if ($gallery)<x-offer.gallery-left :offer="$offer" word="" class="sm:hidden"/>
             @elseif ($left !== null && $left > 0)<span class="cell-timer sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
             @elseif ($bids && !$offer->bidsOpen())<span class="sm:hidden">приём закрыт</span>
             @elseif ($fresh)<span class="sm:hidden text-accent-text">новый</span>@endif
@@ -28,7 +28,7 @@
     </td>
     <td class="cell-dim nums hidden sm:table-cell">{{ $n }}</td>
     <td class="hidden sm:table-cell">
-        @if ($gallery)<span class="text-accent-text">Скоро в продаже</span>
+        @if ($gallery)<x-offer.gallery-left :offer="$offer"/>
         @elseif ($left !== null && $left > 0)<span class="cell-timer {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
         @elseif ($bids && !$offer->bidsOpen())<span class="text-ink-dim">Приём закрыт</span>
         @elseif ($fresh)<span class="text-accent-text">Новый</span>@endif

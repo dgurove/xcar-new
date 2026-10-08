@@ -5,7 +5,6 @@ namespace App\Http\Site;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
-use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Support\Detail;
 use App\Support\Facets\Facets;
@@ -72,15 +71,15 @@ class CatalogController
         $counts = $user?->isAdmin()
             ? Cache::remember('catalog.counts', 30, fn () => [
                 'offers' => Offer::onSale()->count(),
-                'gallery' => Offer::where('state', OfferState::Gallery)->count(),
+                'gallery' => Offer::inGallery()->count(),
                 'recommended' => Offer::onSale()->where('recommended', true)->count(),
-                'recommended_gallery' => Offer::where('state', OfferState::Gallery)->where('recommended', true)->count(),
+                'recommended_gallery' => Offer::inGallery()->where('recommended', true)->count(),
             ])
             : [
                 // Без фильтров «Все» — это и есть длина списка: второй раз не считаем.
                 'offers' => ! $gallery && ! $narrowed ? $count : Offer::visibleTo($user)->onSale()->count(),
-                'gallery' => $user?->canSeeGallery() ? Offer::visibleTo($user)->where('state', OfferState::Gallery)->count() : 0,
-                'recommended' => Offer::visibleTo($user)->when($gallery, fn ($q) => $q->where('state', OfferState::Gallery), fn ($q) => $q->onSale())->where('recommended', true)->count(),
+                'gallery' => $user?->canSeeGallery() ? Offer::visibleTo($user)->inGallery()->count() : 0,
+                'recommended' => Offer::visibleTo($user)->when($gallery, fn ($q) => $q->inGallery(), fn ($q) => $q->onSale())->where('recommended', true)->count(),
             ];
         // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
         $recommended = $counts[$gallery && $user?->isAdmin() ? 'recommended_gallery' : 'recommended'] ?? 0;
