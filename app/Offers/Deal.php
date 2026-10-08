@@ -9,9 +9,11 @@ use App\Billing\PaymentSource;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
 use App\Support\Demo\HidesDemo;
+use App\Support\Surface;
 use App\Users\User;
 use App\Workflow\Requirement;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -180,6 +182,18 @@ class Deal extends Model
     public function base(): ?int
     {
         return $this->amount ?? $this->cost;
+    }
+
+    /** Сделки в разделе «Сделки» сайта: админу все (как машины в гараже, `Garage\Car::scopeOf`), менеджеру — его. */
+    public function scopeOf(Builder $q, User $user): Builder
+    {
+        return $user->isAdmin() ? $q : $q->where('buyer_id', $user->id);
+    }
+
+    /** Сделка в CRM: админ ведёт её в редакторе предложения (`Admin\DealController::show`). */
+    public function crmUrl(): string
+    {
+        return Surface::Crm->url('/offers/'.$this->offer->number);
     }
 
     /** Куда ведёт сделка менеджера: гаражная живёт в гараже, а не в «Сделках». */

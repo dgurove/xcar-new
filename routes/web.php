@@ -134,6 +134,10 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/account/invites/{invite}/off', [InviteController::class, 'disable']);
     Route::post('/account/invites/{invite}/on', [InviteController::class, 'enable']);
 
+    // Сделки — раздел таб-бара менеджеру и админу (админу все, ведёт он их в CRM; чужому 404 в контроллере).
+    Route::get('/deals', [DealController::class, 'index']);
+    Route::get('/deals/{deal}', [DealController::class, 'show']);
+
     // Пользователи — админу тот же экран, что в CRM (чужому 404 в контроллере).
     Route::get('/account/users', [UserController::class, 'index']);
     Route::get('/account/users/{user}', [UserController::class, 'show'])->whereNumber('user');
@@ -161,9 +165,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/account/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);
         Route::get('/account/money/deals/{deal}', [MoneyController::class, 'deal']);
 
-        // Сделки — раздел таб-бара; покупатели — его вторая пилюля (интерес, группы, показы внутри).
-        Route::get('/deals', [DealController::class, 'index']);
-        Route::get('/deals/{deal}', [DealController::class, 'show']);
+        // Действия по сделке; покупатели — вторая пилюля «Сделок» (интерес, группы, показы внутри).
         Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
         Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);

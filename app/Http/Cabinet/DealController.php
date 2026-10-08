@@ -31,26 +31,32 @@ class DealController
     public function index(Request $request)
     {
         $me = $request->user();
+        abort_unless($me->isManager() || $me->isAdmin(), 404);
         ListPrefs::sync($request, 'deals', view: false, keep: ['sort']);
         $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
         // Гаражные сделки живут в «Гараже» (решение владельца 03.10.2026), здесь — только ждущее решения «В гараж».
         $deals = Deal::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
-            ->where('buyer_id', $me->id)->whereNull('garage_payer')
+            ->when($me->isAdmin(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer')
             ->orderByRaw("case when state = 'active' then 0 else 1 end")
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id')->paginate(30);
 
-        // Подтверждения — на том же экране: ждущие решения — будущие сделки, отклонённые и отозванные —
-        // короткая история внизу; принятые уже стоят сделками.
+        // Подтверждения менеджера — на том же экране: ждущие решения — будущие сделки, отклонённые и отозванные —
+        // короткая история внизу; принятые уже стоят сделками. Админ подтверждения решает в CRM.
         $bids = fn () => Bid::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $me->id)->latest();
-        $pending = $bids()->where('state', BidState::Active)->get();
-        $lost = $bids()->whereIn('state', [BidState::Declined, BidState::Withdrawn])->limit(10)->get();
+        $pending = $me->isManager() ? $bids()->where('state', BidState::Active)->get() : collect();
+        $lost = $me->isManager() ? $bids()->whereIn('state', [BidState::Declined, BidState::Withdrawn])->limit(10)->get() : collect();
 
         return view('cabinet.deals.index', ['deals' => $deals, 'pending' => $pending, 'lost' => $lost, 'sort' => $sort]);
     }
 
     public function show(Request $request, Deal $deal)
     {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
+        $me = $request->user();
+        // Админ ведёт сделку в CRM: страница сделки на сайте — работа менеджера («Ваша доля», «Оплатить»).
+        if ($me->isAdmin() && $deal->buyer_id !== $me->id) {
+            return redirect()->away($deal->crmUrl());
+        }
+        abort_unless($deal->buyer_id === $me->id, 404);
         // Гаражная сделка живёт в гараже: старые ссылки ленты и Telegram ведут туда же.
         if ($deal->isGarage() && $deal->garageCar()->exists()) {
             return redirect($deal->href());

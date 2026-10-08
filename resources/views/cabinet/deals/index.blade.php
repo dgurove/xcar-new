@@ -1,13 +1,15 @@
 {{-- Сделки менеджера одним экраном: подтверждения без решения, сделки в работе (где от него ждут ответа — первыми,
-     просьба прямо в строке), закончившиеся, внизу — не состоявшиеся. --}}
+     просьба прямо в строке), закончившиеся, внизу — не состоявшиеся. Админу — все сделки, без подтверждений и без
+     пилюли «Покупатели»: вместо пилюль заголовок. --}}
 @php
+    $staff = auth()->user()->isAdmin() && ! auth()->user()->isManager();
     $active = $deals->getCollection()->filter(fn ($d) => $d->state === \App\Offers\DealState::Active)->sortBy(fn ($d) => $d->openRequirement ? 0 : 1)->values();
     $closed = $deals->getCollection()->reject(fn ($d) => $d->state === \App\Offers\DealState::Active)->values();
 @endphp
-<x-ui.shell title="Сделки" :phone-heading="false" :desktop-heading="false">
+<x-ui.shell title="Сделки" :phone-heading="$staff" :desktop-heading="$staff">
 <div class="flex max-w-[56rem] flex-col gap-4">
     <div class="search-head">
-        <div class="min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>
+        @unless ($staff)<div class="min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>@endunless
         @if ($deals->isNotEmpty())<x-ui.toolbar :sort="$sort" name="deals"/>@endif
     </div>
     <x-telegram.card/>

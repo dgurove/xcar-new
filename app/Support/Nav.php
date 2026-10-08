@@ -106,10 +106,12 @@ final class Nav
         // Уведомлений в разделах нет: колокольчик в шапке, лента и настройки — строкой кабинета.
         // Закупки на сайте скрыты (владелец 03.10.2026); галерея — свой раздел у всех авторизованных (08.10.2026).
         // На сайте «сотрудник» — админ (модератору сайт не нужен); админ, который ещё и менеджер, — менеджер (ветка выше).
+        // Админ — те же четыре раздела, что у менеджера: в «Сделках» и «Гараже» у него все, ведёт он их в CRM.
         if ($user?->isAdmin()) {
             return [
                 self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery'),
+                self::item('Сделки', '/deals'),
                 self::item('Гараж', '/garage'),
             ];
         }
@@ -444,7 +446,11 @@ final class Nav
                 '/gallery' => (clone $gallery)->count(),
                 '/purchases' => $user->canSeePurchases() ? Purchase::cardCount($user) : null,
                 // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
-                '/deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count() : null,
+                '/deals' => match (true) {
+                    $user->isManager() => Deal::of($user)->whereNull('garage_payer')->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(),
+                    $user->isAdmin() => Deal::whereNull('garage_payer')->count(),
+                    default => null,
+                },
                 '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
                 // Как в заголовке «Гаража»: машины в работе, рассчитанные не считаются.
                 // И вывозы, порученные менеджеру (группа «Вывоз»): ТС у него, хоть и не его гаража.
@@ -484,6 +490,10 @@ final class Nav
             // И «забрать» по вывозу: ход ответственного — порученные ему и своя гаражная, которую везёт сам.
             $badges['/garage'] = (int) $asks->garage + Offer::pickupsOf($user)->awaitingPickup()->count()
                 + Offer::where('evacuator_id', $user->id)->whereHas('garageCar', fn ($g) => $g->where('manager_id', $user->id))->awaitingPickup()->count();
+        }
+        if ($user->isAdmin() && ! $user->isManager()) {
+            // Админу «Сделки» горят тем же, что «Работа → Сделки» в CRM: просрочено или ход наш.
+            $badges['/deals'] = self::staffCounts(Surface::Crm)['/work/deals'];
         }
         if ($user->canChat() || $user->isAdmin()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.
