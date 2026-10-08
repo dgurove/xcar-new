@@ -4,6 +4,7 @@ namespace App\Park;
 
 use App\Billing\Accrual;
 use App\Billing\ChargeKind;
+use App\Billing\Invoice;
 use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Cars\Category;
@@ -12,6 +13,7 @@ use App\Mail\Candidate;
 use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
+use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Park\Actions\FillFromDocs;
 use App\Support\Docs;
@@ -70,7 +72,7 @@ final class CaseView
         $ids = $threads->pluck('id');
         // Ждёт ответа — одно правило на почту, дело и ленту: последнее письмо ветки их, с вопросом, и после него
         // мы не писали и не нажимали «Сделано» (`Threads::refresh` → `needs_reply_at`). Само письмо — последнее входящее.
-        $waiting = $threads->whereNotNull('needs_reply_at')->filter(fn (Thread $t) => $t->account?->scope === \App\Mail\Scope::Park)->pluck('id');
+        $waiting = $threads->whereNotNull('needs_reply_at')->filter(fn (Thread $t) => $t->account?->scope === Scope::Park)->pluck('id');
         $asks = $waiting->isEmpty() ? collect() : Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)
             ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'subject', 'from_name', 'from_email', 'date_at', 'text_body', 'html_body', 'intent'])
             ->groupBy('thread_id')->map->last()->sortBy('date_at')->values();
@@ -104,11 +106,15 @@ final class CaseView
             'owners' => Party::where('kind', 'person')->orderBy('name')->pluck('name', 'id'),
             // «Долг» — только неоплаченные счета: набежавшее вендору идёт отдельной строкой и выдачу не держит.
             'debt' => Ledger::vehicleDebt($vehicle),
+            // Выдачу держит только долг покупателя: страховая сторона платит по счёту раз в месяц.
+            'releaseDebt' => $release ? Ledger::releaseDebt($vehicle) : 0,
             'cashDue' => $release ? Ledger::buyerUnbilled($vehicle) : 0,
             'vendorDue' => $release ? Ledger::vendorUnbilled($vehicle) : 0,
             'debtBlocks' => $release && ! ($vehicle->vendor?->release_without_payment ?? false),
             'payers' => Ledger::payersOf($vehicle),
             'pendingCharges' => $vehicle->charges()->whereNull('invoice_id')->whereNull('voided_at')->get(),
+            // Реестры за месяц, где есть эта ТС: в «Оплатах» дела — строкой с её долей.
+            'registries' => Invoice::forVehicle($vehicle->id)->whereNull('vehicle_id')->whereNotNull('month')->with(['party', 'charges'])->latest('issued_at')->get(),
             'chargeKinds' => collect(self::CHARGES)->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' '.Money::rub($price) : '')]),
             // Цена из прайса подставляется в поле при выборе вида: суммы, которые есть в прайсе, руками не набирают.
             'chargePrices' => collect(self::CHARGES)->mapWithKeys(fn ($k) => [$k->value => VehicleInvoiceController::priceFor($vehicle, $k)])->filter()->all(),

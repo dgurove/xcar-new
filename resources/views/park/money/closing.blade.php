@@ -1,6 +1,6 @@
 {{-- Закрытие месяца: пилюли месяцев, строки по контрагентам — ТС, период, сутки, сумма, периодичность, почему сейчас;
-     галочки, кнопка считает выбранное: «Выставить 3 счета на 2 900 ₽» (счета с актами). Ниже — что уже выставлено за месяц.
-     Письма — вручную с каждого счёта. --}}
+     галочки, кнопка считает выбранное: «Выставить 3 счёта на 2 900 ₽». Вендору и страхователю — один счёт-реестр на
+     группу (строки группы — один `data-group`), покупателю — счёт на ТС. Ниже — что уже выставлено. --}}
 @php use App\Support\Money; use App\Billing\Cadence; $me = auth()->user(); $n = $items->flatten(1)->count(); @endphp
 <x-ui.shell :title="'Закрытие '.mb_strtolower($month->translatedFormat('F Y'))" :back="['Оплаты', '/money']" cache="no-cache">
     <x-ui.pills class="mb-4">
@@ -42,7 +42,7 @@
                                     </span>
                                 </span>
                                 <span class="nums shrink-0">{{ Money::rub($r['amount']) }}</span>
-                                <span class="check"><input type="checkbox" name="items[]" value="{{ $r['key'] }}" data-sum-target="box" data-amount="{{ $r['amount'] }}" data-action="sum#update" @checked($can) @disabled(!$can)></span>
+                                <span class="check"><input type="checkbox" name="items[]" value="{{ $r['key'] }}" data-sum-target="box" data-group="{{ $r['payer'] === 'buyer' ? 'buyer-'.$r['key'] : 'payer-'.$loop->parent->index }}" data-amount="{{ $r['amount'] }}" data-action="sum#update" @checked($can) @disabled(!$can)></span>
                             </label>
                         @endforeach
                     </div>

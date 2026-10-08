@@ -20,7 +20,8 @@ class Template extends Model
 
     public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'floor', 'price', 'manager', 'insurer', 'today'];
 
-    public const PARK_PLACEHOLDERS = ['ref', 'car', 'vin', 'plate', 'yard', 'address', 'date', 'days', 'damages', 'client', 'today', 'pickup_link', 'buyer_name', 'buyer_email', 'pickup_date'];
+    public const PARK_PLACEHOLDERS = ['ref', 'car', 'vin', 'plate', 'yard', 'address', 'date', 'days', 'damages', 'client', 'today', 'pickup_link', 'buyer_name', 'buyer_email', 'pickup_date',
+        'month', 'count', 'invoice', 'sum'];
 
     /** Письма стоянки по делу: приём, выдача, отказ от получения, счёт. Заводятся при первом обращении, дальше правятся руками. */
     public const PARK = [
@@ -37,6 +38,9 @@ class Template extends Model
             "Добрый день.\n\nПо ТС {{ car }}, VIN {{ vin }}, госномер {{ plate }} по ссылке для получения указаны:\nФИО: {{ buyer_name }}\nПочта: {{ buyer_email }}\nПланирует забрать: {{ pickup_date }}\n\nПодтвердите, пожалуйста, что это покупатель ТС. Без подтверждения выдачу не производим.\n\nС уважением,\nООО «ПРАЙМ»"],
         'invoice' => ['Счёт за хранение', 'Счёт за хранение: {{ car }}, убыток {{ ref }}',
             "Добрый день.\n\nНаправляем счёт и акт оказанных услуг за хранение ТС {{ car }}, VIN {{ vin }}, госномер {{ plate }}.\n\nС уважением,\nООО «ПРАЙМ»"],
+        // Счёт-реестр за месяц (08.10.2026): одно письмо в бухгалтерию со счётом и актом, машины — в реестре акта.
+        'registry' => ['Счёт за хранение по реестру', 'Счёт за хранение за {{ month }}: {{ count }} ТС',
+            "Добрый день.\n\nНаправляем счёт {{ invoice }} на {{ sum }} и акт оказанных услуг хранения за {{ month }} с реестром транспортных средств ({{ count }} ТС).\n\nС уважением."],
     ];
 
     public static function park(string $key): self

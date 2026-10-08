@@ -47,11 +47,13 @@ class MoneyController
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unpaid';
         $qs = trim((string) $request->query('q'));
         $q = self::scoped(Invoice::with(['party', 'vehicle.brand', 'vehicle.model']))
-            ->when($request->query('car'), fn ($w, $id) => $w->where('vehicle_id', $id))
+            ->when($request->query('car'), fn ($w, $id) => $w->forVehicle((int) $id))
             ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s->where('external_no', 'ilike', "%{$qs}%")
                 ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs))
                 ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', "%{$qs}%"))
-                ->orWhereHas('vehicle', fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%'))));
+                ->orWhereHas('vehicle', $car = fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%'))
+                // Реестр находится по любой своей машине.
+                ->orWhereHas('charges.vehicle', $car)));
         // Лупа — по всем счетам, мимо пилюли и чипа.
         if ($qs === '') {
             match ($preset) {
@@ -188,9 +190,9 @@ class MoneyController
         if ($media = $invoice->getFirstMedia('act')) {
             return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
         }
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges']);
+        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges.vehicle.brand', 'charges.vehicle.model', 'charges.vehicle.yard']);
 
-        return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
+        return view($invoice->isRegistry() ? 'billing.docs.storage-registry' : 'billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
 
     public const DEBT_SORTS = ['overdue' => ['Просрочено', 'desc'], 'owed_to_us' => ['Нам должны', 'desc'], 'we_owe' => ['Мы должны', 'desc'], 'unbilled' => ['Не выставлено', 'desc']];
@@ -230,7 +232,7 @@ class MoneyController
     public function close(Request $request, IssueInvoice $issue, StorageActPdf $act)
     {
         $data = $request->validate(['month' => ['required', 'date_format:Y-m'], 'items' => ['required', 'array'], 'items.*' => ['string', 'max:20']]);
-        $result = Closing::issue(Carbon::createFromFormat('Y-m', $data['month']), $data['items'], $request->user(), $issue, $act);
+        $result = Closing::issue(Carbon::createFromFormat('!Y-m', $data['month'])->startOfMonth(), $data['items'], $request->user(), $issue, $act);
         $sum = Money::rub($result['issued']->sum('total'));
         $toast = $result['issued']->isNotEmpty() ? 'Выставлено '.$result['issued']->count().' '.Plural::of($result['issued']->count(), ['счёт', 'счёта', 'счетов']).' на '.$sum : 'Ничего не выставлено';
 
@@ -239,6 +241,6 @@ class MoneyController
 
     private static function month(Request $request): Carbon
     {
-        return $request->query('month') && preg_match('/^\d{4}-\d{2}$/', $request->query('month')) ? Carbon::createFromFormat('Y-m', $request->query('month'))->startOfMonth() : now()->subMonth()->startOfMonth();
+        return $request->query('month') && preg_match('/^\d{4}-\d{2}$/', $request->query('month')) ? Carbon::createFromFormat('!Y-m', $request->query('month'))->startOfMonth() : now()->subMonth()->startOfMonth();
     }
 }

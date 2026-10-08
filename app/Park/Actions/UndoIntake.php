@@ -33,7 +33,7 @@ final class UndoIntake
     public static function allowed(Vehicle $vehicle): bool
     {
         return $vehicle->state === VehicleState::Stored && ! $vehicle->storage_billed_until
-            && ! $vehicle->invoices()->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->exists()
+            && ! Invoice::forVehicle($vehicle->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->exists()
             && ! $vehicle->invoices()->where('direction', 'owed')->where('state', InvoiceState::Paid)->exists();
     }
 

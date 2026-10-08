@@ -6,7 +6,7 @@
             <x-billing.light :invoice="$i"/>
             <span class="tag nums">{{ $i->isOwed() ? 'мы должны' : $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}</span>
             <span class="tag">{{ $i->kind->label() }}</span>
-            @if ($i->vehicle)<a href="/cars/{{ $i->vehicle_id }}" class="tag">{{ $i->vehicle->titleWithYear() }}</a>@endif
+            @if ($i->vehicle)<a href="/cars/{{ $i->vehicle_id }}" class="tag">{{ $i->vehicle->titleWithYear() }}</a>@elseif ($i->isRegistry())<span class="tag">{{ $i->what() }}</span>@endif
         </x-slot:marks>
         <x-slot:aside>
             <div class="nums text-lg font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</div>
@@ -24,7 +24,13 @@
             @endif
         </x-slot:actions>
         <div class="mt-4 flex flex-col divide-y divide-line/40 text-sm">
-            @foreach ($i->charges as $c)
+            {{-- Реестр — машинами: сумма строк каждой и ссылка в дело; строки хранения по датам — в акте. --}}
+            @if ($i->isRegistry())
+                @foreach ($i->registryVehicles() as $v)
+                    <a href="/cars/{{ $v->id }}" class="flex items-baseline gap-2 py-1.5"><span class="min-w-0 flex-1 truncate">{{ $v->titleWithYear() }}@if ($v->ref) <span class="text-ink-muted">{{ $v->ref }}</span>@endif</span><span class="nums shrink-0">{{ Money::rub($i->charges->where('vehicle_id', $v->id)->sum('amount')) }}</span></a>
+                @endforeach
+            @endif
+            @foreach ($i->isRegistry() ? [] : $i->charges as $c)
                 <div class="flex items-baseline gap-2 py-1.5"><span class="min-w-0 flex-1">{{ $c->title }}</span><span class="nums text-ink-muted">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.') }} {{ $c->unitLabel() }} × {{ Money::nums($c->price) }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>
             @endforeach
             @foreach ($i->payments as $p)

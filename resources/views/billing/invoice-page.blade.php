@@ -41,9 +41,13 @@
     </div>
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="flex flex-col gap-4">
-            <x-ui.card title="Строки">
+            <x-ui.card :title="$i->isRegistry() ? 'Реестр' : 'Строки'">
                 <div class="flex flex-col divide-y divide-line/40">
-                    @foreach ($i->charges as $c)
+                    {{-- Реестр за месяц — машинами: её строки (без НДС сверху, он ниже отдельной строкой) и ссылка в дело; даты и ставки — в акте. --}}
+                    @foreach ($i->isRegistry() ? $i->registryVehicles() : [] as $v)
+                        <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="flex items-baseline gap-3 py-2" data-turbo="false"><span class="min-w-0 flex-1 truncate">{{ $v->titleWithYear() }}@if ($v->ref) <span class="text-sm text-ink-muted">{{ $v->ref }}</span>@endif</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->charges->where('vehicle_id', $v->id)->sum('amount')) }}</span></a>
+                    @endforeach
+                    @foreach ($i->isRegistry() ? [] : $i->charges as $c)
                         <div class="flex items-baseline gap-3 py-2"><span class="min-w-0 flex-1">{{ $c->title }}</span><span class="nums text-sm text-ink-muted">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.') }} {{ $c->unitLabel() }} × {{ Money::nums($c->price) }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($c->amount) }}</span></div>
                     @endforeach
                     @if ($i->vat_on_top)<div class="flex items-baseline gap-3 py-2"><span class="flex-1">{{ $i->vatLabel() }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->vatAmount()) }}</span></div>@endif

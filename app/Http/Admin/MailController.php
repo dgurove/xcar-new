@@ -56,11 +56,13 @@ use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
+use App\Support\Money;
 use App\Support\Nav;
 use App\Support\OfficePreview;
 use App\Support\Sort;
 use App\Users\User;
 use App\Vendors\ContactRole;
+use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -504,6 +506,15 @@ class MailController
             $vehicle = $invoice->vehicle;
             $template ??= Template::park('invoice');
         }
+        // Счёт-реестр за месяц — новое письмо в бухгалтерию плательщика (вендора, иначе адрес контрагента), без ветки ТС.
+        $registryValues = [];
+        if ($invoice?->isRegistry()) {
+            $template ??= Template::park('registry');
+            $payer = Vendor::with('contacts')->where('party_id', $invoice->party_id)->first();
+            $registryValues = ['month' => mb_strtolower($invoice->month->translatedFormat('F Y')), 'count' => (string) $invoice->registryVehicles()->count(),
+                'invoice' => $invoice->label(), 'sum' => Money::rub($invoice->total),
+                'to' => $payer?->email(ContactRole::Accounting, ContactRole::Storage, ContactRole::Claims) ?? $invoice->party->email ?? ''];
+        }
         $thread = null;
         $parent = null;
         $values = [];
@@ -542,6 +553,7 @@ class MailController
         if ($vehicle && $template && $vehicle->releasesByQr() && $request->query('act') === 'intake' && ! str_contains((string) $template->body, 'pickup_link')) {
             $template = (clone $template)->forceFill(['body' => self::withPickupNotice((string) $template->body)]);
         }
+        $values += $registryValues;
         $defaults = $offer && $parent ? $composer->replyWith($parent, $account, $template, $values) : $composer->fresh($account, $template, $values);
         if ($saleTo ?? null) {
             $defaults['to'] = $saleTo;
@@ -648,6 +660,13 @@ class MailController
             if (! empty($data['invoice']) && ($invoice = Invoice::where('vehicle_id', $vehicle->id)->find($data['invoice']))) {
                 $invoice->update(['sent_at' => now()]);
                 $vehicle->log(EventType::ReportSent, $request->user(), ['what' => 'Счёт '.$invoice->label(), 'thread' => $message->thread_id]);
+            }
+        }
+        // Ушёл счёт-реестр — отметка на нём и отчёт в ленте каждой его ТС.
+        if ($this->scope === Scope::Park && ! empty($data['invoice']) && ($registry = Invoice::whereNull('vehicle_id')->whereNotNull('month')->find($data['invoice']))) {
+            $registry->update(['sent_at' => now()]);
+            foreach ($registry->registryVehicles() as $v) {
+                $v->log(EventType::ReportSent, $request->user(), ['what' => 'Реестр '.$registry->label(), 'thread' => $message->thread_id]);
             }
         }
 

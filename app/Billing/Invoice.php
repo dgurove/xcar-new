@@ -24,9 +24,10 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * Счёт. `issued` — нам должны, `owed` — должны мы (перечисление вендору по
  * договору комиссии). Остаток и просрочка считаются, не хранятся; PDF — снимок
  * в момент выставления, коллекция `file` на закрытом диске. `seller` — кто из нас
- * выставил: реквизиты в документах и свой ряд номеров.
+ * выставил: реквизиты в документах и свой ряд номеров. Реестр (`isRegistry`) — счёт парковки плательщику за месяц
+ * без своей ТС: машины — строками хранения со своим `vehicle_id`, долг машины — её доля (`Ledger::shareOf`).
  */
-#[Fillable(['seller', 'direction', 'year', 'number', 'external_no', 'kind', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
+#[Fillable(['seller', 'direction', 'year', 'number', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
     'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by'])]
 class Invoice extends Model implements HasMedia
 {
@@ -39,7 +40,7 @@ class Invoice extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['seller' => Seller::class, 'kind' => ChargeKind::class, 'state' => InvoiceState::class, 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool',
+        return ['seller' => Seller::class, 'kind' => ChargeKind::class, 'state' => InvoiceState::class, 'month' => 'date', 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool',
             'total' => 'float', 'paid' => 'float', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime'];
     }
 
@@ -57,6 +58,38 @@ class Invoice extends Model implements HasMedia
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class, 'vehicle_id');
+    }
+
+    /** Счёт-реестр за месяц: ТС у строк, не у счёта. */
+    public function isRegistry(): bool
+    {
+        return $this->month !== null && $this->vehicle_id === null;
+    }
+
+    /** За что счёт словами в строках списков: ТС, реестр за месяц, сделка или вид. */
+    public function what(): string
+    {
+        return match (true) {
+            (bool) $this->vehicle => $this->vehicle->titleWithYear(),
+            $this->isRegistry() => 'реестр за '.mb_strtolower($this->month->translatedFormat('F')),
+            (bool) $this->deal_id => 'сделка',
+            default => $this->kind->label(),
+        };
+    }
+
+    /** Счета, где есть эта ТС: свои (`vehicle_id`) и реестры, в строках которых она есть. */
+    public function scopeForVehicle(Builder $q, int $vehicleId): Builder
+    {
+        return $q->where(fn ($w) => $w->where('vehicle_id', $vehicleId)
+            ->orWhere(fn ($r) => $r->whereNull('vehicle_id')->whereNotNull('month')->whereIn('id', Charge::where('vehicle_id', $vehicleId)->whereNotNull('invoice_id')->select('invoice_id'))));
+    }
+
+    /** ТС реестра — по строкам, в порядке строк. @return \Illuminate\Support\Collection<int, Vehicle> */
+    public function registryVehicles()
+    {
+        $this->loadMissing('charges.vehicle.brand', 'charges.vehicle.model');
+
+        return $this->charges->pluck('vehicle')->filter()->unique('id')->values();
     }
 
     public function deal(): BelongsTo

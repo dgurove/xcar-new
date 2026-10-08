@@ -43,6 +43,10 @@ final class UndoRelease
             if (! self::allowed($vehicle)) {
                 throw ValidationException::withMessages(['state' => 'Выдачу не отменить: счёт при выдаче уже оплачен, сначала снимите оплату']);
             }
+            // Реестр за месяц с этой ТС после выдачи — её дни уже в чужом счёте: сначала аннулировать реестр.
+            if ($registry = Invoice::forVehicle($vehicle->id)->whereNull('vehicle_id')->whereNotNull('month')->where('state', '!=', InvoiceState::Void)->where('issued_at', '>=', $vehicle->released_at->toDateString())->first()) {
+                throw ValidationException::withMessages(['state' => 'ТС в реестре '.$registry->label().', сначала аннулируйте реестр']);
+            }
             foreach (Invoice::where('vehicle_id', $vehicle->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)->where('issued_at', '>=', $vehicle->released_at->toDateString())->get() as $invoice) {
                 ($this->void)($invoice, $by, 'Выдача отменена');
             }

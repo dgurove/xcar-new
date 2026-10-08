@@ -193,12 +193,19 @@
                     <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/handover', 'type' => 'html', 'name' => 'Акт приёма-передачи']" class="row justify-between"><span>Акт приёма-передачи</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></x-ui.doc>
                 @endif
             </div>
-            @if ($vehicle->invoices->isNotEmpty() || $pendingCharges->isNotEmpty())
+            @if ($vehicle->invoices->isNotEmpty() || $registries->isNotEmpty() || $pendingCharges->isNotEmpty())
                 <div class="list mt-3">
                     @foreach ($vehicle->invoices as $inv)
                         <a href="/money/invoices/{{ $inv->id }}" class="row justify-between">
                             <span class="flex min-w-0 items-center gap-2.5"><x-billing.light :invoice="$inv"/><span class="min-w-0"><span class="block truncate">{{ $inv->isOwed() ? 'Мы должны' : \Illuminate\Support\Str::ucfirst($inv->label()) }}</span><span class="block truncate text-sm text-ink-muted"><x-vendor.name :party="$inv->party"/></span></span></span>
                             <span class="nums shrink-0 font-semibold">{{ Money::rub($inv->remaining() > 0 ? $inv->remaining() : $inv->total) }}</span>
+                        </a>
+                    @endforeach
+                    @foreach ($registries as $inv)
+                        @php $share = \App\Billing\Ledger::shareOf($inv, $vehicle->id); @endphp
+                        <a href="/money/invoices/{{ $inv->id }}" class="row justify-between">
+                            <span class="flex min-w-0 items-center gap-2.5"><x-billing.light :invoice="$inv"/><span class="min-w-0"><span class="block truncate">Реестр {{ $inv->label() }} за {{ mb_strtolower($inv->month->translatedFormat('F')) }}</span><span class="block truncate text-sm text-ink-muted"><x-vendor.name :party="$inv->party"/></span></span></span>
+                            <span class="nums shrink-0 font-semibold">{{ Money::rub($share['remaining'] > 0 ? $share['remaining'] : $share['total']) }}</span>
                         </a>
                     @endforeach
                     @foreach ($pendingCharges as $c)

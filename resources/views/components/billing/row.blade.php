@@ -19,7 +19,7 @@
         <div class="row-sub">
             <span class="nums {{ $i->isOwed() ? 'text-urgent' : '' }}">{{ $i->isOwed() ? 'мы должны' : $i->label() }}</span>
             <span>{{ $i->kind->label() }}</span>
-            @if ($i->vehicle)<span>{{ $i->vehicle->titleWithYear() }}</span>@endif
+            @if ($i->vehicle || $i->isRegistry())<span>{{ $i->what() }}</span>@endif
         </div>
     </div>
     <div class="shrink-0 text-right">

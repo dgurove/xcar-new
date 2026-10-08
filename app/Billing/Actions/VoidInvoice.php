@@ -35,11 +35,15 @@ final class VoidInvoice
             $storage = $invoice->charges()->where('kind', ChargeKind::Storage)->orderBy('period_from')->get();
             Charge::where('invoice_id', $invoice->id)->where('kind', '!=', ChargeKind::Storage)->where('created_at', '<', $invoice->created_at)->update(['invoice_id' => null]);
             Charge::where('invoice_id', $invoice->id)->whereNull('voided_at')->update(['voided_at' => now(), 'void_reason' => $reason]);
-            if ($storage->isNotEmpty() && $invoice->vehicle_id) {
-                $vehicle = Vehicle::whereKey($invoice->vehicle_id)->lockForUpdate()->first();
-                $first = $storage->first()->period_from;
+            // Период снова не выставлен — у каждой ТС счёта (у реестра их много): с первого дня её строк.
+            foreach ($storage->whereNotNull('vehicle_id')->groupBy('vehicle_id') as $vehicleId => $rows) {
+                $vehicle = Vehicle::whereKey($vehicleId)->lockForUpdate()->first();
+                $first = $rows->first()->period_from;
                 if ($vehicle && $vehicle->storage_billed_until && $vehicle->storage_billed_until->gte($first)) {
                     $vehicle->update(['storage_billed_until' => $first->copy()->subDay()->lt($vehicle->accepted_at?->startOfDay()) ? null : $first->copy()->subDay()]);
+                }
+                if ($invoice->isRegistry()) {
+                    $vehicle?->log(EventType::InvoiceVoided, $by, ['label' => 'реестр '.$invoice->label()]);
                 }
             }
             $invoice->update(['state' => InvoiceState::Void, 'voided_at' => now(), 'void_reason' => $reason]);

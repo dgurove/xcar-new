@@ -39,7 +39,8 @@ final class Closing
             $cadence = $v->cadence();
             $released = $v->released_at?->copy()->startOfDay();
             if ($cadence === Cadence::Release) {
-                if (! $released || $released->gt(now())) {
+                // «По выбытию» — те, кто выбыл до конца этого месяца: выбывшие позже идут в свой месяц.
+                if (! $released || $released->gt($end)) {
                     continue;
                 }
                 $until = $released;
@@ -77,8 +78,9 @@ final class Closing
     }
 
     /**
-     * Выставить выбранные строки: в порядке отрезков (чужой отрезок раньше своего не даст выставить), к каждому счёту — акт PDF.
-     * Ошибка одной строки не валит остальные — возвращается рядом с выставленными.
+     * Выставить выбранное: вендору и страхователю — один счёт-реестр на плательщика за месяц (решение владельца
+     * 08.10.2026), машины строками, акт с реестром; покупателю — счёт на каждую ТС, как прежде. В порядке отрезков: чужой
+     * отрезок раньше своего не даст выставить. Машина, которую выставить нельзя, не валит реестр — уходит в ошибки.
      *
      * @param  list<string>  $keys
      * @return array{issued: Collection<int, Invoice>, errors: list<string>}
@@ -87,26 +89,56 @@ final class Closing
     {
         $issued = collect();
         $errors = [];
-        foreach (self::items($month)->whereIn('key', $keys) as $item) {
+        $items = self::items($month)->whereIn('key', $keys)->values();
+        $title = fn (Vehicle $v) => $v->titleWithYear().($v->ref ? ' '.$v->ref : '');
+        // Покупатель — по ТС, отрезки идут раньше по ключу (`id:n`), поэтому покупатель после вендора той же ТС.
+        foreach ($items->where('payer', 'buyer') as $item) {
             $v = $item['vehicle'];
             try {
-                $party = $item['party'] ?? Ledger::payerParty($v, $item['payer']);
-                if (! $party) {
-                    throw new \RuntimeException('некому выставить — '.Accrual::payerLabel($item['payer']));
-                }
-                if (! $party->exists) {
-                    $party = Ledger::payerParty($v, $item['payer']);
-                }
-                $buyer = $item['payer'] === 'buyer';
-                $invoice = $issue($party, $by, 'issued', ChargeKind::Storage, $buyer ? now() : now()->addWeekdays($v->vendor?->payment_days ?? 5),
-                    $item['to'], $item['charges'], vehicle: $v->fresh());
+                $party = self::payer($item);
+                $invoice = $issue($party, $by, 'issued', ChargeKind::Storage, now(), $item['to'], $item['charges'], vehicle: $v->fresh());
                 $act->attach($invoice);
                 $issued->push($invoice);
             } catch (Throwable $e) {
-                $errors[] = $v->titleWithYear().($v->ref ? ' '.$v->ref : '').': '.($e instanceof ValidationException ? implode(', ', $e->validator->errors()->all()) : $e->getMessage());
+                $errors[] = $title($v).': '.self::message($e);
+            }
+        }
+        // Группа — плательщик; у вендора без записанного контрагента — сам вендор (черновик заведётся один раз).
+        $key = fn ($i) => ($id = self::payer($i, false)?->id) ? 'p'.$id : ($i['payer'] === 'vendor' ? 'v'.$i['vehicle']->vendor_id : 'none:'.$i['key']);
+        foreach ($items->where('payer', '!=', 'buyer')->groupBy($key) as $group) {
+            $first = $group->first();
+            try {
+                $party = self::payer($first);
+                $days = $first['vehicle']->vendor?->payment_days ?? 5;
+                $invoice = $issue($party, $by, 'issued', ChargeKind::Storage, now()->addWeekdays($days), month: $month,
+                    registry: $group->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => $i['to'], 'charges' => $i['charges']])->values()->all());
+                $errors = [...$errors, ...$issue->skipped];
+                $act->attach($invoice);
+                $issued->push($invoice);
+            } catch (Throwable $e) {
+                $errors = [...$errors, ($first['party']?->name ?? Accrual::payerLabel($first['payer'])).': '.self::message($e), ...$issue->skipped];
             }
         }
 
         return ['issued' => $issued, 'errors' => $errors];
+    }
+
+    /** Плательщик строки; черновик вендора (без id) записывается, когда выставляем. */
+    private static function payer(array $item, bool $create = true): ?Party
+    {
+        $party = $item['party'] ?? Ledger::payerParty($item['vehicle'], $item['payer'], $create);
+        if ($party && ! $party->exists && $create) {
+            $party = Ledger::payerParty($item['vehicle'], $item['payer']);
+        }
+        if (! $party && $create) {
+            throw new \RuntimeException('некому выставить, '.mb_strtolower(Accrual::payerLabel($item['payer'])));
+        }
+
+        return $party;
+    }
+
+    private static function message(Throwable $e): string
+    {
+        return $e instanceof ValidationException ? implode(', ', $e->validator->errors()->all()) : $e->getMessage();
     }
 }

@@ -63,17 +63,57 @@ final class Ledger
         })->sortByDesc(fn ($d) => $d['overdue'] * 1000 + $d['owed_to_us'] + $d['unbilled'])->values();
     }
 
-    /** Неоплаченное по ТС — для выдачи и красной пилюли. */
+    /** Неоплаченное по ТС — красная пилюля: свои счета целиком и доля в реестрах. */
     public static function vehicleDebt(Vehicle $vehicle): float
     {
-        return round(Invoice::where('vehicle_id', $vehicle->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)->get()->sum(fn (Invoice $i) => $i->remaining()), 2);
+        return self::debtsByVehicle([$vehicle->id])[$vehicle->id] ?? 0.0;
     }
 
     /** Неоплаченное по многим ТС разом — красный чип в строках списка. @return array<int, float> */
     public static function debtsByVehicle(array $ids): array
     {
-        return Invoice::whereIn('vehicle_id', $ids)->where('direction', 'issued')->where('state', InvoiceState::Issued)->get()
-            ->groupBy('vehicle_id')->map(fn ($invoices) => round($invoices->sum(fn (Invoice $i) => $i->remaining()), 2))->filter(fn ($d) => $d > 0)->all();
+        if (! $ids) {
+            return [];
+        }
+        $out = Invoice::whereIn('vehicle_id', $ids)->where('direction', 'issued')->where('state', InvoiceState::Issued)->get()
+            ->groupBy('vehicle_id')->map(fn ($invoices) => $invoices->sum(fn (Invoice $i) => $i->remaining()))->all();
+        // Реестры: доля машины — её строки к строкам счёта, от остатка (НДС сверху и частичная оплата — пропорционально).
+        $lines = Charge::whereIn('vehicle_id', $ids)->whereIn('invoice_id', Invoice::whereNull('vehicle_id')->whereNotNull('month')->where('direction', 'issued')->where('state', InvoiceState::Issued)->select('id'))
+            ->whereNull('voided_at')->selectRaw('invoice_id, vehicle_id, sum(amount) as amount')->groupBy('invoice_id', 'vehicle_id')->get();
+        if ($lines->isNotEmpty()) {
+            $registries = Invoice::whereIn('id', $lines->pluck('invoice_id')->unique())->withSum(['charges as lines_sum' => fn ($c) => $c->whereNull('voided_at')], 'amount')->get()->keyBy('id');
+            foreach ($lines as $l) {
+                $r = $registries[$l->invoice_id];
+                $out[$l->vehicle_id] = ($out[$l->vehicle_id] ?? 0) + ($r->lines_sum > 0 ? $r->remaining() * (float) $l->amount / (float) $r->lines_sum : 0);
+            }
+        }
+
+        return collect($out)->map(fn ($d) => round($d, 2))->filter(fn ($d) => $d > 0)->all();
+    }
+
+    /** Доля ТС в счёте: свой — весь, реестр — её строки к строкам счёта (сумма к оплате и остаток). @return array{total: float, remaining: float} */
+    public static function shareOf(Invoice $invoice, int $vehicleId): array
+    {
+        if (! $invoice->isRegistry()) {
+            return ['total' => $invoice->total, 'remaining' => $invoice->remaining()];
+        }
+        $all = (float) $invoice->charges->sum('amount');
+        $part = $all > 0 ? (float) $invoice->charges->where('vehicle_id', $vehicleId)->sum('amount') / $all : 0;
+
+        return ['total' => round($invoice->total * $part, 2), 'remaining' => round($invoice->remaining() * $part, 2)];
+    }
+
+    /**
+     * Что держит выдачу из выставленного: неоплаченные счета этой ТС не страховой стороне — покупателю и прочим
+     * (решение владельца 08.10.2026: счета вендора и страхователя, по ТС и реестры, выдачу не держат).
+     */
+    public static function releaseDebt(Vehicle $vehicle): float
+    {
+        $vehicle->loadMissing('vendor');
+        $insurer = array_filter([$vehicle->vendor?->party_id, $vehicle->owner_party_id]);
+
+        return round(Invoice::where('vehicle_id', $vehicle->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)
+            ->when($insurer, fn ($q) => $q->whereNotIn('party_id', $insurer))->get()->sum(fn (Invoice $i) => $i->remaining()), 2);
     }
 
     /**

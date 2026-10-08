@@ -5,6 +5,7 @@ namespace App\Billing\Actions;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\Ledger;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
@@ -43,6 +44,15 @@ final class RecordPayment
             $paid = round($invoice->paid + $amount, 2);
             $invoice->update(['paid' => $paid] + ($paid >= $invoice->total - 0.005 ? ['state' => InvoiceState::Paid, 'paid_at' => $payment->paid_at] : []));
             $invoice->vehicle?->log(EventType::Paid, $by, ['label' => $invoice->label(), 'amount' => $amount, 'left' => $invoice->fresh()->remaining()]);
+            // Реестр: оплата — в ленте каждой его ТС, её долей.
+            if ($invoice->isRegistry()) {
+                $fresh = $invoice->fresh('charges');
+                foreach ($fresh->registryVehicles() as $v) {
+                    $share = Ledger::shareOf($fresh, $v->id);
+                    $part = $fresh->total > 0 ? $amount * $share['total'] / $fresh->total : 0;
+                    $v->log(EventType::Paid, $by, ['label' => 'реестр '.$invoice->label(), 'amount' => round($part, 2), 'left' => $share['remaining']]);
+                }
+            }
 
             return $payment;
         });

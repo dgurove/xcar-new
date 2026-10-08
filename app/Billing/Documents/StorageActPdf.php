@@ -5,7 +5,7 @@ namespace App\Billing\Documents;
 use App\Billing\Invoice;
 use App\Support\Pdf;
 
-/** Акт оказанных услуг хранения — PDF при счёте: закрытие месяца кладёт его рядом со счётом, письмо вендору берёт оба. */
+/** Акт оказанных услуг хранения — PDF при счёте: закрытие месяца кладёт его рядом со счётом, письмо вендору берёт оба; у реестра — с таблицей машин. */
 final class StorageActPdf
 {
     public function attach(Invoice $invoice): void
@@ -17,6 +17,12 @@ final class StorageActPdf
 
     public function render(Invoice $invoice): string
     {
+        // Реестр за месяц — альбомный лист: машина строкой (ТС, госномер, VIN, убыток, парковка, период, сутки, ставка, сумма).
+        if ($invoice->isRegistry()) {
+            $invoice->loadMissing(['party', 'charges.vehicle.brand', 'charges.vehicle.model', 'charges.vehicle.yard']);
+
+            return Pdf::render('billing.docs.storage-registry', ['invoice' => $invoice, 'self' => $invoice->seller->party()], 'landscape');
+        }
         $invoice->loadMissing(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges']);
 
         return Pdf::render('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);

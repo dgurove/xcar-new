@@ -3,7 +3,10 @@
     use App\Support\Money;
     $fonts = resource_path('fonts/pdf');
     $p = $invoice->party;
-    $lines = $invoice->charges;
+    // Реестр за месяц — одной строкой «по реестру» (владелец 08.10.2026), машины — в акте.
+    $registry = $invoice->isRegistry();
+    $lines = $registry ? collect([new \App\Billing\Charge(['title' => 'Услуги хранения ТС за '.mb_strtolower($invoice->month->translatedFormat('F Y')).', '.$invoice->registryVehicles()->count().' ТС, по реестру',
+        'qty' => 1, 'unit' => 'svc', 'price' => $invoice->charges->sum('amount'), 'amount' => $invoice->charges->sum('amount')])]) : $invoice->charges;
     // Удержанное менеджером вознаграждение — зачёт в момент выставления: печатается и «к оплате».
     $offset = $invoice->payments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount');
     // QR для приложения банка: реквизиты, сумма к оплате и назначение, по которому выписка найдёт счёт.
@@ -56,6 +59,7 @@
     <table class="req">
         <tr><td class="l">Плательщик</td><td><b>{{ $p->name }}</b>@if ($p->details())<br>{{ $p->details() }}@endif</td></tr>
         @if ($invoice->vehicle)<tr><td class="l">Основание</td><td>{{ $invoice->vehicle->titleWithYear() }}{{ $invoice->vehicle->vin ? ', VIN '.$invoice->vehicle->vin : '' }}{{ $invoice->vehicle->ref ? ', убыток '.$invoice->vehicle->ref : '' }}{{ $invoice->vehicle->contract_no ? ', договор № '.$invoice->vehicle->contract_no : '' }}</td></tr>@endif
+        @if ($registry)<tr><td class="l">Основание</td><td>Акт оказанных услуг хранения {{ $invoice->label() }} от {{ $invoice->issued_at->format('d.m.Y') }}, реестр ТС</td></tr>@endif
         @if ($invoice->deal)<tr><td class="l">Основание</td><td>Сделка по предложению № {{ $invoice->deal->offer?->number }}{{ $invoice->deal->offer ? ', '.$invoice->deal->offer->titleWithYear() : '' }}</td></tr>@endif
         @if ($invoice->due_at)<tr><td class="l">Оплатить до</td><td>{{ $invoice->due_at->format('d.m.Y') }}</td></tr>@endif
     </table>

@@ -3,5 +3,5 @@
 @include('billing.invoice-page', [
     'base' => '/money/invoices/'.$invoice->id, 'back' => ['Оплаты', '/money'], 'canManage' => $me->canManagePark(),
     'partiesUrl' => $me->canManagePark() ? '/money/parties' : null, 'dealUrl' => \App\Support\Surface::Crm->url('/work/deals/'.$invoice->deal_id),
-    'mailUrl' => !$invoice->isOwed() && $invoice->state === \App\Billing\InvoiceState::Issued && $invoice->vehicle && $me->canManagePark() ? '/mail/new?invoice='.$invoice->id : null,
+    'mailUrl' => !$invoice->isOwed() && $invoice->state === \App\Billing\InvoiceState::Issued && ($invoice->vehicle || $invoice->isRegistry()) && $me->canManagePark() ? '/mail/new?invoice='.$invoice->id : null,
 ])

@@ -8,7 +8,7 @@
     $i = $invoice;
     $due = $i->state === InvoiceState::Issued ? ($i->due_at ? 'до '.$i->due_at->translatedFormat('j M') : 'после договора') : mb_strtolower($i->state->label());
     $tone = match ($i->light()) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => '' };
-    $what = $i->vehicle ? $i->vehicle->titleWithYear() : ($i->deal ? 'сделка' : $i->kind->label());
+    $what = $i->what();
     $left = $i->remaining();
 @endphp
 <tr data-detail-key="{{ $i->id }}" data-search-row id="invoice-{{ $i->id }}">

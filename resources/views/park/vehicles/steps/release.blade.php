@@ -1,7 +1,7 @@
 @php
     use App\Park\PhotoStage; use App\Support\Money;
     $qr = $byQr ?? false;
-    $hold = $debt + $cashDue;
+    $hold = $releaseDebt + $cashDue;
     $who = ($pass ?? null)?->name ?? $vehicle->pickup_name;
 @endphp
 {{-- Шаг «Выдача». По QR первым — «Сканировать QR» (сначала убедиться, что приехал покупатель), его место занимает
@@ -32,9 +32,9 @@
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
         </div>
     @endif
-    {{-- Держат выдачу только неоплаченные счета и наличные с покупателя; набежавшее вендору уйдёт счётом. --}}
-    @if ($debt > 0)
-        <div class="row justify-between"><span class="text-danger">Не оплачено</span><span class="nums text-danger">{{ Money::rub($debt) }}</span></div>
+    {{-- Держат выдачу только неоплаченное покупателем и наличные с него; страховая сторона платит счётом. --}}
+    @if ($releaseDebt > 0)
+        <div class="row justify-between"><span class="text-danger">Не оплачено</span><span class="nums text-danger">{{ Money::rub($releaseDebt) }}</span></div>
     @endif
     @if ($cashDue > 0)
         <label class="row justify-between cursor-pointer"><span class="min-w-0"><span class="block">Наличными с покупателя</span><span class="nums block text-sm text-danger">{{ Money::rub($cashDue) }}</span></span><input type="checkbox" switch name="cash" value="1" @checked(old('cash')) class="switch shrink-0" aria-label="Принял наличными"></label>
