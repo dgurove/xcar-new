@@ -85,7 +85,10 @@ final class YooKassa implements Gateway
         return $e instanceof ConnectionException || ($e instanceof RequestException && $e->response->serverError());
     }
 
-    /** Чек: покупатель — почта плательщика (чеки от ЮKassa уходят только на неё, телефон не нужен), позиция одна. */
+    /**
+     * Чек: покупатель — почта плательщика (чеки от ЮKassa уходят только на неё, телефон не нужен), позиция одна.
+     * ПРАЙМ продаёт только услугу подбора, поэтому признаки позиции — «Услуга» и «Полный расчёт», без настройки.
+     */
     private function receipt(PayLink $link, float $amount): array
     {
         $invoice = $link->invoice;
@@ -101,8 +104,8 @@ final class YooKassa implements Gateway
                 'quantity' => 1,
                 'amount' => self::money($amount),
                 'vat_code' => Vat::receiptCode($invoice->vatRate()),
-                'payment_subject' => config('xcar.yookassa.payment_subject'),
-                'payment_mode' => config('xcar.yookassa.payment_mode'),
+                'payment_subject' => 'service',
+                'payment_mode' => 'full_payment',
             ]],
         ];
     }

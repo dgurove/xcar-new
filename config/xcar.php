@@ -81,14 +81,12 @@ return [
     ],
 
     // Оплата по ссылке — ЮKassa, подключённая в СберБизнесе; чеки 54-ФЗ пробивает она же («Чеки от ЮKassa»).
-    // Чек уходит только на почту; позиция — услуга, полный расчёт, код НДС — от ставки счёта (`Billing\Vat::receiptCode`).
+    // Чек уходит только на почту; позиция — услуга, полный расчёт (`YooKassa::receipt`), код НДС — от ставки счёта (`Billing\Vat::receiptCode`).
     'yookassa' => [
         'url' => env('YOOKASSA_URL', 'https://api.yookassa.ru/v3'),
         'shop_id' => env('YOOKASSA_SHOP_ID'),
         'secret' => env('YOOKASSA_SECRET_KEY'),
         'receipt' => (bool) env('YOOKASSA_RECEIPT', true),
-        'payment_subject' => env('YOOKASSA_PAYMENT_SUBJECT', 'service'),
-        'payment_mode' => env('YOOKASSA_PAYMENT_MODE', 'full_payment'),
         // ИНН НКО «ЮМани»: её перечисления на расчётный счёт — уже учтённые оплаты по ссылкам, выписка их не привязывает.
         'payout_inn' => env('YOOKASSA_PAYOUT_INN', '7750005725'),
         // Сколько можно заплатить одной ссылкой: СБП и SberPay — 700 000 ₽ за платёж (карта — 350 000).
