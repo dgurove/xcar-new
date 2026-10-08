@@ -1,5 +1,6 @@
-{{-- Акт хранения по реестру (счёт плательщику за месяц): стороны, таблица машин — ТС, госномер, VIN, убыток, парковка,
-     период, сутки, ставка, сумма; несколько ставок у машины — несколько строк, прочие начисления — своей строкой.
+{{-- Отчёт-акт по реестру (счёт плательщику за месяц): стороны, договор вендора, таблица машин — VIN, даты приёма и
+     передачи, убыток, полис, госномер, марка, услуга, сутки, цена, стоимость; несколько ставок у машины — несколько
+     строк, прочие начисления — своей строкой.
      Альбомный лист dompdf (без flex, шрифты файлами); та же разметка для страницы печати. --}}
 @php
     use App\Billing\ChargeKind;
@@ -13,7 +14,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Акт хранения {{ $i->label() }}</title>
+    <title>Отчёт-акт {{ $i->label() }}</title>
     <style>
         @if ($pdf)
         @font-face { font-family: "Onest"; font-weight: 400; src: url("file://{{ $fonts }}/Onest-Regular.ttf"); }
@@ -47,11 +48,18 @@
 <body>
     @unless ($pdf || $embed)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     <article class="act">
-        <h1>Акт оказанных услуг хранения {{ $i->label() }}</h1>
-        <p class="sub">{{ $i->issued_at->format('d.m.Y') }}, за {{ mb_strtolower($i->month->translatedFormat('F Y')) }}</p>
-        <p><b>{{ $self->name }}</b> ({{ $self->details() }}), Исполнитель, и <b>{{ $p->name }}</b>{{ $p->details() ? ' ('.$p->details().')' : '' }}, Заказчик, составили настоящий акт о том, что Исполнитель оказал услуги по хранению транспортных средств по реестру:</p>
+        @php
+            $vendor = $byCar->first()?->first()?->vehicle?->vendor;
+            $service = $vendor?->kind === \App\Vendors\Kind::Insurer ? 'Хранение повреждённого ТС' : 'Хранение ТС';
+            $from = $i->month?->copy()->startOfMonth(); $to = $i->month?->copy()->endOfMonth();
+        @endphp
+        {{-- Форма — как отчёт-акт, которым Питер сдавал хранение Альфе (09.10.2026): договор в заголовке, даты приёма и
+             передачи, полис, наименование услуги, сутки и цена. --}}
+        <h1>Отчёт-акт {{ $i->label() }}</h1>
+        <p class="sub">сдачи-приёмки оказанных услуг за период с {{ $from?->format('d.m.Y') }} по {{ $to?->format('d.m.Y') }}@if ($vendor?->agreement_number) к договору № {{ $vendor->agreement_number }}@if ($vendor->agreement_date) от {{ $vendor->agreement_date->format('d.m.Y') }}@endif @endif</p>
+        <p><b>{{ $p->name }}</b>{{ $p->details() ? ' ('.$p->details().')' : '' }}, Поклажедатель, и <b>{{ $self->name }}</b> ({{ $self->details() }}), Хранитель, составили настоящий отчёт-акт о том, что Хранитель оказал Поклажедателю услуги хранения транспортных средств, указанных в таблице, и окончил их оказание:</p>
         <table class="reg">
-            <thead><tr><th style="width:22px">№</th><th>Транспортное средство</th><th>Гос. номер</th><th>VIN</th><th>Номер убытка</th><th>№ полиса</th><th>Парковка</th><th>Период</th><th class="n">Сутки</th><th class="n">Ставка</th><th class="n">Сумма</th></tr></thead>
+            <thead><tr><th style="width:22px">№ п/п</th><th>VIN ТС</th><th>Дата принятия ТС к хранению</th><th>Дата передачи ТС после хранения</th><th>№ убытка</th><th>№ полиса</th><th>Гос. номер</th><th>Марка ТС</th><th>Наименование услуги</th><th class="n">Кол-во сут.</th><th class="n">Цена</th><th class="n">Стоимость</th></tr></thead>
             <tbody>
             @foreach ($byCar as $rows)
                 @php $v = $rows->first()->vehicle; $n++; $storage = $rows->where('kind', ChargeKind::Storage)->values(); $other = $rows->where('kind', '!=', ChargeKind::Storage)->values(); $span = max(1, $storage->count() + $other->count()); @endphp
@@ -59,15 +67,18 @@
                     <tr>
                         @if ($k === 0)
                             <td rowspan="{{ $span }}">{{ $n }}</td>
-                            <td rowspan="{{ $span }}">{{ $v?->titleWithYear() }}</td>
-                            <td rowspan="{{ $span }}">{{ $v?->plate }}</td>
                             <td rowspan="{{ $span }}">{{ $v?->vin }}</td>
+                            <td rowspan="{{ $span }}">{{ $v?->accepted_at?->format('d.m.Y') }}</td>
+                            <td rowspan="{{ $span }}">{{ $v?->released_at?->format('d.m.Y') }}</td>
                             <td rowspan="{{ $span }}">{{ $v?->ref }}</td>
                             <td rowspan="{{ $span }}">{{ $v?->policy_no }}</td>
-                            <td rowspan="{{ $span }}">{{ $v?->yard?->name }}</td>
+                            <td rowspan="{{ $span }}">{{ $v?->plate }}</td>
+                            <td rowspan="{{ $span }}">{{ trim(($v?->brand?->name ?? '').' '.($v?->model?->name ?? '')) }}</td>
                         @endif
                         @if ($c->kind === ChargeKind::Storage)
-                            <td>{{ $c->period_from?->format('d.m.Y') }} – {{ $c->period_to?->format('d.m.Y') }}</td><td class="n">{{ (int) $c->qty }}</td>
+                            {{-- Период хранения в строке — когда он уже, чем приём и выдача (помесячный счёт, своя ставка части срока). --}}
+                            @php $whole = $c->period_from?->isSameDay($v?->accepted_at) && ($c->period_to?->isSameDay($v?->released_at) ?? false); @endphp
+                            <td>{{ $service }}@unless ($whole) за {{ $c->period_from?->format('d.m.Y') }} – {{ $c->period_to?->format('d.m.Y') }}@endunless</td><td class="n">{{ (int) $c->qty }}</td>
                         @else
                             <td>{{ $c->title }}</td><td class="n">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.') }} {{ $c->unitLabel() }}</td>
                         @endif
@@ -75,14 +86,14 @@
                     </tr>
                 @endforeach
             @endforeach
-            <tr><td colspan="10"><b>Итого, {{ $n }} ТС</b></td><td class="n"><b>{{ Money::nums($i->charges->sum('amount'), 2) }} ₽</b></td></tr>
-            @if ($i->vat_on_top)<tr><td colspan="10">{{ $i->vatLabel() }}</td><td class="n">{{ Money::nums($i->vatAmount(), 2) }} ₽</td></tr><tr><td colspan="10"><b>Всего</b></td><td class="n"><b>{{ Money::nums($i->total, 2) }} ₽</b></td></tr>@endif
+            <tr><td colspan="11"><b>Итого, {{ $n }} ТС</b></td><td class="n"><b>{{ Money::nums($i->charges->sum('amount'), 2) }} ₽</b></td></tr>
+            @if ($i->vat_on_top)<tr><td colspan="11">{{ $i->vatLabel() }}</td><td class="n">{{ Money::nums($i->vatAmount(), 2) }} ₽</td></tr><tr><td colspan="11"><b>Всего</b></td><td class="n"><b>{{ Money::nums($i->total, 2) }} ₽</b></td></tr>@endif
             </tbody>
         </table>
-        <p>{{ $i->vatRate() ? ($i->vat_on_top ? '' : $i->vatLabel().', '.Money::nums($i->vatAmount(), 2).' ₽. ') : 'НДС не облагается. ' }}Услуги оказаны в полном объёме, претензий по объёму, качеству и срокам Заказчик не имеет.</p>
+        <p>{{ $i->vatRate() ? ($i->vat_on_top ? '' : $i->vatLabel().', '.Money::nums($i->vatAmount(), 2).' ₽. ') : 'НДС не облагается. ' }}Услуги оказаны в полном объёме, претензий по объёму, качеству и срокам Поклажедатель не имеет.</p>
         <table class="sign"><tr>
-            <td><div class="line">Исполнитель {{ $self->director ? '/ '.$self->director : '' }}</div></td>
-            <td><div class="line">Заказчик</div></td>
+            <td><div class="line">Хранитель {{ $self->director ? '/ '.$self->director : '' }}</div></td>
+            <td><div class="line">Поклажедатель</div></td>
         </tr></table>
     </article>
 </body>

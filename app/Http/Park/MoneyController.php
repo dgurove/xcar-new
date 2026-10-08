@@ -9,6 +9,7 @@ use App\Billing\Actions\VoidPayment;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
 use App\Billing\Documents\StorageActPdf;
+use App\Billing\Export\RegistryExport;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Ledger;
@@ -84,7 +85,7 @@ class MoneyController
             ],
             // Один контрагент выбран (пришли из «Долгов») — экран называется им.
             'party' => count($parties) === 1 ? Party::find($parties[0]) : null,
-            'closing' => Closing::pendingCount(),
+            'closing' => Closing::pending(),
             'q' => $qs,
             'facets' => $facets,
         ]);
@@ -196,6 +197,26 @@ class MoneyController
         $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges.vehicle.brand', 'charges.vehicle.model', 'charges.vehicle.yard']);
 
         return view($invoice->isRegistry() ? 'billing.docs.storage-registry' : 'billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
+    }
+
+    /** Акты хранения по каждой ТС реестра одним документом — лист на машину. */
+    public function acts(Invoice $invoice)
+    {
+        self::guard($invoice);
+        abort_unless($invoice->isRegistry(), 404);
+        $invoice->load(['party', 'charges.vehicle.brand', 'charges.vehicle.model', 'charges.vehicle.yard', 'charges.vehicle.vendor']);
+
+        return view('billing.docs.storage-acts', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
+    }
+
+    /** Отчёт-акт реестра файлом Excel — той же формой, что PDF: вендор правит его и присылает назад. */
+    public function registryXlsx(Invoice $invoice)
+    {
+        self::guard($invoice);
+        abort_unless($invoice->isRegistry(), 404);
+
+        return response()->streamDownload(fn () => RegistryExport::write($invoice, 'php://output'), 'Отчёт-акт '.$invoice->label().'.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
     public const DEBT_SORTS = ['overdue' => ['Просрочено', 'desc'], 'owed_to_us' => ['Нам должны', 'desc'], 'we_owe' => ['Мы должны', 'desc'], 'unbilled' => ['Не выставлено', 'desc']];

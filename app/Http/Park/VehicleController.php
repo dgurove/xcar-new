@@ -191,6 +191,10 @@ class VehicleController
     public function show(Request $request, Vehicle $vehicle)
     {
         $window = (string) $request->query('window');
+        // Ещё не принята — это заявка: горит таб «Заявки», а не «Наличие» (адрес дела у всех ТС один).
+        if ($vehicle->state->isBefore()) {
+            $request->attributes->set('nav.tab', '/requests');
+        }
 
         return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null, $request->boolean('call')) + [
             'window' => preg_match('#^/(mail|cars)/#', $window) ? $window : null,

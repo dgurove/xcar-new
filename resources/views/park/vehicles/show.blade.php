@@ -108,7 +108,7 @@
                 @if ($moveForm)
                     <x-ui.card title="Перестановка">
                         <div class="grid grid-cols-2 gap-3" data-controller="spots" data-spots-map-value="{{ json_encode($yardRows) }}">
-                            <x-ui.field name="yard_id" label="Куда" :options="$yards" :value="$req->yard_id ?? $vehicle->yard_id" required data-spots-target="yard" data-action="change->spots#sync"/>
+                            <x-park.yard-field :yards="$yards" label="Куда" :value="$req->yard_id ?? $vehicle->yard_id" required data-spots-target="yard" data-action="change->spots#sync"/>
                             <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters" :value="$vehicle->spot"/>
                             <datalist id="spots-list" data-spots-target="list"></datalist>
                         </div>
@@ -243,7 +243,8 @@
             {{-- Строка истории: текст во всю ширину (заметка — на подложке), под ним мелко одной строкой «когда кто»
                  (владелец 07.10.2026: дата своей строкой и чип с именем справа — строка ради одной даты и ужатый текст). --}}
             <div class="flex flex-col gap-3 text-sm">
-                @foreach ($vehicle->events as $event)
+                {{-- Связь с продажей — дело админа CRM: управляющему «связана с предложением» ничего не говорит. --}}
+                @foreach ($vehicle->events->reject(fn ($e) => ! auth()->user()->isAdmin() && in_array($e->type, [EventType::Linked, EventType::Unlinked], true)) as $event)
                     <div>
                         @if ($event->type === EventType::Note)
                             <div class="history-note whitespace-pre-line">{{ $event->text() }}</div>
@@ -374,13 +375,13 @@
                 @if ($state === VehicleState::Stored)
                     <form method="post" action="/cars/{{ $vehicle->id }}/move" class="flex flex-col gap-2">@csrf
                         <div class="fields">
-                            <x-ui.field name="yard_id" label="Парковка" :options="$yards" :value="$vehicle->yard_id"/>
+                            <x-park.yard-field :yards="$yards" :value="$vehicle->yard_id"/>
                             <x-ui.field name="spot" label="Место" :value="$vehicle->spot" list="spots-free" autocapitalize="characters"/>
                         </div>
                         <datalist id="spots-free">@foreach ($spots as $s)<option value="{{ $s }}">@endforeach</datalist>
                         <x-ui.button variant="secondary" block>Переставить</x-ui.button>
                     </form>
-                    <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую парковку</x-ui.button>
+                    @if (count($yards) > 1)<x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую парковку</x-ui.button>@endif
                     @php $elsewhere = $canManage ? \App\Park\City::transferTargets($vehicle) : []; @endphp
                     @if ($elsewhere)
                         {{-- Перевод в другой город (Питер → база в Москве): ТС та же, город меняется — управляющий этого города её больше не видит. --}}

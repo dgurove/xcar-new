@@ -5,7 +5,8 @@
      новой страницы переносит tabbar_controller. --}}
 @php
     $user = auth()->user();
-    $path = '/'.ltrim(request()->path(), '/');
+    // Экран может назвать свой таб сам (`nav.tab`): у дела ожидаемой ТС адрес /cars, а таб — «Заявки».
+    $path = request()->attributes->get('nav.tab') ?? '/'.ltrim(request()->path(), '/');
     $tabs = \App\Support\Nav::tabs($user);
     $badges = \App\Support\Nav::badges($user);
     $totals = \App\Support\Nav::totals($user);

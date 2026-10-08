@@ -23,7 +23,12 @@
                 @if ($mailUrl ?? null)<x-ui.button :href="$mailUrl" block><x-ui.icon name="send" class="size-4"/> {{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</x-ui.button>@endif
                 {{-- Документы — в шторке документов поверх окна; акт хранения — PDF, если выставлен закрытием месяца, иначе страница. --}}
                 @if ($file)<x-ui.doc :doc="['url' => $base.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="btn btn-quiet btn-block"><x-ui.icon name="file" class="size-4"/> PDF</x-ui.doc>@endif
-                @if ($i->kind === \App\Billing\ChargeKind::Storage)<x-ui.doc :doc="['url' => $base.'/act', 'type' => $i->hasMedia('act') ? 'pdf' : 'html', 'name' => 'Акт хранения']" class="btn btn-ghost btn-block"/>@endif
+                @if ($i->kind === \App\Billing\ChargeKind::Storage)<x-ui.doc :doc="['url' => $base.'/act', 'type' => $i->hasMedia('act') ? 'pdf' : 'html', 'name' => $i->isRegistry() ? 'Отчёт-акт' : 'Акт хранения']" class="btn btn-ghost btn-block"/>@endif
+                {{-- Реестр: акты хранения по каждой ТС одним документом и отчёт-акт файлом Excel (вендор правит его и шлёт назад). --}}
+                @if ($i->isRegistry() && $i->park)
+                    <x-ui.doc :doc="['url' => $base.'/acts', 'type' => 'html', 'name' => 'Акты хранения по ТС']" class="btn btn-ghost btn-block"/>
+                    <a href="{{ $base }}/registry.xlsx" class="btn btn-ghost btn-block" download data-turbo="false">Отчёт-акт Excel</a>
+                @endif
                 @if ($i->number)<x-ui.doc :doc="['url' => $base.'/print', 'type' => 'html', 'name' => 'Печатная форма']" class="btn btn-ghost btn-block">Печать</x-ui.doc>@endif
                 @if ($i->state === InvoiceState::Issued && $canManage)
                     <form method="post" action="{{ $base }}" class="mt-2 flex flex-col gap-3">

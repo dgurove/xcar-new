@@ -123,13 +123,30 @@ final class Closing
      */
     public static function pendingCount(): int
     {
-        $month = now()->subMonth()->startOfMonth();
+        return self::pending()['count'];
+    }
 
-        // Только то, что можно выставить: без плательщика и реквизитов число висело бы вечно.
+    /**
+     * Что ждёт закрытия прошлого месяца — строкой сверху «Оплат» (Питер, 09.10.2026: без неё управляющий про
+     * сентябрь не узнал бы): месяц, сколько ТС и на какую сумму, сколько счетов можно выставить (`count`) и скольким
+     * вендорам сначала нужны реквизиты (`blocked`). Вендор без реквизитов — дело управляющего, он в числе; покупатель
+     * без контрагента — нет: такое число висело бы вечно.
+     *
+     * @return array{month: string, count: int, cars: int, amount: float, blocked: int}
+     */
+    public static function pending(): array
+    {
+        $month = now()->subMonth()->startOfMonth();
         $city = City::viewing();
 
-        return Cache::remember('park.closing:'.$month->format('Y-m').($city ? ":{$city}" : ''), 600, fn () => self::items($month)->where('ready', true)
-            ->groupBy(fn ($i) => self::groupOf($i))->count());
+        return Cache::remember('park.closing:'.$month->format('Y-m').($city ? ":{$city}" : ''), 600, function () use ($month) {
+            $items = self::items($month);
+            $groups = $items->groupBy(fn ($i) => self::groupOf($i));
+            $blocked = $groups->filter(fn ($g) => ! $g->first()['ready'] && $g->first()['payer'] === 'vendor')->count();
+
+            return ['month' => $month->toDateString(), 'count' => $groups->filter(fn ($g) => $g->first()['ready'])->count() + $blocked,
+                'cars' => $items->pluck('vehicle.id')->unique()->count(), 'amount' => round((float) $items->sum('amount'), 2), 'blocked' => $blocked];
+        });
     }
 
     /** Сбросить число «выставить» — после счёта или аннулирования парковки (CRM его не трогает). */

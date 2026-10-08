@@ -8,7 +8,7 @@
     $park = $surface === \App\Support\Surface::Park;
     $site = $surface === \App\Support\Surface::Site;
     $user = auth()->user();
-    $path = '/'.ltrim(request()->path(), '/');
+    $path = request()->attributes->get('nav.tab') ?? '/'.ltrim(request()->path(), '/');
     $capsules = \App\Support\Nav::capsules($user);
     $top = \App\Support\Nav::top($user);
     $badges = \App\Support\Nav::badges($user);

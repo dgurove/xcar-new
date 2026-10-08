@@ -117,6 +117,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/money/invoices/{invoice}/pdf', [MoneyController::class, 'file']);
         Route::get('/money/invoices/{invoice}/print', [MoneyController::class, 'print']);
         Route::get('/money/invoices/{invoice}/act', [MoneyController::class, 'act']);
+        Route::get('/money/invoices/{invoice}/acts', [MoneyController::class, 'acts']);
+        Route::get('/money/invoices/{invoice}/registry.xlsx', [MoneyController::class, 'registryXlsx']);
         Route::put('/money/invoices/{invoice}', [MoneyController::class, 'update']);
         Route::post('/money/invoices/{invoice}/payments', [MoneyController::class, 'pay']);
         Route::get('/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);

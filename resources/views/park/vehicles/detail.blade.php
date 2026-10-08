@@ -46,11 +46,12 @@
                 <a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Принять</a>
             @endif
             @if ($state === VehicleState::Stored)
-                <form method="post" action="{{ $href }}/move" class="contents" data-controller="autosubmit">@csrf
+                {{-- Перестановка на другую парковку — когда их больше одной (у управляющего Питера одна). --}}
+                @if (count($yards) > 1)<form method="post" action="{{ $href }}/move" class="contents" data-controller="autosubmit">@csrf
                     <select name="yard_id" class="field-input field-s w-auto" aria-label="Парковка" data-action="change->autosubmit#submit">
                         @foreach ($yards as $id => $name)<option value="{{ $id }}" @selected($id == $vehicle->yard_id)>{{ $name }}</option>@endforeach
                     </select>
-                </form>
+                </form>@endif
                 {{-- Выдача — только через заявку с осмотром и актом; одна дорога. --}}
                 @if ($release = $vehicle->openRequest(\App\Park\RequestType::Release))
                     <a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Выдать</a>

@@ -15,12 +15,12 @@
 </div>
 <div class="mt-3 grid grid-cols-2 gap-3" data-reveal-target="pane" data-reveal-key="tow">
     <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')"/>
-    <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—" :value="$req->yard_id"/>
+    <x-park.yard-field :yards="$yards" label="Куда" placeholder="—" :value="$req->yard_id"/>
     <x-ui.field name="from_address" label="Откуда" :value="$req->from_address" span="col-span-2"/>
 </div>
 <div class="mt-3 grid grid-cols-2 gap-3" data-reveal-target="pane" data-reveal-key="self" hidden>
     <x-ui.field name="planned_at" label="Когда привезёт" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')" disabled/>
-    <x-ui.field name="yard_id" label="Куда" :options="$yards" placeholder="—" :value="$req->yard_id" disabled/>
+    <x-park.yard-field :yards="$yards" label="Куда" placeholder="—" :value="$req->yard_id" disabled/>
 </div>
 <div class="mt-3" data-reveal-target="pane" data-reveal-key="missed" hidden>
     <x-ui.field name="next_call_at" label="Позвонить снова" type="datetime-local" :value="now()->addHours(2)->format('Y-m-d\TH:i')" disabled/>
