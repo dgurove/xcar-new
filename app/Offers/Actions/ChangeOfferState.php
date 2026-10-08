@@ -84,6 +84,13 @@ final class ChangeOfferState
             }
 
             $offer->state = $next;
+            // Черновик ушёл дальше (в продажу, сделку, гараж) — окно галереи закрывается сейчас, как «Убрать из
+            // галереи» (`ShowInGallery::hide`): из галереи ушло, интерес остался — в «Откликах» CRM и рядом с
+            // подтверждениями. Начало окна хранится — по нему «Отклики» находят побывавшие в галерее.
+            $galleryClosed = $from === OfferState::Draft && $next !== OfferState::Draft && $offer->gallery_until?->isFuture();
+            if ($galleryClosed) {
+                $offer->gallery_until = now();
+            }
             $offer->save();
             // Ушли из сделки куда угодно (продажа, черновик, архив) — белый список «Кому показывать в сделке»
             // стирается: дальше работают обычные волны. «Отдать» другому сделку не трогает — состояние то же.
@@ -93,6 +100,9 @@ final class ChangeOfferState
             // Кто видит — до событий: уведомление о публикации берёт наступившие волны.
             app(SyncViewers::class)($offer);
             $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => $next->value]);
+            if ($galleryClosed) {
+                $offer->log(OfferEventType::Gallery, $by);
+            }
             $this->settleDeal($offer, $next, $by);
 
             OfferStateChanged::dispatch($offer, $by);

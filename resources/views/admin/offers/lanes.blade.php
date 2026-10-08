@@ -55,14 +55,21 @@
             <div class="flex min-w-0 flex-col gap-4">
                 <x-ui.card title="Гараж" id="garage" class="scroll-mt-24">@include('admin.offers.garage-card')</x-ui.card>
                 @if ($car->deal)@include('admin.offers.deal-cards', ['deal' => $car->deal])@endif
-                {{-- Резерв гаражной сделки: передумал — «Отдать» другому подтвердившему. --}}
+                {{-- Резерв гаражной сделки: передумал — «Отдать» другому подтвердившему. Интерес из галереи — рядом. --}}
                 @if ($offer->deal && $bids->where('state', \App\Offers\BidState::Active)->isNotEmpty())
                     <x-ui.card title="Подтверждения">@include('admin.offers.bids', ['inside' => true])</x-ui.card>
+                @endif
+                @if ($offer->interests->isNotEmpty())
+                    @include('admin.offers.interests')
                 @endif
             </div>
         @elseif ($third === 'deal')
             <div class="flex min-w-0 flex-col gap-4">
                 <x-ui.card title="Сделка" id="deal" class="scroll-mt-24">@include('admin.offers.bids', ['inside' => true])</x-ui.card>
+                {{-- Интерес из галереи — рядом с подтверждениями: опубликовали раньше срока, отклики остались. --}}
+                @if ($offer->interests->isNotEmpty())
+                    @include('admin.offers.interests')
+                @endif
                 {{-- Кому показывать в сделке — тем же видом, что «Кому показывать» у предложения: сводка и чипы.
                      Всегда на виду, рядом с резервом; поля шлют главную форму через form=. --}}
                 @if ($offer->state === OfferState::Sold)
