@@ -115,7 +115,7 @@ class Workflow extends Model
             }
             // Ответственный за вывоз и места назначения — только у вывоза; гаражная ветка — только у продажи.
             foreach ($stage->exits as $exit) {
-                $serviceBranch = in_array($exit->branch, ['yard', 'keeper', 'ours'], true);
+                $serviceBranch = in_array($exit->branch, ['keeper', 'ours'], true);
                 if ($this->track === Track::Sale && ($exit->actor === Actor::Keeper || $serviceBranch)) {
                     $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» — для вывоза, а стоит в маршруте продажи";
                 }
@@ -132,8 +132,8 @@ class Workflow extends Model
                 $problems[] = "На этап «{$stage->name}» не ведёт ни один исход";
             }
         }
-        if ($this->track === Track::Service && $stages->every(fn (Stage $s) => $s->car_place !== CarPlace::Ours)) {
-            $problems[] = 'Ни один этап не доводит автомобиль до нашей парковки';
+        if ($this->track === Track::Service && $stages->every(fn (Stage $s) => $s->car_place !== CarPlace::WithUs)) {
+            $problems[] = 'Ни один этап не доводит автомобиль до нас';
         }
 
         return array_values(array_unique($problems));

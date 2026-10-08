@@ -328,10 +328,10 @@ class Offer extends Model implements HasMedia
         return $garage?->manager ?? $this->evacuator;
     }
 
-    /** ТС уже забрали: вывоз дошёл до места (у менеджера, у нас, на парковке) — кто и куда, менять поздно. */
+    /** ТС уже забрали: вывоз дошёл до места (у менеджера, у нас) — кто и куда, менять поздно. */
     public function pickedUp(): bool
     {
-        return in_array($this->position(Track::Service)?->stage->car_place, [CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours], true);
+        return in_array($this->position(Track::Service)?->stage->car_place, [CarPlace::Keeper, CarPlace::WithUs], true);
     }
 
     /**
@@ -345,10 +345,10 @@ class Offer extends Model implements HasMedia
             && ! in_array($this->state, [OfferState::Garage, OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true);
     }
 
-    /** Куда вывозят: не назначено — на парковку, как было до 04.10.2026. */
+    /** Куда вывозят: не назначено — менеджер вывозит к себе, иначе к нам. */
     public function pickupDestination(): Destination
     {
-        return Destination::tryFrom((string) $this->evacuation_to) ?? Destination::Yard;
+        return Destination::tryFrom((string) $this->evacuation_to) ?? ($this->evacuator_id ? Destination::Keeper : Destination::Ours);
     }
 
     /** Чем ветка маршрута выбирает исходы (`Outcome::fits`): на продаже — идущая сделка, на вывозе — куда везём. */
@@ -426,7 +426,7 @@ class Offer extends Model implements HasMedia
      * (`OfferController::dropEmpty`) и ночью (`offers:prune-drafts`).
      */
     /**
-     * Вывозы мимо парковки (к менеджеру, к нам), что ещё живы: менеджеру — порученные ему, сотруднику — все с менеджером.
+     * Вывозы (к менеджеру, к нам), что ещё живы: менеджеру — порученные ему, сотруднику — все с менеджером.
      * Продали и выдали, сняли — из списка ушла.
      */
     public function scopePickupsOf(Builder $q, User $user): Builder

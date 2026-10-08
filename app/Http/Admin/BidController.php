@@ -63,7 +63,7 @@ class BidController
         DB::transaction(function () use ($bid, $data, $request, $accept, $scheme) {
             $offer = $bid->offer->loadMissing('vendor.workflows', 'parkVehicle');
             $choosable = isset($data['pickup']) && $offer->pickupChoosable();
-            // Отдаём другому, а забирать должен был прежний: отмена сделки поручение снимет, «Мы» вернёт вывоз на парковку.
+            // Отдаём другому, а забирать должен был прежний: отмена сделки поручение снимет, «Мы» — вывозим к нам.
             $wasPicker = $offer->deal && $offer->evacuator_id === $offer->deal->buyer_id && $offer->pickupDestination() === Destination::Keeper;
             $accept($bid, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout,
                 scheme: $scheme, ownerPrice: isset($data['owner_price']) ? (int) $data['owner_price'] : null);
@@ -71,11 +71,11 @@ class BidController
                 return;
             }
             // Кто забирает ТС у владельца (04.10.2026): менеджер сделки — он и вывозчик; мы — как назначено.
-            $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests']);
+            $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow']);
             if ($data['pickup'] === 'manager') {
                 app(AssignPickup::class)($offer, $bid->user, Destination::Keeper, $request->user());
             } elseif ($wasPicker) {
-                app(AssignPickup::class)($offer, null, Destination::Yard, $request->user());
+                app(AssignPickup::class)($offer, null, Destination::Ours, $request->user());
             }
         });
 

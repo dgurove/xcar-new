@@ -58,14 +58,14 @@ class Outcome extends Model
      * покупательский — всем остальным; нет сделки — гаражных не видно; передача — «забирает сам» только сделке, где
      * менеджер и вывозчик одно лицо, «отдаём мы» — всем остальным, кроме гаражных: те кончаются бумагами, `keeps`), на
      * вывозе — месту назначения (`Destination`:
-     * ветки yard, keeper, ours; не назначено — парковка, как было). Без ветки — всем.
+     * ветки keeper, ours; не назначено — к нам). Без ветки — всем.
      */
     public function fits(Deal|Destination|null $for): bool
     {
         $garage = $for instanceof Deal && $for->isGarageUs();
         $keeps = $for instanceof Deal && $for->isGarage();
         $picks = $for instanceof Deal && $for->buyerPicksUp();
-        $to = $for instanceof Destination ? $for : Destination::Yard;
+        $to = $for instanceof Destination ? $for : Destination::Ours;
 
         return match ($this->branch) {
             null, '' => true,

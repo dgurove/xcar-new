@@ -2,7 +2,6 @@
 
 namespace App\Park\Actions;
 
-use App\Park\Events\TowScheduled;
 use App\Park\EventType;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -24,7 +23,7 @@ final class ScheduleTow
             throw ValidationException::withMessages(['state' => 'ТС уже '.mb_strtolower($request->vehicle->state->label()).' — эвакуацию не назначить']);
         }
         Nav::forgetStaffCounts();
-        $request = DB::transaction(function () use ($request, $by, $data) {
+        return DB::transaction(function () use ($request, $by, $data) {
             $request->update(array_filter([
                 'planned_at' => $data['planned_at'] ?? null,
                 'from_address' => $data['from_address'] ?? null,
@@ -43,8 +42,5 @@ final class ScheduleTow
 
             return $request;
         });
-        TowScheduled::dispatch($request->vehicle, $request, $by);
-
-        return $request;
     }
 }

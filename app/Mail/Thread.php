@@ -85,18 +85,16 @@ class Thread extends Model
     }
 
     /**
-     * Все письма одной машины (владелец 06.10.2026: «в CRM по парковке и на парковке по CRM»): ветки ТС из ящиков
-     * парковки и ветки её предложения из ящиков CRM — пара через `park_vehicles.offer_id`. Ветки другой стороны видит
-     * только тот, у кого есть её почта (`canCrmMail`, «Почта» парковки); отвечают на них её ящиком, как и раньше.
+     * Письма одной машины. На парковке — только ветки ТС из ящика парковки (08.10.2026, владелец: «в park.xcar должно
+     * попадать только то, что на storage@»): письма CRM (offer@, deal@) туда не идут, даже у связанной с предложением ТС.
+     * В CRM (владелец 06.10.2026: «в CRM по парковке») — ветки предложения и, тому, у кого есть «Почта» парковки, ветки
+     * его ТС на парковке (пара через `park_vehicles.offer_id`); отвечают на них её ящиком, как и раньше.
      */
     public function scopeOfCar($query, Offer|Vehicle $car, ?User $user)
     {
         $offers = fn ($q) => $q->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'));
         if ($car instanceof Vehicle) {
-            $crm = $car->offer_id && $user?->canCrmMail();
-
-            return $query->where(fn ($w) => $w->where(fn ($p) => $p->where('vehicle_id', $car->id)->park())
-                ->when($crm, fn ($w) => $w->orWhere(fn ($o) => $offers($o->where('offer_id', $car->offer_id)))));
+            return $query->where('vehicle_id', $car->id)->park();
         }
         $park = $user?->canManagePark();
 

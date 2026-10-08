@@ -1,7 +1,7 @@
 {{-- «Изменить» вендора — одна шторка по группам: основное, реквизиты, договор, хранение, заявки и письма парковки,
      после приёма. Открывается кнопкой в ряду заголовка (событие vendor-form:open). Почта продажи — в CRM.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
-@php use App\Vendors\{Kind, Parser}; use App\Billing\Cadence; @endphp
+@php use App\Vendors\Kind; use App\Billing\Cadence; @endphp
 <div data-controller="sheet" data-action="vendor-form:open@window->sheet#open" class="contents">
     <x-ui.sheet id="vendor-form" title="Вендор" wide tall :open="$errors->hasAny(['name', 'logo', 'inn', 'kpp', 'bank_account', 'bank_corr', 'bank_bic', 'park_senders', 'agreement_until', 'buyer_rate_multiplier'])">
         <form method="post" action="{{ $base }}" enctype="multipart/form-data" class="flex flex-col gap-3">
@@ -48,7 +48,6 @@
             <div class="list-head">Заявки на приёмку</div>
             <div class="fields">
                 <x-ui.field name="park_senders" label="Приходят от: домены и адреса, по одному в строке" type="textarea" :value="implode(PHP_EOL, $vendor->park_senders ?? [])" placeholder="alfastrah.ru"/>
-                <x-ui.field name="park_parser" label="Разбор заявок" :options="Parser::options()" :value="$vendor->park_parser->value"/>
                 <x-ui.field name="report_template_id" label="Письмо о приёме" :options="$templates" placeholder="«Приём на парковку»" :value="$vendor->report_template_id"/>
                 <x-ui.field name="refusal_template_id" label="Письмо об отказе" :options="$templates" placeholder="«Отказ от получения»" :value="$vendor->refusal_template_id"/>
             </div>

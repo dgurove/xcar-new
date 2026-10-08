@@ -141,7 +141,7 @@
                         @endif
                         <x-ui.field name="planned_at" :label="$letters ? 'Когда привезут' : 'Когда'" type="datetime-local" :value="$val('planned_at')"/>
                         @if ($type === RequestType::Tow || $letters)
-                            <x-ui.field name="from_address" label="Откуда" :value="$val('from_address') ?? $vehicle?->offer?->inspection_address" span="col-span-full sm:col-span-2"/>
+                            <x-ui.field name="from_address" label="Откуда" :value="$val('from_address')" span="col-span-full sm:col-span-2"/>
                         @endif
                         @if ($vehicle || !in_array($type, [RequestType::Intake, RequestType::Tow], true))
                             <x-ui.field name="contact_name" :label="$type === RequestType::Tow ? 'Страхователь' : 'Кто сдаёт'" :value="$val('contact_name') ?? $vehicle?->contact_name"/>

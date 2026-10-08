@@ -15,8 +15,7 @@ use App\Vendors\Vendor;
  * Письмо о хранении → поля ТС и заявки. Страховые пишут по-разному: Альфа СПб — всё в теме («заявка на прием ТС
  * 7805/046/01243/26 Медведев Белджи Р621ВЕ126»), ВСК — в теме и таблицей в теле («11 575 256 прием ГОТС Changan
  * CS35 Plus О400КА977 LS5A…», «Фамилия И.О. клиента / Контактный телефон / Дата / Время / Вид услуги»), ВСК СПб —
- * «ТС готово к передаче Renault Arkana Е789СВ198 X7L…» и дата в теме, Совкомбанк — блоком «МАРКА МОДЕЛЬ»,
- * Альфа Москва — ничего, кроме телефона: машина у неё в скане заявки (`AttachmentReader` → `DocumentText`, OCR)
+ * «ТС готово к передаче Renault Arkana Е789СВ198 X7L…» и дата в теме, Альфа Москва — ничего, кроме телефона: машина у неё в скане заявки (`AttachmentReader` → `DocumentText`, OCR)
  * или в имени файла нашего ответа («Альфа акт 1 чанган алсвин 8592.PDF»). Марка и модель — через справочник и
  * словарь `Cars\Names`; нет нигде — по VIN.
  */
@@ -37,9 +36,9 @@ final class ParkExtractor
         $text = QuotationStripper::strip($body);
         $sender = QuotationStripper::forwardedSender($body) ?? $fromEmail;
         $vendor = Vendor::forSender($sender, Scope::Park);
-        $class = $vendor?->park_parser?->templateClass() ?? Generic::class;
         $subject = trim((string) (QuotationStripper::forwardedSubject($body) ?? $subject));
-        $fields = (new $class)->extract($subject, $text);
+        // Шаблоны вендоров (`Vendors\Parser`) — формы писем с предложениями на offer@; заявки на storage@ разбирает общий.
+        $fields = (new Generic)->extract($subject, $text);
         if (isset($fields['floor_price'])) {
             $fields['value'] = $fields['floor_price'];   // «оценены N» — стоимость в акт, не цена
         }

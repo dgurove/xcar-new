@@ -13,7 +13,6 @@ use App\Mail\Candidate;
 use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
-use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Park\Actions\FillFromDocs;
 use App\Support\Docs;
@@ -64,15 +63,14 @@ final class CaseView
         $open = ($requestId ? $vehicle->requests->first(fn (Request $r) => $r->id === $requestId && $r->isOpen()) : null) ?? self::current($vehicle);
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;
-        // Письма машины — и ветки её предложения в CRM, если у человека есть почта CRM (`Thread::ofCar`); «ждём ответа» —
-        // только своих ящиков: на письма CRM отвечает CRM.
-        $threads = Thread::ofCar($vehicle, $user)->with('account:id,scope')->get(['id', 'needs_reply_at', 'account_id']);
+        // Письма машины — только ящика парковки (`Thread::ofCar`).
+        $threads = Thread::ofCar($vehicle, $user)->get(['id', 'needs_reply_at', 'account_id']);
         // Выдача по QR: живой пропуск (анкета покупателя) — один запрос на экран и таймлайн.
         $pass = $vehicle->releasesByQr() ? $vehicle->pass() : null;
         $ids = $threads->pluck('id');
         // Ждёт ответа — одно правило на почту, дело и ленту: последнее письмо ветки их, с вопросом, и после него
         // мы не писали и не нажимали «Сделано» (`Threads::refresh` → `needs_reply_at`). Само письмо — последнее входящее.
-        $waiting = $threads->whereNotNull('needs_reply_at')->filter(fn (Thread $t) => $t->account?->scope === Scope::Park)->pluck('id');
+        $waiting = $threads->whereNotNull('needs_reply_at')->pluck('id');
         $asks = $waiting->isEmpty() ? collect() : Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)
             ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'subject', 'from_name', 'from_email', 'date_at', 'text_body', 'html_body', 'intent'])
             ->groupBy('thread_id')->map->last()->sortBy('date_at')->values();

@@ -1,12 +1,12 @@
 {{-- Кто вывозит ТС и куда (`AssignPickup`): «Мы» или менеджер; к менеджеру (когда вывозит он; машину в гараже — к её
-     менеджеру, вариант с его именем), к нам — вне парковки, на парковку — с заявкой на эвакуацию. Карточка «Вывоз»
+     менеджеру, вариант с его именем) или к нам. Карточка «Вывоз»
      редактора, карточка строки «Без цены» и «Работа → Вывоз»; prefix — свои id полей у каждой. --}}
 @props(['offer', 'managers', 'prefix' => 'pickup'])
 @php
     $who = old('evacuator_id', $offer->evacuator_id);
     // Машина в гараже стоит у своего менеджера, кто бы её ни вёз: вариант с его именем виден всегда и выбран сам.
     $holder = $offer->garageCar?->manager;
-    $to = old('evacuation_to', $holder && ! $offer->pickedUp() ? 'keeper' : ($offer->evacuation_to ?? ($who ? 'keeper' : 'yard')));
+    $to = old('evacuation_to', $holder && ! $offer->pickedUp() ? 'keeper' : ($offer->evacuation_to ?? ($who ? 'keeper' : 'ours')));
 @endphp
 <form method="post" action="/offers/{{ $offer->number }}/pickup" {{ $attributes->class(['flex flex-col gap-4']) }} data-controller="reveal">
     @csrf

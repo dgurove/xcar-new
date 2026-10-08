@@ -51,7 +51,7 @@ final class CancelDeal
         $offer = $deal->offer;
         if ($offer && $offer->evacuator_id === $deal->buyer_id && $offer->pickupDestination() === Destination::Keeper && ! $offer->pickedUp()) {
             $offer->update(['evacuator_id' => null, 'evacuation_to' => null]);
-            $offer->log(OfferEventType::PickupAssigned, $by, ['who' => 'мы', 'to' => Destination::Yard->value]);
+            $offer->log(OfferEventType::PickupAssigned, $by, ['who' => 'мы', 'to' => Destination::Ours->value]);
         }
         if (($fee = $deal->agentFee()->first()) && $fee->state === InvoiceState::Issued && $fee->paid == 0) {
             app(VoidInvoice::class)($fee, $by, 'Сделка отменена');

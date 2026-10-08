@@ -103,7 +103,6 @@ final class Handover
             $place === CarPlace::Keeper => $offer->keeper()?->id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
             $place === CarPlace::WithUs => CarPlace::WithUs->label(),
             $place === CarPlace::Ours || $atYard => 'На парковке',
-            $place === CarPlace::Moving && ! $picks && $offer->pickupDestination() === Destination::Yard => 'Везём на парковку',
             $sale && ! $service && $sale->stage->workflow->stages->contains(fn (Stage $s) => in_array('адрес площадки', self::labels($s), true)) => 'На площадке поставщика',
             $place === CarPlace::Owner, $place === CarPlace::Moving, $offer->insured_name || $offer->insured_phone => 'У владельца',
             default => null,

@@ -74,7 +74,7 @@ class PickupController
 
     public function detail(Offer $offer)
     {
-        $offer->load(['brand', 'model', 'media', 'vendor.workflows', 'evacuator', 'parkVehicle.requests', 'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow']);
+        $offer->load(['brand', 'model', 'media', 'vendor.workflows', 'evacuator', 'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow']);
         abort_unless($offer->position(Track::Service), 404);
 
         return view('admin.pickups.detail', [

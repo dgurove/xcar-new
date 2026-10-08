@@ -1,15 +1,13 @@
 {{-- Маршрут предложения — карточка на ветку («Продажа», «Вывоз»): путь по блокам, как таймлайн дела ТС (x-route.path).
      `$only` — одна ветка (дорожка редактора: «Вывоз» здесь, «Продажа» — `lane-sale` с хвостом гаража); без него — обе
      (карточка строки «Сделок»). `$tail` — шаги после маршрута в пути продажи.
-     У вывоза под заголовком — кто вывозит и куда (`AssignPickup`): на парковку вывоз кончается строкой-ссылкой на дело
-     на парковке, к менеджеру и к нам — «Стоит у …». «Нужен вывоз», «Изменить» и «Вывоз не нужен» — в «···» у заголовка
+     У вывоза под заголовком — кто вывозит и куда (`AssignPickup`: к менеджеру или к нам), кончается «Стоит у …». «Нужен вывоз», «Изменить» и «Вывоз не нужен» — в «···» у заголовка
      (шторка `x-offer.pickup-form`); выбора этапа из списка нет: вернуть назад можно только на пройденный шаг. --}}
 @php
     use App\Workflow\Track;
     use App\Offers\{OfferState, Destination};
     $service = $offer->vendor?->workflow(Track::Service);
     $pickup = $offer->position(Track::Service);
-    $pv = $offer->parkVehicle;
     $to = $offer->pickupDestination();
     $only ??= null;
     // Гаражную машину везут всегда (06.10.2026): «В гараже» вывоз назначают, маршрута у вендора нет — заведётся сам.
@@ -54,17 +52,6 @@
             <x-deal.handover :deal="$deal" compact lane class="mb-4"/>
         @endif
         <x-route.path :offer="$offer" :position="$position">{!! ! $isService ? ($tail ?? '') : '' !!}</x-route.path>
-        @if ($isService && $pv && $to === Destination::Yard)
-            {{-- ТС на парковке: где она и эвакуация словом, всё остальное — в деле на парковке. --}}
-            @php $tow = $pv->openRequest(\App\Park\RequestType::Tow); @endphp
-            <a href="{{ \App\Support\Surface::Park->url('/cars/'.$pv->id) }}" class="row mt-1 items-center gap-2 rounded-(--radius-m) bg-surface-2" data-turbo="false">
-                <span class="min-w-0 flex-1">
-                    <span class="block text-sm text-ink-muted">Парковка</span>
-                    <span class="flex flex-wrap items-center gap-1.5"><x-park.state :vehicle="$pv" only/>@if ($tow)<span class="text-sm">эвакуация {{ mb_strtolower($tow->state->label()) }}{{ $tow->planned_at ? ', '.$tow->planned_at->translatedFormat('j M') : '' }}</span>@endif @if ($pv->docsPending())<span class="text-sm text-urgent">бумаги вендору не отправлены</span>@endif</span>
-                </span>
-                <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
-            </a>
-        @endif
         @if ($errors->has('exit'))<p class="field-error mt-2">{{ $errors->first('exit') }}</p>@endif
     </x-ui.card>
 @endforeach

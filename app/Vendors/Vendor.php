@@ -24,7 +24,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * Вендор — страховая, лизинг или банк, откуда приходят машины. Две стороны: CRM (продажа предложений — условия
  * сделки, маршруты, ящик, «Реализация», адреса и разбор писем с предложениями `senders`/`parser`, НДС цен
  * предложений) и парковка (реквизиты, договор, хранение, прайс, контакты по убыткам и хранению, адреса и разбор
- * заявок на приёмку `park_senders`/`park_parser`). Общие — имя, тип и «работаем».
+ * заявок на приёмку `park_senders`; разбор их общий, `ParkExtractor`). Общие — имя, тип и «работаем».
  * Одна дверь `forSender` находит вендора письма по адресам своей стороны.
  */
 #[Fillable([
@@ -34,7 +34,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'agreement_number', 'agreement_date', 'agreement_until',
     'deal_format', 'to_gallery', 'reward_kind', 'reward_value', 'payment_days', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
     'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'rate_by_value', 'buyer_rate_multiplier', 'billing_cadence',
-    'senders', 'parser', 'park_senders', 'park_parser', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id',
+    'senders', 'parser', 'park_senders', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id',
     'intake_docs', 'intake_note', 'audience_rules',
 ])]
 class Vendor extends Model implements HasMedia
@@ -71,7 +71,6 @@ class Vendor extends Model implements HasMedia
             'audience_rules' => 'array',
             'parser' => Parser::class,
             'park_senders' => 'array',
-            'park_parser' => Parser::class,
             'intake_docs' => 'array',
         ];
     }

@@ -8,7 +8,6 @@ use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Slots;
-use App\Park\Actions\CloseRequest;
 use App\Users\User;
 use App\Workflow\Actions\DropRoute;
 use App\Workflow\Actions\PlaceOnStage;
@@ -77,8 +76,8 @@ class RouteController
     }
 
     /**
-     * «Нужен вывоз» и его правка: кто вывозит (пусто — мы) и куда (`Destination`). На парковку — с заявкой на эвакуацию,
-     * к менеджеру и к нам — мимо парковки. Отвечает туда, откуда нажали: редактор, «Без цены», «Работа → Вывоз».
+     * «Нужен вывоз» и его правка: кто вывозит (пусто — мы) и куда (`Destination`: к менеджеру или к нам). Отвечает
+     * туда, откуда нажали: редактор, «Без цены», «Работа → Вывоз».
      */
     public function pickup(Request $request, Offer $offer, AssignPickup $assign)
     {
@@ -87,27 +86,22 @@ class RouteController
             'evacuation_to' => ['nullable', Rule::enum(Destination::class)],
         ]);
         $evacuator = isset($data['evacuator_id']) ? User::find($data['evacuator_id']) : null;
-        $to = Destination::tryFrom((string) ($data['evacuation_to'] ?? '')) ?? ($evacuator ? Destination::Keeper : Destination::Yard);
+        $to = Destination::tryFrom((string) ($data['evacuation_to'] ?? '')) ?? ($evacuator ? Destination::Keeper : Destination::Ours);
         // «К менеджеру» без менеджера бывает только у машины в гараже — к её держателю; иначе сегмент спрятан, но мог
         // остаться выбранным.
         if ($to === Destination::Keeper && ! $evacuator && ! $offer->garageCar()->exists()) {
             $to = Destination::Ours;
         }
-        $offer->loadMissing('vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests');
+        $offer->loadMissing('vendor.workflows', 'positions.stage.workflow');
         $assign($offer, $evacuator, $to, $request->user());
         $toast = 'Вывоз: '.($evacuator?->shortName() ?? 'мы').', '.($to === Destination::Keeper && ($keeper = $offer->keeper()) ? 'к '.$keeper->shortName() : mb_strtolower($to->label()));
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', $toast);
     }
 
-    public function dropPickup(Request $request, Offer $offer, DropRoute $drop, CloseRequest $close)
+    public function dropPickup(Request $request, Offer $offer, DropRoute $drop)
     {
         $drop($offer, Track::Service, $request->user());
-        if ($vehicle = $offer->parkVehicle) {
-            foreach ($vehicle->requests->filter(fn ($r) => $r->isTow() && $r->isOpen()) as $open) {
-                $close($open, $request->user(), false, 'Вывоз не нужен');
-            }
-        }
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз отменён');
     }

@@ -23,7 +23,6 @@ use App\Support\Surface;
 use App\Vendors\Actions\SetLogo;
 use App\Vendors\DocRequirement;
 use App\Vendors\Kind;
-use App\Vendors\Parser;
 use App\Vendors\Tariff;
 use App\Vendors\TariffService;
 use App\Vendors\Vendor;
@@ -176,7 +175,6 @@ class VendorController
             'report_template_id' => ['nullable', Rule::exists('mail_templates', 'id')->where('scope', Scope::Park->value)],
             'refusal_template_id' => ['nullable', Rule::exists('mail_templates', 'id')->where('scope', Scope::Park->value)],
             'park_senders' => ['nullable', 'string', 'max:2000'],
-            'park_parser' => ['required', Rule::enum(Parser::class)],
             'intake_docs' => ['nullable', 'array'],
             'intake_docs.*' => [Rule::enum(DocRequirement::class)],
             'intake_note' => ['nullable', 'string', 'max:2000'],

@@ -5,8 +5,9 @@ namespace App\Offers;
 use App\Cars\HasLabels;
 
 /**
- * Куда вывозят ТС. На парковку — как раньше: дело на park.xcar, хранение считается. К менеджеру и к нам — ТС стоит вне
- * парковки, хранение не считаем. Значение — и ветка исхода маршрута вывоза (`Outcome::fits`).
+ * Куда вывозят ТС: к менеджеру или к нам. Парковки здесь нет (08.10.2026, владелец: «в park.xcar попадает только то,
+ * что на storage@»): вывоз CRM дел и заявок на park.xcar не заводит. Значение — и ветка исхода маршрута вывоза
+ * (`Outcome::fits`).
  */
 enum Destination: string
 {
@@ -14,14 +15,12 @@ enum Destination: string
 
     case Keeper = 'keeper';
     case Ours = 'ours';
-    case Yard = 'yard';
 
     public function label(): string
     {
         return match ($this) {
             self::Keeper => 'К менеджеру',
             self::Ours => 'К нам',
-            self::Yard => 'На парковку',
         };
     }
 }

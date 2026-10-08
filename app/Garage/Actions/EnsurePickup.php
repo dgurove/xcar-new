@@ -26,7 +26,7 @@ final class EnsurePickup
 
     public function __invoke(Offer $offer, User $by, User|false|null $evacuator = false, string $where = 'owner'): Offer
     {
-        $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow', 'parkVehicle.requests', 'evacuator', 'garageCar.manager']);
+        $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow', 'parkVehicle', 'evacuator', 'garageCar.manager']);
         $car = $offer->garageCar;
         if (! $car || ! $offer->vendor || $offer->pickedUp() || $offer->parkVehicle?->state === VehicleState::Stored) {
             return $offer;
