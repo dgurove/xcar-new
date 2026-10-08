@@ -63,6 +63,11 @@
         @elseif ($third === 'deal')
             <div class="flex min-w-0 flex-col gap-4">
                 <x-ui.card title="Сделка" id="deal" class="scroll-mt-24">@include('admin.offers.bids', ['inside' => true])</x-ui.card>
+                {{-- Кому показывать в сделке — тем же видом, что «Кому показывать» у предложения: сводка и чипы.
+                     Всегда на виду, рядом с резервом; поля шлют главную форму через form=. --}}
+                @if ($offer->state === OfferState::Sold)
+                    <x-ui.card title="Кому показывать">@include('admin.offers.fields.deal-show')</x-ui.card>
+                @endif
                 @include('admin.offers.deal-cards')
             </div>
         @elseif ($third === 'bids')
