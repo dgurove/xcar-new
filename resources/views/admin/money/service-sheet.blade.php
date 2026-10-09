@@ -1,4 +1,5 @@
-{{-- «Взять ссылку на оплату» (только админ, 06.10.2026: начальник искал, где взять ссылку). 07.10.2026 владелец: «на
+{{-- «Создать ссылку» (только админ, 06.10.2026: начальник искал, где взять ссылку; до 09.10.2026 — «Взять ссылку на
+     оплату», владелец: длинная кнопка уходила отдельной строкой). 07.10.2026 владелец: «на
      телефоне безумно неудобное» — сумма первой и с клавиатурой сразу, чипы услуг одной строкой вбок (выбранный и уходит в чек), поля строками
      (.fields), кнопка липнет к низу листа над клавиатурой. «За что» — услуга в чек (ServiceTitle: конкретная услуга,
      займов, возвратов и денег за машину ссылкой не принимаем), плательщик из заведённых или новый. Выставляет счёт
@@ -14,7 +15,7 @@
     $title = old('title', ServiceTitle::DEFAULT);
 @endphp
 <div data-controller="sheet" class="contents">
-    <button type="button" class="btn btn-s btn-accent rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span>Взять ссылку на оплату</span></button>
+    <button type="button" class="btn btn-s btn-accent rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span>Создать ссылку</span></button>
     <x-ui.sheet id="service-pay" title="Ссылка на оплату" :open="$errors->hasAny(['amount', 'title', 'party_id', 'party_name', 'party_email', 'offer_id', 'car_title'])">
         <form method="post" action="/work/money/service" class="flex flex-col gap-4" data-controller="reveal pay-existing" data-pay-existing-url-value="/work/money/links/existing"
               data-action="input->pay-existing#changed change->pay-existing#changed combobox:chosen->pay-existing#chosen">

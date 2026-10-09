@@ -4,7 +4,7 @@
      «Мы должны» (вознаграждения менеджерам). Вид — таблицей (`admin/money/tab-table`, по умолчанию) или строками
      (`admin/money/tab`), внутри группы «Проверить», «Ждём», «Оплачено». Число у пилюли — сколько открытого, оранжевая —
      есть дело. Чип менеджера — на двух последних, один выбран — его расчёт строкой сверху;
-     лупа — по всем трём вкладкам сразу. «Взять ссылку на оплату» — только админу. Выписки СберБизнеса здесь нет —
+     лупа — по всем трём вкладкам сразу. «Создать ссылку» — только админу. Выписки СберБизнеса здесь нет —
      Настройки → Банк. --}}
 @php
     use App\Http\Admin\MoneyController; use App\Support\ListView;
@@ -13,7 +13,7 @@
 @endphp
 <x-ui.shell title="Оплаты" :heading="false" :detail="$detail">
     <x-admin.work-titles current="money"/>
-    <x-ui.toolbar class="mt-5" name="money" :sort="$sort" :pills="MoneyController::TABS" :pill="$tab" pill-param="tab" :counts="$counts['counts']" :tones="$counts['tones']"
+    <x-ui.toolbar class="mt-5 max-sm:mt-3" name="money" :sort="$sort" :pills="MoneyController::TABS" :pill="$tab" pill-param="tab" :counts="$counts['counts']" :tones="$counts['tones']"
         :facets="$facets" search="Имя, ТС, номер" search-target="#money-feed">
         <x-slot:extra><x-ui.view-switch :views="[ListView::TABLE, ListView::LIST]" :current="$view"/></x-slot:extra>
         @if (auth()->user()->isAdmin() && app(\App\Billing\Acquiring\Gateway::class)->configured())

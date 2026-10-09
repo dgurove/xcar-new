@@ -12,7 +12,7 @@
          разделов «Работы» (x-admin.work-titles), кнопки справа в ней же. --}}
     @if ($crm && ! $forced)
         <div class="flex items-center gap-3">
-            <div class="min-w-0 flex-1"><x-admin.work-titles current="mail" :count="$threads->total()"/></div>
+            <div class="min-w-0 flex-1"><x-admin.work-titles current="mail" :count="$threads->total()" :edge="false"/></div>
             @include('admin.mail.actions')
         </div>
     @elseif (! $forced)
