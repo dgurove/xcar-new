@@ -101,6 +101,16 @@ class Request extends Model
             && (($this->delivery === null && ! $this->contacted_at && ! $this->planned_at) || ($this->next_call_at && $this->next_call_at->lte(now())));
     }
 
+    /**
+     * Звонок по заявке ещё впереди: не созвонились или не дозвонились и пора (или скоро) перезвонить — позвонить можно и
+     * раньше срока. Задача карточки строки (`park/vehicles/task`) показывает тогда исходы звонка, а не кнопку.
+     */
+    public function awaitsCall(): bool
+    {
+        return $this->type !== RequestType::Release && $this->state === RequestState::New
+            && ($this->needsCall() || ($this->delivery === null && $this->next_call_at));
+    }
+
     /** Что делать по заявке следующим — подпись главной кнопки на странице, в карточке и карточке. Закрытая — null. */
     public function verb(): ?string
     {

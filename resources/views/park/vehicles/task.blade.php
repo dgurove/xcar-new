@@ -1,14 +1,13 @@
 {{-- Задача сверху карточки строки (владелец 09.10.2026: «жмёшь заявку — „Связались“, а с кем связаться, непонятно»): шаг
      открытой заявки словами, письмо, по которому она заведена (у выдачи — письмо о продаже: x-mail.last-letter compact,
      «Вся переписка» и «Ответить»), контакт со звонком и действие. Звонок — исходы прямо здесь (steps/call, та же форма
-     `/requests/{id}/contact`, что в деле); эвакуация в пути — «Выехали»; приём и выдача с осмотром — в дело, одной дорогой. --}}
+     `/requests/{id}/contact`, что в деле); остальное действие — `task-action` вверху карточки. --}}
 @php
     use App\Park\{Delivery, RequestState, RequestType, VehicleState};
     $t = $task;
     $tow = $t->type === RequestType::Tow;
     $release = $t->type === RequestType::Release;
-    // Звонок ещё не сделан — или не дозвонились и перезвонить (позвонить можно и раньше срока).
-    $calling = ! $release && $t->state === RequestState::New && ($t->needsCall() || ($t->delivery === null && $t->next_call_at));
+    $calling = $t->awaitsCall();
     // У выдачи — покупатель из письма о продаже (страхователь ему не нужен), иначе контакт самой заявки.
     $phone = $release ? ($vehicle->pickup_phone ?? $t->contact_phone) : ($t->contact_phone ?? $vehicle->contact_phone);
     $who = $release ? ($vehicle->pickup_name ?? $t->contact_name) : ($t->contact_name ?? $vehicle->contact_name);
@@ -50,12 +49,5 @@
         @elseif ($who)
             <p class="text-sm">{{ $who }}</p>
         @endif
-        <div class="flex flex-wrap gap-2">
-            @if ($tow && $t->state === RequestState::Scheduled)
-                <form method="post" action="/requests/{{ $t->id }}/start" class="contents">@csrf<button class="btn btn-s btn-accent">Выехали</button></form>
-            @elseif ($verb = $t->verb())
-                <a href="/cars/{{ $vehicle->id }}?req={{ $t->id }}" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $verb }}</a>
-            @endif
-        </div>
     @endif
 </section>

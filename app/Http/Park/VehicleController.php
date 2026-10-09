@@ -169,6 +169,11 @@ class VehicleController
         // заявка — та, что открыли в «Заявках», иначе эвакуация, приём, выдача; с ней письмо, по которому она заведена
         // (у выдачи — письмо о продаже).
         $fromRequests = $task !== null;
+        // Строка, которую карточка обновит в «Заявках», — та заявка, что открыли (ключ строки — её номер); закрылась — уходит.
+        $listed = $task?->load(RequestController::rowWith());
+        if ($listed && ! $listed->isOpen()) {
+            session()->now('detail-gone', true);
+        }
         $task = $task?->isOpen() ? $task : ($vehicle->openRequest(RequestType::Tow) ?? $vehicle->openRequest(RequestType::Intake) ?? $vehicle->openRequest(RequestType::Release));
         $letterId = $task?->type === RequestType::Release && $vehicle->sold_message_id ? $vehicle->sold_message_id : $task?->letter_id;
         $taskLetter = match (true) {
@@ -181,7 +186,7 @@ class VehicleController
             'vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
             // Из «Заявок» (заявку передали явно) главное — задача: кадры одной лентой, без блоков по стадиям над ней.
-            'fromRequests' => $fromRequests,
+            'fromRequests' => $fromRequests, 'listed' => $listed,
             'task' => $task, 'taskLetter' => $taskLetter?->load(['author', 'attachments', 'account']),
             'letterCount' => $taskLetter ? Message::whereIn('thread_id', Thread::ofCar($vehicle, $request->user())->select('id'))->count() : 0,
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.

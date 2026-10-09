@@ -12,7 +12,9 @@
 @endphp
 @if (auth()->user()?->isAdmin())
     @if (! $offer)
-        @unless ($vehicle->state->isFinal())
+        {{-- Страховая уже продала или ТС ждёт выдачи — выставлять нечего (владелец 09.10.2026: «зачем выставлять в продажу,
+             если её уже выдавать надо»). --}}
+        @unless ($vehicle->state->isFinal() || $vehicle->sold_at || $vehicle->openRequest(\App\Park\RequestType::Release))
             <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf<button class="btn btn-s btn-accent">Выставить в продажу</button></form>
         @endunless
     @else

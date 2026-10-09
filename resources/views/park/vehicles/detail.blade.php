@@ -46,6 +46,11 @@
             @if ($money && ($money !== 'unbilled' || ($total['amount'] ?? 0) > 0))<span class="whitespace-nowrap text-sm {{ \App\Park\OutMoney::TONES[$money] }}">{{ mb_strtolower(\App\Park\OutMoney::LABELS[$money]) }}</span>@endif
         </x-slot:aside>
         <x-slot:actions>
+            {{-- Главное действие открытой заявки — первым (task-action). Из «Заявок» карточка — про заявку (владелец 09.10.2026:
+                 «понятие машина и заявка смешаны»): машинного (перестановка, акты, осмотр, продажа) нет — это в «Наличии» и деле;
+                 там оно ниже, а кнопки заявки, что в task-action, не повторяются. --}}
+            @if ($task)@include('park.vehicles.task-action')@endif
+            @unless ($fromRequests ?? false)
             @if ($state === VehicleState::Expected)
                 @php $open = $vehicle->openRequest(\App\Park\RequestType::Tow) ?? $vehicle->openRequest(\App\Park\RequestType::Intake); @endphp
                 {{-- Действие открытой заявки — в задаче ниже (park/vehicles/task): здесь его не повторяем. --}}
@@ -79,6 +84,7 @@
             @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
             {{-- Продажа — как в деле ТС (x-park.sale): выставить или убрать, только админу. --}}
             <x-park.sale :vehicle="$vehicle"/>
+            @endunless
         </x-slot:actions>
         @if ($task)@include('park.vehicles.task')@endif
         @if ($differences || $scanFiles->isNotEmpty())
@@ -110,6 +116,8 @@
                 @endforeach
             </div>
         @endif
-        <x-slot:row><x-park.table-row :vehicle="$vehicle" :total="$total"/></x-slot:row>
+        {{-- Свежая строка списка под тем же ключом: в «Заявках» ключ — номер заявки, и строка — её (`x-park.request-row`); строка
+             «Наличия» с номером ТС подменяла заявку машиной, и та переставала открываться. Закрытую заявку убирает `detail-gone`. --}}
+        <x-slot:row>@if ($listed ?? null)<x-park.request-row :req="$listed"/>@else<x-park.table-row :vehicle="$vehicle" :total="$total"/>@endif</x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>
