@@ -84,11 +84,14 @@ final class ListView
         return $q->paginate($per, total: $count)->withQueryString();
     }
 
-    /** Вид без выбора: в CRM всегда таблица (и на телефоне, и на ПК), на сайте и парковке длинный список (больше 20) таблицей, короткий — решает CSS. */
+    /**
+     * Вид без выбора: в CRM и на парковке всегда таблица (и на телефоне, и на ПК; парковка — владелец 09.10.2026), на сайте
+     * длинный список (больше 20) таблицей, короткий — решает CSS.
+     */
     public static function pick(Request $request, int $count): ?string
     {
         return self::fromRequest($request)
-            ?? (Surface::current() === Surface::Crm ? self::TABLE : ($count > 20 ? self::TABLE : null));
+            ?? (Surface::current() !== Surface::Site ? self::TABLE : ($count > 20 ? self::TABLE : null));
     }
 
     /**

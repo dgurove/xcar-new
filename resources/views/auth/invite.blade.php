@@ -1,5 +1,6 @@
 {{-- Регистрация по приглашению: покупателю — сверху его менеджер и только те поля, что тот разрешил;
-     менеджеру (ссылка админа, одноразовая) — имя, логин, пароль, телефон, почта. --}}
+     менеджеру (ссылка админа, одноразовая) — имя, логин, пароль, телефон, почта. Форма уходит без Turbo: управляющего и
+     модератора ответ уводит на park.xcar или CRM, а редирект на другой хост запрос Turbo (fetch) не проходит — CORS. --}}
 @php($manager = $invite->forBuyer() ? $invite->manager : null)
 <x-ui.auth :title="! $invite->isActive() ? 'Ссылка не действует' : ($manager ? $manager->shortName().' приглашает вас в xcar' : 'Вас приглашают в xcar')">
     @if (! $invite->isActive())
@@ -15,12 +16,12 @@
                 </div>
             </div>
         @else
-            <p class="mt-4 text-ink-muted">Вы будете работать в xcar как менеджер: подтверждать предложения и вести своих покупателей.</p>
+            <p class="mt-4 text-ink-muted">{{ $invite->intro() }}</p>
         @endif
         @if ($preview)
-            <p class="mt-5 text-sm text-ink-muted">Так ссылку видит {{ $manager ? 'покупатель' : 'будущий менеджер' }}. Регистрируется он сам — по вашей ссылке.</p>
+            <p class="mt-5 text-sm text-ink-muted">Так ссылку видит {{ $manager ? 'покупатель' : 'тот, кого вы зовёте' }}. Регистрируется он сам — по вашей ссылке.</p>
         @else
-        <form method="post" action="/i/{{ $invite->code }}" enctype="multipart/form-data" class="mt-6 space-y-3" data-controller="login">
+        <form method="post" action="/i/{{ $invite->code }}" enctype="multipart/form-data" class="mt-6 space-y-3" data-controller="login" data-turbo="false">
             @csrf
             <label class="flex items-center gap-4">
                 <span class="relative shrink-0">

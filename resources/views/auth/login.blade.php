@@ -1,6 +1,6 @@
 <x-ui.auth title="Вход">
     @if (session('status'))<x-ui.flash class="mt-5">{{ session('status') }}</x-ui.flash>@endif
-    <form method="post" action="/login" class="mt-6 space-y-3">
+    <form method="post" action="/login" class="mt-6 space-y-3" data-turbo="false">
         @csrf
         <input name="login" type="text" required autocomplete="username webauthn" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" data-check-text="Введите логин" class="field-input" placeholder="Логин, телефон или почта" value="{{ old('login') }}" autofocus>
         <input name="password" type="password" required autocomplete="current-password" enterkeyhint="go" data-check-text="Введите пароль" class="field-input" placeholder="Пароль">
