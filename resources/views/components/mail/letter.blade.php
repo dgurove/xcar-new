@@ -4,7 +4,7 @@
      во фрейме под письмом. На линии — кружок отправителя (x-mail.sender-avatar); kind: stage (этап),
      ask (без нашего ответа) — заголовок светлее, ours (наше) — фон у текста. --}}
 {{-- continuation — «ч.2» того же письма (те же слова, другие файлы): текст не повторяется, только вложения. --}}
-@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false])
+@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false, 'dismiss' => false])
 @php
     use App\Mail\{ParseState, SendState};
     use App\Mail\Chains\NodeTitle;
@@ -93,6 +93,8 @@
                 <div class="letter-foot">
                     <button type="button" class="letter-link" data-action="unhide#show" data-unhide-target="trigger">Исходное письмо</button>
                     @if ($reply)<x-mail.reply-button :message="$m" :base="$base" :frame="'reply-'.$m->id"/>@endif
+                    {{-- Переписка ждёт ответа, а «Ответ не нужен» внизу ленты — у другой (окно писем ТС, несколько веток). --}}
+                    @if ($dismiss)<form method="post" action="{{ $base }}/{{ $m->thread_id }}/answered" data-turbo-frame="_top" class="contents">@csrf<button class="letter-link">Ответ не нужен</button></form>@endif
                 </div>
                 <turbo-frame id="body-{{ $m->id }}" src="{{ $base }}/messages/{{ $m->id }}/body" loading="lazy" target="_top" class="mt-2" hidden data-unhide-target="block"><x-ui.skeleton :rows="2"/></turbo-frame>
             </div>

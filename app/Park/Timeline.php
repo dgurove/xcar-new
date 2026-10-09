@@ -15,9 +15,12 @@ use Illuminate\Support\Collection;
 final class Timeline
 {
     /** @return list<Step> */
-    public static function for(Vehicle $v, ?Request $open, bool $hasLetters, Collection $events, bool $callAgain = false, ?Collection $asks = null, ?Pass $pass = null): array
+    public static function for(Vehicle $v, ?Request $open, bool $hasLetters, Collection $events, bool $callAgain = false, ?Collection $asks = null, ?Pass $pass = null, bool $accept = false): array
     {
         $steps = [];
+        // «Принять» сразу (владелец 09.10.2026: «в окошке должна быть возможность сразу принять, а не назначать эвакуатор»):
+        // ТС уже здесь — звонок и эвакуация не текущие, текущий — приём.
+        $accept = $accept && $v->state->isBefore() && $open && in_array($open->type, [RequestType::Intake, RequestType::Tow], true);
         $ir = $open && in_array($open->type, [RequestType::Intake, RequestType::Tow], true) ? $open
             : $v->requests->first(fn (Request $r) => in_array($r->type, [RequestType::Intake, RequestType::Tow], true) && $r->state === RequestState::Done);
         $release = $open?->type === RequestType::Release ? $open : $v->requests->first(fn (Request $r) => $r->type === RequestType::Release && $r->state === RequestState::Done);
@@ -26,8 +29,9 @@ final class Timeline
 
         $steps[] = new Step('letter', $hasLetters ? 'Письмо' : 'Заведена руками', Step::DONE, at: $v->created_at);
 
-        if ($ir && ($ir->needsCall() || $ir->contacted_at || $ir->next_call_at || ($callAgain && $ir->isOpen()))) {
-            $current = $ir->isOpen() && ($ir->needsCall() || $callAgain);
+        // Принимают сразу — несделанного звонка в ленте нет: он не «не дозвонились», его просто не было.
+        if ($ir && ! ($accept && ! $ir->contacted_at && ! $ir->next_call_at) && ($ir->needsCall() || $ir->contacted_at || $ir->next_call_at || ($callAgain && $ir->isOpen()))) {
+            $current = $ir->isOpen() && ($ir->needsCall() || $callAgain) && ! $accept;
             $chips = array_values(array_filter([
                 $ir->delivery?->label(),
                 $ir->next_call_at && ! $ir->contacted_at ? 'перезвонить '.$ir->next_call_at->translatedFormat('j M, H:i') : null,
@@ -36,14 +40,15 @@ final class Timeline
                 $current ? ['kind' => 'submit', 'label' => 'Назначить эвакуатор'] : null, $ir);
         }
 
-        if ($ir?->isTow()) {
+        // Эвакуатор не выезжал, а ТС принимают сразу — эвакуации не было, шага нет.
+        if ($ir?->isTow() && ! ($accept && $ir->state !== RequestState::InProgress)) {
             $chips = array_values(array_filter([$ir->planned_at?->translatedFormat('j M, H:i'), $ir->from_address]));
             [$state, $title, $hint, $plate] = match (true) {
                 $ir->state === RequestState::New => [Step::CURRENT, 'Нужен эвакуатор', 'Договориться с эвакуатором о дате', ['kind' => 'submit', 'label' => 'Назначить']],
                 $ir->state === RequestState::Scheduled => [Step::CURRENT, 'Эвакуатор назначен', 'Когда эвакуатор погрузит ТС, отметить выезд', ['kind' => 'submit', 'label' => 'Выехали']],
                 default => [Step::DONE, 'Эвакуатор выехал', null, null],
             };
-            if ($state === Step::CURRENT && ($ir->needsCall() || $callAgain)) {
+            if ($state === Step::CURRENT && ($ir->needsCall() || $callAgain || $accept)) {
                 [$state, $title] = [Step::NEXT, 'Эвакуация'];
             }
             $steps[] = new Step('tow', $title, $state, $hint, $ir->started_at ?? $ir->planned_at, $state === Step::DONE ? $chips : [], $plate, $ir);
@@ -55,7 +60,7 @@ final class Timeline
         } elseif ($v->state === VehicleState::Cancelled) {
             $steps[] = new Step('cancelled', 'Не привезена', Step::DONE, $v->cancel_reason, $v->cancelled_at, [], null, null, true);
         } else {
-            $ready = $ir && $ir->isOpen() && ! $ir->needsCall() && ! $callAgain && (! $ir->isTow() || $ir->state === RequestState::InProgress);
+            $ready = $ir && $ir->isOpen() && ($accept || (! $ir->needsCall() && ! $callAgain && (! $ir->isTow() || $ir->state === RequestState::InProgress)));
             $hint = $v->state === VehicleState::InTransit ? 'ТС в пути, принять по приезду: место и фото' : 'Поставить на место и снять фото';
             // Заявки нет (отменили) — шаг всё равно текущий: «Принять» заводит заявку и открывает форму.
             $orphan = ! $ir?->isOpen() && $v->state === VehicleState::Expected;

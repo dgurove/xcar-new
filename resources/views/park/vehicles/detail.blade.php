@@ -118,6 +118,6 @@
         @endif
         {{-- Свежая строка списка под тем же ключом: в «Заявках» ключ — номер заявки, и строка — её (`x-park.request-row`); строка
              «Наличия» с номером ТС подменяла заявку машиной, и та переставала открываться. Закрытую заявку убирает `detail-gone`. --}}
-        <x-slot:row>@if ($listed ?? null)<x-park.request-row :req="$listed"/>@else<x-park.table-row :vehicle="$vehicle" :total="$total"/>@endif</x-slot:row>
+        <x-slot:row>@if ($listed ?? null)<x-park.request-row :req="$listed" :arrive="$arrive ?? null"/>@else<x-park.table-row :vehicle="$vehicle" :total="$total"/>@endif</x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

@@ -466,11 +466,15 @@ final class Notify
     /** Люди парковки; с городом объекта — только те, кому он виден (`Park\City`: администраторы и управляющие без города — все). */
     /**
      * Заявки, письма, звонки, сроки, продажа и анкета — управляющим (роль «Парковка») своего города, не администраторам
-     * парковки (владелец 09.10.2026); им — только «управляющий принял / выдал» (`parkHandled`).
+     * парковки (владелец 09.10.2026); им — только «управляющий принял / выдал» (`parkHandled`). Управляющего у города нет
+     * (новая парковка, роль сняли) — администраторам: заявка не должна лечь молча.
      */
     private function parkManagers(?int $city = null)
     {
-        return $this->parkStaff($city)->filter->isParking()->values();
+        $staff = $this->parkStaff($city);
+        $managers = $staff->filter->isParking()->values();
+
+        return $managers->isNotEmpty() ? $managers : $staff->filter->isParkAdmin()->values();
     }
 
     private function parkStaff(?int $city = null)

@@ -14,6 +14,7 @@ use App\Mail\Candidate;
 use App\Mail\Direction;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Message;
+use App\Mail\Scan\AutoScan;
 use App\Mail\Scan\VehicleSubject;
 use App\Mail\Thread;
 use App\Mail\Threads;
@@ -92,9 +93,9 @@ class VehicleController
         if ($detail->framed()) {
             return $detail->response();
         }
-        // «Наличие» — таблицей по умолчанию (решение владельца 22.09.2026); выбор строк или плиток помнится.
+        // «Наличие» — таблицей по умолчанию (решение владельца 22.09.2026); вид на парковке не помнится (`ListPrefs`).
         $facets = $this->facets($request);
-        ListPrefs::sync($request, 'park-vehicles', rememberTable: true, keep: $facets->keys());
+        ListPrefs::sync($request, 'park-vehicles', keep: $facets->keys());
         if (! $request->query->has(ListView::PARAM)) {
             $request->query->set(ListView::PARAM, ListView::TABLE);
         }
@@ -170,7 +171,8 @@ class VehicleController
         // (у выдачи — письмо о продаже).
         $fromRequests = $task !== null;
         // Строка, которую карточка обновит в «Заявках», — та заявка, что открыли (ключ строки — её номер); закрылась — уходит.
-        $listed = $task?->load(RequestController::rowWith());
+        // ТС с её связями и числом веток уже подняты выше — строке заявки догружается только своё.
+        $listed = $task?->setRelation('vehicle', $vehicle)->loadMissing(['yard', 'assignee', 'letter', 'creator']);
         if ($listed && ! $listed->isOpen()) {
             session()->now('detail-gone', true);
         }
@@ -187,6 +189,8 @@ class VehicleController
             'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
             // Из «Заявок» (заявку передали явно) главное — задача: кадры одной лентой, без блоков по стадиям над ней.
             'fromRequests' => $fromRequests, 'listed' => $listed,
+            // Строка заявки, которую почта завела и документы ещё читаются, остаётся силуэтом с ходом, как в списке.
+            'arrive' => $listed ? (AutoScan::states([$vehicle])[$vehicle->id] ?? null) : null,
             'task' => $task, 'taskLetter' => $taskLetter?->load(['author', 'attachments', 'account']),
             'letterCount' => $taskLetter ? Message::whereIn('thread_id', Thread::ofCar($vehicle, $request->user())->select('id'))->count() : 0,
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
@@ -223,7 +227,7 @@ class VehicleController
             $request->attributes->set('nav.tab', '/requests');
         }
 
-        return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null, $request->boolean('call')) + [
+        return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null, $request->boolean('call'), $request->boolean('accept')) + [
             'window' => preg_match('#^/(mail|cars)/#', $window) ? $window : null,
         ]);
     }

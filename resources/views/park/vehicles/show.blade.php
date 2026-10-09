@@ -13,8 +13,10 @@
     $tow = $req?->isTow() ?? false;
     // Новая заявка на приём без звонка — сначала «Связались»; ?call=1 с чипа доставки — позвонить ещё раз (Contact меняет тип в обе стороны).
     $callAgain = $open && in_array($req->type, [RequestType::Intake, RequestType::Tow], true) && in_array($req->state, [RequestState::New, RequestState::Scheduled], true);
-    $callForm = $open && ($req->needsCall() || ($callAgain && request()->boolean('call')));
-    $intakeForm = ! $callForm && $open && (($req->type === RequestType::Intake && $state->isBefore()) || ($tow && $req->state === RequestState::InProgress));
+    // ?accept=1 — «Принять» сразу из карточки заявки: без звонка и эвакуатора, форма приёма (`Timeline::for` с `accept`).
+    $accept = $open && request()->boolean('accept') && $state->isBefore() && in_array($req->type, [RequestType::Intake, RequestType::Tow], true);
+    $callForm = ! $accept && $open && ($req->needsCall() || ($callAgain && request()->boolean('call')));
+    $intakeForm = ! $callForm && $open && (($req->type === RequestType::Intake && $state->isBefore()) || ($tow && $req->state === RequestState::InProgress) || $accept);
     $releaseForm = $open && $req->type === RequestType::Release && $state === VehicleState::Stored;
     $moveForm = $open && $req->type === RequestType::Move && $state === VehicleState::Stored;
     // Нет открытой заявки: у ожидаемой — «Принять», у стоящей — «Выдать» (POST /requests заводит заявку и показывает её форму).
