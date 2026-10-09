@@ -28,7 +28,7 @@
         {{-- Необязательную дату можно стереть («Очистить»): на телефоне поле только открывает календарь. --}}
         @if ($time || $clearable)
             <div class="date-foot">
-                @if ($time)<label class="date-time"><span>Время</span><input type="text" inputmode="numeric" maxlength="5" class="field-input" data-date-target="time" data-action="focus->date#lift input->date#typeTime keydown.enter->date#done:prevent"></label>@endif
+                @if ($time)<label class="date-time"><span class="sr-only">Время</span><input type="text" inputmode="numeric" maxlength="5" class="field-input" data-date-target="time" data-action="focus->date#lift input->date#typeTime keydown.enter->date#done:prevent"></label>@endif
                 @if ($clearable)<button type="button" class="btn btn-quiet {{ $time ? '' : 'ml-auto' }}" data-date-target="clear" data-action="date#clear">Очистить</button>@endif
                 @if ($time)<button type="button" class="btn btn-accent" data-action="date#done">Готово</button>@endif
             </div>
