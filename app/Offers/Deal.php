@@ -82,10 +82,22 @@ class Deal extends Model
      */
     public static function awaitingSupplier(int $vendorId): Collection
     {
+        return self::onExit($vendorId, 'поставщик согласовал%');
+    }
+
+    /** Сделки вендора, что ждут заявки поставщику (этап с исходом «Заявка отправлена», Каркаде): следующая заявка — они. */
+    public static function awaitingRequest(int $vendorId): Collection
+    {
+        return self::onExit($vendorId, 'заявка отправлена');
+    }
+
+    /** Активные сделки вендора, чей этап продажи уходит исходом с такой подписью (ilike). */
+    private static function onExit(int $vendorId, string $label): Collection
+    {
         return self::where('state', DealState::Active)
             ->whereHas('offer', fn (Builder $o) => $o->where('vendor_id', $vendorId)->whereHas('positions', fn (Builder $p) => $p->where('track', 'sale')
-                ->whereHas('stage.exits', fn (Builder $e) => $e->where('label', 'ilike', 'поставщик согласовал%'))))
-            ->with(['offer.brand', 'offer.model', 'buyer'])->orderBy('id')->get();
+                ->whereHas('stage.exits', fn (Builder $e) => $e->where('label', 'ilike', $label))))
+            ->with(['offer.brand', 'offer.model', 'offer.settlement', 'buyer'])->orderBy('id')->get();
     }
 
     /** Схема оплаты (`DealScheme`); у старых строк — ПРАЙМ по счёту. */

@@ -50,6 +50,18 @@ class Template extends Model
         return self::firstOrCreate(['scope' => Scope::Park, 'name' => $name], ['subject' => $subject, 'body' => $body]);
     }
 
+    /**
+     * Заявка поставщику на выкуп пачкой (Каркаде, 09.10.2026): список — файлом во вложении (`SupplierRequest`). Шаблон
+     * заводится при первой заявке, дальше правится в настройках почты.
+     */
+    public static function supplierRequest(): self
+    {
+        return self::firstOrCreate(['scope' => Scope::Offers, 'name' => 'Поставщику: заявка на выкуп'], [
+            'subject' => 'Заявка на выкуп, {{ count }} ТС',
+            'body' => "Здравствуйте!\n\nНаправляем заявку на выкуп {{ count }} ТС, список во вложении.\n\nС уважением,\nАндрей Кузнецов",
+        ]);
+    }
+
     /** Абзац письма о приёме у вендора с выдачей по QR — когда в его шаблоне нет {{ pickup_link }}. */
     public const PICKUP_NOTICE = "Выдача ТС производится только по QR-коду. Когда ТС будет реализовано, передайте, пожалуйста, покупателю эту ссылку:\n{{ pickup_link }}";
 

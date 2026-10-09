@@ -9,6 +9,8 @@
 @if ($invoice ?? null)<input type="hidden" name="invoice" value="{{ $invoice->id }}">@endif
 @if ($inFrame)<input type="hidden" name="retry" value="{{ request()->getRequestUri() }}">@endif
 @if ($then ?? null)<input type="hidden" name="then" value="{{ $then }}">@endif
+{{-- Заявка поставщику: сделки её файла — отправили письмо, они идут дальше «Заявка отправлена». --}}
+@if ($requestDeals ?? null)<input type="hidden" name="request_deals" value="{{ old('request_deals', $requestDeals) }}">@endif
 <x-ui.card class="min-w-0" :nested="$inFrame">
     @if ($errors->any())<p class="field-error mb-3">{{ $errors->first() }}</p>@endif
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">

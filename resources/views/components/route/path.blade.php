@@ -29,6 +29,12 @@
     // Имена блоков как есть: кто вывозит, видно строкой над путём («Стоит у Сергей К.» имя не склоняет).
     $blockName = fn ($block) => $block->name;
     [$breaks, $moves] = $exits->partition(fn ($x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd())->all();
+    // «Заявка отправлена» (Каркаде) — не кнопка: её жмёт само письмо заявки по всем сделкам вендора разом.
+    $requestExit = $deal ? $moves->first(fn ($x) => mb_strtolower($x->label) === 'заявка отправлена') : null;
+    $requests = $requestExit ? \App\Offers\Deal::awaitingRequest($offer->vendor_id)->count() : 0;
+    if ($requestExit) {
+        $moves = $moves->reject(fn ($x) => $x->is($requestExit));
+    }
     $overdue = $position->isOverdue();
     $tone = $overdue ? 'text-danger' : match ($position->waitsFor()->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' };
     $clock = $position->deadline_at || $stage->timerMode() === 'stopwatch';
@@ -164,8 +170,12 @@
                             </div>
                         </div>
                     @endforeach
-                    @if ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id)
+                    @if ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests)
                         <div class="mt-3 flex flex-wrap gap-2">
+                            {{-- Заявка поставщику пачкой: окно письма со списком файлом, отправили — все её сделки дальше. --}}
+                            @if ($requests)
+                                <x-mail.window-button :url="'/work/mail/new?request='.$offer->vendor_id.'&then=close'" :label="'Заявка поставщику ('.$requests.')'" class="btn-s btn-accent"/>
+                            @endif
                             @if ($wantsInvoice)
                                 {{-- Счета ставятся сами (`SyncDealInvoices`); гаражной не хватает нашей доли — вписать её в «Деньгах» сделки. --}}
                                 @if ($position->gap() === 'share')<a href="/work/deals/{{ $deal->id }}#money" class="btn btn-s btn-accent" data-turbo-frame="_top">Вписать нашу долю</a>

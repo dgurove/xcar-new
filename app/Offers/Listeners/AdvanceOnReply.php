@@ -10,6 +10,7 @@ use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
 use App\Offers\Jobs\ShareReplyFiles;
 use App\Offers\OfferEventType;
+use App\Vendors\DealFormat;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Events\StageEntered;
@@ -41,8 +42,13 @@ final class AdvanceOnReply
 
     public function replied(InsurerReplied $e): void
     {
-        $deal = $e->deal->loadMissing(['offer', 'buyer']);
+        $deal = $e->deal->loadMissing(['offer.vendor', 'buyer']);
         $offer = $deal->offer;
+        // Оптом (Каркаде) поставщик отвечает на заявку списком — с закупочными и чужими машинами: ни шага за сделку, ни
+        // текста менеджеру; ответ отмечают «Ответом по списку» (09.10.2026).
+        if ($offer->vendor?->deal_format === DealFormat::Wholesale) {
+            return;
+        }
         $message = $e->message->loadMissing(['attachments', 'account']);
         $contact = InsurerReplies::hasContact($message);
         $files = InsurerReplies::hasFiles($message);
@@ -100,6 +106,9 @@ final class AdvanceOnReply
     private function advance(Deal $deal, Message $letter, bool $quiet = true): bool
     {
         $offer = $deal->offer->unsetRelation('positions');
+        if ($offer->vendor?->deal_format === DealFormat::Wholesale) {
+            return false;
+        }
         $stage = $offer->position(Track::Sale)?->stage;
         if ($stage?->waits_for !== WaitsFor::Supplier) {
             return false;

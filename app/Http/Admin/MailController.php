@@ -38,9 +38,11 @@ use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
+use App\Offers\Actions\MarkSupplierRequestSent;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
+use App\Offers\SupplierRequest;
 use App\Park\Actions\MarkDoc;
 use App\Park\City;
 use App\Park\DocKind;
@@ -548,6 +550,19 @@ class MailController
         if ($vehicle && $template && $vehicle->releasesByQr() && $request->query('act') === 'intake' && ! str_contains((string) $template->body, 'pickup_link')) {
             $template = (clone $template)->forceFill(['body' => self::withPickupNotice((string) $template->body)]);
         }
+        // Заявка поставщику на выкуп пачкой (Каркаде, 09.10.2026): все сделки вендора, что ждут заявки, — файлом во
+        // вложении; отправили — они идут дальше «Заявка отправлена» (`send`).
+        $requestVendor = $sale && $request->query('request') ? Vendor::with('contacts')->find($request->query('request')) : null;
+        $supplierRequest = $requestVendor ? SupplierRequest::for($requestVendor->id) : null;
+        if ($supplierRequest) {
+            abort_if($supplierRequest->deals->isEmpty(), 404);
+            $template ??= Template::supplierRequest();
+            $values = ['count' => (string) $supplierRequest->deals->count(), 'to' => $requestVendor->saleTo() ?? $requestVendor->email(ContactRole::Sales) ?? '',
+                'cc' => implode(', ', $requestVendor->ccEmails(sale: true))];
+            if (! $request->query('account') && $requestVendor->mail_account_id) {
+                $account = $accounts->firstWhere('id', $requestVendor->mailAccount?->sender()->id ?? $requestVendor->mail_account_id) ?? $account;
+            }
+        }
         $values += $registryValues;
         $defaults = $offer && $parent ? $composer->replyWith($parent, $account, $template, $values) : $composer->fresh($account, $template, $values);
         if ($saleTo ?? null) {
@@ -585,11 +600,16 @@ class MailController
             }
         }
 
+        if ($supplierRequest && ! $request->old()) {
+            $defaults['files'][] = $outbox->put($supplierRequest->filename(), $supplierRequest->xlsx());
+        }
+
         // В окне писем (Turbo-Frame) — тот же редактор во фрейме, без оболочки.
         return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back') ?? ($invoice ? '/money/invoices/'.$invoice->id : null), 'invoice' => $invoice,
             'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base,
             // Черновик после «Принять» (BidController::accepted): отправили — окно закрывается, человек идёт дальше по списку.
-            'then' => $request->query('then') === 'close' ? 'close' : null]);
+            'then' => $request->query('then') === 'close' ? 'close' : null,
+            'requestDeals' => $supplierRequest?->deals->pluck('id')->implode(',')]);
     }
 
     public function reply(Request $request, Thread $thread, Message $message, Composer $composer)
@@ -610,7 +630,7 @@ class MailController
             'defaults' => $defaults, 'mode' => $mode, 'templates' => collect(), 'offer' => $thread->offer, 'vehicle' => $thread->vehicle, 'base' => $this->base]);
     }
 
-    public function send(Request $request, Composer $composer, MarkDoc $mark)
+    public function send(Request $request, Composer $composer, MarkDoc $mark, MarkSupplierRequestSent $sentRequest)
     {
         // Из окна писем форма отвечает во фрейм: ошибки — обратно в редактор (retry), успех — ветка в окне.
         $inWindow = $request->header('Turbo-Frame') === 'letters-frame';
@@ -665,10 +685,14 @@ class MailController
             }
         }
 
+        // Заявка поставщику ушла — сделки из её файла идут дальше «Заявка отправлена».
+        $requested = $this->scope === Scope::Offers && ! empty($data['request_deals'])
+            ? $sentRequest(array_map('intval', explode(',', $data['request_deals'])), $message, $request->user()) : null;
+
         if ($inWindow) {
             // Письмо вендору после «Принять» — окно закрывается само (поток letters без адреса в admin/mail/window).
             if ($request->input('then') === 'close') {
-                return redirect("{$this->base}/{$message->thread_id}/window")->with('toast', 'Письмо вендору в очереди')->with('letters-close', true);
+                return redirect("{$this->base}/{$message->thread_id}/window")->with('toast', $requested !== null ? "Заявка поставщику в очереди, {$requested} ТС" : 'Письмо вендору в очереди')->with('letters-close', true);
             }
 
             return redirect("{$this->base}/{$message->thread_id}/window")->with('toast', 'Письмо в очереди');
@@ -966,6 +990,7 @@ class MailController
             'vehicle' => ['nullable', 'integer'],
             'back' => ['nullable', 'string', 'max:255', 'regex:#^/(?!/)#'], // свой путь, не //host
             'invoice' => ['nullable', 'integer'],
+            'request_deals' => ['nullable', 'string', 'regex:/^\d+(,\d+)*$/'],
         ], [], ['to' => 'Кому', 'cc' => 'Копия', 'subject' => 'Тема', 'body' => 'Письмо']);
     }
 

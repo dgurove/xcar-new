@@ -85,12 +85,13 @@ class Stage extends Model
     }
 
     /**
-     * Сделка ещё согласуется: ждём «Поставщик согласовал» или согласия менеджера «Покупаю». Счетов на таком этапе нет —
-     * их ставит первый вход дальше (`AgreeDeal`, 09.10.2026).
+     * Сделка ещё согласуется: поставщик может отказать («Поставщик согласовал» / «Поставщик отказал» — у Каркаде и на
+     * «Собираем заявку поставщику», пока заявка не ушла) или ждём согласия менеджера «Покупаю». Счетов на таком этапе
+     * нет — их ставит первый вход дальше (`AgreeDeal`, 09.10.2026).
      */
     public function isAgreement(): bool
     {
-        return $this->loadedExits()->contains(fn (Outcome $e) => str_starts_with(mb_strtolower($e->label), 'поставщик согласовал')
+        return $this->loadedExits()->contains(fn (Outcome $e) => preg_match('/^поставщик (согласовал|отказал)/u', mb_strtolower($e->label)) === 1
             || ($e->actor === Actor::Manager && mb_strtolower($e->label) === 'покупаю'));
     }
 

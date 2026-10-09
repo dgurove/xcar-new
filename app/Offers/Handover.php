@@ -130,8 +130,9 @@ final class Handover
             $mapUrl = 'https://yandex.ru/maps/?text='.rawurlencode($city && ! str_contains($address, $city) ? "{$city}, {$address}" : $address);
         }
 
-        // Ждём согласия поставщика — рано: продажа может не состояться, контакт владельца менеджеру ещё не нужен.
-        $waiting = $sale && $sale->stage->exits->contains(fn (Outcome $e) => str_starts_with(mb_strtolower($e->label), 'поставщик согласовал'));
+        // Сделка ещё согласуется (ждём поставщика, заявка не ушла) — рано: продажа может не состояться, контакт владельца
+        // менеджеру ещё не нужен.
+        $waiting = $sale && $sale->stage->exits->contains(fn (Outcome $e) => preg_match('/^поставщик (согласовал|отказал)/u', mb_strtolower($e->label)) === 1);
         $open = $deal->isActive() && ! $deal->isGarage() && ! $waiting;
 
         return new self(
