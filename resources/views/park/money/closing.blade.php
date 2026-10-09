@@ -2,7 +2,7 @@
      галочки, кнопка считает выбранное: «Выставить 3 счёта на 2 900 ₽». Вендору и страхователю — один счёт-реестр на
      группу (строки группы — один `data-group`), покупателю — счёт на ТС. Ниже — что уже выставлено. --}}
 @php use App\Support\Money; use App\Billing\Cadence; $me = auth()->user(); $n = $items->flatten(1)->count(); @endphp
-<x-ui.shell :title="'Закрытие '.mb_strtolower($month->translatedFormat('F Y'))" :back="['Оплаты', '/money']" cache="no-cache">
+<x-ui.shell :title="'Закрытие '.\Illuminate\Support\Str::after($month->isoFormat('D MMMM YYYY'), ' ')" :back="['Оплаты', '/money']" cache="no-cache">
     <x-ui.pills class="mb-4">
         @foreach ($months as $m)
             <x-ui.pill :href="'/money/closing?month='.$m->format('Y-m')" :current="$m->format('Y-m') === $month->format('Y-m')">{{ $m->translatedFormat('F') }}</x-ui.pill>
@@ -34,7 +34,8 @@
                                 <span class="min-w-0 flex-1">
                                     <span class="block truncate"><a href="/cars/{{ $v->id }}" class="hover:underline">{{ $v->titleWithYear() }}</a></span>
                                     <span class="row-sub">
-                                        <span class="nums">{{ $r['from']->translatedFormat('j M') }} – {{ $r['to']->translatedFormat('j M') }}, {{ $r['days'] }} сут</span>
+                                        {{-- Год — у даты не этого года: «26 дек 2023 – 30 сен» вместо «26 дек – 30 сен», что читалось тремя месяцами. --}}
+                                        <span class="nums">{{ $r['from']->translatedFormat($r['from']->isCurrentYear() ? 'j M' : 'j M Y') }} – {{ $r['to']->translatedFormat($r['to']->isCurrentYear() ? 'j M' : 'j M Y') }}, {{ $r['days'] }} сут</span>
                                         <span>{{ $r['reason'] }}</span>
                                         @if ($r['cadence'] === Cadence::Release)<span>по выбытию</span>@endif
                                         @if ($r['payer'] === 'buyer')<span class="text-ink">покупатель</span>@elseif ($r['payer'] === 'owner')<span class="text-ink">страхователь</span>@endif

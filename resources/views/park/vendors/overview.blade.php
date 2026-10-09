@@ -42,11 +42,11 @@
             </div>
         @endif
         @if (auth()->user()->isParkAdmin())
-            <form method="post" action="{{ $base }}/contract" enctype="multipart/form-data" class="row items-end">
+            {{-- Поле файла видом поля ввода: голый input показывал системное «Choose File… No file chosen». Выбрал файл — он и
+                 уходит (10.10.2026: было два «Приложить» подряд — выбрать и отдельной кнопкой отправить). --}}
+            <form method="post" action="{{ $base }}/contract" enctype="multipart/form-data" class="row items-end" data-controller="autosubmit" data-action="change->autosubmit#submit">
                 @csrf
-                {{-- Поле файла видом поля ввода: голый input показывал системное «Choose File… No file chosen». --}}
                 <x-ui.file-field name="file" :label="$contract ? 'Заменить файл договора' : 'Файл договора'" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" span="min-w-0 flex-1"/>
-                <x-ui.button variant="secondary" size="sm">Приложить</x-ui.button>
             </form>
         @endif
     </div>

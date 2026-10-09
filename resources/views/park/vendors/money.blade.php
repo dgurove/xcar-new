@@ -1,10 +1,11 @@
-{{-- Деньги вендора плашками: ТС с невыставленным хранением (строка ведёт в счёт по ТС, сумма — справа в заголовке)
+{{-- Деньги вендора плашками: ТС с невыставленным хранением — «Не выставлено», а не «Выставить» (10.10.2026: у вендора «по
+     выбытию» стоящие ещё не к оплате, приказ вводил в заблуждение; строка ведёт в счёт по ТС, сумма — справа в заголовке)
      и счета (просрочено, нам должны, мы должны — цветными словами справа в заголовке). Итогов над списками нет. --}}
 @php use App\Support\Money; $unbilledTotal = round($unbilled->sum(), 2); @endphp
 <div class="flex flex-col gap-2">
     @php $toBill = $stored->filter(fn ($v) => ($unbilled[$v->id] ?? 0) > 0); @endphp
     @if ($toBill->isNotEmpty())
-        <div class="list-head">Выставить <span class="nums">{{ $toBill->count() }}</span>@if ($unbilledTotal > 0)<span class="nums ml-auto text-sm text-ink-muted">{{ Money::rub($unbilledTotal) }}</span>@endif</div>
+        <div class="list-head">Не выставлено <span class="nums">{{ $toBill->count() }}</span>@if ($unbilledTotal > 0)<span class="nums ml-auto text-sm text-ink-muted">{{ Money::rub($unbilledTotal) }}</span>@endif</div>
         <div class="list">
             @foreach ($toBill as $v)
                 <a href="/cars/{{ $v->id }}/invoices/new" class="row justify-between">

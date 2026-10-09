@@ -64,7 +64,9 @@ class VendorController
             'vendors' => $q !== '' ? $vendors : match ($preset) {
                 'stored' => $vendors->where('stored_count', '>', 0), 'inactive' => $vendors->where('is_active', false), default => $vendors->where('is_active', true)
             },
-            'preset' => $preset, 'presets' => self::PRESETS, 'counts' => $counts, 'q' => $q, 'facets' => $facets, 'sort' => $sort,
+            // Пилюля есть, пока в ней кто-то есть (как в «Заявках» и «Оплатах»): «Не работаем» без вендоров не рисуется.
+            'preset' => $preset, 'presets' => array_filter(self::PRESETS, fn ($label, $key) => $key === $preset || $counts[$key] > 0, ARRAY_FILTER_USE_BOTH),
+            'counts' => $counts, 'q' => $q, 'facets' => $facets, 'sort' => $sort,
         ]);
     }
 

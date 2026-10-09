@@ -72,17 +72,24 @@ class MoneyController
         $open = $facets->applyTo(self::scoped(Invoice::query()))->where('state', InvoiceState::Issued)->get();
         $parties = Common::ints($facets->selected('party'));
 
+        $all = $facets->applyTo(self::scoped(Invoice::query()));
+        $counts = [
+            'unpaid' => $open->where('direction', 'issued')->count(),
+            'send' => $facets->applyTo(self::scoped(Invoice::query()))->toSend()->count(),
+            'overdue' => $open->filter->isOverdue()->count(),
+            'owed' => $open->where('direction', 'owed')->count(),
+            'paid' => (clone $all)->where('state', InvoiceState::Paid)->count(),
+            'all' => (clone $all)->count(),
+        ];
+
         return view('park.money.index', [
             'detail' => $detail,
             'invoices' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
-            'preset' => $preset, 'presets' => self::PRESETS,
+            // Пилюля есть, пока в ней есть счета (как в «Заявках», 10.10.2026): у парковки, где счетов ещё не было, ряд
+            // из шести пустых пилюль ничего не говорил. Выбранная остаётся и с нулём; счетов нет вовсе — пилюль нет.
+            'preset' => $preset, 'presets' => $counts['all'] ? array_filter(self::PRESETS, fn ($label, $key) => $key === $preset || $counts[$key] > 0, ARRAY_FILTER_USE_BOTH) : [],
             'sort' => $sort,
-            'counts' => [
-                'unpaid' => $open->where('direction', 'issued')->count(),
-                'send' => $facets->applyTo(self::scoped(Invoice::query()))->toSend()->count(),
-                'overdue' => $open->filter->isOverdue()->count(),
-                'owed' => $open->where('direction', 'owed')->count(),
-            ],
+            'counts' => array_diff_key($counts, ['all' => 0, 'paid' => 0]),
             // Один контрагент выбран (пришли из «Долгов») — экран называется им.
             'party' => count($parties) === 1 ? Party::find($parties[0]) : null,
             'closing' => Closing::pending(),
