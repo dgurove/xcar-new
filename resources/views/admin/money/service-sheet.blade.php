@@ -4,8 +4,8 @@
      (.fields), кнопка липнет к низу листа над клавиатурой. «За что» — услуга в чек (ServiceTitle: конкретная услуга,
      займов, возвратов и денег за машину ссылкой не принимаем), плательщик из заведённых или новый. Выставляет счёт
      ПРАЙМ, ссылка заводится сама, после — карточка ссылки с открытой шторкой («Скопировать», «Отправить»).
-     09.10.2026 владелец: ТС по желанию — строкой «ТС», шторкой поиском по машинам системы (оплата засчитается в её сделку)
-     или словами, если её нет; ссылка по этой ТС или этому плательщику уже открыта — «Ссылка уже есть» и «Открыть ссылку» вместо кнопки. --}}
+     09.10.2026 владелец: ТС по желанию — полем «ТС»: набранное — машина словами, машины системы — подсказкой под ним
+     (оплата засчитается в её сделку; шторка поиска на телефоне сдвигала всё и прятала набранное); ссылка по этой ТС или этому плательщику уже открыта — «Ссылка уже есть» и «Открыть ссылку» вместо кнопки. --}}
 @php
     use App\Billing\ServiceTitle;
     // Кто уже платил ПРАЙМ (менеджеры, покупатели, прошлые разовые) — а не все контрагенты, включая парковку.
@@ -16,9 +16,9 @@
 @endphp
 <div data-controller="sheet" class="contents">
     <button type="button" class="btn btn-s btn-accent rounded-full" data-action="sheet#open" aria-label="Создать ссылку"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Создать ссылку</span></button>
-    <x-ui.sheet id="service-pay" title="Ссылка на оплату" :open="$errors->hasAny(['amount', 'title', 'party_id', 'party_name', 'party_email', 'offer_id', 'car_title'])">
-        <form method="post" action="/work/money/service" class="flex flex-col gap-4" data-controller="reveal pay-existing" data-pay-existing-url-value="/work/money/links/existing"
-              data-action="input->pay-existing#changed change->pay-existing#changed car-pick:chosen->pay-existing#chosen">
+    <x-ui.sheet id="service-pay" title="Ссылка на оплату" class="sheet-steady" :open="$errors->hasAny(['amount', 'title', 'party_id', 'party_name', 'party_email', 'offer_id', 'car_title'])">
+        <form method="post" action="/work/money/service" class="flex flex-1 flex-col gap-4" data-controller="reveal pay-existing" data-pay-existing-url-value="/work/money/links/existing"
+              data-action="input->pay-existing#changed change->pay-existing#changed car-field:chosen->pay-existing#chosen">
             @csrf
             <label class="flex flex-col items-center gap-1">
                 <span class="flex items-baseline justify-center gap-2">
@@ -37,25 +37,17 @@
                 </div>
                 @error('title')<div class="text-sm text-danger">{{ $message }}</div>@enderror
                 <div class="fields">
-                    {{-- ТС — строкой, как в «Настройках»: нажатие — шторка поиском (`x-billing.car-pick`), та же, что в карточке. --}}
-                    @php $carOffer = old('offer_id') ? \App\Offers\Offer::find((int) old('offer_id')) : null; $carText = $carOffer ? trim($carOffer->title().' '.$carOffer->year) : old('car_title'); @endphp
-                    <x-billing.car-pick id="service-pay-car" :offer-id="$carOffer?->id" :text="$carText">
-                        <x-slot:trigger>
-                            <button type="button" class="field w-full text-left" data-action="sheet#open car-pick#load">
-                                <span class="field-label">ТС</span>
-                                <span class="field-input flex items-center justify-end gap-1"><span @class(['truncate', 'text-ink-muted' => ! $carText]) data-car-pick-target="label">{{ $carText ?: 'Не указано' }}</span><x-ui.chevron/></span>
-                            </button>
-                        </x-slot:trigger>
-                    </x-billing.car-pick>
+                    {{-- ТС — полем, набранное и есть значение; машины системы — подсказкой под ним (`x-billing.car-field`). --}}
+                    @php $carOffer = old('offer_id') ? \App\Offers\Offer::find((int) old('offer_id')) : null; @endphp
+                    <x-billing.car-field :offer-id="$carOffer?->id" :text="$carOffer ? trim($carOffer->title().' '.$carOffer->year) : old('car_title')" :error="$errors->first('offer_id') ?: $errors->first('car_title')"/>
                     <x-ui.field name="party_id" label="Кто платит" :options="$parties->all()" :value="$partyId" data-action="change->reveal#pick"/>
                     <div class="contents" data-reveal-target="pane" data-reveal-key="new" @if ($partyId !== 'new') hidden @endif>
                         <x-ui.field name="party_name" label="Имя" placeholder="ФИО или название"/>
                         <x-ui.field name="party_email" label="Почта для чека" type="email"/>
                     </div>
                 </div>
-                @if ($errors->has('offer_id') || $errors->has('car_title'))<div class="text-sm text-danger">{{ $errors->first('offer_id') ?: $errors->first('car_title') }}</div>@endif
             </div>
-            <div class="sheet-foot flex flex-col gap-3">
+            <div class="sheet-foot mt-auto flex flex-col gap-3">
                 <div data-pay-existing-target="box"></div>
                 <div data-pay-existing-target="submit"><x-ui.button block>Получить ссылку</x-ui.button></div>
             </div>

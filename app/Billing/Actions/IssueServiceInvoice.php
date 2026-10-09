@@ -62,7 +62,8 @@ final class IssueServiceInvoice
             $deal = $offer ? DealCredit::dealFor($offer) : null;
             $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Service, WorkDays::add(now(), 3),
                 lines: [['title' => $title, 'qty' => 1, 'unit' => 'svc', 'price' => round($amount, 2), 'kind' => ChargeKind::Service->value]], offerId: $offer?->id);
-            $invoice->update(['car_title' => $car, 'credit_deal_id' => $deal?->id]);
+            // Машина системы — `offer_id`; её название из поля словами не дублируется (как в `AttachServiceCar`).
+            $invoice->update(['car_title' => $offer ? null : $car, 'credit_deal_id' => $deal?->id]);
             $offer?->log(OfferEventType::Note, $by, ['text' => 'Ссылка на оплату '.Money::rub($invoice->total).' — '.$party->name]);
 
             return $invoice;

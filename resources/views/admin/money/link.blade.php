@@ -3,7 +3,8 @@
      — сумма крупно по центру, под ней что со ссылкой словом и кто платит (ТС — строкой ниже, один раз);
      — круглые кнопки с подписью: «Отправить» (лайм; без системного листа на ПК лайм у «Скопировать»), «Скопировать»
        (текст «ФИО, ТС, сумма» и адрес, `PayLink::message`), «QR-код»; у оплаченной — «Вернуть», если есть что;
-     — строки: ТС (у ручной — шторка выбора поиском, `x-billing.car-pick`), сделка или гараж и что с зачётом, счёт, чек;
+     — строки: ТС (у ручной — шторка с полем «ТС» и подсказкой машин, `x-billing.car-field`), сделка или гараж и что с
+       зачётом, счёт, чек;
      — история лентой: создал, что делал плательщик, оплачено или отменена;
      — «Отменить ссылку» красной строкой внизу. В «···» — только «Другая сумма». --}}
 @php
@@ -168,11 +169,21 @@
             </div>
         @endif
         @if ($editCar)
-            {{-- Машина и есть сделка (владелец 09.10.2026): ищут по номеру, ДЛ или VIN; у ТС со сделкой оплата идёт в её
-                 зачёт — исход на кнопке (`DealCredit::outcome`). --}}
-            <x-billing.car-pick :id="'link-car-'.$id" :action="'/work/money/links/'.$id.'/car'" :preview="'/work/money/links/'.$id.'/attach'"
-                :offer-id="$i->offer_id" :text="$i->offer ? trim($i->offer->title().' '.$i->offer->year) : $i->car_title" :clear="(bool) $car"
-                data-action="link-{{ $id }}-car:open@window->sheet#open link-{{ $id }}-car:open@window->car-pick#load"/>
+            {{-- Машина и есть сделка (владелец 09.10.2026): поле «ТС» с подсказкой машин системы (`x-billing.car-field`), у ТС со
+                 сделкой оплата идёт в её зачёт — исход на кнопке и строкой под полем (`DealCredit::outcome`). Поле ставит
+                 палец (без autofocus): программный фокус iOS сдвигал лист. --}}
+            <div data-controller="sheet" data-action="link-{{ $id }}-car:open@window->sheet#open" class="contents">
+                <x-ui.sheet :id="'link-car-'.$id" title="ТС" class="sheet-steady">
+                    <form method="post" action="/work/money/links/{{ $id }}/car" class="flex flex-1 flex-col gap-3">
+                        @csrf @method('put')
+                        <x-billing.car-field group :offer-id="$i->offer_id" :text="$i->offer ? trim($i->offer->title().' '.$i->offer->year) : $i->car_title" :preview="'/work/money/links/'.$id.'/attach'">
+                            <p class="px-1 text-sm text-accent-text" data-car-field-target="note" hidden></p>
+                            @if ($car)<div class="list"><button class="row row-danger" name="clear" value="1">Отвязать</button></div>@endif
+                            <div class="sheet-foot mt-auto"><x-ui.button block data-car-field-target="submit">Сохранить</x-ui.button></div>
+                        </x-billing.car-field>
+                    </form>
+                </x-ui.sheet>
+            </div>
         @endif
     </x-ui.row-card>
     {{-- Действие в карточке меняет список «По ссылкам» (новая сумма, отмена, ТС): страница перечитывается морфом. --}}

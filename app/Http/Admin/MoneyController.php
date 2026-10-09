@@ -279,16 +279,19 @@ class MoneyController
     }
 
     /**
-     * ТС для ручной ссылки — поиск по машинам системы (`x-ui.combobox`): номер, ДЛ, VIN, марка, модель; сначала со
-     * сделкой, потом свежие. Подсказка — номер и чья сделка: по ней ссылку и засчитают.
+     * ТС для ручной ссылки — подсказка под полем «ТС» (`x-billing.car-field`): номер, ДЛ, VIN, марка, модель; сначала со
+     * сделкой, потом свежие, `limit` строк (до 20). Подсказка — номер и чья сделка: по ней ссылку и засчитают. Пустой
+     * запрос — пусто: подсказка появляется, когда начали набирать.
      */
     public function cars(Request $request)
     {
         $q = trim((string) $request->query('q'));
-        $offers = Offer::query()->with(['brand', 'model', 'deal.buyer'])
-            ->when($q !== '', fn ($o) => $o->searchCrm($q), fn ($o) => $o->whereHas('deal'))
+        if ($q === '') {
+            return response()->json([]);
+        }
+        $offers = Offer::query()->with(['brand', 'model', 'deal.buyer'])->searchCrm($q)
             ->orderByRaw('exists (select 1 from deals d where d.offer_id = offers.id and d.state = ?) desc', [\App\Offers\DealState::Active->value])
-            ->latest('updated_at')->limit(20)->get();
+            ->latest('updated_at')->limit(max(1, min(20, (int) $request->query('limit', 20))))->get();
 
         return response()->json($offers->map(fn (Offer $o) => [
             'id' => $o->id,

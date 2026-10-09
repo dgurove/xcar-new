@@ -1850,12 +1850,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   .sheet:popover-open::before { display: none; }
   .sheet:popover-open::backdrop { background: none; }
-  /* Шторка выбора поиском (x-billing.car-pick): высокая сразу — строки результатов появляются под полем, лист не прыгает
-     по высоте с каждым ответом. Поле — как поиск тулбара, но во всю ширину и на сером. */
-  .sheet-pick { height: calc(100dvh - 3rem - var(--kb, 0px)); }
-  @media (min-width: 640px) { .sheet-pick { height: min(40rem, calc(100dvh - 4rem)); } }
-  .sheet-pick .toolbar-search { @apply bg-surface-2; max-width: none; min-height: 2.75rem; }
-  .sheet-pick .toolbar-search input { font-size: 16px; }
+  /* Шторка постоянной высоты (форма с подсказкой под полем — «Создать ссылку», «ТС» ссылки): лист прижат к низу и рос
+     бы вверх с каждой строкой подсказки, унося поле из-под пальца (09.10.2026, владелец: «всё смещается»). Высота —
+     вся доступная, подсказки занимают место внутри, кнопка внизу. */
+  .sheet-steady[open] { display: flex; flex-direction: column; }
+  @media (max-width: 639.98px) { .sheet-steady { height: calc(100dvh - 2rem - var(--kb, 0px)); } }
+  @media (min-width: 640px) { .sheet-steady { height: min(40rem, calc(100dvh - 4rem)); } }
   .sheet-close { @apply flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   /* Клавиатура на телефоне (07.10.2026): лист целиком в видимой части над ней (--vv-h из app.js). Раньше высота
      считалась от всего экрана минус клавиатура, а iOS ещё и сдвигал экран к полю — верх листа (сумма) уходил за край. */
@@ -1908,6 +1908,17 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet-chips { @apply -mx-5 flex gap-2 overflow-x-auto px-5; scrollbar-width: none; scroll-padding-inline: 1.25rem; }
   .sheet-chips > .chip { @apply shrink-0 whitespace-nowrap px-3 py-2; }
   .chip[aria-pressed="true"] { background: var(--color-accent-soft); color: var(--color-accent); }
+  /* Поле «ТС» с подсказкой (x-billing.car-field): текст справа, как у соседних полей, галка у машины системы и «×»; строки
+     подсказки — во всю ширину группы под полем, той же волосяной линией. */
+  .fields .car-field-box { @apply flex items-center justify-end gap-1.5; }
+  .car-field-text { @apply min-w-0 flex-1 bg-transparent text-right outline-none placeholder:text-ink-dim; font-size: 16px; min-height: 2.75rem; }
+  .car-field-mark { @apply shrink-0 text-accent-text; }
+  .car-field-clear { @apply -mr-1 flex size-7 shrink-0 items-center justify-center rounded-full text-ink-dim; }
+  .car-field-mark[hidden], .car-field-clear[hidden], .car-field-hints[hidden] { display: none; }
+  .fields .car-field-hints { grid-column: 1 / -1; display: flex; flex-direction: column; }
+  .car-field-hint { @apply relative flex min-w-0 flex-col justify-center px-4 py-2 text-left; min-height: 3.25rem; }
+  .car-field-hint::before { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); }
+  @media (hover: hover) { .car-field-hint:hover { background: var(--color-hover); } }
   .fields .field:focus-within { background: color-mix(in oklab, var(--color-accent) 6%, transparent); }
 
   /* Список и карточка строки рядом (x-ui.shell :detail, x-ui.detail, detail_controller). Карточка — колонка страницы,
