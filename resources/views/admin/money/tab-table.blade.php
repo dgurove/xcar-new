@@ -12,7 +12,6 @@
     $created = 'num cell-dim col-detail-hide hidden sm:table-cell';
     // Столбцы вкладки: [заголовок, классы ячейки, поле сортировки].
     $cols = match ($key) {
-        'links' => [['Кто платит', 'grow', 'payer'], ['За что', 'cell-dim hidden sm:table-cell', null], ['Сейчас', 'hidden sm:table-cell', null], ['Создано', $created, 'created'], ['Сумма', 'num', 'amount']],
         'owed' => [['Плательщик', 'grow', 'payer'], ['Менеджер', 'col-detail-hide hidden lg:table-cell', null], ['ТС', 'cell-dim hidden sm:table-cell', null], ['Счёт', 'cell-dim col-detail-hide hidden lg:table-cell', 'number'], ['Сейчас', 'hidden sm:table-cell', 'due'], ['Создано', $created, 'created'], ['Сумма', 'num', 'amount']],
         default => [['Менеджер', 'grow', 'payer'], ['ТС', 'cell-dim hidden sm:table-cell', null], ['Сейчас', 'hidden sm:table-cell', 'due'], ['Создано', $created, 'created'], ['Сумма', 'num', 'amount']],
     };
@@ -35,7 +34,7 @@
                 @php $i = $p->invoice; $now = R::who($i).' пишет, что '.($p->source === PaymentSource::Cash ? 'отдал наличные' : 'оплатил').' '.$p->paid_at->translatedFormat('j M'); @endphp
                 <tr data-detail-key="{{ $i->id }}" data-search-row>
                     <td class="grow">
-                        <x-ui.row-link :key="$i->id"><span class="cell-title">{{ $i->party->name }}</span></x-ui.row-link>
+                        <x-ui.row-link :key="$i->id" :with="['tab' => $key]"><span class="cell-title">{{ $i->party->name }}</span></x-ui.row-link>
                         <span class="cell-sub sm:hidden"><span class="text-urgent">{{ $now }}</span>@if (R::what($i))<span>{{ R::what($i) }}</span>@endif</span>
                     </td>
                     <td class="{{ $c(1) }}">@if ($m = $i->manager())<x-ui.person :user="$m"/>@endif</td>
@@ -54,12 +53,11 @@
             @foreach ($s['open'] as $i)
                 @php
                     $due = R::due($i);
-                    $link = ($key === 'links' || $s['tried']->contains($i->id)) ? R::link($i) : null;
+                    $link = $s['tried']->contains($i->id) ? R::link($i) : null;
                     // Что сейчас — одно главное: не прошла по ссылке важнее срока; у выплаты без реквизитов — это.
                     [$now, $tone] = match (true) {
                         $key === 'payouts' && ! $i->party->payoutReady() => ['реквизитов нет', 'text-danger'],
-                        $link && $key !== 'links' => $link,
-                        $key === 'links' => $link ?? ['ждём оплату', ''],
+                        (bool) $link => $link,
                         (bool) $due => $due,
                         default => ['срок после договора', ''],
                     };
@@ -67,18 +65,14 @@
                 @endphp
                 <tr data-detail-key="{{ $i->id }}" data-search-row>
                     <td class="grow">
-                        <x-ui.row-link :key="$i->id"><span class="cell-title">{{ $key === 'payouts' ? R::who($i) : $i->party->name }}</span></x-ui.row-link>
+                        <x-ui.row-link :key="$i->id" :with="['tab' => $key]"><span class="cell-title">{{ $key === 'payouts' ? R::who($i) : $i->party->name }}</span></x-ui.row-link>
                         <span class="cell-sub sm:hidden">
                             <span class="{{ $tone }}">{{ $now }}</span>
                             @if (R::what($i))<span>{{ R::what($i) }}</span>@endif
                             @if ($key === 'payouts' && $due && $now === 'реквизитов нет')<span class="{{ $due[1] }}">{{ $due[0] }}</span>@endif
                         </span>
                     </td>
-                    @if ($key === 'links')
-                        <td class="{{ $c(1) }}">{{ R::what($i) }}</td>
-                        <td class="{{ $c(2) }} {{ $tone }}">{{ $now }}</td>
-                        <td class="{{ $c(3) }} nums">{{ $when($i) }}</td>
-                    @elseif ($key === 'owed')
+                    @if ($key === 'owed')
                         <td class="{{ $c(1) }}">@if ($m = R::via($i))<x-ui.person :user="$m"/>@endif</td>
                         <td class="{{ $c(2) }}">{{ R::what($i) }}</td>
                         <td class="{{ $c(3) }}">{{ $i->label() }}</td>
@@ -101,14 +95,10 @@
                 @php $now = $key === 'payouts' ? R::paidOut($i) : R::how($i, $attempts); @endphp
                 <tr data-detail-key="{{ $i->id }}" data-search-row>
                     <td class="grow">
-                        <x-ui.row-link :key="$i->id"><span class="cell-title">{{ $key === 'payouts' ? R::who($i) : $i->party->name }}</span></x-ui.row-link>
+                        <x-ui.row-link :key="$i->id" :with="['tab' => $key]"><span class="cell-title">{{ $key === 'payouts' ? R::who($i) : $i->party->name }}</span></x-ui.row-link>
                         <span class="cell-sub sm:hidden"><span>{{ $now }}</span>@if (R::what($i))<span>{{ R::what($i) }}</span>@endif</span>
                     </td>
-                    @if ($key === 'links')
-                        <td class="{{ $c(1) }}">{{ R::what($i) }}</td>
-                        <td class="{{ $c(2) }} text-ink-muted">{{ $now }}</td>
-                        <td class="{{ $c(3) }} nums">{{ $when($i) }}</td>
-                    @elseif ($key === 'owed')
+                    @if ($key === 'owed')
                         <td class="{{ $c(1) }}">@if ($m = R::via($i))<x-ui.person :user="$m"/>@endif</td>
                         <td class="{{ $c(2) }}">{{ R::what($i) }}</td>
                         <td class="{{ $c(3) }}">{{ $i->label() }}</td>

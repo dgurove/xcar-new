@@ -14,6 +14,7 @@ use App\Billing\Events\PaymentVoided;
 use App\Billing\Listeners\AdvanceOnClaim;
 use App\Billing\Listeners\AdvanceOnPayment;
 use App\Billing\Listeners\CloseLinksWhenSettled;
+use App\Billing\Listeners\CreditDealOnManual;
 use App\Billing\Listeners\KeepPayLink;
 use App\Billing\Listeners\PassTurnOnInvoice;
 use App\Billing\Listeners\PayoutWhenPaid;
@@ -100,6 +101,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen([InvoiceIssued::class, InvoiceVoided::class], PassTurnOnInvoice::class);
         Event::listen([InvoiceVoided::class, PaymentVoided::class], RevokeAgentFee::class);
         Event::listen([InvoiceVoided::class, PaymentVoided::class], ReopenWhenVoided::class);
+        Event::listen([PaymentRecorded::class, PaymentVoided::class, InvoiceVoided::class], CreditDealOnManual::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);
         Event::listen(Login::class, EnrollOnLogin::class);
         Event::listen(ChatMessagePosted::class, ScheduleAutoReply::class);

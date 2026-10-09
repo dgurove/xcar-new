@@ -8,6 +8,7 @@ use App\Billing\InvoiceState;
 use App\Billing\Payment;
 use App\Billing\Seller;
 use App\Garage\Car;
+use App\Support\Money;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * попытки у провайдера (`AcquiringPayment`): каждое «Оплатить» берёт свежую или заводит новую, так что
  * ссылка не протухает вместе со страницей оплаты. У счёта открыта одна ссылка.
  */
-#[Fillable(['code', 'invoice_id', 'amount', 'payer_kind', 'payer_user_id', 'payer_name', 'payer_phone', 'payer_email', 'state', 'payment_id', 'paid_at', 'canceled_at', 'error', 'error_at', 'created_by'])]
+#[Fillable(['code', 'invoice_id', 'amount', 'payer_kind', 'payer_user_id', 'payer_name', 'payer_phone', 'payer_email', 'state', 'payment_id', 'paid_at', 'canceled_at', 'error', 'error_at', 'created_by', 'auto'])]
 class PayLink extends Model
 {
     protected $table = 'billing_pay_links';
@@ -30,7 +31,7 @@ class PayLink extends Model
 
     protected function casts(): array
     {
-        return ['amount' => 'float', 'payer_kind' => PayerKind::class, 'state' => PayLinkState::class, 'paid_at' => 'datetime', 'canceled_at' => 'datetime', 'error_at' => 'datetime'];
+        return ['amount' => 'float', 'payer_kind' => PayerKind::class, 'state' => PayLinkState::class, 'paid_at' => 'datetime', 'canceled_at' => 'datetime', 'error_at' => 'datetime', 'auto' => 'bool'];
     }
 
     public static function freshCode(): string
@@ -134,6 +135,47 @@ class PayLink extends Model
             $last->status === 'canceled' => ['не прошла '.$at($last->created_at).': '.$last->cancelLabel(), 'danger'],
             default => ['ждём оплату', null],
         };
+    }
+
+    /** Откуда ссылка: счёт сделки, машины гаража или разовая оплата, взятая кнопкой в «Оплатах». */
+    public function origin(): string
+    {
+        $invoice = $this->invoice;
+
+        return match (true) {
+            $invoice->isService() => 'manual',
+            (bool) $invoice->deal_id => 'deal',
+            default => 'garage',
+        };
+    }
+
+    /** Кто платит полным именем — для текста ссылки и строк «Оплат»; пробелы, вписанные дважды, схлопнуты. */
+    public function payerName(): string
+    {
+        $name = $this->payer_kind === PayerKind::Self
+            ? $this->creator?->name
+            : ($this->payer_name ?: $this->payerUser?->name ?: $this->invoice?->party?->name);
+
+        return self::squash((string) $name);
+    }
+
+    public static function squash(string $name): string
+    {
+        return trim(preg_replace('/\s+/u', ' ', $name));
+    }
+
+    /**
+     * Текст, которым ссылкой делятся (09.10.2026, владелец: «ФИО, марка модель номер, сумма, а не тот текст»): строками —
+     * кто платит, ТС с номером, сумма, как оплатить; адрес строкой ниже дописывает `copy_controller`.
+     */
+    public function message(): string
+    {
+        return implode("\n", array_filter([
+            $this->payerName(),
+            $this->invoice?->carLine(),
+            Money::exact($this->amount),
+            'Оплата картой, СБП или SberPay по ссылке:',
+        ]));
     }
 
     /** Кто платит — словами для строки: «вы», имя покупателя или человека. */

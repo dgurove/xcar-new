@@ -33,7 +33,8 @@ final class YooKassa implements Gateway
     public function create(PayLink $link, float $amount, string $returnUrl): Checkout
     {
         $invoice = $link->invoice;
-        $what = 'Оплата по счёту '.$invoice->label().' от '.$invoice->issued_at->format('d.m.Y');
+        // Машина — только в описании платежа: в чеке (тег 1030) остаётся проверенная услуга (`receiptTitle`).
+        $what = 'Оплата по счёту '.$invoice->label().' от '.$invoice->issued_at->format('d.m.Y').(($car = $invoice->carLine()) ? ', '.$car : '');
         $body = [
             'amount' => self::money($amount),
             'capture' => true,

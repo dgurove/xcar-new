@@ -2,6 +2,9 @@
 
 namespace App\Billing\Actions;
 
+use App\Billing\Acquiring\ExistingLink;
+use App\Billing\Acquiring\LinkExists;
+use App\Billing\Acquiring\PayLink;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\Party;
@@ -9,8 +12,13 @@ use App\Billing\PartyKind;
 use App\Billing\Seller;
 use App\Billing\ServiceTitle;
 use App\Billing\WorkDays;
+use App\Offers\Deal;
+use App\Offers\DealState;
+use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Support\Money;
 use App\Users\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -19,13 +27,16 @@ use Illuminate\Validation\ValidationException;
  * сделок, дальше всё готовое: `/pay`, чек «полный расчёт» (услуга оказана — решение владельца), возврат, сверка ЮMoney.
  * Итог счёта — с НДС сверху, если он у плательщика такой, — не больше одного платежа ЮKassa, чтобы ссылка была на весь
  * счёт. Плательщик — заведённый контрагент или новый по имени и почте; с той же почтой он уже есть — берётся он, без дубля.
+ * Машина по желанию (09.10.2026): предложение системы — `offer_id`, оплата засчитывается в его сделку (`credit_deal_id`,
+ * `SyncDealInvoices`); не из системы — словами в `car_title`. Ссылка по этой машине или этому плательщику уже открыта —
+ * второй нет: `LinkExists` с найденной (`ExistingLink`), под замком — два админа одновременно.
  */
 final class IssueServiceInvoice
 {
     public function __construct(private IssueInvoice $issue) {}
 
     /** @param  Party|array{name: string, email?: ?string}  $payer */
-    public function __invoke(Party|array $payer, User $by, float $amount, string $title): Invoice
+    public function __invoke(Party|array $payer, User $by, float $amount, string $title, ?Offer $offer = null, ?string $car = null): Invoice
     {
         $title = trim(preg_replace('/\s+/u', ' ', $title));
         if ($problem = ServiceTitle::problem($title)) {
@@ -39,8 +50,23 @@ final class IssueServiceInvoice
             throw ValidationException::withMessages(['amount' => 'От 1 ₽ до '.Money::exact($max).($total > $amount ? ' вместе с НДС' : '').' за один платёж']);
         }
 
-        return ($this->issue)($party, $by, 'issued', ChargeKind::Service, WorkDays::add(now(), 3),
-            lines: [['title' => $title, 'qty' => 1, 'unit' => 'svc', 'price' => round($amount, 2), 'kind' => ChargeKind::Service->value]]);
+        $car = $offer ? null : (PayLink::squash((string) $car) ?: null);
+
+        return DB::transaction(function () use ($party, $by, $amount, $title, $offer, $car) {
+            DB::select('select pg_advisory_xact_lock(?)', [crc32('service-link')]);
+            if ($found = ExistingLink::find($offer, $party->exists ? $party->id : null, $party->name)) {
+                throw new LinkExists($found);
+            }
+            // Новый плательщик заводится только вместе со счётом: «ссылка уже есть» не оставляет пустого контрагента.
+            $party->exists || $party->save();
+            $deal = $offer ? ($offer->deal ?? Deal::where('offer_id', $offer->id)->where('state', '!=', DealState::Cancelled)->latest('id')->first()) : null;
+            $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Service, WorkDays::add(now(), 3),
+                lines: [['title' => $title, 'qty' => 1, 'unit' => 'svc', 'price' => round($amount, 2), 'kind' => ChargeKind::Service->value]], offerId: $offer?->id);
+            $invoice->update(['car_title' => $car, 'credit_deal_id' => $deal?->id]);
+            $offer?->log(OfferEventType::Note, $by, ['text' => 'Ссылка на оплату '.Money::rub($invoice->total).' — '.$party->name]);
+
+            return $invoice;
+        });
     }
 
     private function payer(array $payer): Party
@@ -48,6 +74,6 @@ final class IssueServiceInvoice
         $email = mb_strtolower(trim((string) ($payer['email'] ?? ''))) ?: null;
         $known = $email ? Party::where('is_self', false)->whereRaw('lower(email) = ?', [$email])->orderBy('id')->first() : null;
 
-        return $known ?? Party::create(['kind' => PartyKind::Person, 'name' => trim($payer['name']), 'email' => $email]);
+        return $known ?? new Party(['kind' => PartyKind::Person, 'name' => PayLink::squash($payer['name']), 'email' => $email]);
     }
 }

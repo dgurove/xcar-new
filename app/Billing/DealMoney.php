@@ -99,6 +99,10 @@ final class DealMoney
                 ? new self('Ждём покупателя', (float) $deal->base(), 'plain', 'open', mb_strtolower($label))
                 : new self('Укажите покупателя', (float) $deal->base(), 'urgent', 'open', $label);
         }
+        // Подбор оплачен разовой ссылкой целиком (09.10.2026): своего счёта у сделки нет и не будет.
+        if ($issued->isEmpty() && $deal->coveredByCredit()) {
+            return new self('Подбор оплачен по ссылке', $deal->credited(), 'open', 'closed', $label);
+        }
         if ($issued->isEmpty()) {
             return $deal->state === DealState::Done
                 ? new self('Сделка закрыта', (float) $deal->base(), 'muted', 'closed', $label)

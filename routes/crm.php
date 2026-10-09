@@ -212,6 +212,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/money/managers', [MoneyController::class, 'managers']); // бывшие «Расчёты с менеджерами» — редирект
         // Разовая оплата услуг по ссылке без сделки — только админ (05.10.2026).
         Route::post('/work/money/service', [MoneyController::class, 'service'])->middleware('ability:isAdmin');
+        Route::get('/work/money/cars', [MoneyController::class, 'cars'])->middleware('ability:isAdmin');
+        Route::get('/work/money/links/existing', [MoneyController::class, 'existing'])->middleware('ability:isAdmin');
+        Route::put('/work/money/links/{link}/car', [PayLinkController::class, 'car'])->middleware('ability:isAdmin');
         Route::post('/work/payments/{payment}/confirm', [MoneyController::class, 'confirm']);
         Route::post('/work/payments/{payment}/reject', [MoneyController::class, 'reject']);
         Route::post('/work/money/invoices/{invoice}/links', [PayLinkController::class, 'store']);

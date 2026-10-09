@@ -33,7 +33,9 @@ export default class extends Controller {
 
     search() {
         clearTimeout(this.timer);
+        const had = this.hiddenTarget.value !== '';
         this.hiddenTarget.value = '';
+        if (had) this.hiddenTarget.dispatchEvent(new Event('change', { bubbles: true }));
         this.timer = setTimeout(() => this.load(), 150);
     }
 
@@ -65,7 +67,14 @@ export default class extends Controller {
         b.type = 'button';
         // Длинная подсказка (район и регион у места) — строкой под названием; короткая (русское имя марки) — справа.
         b.className = 'combobox-option' + (isCreate ? ' combobox-create' : '') + (hint && hint.length > 16 ? ' combobox-option-stack' : '');
-        b.innerHTML = `<span>${label}</span>` + (hint ? `<span class="text-ink-muted text-sm">${hint}</span>` : '');
+        // Подписи — данные (марка, имя, номер): текстом, не разметкой.
+        const name = document.createElement('span');
+        name.textContent = label;
+        b.append(name);
+        if (hint) {
+            const sub = Object.assign(document.createElement('span'), { className: 'text-ink-muted text-sm', textContent: hint });
+            b.append(sub);
+        }
         b.addEventListener('click', onPick);
         return b;
     }
@@ -75,6 +84,8 @@ export default class extends Controller {
         this.hiddenTarget.value = item.id;
         this.close();
         this.hiddenTarget.dispatchEvent(new Event('change', { bubbles: true }));
+        // Выбор целиком (подсказки ответа — плательщик ТС и прочее) — тем, кто рядом слушает.
+        this.element.dispatchEvent(new CustomEvent('combobox:chosen', { detail: item, bubbles: true }));
         if (this.resetsValue) document.querySelector(this.resetsValue)?.dispatchEvent(new CustomEvent('combobox:reset'));
     }
 

@@ -7,6 +7,7 @@ use App\Billing\Acquiring\PayLinkState;
 use App\Garage\Car as GarageCar;
 use App\Offers\Deal;
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
 use App\Park\City;
 use App\Park\Vehicle;
 use App\Support\Demo\HidesDemo;
@@ -30,7 +31,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * без своей ТС: машины — строками хранения со своим `vehicle_id`, долг машины — её доля (`Ledger::shareOf`).
  */
 #[Fillable(['seller', 'park', 'direction', 'year', 'number', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
-    'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by'])]
+    'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id'])]
 class Invoice extends Model implements HasMedia
 {
     use HidesDemo;
@@ -120,6 +121,28 @@ class Invoice extends Model implements HasMedia
     public function offer(): BelongsTo
     {
         return $this->belongsTo(Offer::class);
+    }
+
+    /** Сделка, в которую засчитана разовая оплата (ручная ссылка с машиной), — не сделка счёта. */
+    public function creditDeal(): BelongsTo
+    {
+        return $this->belongsTo(Deal::class, 'credit_deal_id');
+    }
+
+    /** Машина счёта: своя у разовой оплаты, сделки или гаража. */
+    public function carOffer(): ?Offer
+    {
+        return $this->offer ?? $this->deal?->offer ?? ($this->relationLoaded('garageCar') ? $this->garageCar : GarageCar::ofInvoice($this))?->offer;
+    }
+
+    /** Машина словами для ссылки и строк: «Toyota Camry, № 2610041229», у ТС не из системы — как вписали. */
+    public function carLine(): ?string
+    {
+        if ($offer = $this->carOffer()) {
+            return $offer->title().(OfferNumber::isPublic($offer) ? ', № '.$offer->number : '');
+        }
+
+        return $this->car_title ?: null;
     }
 
     public function creator(): BelongsTo

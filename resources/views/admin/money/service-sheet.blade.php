@@ -2,7 +2,9 @@
      телефоне безумно неудобное» — сумма первой и с клавиатурой сразу, чипы услуг одной строкой вбок (выбранный и уходит в чек), поля строками
      (.fields), кнопка липнет к низу листа над клавиатурой. «За что» — услуга в чек (ServiceTitle: конкретная услуга,
      займов, возвратов и денег за машину ссылкой не принимаем), плательщик из заведённых или новый. Выставляет счёт
-     ПРАЙМ, ссылка заводится сама, после — карточка счёта со ссылкой («Скопировать», «Отправить»). --}}
+     ПРАЙМ, ссылка заводится сама, после — карточка ссылки с открытой шторкой («Скопировать», «Отправить»).
+     09.10.2026 владелец: ТС по желанию — поиском по машинам системы (оплата засчитается в её сделку) или словами, если её
+     нет; ссылка по этой ТС или этому плательщику уже открыта — «Ссылка уже есть» и «Открыть ссылку» вместо кнопки. --}}
 @php
     use App\Billing\ServiceTitle;
     // Кто уже платил ПРАЙМ (менеджеры, покупатели, прошлые разовые) — а не все контрагенты, включая парковку.
@@ -13,8 +15,9 @@
 @endphp
 <div data-controller="sheet" class="contents">
     <button type="button" class="btn btn-s btn-accent rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span>Взять ссылку на оплату</span></button>
-    <x-ui.sheet id="service-pay" title="Ссылка на оплату" :open="$errors->hasAny(['amount', 'title', 'party_id', 'party_name', 'party_email'])">
-        <form method="post" action="/work/money/service" class="flex flex-col gap-4" data-controller="reveal">
+    <x-ui.sheet id="service-pay" title="Ссылка на оплату" :open="$errors->hasAny(['amount', 'title', 'party_id', 'party_name', 'party_email', 'offer_id', 'car_title'])">
+        <form method="post" action="/work/money/service" class="flex flex-col gap-4" data-controller="reveal pay-existing" data-pay-existing-url-value="/work/money/links/existing"
+              data-action="input->pay-existing#changed change->pay-existing#changed combobox:chosen->pay-existing#chosen">
             @csrf
             <label class="flex flex-col items-center gap-1">
                 <span class="flex items-baseline justify-center gap-2">
@@ -33,6 +36,7 @@
                 </div>
                 @error('title')<div class="text-sm text-danger">{{ $message }}</div>@enderror
                 <div class="fields">
+                    <x-ui.combobox name="offer_id" text-name="car_title" label="ТС" url="/work/money/cars" placeholder="Марка, модель или номер"/>
                     <x-ui.field name="party_id" label="Кто платит" :options="$parties->all()" :value="$partyId" data-action="change->reveal#pick"/>
                     <div class="contents" data-reveal-target="pane" data-reveal-key="new" @if ($partyId !== 'new') hidden @endif>
                         <x-ui.field name="party_name" label="Имя" placeholder="ФИО или название"/>
@@ -40,7 +44,10 @@
                     </div>
                 </div>
             </div>
-            <div class="sheet-foot"><x-ui.button block>Получить ссылку</x-ui.button></div>
+            <div class="sheet-foot flex flex-col gap-3">
+                <div data-pay-existing-target="box"></div>
+                <div data-pay-existing-target="submit"><x-ui.button block>Получить ссылку</x-ui.button></div>
+            </div>
         </form>
     </x-ui.sheet>
 </div>

@@ -55,7 +55,7 @@ final class CreatePayLink
             $link = PayLink::create([
                 'code' => PayLink::freshCode(), 'invoice_id' => $invoice->id, 'amount' => $amount, 'payer_kind' => $kind,
                 'payer_user_id' => $kind === PayerKind::Buyer ? $payer?->id : null, 'payer_name' => $name, 'payer_phone' => null, 'payer_email' => $email,
-                'state' => PayLinkState::Open, 'created_by' => $by->id,
+                'state' => PayLinkState::Open, 'created_by' => $by->id, 'auto' => $auto,
             ]);
             if ($auto) {
                 return $link;

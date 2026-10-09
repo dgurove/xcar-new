@@ -12,11 +12,13 @@
      второй суммы (она строкой выше; другая — словами «на N ₽»): «Ссылка на оплату», под ней кто платит и что с ней,
      справа круглые «Скопировать» и «Отправить»; нажатие — та же шторка с QR (05.10.2026, владелец про карточку на три
      строки текста и две кнопки во всю ширину). --}}
-@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null, 'compact' => false])
+@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null, 'compact' => false, 'link' => null])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayMethod;
     $i = $invoice;
-    $link = $i->openLink();
+    // Карточка ссылки в «Оплатах» передаёт её саму: оплаченная и отменённая тоже рисуются, без «Новой ссылки».
+    $link ??= $i->openLink();
+    $live = $link?->isOpen();
     $payable = ! $link && \App\Billing\Acquiring\PayLink::eligible($i) && $i->remaining() - $i->claimed() > 0;
     $base = $staff ? '/work/money' : '/account/money';
     $create ??= $base.'/invoices/'.$i->id.'/links';
@@ -31,9 +33,8 @@
         $self = ! $staff && $viewer && (
             ($link->payer_kind === \App\Billing\Acquiring\PayerKind::Self && $viewer->id === $link->created_by)
             || ($link->payer_kind === \App\Billing\Acquiring\PayerKind::Other && $viewer->party_id && $i->party_id === $viewer->party_id && in_array($link->payer_name, [null, '', $i->party->name], true)));
-        $pays = $self ? 'платите вы' : 'платит '.($link->payer_name ?: $i->party->name);
-        $offer = $i->deal?->offer ?? \App\Garage\Car::ofInvoice($i)?->offer;
-        $text = 'Оплата по счёту '.$i->label().($offer ? ' за '.$offer->titleWithYear() : '').': '.Money::exact($link->amount).'. Картой, СБП или SberPay по ссылке:';
+        $pays = $self ? 'платите вы' : 'платит '.$link->payerName();
+        $text = $link->message();
     }
 @endphp
 @if ($link)
@@ -41,7 +42,7 @@
         @if ($compact)
             @php $other = abs($link->amount - ($i->remaining() - $i->claimed())) >= 0.01; @endphp
             <div class="row pay-link" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по счёту {{ $i->label() }}">
-                <input type="hidden" value="{{ $text }}" data-copy-target="message">
+                <textarea hidden data-copy-target="message">{{ $text }}</textarea>
                 <button type="button" class="min-w-0 flex-1 text-left" data-action="sheet#open">
                     <span class="block">Ссылка на оплату@if ($other) <span class="nums">на {{ Money::rub($link->amount) }}</span>@endif</span>
                     <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $pays }}, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</span>
@@ -60,12 +61,14 @@
             </span>
             @if ($other)<span class="nums shrink-0 text-urgent">{{ Money::rub($link->amount) }}</span>@endif
         </button>
+        @if ($live)
         <div class="row pay-url" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по счёту {{ $i->label() }}">
-            <input type="hidden" value="{{ $text }}" data-copy-target="message">
+            <textarea hidden data-copy-target="message">{{ $text }}</textarea>
             <button type="button" class="pay-url-text" data-action="copy#copy" title="Скопировать">{{ $link->shortUrl() }}</button>
             <button type="button" class="btn btn-s btn-quiet" data-action="copy#copy"><x-ui.icon name="copy" class="size-4"/>Скопировать</button>
             <button type="button" class="btn btn-s btn-accent" data-action="copy#share" data-copy-target="share"><x-ui.icon name="share" class="size-4"/>Отправить</button>
         </div>
+        @endif
         @endif
         <x-ui.sheet :id="'link-'.$link->id" title="Оплата по ссылке" :open="session('open-link') === $link->id">
             <div class="flex flex-col gap-4">
@@ -74,23 +77,13 @@
                     <span class="text-ink-muted">{{ $pays }}@if ($link->payer_email), чек на {{ $link->payer_email }}@endif</span>
                 </div>
                 <div class="mx-auto w-52 rounded-(--radius-l) bg-white p-3 text-black">{!! \App\Support\Qr::svg($link->url()) !!}</div>
-                <x-ui.copy-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :message="$text"/>
-                @if ($link->attempts->isNotEmpty())
-                    <section>
-                        <div class="list-cap">Плательщик открывал оплату</div>
-                        <div class="list">
-                            @foreach ($link->attempts->reverse()->take(5) as $a)
-                                @php [$aText, $aTone] = match (true) { $a->succeeded() => ['оплачено', 'open'], $a->isPending() => ['не завершил', 'urgent'], $a->cancel_reason === 'expired_on_confirmation' => ['бросил', 'muted'], default => [$a->cancelLabel() ?? 'отклонено', 'danger'] }; @endphp
-                                <x-money.line :icon="PayMethod::icon($a->method)" :title="$a->created_at->translatedFormat('j M, H:i')" :sub="$a->method ? PayMethod::label($a->method) : null" :tone="$aTone">
-                                    <x-slot:acts><x-ui.state :tone="$aTone">{{ $aText }}</x-ui.state></x-slot:acts>
-                                </x-money.line>
-                            @endforeach
-                        </div>
-                    </section>
-                @endif
+                <x-ui.copy-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :message="$text" :rows="5"/>
+                <x-billing.link-attempts :link="$link"/>
+                @if ($live)
                 <details class="list">
                     <summary class="row cursor-pointer"><span class="min-w-0 flex-1">Другая сумма</span><x-ui.chevron/></summary>
-                    <form method="post" action="{{ $create }}" class="flex flex-col gap-3 p-4">
+                    {{-- Ручная перевыставляется новым счётом (`ReissueServiceInvoice`) — карточка открывается уже на новой ссылке. --}}
+                    <form method="post" action="{{ $create }}" class="flex flex-col gap-3 p-4" @if ($staff && $i->isService()) data-turbo-frame="_top" @endif>
                         @csrf
                         <label class="flex items-baseline justify-center gap-2">
                             <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Сумма, ₽" placeholder="0"
@@ -105,6 +98,7 @@
                     @csrf @method('delete')
                     <x-ui.button variant="ghost" block class="text-ink-muted">Отменить ссылку</x-ui.button>
                 </form>
+                @endif
             </div>
         </x-ui.sheet>
     </div>

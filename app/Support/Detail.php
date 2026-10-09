@@ -93,12 +93,12 @@ final class Detail
         return $path.($query ? '?'.http_build_query($query) : '');
     }
 
-    /** Ссылка строки: список с этой карточкой. */
-    public static function url(string|int $key): string
+    /** Ссылка строки: список с этой карточкой; `$with` — что ещё поставить в адрес (вкладка, чьи ключи у строки). */
+    public static function url(string|int $key, array $with = []): string
     {
         [, $query] = self::context();
 
-        return self::to(['peek' => (string) $key] + array_diff_key($query, ['peek' => 1]));
+        return self::to(['peek' => (string) $key] + $with + array_diff_key($query, ['peek' => 1] + $with));
     }
 
     /** «Закрыть» — тот же список без карточки. */

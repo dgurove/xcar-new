@@ -1,5 +1,5 @@
-{{-- Вкладка «Оплат» видом «Строками» (`x-money.feed-row`; по умолчанию — таблица `admin/money/tab-table`): links — «Ждём»
-     (что со ссылкой) и «Оплачено»; owed — «Проверить» (менеджер пишет, что оплатил), «Ждём» и «Оплачено»; payouts —
+{{-- Вкладка «Оплат» видом «Строками» (`x-money.feed-row`; по умолчанию — таблица `admin/money/tab-table`; «По ссылкам» —
+     свои `admin/money/links`): owed — «Проверить» (менеджер пишет, что оплатил), «Ждём» и «Оплачено»; payouts —
      «Выплатить» и «Выплачено». Фразы — `MoneyRows`, пустая группа не рисуется. titled — лупа: вкладки подряд под
      своими названиями. --}}
 @php
@@ -16,7 +16,7 @@
         <div class="list">
             @foreach ($s['claims'] as $p)
                 @php $i = $p->invoice; @endphp
-                <x-money.feed-row :key="$i->id" :title="R::who($i).' пишет, что '.($p->source === PaymentSource::Cash ? 'отдал наличные' : 'оплатил')" :amount="Money::rub($p->amount)" action="Проверить">
+                <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::who($i).' пишет, что '.($p->source === PaymentSource::Cash ? 'отдал наличные' : 'оплатил')" :amount="Money::rub($p->amount)" action="Проверить">
                     @if (R::what($i))<span>{{ R::what($i) }}</span>@endif
                     <span class="text-urgent">сообщил {{ $p->paid_at->translatedFormat('j M') }}</span>
                 </x-money.feed-row>
@@ -30,23 +30,19 @@
             @foreach ($s['open'] as $i)
                 @php $due = R::due($i); @endphp
                 @if ($key === 'payouts')
-                    <x-money.feed-row :key="$i->id" :title="R::who($i).', вознаграждение'" :amount="Money::rub($i->remaining())" action="Выплатить">
+                    <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::who($i).', вознаграждение'" :amount="Money::rub($i->remaining())" action="Выплатить">
                         @if (R::what($i))<span>{{ R::what($i) }}</span>@endif
                         @if ($due)<span class="{{ $due[1] }}">{{ $due[0] }}</span>@endif
                         @unless ($i->party->payoutReady())<span class="text-danger">реквизитов нет</span>@endunless
                     </x-money.feed-row>
                 @else
-                    <x-money.feed-row :key="$i->id" :title="R::line($i)" :amount="Money::rub($i->remaining())">
+                    <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::line($i)" :amount="Money::rub($i->remaining())">
                         @if ($m = R::via($i))<x-ui.person :user="$m"/>@endif
-                        @if ($key === 'links')
-                            <span class="nums">взяли {{ $i->created_at->translatedFormat('j M, H:i') }}</span>
-                        @else
-                            <span>счёт {{ $i->label() }}</span>
-                            @if ($due)<span class="{{ $due[1] }}">{{ $due[0] }}</span>@endif
-                        @endif
+                        <span>счёт {{ $i->label() }}</span>
+                        @if ($due)<span class="{{ $due[1] }}">{{ $due[0] }}</span>@endif
                         @if ($i->isPartial())<span>оплачено {{ Money::rub($i->total - $i->remaining()) }} из {{ Money::rub($i->total) }}</span>@endif
                         {{-- У счёта сделки ссылка не новость: о ней — только если пытались и не вышло. --}}
-                        @if (($key === 'links' || $s['tried']->contains($i->id)) && ($l = R::link($i)))<span class="{{ $l[1] }}">{{ $l[0] }}</span>@endif
+                        @if ($s['tried']->contains($i->id) && ($l = R::link($i)))<span class="{{ $l[1] }}">{{ $l[0] }}</span>@endif
                     </x-money.feed-row>
                 @endif
             @endforeach
@@ -58,12 +54,12 @@
         <div class="list">
             @foreach ($paidItems as $i)
                 @if ($key === 'payouts')
-                    <x-money.feed-row :key="$i->id" :title="R::who($i).', вознаграждение'" :amount="Money::rub($i->total)">
+                    <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::who($i).', вознаграждение'" :amount="Money::rub($i->total)">
                         @if (R::what($i))<span>{{ R::what($i) }}</span>@endif
                         @if ($h = R::paidOut($i))<span>{{ $h }}</span>@endif
                     </x-money.feed-row>
                 @else
-                    <x-money.feed-row :key="$i->id" :title="R::line($i)" :amount="Money::rub($i->total)" tone="text-open">
+                    <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::line($i)" :amount="Money::rub($i->total)" tone="text-open">
                         @if ($m = R::via($i))<x-ui.person :user="$m"/>@endif
                         @if ($h = R::how($i, $attempts))<span>{{ $h }}</span>@endif
                     </x-money.feed-row>

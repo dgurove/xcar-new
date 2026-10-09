@@ -3,6 +3,9 @@
 namespace App\Http\Admin;
 
 use App\Billing\Acquiring\AcquiringPayment;
+use App\Billing\Acquiring\ExistingLink;
+use App\Billing\Acquiring\LinkExists;
+use App\Billing\Acquiring\PayLink;
 use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Actions\ConfirmPayment;
@@ -19,6 +22,7 @@ use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
+use App\Offers\Offer;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
@@ -36,7 +40,8 @@ use Illuminate\Validation\Rule;
 /**
  * «Оплаты» в CRM — три вкладки по трём вопросам начальника (07.10.2026, владелец: «начальник не догадается вниз
  * пролистать»; до того 06.10 — лента «Надо сделать / Ждём деньги / История»):
- * - «По ссылкам» — разовые оплаты, что мы взяли кнопкой «Взять ссылку на оплату»: ждём (что со ссылкой) и оплачено;
+ * - «По ссылкам» — все ссылки на оплату одним списком (09.10.2026, `MoneyLinks`): сделок, гаража, взятые менеджером и
+ *   кнопкой «Взять ссылку на оплату», свежие сверху; карточка — сама ссылка (`?tab=links&peek={ссылка}`);
  * - «Нам должны» — счета менеджерам и их покупателям по сделкам и гаражу: пишет, что оплатил; ждём; оплачено;
  * - «Мы должны» — вознаграждения менеджерам: выплатить и выплачено.
  * Выписки СберБизнеса здесь нет — она в Настройки → Банк. Чип менеджера — на двух последних (один выбран — его расчёт
@@ -52,8 +57,7 @@ class MoneyController
      */
     public static function sorts(string $tab): array
     {
-        return ['auto' => ['Срочное', 'desc'], 'created' => ['Создано', 'desc']]
-            + ($tab === 'links' ? [] : ['due' => ['Срок', 'asc']])
+        return ['auto' => ['Срочное', 'desc'], 'created' => ['Создано', 'desc'], 'due' => ['Срок', 'asc']]
             + ($tab === 'owed' ? ['number' => ['Счёт', 'asc']] : [])
             + ['payer' => [$tab === 'payouts' ? 'Менеджер' : 'Плательщик', 'asc'], 'amount' => ['Сумма', 'desc']];
     }
@@ -65,41 +69,47 @@ class MoneyController
 
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($invoice = Invoice::find($key)) ? $this->detail($invoice) : null);
+        // Ключ карточки на «По ссылкам» — ссылка; прочее — счёт, у разовой оплаты — её последняя ссылка (старые адреса).
+        $detail = Detail::of($request, fn (string $key) => $request->query('tab') === 'links'
+            ? (($link = PayLink::find($key)) ? $this->link($link) : null)
+            : (($invoice = Invoice::find($key)) ? (($invoice->isService() && ($link = $invoice->payLinks()->reorder()->latest('id')->first())) ? $this->link($link) : $this->detail($invoice)) : null));
         if ($detail->framed()) {
             return $detail->response();
         }
-        $facets = Facets::for($request, 'crm-money', Common::manager(self::MANAGER));
-        ListPrefs::sync($request, 'crm-money', keep: $facets->keys());
-        // Варианты чипа — менеджеры счетов двух вкладок с менеджером («Нам должны», «Мы должны»).
-        $facets->apply(Invoice::crmMoney()->where(fn ($w) => $w->where(fn ($x) => $x->where('direction', 'issued')->whereNot(self::oneOff()))
-            ->orWhere(fn ($x) => $x->where('direction', 'owed')->where('kind', ChargeKind::AgentFee))));
         $tab = array_key_exists((string) $request->query('tab'), self::TABS) ? (string) $request->query('tab') : 'links';
+        $facets = Facets::for($request, 'crm-money', Common::manager(self::MANAGER));
+        $links = MoneyLinks::facets($request);
+        ListPrefs::sync($request, 'crm-money', keep: $tab === 'links' ? $links->keys() : $facets->keys());
+        // Варианты чипа — менеджеры счетов двух вкладок с менеджером («Нам должны», «Мы должны»). На «По ссылкам» свои
+        // чипы (`MoneyLinks::facets`): «сколько будет» из их шторки отвечает там.
+        $tab === 'links' || $facets->apply(Invoice::crmMoney()->where(fn ($w) => $w->where(fn ($x) => $x->where('direction', 'issued')->whereNot(self::oneOff()))
+            ->orWhere(fn ($x) => $x->where('direction', 'owed')->where('kind', ChargeKind::AgentFee))));
         $qs = trim((string) $request->query('q'));
         $find = self::find($qs);
         // Лупа — по всем трём вкладкам сразу (мимо пилюли), без страниц у оплаченного.
         $tabs = $qs === '' ? [$tab] : array_keys(self::TABS);
-        $sort = fn (string $t) => Sort::from($request->query('sort'), self::sorts($t), '-auto');
-        $sections = collect($tabs)->mapWithKeys(fn ($t) => [$t => $this->section($t, $facets, $find, $qs === '', $sort($t))])->all();
-        $paid = collect($sections)->flatMap(fn ($s) => $s['paid'] instanceof Collection ? $s['paid'] : $s['paid']->items())->flatMap(fn ($i) => $i->payments->pluck('id'));
+        $sort = fn (string $t) => $t === 'links' ? Sort::from($request->query('sort'), MoneyLinks::sorts(), '-created') : Sort::from($request->query('sort'), self::sorts($t), '-auto');
+        $sections = collect($tabs)->mapWithKeys(fn ($t) => [$t => $t === 'links'
+            ? ['links' => MoneyLinks::list($links, MoneyLinks::find($qs), $sort($t), $qs === '')]
+            : $this->section($t, $facets, $find, $qs === '', $sort($t))])->all();
+        $paid = collect($sections)->except('links')->flatMap(fn ($s) => $s['paid'] instanceof Collection ? $s['paid'] : $s['paid']->items())->flatMap(fn ($i) => $i->payments->pluck('id'));
 
         // Выбран один менеджер — его расчёт строкой сверху (бывший экран «Расчёты с менеджерами»).
         $picked = $qs === '' && $tab !== 'links' && count($ids = $facets->selected('manager')) === 1 ? User::find((int) $ids[0]) : null;
 
         return view('admin.money.index', [
-            'detail' => $detail, 'facets' => $facets, 'q' => $qs, 'tab' => $tab, 'sections' => $sections, 'sort' => $sort($tab),
+            'detail' => $detail, 'facets' => $tab === 'links' ? $links : $facets, 'q' => $qs, 'tab' => $tab, 'sections' => $sections, 'sort' => $sort($tab),
             'counts' => self::counts($facets), 'attempts' => AcquiringPayment::whereIn('payment_id', $paid)->get()->keyBy('payment_id'),
             'manager' => $picked ? ['user' => $picked, 'position' => (new ManagerLedger($picked, staff: true))->position()] : null,
         ]);
     }
 
-    /** Счета вкладки: разовые по ссылке, нам по сделкам и гаражу (с чипом менеджера), выплаты менеджерам (с чипом). */
+    /** Счета вкладки: нам по сделкам и гаражу (с чипом менеджера), выплаты менеджерам (с чипом). «По ссылкам» — `MoneyLinks`. */
     private static function of(string $tab, ?Facets $facets = null)
     {
         $q = Invoice::crmMoney();
 
         return match ($tab) {
-            'links' => $q->where('direction', 'issued')->where(self::oneOff()),
             'owed' => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')->whereNot(self::oneOff()),
             default => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'owed')->where('kind', ChargeKind::AgentFee),
         };
@@ -127,7 +137,7 @@ class MoneyController
         $open = $q()->where('state', InvoiceState::Issued)->with('payLinks.attempts')
             ->when($tab === 'owed', fn ($w) => $w->whereDoesntHave('claims'))
             ->when($auto && $tried->isNotEmpty(), fn ($w) => $w->orderByRaw('billing_invoices.id in ('.$tried->map(fn ($id) => (int) $id)->implode(',').') desc'))
-            ->when($auto, fn ($w) => $tab === 'links' ? $w->orderByDesc('billing_invoices.created_at') : $w->orderByRaw('due_at asc nulls last'), fn ($w) => self::order($w, $sort, open: true))
+            ->when($auto, fn ($w) => $w->orderByRaw('due_at asc nulls last'), fn ($w) => self::order($w, $sort, open: true))
             ->orderBy('billing_invoices.id')->get();
         $last = Payment::select('paid_at')->whereColumn('invoice_id', 'billing_invoices.id')->where('state', PaymentState::Confirmed)->whereNull('voided_at')->latest('paid_at')->limit(1);
         $paid = $q()->where('state', InvoiceState::Paid)->when($auto, fn ($w) => $w->orderByDesc($last), fn ($w) => self::order($w, $sort, open: false))->orderByDesc('billing_invoices.id');
@@ -156,9 +166,9 @@ class MoneyController
         $open = fn (string $t) => self::of($t, $facets)->where('state', InvoiceState::Issued);
 
         return [
-            'counts' => ['links' => $open('links')->count(), 'owed' => $open('owed')->count(), 'payouts' => $n = $open('payouts')->count()],
+            'counts' => ['links' => MoneyLinks::openCount(), 'owed' => $open('owed')->count(), 'payouts' => $n = $open('payouts')->count()],
             'tones' => array_filter([
-                'links' => self::tried($open('links'))->exists() ? 'pill-urgent' : '',
+                'links' => MoneyLinks::tried() ? 'pill-urgent' : '',
                 'owed' => self::tried($open('owed'))->exists() || $open('owed')->whereHas('claims')->exists() ? 'pill-urgent' : '',
                 'payouts' => $n ? 'pill-urgent' : '',
             ]),
@@ -168,9 +178,17 @@ class MoneyController
     /** Адрес счёта в «Оплатах» — на своей вкладке, с карточкой (уведомления, Telegram). */
     public static function url(Invoice $i): string
     {
-        $tab = $i->isService() ? null : ($i->isOwed() ? 'payouts' : 'owed');
+        if ($i->isService() && ($link = $i->payLinks()->reorder()->latest('id')->first())) {
+            return self::linkUrl($link);
+        }
 
-        return '/work/money?'.($tab ? 'tab='.$tab.'&' : '').'peek='.$i->id;
+        return '/work/money?tab='.($i->isOwed() ? 'payouts' : 'owed').'&peek='.$i->id;
+    }
+
+    /** Ссылка на оплату в «Оплатах» — её карточка на «По ссылкам». */
+    public static function linkUrl(PayLink $link): string
+    {
+        return '/work/money?tab=links&peek='.$link->id;
     }
 
     /** Лупа по счёту: номер счёта или предложения, плательщик, менеджер, марка, модель, текст услуги. */
@@ -237,14 +255,59 @@ class MoneyController
             'party_id' => ['required', Rule::when(fn () => $request->input('party_id') !== 'new', ['exists:billing_parties,id'])],
             'party_name' => ['required_if:party_id,new', 'nullable', 'string', 'max:200'],
             'party_email' => ['nullable', 'email', 'max:120'],
+            'offer_id' => ['nullable', 'integer', 'exists:offers,id'], 'car_title' => ['nullable', 'string', 'max:160'],
         ], ['amount.required' => 'Сколько платят', 'title.required' => 'Назовите услугу', 'party_name.required_if' => 'Кто платит',
             'party_email.email' => 'Проверьте почту']);
         $payer = $data['party_id'] === 'new'
             ? ['name' => $data['party_name'], 'email' => $data['party_email'] ?? null]
             : Party::where('is_self', false)->findOrFail($data['party_id']);
-        $invoice = $issue($payer, $request->user(), (float) $data['amount'], $data['title']);
+        $offer = ! empty($data['offer_id']) ? Offer::find($data['offer_id']) : null;
+        try {
+            $invoice = $issue($payer, $request->user(), (float) $data['amount'], $data['title'], $offer, $data['car_title'] ?? null);
+        } catch (LinkExists $e) {
+            return redirect(self::linkUrl($e->link))->with('toast', 'Ссылка уже есть');
+        }
+        $link = $invoice->openLink();
 
-        return redirect('/work/money?peek='.$invoice->id)->with('toast', 'Счёт '.$invoice->label().' выставлен, ссылка готова');
+        return redirect($link ? self::linkUrl($link) : self::url($invoice))->with(['toast' => 'Ссылка готова'] + ($link ? ['open-link' => $link->id] : []));
+    }
+
+    /**
+     * ТС для ручной ссылки — поиск по машинам системы (`x-ui.combobox`): номер, ДЛ, VIN, марка, модель; сначала со
+     * сделкой, потом свежие. Подсказка — номер и чья сделка: по ней ссылку и засчитают.
+     */
+    public function cars(Request $request)
+    {
+        $q = trim((string) $request->query('q'));
+        $offers = Offer::query()->with(['brand', 'model', 'deal.buyer'])
+            ->when($q !== '', fn ($o) => $o->searchCrm($q), fn ($o) => $o->whereHas('deal'))
+            ->orderByRaw('exists (select 1 from deals d where d.offer_id = offers.id and d.state = ?) desc', [\App\Offers\DealState::Active->value])
+            ->latest('updated_at')->limit(20)->get();
+
+        return response()->json($offers->map(fn (Offer $o) => [
+            'id' => $o->id,
+            'label' => trim($o->title().' '.$o->year),
+            'hint' => implode(', ', array_filter([\App\Offers\OfferNumber::isPublic($o) ? '№ '.$o->number : null, $o->deal ? 'сделка, '.$o->deal->buyer?->shortName() : null])),
+            'payer' => $o->deal?->buyer?->name, 'party_id' => $o->deal?->buyer?->party_id,
+        ])->values());
+    }
+
+    /** «Ссылка уже есть» в форме, до отправки: по выбранной ТС или этому плательщику (`ExistingLink`). Нет — пусто. */
+    public function existing(Request $request)
+    {
+        $offer = $request->filled('offer_id') ? Offer::find((int) $request->query('offer_id')) : null;
+        $party = ctype_digit((string) $request->query('party_id')) ? (int) $request->query('party_id') : null;
+        $link = ExistingLink::find($offer, $party, $party ? null : (string) $request->query('party_name'));
+
+        return $link ? view('admin.money.link-exists', ['link' => $link]) : response('');
+    }
+
+    /** Карточка ссылки на «По ссылкам»: кто платит, ТС, откуда, что с ней, QR и текст, попытки, счёт. */
+    public function link(PayLink $link)
+    {
+        $link->load(MoneyLinks::WITH);
+
+        return view('admin.money.link', ['link' => $link, 'invoice' => $link->invoice]);
     }
 
     /** Бывший экран «Расчёты с менеджерами»: теперь чип менеджера в «Оплатах» (06.10.2026), адрес жив для закладок. */
