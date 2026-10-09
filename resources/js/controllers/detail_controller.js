@@ -333,8 +333,18 @@ export default class extends Controller {
         this.frameTarget.reload();
     }
 
-    // Адрес карточки строки — от текущего адреса списка (как show).
+    // Адрес карточки строки — ссылка самой строки, если она есть: в ней бывает больше ключа (вкладка «По ссылкам» —
+    // `tab=links`, ключи ссылок и счетов там свои; без неё карточка открывалась и тут же закрывалась, 09.10.2026). Нет
+    // ссылки — от текущего адреса списка (как show).
     urlFor(row) {
+        const link = row.matches('a[data-detail-link]') ? row : row.querySelector('a[data-detail-link]');
+        if (link?.href) {
+            const own = new URL(link.href, location.href);
+            own.searchParams.delete('q');
+            own.searchParams.delete('page');
+            own.searchParams.set('peek', row.dataset.detailKey);
+            return own;
+        }
         const url = new URL(location.href);
         url.searchParams.delete('q');
         url.searchParams.delete('page');
@@ -455,7 +465,8 @@ export default class extends Controller {
             + `<button type="button" class="bar-btn" data-action="detail#next" aria-label="Следующая">${icon('m6 9 6 6 6-6')}</button>`
             + '<span class="detail-count nums mr-auto" data-detail-target="count"></span>'
             + `<button type="button" class="bar-btn" data-action="detail#close" aria-label="Закрыть">${icon('M18 6 6 18M6 6l12 12')}</button></div>`
-            + `<div class="detail-body"><div class="blank-strip">${bars(4, 'blank-tile')}</div>`
+            // Список без кадров у строк («Оплаты») — заготовка без ленты плиток.
+            + `<div class="detail-body">${row.closest('[data-detail-shape="plain"]') ? '' : `<div class="blank-strip">${bars(4, 'blank-tile')}</div>`}`
             + `<div class="detail-head mt-3"><p class="detail-blank-title"></p><div class="detail-marks blank-marks">${bars(3, 'blank-mark')}</div></div>`
             + `<div class="blank-acts">${bars(2, 'blank-act')}</div><div class="blank-list">${rows}</div></div>`;
         const text = (el) => el?.textContent.trim().split('\n')[0].trim() ?? '';

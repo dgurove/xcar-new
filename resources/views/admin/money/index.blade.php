@@ -22,7 +22,7 @@
             </x-slot:actions>
         @endif
     </x-ui.toolbar>
-    <div id="money-feed">
+    <div id="money-feed" data-detail-shape="plain">
         @if ($manager)
             <div class="list mt-4"><x-money.manager-row :user="$manager['user']" :position="$manager['position']"/></div>
         @endif

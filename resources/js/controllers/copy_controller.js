@@ -10,7 +10,11 @@ export default class extends Controller {
     static values = { text: String, title: String, done: String };
 
     connect() {
-        if (this.hasShareTarget && !navigator.share) this.shareTarget.hidden = true;
+        // Системного листа нет (ПК) — «Отправить» прячется, главной становится кнопка с data-copy-fallback.
+        if (this.hasShareTarget && !navigator.share) {
+            this.shareTarget.hidden = true;
+            this.element.querySelector('[data-copy-fallback]')?.classList.replace('btn-quiet', 'btn-accent');
+        }
         this.sync();
         // Перечитка страницы морфом возвращает кнопке вид с сервера, контроллер при этом не переподключается.
         this.onMorph = () => this.sync();
