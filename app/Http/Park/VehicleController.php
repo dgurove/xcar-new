@@ -44,6 +44,7 @@ use App\Park\Doc;
 use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\EventType;
+use App\Park\OutMoney;
 use App\Park\PhotoStage;
 use App\Park\RequestType;
 use App\Park\Vehicle;
@@ -55,6 +56,7 @@ use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
+use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Sort;
@@ -62,6 +64,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -71,10 +74,11 @@ class VehicleController
     public const SORTS = ['days' => ['Дней на парковке', 'desc'], 'out' => ['Дата выбытия', 'desc'], 'fresh' => ['Дата заведения', 'desc'], 'amount' => ['Начислено', 'desc']];
 
     /**
-     * Пилюли «Наличия»: стоят и выбыли (09.10.2026 — у Питера таблица приёмов и выбытий, сверку с вендором ведут по
-     * месяцу выбытия). Выбывшие — группами по месяцу выбытия, свежие сверху.
+     * Пилюли «Наличия»: на парковке и выданы (09.10.2026 — у Питера таблица приёмов и выбытий, сверку с вендором ведут по
+     * месяцу выдачи; владелец: «нет способа посмотреть тачки, которые были выданы»). Выданные — архив дел: группами по
+     * месяцу выдачи, свежие сверху, свои столбцы (`x-park.table-row out`), чипы «Месяц» и «Деньги» (`OutMoney`).
      */
-    public const PRESETS = ['stored' => 'Стоят', 'out' => 'Выбыли'];
+    public const PRESETS = ['stored' => 'На парковке', 'out' => 'Выданы'];
 
     /**
      * «Наличие» — что стоит на парковках сейчас: только stored, пилюли по парковкам.
@@ -115,6 +119,7 @@ class VehicleController
             // выбывшие — под месяцами выбытия.
             'grouped' => count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1,
             'byMonth' => $out && $q === '' && $sort->key === 'out',
+            'out' => $out,
             'q' => $q,
             'view' => ListView::pick($request, $page->total()),
         ];
@@ -514,6 +519,20 @@ class VehicleController
         $noRate = null;
         $facets = null;
 
+        // Выданным — месяц выдачи и деньги вместо «Без ставки» (ставка — дело стоящих).
+        if (self::preset($request) === 'out') {
+            return Facets::for($request, 'park-vehicles',
+                Common::vendor('park_vehicles.vendor_id'),
+                Common::yard('park_vehicles.yard_id'),
+                Common::category('park_vehicles.category', 'Без типа'),
+                Facet::column('month', 'Месяц', ['месяц', 'месяца', 'месяцев'], "to_char(park_vehicles.released_at, 'YYYY-MM')")->natural()
+                    ->labels(fn (array $keys) => collect($keys)->filter(fn ($k) => preg_match('/^\d{4}-\d{2}$/', $k))->sortDesc()
+                        ->mapWithKeys(fn ($k) => [$k => new Option($k, mb_convert_case(Carbon::createFromFormat('!Y-m', $k)->translatedFormat('F Y'), MB_CASE_TITLE))])->all()),
+                Facet::column('money', 'Деньги', ['состояние', 'состояния', 'состояний'], OutMoney::sql())->natural()
+                    ->labels(fn (array $keys) => collect(OutMoney::LABELS)->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()),
+            );
+        }
+
         return $facets = Facets::for($request, 'park-vehicles',
             Common::vendor('park_vehicles.vendor_id'),
             Common::yard('park_vehicles.yard_id'),
@@ -533,10 +552,15 @@ class VehicleController
      *
      * @return array{0: Builder, 1: ?VehicleState, 2: string, 3: Sort}
      */
+    private static function preset(Request $request): string
+    {
+        return array_key_exists((string) $request->query('preset'), self::PRESETS) ? $request->query('preset') : 'stored';
+    }
+
     private function listQuery(Request $request, Facets $facets): array
     {
         $q = trim((string) $request->query('q'));
-        $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? $request->query('preset') : 'stored';
+        $preset = self::preset($request);
         $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q !== '' ? null : ($preset === 'out' ? VehicleState::Released : VehicleState::Stored));
         $like = '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%';
         // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
@@ -544,6 +568,8 @@ class VehicleController
             ->with(['brand', 'model', 'vendor', 'yard', 'offer.deal', 'requests',
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
             ->when($state, fn ($v, $s) => $v->where('state', $s))
+            // Деньги выданной словом — в строке, карточке и выгрузке, тем же выражением, что чип «Деньги».
+            ->when($state === VehicleState::Released, fn ($v) => $v->addSelect(DB::raw(OutMoney::sql().' as money_state')))
             ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
                 ->orWhere('plate', 'like', $like)->orWhereRaw("upper(replace(coalesce(sts, ''), ' ', '')) like ?", [$like])->orWhereRaw("upper(replace(coalesce(pts, ''), ' ', '')) like ?", [$like])
                 ->orWhere('policy_no', 'ilike', '%'.$q.'%')
@@ -566,9 +592,11 @@ class VehicleController
     public function export(Request $request)
     {
         [$vehicles, $state] = $this->listQuery($request, $this->facets($request));
-        $name = 'Наличие '.($state === VehicleState::Released ? 'выбыли ' : '').now()->format('d.m.Y').'.xlsx';
+        $name = ($state === VehicleState::Released ? 'Выданы ' : 'Наличие ').now()->format('d.m.Y').'.xlsx';
+        $vehicles = $vehicles->get();
+        $totals = Accrual::cachedTotals($vehicles);
 
-        return response()->streamDownload(fn () => VehicleExport::write($vehicles->get(), 'php://output'), $name,
+        return response()->streamDownload(fn () => VehicleExport::write($vehicles, 'php://output', $totals), $name,
             ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 

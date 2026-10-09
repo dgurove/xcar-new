@@ -11,6 +11,10 @@
     $state = $vehicle->state;
     $href = '/cars/'.$vehicle->id;
     $scanUrl = $href.'/scan';
+    // Выданная — итог дела: кому и как выдали (событие выдачи), сколько стояла, хранение и деньги словом (OutMoney).
+    $released = $state === VehicleState::Released ? $vehicle->events->firstWhere('type', \App\Park\EventType::Released) : null;
+    $handedTo = $released ? ($vehicle->pickup_name ?: ($released->payload['to'] ?? null)) : null;
+    $money = \App\Park\OutMoney::of($vehicle);
     $gaps = ! $vehicle->brand_id || ! $vehicle->model_id || $vehicle->vinProblem() || ! $vehicle->year || ! $vehicle->color;
 @endphp
 <x-ui.detail>
@@ -27,14 +31,19 @@
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
             @if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
             @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
-            @if ($total && $total['rate'])<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/д</span>@endif
+            @if ($total && $total['rate'] && $state !== VehicleState::Released)<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/д</span>@endif
             <x-park.alerts :vehicle="$vehicle" :skip="$differences ? [\App\Park\Alerts::DOCS] : []"/>
             @if ($vehicle->accepted_at)<span class="tag nums">принята {{ $vehicle->accepted_at->translatedFormat('j M Y') }}</span>@endif
             @if ($state === VehicleState::Released && $vehicle->released_at)<span class="tag nums">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif
+            @if ($state === VehicleState::Released && $vehicle->daysStored() !== null)<span class="tag nums">стояла {{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
+            @if ($handedTo)<span class="tag">{{ $handedTo }}</span>@endif
+            @if ($released && ! empty($released->payload['pass']))<span class="tag">по QR</span>
+            @elseif ($released && ! empty($released->payload['without_qr']))<span class="tag" title="{{ $released->payload['without_qr'] }}">без QR</span>@endif
         </x-slot:marks>
         <x-slot:aside>
             @if ($state === VehicleState::Stored && $vehicle->daysStored() !== null)<span class="nums whitespace-nowrap text-lg font-bold">{{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
-            @if ($total && $total['amount'] > 0)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ \App\Support\Money::rub($total['amount']) }}</span>@endif
+            @if ($total && $total['amount'] > 0)<span @class(['nums whitespace-nowrap', 'text-lg font-bold' => $state === VehicleState::Released, 'text-sm text-ink-dim' => $state !== VehicleState::Released])>{{ \App\Support\Money::rub($total['amount']) }}</span>@endif
+            @if ($money && ($money !== 'unbilled' || ($total['amount'] ?? 0) > 0))<span class="whitespace-nowrap text-sm {{ \App\Park\OutMoney::TONES[$money] }}">{{ mb_strtolower(\App\Park\OutMoney::LABELS[$money]) }}</span>@endif
         </x-slot:aside>
         <x-slot:actions>
             @if ($state === VehicleState::Expected)

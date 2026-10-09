@@ -11,13 +11,14 @@ use Illuminate\Support\Facades\Cache;
  * Готовый HTML строк таблицы «Наличия» (`x-park.table-row`): полторы сотни строк по пять-шесть компонентов в каждой
  * слабый сервер рисовал больше полусекунды. Строка берётся из кэша, пока не поменялось то, из чего она собрана:
  * сама ТС, её заявки и число веток писем (теги «что не так»), прайс («Нет тарифа»), имя и логотип вендора,
- * парковка, сумма, долг, метка «в документе иначе», вид (с парковкой словом или без) и админ ли смотрит (значок связи). Ключ у каждой строки свой: правка одной ТС
+ * парковка, сумма, долг, метка «в документе иначе», вид (с парковкой словом или без, строка выданной — `out` с её деньгами)
+ * и админ ли смотрит (значок связи). Ключ у каждой строки свой: правка одной ТС
  * перерисовывает только её. Все строки — одним чтением кэша.
  */
 final class TableRows
 {
     /** @param  Collection<int, Vehicle>  $vehicles @return array<int, string> id ТС => HTML строки */
-    public static function render(Collection $vehicles, array $totals, array $debts, bool $place): array
+    public static function render(Collection $vehicles, array $totals, array $debts, bool $place, bool $out = false): array
     {
         if ($vehicles->isEmpty()) {
             return [];
@@ -29,14 +30,14 @@ final class TableRows
             $common, $v->id, $v->updated_at?->getTimestamp(), $v->threads_count, $v->waiting_count ?? 0,
             $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','), today()->toDateString(),
             $v->vendor?->name, $v->vendor?->logoUrl(), $v->yard?->name,
-            json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place, $docs[$v->id]]),
+            json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place, $docs[$v->id], $out, $v->getAttribute('money_state')]),
         ]))])->all();
         $cached = Cache::many(array_values($keys));
         $rows = $fresh = [];
         foreach ($vehicles as $v) {
             $html = $cached[$keys[$v->id]] ?? null;
             if ($html === null) {
-                $html = view('components.park.table-row', ['vehicle' => $v, 'total' => $totals[$v->id] ?? null, 'debt' => $debts[$v->id] ?? 0, 'place' => $place])->render();
+                $html = view('components.park.table-row', ['vehicle' => $v, 'total' => $totals[$v->id] ?? null, 'debt' => $debts[$v->id] ?? 0, 'place' => $place, 'out' => $out])->render();
                 $fresh[$keys[$v->id]] = $html;
             }
             $rows[$v->id] = $html;
