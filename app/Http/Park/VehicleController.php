@@ -359,9 +359,7 @@ class VehicleController
     public function letterDone(Request $request, Vehicle $vehicle, Message $message, Threads $threads)
     {
         abort_unless($message->thread?->vehicle_id === $vehicle->id, 404);
-        $vehicle->log(EventType::LetterAnswered, $request->user(), ['message' => $message->id, 'subject' => $message->subject, 'thread' => $message->thread_id]);
-        $message->thread->forceFill(['answered_at' => now()])->save();
-        $threads->refresh($message->thread);
+        $threads->answered($message->thread, $request->user());
         app(MarkThreadRead::class)($message->thread);
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Сделано');

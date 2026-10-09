@@ -35,6 +35,7 @@ use App\Mail\SendState;
 use App\Mail\Sync;
 use App\Mail\Template;
 use App\Mail\Thread;
+use App\Mail\Threads;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
 use App\Offers\Offer;
@@ -764,6 +765,16 @@ class MailController
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=86400',
         ]);
+    }
+
+    /** «Ответ не нужен» внизу ленты: вопрос решили иначе — ветка уходит из «Требуют внимания», но не в архив. */
+    public function answered(Request $request, Thread $thread, Threads $threads, MarkThreadRead $markRead)
+    {
+        $this->guard($thread);
+        $threads->answered($thread, $request->user());
+        $markRead($thread);
+
+        return back()->with('toast', 'Ответ не нужен');
     }
 
     public function unread(Thread $thread, MarkThreadRead $markRead)

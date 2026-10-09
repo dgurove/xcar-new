@@ -122,6 +122,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/{thread}/window', [MailController::class, 'window']);
         Route::get('/{thread}/reply/{message}', [MailController::class, 'reply']);
         Route::post('/{thread}/unread', [MailController::class, 'unread']);
+        Route::post('/{thread}/answered', [MailController::class, 'answered']);
         Route::post('/archive-other', [MailController::class, 'archiveOther']);
         Route::post('/{thread}/archive', [MailController::class, 'archive']);
         Route::post('/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['o', 'c', 't'])->whereNumber('id');

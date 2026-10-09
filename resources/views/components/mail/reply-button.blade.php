@@ -5,7 +5,13 @@
 {{-- open — редактор грузится сразу (кнопка «Ответить» в деле ТС), кнопка внизу остаётся на время загрузки. --}}
 <turbo-frame id="{{ $frame }}" class="{{ $frame === 'reply' ? 'block' : 'contents' }}" @if ($open) src="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" @endif>
     @if ($frame === 'reply')
-        <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="btn btn-quiet"><x-ui.icon name="reply" class="size-5"/>Ответить{{ $who ? ' '.\Illuminate\Support\Str::limit($who, 32, '…') : '' }}</a>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="btn btn-quiet"><x-ui.icon name="reply" class="size-5"/>Ответить{{ $who ? ' '.\Illuminate\Support\Str::limit($who, 32, '…') : '' }}</a>
+            {{-- Ветка ждёт ответа, а вопрос решили иначе — снять «Требуют внимания», не архивируя письмо. --}}
+            @if ($message->thread?->needs_reply_at)
+                <form method="post" action="{{ $base }}/{{ $message->thread_id }}/answered" data-turbo-frame="_top" class="contents">@csrf<button class="btn btn-quiet">Ответ не нужен</button></form>
+            @endif
+        </div>
     @else
         <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="letter-link">Ответить на это</a>
     @endif

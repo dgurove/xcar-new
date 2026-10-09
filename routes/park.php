@@ -186,6 +186,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/mail/{thread}/window', [MailController::class, 'window']);
     Route::get('/mail/{thread}/reply/{message}', [MailController::class, 'reply']);
     Route::post('/mail/{thread}/unread', [MailController::class, 'unread'])->middleware('park.manage');
+    Route::post('/mail/{thread}/answered', [MailController::class, 'answered'])->middleware('park.manage');
     Route::post('/mail/archive-other', [MailController::class, 'archiveOther'])->middleware('park.manage');
     Route::post('/mail/{thread}/archive', [MailController::class, 'archive'])->middleware('park.manage');
     Route::post('/mail/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['v', 'c', 't'])->whereNumber('id')->middleware('park.manage');

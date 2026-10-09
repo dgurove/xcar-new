@@ -4,6 +4,8 @@ namespace App\Mail;
 
 use App\Mail\Extraction\Intent;
 use App\Park\City;
+use App\Park\EventType;
+use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +32,20 @@ final class Threads
         $this->adoptOrphans($account, $parsed, $thread);
 
         return $thread;
+    }
+
+    /**
+     * Вопрос ветки закрыт без письма: «Сделано» в деле ТС и «Ответ не нужен» в почте (владелец 09.10.2026: «забить на
+     * просьбу, потому что уже порешали другим способом», не архивируя письмо). Ветка уходит из «Требуют внимания», новое
+     * письмо вендора снова её поднимет (`waiting`). Ветка ТС — запись в истории дела.
+     */
+    public function answered(Thread $thread, ?User $by): void
+    {
+        $thread->forceFill(['answered_at' => now()])->save();
+        $this->refresh($thread);
+        $last = Message::where('thread_id', $thread->id)->orderByDesc('date_at')->orderByDesc('id')->first(['id', 'subject']);
+        $thread->vehicle()->withoutGlobalScope(City::SCOPE)->first()
+            ?->log(EventType::LetterAnswered, $by, ['message' => $last?->id, 'subject' => $last?->subject, 'thread' => $thread->id]);
     }
 
     public function refresh(Thread $thread): void
@@ -80,7 +96,8 @@ final class Threads
             return null;
         }
 
-        // «Сделано» на деле ТС закрывает вопрос без письма; новое письмо вендора снова его открывает.
+        // «Сделано» в деле ТС и «Ответ не нужен» в почте закрывают вопрос без письма (`answered`); новое письмо
+        // вендора снова его открывает.
         return $thread->answered_at?->gte($last->date_at) ? null : $last->date_at;
     }
 
