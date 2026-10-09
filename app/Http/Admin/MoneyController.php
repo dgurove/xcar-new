@@ -69,19 +69,12 @@ class MoneyController
 
     public function index(Request $request)
     {
-        // Ключ карточки на «По ссылкам» (она же вкладка без параметра) — ссылка; на прочих — счёт, у разовой оплаты — её
-        // последняя ссылка (старые адреса `?peek={счёт}`: ссылки с таким номером нет — ищется счёт).
-        $detail = Detail::of($request, function (string $key) use ($request) {
-            $tab = (string) $request->query('tab', 'links');
-            if ($tab === 'links' && ($link = PayLink::find($key))) {
-                return $this->link($link);
-            }
-            if (! ($invoice = Invoice::find($key)) || ($tab === 'links' && $request->query->has('tab'))) {
-                return null;
-            }
-
-            return $invoice->isService() && ($link = $invoice->payLinks()->reorder()->latest('id')->first()) ? $this->link($link) : $this->detail($invoice);
-        });
+        // Ключ карточки на «По ссылкам» — ссылка (строки ссылок всегда несут `tab=links`, и нажатие мимо имени тоже —
+        // `detail_controller#urlFor`); без вкладки — счёт, у разовой оплаты — её последняя ссылка: старые адреса
+        // `?peek={счёт}` в уведомлениях. Номера ссылок и счетов пересекаются, угадывать по одному числу нельзя.
+        $detail = Detail::of($request, fn (string $key) => $request->query('tab') === 'links'
+            ? (($link = PayLink::find($key)) ? $this->link($link) : null)
+            : (($invoice = Invoice::find($key)) ? (($invoice->isService() && ($link = $invoice->payLinks()->reorder()->latest('id')->first())) ? $this->link($link) : $this->detail($invoice)) : null));
         if ($detail->framed()) {
             return $detail->response();
         }

@@ -224,7 +224,7 @@ class ManualLinkCreditTest extends TestCase
         $this->get($crm.'/work/money?q='.urlencode('морковин дмитрий'))->assertOk()->assertSee('data-detail-key="'.$manual->openLink()->id.'"', false)->assertDontSee('data-detail-key="'.$this->selection($deal)->openLink()->id.'"', false);
 
         $link = $manual->openLink();
-        $this->get($crm.'/work/money?peek='.$manual->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Морковин Дмитрий Евгеньевич')->assertSee('Указать ТС');
+        $this->get($crm.'/work/money?peek='.$manual->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Морковин Дмитрий Евгеньевич')->assertSee('Другое ТС');
         $this->delete($crm.'/work/money/links/'.$link->id)->assertRedirect();
         $this->assertSame(InvoiceState::Void, $manual->fresh()->state);
 
