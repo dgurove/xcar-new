@@ -760,6 +760,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .toolbar-chips { order: 1; flex: 1 1 0; margin-right: -1rem; padding-right: 1rem; scroll-padding-inline: 0 1rem; }
     .toolbar > .toolbar-actions { order: 2; margin-left: auto; }
     .toolbar:has(> .toolbar-actions) > .toolbar-chips { margin-right: 0; padding-right: 0; }
+    /* Действие с подписью словами («Из писем» парковки, «Оценить» предложений) — ряд кнопок его, чипам своя строка ниже,
+       как было: иначе подпись уезжала одна в третий ряд. Круглые «+» и «Скачать» с чипами уживаются; кнопка, что на
+       телефоне круглая (подпись `hidden sm:inline`), помечается `.btn-phone-round` — `:has` внутри `:has` не работает. */
+    .toolbar:has(> .toolbar-actions .btn:not(.btn-round, .btn-phone-round)) > .toolbar-chips {
+      order: 10; flex: 0 0 100%; margin-inline: -1rem; padding-inline: 1rem; scroll-padding-inline: 1rem;
+    }
   }
   @media (min-width: 768px) {
     .toolbar:has(> .toolbar-chips) { flex-wrap: wrap; row-gap: .75rem; }
@@ -1027,6 +1033,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .money-row-line > :first-child { @apply min-w-0 flex-1 truncate; }
   .money-row-line > :last-child { @apply shrink-0 whitespace-nowrap; }
   .money-row-sub { @apply mt-0.5 text-sm text-ink-muted; }
+  /* Машина во второй строке ленты «Оплат» — не рвётся посреди названия («Kia / Avella»), длинная режется «…»: это данные. */
+  .cell-car { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
   /* Своя фраза («Менеджер пишет, что оплатил») не режется — переносится, сумма остаётся на первой линии. */
   .money-row-wrap > :first-child { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
   /* Карточка денег в «Оплатах» (ссылка, счёт; 09.10.2026, владелец: «должно чувствоваться как приложение»): как запрос на
@@ -1177,12 +1185,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Иконка типа — по центру заглавных букв названия (высота заглавной около .7em), а не по middle: тот считает от
      строчных, и иконка у «Scania», «Mercedes» уезжала вниз. */
   .cell-title .cat-icon { vertical-align: -.28em; }
-  .cell-sub > * + * { margin-left: .375rem; }
+  /* Отступ между частями — справа от каждой, кроме последней (как у `.list .row-sub`): перенесённая часть начинается от
+     края, а не со сдвига («оплатил 30 сен в банк» / « Kia Avella»). */
+  .cell-sub > :not(:last-child) { margin-right: .375rem; }
   /* Строка фактов предложения на телефоне переносится, а не режется: ни подтверждения, ни номер, ни город не уходят в «…». */
   @media (max-width: 639.98px) {
     .cell-sub--wrap { display: flex; flex-wrap: wrap; align-items: center; column-gap: .375rem; white-space: normal; text-overflow: clip; }
     .cell-sub--wrap > * { white-space: nowrap; }
-    .cell-sub--wrap > * + * { margin-left: 0; }
+    .cell-sub--wrap > :not(:last-child) { margin-right: 0; }
   }
   /* Третья строка краткой таблицы телефона: задача чипом, ошибки данных словами. Во второй строке эти ошибки тогда
      не повторяются; на ПК и в подробной таблице — наоборот, ошибки во второй строке, третьей нет. */
@@ -1202,7 +1212,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     /* Второй этаж в линию за названием — flex с ровным шагом: скрытые на ПК куски (sm:hidden) и пробелы разметки
        не дают лишнего отступа, как давали margin соседей. */
     .table td.grow > .cell-sub { display: inline-flex; align-items: baseline; gap: .375rem; margin: 0 0 0 .125rem; vertical-align: baseline; }
-    .table td.grow > .cell-sub > * + * { margin-left: 0; }
+    .table td.grow > .cell-sub > :not(:last-child) { margin-right: 0; }
     .table td.grow > .cell-sub:empty { display: none; }
   }
   /* Копирование номера — по наведению: иконка в каждой строке была шумом. На телефоне — в карточке. */
@@ -1244,7 +1254,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       & .table td.grow .cell-title:has(> .cell-name) { display: flex; max-width: none; }
       & .table td.grow > .cell-sub { display: block; margin: 0; }
       & .table td.grow > .cell-source { display: flex; }
-      & .table td.grow > .cell-sub > * + * { margin-left: .375rem; }
+      & .table td.grow > .cell-sub > :not(:last-child) { margin-right: .375rem; }
       & .cell-sub--wrap { display: flex; flex-wrap: wrap; align-items: center; column-gap: .375rem; white-space: normal; text-overflow: clip; }
       & .cell-sub--wrap > * { white-space: nowrap; }
       & .cell-sub--wrap > * + * { margin-left: 0 !important; }

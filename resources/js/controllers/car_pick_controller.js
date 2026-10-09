@@ -22,6 +22,7 @@ export default class extends Controller {
     disconnect() {
         clearTimeout(this.timer);
         this.abort?.abort();
+        this.previewAbort?.abort();
     }
 
     // Первое открытие (лист открыли или поле получило фокус) — машины со сделками, как подсказка до ввода.
@@ -36,11 +37,11 @@ export default class extends Controller {
         this.timer = setTimeout(() => this.fetch(this.query), 200);
     }
 
-    // Enter в поле не отправляет форму снаружи («Создать ссылку»), а берёт первую строку.
+    // Enter в поле не отправляет форму снаружи («Создать ссылку»), а берёт первую найденную строку — не «Без ТС».
     key(event) {
         if (event.key !== 'Enter') return;
         event.preventDefault();
-        this.resultsTarget.querySelector('button')?.click();
+        this.resultsTarget.querySelector('button:not([data-clear])')?.click();
     }
 
     get query() {
@@ -70,7 +71,11 @@ export default class extends Controller {
             list.unshift(at >= 0 ? list.splice(at, 1)[0] : this.picked);
         }
         this.resultsTarget.replaceChildren();
-        if (this.embedded && (this.picked || this.words)) this.resultsTarget.append(this.row({ label: 'Без ТС', muted: true }, () => this.choose(null)));
+        if (this.embedded && (this.picked || this.words)) {
+            const clear = this.row({ label: 'Без ТС', muted: true }, () => this.choose(null));
+            clear.dataset.clear = '';
+            this.resultsTarget.append(clear);
+        }
         for (const item of list) this.resultsTarget.append(this.row(item, () => this.choose(item), this.picked?.id === item.id));
         if (this.words && this.words.toLowerCase() !== q.toLowerCase()) {
             this.resultsTarget.append(this.row({ label: this.words, hint: 'нет в системе' }, () => this.choose(null, this.words), true));
@@ -130,16 +135,20 @@ export default class extends Controller {
         const url = new URL(this.previewValue, location.href);
         if (this.offerTarget.value) url.searchParams.set('offer_id', this.offerTarget.value);
         if (this.textTarget.value) url.searchParams.set('car_title', this.textTarget.value);
+        // Выбрали другую машину, пока ответ о прошлой в пути, — прошлый отменяется: его исход лёг бы на новую.
+        this.previewAbort?.abort();
+        const abort = this.previewAbort = new AbortController();
         this.submitTarget.disabled = true;
         try {
-            const res = await fetch(url, { headers: { Accept: 'application/json' } });
+            const res = await fetch(url, { signal: abort.signal, headers: { Accept: 'application/json' } });
             if (!res.ok) return;
             const { label, note } = await res.json();
+            if (abort.signal.aborted) return;
             this.submitTarget.textContent = label;
             this.note = note;
             this.render();
         } catch {} finally {
-            this.submitTarget.disabled = false;
+            if (this.previewAbort === abort) this.submitTarget.disabled = false;
         }
     }
 }

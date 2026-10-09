@@ -154,20 +154,14 @@ final class MoneyLinks
      */
     public static function short(PayLink $l): array
     {
-        if ($l->state === PayLinkState::Paid) {
-            return ['оплачено', 'text-open'];
-        }
-        if ($l->state === PayLinkState::Canceled) {
-            return ['отменена', 'text-ink-dim'];
-        }
-        $last = $l->relationLoaded('attempts') ? $l->attempts->last() : $l->attempts()->reorder()->latest('id')->first();
-
-        return match (true) {
-            $l->error_at && (! $last || $l->error_at->gt($last->created_at)) => ['ошибка ЮKassa', 'text-danger'],
-            ! $last => ['не открывали', 'text-ink-muted'],
-            $last->isPending() => ['открыли', 'text-urgent'],
-            $last->status === 'canceled' && $last->cancel_reason === 'expired_on_confirmation' => ['не оплатили', 'text-urgent'],
-            $last->status === 'canceled' => ['не прошла', 'text-danger'],
+        return match ($l->status()[0]) {
+            'paid' => ['оплачено', 'text-open'],
+            'canceled' => ['отменена', 'text-ink-dim'],
+            'error' => ['ошибка ЮKassa', 'text-danger'],
+            'new' => ['не открывали', 'text-ink-muted'],
+            'pending' => ['открыли', 'text-urgent'],
+            'abandoned' => ['не оплатили', 'text-urgent'],
+            'declined' => ['не прошла', 'text-danger'],
             default => ['ждём оплату', 'text-ink-muted'],
         };
     }
@@ -180,14 +174,6 @@ final class MoneyLinks
             $t->isYesterday() => 'Вчера',
             default => $t->translatedFormat($t->isCurrentYear() ? 'j F' : 'j F Y'),
         };
-    }
-
-    /** ТС одной строкой с номером: «Ford Kuga, № 2610061312»; нет — null. */
-    public static function carLine(PayLink $l): ?string
-    {
-        [$car, $number] = self::car($l);
-
-        return $car ? $car.($number ? ', № '.$number : '') : null;
     }
 
     /** Что со ссылкой — фраза и класс тона, как в шторке ссылки. */

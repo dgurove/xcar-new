@@ -15,7 +15,7 @@
     $title = old('title', ServiceTitle::DEFAULT);
 @endphp
 <div data-controller="sheet" class="contents">
-    <button type="button" class="btn btn-s btn-accent rounded-full" data-action="sheet#open" aria-label="Создать ссылку"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Создать ссылку</span></button>
+    <button type="button" class="btn btn-s btn-accent btn-phone-round rounded-full" data-action="sheet#open" aria-label="Создать ссылку"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Создать ссылку</span></button>
     <x-ui.sheet id="service-pay" title="Ссылка на оплату" :open="$errors->hasAny(['amount', 'title', 'party_id', 'party_name', 'party_email', 'offer_id', 'car_title'])">
         <form method="post" action="/work/money/service" class="flex flex-col gap-4" data-controller="reveal pay-existing" data-pay-existing-url-value="/work/money/links/existing"
               data-action="input->pay-existing#changed change->pay-existing#changed car-pick:chosen->pay-existing#chosen">

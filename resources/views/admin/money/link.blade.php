@@ -13,7 +13,7 @@
     $live = $link->isOpen();
     $manual = $link->origin() === 'manual';
     $offer = $i->carOffer();
-    $car = L::carLine($link);
+    $car = $i->carLine();
     [$state, $tone] = L::state($link);
     $paidAttempt = $link->state === PayLinkState::Paid ? $link->attempts->firstWhere('payment_id', $link->payment_id) : null;
     if ($paidAttempt?->method) { $state = 'оплачено '.mb_strtolower(PayMethod::label($paidAttempt->method)).' '.$link->paid_at->translatedFormat('j M'); }
@@ -34,9 +34,10 @@
         default => 'сверх сделки '.Money::rub($i->paid),
     };
     $open = fn (string $name) => 'data-controller="emit" data-action="emit#send" data-emit-event-param="link-'.$id.'-'.$name.':open"';
-    $at = fn ($t) => $t->translatedFormat($t->isToday() ? 'H:i' : 'j M, H:i');
+    // Время без часов (оплату отметили датой) — только день, а не «00:00».
+    $at = fn ($t) => $t->translatedFormat(match (true) { $t->format('H:i:s') === '00:00:00' => 'j M', $t->isToday() => 'H:i', default => 'j M, H:i' });
     // История: создал, попытки плательщика, оплачено или отменена — по времени.
-    $history = collect([['created' => $link->created_at, 'text' => match (true) { (bool) $by => 'Создал '.$by->shortName(), $link->origin() === 'deal' => 'Создана сделкой', default => 'Создана гаражом' }, 'tone' => null]]);
+    $history = collect([['created' => $link->created_at, 'text' => match (true) { (bool) $by => 'Создал '.$by->shortName(), $link->origin() === 'deal' => 'Создана сделкой', $link->origin() === 'garage' => 'Создана гаражом', default => 'Создана вручную' }, 'tone' => null]]);
     foreach ($link->attempts as $a) {
         [$what, $aTone] = match (true) {
             $a->succeeded() => ['Оплатили', 'open'],
@@ -111,7 +112,7 @@
             @elseif (! $manual)
                 <a @if ($dealUrl) href="{{ $dealUrl }}" @elseif ($offer) href="/work/garage?preset=all&peek={{ $offer->number }}" @endif class="row" data-turbo-frame="_top">
                     <span class="shrink-0 text-ink-muted">{{ $link->origin() === 'deal' ? 'Сделка' : 'Гараж' }}</span>
-                    <span class="min-w-0 flex-1 truncate text-right">{{ $i->manager()?->shortName() ?? 'открыть' }}</span>
+                    <span class="min-w-0 flex-1 truncate text-right nums">{{ $i->manager()?->shortName() ?? ($offer ? '№ '.$offer->number : '') }}</span>
                     <x-ui.chevron/>
                 </a>
             @endif

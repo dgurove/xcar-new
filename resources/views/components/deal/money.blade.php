@@ -11,7 +11,7 @@
     $offer = $deal->offer;
     $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'deal.offer'])->get();
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
-    $credits = $deal->credits()->with(['party', 'payLinks.attempts', 'payLinks.invoice'])->get();
+    $credits = $deal->credits()->with(['party', 'offer.brand', 'offer.model', 'payLinks.attempts'])->get();
     $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
     $fee = $invoices->first(fn ($i) => $i->isAgentFee());
     $issued = $invoices->reject(fn ($i) => $i->isOwed());
@@ -95,8 +95,11 @@
          в неё; у открытой — «Скопировать» в самой строке. Сверх сделки — строкой там же, словом, не красным (владелец:
          «может, дополнительно договорились»); до счёта — ляжет потом. --}}
     @php
-        $links = $issued->map(fn ($i) => [$i->payLinks->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled)->sortByDesc('id')->first(), 'счёт '.$i->label()])
-            ->merge($credits->map(fn ($c) => [$c->payLinks->sortByDesc('id')->first(), $c->state === InvoiceState::Paid ? 'вручную, в зачёт сделки' : 'вручную, засчитаем']))
+        // Ссылка знает свой счёт без запроса: строка берёт из него плательщика, машину и текст «Поделиться».
+        $last = fn ($i, bool $live) => $i->payLinks->when($live, fn ($c) => $c->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled))
+            ->sortByDesc('id')->first()?->setRelation('invoice', $i);
+        $links = $issued->map(fn ($i) => [$last($i, true), 'счёт '.$i->label()])
+            ->merge($credits->map(fn ($c) => [$last($c, false), $c->state === InvoiceState::Paid ? 'вручную, в зачёт сделки' : 'вручную, засчитаем']))
             ->filter(fn ($p) => $p[0]);
     @endphp
     @if ($links->isNotEmpty() || $extra > 0)
@@ -137,8 +140,9 @@
                         </span>
                     @endif
                 </div>
-                {{-- Ссылка счёта — строкой в «Ссылках на оплату» выше; нет её — «Новая ссылка на оплату» здесь. --}}
-                @if (! $i->isOwed() && $i->payLinks->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled)->isEmpty())<x-billing.pay-status :invoice="$i" staff/>@endif
+                {{-- Ссылка счёта — строкой в «Ссылках на оплату» выше; открытой нет, а остаток есть — «Новая ссылка на оплату» здесь
+                     (`pay-status` сам решает, можно ли её взять). --}}
+                @if (! $i->isOwed() && ! $i->openLink())<x-billing.pay-status :invoice="$i" staff/>@endif
                 @foreach ($i->claims as $p)
                     <x-money.payment :payment="$p" :slip="'/work/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'" staff>
                         @unless ($inStep)

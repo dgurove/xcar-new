@@ -118,22 +118,44 @@ class PayLink extends Model
      */
     public function stateLine(): array
     {
+        [$key, $at, $last] = $this->status();
+        $when = fn () => $at->translatedFormat('j M, H:i');
+
+        return match ($key) {
+            'paid' => ['оплачено '.$at->translatedFormat('j M'), 'open'],
+            'canceled' => ['отменена', 'muted'],
+            'error' => ['ЮKassa не открыла оплату '.$when(), 'danger'],
+            'new' => ['ждём оплату, ещё не открывали', null],
+            'pending' => ['открыли оплату '.$when().', ждём', 'urgent'],
+            'abandoned' => ['открывали '.$when().', не оплатили', 'urgent'],
+            'declined' => ['не прошла '.$when().': '.$last->cancelLabel(), 'danger'],
+            default => ['ждём оплату', null],
+        };
+    }
+
+    /**
+     * Что со ссылкой — один разбор на фразу (`stateLine`) и слово строки списка (`MoneyLinks::short`): ключ (paid, canceled,
+     * error, new, pending, abandoned, declined, waiting), время события и последняя попытка плательщика.
+     *
+     * @return array{string, ?\Illuminate\Support\Carbon, ?AcquiringPayment}
+     */
+    public function status(): array
+    {
         if ($this->state === PayLinkState::Paid) {
-            return ['оплачено '.$this->paid_at->translatedFormat('j M'), 'open'];
+            return ['paid', $this->paid_at ?? $this->updated_at, null];
         }
         if ($this->state === PayLinkState::Canceled) {
-            return ['отменена', 'muted'];
+            return ['canceled', $this->canceled_at, null];
         }
         $last = $this->relationLoaded('attempts') ? $this->attempts->last() : $this->attempts()->reorder()->latest('id')->first();
-        $at = fn ($t) => $t->translatedFormat('j M, H:i');
 
         return match (true) {
-            $this->error_at && (! $last || $this->error_at->gt($last->created_at)) => ['ЮKassa не открыла оплату '.$at($this->error_at), 'danger'],
-            ! $last => ['ждём оплату, ещё не открывали', null],
-            $last->isPending() => ['открыли оплату '.$at($last->created_at).', ждём', 'urgent'],
-            $last->status === 'canceled' && $last->cancel_reason === 'expired_on_confirmation' => ['открывали '.$at($last->created_at).', не оплатили', 'urgent'],
-            $last->status === 'canceled' => ['не прошла '.$at($last->created_at).': '.$last->cancelLabel(), 'danger'],
-            default => ['ждём оплату', null],
+            $this->error_at && (! $last || $this->error_at->gt($last->created_at)) => ['error', $this->error_at, $last],
+            ! $last => ['new', null, null],
+            $last->isPending() => ['pending', $last->created_at, $last],
+            $last->status === 'canceled' && $last->cancel_reason === 'expired_on_confirmation' => ['abandoned', $last->created_at, $last],
+            $last->status === 'canceled' => ['declined', $last->created_at, $last],
+            default => ['waiting', null, $last],
         };
     }
 
@@ -152,9 +174,10 @@ class PayLink extends Model
     /** Кто платит полным именем — для текста ссылки и строк «Оплат»; пробелы, вписанные дважды, схлопнуты. */
     public function payerName(): string
     {
-        $name = $this->payer_kind === PayerKind::Self
-            ? $this->creator?->name
-            : ($this->payer_name ?: $this->payerUser?->name ?: $this->invoice?->party?->name);
+        // Сам за себя — имя того, кто взял ссылку; его нет (удалён, скрыт демо-областью) — записанное имя и плательщик счёта,
+        // а не пустая строка в списке и карточке.
+        $name = ($this->payer_kind === PayerKind::Self ? $this->creator?->name : null)
+            ?: $this->payer_name ?: $this->payerUser?->name ?: $this->invoice?->party?->name;
 
         return self::squash((string) $name);
     }

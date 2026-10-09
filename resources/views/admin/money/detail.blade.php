@@ -74,11 +74,15 @@
             </div>
         @endif
 
-        @if ($link)
+        {{-- Открытой ссылки нет, а платить ещё есть что (последнюю ссылку оплатили частично, отменили) — «Новая ссылка»
+             строкой `x-billing.pay-status` под прежней. --}}
+        @php $newLink = ! $i->isOwed() && ! $link?->isOpen() && \App\Billing\Acquiring\PayLink::eligible($i) && $i->remaining() - $i->claimed() > 0; @endphp
+        @if ($link || $newLink)
             <div class="list-cap mt-5">Ссылка на оплату</div>
-            <div class="list"><x-billing.link-row :link="$link" :car="false" :sub="$link->stateLine()[0]"/></div>
-        @elseif (! $i->isOwed() && \App\Billing\Acquiring\PayLink::eligible($i) && $i->remaining() - $i->claimed() > 0)
-            <div class="list mt-5"><x-billing.pay-status :invoice="$i" staff/></div>
+            <div class="list">
+                @if ($link)<x-billing.link-row :link="$link" :car="false" :sub="\App\Http\Admin\MoneyLinks::who($link).', '.$link->created_at->translatedFormat('j M')"/>@endif
+                @if ($newLink)<x-billing.pay-status :invoice="$i" staff/>@endif
+            </div>
         @endif
 
         <div class="list-cap mt-5">Состав</div>
