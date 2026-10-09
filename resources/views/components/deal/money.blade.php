@@ -9,13 +9,10 @@
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState;
     $offer = $deal->offer;
-    $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'deal.offer', 'charges'])->get();
-    // Разовые оплаты по ссылке с машиной сделки — засчитаны в неё (09.10.2026): подбор выставлен на них меньше.
+    $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'deal.offer'])->get();
+    // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
     $credits = $deal->credits()->with(['party', 'payLinks'])->get();
-    // Счёт подбора уже оплачивали до того, как пришла разовая оплата, — засчитать её сделка не может (`SyncDealInvoices::slot`).
-    $selection = $invoices->first(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && ! $i->isOwed());
-    $missed = $credits->sum('paid') > 0 && $selection && $selection->paidMoney() > 0
-        && abs((float) $selection->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - max(0, $deal->selectionDue() - $credits->sum('paid'))) >= 0.01;
+    $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
     $fee = $invoices->first(fn ($i) => $i->isAgentFee());
     $issued = $invoices->reject(fn ($i) => $i->isOwed());
     $state = $deal->commissionState();
@@ -101,15 +98,16 @@
                 <a href="{{ $l ? \App\Http\Admin\MoneyController::linkUrl($l) : '/work/money/invoices/'.$c->id }}" class="row" data-turbo-frame="_top">
                     <x-ui.row-icon name="qr" :tone="$c->state === InvoiceState::Paid ? 'open' : 'urgent'" size="s"/>
                     <span class="min-w-0 flex-1">
-                        <span class="block">Оплата по ссылке, засчитана<span class="text-ink-muted"> {{ $c->party->name }}</span></span>
-                        <span class="row-sub">{{ $c->state === InvoiceState::Paid ? 'оплачено' : ($c->paid > 0 ? 'оплачено '.Money::rub($c->paid) : 'ждём оплату') }}</span>
+                        <span class="block">Оплата по ссылке<span class="text-ink-muted"> {{ $c->party->name }}</span></span>
+                        <span class="row-sub">{{ $c->state === InvoiceState::Paid ? 'оплачено, в зачёт сделки' : ($c->paid > 0 ? 'оплачено '.Money::rub($c->paid).', в зачёт сделки' : 'ждём оплату') }}</span>
                     </span>
                     <span class="nums shrink-0">{{ Money::rub($c->total) }}</span>
                     <x-ui.chevron/>
                 </a>
             @endforeach
-            @if ($missed)
-                <div class="row"><span class="min-w-0 flex-1 text-danger">Разовая оплата {{ Money::rub($credits->sum('paid')) }} не учтена: счёт сделки уже оплачивали</span></div>
+            {{-- Сверх сделки — словом, не красным (владелец: «может, дополнительно договорились»); до счёта — ляжет потом. --}}
+            @if ($extra > 0)
+                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Сверх сделки' : 'Засчитаем, когда выставим счёт' }}</span><span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
             @endif
         </div>
     @endif

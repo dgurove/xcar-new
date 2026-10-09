@@ -54,12 +54,6 @@ final class AdvanceOnPayment
         }
     }
 
-    /** Деньги сделки сошлись не её счётом (подбор оплачен разовой ссылкой, `CreditDealOnManual`) — шаг оплаты так же. */
-    public function dealPaid(Deal $deal, ?User $by): void
-    {
-        $this->advance($deal, $by);
-    }
-
     private function advance(?Deal $deal, ?User $by): void
     {
         $offer = $deal?->offer;

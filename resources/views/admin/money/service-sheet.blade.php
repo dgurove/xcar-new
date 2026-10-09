@@ -37,7 +37,7 @@
                 </div>
                 @error('title')<div class="text-sm text-danger">{{ $message }}</div>@enderror
                 <div class="fields">
-                    <x-ui.combobox name="offer_id" text-name="car_title" label="ТС" url="/work/money/cars" placeholder="Марка, модель или номер"/>
+                    <x-ui.combobox name="offer_id" text-name="car_title" label="ТС" url="/work/money/cars" placeholder="Номер, ДЛ, VIN или марка"/>
                     <x-ui.field name="party_id" label="Кто платит" :options="$parties->all()" :value="$partyId" data-action="change->reveal#pick"/>
                     <div class="contents" data-reveal-target="pane" data-reveal-key="new" @if ($partyId !== 'new') hidden @endif>
                         <x-ui.field name="party_name" label="Имя" placeholder="ФИО или название"/>

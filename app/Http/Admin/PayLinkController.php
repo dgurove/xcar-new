@@ -7,13 +7,13 @@ use App\Billing\Acquiring\Actions\CancelPayLink;
 use App\Billing\Acquiring\Actions\CreatePayLink;
 use App\Billing\Acquiring\Actions\RefundAcquiring;
 use App\Billing\Acquiring\Gateway;
-use App\Billing\Acquiring\LinkExists;
 use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Actions\AttachServiceCar;
 use App\Billing\Actions\ReissueServiceInvoice;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\Invoice;
+use App\Offers\DealCredit;
 use App\Offers\Offer;
 use App\Support\Money;
 use Illuminate\Http\Request;
@@ -57,17 +57,28 @@ class PayLinkController
         return back()->with('toast', 'Ссылка отменена');
     }
 
-    /** ТС у ручной ссылки (`AttachServiceCar`): машина системы — засчитать в её сделку, иначе словами. */
+    /** Что будет, если привязать ручную ссылку к этой ТС (`DealCredit::preview`) — строка в окне «ТС», без записи. */
+    public function attach(Request $request, PayLink $link)
+    {
+        $offer = ctype_digit((string) $request->query('offer_id')) ? Offer::find((int) $request->query('offer_id')) : null;
+        $car = trim((string) $request->query('car_title'));
+        $text = $offer || $car === '' ? DealCredit::preview($link->invoice, $offer) : 'ТС не из системы, запишем словами'.($link->invoice->credit_deal_id ? ', зачёт в сделку снимем' : '');
+
+        return response('<p class="text-sm text-ink-muted">'.e($text).'</p>');
+    }
+
+    /** ТС у ручной ссылки (`AttachServiceCar`): машина системы — засчитать в её сделку, иначе словами; пусто — отвязать. */
     public function car(Request $request, PayLink $link, AttachServiceCar $attach)
     {
         $data = $request->validate(['offer_id' => ['nullable', 'integer', 'exists:offers,id'], 'car_title' => ['nullable', 'string', 'max:160']]);
-        try {
-            $attach($link->invoice, ! empty($data['offer_id']) ? Offer::find($data['offer_id']) : null, $data['car_title'] ?? null, $request->user());
-        } catch (LinkExists $e) {
-            return redirect(MoneyController::linkUrl($e->link))->with('toast', 'У этой сделки уже есть ссылка');
-        }
+        $offer = ! empty($data['offer_id']) && ! $request->boolean('clear') ? Offer::find($data['offer_id']) : null;
+        $invoice = $attach($link->invoice, $offer, $request->boolean('clear') ? null : ($data['car_title'] ?? null), $request->user());
 
-        return back()->with('toast', 'Сохранено');
+        return back()->with('toast', match (true) {
+            $request->boolean('clear') => 'ТС снято',
+            (bool) $invoice->credit_deal_id => 'Привязано к сделке',
+            default => 'Сохранено',
+        });
     }
 
     public function refund(Request $request, AcquiringPayment $attempt, RefundAcquiring $refund)

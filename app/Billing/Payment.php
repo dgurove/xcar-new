@@ -13,7 +13,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * Оплата по счёту: частями, откуда пришла, номер платёжки и её скан (`slip`); отменённая остаётся с `voided_at`.
  * Заявленная менеджером (`claimed`) в `paid` не входит, пока сотрудник не подтвердит; не поступившая — `rejected`.
  */
-#[Fillable(['invoice_id', 'party_id', 'amount', 'paid_at', 'source', 'ref', 'note', 'state', 'reject_reason', 'decided_at', 'voided_at', 'created_by'])]
+#[Fillable(['invoice_id', 'party_id', 'amount', 'paid_at', 'source', 'ref', 'note', 'state', 'reject_reason', 'decided_at', 'voided_at', 'created_by', 'credit_invoice_id'])]
 class Payment extends Model implements HasMedia
 {
     use InteractsWithMedia;

@@ -131,7 +131,7 @@
                     <div class="mt-1.5 flex flex-wrap gap-1.5"><span class="tag nums">№ {{ $i->deal->offer?->number }}</span>@if ($i->deal->buyer)<x-ui.person :user="$i->deal->buyer"/>@endif</div>
                 </x-ui.card>
             @endif
-            @if ($i->state === InvoiceState::Issued && $canManage && ! $i->payments()->where('source', '!=', PaymentSource::Offset)->exists())
+            @if ($i->state === InvoiceState::Issued && $canManage && ! $i->payments()->whereNotIn('source', PaymentSource::soft())->exists())
                 <form method="post" action="{{ $base }}/void" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? ($fee ? 'выплату' : 'перечисление') : 'счёт' }} {{ $i->label() }}?">@csrf<x-ui.button variant="ghost" block>Аннулировать</x-ui.button></form>
             @endif
         </div>

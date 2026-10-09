@@ -140,6 +140,7 @@ final class ManagerLedger
                 $rows->push(match (true) {
                     $p->state === PaymentState::Claimed => ['at' => $p->created_at, 'title' => 'Сообщили об оплате', 'amount' => $p->amount, 'kind' => 'claim', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
                     $p->state === PaymentState::Rejected => ['at' => $p->decided_at ?? $p->updated_at, 'title' => 'Оплата не поступила', 'amount' => $p->amount, 'kind' => 'rejected', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
+                    $p->source === PaymentSource::Credit => ['at' => $p->created_at, 'title' => 'Засчитана оплата по ссылке', 'amount' => $p->amount, 'kind' => 'paid', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
                     $p->source === PaymentSource::Offset => ['at' => $p->created_at, 'title' => 'Удержано агентское вознаграждение', 'amount' => $p->amount, 'kind' => 'offset', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
                     $i->isOwed() => ['at' => $p->paid_at->copy()->setTimeFrom($p->decided_at ?? $p->created_at), 'title' => 'Выплачено', 'amount' => $p->amount, 'kind' => 'payout', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
                     default => ['at' => $p->paid_at->copy()->setTimeFrom($p->decided_at ?? $p->created_at), 'title' => 'Оплата принята', 'amount' => $p->amount, 'kind' => 'paid', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],

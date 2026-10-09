@@ -44,16 +44,11 @@
             @if ($deal->commission)
                 <div class="row profit"><span class="min-w-0 flex-1 font-medium">Ваша доля</span><span class="profit-sum nums">+{{ Money::rub((int) $deal->commission) }}</span></div>
             @endif
-            {{-- Разовая оплата по ссылке с этой машиной засчитана в сделку (09.10.2026): подбор на неё меньше; кто платил — не пишем. --}}
-            @if (($credited = $deal->credited()) > 0)
-                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Учли оплату по ссылке</span><span class="nums text-ink-muted">−{{ Money::rub($credited) }}</span></div>
-            @endif
             <div class="row">
                 <span class="min-w-0 flex-1">
                     <span class="block">Оплата услуг подбора</span>
                     @php
                         $when = match (true) {
-                            ! $selection && $deal->coveredByCredit() => 'оплачено',
                             ! $selection => $deal->agreed() ? 'готовим счёт' : 'после ответа поставщика',
                             $selection->state === InvoiceState::Paid => 'оплачено',
                             $selection->claimed() > 0 => 'оплата ждёт подтверждения',
@@ -63,7 +58,7 @@
                     @if ($when)<span @class(['row-sub', 'text-open' => $selection?->state === InvoiceState::Paid])>{{ $when }}</span>
                     @elseif ($selection->due_at)<span class="row-sub"><x-billing.light :invoice="$selection"/></span>@endif
                 </span>
-                <span class="nums font-semibold">{{ Money::rub($selection ? ($selection->state === InvoiceState::Paid ? $selection->total : $selection->remaining()) : max(0, (int) $deal->ours() - (int) $credited)) }}</span>
+                <span class="nums font-semibold">{{ Money::rub($selection ? ($selection->state === InvoiceState::Paid ? $selection->total : $selection->remaining()) : (int) $deal->ours()) }}</span>
             </div>
         </div>
         {{-- На шаге оплаты «Оплатить» стоит в задаче (`cabinet.deals.step`) — тут его второй раз нет. --}}

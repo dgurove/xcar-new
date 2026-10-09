@@ -219,7 +219,7 @@ class MoneyController
     /** Откуда деньги в ручной оплате: зачёт вознаграждения ставит только система, руками его не выбрать. */
     private static function sources(): array
     {
-        return array_diff_key(PaymentSource::options(), [PaymentSource::Offset->value => true]);
+        return array_diff_key(PaymentSource::options(), array_flip(PaymentSource::soft()));
     }
 
     /** Число у «Оплат»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки в счёте нет (07.10.2026). */
@@ -269,7 +269,7 @@ class MoneyController
             : Party::where('is_self', false)->findOrFail($data['party_id']);
         $offer = ! empty($data['offer_id']) ? Offer::find($data['offer_id']) : null;
         try {
-            $invoice = $issue($payer, $request->user(), (float) $data['amount'], $data['title'], $offer, $data['car_title'] ?? null);
+            $invoice = $issue($payer, $request->user(), (float) $data['amount'], $data['title'], $offer, $data['car_title'] ?? null, $request->boolean('force'));
         } catch (LinkExists $e) {
             return redirect(self::linkUrl($e->link))->with('toast', 'Ссылка уже есть');
         }
@@ -293,7 +293,7 @@ class MoneyController
         return response()->json($offers->map(fn (Offer $o) => [
             'id' => $o->id,
             'label' => trim($o->title().' '.$o->year),
-            'hint' => implode(', ', array_filter([\App\Offers\OfferNumber::isPublic($o) ? '№ '.$o->number : null, $o->deal ? 'сделка, '.$o->deal->buyer?->shortName() : null])),
+            'hint' => implode(', ', array_filter([\App\Offers\OfferNumber::isPublic($o) ? '№ '.$o->number : null, $o->deal ? 'сделка '.$o->deal->buyer?->shortName().', '.\App\Offers\DealCredit::status($o->deal) : null])),
             'payer' => $o->deal?->buyer?->name, 'party_id' => $o->deal?->buyer?->party_id,
         ])->values());
     }

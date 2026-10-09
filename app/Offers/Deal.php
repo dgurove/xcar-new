@@ -5,7 +5,9 @@ namespace App\Offers;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\Payment;
 use App\Billing\PaymentSource;
+use App\Billing\PaymentState;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
 use App\Support\Demo\HidesDemo;
@@ -188,8 +190,8 @@ class Deal extends Model
 
     /**
      * Разовые оплаты по ссылке, засчитанные в сделку (09.10.2026, владелец: «чтобы если что привязать эту оплату к
-     * сделке»): ручной счёт `Service` с машиной этой сделки. Своих `deal_id` у них нет — сделка выставляет на оплаченное
-     * по ним меньше (`SyncDealInvoices`).
+     * сделке»): ручной счёт `Service` с машиной этой сделки. Своих `deal_id` у них нет — их деньги ложатся в счета сделки
+     * зачётом (`ApplyDealCredits`), что сверх — доплата (`creditExtra`).
      */
     public function credits(): HasMany
     {
@@ -216,12 +218,20 @@ class Deal extends Model
         };
     }
 
-    /** Подбор целиком оплачен разовыми ссылками: своего счёта у сделки нет и не нужно. */
-    public function coveredByCredit(): bool
+    /** Сколько денег разовых ссылок уже лежит в счетах сделки зачётом. */
+    public function creditApplied(): float
     {
-        $due = $this->selectionDue();
+        return round((float) Payment::whereIn('credit_invoice_id', $this->credits()->select('billing_invoices.id'))
+            ->where('source', PaymentSource::Credit)->whereNull('voided_at')->where('state', PaymentState::Confirmed)->sum('amount'), 2);
+    }
 
-        return $due > 0 && $this->credited() >= $due;
+    /**
+     * Деньги разовых ссылок, которые сделке класть некуда: её счета оплачены (доплата сверх сделки — владелец: «вдруг там
+     * дополнительные затраты») или счёта ещё нет (ляжут, когда выставим — тогда это ещё не доплата: `agreed`).
+     */
+    public function creditExtra(): float
+    {
+        return max(0, round($this->credited() - $this->creditApplied(), 2));
     }
 
     /** Обязательство перед менеджером — вознаграждение к выплате. */
@@ -335,7 +345,7 @@ class Deal extends Model
      */
     public function hasManagerInvoice(): bool
     {
-        return $this->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->exists() || $this->coveredByCredit();
+        return $this->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->exists();
     }
 
     public function hasInvoices(): bool
@@ -364,7 +374,7 @@ class Deal extends Model
         $invoices = $this->invoices()->with(['payments', 'claims'])->get();
 
         return $invoices->every(fn (Invoice $i) => $i->direction === 'issued' && $i->kind !== ChargeKind::Reward && $i->claims->isEmpty()
-            && $i->payments->every(fn ($p) => $p->source === PaymentSource::Offset));
+            && $i->payments->every(fn ($p) => $p->source->isSoft()));
     }
 
     public function commissionState(): CommissionState
@@ -384,11 +394,11 @@ class Deal extends Model
         };
     }
 
-    /** Все наши счета по сделке оплачены, и хотя бы один есть (или подбор оплачен разовой ссылкой) — «вознаграждение к выплате». */
+    /** Все наши счета по сделке оплачены, и хотя бы один есть — сигнал «вознаграждение к выплате». */
     public function fullyPaid(): bool
     {
         $issued = $this->issuedInvoices()->get();
 
-        return ($issued->isNotEmpty() || $this->coveredByCredit()) && $issued->every(fn (Invoice $i) => $i->state === InvoiceState::Paid);
+        return $issued->isNotEmpty() && $issued->every(fn (Invoice $i) => $i->state === InvoiceState::Paid);
     }
 }

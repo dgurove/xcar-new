@@ -9,7 +9,7 @@
     $attempts = \App\Billing\Acquiring\AcquiringPayment::whereIn('link_id', $i->payLinks()->pluck('id'))->where('status', 'succeeded')->with('payout')->get();
     $overpaid = $attempts->filter(fn ($a) => $a->overpaid() > 0);
     $issued = $i->state === InvoiceState::Issued;
-    $voidable = $issued && ! $i->payments()->where('source', '!=', PaymentSource::Offset)->exists();
+    $voidable = $issued && ! $i->payments()->whereNotIn('source', PaymentSource::soft())->exists();
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$i->isOwed() ? 'Выплата менеджеру '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :photo="$offer?->mainPhoto()">

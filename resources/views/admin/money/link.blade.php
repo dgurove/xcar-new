@@ -21,6 +21,16 @@
     $refund = $link->attempts->first(fn ($a) => $a->succeeded() && $a->refundable() > 0);
     $editCar = $manual && $i->state !== InvoiceState::Void;
     $other = $live && $i->state === InvoiceState::Issued;
+    // Засчитано в сделку и сверх неё (09.10.2026, владелец: сверх — «просто доплата», не красным).
+    $applied = $i->creditDeal ? app(\App\Offers\Actions\ApplyDealCredits::class)->applied($i) : 0;
+    $creditWord = match (true) {
+        ! $i->creditDeal => null,
+        $i->paid <= 0 => 'засчитаем, когда оплатят',
+        \App\Offers\DealCredit::room($i->creditDeal) === null && $applied <= 0 => 'засчитаем, когда выставим счёт',
+        $applied >= $i->paid - 0.005 => 'в зачёт '.Money::rub($applied),
+        $applied > 0 => 'в зачёт '.Money::rub($applied).', сверх сделки '.Money::rub($i->paid - $applied),
+        default => 'сверх сделки '.Money::rub($i->paid),
+    };
     $sheet = fn (string $name) => 'data-controller="emit" data-action="menu#close emit#send" data-emit-event-param="link-'.$id.'-'.$name.':open"';
 @endphp
 <x-ui.detail>
@@ -73,7 +83,11 @@
                     <span class="nums text-right">{{ $by?->shortName() ?? 'вручную' }}, {{ $link->created_at->translatedFormat('j M, H:i') }}</span>
                 </div>
                 @if ($i->creditDeal && $dealUrl)
-                    <a href="{{ $dealUrl }}" class="row" data-turbo-frame="_top"><span class="min-w-0 flex-1 text-ink-muted">Засчитана в сделку</span><span class="truncate">{{ $i->creditDeal->buyer?->shortName() }}</span><x-ui.chevron/></a>
+                    <a href="{{ $dealUrl }}" class="row" data-turbo-frame="_top">
+                        <span class="min-w-0 flex-1 text-ink-muted">Сделка</span>
+                        <span class="min-w-0 text-right">{{ $i->creditDeal->buyer?->shortName() }}@if ($creditWord)<span class="block text-sm text-ink-muted">{{ $creditWord }}</span>@endif</span>
+                        <x-ui.chevron/>
+                    </a>
                 @endif
             @else
                 <a @if ($dealUrl) href="{{ $dealUrl }}" @elseif ($offer) href="/work/garage?preset=all&peek={{ $offer->number }}" @endif class="row" data-turbo-frame="_top">
@@ -121,15 +135,21 @@
         @if ($editCar)
             <div data-controller="sheet" data-action="link-{{ $id }}-car:open@window->sheet#open" class="contents">
                 <x-ui.sheet :id="'link-car-'.$id" title="ТС">
-                    {{-- ТС системы — оплата засчитается в её сделку (подбор станет меньше), иначе словами. --}}
+                    {{-- Машина и есть сделка (владелец 09.10.2026): ищут по номеру, ДЛ или VIN; ТС со сделкой — оплата идёт в
+                         её зачёт. Что будет — строкой под полем (`DealCredit::preview`), до «Сохранить». --}}
                     <form method="post" action="/work/money/links/{{ $id }}/car" class="flex flex-col gap-4"
-                          @if ($i->paid > 0) data-turbo-confirm="Оплата засчитается в сделку этой ТС, если она есть: сделка выставит на неё меньше" @endif>
+                          data-controller="fetch-into" data-fetch-into-url-value="/work/money/links/{{ $id }}/attach" data-fetch-into-fields-value='["offer_id","car_title"]'
+                          data-action="change->fetch-into#changed input->fetch-into#changed">
                         @csrf @method('put')
                         <div class="fields">
-                            <x-ui.combobox name="offer_id" text-name="car_title" label="ТС" url="/work/money/cars" placeholder="Марка, модель или номер"
+                            <x-ui.combobox name="offer_id" text-name="car_title" label="ТС" url="/work/money/cars" placeholder="Номер, ДЛ, VIN или марка"
                                 :value="$i->offer_id" :text="$i->offer ? trim($i->offer->title().' '.$i->offer->year) : $i->car_title"/>
                         </div>
-                        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                        <div data-fetch-into-target="box"></div>
+                        <div class="sheet-foot flex flex-col gap-1">
+                            <x-ui.button block>Сохранить</x-ui.button>
+                            @if ($car)<x-ui.button variant="ghost" block class="text-ink-muted" name="clear" value="1">Отвязать</x-ui.button>@endif
+                        </div>
                     </form>
                 </x-ui.sheet>
             </div>

@@ -55,6 +55,7 @@ final class MoneyRows
             PaymentSource::Acquiring => 'оплатил '.$day.' по ссылке '.PayMethod::label($attempts->get($p->id)?->method),
             PaymentSource::Cash => 'оплатил '.$day.' наличными',
             PaymentSource::Offset => 'оставил себе вознаграждение '.$day,
+            PaymentSource::Credit => 'засчитана оплата по ссылке '.$day,
             default => 'оплатил '.$day.' в банк'.($p->refNumber() ? ', п/п '.$p->refNumber() : ''),
         };
     }

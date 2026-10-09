@@ -10,6 +10,7 @@
     [$ico, $head, $sub, $tone] = match (true) {
         $p->state === PaymentState::Rejected => [$p->source->icon(), 'Не поступила', $p->reject_reason ?: $day, 'danger'],
         $p->state === PaymentState::Claimed => [$p->source->icon(), $p->source === PaymentSource::Cash ? 'Наличные' : 'Оплата по счёту', ($p->source === PaymentSource::Cash ? 'отдали ' : 'сообщили ').$day.', ждёт подтверждения', 'urgent'],
+        $p->source === PaymentSource::Credit => ['offset', 'Засчитана оплата по ссылке', $day, 'open'],
         // Вычел вознаграждение из счёта — «оставил себе», а не бухгалтерский «зачёт» (06.10.2026).
         $p->source === PaymentSource::Offset => ['offset', $staff ? 'Менеджер оставил себе вознаграждение' : 'Вы оставили себе вознаграждение', $day, 'muted'],
         $p->source === PaymentSource::Acquiring => [PayMethod::icon($a?->method), 'Оплата по ссылке', $day.' '.PayMethod::label($a?->method)

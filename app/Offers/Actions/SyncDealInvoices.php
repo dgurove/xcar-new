@@ -2,8 +2,6 @@
 
 namespace App\Offers\Actions;
 
-use App\Billing\Acquiring\Actions\CancelPayLink;
-use App\Billing\Acquiring\PayLink;
 use App\Billing\Actions\IssueInvoice;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
@@ -33,15 +31,15 @@ use Illuminate\Support\Facades\DB;
  * Счёт, что уже стоит как надо, не трогаем; другой, за который не платили, — аннулируем и ставим заново; оплаченный —
  * история, его не меняем. Не нужен схеме — не трогаем вовсе. Пока сделка согласуется с поставщиком (`Deal::agreed`),
  * счетов нет вовсе (09.10.2026): первые ставит `AgreeDeal`.
- * Разовые оплаты по ссылке с машиной сделки (`Deal::credits`, 09.10.2026, владелец: «засчитывать в сделку») — уже наши
- * деньги: подбор и агентское вознаграждение ПРАЙМ выставляются на них меньше, подбор, покрытый целиком, не выставляется;
- * выставив свой счёт со ссылкой, сделка гасит открытую ручную — ссылка на сделку одна.
+ * Разовые оплаты по ссылке с машиной сделки (`Deal::credits`, 09.10.2026, владелец: «пусть это будет зачёт суммы
+ * сделки») ложатся в её счета зачётом (`ApplyDealCredits`) — счёт остаётся на свою сумму, ссылка сделки встаёт на остаток;
+ * ручная ссылка при этом живёт дальше («пусть обе ссылки работают»).
  */
 final class SyncDealInvoices
 {
     private const DAYS = 3;
 
-    public function __construct(private IssueInvoice $issue, private VoidInvoice $void, private RecordPayment $record, private InvoicePdf $pdf, private CancelPayLink $cancel) {}
+    public function __construct(private IssueInvoice $issue, private VoidInvoice $void, private RecordPayment $record, private InvoicePdf $pdf, private ApplyDealCredits $credits) {}
 
     public function __invoke(Deal $deal, User $by): void
     {
@@ -50,11 +48,11 @@ final class SyncDealInvoices
             return;
         }
         $deal->loadMissing(['offer', 'buyer', 'contract.buyer']);
-        $deal->unsetRelation('credits');
         DB::transaction(function () use ($deal, $by) {
             $this->slot($deal, $by, ChargeKind::Selection, $this->selection($deal));
             $this->slot($deal, $by, ChargeKind::Sale, $this->prime($deal));
         });
+        ($this->credits)($deal, $by);
     }
 
     /**
@@ -70,14 +68,10 @@ final class SyncDealInvoices
             ->whereNull('credit_deal_id')->where('state', '!=', InvoiceState::Void)->update(['credit_deal_id' => $deal->id]);
     }
 
-    /** @return array{party: Party, lines: list<array>, offset: float}|array{covered: true}|null */
+    /** @return array{party: Party, lines: list<array>, offset: float}|null */
     private function selection(Deal $deal): ?array
     {
-        $full = $deal->selectionDue();
-        $due = (int) round($full - $deal->credited());
-        if ($full > 0 && $due <= 0) {
-            return ['covered' => true];
-        }
+        $due = $deal->selectionDue();
         if ($due <= 0 || ! $deal->buyer) {
             return null;
         }
@@ -105,8 +99,7 @@ final class SyncDealInvoices
         // Платит покупатель — удерживать не из чего, `Deal::withholds` тогда ложь: вознаграждение выплачиваем после оплаты.
         $managerPays = $contract->managerPays();
         $party = Party::forUser($managerPays ? $deal->buyer : $contract->buyer);
-        // Разовая оплата по ссылке с этой машиной — в счёт вознаграждения; строка ТС — закупочная, её не трогаем.
-        $fee = max(0, (int) $deal->amount - (int) $deal->cost - (int) round($deal->credited()));
+        $fee = max(0, (int) $deal->amount - (int) $deal->cost);
         $lines = [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]];
         if ($fee > 0) {
             $lines[] = ['title' => 'Агентское вознаграждение', 'qty' => 1, 'unit' => 'pc', 'price' => (float) $fee, 'kind' => ChargeKind::AgentFee->value];
@@ -122,20 +115,14 @@ final class SyncDealInvoices
         if (! $want) {
             return;
         }
-        if ($want['covered'] ?? false) {
-            // Подбор оплачен разовой ссылкой целиком: неоплаченный счёт подбора сделке больше не нужен.
-            Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('kind', $kind)->where('state', InvoiceState::Issued)->where('paid', 0)
-                ->whereDoesntHave('claims')->get()->each(fn (Invoice $i) => ($this->void)($i, $by, 'Оплачено разовой ссылкой'));
-
-            return;
-        }
         $current = Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('kind', $kind)->where('state', '!=', InvoiceState::Void)
             ->with(['payments', 'claims', 'charges'])->get();
         $total = $want ? round(array_sum(array_map(fn ($l) => $l['price'] * $l['qty'], $want['lines'])), 2) : null;
         // Сверяем строки, а не итог: у плательщика с «НДС сверху» итог больше строк.
         $fits = fn (Invoice $i) => $want && $i->party_id === $want['party']->id && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $total) < 0.01
             && abs($i->payments->where('source', PaymentSource::Offset)->sum('amount') - $want['offset']) < 0.01;
-        $paid = fn (Invoice $i) => $i->claims->isNotEmpty() || $i->payments->contains(fn ($p) => $p->source !== PaymentSource::Offset);
+        // Зачёт оплаты по ссылке — не оплата этого счёта: счёт перевыставляется, зачёт ляжет в новый (`ApplyDealCredits`).
+        $paid = fn (Invoice $i) => $i->claims->isNotEmpty() || $i->payments->contains(fn ($p) => ! $p->source->isSoft());
 
         $keep = $current->first(fn (Invoice $i) => $fits($i) || $paid($i));
         foreach ($current as $invoice) {
@@ -152,25 +139,6 @@ final class SyncDealInvoices
             $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));
         }
         $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).' — '.$want['party']->name]);
-        if (PayLink::eligible($invoice)) {
-            $this->retireCredits($deal, $by);
-        }
-    }
-
-    /**
-     * Сделка выставила свой счёт со ссылкой — открытая ручная по этой машине гаснет: ссылка на сделку одна. Неоплаченный
-     * ручной счёт аннулируется, частично оплаченный остаётся (его деньги уже засчитаны) без ссылки.
-     */
-    private function retireCredits(Deal $deal, User $by): void
-    {
-        foreach ($deal->credits()->where('state', InvoiceState::Issued)->with(['payLinks', 'claims', 'party'])->get() as $credit) {
-            if ($credit->paid == 0 && $credit->claims->isEmpty()) {
-                ($this->void)($credit, $by, 'Сделка выставила свой счёт');
-            } elseif ($open = $credit->openLink()) {
-                ($this->cancel)($open);
-            }
-            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Ссылка на оплату '.Money::rub($credit->total).' ('.$credit->party?->name.') погашена: по сделке выставлен свой счёт']);
-        }
     }
 
     /**

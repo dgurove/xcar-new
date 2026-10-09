@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Billing\Actions\IssueServiceInvoice;
 use App\Billing\Actions\RecordPayment;
+use App\Billing\ServiceTitle;
 use App\Billing\ChargeKind;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
@@ -96,6 +98,22 @@ class PrimeDealFlowTest extends TestCase
 
         app(RecordPayment::class)($invoice->fresh(), $this->admin, 1050000, now(), PaymentSource::Bank);
         $this->assertSame(CommissionState::Payable, $deal->fresh()->commissionState());
+    }
+
+    /** Разовая оплата по ссылке с машиной сделки ПРАЙМ ложится в её счёт зачётом; строки счёта те же (09.10.2026). */
+    public function test_prime_invoice_takes_manual_link_credit(): void
+    {
+        $offer = $this->offer();
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $manual = app(IssueServiceInvoice::class)(['name' => 'Покупаев Пётр Петрович'], $this->admin, 100000, ServiceTitle::DEFAULT, $offer);
+        app(RecordPayment::class)($manual->fresh(), $this->admin, 100000, now(), PaymentSource::Bank);
+
+        app(SaveDealContract::class)(DealContract::for($deal->fresh()), $this->buyerData(), $this->manager);
+
+        $invoice = $deal->fresh()->issuedInvoices()->sole();
+        $this->assertSame([944000.0, 106000.0], $invoice->charges()->orderBy('id')->pluck('price')->map(fn ($p) => (float) $p)->all());
+        $this->assertEqualsWithDelta(950000, $invoice->remaining(), 0.01);
+        $this->assertEqualsWithDelta(100000, (float) $invoice->payments()->where('source', PaymentSource::Credit)->sum('amount'), 0.01);
     }
 
     public function test_prime_manager_pays_minus_his_fee(): void

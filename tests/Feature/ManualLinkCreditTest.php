@@ -89,7 +89,20 @@ class ManualLinkCreditTest extends TestCase
         return $deal->fresh()->issuedInvoices()->where('kind', ChargeKind::Selection)->first();
     }
 
-    public function test_paid_manual_link_reduces_selection(): void
+    /** Зачёт по счёту подбора: сумма счёта та же, оплачено зачётом, ссылка сделки на остаток. */
+    private function assertSelection(Deal $deal, float $total, float $credited, ?float $link = null): Invoice
+    {
+        $selection = $this->selection($deal);
+        $this->assertEqualsWithDelta($total, $selection->total, 0.01);
+        $this->assertEqualsWithDelta($credited, (float) $selection->payments()->where('source', PaymentSource::Credit)->sum('amount'), 0.01);
+        if ($link !== null) {
+            $this->assertEqualsWithDelta($link, $selection->openLink()->amount, 0.01);
+        }
+
+        return $selection;
+    }
+
+    public function test_paid_manual_link_is_credited_to_selection(): void
     {
         $deal = $this->accepted();
         $manual = $this->manual(50000, $this->offer);
@@ -100,50 +113,49 @@ class ManualLinkCreditTest extends TestCase
 
         $this->walkTo($deal, 'Подтвердили покупку поставщику');
 
-        $this->assertEqualsWithDelta(30000, $this->selection($deal)->total, 0.01);
-        $this->assertEqualsWithDelta(30000, $this->selection($deal)->openLink()->amount, 0.01);
+        $this->assertSelection($deal, 80000, 50000, link: 30000);
+        $this->assertEqualsWithDelta(0, $deal->fresh()->creditExtra(), 0.01);
     }
 
-    public function test_covered_selection_is_not_issued_and_pay_step_passes(): void
+    public function test_full_credit_pays_selection_and_pay_step_passes(): void
     {
         $deal = $this->accepted();
         app(RecordPayment::class)($this->manual(80000, $this->offer)->fresh(), $this->admin, 80000, now(), PaymentSource::Bank);
 
         $this->walkTo($deal, 'Подписанный договор');
-        $this->assertNull($this->selection($deal));
-        $this->assertTrue($deal->fresh()->coveredByCredit());
-        $this->assertTrue($deal->fresh()->hasManagerInvoice());
+        $this->assertSame(InvoiceState::Paid, $this->assertSelection($deal, 80000, 80000)->state);
 
         $stage = $this->offer->fresh()->stage();
         app(TakeExit::class)($this->offer->fresh(), $stage->exitsFor(Actor::Manager, $deal)->firstWhere('label', 'Договор приложен'), Actor::Manager, $this->manager);
         $this->assertSame('Сделка закрыта', $this->offer->fresh()->stage()->name);
     }
 
-    public function test_refund_brings_selection_back(): void
+    public function test_refund_releases_credit(): void
     {
         $deal = $this->accepted();
         $manual = $this->manual(50000, $this->offer);
         $payment = app(RecordPayment::class)($manual->fresh(), $this->admin, 50000, now(), PaymentSource::Bank);
         $this->walkTo($deal, 'Подтвердили покупку поставщику');
-        $this->assertEqualsWithDelta(30000, $this->selection($deal)->total, 0.01);
+        $this->assertSelection($deal, 80000, 50000);
 
         app(VoidPayment::class)($payment, $this->admin, 'возврат');
 
-        $this->assertEqualsWithDelta(80000, $this->selection($deal)->total, 0.01);
+        $this->assertSelection($deal, 80000, 0, link: 80000);
     }
 
-    public function test_open_manual_link_retires_when_deal_issues_its_own(): void
+    public function test_open_manual_link_lives_next_to_deal_link(): void
     {
         $deal = $this->accepted();
         $manual = $this->manual(80000, $this->offer);
-        $this->assertNotNull($manual->openLink());
 
         $this->walkTo($deal, 'Подтвердили покупку поставщику');
 
-        $this->assertSame(InvoiceState::Void, $manual->fresh()->state);
-        $this->assertNull($manual->fresh()->openLink());
-        $this->assertEqualsWithDelta(80000, $this->selection($deal)->total, 0.01);
+        $this->assertNotNull($manual->fresh()->openLink());
         $this->assertNotNull($this->selection($deal)->openLink());
+        // Оплатили обе — подбор закрыт зачётом своей ссылки, ручная сверх сделки.
+        app(RecordPayment::class)($this->selection($deal), $this->admin, 80000, now(), PaymentSource::Bank);
+        app(RecordPayment::class)($manual->fresh(), $this->admin, 80000, now(), PaymentSource::Bank);
+        $this->assertEqualsWithDelta(80000, $deal->fresh()->creditExtra(), 0.01);
     }
 
     public function test_manual_link_taken_before_deal_is_adopted(): void
@@ -157,10 +169,10 @@ class ManualLinkCreditTest extends TestCase
         $this->walkTo($deal, 'Подтвердили покупку поставщику');
 
         $this->assertSame($deal->id, $manual->fresh()->credit_deal_id);
-        $this->assertEqualsWithDelta(30000, $this->selection($deal)->total, 0.01);
+        $this->assertSelection($deal, 80000, 50000);
     }
 
-    public function test_second_link_for_same_deal_or_payer_is_refused(): void
+    public function test_existing_link_warns_but_force_creates_second(): void
     {
         $deal = $this->accepted();
         $this->walkTo($deal, 'Подтвердили покупку поставщику');
@@ -168,30 +180,48 @@ class ManualLinkCreditTest extends TestCase
 
         try {
             $this->manual(10000, $this->offer, 'Кто-то другой');
-            $this->fail('вторая ссылка по сделке');
+            $this->fail('вторая ссылка по сделке без «Всё равно создать»');
         } catch (LinkExists $e) {
             $this->assertSame($own->id, $e->link->id);
         }
+        $extra = app(IssueServiceInvoice::class)(['name' => 'Кто-то другой'], $this->admin, 10000, ServiceTitle::DEFAULT, $this->offer, force: true);
+        $this->assertNotNull($extra->openLink());
+        $this->assertNotNull($own->fresh()->isOpen() ? $own : null);
 
         $first = $this->manual(10000, null, 'Морковин Дмитрий Евгеньевич');
         $this->actingAs($this->admin)->post('http://'.config('xcar.crm_host').'/work/money/service', ['amount' => '20 000', 'title' => ServiceTitle::DEFAULT, 'party_id' => 'new', 'party_name' => 'морковин  дмитрий евгеньевич'])
             ->assertRedirect('/work/money?tab=links&peek='.$first->openLink()->id);
-        $this->assertSame(1, Invoice::where('kind', ChargeKind::Service)->where('state', InvoiceState::Issued)->count());
+        $this->assertSame(2, Invoice::where('kind', ChargeKind::Service)->where('state', InvoiceState::Issued)->count());
     }
 
-    public function test_attaching_paid_manual_link_later_reduces_unpaid_selection(): void
+    public function test_attaching_later_credits_partly_paid_selection_and_rest_is_extra(): void
     {
         $deal = $this->accepted();
         $manual = $this->manual(53000);
         app(RecordPayment::class)($manual->fresh(), $this->admin, 53000, now(), PaymentSource::Bank);
         $this->walkTo($deal, 'Подтвердили покупку поставщику');
-        $this->assertEqualsWithDelta(80000, $this->selection($deal)->total, 0.01);
+        app(RecordPayment::class)($this->selection($deal), $this->admin, 30000, now(), PaymentSource::Bank);
 
         app(AttachServiceCar::class)($manual->fresh(), $this->offer, null, $this->admin);
 
         $this->assertSame($deal->id, $manual->fresh()->credit_deal_id);
-        $this->assertEqualsWithDelta(27000, $this->selection($deal)->total, 0.01);
+        $this->assertSame(InvoiceState::Paid, $this->assertSelection($deal, 80000, 50000)->state);
+        $this->assertEqualsWithDelta(3000, $deal->fresh()->creditExtra(), 0.01);
         $this->assertSame(1, $deal->fresh()->issuedInvoices()->where('kind', ChargeKind::Selection)->count());
+    }
+
+    public function test_unbinding_releases_credit(): void
+    {
+        $deal = $this->accepted();
+        $manual = $this->manual(50000, $this->offer);
+        app(RecordPayment::class)($manual->fresh(), $this->admin, 50000, now(), PaymentSource::Bank);
+        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->assertSelection($deal, 80000, 50000);
+
+        app(AttachServiceCar::class)($manual->fresh(), null, null, $this->admin);
+
+        $this->assertNull($manual->fresh()->credit_deal_id);
+        $this->assertSelection($deal, 80000, 0);
     }
 
     public function test_share_text_names_payer_car_and_amount(): void

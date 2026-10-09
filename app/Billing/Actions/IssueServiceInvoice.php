@@ -12,8 +12,7 @@ use App\Billing\PartyKind;
 use App\Billing\Seller;
 use App\Billing\ServiceTitle;
 use App\Billing\WorkDays;
-use App\Offers\Deal;
-use App\Offers\DealState;
+use App\Offers\DealCredit;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Support\Money;
@@ -36,7 +35,8 @@ final class IssueServiceInvoice
     public function __construct(private IssueInvoice $issue) {}
 
     /** @param  Party|array{name: string, email?: ?string}  $payer */
-    public function __invoke(Party|array $payer, User $by, float $amount, string $title, ?Offer $offer = null, ?string $car = null): Invoice
+    /** `force` — «Всё равно создать»: вторая ссылка по той же машине или плательщику, доплата сверх сделки (09.10.2026). */
+    public function __invoke(Party|array $payer, User $by, float $amount, string $title, ?Offer $offer = null, ?string $car = null, bool $force = false): Invoice
     {
         $title = trim(preg_replace('/\s+/u', ' ', $title));
         if ($problem = ServiceTitle::problem($title)) {
@@ -52,14 +52,14 @@ final class IssueServiceInvoice
 
         $car = $offer ? null : (PayLink::squash((string) $car) ?: null);
 
-        return DB::transaction(function () use ($party, $by, $amount, $title, $offer, $car) {
+        return DB::transaction(function () use ($party, $by, $amount, $title, $offer, $car, $force) {
             DB::select('select pg_advisory_xact_lock(?)', [crc32('service-link')]);
-            if ($found = ExistingLink::find($offer, $party->exists ? $party->id : null, $party->name)) {
+            if (! $force && ($found = ExistingLink::find($offer, $party->exists ? $party->id : null, $party->name))) {
                 throw new LinkExists($found);
             }
             // Новый плательщик заводится только вместе со счётом: «ссылка уже есть» не оставляет пустого контрагента.
             $party->exists || $party->save();
-            $deal = $offer ? ($offer->deal ?? Deal::where('offer_id', $offer->id)->where('state', '!=', DealState::Cancelled)->latest('id')->first()) : null;
+            $deal = $offer ? DealCredit::dealFor($offer) : null;
             $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Service, WorkDays::add(now(), 3),
                 lines: [['title' => $title, 'qty' => 1, 'unit' => 'svc', 'price' => round($amount, 2), 'kind' => ChargeKind::Service->value]], offerId: $offer?->id);
             $invoice->update(['car_title' => $car, 'credit_deal_id' => $deal?->id]);
