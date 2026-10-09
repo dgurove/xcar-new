@@ -100,7 +100,9 @@ final class ChainBuilder
                 return null;
             }
             $candidate = Candidate::create([
-                'scope' => $scope, 'key' => Candidate::strongest($keys) ?? 'message:'.$message->id, 'message_id' => $message->id, 'thread_id' => $message->thread_id,
+                // Состояние явно: умолчание базы в модель не возвращается, и `AutoRequest` видел у новой цепочки пустое
+                // состояние вместо «ждёт» — заявки заводили только часы через пять минут.
+                'scope' => $scope, 'state' => CandidateState::New, 'key' => Candidate::strongest($keys) ?? 'message:'.$message->id, 'message_id' => $message->id, 'thread_id' => $message->thread_id,
                 'subject' => $message->subject, 'extracted' => $fields, 'messages_count' => 0, 'last_message_at' => $message->date_at ?? now(),
             ]);
             $matches = collect([$candidate]);

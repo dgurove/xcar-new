@@ -65,7 +65,8 @@ final class AutoRequest
 
     public function __invoke(Candidate $candidate, bool $old = false): ?Request
     {
-        $candidate->load('messages');
+        // Свежая из базы: цепочку передают сразу после создания и свёртки, состояние и этап — в базе.
+        $candidate->refresh()->load('messages');
         if ($this->blocker($candidate, $old)) {
             return null;
         }
