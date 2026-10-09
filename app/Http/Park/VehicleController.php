@@ -208,7 +208,8 @@ class VehicleController
             'debt' => Ledger::vehicleDebt($vehicle),
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
             // «✨» и расхождения с документами — тем, кто правит ТС, и только когда письма есть.
-            'scanFiles' => ($scan = $request->user()->canManagePark() && $vehicle->threads_count > 0) ? (new VehicleSubject($vehicle))->files() : collect(),
+            // Выданной сверять уже нечего: машины на парковке нет.
+            'scanFiles' => ($scan = $request->user()->canManagePark() && $vehicle->threads_count > 0 && ! $vehicle->state->isFinal()) ? (new VehicleSubject($vehicle))->files() : collect(),
             'differences' => $scan ? app(FillFromDocs::class)->differences($vehicle) : [],
         ]);
     }

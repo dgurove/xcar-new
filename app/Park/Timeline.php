@@ -67,8 +67,7 @@ final class Timeline
             $storageState = $v->released_at || $releasing ? Step::DONE : ($v->state === VehicleState::Stored && ! $noYard ? Step::CURRENT : Step::NEXT);
             $chips = array_values(array_filter([$v->sold_at ? 'на выдачу с '.$v->sold_at->translatedFormat('j M') : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
             $steps[] = new Step('storage', $storageState === Step::CURRENT ? 'На хранении' : 'Хранение', $storageState,
-                $storageState === Step::CURRENT ? ($v->sold_at ? 'На выдачу, ждём покупателя за ТС' : 'Вендор пришлёт письмо, что ТС реализовано, шаг сменится сам; когда за ТС приедут, выдайте') : null,
-                $v->sold_at, $chips, $storageState === Step::CURRENT ? ['kind' => 'spawn', 'label' => 'Выдать'] : null);
+                null, $v->sold_at, $chips, $storageState === Step::CURRENT ? ['kind' => 'spawn', 'label' => 'Выдать'] : null);
 
             // Покупатель приехал и не взял: продажа снята, ТС снова просто стоит — исход виден шагом, а не заметкой.
             foreach ($events->where('type', EventType::ReleaseRefused)->sortBy('created_at') as $refusal) {
@@ -92,7 +91,7 @@ final class Timeline
 
             $chips = array_values(array_filter([$release?->doneBy?->shortName(), $release?->note]));
             $steps[] = new Step('release', $v->released_at ? 'Выдана' : ($releasing ? 'Нужно выдать' : 'Выдача'), $v->released_at ? Step::DONE : ($releasing ? Step::CURRENT : Step::NEXT),
-                $v->releasesByQr() ? 'Отсканировать QR покупателя и проверить долг' : 'Проверить долг', $v->released_at, $v->released_at ? $chips : [],
+                null, $v->released_at, $v->released_at ? $chips : [],
                 $releasing ? ['kind' => 'submit', 'label' => 'Выдать'] : null, $release?->isOpen() ? $release : ($v->released_at ? $release : null));
 
             if ($v->released_at && $billable) {
