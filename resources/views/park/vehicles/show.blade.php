@@ -10,7 +10,6 @@
     // Деньги дела (счета, начисления, долг) — тем, кому они открыты на парковке (галка «Деньги» у управляющего).
     $money = auth()->user()->canManagePark();
     $open = $req !== null;
-    $moveForm = $open && $req->type === RequestType::Move && $state === VehicleState::Stored;
     // Нет открытой заявки: у ожидаемой — «Принять», у стоящей — «Выдать» (POST /requests заводит заявку и показывает её форму).
     $hasChain = $open && in_array($req->type, [RequestType::Intake, RequestType::Release], true);
     $spawn = ! $hasChain ? match ($state) { VehicleState::Expected => ['intake', 'Принять'], VehicleState::Stored => ['release', 'Выдать'], default => null } : null;
@@ -22,7 +21,7 @@
 @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
     <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
-    {{-- Шапка — только положение и люди: состояние с местом и днями, долг, «Продано», исполнитель, письма.
+    {{-- Шапка — только положение и люди: состояние с местом и днями, долг, «Продано», письма.
          Всё, что есть в полях (номер, вендор, телефон) и в «Деньгах» (ставка, начислено), тут не повторяется. --}}
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
         <x-park.state :vehicle="$vehicle"/>
@@ -34,21 +33,6 @@
                 <span class="pill pill-urgent !min-h-0 !py-1 text-xs nums">На выдачу {{ $vehicle->sold_at->translatedFormat('j M') }}</span>
             @endif
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'Заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="fact">Заберёт {{ $vehicle->pickup_name }}</span>@endif
-        @endif
-        {{-- Исполнитель ставится сам первым действием; чип с аватаром, нажатие — передать другому. Контроллер шторки —
-             только вместе с ней: без исполнителя шторки нет, и пустой контроллер падал в консоль. --}}
-        @if ($open && $req->assignee)
-            <div class="contents" data-controller="sheet">
-            <button type="button" class="chip person" data-action="sheet#open"><x-ui.avatar :user="$req->assignee" :size="20"/>{{ $req->assignee->shortName() }}</button>
-            <x-ui.sheet id="assignee" title="Передать">
-                <form method="post" action="/requests/{{ $req->id }}/assign" class="flex flex-col gap-2">
-                    @csrf
-                    @foreach ($staff as $u)
-                        <button name="assignee_id" value="{{ $u->id }}" class="row row-check !py-2 text-left"><x-ui.avatar :user="$u" :size="32"/><span class="min-w-0 flex-1">{{ $u->name }}</span><span class="check"><input type="radio" tabindex="-1" @checked($req->assignee_id === $u->id) readonly></span></button>
-                    @endforeach
-                </form>
-            </x-ui.sheet>
-            </div>
         @endif
         <x-ui.docs-pill :docs="$docs" class="!min-h-0 !py-1 text-xs"/>
         {{-- Продажа — админу: «Выставить в продажу» или капсула состояния со шторкой «Убрать из продажи» (x-park.sale). --}}
@@ -63,7 +47,6 @@
     <div class="flex min-w-0 flex-col gap-4">
         @php
             $submit = $cur?->plate['kind'] === 'submit' ? $cur : null;
-            $otherForm = $open && in_array($req->type, [RequestType::Move, RequestType::Inspection], true);
             $action = $submit ? match ($submit->key) {
                 'intake' => "/requests/{$submit->request->id}/intake",
                 'release' => "/requests/{$submit->request->id}/release",
@@ -92,32 +75,8 @@
             @if ($lastLetter)@include('park.vehicles.letters-card')@endif
             @include('park.vehicles.timeline')
         @endif
-        @if ($otherForm)
-            <form method="post" action="/requests/{{ $req->id }}/{{ $moveForm ? 'move' : 'close' }}" id="act-form" class="flex flex-col gap-4">
-                @csrf
-                @unless ($moveForm)<input type="hidden" name="done" value="1">@endunless
-                @if ($moveForm)
-                    <x-ui.card title="Перестановка">
-                        <div class="grid grid-cols-2 gap-3" data-controller="spots" data-spots-map-value="{{ json_encode($yardRows) }}">
-                            <x-park.yard-field :yards="$yards" label="Куда" :value="$req->yard_id ?? $vehicle->yard_id" required data-spots-target="yard" data-action="change->spots#sync"/>
-                            <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters" :value="$vehicle->spot"/>
-                            <datalist id="spots-list" data-spots-target="list"></datalist>
-                        </div>
-                        <div class="mt-4"><x-ui.button class="w-full sm:w-auto">Переставить</x-ui.button></div>
-                    </x-ui.card>
-                @elseif ($req->type === RequestType::Move)
-                    <x-ui.card title="Перестановка"><span class="chip">ТС ещё не на парковке</span>@if ($req->note)<p class="mt-3 text-sm text-ink-muted">{{ $req->note }}</p>@endif</x-ui.card>
-                @else
-                    <x-ui.card :title="$req->type->label()">
-                        @if ($req->note)<p class="mb-3 whitespace-pre-line text-sm text-ink-muted">{{ $req->note }}</p>@endif
-                        <x-ui.field name="note" label="Что сделано" type="textarea"/>
-                    </x-ui.card>
-                @endif
-                @if ($verb && ! $moveForm)<div><x-ui.button class="w-full sm:w-auto">{{ $verb }}</x-ui.button></div>@endif
-            </form>
-        @endif
         @foreach ($others as $r)
-            <a href="/cars/{{ $vehicle->id }}?req={{ $r->id }}" class="row !py-2.5"><span class="chip bg-accent-soft text-accent-text">{{ $r->type->label() }}</span>@if ($r->planned_at && $r->type !== RequestType::Intake)<span class="tag nums">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif<span class="text-sm text-ink-muted">ещё открыта</span></a>
+            <a href="/cars/{{ $vehicle->id }}?req={{ $r->id }}" class="row !py-2.5"><span class="chip bg-accent-soft text-accent-text">{{ $r->type->label() }}</span><span class="text-sm text-ink-muted">ещё открыта</span></a>
         @endforeach
         {{-- «Сделано» у каждого ждущего письма своё: форма не может лежать внутри act-form. --}}
         @foreach ($asks ?? [] as $a)<form method="post" action="/cars/{{ $vehicle->id }}/letters/{{ $a->id }}/done" id="reply-form-{{ $a->id }}">@csrf</form>@endforeach
@@ -277,41 +236,7 @@
             </x-ui.sheet>
         </div>
     @endif
-    @if ($canManage && ($state === VehicleState::Stored || $vehicle->sold_at))
-        <div data-controller="sheet" data-action="sold:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="sold" title="Покупатель" :open="$errors->hasAny(['sold_at', 'pickup_name', 'pickup_phone'])">
-                {{-- Страховая продала ТС: дата письма, кому выдать; дальше дни за счёт вендора и покупатель по множителю. --}}
-                <form method="post" action="/cars/{{ $vehicle->id }}/sold" class="flex flex-col gap-3">
-                    @csrf
-                    <div class="fields">
-                        <x-ui.field name="sold_at" label="Дата реализации" type="date" :value="($vehicle->sold_at ?? now())->toDateString()" required/>
-                        <x-ui.field name="pickup_phone" label="Телефон" type="tel" :value="$vehicle->pickup_phone"/>
-                        <x-ui.field name="pickup_name" label="Кто заберёт" :value="$vehicle->pickup_name"/>
-                        {{-- Срок из письма страховой: опоздал — дальше сутки идут покупателю по множителю вендора.
-                             Поле только у вендоров с этим правилом (ВСК): у остальных платит страховая, сколько бы ни стояло. --}}
-                        @if ($vehicle->vendor?->buyer_pays_late)<x-ui.field name="buyer_free_until" label="За счёт вендора до" type="date" :value="$vehicle->buyer_free_until?->toDateString()"/>@endif
-                    </div>
-                    <div class="sheet-foot flex gap-2">
-                        <x-ui.button class="flex-1">{{ $vehicle->sold_at ? 'Сохранить' : 'Записать' }}</x-ui.button>
-                        @if ($vehicle->sold_at)<x-ui.button variant="ghost" name="clear" value="1" data-turbo-confirm="Снять выдачу?">Снять выдачу</x-ui.button>@endif
-                    </div>
-                </form>
-            </x-ui.sheet>
-        </div>
-    @endif
-
-    @if ($canManage && $vehicle->sold_at && $state === VehicleState::Stored && $req?->type === RequestType::Release)
-        <div data-controller="sheet" data-action="refusal:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="refusal" title="Покупатель отказался" :open="$errors->has('reason')">
-                {{-- Приехал, посмотрел и не взял: продажа снимается, ТС снова просто стоит, дальше письмо вендору. --}}
-                <form method="post" action="/requests/{{ $req->id }}/refuse" class="flex flex-col gap-3">
-                    @csrf
-                    <x-ui.field name="reason" label="Почему отказался" type="textarea" required/>
-                    <div class="sheet-foot"><x-ui.button block>Записать отказ</x-ui.button></div>
-                </form>
-            </x-ui.sheet>
-        </div>
-    @endif
+    @include('park.vehicles.release-sheets', ['formId' => 'act-form'])
 
     @if ($canManage && ($pass ?? null)?->isLive() && ! $pass->isConfirmed())
         <div data-controller="sheet" data-action="buyer-reject:open@window->sheet#open" class="contents">
@@ -330,29 +255,6 @@
         </div>
     @endif
 
-    @if ($canManage && ($byQr ?? false) && $state === VehicleState::Stored && $req?->type === RequestType::Release)
-        <div data-controller="sheet" data-action="without-qr:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="without-qr" title="Выдать без QR-кода?" :open="$errors->has('without_qr_reason')">
-                {{-- Крайний случай: причина от 20 знаков уходит в историю ТС, в акт и владельцу в Telegram. Поле связано с
-                     формой выдачи (form="act-form"): дата и остальное берутся оттуда. Счётчик — внутри поля,
-                     кнопка оживает на 20 знаках. --}}
-                <div class="flex flex-col gap-3" data-controller="min-length" data-min-length-min-value="20">
-                    <div class="list">
-                        <div class="row justify-between"><span class="min-w-0"><span class="block truncate">{{ $vehicle->titleWithYear() }}</span>@if ($vehicle->pickup_name)<span class="block truncate text-sm text-ink-muted">{{ $vehicle->pickup_name }}</span>@endif</span></div>
-                    </div>
-                    <div class="field {{ $errors->has('without_qr_reason') ? 'field-invalid' : '' }}">
-                        <label for="without-qr-reason" class="field-label">Почему выдаёте без QR</label>
-                        <div class="relative">
-                            <textarea id="without-qr-reason" name="without_qr_reason" form="act-form" rows="4" class="field-input pb-8" data-min-length-target="input" data-action="input->min-length#check">{{ old('without_qr_reason') }}</textarea>
-                            <span class="nums pointer-events-none absolute bottom-2.5 right-3.5 text-xs text-ink-dim" data-min-length-target="counter"></span>
-                        </div>
-                        @error('without_qr_reason')<p class="field-error">{{ $message }}</p>@enderror
-                    </div>
-                    <div class="sheet-foot"><button type="submit" form="act-form" name="without_qr" value="1" class="btn btn-danger btn-block disabled:opacity-50" data-min-length-target="submit" data-action="min-length#guard" data-turbo-confirm="Выдать ТС без QR-кода? Об этом узнает владелец">Выдать без QR</button></div>
-                </div>
-            </x-ui.sheet>
-        </div>
-    @endif
 
     <div data-controller="sheet" data-action="actions:open@window->sheet#open" class="contents">
         <x-ui.sheet id="vehicle-actions" title="Транспортное средство">

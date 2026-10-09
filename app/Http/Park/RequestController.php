@@ -11,12 +11,9 @@ use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Scan\AutoScan;
 use App\Mail\Scope as MailScope;
-use App\Park\Actions\AssignRequest;
-use App\Park\Actions\CloseRequest;
 use App\Park\Actions\CreateRequest;
 use App\Park\Actions\Intake;
 use App\Park\Actions\MarkSold;
-use App\Park\Actions\Move;
 use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\RefuseRelease;
 use App\Park\Actions\RegisterFromLetters;
@@ -35,12 +32,10 @@ use App\Park\Yard;
 use App\Support\Detail;
 use App\Support\Docs;
 use App\Support\Facets\Common;
-use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Sort;
-use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -49,11 +44,11 @@ use Illuminate\Validation\Rule;
 class RequestController
 {
     /** По умолчанию — новые сверху по дате письма, из которого заявка, без письма — по дате заявки (владелец 07.10.2026). */
-    public const SORTS = ['fresh' => ['Дата письма', 'desc'], 'planned' => ['Срок', 'asc'], 'type' => ['Тип', 'asc']];
+    public const SORTS = ['fresh' => ['Дата письма', 'desc'], 'type' => ['Тип', 'asc']];
 
     public const SORT = '-fresh';
 
-    /** Главная стоянки и список заявок: пресеты «Просрочено» и типы, поиск по ТС, вендор, площадка, «Мои»; три вида с карточкам строки. */
+    /** Главная стоянки и список заявок: пресеты-типы (приём, выдача), поиск по ТС, вендор, площадка; три вида с карточкой строки. */
     public function index(Request $request)
     {
         $detail = Detail::of($request, fn (string $key) => ($req = ParkRequest::find($key)) && $req->vehicle ? app(VehicleController::class)->detail($request, $req->vehicle, $req) : null);
@@ -65,7 +60,6 @@ class RequestController
             Common::vendor($vehicle('vendor_id')),
             Common::yard('coalesce(park_requests.yard_id, '.$vehicle('yard_id').')'),
             Common::category($vehicle('category'), 'Без типа'),
-            Facet::toggle('mine', 'Мои', fn ($w) => $w->where('assignee_id', $request->user()->id)),
         );
         ListPrefs::sync($request, 'park-requests', keep: $facets->keys());
         $type = $request->query('preset', 'all');
@@ -74,30 +68,26 @@ class RequestController
         $filters = fn ($q) => $facets->applyTo($q)
             ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%')
                 ->orWhereHas('brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%")->orWhere('name_ru', 'ilike', "%{$qs}%"))));
-        $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee', 'letter', 'creator']));
+        $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'letter', 'creator']));
         $q->whereIn('state', RequestState::open());
         if ($qs !== '') {
             $filters($q);
         } elseif ($t = RequestType::tryFrom($type)) {
             $q->where('type', $t);
-        } elseif ($type === 'overdue') {
-            $q->where('planned_at', '<', now());
         }
         $facets->apply($q);
         $sort = Sort::from($request->query('sort'), self::SORTS, self::SORT);
         $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $q->orderByRaw("coalesce(letter_at, created_at) {$dir}")->orderBy('id', $dir),
-            'type' => $q->orderBy('type', $dir)->orderByRaw('planned_at asc nulls last')->latest(),
-            default => $q->orderByRaw("planned_at {$dir} nulls last")->latest(),
+            default => $q->orderBy('type', $dir)->orderByRaw('coalesce(letter_at, created_at) desc'),
         };
 
         $open = $filters(ParkRequest::query())->whereIn('state', RequestState::open())->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
-        $counts = $open->all() + ['all' => $open->sum(),
-            'overdue' => $filters(ParkRequest::query())->whereIn('state', RequestState::open())->where('planned_at', '<', now())->count()];
-        // Пилюля есть, пока есть заявки: «Перестановка» появляется от первой такой и исчезает с последней.
+        $counts = $open->all() + ['all' => $open->sum()];
+        // Пилюля есть, пока есть заявки: «Выдача» появляется от первой такой и исчезает с последней.
         // Выбранная остаётся и с нулём, иначе активная пилюля исчезала бы из ряда вместе со списком.
-        $presets = collect(['all' => 'Все', 'overdue' => 'Просрочено'] + collect(RequestType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all())
+        $presets = collect(['all' => 'Все'] + collect(RequestType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all())
             ->filter(fn ($label, $key) => $key === 'all' || $key === $type || ! empty($counts[$key]))->all();
         $paginator = ListView::paginate($request, $q);
         $data = [
@@ -196,7 +186,6 @@ class RequestController
             'vehicle_id' => ['nullable', 'exists:park_vehicles,id'],
             'candidate_id' => ['nullable', 'exists:mail_candidates,id'],
             'yard_id' => ['nullable', 'exists:park_yards,id'],
-            'planned_at' => ['nullable', 'date'],
             'note' => ['nullable', 'string', 'max:2000'],
             'flags' => ['nullable', 'array'], 'flags.*' => ['string', 'max:20'],
             'docs_required' => ['nullable', 'array'], 'docs_required.*' => ['string', 'max:20'],
@@ -262,14 +251,6 @@ class RequestController
         return redirect("/cars/{$req->vehicle_id}", 301);
     }
 
-    /** Кто двинул заявку — тот и исполнитель: ставится первым действием, если никого нет. */
-    private function claim(Request $request, ParkRequest $req): void
-    {
-        if (! $req->assignee_id) {
-            app(AssignRequest::class)($req, $request->user(), $request->user());
-        }
-    }
-
     /**
      * Поля ТС приходят той же формой, что и этап заявки: одна кнопка сохраняет всё.
      * Правит их только `park.manage` — «только приёмке» форма показывает их чипами.
@@ -288,7 +269,6 @@ class RequestController
     public function intake(Request $request, ParkRequest $req, Intake $intake)
     {
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'], 'accepted_at' => ['nullable', 'date']] + self::inspectionRules());
-        $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data, $req, $data['spot'] ?? null);
 
@@ -299,16 +279,6 @@ class RequestController
         }
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Принята');
-    }
-
-    public function move(Request $request, ParkRequest $req, Move $move)
-    {
-        $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
-        $this->claim($request, $req);
-        $this->saveVehicle($request, $req->vehicle);
-        $move($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null, $req);
-
-        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Переставлена');
     }
 
     /** Выдача: когда, кому, ключи и документы в акт, подпись; дальше редактор письма вендору с актом выдачи. */
@@ -323,10 +293,14 @@ class RequestController
             'without_qr_reason.min' => 'Опишите причину подробнее, от 20 знаков',
         ]);
         $at = isset($data['released_at']) ? Carbon::parse($data['released_at']) : null;
-        $this->claim($request, $req);
         $this->saveVehicle($request, $req->vehicle);
         $qr = $request->boolean('without_qr') ? ['without' => $data['without_qr_reason']] : ['pass' => $data['pass'] ?? null, 'confirm' => $request->boolean('pass_confirm')];
         $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? '') ?? ($req->vehicle->sold_at ? ReleasedTo::Buyer : null), $data, $req, $request->boolean('force') && $request->user()->canManagePark(), $request->boolean('cash'), $qr);
+
+        // Из окна заявки — строка уходит, окно к следующей выдаче; отчёт вендору ждёт шагом в деле.
+        if ($request->header('Turbo-Frame') === Detail::FRAME) {
+            return back()->with('detail-advance', true)->with('toast', 'Выдана');
+        }
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
     }
@@ -337,25 +311,11 @@ class RequestController
         abort_unless($request->user()->canManagePark(), 404);
         $reason = $request->validate(['reason' => ['required', 'string', 'max:500']])['reason'];
         $refuse($req->vehicle, $request->user(), $reason);
+        if ($request->header('Turbo-Frame') === Detail::FRAME) {
+            return back()->with('toast', 'Отказ записан');
+        }
 
         return redirect(self::withReport($req->vehicle->fresh(), 'refusal'))->with('toast', 'Отказ записан, письмо вендору готово');
-    }
-
-    /** Закрыть заявку сделанной (осмотр, перестановка — старые типы); отмена заявки на приём — «Отменить заявку» на деле (UnwindVehicle). */
-    public function close(Request $request, ParkRequest $req, CloseRequest $close)
-    {
-        $data = $request->validate(['done' => ['required', 'boolean'], 'note' => ['nullable', 'string', 'max:2000']]);
-        $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
-
-        return redirect("/cars/{$req->vehicle_id}")->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
-    }
-
-    public function assign(Request $request, ParkRequest $req, AssignRequest $assign)
-    {
-        $data = $request->validate(['assignee_id' => ['nullable', 'exists:users,id']]);
-        $assign($req, ! empty($data['assignee_id']) ? User::find($data['assignee_id']) : null, $request->user());
-
-        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Исполнитель записан');
     }
 
     /** Адрес дела с окном писем поверх, где ждёт черновик вендору с актом и фото; писать некому — просто дело. */

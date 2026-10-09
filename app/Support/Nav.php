@@ -516,8 +516,6 @@ final class Nav
         return Cache::remember("nav.staff:{$surface->value}".($city ? ":{$city}" : ''), 30, function () use ($surface) {
             if ($surface === Surface::Park) {
                 return [
-                    // Бейдж «Заявки» — просроченные: то, что горит.
-                    '/requests' => Request::whereIn('state', RequestState::open())->where('planned_at', '<', now())->count(),
                     // Бейдж «Из писем» — число дел, которые надо завести: у одинокого письма-заявки цепочки нет.
                     '/requests/from-mail' => Boxes::registerCount(Scope::Park),
                     // Бейдж «Оплаты» — работа управляющего: выставить за прошлый месяц, отправить выставленное, просрочено.

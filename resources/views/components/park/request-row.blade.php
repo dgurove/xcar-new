@@ -1,6 +1,5 @@
-{{-- Строка таблицы заявок. Ячейка ТС в два этажа: название, под ним тип словом (красным при просрочке),
-     госномер и номер убытка; от 640 тип и номер уходят в свои столбцы. Справа срок: день, под
-     ним время. Пересказа «что делать» нет — его говорят тип и срок. Нажатие — карточка.
+{{-- Строка таблицы заявок. Ячейка ТС в два этажа: название, под ним тип словом 
+     госномер и номер убытка; от 640 тип и номер уходят в свои столбцы. Пересказа «что делать» нет — его говорит тип. Нажатие — карточка.
      Заявку завела почта и документы ещё читаются (`AutoScan::states`, `$arrive`) — строка силуэтом: вместо
      названия и номера полосы, тип словом виден сразу; пока читаем — полоса бежит по строке и «Читаем документы, 2 из 5».
      Дочитали — строка обычная, `arrive_controller` проявляет её. Откуда заявка (`x-park.request-source`: адрес и время
@@ -9,12 +8,12 @@
 @props(['req', 'arrive' => null])
 @php
     $v = $req->vehicle;
-    $late = $req->isOverdue();
     $state = $arrive['state'] ?? null;
     $busy = in_array($state, ['ghost', 'reading'], true);
 @endphp
-{{-- `data-todo` — открытый приём: принятая в карточке заявка уходит, карточка переходит к следующему приёму (`detail#advance`). --}}
-<tr data-detail-key="{{ $req->id }}" id="request-{{ $req->id }}" @if ($req->isOpen() && $req->type === \App\Park\RequestType::Intake) data-todo @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $state }}" data-arrive-subject-value="v:{{ $v->id }}" @endif @class(['arrive' => $arrive, 'arrive--'.$state => $busy])>
+{{-- `data-todo` — заявка, которую можно сделать прямо в карточке (приём; выдача стоящей ТС): сделанная уходит, карточка
+     переходит к следующей (`detail#advance`). --}}
+<tr data-detail-key="{{ $req->id }}" id="request-{{ $req->id }}" @if ($req->isOpen() && ($req->type === \App\Park\RequestType::Intake || $v->state === \App\Park\VehicleState::Stored)) data-todo @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $state }}" data-arrive-subject-value="v:{{ $v->id }}" @endif @class(['arrive' => $arrive, 'arrive--'.$state => $busy])>
     <td class="grow">
         @if ($busy)
             <x-ui.row-link :key="$req->id"><span class="cell-title"><span class="skeleton arrive-bar w-40 max-w-full"></span></span></x-ui.row-link>
@@ -30,7 +29,7 @@
         @else
             <x-ui.row-link :key="$req->id"><span class="cell-title"><span class="cell-name">{{ $v->titleWithYear() }}</span><x-ui.plate :value="$v->plate" class="title-plate"/></span></x-ui.row-link>
             <span class="cell-sub" data-controller="fitline">
-                <span class="sm:hidden {{ $late ? 'text-danger' : 'text-ink' }}">{{ mb_strtolower($req->type->label()) }}</span>
+                <span class="sm:hidden text-ink">{{ mb_strtolower($req->type->label()) }}</span>
                 <span class="fit-core"><x-park.ref :vehicle="$v" class="sm:hidden"/><x-ui.plate :value="$v->plate" class="sub-plate"/></span>
             </span>
             {{-- Третий этаж — только в краткой таблице (телефон, ПК с открытой карточкой); на ПК — свой столбец. --}}
@@ -48,13 +47,6 @@
             <span class="vendor-ref">@if ($v->vendor)<button type="button" class="vendor-tip" data-tip="{{ $v->vendor->name }}" aria-label="{{ $v->vendor->name }}"><x-vendor.logo :vendor="$v->vendor"/></button>@endif @if ($v->ref)<x-ui.copy-code :value="$v->ref"/>@endif</span>
         @endif
     </td>
-    <td class="hidden sm:table-cell {{ $late ? 'text-danger' : '' }}">{{ $req->type->label() }}</td>
-    <td class="num nums">
-        @if ($req->planned_at)
-            <span class="block sm:inline {{ $late ? 'text-danger' : '' }}">{{ $req->planned_at->translatedFormat('j M') }}</span>
-            <span class="cell-sub sm:ml-1 sm:inline">{{ $req->planned_at->format('H:i') }}</span>
-        @endif
-    </td>
-    <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ $req->assignee?->name }}</td>
+    <td class="hidden sm:table-cell">{{ $req->type->label() }}</td>
     <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ ($req->yard ?? $v->yard)?->name }}</td>
 </tr>

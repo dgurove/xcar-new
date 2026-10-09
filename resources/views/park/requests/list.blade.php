@@ -1,34 +1,19 @@
-{{-- Сам список заявок: таблица с карточкам или карточки, в конце хвост со следующей порцией — его ловит
-     endless_controller. Страниц у заявок нет. Этим же куском отвечает лента (заголовок X-List).
-     Таблица при сортировке по сроку (ближние сверху) собрана под заголовками, как «Напоминания»: Просрочено, Сегодня, Завтра,
-     Позже, Без срока. Таблица целиком на одной странице, поэтому заголовок группы не повторится в ленте. --}}
+{{-- Сам список заявок: таблица с карточкой или карточки, в конце хвост со следующей порцией — его ловит
+     endless_controller. Страниц у заявок нет. Этим же куском отвечает лента (заголовок X-List). Сроков и исполнителя
+     у заявок нет (10.10.2026): столбцы — название, когда пришла, от кого, номер убытка, тип, парковка. --}}
 @php
     use App\Support\ListView;
     $arrive ??= [];
     $sort ??= \App\Support\Sort::from(request('sort'), \App\Http\Park\RequestController::SORTS, \App\Http\Park\RequestController::SORT);
-    $groups = collect(['' => $requests->getCollection()]);
-    if (ListView::isTable($view) && $sort->value() === 'planned') {
-        $today = now()->startOfDay();
-        $groups = $requests->getCollection()->groupBy(fn ($r) => match (true) {
-            $r->isOverdue() => 'Просрочено',
-            ! $r->planned_at => 'Без срока',
-            $r->planned_at->isSameDay($today) => 'Сегодня',
-            $r->planned_at->isSameDay($today->copy()->addDay()) => 'Завтра',
-            default => 'Позже',
-        })->sortBy(fn ($g, $name) => array_search($name, ['Просрочено', 'Сегодня', 'Завтра', 'Позже', 'Без срока'], true));
-    }
 @endphp
 @if ($requests->isEmpty())
-    <x-ui.empty class="py-6">{{ request('q') || request('vendor') || request('yard') || request('mine') ? 'Ничего не нашлось' : 'Всё сделано' }}</x-ui.empty>
+    <x-ui.empty class="py-6">{{ request('q') || request('vendor') || request('yard') ? 'Ничего не нашлось' : 'Всё сделано' }}</x-ui.empty>
 @elseif (ListView::isTable($view))
     <x-ui.table id="requests-table" :view="$view">
         <x-slot:head>
-            <tr><th class="grow">Марка, модель</th><x-ui.th :sort="$sort" key="fresh" class="hidden sm:table-cell">Пришла</x-ui.th><th class="cell-dim hidden sm:table-cell">От кого</th><th class="cell-dim hidden sm:table-cell">№ убытка</th><x-ui.th :sort="$sort" key="type" class="hidden sm:table-cell">Тип</x-ui.th><x-ui.th :sort="$sort" key="planned" class="num">Срок</x-ui.th><th class="cell-dim col-detail-hide hidden lg:table-cell">Исполнитель</th><th class="cell-dim col-detail-hide hidden lg:table-cell">Парковка</th></tr>
+            <tr><th class="grow">Марка, модель</th><x-ui.th :sort="$sort" key="fresh" class="hidden sm:table-cell">Пришла</x-ui.th><th class="cell-dim hidden sm:table-cell">От кого</th><th class="cell-dim hidden sm:table-cell">№ убытка</th><x-ui.th :sort="$sort" key="type" class="hidden sm:table-cell">Тип</x-ui.th><th class="cell-dim col-detail-hide hidden lg:table-cell">Парковка</th></tr>
         </x-slot:head>
-        @foreach ($groups as $name => $group)
-            @if ($name)<tr class="table-group"><th colspan="8"><span class="table-group-name">{{ $name }} <span class="nums">{{ $group->count() }}</span></span></th></tr>@endif
-            @foreach ($group as $r)<x-park.request-row :req="$r" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach
-        @endforeach
+        @foreach ($requests as $r)<x-park.request-row :req="$r" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach
     </x-ui.table>
 @else
     @foreach ($requests as $r)<x-park.request-card :req="$r" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach

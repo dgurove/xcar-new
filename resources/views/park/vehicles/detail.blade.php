@@ -17,8 +17,8 @@
     $gaps = ! $vehicle->brand_id || ! $vehicle->model_id || $vehicle->vinProblem() || ! $vehicle->year || ! $vehicle->color;
 @endphp
 <x-ui.detail>
-    {{-- Приём — формой ниже (`task`): запасной «Открыть» на месте пустого ряда действий не нужен. --}}
-    <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()" :action="$task?->type === \App\Park\RequestType::Intake ? false : 'Открыть'">
+    {{-- Заявка — формой ниже (`task`): запасной «Открыть» на месте пустого ряда действий не нужен. --}}
+    <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()" :action="$task ? false : 'Открыть'">
         <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
         {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
         @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
@@ -50,17 +50,13 @@
             @if ($money && ($money !== 'unbilled' || ($total['amount'] ?? 0) > 0))<span class="whitespace-nowrap text-sm {{ \App\Park\OutMoney::TONES[$money] }}">{{ mb_strtolower(\App\Park\OutMoney::LABELS[$money]) }}</span>@endif
         </x-slot:aside>
         <x-slot:actions>
-            {{-- Главное действие открытой заявки — первым (task-action). Из «Заявок» карточка — про заявку (владелец 09.10.2026:
-                 «понятие машина и заявка смешаны»): машинного (перестановка, акты, осмотр, продажа) нет — это в «Наличии» и деле;
-                 там оно ниже, а кнопки заявки, что в task-action, не повторяются. --}}
-            @if ($task)@include('park.vehicles.task-action')@endif
+            {{-- Из «Заявок» карточка — про заявку (владелец 09.10.2026: «понятие машина и заявка смешаны»): машинного
+                 (перестановка, акты, продажа) нет — это в «Наличии» и деле. Заявку делают формой ниже (`task`). --}}
             @unless ($fromRequests ?? false)
             @if ($state === VehicleState::Expected)
                 @php $open = $vehicle->openRequest(\App\Park\RequestType::Intake); @endphp
-                {{-- Действие открытой заявки — в задаче ниже (park/vehicles/task): здесь его не повторяем. --}}
-                @if ($open && $task)
-                @elseif ($open)<a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">{{ $open->verb() ?? 'Открыть' }}</a>
-                @else<form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="intake"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Принять</button></form>@endif
+                {{-- Открытая заявка — формой ниже (`task`); заявки нет — «Принять» заводит её, и карточка показывает форму. --}}
+                @unless ($open)<form method="post" action="/requests" class="contents">@csrf<input type="hidden" name="type" value="intake"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Принять</button></form>@endunless
             @endif
             @if ($state === VehicleState::Stored)
                 {{-- Перестановка на другую парковку — когда их больше одной (у управляющего Питера одна). --}}
@@ -69,12 +65,10 @@
                         @foreach ($yards as $id => $name)<option value="{{ $id }}" @selected($id == $vehicle->yard_id)>{{ $name }}</option>@endforeach
                     </select>
                 </form>@endif
-                {{-- Выдача — только через заявку с осмотром и актом; одна дорога. --}}
-                @if ($release = $vehicle->openRequest(\App\Park\RequestType::Release))
-                    @unless ($task?->is($release))<a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Выдать</a>@endunless
-                @else
-                    <form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Выдать</button></form>
-                @endif
+                {{-- Выдача — через заявку: открыта — форма ниже (`task`); нет — «Выдать» заводит её, и карточка показывает форму. --}}
+                @unless ($vehicle->openRequest(\App\Park\RequestType::Release))
+                    <form method="post" action="/requests" class="contents">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Выдать</button></form>
+                @endunless
                 @if ($debt > 0)<span class="pill pill-danger !min-h-0 !py-1 text-xs nums">долг {{ \App\Support\Money::rub($debt) }}</span>@endif
                 <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/intake', 'type' => 'html', 'name' => 'Акт приёма']" class="pill pill-plain"/>
             @endif
@@ -82,7 +76,6 @@
                 <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/intake', 'type' => 'html', 'name' => 'Акт приёма']" class="pill pill-plain"/>
                 <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/release', 'type' => 'html', 'name' => 'Акт выдачи']" class="pill pill-plain"/>
             @endif
-            @unless ($state->isFinal())<a href="/requests/new?type=inspection&car={{ $vehicle->id }}" class="pill pill-plain">Осмотр</a>@endunless
             {{-- Продажа — как в деле ТС (x-park.sale): выставить или убрать, только админу. --}}
             <x-park.sale :vehicle="$vehicle"/>
             @endunless
@@ -101,7 +94,7 @@
         @if ($otherRequests->isNotEmpty())
             <div class="mt-3 flex flex-wrap gap-1.5">
                 @foreach ($otherRequests as $r)
-                    <a href="/cars/{{ $vehicle->id }}{{ $r->isOpen() ? '?req='.$r->id : '' }}" class="chip {{ $r->isOpen() ? 'bg-accent-soft text-accent-text' : 'bg-closed-soft text-closed' }}">{{ $r->type->label() }} <span class="nums font-normal">{{ $r->isOpen() ? ($r->type !== \App\Park\RequestType::Intake ? $r->planned_at?->translatedFormat('j M, H:i') : null) ?? 'ждёт' : $r->state->label() }}</span></a>
+                    <a href="/cars/{{ $vehicle->id }}{{ $r->isOpen() ? '?req='.$r->id : '' }}" class="chip {{ $r->isOpen() ? 'bg-accent-soft text-accent-text' : 'bg-closed-soft text-closed' }}">{{ $r->type->label() }} <span class="nums font-normal">{{ $r->isOpen() ? 'ждёт' : $r->state->label() }}</span></a>
                 @endforeach
             </div>
         @endif

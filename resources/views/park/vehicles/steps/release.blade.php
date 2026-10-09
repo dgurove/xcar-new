@@ -16,9 +16,6 @@
     <button type="button" class="qr-scan-tile mt-3" data-qr-release-target="scan" data-action="qr-release#open"><span class="qr-scan-tile-icon"><x-ui.icon name="qr" class="size-6"/></span>Сканировать QR</button>
     <div data-qr-release-target="result" hidden></div>
     @error('pass')<p class="field-error mt-2">{{ $message }}</p>@enderror
-@elseif ($vehicle->vendor)
-    {{-- Вендор без выдачи по QR: сканировать нечего — так и написано, чтобы не искали плитку. --}}
-    <div class="mt-3 flex items-center gap-2 text-sm"><x-vendor.name :vendor="$vehicle->vendor"/><span class="text-ink-muted">выдача без QR</span></div>
 @endif
 <div class="list release-list mt-3">
     <div class="row justify-between">
@@ -26,10 +23,16 @@
         <x-ui.date name="released_at" :value="old('released_at', now()->format('Y-m-d\TH:i'))" time now :clearable="false" class="release-when"/>
     </div>
     @error('released_at')<p class="field-error px-4 pb-2">{{ $message }}</p>@enderror
+    {{-- Кто заберёт — из письма о продаже; не вписан — «Указать» (шторка «Покупатель»), вписан — имя и звонок. --}}
     @if (! $qr && $who)
         <div class="row justify-between">
             <span class="min-w-0"><span class="block truncate">{{ $who }}</span>@if ($vehicle->pickup_phone)<span class="nums block text-sm text-ink-muted">{{ $vehicle->pickup_phone }}</span>@endif</span>
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
+        </div>
+    @elseif (! $qr && $canManage)
+        <div class="row justify-between">
+            <span class="text-ink-muted">Кто заберёт</span>
+            <button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">Указать</button>
         </div>
     @endif
     {{-- Держат выдачу только неоплаченное покупателем и наличные с него; страховая сторона платит счётом. --}}

@@ -63,16 +63,6 @@ final class ParkNotice extends Notice
             category: 'park_money');
     }
 
-    public static function assigned(Request $r): self
-    {
-        return new self('Вам: '.mb_strtolower($r->type->label()).' — '.$r->vehicle->titleWithYear(), $r->planned_at?->translatedFormat('j M, H:i'), '/cars/'.$r->vehicle_id, $r->vehicle_id, true);
-    }
-
-    public static function due(Request $r, bool $overdue): self
-    {
-        return new self(($overdue ? 'Срок вышел: ' : 'Через два часа: ').mb_strtolower($r->type->label()).' — '.$r->vehicle->titleWithYear(), $r->planned_at?->translatedFormat('j M, H:i'), '/cars/'.$r->vehicle_id, $r->vehicle_id, $overdue);
-    }
-
     /** Управляющий принял или выдал ТС — администраторам парковки (в Telegram им пишет `NotifyOwner`, здесь — лента и пуш). */
     public static function handled(Vehicle $v, User $by, bool $released): self
     {

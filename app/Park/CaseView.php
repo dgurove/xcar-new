@@ -29,7 +29,7 @@ use Illuminate\Support\Collection;
 final class CaseView
 {
     /** Какая из открытых заявок — текущий этап: приём раньше выдачи, выдача раньше перестановки и осмотра. */
-    private const PRIORITY = [RequestType::Intake, RequestType::Release, RequestType::Move, RequestType::Inspection];
+    private const PRIORITY = [RequestType::Intake, RequestType::Release];
 
     /** Что начисляют руками: хранение считается само, негабарит входит в суточную ставку. */
     private const CHARGES = [ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other];
@@ -58,7 +58,7 @@ final class CaseView
 
     public static function for(Vehicle $vehicle, User $user, ?int $requestId = null): array
     {
-        $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.assignee', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party'])->loadCount(['threads' => fn ($q) => $q->park()]);
+        $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party'])->loadCount(['threads' => fn ($q) => $q->park()]);
         $open = ($requestId ? $vehicle->requests->first(fn (Request $r) => $r->id === $requestId && $r->isOpen()) : null) ?? self::current($vehicle);
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;
@@ -90,7 +90,6 @@ final class CaseView
             'candidate' => $threads->isEmpty() ? null : Candidate::where('vehicle_id', $vehicle->id)->latest('id')->first(),
             'yards' => $yards->pluck('name', 'id'),
             'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),
-            'staff' => User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->orderBy('name')->get()->filter(fn (User $u) => ! ($city = City::of($u)) || $city === (int) $vehicle->city_id)->values(),
             'vendors' => Vendor::where(fn ($q) => $q->onPark()->where('is_active', true))->orWhere('vendors.id', $vehicle->vendor_id)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
             // Персональная ставка важнее прайса: `Accrual` считает по ней, а чип показывал бы лестницу вендора.

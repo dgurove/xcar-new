@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * «Принята по ошибке»: ТС снова ожидается, осмотр приёма стирается (кадры остаются), бумаги вендору, открытые
  * приёмом, снимаются, обязательство по договору комиссии аннулируется, заявка на приём снова открыта.
- * Пока хранение не выставлено и ничего не оплачено; открытая выдача или перестановка — сначала отменить их.
+ * Пока хранение не выставлено и ничего не оплачено; открытая выдача — сначала отменить её.
  */
 final class UndoIntake
 {
@@ -45,8 +45,8 @@ final class UndoIntake
             if (! self::allowed($vehicle)) {
                 throw ValidationException::withMessages(['state' => 'Приём не отменить: хранение уже выставлено или есть оплаты, сначала аннулируйте счета']);
             }
-            if (Request::where('vehicle_id', $vehicle->id)->whereIn('type', [RequestType::Release, RequestType::Move])->whereIn('state', RequestState::open())->exists()) {
-                throw ValidationException::withMessages(['state' => 'Сначала отмените открытую выдачу или перестановку']);
+            if (Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Release)->whereIn('state', RequestState::open())->exists()) {
+                throw ValidationException::withMessages(['state' => 'Сначала отмените открытую выдачу']);
             }
             foreach (Invoice::where('vehicle_id', $vehicle->id)->where('direction', 'owed')->where('state', InvoiceState::Issued)->get() as $owed) {
                 ($this->void)($owed, $by, 'Приём отменён');

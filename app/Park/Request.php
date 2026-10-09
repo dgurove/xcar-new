@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'planned_at', 'done_at', 'note', 'assignee_id', 'created_by',
+#[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'done_at', 'note', 'created_by',
     'contact_name', 'contact_phone', 'done_by', 'cancel_reason', 'letter_at', 'letter_id'])]
 class Request extends Model
 {
@@ -26,7 +26,7 @@ class Request extends Model
 
     protected function casts(): array
     {
-        return ['type' => RequestType::class, 'state' => RequestState::class, 'planned_at' => 'datetime', 'done_at' => 'datetime', 'reminded_at' => 'datetime', 'overdue_at' => 'datetime', 'letter_at' => 'datetime'];
+        return ['type' => RequestType::class, 'state' => RequestState::class, 'done_at' => 'datetime', 'letter_at' => 'datetime'];
     }
 
     public function vehicle(): BelongsTo
@@ -42,11 +42,6 @@ class Request extends Model
     public function thread(): BelongsTo
     {
         return $this->belongsTo(Thread::class, 'thread_id');
-    }
-
-    public function assignee(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'assignee_id');
     }
 
     /** Письмо, из которого заявка: его адрес и время — в строке «Заявок» (`source`). */
@@ -100,14 +95,13 @@ class Request extends Model
             $this->type === RequestType::Intake => 'Принять',
             // Выдать и переставить можно только ТС на стоянке; иначе главного действия нет — ждём приёма.
             $this->type === RequestType::Release => $this->vehicle?->state === VehicleState::Stored ? 'Выдать' : null,
-            $this->type === RequestType::Move => $this->vehicle?->state === VehicleState::Stored ? 'Переставить' : null,
             default => $this->type->verb(),
         };
     }
 
     /**
      * Закрыть сделанным: переданную заявку и все открытые заявки этих типов по ТС — одно действие стоянки
-     * закрывает всё, что о нём просило. Исполнитель не перетирается: кто закрыл — `done_by`.
+     * закрывает всё, что о нём просило; кто закрыл — `done_by`.
      *
      * @param  list<RequestType>  $types
      */
@@ -116,10 +110,5 @@ class Request extends Model
         $done = array_filter(['state' => RequestState::Done, 'done_at' => now(), 'done_by' => $by->id, 'note' => $note]);
         $request?->update($done);
         self::where('vehicle_id', $vehicle->id)->whereIn('type', $types)->whereIn('state', RequestState::open())->update($done);
-    }
-
-    public function isOverdue(): bool
-    {
-        return $this->isOpen() && $this->planned_at?->isPast();
     }
 }

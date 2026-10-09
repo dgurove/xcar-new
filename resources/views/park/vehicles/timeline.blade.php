@@ -30,7 +30,6 @@
                 @elseif ($step->isCurrent())
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>
-                        @if ($r?->planned_at && $step->key !== 'intake')<span class="fact nums {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                     </div>
                     @if ($step->hint)<p class="step-hint">{{ $step->hint }}</p>@endif
                     @include('park.vehicles.steps.'.$partial, ['req' => $r, 'step' => $step])

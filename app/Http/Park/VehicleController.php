@@ -62,6 +62,7 @@ use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Phone;
 use App\Support\Sort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -173,7 +174,7 @@ class VehicleController
         $fromRequests = $task !== null;
         // Строка, которую карточка обновит в «Заявках», — та заявка, что открыли (ключ строки — её номер); закрылась — уходит.
         // ТС с её связями и числом веток уже подняты выше — строке заявки догружается только своё.
-        $listed = $task?->setRelation('vehicle', $vehicle)->loadMissing(['yard', 'assignee', 'letter', 'creator']);
+        $listed = $task?->setRelation('vehicle', $vehicle)->loadMissing(['yard', 'letter', 'creator']);
         if ($listed && ! $listed->isOpen()) {
             session()->now('detail-gone', true);
         }
@@ -191,6 +192,11 @@ class VehicleController
             'vehicle' => $vehicle, 'yards' => $yards->pluck('name', 'id'),
             // Свободные места парковок — форме приёма в карточке (`steps/intake`, spots_controller).
             'yardRows' => $task?->type === RequestType::Intake ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],
+            // Выдача в карточке (`steps/release`): QR, что держит выдачу и что выставим вендору — как в деле (`CaseView`).
+            ...($task?->type === RequestType::Release && $vehicle->state === VehicleState::Stored) ? [
+                'byQr' => $vehicle->releasesByQr(), 'pass' => $vehicle->releasesByQr() ? $vehicle->pass() : null, 'scannedPass' => null,
+                'releaseDebt' => Ledger::releaseDebt($vehicle), 'cashDue' => Ledger::buyerUnbilled($vehicle), 'vendorDue' => Ledger::vendorUnbilled($vehicle),
+            ] : ['byQr' => false],
             'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
             // Из «Заявок» (заявку передали явно) главное — задача: кадры одной лентой, без блоков по стадиям над ней.
             'fromRequests' => $fromRequests, 'listed' => $listed,
@@ -294,7 +300,9 @@ class VehicleController
         }
         $data = $request->validate(['sold_at' => ['required', 'date'], 'pickup_name' => ['nullable', 'string', 'max:120'], 'pickup_phone' => ['nullable', 'string', 'max:20'],
             'buyer_free_until' => ['nullable', 'date', 'after_or_equal:sold_at']]);
-        $sold($vehicle, $request->user(), Carbon::parse($data['sold_at']), $data['pickup_name'] ?? null, $data['pickup_phone'] ?? null);
+        // Телефон — тем же видом, что из письма: «+7 900 123-45-67», а не набранные подряд цифры.
+        $phone = ! empty($data['pickup_phone']) ? Phone::format(Phone::normalize($data['pickup_phone']) ?? $data['pickup_phone']) : null;
+        $sold($vehicle, $request->user(), Carbon::parse($data['sold_at']), $data['pickup_name'] ?? null, $phone);
         // Срок хранения за счёт вендора приходит письмом и живёт только руками: пустое поле его снимает.
         if ($vehicle->vendor?->buyer_pays_late) {
             $vehicle->update(['buyer_free_until' => $data['buyer_free_until'] ?? null]);

@@ -6,19 +6,14 @@ use App\Mail\Scan\AutoScan;
 use App\Park\Actions\AutoRequest;
 use App\Park\Actions\ReleaseByLetters;
 use App\Park\Actions\StoreByLetters;
-use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleIdle;
 use App\Park\Idle;
-use App\Park\Request;
-use App\Park\RequestState;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
-use App\Support\Nav;
 use Illuminate\Console\Command;
 
 /**
- * Часы стоянки: напоминание за два часа до срока заявки и один раз о просрочке,
- * «стоит долго» — раз на машину. Отметки в самой заявке и ТС, чтобы не повторяться.
+ * Часы стоянки: «стоит долго» — раз на машину, отметка в ТС, чтобы не повторяться (сроков у заявок нет с 10.10.2026).
  * Заодно подбирает цепочки, про которые мы уже написали вендору «приняли», а ТС не завели:
  * письмом их заводит `Mail\OnMessage`, а тут — всё, что пересчиталось без письма (`mail:read`, `mail:rebuild`).
  * И заявки из писем, что не завелись при письме (`AutoRequest::catchUp`).
@@ -32,17 +27,6 @@ class TickPark extends Command
     public function handle(StoreByLetters $store, ReleaseByLetters $release, AutoRequest $auto): int
     {
         $now = now();
-        $soon = Request::whereIn('state', RequestState::open())->whereNull('reminded_at')
-            ->whereNotNull('planned_at')->where('planned_at', '<=', $now->copy()->addHours(2))->where('planned_at', '>', $now)->get();
-        foreach ($soon as $r) {
-            $r->forceFill(['reminded_at' => $now])->save();
-            RequestDue::dispatch($r, false);
-        }
-        $late = Request::whereIn('state', RequestState::open())->whereNull('overdue_at')->whereNotNull('planned_at')->where('planned_at', '<', $now)->get();
-        foreach ($late as $r) {
-            $r->forceFill(['overdue_at' => $now])->save();
-            RequestDue::dispatch($r, true);
-        }
         $threshold = Idle::warn();
         $idle = Vehicle::where('state', VehicleState::Stored)->whereNull('idle_noticed_at')
             ->where('accepted_at', '<', $now->copy()->subDays($threshold))
@@ -51,14 +35,11 @@ class TickPark extends Command
             $v->forceFill(['idle_noticed_at' => $now])->save();
             VehicleIdle::dispatch($v, (int) $v->accepted_at->diffInDays($now));
         }
-        if ($soon->isNotEmpty() || $late->isNotEmpty()) {
-            Nav::forgetStaffCounts();
-        }
         $stored = $store->all();
         $released = $release->all();
         $requested = $auto->catchUp();
         $swept = AutoScan::sweep();
-        $this->info("напомнено {$soon->count()}, просрочено {$late->count()}, стоят долго {$idle->count()}, заведено по письмам {$stored}, выдано по письмам {$released}, заявок из писем {$requested}, дочитываем {$swept}");
+        $this->info("стоят долго {$idle->count()}, заведено по письмам {$stored}, выдано по письмам {$released}, заявок из писем {$requested}, дочитываем {$swept}");
 
         return self::SUCCESS;
     }

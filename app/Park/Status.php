@@ -20,18 +20,8 @@ final class Status
             return $say('ответить на письмо', true);
         }
         $open = $v->requests->filter(fn (Request $r) => $r->isOpen());
-        $req = $open->firstWhere('type', RequestType::Release) ?? $open->firstWhere('type', RequestType::Move) ?? $open->first();
-        $when = fn (Request $r) => $r->planned_at?->translatedFormat('j M');
-        if ($req) {
-            $late = $req->isOverdue();
-            $future = $req->planned_at && ! $late && ! $req->planned_at->isToday();
-
-            return match ($req->type) {
-                RequestType::Release => $future ? $say('выдача '.$when($req)) : $say('выдать'.($req->planned_at ? ' '.$when($req) : ''), true, $late),
-                RequestType::Move => $say('переставить'.($req->yard ? ' на «'.$req->yard->name.'»' : ''), true, $late),
-                RequestType::Inspection => $future ? $say('осмотр '.$when($req)) : $say('осмотр'.($req->planned_at ? ' '.$when($req) : ''), true, $late),
-                default => $say(mb_strtolower($req->type->label()), true, $late),
-            };
+        if ($open->contains('type', RequestType::Release)) {
+            return $say('выдать', true);
         }
         if ($v->sold_at) {
             return $say('на выдачу, ждём покупателя');

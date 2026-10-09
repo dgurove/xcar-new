@@ -124,13 +124,7 @@
             @elseif ($makesRequest)
                 <x-ui.card title="Заявка">
                     <div class="grid gap-3 {{ $letters ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3' }}">
-                        @if ($type === RequestType::Move)
-                            <x-park.yard-field :yards="$yards" label="Куда" placeholder="—"/>
-                        @endif
-                        @if ($type !== RequestType::Intake)
-                            <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$val('planned_at')" now/>
-                        @endif
-                        @if ($vehicle || $type !== RequestType::Intake)
+                        @if ($vehicle)
                             <x-ui.field name="contact_name" label="Кто сдаёт" :value="$val('contact_name') ?? $vehicle?->contact_name"/>
                             <x-ui.field name="contact_phone" label="Телефон" type="tel" :value="$val('contact_phone') ?? $vehicle?->contact_phone"/>
                         @endif

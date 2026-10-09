@@ -7,8 +7,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Дела дня одной функцией — утреннему дайджесту владельцу (`park:digest`). Экрана «Сегодня» нет:
- * те же дела на `/requests` пресетами (Просрочено · типы) и на `/cars` (Бумаги вендору · Стоят долго).
- * Секции: Просрочено · Принять · Выдать · Осмотреть, переставить · Отправить вендору · Стоят долго.
+ * те же дела на `/requests` пресетами (типы) и на `/cars` (Бумаги вендору · Стоят долго).
+ * Секции: Принять · Выдать · Ждут без заявки · Отправить вендору · Стоят долго.
  * Пустые не отдаются.
  *
  * @phpstan-type Section array{0: string, 1: Collection, 2: string}
@@ -18,14 +18,9 @@ final class Today
     /** @return array{sections: list<Section>, stored: int} */
     public static function build(): array
     {
-        $open = ParkRequest::query()->whereIn('state', RequestState::open())->with('vehicle')->orderByRaw('planned_at asc nulls last')->get();
-
-        $overdue = $open->filter(fn (ParkRequest $r) => $r->isOverdue());
-        $rest = $open->reject(fn (ParkRequest $r) => $r->isOverdue())->filter(fn (ParkRequest $r) => ! $r->planned_at || $r->planned_at->isToday());
-
-        $intake = $rest->filter(fn (ParkRequest $r) => $r->type === RequestType::Intake);
-        $release = $rest->filter(fn (ParkRequest $r) => $r->type === RequestType::Release);
-        $other = $rest->filter(fn (ParkRequest $r) => in_array($r->type, [RequestType::Inspection, RequestType::Move], true));
+        $open = ParkRequest::query()->whereIn('state', RequestState::open())->with('vehicle')->oldest()->get();
+        $intake = $open->filter(fn (ParkRequest $r) => $r->type === RequestType::Intake);
+        $release = $open->filter(fn (ParkRequest $r) => $r->type === RequestType::Release);
 
         // Ждут без заявки — отменили заявку и забыли: заявка заводится с ТС.
         $orphans = Vehicle::where('state', VehicleState::Expected)->whereDoesntHave('requests', fn ($q) => $q->whereIn('state', RequestState::open()))->get();
@@ -36,10 +31,8 @@ final class Today
         return [
             'stored' => $stored->count(),
             'sections' => array_values(array_filter([
-                ['Просрочено', $overdue, '/requests?preset=overdue'],
                 ['Принять', $intake, '/requests?preset=intake'],
                 ['Выдать', $release, '/requests?preset=release'],
-                ['Осмотреть, переставить', $other, '/requests?preset=inspection'],
                 ['Ждут без заявки', $orphans, '/cars?state=expected'],
                 ['Отправить вендору', $docsDue, '/cars'],
                 ['Стоят долго', $idle, '/cars'],
