@@ -38,7 +38,9 @@ use App\Park\Events\ReleasedWithoutQr;
 use App\Park\Events\RequestAssigned;
 use App\Park\Events\RequestCall;
 use App\Park\Events\RequestDue;
+use App\Park\Events\VehicleAccepted;
 use App\Park\Events\VehicleIdle;
+use App\Park\Events\VehicleReleased;
 use App\Park\Events\VehicleSold;
 use App\Park\Request as ParkRequest;
 use App\Park\RequestState;
@@ -48,8 +50,7 @@ use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\InvoiceNeeded as InvoiceNeededMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
 use App\Telegram\Messages\OnlinePayment as OnlinePaymentMessage;
-use App\Telegram\Messages\ParkLetter;
-use App\Telegram\Messages\ParkSold;
+use App\Telegram\Messages\ParkHandled;
 use App\Telegram\Messages\PaymentClaimed as PaymentClaimedMessage;
 use App\Users\Events\AccessDecided;
 use App\Users\Events\BuyerJoined;
@@ -92,6 +93,8 @@ final class Notify
             RequestCall::class => 'parkCall',
             VehicleIdle::class => 'parkIdle',
             VehicleSold::class => 'parkSold',
+            VehicleAccepted::class => 'parkHandled',
+            VehicleReleased::class => 'parkHandled',
             BuyerFormSubmitted::class => 'parkBuyerForm',
             ReleasedWithoutQr::class => 'parkWithoutQr',
             InvoiceOverdue::class => 'invoiceOverdue',
@@ -277,7 +280,7 @@ final class Notify
     }
 
     /**
-     * Новая цепочка «Из писем». Стоянка — всем со стоянки в ленту и пуш, владельцу — строка в Telegram. CRM — модераторам
+     * Новая цепочка «Из писем». Парковка — управляющим её города в ленту, пуш и Telegram. CRM — модераторам
      * с почтой «Новое из писем», пока цепочка ждёт (завели раньше, чем ушло, — не шлём).
      */
     public function candidateArrived(CandidateArrived $e): void
@@ -286,8 +289,7 @@ final class Notify
         if ($c->scope === Scope::Park) {
             // Заявку уже завела почта — уведомление о ней, со ссылкой на дело, а не в «Из писем».
             $request = $c->vehicle_id ? ParkRequest::where('vehicle_id', $c->vehicle_id)->whereIn('state', RequestState::open())->latest('id')->first() : null;
-            Notification::send($this->parkStaff(City::ofCandidate($c)), $request ? ParkNotice::arrived($request) : ParkNotice::letter($c));
-            NotifyOwner::dispatch(new ParkLetter($c, $request));
+            Notification::send($this->parkManagers(City::ofCandidate($c)), $request ? ParkNotice::arrived($request) : ParkNotice::letter($c));
 
             return;
         }
@@ -302,7 +304,7 @@ final class Notify
     {
         // У выданной или отменённой ТС занятого нет — всем со стоянки.
         $assignee = $e->vehicle->state->isFinal() ? null : $e->vehicle->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
-        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff($e->vehicle->city_id), ParkNotice::mail($e->vehicle, $e->message));
+        Notification::send($assignee ? collect([$assignee]) : $this->parkManagers($e->vehicle->city_id), ParkNotice::mail($e->vehicle, $e->message));
     }
 
     public function parkAssigned(RequestAssigned $e): void
@@ -314,16 +316,15 @@ final class Notify
     public function parkCall(RequestCall $e): void
     {
         $r = $e->request->load(['vehicle', 'assignee']);
-        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkStaff($r->vehicle?->city_id), ParkNotice::call($r));
+        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkManagers($r->vehicle?->city_id), ParkNotice::call($r));
     }
 
-    /** Продано: сотруднику, который ведёт ТС (иначе всем на стоянке), и владельцу в Telegram. */
+    /** Продано: сотруднику, который ведёт ТС, иначе управляющим её города. */
     public function parkSold(VehicleSold $e): void
     {
         $v = $e->vehicle->load(['brand', 'model', 'vendor']);
         $assignee = $v->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
-        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff($v->city_id), ParkNotice::sold($v, $e->message));
-        NotifyOwner::dispatch(new ParkSold($v));
+        Notification::send($assignee ? collect([$assignee]) : $this->parkManagers($v->city_id), ParkNotice::sold($v, $e->message));
     }
 
     /** Покупатель заполнил анкету: тому, кто ведёт выдачу (иначе всем на стоянке) — прочитать ответ страховой и подтвердить. */
@@ -331,18 +332,34 @@ final class Notify
     {
         $v = $e->pass->vehicle->load(['brand', 'model']);
         $assignee = $v->requests()->whereIn('state', RequestState::open())->whereNotNull('assignee_id')->latest()->first()?->assignee;
-        Notification::send($assignee ? collect([$assignee]) : $this->parkStaff($v->city_id), ParkNotice::buyerForm($v, $e->pass->name, $e->pass->pickup_on));
+        Notification::send($assignee ? collect([$assignee]) : $this->parkManagers($v->city_id), ParkNotice::buyerForm($v, $e->pass->name, $e->pass->pickup_on));
+    }
+
+    /**
+     * Управляющий принял или выдал ТС — администраторам парковки строкой в ленту и в Telegram (владелец 09.10.2026: о
+     * заявках админам не надо, «максимум о том, что управляющий выдал или принял»). Сами админы себе не пишут; выдача по
+     * письмам и откаты (без заявки) — не действие управляющего.
+     */
+    public function parkHandled(VehicleAccepted|VehicleReleased $e): void
+    {
+        if (! $e->request || ! $e->by?->isParking() || $e->by->isParkAdmin()) {
+            return;
+        }
+        $v = $e->vehicle->load(['brand', 'model', 'vendor', 'yard']);
+        $released = $e instanceof VehicleReleased;
+        Notification::send(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get(), ParkNotice::handled($v, $e->by, $released));
+        NotifyOwner::dispatch(new ParkHandled($v, $e->by, $released), park: true);
     }
 
     public function parkWithoutQr(ReleasedWithoutQr $e): void
     {
-        NotifyOwner::dispatch(new \App\Telegram\Messages\ReleasedWithoutQr($e->vehicle->load(['brand', 'model', 'vendor']), $e->by, $e->reason));
+        NotifyOwner::dispatch(new \App\Telegram\Messages\ReleasedWithoutQr($e->vehicle->load(['brand', 'model', 'vendor']), $e->by, $e->reason), park: true);
     }
 
     public function parkDue(RequestDue $e): void
     {
         $r = $e->request->load(['vehicle', 'assignee']);
-        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkStaff($r->vehicle?->city_id), ParkNotice::due($r, $e->overdue));
+        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkManagers($r->vehicle?->city_id), ParkNotice::due($r, $e->overdue));
     }
 
     public function parkIdle(VehicleIdle $e): void
@@ -354,7 +371,7 @@ final class Notify
     public function invoiceOverdue(InvoiceOverdue $e): void
     {
         $invoice = $e->invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'deal.offer']);
-        NotifyOwner::dispatch(new \App\Telegram\Messages\InvoiceOverdue($invoice));
+        NotifyOwner::dispatch(new \App\Telegram\Messages\InvoiceOverdue($invoice), park: (bool) $invoice->park);
         if (! $invoice->park) {
             Notification::send($this->staff(), MoneyNotice::overdue($invoice));
 
@@ -447,6 +464,15 @@ final class Notify
     }
 
     /** Люди парковки; с городом объекта — только те, кому он виден (`Park\City`: администраторы и управляющие без города — все). */
+    /**
+     * Заявки, письма, звонки, сроки, продажа и анкета — управляющим (роль «Парковка») своего города, не администраторам
+     * парковки (владелец 09.10.2026); им — только «управляющий принял / выдал» (`parkHandled`).
+     */
+    private function parkManagers(?int $city = null)
+    {
+        return $this->parkStaff($city)->filter->isParking()->values();
+    }
+
     private function parkStaff(?int $city = null)
     {
         return User::parkStaff()->whereNotNull('approved_at')->get()->filter(fn (User $u) => ! $city || ! ($own = City::of($u)) || $own === $city)->values();

@@ -17,7 +17,8 @@ use Carbon\CarbonInterface;
 /**
  * Уведомление парковки: письмо, назначение, срок, простой, оплаты — категории «Заявки и письма» (`park`) и «Оплаты»
  * (`park_money`), метка по ТС, ссылка на хост парковки. Управляющему (роль «Парковка») то, где нужен он сам, приходит и в
- * Telegram (`telegram`); админам — только лента, пуш и почта: владельцу парковка пишет в Telegram своё (`NotifyOwner`).
+ * Telegram (`telegram`). Заявки, письма и сроки — только управляющим своего города; администраторам парковки — «управляющий
+ * принял / выдал» (`handled`), просрочка и простой (владелец 09.10.2026). В Telegram админам — только `NotifyOwner(park)`.
  */
 final class ParkNotice extends Notice
 {
@@ -71,6 +72,13 @@ final class ParkNotice extends Notice
     public static function due(Request $r, bool $overdue): self
     {
         return new self(($overdue ? 'Срок вышел: ' : 'Через два часа: ').mb_strtolower($r->type->label()).' — '.$r->vehicle->titleWithYear(), $r->planned_at?->translatedFormat('j M, H:i'), '/cars/'.$r->vehicle_id, $r->vehicle_id, $overdue);
+    }
+
+    /** Управляющий принял или выдал ТС — администраторам парковки (в Telegram им пишет `NotifyOwner`, здесь — лента и пуш). */
+    public static function handled(Vehicle $v, User $by, bool $released): self
+    {
+        return new self($by->shortName().' '.($released ? 'выдал' : 'принял').': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->yard?->name, $v->ref])),
+            '/cars/'.$v->id, $v->id, telegram: false);
     }
 
     public static function call(Request $r): self

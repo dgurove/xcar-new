@@ -22,7 +22,7 @@ class ParkDigestCommand extends Command
         if (collect($today['sections'])->sum(fn ($s) => $s[1]->count()) === 0) {
             return self::SUCCESS;
         }
-        NotifyOwner::dispatch(new ParkDigest($counts));
+        NotifyOwner::dispatch(new ParkDigest($counts), park: true);
         $this->info(json_encode($counts, JSON_UNESCAPED_UNICODE));
 
         return self::SUCCESS;

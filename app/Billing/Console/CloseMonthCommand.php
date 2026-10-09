@@ -27,7 +27,7 @@ class CloseMonthCommand extends Command
         if ($items->isEmpty()) {
             return self::SUCCESS;
         }
-        NotifyOwner::dispatch(new ClosingReady($month, $items));
+        NotifyOwner::dispatch(new ClosingReady($month, $items), park: true);
         // Закрытие месяца — управляющим и админам; управляющему и в Telegram. С городом — только строки его ТС (`Park\City`).
         $staff = User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->get()->filter(fn (User $u) => $u->canManagePark());
         foreach ($staff->groupBy(fn (User $u) => City::of($u) ?? 0) as $city => $people) {

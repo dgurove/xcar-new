@@ -57,9 +57,13 @@ class Bot
      *
      * @return list<int>
      */
-    public function ownerChats(): array
+    /**
+     * Чат владельца из настроек и привязанные админы. `park` — сообщения парковки: только администраторам парковки
+     * (владелец 09.10.2026: «Кате вообще по парковке ничего не надо в телегу слать» — у неё нет этой роли).
+     */
+    public function ownerChats(bool $park = false): array
     {
-        $admins = User::withRole(Role::Admin)->whereNotNull('telegram_chat_id')->pluck('telegram_chat_id')->map(fn ($id) => (int) $id)->all();
+        $admins = User::withRole($park ? Role::ParkAdmin : Role::Admin)->whereNotNull('telegram_chat_id')->pluck('telegram_chat_id')->map(fn ($id) => (int) $id)->all();
 
         return array_values(array_unique(array_filter([$this->ownerChatId(), ...$admins])));
     }
