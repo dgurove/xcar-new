@@ -7,6 +7,8 @@ import 'cally';
 // года в шапке) и у поля со временем — одно поле `чч:мм` с временем по умолчанию (CRM 17:30, парковка 12:00). Без
 // времени день выбирается одним нажатием и всплывашка закрывается. На ПК дату можно напечатать: «8.9», «8.9.25 1730».
 // Скрытое поле получает `input` и `change` — формы, черновики и `autosubmit` видят правку как раньше.
+// Кнопка вместо поля (`chip`): текст — слово `prefix` и дата; `submit` — форма скрытого поля уходит, когда всплывашку
+// закрыли с новым значением (дата приёма в деле: день, потом время — одна отправка, а не две).
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -15,11 +17,13 @@ const moscow = () => { const [day, clock] = new Date().toLocaleString('sv-SE', {
 
 export default class extends Controller {
     static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error'];
-    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, now: Boolean };
+    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, now: Boolean, prefix: String, submit: Boolean };
+
+    get field() { return this.textTarget.tagName === 'INPUT'; }
 
     connect() {
         // Телефон — без клавиатуры: поле только открывает календарь.
-        if (matchMedia('(pointer: coarse)').matches) this.textTarget.readOnly = true;
+        if (this.field && matchMedia('(pointer: coarse)').matches) this.textTarget.readOnly = true;
         this.render();
     }
 
@@ -32,14 +36,19 @@ export default class extends Controller {
 
     render() {
         const p = this.parts;
-        if (!p) { this.textTarget.value = ''; return; }
-        const [y, m, d] = p.date.split('-').map(Number);
-        const year = y !== new Date().getFullYear() ? ` ${y}` : '';
-        this.textTarget.value = `${d} ${MONTHS[m - 1]}${year}${this.timeValue && p.time ? `, ${p.time}` : ''}`;
+        let text = '';
+        if (p) {
+            const [y, m, d] = p.date.split('-').map(Number);
+            const year = y !== new Date().getFullYear() ? ` ${y}` : '';
+            text = `${d} ${MONTHS[m - 1]}${year}${this.timeValue && p.time ? `, ${p.time}` : ''}`;
+        }
+        if (this.field) this.textTarget.value = text;
+        else this.textTarget.textContent = [this.prefixValue, text].filter(Boolean).join(' ');
     }
 
     open() {
         if (this.valueTarget.disabled || this.popTarget.matches(':popover-open')) return;
+        this.opened = this.valueTarget.value;
         const p = this.parts;
         this.calTarget.value = p?.date || '';
         this.calTarget.focusedDate = p?.date || iso(new Date());
@@ -58,6 +67,18 @@ export default class extends Controller {
 
     close() {
         if (this.hasPopTarget && this.popTarget.matches(':popover-open')) this.popTarget.hidePopover();
+    }
+
+    // Закрыли с новым значением — `submit`: форма скрытого поля уходит одной отправкой (Esc, нажатие мимо, «Готово»).
+    toggled(event) {
+        if (event.newState !== 'closed' || !this.submitValue || this.valueTarget.value === this.opened) return;
+        this.opened = this.valueTarget.value;
+        this.valueTarget.form?.requestSubmit();
+    }
+
+    // Нажатие внутри всплывашки не доходит до <summary> вокруг кнопки-даты: шаг дела не сворачивается.
+    inside(event) {
+        if (this.element.closest('summary')) event.preventDefault();
     }
 
     // Телефон: клавиатура поля времени не закрывает лист — низ листа встаёт на неё (visualViewport), пока лист открыт.

@@ -10,17 +10,9 @@
     // Деньги дела (счета, начисления, долг) — тем, кому они открыты на парковке (галка «Деньги» у управляющего).
     $money = auth()->user()->canManagePark();
     $open = $req !== null;
-    $tow = $req?->isTow() ?? false;
-    // Новая заявка на приём без звонка — сначала «Связались»; ?call=1 с чипа доставки — позвонить ещё раз (Contact меняет тип в обе стороны).
-    $callAgain = $open && in_array($req->type, [RequestType::Intake, RequestType::Tow], true) && in_array($req->state, [RequestState::New, RequestState::Scheduled], true);
-    // ?accept=1 — «Принять» сразу из карточки заявки: без звонка и эвакуатора, форма приёма (`Timeline::for` с `accept`).
-    $accept = $open && request()->boolean('accept') && $state->isBefore() && in_array($req->type, [RequestType::Intake, RequestType::Tow], true);
-    $callForm = ! $accept && $open && ($req->needsCall() || ($callAgain && request()->boolean('call')));
-    $intakeForm = ! $callForm && $open && (($req->type === RequestType::Intake && $state->isBefore()) || ($tow && $req->state === RequestState::InProgress) || $accept);
-    $releaseForm = $open && $req->type === RequestType::Release && $state === VehicleState::Stored;
     $moveForm = $open && $req->type === RequestType::Move && $state === VehicleState::Stored;
     // Нет открытой заявки: у ожидаемой — «Принять», у стоящей — «Выдать» (POST /requests заводит заявку и показывает её форму).
-    $hasChain = $open && in_array($req->type, [RequestType::Intake, RequestType::Tow, RequestType::Release], true);
+    $hasChain = $open && in_array($req->type, [RequestType::Intake, RequestType::Release], true);
     $spawn = ! $hasChain ? match ($state) { VehicleState::Expected => ['intake', 'Принять'], VehicleState::Stored => ['release', 'Выдать'], default => null } : null;
     // Поля ТС сверху, пока ТС ожидается (данные из письма надо сверить); после приёма — строкой с раскрытием среди фаз.
     $vehicleOpen = $state->isBefore();
@@ -73,18 +65,15 @@
             $submit = $cur?->plate['kind'] === 'submit' ? $cur : null;
             $otherForm = $open && in_array($req->type, [RequestType::Move, RequestType::Inspection], true);
             $action = $submit ? match ($submit->key) {
-                'call' => "/requests/{$submit->request->id}/contact",
-                'tow' => $submit->request->state === RequestState::New ? "/requests/{$submit->request->id}/schedule" : "/requests/{$submit->request->id}/start",
                 'intake' => "/requests/{$submit->request->id}/intake",
                 'release' => "/requests/{$submit->request->id}/release",
                 'yard' => "/cars/{$vehicle->id}/yard",
             } : null;
-            $confirm = $submit?->key === 'tow' && $submit->request->state === RequestState::Scheduled ? 'Эвакуатор погрузил ТС?' : null;
         @endphp
         {{-- Одна форма на поля ТС и текущий шаг: кнопка шага сохраняет всё, «Сохранить изменения» у полей — только поля ТС.
              Внутри сделанных шагов форм нет. --}}
         @if ($submit)
-            <form method="post" action="{{ $action }}" id="act-form" class="flex flex-col gap-4" data-controller="vin save-bar draft next reveal" data-save-bar-scope-value="[data-save-scope]" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" data-reveal-label-selector-value="#act-submit" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
+            <form method="post" action="{{ $action }}" id="act-form" class="flex flex-col gap-4" data-controller="vin save-bar draft next reveal" data-save-bar-scope-value="[data-save-scope]" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" data-reveal-label-selector-value="#act-submit">
                 @csrf
                 @if ($canManage)
                     <input type="hidden" name="vehicle_form" value="1">
@@ -128,13 +117,15 @@
             </form>
         @endif
         @foreach ($others as $r)
-            <a href="/cars/{{ $vehicle->id }}?req={{ $r->id }}" class="row !py-2.5"><span class="chip bg-accent-soft text-accent-text">{{ $r->type->label() }}</span>@if ($r->planned_at)<span class="tag nums">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif<span class="text-sm text-ink-muted">ещё открыта</span></a>
+            <a href="/cars/{{ $vehicle->id }}?req={{ $r->id }}" class="row !py-2.5"><span class="chip bg-accent-soft text-accent-text">{{ $r->type->label() }}</span>@if ($r->planned_at && $r->type !== RequestType::Intake)<span class="tag nums">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif<span class="text-sm text-ink-muted">ещё открыта</span></a>
         @endforeach
         {{-- «Сделано» у каждого ждущего письма своё: форма не может лежать внутри act-form. --}}
         @foreach ($asks ?? [] as $a)<form method="post" action="/cars/{{ $vehicle->id }}/letters/{{ $a->id }}/done" id="reply-form-{{ $a->id }}">@csrf</form>@endforeach
         @if ($byQr ?? false)
             <form method="post" action="/cars/{{ $vehicle->id }}/buyer/confirm" id="buyer-confirm-form">@csrf</form>
         @endif
+        {{-- Даты приёма и выдачи в шагах таймлайна (`x-park.date-edit`): их формы — здесь, вне формы текущего шага. --}}
+        <x-park.date-forms :vehicle="$vehicle"/>
         @if ($spawn)<form method="post" action="/requests" id="spawn-form">@csrf<input type="hidden" name="type" value="{{ $spawn[0] }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>@endif
 
         {{-- На телефоне факты дела идут под формой; на ПК — правая колонка (ниже). --}}
@@ -266,7 +257,6 @@
     </div>
 
     {{-- Шторки: даты приёма и выдачи, договор, продано, действия «⋯», отмена заявки. --}}
-    @include('park.vehicles.dates-sheet')
     @if ($canManage)
         <div data-controller="sheet" data-action="contract:open@window->sheet#open" class="contents">
             <x-ui.sheet id="contract" title="Условия" tall :open="$errors->hasAny(['contract_kind', 'assigned_price', 'storage_rate'])">
@@ -287,7 +277,7 @@
             </x-ui.sheet>
         </div>
     @endif
-    @if ($canManage && (in_array($state, [VehicleState::Stored, VehicleState::InTransit], true) || $vehicle->sold_at))
+    @if ($canManage && ($state === VehicleState::Stored || $vehicle->sold_at))
         <div data-controller="sheet" data-action="sold:open@window->sheet#open" class="contents">
             <x-ui.sheet id="sold" title="Покупатель" :open="$errors->hasAny(['sold_at', 'pickup_name', 'pickup_phone'])">
                 {{-- Страховая продала ТС: дата письма, кому выдать; дальше дни за счёт вендора и покупатель по множителю. --}}
@@ -367,7 +357,7 @@
     <div data-controller="sheet" data-action="actions:open@window->sheet#open" class="contents">
         <x-ui.sheet id="vehicle-actions" title="Транспортное средство">
             <div class="flex flex-col gap-2">
-                {{-- Пока ТС не принята: одна отмена — ТС и заявка исчезают, письма снова ждут в «Из писем» (в пути — эвакуация снимается). --}}
+                {{-- Пока ТС не принята: одна отмена — ТС и заявка исчезают, письма снова ждут в «Из писем». --}}
                 @php $hadLetters = $vehicle->requests->contains(fn ($r) => $r->thread_id) || $letters; @endphp
                 @if ($canManage && ($state->isBefore() || UnwindVehicle::allowed($vehicle)))
                     <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="{{ $hadLetters ? 'Отменить заявку? ТС исчезнет, письма вернутся в «Из писем»' : 'Отменить заявку? ТС и заявка исчезнут' }}">@csrf @method('delete')<x-ui.button variant="secondary" block>Отменить заявку</x-ui.button></form>
@@ -381,7 +371,6 @@
                         <datalist id="spots-free">@foreach ($spots as $s)<option value="{{ $s }}">@endforeach</datalist>
                         <x-ui.button variant="secondary" block>Переставить</x-ui.button>
                     </form>
-                    @if (count($yards) > 1)<x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="ghost" block>Перегнать на другую парковку</x-ui.button>@endif
                     @php $elsewhere = $canManage ? \App\Park\City::transferTargets($vehicle) : []; @endphp
                     @if ($elsewhere)
                         {{-- Перевод в другой город (Питер → база в Москве): ТС та же, город меняется — управляющий этого города её больше не видит. --}}
@@ -393,11 +382,6 @@
                             <x-ui.button variant="ghost" block>Перевести</x-ui.button>
                         </form>
                     @endif
-                @endif
-                @if ($state->isBefore() && ! $open)
-                    <x-ui.button href="/requests/new?type=tow&car={{ $vehicle->id }}" variant="secondary" block>Забрать эвакуатором</x-ui.button>
-                @endif
-                @if ($canManage)
                 @endif
                 @if ($canManage && UndoIntake::allowed($vehicle))
                     <form method="post" action="/cars/{{ $vehicle->id }}/undo-intake" data-turbo-confirm="Отменить приём? ТС снова будет ожидаться">@csrf<x-ui.button variant="ghost" block>Принята по ошибке</x-ui.button></form>

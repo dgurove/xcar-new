@@ -1,4 +1,4 @@
-{{-- Главная стоянки — заявки: пилюли «Просрочено», «Нужно позвонить» и типы (каждая — пока такие заявки есть),
+{{-- Главная стоянки — заявки: пилюли «Просрочено» и типы (каждая — пока такие заявки есть),
      сортировка, лупа (по ТС), чипы вендор, парковка, тип ТС и «Мои»; три вида — плитки/строки x-park.request-card,
      таблица x-park.request-row с карточкам. Страниц нет: список подгружается при листании (endless). --}}
 @php use App\Support\ListView; @endphp
@@ -13,5 +13,7 @@
             <a href="/requests/new" class="btn btn-s btn-accent btn-round shrink-0" aria-label="Новая заявка"><x-ui.icon name="plus" class="size-5"/></a>
         </x-slot:actions>
     </x-ui.toolbar>
+    {{-- Приняли в карточке последнюю заявку на приём — тост вместо следующей (`detail#advance`). --}}
+    <span data-advance-done hidden>Заявок на приём больше нет</span>
     <div id="requests" class="mt-6 {{ ListView::isTable($view) ? '' : ListView::containerClass($view) }}" data-controller="endless ticker">@include('park.requests.list')</div>
 </x-ui.shell>

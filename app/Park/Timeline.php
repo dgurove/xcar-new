@@ -7,52 +7,25 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Таймлайн дела: Письмо → Звонок → Эвакуация → Приём → Отчёт вендору → Хранение → Выдача → Отчёт вендору;
- * между хранением и выдачей — отказы покупателей, если они были.
+ * Таймлайн дела: Письмо → Приём → Отчёт вендору → Хранение → Выдача → Отчёт вендору; между хранением и выдачей —
+ * отказы покупателей, если они были. Звонка, эвакуации и даты приезда нет (владелец 10.10.2026: «тут чисто приём и
+ * всё»): пока ТС ждут, текущий шаг — приём.
  * Каждый шаг решает своё состояние сам; текущий — последний из «своих текущих», остальные такие — todo
  * (действие есть, но форма не раскрыта). Подсказки — одной строкой, без точек.
  */
 final class Timeline
 {
     /** @return list<Step> */
-    public static function for(Vehicle $v, ?Request $open, bool $hasLetters, Collection $events, bool $callAgain = false, ?Collection $asks = null, ?Pass $pass = null, bool $accept = false): array
+    public static function for(Vehicle $v, ?Request $open, bool $hasLetters, Collection $events, ?Collection $asks = null, ?Pass $pass = null): array
     {
         $steps = [];
-        // «Принять» сразу (владелец 09.10.2026: «в окошке должна быть возможность сразу принять, а не назначать эвакуатор»):
-        // ТС уже здесь — звонок и эвакуация не текущие, текущий — приём.
-        $accept = $accept && $v->state->isBefore() && $open && in_array($open->type, [RequestType::Intake, RequestType::Tow], true);
-        $ir = $open && in_array($open->type, [RequestType::Intake, RequestType::Tow], true) ? $open
-            : $v->requests->first(fn (Request $r) => in_array($r->type, [RequestType::Intake, RequestType::Tow], true) && $r->state === RequestState::Done);
+        $ir = $open?->type === RequestType::Intake ? $open
+            : $v->requests->first(fn (Request $r) => $r->type === RequestType::Intake && $r->state === RequestState::Done);
         $release = $open?->type === RequestType::Release ? $open : $v->requests->first(fn (Request $r) => $r->type === RequestType::Release && $r->state === RequestState::Done);
         $billable = $v->vendor?->kind->billable() ?? false;
         $sent = fn (string $what) => $events->contains(fn ($e) => $e->type === EventType::ReportSent && ($e->payload['what'] ?? null) === $what);
 
         $steps[] = new Step('letter', $hasLetters ? 'Письмо' : 'Заведена руками', Step::DONE, at: $v->created_at);
-
-        // Принимают сразу — несделанного звонка в ленте нет: он не «не дозвонились», его просто не было.
-        if ($ir && ! ($accept && ! $ir->contacted_at && ! $ir->next_call_at) && ($ir->needsCall() || $ir->contacted_at || $ir->next_call_at || ($callAgain && $ir->isOpen()))) {
-            $current = $ir->isOpen() && ($ir->needsCall() || $callAgain) && ! $accept;
-            $chips = array_values(array_filter([
-                $ir->delivery?->label(),
-                $ir->next_call_at && ! $ir->contacted_at ? 'перезвонить '.$ir->next_call_at->translatedFormat('j M, H:i') : null,
-            ]));
-            $steps[] = new Step('call', $current ? 'Нужно позвонить' : ($ir->contacted_at ? 'Позвонили' : 'Не дозвонились'), $current ? Step::CURRENT : Step::DONE, $current ? 'Позвонить страхователю, узнать кто и когда привезёт ТС' : null, $ir->contacted_at, $chips,
-                $current ? ['kind' => 'submit', 'label' => 'Назначить эвакуатор'] : null, $ir);
-        }
-
-        // Эвакуатор не выезжал, а ТС принимают сразу — эвакуации не было, шага нет.
-        if ($ir?->isTow() && ! ($accept && $ir->state !== RequestState::InProgress)) {
-            $chips = array_values(array_filter([$ir->planned_at?->translatedFormat('j M, H:i'), $ir->from_address]));
-            [$state, $title, $hint, $plate] = match (true) {
-                $ir->state === RequestState::New => [Step::CURRENT, 'Нужен эвакуатор', 'Договориться с эвакуатором о дате', ['kind' => 'submit', 'label' => 'Назначить']],
-                $ir->state === RequestState::Scheduled => [Step::CURRENT, 'Эвакуатор назначен', 'Когда эвакуатор погрузит ТС, отметить выезд', ['kind' => 'submit', 'label' => 'Выехали']],
-                default => [Step::DONE, 'Эвакуатор выехал', null, null],
-            };
-            if ($state === Step::CURRENT && ($ir->needsCall() || $callAgain || $accept)) {
-                [$state, $title] = [Step::NEXT, 'Эвакуация'];
-            }
-            $steps[] = new Step('tow', $title, $state, $hint, $ir->started_at ?? $ir->planned_at, $state === Step::DONE ? $chips : [], $plate, $ir);
-        }
 
         if ($v->accepted_at) {
             $chips = array_values(array_filter([$v->yard?->name.($v->spot ? ', '.$v->spot : ''), $ir?->doneBy?->shortName()]));
@@ -60,12 +33,11 @@ final class Timeline
         } elseif ($v->state === VehicleState::Cancelled) {
             $steps[] = new Step('cancelled', 'Не привезена', Step::DONE, $v->cancel_reason, $v->cancelled_at, [], null, null, true);
         } else {
-            $ready = $ir && $ir->isOpen() && ($accept || (! $ir->needsCall() && ! $callAgain && (! $ir->isTow() || $ir->state === RequestState::InProgress)));
-            $hint = $v->state === VehicleState::InTransit ? 'ТС в пути, принять по приезду: место и фото' : 'Поставить на место и снять фото';
+            $ready = $ir && $ir->isOpen();
             // Заявки нет (отменили) — шаг всё равно текущий: «Принять» заводит заявку и открывает форму.
-            $orphan = ! $ir?->isOpen() && $v->state === VehicleState::Expected;
-            $steps[] = new Step('intake', $ready || $orphan ? 'Нужно принять' : 'Приём', $ready || $orphan ? Step::CURRENT : Step::NEXT, $orphan ? 'Заявки нет: принять, когда привезут' : $hint, $ir?->planned_at, [],
-                $ready ? ['kind' => 'submit', 'label' => 'Принять'] : ($orphan ? ['kind' => 'spawn', 'label' => 'Принять'] : null), $ir?->isOpen() ? $ir : null);
+            $orphan = ! $ready && $v->state === VehicleState::Expected;
+            $steps[] = new Step('intake', 'Нужно принять', Step::CURRENT, $orphan ? 'Заявки нет: принять, когда привезут' : 'Поставить на место и снять фото', null, [],
+                $ready ? ['kind' => 'submit', 'label' => 'Принять'] : ['kind' => 'spawn', 'label' => 'Принять'], $ready ? $ir : null);
         }
 
         // Что впереди — серым, чтобы было видно весь путь.
@@ -164,19 +136,5 @@ final class Timeline
         }
 
         return null;
-    }
-
-    /** Слово шага для строки списка: «звонок», «в пути», «на стоянке» — без запросов к ленте. */
-    public static function word(Vehicle $v, Request $r): ?string
-    {
-        return match (true) {
-            $r->needsCall() => 'нужно позвонить',
-            $v->state === VehicleState::InTransit => 'в пути',
-            $r->isTow() && $r->state === RequestState::Scheduled => 'эвакуатор назначен'.($r->planned_at ? ' на '.$r->planned_at->translatedFormat('j M') : ''),
-            $r->isTow() && $r->state === RequestState::New => 'нужен эвакуатор',
-            $v->state === VehicleState::Stored => 'на парковке',
-            $r->delivery === Delivery::Self => 'привезёт сам',
-            default => null,
-        };
     }
 }

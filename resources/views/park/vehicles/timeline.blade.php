@@ -18,8 +18,8 @@
                     <details class="step-details">
                         <summary class="step-head">
                             <span class="step-title">{{ $step->title }}</span>
-                            {{-- Дата приёма и выдачи — кнопка шторки «Даты» (dates-sheet): поправить день, не отменяя шаг. --}}
-                            @if ($step->at && in_array($step->key, ['intake', 'release'], true) && ($canManage ?? false))<button type="button" class="fact nums underline decoration-dotted underline-offset-2" data-controller="emit" data-action="emit#send" data-emit-event-param="dates:open">{{ $step->at->translatedFormat('j M, H:i') }}</button>
+                            {{-- Дата приёма и выдачи — сама выбор даты и времени (`x-park.date-edit`), только администратору парковки. --}}
+                            @if ($step->at && in_array($step->key, ['intake', 'release'], true) && auth()->user()->isParkAdmin())<x-park.date-edit :vehicle="$vehicle" :field="$step->key === 'intake' ? 'accepted_at' : 'released_at'" class="fact nums underline decoration-dotted underline-offset-2"/>
                             @elseif ($step->at)<span class="fact nums">{{ $step->at->translatedFormat('j M'.($step->key === 'letter' ? '' : ', H:i')) }}</span>@endif
                             @foreach ($step->chips as $chip)<span class="fact max-w-[14rem]"><span class="truncate">{{ $chip }}</span></span>@endforeach
                             @if ($step->hint)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $step->hint }}</span>@endif
@@ -30,8 +30,7 @@
                 @elseif ($step->isCurrent())
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>
-                        @if ($r?->planned_at && $step->key !== 'tow')<span class="fact nums {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
-                        @if ($step->key === 'intake' && $r?->delivery && ! $r->isTow())<span class="fact">{{ $r->delivery->label() }}</span>@endif
+                        @if ($r?->planned_at && $step->key !== 'intake')<span class="fact nums {{ $r->isOverdue() ? 'text-danger' : '' }}">{{ $r->planned_at->translatedFormat('j M, H:i') }}</span>@endif
                     </div>
                     @if ($step->hint)<p class="step-hint">{{ $step->hint }}</p>@endif
                     @include('park.vehicles.steps.'.$partial, ['req' => $r, 'step' => $step])

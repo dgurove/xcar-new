@@ -455,7 +455,7 @@ final class SpbFactCommand extends Command
                 $vehicle->forceFill($changes)->save();
                 $did[] = 'поля: '.implode(', ', array_keys($changes));
             }
-            if ($vehicle->state === VehicleState::Expected || $vehicle->state === VehicleState::InTransit) {
+            if ($vehicle->state === VehicleState::Expected) {
                 $this->acceptPast($vehicle, $acceptedAt);
                 $did[] = 'принята '.$acceptedAt->format('d.m');
             } elseif (! $vehicle->accepted_at?->isSameDay($acceptedAt)) {

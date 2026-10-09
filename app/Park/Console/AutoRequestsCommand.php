@@ -2,7 +2,6 @@
 
 namespace App\Park\Console;
 
-use App\Mail\Extraction\ParkExtractor;
 use App\Park\Actions\AutoRequest;
 use Illuminate\Console\Command;
 
@@ -30,11 +29,9 @@ class AutoRequestsCommand extends Command
 
                 continue;
             }
-            $letter = $candidate->message;
-            $type = $letter && ParkExtractor::asksEvacuation($letter->subject.' '.$letter->ownText()) ? 'эвакуация' : 'приём';
             $request = $apply ? $auto($candidate, $old) : null;
             $request || ! $apply ? $done++ : $skipped++;
-            $this->line(($request ? "заявка {$request->id}, ТС {$request->vehicle_id}" : ($apply ? 'не завелась' : 'завести'))." {$candidate->code} {$candidate->title()}, {$type}");
+            $this->line(($request ? "заявка {$request->id}, ТС {$request->vehicle_id}" : ($apply ? 'не завелась' : 'завести'))." {$candidate->code} {$candidate->title()}");
         }
         $this->info($apply ? "заведено {$done}, пропущено {$skipped}" : "заведётся {$done}, пропущено {$skipped}; с --apply заведёт");
 

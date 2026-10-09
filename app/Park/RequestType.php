@@ -10,7 +10,6 @@ enum RequestType: string
 
     case Intake = 'intake';
     case Inspection = 'inspection';
-    case Tow = 'tow';
     case Move = 'move';
     case Release = 'release';
 
@@ -19,7 +18,6 @@ enum RequestType: string
         return match ($this) {
             self::Intake => 'Приём',
             self::Inspection => 'Осмотр',
-            self::Tow => 'Эвакуация',
             self::Move => 'Перестановка',
             self::Release => 'Выдача',
         };
@@ -30,7 +28,6 @@ enum RequestType: string
         return match ($this) {
             self::Intake => 'Принять',
             self::Inspection => 'Осмотрена',
-            self::Tow => 'Назначить',
             self::Move => 'Переставить',
             self::Release => 'Выдать',
         };
@@ -40,8 +37,7 @@ enum RequestType: string
     public function allowedFor(VehicleState $state): bool
     {
         return match ($this) {
-            self::Intake => $state->isBefore(),
-            self::Tow => $state === VehicleState::Expected || $state === VehicleState::Stored,
+            self::Intake => $state === VehicleState::Expected,
             self::Move, self::Release => $state === VehicleState::Stored,
             self::Inspection => ! $state->isFinal(),
         };

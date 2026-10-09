@@ -9,7 +9,6 @@ enum VehicleState: string
     use HasLabels;
 
     case Expected = 'expected';
-    case InTransit = 'in_transit';
     case Stored = 'stored';
     case Released = 'released';
     case Cancelled = 'cancelled';
@@ -18,7 +17,6 @@ enum VehicleState: string
     {
         return match ($this) {
             self::Expected => 'Ожидается',
-            self::InTransit => 'В пути',
             self::Stored => 'На парковке',
             self::Released => 'Выдана',
             self::Cancelled => 'Не привезена',
@@ -31,16 +29,16 @@ enum VehicleState: string
         return $this === self::Released || $this === self::Cancelled;
     }
 
-    /** Ещё не на площадке: ожидается или едет. */
+    /** Ещё не на площадке: ожидается (едущей больше нет — эвакуацию сняли 10.10.2026). */
     public function isBefore(): bool
     {
-        return $this === self::Expected || $this === self::InTransit;
+        return $this === self::Expected;
     }
 
     public function tone(): string
     {
         return match ($this) {
-            self::Expected, self::InTransit => 'urgent',
+            self::Expected => 'urgent',
             self::Stored => 'open',
             self::Released, self::Cancelled => 'closed',
         };

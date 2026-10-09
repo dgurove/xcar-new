@@ -37,7 +37,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 #[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
     'contact_name', 'contact_phone', 'flags', 'docs_required', 'value', 'policy_no', 'city_id',
-    'cancelled_at', 'cancel_reason', 'spot', 'transit_started_at', 'mileage', 'fuel', 'idle_noticed_at',
+    'cancelled_at', 'cancel_reason', 'spot', 'mileage', 'fuel', 'idle_noticed_at',
     'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts',
     'sold_at', 'sold_message_id', 'buyer_free_until', 'pickup_name', 'pickup_phone', 'pickup_code', 'buyer_party_id', 'billing_cadence'])]
 class Vehicle extends Model implements HasMedia
@@ -89,7 +89,7 @@ class Vehicle extends Model implements HasMedia
     protected function casts(): array
     {
         return ['state' => VehicleState::class, 'category' => Category::class, 'oversize' => 'bool', 'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',
-            'accepted_at' => 'datetime', 'released_at' => 'datetime', 'cancelled_at' => 'datetime', 'transit_started_at' => 'datetime', 'idle_noticed_at' => 'datetime', 'year' => 'int',
+            'accepted_at' => 'datetime', 'released_at' => 'datetime', 'cancelled_at' => 'datetime', 'idle_noticed_at' => 'datetime', 'year' => 'int',
             'contract_at' => 'date', 'storage_billed_until' => 'date', 'storage_rate' => 'float', 'sold_at' => 'date', 'buyer_free_until' => 'date', 'billing_cadence' => Cadence::class];
     }
 
@@ -259,11 +259,6 @@ class Vehicle extends Model implements HasMedia
         return $this->docs->contains(fn (Doc $d) => $d->isOut() && ! $d->isDone());
     }
 
-    public function daysInTransit(): ?int
-    {
-        return $this->transit_started_at && $this->state === VehicleState::InTransit ? (int) $this->transit_started_at->diffInDays(now()) : null;
-    }
-
     /** Место на площадке: заглавными, без пробелов по краям; занятое другой ТС на стоянке — ошибка формы. */
     public static function takeSpot(?Yard $yard, ?string $spot, ?int $exceptId = null): ?string
     {
@@ -388,7 +383,8 @@ class Vehicle extends Model implements HasMedia
     public function daysStored(): ?int
     {
         // День приёма — первые сутки, как в начислении: иначе «Дней» в списке на единицу меньше, чем в счёте.
-        return $this->accepted_at ? (int) $this->accepted_at->diffInDays($this->released_at ?? now()) + 1 : null;
+        // Календарные сутки, а не 24 часа: принята вчера в 14:05 — сегодня уже вторые сутки, как в начислении.
+        return $this->accepted_at ? (int) $this->accepted_at->copy()->startOfDay()->diffInDays(($this->released_at ?? now())->copy()->startOfDay()) + 1 : null;
     }
 
     public function damages(): array

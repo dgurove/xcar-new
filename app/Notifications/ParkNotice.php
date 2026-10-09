@@ -28,9 +28,8 @@ final class ParkNotice extends Notice
     public static function letter(Candidate $c): self
     {
         $v = fn (string $f) => $c->extracted[$f]['value'] ?? null;
-        $what = ($v('request') ?? null) === 'tow' ? 'Письмо на вывоз' : 'Письмо на приём';
 
-        return new self($what.': '.$c->title(), implode(', ', array_filter([$v('vendor'), $v('location'), $v('insured_phone')])), '/requests/from-mail');
+        return new self('Письмо на приём: '.$c->title(), implode(', ', array_filter([$v('vendor'), $v('insured_phone')])), '/requests/from-mail');
     }
 
     /** Заявку завела почта (`AutoRequest`): марку и VIN, которых нет в письме, дочитывают документы. */
@@ -38,7 +37,7 @@ final class ParkNotice extends Notice
     {
         $v = $r->vehicle;
 
-        return new self($r->type->label().': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->ref, $r->from_address, $r->contact_phone])), '/cars/'.$v->id, $v->id);
+        return new self($r->type->label().': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->ref, $r->contact_phone])), '/cars/'.$v->id, $v->id);
     }
 
     public static function mail(Vehicle $v, Message $m): self
@@ -79,11 +78,6 @@ final class ParkNotice extends Notice
     {
         return new self($by->shortName().' '.($released ? 'выдал' : 'принял').': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->yard?->name, $v->ref])),
             '/cars/'.$v->id, $v->id, telegram: false);
-    }
-
-    public static function call(Request $r): self
-    {
-        return new self('Перезвонить: '.$r->vehicle->titleWithYear(), $r->contactLine() ?: null, '/cars/'.$r->vehicle_id, $r->vehicle_id);
     }
 
     public static function idle(Vehicle $v, int $days): self

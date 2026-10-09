@@ -11,7 +11,6 @@ use App\Cars\Category;
 use App\Http\Park\VehicleInvoiceController;
 use App\Mail\Candidate;
 use App\Mail\Direction;
-use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Park\Actions\FillFromDocs;
@@ -29,8 +28,8 @@ use Illuminate\Support\Collection;
  */
 final class CaseView
 {
-    /** Какая из открытых заявок — текущий этап: эвакуация и приём раньше выдачи, выдача раньше перестановки и осмотра. */
-    private const PRIORITY = [RequestType::Tow, RequestType::Intake, RequestType::Release, RequestType::Move, RequestType::Inspection];
+    /** Какая из открытых заявок — текущий этап: приём раньше выдачи, выдача раньше перестановки и осмотра. */
+    private const PRIORITY = [RequestType::Intake, RequestType::Release, RequestType::Move, RequestType::Inspection];
 
     /** Что начисляют руками: хранение считается само, негабарит входит в суточную ставку. */
     private const CHARGES = [ChargeKind::Tow, ChargeKind::Inspection, ChargeKind::Idle, ChargeKind::Loading, ChargeKind::Release, ChargeKind::Other];
@@ -57,7 +56,7 @@ final class CaseView
         ]));
     }
 
-    public static function for(Vehicle $vehicle, User $user, ?int $requestId = null, bool $callAgain = false, bool $accept = false): array
+    public static function for(Vehicle $vehicle, User $user, ?int $requestId = null): array
     {
         $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.assignee', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party'])->loadCount(['threads' => fn ($q) => $q->park()]);
         $open = ($requestId ? $vehicle->requests->first(fn (Request $r) => $r->id === $requestId && $r->isOpen()) : null) ?? self::current($vehicle);
@@ -82,10 +81,8 @@ final class CaseView
             'phases' => $vehicle->requests->filter(fn (Request $r) => $r->state === RequestState::Done)->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
             'others' => $vehicle->requests->filter(fn (Request $r) => $r->isOpen() && $open && $r->isNot($open))->values(),
             'letters' => $letters = $ids->isEmpty() ? 0 : Message::whereIn('thread_id', $ids)->count(),
-            'steps' => Timeline::for($vehicle, $open, $letters > 0 || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $callAgain, $asks, $pass, $accept),
+            'steps' => Timeline::for($vehicle, $open, $letters > 0 || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $asks, $pass),
             'asks' => $asks,
-            // Текст письма о приёме — в шаг «Нужно позвонить»: «клиент сам свяжется», «документы в офисе СК», «со СТОА по адресу…».
-            'letterText' => $open?->thread_id ? Intent::excerpt(Message::where('thread_id', $open->thread_id)->where('direction', Direction::In)->orderBy('date_at')->value('text_body')) : null,
             'threads' => $threads,
             // Блок «Письма» над таймлайном: последнее письмо словами, этапы — из цепочки кандидата этой ТС.
             'lastLetter' => $ids->isEmpty() ? null : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),

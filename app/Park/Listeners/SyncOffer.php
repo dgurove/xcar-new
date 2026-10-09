@@ -9,7 +9,6 @@ use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Events\VehicleAccepted;
-use App\Park\Events\VehicleDeparted;
 use App\Park\Events\VehicleReleased;
 use App\Park\Events\VehicleRestored;
 use App\Park\Vehicle;
@@ -35,16 +34,10 @@ final class SyncOffer
     public function subscribe(Dispatcher $events): array
     {
         return [
-            VehicleDeparted::class => 'departed',
             VehicleAccepted::class => 'accepted',
             VehicleReleased::class => 'released',
             VehicleRestored::class => 'restored',
         ];
-    }
-
-    public function departed(VehicleDeparted $e): void
-    {
-        $this->moveTo($e->vehicle, CarPlace::Moving, $e->by);
     }
 
     public function accepted(VehicleAccepted $e): void

@@ -7,8 +7,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Дела дня одной функцией — утреннему дайджесту владельцу (`park:digest`). Экрана «Сегодня» нет:
- * те же дела на `/requests` пресетами (Просрочено · Связаться · типы) и на `/cars` (Бумаги вендору · Стоят долго).
- * Секции: Просрочено · Связаться · Забрать · Принять · Выдать · Осмотреть, переставить · Отправить вендору · Стоят долго.
+ * те же дела на `/requests` пресетами (Просрочено · типы) и на `/cars` (Бумаги вендору · Стоят долго).
+ * Секции: Просрочено · Принять · Выдать · Осмотреть, переставить · Отправить вендору · Стоят долго.
  * Пустые не отдаются.
  *
  * @phpstan-type Section array{0: string, 1: Collection, 2: string}
@@ -23,13 +23,10 @@ final class Today
         $overdue = $open->filter(fn (ParkRequest $r) => $r->isOverdue());
         $rest = $open->reject(fn (ParkRequest $r) => $r->isOverdue())->filter(fn (ParkRequest $r) => ! $r->planned_at || $r->planned_at->isToday());
 
-        $call = $rest->filter(fn (ParkRequest $r) => $r->needsCall());
-        $fetch = $rest->filter(fn (ParkRequest $r) => $r->isTow() && ! $r->needsCall());
-        $intake = $rest->filter(fn (ParkRequest $r) => $r->type === RequestType::Intake && ! $r->needsCall());
+        $intake = $rest->filter(fn (ParkRequest $r) => $r->type === RequestType::Intake);
         $release = $rest->filter(fn (ParkRequest $r) => $r->type === RequestType::Release);
         $other = $rest->filter(fn (ParkRequest $r) => in_array($r->type, [RequestType::Inspection, RequestType::Move], true));
 
-        $transit = Vehicle::where('state', VehicleState::InTransit)->get();
         // Ждут без заявки — отменили заявку и забыли: заявка заводится с ТС.
         $orphans = Vehicle::where('state', VehicleState::Expected)->whereDoesntHave('requests', fn ($q) => $q->whereIn('state', RequestState::open()))->get();
         $stored = Vehicle::where('state', VehicleState::Stored)->with('docs')->get();
@@ -40,9 +37,7 @@ final class Today
             'stored' => $stored->count(),
             'sections' => array_values(array_filter([
                 ['Просрочено', $overdue, '/requests?preset=overdue'],
-                ['Связаться', $call, '/requests?preset=call'],
-                ['Забрать', $fetch, '/requests?preset=tow'],
-                ['Принять', $intake->concat($transit), '/requests?preset=intake'],
+                ['Принять', $intake, '/requests?preset=intake'],
                 ['Выдать', $release, '/requests?preset=release'],
                 ['Осмотреть, переставить', $other, '/requests?preset=inspection'],
                 ['Ждут без заявки', $orphans, '/cars?state=expected'],

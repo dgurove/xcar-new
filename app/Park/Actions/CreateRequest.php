@@ -7,7 +7,6 @@ use App\Cars\CarModel;
 use App\Cars\Identity;
 use App\Cars\IdentityTaken;
 use App\Cars\Vin\RememberVin;
-use App\Park\Delivery;
 use App\Park\Events\VehicleRestored;
 use App\Park\EventType;
 use App\Park\Request;
@@ -20,7 +19,7 @@ use App\Users\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** Заявка руками или из письма. На приём и эвакуацию машина заводится тут же, на остальное — уже существующая; тип сверяется с состоянием ТС. */
+/** Заявка руками или из письма. На приём машина заводится тут же, на остальное — уже существующая; тип сверяется с состоянием ТС. */
 final class CreateRequest
 {
     public function __invoke(?User $by, RequestType $type, ?Vehicle $vehicle, array $data): Request
@@ -70,11 +69,10 @@ final class CreateRequest
                 'type' => $type,
                 'thread_id' => $data['thread_id'] ?? null,
                 'yard_id' => $data['yard_id'] ?? null,
-                'planned_at' => $data['planned_at'] ?? null,
+                // Дата приезда у приёма не назначается (владелец 10.10.2026): привезли — приняли.
+                'planned_at' => $type === RequestType::Intake ? null : ($data['planned_at'] ?? null),
                 'contact_name' => $data['contact_name'] ?? null,
                 'contact_phone' => $data['contact_phone'] ?? null,
-                'from_address' => $data['from_address'] ?? null,
-                'delivery' => $data['delivery'] ?? ($type === RequestType::Tow ? Delivery::Tow : null),
                 'note' => $data['note'] ?? null,
                 'created_by' => $by?->id,
                 // Письмо, из которого заявка: по его дате список заявок (новые сверху), без письма — по дате заявки.

@@ -10,8 +10,6 @@
 @elseif ($vehicle->state === \App\Park\VehicleState::Stored)
     @if ($vehicle->yard)<x-ui.place class="fact">{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place>@endif
     <span class="fact nums">{{ $days }}&nbsp;д</span>
-@elseif ($vehicle->state === \App\Park\VehicleState::InTransit && $vehicle->daysInTransit() !== null)
-    <span class="fact nums">{{ $vehicle->daysInTransit() }} дн в пути</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::Released)
     <span class="fact nums">{{ $vehicle->released_at?->translatedFormat('j M Y') }}</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::Cancelled && $vehicle->cancel_reason)

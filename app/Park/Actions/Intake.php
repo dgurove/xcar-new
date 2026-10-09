@@ -2,10 +2,7 @@
 
 namespace App\Park\Actions;
 
-use App\Billing\Actions\AddCharge;
 use App\Billing\Actions\IssueTransferObligation;
-use App\Billing\ChargeKind;
-use App\Billing\Ledger;
 use App\Park\Events\VehicleAccepted;
 use App\Park\EventType;
 use App\Park\Inspection;
@@ -24,12 +21,11 @@ use Illuminate\Validation\ValidationException;
 /**
  * Приём на стоянку одной транзакцией: площадка и место, дата, осмотр записью,
  * копия повреждений и показаний на ТС для списков, закрытие переданной заявки
- * и всех открытых эвакуаций (приезд — конец эвакуации), бумаги вендору,
- * событие для CRM.
+ * и всех открытых приёмов этой ТС, бумаги вендору, событие для CRM.
  */
 final class Intake
 {
-    public function __construct(private OpenDocs $openDocs, private AddCharge $addCharge, private IssueTransferObligation $transfer) {}
+    public function __construct(private OpenDocs $openDocs, private IssueTransferObligation $transfer) {}
 
     public function __invoke(Vehicle $vehicle, User $by, Yard $yard, ?Carbon $at, array $inspection = [], ?Request $request = null, ?string $spot = null): Vehicle
     {
@@ -44,20 +40,15 @@ final class Intake
             $zones = array_values($inspection['damage_zones'] ?? []);
             // Дата приёма — первая: после перегона между площадками сутки хранения идут дальше, а не заново.
             $vehicle->update([
-                'state' => VehicleState::Stored, 'yard_id' => $yard->id, 'spot' => $spot, 'accepted_at' => $vehicle->accepted_at ?? $at, 'transit_started_at' => null,
+                'state' => VehicleState::Stored, 'yard_id' => $yard->id, 'spot' => $spot, 'accepted_at' => $vehicle->accepted_at ?? $at,
                 'damage_zones' => $zones, 'damage_note' => ($inspection['damage_note'] ?? null) ?: null,
                 'mileage' => $inspection['mileage'] ?? $vehicle->mileage, 'fuel' => $inspection['fuel'] ?? $vehicle->fuel,
             ]);
             Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Intake, 'at' => $at, 'user_id' => $by->id, 'damage_zones' => $zones]
                 + self::fields($inspection));
             $vehicle->log(EventType::Accepted, $by, array_filter(['yard' => $yard->name, 'yard_id' => $yard->id, 'spot' => $spot, 'day' => $at->toDateString()]));
-            Request::closeOpen($vehicle, [RequestType::Intake, RequestType::Tow], $by, $request);
+            Request::closeOpen($vehicle, [RequestType::Intake], $by, $request);
             ($this->openDocs)($vehicle);
-            // Эвакуация со стоимостью — начисление тому, кто платит хранение; договор комиссии — обязательство перед вендором.
-            $vehicle->loadMissing('vendor');
-            if ($request?->isTow() && $request->cost && ($party = Ledger::payerParty($vehicle, $vehicle->vendor?->storage_payer ?? 'vendor'))) {
-                ($this->addCharge)($party, ChargeKind::Tow, 'Эвакуация'.($request->from_address ? ' из '.$request->from_address : '').($request->distance_km ? ', '.$request->distance_km.' км' : ''), 1, 'pc', $request->cost, $by, $vehicle);
-            }
 
             return $vehicle;
         });

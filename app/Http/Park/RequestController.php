@@ -13,7 +13,6 @@ use App\Mail\Scan\AutoScan;
 use App\Mail\Scope as MailScope;
 use App\Park\Actions\AssignRequest;
 use App\Park\Actions\CloseRequest;
-use App\Park\Actions\Contact;
 use App\Park\Actions\CreateRequest;
 use App\Park\Actions\Intake;
 use App\Park\Actions\MarkSold;
@@ -22,11 +21,8 @@ use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\RefuseRelease;
 use App\Park\Actions\RegisterFromLetters;
 use App\Park\Actions\Release;
-use App\Park\Actions\ScheduleTow;
-use App\Park\Actions\StartTow;
 use App\Park\Actions\StoreByLetters;
 use App\Park\Actions\UpdateVehicle;
-use App\Park\Delivery;
 use App\Park\Inspection;
 use App\Park\ReleasedTo;
 use App\Park\Request as ParkRequest;
@@ -43,7 +39,6 @@ use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
-use App\Support\Phone;
 use App\Support\Sort;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -58,7 +53,7 @@ class RequestController
 
     public const SORT = '-fresh';
 
-    /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с карточкам строки. */
+    /** Главная стоянки и список заявок: пресеты «Просрочено» и типы, поиск по ТС, вендор, площадка, «Мои»; три вида с карточкам строки. */
     public function index(Request $request)
     {
         $detail = Detail::of($request, fn (string $key) => ($req = ParkRequest::find($key)) && $req->vehicle ? app(VehicleController::class)->detail($request, $req->vehicle, $req) : null);
@@ -79,17 +74,12 @@ class RequestController
         $filters = fn ($q) => $facets->applyTo($q)
             ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%')
                 ->orWhereHas('brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%")->orWhere('name_ru', 'ilike', "%{$qs}%"))));
-        // Связаться — то же условие, что `Request::needsCall()`, но запросом.
-        $needsCall = fn ($q) => $q->where('state', RequestState::New)->whereIn('type', [RequestType::Intake, RequestType::Tow])
-            ->where(fn ($w) => $w->where(fn ($n) => $n->whereNull('delivery')->whereNull('contacted_at')->whereNull('planned_at'))->orWhere('next_call_at', '<=', now()));
         $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'assignee', 'letter', 'creator']));
         $q->whereIn('state', RequestState::open());
         if ($qs !== '') {
             $filters($q);
         } elseif ($t = RequestType::tryFrom($type)) {
             $q->where('type', $t);
-        } elseif ($type === 'call') {
-            $needsCall($q);
         } elseif ($type === 'overdue') {
             $q->where('planned_at', '<', now());
         }
@@ -103,11 +93,11 @@ class RequestController
         };
 
         $open = $filters(ParkRequest::query())->whereIn('state', RequestState::open())->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
-        $counts = $open->all() + ['all' => $open->sum(), 'call' => $needsCall($filters(ParkRequest::query()))->count(),
+        $counts = $open->all() + ['all' => $open->sum(),
             'overdue' => $filters(ParkRequest::query())->whereIn('state', RequestState::open())->where('planned_at', '<', now())->count()];
         // Пилюля есть, пока есть заявки: «Перестановка» появляется от первой такой и исчезает с последней.
         // Выбранная остаётся и с нулём, иначе активная пилюля исчезала бы из ряда вместе со списком.
-        $presets = collect(['all' => 'Все', 'overdue' => 'Просрочено', 'call' => 'Нужно позвонить'] + collect(RequestType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all())
+        $presets = collect(['all' => 'Все', 'overdue' => 'Просрочено'] + collect(RequestType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all())
             ->filter(fn ($label, $key) => $key === 'all' || $key === $type || ! empty($counts[$key]))->all();
         $paginator = ListView::paginate($request, $q);
         $data = [
@@ -138,16 +128,12 @@ class RequestController
      */
     public function create(Request $request, PromoteCandidate $promote, StoreByLetters $store)
     {
-        // Руками заводится только приём новой ТС; эвакуация с ТС (перегон) — по ссылке «Перегнать».
-        $type = RequestType::tryFrom($request->query('type', '')) ?? RequestType::Intake;
+        // Руками заводится только приём новой ТС.
+        $type = RequestType::Intake;
         $vehicle = $request->query('car') ? Vehicle::find($request->query('car')) : null;
-        if (! in_array($type, [RequestType::Intake, RequestType::Tow], true) || ($type === RequestType::Tow && ! $vehicle)) {
-            $type = RequestType::Intake;
-        }
         $candidate = $request->query('candidate') ? Candidate::where('scope', MailScope::Park)->where('state', '!=', CandidateState::Promoted)->with(['messages.attachments', 'messages.addresses', 'messages.author'])->find($request->query('candidate')) : null;
         $prefill = [];
         if ($candidate) {
-            $v = fn (string $f) => $candidate->value($f);
             // Такую ТС уже завели (редкость: письма о заведённой цепочку не начинают) — в форме она показывается целиком.
             // «Это она» у строки дубля (twins) — `?car=`: письма идут к выбранной ТС.
             $vehicle = ($vehicle ?? $promote->existing($candidate))?->loadCount('threads')->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests']);
@@ -157,12 +143,7 @@ class RequestController
             // Поля ТС — те же, по которым цепочка заводится сама (`StoreByLetters`); тут они на глазах у сотрудника.
             $prefill = $candidate->vehicleData() + [
                 'brand' => $brand, 'model' => $model,
-                'from_address' => $v('location'),
-                'delivery' => $v('request') === 'tow' ? Delivery::Tow->value : null,
-                // ВСК пишет, когда привезут: дата в форму; как именно — решает звонок.
-                'planned_at' => $v('planned_at') ? str_replace(' ', 'T', $v('planned_at')) : null,
             ];
-            $type = in_array($type, [RequestType::Intake, RequestType::Tow], true) ? RequestType::Intake : $type;
             // По письмам ТС уже принята или продана: этапы менеджеру на проверку, заведётся стоящей.
             if ($candidate->stage !== CandidateStage::Intake) {
                 $stored = $candidate->stageOf(CandidateStage::Stored);
@@ -214,26 +195,15 @@ class RequestController
             'type' => ['required', Rule::enum(RequestType::class)],
             'vehicle_id' => ['nullable', 'exists:park_vehicles,id'],
             'candidate_id' => ['nullable', 'exists:mail_candidates,id'],
-            'delivery' => ['nullable', Rule::enum(Delivery::class)],
             'yard_id' => ['nullable', 'exists:park_yards,id'],
             'planned_at' => ['nullable', 'date'],
-            'from_address' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:2000'],
             'flags' => ['nullable', 'array'], 'flags.*' => ['string', 'max:20'],
             'docs_required' => ['nullable', 'array'], 'docs_required.*' => ['string', 'max:20'],
         ] + VehicleFields::rules(identity: ! $request->filled('vehicle_id')));  // у существующей ТС поля не спрашиваются («Выдать» шлёт только тип и ТС)
         $type = RequestType::from($data['type']);
-        // Эвакуатор или сам — решается по телефону; «эвакуатор» и есть заявка на эвакуацию.
-        // Из письма — только подсказка («В письме: вывоз»): заявка ждёт звонка, а не назначения эвакуатора.
-        $delivery = empty($data['candidate_id']) ? Delivery::tryFrom((string) ($data['delivery'] ?? '')) : null;
-        if ($type === RequestType::Intake && $delivery === Delivery::Tow) {
-            $type = RequestType::Tow;
-        } elseif ($type === RequestType::Tow) {
-            $delivery = Delivery::Tow;
-        }
-        $data['delivery'] = $delivery;
         $vehicle = ! empty($data['vehicle_id']) ? Vehicle::find($data['vehicle_id']) : null;
-        if (! in_array($type, [RequestType::Intake, RequestType::Tow], true) && ! $vehicle) {
+        if ($type !== RequestType::Intake && ! $vehicle) {
             return back()->withInput()->withErrors(['vehicle_id' => 'Выберите ТС']);
         }
         $candidate = ! empty($data['candidate_id']) ? Candidate::where('scope', MailScope::Park)->find($data['candidate_id']) : null;
@@ -322,7 +292,12 @@ class RequestController
         $this->saveVehicle($request, $req->vehicle);
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data, $req, $data['spot'] ?? null);
 
-        // Дальше — дело: шаг «Отчёт вендору» ждёт с черновиком (акт и фото), отправит сотрудник, проверив.
+        // Из окна заявки (фрейм карточки) — строка уходит, окно к следующей заявке; из дела — дело, где шаг «Отчёт вендору»
+        // ждёт с черновиком (акт и фото), отправит сотрудник, проверив.
+        if ($request->header('Turbo-Frame') === Detail::FRAME) {
+            return back()->with('detail-advance', true)->with('toast', 'Принята');
+        }
+
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Принята');
     }
 
@@ -373,53 +348,6 @@ class RequestController
         $close($req, $request->user(), (bool) $data['done'], $data['note'] ?? null);
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', $data['done'] ? 'Выполнена' : 'Отменена');
-    }
-
-    /** Звонок страхователю: эвакуатор (с полями назначения), привезёт сам (когда), не дозвонились (когда снова). */
-    public function contact(Request $request, ParkRequest $req, Contact $contact)
-    {
-        $data = $request->validate([
-            'outcome' => ['required', Rule::in(['tow', 'self', 'missed'])],
-            'planned_at' => ['nullable', 'date'], 'next_call_at' => ['nullable', 'date'],
-            'from_address' => ['nullable', 'string', 'max:255'], 'yard_id' => ['nullable', 'exists:park_yards,id'],
-            'carrier' => ['nullable', 'string', 'max:80'], 'distance_km' => ['nullable', 'integer', 'between:0,5000'], 'cost' => ['nullable', 'integer', 'between:0,10000000'],
-            'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'],
-        ]);
-        $this->claim($request, $req);
-        $this->saveVehicle($request, $req->vehicle);
-        // Страхователь и телефон — поля ТС; заявка берёт их оттуда, если своих не прислали.
-        $data += ['contact_name' => $req->vehicle->contact_name, 'contact_phone' => $req->vehicle->contact_phone];
-        $contact($req, $request->user(), $data['outcome'], $data);
-
-        return redirect("/cars/{$req->vehicle_id}")->with('toast', match ($data['outcome']) {
-            'tow' => 'Эвакуация', 'self' => 'Привезёт сам', default => 'Позвоним снова'
-        });
-    }
-
-    public function schedule(Request $request, ParkRequest $req, ScheduleTow $schedule)
-    {
-        $data = $request->validate([
-            'planned_at' => ['nullable', 'date'], 'from_address' => ['nullable', 'string', 'max:255'], 'yard_id' => ['nullable', 'exists:park_yards,id'],
-            'carrier' => ['nullable', 'string', 'max:120'], 'distance_km' => ['nullable', 'integer', 'between:0,5000'], 'cost' => ['nullable', 'integer', 'min:0'],
-            'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'],
-        ]);
-        if (! empty($data['contact_phone'])) {
-            $data['contact_phone'] = Phone::format(Phone::normalize($data['contact_phone']) ?? $data['contact_phone']);
-        }
-        $this->claim($request, $req);
-        $this->saveVehicle($request, $req->vehicle);
-        $data += ['contact_name' => $req->vehicle->contact_name, 'contact_phone' => $req->vehicle->contact_phone];
-        $schedule($req, $request->user(), $data);
-
-        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Назначена');
-    }
-
-    public function start(Request $request, ParkRequest $req, StartTow $start)
-    {
-        $this->claim($request, $req);
-        $start($req, $request->user());
-
-        return redirect("/cars/{$req->vehicle_id}")->with('toast', 'В пути');
     }
 
     public function assign(Request $request, ParkRequest $req, AssignRequest $assign)

@@ -45,8 +45,8 @@ final class UndoIntake
             if (! self::allowed($vehicle)) {
                 throw ValidationException::withMessages(['state' => 'Приём не отменить: хранение уже выставлено или есть оплаты, сначала аннулируйте счета']);
             }
-            if (Request::where('vehicle_id', $vehicle->id)->whereIn('type', [RequestType::Release, RequestType::Move, RequestType::Tow])->whereIn('state', RequestState::open())->exists()) {
-                throw ValidationException::withMessages(['state' => 'Сначала отмените открытую выдачу, перестановку или перегон']);
+            if (Request::where('vehicle_id', $vehicle->id)->whereIn('type', [RequestType::Release, RequestType::Move])->whereIn('state', RequestState::open())->exists()) {
+                throw ValidationException::withMessages(['state' => 'Сначала отмените открытую выдачу или перестановку']);
             }
             foreach (Invoice::where('vehicle_id', $vehicle->id)->where('direction', 'owed')->where('state', InvoiceState::Issued)->get() as $owed) {
                 ($this->void)($owed, $by, 'Приём отменён');
@@ -56,9 +56,9 @@ final class UndoIntake
             Inspection::where('vehicle_id', $vehicle->id)->where('kind', InspectionKind::Intake)->delete();
             $vehicle->update(['state' => VehicleState::Expected, 'yard_id' => null, 'spot' => null, 'accepted_at' => null, 'storage_billed_until' => null]);
             $vehicle->log(EventType::IntakeUndone, $by, array_filter(['reason' => $reason]));
-            // Заявка, закрытая приёмом, снова в работе — с той же доставкой и исполнителем.
-            $last = Request::where('vehicle_id', $vehicle->id)->whereIn('type', [RequestType::Intake, RequestType::Tow])->where('state', RequestState::Done)->latest('done_at')->first();
-            $last?->update(['state' => $last->isTow() ? RequestState::Scheduled : RequestState::New, 'done_at' => null, 'done_by' => null]);
+            // Заявка, закрытая приёмом, снова в работе — с тем же исполнителем.
+            $last = Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Intake)->where('state', RequestState::Done)->latest('done_at')->first();
+            $last?->update(['state' => RequestState::New, 'done_at' => null, 'done_by' => null]);
 
             return $vehicle;
         });

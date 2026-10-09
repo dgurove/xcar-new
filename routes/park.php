@@ -48,10 +48,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{req}/release', [RequestController::class, 'release']);
     Route::post('/requests/{req}/refuse', [RequestController::class, 'refuse'])->middleware('park.manage');
     Route::post('/requests/{req}/close', [RequestController::class, 'close']);
-    Route::post('/requests/{req}/schedule', [RequestController::class, 'schedule']);
-    Route::post('/requests/{req}/start', [RequestController::class, 'start']);
     Route::post('/requests/{req}/assign', [RequestController::class, 'assign']);
-    Route::post('/requests/{req}/contact', [RequestController::class, 'contact']);
 
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/export', [VehicleController::class, 'export'])->middleware('park.manage');
@@ -94,7 +91,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/move', [VehicleController::class, 'move']);
     Route::post('/cars/{vehicle}/transfer', [VehicleController::class, 'transfer'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/yard', [VehicleController::class, 'yard']);
-    Route::post('/cars/{vehicle}/dates', [VehicleController::class, 'dates'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/dates', [VehicleController::class, 'dates'])->middleware('ability:isParkAdmin');
     Route::post('/cars/{vehicle}/restore', [VehicleController::class, 'restore'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/undo-intake', [VehicleController::class, 'undoIntake'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/undo-release', [VehicleController::class, 'undoRelease'])->middleware('park.manage');

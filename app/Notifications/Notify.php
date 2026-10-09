@@ -36,7 +36,6 @@ use App\Park\Events\CandidateArrived;
 use App\Park\Events\LetterArrived;
 use App\Park\Events\ReleasedWithoutQr;
 use App\Park\Events\RequestAssigned;
-use App\Park\Events\RequestCall;
 use App\Park\Events\RequestDue;
 use App\Park\Events\VehicleAccepted;
 use App\Park\Events\VehicleIdle;
@@ -90,7 +89,6 @@ final class Notify
             LetterArrived::class => 'parkMail',
             RequestAssigned::class => 'parkAssigned',
             RequestDue::class => 'parkDue',
-            RequestCall::class => 'parkCall',
             VehicleIdle::class => 'parkIdle',
             VehicleSold::class => 'parkSold',
             VehicleAccepted::class => 'parkHandled',
@@ -310,13 +308,6 @@ final class Notify
     public function parkAssigned(RequestAssigned $e): void
     {
         $e->assignee->notify(ParkNotice::assigned($e->request->load('vehicle')));
-    }
-
-    /** Срок заявки — исполнителю, без него — всем со стоянки. */
-    public function parkCall(RequestCall $e): void
-    {
-        $r = $e->request->load(['vehicle', 'assignee']);
-        Notification::send($r->assignee ? collect([$r->assignee]) : $this->parkManagers($r->vehicle?->city_id), ParkNotice::call($r));
     }
 
     /** Продано: сотруднику, который ведёт ТС, иначе управляющим её города. */

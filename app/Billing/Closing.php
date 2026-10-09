@@ -33,7 +33,7 @@ final class Closing
         // Текущий месяц — по сегодня: будущие дни не выставляются.
         $end = min(Carbon::instance($month)->endOfMonth()->startOfDay(), now()->startOfDay());
         $begin = Carbon::instance($month)->startOfMonth()->startOfDay();
-        $vehicles = Vehicle::whereIn('state', [VehicleState::Stored, VehicleState::InTransit, VehicleState::Released])->whereNotNull('accepted_at')
+        $vehicles = Vehicle::whereIn('state', [VehicleState::Stored, VehicleState::Released])->whereNotNull('accepted_at')
             ->where(fn ($q) => $q->whereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at')->orWhere(fn ($w) => $w->whereNull('released_at')->where('storage_billed_until', '<', $end)))
             ->with(['brand', 'model', 'vendor', 'yard', 'ownerParty', 'buyerParty', 'offer.deal.buyer',
                 // Лента площадок — заранее: ставка считается по площадке того дня, иначе запрос на каждую ТС.

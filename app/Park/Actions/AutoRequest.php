@@ -8,7 +8,6 @@ use App\Cars\Vin\Vin;
 use App\Mail\Candidate;
 use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
-use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Message;
 use App\Mail\Scan\AutoScan;
 use App\Mail\Scope;
@@ -27,7 +26,7 @@ use Throwable;
  * Письмо-заявка вендора → ТС и заявка сами (владелец 07.10.2026: «пусть заявки на приём и на эвакуацию автоматически
  * заводятся сами»). Те же двери, что «Завести» (`RequestController::store`): `CreateRequest` и `PromoteCandidate::attach`
  * — ветки к делу, файлы в дело. Марка, VIN, год, которых нет в письме, — из документов в фоне (`AutoScan`).
- * Просят эвакуацию (`ParkExtractor::asksEvacuation`) — сразу «Эвакуация» с адресом, иначе приём, который ждёт звонка.
+ * Всегда приём: эвакуации и звонка нет (владелец 10.10.2026: «тут чисто приём и всё»).
  *
  * Не заводит — цепочка остаётся в «Из писем» человеку: уже принятая, проданная, выданная (принятую нашим письмом
  * заводит `StoreByLetters`), письмо о нескольких машинах, письмо старше недели (пришло историей ящика), номер выданной
@@ -71,25 +70,22 @@ final class AutoRequest
             return null;
         }
         $letter = $this->letter($candidate);
-        $type = ParkExtractor::asksEvacuation($letter->subject.' '.$letter->ownText()) ? RequestType::Tow : RequestType::Intake;
         $vehicle = $this->promote->existing($candidate);
         // ТС уже завели: заявка на неё — только пока машины нет на парковке и такой заявки ещё нет; иначе письма к делу.
-        if ($vehicle && (! $type->allowedFor($vehicle->state) || ! RequestType::Intake->allowedFor($vehicle->state)
-            || $vehicle->requests()->whereIn('type', [RequestType::Intake, RequestType::Tow])->whereIn('state', RequestState::open())->exists())) {
+        if ($vehicle && (! RequestType::Intake->allowedFor($vehicle->state)
+            || $vehicle->requests()->where('type', RequestType::Intake)->whereIn('state', RequestState::open())->exists())) {
             $this->promote->attach($candidate, $vehicle);
 
             return null;
         }
         $data = $this->fields($candidate->vehicleData()) + [
             'thread_id' => $candidate->thread_id,
-            'planned_at' => $candidate->value('planned_at'),
-            'from_address' => $type === RequestType::Tow ? $candidate->value('location') : null,
             'letter_at' => $letter->date_at,
             'letter_id' => $letter->id,
             'by_mail' => true,
         ];
         try {
-            $request = ($this->create)(null, $type, $vehicle, $data);
+            $request = ($this->create)(null, RequestType::Intake, $vehicle, $data);
         } catch (IdentityTaken|ValidationException $e) {
             Log::info('Заявка из письма не завелась сама', ['candidate' => $candidate->id, 'error' => $e->getMessage()]);
 

@@ -111,7 +111,7 @@ class VendorController
         } elseif ($pill === 'money') {
             // Контрагент на чтение не создаётся: без счетов долг — только не выставленное хранение по ТС вендора.
             $party = Party::forVendor($vendor, false);
-            $stored = Vehicle::where('vendor_id', $vendor->id)->whereIn('state', [VehicleState::Stored, VehicleState::InTransit])->with(['brand', 'model', 'yard'])->orderBy('accepted_at')->get();
+            $stored = Vehicle::where('vendor_id', $vendor->id)->where('state', VehicleState::Stored)->with(['brand', 'model', 'yard'])->orderBy('accepted_at')->get();
             $data += [
                 'party' => $party->id ? $party : null,
                 'debt' => $party->id ? Ledger::debtOf($party) : ['owed_to_us' => 0, 'we_owe' => 0, 'overdue' => 0],

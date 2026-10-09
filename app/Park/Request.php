@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'planned_at', 'done_at', 'note', 'assignee_id', 'created_by',
-    'contact_name', 'contact_phone', 'from_address', 'carrier', 'distance_km', 'cost', 'started_at', 'done_by', 'cancel_reason', 'delivery', 'contacted_at', 'next_call_at', 'letter_at', 'letter_id'])]
+    'contact_name', 'contact_phone', 'done_by', 'cancel_reason', 'letter_at', 'letter_id'])]
 class Request extends Model
 {
     protected $table = 'park_requests';
@@ -26,7 +26,7 @@ class Request extends Model
 
     protected function casts(): array
     {
-        return ['type' => RequestType::class, 'state' => RequestState::class, 'planned_at' => 'datetime', 'done_at' => 'datetime', 'started_at' => 'datetime', 'reminded_at' => 'datetime', 'overdue_at' => 'datetime', 'contacted_at' => 'datetime', 'next_call_at' => 'datetime', 'letter_at' => 'datetime', 'delivery' => Delivery::class];
+        return ['type' => RequestType::class, 'state' => RequestState::class, 'planned_at' => 'datetime', 'done_at' => 'datetime', 'reminded_at' => 'datetime', 'overdue_at' => 'datetime', 'letter_at' => 'datetime'];
     }
 
     public function vehicle(): BelongsTo
@@ -89,72 +89,20 @@ class Request extends Model
         return $this->state->isOpen();
     }
 
-    public function isTow(): bool
-    {
-        return $this->type === RequestType::Tow;
-    }
-
-    /** Новая заявка на приём или эвакуацию, по которой ещё не созвонились — или пора перезвонить. */
-    public function needsCall(): bool
-    {
-        return in_array($this->type, [RequestType::Intake, RequestType::Tow], true) && $this->state === RequestState::New
-            && (($this->delivery === null && ! $this->contacted_at && ! $this->planned_at) || ($this->next_call_at && $this->next_call_at->lte(now())));
-    }
-
     /**
-     * Звонок по заявке ещё впереди: не созвонились или не дозвонились и пора (или скоро) перезвонить — позвонить можно и
-     * раньше срока. Задача карточки строки (`park/vehicles/task`) показывает тогда исходы звонка, а не кнопку.
+     * Что делать по заявке следующим — подпись главной кнопки в карточке и деле. Закрытая — null. Приём — только
+     * «Принять» (владелец 10.10.2026: «тут чисто приём и всё» — звонка, эвакуации и даты приезда больше нет).
      */
-    public function awaitsCall(): bool
-    {
-        return $this->type !== RequestType::Release && $this->state === RequestState::New
-            && ($this->needsCall() || ($this->delivery === null && $this->next_call_at));
-    }
-
-    /** Что делать по заявке следующим — подпись главной кнопки на странице, в карточке и карточке. Закрытая — null. */
     public function verb(): ?string
     {
         return match (true) {
             ! $this->isOpen() => null,
-            $this->needsCall() => 'Связались',
-            $this->isTow() && $this->state === RequestState::New => 'Назначить',
-            $this->isTow() && $this->state === RequestState::Scheduled => 'Выехали',
-            $this->isTow() || $this->type === RequestType::Intake => 'Принять',
+            $this->type === RequestType::Intake => 'Принять',
             // Выдать и переставить можно только ТС на стоянке; иначе главного действия нет — ждём приёма.
             $this->type === RequestType::Release => $this->vehicle?->state === VehicleState::Stored ? 'Выдать' : null,
             $this->type === RequestType::Move => $this->vehicle?->state === VehicleState::Stored ? 'Переставить' : null,
             default => $this->type->verb(),
         };
-    }
-
-    /** Что делать по заявке, одной строкой для списка: кому звонить, когда привезут, кому выдать, куда переставить. */
-    public function todo(): ?string
-    {
-        if (! $this->isOpen()) {
-            return null;
-        }
-        $v = $this->vehicle;
-        $when = $this->planned_at?->translatedFormat('j M, H:i');
-        $contact = $this->contactLine();
-
-        return match (true) {
-            $this->needsCall() => 'Позвонить страхователю'.($contact ? ' '.$contact : '').', договориться о приёме',
-            $this->isTow() && $this->state === RequestState::New => 'Назначить эвакуатор'.($this->from_address ? ' из '.$this->from_address : ''),
-            $this->isTow() && $this->state === RequestState::Scheduled => 'Эвакуатор '.($this->carrier ? $this->carrier.' ' : '').($when ? 'на '.$when : 'назначен').', отметить выезд',
-            $v?->state === VehicleState::InTransit => 'В пути, принять по приезде',
-            $this->type === RequestType::Intake => ($when ? 'Привезут '.$when : 'Привезут, дата не назначена').($this->delivery === Delivery::Self ? ' сами' : '').': принять',
-            $this->type === RequestType::Release => $v?->state === VehicleState::Stored
-                ? 'Выдать'.(($buyer = trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? '')) ?: $contact) ? ' покупателю '.$buyer : '').($v->sold_at ? ', реализовано '.$v->sold_at->translatedFormat('j M') : '')
-                : 'Выдать после приёма',
-            $this->type === RequestType::Move => 'Переставить'.($this->yard ? ' на «'.$this->yard->name.'»' : ''),
-            $this->type === RequestType::Inspection => 'Осмотр'.($when ? ' '.$when : '').($contact ? ', '.$contact : ''),
-            default => $this->type->label(),
-        };
-    }
-
-    public function contactLine(): ?string
-    {
-        return trim(($this->contact_name ?? '').' '.($this->contact_phone ?? '')) ?: null;
     }
 
     /**

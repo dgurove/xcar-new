@@ -42,7 +42,7 @@ final class FillFromDocs
     public function vehicles(array $ids = []): Collection
     {
         return Vehicle::with(['brand', 'model', 'vendor', 'threads.messages.attachments'])
-            ->whereIn('state', [VehicleState::Stored, VehicleState::Expected, VehicleState::InTransit])
+            ->whereIn('state', [VehicleState::Stored, VehicleState::Expected])
             ->when($ids, fn ($q) => $q->whereIn('id', $ids))
             ->whereHas('threads')->orderBy('id')->get();
     }

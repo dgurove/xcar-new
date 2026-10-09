@@ -29,7 +29,7 @@ final class CancelVehicle
             if ($vehicle->accepted_at) {
                 throw ValidationException::withMessages(['state' => 'ТС уже стояла у нас, примите её или отмените перегон']);
             }
-            $vehicle->update(['state' => VehicleState::Cancelled, 'cancelled_at' => now(), 'cancel_reason' => $reason ?: null, 'transit_started_at' => null]);
+            $vehicle->update(['state' => VehicleState::Cancelled, 'cancelled_at' => now(), 'cancel_reason' => $reason ?: null]);
             Request::where('vehicle_id', $vehicle->id)->whereIn('state', RequestState::open())
                 ->update(['state' => RequestState::Cancelled, 'done_at' => now(), 'done_by' => $by->id, 'cancel_reason' => $reason ?: 'ТС не привезена']);
             // Бумаги вендору, которые ещё не отправляли, — уже не дело.

@@ -24,7 +24,6 @@ use App\Media\PhotoBlocks;
 use App\Media\PhotoIngest;
 use App\Offers\OfferNumber;
 use App\Park\Actions\CancelVehicle;
-use App\Park\Actions\CloseRequest;
 use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\LinkOffer;
 use App\Park\Actions\MarkDoc;
@@ -70,6 +69,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class VehicleController
@@ -168,7 +168,7 @@ class VehicleController
     {
         $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user', 'offer.deal'])->loadCount('threads');
         // Задача сверху карточки (владелец 09.10.2026: «жмёшь заявку — „Связались“, а с кем связаться, непонятно»): открытая
-        // заявка — та, что открыли в «Заявках», иначе эвакуация, приём, выдача; с ней письмо, по которому она заведена
+        // заявка — та, что открыли в «Заявках», иначе приём, выдача; с ней письмо, по которому она заведена
         // (у выдачи — письмо о продаже).
         $fromRequests = $task !== null;
         // Строка, которую карточка обновит в «Заявках», — та заявка, что открыли (ключ строки — её номер); закрылась — уходит.
@@ -177,7 +177,7 @@ class VehicleController
         if ($listed && ! $listed->isOpen()) {
             session()->now('detail-gone', true);
         }
-        $task = $task?->isOpen() ? $task : ($vehicle->openRequest(RequestType::Tow) ?? $vehicle->openRequest(RequestType::Intake) ?? $vehicle->openRequest(RequestType::Release));
+        $task = $task?->isOpen() ? $task : ($vehicle->openRequest(RequestType::Intake) ?? $vehicle->openRequest(RequestType::Release));
         $letterId = $task?->type === RequestType::Release && $vehicle->sold_message_id ? $vehicle->sold_message_id : $task?->letter_id;
         $taskLetter = match (true) {
             $letterId !== null => Message::find($letterId),
@@ -185,8 +185,12 @@ class VehicleController
             default => null,
         };
 
+        $yards = Yard::where('is_active', true)->orderBy('name')->get();
+
         return view('park.vehicles.detail', [
-            'vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
+            'vehicle' => $vehicle, 'yards' => $yards->pluck('name', 'id'),
+            // Свободные места парковок — форме приёма в карточке (`steps/intake`, spots_controller).
+            'yardRows' => $task?->type === RequestType::Intake ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],
             'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
             // Из «Заявок» (заявку передали явно) главное — задача: кадры одной лентой, без блоков по стадиям над ней.
             'fromRequests' => $fromRequests, 'listed' => $listed,
@@ -228,7 +232,7 @@ class VehicleController
             $request->attributes->set('nav.tab', '/requests');
         }
 
-        return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null, $request->boolean('call'), $request->boolean('accept')) + [
+        return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null) + [
             'window' => preg_match('#^/(mail|cars)/#', $window) ? $window : null,
         ]);
     }
@@ -267,9 +271,14 @@ class VehicleController
     public function dates(Request $request, Vehicle $vehicle, SetDates $dates)
     {
         $data = $request->validate(['accepted_at' => ['nullable', 'date'], 'released_at' => ['nullable', 'date']]);
-        $dates($vehicle, $request->user(), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, isset($data['released_at']) ? Carbon::parse($data['released_at']) : null);
+        // Дата — кнопка в строке, полей под ней нет: отказ — тостом, а не ошибкой у поля.
+        try {
+            $dates($vehicle, $request->user(), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, isset($data['released_at']) ? Carbon::parse($data['released_at']) : null);
+        } catch (ValidationException $e) {
+            return back()->with('toast', collect($e->errors())->flatten()->first());
+        }
 
-        return back()->with('toast', 'Даты поправлены');
+        return back()->with('toast', isset($data['released_at']) ? 'Дата выдачи поправлена' : 'Дата приёма поправлена');
     }
 
     /** Страховая продала ТС: дата и кому выдать — руками или поправить то, что вынул разбор письма. `clear` — не продано. */
@@ -420,18 +429,9 @@ class VehicleController
 
     /**
      * «Отменить заявку» до приёма: ТС и заявки исчезают, письмо возвращается в «Из писем».
-     * ТС в пути — сначала снять эвакуацию (ТС снова ожидается), потом отменить заведение.
      */
-    public function destroy(Request $request, Vehicle $vehicle, UnwindVehicle $unwind, CloseRequest $close)
+    public function destroy(Request $request, Vehicle $vehicle, UnwindVehicle $unwind)
     {
-        if ($vehicle->state === VehicleState::InTransit && ($tow = $vehicle->openRequest(RequestType::Tow))) {
-            $close($tow, $request->user(), false);
-            $vehicle->refresh();
-            // Перегон между площадками: ТС вернулась на прежнюю площадку, заводить заново нечего.
-            if ($vehicle->state !== VehicleState::Expected) {
-                return redirect("/cars/{$vehicle->id}")->with('toast', 'Перегон отменён');
-            }
-        }
         $stored = $vehicle->state === VehicleState::Stored;
         $candidate = $unwind($vehicle, $request->user());
 

@@ -30,7 +30,7 @@ final class RestoreVehicle
             }
             $vehicle->update(['state' => VehicleState::Expected, 'cancelled_at' => null, 'cancel_reason' => null]);
             $vehicle->log(EventType::Restored, $by, array_filter(['reason' => $reason]));
-            if (! Request::where('vehicle_id', $vehicle->id)->whereIn('type', [RequestType::Intake, RequestType::Tow])->whereIn('state', RequestState::open())->exists()) {
+            if (! Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Intake)->whereIn('state', RequestState::open())->exists()) {
                 ($this->create)($by, RequestType::Intake, $vehicle, ['contact_name' => $vehicle->contact_name, 'contact_phone' => $vehicle->contact_phone]);
             }
 

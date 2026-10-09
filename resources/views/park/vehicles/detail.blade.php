@@ -1,6 +1,5 @@
 {{-- Карточка строки таблицы машин стоянки (фрейм detail) — работа с ТС без страницы:
-     лента фото, метки, дней на стоянке; действия по состоянию — «Принять на стоянку»
-     (ожидаемая), переставить (стоянка выбором, отправка сразу), выдать (дата, с
+     лента фото, метки, дней на стоянке; у заявки на приём — задача с формой приёма прямо в карточке (`task`); переставить (стоянка выбором, отправка сразу), выдать (дата, с
      подтверждением), акты; ниже расхождения карточки с документами строками «Взять» (FillFromDocs), заявки строками и
      заметка с последними событиями. Под действиями — группа документов: расхождения и «Заполнить из документов»
      (пока нет марки, модели, VIN, года или цвета) или «Сверить с документами»; искра — ещё и в полосе карточки (tools).
@@ -18,7 +17,8 @@
     $gaps = ! $vehicle->brand_id || ! $vehicle->model_id || $vehicle->vinProblem() || ! $vehicle->year || ! $vehicle->color;
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
+    {{-- Приём — формой ниже (`task`): запасной «Открыть» на месте пустого ряда действий не нужен. --}}
+    <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()" :action="$task?->type === \App\Park\RequestType::Intake ? false : 'Открыть'">
         <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
         {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
         @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
@@ -33,9 +33,10 @@
             @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
             @if ($total && $total['rate'] && $state !== VehicleState::Released)<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/д</span>@endif
             <x-park.alerts :vehicle="$vehicle" :skip="$differences ? [\App\Park\Alerts::DOCS] : []"/>
-            {{-- Даты приёма и выдачи — сами кнопки: шторка «Даты» (dates-sheet), кто правит ТС. --}}
-            @foreach (array_filter(['принята' => $vehicle->accepted_at, 'выдана' => $state === VehicleState::Released ? $vehicle->released_at : null]) as $word => $at)
-                @if (auth()->user()->canManagePark())<button type="button" class="tag nums" data-controller="emit" data-action="emit#send" data-emit-event-param="dates:open">{{ $word }} {{ $at->translatedFormat('j M Y') }}</button>
+            {{-- Даты приёма и выдачи — сами выбор даты и времени, только администратору парковки (`x-park.date-edit`). --}}
+            @foreach (array_filter(['accepted_at' => $vehicle->accepted_at, 'released_at' => $state === VehicleState::Released ? $vehicle->released_at : null]) as $field => $at)
+                @php $word = $field === 'accepted_at' ? 'принята' : 'выдана'; @endphp
+                @if (auth()->user()->isParkAdmin())<x-park.date-edit :vehicle="$vehicle" :field="$field" :prefix="$word" class="tag nums"/>
                 @else<span class="tag nums">{{ $word }} {{ $at->translatedFormat('j M Y') }}</span>@endif
             @endforeach
             @if ($state === VehicleState::Released && $vehicle->daysStored() !== null)<span class="tag nums">стояла {{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
@@ -55,14 +56,11 @@
             @if ($task)@include('park.vehicles.task-action')@endif
             @unless ($fromRequests ?? false)
             @if ($state === VehicleState::Expected)
-                @php $open = $vehicle->openRequest(\App\Park\RequestType::Tow) ?? $vehicle->openRequest(\App\Park\RequestType::Intake); @endphp
+                @php $open = $vehicle->openRequest(\App\Park\RequestType::Intake); @endphp
                 {{-- Действие открытой заявки — в задаче ниже (park/vehicles/task): здесь его не повторяем. --}}
                 @if ($open && $task)
                 @elseif ($open)<a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">{{ $open->verb() ?? 'Открыть' }}</a>
                 @else<form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="intake"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Принять</button></form>@endif
-            @endif
-            @if ($state === VehicleState::InTransit && ! $task && ($tow = $vehicle->openRequest(\App\Park\RequestType::Tow)))
-                <a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Принять</a>
             @endif
             @if ($state === VehicleState::Stored)
                 {{-- Перестановка на другую парковку — когда их больше одной (у управляющего Питера одна). --}}
@@ -90,7 +88,7 @@
             @endunless
         </x-slot:actions>
         @if ($task)@include('park.vehicles.task')@endif
-        @include('park.vehicles.dates-sheet')
+        <x-park.date-forms :vehicle="$vehicle"/>
         @if ($differences || $scanFiles->isNotEmpty())
             <form method="post" action="{{ $href }}/take" class="mt-3">@csrf
                 <x-park.doc-differences :vehicle="$vehicle" :differences="$differences">
@@ -98,10 +96,12 @@
                 </x-park.doc-differences>
             </form>
         @endif
-        @if ($vehicle->requests->isNotEmpty())
+        {{-- Остальные заявки ТС чипами: открытая сверху — уже задача карточки, второй раз её не пишем. --}}
+        @php $otherRequests = $vehicle->requests->reject(fn ($r) => $task?->is($r)); @endphp
+        @if ($otherRequests->isNotEmpty())
             <div class="mt-3 flex flex-wrap gap-1.5">
-                @foreach ($vehicle->requests as $r)
-                    <a href="/cars/{{ $vehicle->id }}{{ $r->isOpen() ? '?req='.$r->id : '' }}" class="chip {{ $r->isOpen() ? 'bg-accent-soft text-accent-text' : 'bg-closed-soft text-closed' }}">{{ $r->type->label() }} <span class="nums font-normal">{{ $r->isOpen() ? ($r->planned_at?->translatedFormat('j M, H:i') ?? 'ждёт') : $r->state->label() }}</span></a>
+                @foreach ($otherRequests as $r)
+                    <a href="/cars/{{ $vehicle->id }}{{ $r->isOpen() ? '?req='.$r->id : '' }}" class="chip {{ $r->isOpen() ? 'bg-accent-soft text-accent-text' : 'bg-closed-soft text-closed' }}">{{ $r->type->label() }} <span class="nums font-normal">{{ $r->isOpen() ? ($r->type !== \App\Park\RequestType::Intake ? $r->planned_at?->translatedFormat('j M, H:i') : null) ?? 'ждёт' : $r->state->label() }}</span></a>
                 @endforeach
             </div>
         @endif

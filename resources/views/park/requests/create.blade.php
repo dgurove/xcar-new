@@ -3,15 +3,15 @@
      своими словами письмо не пересказывается. Кнопка называет исход: заявка на приём, стоящей, и выдать,
      привязать письма к уже заведённой ТС. Под полями машины — блок «Документы» с читалкой «Завести»: документы письма
      читаются сами по порядку, пустые поля заполняются по ходу, расхождения — строками над полями.
-     Без кандидата это прежняя ручная «Новая заявка» одной колонкой; тип «приём» / «эвакуация» решает «Доставка». --}}
+     Без кандидата это прежняя ручная «Новая заявка» одной колонкой: только приём, без звонка, эвакуации и даты приезда
+     (владелец 10.10.2026). --}}
 @php
     use App\Mail\CandidateStage;
     use App\Mail\Extraction\Intent;
-    use App\Park\{RequestType, Delivery};
+    use App\Park\RequestType;
     $p = $p ?? [];
     $val = fn ($k) => old($k, $p[$k] ?? null);
     $letters = $candidate !== null;
-    $delivery = $letters ? $val('delivery') : old('delivery', Delivery::Self->value);
     $stage = $candidate?->stage ?? CandidateStage::Intake;
     $v = fn (string $f) => $candidate?->value($f);
     // Заявка на приём нужна, только пока машины нет на парковке; иначе разбор письма — это привязка писем к делу.
@@ -47,7 +47,7 @@
             // Читалка «Завести» (x-mail.reader-body): документы новой цепочки читаются сами, поля ниже заполняются по
             // ходу. Её документы — листами в блоке «Документы»; чипами над формой остаётся то, чего она не читает:
             // письмо, Excel и Word, фото.
-            $reader = $candidate?->state === \App\Mail\CandidateState::New && ! $vehicle && in_array($type, [RequestType::Intake, RequestType::Tow], true) ? new \App\Mail\Scan\CandidateSubject($candidate) : null;
+            $reader = $candidate?->state === \App\Mail\CandidateState::New && ! $vehicle && $type === RequestType::Intake ? new \App\Mail\Scan\CandidateSubject($candidate) : null;
             $read = $reader ? \App\Mail\Scan\Reader::files($reader) : collect();
             $reader = $read->isNotEmpty() ? $reader : null;
             $readUrls = $read->map(fn ($f) => $reader->mail().'/attachments/'.$f->scanId())->all();
@@ -78,7 +78,7 @@
                     </x-park.vehicle-row>
                 </x-ui.card>
                 <input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}">
-            @elseif (in_array($type, [RequestType::Intake, RequestType::Tow], true))
+            @elseif ($type === RequestType::Intake)
                 <x-ui.card title="Транспортное средство">
                     @if ($reader)<x-mail.reader-diffs form="request-form" class="mb-3"/>@endif
                     {{-- Руками (не из письма): первым — поле для текста про машину, поля заполнятся из него. --}}
@@ -124,27 +124,14 @@
             @elseif ($makesRequest)
                 <x-ui.card title="Заявка">
                     <div class="grid gap-3 {{ $letters ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3' }}">
-                        @if ($type === RequestType::Intake && ! $letters)
-                            {{-- Эвакуатор или сам — узнаём по телефону; «ещё не знаем» оставляет заявку в «Связаться». Руками заводят, когда уже знают — по умолчанию «сам». --}}
-                            <div class="field col-span-full">
-                                <span class="field-label">Доставка</span>
-                                <div class="flex flex-wrap gap-1.5">
-                                    <label class="choice"><input type="radio" name="delivery" value="" @checked(!$delivery)><span>Ещё не знаем</span></label>
-                                    @foreach (Delivery::cases() as $d)
-                                        <label class="choice"><input type="radio" name="delivery" value="{{ $d->value }}" @checked($delivery === $d->value)><span>{{ $d->label() }}</span></label>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
                         @if ($type === RequestType::Move)
                             <x-park.yard-field :yards="$yards" label="Куда" placeholder="—"/>
                         @endif
-                        <x-ui.field name="planned_at" :label="$letters ? 'Когда привезут' : 'Когда'" type="datetime-local" :value="$val('planned_at')" now/>
-                        @if ($type === RequestType::Tow || $letters)
-                            <x-ui.field name="from_address" label="Откуда" :value="$val('from_address')" span="col-span-full sm:col-span-2"/>
+                        @if ($type !== RequestType::Intake)
+                            <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$val('planned_at')" now/>
                         @endif
-                        @if ($vehicle || !in_array($type, [RequestType::Intake, RequestType::Tow], true))
-                            <x-ui.field name="contact_name" :label="$type === RequestType::Tow ? 'Страхователь' : 'Кто сдаёт'" :value="$val('contact_name') ?? $vehicle?->contact_name"/>
+                        @if ($vehicle || $type !== RequestType::Intake)
+                            <x-ui.field name="contact_name" label="Кто сдаёт" :value="$val('contact_name') ?? $vehicle?->contact_name"/>
                             <x-ui.field name="contact_phone" label="Телефон" type="tel" :value="$val('contact_phone') ?? $vehicle?->contact_phone"/>
                         @endif
                         <x-ui.field name="note" label="Заметка" type="textarea" span="col-span-full" :value="$val('note')"/>

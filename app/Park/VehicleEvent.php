@@ -33,7 +33,8 @@ class VehicleEvent extends Model
     {
         $d = $date ? Carbon::parse($date) : null;
 
-        return $d ? $d->translatedFormat($d->isCurrentYear() ? 'j M' : 'j M Y') : '—';
+        // Со временем (правка даты календарём, 10.10.2026) — и время: «15 апр, 14:05».
+        return $d ? $d->translatedFormat(($d->isCurrentYear() ? 'j M' : 'j M Y').(strlen((string) $date) > 10 ? ', H:i' : '')) : '—';
     }
 
     public function text(): string

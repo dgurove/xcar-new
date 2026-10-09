@@ -9,8 +9,6 @@ enum RequestState: string
     use HasLabels;
 
     case New = 'new';
-    case Scheduled = 'scheduled';
-    case InProgress = 'in_progress';
     case Done = 'done';
     case Cancelled = 'cancelled';
 
@@ -18,8 +16,6 @@ enum RequestState: string
     {
         return match ($this) {
             self::New => 'Ждёт',
-            self::Scheduled => 'Назначена',
-            self::InProgress => 'В работе',
             self::Done => 'Выполнена',
             self::Cancelled => 'Отменена',
         };
@@ -33,6 +29,6 @@ enum RequestState: string
     /** @return list<self> */
     public static function open(): array
     {
-        return [self::New, self::Scheduled, self::InProgress];
+        return [self::New];
     }
 }
