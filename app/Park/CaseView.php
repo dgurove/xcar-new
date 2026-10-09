@@ -112,7 +112,6 @@ final class CaseView
             'chargeKinds' => collect(self::CHARGES)->mapWithKeys(fn ($k) => [$k->value => $k->label().(($price = VehicleInvoiceController::priceFor($vehicle, $k)) ? ' '.Money::rub($price) : '')]),
             // Цена из прайса подставляется в поле при выборе вида: суммы, которые есть в прайсе, руками не набирают.
             'chargePrices' => collect(self::CHARGES)->mapWithKeys(fn ($k) => [$k->value => VehicleInvoiceController::priceFor($vehicle, $k)])->filter()->all(),
-            'spots' => $vehicle->yard?->freeSpots() ?? [],
             'canManage' => $user->canManagePark(),
             // Карточка и документы дела расходятся — чип «в документе …» у полей (FillFromDocs, в кеше на день).
             'differences' => $user->canManagePark() ? app(FillFromDocs::class)->differences($vehicle) : [],

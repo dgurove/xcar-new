@@ -24,7 +24,7 @@
     {{-- Шапка — только положение и люди: состояние с местом и днями, долг, «Продано», письма.
          Всё, что есть в полях (номер, вендор, телефон) и в «Деньгах» (ставка, начислено), тут не повторяется. --}}
     <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
-        <x-park.state :vehicle="$vehicle"/>
+        <x-park.state :vehicle="$vehicle" :move="$state === VehicleState::Stored"/>
         @if ($debt > 0 && $money)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ Money::rub($debt) }}</x-ui.pill>@endif
         @if ($vehicle->sold_at)
             @if ($canManage)
@@ -236,6 +236,7 @@
             </x-ui.sheet>
         </div>
     @endif
+    @if ($state === VehicleState::Stored)@include('park.vehicles.move-sheet')@endif
     @include('park.vehicles.release-sheets', ['formId' => 'act-form'])
 
     @if ($canManage && ($pass ?? null)?->isLive() && ! $pass->isConfirmed())
@@ -265,14 +266,6 @@
                     <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="{{ $hadLetters ? 'Отменить заявку? ТС исчезнет, письма вернутся в «Из писем»' : 'Отменить заявку? ТС и заявка исчезнут' }}">@csrf @method('delete')<x-ui.button variant="secondary" block>Отменить заявку</x-ui.button></form>
                 @endif
                 @if ($state === VehicleState::Stored)
-                    <form method="post" action="/cars/{{ $vehicle->id }}/move" class="flex flex-col gap-2">@csrf
-                        <div class="fields">
-                            <x-park.yard-field :yards="$yards" :value="$vehicle->yard_id"/>
-                            <x-ui.field name="spot" label="Место" :value="$vehicle->spot" list="spots-free" autocapitalize="characters"/>
-                        </div>
-                        <datalist id="spots-free">@foreach ($spots as $s)<option value="{{ $s }}">@endforeach</datalist>
-                        <x-ui.button variant="secondary" block>Переставить</x-ui.button>
-                    </form>
                     @php $elsewhere = $canManage ? \App\Park\City::transferTargets($vehicle) : []; @endphp
                     @if ($elsewhere)
                         {{-- Перевод в другой город (Питер → база в Москве): ТС та же, город меняется — управляющий этого города её больше не видит. --}}

@@ -34,7 +34,7 @@
             {{-- Где стоит — сама кнопка перестановки (владелец 10.10.2026: «сделай перестановку понятнее»; было голым списком
                  парковок в ряду действий): нажатие — шторка «Переставить» с парковкой и местом. --}}
             @if ($vehicle->yard && $state === VehicleState::Stored && ! ($fromRequests ?? false))
-                <button type="button" class="tag" data-controller="emit" data-action="emit#send" data-emit-event-param="move:open" aria-label="Переставить"><x-ui.place>{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place><x-ui.icon name="chevron-down" class="size-3.5 opacity-60"/></button>
+                <x-park.place-move :vehicle="$vehicle" class="tag"/>
             @elseif ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
             @if ($total && $total['rate'] && $state !== VehicleState::Released)<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/д</span>@endif
             <x-park.alerts :vehicle="$vehicle" :skip="$differences ? [\App\Park\Alerts::DOCS] : []"/>
@@ -82,19 +82,7 @@
         @if ($task)@include('park.vehicles.task')@endif
         <x-park.date-forms :vehicle="$vehicle"/>
         @if ($state === VehicleState::Stored && ! ($fromRequests ?? false))
-            <div data-controller="sheet" data-action="move:open@window->sheet#open" class="contents">
-                <x-ui.sheet id="move-{{ $vehicle->id }}" title="Переставить">
-                    <form method="post" action="{{ $href }}/move" class="flex flex-col gap-3">
-                        @csrf
-                        <div class="fields" data-controller="spots" data-spots-map-value="{{ json_encode($yardRows) }}">
-                            <x-park.yard-field :yards="$yards" :value="$vehicle->yard_id" required data-spots-target="yard" data-action="change->spots#sync"/>
-                            <x-ui.field name="spot" label="Место" :value="$vehicle->spot" list="move-spots-{{ $vehicle->id }}" autocapitalize="characters"/>
-                            <datalist id="move-spots-{{ $vehicle->id }}" data-spots-target="list"></datalist>
-                        </div>
-                        <div class="sheet-foot"><x-ui.button block>Переставить</x-ui.button></div>
-                    </form>
-                </x-ui.sheet>
-            </div>
+            @include('park.vehicles.move-sheet')
         @endif
         @if ($differences || $scanFiles->isNotEmpty())
             <form method="post" action="{{ $href }}/take" class="mt-3">@csrf
