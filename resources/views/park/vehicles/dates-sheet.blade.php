@@ -7,8 +7,8 @@
             <form method="post" action="/cars/{{ $vehicle->id }}/dates" class="flex flex-col gap-3">
                 @csrf
                 <div class="fields">
-                    <x-ui.field name="accepted_at" label="Принята" type="date" :value="old('accepted_at', $vehicle->accepted_at->toDateString())" :max="now()->toDateString()"/>
-                    @if ($vehicle->released_at)<x-ui.field name="released_at" label="Выдана" type="date" :value="old('released_at', $vehicle->released_at->toDateString())" :max="now()->toDateString()"/>@endif
+                    <x-ui.field name="accepted_at" label="Принята" type="date" required :value="old('accepted_at', $vehicle->accepted_at->toDateString())" :max="now()->toDateString()"/>
+                    @if ($vehicle->released_at)<x-ui.field name="released_at" label="Выдана" type="date" required :value="old('released_at', $vehicle->released_at->toDateString())" :max="now()->toDateString()"/>@endif
                 </div>
                 <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
             </form>

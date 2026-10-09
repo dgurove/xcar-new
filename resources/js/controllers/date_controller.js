@@ -12,8 +12,8 @@ const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 export default class extends Controller {
-    static targets = ['value', 'text', 'pop', 'cal', 'time'];
-    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' } };
+    static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error'];
+    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String };
 
     connect() {
         // Телефон — без клавиатуры: поле только открывает календарь.
@@ -42,6 +42,7 @@ export default class extends Controller {
         this.calTarget.value = p?.date || '';
         this.calTarget.focusedDate = p?.date || iso(new Date());
         if (this.hasTimeTarget) this.timeTarget.value = p?.time || this.defaultTimeValue;
+        if (this.hasClearTarget) this.clearTarget.hidden = !p;
         const pop = this.popTarget, r = this.textTarget.getBoundingClientRect(), w = document.documentElement.clientWidth;
         pop.showPopover();
         // ПК — под полем; снизу не влезает — над ним; нигде не влезает — прижать к низу экрана. Телефон — лист снизу (CSS до 640).
@@ -82,10 +83,15 @@ export default class extends Controller {
         if (t && this.parts) this.set(`${this.parts.date}T${t}`);
     }
 
+    // «Готово» закрывает; время ложится только к выбранному дню — пустое поле от одного взгляда не заполняется.
     done() {
         const t = this.clock();
-        // Время поставили, а день нет — день сегодняшний.
-        if (t) this.set(`${this.parts?.date || iso(new Date())}T${t}`);
+        if (t && this.parts) this.set(`${this.parts.date}T${t}`);
+        this.close();
+    }
+
+    clear() {
+        this.set('');
         this.close();
     }
 
@@ -99,9 +105,23 @@ export default class extends Controller {
         const year = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : new Date().getFullYear();
         const day = new Date(year, Number(m[2]) - 1, Number(m[1]));
         if (day.getDate() !== Number(m[1])) { this.render(); return; }
+        // Набранное за границами поля — как у календаря, где такие дни не нажать: словами под полем, значение прежнее.
+        const out = (this.minValue && iso(day) < this.minValue) ? `Не раньше ${this.human(this.minValue)}` : (this.maxValue && iso(day) > this.maxValue ? `Не позже ${this.human(this.maxValue)}` : null);
+        if (out) { this.fail(out); this.render(); return; }
         const time = m[4] ? `${pad(Math.min(23, Number(m[4])))}:${pad(Math.min(59, Number(m[5])))}` : (this.parts?.time || this.defaultTimeValue);
         this.set(this.timeValue ? `${iso(day)}T${time}` : iso(day));
         if (event.type === 'keydown') this.close();
+    }
+
+    human(date) {
+        const [y, m, d] = date.split('-').map(Number);
+        return `${d} ${MONTHS[m - 1]}${y !== new Date().getFullYear() ? ` ${y}` : ''}`;
+    }
+
+    fail(message) {
+        if (!this.hasErrorTarget) return;
+        this.errorTarget.textContent = message;
+        this.errorTarget.hidden = false;
     }
 
     clock() {
@@ -110,6 +130,7 @@ export default class extends Controller {
     }
 
     set(value) {
+        if (this.hasErrorTarget) this.errorTarget.hidden = true;
         const changed = this.valueTarget.value !== value;
         this.valueTarget.value = value;
         this.render();

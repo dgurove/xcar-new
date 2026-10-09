@@ -8,7 +8,7 @@
         <div class="flex flex-wrap items-center gap-2">
             <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="btn btn-quiet"><x-ui.icon name="reply" class="size-5"/>Ответить{{ $who ? ' '.\Illuminate\Support\Str::limit($who, 32, '…') : '' }}</a>
             {{-- Ветка ждёт ответа, а вопрос решили иначе — снять «Требуют внимания», не архивируя письмо. --}}
-            @if ($message->thread?->needs_reply_at)
+            @if ($message->thread?->needs_reply_at && \App\Mail\Threads::canAnswer(auth()->user()))
                 <form method="post" action="{{ $base }}/{{ $message->thread_id }}/answered" data-turbo-frame="_top" class="contents">@csrf<button class="btn btn-quiet">Ответ не нужен</button></form>
             @endif
         </div>

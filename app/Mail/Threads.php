@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Mail\Extraction\Intent;
 use App\Park\City;
 use App\Park\EventType;
+use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
@@ -39,6 +40,12 @@ final class Threads
      * просьбу, потому что уже порешали другим способом», не архивируя письмо). Ветка уходит из «Требуют внимания», новое
      * письмо вендора снова её поднимет (`waiting`). Ветка ТС — запись в истории дела.
      */
+    /** Кому «Ответ не нужен»: на парковке — тем, кому открыт `park.manage` (помощнику «только приёмка» — нет), в CRM — всем. */
+    public static function canAnswer(?User $user): bool
+    {
+        return Surface::current() !== Surface::Park || (bool) $user?->canManagePark();
+    }
+
     public function answered(Thread $thread, ?User $by): void
     {
         $thread->forceFill(['answered_at' => now()])->save();

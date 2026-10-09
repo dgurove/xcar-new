@@ -41,6 +41,15 @@ final class SetDates
                 && ($changes['released_at'] ?? $vehicle->released_at)->copy()->startOfDay()->lt(($changes['accepted_at'] ?? $vehicle->accepted_at)->copy()->startOfDay())) {
                 $errors[isset($changes['released_at']) ? 'released_at' : 'accepted_at'] = 'Выдача раньше приёма';
             }
+            // Приём не позже первой перестановки или погрузки: иначе лента (`yardTimeline`) поставит переезд раньше приёма, и
+            // с новой даты ТС считалась бы на парковке приёма, хотя уже стоит на другой.
+            if (isset($changes['accepted_at'])) {
+                $firstMove = $vehicle->events()->reorder()->whereIn('type', [EventType::Moved, EventType::Departed])->get()
+                    ->map(fn ($e) => Carbon::parse($e->payload['day'] ?? $e->created_at)->startOfDay())->min();
+                if ($firstMove && $changes['accepted_at']->copy()->startOfDay()->gt($firstMove)) {
+                    $errors['accepted_at'] = 'Не позже перестановки '.$firstMove->translatedFormat('j M');
+                }
+            }
             if ($vehicle->storage_billed_until) {
                 $errors[array_key_first($changes)] = 'Хранение выставлено по '.$vehicle->storage_billed_until->translatedFormat('j M').', сначала аннулируйте счёт';
             }
