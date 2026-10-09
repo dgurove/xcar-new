@@ -2,7 +2,7 @@
      скрытое поле прежнего вида (`Y-m-d`, со временем `Y-m-d\TH:i`): сервер не меняется. Свои атрибуты (`data-action`,
      `disabled`, `form`) — у скрытого поля, `disabled` ещё и у видимого. Время по умолчанию — `default-time` (CRM срок
      приёма 17:30, парковка 12:00). Зовёт его `x-ui.field` с `type="date|datetime-local"`. --}}
-@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'placeholder' => null, 'clearable' => true])
+@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'placeholder' => null, 'clearable' => true, 'now' => false])
 @php
     $id ??= 'f-'.str_replace(['[', ']'], ['-', ''], $name);
     // Прежние значения бывают с секундами и пробелом («2026-10-09 17:30:00») — к виду поля.
@@ -11,7 +11,7 @@
     $day = fn ($d) => $d ? substr(str_replace(' ', 'T', (string) ($d instanceof \DateTimeInterface ? $d->format('Y-m-d') : $d)), 0, 10) : null;
     $disabled = $attributes->has('disabled') && $attributes->get('disabled') !== false;
 @endphp
-<div class="date-field" data-controller="date" data-date-time-value="{{ $time ? 'true' : 'false' }}" data-date-default-time-value="{{ $defaultTime }}"
+<div class="date-field" data-controller="date" data-date-time-value="{{ $time ? 'true' : 'false' }}" data-date-default-time-value="{{ $defaultTime }}" data-date-now-value="{{ $now ? 'true' : 'false' }}"
     data-date-min-value="{{ $day($min) }}" data-date-max-value="{{ $day($max) }}">
     <input type="hidden" name="{{ $name }}" value="{{ $v }}" data-date-target="value" {{ $attributes->except(['class', 'id', 'type', 'placeholder']) }}>
     <input type="text" id="{{ $id }}" class="field-input date-input {{ $attributes->get('class') }}" autocomplete="off" spellcheck="false"

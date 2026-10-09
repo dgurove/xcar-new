@@ -13,7 +13,7 @@ const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 
 export default class extends Controller {
     static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error'];
-    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String };
+    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, now: Boolean };
 
     connect() {
         // Телефон — без клавиатуры: поле только открывает календарь.
@@ -72,11 +72,20 @@ export default class extends Controller {
         const date = this.calTarget.value;
         if (!date) return;
         if (!this.timeValue) { this.set(date); this.close(); return; }
+        // `now` (приём на парковке, владелец 10.10.2026): сегодня — время сейчас, другой день — время по умолчанию (12:00);
+        // время, поправленное руками, не трогаем.
+        if (this.nowValue && !this.timeEdited) {
+            // «Сейчас» — московское, как у сервера (`app.timezone`): у владельца в Дубае браузер на час впереди.
+            const [day, clock] = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Moscow' }).split(' ');
+            const t = date === day ? clock.slice(0, 5) : this.defaultTimeValue;
+            if (this.hasTimeTarget) this.timeTarget.value = t;
+        }
         this.set(`${date}T${this.clock() || this.defaultTimeValue}`);
     }
 
     // Время набором: двоеточие ставится само («1730» → 17:30), часы и минуты в своих пределах.
     typeTime() {
+        this.timeEdited = true;
         const digits = this.timeTarget.value.replace(/\D/g, '').slice(0, 4);
         this.timeTarget.value = digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits;
         const t = this.clock();

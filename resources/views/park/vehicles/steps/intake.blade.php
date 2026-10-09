@@ -4,7 +4,7 @@
     <x-park.yard-field :yards="$yards" :value="$req->yard_id ?? $yards->keys()->first()" required data-spots-target="yard" data-action="change->spots#sync"/>
     <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters"/>
     <datalist id="spots-list" data-spots-target="list"></datalist>
-    <x-ui.field name="accepted_at" label="Когда" type="datetime-local" :value="today()->setTime(12, 0)->format('Y-m-d\TH:i')"/>
+    <x-ui.field name="accepted_at" label="Когда" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" now/>
     <div class="field">
         <span class="field-label">Ключей</span>
         <div class="flex gap-1.5">
