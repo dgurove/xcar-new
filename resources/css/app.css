@@ -754,7 +754,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      встают в ту же строку после кнопок. */
   .toolbar-chips { @apply min-w-0 basis-full overflow-x-auto; order: 10; scrollbar-width: none; overscroll-behavior: contain; }
   .toolbar-chips::-webkit-scrollbar { display: none; }
-  @media (max-width: 767px) { .toolbar-chips { @apply -mx-4 px-4; scroll-padding-inline: 1rem; } }
+  /* Телефон (09.10.2026, владелец: «шапка — треть экрана»): чипы не своей строкой, а в ряду кнопок — после сортировки и
+     лупы, до действий справа; листаются вбок до правого края. Тулбар в два ряда: пилюли, под ними кнопки с чипами. */
+  @media (max-width: 767px) {
+    .toolbar-chips { order: 1; flex: 1 1 0; margin-right: -1rem; padding-right: 1rem; scroll-padding-inline: 0 1rem; }
+    .toolbar > .toolbar-actions { order: 2; margin-left: auto; }
+    .toolbar:has(> .toolbar-actions) > .toolbar-chips { margin-right: 0; padding-right: 0; }
+  }
   @media (min-width: 768px) {
     .toolbar:has(> .toolbar-chips) { flex-wrap: wrap; row-gap: .75rem; }
     .toolbar:not(:has(> .toolbar-pills)) > .toolbar-chips { order: 4; flex: 1 1 0; }
@@ -1013,6 +1019,43 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      (срочно, опасно, лайм) остаётся цветом текста. */
   .list .row-sub .tag, .list .row-sub .chip { display: inline; padding: 0; border-radius: 0; background: none; font-size: inherit; font-weight: inherit; color: var(--tag-text, inherit); }
   .dark .list .row-sub .tag, .dark .list .row-sub .chip { background: none; color: var(--tag-text-d, inherit); }
+  /* Строка денег (x-billing.link-row, x-money.feed-row), как в банке (09.10.2026): сверху кто и сумма на одной линии,
+     под ними ТС (данные — режутся «…») и состояние словом под суммой. Сумма стоит на линии имени, а не по центру строки. */
+  .money-row { align-items: center; }
+  .money-row-main { @apply flex min-w-0 flex-1 flex-col; color: inherit; }
+  .money-row-line { @apply flex items-baseline gap-3; }
+  .money-row-line > :first-child { @apply min-w-0 flex-1 truncate; }
+  .money-row-line > :last-child { @apply shrink-0 whitespace-nowrap; }
+  .money-row-sub { @apply mt-0.5 text-sm text-ink-muted; }
+  /* Своя фраза («Менеджер пишет, что оплатил») не режется — переносится, сумма остаётся на первой линии. */
+  .money-row-wrap > :first-child { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+  /* Карточка денег в «Оплатах» (ссылка, счёт; 09.10.2026, владелец: «должно чувствоваться как приложение»): как запрос на
+     оплату в банке — сумма крупно по центру, под ней состояние словом, кто платит и ТС; ниже круглые кнопки с подписью
+     (.act), строки, история лентой и красная строка опасного действия. */
+  .money-hero { @apply flex flex-col items-center px-2 pb-1 pt-3 text-center; }
+  .money-hero-cap { @apply text-sm text-ink-muted; }
+  .money-hero-sum { @apply font-semibold leading-none tracking-tight; font-size: 2.5rem; }
+  .money-hero-sum small { @apply text-2xl font-medium text-ink-muted; }
+  .money-hero-state { @apply mt-2 text-sm font-medium; }
+  .money-hero-who { @apply mt-3 max-w-full truncate text-base; }
+  .money-hero-car { @apply max-w-full truncate text-sm text-ink-muted; }
+  /* Ряд круглых действий (.acts, .act — как на странице человека) под суммой: по центру, круги крупнее, подпись темнее. */
+  .acts-hero { @apply mt-5 justify-center gap-6; }
+  .acts-hero .act { @apply min-w-[4.5rem] gap-1.5 whitespace-nowrap text-xs text-ink; }
+  .acts-hero .act .btn { width: 3.25rem; height: 3.25rem; }
+  .acts-hero .act .btn svg { width: 22px; height: 22px; }
+  .act[hidden] { display: none; }
+  /* Красная строка («Отменить ссылку», «Аннулировать») — своей группой внизу, по центру, как в «Настройках» iOS. */
+  .row-danger { @apply w-full justify-center text-danger; }
+  @media (hover: hover) { .row-danger:hover { background: var(--color-hover); } }
+  /* История лентой: точка и линия к следующей, время справа. */
+  .timeline { @apply flex flex-col rounded-(--radius-l) bg-surface-2 px-4 py-3; }
+  .timeline-item { @apply relative flex items-baseline gap-3 pb-3 pl-5 last:pb-0; }
+  .timeline-item::before { content: ''; position: absolute; left: 0; top: .45rem; width: .5rem; height: .5rem; border-radius: 9999px; background: var(--dot, var(--color-ink-dim)); }
+  .timeline-item:not(:last-child)::after { content: ''; position: absolute; left: calc(.25rem - .5px); top: 1.15rem; bottom: .1rem; width: 1px; background: var(--color-line); }
+  .timeline-item > :first-child { @apply min-w-0 flex-1; }
+  .timeline-item > :last-child { @apply shrink-0 text-sm text-ink-muted; }
+  .timeline-open { --dot: var(--color-open); } .timeline-urgent { --dot: var(--color-urgent); } .timeline-danger { --dot: var(--color-danger); }
   /* Заголовок прижат к своей группе, а не висит между двумя (07.10.2026: «отступы между блоками гигантские»). */
   .list-head { @apply flex items-baseline gap-1.5 px-1 pb-2 pt-1 text-lg font-medium text-ink; }
   .list-head .nums { @apply font-normal text-ink-dim; }
@@ -1780,6 +1823,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   .sheet:popover-open::before { display: none; }
   .sheet:popover-open::backdrop { background: none; }
+  /* Шторка выбора поиском (x-billing.car-pick): высокая сразу — строки результатов появляются под полем, лист не прыгает
+     по высоте с каждым ответом. Поле — как поиск тулбара, но во всю ширину и на сером. */
+  .sheet-pick { height: calc(100dvh - 3rem - var(--kb, 0px)); }
+  @media (min-width: 640px) { .sheet-pick { height: min(40rem, calc(100dvh - 4rem)); } }
+  .sheet-pick .toolbar-search { @apply bg-surface-2; max-width: none; min-height: 2.75rem; }
+  .sheet-pick .toolbar-search input { font-size: 16px; }
   .sheet-close { @apply flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   /* Клавиатура на телефоне (07.10.2026): лист целиком в видимой части над ней (--vv-h из app.js). Раньше высота
      считалась от всего экрана минус клавиатура, а iOS ещё и сдвигал экран к полю — верх листа (сумма) уходил за край. */

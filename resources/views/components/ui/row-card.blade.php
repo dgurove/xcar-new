@@ -6,8 +6,9 @@
      photo — одно фото вместо ленты (старые карточки); :photo="false" — без кадра вовсе (ветка почты).
      media — свой ряд кадров вместо ленты (карточка предложения CRM: кадры правят прямо тут).
      foot — подвал под телом, вне прокрутки («Сохранить изменения» формы карточки — всегда на экране).
-     Поток letters (session letters) — окно писем с черновиком письма вендору после «Принять». --}}
-@props(['href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null, 'foot' => null])
+     Поток letters (session letters) — окно писем с черновиком письма вендору после «Принять».
+     head=false — без шапки с названием и метками: тело рисует свою (карточки «Оплат»: сумма крупно по центру). --}}
+@props(['head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null, 'foot' => null])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
     <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
@@ -28,7 +29,7 @@
         {{-- Метки и факты — одной строкой с одним шагом: два ряда тегов с разными отступами смотрелись вразнобой. --}}
         @if ($marks || array_filter($facts))<div class="detail-marks flex flex-wrap items-center gap-1.5">{{ $marks }}@foreach (array_filter($facts) as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
     </div>
-@else
+@elseif ($head)
 <div class="flex items-start gap-3">
     @if ($photo !== false)<a href="{{ $href }}" class="detail-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
     <div class="min-w-0 flex-1">

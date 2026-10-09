@@ -35,7 +35,7 @@
                 <tr data-detail-key="{{ $i->id }}" data-search-row>
                     <td class="grow">
                         <x-ui.row-link :key="$i->id" :with="['tab' => $key]"><span class="cell-title">{{ $i->party->name }}</span></x-ui.row-link>
-                        <span class="cell-sub sm:hidden"><span class="text-urgent">{{ $now }}</span>@if (R::what($i))<span>{{ R::what($i) }}</span>@endif</span>
+                        <span class="cell-sub sm:hidden"><span class="text-urgent">{{ $now }}</span>@if (R::what($i))<span class="whitespace-nowrap">{{ R::what($i) }}</span>@endif</span>
                     </td>
                     <td class="{{ $c(1) }}">@if ($m = $i->manager())<x-ui.person :user="$m"/>@endif</td>
                     <td class="{{ $c(2) }}">{{ R::what($i) }}</td>
@@ -68,7 +68,7 @@
                         <x-ui.row-link :key="$i->id" :with="['tab' => $key]"><span class="cell-title">{{ $key === 'payouts' ? R::who($i) : $i->party->name }}</span></x-ui.row-link>
                         <span class="cell-sub sm:hidden">
                             <span class="{{ $tone }}">{{ $now }}</span>
-                            @if (R::what($i))<span>{{ R::what($i) }}</span>@endif
+                            @if (R::what($i))<span class="whitespace-nowrap">{{ R::what($i) }}</span>@endif
                             @if ($key === 'payouts' && $due && $now === 'реквизитов нет')<span class="{{ $due[1] }}">{{ $due[0] }}</span>@endif
                         </span>
                     </td>
@@ -96,7 +96,7 @@
                 <tr data-detail-key="{{ $i->id }}" data-search-row>
                     <td class="grow">
                         <x-ui.row-link :key="$i->id" :with="['tab' => $key]"><span class="cell-title">{{ $key === 'payouts' ? R::who($i) : $i->party->name }}</span></x-ui.row-link>
-                        <span class="cell-sub sm:hidden"><span>{{ $now }}</span>@if (R::what($i))<span>{{ R::what($i) }}</span>@endif</span>
+                        <span class="cell-sub sm:hidden"><span>{{ $now }}</span>@if (R::what($i))<span class="whitespace-nowrap">{{ R::what($i) }}</span>@endif</span>
                     </td>
                     @if ($key === 'owed')
                         <td class="{{ $c(1) }}">@if ($m = R::via($i))<x-ui.person :user="$m"/>@endif</td>

@@ -1,8 +1,9 @@
-{{-- Карточка счёта или вознаграждения по сделке: в метках остаток, светофор словом, документ, менеджер, ТС; в ряду действий
-     «Оплачен» / «Выплатить» — шторкой, PDF — шторкой документов, «Аннулировать» — в «···»; ссылка на оплату — первой
-     строкой денег (`x-billing.pay-status`: адрес, «Отправить», что делал плательщик).
-     Ниже строками денег: заявки менеджера с «Поступило» / «Не поступила», строки счёта с итогом и НДС, оплаты (у ссылки —
-     способ, комиссия, зачислено ли на счёт, «Вернуть»), переплата по ссылке. --}}
+{{-- Карточка счёта или вознаграждения по сделке — тем же каркасом, что карточка ссылки (09.10.2026, владелец: «должно
+     чувствоваться как приложение»): сверху кто кому («должен нам», «должны ему») и остаток крупно, «из N ₽» при частичной,
+     светофор словом, плательщик; круглые кнопки «Деньги пришли» / «Выплатить» (шторка оплаты) и «PDF»; строки счёта —
+     номер и дата, вид, ТС, менеджер (срок — словом под суммой). Ниже: заявки менеджера с «Поступило» / «Не поступила», ссылка на оплату
+     строкой `x-billing.link-row` (нет — «Новая ссылка», `x-billing.pay-status`), состав с итогом и НДС, оплаты (у ссылки —
+     способ, комиссия, «Вернуть»), переплата по ссылке; «Аннулировать» — красной строкой внизу. --}}
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource;
     $i = $invoice; $href = '/work/money/invoices/'.$i->id; $offer = $i->deal?->offer ?? $i->offer; $manager = $i->manager();
@@ -10,38 +11,46 @@
     $overpaid = $attempts->filter(fn ($a) => $a->overpaid() > 0);
     $issued = $i->state === InvoiceState::Issued;
     $voidable = $issued && ! $i->payments()->whereNotIn('source', PaymentSource::soft())->exists();
+    $link = $i->isOwed() ? null : $i->payLinks()->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled->value)->with(\App\Http\Admin\MoneyLinks::WITH)->latest('id')->first();
+    $sum = $i->remaining() > 0 ? $i->remaining() : $i->total;
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :href="$href" :title="$i->isOwed() ? 'Выплата менеджеру '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :photo="$offer?->mainPhoto()">
-        <x-slot:marks>
-            {{-- Кто кому — словом у самой суммы (06.10.2026). --}}
-            <span class="tag nums font-semibold">{{ $i->state === InvoiceState::Issued ? ($i->isOwed() ? 'должны ему ' : 'должен нам ') : '' }}{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}{{ $i->isPartial() ? ' из '.Money::rub($i->total) : '' }}</span>
-            <x-billing.light :invoice="$i"/>
-            <span class="tag nums">{{ $i->isOwed() ? 'выплата' : $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}</span>
-            <span class="tag">{{ $i->kind->label() }}</span>
-            @if ($manager)<x-ui.person :user="$manager"/>@endif
-            @if ($offer)<a href="{{ $i->deal_id ? '/work/deals/'.$i->deal_id : '/work/garage?preset=all&peek='.$offer->number }}" class="tag">{{ $offer->titleWithYear() }}</a>@endif
-            @if ($i->isOwed() && ! $i->party->payoutReady())<span class="tag text-urgent">реквизитов нет</span>@endif
-        </x-slot:marks>
-        <x-slot:actions>
-            @if ($issued)
-                <div data-controller="sheet" class="contents">
-                    <button type="button" class="btn btn-s btn-accent" data-action="sheet#open">{{ $i->isOwed() ? 'Выплатить' : 'Деньги пришли' }}</button>
-                    <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : 'Оплата по счёту '.$i->label()" :open="$errors->hasAny(['source', 'paid_at', 'slip'])">
-                        <x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources" sheet/>
-                    </x-ui.sheet>
-                </div>
-            @endif
-            @if ($i->number)<x-ui.doc :doc="['url' => $href.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="btn btn-s btn-quiet"><x-ui.icon name="file" class="size-4"/>PDF</x-ui.doc>@endif
-            @if ($voidable)
-                <div class="contents" data-controller="menu">
-                    <button type="button" class="btn btn-s btn-quiet btn-round" data-action="menu#toggle" aria-haspopup="menu" aria-controls="invoice-more-{{ $i->id }}" aria-label="Ещё"><x-ui.icon name="more" class="size-5"/></button>
-                    <div id="invoice-more-{{ $i->id }}" class="menu" popover data-menu-target="list" role="menu">
-                        <form method="post" action="{{ $href }}/void" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? 'выплату' : 'счёт' }}?">@csrf<button class="menu-item w-full text-danger" role="menuitem" data-action="menu#close">Аннулировать</button></form>
+    <x-ui.row-card :href="$href" :title="$i->isOwed() ? 'Выплата менеджеру '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :head="false" :photo="false" :action="false">
+        <div class="money-hero">
+            @if ($issued)<div class="money-hero-cap">{{ $i->isOwed() ? 'должны ему' : 'должен нам' }}</div>@endif
+            <div class="money-hero-sum nums">{{ Money::nums($sum, fmod($sum, 1) ? 2 : 0) }}<small> ₽</small></div>
+            @if ($i->isPartial())<div class="money-hero-car nums">из {{ Money::rub($i->total) }}</div>@endif
+            <x-billing.light :invoice="$i" class="money-hero-state !text-sm"/>
+            <div class="money-hero-who">{{ $i->party->name }}</div>
+        </div>
+
+        @if ($issued || $i->number)
+            <div class="acts acts-hero">
+                @if ($issued)
+                    <div data-controller="sheet" class="contents">
+                        <button type="button" class="act" data-action="sheet#open"><span class="btn btn-accent btn-round"><x-ui.icon name="{{ $i->isOwed() ? 'send' : 'check' }}"/></span>{{ $i->isOwed() ? 'Выплатить' : 'Деньги пришли' }}</button>
+                        <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : 'Оплата по счёту '.$i->label()" :open="$errors->hasAny(['source', 'paid_at', 'slip'])">
+                            <x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources" sheet/>
+                        </x-ui.sheet>
                     </div>
-                </div>
+                @endif
+                @if ($i->number)<x-ui.doc :doc="['url' => $href.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="file"/></span>PDF</x-ui.doc>@endif
+            </div>
+        @endif
+
+        <div class="list mt-6">
+            <div class="row"><span class="shrink-0 text-ink-muted">{{ $i->isOwed() ? 'Выплата' : 'Счёт' }}</span><span class="min-w-0 flex-1 truncate text-right nums">{{ $i->isOwed() ? '' : $i->label().' ' }}от {{ $i->issued_at->translatedFormat('j M') }}</span></div>
+            <div class="row"><span class="shrink-0 text-ink-muted">За что</span><span class="min-w-0 flex-1 truncate text-right">{{ $i->kind->label() }}</span></div>
+            @if ($offer)
+                <a href="{{ $i->deal_id ? '/offers/'.$offer->number : '/work/garage?preset=all&peek='.$offer->number }}" class="row" data-turbo-frame="_top">
+                    <span class="shrink-0 text-ink-muted">ТС</span><span class="min-w-0 flex-1 truncate text-right">{{ $offer->titleWithYear() }}</span><x-ui.chevron/>
+                </a>
             @endif
-        </x-slot:actions>
+            @if ($manager)<div class="row"><span class="shrink-0 text-ink-muted">Менеджер</span><span class="min-w-0 flex-1 text-right"><x-ui.person :user="$manager"/></span></div>@endif
+            @if ($i->isOwed() && ! $i->party->payoutReady())
+                <div class="row"><span class="shrink-0 text-ink-muted">Реквизиты</span><span class="min-w-0 flex-1 text-right text-urgent">нет</span></div>
+            @endif
+        </div>
 
         @if ($i->claims->isNotEmpty())
             <div class="list mt-4">
@@ -65,8 +74,15 @@
             </div>
         @endif
 
-        <div class="list mt-4">
-            @unless ($i->isOwed())<x-billing.pay-status :invoice="$i" staff/>@endunless
+        @if ($link)
+            <div class="list-cap mt-5">Ссылка на оплату</div>
+            <div class="list"><x-billing.link-row :link="$link" :car="false" :sub="$link->stateLine()[0]"/></div>
+        @elseif (! $i->isOwed() && \App\Billing\Acquiring\PayLink::eligible($i) && $i->remaining() - $i->claimed() > 0)
+            <div class="list mt-5"><x-billing.pay-status :invoice="$i" staff/></div>
+        @endif
+
+        <div class="list-cap mt-5">Состав</div>
+        <div class="list">
             @foreach ($i->charges as $c)
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $c->title }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>
             @endforeach
@@ -92,6 +108,12 @@
                 </x-money.line>
             @endforeach
         </div>
+
+        @if ($voidable)
+            <form method="post" action="{{ $href }}/void" class="list mt-5" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? 'выплату' : 'счёт' }}?">
+                @csrf<button class="row row-danger">Аннулировать</button>
+            </form>
+        @endif
     </x-ui.row-card>
     {{-- Действие в карточке (поступило, выплатили, аннулировали) меняет всю ленту «Оплат» — строка уходит из «Надо сделать» в «Историю»: страница перечитывается морфом с той же карточкой. --}}
     @if (session('toast'))<turbo-stream action="reload"></turbo-stream>@endif

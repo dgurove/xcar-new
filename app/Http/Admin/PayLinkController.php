@@ -57,14 +57,12 @@ class PayLinkController
         return back()->with('toast', 'Ссылка отменена');
     }
 
-    /** Что будет, если привязать ручную ссылку к этой ТС (`DealCredit::preview`) — строка в окне «ТС», без записи. */
+    /** Что будет, если привязать ручную ссылку к этой ТС (`DealCredit::outcome`): подпись кнопки и строка у машины, без записи. */
     public function attach(Request $request, PayLink $link)
     {
         $offer = ctype_digit((string) $request->query('offer_id')) ? Offer::find((int) $request->query('offer_id')) : null;
-        $car = trim((string) $request->query('car_title'));
-        $text = $offer || $car === '' ? DealCredit::preview($link->invoice, $offer) : 'ТС не из системы, запишем словами'.($link->invoice->credit_deal_id ? ', зачёт в сделку снимем' : '');
 
-        return response('<p class="text-sm text-ink-muted">'.e($text).'</p>');
+        return response()->json(DealCredit::outcome($link->invoice, $offer, trim((string) $request->query('car_title'))));
     }
 
     /** ТС у ручной ссылки (`AttachServiceCar`): машина системы — засчитать в её сделку, иначе словами; пусто — отвязать. */

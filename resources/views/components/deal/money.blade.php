@@ -2,8 +2,8 @@
      собственнику, подбор), чипы —
      режим, состояние вознаграждения, «Изменить» до счёта, «Счёт»; ниже счета строками, заявка менеджера
      об оплате с решением под своим счётом, у вознаграждения к выплате — «Выплатить» в самой строке. Под неоплаченным
-     счётом — его ссылка на оплату с адресом и «Отправить» (`x-billing.pay-status`): начальник открыл сделку и сразу
-     видит, оплатили ли и чем поделиться. Менеджеру ничего из этого не показывается. compact — карточка строки «Сделок»:
+     счётом — его ссылка на оплату строкой группы «Ссылки на оплату» с «Скопировать» (`x-billing.link-row`): начальник открыл
+     сделку и сразу видит, оплатили ли и чем поделиться. Менеджеру ничего из этого не показывается. compact — карточка строки «Сделок»:
      цена и «Нам», остальной расклад свёрнут. 07.10.2026: кнопки шторок .sheet-foot. --}}
 @props(['deal', 'compact' => false])
 @php
@@ -11,7 +11,7 @@
     $offer = $deal->offer;
     $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'deal.offer'])->get();
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
-    $credits = $deal->credits()->with(['party', 'payLinks'])->get();
+    $credits = $deal->credits()->with(['party', 'payLinks.attempts', 'payLinks.invoice'])->get();
     $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
     $fee = $invoices->first(fn ($i) => $i->isAgentFee());
     $issued = $invoices->reject(fn ($i) => $i->isOwed());
@@ -91,21 +91,29 @@
             @if ($issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="chip">Ещё счёт</a>@endif
         @endif
     </div>
-    @if ($credits->isNotEmpty())
-        <div class="list mt-4">
-            @foreach ($credits as $c)
-                @php $l = $c->payLinks->sortByDesc('id')->first(); @endphp
-                <a href="{{ $l ? \App\Http\Admin\MoneyController::linkUrl($l) : '/work/money/invoices/'.$c->id }}" class="row" data-turbo-frame="_top">
-                    <x-ui.row-icon name="qr" :tone="$c->state === InvoiceState::Paid ? 'open' : 'urgent'" size="s"/>
-                    <span class="min-w-0 flex-1">
-                        <span class="block">Оплата по ссылке<span class="text-ink-muted"> {{ $c->party->name }}</span></span>
-                        <span class="row-sub">{{ $c->state === InvoiceState::Paid ? 'оплачено, в зачёт сделки' : ($c->paid > 0 ? 'оплачено '.Money::rub($c->paid).', в зачёт сделки' : 'ждём оплату') }}</span>
-                    </span>
-                    <span class="nums shrink-0">{{ Money::rub($c->total) }}</span>
-                    <x-ui.chevron/>
-                </a>
+    {{-- Ссылки на оплату — одной группой строк `x-billing.link-row` (09.10.2026): ссылка счёта сделки и ручные, засчитанные
+         в неё; у открытой — «Скопировать» в самой строке. Сверх сделки — строкой там же, словом, не красным (владелец:
+         «может, дополнительно договорились»); до счёта — ляжет потом. --}}
+    @php
+        $links = $issued->map(fn ($i) => [$i->payLinks->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled)->sortByDesc('id')->first(), 'счёт '.$i->label()])
+            ->merge($credits->map(fn ($c) => [$c->payLinks->sortByDesc('id')->first(), $c->state === InvoiceState::Paid ? 'вручную, в зачёт сделки' : 'вручную, засчитаем']))
+            ->filter(fn ($p) => $p[0]);
+    @endphp
+    @if ($links->isNotEmpty() || $extra > 0)
+        <div class="list-cap mt-4">Ссылки на оплату</div>
+        <div class="list">
+            @foreach ($links as [$l, $sub])
+                <x-billing.link-row :link="$l" :car="false" :sub="$sub">
+                    @if ($l->isOpen())
+                        <x-slot:acts>
+                            <span class="contents" data-controller="copy" data-copy-text-value="{{ $l->url() }}">
+                                <textarea hidden data-copy-target="message">{{ $l->message() }}</textarea>
+                                <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="copy#copy" aria-label="Скопировать"><x-ui.icon name="copy" class="size-4"/></button>
+                            </span>
+                        </x-slot:acts>
+                    @endif
+                </x-billing.link-row>
             @endforeach
-            {{-- Сверх сделки — словом, не красным (владелец: «может, дополнительно договорились»); до счёта — ляжет потом. --}}
             @if ($extra > 0)
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Сверх сделки' : 'Засчитаем, когда выставим счёт' }}</span><span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
             @endif
@@ -129,7 +137,8 @@
                         </span>
                     @endif
                 </div>
-                @unless ($i->isOwed())<x-billing.pay-status :invoice="$i" staff/>@endunless
+                {{-- Ссылка счёта — строкой в «Ссылках на оплату» выше; нет её — «Новая ссылка на оплату» здесь. --}}
+                @if (! $i->isOwed() && $i->payLinks->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled)->isEmpty())<x-billing.pay-status :invoice="$i" staff/>@endif
                 @foreach ($i->claims as $p)
                     <x-money.payment :payment="$p" :slip="'/work/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'" staff>
                         @unless ($inStep)

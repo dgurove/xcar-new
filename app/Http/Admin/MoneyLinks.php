@@ -147,6 +147,49 @@ final class MoneyLinks
         return $o ? [$o->title(), OfferNumber::isPublic($o) ? $o->number : null] : [$l->invoice->car_title, null];
     }
 
+    /**
+     * Что со ссылкой одним-двумя словами — для строки списка (09.10.2026, владелец: «схалтурил»): длинная фраза
+     * «ждём оплату, ещё не открывали» в каждой строке была стеной текста. Полная — `state()`, в карточке.
+     * @return array{string, string}
+     */
+    public static function short(PayLink $l): array
+    {
+        if ($l->state === PayLinkState::Paid) {
+            return ['оплачено', 'text-open'];
+        }
+        if ($l->state === PayLinkState::Canceled) {
+            return ['отменена', 'text-ink-dim'];
+        }
+        $last = $l->relationLoaded('attempts') ? $l->attempts->last() : $l->attempts()->reorder()->latest('id')->first();
+
+        return match (true) {
+            $l->error_at && (! $last || $l->error_at->gt($last->created_at)) => ['ошибка ЮKassa', 'text-danger'],
+            ! $last => ['не открывали', 'text-ink-muted'],
+            $last->isPending() => ['открыли', 'text-urgent'],
+            $last->status === 'canceled' && $last->cancel_reason === 'expired_on_confirmation' => ['не оплатили', 'text-urgent'],
+            $last->status === 'canceled' => ['не прошла', 'text-danger'],
+            default => ['ждём оплату', 'text-ink-muted'],
+        };
+    }
+
+    /** День группы в списке: «Сегодня», «Вчера», «5 октября», прошлый год — с годом. */
+    public static function day(\Carbon\CarbonInterface $t): string
+    {
+        return match (true) {
+            $t->isToday() => 'Сегодня',
+            $t->isYesterday() => 'Вчера',
+            default => $t->translatedFormat($t->isCurrentYear() ? 'j F' : 'j F Y'),
+        };
+    }
+
+    /** ТС одной строкой с номером: «Ford Kuga, № 2610061312»; нет — null. */
+    public static function carLine(PayLink $l): ?string
+    {
+        [$car, $number] = self::car($l);
+
+        return $car ? $car.($number ? ', № '.$number : '') : null;
+    }
+
     /** Что со ссылкой — фраза и класс тона, как в шторке ссылки. */
     public static function state(PayLink $l): array
     {

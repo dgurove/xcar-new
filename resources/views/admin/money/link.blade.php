@@ -1,8 +1,11 @@
-{{-- Карточка ссылки на оплату — строка «По ссылкам», как запрос на оплату в банковском приложении (09.10.2026, владелец:
-     «слишком много лишней фигни»): кто платит, сумма и статус, сразу «Отправить» и «Скопировать» (текст «ФИО, ТС, сумма» и
-     адрес, `PayLink::message`); ниже строками ТС, кто взял (или сделка, гараж), счёт, почта для чека; попытки — если
-     открывали. Редкое — в «···» полосы: QR-код, другая сумма, ТС у ручной, отменить, вернуть. Оплаченная и отменённая —
-     без кнопок. --}}
+{{-- Карточка ссылки на оплату — строка «По ссылкам» (09.10.2026, владелец: «должно чувствоваться как приложение»), как
+     запрос на оплату в банке:
+     — сумма крупно по центру, под ней что со ссылкой словом и кто платит (ТС — строкой ниже, один раз);
+     — круглые кнопки с подписью: «Отправить» (лайм; без системного листа на ПК лайм у «Скопировать»), «Скопировать»
+       (текст «ФИО, ТС, сумма» и адрес, `PayLink::message`), «QR-код»; у оплаченной — «Вернуть», если есть что;
+     — строки: ТС (у ручной — шторка выбора поиском, `x-billing.car-pick`), сделка или гараж и что с зачётом, счёт, чек;
+     — история лентой: создал, что делал плательщик, оплачено или отменена;
+     — «Отменить ссылку» красной строкой внизу. В «···» — только «Другая сумма». --}}
 @php
     use App\Support\Money; use App\Http\Admin\MoneyLinks as L; use App\Billing\Acquiring\PayLinkState; use App\Billing\Acquiring\PayMethod; use App\Billing\InvoiceState;
     $i = $invoice;
@@ -10,11 +13,10 @@
     $live = $link->isOpen();
     $manual = $link->origin() === 'manual';
     $offer = $i->carOffer();
-    [$car, $number] = L::car($link);
+    $car = L::carLine($link);
     [$state, $tone] = L::state($link);
-    // Оплачено — каким способом.
-    $paidBy = $link->state === PayLinkState::Paid ? $link->attempts->firstWhere('payment_id', $link->payment_id)?->method : null;
-    if ($paidBy) { $state .= ', '.PayMethod::label($paidBy); }
+    $paidAttempt = $link->state === PayLinkState::Paid ? $link->attempts->firstWhere('payment_id', $link->payment_id) : null;
+    if ($paidAttempt?->method) { $state = 'оплачено '.mb_strtolower(PayMethod::label($paidAttempt->method)).' '.$link->paid_at->translatedFormat('j M'); }
     $deal = $i->deal ?? $i->creditDeal;
     $dealUrl = $deal?->offer ? '/offers/'.$deal->offer->number : null;
     $by = L::creator($link);
@@ -28,81 +30,113 @@
         $i->paid <= 0 => 'засчитаем, когда оплатят',
         \App\Offers\DealCredit::room($i->creditDeal) === null && $applied <= 0 => 'засчитаем, когда выставим счёт',
         $applied >= $i->paid - 0.005 => 'в зачёт '.Money::rub($applied),
-        $applied > 0 => 'в зачёт '.Money::rub($applied).', сверх сделки '.Money::rub($i->paid - $applied),
+        $applied > 0 => 'в зачёт '.Money::rub($applied).', сверх '.Money::rub($i->paid - $applied),
         default => 'сверх сделки '.Money::rub($i->paid),
     };
-    $sheet = fn (string $name) => 'data-controller="emit" data-action="menu#close emit#send" data-emit-event-param="link-'.$id.'-'.$name.':open"';
+    $open = fn (string $name) => 'data-controller="emit" data-action="emit#send" data-emit-event-param="link-'.$id.'-'.$name.':open"';
+    $at = fn ($t) => $t->translatedFormat($t->isToday() ? 'H:i' : 'j M, H:i');
+    // История: создал, попытки плательщика, оплачено или отменена — по времени.
+    $history = collect([['created' => $link->created_at, 'text' => match (true) { (bool) $by => 'Создал '.$by->shortName(), $link->origin() === 'deal' => 'Создана сделкой', default => 'Создана гаражом' }, 'tone' => null]]);
+    foreach ($link->attempts as $a) {
+        [$what, $aTone] = match (true) {
+            $a->succeeded() => ['Оплатили', 'open'],
+            $a->isPending() => ['Открыли оплату', 'urgent'],
+            $a->cancel_reason === 'expired_on_confirmation' => ['Открыли и не оплатили', 'urgent'],
+            default => ['Не прошла: '.($a->cancelLabel() ?? 'отклонено'), 'danger'],
+        };
+        $history->push(['created' => $a->created_at, 'text' => $what.($a->method ? ', '.mb_strtolower(PayMethod::label($a->method)) : ''), 'tone' => $aTone]);
+    }
+    if ($link->state === PayLinkState::Paid && ! $paidAttempt) { $history->push(['created' => $link->paid_at, 'text' => 'Оплачено', 'tone' => 'open']); }
+    if ($link->state === PayLinkState::Canceled && $link->canceled_at) { $history->push(['created' => $link->canceled_at, 'text' => 'Отменена', 'tone' => null]); }
+    if ($link->error_at) { $history->push(['created' => $link->error_at, 'text' => 'ЮKassa не открыла оплату', 'tone' => 'danger']); }
+    $history = $history->sortBy('created')->values();
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :title="$link->payerName()" :photo="false" :action="null">
-        <x-slot:tools>
-            <div class="contents" data-controller="menu">
-                <button type="button" class="bar-btn" data-action="menu#toggle" aria-haspopup="menu" aria-controls="link-more-{{ $id }}" aria-label="Ещё"><x-ui.icon name="more" class="size-[18px]"/></button>
-                <div id="link-more-{{ $id }}" class="menu" popover data-menu-target="list" role="menu">
-                    @if ($live)<button type="button" class="menu-item w-full" role="menuitem" {!! $sheet('qr') !!}>QR-код</button>@endif
-                    @if ($other)<button type="button" class="menu-item w-full" role="menuitem" {!! $sheet('amount') !!}>Другая сумма</button>@endif
-                    @if ($editCar)<button type="button" class="menu-item w-full" role="menuitem" {!! $sheet('car') !!}>{{ $car ? 'Другое ТС' : 'Указать ТС' }}</button>@endif
-                    <a href="/work/money/invoices/{{ $i->id }}" class="menu-item w-full" role="menuitem" data-turbo-frame="_top">Счёт {{ $i->label() }}</a>
-                    @if ($refund)
-                        <form method="post" action="/work/money/acquiring/{{ $refund->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($refund->refundable()) }} плательщику? Оплата по счёту отменится">@csrf<button class="menu-item w-full" role="menuitem">Вернуть {{ Money::rub($refund->refundable()) }}</button></form>
-                    @endif
-                    @if ($live)
-                        <form method="post" action="/work/money/links/{{ $id }}" class="contents" data-turbo-confirm="Отменить ссылку? Оплатить по ней будет нельзя">@csrf @method('delete')<button class="menu-item w-full text-danger" role="menuitem">Отменить ссылку</button></form>
-                    @endif
+    <x-ui.row-card :title="$link->payerName()" :head="false" :photo="false" :action="false">
+        @if ($other)
+            <x-slot:tools>
+                <div class="contents" data-controller="menu">
+                    <button type="button" class="bar-btn" data-action="menu#toggle" aria-haspopup="menu" aria-controls="link-more-{{ $id }}" aria-label="Ещё"><x-ui.icon name="more" class="size-[18px]"/></button>
+                    <div id="link-more-{{ $id }}" class="menu" popover data-menu-target="list" role="menu">
+                        <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="menu#close emit#send" data-emit-event-param="link-{{ $id }}-amount:open">Другая сумма</button>
+                    </div>
                 </div>
-            </div>
-        </x-slot:tools>
-        <x-slot:marks>
-            <span class="nums text-lg font-semibold">{{ Money::rub($link->amount) }}</span>
-            <x-ui.state :tone="match (true) { $link->state === PayLinkState::Paid => 'open', $link->state === PayLinkState::Canceled => 'closed', default => $link->stateLine()[1] ?? 'plain' }">{{ $state }}</x-ui.state>
-        </x-slot:marks>
+            </x-slot:tools>
+        @endif
+
+        <div class="money-hero">
+            <div class="money-hero-sum nums">{{ Money::nums($link->amount, fmod($link->amount, 1) ? 2 : 0) }}<small> ₽</small></div>
+            <div class="money-hero-state {{ $tone ?: 'text-ink-muted' }}">{{ $state }}</div>
+            <div class="money-hero-who">{{ $link->payerName() }}</div>
+        </div>
 
         @if ($live)
-            <div class="mt-4 flex gap-2" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по ссылке">
+            <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по ссылке">
                 <textarea hidden data-copy-target="message">{{ $link->message() }}</textarea>
-                <button type="button" class="btn btn-s btn-accent flex-1" data-action="copy#share" data-copy-target="share"><x-ui.icon name="share" class="size-4"/>Отправить</button>
-                <button type="button" class="btn btn-s btn-quiet flex-1" data-action="copy#copy" data-copy-fallback><x-ui.icon name="copy" class="size-4"/>Скопировать</button>
+                <button type="button" class="act" data-action="copy#share" data-copy-target="share"><span class="btn btn-accent btn-round"><x-ui.icon name="share"/></span>Отправить</button>
+                <button type="button" class="act" data-action="copy#copy"><span class="btn btn-quiet btn-round" data-copy-fallback><x-ui.icon name="copy"/></span>Скопировать</button>
+                <button type="button" class="act" {!! $open('qr') !!}><span class="btn btn-quiet btn-round"><x-ui.icon name="qr"/></span>QR-код</button>
+            </div>
+        @elseif ($refund)
+            <div class="acts acts-hero">
+                <form method="post" action="/work/money/acquiring/{{ $refund->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($refund->refundable()) }} плательщику? Оплата по счёту отменится">
+                    @csrf<button class="act"><span class="btn btn-danger btn-round"><x-ui.icon name="undo"/></span>Вернуть</button>
+                </form>
             </div>
         @endif
 
-        <div class="list mt-4">
-            @if ($car)
+        <div class="list mt-6">
+            @if ($editCar)
+                <button type="button" class="row w-full text-left" {!! $open('car') !!}>
+                    <span class="shrink-0 text-ink-muted">ТС</span>
+                    <span @class(['min-w-0 flex-1 truncate text-right', 'text-accent-text' => ! $car])>{{ $car ?? 'Указать' }}</span>
+                    <x-ui.chevron/>
+                </button>
+            @elseif ($car)
                 <a @if ($offer) href="/offers/{{ $offer->number }}" data-turbo-frame="_top" @endif class="row">
-                    <span class="min-w-0 flex-1 text-ink-muted">ТС</span>
-                    <span class="min-w-0 truncate text-right">{{ $car }}@if ($number)<span class="nums text-ink-muted">, № {{ $number }}</span>@endif</span>
+                    <span class="shrink-0 text-ink-muted">ТС</span>
+                    <span class="min-w-0 flex-1 truncate text-right nums">{{ $car }}</span>
                     @if ($offer)<x-ui.chevron/>@endif
                 </a>
-            @elseif ($editCar)
-                <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="link-{{ $id }}-car:open">
-                    <span class="min-w-0 flex-1 text-ink-muted">ТС</span><span class="text-accent-text">Указать</span><x-ui.chevron/>
-                </button>
             @endif
-            @if ($manual)
-                <div class="row">
-                    <span class="min-w-0 flex-1 text-ink-muted">Взял</span>
-                    <span class="nums text-right">{{ $by?->shortName() ?? 'вручную' }}, {{ $link->created_at->translatedFormat('j M, H:i') }}</span>
-                </div>
-                @if ($i->creditDeal && $dealUrl)
-                    <a href="{{ $dealUrl }}" class="row" data-turbo-frame="_top">
-                        <span class="min-w-0 flex-1 text-ink-muted">Сделка</span>
-                        <span class="min-w-0 text-right">{{ $i->creditDeal->buyer?->shortName() }}@if ($creditWord)<span class="block text-sm text-ink-muted">{{ $creditWord }}</span>@endif</span>
-                        <x-ui.chevron/>
-                    </a>
-                @endif
-            @else
+            @if ($manual && $i->creditDeal)
+                <a @if ($dealUrl) href="{{ $dealUrl }}" data-turbo-frame="_top" @endif class="row">
+                    <span class="shrink-0 text-ink-muted">Сделка</span>
+                    <span class="min-w-0 flex-1 text-right">
+                        <span class="block truncate">{{ $i->creditDeal->buyer?->shortName() ?? 'есть' }}</span>
+                        @if ($creditWord)<span class="block text-sm text-ink-muted">{{ $creditWord }}</span>@endif
+                    </span>
+                    @if ($dealUrl)<x-ui.chevron/>@endif
+                </a>
+            @elseif (! $manual)
                 <a @if ($dealUrl) href="{{ $dealUrl }}" @elseif ($offer) href="/work/garage?preset=all&peek={{ $offer->number }}" @endif class="row" data-turbo-frame="_top">
-                    <span class="min-w-0 flex-1 text-ink-muted">{{ $link->origin() === 'deal' ? 'Сделка' : 'Гараж' }}</span>
-                    <span class="nums text-right">@if ($by){{ $by->shortName() }}, @endif{{ $link->created_at->translatedFormat('j M, H:i') }}</span>
+                    <span class="shrink-0 text-ink-muted">{{ $link->origin() === 'deal' ? 'Сделка' : 'Гараж' }}</span>
+                    <span class="min-w-0 flex-1 truncate text-right">{{ $i->manager()?->shortName() ?? 'открыть' }}</span>
                     <x-ui.chevron/>
                 </a>
             @endif
+            <a href="/work/money/invoices/{{ $i->id }}" class="row" data-turbo-frame="_top">
+                <span class="shrink-0 text-ink-muted">Счёт</span>
+                <span class="min-w-0 flex-1 truncate text-right nums">{{ $i->label() }}@if ($i->issued_at) от {{ $i->issued_at->translatedFormat('j M') }}@endif</span>
+                <x-ui.chevron/>
+            </a>
             @if ($link->payer_email)
-                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Чек</span><span class="min-w-0 truncate text-right">{{ $link->payer_email }}</span></div>
+                <div class="row"><span class="shrink-0 text-ink-muted">Чек</span><span class="min-w-0 flex-1 truncate text-right">{{ $link->payer_email }}</span></div>
             @endif
         </div>
 
-        @if ($link->attempts->isNotEmpty())
-            <div class="mt-4"><x-billing.link-attempts :link="$link" :limit="20"/></div>
+        <div class="list-cap mt-5">История</div>
+        <div class="timeline">
+            @foreach ($history as $h)
+                <div @class(['timeline-item', 'timeline-'.$h['tone'] => $h['tone']])><span>{{ $h['text'] }}</span><span class="nums">{{ $at($h['created']) }}</span></div>
+            @endforeach
+        </div>
+
+        @if ($live)
+            <form method="post" action="/work/money/links/{{ $id }}" class="list mt-5" data-turbo-confirm="Отменить ссылку? Оплатить по ней будет нельзя">
+                @csrf @method('delete')
+                <button class="row row-danger">Отменить ссылку</button>
+            </form>
         @endif
 
         @if ($live)
@@ -133,26 +167,11 @@
             </div>
         @endif
         @if ($editCar)
-            <div data-controller="sheet" data-action="link-{{ $id }}-car:open@window->sheet#open" class="contents">
-                <x-ui.sheet :id="'link-car-'.$id" title="ТС">
-                    {{-- Машина и есть сделка (владелец 09.10.2026): ищут по номеру, ДЛ или VIN; ТС со сделкой — оплата идёт в
-                         её зачёт. Что будет — строкой под полем (`DealCredit::preview`), до «Сохранить». --}}
-                    <form method="post" action="/work/money/links/{{ $id }}/car" class="flex flex-col gap-4"
-                          data-controller="fetch-into" data-fetch-into-url-value="/work/money/links/{{ $id }}/attach" data-fetch-into-fields-value='["offer_id","car_title"]'
-                          data-action="change->fetch-into#changed input->fetch-into#changed">
-                        @csrf @method('put')
-                        <div class="fields">
-                            <x-ui.combobox name="offer_id" text-name="car_title" label="ТС" url="/work/money/cars" placeholder="Номер, ДЛ, VIN или марка"
-                                :value="$i->offer_id" :text="$i->offer ? trim($i->offer->title().' '.$i->offer->year) : $i->car_title"/>
-                        </div>
-                        <div data-fetch-into-target="box"></div>
-                        <div class="sheet-foot flex flex-col gap-1">
-                            <x-ui.button block>Сохранить</x-ui.button>
-                            @if ($car)<x-ui.button variant="ghost" block class="text-ink-muted" name="clear" value="1">Отвязать</x-ui.button>@endif
-                        </div>
-                    </form>
-                </x-ui.sheet>
-            </div>
+            {{-- Машина и есть сделка (владелец 09.10.2026): ищут по номеру, ДЛ или VIN; у ТС со сделкой оплата идёт в её
+                 зачёт — исход на кнопке (`DealCredit::outcome`). --}}
+            <x-billing.car-pick :id="'link-car-'.$id" :action="'/work/money/links/'.$id.'/car'" :preview="'/work/money/links/'.$id.'/attach'"
+                :offer-id="$i->offer_id" :text="$i->offer ? trim($i->offer->title().' '.$i->offer->year) : $i->car_title" :clear="(bool) $car"
+                data-action="link-{{ $id }}-car:open@window->sheet#open link-{{ $id }}-car:open@window->car-pick#load"/>
         @endif
     </x-ui.row-card>
     {{-- Действие в карточке меняет список «По ссылкам» (новая сумма, отмена, ТС): страница перечитывается морфом. --}}

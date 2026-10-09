@@ -293,7 +293,7 @@ class MoneyController
         return response()->json($offers->map(fn (Offer $o) => [
             'id' => $o->id,
             'label' => trim($o->title().' '.$o->year),
-            'hint' => implode(', ', array_filter([\App\Offers\OfferNumber::isPublic($o) ? '№ '.$o->number : null, $o->deal ? 'сделка '.$o->deal->buyer?->shortName().', '.\App\Offers\DealCredit::status($o->deal) : null])),
+            'hint' => implode(', ', array_filter([\App\Offers\OfferNumber::isPublic($o) ? '№ '.$o->number : null, $o->deal?->buyer?->shortName(), $o->deal ? \App\Offers\DealCredit::status($o->deal) : null])),
             'payer' => $o->deal?->buyer?->name, 'party_id' => $o->deal?->buyer?->party_id,
         ])->values());
     }

@@ -46,25 +46,33 @@ final class DealCredit
         };
     }
 
-    /** Что будет, если ручной счёт привязать к этой ТС, — одной фразой. */
-    public static function preview(Invoice $manual, ?Offer $offer): string
+    /**
+     * Что будет, если ручной счёт привязать к этой ТС (шторка «ТС», до записи): подпись кнопки — исход («Засчитать
+     * 53 000 ₽», «Привязать к сделке», «Сохранить ТС») и строка у выбранной машины — что с деньгами («останется
+     * 5 000 ₽», «сверх сделки 3 000 ₽»). Без имени в падеже: строка стоит у самой машины.
+     * @return array{label: string, note: ?string}
+     */
+    public static function outcome(Invoice $manual, ?Offer $offer, string $text = ''): array
     {
+        $out = fn (string $label, ?string $note = null) => ['label' => $label, 'note' => $note];
         if (! $offer) {
-            return $manual->credit_deal_id ? 'Ссылка уйдёт из сделки, её зачёт снимем' : 'ТС не указано';
+            return match (true) {
+                $text !== '' => $out('Сохранить ТС', $manual->credit_deal_id ? 'зачёт в сделку снимем' : null),
+                (bool) $manual->credit_deal_id => $out('Отвязать от сделки', 'зачёт снимем'),
+                default => $out('Сохранить'),
+            };
         }
         $deal = self::dealFor($offer);
         if (! $deal) {
-            return 'Сделки по этой ТС нет, запишем только ТС';
+            return $out('Сохранить ТС', 'сделки нет');
         }
-        $who = $deal->buyer?->shortName();
-        $in = $who ? 'в сделку '.$who : 'в сделку';
         $paid = (float) $manual->paid;
         if ($paid <= 0) {
-            return 'Засчитаем '.$in.', когда оплатят. Ссылка сделки тоже работает';
+            return $out('Привязать к сделке', 'засчитаем, когда оплатят');
         }
         $room = self::room($deal);
         if ($room === null) {
-            return 'Счёт сделки ещё не выставлен: засчитаем '.Money::rub($paid).', когда выставим';
+            return $out('Привязать к сделке', 'засчитаем, когда выставим счёт');
         }
         // Уже засчитанное этой же ссылкой в эту сделку снова свободно: при привязке зачёт кладётся заново.
         if ($manual->credit_deal_id === $deal->id) {
@@ -74,10 +82,10 @@ final class DealCredit
         $extra = round($paid - $apply, 2);
 
         return match (true) {
-            $apply <= 0 => 'Счета сделки уже оплачены: '.Money::rub($paid).' будет сверх сделки',
-            $extra > 0 => 'Засчитаем '.Money::rub($apply).' '.$in.', счёт будет оплачен, сверх сделки '.Money::rub($extra),
-            $room - $apply < 0.01 => 'Засчитаем '.Money::rub($apply).' '.$in.', счёт будет оплачен',
-            default => 'Засчитаем '.Money::rub($apply).' '.$in.', останется '.Money::rub($room - $apply),
+            $apply <= 0 => $out('Привязать к сделке', 'счета оплачены, '.Money::rub($paid).' сверх сделки'),
+            $extra > 0 => $out('Засчитать '.Money::rub($apply), 'счёт закроется, сверх сделки '.Money::rub($extra)),
+            $room - $apply < 0.01 => $out('Засчитать '.Money::rub($apply), 'счёт закроется'),
+            default => $out('Засчитать '.Money::rub($apply), 'останется '.Money::rub($room - $apply)),
         };
     }
 }
