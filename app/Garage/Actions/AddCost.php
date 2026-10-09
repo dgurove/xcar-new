@@ -23,7 +23,7 @@ final class AddCost
         }
         $staff = $by->isAdmin();
         if (! $staff && ! $car->state->isWorking()) {
-            throw ValidationException::withMessages(['amount' => 'Расходы — когда машина у вас']);
+            throw ValidationException::withMessages(['amount' => 'Расходы вносят, когда ТС у вас']);
         }
         $payer = $staff ? (Payer::tryFrom((string) ($data['paid_by'] ?? '')) ?? Payer::Xcar) : Payer::Manager;
         if ($payer === Payer::Manager && ! $car->manager_id) {

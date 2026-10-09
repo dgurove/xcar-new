@@ -61,7 +61,7 @@ class InviteController
         $data = $request->validate($rules, [
             'first_name.required' => 'Введите имя',
             'last_name.required' => 'Введите фамилию',
-            'login.regex' => 'Логин — латиницей, от трёх знаков: буквы, цифры, точка',
+            'login.regex' => 'Логин латиницей, от трёх знаков: буквы, цифры, точка',
             'login.unique' => 'Этот логин уже занят',
             'phone.regex' => 'Нужен номер из 11 цифр, например +7 900 123-45-67',
             'phone.unique' => 'С этим номером уже есть аккаунт',

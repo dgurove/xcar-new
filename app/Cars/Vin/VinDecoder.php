@@ -111,13 +111,13 @@ class VinDecoder
         foreach (str_split($vin) as $index => $char) {
             if (in_array($char, self::FORBIDDEN, true)) {
                 $result->addError('INVALID_CHARACTER', sprintf(
-                    'позиция %d: «%s» — буквы I, O и Q в VIN запрещены стандартом',
+                    'позиция %d: «%s», буквы I, O и Q в VIN запрещены стандартом',
                     $index + 1,
                     $char,
                 ));
             } elseif (! str_contains(self::ALLOWED, $char)) {
                 $result->addError('INVALID_CHARACTER', sprintf(
-                    'позиция %d: «%s» — недопустимый символ',
+                    'позиция %d: «%s», недопустимый символ',
                     $index + 1,
                     $char,
                 ));
@@ -173,7 +173,7 @@ class VinDecoder
             $result->put('manufacturer', $entry['manufacturer'] ?? null, 'wmi', 'high');
             $result->put('brand', $entry['brand'] ?? null, 'wmi', 'medium');
         } else {
-            $result->warnings[] = "WMI «{$wmi}» нет в справочнике — производитель неизвестен";
+            $result->warnings[] = "WMI «{$wmi}» нет в справочнике, производитель неизвестен";
         }
 
         if (! empty($scheme['brand'])) {
@@ -195,7 +195,7 @@ class VinDecoder
         ));
 
         if ($candidates === []) {
-            $result->warnings[] = "символ 10 «{$char}» не кодирует год по ISO — "
+            $result->warnings[] = "символ 10 «{$char}» не кодирует год по ISO: "
                 .'год выпуска из VIN не определяется';
 
             return;
@@ -207,7 +207,7 @@ class VinDecoder
 
         if (! $reliable) {
             $confidence = 'low';
-            $result->warnings[] = 'у этого производителя 10-й символ не гарантирует год выпуска — '
+            $result->warnings[] = 'у этого производителя 10-й символ не гарантирует год выпуска: '
                 .'сверьте с ПТС'.($since ? " (по ISO он кодируется только с {$since} года)" : '');
         } else {
             $confidence = ($scheme['check_digit_required'] ?? false) ? 'high' : 'medium';

@@ -56,12 +56,12 @@ final class MergeOffers
             throw ValidationException::withMessages(['offer' => 'Это одно и то же предложение']);
         }
         if (Deal::where('offer_id', $keep->id)->where('state', DealState::Active)->exists() && Deal::where('offer_id', $drop->id)->where('state', DealState::Active)->exists()) {
-            throw ValidationException::withMessages(['offer' => 'Сделка идёт у обоих — объединять руками']);
+            throw ValidationException::withMessages(['offer' => 'Сделка идёт у обоих, объединять руками']);
         }
         $keepVehicle = Vehicle::where('offer_id', $keep->id)->first();
         $dropVehicle = Vehicle::where('offer_id', $drop->id)->first();
         if ($keepVehicle && $dropVehicle) {
-            throw ValidationException::withMessages(['offer' => 'У обоих своя ТС парковки — сначала объединить ТС']);
+            throw ValidationException::withMessages(['offer' => 'У обоих своя ТС парковки, сначала объедините ТС']);
         }
 
         $result = DB::transaction(function () use ($keep, $drop, $keepVehicle, $dropVehicle, $by) {

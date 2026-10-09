@@ -101,7 +101,7 @@ final class Structure
         $filename = self::filename($dispositionParams['filename'] ?? null) ?? self::filename($params['name'] ?? null);
         if ($filename === null && $type === 'message' && $subtype === 'rfc822') {
             $subject = is_array($node[7] ?? null) ? self::decodeWords(self::str($node[7][1] ?? '')) : '';
-            $filename = ($subject !== '' ? 'Письмо — '.mb_substr($subject, 0, 120) : 'Письмо').'.eml';
+            $filename = ($subject !== '' ? 'Письмо, '.mb_substr($subject, 0, 120) : 'Письмо').'.eml';
         }
         $isText = $type === 'text' && in_array($subtype, ['plain', 'html'], true);
         $parts[] = [

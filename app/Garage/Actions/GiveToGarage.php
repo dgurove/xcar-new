@@ -43,7 +43,7 @@ final class GiveToGarage
         }
         $legacy = $offer->state === OfferState::Garage && ! Car::where('offer_id', $offer->id)->whereNotNull('deal_id')->exists();
         if (! $legacy && ! in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true)) {
-            throw ValidationException::withMessages(['state' => 'В гараж — из черновика или продажи']);
+            throw ValidationException::withMessages(['state' => 'В гараж можно из черновика или продажи']);
         }
         // Без менеджера — «взяли под себя»: поставщику платим мы. Без гаражной ветки маршрута (Т-Страхование) — платит менеджер.
         $payer = ! $manager ? GaragePayer::Us : ($offer->garageBranch() ? $payer : GaragePayer::Manager);

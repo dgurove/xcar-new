@@ -42,7 +42,7 @@
                     </a>
                     @if ($deal)
                         <a href="{{ Surface::Crm->url('/work/deals/'.$deal->id) }}" class="row" data-turbo="false">
-                            <span class="min-w-0 flex-1">Сделка<span class="row-sub">снять с продажи — только отменив её в CRM</span></span>
+                            <span class="min-w-0 flex-1">Сделка<span class="row-sub">снять с продажи можно, только отменив её в CRM</span></span>
                             <x-ui.chevron/>
                         </a>
                     @endif

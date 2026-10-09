@@ -37,7 +37,7 @@ final class MoveToOffers
             // второго не заводим; фото остаются у ТС закупки.
             if ($holder = Identity::offerFor(Code::key($car->dl), $car->vin)) {
                 $car->update(['offer_id' => $holder->id]);
-                $holder->log(OfferEventType::Note, $by, ['text' => "Закупка {$purchase->number}, ДЛ {$car->dl}: контрпредложение — к этому предложению"]);
+                $holder->log(OfferEventType::Note, $by, ['text' => "Закупка {$purchase->number}, ДЛ {$car->dl}: контрпредложение к этому предложению"]);
 
                 continue;
             }

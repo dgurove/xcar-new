@@ -12,7 +12,7 @@ final class BuyerInterestNotice extends Notice
 
     public function title(): string
     {
-        return $this->interest->user->name.' — интерес к '.$this->interest->offer->titleWithYear();
+        return $this->interest->user->name.': интерес к '.$this->interest->offer->titleWithYear();
     }
 
     public function text(): ?string

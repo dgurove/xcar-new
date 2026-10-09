@@ -31,7 +31,7 @@ class BidController
         if (! $staff) {
             $place($offer, $me, $amount, $data['comment'] ?? null, $kind);
 
-            return back()->with('toast', $kind === BidKind::Garage ? 'В гараж — ждёт решения' : 'Подтверждение отправлено');
+            return back()->with('toast', $kind === BidKind::Garage ? 'В гараж, ждёт решения' : 'Подтверждение отправлено');
         }
 
         $manager = User::withRole(Role::Manager)->find($data['manager_id']);
@@ -44,7 +44,7 @@ class BidController
         }
         $min = $offer->minBid();
         if ($kind === BidKind::Buyer && $min && $amount && $amount < $min) {
-            throw ValidationException::withMessages(['amount' => 'Такую цену не принимаем — предложите выше']);
+            throw ValidationException::withMessages(['amount' => 'Такую цену не принимаем, предложите выше']);
         }
         $placeFor($offer, $manager, $me, $amount, $kind, $data['comment'] ?? null);
 

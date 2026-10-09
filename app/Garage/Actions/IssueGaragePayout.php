@@ -31,7 +31,7 @@ final class IssueGaragePayout
     {
         $car->loadMissing(['offer', 'manager', 'costs', 'invoice', 'payoutInvoice']);
         if ($car->invoice_to !== 'buyer' || $car->invoice?->state !== InvoiceState::Paid || $car->state !== CarState::Sold) {
-            throw ValidationException::withMessages(['car' => 'Выплата — после оплаты покупателем']);
+            throw ValidationException::withMessages(['car' => 'Выплата после оплаты покупателем']);
         }
         $live = $car->payoutInvoice?->state === InvoiceState::Void ? null : $car->payoutInvoice;
         if ($live) {

@@ -44,7 +44,7 @@ final class PlaceBid
                     throw ValidationException::withMessages(['amount' => 'Впишите цену']);
                 }
                 if ($min && $amount < $min) {
-                    throw ValidationException::withMessages(['amount' => 'Такую цену не принимаем — предложите выше']);
+                    throw ValidationException::withMessages(['amount' => 'Такую цену не принимаем, предложите выше']);
                 }
             }
 

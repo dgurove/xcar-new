@@ -153,7 +153,7 @@ final class IssueInvoice
             }
             $payer = Ledger::payerParty($vehicle, $s['payer']);
             if ($payer?->id !== $party->id) {
-                throw ValidationException::withMessages(['storage_until' => 'Хранение '.$s['from']->format('d.m').' – '.$s['to']->format('d.m').' платит '.($payer?->name ?? Accrual::payerLabel($s['payer'])).' — сначала счёт ему']);
+                throw ValidationException::withMessages(['storage_until' => 'Хранение '.$s['from']->format('d.m').' – '.$s['to']->format('d.m').' платит '.($payer?->name ?? Accrual::payerLabel($s['payer'])).', сначала счёт ему']);
             }
             $charge = Charge::create([
                 'party_id' => $party->id, 'vehicle_id' => $vehicle->id, 'invoice_id' => $invoice->id, 'kind' => ChargeKind::Storage,

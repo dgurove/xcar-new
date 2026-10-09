@@ -26,7 +26,7 @@ final class OffersShownNotice extends Notice
 
     public function text(): ?string
     {
-        return count($this->offerIds) === 1 ? 'Посмотрите и отметьте интерес, если подходит.' : 'Всё — в вашей ленте.';
+        return count($this->offerIds) === 1 ? 'Посмотрите и отметьте интерес, если подходит' : 'Всё в вашей ленте';
     }
 
     public function href(): string

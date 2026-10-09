@@ -91,7 +91,7 @@ class BankController
     public function save(Request $request, SetBankAccount $set)
     {
         abort_unless($request->user()->isAdmin(), 403);
-        $data = $request->validate(['account' => ['required', 'digits:20']], ['account.digits' => 'Расчётный счёт — 20 цифр']);
+        $data = $request->validate(['account' => ['required', 'digits:20']], ['account.digits' => 'Расчётный счёт: 20 цифр']);
         $set(Connection::sber(), $data['account']);
 
         return back()->with('toast', 'Сохранено');

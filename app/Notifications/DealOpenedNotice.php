@@ -21,7 +21,7 @@ final class DealOpenedNotice extends Notice
     {
         $price = $this->offer->asking_price ? number_format($this->offer->asking_price, 0, '', ' ').' ₽, ' : '';
 
-        return $price.'идёт сделка — подтверждение встанет резервом';
+        return $price.'идёт сделка, подтверждение встанет резервом';
     }
 
     public function href(): string

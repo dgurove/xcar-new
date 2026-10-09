@@ -737,7 +737,7 @@ class OfferController
         $next = OfferState::from($request->validate(['state' => ['required', 'string']])['state']);
         // В сделку руками нельзя: сделку заводит «Принять» у подтверждения.
         if ($next === OfferState::Sold) {
-            return back()->withErrors(['state' => 'Примите подтверждение менеджера — сделка заведётся сама']);
+            return back()->withErrors(['state' => 'Примите подтверждение менеджера, сделка заведётся сама']);
         }
         // «В галерею» — окно показа черновика, не переход; висит — «Убрать из галереи».
         if ($next === OfferState::Gallery) {

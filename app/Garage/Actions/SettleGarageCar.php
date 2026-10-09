@@ -44,7 +44,7 @@ final class SettleGarageCar
             throw ValidationException::withMessages(['car' => 'Счёт уже выставлен']);
         }
         if ($buyer && (! $car->manager || $car->managerPaidSupplier())) {
-            throw ValidationException::withMessages(['party_id' => 'Поставщику платил менеджер: счёт — только ему']);
+            throw ValidationException::withMessages(['party_id' => 'Поставщику платил менеджер, счёт только ему']);
         }
 
         if ($car->manager) {

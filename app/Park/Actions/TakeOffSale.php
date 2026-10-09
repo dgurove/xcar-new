@@ -27,7 +27,7 @@ final class TakeOffSale
             return;
         }
         if (! self::allowed($offer->state, (bool) $offer->deal)) {
-            throw ValidationException::withMessages(['sale' => 'Идёт сделка — снять с продажи можно, только отменив её в CRM']);
+            throw ValidationException::withMessages(['sale' => 'Идёт сделка: снять с продажи можно, только отменив её в CRM']);
         }
         $fresh = $offer->state === OfferState::Draft && $offer->published_at === null && ! $offer->bids()->where('state', BidState::Active)->exists();
         $fresh ? ($this->unlist)($offer, $by) : ($this->change)($offer, OfferState::Archived, $by);

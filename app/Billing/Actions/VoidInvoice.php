@@ -30,7 +30,7 @@ final class VoidInvoice
             $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             // Зачёт удержанного вознаграждения — не деньги: гаснет вместе со счётом. Живые оплаты — отменить сначала.
             if ($invoice->payments()->whereNotIn('source', PaymentSource::soft())->exists()) {
-                throw ValidationException::withMessages(['invoice' => 'По счёту есть оплаты — сначала отмените их']);
+                throw ValidationException::withMessages(['invoice' => 'По счёту есть оплаты, сначала отмените их']);
             }
             Payment::where('invoice_id', $invoice->id)->whereNull('voided_at')->update(['voided_at' => now()]);
             $storage = $invoice->charges()->where('kind', ChargeKind::Storage)->orderBy('period_from')->get();

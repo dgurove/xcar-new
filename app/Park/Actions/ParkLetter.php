@@ -39,7 +39,7 @@ final class ParkLetter
         $vehicle->loadMissing('vendor.contacts');
         $to = $parent?->replyToAddress() ?? $vehicle->vendor?->email(ContactRole::Storage, ContactRole::Claims);
         if (! $account || ! $to) {
-            Log::warning('Парковка: письмо вендору не ушло — нет ящика или адреса', ['vehicle' => $vehicle->id, 'template' => $templateKey]);
+            Log::warning('Парковка: письмо вендору не ушло, нет ящика или адреса', ['vehicle' => $vehicle->id, 'template' => $templateKey]);
 
             return null;
         }
@@ -61,7 +61,7 @@ final class ParkLetter
     {
         $account = self::account();
         if (! $account) {
-            Log::warning('Парковка: письмо покупателю не ушло — нет ящика', ['vehicle' => $vehicle->id]);
+            Log::warning('Парковка: письмо покупателю не ушло, нет ящика', ['vehicle' => $vehicle->id]);
 
             return null;
         }

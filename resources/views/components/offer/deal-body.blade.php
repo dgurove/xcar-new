@@ -35,7 +35,7 @@
     <p class="mt-3 text-sm text-ink-muted">Приём подтверждений закрыт</p>
 @endif
 @if ($reserve)
-    <p class="mt-3 text-sm text-ink-muted">Идёт сделка — подтверждение встанет резервом</p>
+    <p class="mt-3 text-sm text-ink-muted">Идёт сделка, подтверждение встанет резервом</p>
 @endif
 @if ($myBid && ! $canBid)<x-offer.my-bid :offer="$offer" :bid="$myBid" class="mt-3"/>@endif
 

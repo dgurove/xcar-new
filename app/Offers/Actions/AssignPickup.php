@@ -30,7 +30,7 @@ final class AssignPickup
         }
         // К менеджеру без вывозчика-менеджера — только к держателю гаража: везём мы, стоять у него.
         if ($to === Destination::Keeper && ! $evacuator && ! $offer->garageCar()->exists()) {
-            throw ValidationException::withMessages(['evacuation_to' => 'К менеджеру — когда вывозит менеджер или машина у него в гараже']);
+            throw ValidationException::withMessages(['evacuation_to' => '«К менеджеру» можно, только когда вывозит менеджер или ТС у него в гараже']);
         }
         // Машину в гараже везут всегда (`Garage\Actions\EnsurePickup`, 06.10.2026): «В гараже» вывоз назначается.
         if (in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)

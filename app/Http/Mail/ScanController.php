@@ -151,12 +151,12 @@ final class ScanController
         if ($request->filled('reject')) {
             [$field, $value] = array_pad(explode('|', (string) $request->input('reject'), 2), 2, '');
 
-            return redirect('/cars/'.$vehicle->id)->with('toast', $fill->reject($vehicle, $field, $value) ? 'Отклонено' : 'Уже не так — обновите');
+            return redirect('/cars/'.$vehicle->id)->with('toast', $fill->reject($vehicle, $field, $value) ? 'Отклонено' : 'Уже изменилось, обновите');
         }
         [$field, $value] = array_pad(explode('|', (string) $request->input('take'), 2), 2, '');
         $done = in_array($field, ['vin', 'plate', 'year', 'color', 'value', 'model'], true) && $fill->take($vehicle, $field, $value, $request->user());
 
-        return redirect('/cars/'.$vehicle->id)->with('toast', $done ? 'Взято из документа' : 'Уже не так — обновите');
+        return redirect('/cars/'.$vehicle->id)->with('toast', $done ? 'Взято из документа' : 'Уже изменилось, обновите');
     }
 
     private function window(Request $request, Subject $subject)

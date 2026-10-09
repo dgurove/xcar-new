@@ -286,7 +286,7 @@ final class FillFromDocs
                 continue;
             }
             if ($vehicle->brand && ! $this->agrees($vehicle, $vin)) {
-                $disputed[] = ['field' => 'vin', 'text' => "VIN «{$vin}» (".implode(', ', $sources).") — по нему не {$vehicle->brand->name}"];
+                $disputed[] = ['field' => 'vin', 'text' => "VIN «{$vin}» (".implode(', ', $sources)."), по нему не {$vehicle->brand->name}"];
 
                 continue;
             }

@@ -67,12 +67,12 @@ class VinAutofill
         if ($brand === null && is_string($decoded) && $decoded !== '') {
             $brand = $this->findBrand($decoded);
             if ($brand === null) {
-                $skipped[] = 'марка — «'.$decoded.'» в справочнике не нашлась';
+                $skipped[] = 'марка: «'.$decoded.'» в справочнике не нашлась';
             }
         }
         if ($brand !== null) {
             $values['brand_id'] = $brand->id;
-            $filled[] = "марка — {$brand->name}";
+            $filled[] = "марка: {$brand->name}";
         }
 
         $model = null;
@@ -82,38 +82,38 @@ class VinAutofill
         if ($brand !== null && $model === null && is_string($result->get('model')) && $result->get('model') !== '') {
             $model = $this->findModel($brand, (string) $result->get('model'));
             if ($model === null) {
-                $skipped[] = 'модель — «'.$result->get('model').'» у этой марки не нашлась';
+                $skipped[] = 'модель: «'.$result->get('model').'» у этой марки не нашлась';
             }
         }
         if ($model !== null) {
             $values['model_id'] = $model->id;
-            $filled[] = "модель — {$model->name}";
+            $filled[] = "модель: {$model->name}";
         } elseif ($memory['model_candidates'] !== []) {
-            $skipped[] = 'модель — в базе под таким началом VIN разные: '.implode(', ', $memory['model_candidates']);
+            $skipped[] = 'модель: в базе под таким началом VIN разные: '.implode(', ', $memory['model_candidates']);
         } elseif (is_string($result->get('model_candidates'))) {
-            $skipped[] = 'модель — из VIN однозначно не выводится, варианты: '.$result->get('model_candidates');
+            $skipped[] = 'модель: из VIN однозначно не выводится, варианты: '.$result->get('model_candidates');
         }
 
         $year = $result->get('year');
         if ($result->confidence('year') === 'low') {
             // Renault, Mercedes, BMW год в VIN не пишут: подставить «2012»
             // Москвичу 2023 года хуже, чем оставить пусто — по году считают цену.
-            $skipped[] = 'год — у этой марки в VIN не кодируется, смотрите ПТС';
+            $skipped[] = 'год: у этой марки в VIN не кодируется, смотрите ПТС';
         } elseif (is_int($year) && $year >= 1900 && $year <= (int) date('Y')) {
             $values['year'] = $year;
-            $filled[] = "год — {$year}";
+            $filled[] = "год: {$year}";
         }
 
         $transmission = Transmission::tryFrom((string) ($known['transmission'] ?? $result->get('transmission_type') ?? ''));
         if ($transmission !== null) {
             $values['transmission'] = $transmission->value;
-            $filled[] = 'КПП — '.$transmission->label();
+            $filled[] = 'КПП: '.$transmission->label();
         }
 
         $drive = Drive::tryFrom((string) ($known['drive'] ?? $result->get('drive_type') ?? ''));
         if ($drive !== null) {
             $values['drive'] = $drive->value;
-            $filled[] = 'привод — '.$drive->label();
+            $filled[] = 'привод: '.$drive->label();
         }
 
         $fuelCode = $known['fuel'] ?? $result->get('fuel_type');
@@ -122,25 +122,25 @@ class VinAutofill
         });
         if ($fuel !== null) {
             $values['fuel'] = $fuel->value;
-            $filled[] = 'топливо — '.$fuel->label();
+            $filled[] = 'топливо: '.$fuel->label();
         }
 
         $body = isset($known['body']) ? Body::tryFrom((string) $known['body']) : $this->bodyOf($result->get('body'));
         if ($body !== null) {
             $values['body'] = $body->value;
-            $filled[] = 'кузов — '.$body->label();
+            $filled[] = 'кузов: '.$body->label();
         }
 
         $volume = $known['engine_volume'] ?? (is_numeric($result->get('displacement')) ? (int) round((float) $result->get('displacement') * 1000) : null);
         if ($volume) {
             $values['engine_volume'] = (int) $volume;
-            $filled[] = 'объём — '.number_format((int) $volume, 0, '', ' ').' см³';
+            $filled[] = 'объём: '.number_format((int) $volume, 0, '', ' ').' см³';
         }
 
         $power = $known['engine_power'] ?? $result->get('power_hp');
         if (is_numeric($power) && (int) $power > 0) {
             $values['engine_power'] = (int) $power;
-            $filled[] = 'мощность — '.(int) $power.' л. с.';
+            $filled[] = 'мощность: '.(int) $power.' л. с.';
         }
 
         return ['result' => $result, 'values' => $values, 'filled' => $filled, 'skipped' => $skipped];

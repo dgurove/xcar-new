@@ -20,7 +20,7 @@ final class BuyerJoined extends Message
         $manager = $this->buyer->manager;
 
         return [
-            $this->buyer->name.' — покупатель '.($manager?->shortName() ?? '—'),
+            $this->buyer->name.', покупатель '.($manager?->shortName() ?? '—'),
             $this->buyer->phone ? $this->buyer->phoneFormatted() : null,
             $this->buyer->email,
             self::moment($this->buyer->created_at),

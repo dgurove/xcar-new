@@ -43,7 +43,7 @@ final class SettleStorage
         foreach ($groups as $g) {
             $party = Ledger::payerParty($vehicle, $g['payer']);
             if (! $party) {
-                throw ValidationException::withMessages(['state' => 'Некому выставить хранение за '.Accrual::payerLabel($g['payer']).' — заполните покупателя или комитента']);
+                throw ValidationException::withMessages(['state' => 'Некому выставить хранение за '.Accrual::payerLabel($g['payer']).', заполните покупателя или комитента']);
             }
             $buyer = $g['payer'] === 'buyer';
             $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Storage, $buyer ? now() : now()->addWeekdays($vehicle->vendor?->payment_days ?? 5),

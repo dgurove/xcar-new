@@ -22,7 +22,7 @@ final class UpdateDealMoney
     public function __invoke(Deal $deal, User $by, ?int $commission, CommissionMode $mode, ?DealScheme $scheme = null, ?int $ownerPrice = null, ?int $share = null): void
     {
         if (! $deal->moneyEditable()) {
-            throw ValidationException::withMessages(['commission' => 'По счёту сделки уже платили — сначала отмените оплату']);
+            throw ValidationException::withMessages(['commission' => 'По счёту сделки уже платили, сначала отмените оплату']);
         }
         if ($commission !== null && $deal->amount !== null && $commission > $deal->amount) {
             throw ValidationException::withMessages(['commission' => 'Не больше цены подтверждения '.Money::rub($deal->amount)]);

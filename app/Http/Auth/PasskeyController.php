@@ -22,7 +22,7 @@ class PasskeyController
             return response()->json(['message' => 'Вход только через Telegram'], 422);
         }
         if ($request->user()->webAuthnCredentials()->count() >= self::MAX_KEYS) {
-            return response()->json(['message' => 'Слишком много ключей — удалите лишние'], 422);
+            return response()->json(['message' => 'Слишком много ключей, удалите лишние'], 422);
         }
 
         // Дискавери-ключ: при входе телефон сам предложит нужный, ничего вводить не надо.

@@ -307,7 +307,7 @@ class UserController
     {
         abort_unless($request->user()->isAdmin() && ! $user->is($request->user()), 404);
         if (self::traces($user)) {
-            return back()->with('toast', 'За '.$user->shortName().' есть история — только закрыть доступ');
+            return back()->with('toast', 'За '.$user->shortName().' есть история, можно только закрыть доступ');
         }
         $preset = $user->isRejected() ? 'rejected' : $this->presetOf($user);
         $decide->reject($user, $request->user());
@@ -404,12 +404,12 @@ class UserController
             'roles' => [$self || $parkRoles ? 'nullable' : 'required', 'array', 'min:1'],
             'roles.*' => [Rule::in(array_map(fn (Role $r) => $r->value, self::ROLES))],
         ], [
-            'login.regex' => 'Логин — латиницей, от трёх знаков: буквы, цифры, точка',
+            'login.regex' => 'Логин латиницей, от трёх знаков: буквы, цифры, точка',
             'roles.required' => 'Отметьте хотя бы одну роль',
             'roles.min' => 'Отметьте хотя бы одну роль',
         ]);
         if (! $data['phone'] && ! $data['email'] && ! ($data['login'] ?? null)) {
-            throw ValidationException::withMessages(['phone' => 'Нужен телефон, почта или логин — чем-то человек должен входить']);
+            throw ValidationException::withMessages(['phone' => 'Нужен телефон, почта или логин: чем-то человек должен входить']);
         }
         $data['email'] = $data['email'] ?: null;
         $data['phone'] = $data['phone'] ?: null;

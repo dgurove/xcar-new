@@ -66,7 +66,7 @@ class TariffController
             'id' => empty($r['id']) ? null : (int) $r['id'],
         ]);
         if ($steps->map(fn (array $s) => $s['from_day'].':'.$s['from_value'])->duplicates()->isNotEmpty()) {
-            throw ValidationException::withMessages([$key => 'Две ступени с одними сутками и стоимостью — оставьте одну']);
+            throw ValidationException::withMessages([$key => 'Две ступени с одними сутками и стоимостью, оставьте одну']);
         }
         // Ни одной цены — либо пустая форма новой услуги, либо сбой: цены стираются только кнопкой «Убрать».
         if (! $drop && $steps->isEmpty()) {
@@ -79,7 +79,7 @@ class TariffController
         // Форма новой услуги не имеет права переписать заведённую лестницу: одна строка в ней стёрла бы все
         // ступени. Выбор услуг в ней и так сужен — это защита от устаревшей страницы.
         if ($fresh && $live->isNotEmpty()) {
-            throw ValidationException::withMessages([$key => 'Лестница «'.mb_strtolower($service->label()).'» уже заведена — правьте её выше']);
+            throw ValidationException::withMessages([$key => 'Лестница «'.mb_strtolower($service->label()).'» уже заведена, правьте её выше']);
         }
 
         try {
@@ -107,7 +107,7 @@ class TariffController
                 throw $e;
             }
             // Та же ступень с той же датой уже лежит в истории цен — руками её не разгрести, нужна другая дата.
-            throw ValidationException::withMessages(['valid_from' => 'Цена с '.$from->format('d.m.Y').' по этой ступени уже заводилась — возьмите другую дату']);
+            throw ValidationException::withMessages(['valid_from' => 'Цена с '.$from->format('d.m.Y').' по этой ступени уже заводилась, возьмите другую дату']);
         }
 
         return back()->with('toast', $drop ? 'Лестница убрана' : 'Прайс сохранён')->with('sheet', $data['category'] ?? 'any');

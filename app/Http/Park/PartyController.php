@@ -46,7 +46,7 @@ class PartyController
         $party = Party::create($this->data($request));
         $vendor?->update(['party_id' => $party->id]);
 
-        return back()->with('toast', $party->name.' — добавлен');
+        return back()->with('toast', $party->name.': добавлен');
     }
 
     public function update(Request $request, Party $party)

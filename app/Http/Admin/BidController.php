@@ -45,7 +45,7 @@ class BidController
                 app(EnsurePickup::class)($deal->offer, $request->user(), ($data['pickup'] ?? 'manager') === 'manager' ? $bid->user : null);
             });
 
-            return $this->accepted($request, $bid, $switch ? null : $stage, ($switch ? 'Отдали ' : 'В гараж — ').$bid->user->shortName());
+            return $this->accepted($request, $bid, $switch ? null : $stage, ($switch ? 'Отдали ' : 'В гараж: ').$bid->user->shortName());
         }
         $request->merge(['owner_price' => preg_replace('/\D+/', '', (string) $request->input('owner_price')) ?: null]);
         $data = $request->validate([

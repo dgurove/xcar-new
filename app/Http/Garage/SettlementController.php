@@ -78,7 +78,7 @@ class SettlementController
             'party_kind' => ['nullable', Rule::enum(PartyKind::class)],
             'party_inn' => ['nullable', 'string', 'max:12'],
             'party_phone' => ['nullable', 'string', 'max:32'],
-        ], ['party_name.required' => 'Кто платит — название или ФИО']);
+        ], ['party_name.required' => 'Кто платит: название или ФИО']);
         $buyer = null;
         if (($data['payer'] ?? 'manager') === 'buyer') {
             $buyer = ($data['party_id'] ?? 'new') === 'new'

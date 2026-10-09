@@ -12,7 +12,7 @@ final class VoidCharge
     public function __invoke(Charge $charge, User $by, ?string $reason = null): Charge
     {
         if ($charge->invoice_id) {
-            throw ValidationException::withMessages(['charge' => 'Начисление уже в счёте — аннулируйте счёт']);
+            throw ValidationException::withMessages(['charge' => 'Начисление уже в счёте, аннулируйте счёт']);
         }
         $charge->update(['voided_at' => now(), 'void_reason' => $reason]);
 

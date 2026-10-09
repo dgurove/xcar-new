@@ -85,7 +85,7 @@ class Workflow extends Model
         $own = $stages->pluck('id')->all();
         $reached = [];
         if ($stages->every(fn (Stage $s) => $s->exits->isNotEmpty())) {
-            $problems[] = 'Из каждого этапа есть выход — маршрут никогда не кончается';
+            $problems[] = 'Из каждого этапа есть выход, маршрут никогда не кончается';
         }
         foreach ($stages as $stage) {
             foreach ($stage->exits as $exit) {
@@ -117,10 +117,10 @@ class Workflow extends Model
             foreach ($stage->exits as $exit) {
                 $serviceBranch = in_array($exit->branch, ['keeper', 'ours'], true);
                 if ($this->track === Track::Sale && ($exit->actor === Actor::Keeper || $serviceBranch)) {
-                    $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» — для вывоза, а стоит в маршруте продажи";
+                    $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» для вывоза, а стоит в маршруте продажи";
                 }
                 if ($this->track === Track::Service && in_array($exit->branch, Outcome::SALE_BRANCHES, true)) {
-                    $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» — для продажи, а стоит в маршруте вывоза";
+                    $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» для продажи, а стоит в маршруте вывоза";
                 }
             }
             if ($stage->exits->contains(fn (Outcome $e) => $e->actor === Actor::Timer) && $stage->timerMode() !== 'countdown') {

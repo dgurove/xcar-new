@@ -1,6 +1,6 @@
 <x-ui.auth title="Новый пароль">
     @if ($live)
-        <p class="mt-4 text-ink-muted">{{ $user->name }}, придумайте пароль — с ним вы будете входить как <span class="nums">{{ $user->loginLabel() }}</span>.</p>
+        <p class="mt-4 text-ink-muted">{{ $user->name }}, придумайте пароль, с ним вы будете входить как <span class="nums">{{ $user->loginLabel() }}</span>.</p>
         <form method="post" action="/password/link/{{ $token }}" class="mt-6 space-y-3">
             @csrf
             <input name="password" type="password" required autocomplete="new-password" class="field-input" placeholder="Новый пароль, от восьми знаков" autofocus>
@@ -9,7 +9,7 @@
             <button type="submit" class="btn btn-accent w-full">Сохранить и войти</button>
         </form>
     @else
-        <p class="mt-4 text-ink-muted">Ссылка уже не действует — попросите новую у того, кто её прислал.</p>
+        <p class="mt-4 text-ink-muted">Ссылка уже не действует, попросите новую у того, кто её прислал</p>
         <a href="/login" class="btn btn-accent mt-6 w-full">Войти</a>
     @endif
 </x-ui.auth>

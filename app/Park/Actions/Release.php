@@ -50,7 +50,7 @@ final class Release
             $cashDue = $cash ? 0.0 : Ledger::buyerUnbilled($vehicle, $at);
             $vehicle->loadMissing('vendor');
             if ($debt + $cashDue > 0 && ! $force && ! ($vehicle->vendor?->release_without_payment ?? false)) {
-                throw ValidationException::withMessages(['state' => implode(', ', array_filter([$debt > 0 ? 'не оплачено '.Money::rub($debt) : null, $cashDue > 0 ? 'с покупателя '.Money::rub($cashDue) : null])).' — выдача после оплаты или с подтверждением']);
+                throw ValidationException::withMessages(['state' => implode(', ', array_filter([$debt > 0 ? 'не оплачено '.Money::rub($debt) : null, $cashDue > 0 ? 'с покупателя '.Money::rub($cashDue) : null])).': выдача после оплаты или с подтверждением']);
             }
             if ($cash) {
                 ($this->settle)($vehicle, $by, $at, cash: true);

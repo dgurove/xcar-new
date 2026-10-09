@@ -34,7 +34,7 @@ final class Export
     {
         $file = $purchase->source_file ? Storage::disk('private')->path($purchase->source_file) : null;
         if (! $file || ! is_file($file)) {
-            throw new RuntimeException('Файла поставщика нет — загрузите его в шторке');
+            throw new RuntimeException('Файла поставщика нет, загрузите его в шторке');
         }
         $s = new OffersSummary($purchase);
         $cars = $s->cars->keyBy(fn (Car $c) => mb_strtolower(trim($c->dl)));
