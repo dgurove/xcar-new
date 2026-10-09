@@ -9,6 +9,7 @@ use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 #[Fillable(['vehicle_id', 'user_id', 'type', 'payload'])]
 class VehicleEvent extends Model
@@ -25,6 +26,14 @@ class VehicleEvent extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** День в истории — «15 апр» (год, если не этот). */
+    private static function day(?string $date): string
+    {
+        $d = $date ? Carbon::parse($date) : null;
+
+        return $d ? $d->translatedFormat($d->isCurrentYear() ? 'j M' : 'j M Y') : '—';
     }
 
     public function text(): string
@@ -46,6 +55,10 @@ class VehicleEvent extends Model
             EventType::Released => 'Выдана'.(! empty($p['to']) ? ' — '.$p['to'] : '').(! empty($p['pass']) ? ', по QR' : '').(! empty($p['without_qr']) ? ', без QR: '.$p['without_qr'] : '').(! empty($p['unpaid']) ? ', с долгом '.Money::rub($p['unpaid']) : ''),
             EventType::Note => (string) ($p['text'] ?? ''),
             EventType::Updated => 'Изменена: '.FieldLabels::list($p['fields'] ?? []),
+            EventType::DatesChanged => implode(', ', array_filter([
+                isset($p['accepted']) ? 'Дата приёма: '.self::day($p['accepted'][0]).' → '.self::day($p['accepted'][1]) : null,
+                isset($p['released']) ? 'Дата выдачи: '.self::day($p['released'][0]).' → '.self::day($p['released'][1]) : null,
+            ])),
             EventType::FilledFromDocs => (! empty($p['sources']) ? 'Из документов '.implode(', ', array_map(fn ($s) => '«'.$s.'»', $p['sources'])) : 'Из документов').': '.FieldLabels::list($p['fields'] ?? []),
             EventType::DocSent => ($p['direction'] ?? 'out') === 'in' ? 'Получено от вендора: '.($p['doc'] ?? '') : 'Отправлено вендору: '.($p['doc'] ?? ''),
             EventType::DocBack => 'Снята отметка: '.($p['doc'] ?? ''),

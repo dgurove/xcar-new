@@ -40,4 +40,5 @@ enum EventType: string
     case BuyerForm = 'buyer_form';
     case BuyerConfirmed = 'buyer_confirmed';
     case BuyerRejected = 'buyer_rejected';
+    case DatesChanged = 'dates_changed';
 }

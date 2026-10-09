@@ -33,8 +33,11 @@
             @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
             @if ($total && $total['rate'] && $state !== VehicleState::Released)<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/д</span>@endif
             <x-park.alerts :vehicle="$vehicle" :skip="$differences ? [\App\Park\Alerts::DOCS] : []"/>
-            @if ($vehicle->accepted_at)<span class="tag nums">принята {{ $vehicle->accepted_at->translatedFormat('j M Y') }}</span>@endif
-            @if ($state === VehicleState::Released && $vehicle->released_at)<span class="tag nums">выдана {{ $vehicle->released_at->translatedFormat('j M Y') }}</span>@endif
+            {{-- Даты приёма и выдачи — сами кнопки: шторка «Даты» (dates-sheet), кто правит ТС. --}}
+            @foreach (array_filter(['принята' => $vehicle->accepted_at, 'выдана' => $state === VehicleState::Released ? $vehicle->released_at : null]) as $word => $at)
+                @if (auth()->user()->canManagePark())<button type="button" class="tag nums" data-controller="emit" data-action="emit#send" data-emit-event-param="dates:open">{{ $word }} {{ $at->translatedFormat('j M Y') }}</button>
+                @else<span class="tag nums">{{ $word }} {{ $at->translatedFormat('j M Y') }}</span>@endif
+            @endforeach
             @if ($state === VehicleState::Released && $vehicle->daysStored() !== null)<span class="tag nums">стояла {{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
             @if ($handedTo)<span class="tag">{{ $handedTo }}</span>@endif
             @if ($released && ! empty($released->payload['pass']))<span class="tag">по QR</span>
@@ -87,6 +90,7 @@
             @endunless
         </x-slot:actions>
         @if ($task)@include('park.vehicles.task')@endif
+        @include('park.vehicles.dates-sheet')
         @if ($differences || $scanFiles->isNotEmpty())
             <form method="post" action="{{ $href }}/take" class="mt-3">@csrf
                 <x-park.doc-differences :vehicle="$vehicle" :differences="$differences">

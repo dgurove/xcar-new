@@ -265,10 +265,11 @@
     </div>
     </div>
 
-    {{-- Шторки: договор, продано, действия «⋯», отмена заявки. --}}
+    {{-- Шторки: даты приёма и выдачи, договор, продано, действия «⋯», отмена заявки. --}}
+    @include('park.vehicles.dates-sheet')
     @if ($canManage)
         <div data-controller="sheet" data-action="contract:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="contract" title="Условия" tall :open="$errors->hasAny(['contract_kind', 'assigned_price', 'accepted_at', 'released_at', 'storage_rate'])">
+            <x-ui.sheet id="contract" title="Условия" tall :open="$errors->hasAny(['contract_kind', 'assigned_price', 'storage_rate'])">
                 <form method="post" action="/cars/{{ $vehicle->id }}" class="flex flex-col gap-3">
                     @csrf @method('put')
                     <div class="fields">
@@ -280,9 +281,6 @@
                         <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" :value="$vehicle->storage_rate"/>
                         <x-ui.field name="storage_rate_note" label="Почему своя" :value="$vehicle->storage_rate_note"/>
                         <x-ui.field name="billing_cadence" label="Счёт за хранение" :options="\App\Billing\Cadence::options()" :placeholder="'Как у вендора'.($vehicle->vendor ? ': '.mb_strtolower($vehicle->vendor->billing_cadence->label()) : '')" :value="$vehicle->billing_cadence?->value"/>
-                        {{-- Даты приёма и выдачи правятся, пока хранение по ним не выставлено (сервер отобьёт иначе). --}}
-                        @if ($vehicle->accepted_at)<x-ui.field name="accepted_at" label="Принята" type="datetime-local" :value="$vehicle->accepted_at->format('Y-m-d\TH:i')"/>@endif
-                        @if ($vehicle->released_at)<x-ui.field name="released_at" label="Выдана" type="datetime-local" :value="$vehicle->released_at->format('Y-m-d\TH:i')"/>@endif
                     </div>
                     <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                 </form>

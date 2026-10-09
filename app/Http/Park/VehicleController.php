@@ -33,6 +33,7 @@ use App\Park\Actions\Move;
 use App\Park\Actions\PromoteCandidate;
 use App\Park\Actions\PutOnSale;
 use App\Park\Actions\RestoreVehicle;
+use App\Park\Actions\SetDates;
 use App\Park\Actions\SetYard;
 use App\Park\Actions\TakeOffSale;
 use App\Park\Actions\Transfer;
@@ -251,22 +252,7 @@ class VehicleController
             'contract_kind' => ['nullable', Rule::in(['storage', 'commission'])], 'contract_no' => ['nullable', 'string', 'max:60'], 'contract_at' => ['nullable', 'date'], 'assigned_price' => ['nullable', 'integer', 'min:0'],
             'pts' => ['nullable', 'string', 'max:40'], 'sts' => ['nullable', 'string', 'max:40'], 'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'], 'billing_cadence' => ['nullable', Rule::enum(Cadence::class)],
             'back' => ['nullable', 'string', 'max:200', 'regex:#^/(?!/)#'],
-            'accepted_at' => ['nullable', 'date'], 'released_at' => ['nullable', 'date', 'after_or_equal:accepted_at'],
         ]);
-        // Даты приёма и выдачи — только пока хранение по ним не выставлено: на них считаются сутки.
-        foreach (['accepted_at', 'released_at'] as $key) {
-            if (! array_key_exists($key, $data) || ! $vehicle->{$key}) {
-                unset($data[$key]);
-
-                continue;
-            }
-            if ($data[$key] && ! $vehicle->{$key}->equalTo(Carbon::parse($data[$key])) && $vehicle->storage_billed_until) {
-                return back()->withErrors([$key => 'Хранение уже выставлено, сначала аннулируйте счёт'])->withInput();
-            }
-            if (! $data[$key]) {
-                unset($data[$key]);
-            }
-        }
         $back = $data['back'] ?? null;
         unset($data['back']);
         $update($vehicle, $data, $request->user());
@@ -275,6 +261,15 @@ class VehicleController
         $promote->forVehicle($vehicle);
 
         return redirect($back ?: "/cars/{$vehicle->id}")->with('toast', 'Сохранено');
+    }
+
+    /** Поправить день приёма и выдачи — шторка «Даты» из карточки строки и дела (`SetDates`). */
+    public function dates(Request $request, Vehicle $vehicle, SetDates $dates)
+    {
+        $data = $request->validate(['accepted_at' => ['nullable', 'date'], 'released_at' => ['nullable', 'date']]);
+        $dates($vehicle, $request->user(), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, isset($data['released_at']) ? Carbon::parse($data['released_at']) : null);
+
+        return back()->with('toast', 'Даты поправлены');
     }
 
     /** Страховая продала ТС: дата и кому выдать — руками или поправить то, что вынул разбор письма. `clear` — не продано. */
