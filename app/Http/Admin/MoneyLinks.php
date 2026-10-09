@@ -126,6 +126,19 @@ final class MoneyLinks
         return $l->origin() === 'manual' ? $l->invoice->creator : ($l->auto ? null : $l->creator);
     }
 
+    /**
+     * Кто взял ссылку — одним словом в «Создано» (09.10.2026, владелец: «либо имя, либо сделка; раз имя — значит
+     * вручную»): у ручной — кто выставил, у сделки и гаража — откуда.
+     */
+    public static function who(PayLink $l): string
+    {
+        return match ($l->origin()) {
+            'manual' => $l->invoice->creator?->shortName() ?? 'вручную',
+            'deal' => 'сделка',
+            default => 'гараж',
+        };
+    }
+
     /** ТС строкой без номера («Kia Rio») и номер отдельно — у таблицы свои столбцы. @return array{?string, ?int} */
     public static function car(PayLink $l): array
     {

@@ -14,7 +14,7 @@
                 <x-money.feed-row :key="$l->id" :with="['tab' => 'links']" :title="$l->payerName()" :amount="Money::rub($l->amount)" :tone="$l->state === PayLinkState::Paid ? 'text-open' : null"
                     @class(['opacity-50' => $l->state === PayLinkState::Canceled])>
                     @if ($car)<span>{{ $car }}@if ($number), № {{ $number }}@endif</span>@endif
-                    <span>{{ mb_strtolower(L::from($l)) }}</span>
+                    <span>{{ L::who($l) }}</span>
                     <span class="{{ $tone }}">{{ $state }}</span>
                 </x-money.feed-row>
             @endforeach

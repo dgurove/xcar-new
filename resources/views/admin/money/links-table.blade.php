@@ -18,8 +18,7 @@
             <x-ui.th :sort="$sortable" key="payer" class="grow">Кто платит</x-ui.th>
             <x-ui.th class="hidden sm:table-cell">Марка, модель</x-ui.th>
             <x-ui.th class="col-detail-hide hidden lg:table-cell">№</x-ui.th>
-            <x-ui.th class="col-detail-hide hidden lg:table-cell">Откуда</x-ui.th>
-            <x-ui.th class="hidden sm:table-cell">Сейчас</x-ui.th>
+            <x-ui.th class="hidden sm:table-cell">Статус</x-ui.th>
             <x-ui.th :sort="$sortable" key="created" class="num col-detail-hide hidden sm:table-cell">Создано</x-ui.th>
             <x-ui.th :sort="$sortable" key="amount" class="num">Сумма</x-ui.th>
         </tr></x-slot:head>
@@ -27,7 +26,6 @@
             @php
                 [$car, $number] = L::car($l);
                 [$state, $tone] = L::state($l);
-                $by = L::creator($l);
                 $off = $l->state === PayLinkState::Canceled;
             @endphp
             <tr data-detail-key="{{ $l->id }}" data-search-row @class(['opacity-50' => $off])>
@@ -36,14 +34,13 @@
                     <span class="cell-sub sm:hidden">
                         <span class="{{ $tone }}">{{ $state }}</span>
                         @if ($car)<span>{{ $car }}@if ($number), № {{ $number }}@endif</span>@endif
-                        <span>{{ L::from($l) }}</span>
+                        <span>{{ L::who($l) }}</span>
                     </span>
                 </td>
                 <td class="hidden sm:table-cell">@if ($car){{ $car }}@else<span class="text-ink-dim">не указано</span>@endif</td>
                 <td class="cell-dim col-detail-hide hidden lg:table-cell nums">{{ $number }}</td>
-                <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ L::from($l) }}</td>
                 <td class="hidden sm:table-cell {{ $tone }}">{{ $state }}</td>
-                <td class="num cell-dim col-detail-hide hidden sm:table-cell nums">{{ $when($l->created_at) }}@if ($by)<span class="text-ink-dim">, {{ $by->shortName() }}</span>@endif</td>
+                <td class="num cell-dim col-detail-hide hidden sm:table-cell nums">{{ $when($l->created_at) }}<span class="text-ink-dim">, {{ L::who($l) }}</span></td>
                 <td class="num nums {{ $l->state === PayLinkState::Paid ? 'text-open' : '' }}">{{ Money::nums($l->amount) }}</td>
             </tr>
         @endforeach

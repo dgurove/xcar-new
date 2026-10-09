@@ -12,8 +12,8 @@
     $created = 'num cell-dim col-detail-hide hidden sm:table-cell';
     // Столбцы вкладки: [заголовок, классы ячейки, поле сортировки].
     $cols = match ($key) {
-        'owed' => [['Плательщик', 'grow', 'payer'], ['Менеджер', 'col-detail-hide hidden lg:table-cell', null], ['ТС', 'cell-dim hidden sm:table-cell', null], ['Счёт', 'cell-dim col-detail-hide hidden lg:table-cell', 'number'], ['Сейчас', 'hidden sm:table-cell', 'due'], ['Создано', $created, 'created'], ['Сумма', 'num', 'amount']],
-        default => [['Менеджер', 'grow', 'payer'], ['ТС', 'cell-dim hidden sm:table-cell', null], ['Сейчас', 'hidden sm:table-cell', 'due'], ['Создано', $created, 'created'], ['Сумма', 'num', 'amount']],
+        'owed' => [['Плательщик', 'grow', 'payer'], ['Менеджер', 'col-detail-hide hidden lg:table-cell', null], ['ТС', 'cell-dim hidden sm:table-cell', null], ['Счёт', 'cell-dim col-detail-hide hidden lg:table-cell', 'number'], ['Статус', 'hidden sm:table-cell', 'due'], ['Создано', $created, 'created'], ['Сумма', 'num', 'amount']],
+        default => [['Менеджер', 'grow', 'payer'], ['ТС', 'cell-dim hidden sm:table-cell', null], ['Статус', 'hidden sm:table-cell', 'due'], ['Создано', $created, 'created'], ['Сумма', 'num', 'amount']],
     };
     $span = count($cols);
     $c = fn (int $n) => $cols[$n][1];

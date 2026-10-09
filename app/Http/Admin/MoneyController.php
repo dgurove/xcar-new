@@ -104,13 +104,17 @@ class MoneyController
         ]);
     }
 
-    /** Счета вкладки: нам по сделкам и гаражу (с чипом менеджера), выплаты менеджерам (с чипом). «По ссылкам» — `MoneyLinks`. */
-    private static function of(string $tab, ?Facets $facets = null)
+    /**
+     * Счета вкладки: нам по сделкам и гаражу, что платят по счёту (с чипом менеджера), выплаты менеджерам (с чипом).
+     * Счёт со ссылкой на оплату живёт в «По ссылкам» (`MoneyLinks`), здесь его нет (09.10.2026, владелец: «тут должны быть
+     * ссылки, а там то, что по счёту»); `links` — с ними: заявка менеджера «оплатил» по такому счёту всё равно здесь.
+     */
+    private static function of(string $tab, ?Facets $facets = null, bool $links = false)
     {
         $q = Invoice::crmMoney();
 
         return match ($tab) {
-            'owed' => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')->whereNot(self::oneOff()),
+            'owed' => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')->whereNot(self::oneOff())->when(! $links, fn ($w) => $w->whereDoesntHave('payLinks')),
             default => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'owed')->where('kind', ChargeKind::AgentFee),
         };
     }
@@ -129,7 +133,7 @@ class MoneyController
     {
         $q = fn () => self::of($tab, $facets)->when($find, $find)->with(self::WITH);
         $claims = $tab === 'owed'
-            ? Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereIn('billing_invoices.id', self::of('owed', $facets)->when($find, $find)->select('billing_invoices.id')))
+            ? Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereIn('billing_invoices.id', self::of('owed', $facets, links: true)->when($find, $find)->select('billing_invoices.id')))
                 ->with(['invoice' => fn ($i) => $i->with(self::WITH)])->orderBy('paid_at')->orderBy('id')->get()
             : collect();
         $tried = $tab === 'payouts' ? collect() : self::tried(self::of($tab, $facets)->when($find, $find))->pluck('billing_invoices.id');
@@ -169,7 +173,7 @@ class MoneyController
             'counts' => ['links' => MoneyLinks::openCount(), 'owed' => $open('owed')->count(), 'payouts' => $n = $open('payouts')->count()],
             'tones' => array_filter([
                 'links' => MoneyLinks::tried() ? 'pill-urgent' : '',
-                'owed' => self::tried($open('owed'))->exists() || $open('owed')->whereHas('claims')->exists() ? 'pill-urgent' : '',
+                'owed' => self::of('owed', $facets, links: true)->where('state', InvoiceState::Issued)->whereHas('claims')->exists() ? 'pill-urgent' : '',
                 'payouts' => $n ? 'pill-urgent' : '',
             ]),
         ];

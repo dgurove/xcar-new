@@ -219,8 +219,8 @@ class ManualLinkCreditTest extends TestCase
 
         $this->get($crm.'/work/money')->assertOk()
             ->assertSee('data-detail-key="'.$manual->openLink()->id.'"', false)->assertSee('data-detail-key="'.$this->selection($deal)->openLink()->id.'"', false)
-            ->assertSee('Тужиков Евгений')->assertSee('Сделка')
-            ->assertSee('Морковин Дмитрий Евгеньевич')->assertSee('Lada Vesta')->assertSee('Вручную');
+            ->assertSee('Тужиков Евгений')->assertSee(', сделка')
+            ->assertSee('Морковин Дмитрий Евгеньевич')->assertSee('Lada Vesta')->assertSee(', Владелец');
         $this->get($crm.'/work/money?q='.urlencode('морковин дмитрий'))->assertOk()->assertSee('data-detail-key="'.$manual->openLink()->id.'"', false)->assertDontSee('data-detail-key="'.$this->selection($deal)->openLink()->id.'"', false);
 
         $link = $manual->openLink();
