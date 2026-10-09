@@ -1,7 +1,7 @@
 @php use App\Park\{RequestState, ReleasedTo, Inspection}; use App\Support\Money; @endphp
 {{-- Шаг «Эвакуация»: назначить (поля) или, когда назначена, чипы и «Выехали» в плашке; «Перенести» — снова через звонок. --}}@if ($req->state === RequestState::New)
     <div class="mt-3 grid grid-cols-2 gap-3">
-        <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')"/>
+        <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')" now/>
         <x-park.yard-field :yards="$yards" label="Куда" placeholder="—" :value="$req->yard_id"/>
         <x-ui.field name="from_address" label="Откуда" :value="$req->from_address" span="col-span-2"/>
     </div>

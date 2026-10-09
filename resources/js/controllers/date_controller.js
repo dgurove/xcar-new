@@ -10,6 +10,8 @@ import 'cally';
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+// «Сейчас» по Москве, как у сервера (`app.timezone`): у владельца в Дубае браузер на час впереди. [день, чч:мм]
+const moscow = () => { const [day, clock] = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Moscow' }).split(' '); return [day, clock.slice(0, 5)]; };
 
 export default class extends Controller {
     static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error'];
@@ -41,7 +43,8 @@ export default class extends Controller {
         const p = this.parts;
         this.calTarget.value = p?.date || '';
         this.calTarget.focusedDate = p?.date || iso(new Date());
-        if (this.hasTimeTarget) this.timeTarget.value = p?.time || this.defaultTimeValue;
+        // Пустое поле с `now` открывается с временем сейчас (выберут другой день — станет время по умолчанию).
+        if (this.hasTimeTarget) this.timeTarget.value = p?.time || (this.nowValue ? moscow()[1] : this.defaultTimeValue);
         if (this.hasClearTarget) this.clearTarget.hidden = !p;
         const pop = this.popTarget, r = this.textTarget.getBoundingClientRect(), w = document.documentElement.clientWidth;
         pop.showPopover();
@@ -75,9 +78,8 @@ export default class extends Controller {
         // `now` (приём на парковке, владелец 10.10.2026): сегодня — время сейчас, другой день — время по умолчанию (12:00);
         // время, поправленное руками, не трогаем.
         if (this.nowValue && !this.timeEdited) {
-            // «Сейчас» — московское, как у сервера (`app.timezone`): у владельца в Дубае браузер на час впереди.
-            const [day, clock] = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Moscow' }).split(' ');
-            const t = date === day ? clock.slice(0, 5) : this.defaultTimeValue;
+            const [day, clock] = moscow();
+            const t = date === day ? clock : this.defaultTimeValue;
             if (this.hasTimeTarget) this.timeTarget.value = t;
         }
         this.set(`${date}T${this.clock() || this.defaultTimeValue}`);

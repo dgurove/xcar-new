@@ -139,7 +139,7 @@
                         @if ($type === RequestType::Move)
                             <x-park.yard-field :yards="$yards" label="Куда" placeholder="—"/>
                         @endif
-                        <x-ui.field name="planned_at" :label="$letters ? 'Когда привезут' : 'Когда'" type="datetime-local" :value="$val('planned_at')"/>
+                        <x-ui.field name="planned_at" :label="$letters ? 'Когда привезут' : 'Когда'" type="datetime-local" :value="$val('planned_at')" now/>
                         @if ($type === RequestType::Tow || $letters)
                             <x-ui.field name="from_address" label="Откуда" :value="$val('from_address')" span="col-span-full sm:col-span-2"/>
                         @endif

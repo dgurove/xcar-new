@@ -23,7 +23,7 @@
 <div class="list release-list mt-3">
     <div class="row justify-between">
         <label for="f-released_at" class="text-ink-muted">Когда</label>
-        <x-ui.date name="released_at" :value="old('released_at', now()->format('Y-m-d\TH:i'))" time :clearable="false" class="release-when"/>
+        <x-ui.date name="released_at" :value="old('released_at', now()->format('Y-m-d\TH:i'))" time now :clearable="false" class="release-when"/>
     </div>
     @error('released_at')<p class="field-error px-4 pb-2">{{ $message }}</p>@enderror
     @if (! $qr && $who)

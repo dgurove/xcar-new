@@ -14,12 +14,12 @@
     <label class="choice"><input type="radio" name="outcome" value="missed" data-action="reveal#pick" data-reveal-label="Перезвоню" @checked(old('outcome') === 'missed')><span>Не дозвонился</span></label>
 </div>
 <div class="mt-3 grid grid-cols-2 gap-3" data-reveal-target="pane" data-reveal-key="tow">
-    <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')"/>
+    <x-ui.field name="planned_at" label="Когда" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')" now/>
     <x-park.yard-field :yards="$yards" label="Куда" placeholder="—" :value="$req->yard_id"/>
     <x-ui.field name="from_address" label="Откуда" :value="$req->from_address" span="col-span-2"/>
 </div>
 <div class="mt-3 grid grid-cols-2 gap-3" data-reveal-target="pane" data-reveal-key="self" hidden>
-    <x-ui.field name="planned_at" label="Когда привезёт" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')" disabled/>
+    <x-ui.field name="planned_at" label="Когда привезёт" type="datetime-local" :value="$req->planned_at?->format('Y-m-d\TH:i')" now disabled/>
     <x-park.yard-field :yards="$yards" label="Куда" placeholder="—" :value="$req->yard_id" disabled/>
 </div>
 <div class="mt-3" data-reveal-target="pane" data-reveal-key="missed" hidden>
