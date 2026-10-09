@@ -190,8 +190,8 @@ class VehicleController
 
         return view('park.vehicles.detail', [
             'vehicle' => $vehicle, 'yards' => $yards->pluck('name', 'id'),
-            // Свободные места парковок — форме приёма в карточке (`steps/intake`, spots_controller).
-            'yardRows' => $task?->type === RequestType::Intake ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],
+            // Свободные места парковок — форме приёма и шторке «Переставить» в карточке (spots_controller).
+            'yardRows' => $task?->type === RequestType::Intake || $vehicle->state === VehicleState::Stored ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],
             // Выдача в карточке (`steps/release`): QR, что держит выдачу и что выставим вендору — как в деле (`CaseView`).
             ...($task?->type === RequestType::Release && $vehicle->state === VehicleState::Stored) ? [
                 'byQr' => $vehicle->releasesByQr(), 'pass' => $vehicle->releasesByQr() ? $vehicle->pass() : null, 'scannedPass' => null,

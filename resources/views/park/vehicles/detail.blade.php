@@ -1,5 +1,6 @@
 {{-- Карточка строки таблицы машин стоянки (фрейм detail) — работа с ТС без страницы:
-     лента фото, метки, дней на стоянке; у заявки на приём — задача с формой приёма прямо в карточке (`task`); переставить (стоянка выбором, отправка сразу), выдать (дата, с
+     лента фото, метки, дней на стоянке; у заявки на приём — задача с формой приёма прямо в карточке (`task`); переставить
+     (метка парковки — кнопка шторки «Переставить»), выдать (дата, с
      подтверждением), акты; ниже расхождения карточки с документами строками «Взять» (FillFromDocs), заявки строками и
      заметка с последними событиями. Под действиями — группа документов: расхождения и «Заполнить из документов»
      (пока нет марки, модели, VIN, года или цвета) или «Сверить с документами»; искра — ещё и в полосе карточки (tools).
@@ -30,7 +31,11 @@
             @if ($vehicle->ref)<x-ui.copy-code class="tag" :value="$vehicle->ref"/>@endif
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
             @if ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
-            @if ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
+            {{-- Где стоит — сама кнопка перестановки (владелец 10.10.2026: «сделай перестановку понятнее»; было голым списком
+                 парковок в ряду действий): нажатие — шторка «Переставить» с парковкой и местом. --}}
+            @if ($vehicle->yard && $state === VehicleState::Stored && ! ($fromRequests ?? false))
+                <button type="button" class="tag" data-controller="emit" data-action="emit#send" data-emit-event-param="move:open" aria-label="Переставить"><x-ui.place>{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place><x-ui.icon name="chevron-down" class="size-3.5 opacity-60"/></button>
+            @elseif ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
             @if ($total && $total['rate'] && $state !== VehicleState::Released)<span class="tag nums">{{ \App\Support\Money::rub($total['rate']) }}/д</span>@endif
             <x-park.alerts :vehicle="$vehicle" :skip="$differences ? [\App\Park\Alerts::DOCS] : []"/>
             {{-- Даты приёма и выдачи — сами выбор даты и времени, только администратору парковки (`x-park.date-edit`). --}}
@@ -59,12 +64,6 @@
                 @unless ($open)<form method="post" action="/requests" class="contents">@csrf<input type="hidden" name="type" value="intake"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Принять</button></form>@endunless
             @endif
             @if ($state === VehicleState::Stored)
-                {{-- Перестановка на другую парковку — когда их больше одной (у управляющего Питера одна). --}}
-                @if (count($yards) > 1)<form method="post" action="{{ $href }}/move" class="contents" data-controller="autosubmit">@csrf
-                    <select name="yard_id" class="field-input field-s w-auto" aria-label="Парковка" data-action="change->autosubmit#submit">
-                        @foreach ($yards as $id => $name)<option value="{{ $id }}" @selected($id == $vehicle->yard_id)>{{ $name }}</option>@endforeach
-                    </select>
-                </form>@endif
                 {{-- Выдача — через заявку: открыта — форма ниже (`task`); нет — «Выдать» заводит её, и карточка показывает форму. --}}
                 @unless ($vehicle->openRequest(\App\Park\RequestType::Release))
                     <form method="post" action="/requests" class="contents">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Выдать</button></form>
@@ -82,6 +81,21 @@
         </x-slot:actions>
         @if ($task)@include('park.vehicles.task')@endif
         <x-park.date-forms :vehicle="$vehicle"/>
+        @if ($state === VehicleState::Stored && ! ($fromRequests ?? false))
+            <div data-controller="sheet" data-action="move:open@window->sheet#open" class="contents">
+                <x-ui.sheet id="move-{{ $vehicle->id }}" title="Переставить">
+                    <form method="post" action="{{ $href }}/move" class="flex flex-col gap-3">
+                        @csrf
+                        <div class="fields" data-controller="spots" data-spots-map-value="{{ json_encode($yardRows) }}">
+                            <x-park.yard-field :yards="$yards" :value="$vehicle->yard_id" required data-spots-target="yard" data-action="change->spots#sync"/>
+                            <x-ui.field name="spot" label="Место" :value="$vehicle->spot" list="move-spots-{{ $vehicle->id }}" autocapitalize="characters"/>
+                            <datalist id="move-spots-{{ $vehicle->id }}" data-spots-target="list"></datalist>
+                        </div>
+                        <div class="sheet-foot"><x-ui.button block>Переставить</x-ui.button></div>
+                    </form>
+                </x-ui.sheet>
+            </div>
+        @endif
         @if ($differences || $scanFiles->isNotEmpty())
             <form method="post" action="{{ $href }}/take" class="mt-3">@csrf
                 <x-park.doc-differences :vehicle="$vehicle" :differences="$differences">
