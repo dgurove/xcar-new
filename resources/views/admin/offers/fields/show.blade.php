@@ -7,16 +7,9 @@
     {{-- Блок пришёл в форме: его галки и «кому» без отметки считаются снятыми (`OfferRequest::payload`). --}}
     <input type="hidden" name="_show" value="1">
     <div class="{{ $grid }}">
-        @php($close = old('bids_close_at', $offer->bids_close_at?->format('Y-m-d\TH:i')))
-        <div class="field col-span-2 @4xl:col-span-1 {{ $errors->has('bids_close_at') ? 'field-invalid' : '' }}" data-controller="evening">
-            <label for="f-bids_close_day" class="field-label">Приём подтверждений до</label>
-            <div class="grid grid-cols-[1fr_auto] gap-2">
-                <input id="f-bids_close_day" type="date" class="field-input" value="{{ $close ? substr($close, 0, 10) : '' }}" data-evening-target="day" data-action="change->evening#day">
-                <input type="time" class="field-input" value="{{ $close ? substr($close, 11, 5) : '' }}" aria-label="Время" data-evening-target="time" data-action="change->evening#sync">
-            </div>
-            <input type="hidden" name="bids_close_at" value="{{ $close }}" data-evening-target="out">
-            @error('bids_close_at')<p class="field-error">{{ $message }}</p>@enderror
-        </div>
+        {{-- Срок приёма — выбор даты (`x-ui.date`), время по умолчанию 17:30 (владелец 10.10.2026: «чаще всего надо 17:30»). --}}
+        <x-ui.field name="bids_close_at" label="Приём подтверждений до" type="datetime-local" default-time="17:30" span="col-span-2 @4xl:col-span-1"
+            :value="$offer->bids_close_at?->format('Y-m-d\TH:i')"/>
         <div class="field col-span-2">
             <span class="field-label">Кому показывать</span>
             @include('admin.offers.fields.audience')

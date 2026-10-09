@@ -30,7 +30,12 @@
 <div class="field {{ $span }} {{ $error ? 'field-invalid' : '' }}">
     @if ($label && $afterLabel)<span class="field-label flex items-center gap-1.5"><label for="{{ $id }}">{{ $label }}@if ($required)<x-ui.req/>@endif</label>{{ $afterLabel }}</span>
     @elseif ($label)<label for="{{ $id }}" class="field-label">{{ $label }}@if ($required)<x-ui.req/>@endif</label>@endif
-    @if ($options !== null)
+    @if (in_array($type, ['date', 'datetime-local'], true))
+        {{-- Дата и время — свой выбор (`x-ui.date`, календарь), не системное поле: год текущий и время по умолчанию
+             (`default-time`) уже стоят, день — одним нажатием (владелец 10.10.2026). --}}
+        <x-ui.date :name="$name" :id="$id" :value="$bound" :time="$type === 'datetime-local'" :default-time="$attributes->get('default-time', '12:00')"
+            :min="$attributes->get('min')" :max="$attributes->get('max')" :placeholder="$placeholder" {{ $attributes->except(['id', 'min', 'max', 'default-time']) }}/>
+    @elseif ($options !== null)
         <select id="{{ $id }}" name="{{ $name }}" {{ $attributes->except('id')->merge(['class' => 'field-input']) }}>
             @if ($placeholder)<option value="">{{ $placeholder }}</option>@endif
             @foreach ($options as $optValue => $optLabel)

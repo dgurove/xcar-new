@@ -21,10 +21,10 @@
     <div class="mt-3 flex items-center gap-2 text-sm"><x-vendor.name :vendor="$vehicle->vendor"/><span class="text-ink-muted">выдача без QR</span></div>
 @endif
 <div class="list release-list mt-3">
-    <label class="row justify-between">
-        <span class="text-ink-muted">Когда</span>
-        <input type="datetime-local" name="released_at" value="{{ old('released_at', now()->format('Y-m-d\TH:i')) }}" class="release-when">
-    </label>
+    <div class="row justify-between">
+        <label for="f-released_at" class="text-ink-muted">Когда</label>
+        <x-ui.date name="released_at" :value="old('released_at', now()->format('Y-m-d\TH:i'))" time class="release-when"/>
+    </div>
     @error('released_at')<p class="field-error px-4 pb-2">{{ $message }}</p>@enderror
     @if (! $qr && $who)
         <div class="row justify-between">

@@ -66,9 +66,9 @@ window.Stimulus = application;
 // Контроллеры, нужные только на своих экранах (чат, фото, сканер QR, подпись, редактор…), — отдельными кусками:
 // грузятся, когда на странице появился их data-controller. Остальные — в основной сборке, сразу.
 const controllerName = (path) => path.match(/\/([\w-]+)_controller\.js$/)[1].replace(/_/g, '-');
-const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,gallery,audience,landing,login,tariff_form,car_text,drop_empty,valuation}_controller.js'], { eager: true });
+const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,gallery,audience,landing,login,tariff_form,car_text,drop_empty,valuation,date}_controller.js'], { eager: true });
 for (const [path, module] of Object.entries(controllers)) application.register(controllerName(path), module.default);
-const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,gallery,audience,landing,login,tariff_form,car_text,drop_empty,valuation}_controller.js')).map(([path, load]) => [controllerName(path), load]));
+const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,gallery,audience,landing,login,tariff_form,car_text,drop_empty,valuation,date}_controller.js')).map(([path, load]) => [controllerName(path), load]));
 const loadLazy = (root) => {
     for (const [name, load] of lazy) {
         const selector = `[data-controller~="${name}"]`;
@@ -436,7 +436,7 @@ function keyboardInset() {
     const vv = window.visualViewport;
     if (!vv) return;
     // Календарь и список — не клавиатура: их шторка viewport не ужимает, и сдвигать под неё ничего не надо.
-    const TYPED = 'input:not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not([type=checkbox]):not([type=radio]):not([type=file]), textarea, [contenteditable="true"], trix-editor';
+    const TYPED = 'input:not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not(.date-input):not([type=checkbox]):not([type=radio]):not([type=file]), textarea, [contenteditable="true"], trix-editor';
     const field = () => document.activeElement?.matches(TYPED);
     const root = document.documentElement;
     const ios = /iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
