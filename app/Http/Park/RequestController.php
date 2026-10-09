@@ -61,7 +61,7 @@ class RequestController
     /** Главная стоянки и список заявок: пресеты «Просрочено», «Связаться», типы и «Готовые», поиск по ТС, вендор, площадка, «Мои»; три вида с карточкам строки. */
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($req = ParkRequest::find($key)) && $req->vehicle ? app(VehicleController::class)->detail($request, $req->vehicle) : null);
+        $detail = Detail::of($request, fn (string $key) => ($req = ParkRequest::find($key)) && $req->vehicle ? app(VehicleController::class)->detail($request, $req->vehicle, $req) : null);
         if ($detail->framed()) {
             return $detail->response();
         }

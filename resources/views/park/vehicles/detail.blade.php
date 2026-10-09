@@ -21,7 +21,7 @@
     <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()">
         <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
         {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
-        @if ($vehicle->photos()->isNotEmpty())
+        @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
             <x-slot:media>@include('park.vehicles.detail-photos')</x-slot:media>
         @endif
         <x-slot:marks>
@@ -48,10 +48,12 @@
         <x-slot:actions>
             @if ($state === VehicleState::Expected)
                 @php $open = $vehicle->openRequest(\App\Park\RequestType::Tow) ?? $vehicle->openRequest(\App\Park\RequestType::Intake); @endphp
-                @if ($open)<a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">{{ $open->verb() ?? 'Открыть' }}</a>
+                {{-- Действие открытой заявки — в задаче ниже (park/vehicles/task): здесь его не повторяем. --}}
+                @if ($open && $task)
+                @elseif ($open)<a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">{{ $open->verb() ?? 'Открыть' }}</a>
                 @else<form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="intake"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Принять</button></form>@endif
             @endif
-            @if ($state === VehicleState::InTransit && ($tow = $vehicle->openRequest(\App\Park\RequestType::Tow)))
+            @if ($state === VehicleState::InTransit && ! $task && ($tow = $vehicle->openRequest(\App\Park\RequestType::Tow)))
                 <a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Принять</a>
             @endif
             @if ($state === VehicleState::Stored)
@@ -63,7 +65,7 @@
                 </form>@endif
                 {{-- Выдача — только через заявку с осмотром и актом; одна дорога. --}}
                 @if ($release = $vehicle->openRequest(\App\Park\RequestType::Release))
-                    <a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Выдать</a>
+                    @unless ($task?->is($release))<a href="/cars/{{ $vehicle->id }}" class="btn btn-s btn-accent">Выдать</a>@endunless
                 @else
                     <form method="post" action="/requests" class="contents" data-turbo-frame="_top">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Выдать</button></form>
                 @endif
@@ -78,6 +80,7 @@
             {{-- Продажа — как в деле ТС (x-park.sale): выставить или убрать, только админу. --}}
             <x-park.sale :vehicle="$vehicle"/>
         </x-slot:actions>
+        @if ($task)@include('park.vehicles.task')@endif
         @if ($differences || $scanFiles->isNotEmpty())
             <form method="post" action="{{ $href }}/take" class="mt-3">@csrf
                 <x-park.doc-differences :vehicle="$vehicle" :differences="$differences">

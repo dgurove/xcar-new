@@ -11,6 +11,7 @@ use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Candidate;
+use App\Mail\Direction;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Message;
 use App\Mail\Scan\VehicleSubject;
@@ -46,6 +47,7 @@ use App\Park\DocState;
 use App\Park\EventType;
 use App\Park\OutMoney;
 use App\Park\PhotoStage;
+use App\Park\Request as ParkRequest;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleExport;
@@ -160,13 +162,28 @@ class VehicleController
      * Карточка строки таблицы: фото, состояние, стоянка, клиент, сроки; действия — принять, переставить, выдать, заметка;
      * «✨» в полосе и расхождения с документами строками «Взять».
      */
-    public function detail(Request $request, Vehicle $vehicle)
+    public function detail(Request $request, Vehicle $vehicle, ?ParkRequest $task = null)
     {
         $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user', 'offer.deal'])->loadCount('threads');
+        // Задача сверху карточки (владелец 09.10.2026: «жмёшь заявку — „Связались“, а с кем связаться, непонятно»): открытая
+        // заявка — та, что открыли в «Заявках», иначе эвакуация, приём, выдача; с ней письмо, по которому она заведена
+        // (у выдачи — письмо о продаже).
+        $fromRequests = $task !== null;
+        $task = $task?->isOpen() ? $task : ($vehicle->openRequest(RequestType::Tow) ?? $vehicle->openRequest(RequestType::Intake) ?? $vehicle->openRequest(RequestType::Release));
+        $letterId = $task?->type === RequestType::Release && $vehicle->sold_message_id ? $vehicle->sold_message_id : $task?->letter_id;
+        $taskLetter = match (true) {
+            $letterId !== null => Message::find($letterId),
+            (bool) $task?->thread_id => Message::where('thread_id', $task->thread_id)->where('direction', Direction::In)->orderBy('date_at')->first(),
+            default => null,
+        };
 
         return view('park.vehicles.detail', [
             'vehicle' => $vehicle, 'yards' => Yard::where('is_active', true)->orderBy('name')->pluck('name', 'id'),
             'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
+            // Из «Заявок» (заявку передали явно) главное — задача: кадры одной лентой, без блоков по стадиям над ней.
+            'fromRequests' => $fromRequests,
+            'task' => $task, 'taskLetter' => $taskLetter?->load(['author', 'attachments', 'account']),
+            'letterCount' => $taskLetter ? Message::whereIn('thread_id', Thread::ofCar($vehicle, $request->user())->select('id'))->count() : 0,
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
             'debt' => Ledger::vehicleDebt($vehicle),
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),

@@ -1,5 +1,5 @@
 @php use App\Park\{RequestState, ReleasedTo, Inspection}; use App\Support\Money; @endphp
-{{-- Шаг «Звонок»: крупный телефон, три исхода кнопками-радио; каждый раскрывает свои поля, подпись кнопки плашки     меняется по исходу (reveal: data-reveal-label). --}}
+{{-- Шаг «Звонок»: крупный телефон, три исхода кнопками-радио; каждый раскрывает свои поля, подпись кнопки плашки     меняется по исходу (reveal: data-reveal-label). Тот же шаг — в задаче карточки строки (park/vehicles/task, своя кнопка submitId). --}}
 @php $phone = $req->contact_phone ?? $vehicle->contact_phone; $who = $req->contact_name ?? $vehicle->contact_name; @endphp
 @if ($phone)
     <a href="tel:+{{ preg_replace('/\D+/', '', $phone) }}" class="my-3 flex items-center gap-3 rounded-(--radius-l) bg-surface-2 px-4 py-3">
@@ -25,4 +25,4 @@
 <div class="mt-3" data-reveal-target="pane" data-reveal-key="missed" hidden>
     <x-ui.field name="next_call_at" label="Позвонить снова" type="datetime-local" :value="now()->addHours(2)->format('Y-m-d\TH:i')" disabled/>
 </div>
-<div class="mt-4"><x-ui.button id="act-submit" class="w-full sm:w-auto">Назначить эвакуатор</x-ui.button></div>
+<div class="mt-4"><x-ui.button :id="$submitId ?? 'act-submit'" class="w-full sm:w-auto">Назначить эвакуатор</x-ui.button></div>
