@@ -2,7 +2,9 @@
      (управляющий заводит реквизиты вендора из закрытия месяца). --}}
 @php use App\Billing\PartyKind; @endphp
 <x-ui.shell title="Реквизиты">
-    <x-ui.toolbar :sort="$sort" name="parties" class="mb-4"/>
+    {{-- На телефоне сортировка — справа от заголовка, а не своим рядом под ним (09.10.2026). --}}
+    <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="parties-head"/></x-slot:actions>
+    <x-ui.toolbar :sort="$sort" name="parties" class="mb-4 max-md:hidden"/>
     <div class="list">
         @foreach ($parties as $p)
             <div class="row" data-controller="sheet">

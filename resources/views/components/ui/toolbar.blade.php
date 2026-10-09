@@ -37,7 +37,7 @@
     @endif
 
     @if ($pills)
-        <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-md:order-first max-md:-mx-4 max-md:basis-full max-md:px-4" data-title-anchor>
+        <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-md:order-first max-md:-mx-4 max-md:flex-initial max-md:px-4" data-title-anchor>
             <div class="flex flex-nowrap items-center gap-2">
                 @foreach ($pills as $key => $label)
                     <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
@@ -51,15 +51,21 @@
     {{-- Без пилюль кнопки слева, действия справа (`ml-auto`), на ПК чипы встают в ту же строку после кнопок. Распорки
          нет: её `md:block` из слоя утилит перебивал правило «спрятать без пилюль», и кнопки с чипами уезжали на середину. --}}
 
-    @if ($sort)
-        <x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name"/>
-    @endif
+    {{-- Кнопки настройки списка — группой: на телефоне переносятся целиком, а не по одной (сортировка у пилюль, вид и
+         лупа рядом ниже); на ПК обёртки нет (`contents`). --}}
+    @if ($sort || isset($extra) || ($search && ! $searchOpen))
+    <div class="toolbar-tools">
+        @if ($sort)
+            <x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name"/>
+        @endif
 
-    {{-- Кнопки экрана (переключатель вида) — после сортировки: сначала то, чем список настраивают; лупа — за ними. --}}
-    {{ $extra ?? '' }}
+        {{-- Кнопки экрана (переключатель вида) — после сортировки: сначала то, чем список настраивают; лупа — за ними. --}}
+        {{ $extra ?? '' }}
 
-    @if ($search && ! $searchOpen)
-        <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>
+        @if ($search && ! $searchOpen)
+            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>
+        @endif
+    </div>
     @endif
 
     @isset($actions)

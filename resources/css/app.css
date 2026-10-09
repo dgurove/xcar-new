@@ -742,6 +742,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Лупа (03.10.2026): поле и «Отмена» есть только в режиме поиска — тогда уходят кнопки, действия и чипы, поле
      растягивается на их место. Пилюли остаются, но не горят: результат их не учитывает. */
   /* !important: у обёрток кнопок утилита .contents из слоя утилит сильнее. */
+  /* Группа кнопок тулбара (сортировка, вид, лупа): на ПК обёртки нет — кнопки прямо в строке тулбара. */
+  .toolbar-tools { display: contents; }
   .toolbar:not([data-searching]) > .toolbar-search, .toolbar:not([data-searching]) > .toolbar-cancel { display: none !important; }
   .toolbar[data-searching] > :not(.toolbar-pills, .toolbar-search, .toolbar-cancel) { display: none !important; }
   .toolbar[data-searching] > .toolbar-search { order: 5; flex: 1 1 0; max-width: none; }
@@ -759,18 +761,33 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (max-width: 767px) {
     .toolbar-chips { order: 1; flex: 1 1 0; margin-right: -1rem; padding-right: 1rem; scroll-padding-inline: 0 1rem; }
     .toolbar > .toolbar-actions { order: 2; margin-left: auto; }
+    /* Пилюли — по своей ширине: короткие («Новые / Все», «Открытые / Все») делят строку с кнопками, длинные занимают её
+       целиком и листаются. Кнопки — одной группой; чипам нужно хотя бы 5rem, иначе они уходят строкой ниже. В поиске
+       пилюли — всегда своей строкой, поле с «Отмена» — под ними. */
+    .toolbar-tools { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+    .toolbar-chips { min-width: 5rem; }
+    .toolbar[data-searching] > .toolbar-pills { flex-basis: 100% !important; } /* утилита max-md:flex-initial сильнее слоя компонентов */
     .toolbar:has(> .toolbar-actions) > .toolbar-chips { margin-right: 0; padding-right: 0; }
-    /* Действие с подписью словами («Из писем» парковки, «Оценить» предложений) — ряд кнопок его, чипам своя строка ниже,
-       как было: иначе подпись уезжала одна в третий ряд. Круглые «+» и «Скачать» с чипами уживаются; кнопка, что на
-       телефоне круглая (подпись `hidden sm:inline`), помечается `.btn-phone-round` — `:has` внутри `:has` не работает. */
-    .toolbar:has(> .toolbar-actions .btn:not(.btn-round, .btn-phone-round)) > .toolbar-chips {
-      order: 10; flex: 0 0 100%; margin-inline: -1rem; padding-inline: 1rem; scroll-padding-inline: 1rem;
+    /* Лента чипов в ряду кнопок узкая — у правого края затухает: обрезанный чип («Рекоменд…») читается как «листается
+       дальше», а не как поломка. Своей строкой во всю ширину — без затухания. */
+    .toolbar-chips { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent); }
+    /* Действие с подписью словами и на телефоне («Из писем» парковки, «Оценить» предложений) помечено `.toolbar-wide` —
+       ряд кнопок его, чипам своя строка ниже, как было: иначе подпись уезжала одна в третий ряд. Круглые «+», «Скачать»,
+       письма (подпись `hidden sm:inline`) с чипами уживаются. */
+    .toolbar:has(> .toolbar-actions .toolbar-wide) > .toolbar-chips {
+      order: 10; flex: 0 0 100%; margin-inline: -1rem; padding-inline: 1rem; scroll-padding-inline: 1rem; -webkit-mask-image: none; mask-image: none;
     }
   }
   @media (min-width: 768px) {
     .toolbar:has(> .toolbar-chips) { flex-wrap: wrap; row-gap: .75rem; }
     .toolbar:not(:has(> .toolbar-pills)) > .toolbar-chips { order: 4; flex: 1 1 0; }
     .toolbar:not(:has(> .toolbar-pills)) > .toolbar-actions { order: 5; }
+  }
+  /* Кнопки списка в строке заголовка (телефон: «Гараж», «Долги» — слот actions у x-ui.shell): в поиске поле встаёт на
+     место заголовка во всю строку. */
+  @media (max-width: 767.98px) {
+    .has-back:has(.toolbar[data-searching]) > h1 { display: none; }
+    .has-back:has(.toolbar[data-searching]) > div:has(> .toolbar) { flex: 1 1 0; width: auto !important; margin-left: 0; }
   }
   /* Лупа рядом с пилюлями раздела (Покупатели): в поиске поле встаёт на их место. */
   .search-head { @apply flex items-center gap-2; }

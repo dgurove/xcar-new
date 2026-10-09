@@ -9,7 +9,7 @@
         </x-slot:extra>
         {{-- «+» кружком понятен и без слова, а «Из писем» названо словами: на телефоне два слова в ряд не влезали. --}}
         <x-slot:actions>
-            <a href="/requests/from-mail" class="btn btn-s btn-quiet relative shrink-0 rounded-full"><x-ui.icon name="mail" class="size-4"/>Из писем<x-ui.badge href="/requests/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>
+            <a href="/requests/from-mail" class="btn btn-s btn-quiet toolbar-wide relative shrink-0 rounded-full"><x-ui.icon name="mail" class="size-4"/>Из писем<x-ui.badge href="/requests/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>
             <a href="/requests/new" class="btn btn-s btn-accent btn-round shrink-0" aria-label="Новая заявка"><x-ui.icon name="plus" class="size-5"/></a>
         </x-slot:actions>
     </x-ui.toolbar>

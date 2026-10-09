@@ -1,7 +1,9 @@
 {{-- Долги по контрагентам: сортировка и лупа в тулбаре, строка — нам должны, мы должны, просрочено, не выставлено; ведёт к счетам контрагента. --}}
 @php use App\Support\Money; @endphp
 <x-ui.shell title="Долги" :back="['Оплаты', '/money']">
-    <x-ui.toolbar :sort="$sort" name="debts" search="Контрагент"/>
+    {{-- На телефоне сортировка и лупа — справа от заголовка, а не своим рядом под ним (09.10.2026). --}}
+    <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="debts-head" search="Контрагент"/></x-slot:actions>
+    <x-ui.toolbar :sort="$sort" name="debts" search="Контрагент" class="max-md:hidden"/>
     <div id="list">
     @if ($debts->isEmpty())
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Долгов нет' }}</x-ui.empty>

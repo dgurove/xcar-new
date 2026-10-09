@@ -9,7 +9,7 @@
         @if ($total > 0)<span class="nums text-sm text-ink-muted">{{ $done >= $total ? 'названы все цены' : 'названо '.$done.' из '.$total.' '.\App\Support\Plural::of($total, ['цены', 'цен', 'цен']) }}</span>@endif
     </div>
     @if (count($kinds) > 1)
-        <div class="mt-3 flex flex-wrap gap-2">
+        <div class="pills mt-3">
             <x-ui.pill :href="request()->fullUrlWithQuery(['kind' => null, 'page' => null])" :current="empty($filters['kind'])">Вся техника</x-ui.pill>
             @foreach ($kinds as $kind)<x-ui.pill :href="request()->fullUrlWithQuery(['kind' => $kind->value, 'page' => null])" :current="($filters['kind'] ?? '') === $kind->value">{{ $kind->label() }}</x-ui.pill>@endforeach
         </div>

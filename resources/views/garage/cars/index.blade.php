@@ -16,7 +16,11 @@
     $groups = array_filter([($pickups->isNotEmpty() ? 'В гараже' : '') => $open, 'Рассчитались' => $closed], fn ($g) => $g->isNotEmpty());
 @endphp
 <x-ui.shell title="Гараж" :count="$open->count() + $pickups->count() ?: null">
-    @if ($cars->isNotEmpty())<x-ui.toolbar :sort="$sort" name="garage" class="mb-4 max-w-[56rem]"/>@endif
+    {{-- На телефоне сортировка — справа от заголовка, а не своим рядом под ним (09.10.2026); на ПК — над узким списком. --}}
+    @if ($cars->isNotEmpty())
+        <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="garage-head"/></x-slot:actions>
+        <x-ui.toolbar :sort="$sort" name="garage" class="mb-4 max-w-[56rem] max-md:hidden"/>
+    @endif
     @if ($pickups->isNotEmpty())
         <div class="flex max-w-[56rem] flex-col">
             <h2 class="list-head">Вывоз<span class="nums text-base font-normal text-ink-muted">{{ $pickups->count() }}</span></h2>
