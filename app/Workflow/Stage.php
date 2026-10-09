@@ -84,6 +84,16 @@ class Stage extends Model
         return $this->loadedExits()->contains(fn (Outcome $e) => $e->actor === Actor::Manager && str_starts_with(mb_strtolower($e->label), 'платёжное поручение'));
     }
 
+    /**
+     * Сделка ещё согласуется: ждём «Поставщик согласовал» или согласия менеджера «Покупаю». Счетов на таком этапе нет —
+     * их ставит первый вход дальше (`AgreeDeal`, 09.10.2026).
+     */
+    public function isAgreement(): bool
+    {
+        return $this->loadedExits()->contains(fn (Outcome $e) => str_starts_with(mb_strtolower($e->label), 'поставщик согласовал')
+            || ($e->actor === Actor::Manager && mb_strtolower($e->label) === 'покупаю'));
+    }
+
     /** Выход менеджера «Платёжное поручение приложено» этого этапа — его жмут заявка об оплате и сама оплата. */
     public function payExit(Deal|Destination|null $deal = null): ?Outcome
     {

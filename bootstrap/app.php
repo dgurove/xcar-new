@@ -40,6 +40,7 @@ use App\Media\Console\MoveConversionsHot;
 use App\Media\Console\Restamp;
 use App\Media\Console\TuneWatermarks;
 use App\Media\Console\UnmarkPhotos;
+use App\Offers\Console\DealAgreementFixCommand;
 use App\Offers\Console\MigtorgArchive;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
@@ -119,6 +120,7 @@ return Application::configure(basePath: dirname(__DIR__))
         MergeCarsCommand::class,
         MergeDuplicatesCommand::class,
         GarageReformFixCommand::class,
+        DealAgreementFixCommand::class,
         FillFromDocsCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {

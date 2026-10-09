@@ -5,9 +5,9 @@ namespace App\Garage\Actions;
 use App\Garage\Car;
 use App\Garage\GaragePayer;
 use App\Notifications\BidAcceptedNotice;
+use App\Offers\Actions\AgreeDeal;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\DeclineBid;
-use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
@@ -53,8 +53,7 @@ final class GiveToGarage
             $deal = Deal::create(['offer_id' => $offer->id, 'buyer_id' => $manager?->id, 'state' => DealState::Active, 'cost' => $offer->floor_price, 'garage_payer' => $payer,
                 'scheme' => DealScheme::forVendor($offer->vendor?->deal_format)]);
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['garage' => $payer->value, 'manager' => $manager?->id]));
-            // Счета, что известны уже сейчас (у «платит менеджер» по ПРАЙМ — машина на закупочную), — как у принятия.
-            app(SyncDealInvoices::class)($deal->setRelation('offer', $offer), $by);
+            $deal->setRelation('offer', $offer);
             $car = ($this->reserve)($deal, $by);
 
             if ($legacy) {
@@ -74,7 +73,9 @@ final class GiveToGarage
             }
 
             ($this->pickup)($offer, $by, $evacuator === false ? $manager : $evacuator, $where);
+            // Счета — как у принятия: после согласования с поставщиком (`AgreeDeal` из `EnterStage`), без маршрута — сразу.
             if (! $offer->fresh()->position(Track::Sale)) {
+                app(AgreeDeal::class)($deal->fresh(), $by);
                 ($this->state)($offer->fresh(), OfferState::Garage, $by);
             }
             $manager?->notify(new BidAcceptedNotice($deal->load('offer')));

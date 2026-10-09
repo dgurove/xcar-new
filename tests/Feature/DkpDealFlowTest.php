@@ -31,7 +31,8 @@ use Tests\TestCase;
 
 /**
  * Сделка «страхователю по ДКП» (05.10.2026, Т-Страхование, Ford Kuga): закупочная 779 000, собственнику 750 000
- * (взаимозачёт), цена 850 000, вознаграждение 20 000 — менеджер платит нам 80 000, счёт сразу при принятии без срока;
+ * (взаимозачёт), цена 850 000, вознаграждение 20 000 — менеджер платит нам 80 000, счёт без срока — как только
+ * поставщик согласовал и менеджер сказал «Покупаю» (09.10.2026: до того ни счёта, ни ссылки);
  * после ДКП сделка ждёт оплату (срок — с этого шага) и закрывается ею, оплатил раньше — закрывается сразу; отменили — неоплаченный счёт гаснет. Ошибка
  * здесь — деньги: менеджер платит не ту сумму или сделка закрывается неоплаченной.
  */
@@ -56,6 +57,11 @@ class DkpDealFlowTest extends TestCase
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 850000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::OwnerDkp);
+        // Пока поставщик не согласовал и менеджер не сказал «Покупаю» — ни счёта, ни ссылки.
+        $this->assertFalse($deal->fresh()->issuedInvoices()->exists());
+        $this->walkTo($offer, $deal->fresh(), 'Согласие менеджера');
+        $this->assertFalse($deal->fresh()->issuedInvoices()->exists());
+        $this->walkTo($offer, $deal->fresh(), 'Подтвердили покупку поставщику');
 
         return [$offer, $deal->fresh()];
     }
@@ -73,7 +79,7 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame($name, $offer->fresh()->stage()->name);
     }
 
-    public function test_selection_invoice_at_accept_and_deal_closes_on_payment(): void
+    public function test_selection_invoice_after_agreement_and_deal_closes_on_payment(): void
     {
         [$offer, $deal] = $this->deal();
 
@@ -115,7 +121,7 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame('Сделка закрыта', $offer->fresh()->stage()->name);
     }
 
-    /** Ссылка при принятии — на менеджера и ровно 80 000; менеджер переделывает её на нового покупателя по ФИО и почте (телефон ссылке не нужен). */
+    /** Ссылка после согласования — на менеджера и ровно 80 000; менеджер переделывает её на нового покупателя по ФИО и почте (телефон ссылке не нужен). */
     public function test_link_is_80_and_manager_picks_new_buyer_as_payer(): void
     {
         config(['xcar.yookassa.shop_id' => '1', 'xcar.yookassa.secret' => 'test']);

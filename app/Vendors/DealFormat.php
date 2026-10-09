@@ -9,6 +9,7 @@ use App\Cars\HasLabels;
  * или лизингу без страховой; комиссионная — оплата через нас как комиссионера;
  * поставщику — покупатель платит страховой. С 05.10.2026 — схема сделки по умолчанию (`DealScheme::forVendor`):
  * прямая — «страхователю по ДКП», остальные — «ПРАЙМ по счёту»; «страховой напрямую» выбирает админ.
+ * Оптом (09.10.2026, Каркаде) — выкупаем мы, менеджер платит нам по счёту ПРАЙМ; схему при принятии не выбирают.
  */
 enum DealFormat: string
 {
@@ -17,6 +18,7 @@ enum DealFormat: string
     case Direct = 'direct';
     case Commission = 'commission';
     case Supplier = 'supplier';
+    case Wholesale = 'wholesale';
 
     public function label(): string
     {
@@ -24,6 +26,7 @@ enum DealFormat: string
             self::Direct => 'Прямая, страхователю по ДКП',
             self::Commission => 'Комиссионная, ПРАЙМ по счёту',
             self::Supplier => 'Поставщику',
+            self::Wholesale => 'Оптом, выкупаем мы',
         };
     }
 }

@@ -56,7 +56,8 @@ class BidController
             'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.$bid->amount],
             'pickup' => ['nullable', Rule::in(['manager', 'us'])],
         ]);
-        $scheme = DealScheme::tryFrom($data['scheme'] ?? '') ?? $default;
+        // Оптом (Каркаде) схема одна — ПРАЙМ, выбора в шторке нет и с запроса её не берём.
+        $scheme = DealScheme::choiceFor($bid->offer->vendor?->deal_format) ? (DealScheme::tryFrom($data['scheme'] ?? '') ?? $default) : $default;
         if ($scheme->paysSelection() && ! isset($data['owner_price']) && ! $bid->offer->owner_price && ! $bid->offer->floor_price) {
             return back()->withErrors(['owner_price' => $scheme === DealScheme::OwnerDkp ? 'Сколько покупатель отдаёт страхователю по ДКП' : 'Сколько покупатель отдаёт страховой'])->withInput();
         }

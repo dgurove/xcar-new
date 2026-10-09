@@ -2,6 +2,7 @@
 
 namespace App\Workflow\Actions;
 
+use App\Offers\Actions\AgreeDeal;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -21,11 +22,12 @@ use Illuminate\Support\Carbon;
  * Поставить оффер на этап: позиция и срок, состояние или место машины, просьба к менеджеру, лента, событие.
  * Этап оплаты, а счёта у сделки нет — ход наш (`waits_for = us`): без часов и без просьбы менеджеру, её заведёт
  * выставленный счёт (`PassTurnOnInvoice`). Иначе обе стороны ждали друг друга. У ПРАЙМ без покупателя — ход менеджера
- * (`waits_for = manager`, «Укажите покупателя»): счёт встанет сам, когда он его укажет.
+ * (`waits_for = manager`, «Укажите покупателя»): счёт встанет сам, когда он его укажет. Первый вход сделки за пределы
+ * согласования (`Stage::isAgreement`) ставит её счета (`AgreeDeal`).
  */
 final class EnterStage
 {
-    public function __construct(private ChangeOfferState $changeState, private SetCarPlace $setPlace) {}
+    public function __construct(private ChangeOfferState $changeState, private SetCarPlace $setPlace, private AgreeDeal $agree) {}
 
     /** @param  bool  $back  откат («Отменить шаг», «Вернуть на этот шаг»): журнал пути сматывается до прежнего входа сюда */
     public function __invoke(Offer $offer, Stage $to, ?User $by = null, array $payload = [], ?Outcome $exit = null, bool $back = false): Offer
@@ -52,6 +54,13 @@ final class EnterStage
             // Как у публикации кнопкой: через N дней в 17:00 (`Slots::closeFor`), N — срок этапа «Приём» в днях.
             $offer->bids_close_at = Slots::closeFor($now, $to->limit_minutes ? max(1, intdiv($to->limit_minutes, 1440)) : null);
             $offer->save();
+        }
+
+        // Согласование позади (поставщик сказал «да», менеджер — «Покупаю») — только теперь у сделки встают счета
+        // (09.10.2026): до входа сюда, чтобы этап оплаты сразу видел счёт и отдал ход менеджеру.
+        if ($track === Track::Sale && $deal?->isActive() && ! $deal->agreed() && ! $to->isAgreement()
+            && in_array($to->offer_state, [null, OfferState::Sold], true)) {
+            ($this->agree)($deal->setRelation('offer', $offer), $by);
         }
 
         $noInvoice = $track === Track::Sale && $deal?->isActive() && $to->isPayStep() && ! $deal->hasManagerInvoice();

@@ -16,6 +16,10 @@ use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Sort;
+use App\Workflow\Actions\TakeExit;
+use App\Workflow\Actor;
+use App\Workflow\Outcome;
+use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
@@ -142,9 +146,30 @@ class DealController
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
         $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
         $update($deal, $request->user(), $commission, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
-            DealScheme::tryFrom($data['scheme'] ?? ''), isset($data['owner_price']) ? (int) $data['owner_price'] : null, isset($data['share']) ? (int) $data['share'] : null);
+            DealScheme::choiceFor($deal->offer->vendor?->deal_format) ? DealScheme::tryFrom($data['scheme'] ?? '') : DealScheme::Prime, isset($data['owner_price']) ? (int) $data['owner_price'] : null, isset($data['share']) ? (int) $data['share'] : null);
 
         return back()->with('toast', 'Сохранено');
+    }
+
+    /**
+     * Ответ поставщика списком (09.10.2026): каждой сделке — её исход «Поставщик согласовал…» (своей ветки) или
+     * «Поставщик отказал». Без ответа — ждёт дальше; уже ушедшую с этапа пропускаем.
+     */
+    public function supplierAnswer(Request $request, TakeExit $take)
+    {
+        $answers = collect($request->validate(['answers' => ['array'], 'answers.*' => ['nullable', Rule::in(['agreed', 'declined'])]])['answers'] ?? [])->filter();
+        $done = ['agreed' => 0, 'declined' => 0];
+        foreach (Deal::whereKey($answers->keys())->where('state', DealState::Active)->with('offer.positions.stage.exits.to')->get() as $deal) {
+            $prefix = $answers[$deal->id] === 'agreed' ? 'поставщик согласовал' : 'поставщик отказал';
+            $exit = $deal->offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $e) => str_starts_with(mb_strtolower($e->label), $prefix));
+            if ($exit) {
+                $take($deal->offer, $exit, Actor::Staff, $request->user());
+                $done[$answers[$deal->id]]++;
+            }
+        }
+        $toast = collect(['отдаёт '.$done['agreed'] => $done['agreed'], 'отказал '.$done['declined'] => $done['declined']])->filter()->keys()->implode(', ');
+
+        return back(fallback: '/work/deals')->with('toast', $toast ? 'Отмечено: '.$toast : 'Ничего не отмечено');
     }
 
     public function note(Request $request, Deal $deal)

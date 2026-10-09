@@ -3,6 +3,7 @@
        остаток, «Ваша доля» и «Оплата услуг подбора», кнопка «Оплатить». Закупочную тут менеджер видит — она в его ДКП
        (исключение из «закупочной на xcar нет»);
      — ПРАЙМ: продажа, счёт ПРАЙМ (кому, сколько, оплачен ли); закупочной нет.
+     Пока поставщик не согласовал (`Deal::agreed`, 09.10.2026) — счетов нет, вместо «готовим счёт» — «после ответа поставщика».
      Только деньги: договор — в задаче или своим блоком (`cabinet.deals.contract`). Ссылка — внутри `.list`, иначе её
      стили не срабатывают и адрес в узкой колонке шёл по букве в строку. --}}
 @php
@@ -48,7 +49,7 @@
                     <span class="block">Оплата услуг подбора</span>
                     @php
                         $when = match (true) {
-                            ! $selection => 'готовим счёт',
+                            ! $selection => $deal->agreed() ? 'готовим счёт' : 'после ответа поставщика',
                             $selection->state === InvoiceState::Paid => 'оплачено',
                             $selection->claimed() > 0 => 'оплата ждёт подтверждения',
                             default => null,
@@ -69,7 +70,7 @@
             <a href="{{ $sale ? $pay($sale) : '#dkp-buyer' }}" class="row">
                 <span class="min-w-0 flex-1">
                     <span class="block">{{ $sale ? 'Счёт ПРАЙМ '.$sale->label() : 'Счёт ПРАЙМ' }}</span>
-                    <span class="row-sub">@if (! $sale)<span class="text-urgent">укажите покупателя</span>@elseif ($sale->state === InvoiceState::Paid)<span class="text-open">оплачен</span>@else<x-billing.light :invoice="$sale"/> платит {{ $sale->party?->name }}@endif</span>
+                    <span class="row-sub">@if (! $sale && ! $deal->agreed())после ответа поставщика@elseif (! $sale)<span class="text-urgent">укажите покупателя</span>@elseif ($sale->state === InvoiceState::Paid)<span class="text-open">оплачен</span>@else<x-billing.light :invoice="$sale"/> платит {{ $sale->party?->name }}@endif</span>
                 </span>
                 @if ($sale)<span class="nums font-semibold">{{ Money::rub($sale->state === InvoiceState::Paid ? $sale->total : $sale->remaining()) }}</span>@endif
             </a>

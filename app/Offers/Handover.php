@@ -28,11 +28,11 @@ use Illuminate\Support\Carbon;
 final class Handover
 {
     /** Подписи полей шага — что они значат. Поля маршрутов вписаны людьми, поэтому по подписи, а не по ключу. */
-    private const NAME = ['владелец', 'контакт', 'контакт на площадке'];
+    private const NAME = ['владелец', 'контакт', 'контакт на выдаче'];
 
     private const PHONE = ['телефон владельца', 'телефон'];
 
-    private const ADDRESS = ['адрес автомобиля', 'адрес', 'адрес площадки'];
+    private const ADDRESS = ['адрес автомобиля', 'адрес', 'адрес выдачи'];
 
     private const DATE = ['дата вывоза', 'дата выдачи'];
 
@@ -99,11 +99,14 @@ final class Handover
 
         $vehicle = $offer->parkVehicle;
         $atYard = $vehicle?->state === VehicleState::Stored && $vehicle->yard;
+        // Выдача у поставщика (Каркаде): забирает сам менеджер — шаг «Выдача у поставщика» ждёт его «Забрал».
+        $atSupplier = $sale && ! $service && $sale->stage->workflow->stages->contains(fn (Stage $s) => in_array('адрес выдачи', self::labels($s), true));
+        $picks = $picks || $atSupplier;
         $where = match (true) {
             $place === CarPlace::Keeper => $offer->keeper()?->id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
             $place === CarPlace::WithUs => CarPlace::WithUs->label(),
             $place === CarPlace::Ours || $atYard => 'На парковке',
-            $sale && ! $service && $sale->stage->workflow->stages->contains(fn (Stage $s) => in_array('адрес площадки', self::labels($s), true)) => 'На площадке поставщика',
+            $atSupplier => 'У поставщика',
             $place === CarPlace::Owner, $place === CarPlace::Moving, $offer->insured_name || $offer->insured_phone => 'У владельца',
             default => null,
         };
@@ -179,7 +182,7 @@ final class Handover
 
     /**
      * Чем заполнить поля шага, пока их не вписали (шторка исхода в CRM): страхователь, телефон и адрес из письма. Поля
-     * площадки поставщика (Каркаде) — не про страхователя, их не трогаем. «Контакт» без отдельного телефона — имя с ним.
+     * выдачи у поставщика (Каркаде) — не про страхователя, их не трогаем. «Контакт» без отдельного телефона — имя с ним.
      *
      * @return array<string, string>
      */
@@ -190,7 +193,7 @@ final class Handover
         $phoneField = in_array('phone', $mapped, true);
         $out = [];
         foreach ($mapped as $key => $kind) {
-            if (in_array($labels[$key] ?? '', ['контакт на площадке', 'адрес площадки'], true)) {
+            if (in_array($labels[$key] ?? '', ['контакт на выдаче', 'адрес выдачи'], true)) {
                 continue;
             }
             $value = match ($kind) {

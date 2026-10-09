@@ -14,6 +14,7 @@ use App\Users\User;
 use App\Workflow\Requirement;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,14 +26,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at'])]
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at'])]
 class Deal extends Model
 {
     use HidesDemo;
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime'];
+        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -64,6 +65,27 @@ class Deal extends Model
     public function contract(): HasOne
     {
         return $this->hasOne(DealContract::class);
+    }
+
+    /**
+     * Поставщик согласовал, а где спрашиваем менеджера — тот сказал «Покупаю» (09.10.2026, владелец: «ссылки на оплату
+     * вообще быть не должно, пока поставщик не подтвердил окончательно»). До того счетов у сделки нет (`AgreeDeal`).
+     */
+    public function agreed(): bool
+    {
+        return $this->agreed_at !== null;
+    }
+
+    /**
+     * Сделки вендора, что ждут ответа поставщика «отдаёт или нет» (этап с исходом «Поставщик согласовал»): «Ответ по
+     * списку» в CRM (09.10.2026, Каркаде отвечает одним ответом на весь список).
+     */
+    public static function awaitingSupplier(int $vendorId): Collection
+    {
+        return self::where('state', DealState::Active)
+            ->whereHas('offer', fn (Builder $o) => $o->where('vendor_id', $vendorId)->whereHas('positions', fn (Builder $p) => $p->where('track', 'sale')
+                ->whereHas('stage.exits', fn (Builder $e) => $e->where('label', 'ilike', 'поставщик согласовал%'))))
+            ->with(['offer.brand', 'offer.model', 'buyer'])->orderBy('id')->get();
     }
 
     /** Схема оплаты (`DealScheme`); у старых строк — ПРАЙМ по счёту. */

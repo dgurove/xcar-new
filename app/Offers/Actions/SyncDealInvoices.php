@@ -29,7 +29,8 @@ use Illuminate\Support\Facades\DB;
  *   106 000) тому, кого менеджер указал плательщиком; платит менеджер с «удерживает сам» — его вознаграждение зачётом,
  *   платит покупатель — вознаграждение выплачиваем; гаражной «платит менеджер» у ПРАЙМ — менеджеру на закупочную.
  * Счёт, что уже стоит как надо, не трогаем; другой, за который не платили, — аннулируем и ставим заново; оплаченный —
- * история, его не меняем. Не нужен схеме — не трогаем вовсе.
+ * история, его не меняем. Не нужен схеме — не трогаем вовсе. Пока сделка согласуется с поставщиком (`Deal::agreed`),
+ * счетов нет вовсе (09.10.2026): первые ставит `AgreeDeal`.
  */
 final class SyncDealInvoices
 {
@@ -39,6 +40,9 @@ final class SyncDealInvoices
 
     public function __invoke(Deal $deal, User $by): void
     {
+        if (! $deal->agreed()) {
+            return;
+        }
         $deal->loadMissing(['offer', 'buyer', 'contract.buyer']);
         DB::transaction(function () use ($deal, $by) {
             $this->slot($deal, $by, ChargeKind::Selection, $this->selection($deal));

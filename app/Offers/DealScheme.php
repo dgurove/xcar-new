@@ -63,4 +63,10 @@ enum DealScheme: string
         // «Страховой напрямую» — только выбором админа: по умолчанию счёт ничей не уходит менеджеру сам (ревью 05.10.2026).
         return $format === DealFormat::Direct ? self::OwnerDkp : self::Prime;
     }
+
+    /** Схема на выбор в шторках «Принять» и «Деньги»: оптом схема одна — ПРАЙМ, выбирать нечего (null). */
+    public static function choiceFor(?DealFormat $format, ?self $current = null): ?self
+    {
+        return $format === DealFormat::Wholesale ? null : ($current ?? self::forVendor($format));
+    }
 }

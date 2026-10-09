@@ -205,6 +205,13 @@
                             @if ($stage->template_id)
                                 <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-quiet btn-s"><x-ui.icon name="send" class="size-4"/>Письмо вендору</a>
                             @endif
+                            {{-- Поставщик отвечает списком (Каркаде): отметить ответ по всем его сделкам разом. --}}
+                            @if ($deal && $stage->isAgreement() && $stage->waits_for === WaitsFor::Supplier && ($waiting = \App\Offers\Deal::awaitingSupplier($offer->vendor_id))->count() > 1)
+                                <div data-controller="sheet">
+                                    <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Ответ по списку ({{ $waiting->count() }})</x-ui.button>
+                                    <x-deal.supplier-answer :deals="$waiting" :id="'supplier-answer-'.$position->id"/>
+                                </div>
+                            @endif
                         </div>
                     @endif
                 @else
