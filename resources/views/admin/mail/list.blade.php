@@ -57,7 +57,7 @@
                     {{-- Заявка, которой парсер не нашёл машину: заводится руками. --}}
                     <div class="chain-head">
                         <div class="min-w-0 flex-1">
-                            <div class="chain-head-title text-ink-muted">Машину в письме не нашли</div>
+                            <div class="chain-head-title text-ink-muted">ТС в письме не нашли</div>
                             {{-- Имя вендора — подписью логотипа (ref): у одного логотипа нет базовой линии, и строка садилась ниже имени дела. --}}
                             @if ($t->vendor)<div class="chain-head-sub"><x-vendor.ref :vendor="$t->vendor" :ref="$t->vendor->name"/></div>@endif
                         </div>

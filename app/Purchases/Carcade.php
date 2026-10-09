@@ -49,11 +49,11 @@ final class Carcade
         $json = json_decode($m[1], true);
         $position = $json['props']['pageProps']['position'] ?? null;
         if (! is_array($position)) {
-            throw new Gone('Машина снята с продажи у поставщика');   // каталог вместо карточки
+            throw new Gone('ТС снята с продажи у поставщика');   // каталог вместо карточки
         }
         $used = $position['used']['used'] ?? [];
         if (! is_array($used) || ! $used) {
-            throw new Gone('В карточке нет машины');
+            throw new Gone('В карточке нет ТС');
         }
         $pairs = fn ($list) => collect(is_array($list) ? $list : [])->filter(fn ($i) => is_array($i) && isset($i['name']))->mapWithKeys(fn ($i) => [(string) $i['name'] => (string) ($i['value'] ?? '')])->all();
         $attrs = $pairs($used['attributes'] ?? []);

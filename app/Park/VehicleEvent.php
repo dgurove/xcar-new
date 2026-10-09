@@ -43,7 +43,7 @@ class VehicleEvent extends Model
 
         return match ($this->type) {
             EventType::Created => match (true) {
-                ! empty($p['by_fact']) => 'Заведена по таблице стоянки',
+                ! empty($p['by_fact']) => 'Заведена по таблице парковки',
                 ! empty($p['by_letters']) => 'Заведена по письмам',
                 ! empty($p['by_mail']) => 'Заведена из письма',
                 default => 'Заведена',

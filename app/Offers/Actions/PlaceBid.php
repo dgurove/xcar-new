@@ -35,7 +35,7 @@ final class PlaceBid
             }
             if ($kind === BidKind::Garage) {
                 if (! $offer->garageAllowedFor($by)) {
-                    throw ValidationException::withMessages(['amount' => 'Эту машину в гараж не берут']);
+                    throw ValidationException::withMessages(['amount' => 'Это ТС в гараж не берут']);
                 }
                 $amount = null;
             } else {

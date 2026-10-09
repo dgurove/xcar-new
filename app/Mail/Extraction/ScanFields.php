@@ -22,7 +22,7 @@ use App\Park\Vehicle;
  */
 final class ScanFields
 {
-    public const LABELS = ['car' => 'Машина', 'vin' => 'VIN', 'year' => 'Год', 'color' => 'Цвет', 'plate' => 'Госномер', 'value' => 'Оценочная стоимость'];
+    public const LABELS = ['car' => 'Марка, модель', 'vin' => 'VIN', 'year' => 'Год', 'color' => 'Цвет', 'plate' => 'Госномер', 'value' => 'Оценочная стоимость'];
 
     /** Поля предложения CRM: госномера и страховой стоимости у него нет. */
     public const CAR = ['car', 'vin', 'year', 'color'];

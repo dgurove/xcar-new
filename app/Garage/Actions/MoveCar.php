@@ -19,7 +19,7 @@ final class MoveCar
     public function __invoke(Car $car, CarState $to, User $by): Car
     {
         if ($car->state === $to) {
-            throw ValidationException::withMessages(['car' => 'Машина уже на этапе «'.$to->label().'»']);
+            throw ValidationException::withMessages(['car' => 'ТС уже на этапе «'.$to->label().'»']);
         }
         if ($by->isAdmin()) {
             if (! $car->state->isWorking() || ! $to->isWorking() || $car->isFrozen()) {
@@ -27,7 +27,7 @@ final class MoveCar
             }
         } else {
             if ($car->manager_id !== $by->id) {
-                throw ValidationException::withMessages(['car' => 'Это не ваша машина']);
+                throw ValidationException::withMessages(['car' => 'Это не ваше ТС']);
             }
             if (($car->state->advance()[0] ?? null) !== $to) {
                 throw ValidationException::withMessages(['car' => 'С этапа «'.$car->state->label().'» кнопкой дальше не уйти']);
@@ -38,7 +38,7 @@ final class MoveCar
             $to = CarState::Selling;
         }
         if ($to === CarState::Selling && $car->dealOpen()) {
-            throw ValidationException::withMessages(['car' => 'Сначала закроем документы со страховой: в продажу машина встанет сама']);
+            throw ValidationException::withMessages(['car' => 'Сначала закроем документы со страховой: в продажу ТС встанет сама']);
         }
         $car->moveTo($to, by: $by);
         GarageChanged::dispatch($car);

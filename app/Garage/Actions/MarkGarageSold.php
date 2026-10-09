@@ -27,7 +27,7 @@ final class MarkGarageSold
             throw ValidationException::withMessages(['sold_price' => 'Документы со страховой ещё не закрыты: продавать рано']);
         }
         if ($staff ? ! $car->state->isWorking() : ($car->state !== CarState::Selling || $car->manager_id !== $by->id)) {
-            throw ValidationException::withMessages(['sold_price' => 'Продать можно машину в продаже']);
+            throw ValidationException::withMessages(['sold_price' => 'Продать можно ТС в продаже']);
         }
 
         $car->moveTo(CarState::Sold, [

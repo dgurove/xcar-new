@@ -39,7 +39,7 @@ final class PutOnSale
             // Предложение этой машины уже завели в CRM (номер убытка или VIN, `Identity`) — связать с ним, второго нет.
             if ($holder = Identity::offerFor($vehicle->ref_key, $vehicle->vin)) {
                 if (Vehicle::withoutGlobalScope(City::SCOPE)->where('offer_id', $holder->id)->exists() || in_array($holder->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
-                    throw ValidationException::withMessages(['vehicle' => 'Эта машина уже в продаже: '.Identity::offerName($holder)]);
+                    throw ValidationException::withMessages(['vehicle' => 'Это ТС уже в продаже: '.Identity::offerName($holder)]);
                 }
                 $holder->state === OfferState::Archived && ($this->change)($holder, OfferState::Draft, $by);
                 ($this->link)($vehicle, $holder->refresh(), $by);

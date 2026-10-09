@@ -63,7 +63,7 @@
                             if ($pickTone === 'urgent' && $offer->evacuator_id === auth()->id()) {
                                 $tone = 'text-urgent';
                             }
-                            $word = $asks ? 'ваш ход: '.mb_strtolower($asks->title) : ($pickWord ? 'ждёт машину, '.$pickWord : mb_strtolower($car->state->label()));
+                            $word = $asks ? 'ваш ход: '.mb_strtolower($asks->title) : ($pickWord ? 'ждёт ТС, '.$pickWord : mb_strtolower($car->state->label()));
                             $when = match ($car->state) {
                                 CarState::Settled => ($car->settled_at ?? $car->sold_at)?->translatedFormat('j M'),
                                 CarState::Sold => 'с '.$car->sold_at?->translatedFormat('j M'),

@@ -33,8 +33,8 @@ final class CancelDeal
         $car = $deal->isGarage() ? GarageCar::where('deal_id', $deal->id)->first() : null;
         if ($car && ! $keepCar && ($car->state !== CarState::Waiting || $car->costs()->exists())) {
             throw ValidationException::withMessages(['state' => $car->state === CarState::Waiting
-                ? 'По машине уже есть расходы: сначала уберите их'
-                : 'Машина уже у менеджера: сделку так не отменить']);
+                ? 'По ТС уже есть расходы: сначала уберите их'
+                : 'ТС уже у менеджера: сделку так не отменить']);
         }
         $deal->update(['state' => DealState::Cancelled, 'closed_at' => now()]);
         if ($deal->bid?->state === BidState::Accepted) {

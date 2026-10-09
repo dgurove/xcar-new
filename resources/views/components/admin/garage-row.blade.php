@@ -13,7 +13,7 @@
     $tone = match ($car->state->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', 'closed' => 'text-ink-dim', default => 'text-ink-muted' };
     // Ждёт машину — словом вывоза («забрать», «готовим документы»): где она, решает он.
     $stage = $car->isWaiting()
-        ? 'ждёт машину, '.\App\Offers\PickupState::of($offer)[0]
+        ? 'ждёт ТС, '.\App\Offers\PickupState::of($offer)[0]
         : mb_strtolower($car->state->label()).', '.$days.' '.Plural::of($days, ['день', 'дня', 'дней']);
     $current = $car->payoutInvoice ?? $car->invoice;
     [$value, $caption] = match ($car->state) {

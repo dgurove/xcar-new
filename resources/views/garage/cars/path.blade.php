@@ -50,7 +50,7 @@
             <div class="step-body">
                 <div class="step-head">
                     {{-- Пройденное ожидание — факт: машина приехала. --}}
-                    <span class="step-title flex-1">{{ $p['state'] === CarState::Waiting && $p['status'] === 'done' ? 'Машина приехала' : $p['state']->label() }}</span>
+                    <span class="step-title flex-1">{{ $p['state'] === CarState::Waiting && $p['status'] === 'done' ? 'ТС приехала' : $p['state']->label() }}</span>
                     @if ($p['status'] === 'done' && $p['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ $p['at']->translatedFormat('j M') }}</span>@endif
                     @if (in_array($p['state'], $back ?? [], true))
                         <form method="post" action="/garage/cars/{{ $n }}/stage" class="contents" data-turbo-confirm="Вернуть на «{{ $p['state']->label() }}»?">@csrf<input type="hidden" name="state" value="{{ $p['state']->value }}"><button class="btn btn-s btn-quiet shrink-0">Вернуть</button></form>

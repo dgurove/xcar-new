@@ -61,7 +61,7 @@ final class FetchSpecs implements ShouldQueue
             return;
         }
         if ($s['dl'] && $car->dl && $s['dl'] !== $car->dl) {
-            $car->forceFill(['specs_state' => ImportState::Failed, 'specs_error' => "Ссылка ведёт на другую машину (ДЛ {$s['dl']})", 'specs_at' => now()])->save();
+            $car->forceFill(['specs_state' => ImportState::Failed, 'specs_error' => "Ссылка ведёт на другое ТС (ДЛ {$s['dl']})", 'specs_at' => now()])->save();
 
             return;
         }
