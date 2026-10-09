@@ -198,8 +198,8 @@ class OfferController
         if (! ListView::isTable($view) || ($preset === 'priced' && ! $searching)) {
             $offers->loadMissing('media');
         }
-        // Кто завёл — аватар только у черновика: остальным строкам люди не нужны.
-        $offers->getCollection()->where('state', OfferState::Draft)->load('moderator.media');
+        // Кто завёл — аватар у даты (столбец «Создано» на ПК у черновика, краткая таблица телефона — у всех строк, 09.10.2026).
+        $offers->getCollection()->load('moderator.media');
         // «Оценить» с чипа или из закупки: first — первая строка, где у человека есть дело.
         if (Detail::key($request) === 'first') {
             $first = $offers->first(fn ($o) => self::todo($o, $request->user())) ?? $offers->first();
