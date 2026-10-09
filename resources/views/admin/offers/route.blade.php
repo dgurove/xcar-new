@@ -44,7 +44,7 @@
         @if ($isService)
             <div class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                 @if ($offer->evacuator)<x-ui.person :user="$offer->evacuator"/>@else<span>Вывозим мы</span>@endif
-                <span class="text-ink-muted">{{ $to === Destination::Keeper && $offer->garageCar ? 'к '.$offer->keeper()?->shortName().' в гараж' : mb_strtolower($to->label()) }}</span>
+                <span class="text-ink-muted">{{ $to === Destination::Keeper && $offer->garageCar ? 'в гараж, '.$offer->keeper()?->shortName() : mb_strtolower($to->label()) }}</span>
             </div>
         @endif
         @if ($isService && ($deal ?? null)?->isActive() && ! $deal->isGarage())

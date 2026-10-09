@@ -15,7 +15,7 @@
     <div class="flex flex-wrap gap-2">
         @foreach (\App\Offers\Destination::cases() as $d)
             <label class="choice" @if ($d === \App\Offers\Destination::Keeper && ! $holder) data-reveal-target="pane" data-reveal-key="keeper" @if (! $who) hidden @endif @endif>
-                <input type="radio" name="evacuation_to" value="{{ $d->value }}" @checked($to === $d->value)><span>{{ $d === \App\Offers\Destination::Keeper && $holder ? 'К '.$holder->shortName() : $d->label() }}</span>
+                <input type="radio" name="evacuation_to" value="{{ $d->value }}" @checked($to === $d->value)><span>{{ $d === \App\Offers\Destination::Keeper && $holder ? $d->label().', '.$holder->shortName() : $d->label() }}</span>
             </label>
         @endforeach
     </div>

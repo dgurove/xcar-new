@@ -94,7 +94,8 @@ class RouteController
         }
         $offer->loadMissing('vendor.workflows', 'positions.stage.workflow');
         $assign($offer, $evacuator, $to, $request->user());
-        $toast = 'Вывоз: '.($evacuator?->shortName() ?? 'мы').', '.($to === Destination::Keeper && ($keeper = $offer->keeper()) ? 'к '.$keeper->shortName() : mb_strtolower($to->label()));
+        // Имя не склоняем («к Сергей К.» резало глаз): куда — стрелкой.
+        $toast = 'Вывоз: '.($evacuator?->shortName() ?? 'мы').' → '.($to === Destination::Keeper && ($keeper = $offer->keeper()) ? $keeper->shortName() : mb_strtolower($to->label()));
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', $toast);
     }
