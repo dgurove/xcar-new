@@ -26,14 +26,24 @@ return new class extends Migration
             DB::table('vendors')->where('id', $alfa->id)->update($fill + ['updated_at' => now()]);
         }
 
+        // Правило прайса — цена не правится в строке, а закрывается днём раньше новой (выставленное остаётся по прежней).
+        // Пока по этим ТС Альфы СПб ничего не выставлено, 250 ₽ — цена договора с первого дня: строка ВСК, поставленная
+        // временно этим же днём, просто получает свою цену.
+        $billed = DB::table('billing_charges')->join('park_vehicles', 'park_vehicles.id', '=', 'billing_charges.vehicle_id')
+            ->where('park_vehicles.vendor_id', $alfa->id)->whereNotNull('billing_charges.invoice_id')->exists();
         foreach (['truck', 'long', 'trailer'] as $category) {
             $row = DB::table('park_tariffs')->where('vendor_id', $alfa->id)->whereNull('yard_id')->where('category', $category)->where('service', 'storage')->whereNull('valid_to');
-            if ($row->exists()) {
+            $current = $row->first();
+            if ($current && ! $billed) {
                 $row->update(['price' => 250, 'updated_at' => now()]);
-            } else {
-                DB::table('park_tariffs')->insert(['vendor_id' => $alfa->id, 'yard_id' => null, 'category' => $category, 'service' => 'storage', 'from_day' => 1,
-                    'price' => 250, 'vat' => false, 'valid_from' => '2025-01-01', 'created_at' => now(), 'updated_at' => now()]);
+
+                continue;
             }
+            if ($current) {
+                $row->update(['valid_to' => now()->subDay()->toDateString(), 'updated_at' => now()]);
+            }
+            DB::table('park_tariffs')->insert(['vendor_id' => $alfa->id, 'yard_id' => null, 'category' => $category, 'service' => 'storage', 'from_day' => 1,
+                'price' => 250, 'vat' => false, 'valid_from' => $current ? now()->toDateString() : '2025-01-01', 'created_at' => now(), 'updated_at' => now()]);
         }
 
         if (! DB::table('vendor_contacts')->where('vendor_id', $alfa->id)->where('role', 'accounting')->exists()) {

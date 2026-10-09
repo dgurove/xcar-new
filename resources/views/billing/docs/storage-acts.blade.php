@@ -41,7 +41,7 @@
         <article class="act">
             <h1>Акт хранения ТС</h1>
             <p class="sub">к отчёт-акту {{ $i->label() }}@if ($vendor?->agreement_number), договор № {{ $vendor->agreement_number }}@if ($vendor->agreement_date) от {{ $vendor->agreement_date->format('d.m.Y') }}@endif @endif</p>
-            <p><b>{{ $self->name }}</b>, Хранитель, и <b>{{ $p->name }}</b>, Поклажедатель, составили настоящий акт о том, что Хранитель оказал услуги хранения транспортного средства и передал его после хранения:</p>
+            <p><b>{{ $self->name }}</b>, Хранитель, и <b>{{ $p->name }}</b>, Поклажедатель, составили настоящий акт о том, что Хранитель оказал услуги хранения транспортного средства{{ $v?->released_at ? ' и передал его после хранения' : ' за указанный период' }}:</p>
             <table>
                 <tr><th>Марка ТС</th><td>{{ $v?->titleWithYear() }}</td></tr>
                 @if ($v?->vin)<tr><th>VIN</th><td>{{ $v->vin }}</td></tr>@endif

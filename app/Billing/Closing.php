@@ -25,6 +25,8 @@ use Throwable;
  */
 final class Closing
 {
+    private const CACHE = 'park.closing.v2:';
+
     /** @return Collection<int, Item> */
     public static function items(CarbonInterface $month): Collection
     {
@@ -139,7 +141,8 @@ final class Closing
         $month = now()->subMonth()->startOfMonth();
         $city = City::viewing();
 
-        return Cache::remember('park.closing:'.$month->format('Y-m').($city ? ":{$city}" : ''), 600, function () use ($month) {
+        // «v2» — с 09.10.2026 в кэше сводка массивом, а не число: прежнее значение под старым ключом не читается.
+        return Cache::remember(self::CACHE.$month->format('Y-m').($city ? ":{$city}" : ''), 600, function () use ($month) {
             $items = self::items($month);
             $groups = $items->groupBy(fn ($i) => self::groupOf($i));
             $blocked = $groups->filter(fn ($g) => ! $g->first()['ready'] && $g->first()['payer'] === 'vendor')->count();
@@ -153,9 +156,9 @@ final class Closing
     public static function forgetPending(): void
     {
         $month = now()->subMonth()->format('Y-m');
-        Cache::forget("park.closing:{$month}");
+        Cache::forget(self::CACHE.$month);
         foreach (array_keys(City::options()) as $city) {
-            Cache::forget("park.closing:{$month}:{$city}");
+            Cache::forget(self::CACHE."{$month}:{$city}");
         }
     }
 

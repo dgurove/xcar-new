@@ -50,16 +50,21 @@
     <article class="act">
         @php
             $vendor = $byCar->first()?->first()?->vehicle?->vendor;
-            $service = $vendor?->kind === \App\Vendors\Kind::Insurer ? 'Хранение повреждённого ТС' : 'Хранение ТС';
+            $service = $vendor?->storageServiceTitle() ?? 'Хранение ТС';
             $from = $i->month?->copy()->startOfMonth(); $to = $i->month?->copy()->endOfMonth();
+            $cars = $byCar->map(fn ($rows) => $rows->first()->vehicle)->filter();
+            // «Окончил оказание» — только когда все ТС реестра выданы (счёт по выбытию); помесячный реестр ВСК, СОГАЗа — за период.
+            $ended = $cars->isNotEmpty() && $cars->every(fn ($v) => $v->released_at !== null);
+            // Парковка — своим столбцом, когда ТС реестра стояли на разных (Москва — три парковки).
+            $yards = $cars->pluck('yard_id')->filter()->unique()->count() > 1;
         @endphp
         {{-- Форма — как отчёт-акт, которым Питер сдавал хранение Альфе (09.10.2026): договор в заголовке, даты приёма и
              передачи, полис, наименование услуги, сутки и цена. --}}
         <h1>Отчёт-акт {{ $i->label() }}</h1>
         <p class="sub">сдачи-приёмки оказанных услуг за период с {{ $from?->format('d.m.Y') }} по {{ $to?->format('d.m.Y') }}@if ($vendor?->agreement_number) к договору № {{ $vendor->agreement_number }}@if ($vendor->agreement_date) от {{ $vendor->agreement_date->format('d.m.Y') }}@endif @endif</p>
-        <p><b>{{ $p->name }}</b>{{ $p->details() ? ' ('.$p->details().')' : '' }}, Поклажедатель, и <b>{{ $self->name }}</b> ({{ $self->details() }}), Хранитель, составили настоящий отчёт-акт о том, что Хранитель оказал Поклажедателю услуги хранения транспортных средств, указанных в таблице, и окончил их оказание:</p>
+        <p><b>{{ $p->name }}</b>{{ $p->details() ? ' ('.$p->details().')' : '' }}, Поклажедатель, и <b>{{ $self->name }}</b> ({{ $self->details() }}), Хранитель, составили настоящий отчёт-акт о том, что Хранитель оказал Поклажедателю услуги хранения транспортных средств, указанных в таблице, {{ $ended ? 'и окончил их оказание' : 'за указанный период' }}:</p>
         <table class="reg">
-            <thead><tr><th style="width:22px">№ п/п</th><th>VIN ТС</th><th>Дата принятия ТС к хранению</th><th>Дата передачи ТС после хранения</th><th>№ убытка</th><th>№ полиса</th><th>Гос. номер</th><th>Марка ТС</th><th>Наименование услуги</th><th class="n">Кол-во сут.</th><th class="n">Цена</th><th class="n">Стоимость</th></tr></thead>
+            <thead><tr><th style="width:22px">№ п/п</th><th>VIN ТС</th><th>Дата принятия ТС к хранению</th><th>Дата передачи ТС после хранения</th><th>№ убытка</th><th>№ полиса</th><th>Гос. номер</th><th>Марка ТС</th>@if ($yards)<th>Парковка</th>@endif<th>Наименование услуги</th><th class="n">Кол-во сут.</th><th class="n">Цена</th><th class="n">Стоимость</th></tr></thead>
             <tbody>
             @foreach ($byCar as $rows)
                 @php $v = $rows->first()->vehicle; $n++; $storage = $rows->where('kind', ChargeKind::Storage)->values(); $other = $rows->where('kind', '!=', ChargeKind::Storage)->values(); $span = max(1, $storage->count() + $other->count()); @endphp
@@ -74,10 +79,12 @@
                             <td rowspan="{{ $span }}">{{ $v?->policy_no }}</td>
                             <td rowspan="{{ $span }}">{{ $v?->plate }}</td>
                             <td rowspan="{{ $span }}">{{ trim(($v?->brand?->name ?? '').' '.($v?->model?->name ?? '')) }}</td>
+                            @if ($yards)<td rowspan="{{ $span }}">{{ $v?->yard?->name }}</td>@endif
                         @endif
                         @if ($c->kind === ChargeKind::Storage)
                             {{-- Период хранения в строке — когда он уже, чем приём и выдача (помесячный счёт, своя ставка части срока). --}}
-                            @php $whole = $c->period_from?->isSameDay($v?->accepted_at) && ($c->period_to?->isSameDay($v?->released_at) ?? false); @endphp
+                            {{-- Сравниваем только с датой, что есть: isSameDay(null) у Carbon — «сегодня». --}}
+                            @php $whole = $v?->accepted_at && $v?->released_at && $c->period_from?->isSameDay($v->accepted_at) && $c->period_to?->isSameDay($v->released_at); @endphp
                             <td>{{ $service }}@unless ($whole) за {{ $c->period_from?->format('d.m.Y') }} – {{ $c->period_to?->format('d.m.Y') }}@endunless</td><td class="n">{{ (int) $c->qty }}</td>
                         @else
                             <td>{{ $c->title }}</td><td class="n">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.') }} {{ $c->unitLabel() }}</td>
@@ -86,8 +93,8 @@
                     </tr>
                 @endforeach
             @endforeach
-            <tr><td colspan="11"><b>Итого, {{ $n }} ТС</b></td><td class="n"><b>{{ Money::nums($i->charges->sum('amount'), 2) }} ₽</b></td></tr>
-            @if ($i->vat_on_top)<tr><td colspan="11">{{ $i->vatLabel() }}</td><td class="n">{{ Money::nums($i->vatAmount(), 2) }} ₽</td></tr><tr><td colspan="11"><b>Всего</b></td><td class="n"><b>{{ Money::nums($i->total, 2) }} ₽</b></td></tr>@endif
+            <tr><td colspan="{{ $yards ? 12 : 11 }}"><b>Итого, {{ $n }} ТС</b></td><td class="n"><b>{{ Money::nums($i->charges->sum('amount'), 2) }} ₽</b></td></tr>
+            @if ($i->vat_on_top)<tr><td colspan="{{ $yards ? 12 : 11 }}">{{ $i->vatLabel() }}</td><td class="n">{{ Money::nums($i->vatAmount(), 2) }} ₽</td></tr><tr><td colspan="{{ $yards ? 12 : 11 }}"><b>Всего</b></td><td class="n"><b>{{ Money::nums($i->total, 2) }} ₽</b></td></tr>@endif
             </tbody>
         </table>
         <p>{{ $i->vatRate() ? ($i->vat_on_top ? '' : $i->vatLabel().', '.Money::nums($i->vatAmount(), 2).' ₽. ') : 'НДС не облагается. ' }}Услуги оказаны в полном объёме, претензий по объёму, качеству и срокам Поклажедатель не имеет.</p>

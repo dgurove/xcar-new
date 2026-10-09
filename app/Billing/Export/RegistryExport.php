@@ -4,7 +4,6 @@ namespace App\Billing\Export;
 
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
-use App\Vendors\Kind;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
 
@@ -31,7 +30,7 @@ final class RegistryExport
             foreach ($rows as $c) {
                 $v = $c->vehicle;
                 $storage = $c->kind === ChargeKind::Storage;
-                $service = $storage ? ($v?->vendor?->kind === Kind::Insurer ? 'Хранение повреждённого ТС' : 'Хранение ТС') : $c->title;
+                $service = $storage ? ($v?->vendor?->storageServiceTitle() ?? 'Хранение ТС') : $c->title;
                 $writer->addRow(Row::fromValues([$n, (string) $v?->vin, (string) $v?->accepted_at?->format('d.m.Y'), (string) $v?->released_at?->format('d.m.Y'),
                     (string) $v?->ref, (string) $v?->policy_no, (string) $v?->plate, trim(($v?->brand?->name ?? '').' '.($v?->model?->name ?? '')),
                     $service, $storage ? (int) $c->qty : (float) $c->qty, (float) $c->price, (float) $c->amount]));

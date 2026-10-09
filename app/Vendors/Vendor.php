@@ -202,6 +202,12 @@ class Vendor extends Model implements HasMedia
         })->all();
     }
 
+    /** Наименование услуги хранения в отчёт-акте и его выгрузке: у страховой — повреждённое ТС (форма Питера, 09.10.2026). */
+    public function storageServiceTitle(): string
+    {
+        return $this->kind === Kind::Insurer ? 'Хранение повреждённого ТС' : 'Хранение ТС';
+    }
+
     /** Вендоры города парковки (`Park\City`): его письма относятся к городу или его ТС стоят в нём. */
     public function scopeOfParkCity($q, int $city)
     {

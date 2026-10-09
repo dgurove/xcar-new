@@ -17,6 +17,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'passport', 'passport_issued', 'passport_issued_at', 'passport_code', 'reg_address', 'birth_at', 'birth_place', 'phone', 'email', 'card', 'payment_purpose', 'notes', 'vat_on_top'])]
 class Party extends Model
 {
+    /** Реквизиты плательщика поменялись — «нужны реквизиты» в закрытии месяца пересчитывается сразу, а не через 10 минут. */
+    protected static function booted(): void
+    {
+        static::saved(fn (self $p) => $p->is_self ? null : Closing::forgetPending());
+    }
+
     use HidesDemo;
 
     protected $table = 'billing_parties';
