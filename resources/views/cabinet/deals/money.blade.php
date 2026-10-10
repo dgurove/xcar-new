@@ -76,6 +76,8 @@
             @include('cabinet.deals.selection-pay', ['invoice' => $selection])
         @endif
     @else
+        {{-- Отменённая — ни счёта «укажите покупателя», ни вознаграждения «к выплате»: только сумма. --}}
+        @unless ($deal->state === \App\Offers\DealState::Cancelled && ! $sale)
         <div class="list mt-4">
             <a href="{{ $sale ? $pay($sale) : '#dkp-buyer' }}" class="row">
                 <span class="min-w-0 flex-1">
@@ -91,5 +93,6 @@
                 </div>
             @endif
         </div>
+        @endunless
     @endif
 </div>

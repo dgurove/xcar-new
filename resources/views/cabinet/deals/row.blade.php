@@ -7,14 +7,17 @@
     $position = $offer->position();
     $active = $deal->state === DealState::Active;
     $req = $active ? $deal->openRequirement : null;
+    // Просьба «Оплатите счёт», а счета уже оплачены (маршрут не догнал) — не просим, пишем как есть.
+    $paidUp = $req && $position?->stage->isPayStep() && $deal->fullyPaid();
+    $req = $paidUp ? null : $req;
     // Ход менеджера без просьбы (ПРАЙМ без покупателя, гаражная без цены) — что сделать словами, как на странице сделки,
     // а не голое «Ваш ход» серым.
-    $mine = $active && ! $req && $position && $position->waitsFor() === \App\Workflow\WaitsFor::Manager && ! $position->awaitsInvoice();
+    $mine = $active && ! $req && ! $paidUp && $position && $position->waitsFor() === \App\Workflow\WaitsFor::Manager && ! $position->awaitsInvoice();
     $gap = $mine && $position->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
     $ask = $mine ? match ($gap) { 'buyer' => 'Укажите покупателя', 'price' => 'Укажите цену продажи', default => $position->stage->managerTitle() } : null;
     $staff = auth()->user()->isAdmin() && $deal->buyer_id !== auth()->id();
     // Оранжевое — только просрочка того, кто смотрит: менеджеру — его ход, админу — любая (11.10.2026).
-    $alarm = $req?->due_at?->isPast() || ($position?->isOverdue() && ($staff || $position->waitsFor() === \App\Workflow\WaitsFor::Manager));
+    $alarm = ! $paidUp && ($req?->due_at?->isPast() || ($position?->isOverdue() && ($staff || $position->waitsFor() === \App\Workflow\WaitsFor::Manager)));
 @endphp
 <a href="{{ $staff ? $deal->crmUrl() : '/deals/'.$deal->id }}" class="row" @if ($staff) data-turbo="false" @endif>
     <span class="row-photo max-sm:!h-[2.625rem] max-sm:!w-14"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
@@ -32,6 +35,8 @@
         @unless ($active)<span class="mt-1 block text-sm sm:hidden">@if ($deal->state === DealState::Cancelled)<span class="text-danger">{{ $deal->state->label() }}</span> @endif<span class="nums text-ink-muted">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span></span>@endunless
         @if ($req)
             <span class="mt-1 block text-sm font-medium text-urgent">{{ \App\Users\Wording::mine($req->title) }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), <span class="nums whitespace-nowrap">до {{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</span>
+        @elseif ($paidUp)
+            <span class="mt-1 block text-sm text-ink-muted">Оплата получена</span>
         @elseif ($ask)
             <span class="mt-1 block text-sm font-medium text-urgent">{{ \App\Users\Wording::mine($ask) }}@if ($position->deadline_at && $position->isOverdue()), просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($position->deadline_at), <span class="nums whitespace-nowrap">до {{ $position->deadline_at->translatedFormat('j M, H:i') }}</span>@endif</span>
         @elseif ($position && $active)

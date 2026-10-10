@@ -2,8 +2,13 @@
     use App\Offers\CommissionState;
     use App\Offers\DealState;
     $feeState = $deal->commissionState();
-    // Ждущие оплаты счета — в «Расчёте» справа, оплаченные и аннулированные — карточкой «Счета» ниже пути.
-    $pastInvoices = $invoices->reject(fn ($i) => $i->state === \App\Billing\InvoiceState::Issued);
+    // Счета, что уже стоят в «Расчёте» (подбор, ПРАЙМ), второй раз «Счетами» ниже пути не пишем (11.10.2026: «Счёт № 1,
+    // оплачен, 900 000» стоял и там, и там); аннулированные менеджеру ни о чём. Остаются прочие оплаченные — и все в гараже,
+    // где «Расчёта» нет.
+    $liveInvoices = $invoices->reject(fn ($i) => $i->state === \App\Billing\InvoiceState::Void);
+    $inMoney = $deal->isGarage() ? [] : collect([\App\Billing\ChargeKind::Selection, \App\Billing\ChargeKind::Sale])
+        ->map(fn ($kind) => $liveInvoices->first(fn ($i) => $i->kind === $kind)?->id)->filter()->all();
+    $pastInvoices = $liveInvoices->reject(fn ($i) => $i->state === \App\Billing\InvoiceState::Issued || in_array($i->id, $inMoney, true));
     // Файлы из ответов страховой стоят в задаче под своим письмом — в «Документах» второй раз их нет.
     $replyIds = ($replies ?? collect())->pluck('id')->all();
     $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user())->reject(fn ($m) => in_array($m->getCustomProperty('letter'), $replyIds));
@@ -24,7 +29,8 @@
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
             <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps])</div>
-            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer)<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif
+            {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
+            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer && ($deal->isActive() || $deal->contract?->buyer_user_id))<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
             @if ($pastInvoices->isNotEmpty())

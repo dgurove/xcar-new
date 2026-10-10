@@ -11,6 +11,8 @@
     // Шаг «оплатите счёт»: оплата тут же — счёт, ссылка, «Оплатить» шторкой (`x-billing.pay-sheet`).
     $payStep = $requirement && $position?->stage->isPayStep();
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
+    // Шаг оплаты, а счета уже оплачены (оплатили по ссылке, маршрут ещё не догнал) — «Оплатите» с «Приложить» тут врут.
+    $paidUp = $payStep && $unpaid->isEmpty() && $deal->fullyPaid();
     // Оплата, а счёта ещё нет: ход наш (`Position::awaitsInvoice`), просить оплатить нечего — счёт готовим.
     $noInvoice = (bool) $position?->awaitsInvoice();
     // ПРАЙМ без покупателя — ход менеджера: счёт встанет сам, как только он укажет, кому (`Deal::invoiceGap`).
@@ -29,7 +31,8 @@
     $rejected = $payStep && $unpaid->every(fn ($i) => $i->claimed() == 0)
         ? \App\Billing\Payment::whereIn('invoice_id', $unpaid->pluck('id'))->where('state', \App\Billing\PaymentState::Rejected)->latest('id')->first() : null;
     $handover ??= null;
-    $showHandover = $handover?->shows();
+    // Машина уже у менеджера — «У вас» одним словом над чужой задачей (оплата, договор) ни о чём: получения больше нет.
+    $showHandover = $handover?->shows() && ! $handover->withBuyer;
     // Поля шага, что показаны в получении (контакт, адрес, дата), второй раз в шаге не пишем.
     $payload = collect($position?->payload ?? [])->except($handover?->open ? $handover->keys : []);
     // Ответы — перепиской, по порядку писем: сначала контакт, потом документы. Много — ранние под «Ещё».
@@ -41,13 +44,14 @@
     $consent = $deal->isActive() && $requirement && $position?->stage->asksConsent();
 @endphp
 <div class="flex flex-col gap-6">
-    @if ($deal->state !== DealState::Active)
-        {{-- Закончилась — состояние словом с датой, без своей плашки. --}}
-        <p class="max-lg:hidden"><span class="font-medium {{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ $deal->state->label() }}</span>@if ($deal->closed_at) <span class="nums text-sm text-ink-muted">{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span>@endif</p>
+    @if ($deal->state !== DealState::Active && ! $deal->isGarage())
+        {{-- Закончилась — состояние словом с датой, без своей плашки, и на телефоне тоже (11.10.2026: там закрытая сделка
+             выглядела идущей). Гаражной его пишет своя карточка суммы. --}}
+        <p><span class="font-medium {{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ $deal->state->label() }}</span>@if ($deal->closed_at) <span class="nums text-sm text-ink-muted">{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span>@endif</p>
     @endif
 
     @if ($deal->state === DealState::Active && $position)
-        <div class="box {{ $requirement && $position->isOverdue() ? 'box-urgent' : '' }}">
+        <div class="box {{ $requirement && $position->isOverdue() && ! $paidUp ? 'box-urgent' : '' }}">
             @if ($consent)
                 <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <h2>Поставщик согласовал</h2>
@@ -57,8 +61,9 @@
             @else
             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <h2>{{ \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа' }}</h2>
-                {{-- Счёта нет — ниже «Готовим счёт», второй раз в шапке не пишем. --}}
-                @unless ($noInvoice)<x-route.clock :position="$position"/>@endunless
+                {{-- Счёта нет — ниже «Готовим счёт», второй раз в шапке не пишем. Ход менеджера — только часы: что сделать,
+                     говорит заголовок задачи ниже, «Ваш ход» над ним — лишнее слово (без срока — ничего). --}}
+                @unless ($noInvoice || $paidUp)<x-route.clock :position="$position" :bare="$position->waitsFor() === \App\Workflow\WaitsFor::Manager"/>@endunless
             </div>
             @endif
 
@@ -67,6 +72,8 @@
                 <h3 class="mt-5 text-lg">Укажите покупателя</h3>
             @elseif ($needsPrice)
                 <h3 class="mt-5 text-lg">Укажите цену продажи</h3>
+            @elseif ($paidUp)
+                <h3 class="mt-5 text-lg">Оплата получена</h3>
             @elseif ($requirement && ! ($pickupSteps ?? null))
                 {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
                 <h3 class="mt-5 text-lg">{{ \App\Users\Wording::mine($requirement->title) }}</h3>
@@ -154,7 +161,7 @@
             @if ($needsBuyer)
                 <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])</div>
             @endif
-            @if ($requirement && ! $needsBuyer && ! $selectionPay)
+            @if ($requirement && ! $needsBuyer && ! $selectionPay && ! $paidUp)
                 @if ($payStep && $unpaid->isNotEmpty())
                     @if ($claimable->isNotEmpty())
                         {{-- Та же шторка, что в «Деньгах»: ссылкой (кто платит), по счёту с платёжкой, наличными. Ответ — сюда же. --}}
