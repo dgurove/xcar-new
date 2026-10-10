@@ -131,7 +131,7 @@
                 // Отмена сделки — красным, с подтверждением: оба пункта у сделки (в продажу, в черновики) её гасят.
                 $calm = $offer->state === OfferState::Sold ? collect() : $transitions->reject(fn ($t) => $t[0] === OfferState::Archived || $t[0]->tone() === 'danger');
                 $danger = $transitions->diffKeys($calm);
-                // Черновик из таблицы Кати — «Вернуть в черновики»: номер уходит из списка, машина — в свою рабочую вкладку.
+                // Черновик из таблицы Кати — «Убрать из таблицы Кати»: номер уходит из списка, в рабочих вкладках черновик и так стоит.
                 $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                 $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
             @endphp
@@ -162,7 +162,7 @@
                             <div class="menu-group">
                                 <form method="post" action="/offers/legacy/{{ $listed->id }}">
                                     @csrf @method('delete')
-                                    <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="undo" class="size-5 text-ink-muted"/>Вернуть в черновики</button>
+                                    <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="x" class="size-5 text-ink-muted"/>Убрать из таблицы Кати</button>
                                 </form>
                             </div>
                         @endif

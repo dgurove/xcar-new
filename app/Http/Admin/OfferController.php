@@ -253,11 +253,6 @@ class OfferController
     {
         $bids = fn ($b) => $b->where('state', BidState::Active);
 
-        // Черновики из таблицы Кати (10.10.2026) — только в своей вкладке, рабочим не мешают.
-        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots'], true)) {
-            LegacyClaim::offList($q);
-        }
-
         return match ($preset) {
             'legacy' => LegacyClaim::onList($q->where('offers.state', OfferState::Draft)),
             'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
