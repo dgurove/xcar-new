@@ -1,11 +1,10 @@
-{{-- Сделки менеджера одним экраном — только живое: подтверждения без решения и сделки в работе (где ход менеджера —
-     первыми, просьба прямо в строке). Закончившееся и не состоявшееся — в архиве, вход строкой «Архив N» в конце
-     (11.10.2026). Админу — все сделки, без подтверждений и без пилюли «Покупатели»: вместо пилюль заголовок.
-     Супер-покупателю — заголовок тоже: покупателей у него нет. --}}
+{{-- Сделки менеджера — только сделки в работе (где ход менеджера — первыми, просьба прямо в строке). Подтверждения — в
+     «Моих подтверждениях», закончившееся — в архиве: входы строками в конце (11.10.2026). Админу — все сделки, без
+     подтверждений и без пилюль: вместо них заголовок. --}}
 @php
     $staff = auth()->user()->isAdmin() && ! auth()->user()->isManager();
-    // Заголовок вместо пилюль «Сделки | Покупатели».
-    $titled = $staff || auth()->user()->isSuperBuyer();
+    // Заголовок вместо пилюль «Сделки | Покупатели | Чаты» — только админу: супер-покупателю пилюли «Сделки | Чаты».
+    $titled = $staff;
 @endphp
 <x-ui.shell title="Сделки" :phone-heading="$titled" :desktop-heading="$titled">
 {{-- Админу на телефоне сортировка — справа от заголовка, а не своим рядом под ним (09.10.2026: одна кнопка на целую
@@ -17,30 +16,20 @@
     @if (! $titled || $deals->isNotEmpty())
         <div @class(['search-head', 'max-md:hidden' => $titled])>
             @unless ($titled)<div class="min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>@endunless
-            @if ($deals->isNotEmpty())<x-ui.toolbar :sort="$sort" name="deals"/>@endif
+            {{-- Телефон: пилюлям (Сделки, Покупатели, Чаты) нужна вся ширина — сортировка у заголовка «В работе». --}}
+            @if ($deals->isNotEmpty())<x-ui.toolbar :sort="$sort" name="deals" @class(['max-md:hidden' => ! $titled])/>@endif
         </div>
     @endif
     {{-- «Узнавайте первым, что выбрали вас» — менеджеру; админу Telegram подключают в профиле. --}}
     @unless ($staff)<x-telegram.card/>@endunless
 
-    @if ($pending->isNotEmpty())
-        <section>
-            <h2 class="list-head">Ждут решения</h2>
-            <div class="list">
-                @foreach ($pending as $bid)
-                    @include('cabinet.deals.bid-row', ['bid' => $bid, 'state' => false])
-                @endforeach
-            </div>
-        </section>
-    @endif
-
-    @if ($deals->isEmpty() && $pending->isEmpty())
+    @if ($deals->isEmpty())
         <x-ui.empty href="/offers" link="В предложения">{{ $archived ? 'Сейчас сделок в работе нет' : 'Пока ни одной сделки' }}</x-ui.empty>
     @endif
 
     @if ($deals->isNotEmpty())
         <section>
-            <h2 class="list-head">В работе <span class="nums">{{ $deals->total() }}</span></h2>
+            <h2 class="list-head">В работе <span class="nums">{{ $deals->total() }}</span>@unless ($titled)<span class="ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="deals-list"/></span>@endunless</h2>
             <div class="list">
                 @foreach ($deals as $deal)
                     @include('cabinet.deals.row', ['deal' => $deal])
@@ -50,13 +39,23 @@
         <x-ui.pager :of="$deals" :sizes="[]"/>
     @endif
 
-    @if ($archived)
+    {{-- Подтверждения и архив — строками в конце (11.10.2026): подтверждение — ещё не сделка, архив — уже не работа. --}}
+    @if ($bids || $archived)
         <div class="list">
-            <a href="/deals?view=archive" class="row">
-                <span class="min-w-0 flex-1">Архив</span>
-                <span class="nums text-ink-muted">{{ $archived }}</span>
-                <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
-            </a>
+            @if ($bids)
+                <a href="/deals?view=bids" class="row">
+                    <span class="min-w-0 flex-1">Мои подтверждения</span>
+                    <span class="nums text-ink-muted">{{ $bids }}</span>
+                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                </a>
+            @endif
+            @if ($archived)
+                <a href="/deals?view=archive" class="row">
+                    <span class="min-w-0 flex-1">Архив</span>
+                    <span class="nums text-ink-muted">{{ $archived }}</span>
+                    <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+                </a>
+            @endif
         </div>
     @endif
 </div>

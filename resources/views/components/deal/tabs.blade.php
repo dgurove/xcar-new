@@ -1,11 +1,16 @@
-{{-- Пилюли раздела «Сделки» у менеджера: сделки и покупатели — один таб, два экрана. На телефоне стоят вместо h1
+{{-- Пилюли раздела «Сделки»: сделки, покупатели (у менеджера) и чаты — один таб. На телефоне стоят вместо h1
      (шелл с :phone-heading="false"), как пилюли каталога; число — сколько всего, лаймовый бейдж — что ждёт его. --}}
 @props(['current'])
 @php
     $user = auth()->user();
     $totals = \App\Support\Nav::totals($user);
     $badges = \App\Support\Nav::badges($user);
-    $pills = ['/deals' => ['Сделки', '/deals/asks'], '/buyers' => ['Покупатели', '/buyers']];
+    // Чаты — и тут (11.10.2026, владелец: «в кабинете чаты обычно не ищут»): тот же экран, лаймовый бейдж — непрочитанное.
+    $pills = array_filter([
+        '/deals' => ['Сделки', '/deals/asks'],
+        '/buyers' => $user->isManager() ? ['Покупатели', '/buyers'] : null,
+        '/deals/chats' => $user->canChat() ? ['Чаты', '/account/chats'] : null,
+    ]);
 @endphp
 <div class="toolbar-pills -mx-4 snap-x overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden" data-title-anchor>
     <div class="flex flex-nowrap items-center gap-2">

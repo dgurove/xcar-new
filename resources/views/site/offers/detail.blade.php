@@ -32,7 +32,6 @@
         <x-slot:line>
             @if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif
             @if ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>@elseif ($bids && !$gallery && !$offer->bidsOpen())<span class="text-ink-muted">приём закрыт</span>@endif
-            <span class="text-ink-muted">{{ $offer->prices_include_vat ? 'с НДС' : 'без НДС' }}</span>
         </x-slot:line>
         <x-slot:tools>
             @if ($user?->canShare())@include('admin.offers.share-button', ['class' => 'bar-btn'])@endif

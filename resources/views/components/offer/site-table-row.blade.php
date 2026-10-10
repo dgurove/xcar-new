@@ -18,6 +18,9 @@
         default => null,
     };
     $myBid = $bids && !$gallery && $offer->relationLoaded('bids') ? $offer->bids->firstWhere('user_id', $user->id) : null;
+    // Галерея: «Проявить интерес» прямо в строке (владелец 11.10.2026: в строчном виде кнопки не хватало), как у плитки.
+    $myInterest = $gallery && $user ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
+    $href = $context?->offerUrl($offer) ?? '/offers/'.$n;
     // Сколько прошло — с тех пор, как открылось этому человеку (волна, показ), как и точка «новое».
     $since = $offer->openedAt() ?? $offer->created_at;
     $city = $offer->settlement?->title();
@@ -45,7 +48,8 @@
     @endif
     <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ $city }}</td>
     <td class="num nums">
-        @if ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
+        @if ($gallery)<a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
+        @elseif ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
         {{-- Заявленная (менеджеру — закупочная для него) под ценой, пока стрелка «от → до» не влезает. --}}
         @if ($price->shown() && $price->withFrom())<span class="cell-sub lg:hidden">{{ $price::money($price->from) }}</span>@endif
         @if ($myBid)<span class="cell-sub">{{ $myBid->isGarage() ? 'в гараж' : 'ваша '.$price::money($myBid->amount) }}</span>@endif

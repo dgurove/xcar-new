@@ -31,8 +31,8 @@
             <span class="nums shrink-0 text-sm text-ink-muted">№ {{ $offer->number }}</span>
             @if ($staff)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $deal->buyer?->shortName() }}</span>@endif
         </span>
-        {{-- В архиве раздел уже называет исход: у закончившейся — только когда, у отменённой — слово (рядом отклонённые подтверждения). --}}
-        @unless ($active)<span class="mt-1 block text-sm sm:hidden">@if ($deal->state === DealState::Cancelled)<span class="text-danger">{{ $deal->state->label() }}</span> @endif<span class="nums text-ink-muted">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span></span>@endunless
+        {{-- В архиве исход называет раздел («Закончены», «Отменены») — у строки только когда. --}}
+        @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span>@endunless
         @if ($req)
             <span class="mt-1 block text-sm font-medium text-urgent">{{ \App\Users\Wording::mine($req->title) }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), <span class="nums whitespace-nowrap">до {{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</span>
         @elseif ($paidUp)
@@ -46,7 +46,7 @@
     <span class="flex max-w-[45%] shrink-0 flex-col items-end gap-1.5 max-sm:!hidden">
         <span class="nums font-medium">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span>
         @if (! $active)
-            <span class="text-sm">@if ($deal->state === DealState::Cancelled)<span class="text-danger">{{ $deal->state->label() }}</span> @endif<span class="nums text-ink-muted">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span></span>
+            <span class="nums text-sm text-ink-muted">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span>
         @else
             {{-- Этап в покое серый: лайм — глагол. Оранжевым становится просрочка. --}}
             <x-ui.state :tone="$alarm ? 'urgent' : 'plain'" class="max-w-full"><span class="min-w-0">{{ \App\Users\Wording::mine($position?->stage->block?->name) ?? 'Идёт работа' }}</span></x-ui.state>

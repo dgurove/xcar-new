@@ -47,7 +47,7 @@
                         <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)
-                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer)))@php $group = $label; @endphp<tr class="table-group"><th colspan="99" scope="colgroup">{{ $label }}</th></tr>@endif
+                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer)))@php $group = $label; @endphp<tr class="table-group"><th colspan="99" scope="colgroup">{{ $label }} <span class="nums">{{ $groupSizes[$label] ?? '' }}</span></th></tr>@endif
                             <x-offer.site-table-row :offer="$offer" :context="$context" :deadline="$deadline"/>
                         @endforeach
                     </x-ui.table>
@@ -56,7 +56,7 @@
                         {{-- По сроку — подписью над каждой пачкой слота («До 17:00 сегодня»), владелец 10.10.2026. --}}
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)
-                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer)))@php $group = $label; @endphp<h2 class="cards-group">{{ $label }}</h2>@endif
+                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer)))@php $group = $label; @endphp<h2 class="cards-group">{{ $label }} <span class="nums">{{ $groupSizes[$label] ?? '' }}</span></h2>@endif
                             <x-offer.card :offer="$offer" :context="$context"/>
                         @endforeach
                     </div>

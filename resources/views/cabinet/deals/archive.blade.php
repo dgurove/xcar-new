@@ -1,6 +1,6 @@
-{{-- Архив сделок (11.10.2026, владелец: «не состоявшиеся в общем списке не вижу смысла»): закончившиеся сделки и не
-     состоявшиеся — отменённые сделки и подтверждения, которые не выбрали или отозвали, одной лентой по дате. Вход —
-     строкой «Архив N» в конце «Сделок». --}}
+{{-- Архив сделок (11.10.2026, владелец: «не состоявшиеся в общем списке не вижу смысла»): закончившиеся и отменённые
+     сделки. Подтверждений тут нет — они в «Моих подтверждениях», отклонённые не показываются нигде. Вход — строкой
+     «Архив N» в конце «Сделок». --}}
 <x-ui.shell title="Архив" :back="['Сделки', '/deals']">
 <div class="flex flex-col gap-4">
     @if ($done->isEmpty() && $failed->isEmpty())
@@ -18,14 +18,10 @@
     @endif
     @if ($failed->isNotEmpty())
         <section>
-            <h2 class="list-head">Не состоялись <span class="nums">{{ $failed->count() }}</span></h2>
+            <h2 class="list-head">Отменены <span class="nums">{{ $failed->count() }}</span></h2>
             <div class="list">
-                @foreach ($failed as $item)
-                    @if ($item instanceof \App\Offers\Deal)
-                        @include('cabinet.deals.row', ['deal' => $item])
-                    @else
-                        @include('cabinet.deals.bid-row', ['bid' => $item, 'state' => true])
-                    @endif
+                @foreach ($failed as $deal)
+                    @include('cabinet.deals.row', ['deal' => $deal])
                 @endforeach
             </div>
         </section>

@@ -12,6 +12,7 @@ use App\Offers\Actions\PickUp;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Handover;
+use App\Offers\OfferState;
 use App\Offers\InsurerReplies;
 use App\Support\ListPrefs;
 use App\Users\User;
@@ -35,9 +36,9 @@ class DealController
     private const ARCHIVE = 100;
 
     /**
-     * Сделки одним экраном — только живое (11.10.2026, владелец: «не состоявшиеся в общем списке не вижу смысла»):
-     * подтверждения без решения и сделки в работе. Закончившееся и не состоявшееся — в архиве (`?view=archive`), вход —
-     * строкой «Архив N» в конце списка.
+     * Сделки — только сделки в работе (11.10.2026, владелец). Подтверждения — не сделки: «менеджеры подтверждают кучу
+     * машин, а берём редко» — они в «Моих подтверждениях» (`?view=bids`), закончившееся и не состоявшееся — в архиве
+     * (`?view=archive`); входы — строками в конце списка.
      */
     public function index(Request $request)
     {
@@ -45,6 +46,9 @@ class DealController
         abort_unless($me->hasDeals() || $me->isAdmin(), 404);
         if ($request->query('view') === 'archive') {
             return $this->archive($request);
+        }
+        if ($request->query('view') === 'bids' && $me->hasDeals()) {
+            return $this->bidsScreen($request);
         }
         ListPrefs::sync($request, 'deals', view: false, keep: ['sort']);
         $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
@@ -58,25 +62,32 @@ class DealController
             ->orderByRaw("(select min(r.due_at) from {$open}) asc nulls last")
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id')->paginate(30);
 
-        // Ждущие решения подтверждения — будущие сделки; принятые уже стоят сделками. Админ подтверждения решает в CRM.
-        $pending = $me->hasDeals() ? self::bids($me)->where('state', BidState::Active)->get() : collect();
-        $archived = self::deals($me)->where('state', '!=', DealState::Active)->count() + ($me->hasDeals() ? self::lost($me)->count() : 0);
+        // Админ подтверждения решает в CRM — строки «Мои подтверждения» у него нет.
+        $bids = $me->hasDeals() ? self::waiting($me)->count() + self::reserve($me)->count() : 0;
+        $archived = self::deals($me)->where('state', '!=', DealState::Active)->count();
 
-        return view('cabinet.deals.index', ['deals' => $deals, 'pending' => $pending, 'archived' => $archived, 'sort' => $sort]);
+        return view('cabinet.deals.index', ['deals' => $deals, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
     }
 
-    /** Архив: закончившиеся сделки и не состоявшиеся — отменённые сделки и отклонённые или отозванные подтверждения. */
+    /**
+     * Мои подтверждения (11.10.2026, владелец): «Ждут решения» — по предложению ещё никого не выбрали; «В резерве» — отдали
+     * другому менеджеру, его сделка идёт. Отклонённых и отданных другому, чья продажа состоялась, тут нет вовсе.
+     */
+    private function bidsScreen(Request $request)
+    {
+        $me = $request->user();
+
+        return view('cabinet.deals.bids', ['waiting' => self::waiting($me)->get(), 'reserve' => self::reserve($me)->get()]);
+    }
+
+    /** Архив: закончившиеся и отменённые сделки. Подтверждений здесь нет — они не сделки. */
     private function archive(Request $request)
     {
         $me = $request->user();
         $closed = self::deals($me)->where('state', '!=', DealState::Active)
             ->orderByRaw('coalesce(closed_at, updated_at) desc')->orderByDesc('id')->limit(self::ARCHIVE)->get();
-        $lost = $me->hasDeals() ? self::lost($me)->limit(self::ARCHIVE)->get() : collect();
-        // Не состоялось — одной лентой по дате: отменённая сделка и подтверждение, которое не выбрали.
-        $failed = $closed->where('state', DealState::Cancelled)->concat($lost)
-            ->sortByDesc(fn ($x) => ($x instanceof Deal ? ($x->closed_at ?? $x->updated_at) : ($x->decided_at ?? $x->updated_at))?->timestamp ?? 0)->values();
 
-        return view('cabinet.deals.archive', ['done' => $closed->where('state', DealState::Done)->values(), 'failed' => $failed]);
+        return view('cabinet.deals.archive', ['done' => $closed->where('state', DealState::Done)->values(), 'failed' => $closed->where('state', DealState::Cancelled)->values()]);
     }
 
     /** Сделки экрана: без гаражных, с тем, что нужно строке. */
@@ -91,11 +102,18 @@ class DealController
         return Bid::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $me->id)->latest();
     }
 
-    /** Отклонённые и отозванные подтверждения — кроме тех, по которым была своя сделка: она уже в архиве строкой «Отменена». */
-    private static function lost(User $me)
+    /** Ждут решения: предложение открыто, сделки по нему нет — выбор впереди. */
+    private static function waiting(User $me)
     {
-        return self::bids($me)->whereIn('state', [BidState::Declined, BidState::Withdrawn])
-            ->whereNotIn('id', Deal::where('buyer_id', $me->id)->whereNotNull('bid_id')->select('bid_id'));
+        return self::bids($me)->where('state', BidState::Active)
+            ->whereHas('offer', fn ($o) => $o->where('state', OfferState::Open)->whereDoesntHave('deal'));
+    }
+
+    /** В резерве: отдали другому, его сделка идёт — сорвётся, выберем из резерва. */
+    private static function reserve(User $me)
+    {
+        return self::bids($me)->where('state', BidState::Active)
+            ->whereHas('offer.deal', fn ($d) => $d->where('buyer_id', '!=', $me->id));
     }
 
     public function show(Request $request, Deal $deal)

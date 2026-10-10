@@ -97,7 +97,8 @@ class CatalogController
             // Сортировка объектом — тулбару и заголовкам таблицы; строкой `sort` — стрелкам страницы предложения.
             'sorting' => Sort::from($sort, CatalogQuery::allowedSorts($gallery, $prices, $user), CatalogQuery::defaultSort($user, $gallery)),
             // Подписи «До 17:00 сегодня» между пачками — только по сроку и тому, кто срок видит.
-            'groups' => ! $gallery && $sort === 'closing' && ($user?->bidsOnSite() ?? false),
+            'groups' => ($groups = ! $gallery && $sort === 'closing' && ($user?->bidsOnSite() ?? false)),
+            'groupSizes' => $groups ? \App\Offers\CloseGroups::sizes($query) : [],
             'views' => $views,
             'view' => $view,
             'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),

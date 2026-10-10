@@ -140,6 +140,13 @@ Route::middleware(['auth', 'wall'])->group(function () {
 
     // Сделки — раздел таб-бара менеджеру и админу (админу все, ведёт он их в CRM; чужому 404 в контроллере).
     Route::get('/deals', [DealController::class, 'index']);
+    // Чаты — и в «Сделках» пилюлей (11.10.2026), тот же экран, что в кабинете.
+    Route::middleware('ability:usesSite')->group(function () {
+        Route::get('/deals/chats', [CabinetChatController::class, 'index']);
+        Route::get('/deals/chats/offer/{offer}', [CabinetChatController::class, 'offer']);
+        Route::get('/deals/chats/support', [CabinetChatController::class, 'support']);
+        Route::get('/deals/chats/{chat}', [CabinetChatController::class, 'show']);
+    });
     Route::get('/deals/{deal}', [DealController::class, 'show']);
 
     // Пользователи — админу тот же экран, что в CRM (чужому 404 в контроллере).

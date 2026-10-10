@@ -6,7 +6,8 @@
     $style = fn (string $color) => \App\Offers\Tag::style($color);
     $text = array_values(array_filter([
         ...($facts ? [$offer->transmission?->label(), $offer->drive?->label()] : []),
-        $vat ? ($offer->prices_include_vat ? 'с НДС' : 'без НДС') : null,
+        // Только «с НДС»: без НДС — почти всё, писать это везде незачем (владелец 11.10.2026).
+        $vat && $offer->prices_include_vat ? 'с НДС' : null,
         ...$extra,
     ]));
 @endphp

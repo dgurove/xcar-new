@@ -2,6 +2,11 @@
 
 namespace App\Offers;
 
+use App\Support\Facets\Facet;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+
 /**
  * Подпись пачки в каталоге по сроку (владелец 10.10.2026): слот закрывает приём у пачки предложений в один час —
  * «До 17:00 сегодня», «До 17:00 завтра», «До 17:00 13 октября»; закрытое и «Идёт сделка» — одной пачкой в конце.
@@ -10,8 +15,12 @@ final class CloseGroups
 {
     public static function label(Offer $offer): string
     {
-        $at = $offer->bids_close_at;
-        if (! $offer->bidsOpen() || $offer->state !== OfferState::Open) {
+        return self::of($offer->bids_close_at, $offer->bidsOpen() && $offer->state === OfferState::Open);
+    }
+
+    public static function of(?CarbonInterface $at, bool $open): string
+    {
+        if (! $open) {
             return 'Приём закрыт';
         }
         if (! $at) {
@@ -24,5 +33,24 @@ final class CloseGroups
         };
 
         return 'До '.$at->format('H:i').' '.$day;
+    }
+
+    /**
+     * Сколько в каждой пачке по всему списку, а не по странице: пачка слота бывает длиннее страницы.
+     *
+     * @return array<string, int> подпись → число
+     */
+    public static function sizes(Builder $list): array
+    {
+        $rows = Facet::bare($list->toBase())
+            ->selectRaw("offers.bids_close_at as at, (offers.state = ? and (offers.bids_close_at is null or offers.bids_close_at > now())) as open, count(*) as n", [OfferState::Open->value])
+            ->groupBy('offers.bids_close_at', 'offers.state')->get();
+        $out = [];
+        foreach ($rows as $r) {
+            $label = self::of($r->at ? Carbon::parse($r->at) : null, (bool) $r->open);
+            $out[$label] = ($out[$label] ?? 0) + (int) $r->n;
+        }
+
+        return $out;
     }
 }

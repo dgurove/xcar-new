@@ -20,7 +20,7 @@ class ChatController
 {
     public function index(Request $request)
     {
-        return view('cabinet.chats', ['chats' => $this->list($request->user(), $request), 'current' => null, 'q' => trim((string) $request->query('q'))]);
+        return view('cabinet.chats', ['chats' => $this->list($request->user(), $request), 'current' => null, 'q' => trim((string) $request->query('q')), 'base' => self::base($request)]);
     }
 
     /** Экран чата: собеседник в шапке, плашка ТС, последние сообщения; на широком экране слева список. */
@@ -38,7 +38,7 @@ class ChatController
         return view('cabinet.chats', [
             'chat' => $chat, 'messages' => $messages, 'user' => $user, 'firstUnread' => $firstUnread,
             'more' => $messages->isNotEmpty() && $messages->first()->seq > 1,
-            'chats' => $this->list($user, $request), 'current' => $chat->id,
+            'chats' => $this->list($user, $request), 'current' => $chat->id, 'base' => self::base($request),
         ]);
     }
 
@@ -51,13 +51,13 @@ class ChatController
         $user = $request->user();
         abort_unless($offer->chatOpenFor($user), 404);
         if ($chat = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first()) {
-            return redirect('/account/chats/'.$chat->id);
+            return redirect(self::base($request).'/'.$chat->id);
         }
         $offer->load(['brand', 'model', 'media']);
 
         return view('cabinet.chats', [
             'chat' => null, 'offer' => $offer, 'messages' => collect(), 'user' => $user, 'firstUnread' => 0, 'more' => false,
-            'chats' => $this->list($user, $request), 'current' => 'new',
+            'chats' => $this->list($user, $request), 'current' => 'new', 'base' => self::base($request),
         ]);
     }
 
@@ -67,13 +67,19 @@ class ChatController
         $user = $request->user();
         abort_if($user->isAdmin(), 404);
         if ($chat = Chat::whereNull('offer_id')->where('user_id', $user->id)->latest('last_message_at')->first()) {
-            return redirect('/account/chats/'.$chat->id);
+            return redirect(self::base($request).'/'.$chat->id);
         }
 
         return view('cabinet.chats', [
             'chat' => null, 'offer' => null, 'messages' => collect(), 'user' => $user, 'firstUnread' => 0, 'more' => false,
-            'chats' => $this->list($user, $request), 'current' => 'support',
+            'chats' => $this->list($user, $request), 'current' => 'support', 'base' => self::base($request),
         ]);
+    }
+
+    /** Где открыт экран чатов: в «Сделках» (`/deals/chats`) или в кабинете — ссылки строк и «назад» остаются там же. */
+    private static function base(Request $request): string
+    {
+        return $request->is('deals/chats*') ? '/deals/chats' : '/account/chats';
     }
 
     /** Мои чаты; лупа над списком (`q`) — имя собеседника, марка или модель ТС, номер предложения. */

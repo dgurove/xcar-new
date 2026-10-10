@@ -2760,6 +2760,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --aside-self: end; --aside-align: center; --aside-pad: 0; --place-pad: 0;
     --action-pad: 0; --action-self: end; --action-dir: row;
     --price-size: 1.125rem; --price-align: right;
+    /* Новое и горящее у строки — полоса слева на всю высоту карточки (владелец 11.10.2026: «полоска, а не точка»). */
+    --tone-dot: none; --tone-stripe: block; --stripe-top: 0;
   }
   @media (min-width: 640px) {
     .cards {
@@ -2860,8 +2862,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card-name > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--name-lines, 2); overflow: hidden; }
   /* Срок приёма строкой под названием: оранжевым у горящего (меньше 12 ч), тихим у остальных. */
   .card-when { display: inline-flex; align-self: flex-start; align-items: center; gap: .25rem; font-size: var(--text-sm); }
-  /* Новое и горящее (владелец 10.10.2026): у строки и в таблице — точка перед названием, как непрочитанное; у плитки —
-     полоса слева от низа кадра до низа карточки, на кадр не заходит. Горящее важнее нового. */
+  /* Новое и горящее (владелец 10–11.10.2026): у плитки — полоса слева от низа кадра до низа карточки (на кадр не заходит),
+     у строки — полоса на всю высоту, в таблице — точка перед названием (полоса там — выделение открытой строки). Горящее
+     важнее нового. */
   .card-tone { display: var(--tone-dot, inline-block); width: .5rem; height: .5rem; margin-right: .4375rem; border-radius: 999px; vertical-align: .1em; }
   .card-tone--fresh { background: var(--color-accent); }
   .card-tone--hot { background: var(--color-urgent); }
@@ -2870,11 +2873,20 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card--fresh::before, .card--hot::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
   .card--fresh::before { background: var(--color-accent); }
   .card--hot::before { background: var(--color-urgent); }
-  /* Без контейнерных единиц (iOS до 16) полоса встала бы на кадр — там и в плитке точка у названия. */
-  @supports not (top: 1cqi) { .cards { --tone-stripe: none !important; --tone-dot: inline-block !important; } }
-  /* Подпись пачки по сроку («До 17:00 сегодня») — во всю ширину ленты, мелкой серой подписью раздела. */
-  .cards-group { grid-column: 1 / -1; margin-top: .75rem; font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-dim); }
+  /* Без контейнерных единиц (iOS до 16) полоса плитки встала бы на кадр — там в плитке точка у названия. */
+  @supports not (top: 1cqi) {
+    .cards--grid { --tone-stripe: none !important; --tone-dot: inline-block !important; }
+    @media (min-width: 640px) { .cards:not(.cards--list) { --tone-stripe: none !important; --tone-dot: inline-block !important; } }
+  }
+  /* Пачка по сроку («До 17:00 сегодня 12») — заголовком во всю ширину ленты, как группа таблицы: крупно, липнет под
+     шапкой, следующая наезжает на прежнюю (владелец 11.10.2026: мелкая серая подпись между большими плитками терялась). */
+  .cards-group {
+    grid-column: 1 / -1; position: sticky; z-index: 5; top: calc(var(--spacing-header) + env(safe-area-inset-top));
+    display: flex; align-items: baseline; gap: .375rem; margin: .5rem -.25rem 0; padding: .5rem .25rem;
+    background: var(--color-ground); font-size: var(--text-lg); font-weight: 500; color: var(--color-ink);
+  }
   .cards-group:first-child { margin-top: 0; }
+  .cards-group .nums { font-weight: 400; color: var(--color-ink-dim); }
   .card-body { grid-area: body; min-width: 0; display: flex; flex-direction: column; gap: var(--body-gap); padding: var(--body-pad); }
   .card-body:last-child { padding-bottom: var(--body-pad-end); }
   .card-extra { grid-area: extra; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .5rem; padding: var(--extra-pad); }

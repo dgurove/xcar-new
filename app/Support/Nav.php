@@ -472,10 +472,10 @@ final class Nav
                 '/offers' => (clone $open)->count(),
                 '/gallery' => (clone $gallery)->count(),
                 '/purchases' => $user->canSeePurchases() ? Purchase::cardCount($user) : null,
-                // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
+                // Сделки в работе — то, что стоит строками на экране «Сделки».
                 '/deals' => match (true) {
-                    // Только живое, как в списке (11.10.2026): закончившееся — в архиве.
-                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->where('state', DealState::Active)->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(),
+                    // Только сделки в работе, как в списке (11.10.2026): подтверждения и закончившееся — строками в конце.
+                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->where('state', DealState::Active)->count(),
                     $user->isAdmin() => Deal::whereNull('garage_payer')->where('state', DealState::Active)->count(),
                     default => null,
                 },
