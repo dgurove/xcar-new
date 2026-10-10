@@ -2,8 +2,10 @@
      Не в продаже — лаймовая «Выставить в продажу» с подтверждением (машина, госномер, убыток). В продаже — капсула
      состоянием продажи со стрелкой: шторка «Продажа» — предложение в CRM строкой, сделка, если идёт, и красная «Убрать из
      продажи» (`TakeOffSale`: черновик удаляется, опубликованное — в архив; ТС с фото и документами остаётся). Сделку,
-     гараж и проданную так не снять — кнопки нет. --}}
-@props(['vehicle'])
+     гараж и проданную так не снять — кнопки нет.
+     row — строкой списка фактов (карточка «Наличия», 10.10.2026, владелец: три кнопки рядом «как равнозначные действия»):
+     «Продажа» слева, справа «Выставить ›» или состояние продажи ›. --}}
+@props(['vehicle', 'row' => false])
 @php
     use App\Offers\OfferState;
     use App\Support\Surface;
@@ -15,7 +17,10 @@
         {{-- Страховая уже продала или ТС ждёт выдачи — выставлять нечего (владелец 09.10.2026: «зачем выставлять в продажу,
              если её уже выдавать надо»). --}}
         @unless ($vehicle->state->isFinal() || $vehicle->sold_at || $vehicle->openRequest(\App\Park\RequestType::Release))
-            <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf<button class="btn btn-s btn-accent">Выставить в продажу</button></form>
+            <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf
+                @if ($row)<button class="row w-full justify-between text-left"><span class="text-ink-muted">Продажа</span><span class="flex items-center gap-1 text-accent-text">Выставить<x-ui.chevron/></span></button>
+                @else<button class="btn btn-s btn-accent">Выставить в продажу</button>@endif
+            </form>
         @endunless
     @else
         @php
@@ -33,7 +38,11 @@
             $price = $offer->asking_price ? \App\Support\Money::rub($offer->asking_price) : null;
         @endphp
         <span class="contents" data-controller="sheet">
-            <button type="button" class="pill pill-{{ $tone }} gap-1" data-action="sheet#open">{{ $word }}<x-ui.icon name="chevron-down" class="size-3.5"/></button>
+            @if ($row)
+                <button type="button" class="row w-full justify-between text-left" data-action="sheet#open"><span class="text-ink-muted">Продажа</span><span class="flex items-center gap-1 {{ ['open' => 'text-open', 'urgent' => 'text-urgent'][$tone] ?? '' }}">{{ $word }}<x-ui.chevron/></span></button>
+            @else
+                <button type="button" class="pill pill-{{ $tone }} gap-1" data-action="sheet#open">{{ $word }}<x-ui.icon name="chevron-down" class="size-3.5"/></button>
+            @endif
             <x-ui.sheet :id="$id" title="Продажа">
                 <div class="list">
                     <a href="{{ Surface::Crm->url('/offers/'.$offer->number) }}" class="row" data-turbo="false">
