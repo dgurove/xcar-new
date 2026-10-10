@@ -10,20 +10,26 @@
     $price = \App\Offers\PriceView::for($offer, $user);
     $bids = $user?->bidsOnSite() ?? false;
     $left = $gallery || !$bids ? null : $offer->secondsLeft();
-    $fresh = !$gallery && $offer->isFresh();
+    // Новое и горящее — точкой перед названием, как непрочитанное (владелец 10.10.2026); горящее важнее.
+    $tone = match (true) {
+        $gallery => null,
+        $bids && $offer->isEndingSoon() => 'hot',
+        $offer->isFresh() => 'fresh',
+        default => null,
+    };
+    $myBid = $bids && !$gallery && $offer->relationLoaded('bids') ? $offer->bids->firstWhere('user_id', $user->id) : null;
     $since = $offer->published_at ?? $offer->created_at;
     $city = $offer->settlement?->title();
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}">
     <td class="grow">
-        <x-ui.row-link :key="$n"><span class="cell-title">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title">@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $tone === 'hot' ? 'Горящее' : 'Новое' }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
             <span class="sm:hidden">№ {{ $n }}</span>
             @if ($gallery)<x-offer.gallery-left :offer="$offer" word="" class="sm:hidden"/>
             @elseif ($left !== null && $left > 0)<span class="cell-timer sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
             @elseif ($offer->state === \App\Offers\OfferState::Sold)<span class="sm:hidden text-urgent">идёт сделка</span>
-            @elseif ($bids && !$offer->bidsOpen())<span class="sm:hidden">приём закрыт</span>
-            @elseif ($fresh)<span class="sm:hidden text-accent-text">новый</span>@endif
+            @elseif ($bids && !$offer->bidsOpen())<span class="sm:hidden">приём закрыт</span>@endif
             @if ($city)<span class="sm:hidden">{{ $city }}</span>@endif
         </span>
     </td>
@@ -32,14 +38,14 @@
         @if ($gallery)<x-offer.gallery-left :offer="$offer"/>
         @elseif ($left !== null && $left > 0)<span class="cell-timer {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
         @elseif ($offer->state === \App\Offers\OfferState::Sold)<span class="text-urgent">Идёт сделка</span>
-        @elseif ($bids && !$offer->bidsOpen())<span class="text-ink-dim">Приём закрыт</span>
-        @elseif ($fresh)<span class="text-accent-text">Новый</span>@endif
+        @elseif ($bids && !$offer->bidsOpen())<span class="text-ink-dim">Приём закрыт</span>@endif
     </td>
     <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ $city }}</td>
     <td class="num nums">
         @if ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
         {{-- Заявленная (менеджеру — закупочная для него) под ценой, пока стрелка «от → до» не влезает. --}}
         @if ($price->shown() && $price->withFrom())<span class="cell-sub lg:hidden">{{ $price::money($price->from) }}</span>@endif
+        @if ($myBid)<span class="cell-sub">{{ $myBid->isGarage() ? 'в гараж' : 'ваша '.$price::money($myBid->amount) }}</span>@endif
     </td>
     <td class="cell-dim num col-detail-hide hidden sm:table-cell">{!! \App\Support\Ago::time($since) !!}</td>
 </tr>

@@ -17,7 +17,7 @@
             </div>
 
             {{-- Лупа сайта — в шапке (поиск по разделам); пришли из неё — тулбар сразу в поиске, с полем и «Отмена». --}}
-            <x-ui.toolbar class="md:mt-5" :sort="$sorting" :pills="$views" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
+            <x-ui.toolbar class="md:mt-5" :sort="$sorting" :pills="$views" :dots="$gallery ? [] : ['fresh' => 'fresh', 'ending' => 'hot']" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && ! \App\Support\ListView::isTable($view))<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
                     <x-ui.view-switch :current="$view"/>
@@ -43,11 +43,20 @@
                     @if (\App\Support\ListView::isTable($view))
                     <x-ui.table id="catalog" :view="$view" data-list="{{ $gallery ? 'gallery' : 'catalog' }}">
                         <x-slot:head><x-offer.site-table-head :sort="$sorting"/></x-slot:head>
-                        @foreach ($offers as $offer)<x-offer.site-table-row :offer="$offer" :context="$context"/>@endforeach
+                        @php $group = null; @endphp
+                        @foreach ($offers as $offer)
+                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer)))@php $group = $label; @endphp<tr class="table-group"><th colspan="99" scope="colgroup">{{ $label }}</th></tr>@endif
+                            <x-offer.site-table-row :offer="$offer" :context="$context"/>
+                        @endforeach
                     </x-ui.table>
                     @else
                     <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
-                        @foreach ($offers as $offer)<x-offer.card :offer="$offer" :context="$context"/>@endforeach
+                        {{-- По сроку — подписью над каждой пачкой слота («До 17:00 сегодня»), владелец 10.10.2026. --}}
+                        @php $group = null; @endphp
+                        @foreach ($offers as $offer)
+                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer)))@php $group = $label; @endphp<h2 class="cards-group">{{ $label }}</h2>@endif
+                            <x-offer.card :offer="$offer" :context="$context"/>
+                        @endforeach
                     </div>
                     @endif
                     <div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>

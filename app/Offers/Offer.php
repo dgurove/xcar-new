@@ -43,6 +43,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
 
@@ -62,8 +63,15 @@ class Offer extends Model implements HasMedia
 
     public const DEFAULT_SHARE = 0.6;
 
+    /** Окна «Новые за 12ч» и «Горящие (12ч)» в часах (владелец 10.10.2026). */
+    public const NEW_HOURS = 12;
+
+    public const HOT_HOURS = 12;
+
     protected static function booted(): void
     {
+        // `opened_at` — вычисленное каталогом (`CatalogQuery::openedAtSql`), колонки нет: в запись не уходит.
+        static::saving(fn (self $o) => $o->offsetUnset('opened_at'));
         // Тип ТС колонкой — для фильтра; марка сменилась — прежняя связь уже не та.
         // Одна машина — одна запись: номер убытка или VIN другого предложения не встанет (`Identity`).
         static::saving(fn (self $o) => Identity::guardOffer($o));
@@ -880,18 +888,26 @@ class Offer extends Model implements HasMedia
         return $this->isGallery() && $this->gallery_until->lt(now()->addDay());
     }
 
-    /** Опубликован меньше суток назад. */
-    public function isFresh(): bool
+    /** Когда открылось этому человеку: каталог кладёт `opened_at` (`CatalogQuery::openedAtSql`), иначе — публикация. */
+    public function openedAt(): ?Carbon
     {
-        return $this->published_at !== null && $this->published_at->gt(now()->subDay());
+        $at = $this->getAttributes()['opened_at'] ?? null;
+
+        return $at !== null ? Carbon::parse($at) : $this->published_at;
     }
 
-    /** До закрытия приёма меньше суток. */
+    /** Новое: открылось этому человеку за последние 12 ч (владелец 10.10.2026). */
+    public function isFresh(): bool
+    {
+        return $this->openedAt()?->gt(now()->subHours(self::NEW_HOURS)) ?? false;
+    }
+
+    /** Горящее: до закрытия приёма меньше 12 ч. */
     public function isEndingSoon(): bool
     {
         $left = $this->secondsLeft();
 
-        return $left !== null && $left > 0 && $left < 86400;
+        return $left !== null && $left > 0 && $left < self::HOT_HOURS * 3600;
     }
 
     /** Секунд до закрытия приёма; null — приём не ограничен или закрыт. */

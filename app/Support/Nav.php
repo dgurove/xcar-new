@@ -22,6 +22,7 @@ use App\Offers\DealState;
 use App\Offers\Favorite;
 use App\Offers\Interest;
 use App\Offers\InterestState;
+use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Park\City;
 use App\Park\Request;
@@ -415,8 +416,8 @@ final class Nav
     }
 
     /**
-     * Сколько всего в разделе — серое число в таб-баре: путь → число; рядом «свежее» — что
-     * появилось за сутки (лаймовый бейдж там, где нет своего счётчика непрочитанного).
+     * Сколько всего в разделе — серое число в таб-баре: путь → число; рядом «свежее» — предложения за 12 ч, галерея
+     * за сутки (лаймовый бейдж там, где нет своего счётчика непрочитанного).
      * Полминуты в кэше: сотрудникам общий, менеджеру и покупателю — свой (у них своя выдача).
      */
     public static function totals(?User $user, ?Surface $surface = null): array
@@ -485,7 +486,8 @@ final class Nav
                 '/account/interests' => $user->isBuyer() || $user->isSuperBuyer() ? Interest::where('user_id', $user->id)->count() : null,
                 '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
-                '/offers' => (clone $open)->where('published_at', '>', $day)->count(),
+                // Как пилюля «Новые за 12ч»: открылось этому человеку (волна, показ) за 12 ч.
+                '/offers' => CatalogQuery::fresh(clone $open, $user)->count(),
                 '/gallery' => (clone $gallery)->where('gallery_from', '>', $day)->count(),
             ]];
         });

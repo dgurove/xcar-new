@@ -2771,36 +2771,42 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   /* Плитки: по выбору всегда, без выбора — от 640. Переменные плитки в двух местах намеренно.
      Внизу город уступает кнопкам (столбец от нуля): капсула не сжимается, и иначе в узкой плитке она наезжала на город. */
+  .cards--grid > .card { container-type: inline-size; }
+  @media (min-width: 640px) { .cards:not(.cards--list) > .card { container-type: inline-size; } }
   .cards--grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1rem;
     --card-cols: minmax(0, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
     --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
     --card-align: stretch; --card-gap: 0; --card-pad: 0;
     --card-radius: var(--radius-xl);
-    --media-w: 100%; --media-h: auto; --media-ratio: 4 / 3; --media-radius: 0; --blank-display: block; --blank-h: auto;
-    --body-pad: 1.25rem 1.25rem 0; --body-pad-end: 1.25rem; --body-gap: .5rem; --extra-pad: .5rem 1.25rem 0;
+    --media-w: 100%; --media-h: auto; --media-ratio: 3 / 1; --media-radius: 0; --blank-display: block; --blank-h: auto;
+    --body-pad: .75rem .875rem 0; --body-pad-end: .875rem; --body-gap: .25rem; --extra-pad: .375rem .875rem 0;
     --float-pos: absolute; --frames-display: contents;
     --star-pos: absolute; --star-off: .75rem; --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
     --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
-    --aside-self: start; --aside-align: start; --aside-pad: .5rem 1.25rem 0; --place-pad: .75rem 0 1.25rem 1.25rem;
-    --action-pad: .75rem 1.25rem 1.25rem .75rem; --action-self: end;
+    --aside-self: start; --aside-align: start; --aside-pad: .375rem .875rem 0; --place-pad: .5rem 0 .875rem .875rem;
+    --action-pad: .5rem .875rem .875rem .5rem; --action-self: end;
     --price-size: 1.125rem; --price-align: left;
+    /* Новое и горящее: в плитке полоса от низа кадра (3:1 — треть ширины), точки у названия нет. */
+    --name-size: var(--text-base); --name-lines: 1; --tone-dot: none; --tone-stripe: block; --stripe-top: calc(100cqi / 3);
   }
   @media (min-width: 640px) {
     .cards:not(.cards--list) {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.25rem;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1rem;
       --card-cols: minmax(0, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
       --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
       --card-align: stretch; --card-gap: 0; --card-pad: 0;
       --card-radius: var(--radius-xl);
-      --media-w: 100%; --media-h: auto; --media-ratio: 4 / 3; --media-radius: 0; --blank-display: block; --blank-h: auto;
-      --body-pad: 1.25rem 1.25rem 0; --body-pad-end: 1.25rem; --body-gap: .5rem; --extra-pad: .5rem 1.25rem 0;
+      --media-w: 100%; --media-h: auto; --media-ratio: 3 / 1; --media-radius: 0; --blank-display: block; --blank-h: auto;
+      --body-pad: .75rem .875rem 0; --body-pad-end: .875rem; --body-gap: .25rem; --extra-pad: .375rem .875rem 0;
       --float-pos: absolute; --frames-display: contents;
       --star-pos: absolute; --star-off: .75rem; --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
       --glass-bg: rgb(18 18 18 / .55); --glass-ink: #fff; --glass-blur: blur(10px);
-      --aside-self: start; --aside-align: start; --aside-pad: .5rem 1.25rem 0; --place-pad: .75rem 0 1.25rem 1.25rem;
-      --action-pad: .75rem 1.25rem 1.25rem .75rem; --action-self: end;
+      --aside-self: start; --aside-align: start; --aside-pad: .375rem .875rem 0; --place-pad: .5rem 0 .875rem .875rem;
+      --action-pad: .5rem .875rem .875rem .5rem; --action-self: end;
       --price-size: 1.125rem; --price-align: left;
+    /* Новое и горящее: в плитке полоса от низа кадра (3:1 — треть ширины), точки у названия нет. */
+    --name-size: var(--text-base); --name-lines: 1; --tone-dot: none; --tone-stripe: block; --stripe-top: calc(100cqi / 3);
     }
   }
 
@@ -2850,6 +2856,23 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @keyframes pop { 30% { scale: 1.3; } 60% { scale: .9; } }
   .card-star:disabled { opacity: 1; }
   .card-title { display: flex; align-items: flex-start; gap: .5rem; }
+  .card-name { font-size: var(--name-size, var(--text-lg)); }
+  .card-name > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--name-lines, 2); overflow: hidden; }
+  /* Срок приёма строкой под названием: оранжевым у горящего (меньше 12 ч), тихим у остальных. */
+  .card-when { display: inline-flex; align-self: flex-start; align-items: center; gap: .25rem; font-size: var(--text-sm); }
+  /* Новое и горящее (владелец 10.10.2026): у строки и в таблице — точка перед названием, как непрочитанное; у плитки —
+     полоса слева от низа кадра до низа карточки, на кадр не заходит. Горящее важнее нового. */
+  .card-tone { display: var(--tone-dot, inline-block); width: .5rem; height: .5rem; margin-right: .4375rem; border-radius: 999px; vertical-align: .1em; }
+  .card-tone--fresh { background: var(--color-accent); }
+  .card-tone--hot { background: var(--color-urgent); }
+  /* На выбранной пилюле лайм сливается с подложкой — точка цветом надписи. */
+  .pill[aria-current="true"] .card-tone { background: currentColor; }
+  .card--fresh::before, .card--hot::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
+  .card--fresh::before { background: var(--color-accent); }
+  .card--hot::before { background: var(--color-urgent); }
+  /* Подпись пачки по сроку («До 17:00 сегодня») — во всю ширину ленты, мелкой серой подписью раздела. */
+  .cards-group { grid-column: 1 / -1; margin-top: .75rem; font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-dim); }
+  .cards-group:first-child { margin-top: 0; }
   .card-body { grid-area: body; min-width: 0; display: flex; flex-direction: column; gap: var(--body-gap); padding: var(--body-pad); }
   .card-body:last-child { padding-bottom: var(--body-pad-end); }
   .card-extra { grid-area: extra; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .375rem .5rem; padding: var(--extra-pad); }

@@ -25,9 +25,19 @@
     request()->attributes->set('card.nth', $nth + 1);
     $eager = $nth < 2;
     $bidder = $user?->bidsOnSite() ?? false;
-    $hasMarks = $offer->car_place || (!$gallery && ($offer->isFresh() || ($bidder && ($offer->isEndingSoon() || !$offer->bidsOpen() || $offer->secondsLeft()))));
+    $hasMarks = (bool) $offer->car_place;
+    // Горящее важнее нового: полоса у плитки под кадром, точка у строки (владелец 10.10.2026). Горящее — тем, кто видит срок.
+    $tone = match (true) {
+        $gallery => null,
+        $bidder && $offer->isEndingSoon() => 'hot',
+        $offer->isFresh() => 'fresh',
+        default => null,
+    };
+    // Своё действующее подтверждение — «Ваша цена» вместо «Подтвердить». Каталог догружает его одним запросом.
+    $myBid = $bidder && !$gallery ? ($offer->relationLoaded('bids') ? $offer->bids->firstWhere('user_id', $user->id)
+        : $offer->bids()->where('user_id', $user->id)->whereIn('state', [\App\Offers\BidState::Active, \App\Offers\BidState::Accepted])->first()) : null;
 @endphp
-<article id="offer-{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card group']) }}>
+<article id="offer-{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card group'.($tone ? ' card--'.$tone : '')]) }}>
     @if ($hasMedia)
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
@@ -56,8 +66,9 @@
 
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="block min-w-0 flex-1 text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
+            <a href="{{ $href }}" class="card-name block min-w-0 flex-1 leading-snug hover:text-accent-text"><span>@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $tone === 'hot' ? 'Горящее' : 'Новое' }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
         </div>
+        <x-offer.when :offer="$offer"/>
         @if ($hasMarks)
             <div class="card-marks"><x-offer.marks :offer="$offer"/></div>
         @endif
@@ -85,6 +96,8 @@
             <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
         @elseif ($gallery || !$prices)
             <a href="{{ $href }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $gallery ? ($myInterest ? 'Интерес отмечен' : 'Проявить интерес') : 'Узнать цену' }}</a>
+        @elseif ($myBid)
+            <a href="{{ $href }}" class="btn btn-get btn-get-quiet nums">{{ $myBid->isGarage() ? 'В гараж' : 'Ваша цена '.\App\Support\Money::nums($myBid->amount) }}</a>
         @elseif ($canBid)
             <a href="{{ $href }}" class="btn btn-get">Подтвердить</a>
         @else

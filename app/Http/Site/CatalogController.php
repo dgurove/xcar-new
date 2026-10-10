@@ -68,6 +68,10 @@ class CatalogController
                 'gallery' => Offer::visibleTo($user)->inGallery()->count(),
                 'recommended' => Offer::visibleTo($user)->when($gallery, fn ($q) => $q->inGallery(), fn ($q) => $q->onSale())->where('recommended', true)->count(),
             ];
+        // «Новые за 12ч» и «Горящие (12ч)» — числом на пилюле; «новое» у каждого своё (волна, показ) — не из общего кэша.
+        $base = fn () => $gallery ? Offer::visibleTo($user)->inGallery() : Offer::siteList($user);
+        $counts['fresh'] = CatalogQuery::fresh($base(), $user, $gallery)->count();
+        $counts['ending'] = $gallery ? 0 : CatalogQuery::ending($base())->count();
         // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
         $recommended = $counts[$gallery && $user?->isAdmin() ? 'recommended_gallery' : 'recommended'] ?? 0;
 
@@ -82,7 +86,9 @@ class CatalogController
             'narrowed' => $narrowed,
             'sort' => $sort,
             // Сортировка объектом — тулбару и заголовкам таблицы; строкой `sort` — стрелкам страницы предложения.
-            'sorting' => Sort::from($sort, CatalogQuery::allowedSorts($gallery, $prices, $user), CatalogQuery::DEFAULT_SORT),
+            'sorting' => Sort::from($sort, CatalogQuery::allowedSorts($gallery, $prices, $user), CatalogQuery::defaultSort($user, $gallery)),
+            // Подписи «До 17:00 сегодня» между пачками — только по сроку и тому, кто срок видит.
+            'groups' => ! $gallery && $sort === 'closing' && ($user?->bidsOnSite() ?? false),
             'views' => CatalogQuery::allowedViews($user, $gallery, $recommended),
             'view' => $view,
             'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),
