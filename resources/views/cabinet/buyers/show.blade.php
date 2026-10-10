@@ -8,9 +8,9 @@
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">
             <x-ui.contact :name="$buyer->name" :user="$buyer" sidebar>
                 <x-slot:chips>
-                    @if ($buyer->login)<span class="fact nums">{{ $buyer->login }}</span>@endif
-                    <span class="fact nums">с {{ $buyer->created_at->translatedFormat('j M') }}</span>
+                    {{-- Группы — чипами (ссылками), логин и с какого дня — строкой текста. --}}
                     @foreach ($buyer->groups as $g)<a href="/buyers/groups/{{ $g->id }}" class="tag">{{ $g->name }}</a>@endforeach
+                    <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted lg:justify-center">@if ($buyer->login)<span class="nums">{{ $buyer->login }}</span>@endif<span class="nums">с {{ $buyer->created_at->translatedFormat('j M') }}</span></div>
                 </x-slot:chips>
                 <x-slot:acts>
                     @if ($buyer->phone)<a href="tel:+{{ $buyer->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif

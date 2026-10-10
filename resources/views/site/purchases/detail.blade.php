@@ -14,12 +14,14 @@
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$car->titleWithYear()" :photos="$car->visiblePhotos()" :facts="$car->facts()" :action="false">
         <x-slot:marks>
-            <span class="tag nums">№ {{ $car->ref }}</span>
-            <span class="tag">{{ $car->kind->label() }}</span>
-            @if ($car->settlement?->title() ?? $car->city)<x-ui.place class="tag">{{ $car->settlement?->title() ?? $car->city }}</x-ui.place>@endif
+            <span class="tag nums gap-1">№<x-ui.copy-code :value="$car->ref"/></span>
             <x-ui.vin-code :vin="$car->vin" class="tag"/>
-            @if ($car->fssp)<span class="tag">Ограничения ФССП</span>@endif
+            @if ($car->fssp)<x-ui.state tone="urgent">Ограничения ФССП</x-ui.state>@endif
         </x-slot:marks>
+        <x-slot:line>
+            @if ($car->settlement?->title() ?? $car->city)<x-ui.place>{{ $car->settlement?->title() ?? $car->city }}</x-ui.place>@endif
+            <span>{{ mb_strtolower($car->kind->label()) }}</span>
+        </x-slot:line>
         <x-slot:aside>
             @if ($staff && $best)<span class="nums whitespace-nowrap text-lg font-bold">{{ \App\Support\Money::rub($best->amount) }}</span> <span class="text-sm text-ink-dim">{{ $best->user->shortName() }}</span>
             @elseif ($mine)<span class="nums whitespace-nowrap text-lg font-bold text-accent-text">{{ \App\Support\Money::rub($mine->amount) }}</span>

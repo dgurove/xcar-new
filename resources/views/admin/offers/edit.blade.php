@@ -55,23 +55,6 @@
         @else
             <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
         @endif
-        @if ($offer->state === \App\Offers\OfferState::Draft && $offer->published_at === null && $offer->parkVehicle)
-            <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="pill pill-plain">Снять с продажи</button></form>
-        @endif
-        {{-- Срок приёма и продление — админу: подтверждения принимает только он. --}}
-        @if (! $admin)
-        @elseif ($offer->closed())
-            <x-ui.pill tone="closed">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</x-ui.pill>
-        @elseif ($offer->bids_close_at && $offer->state === OfferState::Open)
-            <x-ui.pill tone="plain"><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span></x-ui.pill>
-        @endif
-        @if ($admin && $offer->state === OfferState::Open && $offer->bids_close_at)
-            {{-- Продлить приём на ходу, как в закупке: от текущего срока, если он не прошёл, иначе от сейчас. --}}
-            @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
-                <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
-            @endforeach
-        @endif
-        @if ($otherChats->isNotEmpty())<x-ui.pill :tone="$otherChats->sum('unread_for_staff') ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $offer->number }}"><x-ui.icon name="chat" class="size-4"/> {{ $otherChats->count() === 1 ? 'Чат' : 'Чатов: '.$otherChats->count() }}@if ($otherChats->sum('unread_for_staff')) <span class="badge">{{ $otherChats->sum('unread_for_staff') }}</span>@endif</x-ui.pill>@endif
         @if ($admin)
             <div class="contents" data-controller="sheet tag-chips" data-action="change->tag-chips#render">
                 <span class="contents" data-tag-chips-target="chips">
@@ -85,9 +68,35 @@
                     </div>
                 </x-ui.sheet>
             </div>
-            <span class="ml-auto flex items-center gap-1">
-                @include('admin.offers.share-button')
-            </span>
+        @endif
+        {{-- Сроки и переписка — строкой текста под капсулами (владелец 10.10.2026: «что-то чипами, что-то текстом»): приём
+             ещё сколько или закрыт с какого времени, продление лаймовыми словами, чаты ссылкой. --}}
+        @php $chatUnread = $otherChats->sum('unread_for_staff'); @endphp
+        @if ($admin || $otherChats->isNotEmpty())
+            <div class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                @if (! $admin)
+                @elseif ($offer->closed())
+                    <span class="nums text-ink-muted">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
+                @elseif ($offer->bids_close_at && $offer->state === OfferState::Open)
+                    <span class="nums">Приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
+                @endif
+                @if ($admin && $offer->state === OfferState::Open && $offer->bids_close_at)
+                    {{-- Продлить приём на ходу, как в закупке: от текущего срока, если он не прошёл, иначе от сейчас. --}}
+                    @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
+                        <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="nums text-accent-text">{{ $label }}</button></form>
+                    @endforeach
+                @endif
+                @if ($otherChats->isNotEmpty())<a href="/work/chats?preset=all&q={{ $offer->number }}" class="inline-flex items-center gap-1 {{ $chatUnread ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="chat" class="size-4"/>{{ $otherChats->count() === 1 ? 'Чат' : 'Чатов: '.$otherChats->count() }}@if ($chatUnread) <span class="badge">{{ $chatUnread }}</span>@endif</a>@endif
+                {{-- Действия с предложением целиком — справа этой строки, а не капсулами среди меток. --}}
+                @if ($admin)
+                    <span class="ml-auto flex items-center gap-1">
+                        @if ($offer->state === OfferState::Draft && $offer->published_at === null && $offer->parkVehicle)
+                            <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="btn btn-s btn-quiet">Снять с продажи</button></form>
+                        @endif
+                        @include('admin.offers.share-button')
+                    </span>
+                @endif
+            </div>
         @endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>

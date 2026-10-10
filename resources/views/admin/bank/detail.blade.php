@@ -4,12 +4,12 @@
 <x-ui.detail>
     <x-ui.row-card :title="$tx->counterparty ?: 'Плательщик не указан'" :photo="false">
         <x-slot:marks>
-            <span class="tag nums font-semibold">{{ Money::exact($tx->amount) }}</span>
-            <span class="tag nums">{{ $tx->booked_at->translatedFormat('j M Y') }}</span>
-            <x-ui.state :tone="$tx->tone()">{{ mb_strtolower($tx->stateLabel()) }}</x-ui.state>
-            @if ($tx->counterparty_inn)<span class="tag nums">ИНН {{ $tx->counterparty_inn }}</span>@endif
+            {{-- Состояние словом, коды (ИНН, номер платёжки) чипами, сумма и день — фразой ниже. --}}
+            <x-ui.state :tone="$tx->tone()">{{ $tx->stateLabel() }}</x-ui.state>
+            @if ($tx->counterparty_inn)<span class="tag nums gap-1">ИНН<x-ui.copy-code :value="$tx->counterparty_inn"/></span>@endif
             @if ($tx->doc_number)<span class="tag nums">п/п {{ $tx->doc_number }}</span>@endif
         </x-slot:marks>
+        <x-slot:line><span class="nums font-semibold">{{ Money::exact($tx->amount) }}</span><span class="nums text-ink-muted">{{ $tx->booked_at->translatedFormat('j M Y') }}</span></x-slot:line>
         <x-slot:actions>
             @if ($tx->invoice)
                 <a href="/work/money/invoices/{{ $tx->invoice_id }}" class="btn btn-s btn-quiet">Счёт {{ $tx->invoice->label() }}, {{ $tx->invoice->party->name }}</a>

@@ -2,12 +2,15 @@
 @php use App\Support\Money; use App\Billing\InvoiceState; $i = $invoice; $href = '/money/invoices/'.$i->id; @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$i->party->name" :photo="$i->vehicle?->mainPhoto()">
+        {{-- Состояние словом, фразой — какой счёт, от какого дня, за что и по какой ТС (ТС — ссылкой в дело). --}}
         <x-slot:marks>
             <x-billing.light :invoice="$i"/>
-            <span class="tag nums">{{ $i->isOwed() ? 'мы должны' : $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}</span>
-            <span class="tag">{{ $i->kind->label() }}</span>
-            @if ($i->vehicle)<a href="/cars/{{ $i->vehicle_id }}" class="tag">{{ $i->vehicle->titleWithYear() }}</a>@elseif ($i->isRegistry())<span class="tag">{{ $i->what() }}</span>@endif
         </x-slot:marks>
+        <x-slot:line>
+            <span class="nums">{{ $i->isOwed() ? 'мы должны' : $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}</span>
+            <span>{{ mb_strtolower($i->kind->label()) }}</span>
+            @if ($i->vehicle)<a href="/cars/{{ $i->vehicle_id }}" class="text-accent-text">{{ $i->vehicle->titleWithYear() }}</a>@elseif ($i->isRegistry())<span>{{ $i->what() }}</span>@endif
+        </x-slot:line>
         <x-slot:aside>
             <div class="nums text-lg font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</div>
             @if ($i->isPartial())<div class="nums text-xs text-ink-muted">из {{ Money::rub($i->total) }}</div>@endif

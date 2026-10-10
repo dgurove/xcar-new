@@ -7,19 +7,26 @@
     <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">
             <x-ui.contact :name="$user->name" :user="$user" sidebar>
+                {{-- Под именем — кто он (роль словом, группы чипами), строкой текста — как связаться (логин, телефон, почта,
+                     Telegram), ещё строкой — с кем связан (менеджер, покупатели, сколько видит) и с какого дня. Владелец
+                     10.10.2026: «одно к машине относится, другое к фактам — что-то чипами, что-то текстом». --}}
                 <x-slot:chips>
-                    <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->rolesLabel().' с '.$user->created_at->format('d.m.Y') }}</x-ui.state>
-                    {{-- Группа модератора: с кем он видит и правит предложения друг друга. --}}
-                    {{-- Группы человека (менеджеров или модераторов) — ведутся в «Пользователях». --}}
-                    @foreach ($user->userGroups as $g)<span class="fact">{{ $g->name }}</span>@endforeach
+                    <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->rolesLabel() }}</x-ui.state>
                     @if ($user->isPending())<x-ui.state tone="urgent">Ждёт</x-ui.state>@elseif ($user->isRejected())<x-ui.state tone="danger">Отклонён</x-ui.state>@endif
-                    @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}/{{ $user->manager_id }}" class="chip person"><x-ui.avatar :user="$user->manager" :size="20"/>{{ $user->manager->shortName() }}</a>@endif
-                    @if ($user->login)<span class="fact nums">{{ $user->login }}</span>@endif
-                    @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="tag nums">{{ $user->phoneFormatted() }}</a>@endif
-                    @if ($user->email)<a href="mailto:{{ $user->email }}" class="tag">{{ $user->email }}</a>@endif
-                    @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="tag tag-telegram"><x-telegram.logo plain class="size-3.5"/>{{ $user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span class="fact"><x-telegram.logo plain class="size-3.5"/>Telegram</span>@endif
-                    @if ($user->isManager())<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="tag">{{ $buyersCount }} {{ \App\Support\Plural::of($buyersCount, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
-                    @if ($seen !== null)<span class="fact nums">видит {{ $seen }}</span>@endif
+                    {{-- Группы человека (менеджеров или модераторов) — ведутся в «Пользователях». --}}
+                    @foreach ($user->userGroups as $g)<span class="tag">{{ $g->name }}</span>@endforeach
+                    <div class="detail-line basis-full !mt-0.5 text-sm lg:justify-center">
+                        @if ($user->login)<span class="nums">{{ $user->login }}</span>@endif
+                        @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $user->phoneFormatted() }}</a>@endif
+                        @if ($user->email)<a href="mailto:{{ $user->email }}" class="text-accent-text">{{ $user->email }}</a>@endif
+                        @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="text-accent-text">{{ '@'.$user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span>Telegram</span>@endif
+                    </div>
+                    <div class="detail-line basis-full !mt-0 text-sm text-ink-muted lg:justify-center">
+                        @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}/{{ $user->manager_id }}" class="text-ink">менеджер {{ $user->manager->shortName() }}</a>@endif
+                        @if ($user->isManager())<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="nums text-ink">{{ $buyersCount }} {{ \App\Support\Plural::of($buyersCount, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
+                        @if ($seen !== null)<span class="nums">видит {{ $seen }}</span>@endif
+                        <span class="nums">с {{ $user->created_at->format('d.m.Y') }}</span>
+                    </div>
                 </x-slot:chips>
                 <x-slot:acts>
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif

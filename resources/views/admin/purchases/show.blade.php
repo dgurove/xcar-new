@@ -4,22 +4,21 @@
         <x-ui.back :back="['Закупки', '/purchases']"/>
         <h1 class="text-xl sm:text-2xl">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto shrink-0 sm:order-1" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
-        <span class="flex flex-wrap items-center gap-1.5">
+        {{-- Состояние и срок — строкой текста, продление — лаймовыми словами (как в редакторе предложения, 10.10.2026). --}}
+        <span class="flex basis-full flex-wrap items-baseline gap-x-3 gap-y-1 text-sm sm:basis-auto">
             @if ($purchase->closed())
-                <x-ui.pill tone="closed">Приём закрыт с {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</x-ui.pill>
+                <span class="nums text-ink-muted">Приём закрыт с {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span>
             @else
-                <x-ui.pill :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}{{ $purchase->state === PurchaseState::Open && $purchase->offers_close_at ? ' до '.$purchase->offers_close_at->translatedFormat('j M, H:i') : '' }}</x-ui.pill>
+                <x-ui.state :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}@if ($purchase->state === PurchaseState::Open && $purchase->offers_close_at)<span class="nums font-normal text-ink-muted"> до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif</x-ui.state>
             @endif
             @if ($purchase->state === PurchaseState::Open && $purchase->offers_close_at)
                 {{-- Продлить приём на ходу: срок считается от текущего, если он ещё не прошёл, иначе от сейчас. --}}
-                <span class="flex shrink-0 items-center gap-1.5">
-                    @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
-                        <form method="post" action="/purchases/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="pill pill-plain nums">{{ $label }}</button></form>
-                    @endforeach
-                </span>
+                @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
+                    <form method="post" action="/purchases/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="nums text-accent-text">{{ $label }}</button></form>
+                @endforeach
             @endif
+            @if ($pending)<span class="nums text-urgent">выкачка: {{ $pending }}</span>@endif
         </span>
-        @if ($pending)<x-ui.pill tone="urgent">выкачка: {{ $pending }}</x-ui.pill>@endif
         <x-ui.sheet id="purchase-actions" title="Закупка № {{ $n }}">
             <form method="post" action="/purchases/{{ $n }}" class="flex flex-col gap-3">
                 @csrf @method('put')

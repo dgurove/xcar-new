@@ -20,24 +20,29 @@
     $shooting = match ($cur?->key) { 'intake' => PhotoStage::Intake, 'release' => PhotoStage::Release, default => null };
 @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
-    <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
-    {{-- Шапка — только положение и люди: состояние с местом и днями, долг, «Продано», письма.
-         Всё, что есть в полях (номер, вендор, телефон) и в «Деньгах» (ставка, начислено), тут не повторяется. --}}
-    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5">
-        <x-park.state :vehicle="$vehicle" :move="$state === VehicleState::Stored"/>
-        @if ($debt > 0 && $money)<x-ui.pill tone="danger" :href="'/money?preset=all&car='.$vehicle->id" class="!min-h-0 !py-1 text-xs nums">долг {{ Money::rub($debt) }}</x-ui.pill>@endif
-        @if ($vehicle->sold_at)
-            @if ($canManage)
-                <button type="button" class="pill pill-urgent !min-h-0 !py-1 text-xs nums" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">На выдачу {{ $vehicle->sold_at->translatedFormat('j M') }}</button>
-            @else
-                <span class="pill pill-urgent !min-h-0 !py-1 text-xs nums">На выдачу {{ $vehicle->sold_at->translatedFormat('j M') }}</span>
+    <x-slot:badge><x-ui.links :vehicle="$vehicle"><x-park.sale :vehicle="$vehicle" menu/></x-ui.links></x-slot:badge>
+    {{-- Шапка — только положение и люди, текстом: состояние с местом и днями, что не так, долг красным словом; строкой ниже —
+         продажа страховой («На выдачу с 6 окт», кто заберёт — нажатие открывает шторку «Покупатель», телефон ссылкой).
+         Справа — только действия: документы и «⋯». Продажа в CRM — пунктами значка связи у названия (как в карточке
+         «Наличия», владелец 10.10.2026: «одно к машине относится, другое к фактам»). Всё, что есть в полях (номер, вендор,
+         телефон страхователя) и в «Деньгах» (ставка, начислено), тут не повторяется. --}}
+    <div class="-mt-3 mb-6 flex items-start gap-3">
+        <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-1.5">
+                <x-park.state :vehicle="$vehicle" :move="$state === VehicleState::Stored"/>
+                @if ($debt > 0 && $money)<a href="/money?preset=all&car={{ $vehicle->id }}" class="fact nums !text-danger">долг {{ Money::rub($debt) }}</a>@endif
+            </div>
+            @if ($vehicle->sold_at)
+                <p class="mt-1 text-sm">
+                    <span class="nums text-urgent">На выдачу с {{ $vehicle->sold_at->translatedFormat('j M') }}</span>@if ($vehicle->pickup_name || $canManage)<span class="text-ink-muted">, </span>@endif
+                    @if ($canManage)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif
+                    @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="nums ml-1 whitespace-nowrap text-accent-text">{{ $vehicle->pickup_phone }}</a>@endif
+                </p>
             @endif
-            @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="chip nums"><x-ui.icon name="phone" class="size-3.5"/>{{ $vehicle->pickup_name ? $vehicle->pickup_name.' ' : 'Заберёт ' }}{{ $vehicle->pickup_phone }}</a>@elseif ($vehicle->pickup_name)<span class="fact">Заберёт {{ $vehicle->pickup_name }}</span>@endif
-        @endif
-        <x-ui.docs-pill :docs="$docs" class="!min-h-0 !py-1 text-xs"/>
-        {{-- Продажа — админу: «Выставить в продажу» или капсула состояния со шторкой «Убрать из продажи» (x-park.sale). --}}
-        <x-park.sale :vehicle="$vehicle"/>
-        <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
+        </div>
+        <x-ui.docs-pill :docs="$docs" class="!min-h-0 shrink-0 !py-1 text-xs"/>
+        <x-park.sale :vehicle="$vehicle" forms/>
+        <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif
 

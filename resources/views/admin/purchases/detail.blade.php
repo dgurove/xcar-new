@@ -10,20 +10,23 @@
     $n = $purchase->number;
     $href = "/purchases/{$n}/{$car->ref}";
     $offers = $car->activeOfferList()->sortByDesc('amount')->values();
-    $amber = '--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d';
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$car->titleWithYear()" :photos="$car->visiblePhotos()" :facts="$car->facts()">
+        {{-- Коды чипами, что не так — словами, где и какой тип — фразой (владелец 10.10.2026: «одно к машине относится,
+             другое к фактам»). --}}
         <x-slot:marks>
-            <span class="tag nums">{{ $car->dl }}</span>
-            <span class="tag">{{ $car->kind->label() }}</span>
-            @if ($car->settlement?->title() ?? $car->city)<x-ui.place class="tag">{{ $car->settlement?->title() ?? $car->city }}</x-ui.place>@endif
+            <span class="tag nums gap-1">ДЛ<x-ui.copy-code :value="$car->dl"/></span>
             <x-ui.vin-code :vin="$car->vin" class="tag"/>
-            @if ($car->fssp)<x-ui.pill tone="urgent">Ограничения ФССП</x-ui.pill>@endif
-            @if ($car->specs_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->specs_state->label() }}</span>@elseif ($car->photos_state->needsAttention())<span class="tag" style="{{ $amber }}">{{ $car->photos_state->label() }}</span>@endif
-            @if (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true))<span class="tag">фото едут</span>@endif
-            @unless ($car->is_published)<span class="tag">скрыта</span>@endunless
+            @if ($car->fssp)<x-ui.state tone="urgent">Ограничения ФССП</x-ui.state>@endif
+            @if ($car->specs_state->needsAttention())<x-ui.state tone="urgent">{{ $car->specs_state->label() }}</x-ui.state>@elseif ($car->photos_state->needsAttention())<x-ui.state tone="urgent">{{ $car->photos_state->label() }}</x-ui.state>@endif
+            @if (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true))<x-ui.state>фото едут</x-ui.state>@endif
+            @unless ($car->is_published)<x-ui.state>скрыта</x-ui.state>@endunless
         </x-slot:marks>
+        <x-slot:line>
+            @if ($car->settlement?->title() ?? $car->city)<x-ui.place>{{ $car->settlement?->title() ?? $car->city }}</x-ui.place>@endif
+            <span>{{ mb_strtolower($car->kind->label()) }}</span>
+        </x-slot:line>
         <x-slot:aside>
             @if ($car->price_final)<span class="nums whitespace-nowrap text-lg font-bold">{{ \App\Support\Money::rub($car->price_final) }}</span>@endif
         </x-slot:aside>

@@ -1,15 +1,16 @@
 {{-- Карточка строки списка (во фрейме detail, x-ui.detail), сверху вниз: полоса (ручка листа на телефоне, кнопки
      слева стрелки по строкам и «3 из 20», справа кнопки строки tools («Поделиться»), «Открыть страницу», «Закрыть»), лента фото (тап — во весь экран), название с
-     метками и ценой справа (aside), факты чипами, ряд действий (actions: главное лаймовое + чипы; без него —
+     метками и ценой справа (aside), характеристики строкой текста, ряд действий (actions: главное лаймовое + чипы; без него —
      «Открыть»), дальше тело — формы, характеристики, описание. Ответ после формы несёт потоки Turbo: свежая строка
      таблицы (row — <tr> с тем же data-detail-key), тост из flash, «следующий без цены» (session detail-advance).
      photo — одно фото вместо ленты (старые карточки); :photo="false" — без кадра вовсе (ветка почты).
      media — свой ряд кадров вместо ленты (карточка предложения CRM: кадры правят прямо тут).
      foot — подвал под телом, вне прокрутки («Сохранить изменения» формы карточки — всегда на экране).
      Поток letters (session letters) — окно писем с черновиком письма вендору после «Принять».
+     line — фраза положения под метками (город, где ТС, сроки), куски — элементами, запятые ставит CSS.
      blank=false — нет фото, нет и ленты (без серой заглушки с машинкой: парковка, 10.10.2026).
      head=false — без шапки с названием и метками: тело рисует свою (карточки «Оплат»: сумма крупно по центру). --}}
-@props(['head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
+@props(['head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
     <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
@@ -27,8 +28,12 @@
     <div class="detail-head mt-3">
         <a @if ($href) href="{{ $href }}" @endif class="detail-title block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}{{ $badge ?? '' }}</span></a>
         @if ($aside && trim($aside) !== '')<div class="detail-aside">{{ $aside }}</div>@endif
-        {{-- Метки и факты — одной строкой с одним шагом: два ряда тегов с разными отступами смотрелись вразнобой. --}}
-        @if ($marks || array_filter($facts))<div class="detail-marks flex flex-wrap items-center gap-1.5">{{ $marks }}@foreach (array_filter($facts) as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
+        {{-- Метки — чипами (коды, состояние); характеристики (пробег, коробка, привод) — строкой текста под ними: разное
+             по смыслу — разным видом (владелец 10.10.2026: «одно к машине относится, другое к фактам»). --}}
+        @if ($marks && trim($marks) !== '')<div class="detail-marks flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
+        {{-- line — где и сколько осталось фразой («Москва, у нас, приём ещё 2 д»): куски через запятую ставит CSS. --}}
+        @if ($line && trim($line) !== '')<div class="detail-line">{{ $line }}</div>@endif
+        @if ($facts = array_filter($facts))<p class="detail-facts text-sm text-ink-muted">{{ implode(', ', $facts) }}</p>@endif
     </div>
 @elseif ($head)
 <div class="flex items-start gap-3">
@@ -36,10 +41,11 @@
     <div class="min-w-0 flex-1">
         <a @if ($href) href="{{ $href }}" @endif class="block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}{{ $badge ?? '' }}</span></a>
         @if ($marks)<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
+        @if ($line && trim($line) !== '')<div class="detail-line">{{ $line }}</div>@endif
     </div>
 </div>
 @endif
-@if ($photos === null && ($facts = array_filter($facts)))<div class="mt-3 flex flex-wrap gap-1.5">@foreach ($facts as $fact)<span class="tag nums">{{ $fact }}</span>@endforeach</div>@endif
+@if ($photos === null && ($facts = array_filter($facts)))<p class="mt-2 text-sm text-ink-muted">{{ implode(', ', $facts) }}</p>@endif
 {{-- Пустой слот (черновик без кнопок) не рисует ряд: иначе над «Ценами» лишний отступ. --}}
 @if ($actions && (! $actions instanceof \Illuminate\View\ComponentSlot || $actions->hasActualContent()))
     <div class="mt-3 flex flex-wrap items-center gap-2">{{ $actions }}</div>

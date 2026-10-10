@@ -10,14 +10,20 @@
 @endphp
 {{-- Выплата без номера — по имени получателя: label() отдал бы вид («Агентское вознаграждение»). --}}
 <x-ui.shell :title="($i->isOwed() ? ($i->isAgentFee() ? 'Выплата менеджеру '.$i->party->name : 'Перечисление вендору '.$i->label()) : 'Счёт '.$i->label())" :back="$back" cache="no-cache">
-    <div class="-mt-3 mb-6 flex flex-wrap items-center gap-1.5" data-controller="sheet">
+    <div class="-mt-3 mb-6 flex items-start gap-3" data-controller="sheet">
+        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+        {{-- Состояние словом, дальше фразой — что за счёт и когда (владелец 10.10.2026: «что-то чипами, что-то текстом»);
+             чипом только чужой номер — его сверяют и копируют. --}}
         <x-billing.light :invoice="$i"/>
-        <span class="chip nums">{{ $i->issued_at->translatedFormat('j M Y') }}</span>
-        <span class="chip">{{ $i->kind->label() }}</span>
-        <span class="chip">{{ $i->vatRate() ? 'НДС '.$i->vatRate().' %' : 'без НДС' }}</span>
-        @if ($i->external_no)<span class="chip nums">{{ $i->external_no }}</span>@endif
-        @if ($i->sent_at)<span class="chip nums"><x-ui.icon name="send" class="size-3.5"/>{{ $i->sent_at->translatedFormat('j M') }}</span>@endif
-        <button type="button" class="btn btn-s btn-quiet btn-round ml-auto" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
+        @if ($i->external_no)<span class="tag nums gap-1">№<x-ui.copy-code :value="$i->external_no"/></span>@endif
+        <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted">
+            <span>{{ $i->kind->label() }}</span>
+            <span class="nums">от {{ $i->issued_at->translatedFormat($i->issued_at->isCurrentYear() ? 'j M' : 'j M Y') }}</span>
+            <span>{{ $i->vatRate() ? 'НДС '.$i->vatRate().' %' : 'без НДС' }}</span>
+            @if ($i->sent_at)<span class="nums">отправлен {{ $i->sent_at->translatedFormat('j M') }}</span>@endif
+        </div>
+        </div>
+        <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <x-ui.sheet id="invoice-actions" :title="$i->label()" :open="$errors->has('due_at')">
             <div class="flex flex-col gap-2">
                 @if ($mailUrl ?? null)<x-ui.button :href="$mailUrl" block><x-ui.icon name="send" class="size-4"/> {{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</x-ui.button>@endif

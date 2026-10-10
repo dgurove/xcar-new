@@ -2118,6 +2118,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .detail-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .75rem; align-items: start; }
   .detail-aside { grid-column: 2; grid-row: 1; text-align: right; }
   .detail-marks { grid-column: 1 / -1; margin-top: .375rem; }
+  .detail-facts { grid-column: 1 / -1; margin-top: .375rem; }
+  /* Фраза положения под метками (row-card line): куски элементами, запятые ставит CSS — пробела перед ними не бывает. */
+  /* flex: пробелы между кусками в разметке (перевод строки в blade) не рисуются, иначе перед запятой вставал пробел. */
+  .detail-line { grid-column: 1 / -1; margin-top: .5rem; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .3em; }
+  /* Запятая — хвостом куска, а не началом следующего: при переносе строка не начинается с «, ». */
+  .detail-line > :not(:last-child)::after { content: ','; color: var(--color-ink-muted); }
   @media (max-width: 639.98px) {
     .detail-aside { grid-column: 1 / -1; grid-row: auto; text-align: left; margin-top: .125rem; }
     .detail-marks { grid-column: 1 / -1; }

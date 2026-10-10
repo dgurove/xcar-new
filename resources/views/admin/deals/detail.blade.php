@@ -11,11 +11,14 @@
 <x-ui.detail>
     <x-ui.row-card :href="'/work/deals/'.$deal->id" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()">
         <x-slot:marks>
-            @if ($deal->state !== DealState::Active)<span class="tag {{ $deal->state === DealState::Done ? 'tag-accent' : 'text-danger' }}">{{ $deal->state->label() }}</span>@endif
-            @if ($vendor || $offer->claim_ref)<span class="tag"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy/></span>@endif
+            {{-- Состояние словом, коды чипами; телефон покупателя — строкой текста ниже, ссылкой (не код машины). --}}
+            @if ($deal->state !== DealState::Active)<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.state>@endif
+            @if ($vendor || $offer->claim_ref)<x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy class="tag nums"/>@endif
             <span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $offer->number" done="Номер в буфере"/></span>
-            @if ($deal->buyer?->phone)<a href="tel:+{{ $deal->buyer->phone }}" class="tag nums">{{ $deal->buyer->phoneFormatted() }}</a>@endif
         </x-slot:marks>
+        @if ($deal->buyer?->phone)
+            <x-slot:line><span>{{ $deal->buyer->name }}</span><a href="tel:+{{ $deal->buyer->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $deal->buyer->phoneFormatted() }}</a></x-slot:line>
+        @endif
         <x-slot:aside><span class="nums text-lg font-semibold">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span></x-slot:aside>
         <x-slot:actions>
             @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif

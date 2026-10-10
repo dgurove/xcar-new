@@ -22,14 +22,19 @@
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)" :action="false">
+        {{-- Коды и метки — чипами, где и сколько осталось — фразой (`line`, как в CRM; владелец 10.10.2026: «одно к машине
+             относится, другое к фактам»). --}}
         <x-slot:marks>
             @if ($offer->recommended)<x-offer.recommended label/>@endif
             @if (!$gallery && $offer->isFresh())<x-ui.state tone="open">Новый</x-ui.state>@endif
-            @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>@elseif ($bids && !$gallery && !$offer->bidsOpen())<span class="tag">Приём закрыт</span>@endif
-            @if ($offer->settlement)<x-ui.place class="tag">{{ $offer->settlement->title() }}</x-ui.place>@endif
             <x-ui.vin-code :vin="$offer->vinFor(auth()->user())" :copy="$offer->vinOpenTo(auth()->user())" class="tag"/>
-            <x-offer.tags :offer="$offer" :facts="false"/>
+            <x-offer.tags :offer="$offer" :facts="false" :vat="false"/>
         </x-slot:marks>
+        <x-slot:line>
+            @if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif
+            @if ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>@elseif ($bids && !$gallery && !$offer->bidsOpen())<span class="text-ink-muted">приём закрыт</span>@endif
+            <span class="text-ink-muted">{{ $offer->prices_include_vat ? 'с НДС' : 'без НДС' }}</span>
+        </x-slot:line>
         <x-slot:tools>
             @if ($user?->canShare())@include('admin.offers.share-button', ['class' => 'bar-btn'])@endif
         </x-slot:tools>

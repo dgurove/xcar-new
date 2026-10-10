@@ -16,13 +16,14 @@
 <div class="px-4 py-3">
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span class="nums whitespace-nowrap text-lg font-semibold">{{ $garage ? 'В гараж' : Money::rub($bid->amount) }}</span>
-        @if ($inGarage)<span class="tag nums">в гараже {{ $inGarage }}</span>@endif
+        @if ($inGarage)<span class="nums text-sm text-ink-dim">в гараже {{ $inGarage }}</span>@endif
         @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
         @if ($best)<x-ui.state tone="soft">Лучшая</x-ui.state>@endif
-        @if ($low)<span class="tag tag-urgent">ниже минимальной</span>@endif
+        @if ($low)<x-ui.state tone="urgent">ниже минимальной</x-ui.state>@endif
         @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
     </div>
-    <div class="mt-1 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$bid->user" full/><a href="tel:+{{ $bid->user->phone }}" class="tag nums">{{ $bid->user->phoneFormatted() }}</a><span class="tag nums">{{ $bid->created_at->translatedFormat('j M, H:i') }}</span>@if ($bid->byStaff())<span class="text-sm text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
+    {{-- Кто — человеком, телефон ссылкой и когда — текстом (10.10.2026: «что-то чипами, что-то текстом»). --}}
+    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->phone)<a href="tel:+{{ $bid->user->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $bid->user->phoneFormatted() }}</a>@endif<span class="nums text-ink-dim">{{ $bid->created_at->translatedFormat('j M, H:i') }}</span>@if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
     @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
     @if ($active)
         <div class="mt-2 flex items-start gap-2">

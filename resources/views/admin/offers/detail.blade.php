@@ -41,23 +41,26 @@
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         <x-slot:badge><x-ui.links :offer="$offer"/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
+        {{-- Под названием — что это за машина (состояние словом, коды чипами: №, убыток или ДЛ, VIN), ниже фразой — где она
+             и сколько осталось (`line`): владелец 10.10.2026 «одно к машине относится, другое к фактам». --}}
         <x-slot:marks>
-            {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN. --}}
+            {{-- Слова «черновик» нет, как и в строке: вкладка и так говорит, на каком он шаге. --}}
+            @if ($offer->state !== OfferState::Draft)<x-ui.state :tone="$offer->state->tone()">{{ $offer->state->labelFor(auth()->user()) }}</x-ui.state>@endif
+            {{-- Номер предложения и номер ДЛ или убытка копируются нажатием, как VIN; у убытка слова «Убыток» нет (05.10.2026). --}}
             @unless ($offer->state === OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $n" done="Номер в буфере"/></span>@endunless
-            {{-- Номер убытка — без слова «Убыток» (владелец 05.10.2026), у лизинга — «ДЛ». --}}
             @if ($offer->claim_ref)<span class="tag nums gap-1">@if ($offer->leaseRef())ДЛ @endif<x-ui.copy-code :value="$offer->claim_ref"/></span>@endif
-            {{-- Слова «черновик» нет, как и в строке: вкладка и так говорит, на каком он шаге; у черновика с парковки — «парковка с …». --}}
-            @if ($offer->state !== OfferState::Draft)<span class="tag {{ match ($offer->state->tone()) { 'open' => 'tag-accent', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' } }} {{ $offer->state === OfferState::Draft ? 'text-ink-dim' : '' }}">{{ $offer->state->labelFor(auth()->user()) }}</span>@endif
-            @if ($left !== null && $left > 0)<span class="tag nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
-            @elseif (! $gallery && $offer->closed() && auth()->user()->canManageCrm())<span class="tag">приём закрыт</span>@endif
-            @if ($offer->car_place)<x-ui.place class="tag">{{ $offer->car_place->label() }}</x-ui.place>@endif
-            @if ($offer->settlement)<x-ui.place class="tag">{{ $offer->settlement->title() }}</x-ui.place>@endif
             <x-ui.vin-code :vin="$offer->vin" class="tag"/>
-            {{-- Окно галереи (08.10.2026): висит — сколько осталось, кончилось — до какого числа висело. --}}
-            @if ($gallery)<span class="tag nums {{ $offer->isGalleryEndingSoon() ? 'text-urgent' : 'text-accent-text' }}">Галерея,&nbsp;<span data-controller="timer" data-timer-until-value="{{ $offer->gallery_until->toIso8601String() }}" data-timer-done-value="закрыта" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->gallery_until) }}</span></span>
-            @elseif ($offer->gallery_from)<span class="tag nums">Галерея до {{ $offer->gallery_until->translatedFormat('j M, H:i') }}</span>@endif
-            @if ($offer->interests_count)<span class="tag text-accent-text nums">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</span>@endif
         </x-slot:marks>
+        <x-slot:line>
+            @if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif
+            @if ($offer->car_place)<span>{{ mb_strtolower($offer->car_place->label()) }}</span>@endif
+            @if ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
+            @elseif (! $gallery && $offer->closed() && auth()->user()->canManageCrm())<span class="text-ink-muted">приём закрыт</span>@endif
+            {{-- Окно галереи (08.10.2026): висит — сколько осталось, кончилось — до какого числа висело. --}}
+            @if ($gallery)<span class="nums {{ $offer->isGalleryEndingSoon() ? 'text-urgent' : 'text-accent-text' }}">в галерее <span data-controller="timer" data-timer-until-value="{{ $offer->gallery_until->toIso8601String() }}" data-timer-done-value="закрыта" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->gallery_until, 'ещё') }}</span></span>
+            @elseif ($offer->gallery_from)<span class="nums text-ink-muted">в галерее до {{ $offer->gallery_until->translatedFormat('j M, H:i') }}</span>@endif
+            @if ($offer->interests_count)<span class="nums text-accent-text">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</span>@endif
+        </x-slot:line>
         {{-- Цен в шапке нет: закупочная, заявленная и продажи — поля «Деньги» ниже. --}}
         <x-slot:actions>
             @if ($admin && $offer->isScheduled())

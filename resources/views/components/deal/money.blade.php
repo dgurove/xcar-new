@@ -82,13 +82,13 @@
         </details>
     @endif
     <div class="mt-3 flex flex-wrap items-center gap-1.5">
-        <span class="tag">{{ mb_strtolower($deal->schemeOf()->label()) }}</span>
-        @if ($deal->commission && $deal->isPrime())<span class="tag">{{ mb_strtolower($deal->commission_mode->label()) }}</span>@endif
+        {{-- Схема и режим вознаграждения — текстом, состояние словом, «Ещё счёт» — действием (10.10.2026). --}}
+        <span class="text-sm text-ink-muted">{{ $deal->schemeOf()->label() }}@if ($deal->commission && $deal->isPrime()), {{ mb_strtolower($deal->commission_mode->label()) }}@endif</span>
         @if (! in_array($state, [CommissionState::Hidden, CommissionState::Withheld]))<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.$fee->paid_at->translatedFormat('j M') : '' }}</x-ui.state>@endif
         @if ($deal->commission && ! $deal->withholds() && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
         @if ($deal->isActive())
             {{-- Счета ставятся сами по схеме (`SyncDealInvoices`); здесь — только «Ещё счёт» для редкого ручного. --}}
-            @if ($issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="chip">Ещё счёт</a>@endif
+            @if ($issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="ml-auto text-sm text-accent-text">Ещё счёт</a>@endif
         @endif
     </div>
     {{-- Ссылки на оплату — одной группой строк `x-billing.link-row` (09.10.2026): ссылка счёта сделки и ручные, засчитанные
