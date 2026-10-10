@@ -80,12 +80,14 @@ class DealController
     public function teaser(Request $request, Deal $deal, int $media)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);
-        $file = $deal->offer->papers()->first(fn ($m) => $m->id === $media && $m->getCustomProperty('letter') && str_starts_with((string) $m->mime_type, 'image/'));
+        // Картинка или PDF (паспорт Т-Страхование шлёт PDF-сканом) — первая страница, как плитка документа (`Thumb`).
+        $file = $deal->offer->papers()->first(fn ($m) => $m->id === $media && $m->getCustomProperty('letter') && \App\Offers\InsurerReplies::teasable($m));
         abort_unless($file, 404);
         $cache = \Illuminate\Support\Facades\Storage::disk('cache');
         $key = 'teaser/'.$file->id.'.jpg';
         if (! $cache->exists($key)) {
-            $src = @imagecreatefromstring((string) @file_get_contents($file->getPath()));
+            $page = \App\Media\Thumb::of($file->getPath(), $file->mime_type === 'application/pdf', "thumb-m{$file->id}");
+            $src = $page ? @imagecreatefromstring((string) @file_get_contents($page)) : false;
             abort_unless($src, 404);
             [$w, $h] = [imagesx($src), imagesy($src)];
             $tw = 16;

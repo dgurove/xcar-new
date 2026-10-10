@@ -62,6 +62,12 @@ final class InsurerReplies
         }, $text);
     }
 
+    /** Файл ответа, у которого есть картинка для тизера: снимок или PDF (первая страница). */
+    public static function teasable(\Spatie\MediaLibrary\MediaCollections\Models\Media $media): bool
+    {
+        return (str_starts_with((string) $media->mime_type, 'image/') && $media->mime_type !== 'image/svg+xml') || $media->mime_type === 'application/pdf';
+    }
+
     /** В ответе есть, кому звонить: телефон в тексте до подписи. */
     public static function hasContact(Message $message): bool
     {

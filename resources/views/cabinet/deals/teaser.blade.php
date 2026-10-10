@@ -12,7 +12,7 @@
         @if ($files->isNotEmpty())
             <div class="teaser-files">
                 @foreach ($files->take(4) as $media)
-                    @if (str_starts_with((string) $media->mime_type, 'image/'))
+                    @if (\App\Offers\InsurerReplies::teasable($media))
                         <img src="/deals/{{ $deal->id }}/teaser/{{ $media->id }}" alt="" class="teaser-image" loading="lazy">
                     @else
                         <span class="teaser-image teaser-doc"><x-ui.icon name="file" class="size-6"/></span>
