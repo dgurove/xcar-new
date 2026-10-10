@@ -46,9 +46,6 @@ final class YourTurnNotice extends Notice
     {
         $r = $this->requirement;
 
-        // Просьба и срок одной строкой: «Приложите платёжку до 3 окт, 16:06».
-        $ask = $r->title.($r->due_at ? ' до '.$r->due_at->translatedFormat('j M, H:i') : '');
-
         // Заголовок — что сделать, а не «Ваш ход» (10.10.2026, владелец: проверить формулировки в Telegram).
         return ['title' => $r->title.': '.$r->offer->titleWithYear(), 'lines' => Text::lines($r->offer, $r->due_at ? 'До '.$r->due_at->translatedFormat('j M, H:i') : null), 'button' => 'Открыть сделку'];
     }

@@ -18,7 +18,7 @@
 </p>
 <p>
     Политика открыта всем и размещена по постоянному адресу
-    <x-legal.link href="/privacy" :plain="$plain">xcar.ru/politika</x-legal.link>. Действующей считается
+    <x-legal.link href="/privacy" :plain="$plain">xcar.ru/privacy</x-legal.link>. Действующей считается
     редакция, размещённая по этому адресу.
 </p>
 
@@ -247,6 +247,6 @@
 
 <p>
     Оператор вправе изменять настоящую Политику. Новая редакция вступает в силу с
-    момента размещения по адресу <x-legal.link href="/privacy" :plain="$plain">xcar.ru/politika</x-legal.link>,
+    момента размещения по адресу <x-legal.link href="/privacy" :plain="$plain">xcar.ru/privacy</x-legal.link>,
     если в ней не указано иное. Дата действующей редакции стоит под заголовком.
 </p>

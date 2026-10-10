@@ -49,7 +49,8 @@ class ChatController
     public function start(Request $request, Offer $offer, User $user, OpenChat $open)
     {
         abort_unless($request->user()->isAdmin(), 403);
-        abort_unless($user->isManager() && ($offer->worksWith($user) || Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->exists()), 404);
+        // Менеджер или супер-покупатель (у него сделки как у менеджера, `hasDeals`).
+        abort_unless($user->hasDeals() && ($offer->worksWith($user) || Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->exists()), 404);
 
         return redirect('/work/chats/'.$open($offer, $user, greet: false)->id);
     }

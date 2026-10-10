@@ -14,6 +14,7 @@ use App\Support\Demo\HidesDemo;
 use App\Support\Surface;
 use App\Users\User;
 use App\Workflow\Requirement;
+use App\Workflow\Track;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -101,7 +102,12 @@ class Deal extends Model
      */
     public function mayPickUp(): bool
     {
-        return $this->prepaid_at !== null || ! $this->offer?->vendor?->pay_before_pickup;
+        if ($this->prepaid_at !== null || ! $this->offer?->vendor?->pay_before_pickup) {
+            return true;
+        }
+        // Маршрута продажи у вендора нет (Альфа СПб завели без него) — `prepaid_at` ставить некому: забирать, когда
+        // счета сделки оплачены, а не никогда.
+        return ! $this->offer->vendor->workflow(Track::Sale)?->is_active && $this->fullyPaid();
     }
 
     /**

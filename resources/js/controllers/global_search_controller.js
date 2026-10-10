@@ -13,7 +13,8 @@ export default class extends Controller {
         this.index = -1;
         this.onKey = (e) => this.hotkey(e);
         this.onOutside = (e) => { if (this.hasPopTarget && !this.element.contains(e.target)) this.close(); };
-        this.onLoad = () => { this.index = -1; this.mark(); };
+        // Выдача по какому запросу на экране: Enter не должен открыть строку прежнего запроса, пока новый ещё в пути.
+        this.onLoad = () => { this.index = -1; this.shown = new URL(this.frameTarget.src || '', location.href).searchParams.get('q'); this.mark(); };
         document.addEventListener('keydown', this.onKey);
         document.addEventListener('pointerdown', this.onOutside);
         this.frameTarget.addEventListener('turbo:frame-load', this.onLoad);
@@ -59,9 +60,10 @@ export default class extends Controller {
             this.mark();
             hits[this.index].scrollIntoView({ block: 'nearest' });
         } else if (event.key === 'Enter') {
-            const hit = hits[this.index] ?? hits[0];
-            this.remember(this.inputTarget.value.trim());
-            // Выдача ещё не пришла — форма уходит как есть: поиск страницей `/search?q=`.
+            const q = this.inputTarget.value.trim();
+            const hit = this.shown === q ? (hits[this.index] ?? hits[0]) : null;
+            this.remember(q);
+            // Выдача по этому запросу ещё не пришла — форма уходит как есть: поиск страницей `/search?q=`.
             if (!hit) return;
             event.preventDefault();
             hit.click();

@@ -13,6 +13,7 @@ use App\Workflow\Events\StageEntered;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Track;
+use App\Workflow\WaitsFor;
 
 /**
  * Счёт по сделке оплачен целиком — маршрут сам делает шаг «Оплата получена». Если сделка ещё ждёт
@@ -68,6 +69,12 @@ final class AdvanceOnPayment
             ($this->take)($offer, $slip, Actor::Manager, $by);
             $offer->log(OfferEventType::RequirementAnswered, $by, ['exit' => $slip->label, 'fields' => []]);
             $position = $offer->fresh()->position(Track::Sale);
+        }
+        // Оплата до вывоза (Альфа, `pay_before_pickup`): «Оплата получена» на этапе, что ждёт поставщика, — это его
+        // подтверждение. Наш счёт (подбор, машина по ПРАЙМ) его не заменяет: иначе оплата подбора по ссылке ставила
+        // `prepaid_at`, и менеджеру открывался вывоз, хотя Альфе ещё не заплатили. Отмечает сотрудник по ответу поставщика.
+        if ($offer->vendor?->pay_before_pickup && $position?->stage->waits_for === WaitsFor::Supplier) {
+            return;
         }
         $exit = $position?->stage->exitsFor(Actor::Staff, $deal)->first(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата получена'));
         if ($exit) {

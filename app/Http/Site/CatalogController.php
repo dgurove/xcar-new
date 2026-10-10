@@ -24,7 +24,6 @@ class CatalogController
     }
 
     /** Галерея «скоро в продаже»: без цены, принимаем интерес. */
-    /** Живой поиск в шторке: до восьми строк по мере ввода, фреймом. */
     public function gallery(Request $request)
     {
         return $this->list($request, gallery: true);

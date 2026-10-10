@@ -7,6 +7,7 @@ use App\Offers\Actions\AddLegacyClaims;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\DeleteDraft;
+use App\Offers\Actions\RemoveLegacyClaim;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -33,7 +34,11 @@ final class LegacyClaimController
     public function create(Request $request, LegacyClaim $claim, CreateOffer $create, ChangeOfferState $change)
     {
         $offer = $claim->offer();
-        if ($offer && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true)) {
+        // Отменённое (отказ поставщика) в черновик напрямую не ходит — только через архив (`OfferState::allows`).
+        if ($offer?->state === OfferState::Cancelled) {
+            $offer = $change($offer, OfferState::Archived, $request->user());
+        }
+        if ($offer?->state === OfferState::Archived) {
             $offer = $change($offer, OfferState::Draft, $request->user());
         }
         if (! $offer) {
@@ -56,10 +61,9 @@ final class LegacyClaimController
     }
 
     /** Убрать номер из списка: черновик остаётся в своей рабочей вкладке, из «Из таблицы Кати» уходит. */
-    public function destroy(Request $request, LegacyClaim $claim)
+    public function destroy(Request $request, LegacyClaim $claim, RemoveLegacyClaim $remove)
     {
-        $offer = $claim->offer();
-        $claim->delete();
+        $offer = $remove($claim);
         if ($offer && $request->header('Turbo-Frame') === 'detail') {
             return redirect("/offers/{$offer->number}")->with('toast', 'Убрано из таблицы Кати')->with(OfferController::gone($request, $offer));
         }

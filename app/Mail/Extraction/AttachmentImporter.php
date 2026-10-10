@@ -146,10 +146,13 @@ final class AttachmentImporter
     /**
      * Архив с диска (брошен руками в «Фотографии»): кадры — к фото, остальное (PDF, СТС, Excel) — к документам, как архив
      * письма; что уже лежит — пропускается. Не открылся (битый, с паролем) — null.
+     * `photoProperties` — свойства кадров (`hidden` — не в продажу); `imagesAsDocuments` — картинки тоже документами:
+     * архив ответа страховой по идущей сделке (паспорт, СТС картинками — менеджеру, а не кадрами машины, 10.10.2026).
      *
      * @return array{photos: int, documents: int}|null
      */
-    public function importArchive(HasMedia $model, string $path, string $photosCollection, string $documentsCollection, ?callable $progress = null, array $documentProperties = [], ?string $source = null): ?array
+    public function importArchive(HasMedia $model, string $path, string $photosCollection, string $documentsCollection, ?callable $progress = null, array $documentProperties = [], ?string $source = null,
+        array $photoProperties = [], bool $imagesAsDocuments = false): ?array
     {
         $extracted = $this->archives->extractPath($path);
         if (! $extracted) {
@@ -158,9 +161,9 @@ final class AttachmentImporter
         $added = ['photos' => 0, 'documents' => 0];
         foreach ($extracted as $i => $file) {
             $progress && $progress('Разбираем архив', $i, count($extracted));
-            if ($file['photo'] && ! $this->classifier->looksLikeDocument(mb_strtolower($file['name']))) {
-                $this->guard(function () use ($model, $photosCollection, $file, &$added) {
-                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $file['contents'], $file['name'], []);
+            if ($file['photo'] && ! $imagesAsDocuments && ! $this->classifier->looksLikeDocument(mb_strtolower($file['name']))) {
+                $this->guard(function () use ($model, $photosCollection, $file, $photoProperties, &$added) {
+                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $file['contents'], $file['name'], $photoProperties);
                 });
             } else {
                 $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents'], $source, $documentProperties);

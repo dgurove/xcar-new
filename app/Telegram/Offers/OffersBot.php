@@ -118,4 +118,29 @@ final class OffersBot extends Bot
     {
         $this->quietly(fn () => $this->delete($chatId, $messageId));
     }
+
+    /**
+     * Убрать карточку ушедшего предложения. Telegram удаляет только сообщения моложе 48 часов — старше остаётся
+     * переписать подпись на «Ушло из продажи» и снять кнопки (цена и «Подтвердить» у менеджера больше не висят).
+     * false — не вышло ни то, ни другое (бот остановлен, сообщение уже удалено человеком).
+     */
+    public function retract(int $chatId, int $messageId): bool
+    {
+        try {
+            $this->delete($chatId, $messageId);
+
+            return true;
+        } catch (Throwable) {
+        }
+        try {
+            $this->call('editMessageCaption', ['chat_id' => $chatId, 'message_id' => $messageId, 'caption' => 'Ушло из продажи',
+                'reply_markup' => json_encode(['inline_keyboard' => []])])->throw();
+
+            return true;
+        } catch (Throwable $e) {
+            Log::warning('Бот предложений: карточка не убралась', ['chat' => $chatId, 'message' => $messageId, 'error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
 }

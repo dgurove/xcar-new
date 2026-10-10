@@ -38,8 +38,11 @@
              закупочная, взаимозачёт, «Оплатить собственнику по ДКП», под ними остаток — вся разница; ниже, как она
              делится: «Ваша доля» и «Оплата услуг подбора», и одна кнопка «Оплатить» (`cabinet.deals.selection-pay`). --}}
         <div class="list mt-4">
+            {{-- Супер-покупателю закупочной нет (`Deal::isDirect`): только что платит собственнику. --}}
+            @unless ($deal->isDirect())
             <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Закупочная</span><span class="nums">{{ Money::rub((int) $deal->cost) }}</span></div>
-            @if ($deal->offset())
+            @endunless
+            @if ($deal->offset() && ! $deal->isDirect())
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Взаимозачёт со страховой</span><span class="nums text-ink-muted">−{{ Money::rub($deal->offset()) }}</span></div>
             @endif
             <div class="row"><span class="min-w-0 flex-1">{{ $deal->schemeOf()->payLabel() }}</span><span class="nums font-semibold">{{ Money::rub((int) $deal->ownerPrice()) }}</span></div>

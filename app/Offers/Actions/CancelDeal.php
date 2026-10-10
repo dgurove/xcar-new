@@ -9,6 +9,9 @@ use App\Billing\PaymentSource;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
+use App\Logistics\Actions\Cancel as CancelTransport;
+use App\Logistics\Transport;
+use App\Logistics\TransportState;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
@@ -52,6 +55,14 @@ final class CancelDeal
         if ($offer && $offer->evacuator_id === $deal->buyer_id && $offer->pickupDestination() === Destination::Keeper && ! $offer->pickedUp()) {
             $offer->update(['evacuator_id' => null, 'evacuation_to' => null]);
             $offer->log(OfferEventType::PickupAssigned, $by, ['who' => 'мы', 'to' => Destination::Ours->value]);
+        }
+        // Гаражную везли «Мы» к её менеджеру, а гаража больше нет — везти некуда: вывоз снова не назначен, перевозка в
+        // логистике отменяется (уже везут — остаётся, её «Сдал» поставит машину к нам).
+        if ($offer && $car && ! $keepCar && ! $offer->evacuator_id && $offer->evacuation_to === Destination::Keeper->value && ! $offer->pickedUp()) {
+            $offer->update(['evacuation_to' => null]);
+            if (($open = Transport::openFor($offer)) && $open->state !== TransportState::Moving) {
+                app(CancelTransport::class)($open, $by, system: true);
+            }
         }
         if (($fee = $deal->agentFee()->first()) && $fee->state === InvoiceState::Issued && $fee->paid == 0) {
             app(VoidInvoice::class)($fee, $by, 'Сделка отменена');

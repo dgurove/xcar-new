@@ -37,10 +37,12 @@ final class Cars
             return;
         }
         $key = $this->key($crm ? $o->claim_ref_key : null, $o->vin, 'o'.$o->id);
+        // Чья сделка и чей гараж — админу CRM; модератору (черновики) люди сделок ни к чему.
+        $who = $crm && auth()->user()?->canManageCrm();
         $state = match ($o->state) {
             OfferState::Draft => $o->isGallery() ? 'в галерее' : 'черновик',
-            OfferState::Sold => 'в сделке'.(($name = $o->deal?->buyer?->shortName()) && $crm ? ' у '.$name : ''),
-            OfferState::Garage => 'в гараже'.(($name = $o->garageCar?->manager?->shortName()) && $crm ? ' у '.$name : ''),
+            OfferState::Sold => 'в сделке'.(($name = $o->deal?->buyer?->shortName()) && $who ? ' у '.$name : ''),
+            OfferState::Garage => 'в гараже'.(($name = $o->garageCar?->manager?->shortName()) && $who ? ' у '.$name : ''),
             default => mb_strtolower($o->state->labelFor(auth()->user())),
         };
         $hit = $this->hit($key, fn () => new Hit($o->titleWithYear(), $link, ref: $crm ? $o->claim_ref : null, vendorId: $crm ? $o->vendor_id : null));
@@ -49,7 +51,8 @@ final class Cars
         $hit->external = false;
         $hit->title = $o->titleWithYear();
         array_unshift($hit->line, $state);
-        $hit->rank = min($hit->rank, $this->exact($o->claim_ref_key, $o->vin, (string) $o->number) ? 0 : (in_array($o->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true) ? 2 : 1));
+        // На сайте номер убытка не ищется — и выше от него не встаёт (по рангу его можно было бы угадать).
+        $hit->rank = min($hit->rank, $this->exact($crm ? $o->claim_ref_key : null, $o->vin, (string) $o->number) ? 0 : (in_array($o->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true) ? 2 : 1));
         if ($o->parkVehicle) {
             $this->alias['v'.$o->parkVehicle->id] = $key;
         }

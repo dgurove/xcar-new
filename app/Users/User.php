@@ -617,7 +617,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         $here = $surface ?? Surface::current();
 
         // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).
-        return $this->unreadCount($surface) + ($here === Surface::Park ? 0 : $this->unreadChats(platform: $here === Surface::Crm));
+        // На парковке и в логистике чатов нет — их непрочитанное в значок приложения не идёт.
+        return $this->unreadCount($surface) + (in_array($here, [Surface::Park, Surface::Logistics], true) ? 0 : $this->unreadChats(platform: $here === Surface::Crm));
     }
 
     /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона; сотруднику — и площадки. */

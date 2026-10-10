@@ -13,6 +13,7 @@ use App\Billing\Party;
 use App\Billing\PaymentSource;
 use App\Billing\Seller;
 use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\OfferEventType;
 use App\Support\Money;
 use App\Users\User;
@@ -90,6 +91,15 @@ final class SyncDealInvoices
         }
         Invoice::where('offer_id', $deal->offer_id)->where('kind', ChargeKind::Service)->whereNull('deal_id')->whereNull('vehicle_id')
             ->whereNull('credit_deal_id')->where('state', '!=', InvoiceState::Void)->update(['credit_deal_id' => $deal->id]);
+        // Засчитанная в сделку, которую потом отменили (и вернули в продажу), а выиграл тот же человек: его деньги — в
+        // новую сделку, а не висеть на отменённой (иначе новой выставлялась полная сумма).
+        $party = $deal->buyer?->party_id;
+        if ($party) {
+            Invoice::where('offer_id', $deal->offer_id)->where('kind', ChargeKind::Service)->whereNull('deal_id')->whereNull('vehicle_id')
+                ->where('party_id', $party)->where('state', '!=', InvoiceState::Void)
+                ->whereIn('credit_deal_id', Deal::where('offer_id', $deal->offer_id)->where('state', DealState::Cancelled)->select('id'))
+                ->update(['credit_deal_id' => $deal->id]);
+        }
     }
 
     /** @return array{party: Party, lines: list<array>, offset: float}|null */
@@ -111,6 +121,11 @@ final class SyncDealInvoices
             return null;
         }
         $car = 'Транспортное средство '.$deal->offer->titleWithYear();
+        // Р.О.С. без реквизитов — счёт с прочерками не выставляем: ход наш «Заполните реквизиты Р.О.С.» (`Deal::invoiceGap`).
+        // До гаражной ветки: гаражная Альфы с НДС тоже от Р.О.С.
+        if ($deal->seller() !== Seller::Prime && ! $deal->seller()->party()->billable()) {
+            return null;
+        }
         // Гаражная Совкомбанка (`namesBuyer`) — как обычная ПРАЙМ: счёт на цену продажи тому, кого назвал менеджер.
         if ($deal->isGarage() && ! $deal->namesBuyer()) {
             return $deal->isGarageManager()
@@ -122,13 +137,14 @@ final class SyncDealInvoices
         if (! $contract?->buyer_user_id || $deal->amount === null || ($deal->namesBuyer() && $deal->commission === null)) {
             return null;
         }
-        // Р.О.С. без реквизитов — счёт с прочерками не выставляем: ход наш «Заполните реквизиты Р.О.С.» (`Deal::invoiceGap`).
-        if ($deal->seller() !== Seller::Prime && ! $deal->seller()->party()->billable()) {
-            return null;
-        }
         // Платит покупатель — удерживать не из чего, `Deal::withholds` тогда ложь: вознаграждение выплачиваем после оплаты.
         $managerPays = $contract->managerPays();
         $party = Party::forUser($managerPays ? $deal->buyer : $contract->buyer);
+        // Супер-покупатель (`isDirect`) закупочную не видит нигде: ему одна строка на цену сделки, без разбивки на
+        // «Транспортное средство» по закупочной и «Агентское вознаграждение» — разница выдала бы её.
+        if ($deal->isDirect()) {
+            return ['party' => $party, 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->amount, 'kind' => ChargeKind::Sale->value]]];
+        }
         $fee = max(0, (int) $deal->amount - (int) $deal->cost);
         $lines = [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]];
         if ($fee > 0) {

@@ -12,7 +12,6 @@
     $pills = auth()->user()->isSuperBuyer() ? array_diff_key(DealMoney::PRESETS, ['payout' => true]) : DealMoney::PRESETS;
 @endphp
 <x-ui.cabinet title="Оплаты">
-    {{-- Узкая колонка — у строк; пилюли с суммами шире её, и на ПК «···» уходило бы за край ленты. --}}
     <div class="flex flex-col gap-6">
 
         @if ($needDetails && ($position['payout'] > 0 || $position['paid_out'] > 0))

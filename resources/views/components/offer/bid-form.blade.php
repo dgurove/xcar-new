@@ -4,7 +4,7 @@
 @props(['offer', 'myBid' => null])
 @php
     $asking = (int) $offer->asking_price;
-    $discounts = $offer->bidDiscounts();
+    $discounts = $offer->bidDiscounts(auth()->user());
 @endphp
 @php
     // Админ подтверждает за менеджера (08.10.2026): та же форма, в шторке в конце — за кого. Можно ли в гараж, решит

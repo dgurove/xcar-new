@@ -272,10 +272,6 @@ class Offer extends Model implements HasMedia
     }
 
     /**
-     * Есть ли у маршрута продажи гаражная ветка — «платим поставщику мы». Нет (Т-Страхование: машину забирают у
-     * владельца по договору с ним) — платит менеджер, путём обычной сделки. Нет маршрута вовсе — выбор свободный.
-     */
-    /**
      * Кто платит поставщику у гаражной сделки, когда выбирать нечего (тогда шторки «Принять» и «Отдать в гараж» вопроса не
      * задают): у Совкомбанка (договор комиссии, `DealFormat::Commission`) поставщику всегда платит ООО «ПРАЙМ», а менеджер
      * или покупатель — ПРАЙМ по счёту (10.10.2026, владелец), то есть «платит менеджер»; без гаражной ветки маршрута
@@ -752,11 +748,15 @@ class Offer extends Model implements HasMedia
      * Быстрые скидки формы подтверждения: «−2%» и «−5%» — доля **разницы** между заявленной и продажной, а не всей
      * цены (владелец 10.10.2026: заявленная 90 000, продажи 100 000 — «−5%» это −500 ₽, а не −5 000). Скидка — до 100 ₽;
      * кнопки, что уводят ниже порога (`minBid`) или ничего не скидывают, не показываются: сам порог наружу не выдаём.
+     * Супер-покупателю — без быстрых скидок: заявленной он не видит, а по двум суммам от разницы её легко досчитать.
      *
      * @return array<int, int> процент => цена с этой скидкой
      */
-    public function bidDiscounts(array $percents = [2, 5]): array
+    public function bidDiscounts(?User $viewer = null, array $percents = [2, 5]): array
     {
+        if ($viewer?->isSuperBuyer()) {
+            return [];
+        }
         $asking = (int) $this->asking_price;
         $spread = $asking - (int) $this->declaredPrice();
         if (! $asking || ! $this->declaredPrice() || $spread <= 0) {
@@ -811,8 +811,10 @@ class Offer extends Model implements HasMedia
 
         return $q->where(fn ($w) => $w
             // Строка целиком — номер: предложения, прежний, VIN; в CRM ещё номер убытка и телефон владельца.
+            // Прежний номер — bigint: число длиннее 18 цифр (расчётный счёт в поиске «Оплат») Postgres отвергал ошибкой, и
+            // падала вся выдача — такие с прежними номерами не сравниваются.
             ->when($t->digits, fn ($w, $d) => $w->orWhereRaw('cast(offers.number as text) like ?', [Term::like($d)])
-                ->orWhereIn('offers.id', DB::table('offer_number_aliases')->where('number', $d)->select('offer_id')))
+                ->when(strlen($d) <= 18, fn ($a) => $a->orWhereIn('offers.id', DB::table('offer_number_aliases')->where('number', $d)->select('offer_id'))))
             ->when($t->vin, fn ($w, $vin) => $w->orWhere('offers.vin', 'like', Term::like($vin)))
             ->when($crm && $t->key, fn ($w) => $w->orWhere('offers.claim_ref_key', 'like', Term::like($t->key)))
             ->when($crm && $t->phone, fn ($w) => $w->orWhereRaw(Term::digitsSql('offers.insured_phone').' like ?', [Term::like($t->phone)]))

@@ -1,9 +1,8 @@
 {{-- Машина гаража в плитках и строках (10.10.2026) — раскладка x-park.card и x-offer.crm-card: кадры листаются, название
      с годом, под ним одной строкой текста этап цветным словом, когда и чья (`App\Garage\CarLine`), в CRM ещё логотип
      вендора с номером убытка; справа главное число этапа и подпись под ним. Кнопок нет: вся карточка — ссылка. detail —
-     в карточку рядом со списком (CRM), иначе на страницу (сайт: машина, вывоз). Строка этапа — своя фраза, не режется.
-     note — слово справа вместо числа («к менеджеру» у вывоза CRM). --}}
-@props(['offer', 'href', 'word', 'tone' => 'text-ink-muted', 'when' => null, 'value' => null, 'caption' => null, 'who' => null, 'detail' => false, 'vendor' => false, 'note' => null])
+     в карточку рядом со списком (CRM), иначе на страницу (сайт: машина, вывоз). Строка этапа — своя фраза, не режется. --}}
+@props(['offer', 'href', 'word', 'tone' => 'text-ink-muted', 'when' => null, 'value' => null, 'caption' => null, 'who' => null, 'detail' => false, 'vendor' => false])
 @php
     use App\Support\Money;
     $n = $offer->number;
@@ -49,8 +48,6 @@
                 <span class="nums block">{{ Money::exact($value) }}</span>
                 <span class="block text-sm text-ink-muted">{{ $caption }}</span>
             </span>
-        @elseif ($note)
-            <span class="garage-money text-sm text-ink-muted">{{ $note }}</span>
         @endif
     </div>
 </article>

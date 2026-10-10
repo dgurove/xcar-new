@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\CodeMatcher;
+use App\Offers\Offer;
+use App\Park\Vehicle;
 
 /**
  * Номер убытка и ДЛ — внутренние: на xcar их нет нигде (владелец 10.10.2026), а в чужом тексте (ответ страховой, имя
@@ -16,7 +18,8 @@ final class InternalRefs
     {
         $refs = array_values(array_unique(array_filter(array_map(fn ($r) => trim((string) $r), $refs), fn ($r) => mb_strlen($r) >= 4)));
         foreach ($refs as $ref) {
-            $text = (string) preg_replace('/(?:\bДЛ\s*)?'.preg_quote($ref, '/').'/iu', '', $text);
+            // Только целым словом: номер «12345» внутри телефона «9161234567» — не он (раньше вырезался и портил телефон).
+            $text = (string) preg_replace('/(?<![\p{L}\p{N}])(?:ДЛ\s*)?'.preg_quote($ref, '/').'(?![\p{L}\p{N}])/iu', '', $text);
         }
         // Слово с разделителями «/», «-», «№» или длинное число — номер, если подходит под форму убытка целиком или это
         // номер машины в другой записи («8991-046-00754-25» в имени файла при «8991/046/00754/25» в карточке).
@@ -38,9 +41,13 @@ final class InternalRefs
         return ($base !== '' ? $base : 'Документ').($ext !== '' ? '.'.$ext : '');
     }
 
-    /** На xcar — без номеров, в CRM и на парковке — как есть. */
-    public static function forSite(string $text, array $refs = []): string
+    /** Номера машины файла: у предложения — убыток (он же ДЛ у лизинга), у ТС парковки — её убыток и убыток предложения. */
+    public static function refsOf(?object $model): array
     {
-        return Surface::current() === Surface::Site ? self::hide($text, $refs) : $text;
+        return match (true) {
+            $model instanceof Offer => [$model->claim_ref],
+            $model instanceof Vehicle => [$model->ref, $model->offer?->claim_ref],
+            default => [],
+        };
     }
 }

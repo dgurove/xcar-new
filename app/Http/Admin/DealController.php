@@ -144,8 +144,13 @@ class DealController
             'share' => ['nullable', 'integer', 'min:1']]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
         $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
+        $scheme = DealScheme::choiceFor($deal->offer->vendor?->deal_format) ? DealScheme::tryFrom($data['scheme'] ?? '') : DealScheme::Prime;
+        // Р.О.С. — только у Альфы (`DealScheme::casesFor`), как в «Принять»: чужому вендору схему с запроса не берём.
+        if ($scheme && ! in_array($scheme, DealScheme::casesFor($deal->offer->vendor), true)) {
+            $scheme = DealScheme::Prime;
+        }
         $update($deal, $request->user(), $commission, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
-            DealScheme::choiceFor($deal->offer->vendor?->deal_format) ? DealScheme::tryFrom($data['scheme'] ?? '') : DealScheme::Prime, isset($data['owner_price']) ? (int) $data['owner_price'] : null, isset($data['share']) ? (int) $data['share'] : null);
+            $scheme, isset($data['owner_price']) ? (int) $data['owner_price'] : null, isset($data['share']) ? (int) $data['share'] : null);
 
         return back()->with('toast', 'Сохранено');
     }

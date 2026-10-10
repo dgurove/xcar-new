@@ -57,7 +57,7 @@ final class FileController
 
         return response()->file($media->getPath(), [
             'Content-Type' => $media->mime_type,
-            'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode(Surface::current() === Surface::Site ? InternalRefs::fileName($media->file_name, [$media->model?->claim_ref ?? null]) : $media->file_name),
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode(Surface::current() === Surface::Site ? InternalRefs::fileName($media->file_name, InternalRefs::refsOf($media->model)) : $media->file_name),
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=86400',
         ]);

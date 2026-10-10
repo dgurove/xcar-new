@@ -21,9 +21,9 @@ final class Cancel
 {
     public function __construct(private VoidInvoice $void, private RemoveCost $removeCost) {}
 
-    public function __invoke(Transport $t, User $by, bool $system = false): Transport
+    public function __invoke(Transport $t, ?User $by, bool $system = false): Transport
     {
-        if (! $system && ! $by->seesAllTransports()) {
+        if (! $system && ! $by?->seesAllTransports()) {
             throw ValidationException::withMessages(['transport' => 'Отменяет логист']);
         }
         if (! $t->isOpen()) {

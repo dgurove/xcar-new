@@ -7,6 +7,7 @@ use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
+use App\Billing\Seller;
 use App\Offers\Deal;
 use App\Offers\OfferEventType;
 use App\Support\Money;
@@ -44,7 +45,9 @@ final class IssueDealInvoice
         }
 
         return DB::transaction(function () use ($deal, $by, $party, $kind, $dueAt, $notes, $lines, $fee, $offer) {
-            $invoice = ($this->issue)($party, $by, 'issued', $kind, $dueAt, lines: $lines, dealId: $deal->id, offerId: $offer->id, notes: $notes);
+            // Счёт за машину — от продавца сделки (Альфа с НДС — Р.О.С.), подбор и вознаграждение — от ПРАЙМ.
+            $seller = $kind === ChargeKind::Sale ? $deal->seller() : Seller::Prime;
+            $invoice = ($this->issue)($party, $by, 'issued', $kind, $dueAt, lines: $lines, dealId: $deal->id, offerId: $offer->id, notes: $notes, seller: $seller);
             if ($fee > 0 && $deal->withholds()) {
                 ($this->record)($invoice, $by, (float) $fee, null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
                 // PDF печётся при выставлении — перепечь с зачётом и «к оплате».

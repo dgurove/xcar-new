@@ -42,9 +42,11 @@ final class RetractOfferNotices implements ShouldQueue
         }
         $gone = User::whereIn('id', $ids)->get()->reject(fn (User $u) => $offer->isVisibleTo($u))->keyBy('id');
         foreach ($seen->whereIn('user_id', $gone->keys()) as $card) {
-            // Удалил сам или остановил бота — сообщения уже нет, и ладно (`deleteQuietly` пишет в лог).
-            $bot->deleteQuietly((int) $card->chat_id, (int) $card->message_id);
-            DB::table('offer_bot_seen')->where('user_id', $card->user_id)->where('offer_id', $offer->id)->update(['message_id' => null]);
+            // Убрали (удалили или старше 48 ч — переписали подпись) — строка «показано» уходит целиком: вернётся машина в
+            // продажу, бот покажет её снова. Не вышло — строка остаётся, следующая смена состояния попробует ещё.
+            if ($bot->retract((int) $card->chat_id, (int) $card->message_id)) {
+                DB::table('offer_bot_seen')->where('user_id', $card->user_id)->where('offer_id', $offer->id)->delete();
+            }
         }
         $stale = $notices->whereIn('notifiable_id', $gone->keys());
         if ($stale->isNotEmpty()) {

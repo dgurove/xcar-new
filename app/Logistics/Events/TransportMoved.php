@@ -11,5 +11,5 @@ final class TransportMoved
 {
     use Dispatchable;
 
-    public function __construct(public Transport $transport, public User $by) {}
+    public function __construct(public Transport $transport, public ?User $by = null) {}
 }

@@ -17,7 +17,7 @@
     $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
     $asking = (int) $offer->asking_price;
-    $discounts = $offer->bidDiscounts();
+    $discounts = $offer->bidDiscounts(auth()->user());
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)" :action="false">

@@ -56,6 +56,10 @@ class Car extends Model implements HasMedia
             return $q;
         }
         $number = preg_match('/^\s*№?\s*(\d{1,9})\s*$/u', $t->raw, $m) ? (int) $m[1] : null;
+        // «№ 12» — так номер показан на экране: ищется он один, без кусков VIN и марки (иначе «12» тянуло десятки машин).
+        if (! $crm && $number && str_contains($t->raw, '№')) {
+            return $q->where('purchase_cars.ref', $number);
+        }
 
         return $q->where(fn ($w) => $w
             ->when($crm, fn ($w) => $w->orWhereRaw('lower(purchase_cars.dl) like ?', [$t->contains()]))
@@ -141,7 +145,8 @@ class Car extends Model implements HasMedia
             'Тип' => $this->kind->label(), 'Год' => $this->year, 'Пробег' => $this->mileage !== null ? number_format($this->mileage, 0, '', ' ').' км' : null,
             'Коробка' => $this->transmission?->label(), 'Топливо' => $this->fuel?->label(), 'Объём' => $this->engine_volume ? number_format($this->engine_volume / 1000, 1, ',', '').' л' : null,
             'Мощность' => $this->engine_power ? $this->engine_power.' л. с.' : null, 'Цвет' => $this->color, 'Руль' => $this->steering, 'Ключи' => $this->keys,
-            'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => $this->dl, 'Где' => $this->settlement?->title() ?? $this->city ?? $this->address, 'Обременения' => $this->encumbrance,
+            // ДЛ — только в CRM (номеров убытка и ДЛ на xcar.ru нет нигде, 10.10.2026); на сайте номер — в шапке («№ 12»).
+            'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => Surface::inCrm() ? $this->dl : null, 'Где' => $this->settlement?->title() ?? $this->city ?? $this->address, 'Обременения' => $this->encumbrance,
         ], fn ($v) => $v !== null && $v !== '');
     }
 

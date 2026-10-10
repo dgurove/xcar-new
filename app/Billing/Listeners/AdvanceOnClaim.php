@@ -23,6 +23,11 @@ final class AdvanceOnClaim
         if (! $deal || ! $deal->isActive()) {
             return;
         }
+        // Р.О.С. (Альфа с НДС): дальше — наш перевод этих денег Альфе. По одной заявке «оплатил» шаг не идёт — иначе
+        // «Наш ход: переведите» вставал раньше, чем деньги пришли на Р.О.С.; его откроет «Поступило» (`AdvanceOnPayment`).
+        if ($deal->seller() === \App\Billing\Seller::Ros) {
+            return;
+        }
         // Сообщил об оплате одного счёта, а другой (машина или доля) ещё не оплачен и не заявлен — шаг ждёт.
         $open = $deal->issuedInvoices()->where('kind', '!=', \App\Billing\ChargeKind::Reward)->where('state', \App\Billing\InvoiceState::Issued)->with('claims')->get();
         if ($open->contains(fn ($i) => $i->claims->isEmpty() && $i->remaining() > 0)) {

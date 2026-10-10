@@ -116,8 +116,12 @@ final class Term
         $at = [];
         foreach ($chars as $i => $c) {
             if (preg_match('/[\p{L}\p{N}]/u', $c)) {
-                $hay .= self::fold($c);
-                $at[] = $i;
+                // Свёртка бывает длиннее буквы («ß» → «ss»): каждая её буква помнит исходную позицию, иначе подсветка
+                // съезжала, а индекс выходил за край.
+                foreach (mb_str_split(self::fold($c)) as $folded) {
+                    $hay .= $folded;
+                    $at[] = $i;
+                }
             }
         }
         $lit = [];

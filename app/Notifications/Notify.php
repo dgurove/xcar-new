@@ -408,8 +408,8 @@ final class Notify
 
     public function paymentConfirmed(PaymentConfirmed $e): void
     {
+        // «Перевести Альфе» шлёт `paymentRecorded`: подтверждение заявки — тоже запись оплаты, второй раз не надо.
         $p = $e->payment->load(['invoice.deal.offer', 'invoice.deal.buyer']);
-        $this->rosPaid($p->invoice->fresh());
         ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paymentConfirmed($p));
     }
 
@@ -491,7 +491,6 @@ final class Notify
         return User::parkStaff()->whereNotNull('approved_at')->get()->filter(fn (User $u) => ! $city || ! ($own = City::of($u)) || $own === $city)->values();
     }
 
-    /** Сторона площадки: подтверждения, интерес, сроки, деньги, чаты — админам; модератору их нет. */
     /** Ход наш на оплате без счёта: сотрудникам и владельцу — что нужно (выставить, вписать долю, назначить вознаграждение). */
     public function invoiceNeeded(Deal $deal, ?string $gap): void
     {
@@ -500,6 +499,7 @@ final class Notify
         NotifyOwner::dispatch(new InvoiceNeededMessage($deal, $gap));
     }
 
+    /** Сторона площадки: подтверждения, интерес, сроки, деньги, чаты — админам; модератору их нет. */
     private function staff()
     {
         return User::withRole(Role::Admin)->get();

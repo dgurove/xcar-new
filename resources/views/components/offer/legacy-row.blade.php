@@ -8,6 +8,8 @@
         <span class="cell-title text-ink-muted"><x-ui.copy-code :value="$claim->claim_ref"/></span>
     </td>
     @if ($has('vendor'))<td class="hidden sm:table-cell"></td>@endif
+    {{-- № — у незаведённого номера нет; столбец есть всегда (`table-head`). --}}
+    <td class="col-detail-hide hidden sm:table-cell"></td>
     @if ($has('city'))<td class="col-detail-hide hidden sm:table-cell"></td>@endif
     <td class="hidden sm:table-cell"></td>
     @if ($has('floor'))<td class="col-detail-hide hidden sm:table-cell"></td>@endif

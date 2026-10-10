@@ -90,6 +90,8 @@ class DealContract extends Model
     {
         return array_values(array_filter([
             $this->deal->isDkp() && ! $this->seller?->readyForContract() ? 'данные продавца' : null,
+            // ДКП от Р.О.С. — продавец Р.О.С.: без его реквизитов (пришлёт владелец) договор не печатаем с прочерками.
+            $this->deal->seller() === Seller::Ros && ! Party::seller(Seller::Ros)->readyForContract() ? 'данные продавца' : null,
             ! $this->plate && ! $this->sts ? 'документы ТС' : null,
             $this->buyer ? ($this->buyerParty()?->readyForContract() ? null : 'данные покупателя') : 'покупатель',
             $this->price ? null : 'цена',

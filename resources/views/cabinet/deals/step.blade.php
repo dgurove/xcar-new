@@ -36,7 +36,7 @@
     $replies = ($replies ?? collect())->reverse()->values();
     $early = $replies->count() > 3 ? $replies->slice(0, $replies->count() - 2) : collect();
     $late = $replies->slice($early->count());
-    // Согласие менеджера (Альфа, Каркаде): поставщик уже согласовал — блок «Согласование с поставщиком» и «Ваш ход»
+    // Согласие менеджера (Альфа): поставщик уже согласовал — блок «Согласование с поставщиком» и «Ваш ход»
     // сбивали с толку, будто ждём поставщика (10.10.2026, владелец). Шапка — что случилось и вопрос, рядом только часы.
     $consent = $deal->isActive() && $requirement && $position?->stage->asksConsent();
 @endphp

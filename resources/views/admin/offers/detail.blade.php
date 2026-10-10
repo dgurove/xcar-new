@@ -12,7 +12,7 @@
     $price = \App\Offers\PriceView::for($offer, auth()->user(), crm: true);
     // Срок приёма — админу: подтверждения принимает только он; модератору открытое — «В продаже».
     $left = $gallery || ! auth()->user()->canManageCrm() ? null : $offer->secondsLeft();
-    // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
+    // Кнопки состояния — только уместные (OfferState::actions): в сделке — отмена сделки, «Снять с продажи» — у того, что в продаже.
     // Модератору — поля, кадры и документы: оценки, состояния, подтверждений, интереса и круга показа у него нет.
     $transitions = $admin ? collect($offer->stateActions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
     // «Опубликовать» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
