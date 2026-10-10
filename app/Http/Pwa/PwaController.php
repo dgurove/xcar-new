@@ -27,6 +27,9 @@ class PwaController
             Surface::Park => ['Заявки, ТС, парковки', [
                 ['Заявки', '/requests', 'flag'], ['ТС', '/cars', 'cat-car'],
             ]],
+            Surface::Logistics => ['Перевозки машин', [
+                ['Перевозки', '/transports', 'cat-car'],
+            ]],
         };
 
         // Иконка — чёрный квадрат во весь холст: стекло на iOS 26 и маску на Android кладёт система,

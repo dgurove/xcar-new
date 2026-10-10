@@ -19,7 +19,6 @@ use App\Http\Admin\OfferDraftController;
 use App\Http\Admin\OfferPhotoController;
 use App\Http\Admin\OfferValuationController;
 use App\Http\Admin\PayLinkController;
-use App\Http\Admin\PickupController;
 use App\Http\Admin\PurchaseCarPhotoController;
 use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
@@ -211,7 +210,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // У кого что в гараже и во что обошлось.
         Route::get('/work/garage', [GarageController::class, 'index']);
         // Кто что вывозит: мы или менеджер, к нему, к нам или на парковку.
-        Route::get('/work/pickups', [PickupController::class, 'index']);
+        // «Работа → Вывоз» заменила логистика (10.10.2026): перевозки — на logistics.xcar.ru.
+        Route::get('/work/pickups', fn () => redirect()->away(Surface::Logistics->url('/transports'), 301));
         Route::get('/work/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);

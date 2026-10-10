@@ -37,6 +37,7 @@ final class ManagerJoined extends Message
     {
         return match (true) {
             $this->manager->isParking() => ['text' => 'Парковка в CRM', 'url' => Surface::Crm->url('/settings/users?preset=park')],
+            $this->manager->isLogist() || $this->manager->isDriver() => ['text' => 'Логистика в CRM', 'url' => Surface::Crm->url('/settings/users?preset=logistics')],
             $this->manager->isSuperBuyer() => ['text' => 'Покупатели в CRM', 'url' => Surface::Crm->url('/settings/users?preset=buyers')],
             default => ['text' => 'Менеджеры в CRM', 'url' => Surface::Crm->url('/settings/users?preset=managers')],
         };

@@ -3,8 +3,10 @@
 namespace App\Billing;
 
 use App\Garage\Car as GarageCar;
+use App\Logistics\Transport;
 use App\Offers\Deal;
 use App\Offers\DealState;
+use App\Support\Surface;
 use App\Users\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -105,7 +107,7 @@ final class ManagerLedger
     public function position(): array
     {
         $rows = $this->rows();
-        $fees = $this->manager->party_id ? Invoice::where('party_id', $this->manager->party_id)->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', '!=', InvoiceState::Void)->get() : collect();
+        $fees = $this->manager->party_id ? Invoice::where('party_id', $this->manager->party_id)->where('direction', 'owed')->whereIn('kind', [ChargeKind::AgentFee, ChargeKind::Tow])->where('state', '!=', InvoiceState::Void)->get() : collect();
         $sum = fn (string $key) => round($rows->sum(fn ($r) => $r->money->{$key}), 2);
 
         return [
@@ -134,8 +136,17 @@ final class ManagerLedger
         foreach ($invoices as $i) {
             $car = $i->deal_id ? null : $cars->first(fn ($c) => $c->invoice_id === $i->id || $c->payout_invoice_id === $i->id);
             $offer = $i->deal?->offer?->titleWithYear() ?? $car?->offer->titleWithYear();
-            $href = $car ? $car->url() : '/account/money/deals/'.$i->deal_id;
-            $rows->push(['at' => $i->issued_at->copy()->setTimeFrom($i->created_at), 'title' => $i->isAgentFee() ? 'Вознаграждение к выплате' : 'Счёт '.$i->label().' выставлен', 'amount' => $i->total, 'kind' => $i->isAgentFee() ? 'fee' : 'invoice', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id]);
+            // Перевозка партнёра (логистика) — без сделки: ведёт в его перевозки.
+            $transport = $i->isTransport() ? Transport::firstWhere('invoice_id', $i->id) : null;
+            $offer ??= $transport?->title();
+            $href = match (true) {
+                (bool) $car => $car->url(),
+                (bool) $transport => Surface::Logistics->url('/transports/'.$transport->id),
+                default => '/account/money/deals/'.$i->deal_id,
+            };
+            $rows->push(['at' => $i->issued_at->copy()->setTimeFrom($i->created_at), 'title' => match (true) {
+                $i->isAgentFee() => 'Вознаграждение к выплате', $i->isTransport() => 'Перевозка к выплате', default => 'Счёт '.$i->label().' выставлен',
+            }, 'amount' => $i->total, 'kind' => $i->isAgentFee() || $i->isTransport() ? 'fee' : 'invoice', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id]);
             foreach ($i->allPayments as $p) {
                 $rows->push(match (true) {
                     $p->state === PaymentState::Claimed => ['at' => $p->created_at, 'title' => 'Сообщили об оплате', 'amount' => $p->amount, 'kind' => 'claim', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],

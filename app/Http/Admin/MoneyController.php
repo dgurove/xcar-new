@@ -46,13 +46,16 @@ use Illuminate\Validation\Rule;
  * - «По ссылкам» — все ссылки на оплату одним списком (09.10.2026, `MoneyLinks`): сделок, гаража, взятые менеджером и
  *   кнопкой «Создать ссылку», свежие сверху; карточка — сама ссылка (`?tab=links&peek={ссылка}`);
  * - «Нам должны» — счета менеджерам и их покупателям по сделкам и гаражу: пишет, что оплатил; ждём; оплачено;
- * - «Мы должны» — вознаграждения менеджерам: выплатить и выплачено.
+ * - «Мы должны» — вознаграждения менеджерам и перевозки (партнёру, перевозчику): выплатить и выплачено.
  * Выписки СберБизнеса здесь нет — она в Настройки → Банк. Чип менеджера — на двух последних (один выбран — его расчёт
  * строкой сверху), лупа ищет во всех трёх. Карточка строки — счёт рядом, общая со стоянкой.
  */
 class MoneyController
 {
     public const TABS = ['links' => 'По ссылкам', 'owed' => 'Нам должны', 'payouts' => 'Мы должны'];
+
+    /** «Мы должны»: вознаграждения менеджерам и перевозки партнёрам и перевозчикам (логистика, 10.10.2026). */
+    public const PAYOUTS = [ChargeKind::AgentFee, ChargeKind::Tow];
 
     /**
      * Сортировка вкладки (07.10.2026): по умолчанию «Срочное» — ждём сверху тех, где по ссылке не вышло, дальше по сроку,
@@ -88,7 +91,7 @@ class MoneyController
         // Варианты чипа — менеджеры счетов двух вкладок с менеджером («Нам должны», «Мы должны»). На «По ссылкам» свои
         // чипы (`MoneyLinks::facets`): «сколько будет» из их шторки отвечает там.
         $tab === 'links' || $facets->apply(Invoice::crmMoney()->where(fn ($w) => $w->where(fn ($x) => $x->where('direction', 'issued')->whereNot(self::oneOff()))
-            ->orWhere(fn ($x) => $x->where('direction', 'owed')->where('kind', ChargeKind::AgentFee))));
+            ->orWhere(fn ($x) => $x->where('direction', 'owed')->whereIn('kind', self::PAYOUTS))));
         $qs = trim((string) $request->query('q'));
         // Лупа — по всем трём вкладкам сразу (мимо пилюли), без страниц у оплаченного.
         $tabs = $qs === '' ? [$tab] : array_keys(self::TABS);
@@ -119,7 +122,7 @@ class MoneyController
 
         return match ($tab) {
             'owed' => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')->whereNot(self::oneOff())->when(! $links, fn ($w) => $w->whereDoesntHave('payLinks')),
-            default => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'owed')->where('kind', ChargeKind::AgentFee),
+            default => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'owed')->whereIn('kind', self::PAYOUTS),
         };
     }
 
@@ -211,7 +214,7 @@ class MoneyController
     {
         return Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->crmMoney())->count()
             + self::tried(Invoice::crmMoney())->count()
-            + Invoice::crmMoney()->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', InvoiceState::Issued)->count();
+            + Invoice::crmMoney()->where('direction', 'owed')->whereIn('kind', self::PAYOUTS)->where('state', InvoiceState::Issued)->count();
     }
 
     /**

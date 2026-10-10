@@ -20,7 +20,7 @@ use Illuminate\Validation\Rule;
 final class IssueInvite
 {
     /** Кем может стать пришедший по ссылке админа CRM. Управляющего и помощника парковки зовёт парковка (`park()`). */
-    public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Buyer, Role::SuperBuyer];
+    public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Buyer, Role::SuperBuyer, Role::Logist, Role::Driver];
 
     public function __invoke(User $by, array $data): Invite
     {

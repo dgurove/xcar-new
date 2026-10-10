@@ -5,6 +5,7 @@ use App\Http\Cabinet\InviteController;
 use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
 use App\Http\Park\ActController;
+use App\Http\Park\LogisticsController;
 use App\Http\Park\MailController;
 use App\Http\Park\MoneyController;
 use App\Http\Park\PartyController;
@@ -58,6 +59,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/cars/{vehicle}/attach', [AttachController::class, 'vehicle']);
     Route::put('/cars/{vehicle}', [VehicleController::class, 'update'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/fields', [VehicleController::class, 'fields'])->middleware('park.manage');
+    // «В логистику» (10.10.2026): перевозка ТС — на logistics.xcar.ru.
+    Route::post('/cars/{vehicle}/logistics', [LogisticsController::class, 'store'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);
     Route::post('/cars/{vehicle}/media/order', [VehicleController::class, 'reorder']);
     // Глаз — показ кадра в продаже: это продажа, только админу. Поворот и удаление — не помощнику.

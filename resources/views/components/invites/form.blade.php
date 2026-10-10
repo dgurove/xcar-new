@@ -7,7 +7,7 @@
     @csrf
     @if ($admin)
         {{-- Пять ролей в сегменты не помещаются на телефоне — селект. Супер-покупателю — одноразовая, как сотруднику. --}}
-        <div class="fields"><x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'buyer' => 'Покупателю', 'super_buyer' => 'Супер-покупателю']" :value="old('role', 'manager')"/></div>
+        <div class="fields"><x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'buyer' => 'Покупателю', 'super_buyer' => 'Супер-покупателю', 'logist' => 'Логисту', 'driver' => 'Водителю']" :value="old('role', 'manager')"/></div>
         <div data-managers class="fields">
             <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" name="manager"/>
         </div>

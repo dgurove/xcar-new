@@ -53,6 +53,13 @@ final class Categories
                 'always' => ['Вам назначено', 'Срок вышел', ...($user->canManagePark() ? ['Просроченные счета'] : [])],
             ]);
         }
+        // Логистика: логисту — новые межрегиональные и ход перевозок; водителю и партнёру — назначенное им, всегда.
+        if ($user->hasRole(Role::Logist)) {
+            $add(['on' => ['logistics' => 'Перевозки'], 'always' => []]);
+        }
+        if ($user->hasRole(Role::Driver) || $user->isPartner()) {
+            $add(['on' => [], 'always' => ['Перевозка назначена вам']]);
+        }
         if (! $on && ! $always && ! $user->hasRole(Role::Moderator)) {
             $add(['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => []]);
         }
@@ -72,6 +79,7 @@ final class Categories
             ...($user->hasRole(Role::Manager, Role::Admin, Role::SuperBuyer) ? ['chats'] : []),
             ...($user->hasRole(Role::Moderator) ? ['letters'] : []),
             ...($user->hasRole(Role::Parking) ? ['park', 'park_money'] : []),
+            ...($user->hasRole(Role::Logist) ? ['logistics'] : []),
         ];
 
         return array_intersect_key(self::for($user)['on'], array_flip($keys));

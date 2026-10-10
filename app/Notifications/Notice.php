@@ -84,6 +84,7 @@ abstract class Notice extends Notification implements ShouldQueue
             'money' => 'wallet',
             'park' => 'park',
             'park_money' => 'wallet',
+            'logistics' => 'cat-car',
             'offers', 'purchases', 'interest' => 'cat-car',
             'letters' => 'mail',
             'people' => 'user',
@@ -93,7 +94,7 @@ abstract class Notice extends Notification implements ShouldQueue
     }
 
     /**
-     * Приложение, где уведомление живёт: парковка — отдельно от CRM и сайта (владелец, 05.10.2026); то, что ведёт в CRM
+     * Приложение, где уведомление живёт: парковка и логистика — отдельно от CRM и сайта (владелец, 05.10.2026); то, что ведёт в CRM
      * (адрес CRM, `/work/…`, `/settings/…`), — только в CRM (08.10.2026, владелец: «зачем их в xcar показывать… открыл
      * приложение xcar, а тебя в CRM перекидывает»); остальное — null, сайт и CRM.
      */
@@ -101,6 +102,9 @@ abstract class Notice extends Notification implements ShouldQueue
     {
         if (str_starts_with($this->category(), 'park')) {
             return Surface::Park;
+        }
+        if ($this->category() === 'logistics') {
+            return Surface::Logistics;
         }
 
         return self::leadsToCrm($this->href()) ? Surface::Crm : null;

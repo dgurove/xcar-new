@@ -5,10 +5,10 @@
 ## Что это
 
 **xcar-new** — xcar.ru заново: оптовая площадка автомобилей как веб-приложение
-для телефона. Один Laravel на три хоста — три PWA одного вида: `xcar.ru`
+для телефона. Один Laravel на четыре хоста — четыре PWA одного вида: `xcar.ru`
 (витрина, сделки `/deals` и покупатели `/buyers` менеджера, гараж `/garage`, кабинет `/account`, вход),
 `crm.xcar.ru` (сотрудники: предложения, галерея, работа — сделки · почта · чаты, закупки, настройки; пути без
-`/admin`, старые `xcar.ru/admin/*` → 301), `park.xcar.ru` (стоянка). Гараж до 30.09.2026 жил своим хостом
+`/admin`, старые `xcar.ru/admin/*` → 301), `park.xcar.ru` (стоянка), `logistics.xcar.ru` (перевозки, с 10.10.2026). Гараж до 30.09.2026 жил своим хостом
 `garage.xcar.ru` — теперь раздел сайта, прежний хост отвечает 301 на `xcar.ru/garage/…` (`RedirectLegacyPaths`).
 Поверхность — `App\Support\Surface`, ставит `ResolveSurface` по хосту; кому хост
 открыт — одна дверь `Surface::opensFor` (CRM сотрудникам, стоянка по разделу); чужие маршруты на хосте — 404, чужой вошедший — стена
@@ -638,6 +638,21 @@ Telegram, с почтой — «Новое из писем» (`OfferLetterNotice
   Менеджер видит свои вывозы группой «Вывоз» в табе «Гараж» (`Offer::pickupsOf`, `PickupState`, число и бейдж таба), страница
   `/garage/pickups/{n}` — `x-offer.object`, дата, адрес, контакт `tel:`, «Забрал» (`PickUp`); уведомление `PickupNotice`
   («поручен», «пора забирать»). Деньги за вывоз — вне системы, передачу покупателю сводим сами.
+- **Logistics XCar** (10.10.2026, `notes/logistika-2026-10-10.md`, хост `logistics.xcar.ru`, `Surface::Logistics`,
+  `routes/logistics.php`, `app/Logistics`) **заменила «Вывоз» CRM**: «Работа → Вывоз» снята (`/work/pickups` → 301 в
+  логистику). Подготовка со страховой (звонок, документы, встреча, дата) — по-прежнему маршрут вывоза в CRM; физическая
+  перевозка A → B — строка `transports`. Шторка «Вывоз» (`x-offer.pickup-form`) — развилка: «Везёт сам менеджер» (как было:
+  `evacuator_id`, «Забрал» на xcar.ru) или «Логистика» (`x-logistics.fields` → `SendToLogistics`/`SaveTransport`): «Внутри
+  региона» — партнёр (менеджер с регионом в `users.partner_regions`, стоимость эвакуации обязательна) или наш эвакуатор
+  (`Role::Driver`); «Между регионами» — логист (`Role::Logist`, Татьяна) назначает нашего водителя или внешнего перевозчика
+  (текстом), стоимость и сроки; из CRM можно оставить «Назначит логист» (`TransportState::New`). Откуда, куда, кто принимает
+  — свободным текстом. В logistics.xcar.ru админ и логист видят всё, водитель и партнёр — свои (`Transport::visibleTo`);
+  «Забрал» → «Сдал» с фото (кадры у перевозки, не в продаже машины); «Сдал» проводит выход этапа «Вывоз и осмотр»
+  (`Deliver`: «Стоит у менеджера / у нас» по `Destination`), ТС парковки на парковку другого города — `Park\Actions\Transfer`.
+  Стоимость партнёра и перевозчика — `SettleCost`: счёт `owed` `ChargeKind::Tow` (CRM «Оплаты → Мы должны», у менеджера —
+  «Перевозка к выплате»; у ТС парковки — оплаты парковки), у гаражной машины ещё расход `Cost::TRANSPORT`. С парковки — «В
+  логистику» в «⋯» дела ТС (`Park\LogisticsController`). Людей логистики заводит админ CRM ссылкой (роли «Логист», «Водитель»),
+  регионы партнёра — в карточке менеджера.
 - **Получение автомобиля по сделке** (04.10.2026, `notes/sdelka-poluchenie-2026-10-04.md`; владелец: «согласовали, он
   должен вывезти, а у него 0 инфы, хотя в письме всё было»). Кто забирает ТС у владельца — админ при принятии
   подтверждения (сегмент «Забирает автомобиль: менеджер | Мы» в шторке `x-offer.bid`, пока `Offer::pickupChoosable`;
@@ -2065,7 +2080,7 @@ node scripts/icons.mjs           # иконки, экраны запуска, в
 ```
 
 Вход глазами без пароля — `/dev/login/{id}` (только local). Хосты локально как
-в бою: `xcar.localhost`, `crm.xcar.localhost`, `park.xcar.localhost` :8010,
+в бою: `xcar.localhost`, `crm.xcar.localhost`, `park.xcar.localhost`, `logistics.xcar.localhost` :8010,
 cookie на `.xcar.localhost`. База `xcar_new` (xcar/xcar). Почта локально —
 `scripts/imapserver.py` (1143) и mailpit (1025/8025); Mercure локально нет.
 
@@ -2081,7 +2096,7 @@ cookie на `.xcar.localhost`. База `xcar_new` (xcar/xcar). Почта ло�
 `ssh xcar-next` (root@200.169.180.17), см. `CONNECT.md`; пароли —
 `CONNECT.local.md` вне git. Раскладка `/srv/xcar/{env,releases,current}`,
 данные на втором диске `/srv/xcar/data/*`, бэкапы — restic в S3
-(`deploy/backup.sh`). Домены `xcar.ru`, `crm.xcar.ru`, `park.xcar.ru`; `garage.xcar.ru` в
+(`deploy/backup.sh`). Домены `xcar.ru`, `crm.xcar.ru`, `park.xcar.ru`, `logistics.xcar.ru`; `garage.xcar.ru` в
 `SITE_ADDRESSES` только ради 301 на `xcar.ru/garage`. Старый
 сервер `xcar-new` (201.24.57.130) заморожен с 12.09.2026.
 **Прод не трогать без спроса, выкладка только `deploy/deploy.sh`.**

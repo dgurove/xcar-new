@@ -1,6 +1,6 @@
 // Иконки четырёх приложений и экраны запуска iOS. node scripts/icons.mjs — один раз, результат лежит в git.
 //
-// Исходники — resources/icons/{site,crm,park}.svg: чёрный квадрат 1500×1500, знак белым и лаймом.
+// Исходники — resources/icons/{site,crm,park,logistics}.svg: чёрный квадрат 1500×1500, знак белым и лаймом.
 // Иконка отдаётся квадратом во весь холст без скруглений, бликов и теней — на iOS 26 стекло
 // (Liquid Glass) кладёт сама система, на Android маску кладёт лаунчер. Для лаунчера отдельно
 // maskable (знак в безопасной зоне 80 %), для тем Android 13 и бейджа уведомлений — белый силуэт.
@@ -11,10 +11,10 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const at = (p) => new URL(p, import.meta.url).pathname;
 const BLACK = '#000000';
-const SURFACES = ['site', 'crm', 'park'];
+const SURFACES = ['site', 'crm', 'park', 'logistics'];
 
 // Ярлыки манифеста по поверхностям → иконки кита; тот же список — в PwaController::manifest.
-const SHORTCUT_ICONS = { site: ['cat-car', 'bell'], crm: ['cat-car', 'photo', 'deal', 'cart'], park: ['flag', 'cat-car'] };
+const SHORTCUT_ICONS = { site: ['cat-car', 'bell'], crm: ['cat-car', 'photo', 'deal', 'cart'], park: ['flag', 'cat-car'], logistics: ['cat-car'] };
 
 // Экраны iPhone в точках и плотности; тот же список — в components/ui/startup.blade.php.
 const SCREENS = [
@@ -87,7 +87,7 @@ for (const name of SURFACES) {
 }
 
 // Знаки CRM и P для шапки: без фона, обрезаны по знаку, в двух цветах (как xcar.svg / xcar-white.svg).
-for (const name of ['crm', 'park']) {
+for (const name of ['crm', 'park', 'logistics']) {
     const svg = readFileSync(at(`../resources/icons/${name}.svg`), 'utf8');
     const { info } = await sharp(Buffer.from(svg)).trim().toBuffer({ resolveWithObject: true });
     const box = `${-info.trimOffsetLeft} ${-info.trimOffsetTop} ${info.width} ${info.height}`;

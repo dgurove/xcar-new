@@ -47,7 +47,7 @@ use Illuminate\Validation\ValidationException;
 /** Пользователи: список и правки — администратору, карточка человека — любому сотруднику. */
 class UserController
 {
-    public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'park' => 'Парковка', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
+    public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'park' => 'Парковка', 'logistics' => 'Логистика', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
 
     /** Люди — по имени (справочник, владелец 06.10.2026); ждущие, покупатели и отклонённые — новые сверху. */
     public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'seen' => ['Последний вход', 'desc']];
@@ -57,7 +57,7 @@ class UserController
      * Роли парковки (управляющий, администратор парковки) тут не правятся — их ведёт парковка (`Park\UserController`),
      * CRM их сохраняет как есть (владелец 08.10.2026: админ CRM не админ парковки).
      */
-    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer, Role::SuperBuyer];
+    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer, Role::SuperBuyer, Role::Logist, Role::Driver];
 
     /** Роли, которые ведёт парковка. */
     public const PARK_ROLES = [Role::ParkAdmin, Role::Parking];
@@ -92,6 +92,7 @@ class UserController
                 'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
                 'managers' => $q->withRole(Role::Manager)->withCount('buyers'),
                 'park' => $q->withRole(Role::Parking),
+                'logistics' => $q->withRole(Role::Logist, Role::Driver),
                 // Супер-покупатели — здесь же, у них вместо менеджера «супер-покупатель» в строке.
                 'buyers' => $q->withRole(Role::Buyer, Role::SuperBuyer)->reorder('created_at', 'desc'),
                 'visitors' => $q->withRole(Role::Visitor)->whereNotNull('approved_at'),
@@ -119,6 +120,7 @@ class UserController
             'staff' => User::withRole(Role::Admin, Role::Moderator)->count(),
             'managers' => User::withRole(Role::Manager)->count(),
             'park' => User::withRole(Role::Parking)->count(),
+            'logistics' => User::withRole(Role::Logist, Role::Driver)->count(),
             'buyers' => User::withRole(Role::Buyer, Role::SuperBuyer)->count(),
             'invites' => Invite::whereNull('disabled_at')->where(fn ($w) => $w->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
             'waiting' => User::whereNull('approved_at')->whereNull('rejected_at')->withRole(Role::Visitor)->count(),
@@ -428,6 +430,10 @@ class UserController
         // Галки областей — модератору сверх черновиков (почта CRM).
         $data['access'] = in_array(Role::Moderator, $data['roles'], true) ? array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))) : [];
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
+        // Регионы партнёра по логистике — только у менеджера.
+        $request->validate(['partner_regions' => ['nullable', 'array'], 'partner_regions.*' => ['integer', Rule::exists('regions', 'id')]]);
+        $regions = array_values(array_unique(array_map('intval', (array) $request->input('partner_regions', []))));
+        $data['partner_regions'] = in_array(Role::Manager, $data['roles'], true) && $regions ? $regions : null;
 
         return $data;
     }
@@ -435,7 +441,7 @@ class UserController
     private function presetOf(User $user): string
     {
         return match (true) {
-            $user->isStaff() => 'staff', $user->isManager() => 'managers', $user->isSuperBuyer() => 'buyers', $user->isParking() => 'park', $user->hasRole(Role::Visitor) => 'visitors', default => 'staff'
+            $user->isStaff() => 'staff', $user->isManager() => 'managers', $user->isSuperBuyer() => 'buyers', $user->isParking() => 'park', $user->isLogist() || $user->isDriver() => 'logistics', $user->hasRole(Role::Visitor) => 'visitors', default => 'staff'
         };
     }
 }

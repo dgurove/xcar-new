@@ -31,7 +31,7 @@
     // И «Вывоз»: кто забирает ТС и куда (`AssignPickup`) — пока не забрали; цену после него всё равно ставить.
     $pickup = $rate && $offer->vendor?->workflow(\App\Workflow\Track::Service)?->is_active && ! $offer->pickedUp();
     $ways = $garage || $pickup;
-    $way = $errors->hasAny(['evacuator_id', 'evacuation_to']) ? 'pickup' : (old('stage') ? 'garage' : 'rate');
+    $way = $errors->hasAny(['mode', 'evacuator_id', 'evacuation_to', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'cost']) ? 'pickup' : (old('stage') ? 'garage' : 'rate');
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');

@@ -33,6 +33,7 @@ final class ReadNotices
             ->where(fn ($q) => $q->whereIn('data->subject', $subjects)->orWhereIn('data->href', $subjects))
             ->when($surface, fn ($q) => match ($surface) {
                 Surface::Park => $q->where('data->surface', 'park'),
+                Surface::Logistics => $q->where('data->surface', 'logistics'),
                 Surface::Crm => $q->where(fn ($w) => $w->whereNull('data->surface')->orWhere('data->surface', 'crm')),
                 Surface::Site => $q->whereNull('data->surface'),
             })

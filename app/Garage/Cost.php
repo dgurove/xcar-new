@@ -15,6 +15,9 @@ class Cost extends Model
 
     public const SUPPLIER = 'supplier';
 
+    /** Перевозка из логистики (`Logistics\Actions\SettleCost`): сумма — стоимость перевозки, платим мы. */
+    public const TRANSPORT = 'transport';
+
     protected function casts(): array
     {
         return ['amount' => 'float', 'spent_at' => 'date', 'payer' => Payer::class];

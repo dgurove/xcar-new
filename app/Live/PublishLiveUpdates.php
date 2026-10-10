@@ -114,7 +114,7 @@ final class PublishLiveUpdates
     public function stage(StageEntered $e): void
     {
         $n = $e->offer->number;
-        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/work/garage', '/work/pickups']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/work/garage']);
         // Вывоз, порученный менеджеру: его «Гараж» и страница вывоза.
         if ($e->track === Track::Service && $e->offer->evacuator_id) {
             $this->publish->refresh(Topics::user($e->offer->evacuator_id), ['/garage', "/garage/pickups/{$n}"]);

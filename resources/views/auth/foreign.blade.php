@@ -3,6 +3,7 @@
     $site = \App\Support\Surface::Site;
     $whose = match ($surface) {
         \App\Support\Surface::Park => 'парковка',
+        \App\Support\Surface::Logistics => 'логистика',
         default => 'администрация',
     };
 @endphp

@@ -75,7 +75,7 @@ use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: [__DIR__.'/../routes/park.php', __DIR__.'/../routes/crm.php', __DIR__.'/../routes/web.php', __DIR__.'/../routes/auth.php'],
+        web: [__DIR__.'/../routes/park.php', __DIR__.'/../routes/logistics.php', __DIR__.'/../routes/crm.php', __DIR__.'/../routes/web.php', __DIR__.'/../routes/auth.php'],
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )

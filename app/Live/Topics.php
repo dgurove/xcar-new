@@ -42,9 +42,16 @@ final class Topics
      */
     public static function here(?User $user, ?int $guestChat = null, ?Surface $surface = null): array
     {
-        $park = ($surface ?? Surface::current()) === Surface::Park;
+        $surface ??= Surface::current();
+        $park = $surface === Surface::Park;
+        // Логистике не нужны ни события CRM, ни парковки: только личная тема человека.
+        $logistics = $surface === Surface::Logistics;
 
-        return array_values(array_filter(self::for($user, $guestChat), fn ($t) => $park ? $t !== self::STAFF : $t !== self::PARK));
+        return array_values(array_filter(self::for($user, $guestChat), fn ($t) => match (true) {
+            $logistics => $t !== self::STAFF && $t !== self::PARK,
+            $park => $t !== self::STAFF,
+            default => $t !== self::PARK,
+        }));
     }
 
     /**

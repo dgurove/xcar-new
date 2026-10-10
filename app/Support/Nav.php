@@ -10,6 +10,8 @@ use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
+use App\Logistics\Transport;
+use App\Logistics\TransportState;
 use App\Mail\Boxes;
 use App\Mail\Scope;
 use App\Mail\Thread;
@@ -63,6 +65,11 @@ final class Nav
                 // Вендоры управляющему — карточка и контакты; помощнику их нет.
                 $user?->canManagePark() ? self::item('Вендоры', '/vendors', tab: false) : null,
             ]));
+        }
+
+        // Логистика — один раздел: перевозки (что видно — решает `Transport::visibleTo`).
+        if ($surface === Surface::Logistics) {
+            return $user ? [self::item('Перевозки', '/transports')] : [];
         }
 
         // Модератор: черновики, почта по галке и профиль — остальное в CRM админу.
@@ -230,6 +237,7 @@ final class Nav
             $surface !== Surface::Site && ! Surface::onlyFor($user) ? $make('На сайт', Surface::Site->url(), 'cat-car') : null,
             $surface !== Surface::Crm && Surface::Crm->opensFor($user) ? $make('CRM', Surface::Crm->url(), 'deal') : null,
             $surface !== Surface::Park && Surface::Park->opensFor($user) ? $make('Парковка', Surface::Park->url(), 'park') : null,
+            $surface !== Surface::Logistics && Surface::Logistics->opensFor($user) ? $make('Логистика', Surface::Logistics->url(), 'cat-car') : null,
         ]));
     }
 
@@ -253,6 +261,13 @@ final class Nav
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
                 $user->isStaff() ? self::link('Шаблоны', Surface::Crm->url('/settings/templates'), icon: 'link') : null,
             ])), 'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon))]);
+        }
+
+        if ($surface === Surface::Logistics) {
+            return array_filter([
+                '' => [self::link('Профиль', '/account', exact: true), self::link('Уведомления', '/account/notifications', icon: 'bell')],
+                'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon)),
+            ]);
         }
 
         if ($surface === Surface::Crm && ! $user->canManageCrm()) {
@@ -431,6 +446,9 @@ final class Nav
                     '/mail' => Boxes::allCount(Scope::Park),
                 ], 'fresh' => []];
             }
+            if ($surface === Surface::Logistics) {
+                return ['totals' => ['/transports' => Transport::visibleTo($user)->open()->count()], 'fresh' => []];
+            }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
                 // Таб — как список без вкладки: «Без закупочной цены» его группы.
                 return ['totals' => ['/' => OfferController::scopeFor(OfferController::home($user), Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft()))->count()], 'fresh' => []];
@@ -485,6 +503,11 @@ final class Nav
         }
         if ($surface === Surface::Park || $surface === Surface::Crm) {
             return array_filter($badges + self::staffCounts($surface));
+        }
+        // Логисту бейдж — межрегиональные без исполнителя, водителю и партнёру — назначенные, ещё не забранные.
+        if ($surface === Surface::Logistics) {
+            return array_filter($badges + ['/transports' => Transport::visibleTo($user)
+                ->where('state', $user->seesAllTransports() ? TransportState::New : TransportState::Assigned)->count()]);
         }
 
         if ($user->isManager()) {
@@ -637,7 +660,7 @@ final class Nav
             }
         }
         if ($surface === Surface::Crm) {
-            array_push($items, self::link('Сделки', '/work/deals'), self::link('Гараж', '/work/garage'), self::link('Вывоз', '/work/pickups'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Оплаты', '/work/money'));
+            array_push($items, self::link('Сделки', '/work/deals'), self::link('Гараж', '/work/garage'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Оплаты', '/work/money'));
         }
 
         // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен.

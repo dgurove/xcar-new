@@ -2,6 +2,10 @@
 
 namespace App\Http\Admin;
 
+use App\Logistics\Actions\Cancel as CancelTransport;
+use App\Logistics\Actions\SaveTransport;
+use App\Logistics\Actions\SendToLogistics;
+use App\Logistics\Transport;
 use App\Offers\Actions\AssignPickup;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Destination;
@@ -19,6 +23,7 @@ use App\Workflow\Path;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /** Маршрут на карточке оффера: наши исходы, отмена шага, вывоз и возврат на пройденный шаг. */
@@ -76,33 +81,55 @@ class RouteController
     }
 
     /**
-     * «Нужен вывоз» и его правка: кто вывозит (пусто — мы) и куда (`Destination`: к менеджеру или к нам). Отвечает
-     * туда, откуда нажали: редактор, «Без цены», «Работа → Вывоз».
+     * «Нужен вывоз» и его правка (10.10.2026 — развилкой): «Везёт сам менеджер» — кто из менеджеров и куда (`Destination`:
+     * к нему или к нам); «Логистика» — перевозка в logistics.xcar.ru (`SendToLogistics`), везём не мы руками менеджера,
+     * а партнёр, наш эвакуатор или перевозчик. Перешли с логистики на менеджера — открытая перевозка отменяется.
+     * Отвечает туда, откуда нажали: редактор, «Без цены».
      */
-    public function pickup(Request $request, Offer $offer, AssignPickup $assign)
+    public function pickup(Request $request, Offer $offer, AssignPickup $assign, SendToLogistics $send, CancelTransport $cancel)
     {
+        $logistics = $request->validate(['mode' => ['required', Rule::in(['self', 'logistics'])]], ['mode.required' => 'Кто везёт: менеджер или логистика'])['mode'] === 'logistics';
         $data = $request->validate([
-            'evacuator_id' => ['nullable', 'integer', 'exists:users,id'],
+            'evacuator_id' => [$logistics ? 'nullable' : 'required', 'integer', 'exists:users,id'],
             'evacuation_to' => ['nullable', Rule::enum(Destination::class)],
-        ]);
-        $evacuator = isset($data['evacuator_id']) ? User::find($data['evacuator_id']) : null;
+            ...($logistics ? SaveTransport::rules() : []),
+        ], ['evacuator_id.required' => 'Выберите менеджера', ...SaveTransport::messages()]);
+        $evacuator = ! $logistics && isset($data['evacuator_id']) ? User::find($data['evacuator_id']) : null;
         $to = Destination::tryFrom((string) ($data['evacuation_to'] ?? '')) ?? ($evacuator ? Destination::Keeper : Destination::Ours);
-        // «К менеджеру» без менеджера бывает только у машины в гараже — к её держателю; иначе сегмент спрятан, но мог
-        // остаться выбранным.
+        // «К менеджеру» без менеджера бывает только у машины в гараже — к её держателю.
         if ($to === Destination::Keeper && ! $evacuator && ! $offer->garageCar()->exists()) {
             $to = Destination::Ours;
         }
         $offer->loadMissing('vendor.workflows', 'positions.stage.workflow');
-        $assign($offer, $evacuator, $to, $request->user());
+        $by = $request->user();
+        $transport = DB::transaction(function () use ($offer, $evacuator, $to, $by, $logistics, $data, $assign, $send, $cancel) {
+            $offer = $assign($offer, $evacuator, $to, $by);
+            if ($logistics) {
+                return $send($offer, $data, $by);
+            }
+            if ($open = Transport::openFor($offer)) {
+                $cancel($open, $by);
+            }
+
+            return null;
+        });
         // Имя не склоняем («к Сергей К.» резало глаз): куда — стрелкой.
-        $toast = 'Вывоз: '.($evacuator?->shortName() ?? 'мы').' → '.($to === Destination::Keeper && ($keeper = $offer->keeper()) ? $keeper->shortName() : mb_strtolower($to->label()));
+        $toast = $transport
+            ? 'Логистика: '.($transport->executorName() ?? 'ждёт логиста')
+            : 'Вывоз: '.$evacuator->shortName().' → '.($to === Destination::Keeper && ($keeper = $offer->keeper()) ? $keeper->shortName() : mb_strtolower($to->label()));
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', $toast);
     }
 
-    public function dropPickup(Request $request, Offer $offer, DropRoute $drop)
+    /** «Вывоз не нужен»: маршрут вывоза снят, открытая перевозка в логистике отменена. */
+    public function dropPickup(Request $request, Offer $offer, DropRoute $drop, CancelTransport $cancel)
     {
-        $drop($offer, Track::Service, $request->user());
+        DB::transaction(function () use ($request, $offer, $drop, $cancel) {
+            $drop($offer, Track::Service, $request->user());
+            if ($open = Transport::openFor($offer)) {
+                $cancel($open, $request->user());
+            }
+        });
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз отменён');
     }

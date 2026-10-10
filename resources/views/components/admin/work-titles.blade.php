@@ -7,7 +7,7 @@
 @php
     $badges = \App\Support\Nav::badges(auth()->user());
     // Модератору из «Работы» открыта только почта — остальные заголовки вели бы в 404.
-    $titles = auth()->user()->canManageCrm() ? ['deals' => 'Сделки', 'garage' => 'Гараж', 'pickups' => 'Вывоз', 'mail' => 'Почта', 'chats' => 'Чаты', 'money' => 'Оплаты'] : ['mail' => 'Почта'];
+    $titles = auth()->user()->canManageCrm() ? ['deals' => 'Сделки', 'garage' => 'Гараж', 'mail' => 'Почта', 'chats' => 'Чаты', 'money' => 'Оплаты'] : ['mail' => 'Почта'];
 @endphp
 <div class="work-titles flex items-baseline gap-x-6 gap-y-2 sm:flex-wrap {{ $edge ? 'max-sm:-mx-4 max-sm:px-4' : 'max-sm:-ml-4 max-sm:pl-4' }} max-sm:overflow-x-auto max-sm:whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
     @foreach ($titles as $key => $label)

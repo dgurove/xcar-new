@@ -36,7 +36,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'partner_regions'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -73,6 +73,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'roles' => AsEnumCollection::of(Role::class),
             'access' => 'array',
             'park_readonly' => 'bool',
+            'partner_regions' => 'array',
             'notification_settings' => 'array',
             'seen_at' => 'datetime',
             'list_prefs' => 'array',
@@ -436,10 +437,48 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->isParking() && $this->park_readonly && ! $this->isParkAdmin();
     }
 
-    /** Сайтовое (избранное, чаты, интересы, поддержка, поток каталога) — всем, кроме тех, у кого только парковка. */
+    /** Сайтовое (избранное, чаты, интересы, поддержка, поток каталога) — всем, у кого сайт есть: не только парковка или логистика. */
     public function usesSite(): bool
     {
-        return Surface::onlyFor($this) !== Surface::Park;
+        return ! in_array(Surface::onlyFor($this), [Surface::Park, Surface::Logistics], true);
+    }
+
+    // -------------------------------------------------------------- логистика
+
+    /** Логист (Татьяна): все перевозки, межрегиональные назначает она — кто везёт, стоимость, сроки. */
+    public function isLogist(): bool
+    {
+        return $this->hasRole(Role::Logist);
+    }
+
+    /** Водитель нашего эвакуатора: только свои рейсы. */
+    public function isDriver(): bool
+    {
+        return $this->hasRole(Role::Driver);
+    }
+
+    /** Партнёр по логистике — менеджер, у которого отмечены регионы: везёт там сам за стоимость эвакуации. */
+    public function isPartner(): bool
+    {
+        return $this->isManager() && ! empty($this->partner_regions);
+    }
+
+    /** Регион ли партнёра. */
+    public function partnersIn(int $regionId): bool
+    {
+        return $this->isPartner() && in_array($regionId, array_map('intval', $this->partner_regions), true);
+    }
+
+    /** logistics.xcar.ru: админ, логист, водитель, партнёр. */
+    public function canLogistics(): bool
+    {
+        return $this->isAdmin() || $this->isLogist() || $this->isDriver() || $this->isPartner();
+    }
+
+    /** Все перевозки и назначение — админу и логисту; водитель и партнёр видят свои. */
+    public function seesAllTransports(): bool
+    {
+        return $this->isAdmin() || $this->isLogist();
     }
 
     /** Кто работает на парковке: администраторы парковки и управляющие — список «Кто ведёт», уведомления, закрытие месяца. */
@@ -503,7 +542,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      */
     public function canLinkTelegram(): bool
     {
-        return ($this->isManager() || $this->isSuperBuyer() || $this->isAdmin() || $this->isModerator() || $this->isParking() || $this->isParkAdmin()) && $this->telegram_chat_id === null && ! $this->is_demo
+        return ($this->isManager() || $this->isSuperBuyer() || $this->isAdmin() || $this->isModerator() || $this->isParking() || $this->isParkAdmin() || $this->isLogist() || $this->isDriver()) && $this->telegram_chat_id === null && ! $this->is_demo
             && app(Bot::class)->username() !== null;
     }
 
@@ -557,6 +596,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     {
         return match ($surface ?? Surface::current()) {
             Surface::Park => $this->notifications()->where('data->surface', 'park'),
+            Surface::Logistics => $this->notifications()->where('data->surface', 'logistics'),
             Surface::Crm => $this->notifications()->where(fn ($q) => $q->whereNull('data->surface')->orWhere('data->surface', 'crm')),
             Surface::Site => $this->notifications()->whereNull('data->surface'),
         };

@@ -1,7 +1,8 @@
 {{-- Маршрут предложения — карточка на ветку («Продажа», «Вывоз»): путь по блокам, как таймлайн дела ТС (x-route.path).
      `$only` — одна ветка (дорожка редактора: «Вывоз» здесь, «Продажа» — `lane-sale` с хвостом гаража); без него — обе
      (карточка строки «Сделок»). `$tail` — шаги после маршрута в пути продажи.
-     У вывоза под заголовком — кто вывозит и куда (`AssignPickup`: к менеджеру или к нам), кончается «Стоит у …». «Нужен вывоз», «Изменить» и «Вывоз не нужен» — в «···» у заголовка
+     У вывоза под заголовком — кто вывозит и куда (`AssignPickup`: менеджер — к себе или к нам; логистика — её ход и
+     исполнитель), кончается «Стоит у …». «Нужен вывоз», «Изменить» и «Вывоз не нужен» — в «···» у заголовка
      (шторка `x-offer.pickup-form`); выбора этапа из списка нет: вернуть назад можно только на пройденный шаг. --}}
 @php
     use App\Workflow\Track;
@@ -32,7 +33,7 @@
                     <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="track-more-{{ $position->id }}"><x-ui.icon name="more" class="size-5"/></button>
                     <div id="track-more-{{ $position->id }}" class="menu" popover data-menu-target="list" role="menu">
                         @if ($isService)
-                            @if ($canEdit)<button type="button" class="menu-item w-full" role="menuitem" {!! $openSheet !!}>Кто и куда вывозит</button>@endif
+                            @if ($canEdit)<button type="button" class="menu-item w-full" role="menuitem" {!! $openSheet !!}>Кто везёт</button>@endif
                             @if ($canDrop)<form method="post" action="/offers/{{ $offer->number }}/pickup" class="contents" data-turbo-confirm="Отменить вывоз?">@csrf @method('delete')<button class="menu-item w-full text-danger" role="menuitem">Вывоз не нужен</button></form>@endif
                         @else
                             <button type="button" class="menu-item w-full" role="menuitem" {!! $openSheet !!}>Нужен вывоз</button>
@@ -43,7 +44,11 @@
         @endif
         @if ($isService)
             <div class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                @if ($offer->evacuator)<x-ui.person :user="$offer->evacuator"/>@else<span>Вывозим мы</span>@endif
+                {{-- Везёт логистика — её ход словом и кто везёт, ссылкой на перевозку в logistics.xcar.ru (10.10.2026). --}}
+                @php $transport = $offer->evacuator ? null : \App\Logistics\Transport::where('offer_id', $offer->id)->where('state', '!=', 'cancelled')->latest('id')->first(); @endphp
+                @if ($offer->evacuator)<x-ui.person :user="$offer->evacuator"/>
+                @elseif ($transport)<a href="{{ \App\Support\Surface::Logistics->url('/transports/'.$transport->id) }}" class="text-accent-text" data-turbo="false">Логистика</a><span class="{{ $transport->state->tone() }}">{{ mb_strtolower($transport->state->label()) }}@if ($transport->executorName()), {{ $transport->executorName() }}@endif</span>
+                @else<span>Вывозим мы</span>@endif
                 <span class="text-ink-muted">{{ $to === Destination::Keeper && $offer->garageCar ? 'в гараж, '.$offer->keeper()?->shortName() : mb_strtolower($to->label()) }}</span>
             </div>
         @endif
@@ -62,7 +67,7 @@
 @endif
 @if ($sheet)
     <div data-controller="sheet" data-action="pickup-{{ $offer->number }}:open@window->sheet#open" class="contents">
-        <x-ui.sheet id="pickup-{{ $offer->number }}" title="Вывоз" :open="$errors->hasAny(['evacuator_id', 'evacuation_to'])">
+        <x-ui.sheet id="pickup-{{ $offer->number }}" title="Вывоз" :open="$errors->hasAny(['mode', 'evacuator_id', 'evacuation_to', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'cost'])">
             <x-offer.pickup-form :offer="$offer" :managers="$pickupManagers" prefix="pickup-{{ $offer->number }}"/>
         </x-ui.sheet>
     </div>

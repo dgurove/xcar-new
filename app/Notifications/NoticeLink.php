@@ -41,7 +41,7 @@ final class NoticeLink
         return match ($surface) {
             Surface::Crm => self::crm($href, $path, $subject),
             Surface::Site => self::site($href, $path, $subject),
-            Surface::Park => $href,
+            Surface::Park, Surface::Logistics => $href,
         };
     }
 

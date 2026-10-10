@@ -67,6 +67,15 @@
             @endif
             <div data-managers class="flex flex-col gap-3">
                 <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" :user="$user" name="manager"/>
+                {{-- Партнёр по логистике (10.10.2026): в этих регионах везёт сам за стоимость эвакуации и видит свои перевозки. --}}
+                @php $partnerIn = array_map('intval', old('partner_regions', $user->partner_regions ?? [])); @endphp
+                <div class="field">
+                    <label for="partner-regions-{{ $user->id }}" class="field-label">Партнёр по логистике</label>
+                    <select id="partner-regions-{{ $user->id }}" name="partner_regions[]" multiple size="5" class="field-input">
+                        @foreach (\App\Logistics\Choices::regions() as $id => $name)<option value="{{ $id }}" @selected(in_array($id, $partnerIn, true))>{{ $name }}</option>@endforeach
+                    </select>
+                    @error('partner_regions')<p class="field-error">{{ $message }}</p>@enderror
+                </div>
             </div>
             <div data-crm class="flex flex-col gap-3">
                 <x-admin.crm-access-fields :areas="$user->access ?? []" :user="$user"/>

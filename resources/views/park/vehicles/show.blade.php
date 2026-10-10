@@ -283,6 +283,13 @@
                         </form>
                     @endif
                 @endif
+                {{-- Логистика (10.10.2026): перевод в другой город и любая перевозка ТС — перевозкой на logistics.xcar.ru. --}}
+                @php $transport = \App\Logistics\Transport::openFor($vehicle); @endphp
+                @if ($transport)
+                    <a href="{{ \App\Support\Surface::Logistics->url('/transports/'.$transport->id) }}" class="btn btn-quiet w-full" data-turbo="false">Логистика: {{ mb_strtolower($transport->state->label()) }}</a>
+                @elseif ($canManage && in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
+                    <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send" data-emit-event-param="logistics:open">В логистику</x-ui.button>
+                @endif
                 @if ($canManage && UndoIntake::allowed($vehicle))
                     <form method="post" action="/cars/{{ $vehicle->id }}/undo-intake" data-turbo-confirm="Отменить приём? ТС снова будет ожидаться">@csrf<x-ui.button variant="ghost" block>Принята по ошибке</x-ui.button></form>
                 @endif
@@ -292,5 +299,16 @@
             </div>
         </x-ui.sheet>
     </div>
+    @if ($canManage && ! ($transport ?? null) && in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
+        <div data-controller="sheet" data-action="logistics:open@window->sheet#open" class="contents">
+            <x-ui.sheet id="vehicle-logistics" title="В логистику" :open="$errors->hasAny(['scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'cost', 'arrive_on'])">
+                <form method="post" action="/cars/{{ $vehicle->id }}/logistics" class="flex flex-col gap-4">
+                    @csrf
+                    <x-logistics.fields :car="$vehicle" prefix="vehicle-{{ $vehicle->id }}-t" :yards="\App\Park\Yard::withoutGlobalScopes()->where('is_active', true)->orderBy('name')->get()"/>
+                    <div class="sheet-foot"><x-ui.button block>Отправить</x-ui.button></div>
+                </form>
+            </x-ui.sheet>
+        </div>
+    @endif
     <x-mail.window :url="$window" :title="$vehicle->titleWithYear()"/>
 </x-ui.shell>

@@ -7,6 +7,7 @@ use App\Billing\Invoice;
 use App\Garage\Car as GarageCar;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\MoneyLinks;
+use App\Logistics\Transport;
 use App\Mail\Account;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
@@ -45,6 +46,7 @@ final class Search
         return array_filter(match ($surface) {
             Surface::Crm => self::crm($user, $t),
             Surface::Park => self::park($user, $t),
+            Surface::Logistics => self::logistics($user, $t),
             Surface::Site => self::site($user, $t),
         }, fn ($g) => $g['rows'] !== []);
     }
@@ -94,6 +96,16 @@ final class Search
         ];
     }
 
+    /** Логистика: перевозки, которые человек видит, — по машине и адресам. */
+    private static function logistics(User $user, Term $t): array
+    {
+        $rows = Transport::visibleTo($user)->search($t)->with(['offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'fromRegion', 'toRegion', 'executorUser'])
+            ->latest('id')->limit(self::ROWS)->get()
+            ->map(fn (Transport $x) => new Hit($x->title(), '/transports?preset=all&peek='.$x->id, array_values(array_filter([$x->state->label(), $x->regions(), $x->executorName()]))))->all();
+
+        return ['transports' => ['title' => 'Перевозки', 'rows' => $rows]];
+    }
+
     private static function site(User $user, Term $t): array
     {
         $cars = new Cars($t);
@@ -122,6 +134,7 @@ final class Search
         return match (Surface::current()) {
             Surface::Crm => 'Номер, VIN, марка, имя',
             Surface::Park => 'Номер, VIN, госномер',
+            Surface::Logistics => 'Марка, VIN, адрес',
             Surface::Site => 'Марка, модель, номер',
         };
     }

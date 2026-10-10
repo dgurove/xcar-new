@@ -241,6 +241,12 @@ class Invoice extends Model implements HasMedia
         return $this->relationLoaded('payLinks') ? $this->payLinks->first->isOpen() : $this->payLinks()->where('state', PayLinkState::Open)->first();
     }
 
+    /** Долг за перевозку из логистики: партнёру или перевозчику (`Logistics\Actions\SettleCost`). */
+    public function isTransport(): bool
+    {
+        return $this->direction === 'owed' && $this->kind === ChargeKind::Tow && ! $this->park;
+    }
+
     public function isAgentFee(): bool
     {
         return $this->direction === 'owed' && $this->kind === ChargeKind::AgentFee;
@@ -357,7 +363,9 @@ class Invoice extends Model implements HasMedia
         return $q->where(fn ($w) => $w->whereNotNull('deal_id')
             ->orWhereIn('id', fn ($g) => $g->select('invoice_id')->from('garage_cars')->whereNotNull('invoice_id'))
             ->orWhereIn('id', fn ($g) => $g->select('payout_invoice_id')->from('garage_cars')->whereNotNull('payout_invoice_id'))
-            ->orWhere(fn ($s) => $s->where('kind', ChargeKind::Service->value)->whereNull('vehicle_id')));
+            ->orWhere(fn ($s) => $s->where('kind', ChargeKind::Service->value)->whereNull('vehicle_id'))
+            // Перевозка из логистики, не парковочная: долг партнёру или перевозчику.
+            ->orWhere(fn ($s) => $s->where('direction', 'owed')->where('kind', ChargeKind::Tow->value)->where('park', false)));
     }
 
     /** Машина гаража, чей это счёт или выплата (у гаражных сделки нет). */

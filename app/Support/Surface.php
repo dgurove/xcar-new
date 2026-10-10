@@ -7,7 +7,7 @@ use App\Users\Section;
 use App\Users\User;
 
 /**
- * Поверхность — одно из трёх приложений на своём хосте: сайт, CRM, стоянка (гараж — раздел сайта /garage).
+ * Поверхность — одно из четырёх приложений на своём хосте: сайт, CRM, стоянка, логистика (гараж — раздел сайта /garage).
  * Определяется по хосту запроса в ResolveSurface; вне запроса — сайт.
  */
 enum Surface: string
@@ -15,12 +15,14 @@ enum Surface: string
     case Site = 'site';
     case Crm = 'crm';
     case Park = 'park';
+    case Logistics = 'logistics';
 
     public static function fromHost(string $host): self
     {
         return match ($host) {
             config('xcar.crm_host') => self::Crm,
             config('xcar.park_host') => self::Park,
+            config('xcar.logistics_host') => self::Logistics,
             default => self::Site,
         };
     }
@@ -47,6 +49,7 @@ enum Surface: string
             self::Site => parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost',
             self::Crm => config('xcar.crm_host'),
             self::Park => config('xcar.park_host'),
+            self::Logistics => config('xcar.logistics_host'),
         };
     }
 
@@ -63,6 +66,7 @@ enum Surface: string
      * Дом человека, которому сайт не нужен вовсе (ни одной роли сайта: менеджер, админ, покупатель, проверяющий,
      * посетитель): модератору — CRM, управляющему — парковка. С хоста, который ему закрыт, уводят туда (SiteWall,
      * ResolveSurface, вход, регистрация по ссылке); с открытого — не уводят: модератор с ролью «Парковка» работает в обоих.
+     * Логисту и водителю — логистика.
      */
     public static function onlyFor(?User $user): ?self
     {
@@ -73,17 +77,19 @@ enum Surface: string
         return match (true) {
             $user->isModerator() => self::Crm,
             $user->isParking() || $user->isParkAdmin() => self::Park,
+            $user->isLogist() || $user->isDriver() => self::Logistics,
             default => null,
         };
     }
 
-    /** Кому хост открыт: CRM — сотрудникам, стоянка — по разделу. Одна дверь на ResolveSurface и вход. */
+    /** Кому хост открыт: CRM — сотрудникам, стоянка — по разделу, логистика — логисту, водителю, партнёру и админу. Одна дверь на ResolveSurface и вход. */
     public function opensFor(?User $user): bool
     {
         return match ($this) {
             self::Site => true,
             self::Crm => (bool) $user?->isStaff(),
             self::Park => (bool) $user?->canAccess(Section::Park),
+            self::Logistics => (bool) $user?->canLogistics(),
         };
     }
 
@@ -93,13 +99,14 @@ enum Surface: string
             self::Site => 'XCar',
             self::Crm => 'CRM XCar',
             self::Park => 'Park XCar',
+            self::Logistics => 'Logistics XCar',
         };
     }
 
-    /** Имя под иконкой на экране «Домой» — совпадает с label(), в 12 знаков укладывается. */
+    /** Имя под иконкой на экране «Домой» — label(), а логистика в 12 знаков не укладывается. */
     public function short(): string
     {
-        return $this->label();
+        return $this === self::Logistics ? 'Logistics' : $this->label();
     }
 
     /** Где начинается работа после входа: на сайте и парковке `/` — лендинг для гостя, списки на своих адресах. */
@@ -108,6 +115,7 @@ enum Surface: string
         return match ($this) {
             self::Site => '/offers',
             self::Park => '/requests',
+            self::Logistics => '/transports',
             default => '/',
         };
     }
