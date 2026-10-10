@@ -3,6 +3,7 @@
 namespace App\Http\Cabinet;
 
 use App\Http\Site\OfferController;
+use App\Offers\CatalogQuery;
 use App\Offers\Interest;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
@@ -25,16 +26,18 @@ class ListsController
         ListPrefs::sync($request, 'favorites');
         $sort = Sort::from($request->query('sort'), self::FAVORITE_SORTS, '-added');
         $dir = $sort->dir();
-        // Избранное — только то, что человеку и сейчас видно: закрытое менеджером покупателю не показываем.
-        $offers = Offer::with(['brand', 'model', 'media', 'favorites'])
-            ->whereHas('favorites', fn ($f) => $f->where('user_id', $request->user()->id))
-            ->when($request->user()->isBuyer(), fn ($q) => $q->visibleTo($request->user())->with(['interests' => fn ($i) => $i->where('user_id', $request->user()->id)]));
+        // Избранное — только то, что человеку и сейчас видно (`Offer::visibleTo`, у всех ролей): закрытое менеджером
+        // покупателю, снятое с продажи — менеджеру. Карточке — то же, что в каталоге (`CatalogQuery::cards`): только фото,
+        // своя закладка, «новое», «Ваша цена» и интерес одним запросом, а не по запросу на карточку.
+        $user = $request->user();
+        $offers = CatalogQuery::cards($user)->visibleTo($user)
+            ->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id));
         // Добавлено — когда отметил человек, а не когда заведено предложение (было `latest()` по предложению).
         match ($sort->key) {
             'price' => $offers->orderByRaw("asking_price {$dir} nulls last"),
             'published' => $offers->orderByRaw("published_at {$dir} nulls last"),
             'closing' => $offers->orderByRaw("bids_close_at {$dir} nulls last"),
-            default => $offers->orderByRaw('(select max(f.created_at) from favorites f where f.offer_id = offers.id and f.user_id = ?) '.$dir, [$request->user()->id]),
+            default => $offers->orderByRaw('(select max(f.created_at) from favorites f where f.offer_id = offers.id and f.user_id = ?) '.$dir, [$user->id]),
         };
         $offers->orderByDesc('offers.id');
 

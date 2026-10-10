@@ -63,17 +63,26 @@ class CatalogController
                 'recommended_gallery' => Offer::inGallery()->where('recommended', true)->count(),
             ])
             : [
-                // Без фильтров «Все» — это и есть длина списка: второй раз не считаем.
-                'offers' => ! $gallery && ! $narrowed ? $count : Offer::visibleTo($user)->onSale()->count(),
+                // Без фильтров «Все» — это и есть длина списка: второй раз не считаем. Та же дверь, что у списка и таба
+                // (`Offer::siteList`: со сделками, открытыми менеджеру), — иначе с фильтром число расходилось с табом.
+                'offers' => ! $gallery && ! $narrowed ? $count : Offer::siteList($user)->count(),
                 'gallery' => Offer::visibleTo($user)->inGallery()->count(),
-                'recommended' => Offer::visibleTo($user)->when($gallery, fn ($q) => $q->inGallery(), fn ($q) => $q->onSale())->where('recommended', true)->count(),
+                'recommended' => ($gallery ? Offer::visibleTo($user)->inGallery() : Offer::siteList($user))->where('recommended', true)->count(),
             ];
-        // «Новые за 12ч» и «Горящие (12ч)» — числом на пилюле; «новое» у каждого своё (волна, показ) — не из общего кэша.
-        $base = fn () => $gallery ? Offer::visibleTo($user)->inGallery() : Offer::siteList($user);
-        $counts['fresh'] = CatalogQuery::fresh($base(), $user, $gallery)->count();
-        $counts['ending'] = $gallery ? 0 : CatalogQuery::ending($base())->count();
-        // «Рекомендуем» — сколько отмеченных в этом разделе: пилюля с числом, без отмеченных пилюли нет.
+        // «Рекомендуем» — пилюля есть, пока в разделе есть отмеченные.
         $recommended = $counts[$gallery && $user?->isAdmin() ? 'recommended_gallery' : 'recommended'] ?? 0;
+        $views = CatalogQuery::allowedViews($user, $gallery, $recommended);
+        // Числа на пилюлях — с выбранными чипами (город, тип ТС): сколько покажет нажатие. Считаем только пилюли, которые
+        // человеку видны; «новое» у каждого своё (волна, показ) — не из общего кэша.
+        $section = fn () => $facets->applyTo($gallery ? Offer::visibleTo($user)->inGallery() : Offer::siteList($user));
+        $pills = [];
+        foreach (array_intersect(['recommended', 'fresh', 'ending'], array_keys($views)) as $key) {
+            $pills[$key] = match ($key) {
+                'recommended' => $section()->where('recommended', true)->count(),
+                'fresh' => CatalogQuery::fresh($section(), $user, $gallery)->count(),
+                'ending' => CatalogQuery::ending($section())->count(),
+            };
+        }
 
         $offers = ListView::paginate($request, $query, $count);
         Showing::remember($user, $offers->pluck('id')->all());
@@ -89,13 +98,13 @@ class CatalogController
             'sorting' => Sort::from($sort, CatalogQuery::allowedSorts($gallery, $prices, $user), CatalogQuery::defaultSort($user, $gallery)),
             // Подписи «До 17:00 сегодня» между пачками — только по сроку и тому, кто срок видит.
             'groups' => ! $gallery && $sort === 'closing' && ($user?->bidsOnSite() ?? false),
-            'views' => CatalogQuery::allowedViews($user, $gallery, $recommended),
+            'views' => $views,
             'view' => $view,
             'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),
             'facets' => $facets,
             'gallery' => $gallery,
             'prices' => $prices,
-            'counts' => ['recommended' => $recommended] + $counts,
+            'counts' => $pills + $counts,
             'manager' => $user?->isBuyer() ? $user->manager : null,
         ]);
     }

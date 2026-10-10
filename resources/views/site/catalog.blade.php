@@ -6,6 +6,8 @@
     // Покупателю та же лента и тот же тулбар: у него нет только первого экрана, а пустая лента — с контактом менеджера.
     $buyer = $user?->isBuyer() ?? false;
     $title = $gallery ? 'Галерея' : 'Предложения';
+    // Столбец «Приём» — тем, кто подтверждает ценой, и в галерее (там окно показа).
+    $deadline = $gallery || ($user?->bidsOnSite() ?? false);
 @endphp
 <x-ui.shell :title="$title" :heading="false" :trail="$trail" :detail="$detail">
 
@@ -41,16 +43,16 @@
                     @endif
                 @else
                     @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog" :view="$view" data-list="{{ $gallery ? 'gallery' : 'catalog' }}">
-                        <x-slot:head><x-offer.site-table-head :sort="$sorting"/></x-slot:head>
+                    <x-ui.table id="catalog" :view="$view" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="false">
+                        <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)
                             @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer)))@php $group = $label; @endphp<tr class="table-group"><th colspan="99" scope="colgroup">{{ $label }}</th></tr>@endif
-                            <x-offer.site-table-row :offer="$offer" :context="$context"/>
+                            <x-offer.site-table-row :offer="$offer" :context="$context" :deadline="$deadline"/>
                         @endforeach
                     </x-ui.table>
                     @else
-                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ in_array($sort, ['-published', '-opened'], true) ? 'true' : 'false' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         {{-- По сроку — подписью над каждой пачкой слота («До 17:00 сегодня»), владелец 10.10.2026. --}}
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)

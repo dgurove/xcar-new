@@ -54,13 +54,13 @@ class OfferController
         ]);
     }
 
-    /** Лента чата для шторки — отдельным фреймом, по открытию. */
     /** Карточка строки таблицы: фото, метки, факты, цена как видит человек; подтвердить ценой или проявить интерес прямо тут. */
     public function detail(Request $request, Offer $offer)
     {
         $user = $request->user();
         abort_unless($offer->isVisibleTo($user), 404);
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
+        CatalogQuery::withOpenedAt($offer, $user);
         $canChat = $offer->chatOpenFor($user);
 
         return view('site.offers.detail', [
@@ -73,6 +73,7 @@ class OfferController
         ]);
     }
 
+    /** Лента чата для шторки — отдельным фреймом, по открытию. */
     public function chat(Request $request, Offer $offer)
     {
         $user = $request->user();

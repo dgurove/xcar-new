@@ -19,7 +19,6 @@ use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
 use App\Offers\DealState;
-use App\Offers\Favorite;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\CatalogQuery;
@@ -484,7 +483,8 @@ final class Nav
                 // И вывозы, порученные менеджеру (группа «Вывоз»): ТС у него, хоть и не его гаража.
                 '/garage' => $user->canGarage() ? GarageCar::of($user)->where('state', '!=', CarState::Settled)->count() + Offer::pickupsOf($user)->count() : null,
                 '/account/interests' => $user->isBuyer() || $user->isSuperBuyer() ? Interest::where('user_id', $user->id)->count() : null,
-                '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
+                // Как список «Избранного»: только то, что человеку сейчас видно.
+                '/account/favorites' => Offer::visibleTo($user)->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id))->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
                 // Как пилюля «Новые за 12ч»: открылось этому человеку (волна, показ) за 12 ч.
                 '/offers' => CatalogQuery::fresh(clone $open, $user)->count(),

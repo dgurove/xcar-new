@@ -2,7 +2,7 @@
      «рекомендуем», под ним номер, приём (срок с иконкой секундомера, 07.10.2026: «осталось» и голое «12 д 5 ч» владельцу не нравились)
      и город; от 640 номер, приём и город встают
      столбцами. Справа цена так, как видит человек, или «Узнать», под ней заявленная, на телефоне без «сколько прошло» (07.10.2026, владелец: «зачем писать 2 дн»), на ПК — столбцом. Нажатие — карточка. --}}
-@props(['offer', 'context' => null])
+@props(['offer', 'context' => null, 'deadline' => true])
 @php
     $user = auth()->user();
     $n = $offer->number;
@@ -18,7 +18,8 @@
         default => null,
     };
     $myBid = $bids && !$gallery && $offer->relationLoaded('bids') ? $offer->bids->firstWhere('user_id', $user->id) : null;
-    $since = $offer->published_at ?? $offer->created_at;
+    // Сколько прошло — с тех пор, как открылось этому человеку (волна, показ), как и точка «новое».
+    $since = $offer->openedAt() ?? $offer->created_at;
     $city = $offer->settlement?->title();
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}">
@@ -27,19 +28,21 @@
         <span class="cell-sub">
             <span class="sm:hidden">№ {{ $n }}</span>
             @if ($gallery)<x-offer.gallery-left :offer="$offer" word="" class="sm:hidden"/>
-            @elseif ($left !== null && $left > 0)<span class="cell-timer sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
+            @elseif ($left !== null && $left > 0)<span class="cell-timer sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink-muted' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
             @elseif ($offer->state === \App\Offers\OfferState::Sold)<span class="sm:hidden text-urgent">идёт сделка</span>
             @elseif ($bids && !$offer->bidsOpen())<span class="sm:hidden">приём закрыт</span>@endif
             @if ($city)<span class="sm:hidden">{{ $city }}</span>@endif
         </span>
     </td>
     <td class="cell-dim nums hidden sm:table-cell">{{ $n }}</td>
+    @if ($deadline)
     <td class="hidden sm:table-cell">
         @if ($gallery)<x-offer.gallery-left :offer="$offer"/>
-        @elseif ($left !== null && $left > 0)<span class="cell-timer {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
+        @elseif ($left !== null && $left > 0)<span class="cell-timer {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink-muted' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
         @elseif ($offer->state === \App\Offers\OfferState::Sold)<span class="text-urgent">Идёт сделка</span>
         @elseif ($bids && !$offer->bidsOpen())<span class="text-ink-dim">Приём закрыт</span>@endif
     </td>
+    @endif
     <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ $city }}</td>
     <td class="num nums">
         @if ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif

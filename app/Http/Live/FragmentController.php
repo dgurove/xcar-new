@@ -3,6 +3,7 @@
 namespace App\Http\Live;
 
 use App\Live\Stream;
+use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\Showing;
 use App\Support\Nav;
@@ -18,7 +19,8 @@ class FragmentController
 
     public function card(Request $request, Offer $offer)
     {
-        $offer->load(['brand', 'model', 'settlement', 'media', 'favorites']);
+        // Та же выборка, что у каталога: «новое» от открытия этому человеку, «Ваша цена», свой интерес.
+        $offer = CatalogQuery::cards($request->user(), $offer->isGallery())->whereKey($offer->id)->first() ?? $offer;
         Showing::remember($request->user(), [$offer->id]);
         // Карточка живёт в ленте, только если человеку положено её видеть: чужому — remove.
         $visible = ($request->query('list') === 'gallery' ? $offer->isGallery() : $offer->state->isPublic())

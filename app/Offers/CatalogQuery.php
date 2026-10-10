@@ -59,6 +59,14 @@ final class CatalogQuery
         return 'offers.published_at';
     }
 
+    /** Предложению, взятому не из каталога (карточка рядом со списком), — когда оно открылось этому человеку: метка «новый» та же, что в ленте. */
+    public static function withOpenedAt(Offer $offer, ?User $user): Offer
+    {
+        $offer->setRawAttributes($offer->getAttributes() + ['opened_at' => Offer::whereKey($offer->id)->selectRaw(self::openedAtSql($user).' as o')->value('o')], true);
+
+        return $offer;
+    }
+
     /** Сортировка по умолчанию (10.10.2026): кто видит срок — сверху закрывающиеся раньше, покупатель — новые показы сверху. */
     public static function defaultSort(?User $user, bool $gallery = false): string
     {
@@ -69,31 +77,41 @@ final class CatalogQuery
         };
     }
 
-    public static function for(?User $user, array $filters = [], bool $gallery = false): Builder
+    /**
+     * Что нужно карточке витрины: фото, своя закладка, когда открылось этому человеку (`opened_at`), своё подтверждение
+     * и свой интерес — одним запросом на список. Каталог и живое обновление карточки (`Live\FragmentController`)
+     * берут одно и то же: иначе после обновления пропадали полоса «новое» и «Ваша цена».
+     */
+    public static function cards(?User $user, bool $gallery = false): Builder
     {
-        $prices = ! $gallery && ($user?->canSeePrices() ?? false);
-
         $q = Offer::query()
             // Карточкам нужны только фото и своя закладка: все медиа (с документами) и чужое избранное по
             // каждому предложению поднимались зря; таблице фото не нужны вовсе — их снимает контроллер (`without`).
             ->with(['brand', 'model', 'settlement',
                 'media' => fn ($m) => $m->where('collection_name', 'photos'),
-                'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
-        $opened = self::openedAtSql($user);
-        // Когда открылось этому человеку — на метку «новое» (`Offer::openedAt`).
-        $q->select('offers.*')->selectRaw("{$opened} as opened_at");
+                'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)])
+            ->select('offers.*')->selectRaw(self::openedAtSql($user).' as opened_at');
         if (! $gallery && ($user?->bidsOnSite() ?? false)) {
             // «Ваша цена» на карточке — своё действующее подтверждение, тем же правилом, что на странице предложения.
             $q->with(['bids' => fn ($b) => $b->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])]);
         }
+        if ($user && ($user->isBuyer() || $gallery)) {
+            // На карточке нужен свой интерес (покупателю, а в галерее и менеджеру).
+            $q->with(['interests' => fn ($i) => $i->where('user_id', $user->id)]);
+        }
+
+        return $q;
+    }
+
+    public static function for(?User $user, array $filters = [], bool $gallery = false): Builder
+    {
+        $prices = ! $gallery && ($user?->canSeePrices() ?? false);
+        $q = self::cards($user, $gallery);
+        $opened = self::openedAtSql($user);
         // Витрина — только то, что в продаже (`Offer::siteList`: открытое без сделки плюс сделка,
         // открытая менеджеру белым списком — с меткой «Идёт сделка»): срок вышел или идёт сделка —
         // с сайта ушло. Галерея — окно показа черновика (`Offer::inGallery`).
         $gallery ? $q->visibleTo($user)->inGallery() : $q->siteList($user);
-        if ($user?->isBuyer() || $gallery) {
-            // На карточке нужен свой интерес (покупателю, а в галерее и менеджеру) — одним запросом на список.
-            $q->with(['interests' => fn ($i) => $i->where('user_id', $user->id)]);
-        }
 
         // Чипы — тем же правилом, что в списке (`facets`): стрелки на странице предложения идут по тому же ряду.
         $search = trim((string) ($filters['q'] ?? ''));
@@ -136,12 +154,12 @@ final class CatalogQuery
         return $q->orderByDesc('id');
     }
 
-    /** Новые за 12 ч: открылось этому человеку недавно; в галерее — появилось в окне показа. */
+    /** Новые за 12 ч: открылось этому человеку недавно; в галерее — окно показа открылось за 12 ч (пилюля та же). */
     public static function fresh(Builder $q, ?User $user, bool $gallery = false): Builder
     {
         $since = now()->subHours(Offer::NEW_HOURS);
 
-        return $gallery ? $q->where('gallery_from', '>=', now()->subDay()) : $q->whereRaw(self::openedAtSql($user).' >= ?', [$since]);
+        return $gallery ? $q->where('offers.gallery_from', '>=', $since) : $q->whereRaw(self::openedAtSql($user).' >= ?', [$since]);
     }
 
     /** Горящие: приём закрывается в ближайшие 12 ч. */

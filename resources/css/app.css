@@ -2779,7 +2779,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
     --card-align: stretch; --card-gap: 0; --card-pad: 0;
     --card-radius: var(--radius-xl);
-    --media-w: 100%; --media-h: auto; --media-ratio: 3 / 1; --media-radius: 0; --blank-display: block; --blank-h: auto;
+    --media-w: 100%; --media-h: auto; --media-span: 3; --media-ratio: var(--media-span) / 1; --media-radius: 0; --blank-display: block; --blank-h: auto;
     --body-pad: .75rem .875rem 0; --body-pad-end: .875rem; --body-gap: .25rem; --extra-pad: .375rem .875rem 0;
     --float-pos: absolute; --frames-display: contents;
     --star-pos: absolute; --star-off: .75rem; --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
@@ -2787,8 +2787,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     --aside-self: start; --aside-align: start; --aside-pad: .375rem .875rem 0; --place-pad: .5rem 0 .875rem .875rem;
     --action-pad: .5rem .875rem .875rem .5rem; --action-self: end;
     --price-size: 1.125rem; --price-align: left;
-    /* Новое и горящее: в плитке полоса от низа кадра (3:1 — треть ширины), точки у названия нет. */
-    --name-size: var(--text-base); --name-lines: 1; --tone-dot: none; --tone-stripe: block; --stripe-top: calc(100cqi / 3);
+    /* Новое и горящее: в плитке полоса от низа кадра (кадр шириной в --media-span высот), точки у названия нет. */
+    --name-size: var(--text-base); --name-lines: 1; --tone-dot: none; --tone-stripe: block; --stripe-top: calc(100cqi / var(--media-span));
   }
   @media (min-width: 640px) {
     .cards:not(.cards--list) {
@@ -2797,7 +2797,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       --card-areas: "media media" "body body" "extra extra" "aside aside" "place action";
       --card-align: stretch; --card-gap: 0; --card-pad: 0;
       --card-radius: var(--radius-xl);
-      --media-w: 100%; --media-h: auto; --media-ratio: 3 / 1; --media-radius: 0; --blank-display: block; --blank-h: auto;
+      --media-w: 100%; --media-h: auto; --media-span: 3; --media-ratio: var(--media-span) / 1; --media-radius: 0; --blank-display: block; --blank-h: auto;
       --body-pad: .75rem .875rem 0; --body-pad-end: .875rem; --body-gap: .25rem; --extra-pad: .375rem .875rem 0;
       --float-pos: absolute; --frames-display: contents;
       --star-pos: absolute; --star-off: .75rem; --star-bg: rgb(18 18 18 / .55); --star-bg-hover: rgb(0 0 0 / .65); --star-ink: rgb(255 255 255 / .7);
@@ -2805,8 +2805,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       --aside-self: start; --aside-align: start; --aside-pad: .375rem .875rem 0; --place-pad: .5rem 0 .875rem .875rem;
       --action-pad: .5rem .875rem .875rem .5rem; --action-self: end;
       --price-size: 1.125rem; --price-align: left;
-    /* Новое и горящее: в плитке полоса от низа кадра (3:1 — треть ширины), точки у названия нет. */
-    --name-size: var(--text-base); --name-lines: 1; --tone-dot: none; --tone-stripe: block; --stripe-top: calc(100cqi / 3);
+    /* Новое и горящее: в плитке полоса от низа кадра (кадр шириной в --media-span высот), точки у названия нет. */
+    --name-size: var(--text-base); --name-lines: 1; --tone-dot: none; --tone-stripe: block; --stripe-top: calc(100cqi / var(--media-span));
     }
   }
 
@@ -2870,6 +2870,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card--fresh::before, .card--hot::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
   .card--fresh::before { background: var(--color-accent); }
   .card--hot::before { background: var(--color-urgent); }
+  /* Без контейнерных единиц (iOS до 16) полоса встала бы на кадр — там и в плитке точка у названия. */
+  @supports not (top: 1cqi) { .cards { --tone-stripe: none !important; --tone-dot: inline-block !important; } }
   /* Подпись пачки по сроку («До 17:00 сегодня») — во всю ширину ленты, мелкой серой подписью раздела. */
   .cards-group { grid-column: 1 / -1; margin-top: .75rem; font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-dim); }
   .cards-group:first-child { margin-top: 0; }

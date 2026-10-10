@@ -123,9 +123,9 @@ async function card({ number }) {
     const r = await fetch(`/offers/${number}/card?present=${present ? 1 : 0}&list=${list?.dataset.list || ''}`, { headers: { Accept: 'text/vnd.turbo-stream.html' } });
     if (!r.ok) return;
     const html = await r.text();
-    // Новая плитка въезжает наверх, только если человек стоит в начале
-    // списка: иначе он получит N новых под кнопкой, а не под пальцем.
-    if (!present && html.includes('action="prepend"') && (window.scrollY > 200 || location.search)) {
+    // Новая плитка въезжает наверх, только если человек стоит в начале списка, а список — новыми сверху: иначе
+    // (по сроку, с подписями пачек, таблицей) он получит N новых под кнопкой, а не плитку не на своём месте.
+    if (!present && html.includes('action="prepend"') && (list?.dataset.prepend === 'false' || window.scrollY > 200 || location.search)) {
         pending();
         return;
     }
@@ -143,12 +143,18 @@ function pending() {
         pill.style.top = 'calc(var(--spacing-header) + env(safe-area-inset-top) + .75rem)';
         pill.dataset.count = '0';
         pill.dataset.turboTemporary = '';
-        // Морф на месте с фильтрами и прокруткой, без слайда; новое — сверху.
-        pill.addEventListener('click', () => { Turbo.visit(location.href, { action: 'replace' }); scrollTo({ top: 0, behavior: 'smooth' }); });
+        // Новыми сверху — морф на месте с фильтрами, новое сверху. По сроку новое встаёт в свою пачку, а не наверх: ведём
+        // на пилюлю «Новые за 12ч».
+        pill.addEventListener('click', () => {
+            const url = new URL(location.href);
+            if (document.getElementById('catalog')?.dataset.prepend === 'false') { url.searchParams.set('view', 'fresh'); url.searchParams.delete('page'); }
+            Turbo.visit(url.toString(), { action: 'replace' });
+            scrollTo({ top: 0, behavior: 'smooth' });
+        });
         document.body.appendChild(pill);
     }
     pill.dataset.count = String(Number(pill.dataset.count) + 1);
-    pill.textContent = `Новых: ${pill.dataset.count} — показать`;
+    pill.textContent = `Показать новые ${pill.dataset.count}`;
 }
 
 function refresh({ paths }) {
