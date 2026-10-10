@@ -1,21 +1,23 @@
 {{-- Сделки менеджера одним экраном: подтверждения без решения, сделки в работе (где от него ждут ответа — первыми,
      просьба прямо в строке), закончившиеся, внизу — не состоявшиеся. Админу — все сделки, без подтверждений и без
-     пилюли «Покупатели»: вместо пилюль заголовок. --}}
+     пилюли «Покупатели»: вместо пилюль заголовок. Супер-покупателю — заголовок тоже: покупателей у него нет. --}}
 @php
     $staff = auth()->user()->isAdmin() && ! auth()->user()->isManager();
+    // Заголовок вместо пилюль «Сделки | Покупатели».
+    $titled = $staff || auth()->user()->isSuperBuyer();
     $active = $deals->getCollection()->filter(fn ($d) => $d->state === \App\Offers\DealState::Active)->sortBy(fn ($d) => $d->openRequirement ? 0 : 1)->values();
     $closed = $deals->getCollection()->reject(fn ($d) => $d->state === \App\Offers\DealState::Active)->values();
 @endphp
-<x-ui.shell title="Сделки" :phone-heading="$staff" :desktop-heading="$staff">
+<x-ui.shell title="Сделки" :phone-heading="$titled" :desktop-heading="$titled">
 {{-- Админу на телефоне сортировка — справа от заголовка, а не своим рядом под ним (09.10.2026: одна кнопка на целую
      строку); на ПК список узкий — кнопка над ним, у его края. --}}
-@if ($staff && $deals->isNotEmpty())
+@if ($titled && $deals->isNotEmpty())
     <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="deals-head"/></x-slot:actions>
 @endif
 <div class="flex max-w-[56rem] flex-col gap-4">
-    @if (! $staff || $deals->isNotEmpty())
-        <div @class(['search-head', 'max-md:hidden' => $staff])>
-            @unless ($staff)<div class="min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>@endunless
+    @if (! $titled || $deals->isNotEmpty())
+        <div @class(['search-head', 'max-md:hidden' => $titled])>
+            @unless ($titled)<div class="min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>@endunless
             @if ($deals->isNotEmpty())<x-ui.toolbar :sort="$sort" name="deals"/>@endif
         </div>
     @endif

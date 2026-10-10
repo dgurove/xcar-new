@@ -59,7 +59,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             }
         });
         static::saved(function (self $user) {
-            if ($user->wasChanged('roles') || ($user->wasRecentlyCreated && $user->isManager())) {
+            if ($user->wasChanged('roles') || ($user->wasRecentlyCreated && ($user->isManager() || $user->isSuperBuyer()))) {
                 app(SyncViewers::class)->all();
             }
         });
@@ -166,7 +166,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     {
         if ($offer->isGallery()) {
             // Админ на сайте видит галерею как менеджер (08.10.2026) — и интерес оставляет так же.
-            return $this->hasRole(Role::Manager, Role::Buyer, Role::Visitor, Role::Admin);
+            return $this->hasRole(Role::Manager, Role::Buyer, Role::SuperBuyer, Role::Visitor, Role::Admin);
         }
 
         return $offer->state->acceptsInterest() && $this->canInterest();
@@ -182,6 +182,22 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function isManager(): bool
     {
         return $this->hasRole(Role::Manager);
+    }
+
+    /**
+     * Супер-покупатель (10.10.2026): покупает у нас без менеджера — видит предложения своей волны (все супер-покупатели
+     * в волнах как один менеджер, `AudienceRules`), только цену продажи, подтверждает ценой и ведёт свои сделки, как
+     * менеджер; покупателей, гаража, закупок и шеринга у него нет. Сам себя он видит «Покупателем» (`Role::selfLabel`).
+     */
+    public function isSuperBuyer(): bool
+    {
+        return $this->hasRole(Role::SuperBuyer);
+    }
+
+    /** Свои сделки и деньги по ним на сайте: менеджер и супер-покупатель (`ability:hasDeals`). */
+    public function hasDeals(): bool
+    {
+        return $this->isManager() || $this->isSuperBuyer();
     }
 
     /**
@@ -468,7 +484,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      */
     public function canLinkTelegram(): bool
     {
-        return ($this->isManager() || $this->isAdmin() || $this->isModerator() || $this->isParking() || $this->isParkAdmin()) && $this->telegram_chat_id === null && ! $this->is_demo
+        return ($this->isManager() || $this->isSuperBuyer() || $this->isAdmin() || $this->isModerator() || $this->isParking() || $this->isParkAdmin()) && $this->telegram_chat_id === null && ! $this->is_demo
             && app(Bot::class)->username() !== null;
     }
 

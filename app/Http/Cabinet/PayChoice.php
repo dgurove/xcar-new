@@ -50,6 +50,10 @@ final class PayChoice
     public function __invoke(Request $request, Invoice $invoice, User $me): array
     {
         $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
+        // Супер-покупатель платит сам: своих покупателей у него нет и не заводится.
+        if ($me->isSuperBuyer() && $request->input('way') === 'link') {
+            $request->merge(['payer' => 'self']);
+        }
         // Покупатель в шторке — строкой списка: радио «кто платит» несёт его id вместо слова.
         if (ctype_digit((string) $request->input('payer'))) {
             $request->merge(['payer_user_id' => $request->input('payer'), 'payer' => 'buyer']);

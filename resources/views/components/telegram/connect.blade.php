@@ -14,7 +14,7 @@
     // Сама шторка — на сайте в списках менеджера, в CRM у модератора на «Предложениях»; с почтой ему есть что получать.
     $intro = $user?->isModerator() ? ['/'] : ['/offers', '/deals'];
     [$head, $lead] = match (true) {
-        (bool) $user?->isManager() => ['Узнавайте о сделках первым', 'Когда выбрали вас, нужен ваш ответ или пришли деньги. Без рассылок'],
+        (bool) $user?->hasDeals() => ['Узнавайте о сделках первым', 'Когда выбрали вас, нужен ваш ответ или пришли деньги. Без рассылок'],
         // Модератору — заявки с почты прямо в бот (владелец 02.10.2026: вход без пароля не привлекает).
         (bool) $user?->isModerator() => ['Заявки с почты в Telegram', 'Новые заявки от страховых будут приходить в бот'],
         default => ['Счета и оплаты в Telegram', 'Оплаты, выплаты и просроченные счета с кнопкой решения'],
@@ -34,7 +34,7 @@
             <div class="tg-step" data-telegram-target="step" data-step="offer">
                 <x-telegram.bubble :message="\App\Telegram\Preview::for($user)"/>
                 <div class="tg-lead">
-                    <h2 class="text-lg" data-telegram-target="title" @if ($user->isManager()) data-bid="Узнайте первым, если выберут вас" @endif>{{ $head }}</h2>
+                    <h2 class="text-lg" data-telegram-target="title" @if ($user->hasDeals()) data-bid="Узнайте первым, если выберут вас" @endif>{{ $head }}</h2>
                     <p>{{ $lead }}</p>
                 </div>
                 <div class="flex flex-col gap-1">

@@ -35,8 +35,10 @@ final class ManagerJoined extends Message
 
     protected function link(): array
     {
-        return $this->manager->isParking()
-            ? ['text' => 'Парковка в CRM', 'url' => Surface::Crm->url('/settings/users?preset=park')]
-            : ['text' => 'Менеджеры в CRM', 'url' => Surface::Crm->url('/settings/users?preset=managers')];
+        return match (true) {
+            $this->manager->isParking() => ['text' => 'Парковка в CRM', 'url' => Surface::Crm->url('/settings/users?preset=park')],
+            $this->manager->isSuperBuyer() => ['text' => 'Покупатели в CRM', 'url' => Surface::Crm->url('/settings/users?preset=buyers')],
+            default => ['text' => 'Менеджеры в CRM', 'url' => Surface::Crm->url('/settings/users?preset=managers')],
+        };
     }
 }

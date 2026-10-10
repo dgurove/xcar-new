@@ -29,6 +29,9 @@ final class Categories
                 'always' => ['Ответ на подтверждение', 'Сделки: ваш ход и сроки', 'Счета и вознаграждение', 'Выбор вашей цены в закупке'],
             ]);
         }
+        if ($user->hasRole(Role::SuperBuyer)) {
+            $add(['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => ['Ответ на подтверждение', 'Сделки: ваш ход и сроки', 'Счета']]);
+        }
         if ($user->hasRole(Role::Buyer)) {
             $add(['on' => ['offers' => 'Новые предложения для вас', 'chats' => 'Чаты'], 'always' => ['Сделки']]);
         }
@@ -66,7 +69,7 @@ final class Categories
     public static function telegram(User $user): array
     {
         $keys = [
-            ...($user->hasRole(Role::Manager, Role::Admin) ? ['chats'] : []),
+            ...($user->hasRole(Role::Manager, Role::Admin, Role::SuperBuyer) ? ['chats'] : []),
             ...($user->hasRole(Role::Moderator) ? ['letters'] : []),
             ...($user->hasRole(Role::Parking) ? ['park', 'park_money'] : []),
         ];

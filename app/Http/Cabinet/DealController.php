@@ -31,20 +31,20 @@ class DealController
     public function index(Request $request)
     {
         $me = $request->user();
-        abort_unless($me->isManager() || $me->isAdmin(), 404);
+        abort_unless($me->hasDeals() || $me->isAdmin(), 404);
         ListPrefs::sync($request, 'deals', view: false, keep: ['sort']);
         $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
         // Гаражные сделки живут в «Гараже» (решение владельца 03.10.2026), здесь — только ждущее решения «В гараж».
         $deals = Deal::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
-            ->when(! $me->isManager(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer')
+            ->when(! $me->hasDeals(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer')
             ->orderByRaw("case when state = 'active' then 0 else 1 end")
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id')->paginate(30);
 
         // Подтверждения менеджера — на том же экране: ждущие решения — будущие сделки, отклонённые и отозванные —
         // короткая история внизу; принятые уже стоят сделками. Админ подтверждения решает в CRM.
         $bids = fn () => Bid::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $me->id)->latest();
-        $pending = $me->isManager() ? $bids()->where('state', BidState::Active)->get() : collect();
-        $lost = $me->isManager() ? $bids()->whereIn('state', [BidState::Declined, BidState::Withdrawn])->limit(10)->get() : collect();
+        $pending = $me->hasDeals() ? $bids()->where('state', BidState::Active)->get() : collect();
+        $lost = $me->hasDeals() ? $bids()->whereIn('state', [BidState::Declined, BidState::Withdrawn])->limit(10)->get() : collect();
 
         return view('cabinet.deals.index', ['deals' => $deals, 'pending' => $pending, 'lost' => $lost, 'sort' => $sort]);
     }

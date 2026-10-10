@@ -19,10 +19,16 @@ use Illuminate\Validation\ValidationException;
  */
 final class PlaceBid
 {
+    /**
+     * Ниже порога (`Offer::minBid`). Сколько — не пишем никому и никак (владелец 10.10.2026: «какой минимум писать явно
+     * нельзя, ни менеджерам, ни покупателям — либо принимаем, либо не принимаем»).
+     */
+    public const TOO_LOW = 'Предложенная стоимость недостаточна для снятия резерва';
+
     public function __invoke(Offer $offer, User $by, ?int $amount, ?string $comment = null, BidKind $kind = BidKind::Buyer): Bid
     {
         if (! $by->canBid()) {
-            throw ValidationException::withMessages(['amount' => 'Подтверждать могут только менеджеры']);
+            throw ValidationException::withMessages(['amount' => 'Подтверждать ценой здесь нельзя']);
         }
         if (! $offer->isVisibleTo($by)) {
             throw ValidationException::withMessages(['amount' => 'Это предложение вам не открыто']);
@@ -44,7 +50,7 @@ final class PlaceBid
                     throw ValidationException::withMessages(['amount' => 'Впишите цену']);
                 }
                 if ($min && $amount < $min) {
-                    throw ValidationException::withMessages(['amount' => 'Такую цену не принимаем, предложите выше']);
+                    throw ValidationException::withMessages(['amount' => self::TOO_LOW]);
                 }
             }
 

@@ -8,6 +8,8 @@
     $overdue = $position['overdue'] > 0 && $position['claimed'] < $position['overdue'];
     // Сумма вместо числа сделок в пилюлях «Оплатить» и «Ждут выплаты» — ровно сумма строк пилюли (`ManagerLedger::sums`).
     $counts = array_merge($counts, array_filter(array_map(fn ($v) => $v > 0 ? Money::rub($v) : null, $sums)));
+    // Супер-покупателю выплат не бывает — пилюли «Ждут выплаты» у него нет.
+    $pills = auth()->user()->isSuperBuyer() ? array_diff_key(DealMoney::PRESETS, ['payout' => true]) : DealMoney::PRESETS;
 @endphp
 <x-ui.cabinet title="Деньги">
     {{-- Узкая колонка — у строк; пилюли с суммами шире её, и на ПК «···» уходило бы за край ленты. --}}
@@ -23,7 +25,7 @@
             </div>
         @endif
 
-            <x-ui.toolbar :sort="$sort" :pills="DealMoney::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['pay' => $overdue ? 'pill-danger' : '']" name="money" action="/account/money">
+            <x-ui.toolbar :sort="$sort" :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['pay' => $overdue ? 'pill-danger' : '']" name="money" action="/account/money">
                 <x-slot:pillsExtra>
                     <div class="ml-1 shrink-0 self-center" data-controller="sheet">
                         <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Реквизиты и документы"><x-ui.icon name="more" class="size-5"/></button>

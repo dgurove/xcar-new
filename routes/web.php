@@ -153,8 +153,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/account/users/{user}/statement', [UserController::class, 'statement']);
     Route::get('/account/users/{user}/export', [UserController::class, 'export']);
 
-    // Менеджеру: деньги в кабинете, сделки и покупатели — раздел таб-бара.
-    Route::middleware('ability:isManager')->group(function () {
+    // Свои сделки и деньги по ним — менеджеру и супер-покупателю (`User::hasDeals`).
+    Route::middleware('ability:hasDeals')->group(function () {
         // Деньги менеджера: счета к оплате, вознаграждение, история, реквизиты, акт сверки, выгрузка.
         Route::get('/account/money', [MoneyController::class, 'index']);
         Route::get('/account/money/details', [MoneyController::class, 'details']);
@@ -168,7 +168,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/account/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);
         Route::get('/account/money/deals/{deal}', [MoneyController::class, 'deal']);
 
-        // Действия по сделке; покупатели — вторая пилюля «Сделок» (интерес, группы, показы внутри).
+        // Действия по сделке.
         Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
         Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
@@ -177,6 +177,10 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
         Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
+    });
+
+    // Покупатели менеджера — вторая пилюля «Сделок» (интерес, группы, показы внутри).
+    Route::middleware('ability:isManager')->group(function () {
         Route::get('/buyers', [BuyerController::class, 'index']);
         Route::get('/buyers/interest', [BuyerInterestController::class, 'index']);
         Route::post('/buyers/interest/{interest}', [BuyerInterestController::class, 'update']);

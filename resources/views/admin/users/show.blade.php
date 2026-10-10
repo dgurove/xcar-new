@@ -49,8 +49,8 @@
         </div>
 
         <div class="min-w-0 lg:col-start-1 lg:row-start-1">
-            @if ($user->isManager())
-                {{-- У менеджера два экрана: обзор и деньги — как у вендора. --}}
+            @if ($user->hasDeals())
+                {{-- У менеджера и супер-покупателя два экрана: обзор и деньги — как у вендора. --}}
                 <div class="mb-5 flex flex-wrap gap-1.5">
                     <x-ui.pill :href="$base.'/'.$user->id" :current="$pill === 'overview'">Обзор</x-ui.pill>
                     <x-ui.pill :href="$base.'/'.$user->id.'?pill=money'" :current="$pill === 'money'">Деньги</x-ui.pill>

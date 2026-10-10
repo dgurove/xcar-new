@@ -16,9 +16,10 @@
         <div data-controller="sheet" class="contents">
             <button type="button" class="row w-full text-left" data-action="sheet#open">
                 @if ($group)
+                    @php $names = [...($group->with_super ? [\App\Offers\AudienceRules::SUPER_NAME] : []), ...$group->members->map->shortName()]; @endphp
                     <span class="min-w-0 flex-1"><span class="block font-medium">{{ $group->name }}</span>
-                        @if ($group->members->isNotEmpty())<span class="row-sub">{{ $group->members->map->shortName()->implode(', ') }}</span>@endif</span>
-                    <span class="nums text-ink-dim">{{ $group->members->count() }}</span>
+                        @if ($names)<span class="row-sub">{{ implode(', ', $names) }}</span>@endif</span>
+                    <span class="nums text-ink-dim">{{ count($names) }}</span>
                 @else
                     <x-ui.row-icon name="plus" tone="accent"/>
                     <span class="min-w-0 flex-1 font-medium">Новая группа</span>
@@ -33,6 +34,10 @@
                     <div class="field">
                         <span class="field-label">{{ $who }}</span>
                         <div class="flex flex-wrap gap-1.5">
+                            {{-- Супер-покупатели — один участник на всех (AudienceRules::SUPER). --}}
+                            @if ($kind === UserGroup::MANAGERS)
+                                <label class="choice"><input type="checkbox" name="members[]" value="{{ \App\Offers\AudienceRules::SUPER }}" @checked($group?->with_super)><span class="gap-1.5"><x-ui.icon name="users" class="size-4"/>{{ \App\Offers\AudienceRules::SUPER_NAME }}</span></label>
+                            @endif
                             @foreach ($people as $p)
                                 <label class="choice"><input type="checkbox" name="members[]" value="{{ $p->id }}" @checked($group?->members->contains($p))><span class="gap-1.5"><x-ui.avatar :user="$p" :size="20"/>{{ $p->shortName() }}</span></label>
                             @endforeach

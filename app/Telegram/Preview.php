@@ -24,7 +24,7 @@ final class Preview
             return ['title' => 'Новое из писем: Kia Rio, 2021', 'lines' => [new HtmlString('VIN <code>XW8ZZZ61ZNG012345</code>'), 'АльфаСтрахование, 0291/26/0123456'], 'button' => 'Открыть в CRM'];
         }
 
-        return $user->isManager()
+        return $user->hasDeals()
             ? ['title' => 'Подтверждение Kia Rio, 2021 принято', 'lines' => [new HtmlString('VIN <code>XW8ZZZ61ZNG012345</code>'), Money::rub(1250000), new HtmlString('<span class="tg-tag">#2609291066</span>')], 'button' => 'Открыть сделку']
             : ['title' => 'Андрей С. сообщил об оплате: Kia Rio, 2021', 'lines' => [new HtmlString('VIN <code>XW8ZZZ61ZNG012345</code>'), Money::rub(1180000).' от 30 сен, платёжка приложена', new HtmlString('<span class="tg-tag">#2609291066</span>')], 'button' => 'Поступило'];
     }

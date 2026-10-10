@@ -116,6 +116,11 @@ final class Nav
             ];
         }
 
+        // Супер-покупатель: предложения, галерея и свои сделки — покупателей и гаража у него нет.
+        if ($user?->isSuperBuyer()) {
+            return [self::item('Предложения', '/offers'), self::item('Галерея', '/gallery'), self::item('Сделки', '/deals')];
+        }
+
         // Проверяющий: только посмотреть предложения.
         if ($user?->hasRole(Role::Reviewer)) {
             return [self::item('Предложения', '/offers'), self::item('Галерея', '/gallery')];
@@ -276,7 +281,7 @@ final class Nav
         }
 
         $links = [self::link('Профиль', '/account', exact: true)];
-        if ($user->hasRole(Role::Manager)) {
+        if ($user->hasDeals()) {
             // Сделки, покупатели и гараж — разделы таб-бара; в кабинете остаются деньги.
             $links[] = self::link('Деньги', '/account/money', also: ['/account/money/details'], icon: 'wallet');
         } elseif ($user->isAdmin()) {
@@ -447,7 +452,7 @@ final class Nav
                 '/purchases' => $user->canSeePurchases() ? Purchase::cardCount($user) : null,
                 // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
                 '/deals' => match (true) {
-                    $user->isManager() => Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(),
+                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(),
                     $user->isAdmin() => Deal::whereNull('garage_payer')->count(),
                     default => null,
                 },
@@ -490,6 +495,11 @@ final class Nav
             // И «забрать» по вывозу: ход ответственного — порученные ему и своя гаражная, которую везёт сам.
             $badges['/garage'] = (int) $asks->garage + Offer::pickupsOf($user)->awaitingPickup()->count()
                 + Offer::where('evacuator_id', $user->id)->whereHas('garageCar', fn ($g) => $g->where('manager_id', $user->id))->awaitingPickup()->count();
+        }
+        if ($user->isSuperBuyer()) {
+            // Что ждут от него по сделкам — на табе «Сделки», как у менеджера.
+            $badges['/deals/asks'] = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->count();
+            $badges['/deals'] = $badges['/deals/asks'];
         }
         if ($user->isAdmin() && ! $user->isManager()) {
             // Админу «Сделки» горят тем же, что «Работа → Сделки» в CRM: просрочено или ход наш.

@@ -44,7 +44,7 @@ class BidController
         }
         $min = $offer->minBid();
         if ($kind === BidKind::Buyer && $min && $amount && $amount < $min) {
-            throw ValidationException::withMessages(['amount' => 'Такую цену не принимаем, предложите выше']);
+            throw ValidationException::withMessages(['amount' => PlaceBid::TOO_LOW]);
         }
         $placeFor($offer, $manager, $me, $amount, $kind, $data['comment'] ?? null);
 

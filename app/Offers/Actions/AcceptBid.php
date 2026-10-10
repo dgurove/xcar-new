@@ -8,6 +8,7 @@ use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
+use App\Offers\DealContract;
 use App\Offers\DealScheme;
 use App\Offers\DealState;
 use App\Offers\Events\BidAccepted;
@@ -70,6 +71,11 @@ final class AcceptBid
             } else {
                 [$payer, $share] = [null, null];
             }
+            // Супер-покупатель покупает сам у нас: вознаграждения нет.
+            $super = (bool) $bid->user?->isSuperBuyer();
+            if ($super) {
+                $commission = null;
+            }
             // Покупатель платит не нам (ДКП, страховой) — вознаграждение остаётся у менеджера, нам он платит подбор.
             if ($scheme->paysSelection()) {
                 $mode = CommissionMode::Withheld;
@@ -80,6 +86,10 @@ final class AcceptBid
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid->id, 'amount' => $bid->amount, 'commission' => $commission, 'mode' => $mode->value, 'garage' => $payer?->value,
                 'scheme' => $scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $share], fn ($v) => $v !== null));
             $deal->setRelation('offer', $offer);
+            // Покупатель по договору у супер-покупателя — он сам, выбирать некого (`DealContract::for`).
+            if ($super) {
+                DealContract::for($deal);
+            }
             if ($deal->isGarage()) {
                 ($this->reserve)($deal, $by);
             }

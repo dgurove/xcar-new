@@ -1,6 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 
-// «Кому показывать» — список «кто → когда»: строки групп и менеджеров, последней «Остальные». Время у строки —
+// «Кому показывать» — список «кто → когда»: строки групп и менеджеров, последней «Остальные»; супер-покупатели — одной
+// строкой `super`, как один менеджер (AudienceRules::SUPER). Время у строки —
 // системный выбор справа (минуты от публикации, «Не показывать» — null, у своих строк ещё «Убрать»). Итог — JSON в
 // скрытом поле и change с него: карточка сохраняет само, форма вендора — кнопкой. Сводка — те же слова, что
 // AudienceRules::summary.
@@ -76,12 +77,13 @@ export default class extends Controller {
         const taken = new Set(this.rows.map((r) => `${r.type}:${r.id}`));
         const select = this.addTarget;
         select.replaceChildren(new Option('', '', true, true));
-        for (const [type, label, items] of [['group', 'Группы', this.optionsValue.groups], ['user', 'Менеджеры', this.optionsValue.managers]]) {
-            const free = (items || []).filter((x) => !taken.has(`${type}:${x.id}`));
+        const people = [...(this.optionsValue.super ? [{ id: 0, name: this.optionsValue.super, type: 'super' }] : []), ...(this.optionsValue.managers || [])];
+        for (const [type, label, items] of [['group', 'Группы', this.optionsValue.groups], ['user', 'Менеджеры', people]]) {
+            const free = (items || []).map((x) => ({ ...x, type: x.type || type })).filter((x) => !taken.has(`${x.type}:${x.id}`));
             if (!free.length) continue;
             const og = document.createElement('optgroup');
             og.label = label;
-            free.forEach((x) => og.append(new Option(x.name, `${type}:${x.id}`)));
+            free.forEach((x) => og.append(new Option(x.name, `${x.type}:${x.id}`)));
             select.append(og);
         }
         select.closest('.add-select').hidden = select.options.length < 2;
@@ -89,6 +91,7 @@ export default class extends Controller {
 
     name(r) {
         if (r.type === 'rest') return this.rows.length > 1 ? 'Остальные' : 'Все менеджеры';
+        if (r.type === 'super') return this.optionsValue.super || 'Супер-покупатели';
         const list = r.type === 'group' ? this.optionsValue.groups : this.optionsValue.managers;
         return (list || []).find((x) => x.id === r.id)?.name ?? (r.type === 'group' ? 'Группа' : 'Менеджер');
     }

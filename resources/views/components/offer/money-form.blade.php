@@ -4,9 +4,10 @@
      С `scheme` — ещё кому платят за ТС (05.10.2026): ПРАЙМ по счёту, страхователю по ДКП или страховой напрямую. У двух
      последних — сколько собственнику или страховой (меньше закупочной — взаимозачёт), нам — подбор (цена минус эта сумма
      минус вознаграждение), режим — удерживает сам.
-     07.10.2026: суммы строками (.fields), кнопка .sheet-foot (форма всегда в шторке). --}}
+     07.10.2026: суммы строками (.fields), кнопка .sheet-foot (форма всегда в шторке). `fee` false — без вознаграждения
+     (супер-покупатель покупает у нас сам, 10.10.2026): поле и режим спрятаны, «Нам остаётся» — вся разница. --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'ownerPrice' => null])
+    'scheme' => null, 'ownerPrice' => null, 'fee' => true])
 @php
     use App\Offers\CommissionMode;
     use App\Offers\DealScheme;
@@ -50,7 +51,7 @@
                 @error('owner_price')<p class="field-error">{{ $message }}</p>@enderror
             </div>
         @endif
-        <div class="field @error('commission') field-invalid @enderror">
+        <div class="field @error('commission') field-invalid @enderror" @unless ($fee) hidden @endunless>
             <label for="{{ $id }}" class="field-label">Вознаграждение, ₽</label>
             <input type="hidden" name="commission" data-commission-target="amount" value="{{ $current }}">
             <input id="{{ $id }}" type="text" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
@@ -63,10 +64,12 @@
             <dd class="nums text-right text-lg font-semibold" data-commission-target="ours">{{ $margin !== null ? Money::rub($margin - (int) $current) : '' }}</dd>
         </dl>
     @endif
-    <div class="flex flex-wrap gap-2" data-commission-target="oursOnly" @if ($dkp) hidden @endif>
-        @foreach (CommissionMode::cases() as $m)
-            <label class="choice"><input type="radio" name="mode" value="{{ $m->value }}" @checked(old('mode', $mode->value) === $m->value)><span>{{ $m->label() }}</span></label>
-        @endforeach
+    <div @unless ($fee) hidden @endunless>
+        <div class="flex flex-wrap gap-2" data-commission-target="oursOnly" @if ($dkp) hidden @endif>
+            @foreach (CommissionMode::cases() as $m)
+                <label class="choice"><input type="radio" name="mode" value="{{ $m->value }}" @checked(old('mode', $mode->value) === $m->value)><span>{{ $m->label() }}</span></label>
+            @endforeach
+        </div>
     </div>
     @error('mode')<p class="field-error">{{ $message }}</p>@enderror
     @if ($note ?? null)<p class="text-sm text-ink-muted">{{ $note }}</p>@endif

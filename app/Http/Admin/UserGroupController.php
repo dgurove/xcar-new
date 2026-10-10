@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Offers\Actions\SyncViewers;
+use App\Offers\AudienceRules;
 use App\Users\UserGroup;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -18,7 +19,7 @@ class UserGroupController
     {
         $kind = $request->validate(['kind' => ['required', Rule::in([UserGroup::MANAGERS, UserGroup::MODERATORS])]])['kind'];
         $data = $this->data($request, $kind);
-        $group = UserGroup::create(['name' => $data['name'], 'kind' => $kind, 'position' => (int) UserGroup::where('kind', $kind)->max('position') + 1]);
+        $group = UserGroup::create(['name' => $data['name'], 'kind' => $kind, 'with_super' => $data['with_super'], 'position' => (int) UserGroup::where('kind', $kind)->max('position') + 1]);
         $group->members()->sync($data['members'] ?? []);
         $this->synced($group, $sync);
 
@@ -28,7 +29,7 @@ class UserGroupController
     public function update(Request $request, UserGroup $group, SyncViewers $sync)
     {
         $data = $this->data($request, $group->kind);
-        $group->update(['name' => $data['name']]);
+        $group->update(['name' => $data['name'], 'with_super' => $data['with_super']]);
         $group->members()->sync($data['members'] ?? []);
         $this->synced($group, $sync);
 
@@ -45,11 +46,16 @@ class UserGroupController
 
     private function data(Request $request, string $kind): array
     {
+        // Супер-покупатели — галкой среди менеджеров (`members[]=super`): в группу они входят все разом.
+        $members = (array) $request->input('members', []);
+        $super = $kind === UserGroup::MANAGERS && in_array(AudienceRules::SUPER, $members, true);
+        $request->merge(['members' => array_values(array_diff($members, [AudienceRules::SUPER]))]);
+
         return $request->validate([
             'name' => ['required', 'string', 'max:60'],
             'members' => ['nullable', 'array'],
             'members.*' => [Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', UserGroup::roleOf($kind)->value))],
-        ]);
+        ]) + ['with_super' => $super];
     }
 
     /** Состав групп менеджеров меняет, кто когда видит предложения; группы модераторов волн не касаются. */

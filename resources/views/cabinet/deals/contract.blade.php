@@ -74,7 +74,7 @@
                 </form>
             @endif
         @endif
-        @if ($editable && ! ($garage && $buyer))
+        @if ($editable && ! ($garage && $buyer) && ! $me->isSuperBuyer())
             <div data-controller="sheet" data-action="buyer:open@window->sheet#open" class="contents">
                 <button type="button" class="row w-full text-left" data-action="sheet#open">
                     <span @class(['min-w-0 flex-1', 'font-medium text-accent-text' => ! $buyer])>{{ $buyer ? 'Другой покупатель' : 'Выбрать покупателя' }}</span>

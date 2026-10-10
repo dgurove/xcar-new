@@ -302,7 +302,7 @@ final class UpdateHandler
         if (! $user->usesSite()) {
             return ['Сюда придут заявки и письма, продажи, сроки и оплаты парковки', ['text' => 'Открыть парковку', 'url' => Surface::Park->url('/requests')]];
         }
-        if (! $user->isManager()) {
+        if (! $user->hasDeals()) {
             return ['Сюда придут оплаты, выплаты и просроченные счета с кнопкой решения', $this->open()];
         }
         $deals = Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->with('openRequirement')->get();

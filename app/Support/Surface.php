@@ -60,7 +60,7 @@ enum Surface: string
      */
     public static function onlyFor(?User $user): ?self
     {
-        if (! $user || $user->hasRole(Role::Manager, Role::Admin, Role::Buyer, Role::Reviewer, Role::Visitor)) {
+        if (! $user || $user->hasRole(Role::Manager, Role::Admin, Role::Buyer, Role::SuperBuyer, Role::Reviewer, Role::Visitor)) {
             return null;
         }
 

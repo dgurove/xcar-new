@@ -1,6 +1,7 @@
 {{-- Кто платит по ссылке — строками с аватарами: я, мои покупатели, новый покупатель по ФИО (заводится в его
      «Покупателях», `PayChoice`). Почта для чека — только у того, у кого её нет: чек ЮKassa приходит на почту. Одно на
-     шторку «Оплатить» и смену плательщика в расчёте сделки. 07.10.2026: поля строками (.fields). --}}
+     шторку «Оплатить» и смену плательщика в расчёте сделки. 07.10.2026: поля строками (.fields). Супер-покупатель
+     платит сам — выбора нет, только почта для чека, если её нет. --}}
 @props(['id' => 'pay', 'buyers' => collect(), 'payer' => 'self', 'otherName' => null, 'cap' => true, 'autosubmit' => false])
 @php
     $me = auth()->user();
@@ -8,6 +9,15 @@
     // autosubmit — выбор сразу отправляет форму (новая ссылка на этого плательщика); новому покупателю — кнопкой после ФИО.
     $go = $autosubmit ? 'reveal#pick change->autosubmit#submit' : 'reveal#pick';
 @endphp
+@if ($me->isSuperBuyer())
+    <input type="hidden" name="payer" value="self">
+    @unless ($me->email)
+        <div class="flex flex-col gap-3">
+            <div class="fields"><x-ui.field name="email" id="{{ $id }}-email-self" label="Почта для чека" type="email"/></div>
+            @if ($autosubmit)<x-ui.button block>Получить ссылку</x-ui.button>@endif
+        </div>
+    @endunless
+@else
 <div data-controller="reveal">
     @if ($cap)<div class="list-cap">Кто платит</div>@endif
     <div class="list max-h-72 overflow-y-auto">
@@ -44,3 +54,4 @@
         @if ($autosubmit)<x-ui.button block>Получить ссылку</x-ui.button>@endif
     </div>
 </div>
+@endif

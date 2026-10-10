@@ -25,7 +25,8 @@ final class AssignPickup
 
     public function __invoke(Offer $offer, ?User $evacuator, Destination $to, User $by): Offer
     {
-        if ($evacuator && ! ($evacuator->isManager() && $evacuator->canGarage())) {
+        // Супер-покупатель забирает только машину своей сделки — так его и назначает «Принять».
+        if ($evacuator && ! ($evacuator->isManager() && $evacuator->canGarage()) && ! $evacuator->isSuperBuyer()) {
             throw ValidationException::withMessages(['evacuator_id' => 'Вывозить может только менеджер']);
         }
         // К менеджеру без вывозчика-менеджера — только к держателю гаража: везём мы, стоять у него.

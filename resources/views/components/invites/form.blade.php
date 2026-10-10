@@ -1,13 +1,13 @@
-{{-- Форма новой ссылки. Админ: менеджеру или сотруднику (одноразовая, со сроком; модератору — почта сверх
-     черновиков) или покупателю от имени
+{{-- Форма новой ссылки. Админ: менеджеру, сотруднику или супер-покупателю (одноразовая, со сроком; модератору — почта
+     сверх черновиков) или покупателю от имени
      менеджера; менеджер: покупателю, сразу в группу. Что покупатель укажет о себе — по умолчанию ничего.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @props(['action', 'admin' => false, 'managers' => collect(), 'groups' => collect()])
 <form method="post" action="{{ $action }}" class="invite-form flex flex-col gap-3">
     @csrf
     @if ($admin)
-        {{-- Четыре роли в сегменты не помещаются на телефоне — селект. --}}
-        <div class="fields"><x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'buyer' => 'Покупателю']" :value="old('role', 'manager')"/></div>
+        {{-- Пять ролей в сегменты не помещаются на телефоне — селект. Супер-покупателю — одноразовая, как сотруднику. --}}
+        <div class="fields"><x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'buyer' => 'Покупателю', 'super_buyer' => 'Супер-покупателю']" :value="old('role', 'manager')"/></div>
         <div data-managers class="fields">
             <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" name="manager"/>
         </div>

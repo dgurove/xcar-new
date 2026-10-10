@@ -27,6 +27,12 @@ final class SaveDealContract
     public function __invoke(DealContract $contract, array $data, User $by): DealContract
     {
         $deal = $contract->deal;
+        // У супер-покупателя покупатель по договору — он сам: другого он не выбирает и не заводит.
+        if ($deal->buyer?->isSuperBuyer()) {
+            unset($data['new_buyer'], $data['buyer_id'], $data['payer']);
+            $contract->buyer_user_id ??= $deal->buyer_id;
+            $contract->payer = 'manager';
+        }
         DB::transaction(function () use ($contract, $data, $by, $deal) {
             if (isset($data['seller'])) {
                 $seller = $contract->seller ?? new Party(['kind' => PartyKind::Person]);

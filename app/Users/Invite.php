@@ -88,6 +88,7 @@ class Invite extends Model
     {
         return match ($this->role) {
             Role::Buyer => 'покупателю',
+            Role::SuperBuyer => 'супер-покупателю',
             Role::Manager => 'менеджеру',
             Role::Moderator => 'модератору',
             Role::Admin => 'администратору',
@@ -104,6 +105,8 @@ class Invite extends Model
         return match ($this->role) {
             Role::Moderator => 'Вы будете заводить предложения в CRM xcar',
             Role::Admin => 'Вы будете администратором xcar',
+            // «Супер» — имя для админов: человеку он просто покупатель (владелец 10.10.2026).
+            Role::SuperBuyer => 'Вы будете покупать автомобили в xcar',
             Role::Parking => $this->park_readonly
                 ? 'Вы будете принимать и выдавать ТС на парковке xcar'.$city
                 : 'Вы будете управляющим парковкой xcar'.$city.': заявки, приём, выдача и оплаты',
@@ -120,6 +123,9 @@ class Invite extends Model
     {
         if ($this->forBuyer()) {
             return ($this->manager ? $this->manager->name.' приглашает вас' : 'Вас приглашают').' в xcar';
+        }
+        if ($this->role === Role::SuperBuyer) {
+            return 'Вас приглашают в xcar. Ссылка одноразовая'.($this->expires_at ? ', действует до '.$this->expires_at->translatedFormat('j F H:i') : '');
         }
         $text = 'Вас приглашают в xcar '.match ($this->role) {
             Role::Manager => 'менеджером',

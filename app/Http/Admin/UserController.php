@@ -57,7 +57,7 @@ class UserController
      * Роли парковки (управляющий, администратор парковки) тут не правятся — их ведёт парковка (`Park\UserController`),
      * CRM их сохраняет как есть (владелец 08.10.2026: админ CRM не админ парковки).
      */
-    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer];
+    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer, Role::SuperBuyer];
 
     /** Роли, которые ведёт парковка. */
     public const PARK_ROLES = [Role::ParkAdmin, Role::Parking];
@@ -92,7 +92,8 @@ class UserController
                 'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
                 'managers' => $q->withRole(Role::Manager)->withCount('buyers'),
                 'park' => $q->withRole(Role::Parking),
-                'buyers' => $q->withRole(Role::Buyer)->reorder('created_at', 'desc'),
+                // Супер-покупатели — здесь же, у них вместо менеджера «супер-покупатель» в строке.
+                'buyers' => $q->withRole(Role::Buyer, Role::SuperBuyer)->reorder('created_at', 'desc'),
                 'visitors' => $q->withRole(Role::Visitor)->whereNotNull('approved_at'),
                 'invites' => $q->whereRaw('false'),
                 default => $q->withRole(Role::Admin, Role::Moderator),
@@ -120,7 +121,7 @@ class UserController
             'staff' => User::withRole(Role::Admin, Role::Moderator)->count(),
             'managers' => User::withRole(Role::Manager)->count(),
             'park' => User::withRole(Role::Parking)->count(),
-            'buyers' => User::withRole(Role::Buyer)->count(),
+            'buyers' => User::withRole(Role::Buyer, Role::SuperBuyer)->count(),
             'invites' => Invite::whereNull('disabled_at')->where(fn ($w) => $w->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
             'waiting' => User::whereNull('approved_at')->whereNull('rejected_at')->withRole(Role::Visitor)->count(),
             'visitors' => User::withRole(Role::Visitor)->whereNotNull('approved_at')->count(),
@@ -185,7 +186,7 @@ class UserController
         // Пришли из шапки чата — «‹ Чат» вместо «‹ Пользователи».
         $chat = $request->integer('chat') ? Chat::find($request->integer('chat')) : null;
 
-        $pill = $user->isManager() && $request->query('pill') === 'money' ? 'money' : 'overview';
+        $pill = $user->hasDeals() && $request->query('pill') === 'money' ? 'money' : 'overview';
         $ledger = $pill === 'money' ? new ManagerLedger($user, staff: true) : null;
 
         return view('admin.users.show', [
@@ -197,7 +198,7 @@ class UserController
             'moneyDeals' => $ledger?->rows() ?? collect(),
             'back' => $chat ? ['Чат', (Surface::current() === Surface::Crm ? '/work/chats/' : '/account/chats/').$chat->id] : null,
             'chats' => $chats,
-            'deals' => $user->isManager() ? Deal::where('buyer_id', $user->id)->with(['offer.brand', 'offer.model', 'offer.media', 'buyer'])->latest()->get() : collect(),
+            'deals' => $user->hasDeals() ? Deal::where('buyer_id', $user->id)->with(['offer.brand', 'offer.model', 'offer.media', 'buyer'])->latest()->get() : collect(),
             'buyersCount' => $user->isManager() ? $user->buyers()->count() : 0,
             'interests' => $user->isBuyer() ? $user->interests()->with(['offer.brand', 'offer.model', 'offer.media'])->latest()->get() : collect(),
             'seen' => $user->isBuyer() ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : null,
@@ -209,7 +210,7 @@ class UserController
     /** Реквизиты менеджера — сотрудник правит те же, что менеджер в кабинете. */
     public function party(Request $request, User $user)
     {
-        abort_unless($request->user()->isAdmin() && $user->isManager(), 404);
+        abort_unless($request->user()->isAdmin() && $user->hasDeals(), 404);
         $data = $request->validate(PartyRules::rules());
         // НДС ПРАЙМ в его счетах — в сумме (разница цен), «НДС сверху» — если так договорились.
         Party::forUser($user)->update($data + ['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null, 'vat_on_top' => $request->boolean('vat_on_top')]);
@@ -219,7 +220,7 @@ class UserController
 
     public function statement(Request $request, User $user, StatementPdf $pdf)
     {
-        abort_unless($request->user()->isAdmin() && $user->isManager(), 404);
+        abort_unless($request->user()->isAdmin() && $user->hasDeals(), 404);
         [$from, $to] = $this->period($request);
         $name = 'akt-sverki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.pdf';
 
@@ -228,7 +229,7 @@ class UserController
 
     public function export(Request $request, User $user, ManagerStatement $xlsx)
     {
-        abort_unless($request->user()->isAdmin() && $user->isManager(), 404);
+        abort_unless($request->user()->isAdmin() && $user->hasDeals(), 404);
         [$from, $to] = $this->period($request);
         $path = $xlsx->write($user, $from, $to, tempnam(sys_get_temp_dir(), 'sdelki-').'.xlsx');
         $name = 'sdelki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.xlsx';
@@ -416,6 +417,10 @@ class UserController
         $data['login'] = $data['login'] ?? null;
         // Ролей бывает несколько; себе админ «Админ» не снимет — остаётся при любых галках.
         $roles = array_map(fn ($r) => Role::from($r), (array) ($data['roles'] ?? []));
+        // Супер-покупатель — покупатель, а не сотрудник: с другими ролями не совмещается.
+        if (in_array(Role::SuperBuyer, $roles, true) && (count($roles) > 1 || $parkRoles || $self)) {
+            throw ValidationException::withMessages(['roles' => 'Супер-покупатель не совмещается с другими ролями']);
+        }
         if ($self && ! in_array(Role::Admin, $roles, true)) {
             $roles[] = Role::Admin;
         }
@@ -432,7 +437,7 @@ class UserController
     private function presetOf(User $user): string
     {
         return match (true) {
-            $user->isStaff() => 'staff', $user->isManager() => 'managers', $user->isParking() => 'park', $user->hasRole(Role::Visitor) => 'visitors', default => 'staff'
+            $user->isStaff() => 'staff', $user->isManager() => 'managers', $user->isSuperBuyer() => 'buyers', $user->isParking() => 'park', $user->hasRole(Role::Visitor) => 'visitors', default => 'staff'
         };
     }
 }

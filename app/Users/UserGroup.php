@@ -11,14 +11,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * Группа людей (02.10.2026, ведётся в «Пользователях»), раздельная по виду:
  * - `managers` — для волн показа предложений: «Свои», «Москва», «Новые» (AudienceRules);
  * - `moderators` — видят и правят предложения друг друга: «XCar Москва» (User::teamIds).
- * Человек может быть в нескольких группах своего вида.
+ * Человек может быть в нескольких группах своего вида. Супер-покупатели в группу менеджеров входят все разом —
+ * галкой `with_super` (в волнах они один менеджер, `AudienceRules`).
  */
-#[Fillable(['name', 'position', 'kind'])]
+#[Fillable(['name', 'position', 'kind', 'with_super'])]
 class UserGroup extends Model
 {
     public const MANAGERS = 'managers';
 
     public const MODERATORS = 'moderators';
+
+    protected function casts(): array
+    {
+        return ['with_super' => 'bool'];
+    }
 
     public function members(): BelongsToMany
     {

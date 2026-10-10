@@ -12,6 +12,7 @@ enum Role: string
     case Parking = 'parking';     // управляющий парковкой: только park.xcar, вся парковка; «только приёмка» — помощник; без настроек и продаж
     case ParkAdmin = 'park_admin'; // администратор парковки: вся парковка с настройками и людьми; отдельно от админа CRM (08.10.2026)
     case Reviewer = 'reviewer';   // проверяющий (модерация ЮKassa): открытые предложения с ценой продажи, действий нет
+    case SuperBuyer = 'super_buyer'; // супер-покупатель (10.10.2026): без менеджера, все предложения своей волны, только цена продажи, подтверждает как менеджер
 
     public function label(): string
     {
@@ -24,7 +25,17 @@ enum Role: string
             self::Parking => 'Парковка',
             self::ParkAdmin => 'Администратор парковки',
             self::Reviewer => 'Проверяющий',
+            self::SuperBuyer => 'Супер-покупатель',
         };
+    }
+
+    /**
+     * Как роль зовут самому человеку. «Супер-покупатель» — имя для админов (владелец 10.10.2026: «пусть он думает,
+     * что он просто покупатель»), ему самому он — «Покупатель».
+     */
+    public function selfLabel(): string
+    {
+        return $this === self::SuperBuyer ? self::Buyer->label() : $this->label();
     }
 
     /** Пускать ли в панель. Перечислено явно: новая роль не получит панель по умолчанию. */
@@ -45,13 +56,16 @@ enum Role: string
     /** Цену продажи видят все, кроме посетителя; что стоит перед стрелкой — решает PriceView. */
     public function canSeePrices(): bool
     {
-        return in_array($this, [self::Buyer, self::Manager, self::Moderator, self::Admin, self::Reviewer], true);
+        return in_array($this, [self::Buyer, self::Manager, self::Moderator, self::Admin, self::Reviewer, self::SuperBuyer], true);
     }
 
-    /** Подтверждает предложение своей ценой только менеджер (08.10.2026: админ — «+ За менеджера» в CRM). Покупатель — интерес. */
+    /**
+     * Подтверждает предложение своей ценой менеджер и супер-покупатель (08.10.2026: админ — «+ За менеджера» в CRM).
+     * Покупатель — интерес.
+     */
     public function canBid(): bool
     {
-        return $this === self::Manager;
+        return in_array($this, [self::Manager, self::SuperBuyer], true);
     }
 
     public function canSeePurchases(): bool
@@ -59,16 +73,16 @@ enum Role: string
         return in_array($this, [self::Manager, self::Admin], true);
     }
 
-    /** Чат по предложению: менеджер и посетитель — с площадкой, покупатель — со своим менеджером (нужен manager_id, см. User::canChat). */
+    /** Чат по предложению: менеджер, супер-покупатель и посетитель — с площадкой, покупатель — со своим менеджером (нужен manager_id, см. User::canChat). */
     public function canChat(): bool
     {
-        return in_array($this, [self::Visitor, self::Manager, self::Buyer], true);
+        return in_array($this, [self::Visitor, self::Manager, self::Buyer, self::SuperBuyer], true);
     }
 
-    /** Поделиться PDF — всем, кроме покупателя (его цена — не для пересылки дальше) и модератора (у него черновики). */
+    /** Поделиться PDF — всем, кроме покупателей (их цена — не для пересылки дальше) и модератора (у него черновики). */
     public function canShare(): bool
     {
-        return ! in_array($this, [self::Buyer, self::Parking, self::ParkAdmin, self::Reviewer, self::Moderator], true);
+        return ! in_array($this, [self::Buyer, self::SuperBuyer, self::Parking, self::ParkAdmin, self::Reviewer, self::Moderator], true);
     }
 
     /** Гараж — машины на ремонте у менеджеров: сами менеджеры и админ, что вносит итог и счёт. */
