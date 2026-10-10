@@ -10,7 +10,7 @@
                 <h1 class="text-2xl leading-tight"><x-vendor.name :vendor="$vendor"/></h1>
                 <div class="mt-2 flex flex-wrap gap-1.5">
                     <x-ui.state :tone="$vendor->is_active ? 'plain' : 'closed'">{{ $vendor->is_active ? $vendor->kind->label() : 'выключен' }}</x-ui.state>
-                    <span class="chip text-xs">{{ $vendor->deal_format->label() }}</span>
+                    <span class="text-sm text-ink-muted">{{ mb_strtolower($vendor->deal_format->label()) }}</span>
                     @if ($vendor->silence_means_buy)<x-ui.state tone="urgent">молчание = покупка</x-ui.state>@endif
                 </div>
             </div>

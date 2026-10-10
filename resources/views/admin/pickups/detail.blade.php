@@ -6,10 +6,11 @@
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="'/offers/'.$offer->number" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :action="false">
-        <x-slot:marks>
-            @if ($offer->evacuator)<x-ui.person :user="$offer->evacuator"/>@else<span class="tag">вывозим мы</span>@endif
-            <span class="tag">{{ $offer->pickupDestination() === \App\Offers\Destination::Keeper && $offer->garageCar ? 'в гараж, '.$offer->keeper()?->shortName() : mb_strtolower($offer->pickupDestination()->label()) }}</span>
-        </x-slot:marks>
+        {{-- Кто и куда — фразой («Иван М., к менеджеру»), не двумя капсулами (10.10.2026). --}}
+        <x-slot:line>
+            <span>{{ $offer->evacuator ? 'вывозит '.$offer->evacuator->shortName() : 'вывозим мы' }}</span>
+            <span>{{ $offer->pickupDestination() === \App\Offers\Destination::Keeper && $offer->garageCar ? 'в гараж, '.$offer->keeper()?->shortName() : mb_strtolower($offer->pickupDestination()->label()) }}</span>
+        </x-slot:line>
         <x-slot:actions>
             @if ($editable)<button type="button" class="pill" data-controller="emit" data-action="emit#send" data-emit-event-param="pickup-{{ $offer->number }}:open">Кто и куда вывозит</button>@endif
         </x-slot:actions>

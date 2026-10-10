@@ -41,9 +41,10 @@
         @endif
     </div>
     <div class="card-extra">
-        @if (!$staff && !$mine)<span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">Без цены</span>@endif
-        @if ($showKind)<span class="tag">{{ $car->kind->label() }}</span>@endif
-        @foreach ($facts as $fact)<span class="tag">{{ $fact }}</span>@endforeach
+        {{-- Состояние словом, тип и характеристики — строкой текста (10.10.2026: «что-то чипами, что-то текстом»). --}}
+        @if (!$staff && !$mine)<x-ui.state tone="urgent">Без цены</x-ui.state>@endif
+        @php $line = array_values(array_filter([$showKind ? $car->kind->label() : null, ...$facts])); @endphp
+        @if ($line)<span class="nums text-sm text-ink-muted">{{ implode(', ', $line) }}</span>@endif
     </div>
     <span class="card-aside"><span class="nums text-sm font-normal text-ink-dim">{{ $car->dl }}</span></span>
     <div class="card-place">@if ($car->settlement?->title() ?? $car->city)<x-ui.place class="truncate text-sm text-ink-dim">{{ $car->settlement?->title() ?? $car->city }}</x-ui.place>@endif</div>

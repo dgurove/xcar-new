@@ -64,13 +64,12 @@
     </div>
 
     <div class="card-extra">
-        <x-offer.tags :offer="$offer"/>
-        @if ($seen && !$canShow)<span class="tag nums">видят {{ $seen }}</span>@endif
+        <x-offer.tags :offer="$offer" :extra="$seen && !$canShow ? ['видят '.$seen] : []"/>
     </div>
     <span class="card-aside">
         @if ($prices)
             @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
-            @if ($price->declared)<span class="tag nums">заявленная {{ $price::money($price->declared) }}</span>@endif
+            @if ($price->declared)<span class="nums text-xs text-ink-dim">заявленная {{ $price::money($price->declared) }}</span>@endif
         @elseif ($gallery)
             <x-offer.gallery-left :offer="$offer" class="text-sm"/>
         @else

@@ -2124,6 +2124,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .detail-line { grid-column: 1 / -1; margin-top: .5rem; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .3em; }
   /* Запятая — хвостом куска, а не началом следующего: при переносе строка не начинается с «, ». */
   .detail-line > :not(:last-child)::after { content: ','; color: var(--color-ink-muted); }
+  /* У места метка отступом, а не gap: иначе запятая (::after — тоже flex-элемент) отходила от слова. */
+  .detail-line > .place { gap: 0; }
+  .detail-line > .place > svg { margin-inline-end: .25em; }
   @media (max-width: 639.98px) {
     .detail-aside { grid-column: 1 / -1; grid-row: auto; text-align: left; margin-top: .125rem; }
     .detail-marks { grid-column: 1 / -1; }

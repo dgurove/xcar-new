@@ -21,7 +21,7 @@
         <div class="flex items-start gap-3">
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
             @unless ($lane)<h2 class="{{ $compact ? 'detail-section !mb-0' : 'box-title' }}">Получение автомобиля</h2>@endunless
-            @if ($handover->where)<span class="tag">{{ $handover->where === 'У вас' ? 'У менеджера' : $handover->where }}</span>@endif
+            @if ($handover->where)<x-ui.place class="text-sm">{{ $handover->where === 'У вас' ? 'У менеджера' : $handover->where }}</x-ui.place>@endif
             @if ($handover->buyerPicks)
                 <x-ui.state :tone="$handover->open ? 'open' : 'muted'">{{ $handover->open ? 'забирает менеджер, ему видно' : 'забирает менеджер' }}</x-ui.state>
             @elseif ($offer->position(\App\Workflow\Track::Service))

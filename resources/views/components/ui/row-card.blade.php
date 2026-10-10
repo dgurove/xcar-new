@@ -40,7 +40,7 @@
     @if ($photo !== false)<a href="{{ $href }}" class="detail-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
     <div class="min-w-0 flex-1">
         <a @if ($href) href="{{ $href }}" @endif class="block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}{{ $badge ?? '' }}</span></a>
-        @if ($marks)<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
+        @if ($marks && trim($marks) !== '')<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
         @if ($line && trim($line) !== '')<div class="detail-line">{{ $line }}</div>@endif
     </div>
 </div>
