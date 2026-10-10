@@ -70,12 +70,12 @@ class AlfaPrepayTest extends TestCase
             scheme: DealScheme::forOffer($offer), ownerPrice: 900000);
     }
 
-    /** До этапа оплаты: согласие поставщика, «Покупаю», подтверждение. */
+    /** До этапа оплаты: согласие поставщика, «Беру в работу», подтверждение. */
     private function toPayStep(Offer $offer, Deal $deal): void
     {
         for ($i = 0; $i < 10 && ! ($o = $offer->fresh())->stage()->isPayStep(); $i++) {
             $stage = $o->stage();
-            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label === 'Покупаю');
+            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label === 'Беру в работу');
             $exit
                 ? app(TakeExit::class)($o, $exit, Actor::Manager, $this->manager)
                 : app(TakeExit::class)($o, $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! str_contains(mb_strtolower($e->label), 'отказ')), Actor::Staff, $this->admin);

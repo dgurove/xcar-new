@@ -4,6 +4,8 @@
 @php
     use App\Workflow\Asks;
     $waiting = $requirement->asks === Asks::Document && $requirement->getMedia('files')->isEmpty();
+    // «Я передумал» — не второй кнопкой рядом, а тихой строкой под главной (10.10.2026, владелец).
+    [$retreats, $moves] = $exits->partition(fn ($e) => $e->isRetreat());
 @endphp
 <div id="requirement-exits">
     @unless ($waiting)
@@ -16,11 +18,14 @@
             @endif
             @if ($errors->has('exit'))<p class="field-error">{{ $errors->first('exit') }}</p>@endif
             {{-- Один исход — во всю ширину, два — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
-            <div @class(['gap-3', 'grid' => $exits->count() <= 2, 'grid-cols-2' => $exits->count() === 2, 'flex flex-wrap' => $exits->count() > 2])>
-                @foreach ($exits as $exit)
+            <div @class(['gap-3', 'grid' => $moves->count() <= 2, 'grid-cols-2' => $moves->count() === 2, 'flex flex-wrap' => $moves->count() > 2])>
+                @foreach ($moves as $exit)
                     <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="\App\Users\Wording::mine($exit->confirm)" class="min-w-0 px-4">{{ \App\Users\Wording::mine($exit->label) }}</x-ui.button>
                 @endforeach
             </div>
+            @foreach ($retreats as $exit)
+                <button name="exit" value="{{ $exit->id }}" class="retreat-link" data-turbo-confirm="{{ \App\Users\Wording::mine($exit->confirm) ?: 'Отказаться от сделки?' }}">{{ \App\Users\Wording::mine($exit->label) }}</button>
+            @endforeach
         </form>
     @endunless
 </div>

@@ -36,6 +36,9 @@
     $replies = ($replies ?? collect())->reverse()->values();
     $early = $replies->count() > 3 ? $replies->slice(0, $replies->count() - 2) : collect();
     $late = $replies->slice($early->count());
+    // Страховая ответила, а менеджер ещё не взял сделку в работу — ответы тизером (`cabinet.deals.teaser`).
+    $teaser = $replies->isNotEmpty() && $deal->awaitsConsent();
+    $contactCame = $teaser && $replies->contains(fn ($r) => \App\Offers\InsurerReplies::hasContact($r));
 @endphp
 <div class="flex flex-col gap-6">
     @if ($deal->state !== DealState::Active)
@@ -54,6 +57,8 @@
                 <h3 class="mt-5 text-lg">Укажите покупателя</h3>
             @elseif ($needsPrice)
                 <h3 class="mt-5 text-lg">Укажите цену продажи</h3>
+            @elseif ($contactCame)
+                <h3 class="mt-5 text-lg">Пришли контакты владельца</h3>
             @elseif ($requirement && ! ($pickupSteps ?? null))
                 {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
                 <h3 class="mt-5 text-lg">{{ \App\Users\Wording::mine($requirement->title) }}</h3>
@@ -121,7 +126,8 @@
             @else
             @if ($showHandover)@include('cabinet.deals.handover')@endif
             @include('cabinet.deals.payload')
-            @if ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
+            @if ($teaser)@include('cabinet.deals.teaser')
+            @elseif ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
 
             @if ($stepInvoices->isNotEmpty())
                 <div class="list mt-5">

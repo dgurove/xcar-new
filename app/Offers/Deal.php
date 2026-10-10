@@ -96,6 +96,15 @@ class Deal extends Model
     }
 
     /**
+     * Ждём, что менеджер возьмёт сделку в работу («Беру в работу», 10.10.2026): до этого контакт владельца, ответы
+     * страховой и их файлы — только тизером (`cabinet/deals/teaser`), чтобы был соблазн подтвердить, а не позвонить мимо.
+     */
+    public function awaitsConsent(): bool
+    {
+        return $this->isActive() && (bool) $this->offer?->position(\App\Workflow\Track::Sale)?->stage->asksConsent();
+    }
+
+    /**
      * Забирать можно (10.10.2026, владелец: «альфастрахование — только с предварительной оплатой»): у вендора с
      * `pay_before_pickup` — когда маршрут прошёл проверку оплаты (`prepaid_at`, ставит `EnterStage`), у остальных — всегда.
      */

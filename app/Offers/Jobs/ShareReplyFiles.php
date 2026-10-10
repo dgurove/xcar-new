@@ -47,7 +47,18 @@ final class ShareReplyFiles implements ShouldQueue
         $photos = $offer->state !== OfferState::Draft ? ['hidden' => true] : [];
         if ($message->files()->isNotEmpty()) {
             $pin($message->thread);
-            $importer->import($model, $importer->attachmentsOf($message->id, null), 'photos', 'papers', $photos, null, $documents);
+            $attachments = $importer->attachmentsOf($message->id, null);
+            // Идёт сделка — картинки ответа это документы, а не кадры машины: фото паспорта, СТС (10.10.2026, Т-Страхование
+            // прислало паспорт картинкой, и он лёг скрытым кадром — менеджер его не видел).
+            if ($offer->deal()->exists()) {
+                [$images, $attachments] = $attachments->partition(fn ($a) => ! $a->is_inline && str_starts_with(mb_strtolower((string) $a->mime), 'image/'));
+                foreach ($images as $image) {
+                    if (($contents = $image->contents()) !== null) {
+                        $importer->importDocument($model, 'papers', (string) $image->filename, $contents, 'mail', $documents);
+                    }
+                }
+            }
+            $importer->import($model, $attachments, 'photos', 'papers', $photos, null, $documents);
         }
         foreach (CloudShare::links($message->replyText(marks: true)) as $link) {
             $path = sys_get_temp_dir().'/cloud-'.Str::uuid();

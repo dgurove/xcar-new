@@ -67,6 +67,12 @@ final class OfferFiles
     {
         $papers = $offer->papers();
 
-        return $user->isAdmin() ? $papers : $papers->filter(fn ($m) => ForManagers::is($m))->values();
+        if ($user->isAdmin()) {
+            return $papers;
+        }
+        // Файлы ответа страховой — после «Беру в работу» (тизер, 10.10.2026).
+        $consent = (bool) $offer->deal?->awaitsConsent();
+
+        return $papers->filter(fn ($m) => ForManagers::is($m) && ! ($consent && $m->getCustomProperty('letter')))->values();
     }
 }

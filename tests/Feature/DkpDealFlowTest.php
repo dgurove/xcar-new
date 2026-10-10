@@ -32,7 +32,7 @@ use Tests\TestCase;
 /**
  * Сделка «страхователю по ДКП» (05.10.2026, Т-Страхование, Ford Kuga): закупочная 779 000, собственнику 750 000
  * (взаимозачёт), цена 850 000, вознаграждение 20 000 — менеджер платит нам 80 000, счёт без срока — как только
- * поставщик согласовал и менеджер сказал «Покупаю» (09.10.2026: до того ни счёта, ни ссылки);
+ * поставщик согласовал и менеджер сказал «Беру в работу» (09.10.2026: до того ни счёта, ни ссылки);
  * после ДКП сделка ждёт оплату (срок — с этого шага) и закрывается ею, оплатил раньше — закрывается сразу; отменили — неоплаченный счёт гаснет. Ошибка
  * здесь — деньги: менеджер платит не ту сумму или сделка закрывается неоплаченной.
  */
@@ -57,7 +57,7 @@ class DkpDealFlowTest extends TestCase
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 850000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::OwnerDkp);
-        // Пока поставщик не согласовал и менеджер не сказал «Покупаю» — ни счёта, ни ссылки.
+        // Пока поставщик не согласовал и менеджер не сказал «Беру в работу» — ни счёта, ни ссылки.
         $this->assertFalse($deal->fresh()->issuedInvoices()->exists());
         $this->walkTo($offer, $deal->fresh(), 'Согласие менеджера');
         $this->assertFalse($deal->fresh()->issuedInvoices()->exists());
@@ -71,7 +71,7 @@ class DkpDealFlowTest extends TestCase
     {
         for ($i = 0; $i < 12 && ($o = $offer->fresh())->stage()->name !== $name; $i++) {
             $stage = $o->stage();
-            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Отказываюсь');
+            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Я передумал');
             $exit
                 ? app(TakeExit::class)($o, $exit, Actor::Manager, $this->manager)
                 : app(TakeExit::class)($o, $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! str_contains(mb_strtolower($e->label), 'отказ') && ! str_contains(mb_strtolower($e->label), 'не поступила')), Actor::Staff, $this->admin);

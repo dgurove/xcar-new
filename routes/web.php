@@ -173,6 +173,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
         Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
+        Route::get('/deals/{deal}/teaser/{media}', [DealController::class, 'teaser'])->whereNumber('media');
         Route::put('/deals/{deal}/contract', [DealContractController::class, 'update']);
         Route::get('/deals/{deal}/dkp', [DealContractController::class, 'show']);
         Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);

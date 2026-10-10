@@ -57,7 +57,7 @@ class PayStepTurnTest extends TestCase
         // Идём по маршруту, пока не встанем на этап оплаты.
         for ($i = 0; $i < 10 && ! ($o = $offer->fresh())->stage()->isPayStep(); $i++) {
             $stage = $o->stage();
-            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Отказываюсь');
+            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Я передумал');
             $exit
                 ? app(TakeExit::class)($o, $exit, Actor::Manager, $manager)
                 : app(TakeExit::class)($o, $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! str_contains(mb_strtolower($e->label), 'отказ')), Actor::Staff, $admin);

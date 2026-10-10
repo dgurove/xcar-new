@@ -44,6 +44,24 @@ final class InsurerReplies
         return $message->files()->isNotEmpty() || CloudShare::links($message->replyText(marks: true)) !== [];
     }
 
+    /**
+     * Текст ответа для тизера (10.10.2026): форма та же — длина слов, переносы, «+7», — а буквы и цифры заменены на сервере,
+     * поверх ещё размытие. Настоящий текст до «Беру в работу» в страницу не попадает.
+     */
+    public static function masked(Message $message): string
+    {
+        $text = mb_substr(trim($message->replyText()), 0, 400);
+
+        $i = 0;
+        $letters = mb_str_split('аеиоснтрвлкмдпу');
+
+        return (string) preg_replace_callback('/[\p{L}\d]/u', function ($m) use (&$i, $letters) {
+            $i++;
+
+            return ctype_digit($m[0]) ? (string) ($i * 7 % 10) : $letters[$i % count($letters)];
+        }, $text);
+    }
+
     /** В ответе есть, кому звонить: телефон в тексте до подписи. */
     public static function hasContact(Message $message): bool
     {

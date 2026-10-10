@@ -325,6 +325,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .btn-accent { @apply bg-accent text-white hover:bg-accent-hover; }
   .btn-quiet  { @apply bg-surface-3 text-ink hover:bg-line; }
   .btn-ghost  { @apply text-ink hover:bg-surface-3; }
+  /* Отступной ответ шага («Я передумал»): тихой строкой под главной кнопкой, палец — 44 px. */
+  .retreat-link { @apply mx-auto -mt-1 block px-4 py-3 text-sm text-ink-muted hover:text-ink; }
   .btn-danger { @apply bg-danger-soft text-danger hover:bg-danger hover:text-white; }
   .btn-glass  { color: #fff; background: rgb(255 255 255 / .12); backdrop-filter: blur(10px); }
   @media (hover: hover) { .btn-glass:hover { background: rgb(255 255 255 / .22); } }
@@ -2158,6 +2160,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .handover-facts > span > svg, .handover-facts > .place > svg { @apply size-4 shrink-0 text-ink-dim; }
   .reply { @apply min-w-0 rounded-(--radius-m) bg-surface-2 px-4 py-3; }
   .reply p a { @apply text-accent-text; }
+  /* Тизер контактов до «Беру в работу»: подложка ответа, внутри размытое (текст уже замаскирован на сервере), снизу замок. */
+  .teaser { @apply relative min-w-0 overflow-hidden rounded-(--radius-m) bg-surface-2; }
+  .teaser-body { @apply flex flex-col gap-3 px-4 pt-3 pb-12 select-none; filter: blur(5px); pointer-events: none; }
+  .teaser-text { @apply line-clamp-4 whitespace-pre-line break-words; }
+  .teaser-files { @apply flex gap-2; }
+  .teaser-image { @apply size-20 shrink-0 rounded-(--radius-s) bg-surface-3 object-cover; }
+  .teaser-doc { @apply grid place-items-center text-ink-muted; }
+  .teaser-lock { @apply absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium; }
   /* Телефон — капсулой (контакт получения и телефон в ответе): нажатие звонит, с кем связаться, видно сразу. */
   .call, .reply p a[href^="tel:"] { @apply inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-3 py-1 font-medium text-accent-text; }
   /* Шаг договора в задаче — чек-лист: номер в кружке, сделанное — галочкой; пункты через линию слева, как путь. */

@@ -84,6 +84,12 @@ class Stage extends Model
         return $this->loadedExits()->contains(fn (Outcome $e) => $e->actor === Actor::Manager && str_starts_with(mb_strtolower($e->label), 'платёжное поручение'));
     }
 
+    /** Ждём согласия менеджера взять сделку в работу («Беру в работу»). */
+    public function asksConsent(): bool
+    {
+        return $this->loadedExits()->contains(fn (Outcome $e) => $e->takes());
+    }
+
     /** Этап получения автомобиля: менеджер жмёт «Автомобиль забрал» (Совкомбанк — счетов до него нет). */
     public function isPickupStep(): bool
     {
@@ -92,13 +98,13 @@ class Stage extends Model
 
     /**
      * Сделка ещё согласуется: поставщик может отказать («Поставщик согласовал» / «Поставщик отказал» — у Каркаде и на
-     * «Собираем заявку поставщику», пока заявка не ушла) или ждём согласия менеджера «Покупаю». Счетов на таком этапе
+     * «Собираем заявку поставщику», пока заявка не ушла) или ждём согласия менеджера «Беру в работу». Счетов на таком этапе
      * нет — их ставит первый вход дальше (`AgreeDeal`, 09.10.2026).
      */
     public function isAgreement(): bool
     {
         return $this->loadedExits()->contains(fn (Outcome $e) => preg_match('/^поставщик (согласовал|отказал)/u', mb_strtolower($e->label)) === 1
-            || ($e->actor === Actor::Manager && mb_strtolower($e->label) === 'покупаю'));
+            || $e->takes());
     }
 
     /** Выход менеджера «Платёжное поручение приложено» этого этапа — его жмут заявка об оплате и сама оплата. */

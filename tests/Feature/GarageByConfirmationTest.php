@@ -71,18 +71,18 @@ class GarageByConfirmationTest extends TestCase
         $deal = app(AcceptBid::class)($bid, $admin, payer: GaragePayer::Us);
         $this->assertSame(CarState::Waiting, Car::where('offer_id', $offer->id)->firstOrFail()->state);
 
-        // По маршруту: обычной ветки («Покупаю») гаражной сделке не видно, гаражная доводит до гаража.
+        // По маршруту: обычной ветки («Беру в работу») гаражной сделке не видно, гаражная доводит до гаража.
         $seen = [];
         for ($i = 0; $i < 10 && ($o = $offer->fresh())->state === OfferState::Sold; $i++) {
             $stage = $o->stage();
             $seen = [...$seen, ...$stage->exitsFor(Actor::Manager, $deal)->pluck('label')];
-            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Отказываюсь');
+            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Я передумал');
             $exit
                 ? app(TakeExit::class)($o, $exit, Actor::Manager, $manager)
                 : app(TakeExit::class)($o, $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! str_contains($e->label, 'отказал')), Actor::Staff, $admin);
         }
         $this->assertContains('Забираю в гараж', $seen);
-        $this->assertNotContains('Покупаю', $seen);
+        $this->assertNotContains('Беру в работу', $seen);
         $this->assertSame(OfferState::Garage, $offer->fresh()->state);
         $this->assertSame(DealState::Done, $deal->fresh()->state);
         $car = Car::where('offer_id', $offer->id)->firstOrFail();

@@ -35,6 +35,12 @@ class Outcome extends Model
     /** Ветка обычной сделки — не гаражной (у Каркаде передача с площадки, где развилки «кто забирает» нет). */
     public const DEAL = 'deal';
 
+    /**
+     * Согласие менеджера (10.10.2026, владелец: «Покупаю» → «Беру в работу», «Отказываюсь» → «Я передумал», приглушённой).
+     * Прежние надписи узнаём тоже: маршрут в базе правится миграцией.
+     */
+    public const TAKES = ['беру в работу', 'покупаю'];
+
     /** Ветка оплаты через ООО «Р.О.С.» (Альфа с НДС, 10.10.2026): деньги пришли на Р.О.С. — сначала переводим Альфе. */
     public const ROS = 'ros';
 
@@ -86,6 +92,21 @@ class Outcome extends Model
             self::NOT_ROS => ! $ros,
             default => $to->value === $this->branch,
         };
+    }
+
+    /** Согласие менеджера взять сделку в работу. */
+    public function takes(): bool
+    {
+        return $this->actor === Actor::Manager && in_array(mb_strtolower(trim($this->label)), self::TAKES, true);
+    }
+
+    /**
+     * Отступной исход менеджера — «Я передумал»: ведёт назад в приём подтверждений (сделка отменяется). На странице сделки
+     * — тихой строкой под главной кнопкой, а не второй кнопкой рядом.
+     */
+    public function isRetreat(): bool
+    {
+        return $this->actor === Actor::Manager && $this->to?->offer_state === \App\Offers\OfferState::Open;
     }
 
     /**
