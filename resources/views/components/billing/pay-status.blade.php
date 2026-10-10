@@ -76,8 +76,8 @@
                     <span class="nums text-[32px] font-semibold leading-tight">{{ Money::rub($link->amount) }}</span>
                     <span class="text-ink-muted">{{ $pays }}@if ($link->payer_email), чек на {{ $link->payer_email }}@endif</span>
                 </div>
-                <x-billing.pay-qr :link="$link"/>
-                <x-ui.copy-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :message="$text" :rows="5"/>
+                <x-billing.pay-qr :link="$link" :main="false"/>
+                <x-ui.copy-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :message="$text" :rows="5" :show-url="false"/>
                 <x-billing.link-attempts :link="$link"/>
                 @if ($live)
                 <details class="list">

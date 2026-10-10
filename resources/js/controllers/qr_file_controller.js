@@ -5,13 +5,13 @@ import { Controller } from '@hotwired/stimulus';
 // с текстом мессенджеры теряют файл. Листа нет (ПК) — «Отправить» прячется.
 export default class extends Controller {
     static targets = ['image', 'share', 'download'];
-    static values = { name: String };
+    static values = { name: String, main: Boolean };
 
     connect() {
-        // Листа нет — «Скачать» остаётся одна и становится главной.
+        // Листа нет — «Скачать QR» остаётся одна и становится главной, если в шторке нет своей главной.
         if (this.hasShareTarget && !navigator.share) {
             this.shareTarget.hidden = true;
-            this.downloadTarget.classList.replace('btn-quiet', 'btn-accent');
+            if (this.mainValue) this.downloadTarget.classList.replace('btn-quiet', 'btn-accent');
         }
     }
 
