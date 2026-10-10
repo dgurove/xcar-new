@@ -3,7 +3,8 @@
      состояния с большим кружком вместо кнопки. Строк счёта и вознаграждения нет: их видит только менеджер. Внизу мелко —
      чья это оплата и документы: страница открыта без входа. Кто платит и почту для чека спрашиваем здесь, у самого
      плательщика: ссылка заводится вместе со счётом, и почты может не быть. Известные — уже в полях. Вернулся с ЮKassa
-     с отказом — над кнопкой «Оплата не прошла» и почему, кнопка та же. --}}
+     с отказом — над кнопкой «Оплата не прошла» и почему, кнопка та же. Уйти отсюда на сайт нельзя: знак не ссылка,
+     документы внизу открываются шторкой (плательщик — покупатель менеджера). --}}
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayLinkState; use App\Billing\Acquiring\PayMethod;
     $attempt = $link->state === PayLinkState::Paid ? $link->attempts->firstWhere('payment_id', $link->payment_id) : null;
@@ -18,7 +19,7 @@
         default => [null, null, null],
     };
 @endphp
-<x-pickup.layout title="Оплата">
+<x-pickup.layout title="Оплата" :home="false">
     @if ($icon)
         <div class="money-hero py-6">
             <span class="row-icon row-icon-{{ $tone ?: 'plain' }} mb-3 !size-20"><x-ui.icon :name="$icon" class="size-10"/></span>
@@ -66,6 +67,20 @@
 
     <div class="mt-auto flex flex-col items-center gap-1 pt-8 text-center text-xs text-ink-dim">
         <span>{{ $self->name }}@if ($self->inn), ИНН {{ $self->inn }}@endif</span>
-        <span class="flex gap-3"><a href="/company" class="hover:text-ink">О компании</a><a href="/terms" class="hover:text-ink">Соглашение</a><a href="/privacy" class="hover:text-ink">Данные</a></span>
+        <span class="flex gap-3">
+            @foreach (['company' => ['О компании', 'О компании'], 'terms' => ['Соглашение', 'Соглашение'], 'privacy' => ['Данные', 'Обработка данных']] as $doc => [$label, $heading])
+                <span data-controller="sheet" class="contents">
+                    <button type="button" class="hover:text-ink" data-action="sheet#open">{{ $label }}</button>
+                    <x-ui.sheet :id="'legal-'.$doc" :title="$heading" tall class="text-left text-base text-ink">
+                        @if ($doc === 'company')
+                            @include('site.pages.legal.company', ['plain' => true])
+                        @else
+                            <x-legal.edition/>
+                            <div class="legal mt-6">@include('site.pages.legal.'.$doc, ['plain' => true])</div>
+                        @endif
+                    </x-ui.sheet>
+                </span>
+            @endforeach
+        </span>
     </div>
 </x-pickup.layout>
