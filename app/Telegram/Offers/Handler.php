@@ -381,6 +381,8 @@ final class Handler
     /**
      * «Опубликовано N предложений, показать их?» (слот) или «Появились новые предложения: N» (опубликовано сейчас). Того, кто сейчас листает или пишет вопрос, не перебиваем —
      * клавиатуру не сбиваем; отметка не ставится, анонс дождётся, пока он выйдет (новое он и так увидит в ленте).
+     * Анонс в чате один (владелец 10.10.2026: «не захламлять»): N — всё, что ждёт его в ленте, и растёт с каждой
+     * публикацией; прежний анонс удаляется, новый приходит со звуком.
      */
     private function prompt(Subscriber $sub, bool $remind): void
     {
@@ -388,18 +390,24 @@ final class Handler
         if (in_array($sub->mode, [Subscriber::FEED, Subscriber::ASKING, Subscriber::INVITE], true) && $sub->updated_at?->gt(now()->subMinutes(10))) {
             return;
         }
-        [$n, $slot] = $remind ? [Feed::left($sub->user), 0] : $this->announce->fresh($sub);
+        [$fresh, $slot] = $remind ? [0, 0] : $this->announce->fresh($sub);
+        $n = Feed::left($sub->user);
         $sub->forceFill($remind ? ['remind_at' => null] : ['announced_at' => now()])->save();
         if (! $n || ($remind && $sub->muted_at)) {
             return;
         }
-        // Всё из слота — «Опубликовано N»; есть опубликованное сейчас (или это напоминание) — «Появились новые».
-        $head = ! $remind && $slot === $n
+        // Всё, что ждёт, вышло этим слотом — «Опубликовано N»; иначе (опубликовано сейчас, остаток прошлых, напоминание) —
+        // «Появились новые».
+        $head = ! $remind && $slot === $fresh && $fresh === $n
             ? "Опубликовано {$n} ".Plural::of($n, ['предложение', 'предложения', 'предложений']).', показать '.($n === 1 ? 'его' : 'их').'?'
             : "Появились новые предложения: {$n}, показать их?";
-        $this->bot->quietly(fn () => $this->bot->say($sub->chat_id,
+        if ($sub->prompt_message_id) {
+            $this->bot->deleteQuietly($sub->chat_id, (int) $sub->prompt_message_id);
+        }
+        $id = $this->bot->quietly(fn () => $this->bot->say($sub->chat_id,
             $head."\n\n1. Показать\n2. Напомнить через 1 ч",
             Keys::prompt(), $sub->user->quietHours() ? ['disable_notification' => 'true'] : []));
+        $sub->forceFill(['prompt_message_id' => $id ?: null])->save();
         $sub->moveTo(Subscriber::PROMPT);
     }
 
