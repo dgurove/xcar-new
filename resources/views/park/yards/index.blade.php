@@ -58,9 +58,10 @@
                     <div class="flex items-start gap-2">
                         <div class="min-w-0 flex-1">
                             <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <x-ui.state tone="closed">закрыта</x-ui.state>@endunless</div>
-                            <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                                @if ($yard->settlement || $yard->address)<x-ui.place class="tag">{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</x-ui.place>@endif
-                                @if ($yard->capacity)<a href="/cars?yard={{ $yard->id }}" class="tag nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</a>@else<a href="/cars?yard={{ $yard->id }}" class="tag nums">{{ $yard->stored_vehicles_count }} ТС</a>@endif
+                            {{-- Адрес и свободные места — фразой, места — ссылкой в «Наличие» этой парковки. --}}
+                            <div class="detail-line !mt-1 text-sm">
+                                @if ($yard->settlement || $yard->address)<x-ui.place>{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</x-ui.place>@endif
+                                @if ($yard->capacity)<a href="/cars?yard={{ $yard->id }}" class="nums {{ $free($yard) === 0 ? 'text-danger' : 'text-accent-text' }}">{{ $free($yard) }} свободно</a>@else<a href="/cars?yard={{ $yard->id }}" class="nums text-accent-text">{{ $yard->stored_vehicles_count }} ТС</a>@endif
                             </div>
                         </div>
                         @if ($admin)<button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>@endif

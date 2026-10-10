@@ -7,7 +7,7 @@
         <div class="lg:col-start-2 lg:row-start-1">
             <x-ui.contact :name="$group->name" sidebar>
                 <x-slot:chips>
-                    <span class="tag nums">{{ $n }} {{ \App\Support\Plural::of($n, ['человек', 'человека', 'человек']) }}</span>
+                    <span class="nums text-sm text-ink-muted">{{ $n }} {{ \App\Support\Plural::of($n, ['человек', 'человека', 'человек']) }}</span>
                 </x-slot:chips>
                 <x-slot:acts>
                     <div data-controller="sheet" class="contents">

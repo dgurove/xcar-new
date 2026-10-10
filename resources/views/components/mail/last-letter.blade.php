@@ -25,7 +25,7 @@
         <div class="min-w-0 flex-1">
             <div class="flex items-baseline gap-2">
                 <span class="min-w-0 truncate font-medium">{{ NodeTitle::who($m) }}</span>
-                @if ($waits)<span class="tag tag-urgent shrink-0">Ждёт ответа</span>@endif
+                @if ($waits)<x-ui.state tone="urgent" class="shrink-0">ждёт ответа</x-ui.state>@endif
                 @if ($intent?->short())<span class="tag shrink-0 {{ $ours ? 'tag-dim' : ($intent === Intent::Intake ? 'tag-accent' : '') }}">{{ $intent->short() }}</span>@endif
             </div>
             <div class="flex items-baseline gap-2 text-sm text-ink-muted">
@@ -37,7 +37,7 @@
     @if ($title && ! $intent?->short())<div class="mt-2 truncate text-sm text-ink-muted">{{ $title }}</div>@endif
     @if ($note = $m->forwardNote())<div class="history-note mt-2 text-sm"><div class="text-ink-muted">{{ NodeTitle::forwarder($m) }}</div><div class="{{ $compact ? 'line-clamp-3' : '' }} whitespace-pre-line">{{ $note }}</div></div>@endif
     @if ($text !== '')<p class="mt-2 {{ $compact ? 'line-clamp-3' : 'line-clamp-5' }} whitespace-pre-line text-sm">{{ $text }}</p>@endif
-    @if ($files)<span class="chip nums mt-2"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif
+    @if ($files)<span class="nums mt-2 inline-flex items-center gap-1 text-sm text-ink-muted"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif
     <div class="mt-3 flex gap-2">
         <x-mail.window-button :url="$url" label="Вся переписка" :count="$count" class="btn-s flex-1 sm:flex-none"/>
         @if ($reply)<x-mail.window-button :url="$url.$sep.'reply=1'" :label="$ours ? 'Написать' : 'Ответить'" class="btn-s btn-accent flex-1 sm:flex-none"/>@endif

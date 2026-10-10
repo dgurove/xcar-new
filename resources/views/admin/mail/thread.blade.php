@@ -1,13 +1,14 @@
 @php $park = $base === '/mail'; @endphp
 <x-ui.shell :title="$thread->subject ?: '(без темы)'" :back="['Почта', $base]">
     <div class="mb-4 flex flex-wrap items-center gap-2" data-controller="sheet">
-        <span class="chip">{{ $thread->account->title }}</span>
+        {{-- Ящик — текстом, ТС или предложение — ссылкой, привязка — кнопкой справа (10.10.2026: «что-то чипами, что-то текстом»). --}}
+        <span class="text-sm text-ink-muted">{{ $thread->account->title }}</span>
         @if ($park && $thread->vehicle)
-            <a href="/cars/{{ $thread->vehicle->id }}" class="chip bg-accent-soft text-accent-text">{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref && $thread->vehicle->brand_id) <span class="nums opacity-70">{{ $thread->vehicle->ref }}</span>@endif</a>
+            <a href="/cars/{{ $thread->vehicle->id }}" class="text-sm text-accent-text">{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref && $thread->vehicle->brand_id) <span class="nums opacity-70">{{ $thread->vehicle->ref }}</span>@endif</a>
         @elseif (!$park && $thread->offer)
-            <a href="/offers/{{ $thread->offer->number }}" class="chip bg-accent-soft text-accent-text">{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></a>
+            <a href="/offers/{{ $thread->offer->number }}" class="text-sm text-accent-text">{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></a>
         @endif
-        <button type="button" class="chip" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
+        <button type="button" class="btn btn-s btn-quiet ml-auto" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
         <x-ui.sheet id="link" :title="$park ? 'Транспортное средство' : 'Предложение'" :open="$errors->has('number') || $errors->has('vehicle_id')">
             <form method="post" action="{{ $base }}/{{ $thread->id }}/link" class="flex flex-col gap-3">
                 @csrf

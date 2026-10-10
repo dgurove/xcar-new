@@ -67,16 +67,17 @@
                                     <span class="flex-1 font-medium">{{ $stage->name }}</span>
                                     @if ($occupied[$stage->id] ?? 0)<span class="badge">{{ $occupied[$stage->id] }}</span>@endif
                                 </div>
-                                <div class="mt-1.5 flex flex-wrap gap-1 text-sm">
-                                    <span class="chip">{{ $stage->waits_for->label() }}</span>
-                                    @if ($stage->deadline_source !== \App\Workflow\DeadlineSource::Own)
-                                        <span class="chip">{{ $stage->deadline_source->label() }}</span>
-                                    @elseif ($stage->limit_minutes)
-                                        <span class="chip">{{ $stage->limit_minutes >= 1440 ? intdiv($stage->limit_minutes, 1440).' д' : ($stage->limit_minutes >= 60 ? intdiv($stage->limit_minutes, 60).' ч' : $stage->limit_minutes.' мин') }}</span>
-                                    @endif
-                                    @if ($stage->offer_state)<span class="chip">{{ $stage->offer_state->label() }}</span>@endif
-                                    @if ($stage->car_place)<span class="chip bg-open-soft text-open">{{ $stage->car_place->label() }}</span>@endif
-                                    @if ($stage->asks !== \App\Workflow\Asks::Nothing)<span class="chip">{{ $stage->asks->label() }}</span>@endif
+                                {{-- Настройки этапа — строкой текста (чей ход, срок, состояние, где ТС, что просит), а не чипами (10.10.2026). --}}
+                                @php
+                                    $limit = $stage->deadline_source !== \App\Workflow\DeadlineSource::Own ? mb_strtolower($stage->deadline_source->label())
+                                        : ($stage->limit_minutes ? ($stage->limit_minutes >= 1440 ? intdiv($stage->limit_minutes, 1440).' д' : ($stage->limit_minutes >= 60 ? intdiv($stage->limit_minutes, 60).' ч' : $stage->limit_minutes.' мин')) : null);
+                                @endphp
+                                <div class="detail-line !mt-1 text-sm text-ink-muted">
+                                    <span>{{ $stage->waits_for->label() }}</span>
+                                    @if ($limit)<span class="nums">{{ $limit }}</span>@endif
+                                    @if ($stage->offer_state && mb_strtolower($stage->offer_state->label()) !== mb_strtolower($stage->name))<span>{{ mb_strtolower($stage->offer_state->label()) }}</span>@endif
+                                    @if ($stage->car_place)<span class="text-open">{{ mb_strtolower($stage->car_place->label()) }}</span>@endif
+                                    @if ($stage->asks !== \App\Workflow\Asks::Nothing)<span>{{ mb_strtolower($stage->asks->label()) }}</span>@endif
                                 </div>
                                 @if ($stage->exits->isNotEmpty())
                                     <div class="mt-2 flex flex-col gap-0.5 text-sm text-ink-muted">

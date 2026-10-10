@@ -3,8 +3,9 @@
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <span class="chip">{{ str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl }}</span>
         <span class="chip">№ {{ $car->ref }}</span>
-        @if ($car->site_url)<a href="{{ $car->site_url }}" target="_blank" class="chip">Сайт поставщика ↗</a>@endif
-        @if ($car->cloud_url)<a href="{{ $car->cloud_url }}" target="_blank" class="chip">Облако ↗</a>@endif
+        {{-- Коды — чипами, ссылки наружу — лаймовыми словами, не капсулами среди кодов (10.10.2026). --}}
+        @if ($car->site_url)<a href="{{ $car->site_url }}" target="_blank" class="text-sm text-accent-text">Сайт поставщика</a>@endif
+        @if ($car->cloud_url)<a href="{{ $car->cloud_url }}" target="_blank" class="text-sm text-accent-text">Облако</a>@endif
         @if ($car->visiblePhotos()->isNotEmpty())<x-purchase.share :car="$car" icon/>@endif
         @if ($errors->any())<span class="field-error w-full">{{ $errors->first() }}</span>@endif
     </div>
@@ -49,7 +50,7 @@
             <input type="file" accept="image/*,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
             @if ($car->cloud_url || $car->photos_state->needsAttention())
                 <div class="mb-3 flex flex-wrap items-center gap-2">
-                    <span class="chip {{ $car->photos_state->needsAttention() ? 'bg-urgent-soft text-urgent' : '' }}">{{ $car->photos_state->label() }}{{ $car->photos_error ? ': '.$car->photos_error : '' }}</span>
+                    <x-ui.state :tone="$car->photos_state->needsAttention() ? 'urgent' : 'plain'">{{ $car->photos_state->label() }}{{ $car->photos_error ? ': '.$car->photos_error : '' }}</x-ui.state>
                     @if ($car->cloud_leftovers)<span class="text-sm text-ink-muted">В облаке осталось: {{ collect($car->cloud_leftovers)->pluck('name')->implode(', ') }}</span>@endif
                 </div>
             @endif
@@ -60,7 +61,7 @@
         <div class="contents lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             <x-ui.card title="Характеристики с сайта" class="order-3">
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="chip {{ $car->specs_state->needsAttention() ? 'bg-urgent-soft text-urgent' : '' }}">{{ $car->specs_state->label() }}{{ $car->specs_error ? ': '.$car->specs_error : '' }}</span>
+                    <x-ui.state :tone="$car->specs_state->needsAttention() ? 'urgent' : 'plain'">{{ $car->specs_state->label() }}{{ $car->specs_error ? ': '.$car->specs_error : '' }}</x-ui.state>
                 </div>
                 @if ($car->locked_fields)<div class="mt-2 text-sm text-ink-muted">Правлено руками: {{ implode(', ', $car->locked_fields) }}</div>@endif
             </x-ui.card>
@@ -71,7 +72,7 @@
                     @foreach ($live as $offer)<x-purchase.offer-chip :offer="$offer" :car="$car"/>@endforeach
                 </div>
                 @if ($chosen)
-                    <div class="mt-3 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$chosen->user" full current/><a href="tel:+{{ $chosen->user->phone }}" class="tag nums">{{ $chosen->user->phoneFormatted() }}</a></div>
+                    <div class="mt-3 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$chosen->user" full current/><a href="tel:+{{ $chosen->user->phone }}" class="nums whitespace-nowrap text-sm text-accent-text">{{ $chosen->user->phoneFormatted() }}</a></div>
                 @endif
             </x-ui.card>
             @endif

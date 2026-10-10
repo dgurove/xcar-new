@@ -29,10 +29,11 @@
             <x-ui.field name="last_name" id="user-last-{{ $user->id }}" label="Фамилия" :value="$user->last_name" required/>
         </div>
         @if ($user->isBuyer())
-            <div class="flex flex-wrap gap-1.5">
-                @if ($user->login)<span class="tag nums">{{ $user->login }}</span>@endif
-                @if ($user->phone)<span class="tag nums">{{ $user->phoneFormatted() }}</span>@endif
-                @if ($user->email)<span class="tag">{{ $user->email }}</span>@endif
+            {{-- Логин и контакты — строкой текста (10.10.2026: «что-то чипами, что-то текстом»). --}}
+            <div class="detail-line !mt-0 text-sm text-ink-muted">
+                @if ($user->login)<span class="nums">{{ $user->login }}</span>@endif
+                @if ($user->phone)<span class="nums whitespace-nowrap">{{ $user->phoneFormatted() }}</span>@endif
+                @if ($user->email)<span>{{ $user->email }}</span>@endif
             </div>
             <div class="fields">
                 <x-ui.field name="manager_id" label="Менеджер" :options="$managers->mapWithKeys(fn ($m) => [$m->id => $m->name])" :value="$user->manager_id"/>

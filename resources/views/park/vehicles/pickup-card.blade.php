@@ -14,7 +14,7 @@
     <div class="list">
         @if ($link)
             <button type="button" class="row w-full justify-between text-left" data-controller="copy" data-copy-text-value="{{ $link }}" data-copy-done-value="Ссылка в буфере" data-action="copy#copy:prevent">
-                <span class="min-w-0"><span class="block truncate">{{ preg_replace('~^https?://~', '', $link) }}</span><span class="tag {{ ['open' => 'tag-accent', 'urgent' => 'tag-urgent', 'danger' => 'tag-danger'][$tone] ?? '' }} mt-1">{{ $state }}</span></span>
+                <span class="min-w-0"><span class="block truncate">{{ preg_replace('~^https?://~', '', $link) }}</span><x-ui.state :tone="$tone" class="mt-0.5 block">{{ $state }}</x-ui.state></span>
                 <x-ui.icon name="copy" class="size-5 shrink-0 text-ink-dim"/>
             </button>
         @elseif ($canManage)

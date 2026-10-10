@@ -35,16 +35,15 @@
         </span>
     </button>
     <x-ui.sheet id="invite-{{ $invite->id }}" :title="$invite->title()" :open="$fresh === $invite->id">
-        <div class="flex flex-wrap gap-1.5">
-            <span class="tag">{{ $invite->kind() }}</span>
-            @if ($invite->manager)<x-ui.person :user="$invite->manager"/>@endif
-            @if ($invite->group)<span class="tag">→ {{ $invite->group->name }}</span>@endif
-            @if (! $invite->forBuyer())<x-ui.state tone="urgent">одноразовая</x-ui.state>@if ($invite->expires_at)<span class="tag nums">до {{ $invite->expires_at->translatedFormat('j M H:i') }}</span>@endif @else
-                @foreach ($invite->contactFields() as $f)<span class="tag">{{ mb_strtolower(\App\Users\Invite::FIELDS[$f]) }}</span>@endforeach
-                @if ($invite->contactFields() === [])<span class="tag">только имя и логин</span>@endif
-            @endif
-            <span class="tag nums">{{ $invite->created_at->translatedFormat(! $invite->forBuyer() ? 'j M H:i' : 'j M') }}</span>
-            @if ($invite->creator && (! $invite->forBuyer() || $invite->creator->isNot($me)))<x-ui.person :user="$invite->creator" full/>@endif
+        {{-- Шапка шторки — фразой: кому ссылка, в какую группу, одноразовая ли и до когда, что спрашиваем, когда и кто сделал
+             (10.10.2026: «что-то чипами, что-то текстом» — тут кодов нет, всё факты). --}}
+        <div class="detail-line !mt-0 text-sm">
+            <span>{{ $invite->kind() }}</span>
+            @if ($invite->manager)<span>от {{ $invite->manager->shortName() }}</span>@endif
+            @if ($invite->group)<span>в группу «{{ $invite->group->name }}»</span>@endif
+            @if (! $invite->forBuyer())<span class="text-urgent">одноразовая</span>@if ($invite->expires_at)<span class="nums">до {{ $invite->expires_at->translatedFormat('j M H:i') }}</span>@endif
+            @else<span class="text-ink-muted">{{ $invite->contactFields() === [] ? 'только имя и логин' : 'спрашиваем: '.collect($invite->contactFields())->map(fn ($f) => mb_strtolower(\App\Users\Invite::FIELDS[$f]))->implode(', ') }}</span>@endif
+            <span class="nums text-ink-muted">{{ $invite->created_at->translatedFormat(! $invite->forBuyer() ? 'j M H:i' : 'j M') }}@if ($invite->creator && (! $invite->forBuyer() || $invite->creator->isNot($me))) {{ $invite->creator->shortName() }}@endif</span>
         </div>
 
         @if ($invite->isActive())

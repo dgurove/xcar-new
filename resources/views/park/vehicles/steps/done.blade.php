@@ -4,10 +4,12 @@
     @if ($step->key === 'letter' && $letters)<div><x-mail.window-button :count="$letters" :url="'/cars/'.$vehicle->id.'/letters'" chip/></div>@endif
     @if ($r?->note && $step->key !== 'letter')<p class="whitespace-pre-line text-sm text-ink-muted">{{ $r->note }}</p>@endif
     @if ($insp)
-        <div class="flex flex-wrap items-center gap-1.5">
-            @if ($insp->keys_count !== null)<span class="tag nums">ключей {{ $insp->keys_count }}</span>@endif
-            @foreach ($insp->docs ?? [] as $d)<span class="tag">{{ Inspection::DOCS[$d] ?? $d }}</span>@endforeach
-            <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/'.$stage, 'type' => 'html', 'name' => $stage === 'release' ? 'Акт выдачи' : 'Акт приёма']" class="tag">Акт</x-ui.doc>
+        {{-- Что записали — строкой текста («ключей 2, СТС, ПТС»), акт — документом справа (10.10.2026: «что-то чипами, что-то
+             текстом»; это факты, а не коды). --}}
+        <div class="flex items-baseline gap-3 text-sm">
+            @php $wrote = array_filter([$insp->keys_count !== null ? 'ключей '.$insp->keys_count : null, ...array_map(fn ($d) => Inspection::DOCS[$d] ?? $d, $insp->docs ?? [])]); @endphp
+            @if ($wrote)<span class="nums min-w-0 flex-1 text-ink-muted">{{ implode(', ', $wrote) }}</span>@endif
+            <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/'.$stage, 'type' => 'html', 'name' => $stage === 'release' ? 'Акт выдачи' : 'Акт приёма']" class="{{ $wrote ? '' : 'ml-0' }} shrink-0 text-accent-text">{{ $stage === 'release' ? 'Акт выдачи' : 'Акт приёма' }}</x-ui.doc>
         </div>
     @endif
     @if ($photos->isNotEmpty())
