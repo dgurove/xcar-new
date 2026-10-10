@@ -18,7 +18,8 @@
     // «Опубликовать» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
     // Без цены продажи публиковать нечего — пунктов нет, пока её не поставили.
     $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled() && $offer->asking_price;
-    $transitions = $transitions->except(OfferState::Open->value);
+    // «Опубликовать» у черновика — пунктами слота; у сделки «вернуть в продажу» — обычным пунктом (отмена сделки).
+    if ($offer->state !== OfferState::Sold) $transitions = $transitions->except(OfferState::Open->value);
     // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
     $rate = $admin && $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled();
     // Закупочной нет — сначала она (вкладка «Без закупочной цены», 05.10.2026): у всех, и у модератора; у админа — на месте
@@ -127,7 +128,8 @@
             @php
                 $extend = $admin && $offer->state === OfferState::Open && $offer->bids_close_at;
                 $purge = $admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true);
-                $calm = $transitions->reject(fn ($t) => $t[0] === OfferState::Archived || $t[0]->tone() === 'danger');
+                // Отмена сделки — красным, с подтверждением: оба пункта у сделки (в продажу, в черновики) её гасят.
+                $calm = $offer->state === OfferState::Sold ? collect() : $transitions->reject(fn ($t) => $t[0] === OfferState::Archived || $t[0]->tone() === 'danger');
                 $danger = $transitions->diffKeys($calm);
                 // Черновик из таблицы Кати — «Вернуть в черновики»: номер уходит из списка, машина — в свою рабочую вкладку.
                 $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
@@ -177,7 +179,7 @@
                         @if ($danger->isNotEmpty() || $purge)
                             <div class="menu-group">
                                 @foreach ($danger as [$next, $label])
-                                    <form method="post" action="/offers/{{ $n }}/state" data-turbo-confirm="{{ $next->label() }}?">
+                                    <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @else data-turbo-confirm="{{ $next->label() }}?" @endif>
                                         @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                                         <button class="menu-item text-danger" role="menuitem" data-action="menu#close"><x-ui.icon :name="$icon($next)" class="size-5"/>{{ $label }}</button>
                                     </form>

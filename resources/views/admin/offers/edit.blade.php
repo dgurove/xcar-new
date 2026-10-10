@@ -3,7 +3,8 @@
     use App\Offers\{OfferState, BidState, InterestState};
     $n = $offer->number;
     // «В гараже» ставит не кнопка состояния, а «Отдать в гараж»: там выбирают менеджера и цену.
-    // Кнопки состояния — только уместные (OfferState::actions): в сделке меню нет, «Снять с продажи» — у того, что в продаже.
+    // Кнопки состояния — только уместные (OfferState::actions): в сделке — «Отменить сделку» (в продажу или черновики),
+    // «Снять с продажи» — у того, что в продаже.
     // Модератор правит только поля черновика: состояния, гаража, подтверждений и круга показа у него нет.
     $transitions = $admin ? collect($offer->stateActions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
     $garage = $garageView['car'] ?? null;
@@ -253,9 +254,9 @@
                 <div class="flex flex-col gap-2">
                     @if ($publishItems)<x-offer.publish-items :offer="$offer" button/>@endif
                     @foreach ($transitions as [$next, $label])
-                        <form method="post" action="/offers/{{ $n }}/state" @if (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @if ($offer->parkVehicle) data-turbo-confirm-text="ТС снимется с продажи, на парковке она остаётся с фото и документами" @endif @endif>
+                        <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @elseif (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @if ($offer->parkVehicle) data-turbo-confirm-text="ТС снимется с продажи, на парковке она остаётся с фото и документами" @endif @endif>
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
-                            <x-ui.button block :variant="$next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary')">{{ $label }}</x-ui.button>
+                            <x-ui.button block :variant="$offer->state === OfferState::Sold ? 'danger' : ($next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary'))">{{ $label }}</x-ui.button>
                         </form>
                     @endforeach
                     @if ($canGarage)

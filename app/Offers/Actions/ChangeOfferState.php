@@ -110,8 +110,17 @@ final class ChangeOfferState
                 OfferPublished::dispatch($offer, $by, $at !== null || $batch);
             }
 
-            if ($followRoute && ($exit = $offer->stage()?->exitInto($next, $offer->deal()->first()))) {
+            $stage = $offer->stage();
+            if ($followRoute && ($exit = $stage?->exitInto($next, $offer->deal()->first()))) {
                 $offer = app(EnterStage::class)($offer, $exit->to, $by, [], $exit);
+            } elseif ($followRoute && $stage && $from === OfferState::Sold && in_array($next, [OfferState::Open, OfferState::Draft], true)) {
+                // Сделку отменили руками: у этапа сделки выхода в продажу или черновик нет — маршрут встаёт на первый этап
+                // этого состояния (черновику — на начало), иначе он висел бы на шаге отменённой сделки.
+                $stages = $stage->workflow->stages()->with(['exits', 'block'])->get();
+                $to = $stages->first(fn ($s) => $s->offer_state === $next) ?? ($next === OfferState::Draft ? $stages->first() : null);
+                if ($to && $to->id !== $stage->id) {
+                    $offer = app(EnterStage::class)($offer, $to, $by);
+                }
             }
 
             return $offer;

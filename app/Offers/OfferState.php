@@ -85,7 +85,10 @@ enum OfferState: string
             self::Open => [self::Draft->value => 'Снять с продажи', self::Archived->value => 'В архив'],
             self::Delivered, self::Cancelled => [self::Archived->value => 'В архив'],
             self::Archived => [self::Draft->value => 'Вернуть в черновики'],
-            self::Sold, self::Garage => [],
+            // Отменить сделку руками (10.10.2026, владелец: «отдал в сделку — нет кнопки отменить»): назад в продажу к
+            // остальным подтверждениям или в черновики; гасит сделку `ChangeOfferState::settleDeal` → `CancelDeal`.
+            self::Sold => [self::Open->value => 'Отменить сделку, вернуть в продажу', self::Draft->value => 'Отменить сделку, в черновики'],
+            self::Garage => [],
         };
     }
 
@@ -98,7 +101,7 @@ enum OfferState: string
             // Из гаража машина на витрину не возвращается: «отдали по ошибке» — обратно в черновик.
             self::Garage => [self::Draft, self::Archived],
             // В гараж из сделки — только гаражной, концом её маршрута (`ChangeOfferState`); руками «Отдать в гараж» у Sold нет.
-            self::Sold => [self::Delivered, self::Garage, self::Cancelled, self::Open],
+            self::Sold => [self::Delivered, self::Garage, self::Cancelled, self::Open, self::Draft],
             self::Archived => [self::Draft],
             self::Delivered, self::Cancelled => [self::Archived],
         }, true);
