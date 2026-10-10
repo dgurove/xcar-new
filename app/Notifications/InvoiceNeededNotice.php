@@ -11,12 +11,13 @@ use App\Offers\Deal;
 final class InvoiceNeededNotice extends Notice
 {
     /** @param  ?string  $gap  `share` — гаражной не вписана наша доля (счёт со ссылкой встанет сам), `commission` — гаражной
-     *  Совкомбанка не назначено вознаграждение (цену менеджер назвал), иначе счёт руками */
+     *  Совкомбанка не назначено вознаграждение (цену менеджер назвал), `ros_requisites` — у Р.О.С. нет реквизитов, иначе счёт
+     *  руками (`Position::gapAction`) */
     public function __construct(private Deal $deal, private ?string $gap = null) {}
 
     public function title(): string
     {
-        return (match ($this->gap) { 'share' => 'Впишите нашу долю: ', 'commission' => 'Назначьте вознаграждение: ', default => 'Выставите счёт: ' }).$this->deal->offer->titleWithYear();
+        return \App\Workflow\Position::gapAction($this->gap, $this->deal)['title'].': '.$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string

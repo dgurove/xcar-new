@@ -53,17 +53,18 @@ final class IssueInvoice
      * @param  list<array{vehicle: Vehicle, until: CarbonInterface, charges: list<int>}>  $registry  ТС реестра за `$month`
      */
     public function __invoke(Party $party, User $by, string $direction, ChargeKind $kind, ?CarbonInterface $dueAt, ?CarbonInterface $storageUntil = null, array $chargeIds = [], array $lines = [],
-        ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null, array $registry = [], ?CarbonInterface $month = null): Invoice
+        ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null, array $registry = [], ?CarbonInterface $month = null, ?Seller $seller = null): Invoice
     {
         Nav::forgetStaffCounts();
         $this->skipped = [];
-        $invoice = DB::transaction(function () use ($party, $by, $direction, $kind, $dueAt, $storageUntil, $chargeIds, $lines, $vehicle, $dealId, $offerId, $externalNo, $notes, $registry, $month) {
+        $invoice = DB::transaction(function () use ($party, $by, $direction, $kind, $dueAt, $storageUntil, $chargeIds, $lines, $vehicle, $dealId, $offerId, $externalNo, $notes, $registry, $month, $seller) {
             $year = (int) now()->format('Y');
             $issued = $direction === 'issued';
             // Реестр — только парковка: продавец — вендора-плательщика (без ТС `Seller::for` отдал бы ПРАЙМ сделок).
             $park = $vehicle !== null || $registry !== [];
             // Продавец реестра — по вендору его машин: контрагент бывает общим у двух вендоров (одно юрлицо в двух городах).
-            $seller = $registry ? Seller::ofVendor($registry[array_key_first($registry)]['vehicle']->vendor ?? Vendor::firstWhere('party_id', $party->id)) : Seller::for($vehicle);
+            // Сделка с другим продавцом за ТС (Р.О.С. у Альфы с НДС) — передан явно.
+            $seller ??= $registry ? Seller::ofVendor($registry[array_key_first($registry)]['vehicle']->vendor ?? Vendor::firstWhere('party_id', $party->id)) : Seller::for($vehicle);
             $vatRate = $issued ? ($seller->vatRate() ?: null) : null;
             $vatOnTop = $vatRate && $party->vat_on_top;
             $invoice = Invoice::create([

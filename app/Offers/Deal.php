@@ -28,14 +28,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at'])]
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at', 'prepaid_at'])]
 class Deal extends Model
 {
     use HidesDemo;
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime'];
+        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -96,6 +96,15 @@ class Deal extends Model
     }
 
     /**
+     * Забирать можно (10.10.2026, владелец: «альфастрахование — только с предварительной оплатой»): у вендора с
+     * `pay_before_pickup` — когда маршрут прошёл проверку оплаты (`prepaid_at`, ставит `EnterStage`), у остальных — всегда.
+     */
+    public function mayPickUp(): bool
+    {
+        return $this->prepaid_at !== null || ! $this->offer?->vendor?->pay_before_pickup;
+    }
+
+    /**
      * Сделки вендора, что ждут ответа поставщика «отдаёт или нет» (этап с исходом «Поставщик согласовал»): «Ответ по
      * списку» в CRM (09.10.2026, Каркаде отвечает одним ответом на весь список).
      */
@@ -134,10 +143,19 @@ class Deal extends Model
         return $this->schemeOf() === DealScheme::OwnerDkp;
     }
 
-    /** Покупатель (или менеджер) платит ПРАЙМ по счёту, ПРАЙМ — страховой (Совкомбанк; Альфа бывает). */
+    /**
+     * Покупатель (или менеджер) платит за ТС нашей конторе по счёту, она — страховой: ПРАЙМ (Совкомбанк; Альфа бывает)
+     * или Р.О.С. (Альфа с НДС). Счёт, договор и вознаграждение у обеих одинаковые, разный только продавец (`seller`).
+     */
     public function isPrime(): bool
     {
-        return $this->schemeOf() === DealScheme::Prime;
+        return $this->schemeOf()->paysCar();
+    }
+
+    /** Кто продаёт ТС по этой сделке — от него счёт за ТС и ДКП. */
+    public function seller(): \App\Billing\Seller
+    {
+        return $this->schemeOf()->seller();
     }
 
     /** Менеджер платит нам подбор по ссылке — у ДКП и «страховой напрямую»; гаражная — не по цене, а долей (`share`). */
@@ -232,6 +250,8 @@ class Deal extends Model
             $this->isGarageManager() && ! $this->share => 'share',
             $this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && ! $this->contract?->buyer_user_id => 'buyer',
             $this->namesBuyer() && $this->commission === null => 'commission',
+            // Р.О.С. без реквизитов (пришлёт владелец) — счёт выставить не от кого.
+            $this->seller() === \App\Billing\Seller::Ros && ! \App\Billing\Party::seller(\App\Billing\Seller::Ros)->billable() => 'ros_requisites',
             default => 'invoice',
         };
     }

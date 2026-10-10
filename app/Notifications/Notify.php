@@ -62,6 +62,10 @@ use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
+use App\Billing\Invoice;
+use App\Billing\InvoiceState;
+use App\Billing\Seller;
+use App\Telegram\Messages\RosTransferDue;
 use App\Offers\Deal;
 use Illuminate\Support\Facades\Notification;
 
@@ -187,6 +191,10 @@ final class Notify
             if ($e->exit && $offer->evacuator && $e->to->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()) {
                 // Забирает сам менеджер сделки: «пора» скажет его шаг сделки, если у продажи он есть («Заберите автомобиль»).
                 $deal = $offer->deal;
+                // Альфа до оплаты (`Deal::mayPickUp`) — «пора» скажем, когда оплатят.
+                if ($deal && ! $deal->mayPickUp()) {
+                    return;
+                }
                 if (! ($deal?->buyerPicksUp() && ! Handover::for($deal)->servicePick)) {
                     $offer->evacuator->notify(new PickupNotice($offer, turn: true));
                 }
@@ -205,6 +213,11 @@ final class Notify
 
             return;
         }
+        // Альфа оплачена — теперь можно забирать (10.10.2026): тому, кто забирает, контакт и адрес.
+        if ($deal?->prepaid_at && $e->exit && $e->offer->vendor?->pay_before_pickup
+            && in_array(mb_strtolower(trim($e->exit->label)), ['оплата получена', 'поставщику оплачено'], true)) {
+            $this->pickupOpened($deal->setRelation('offer', $e->offer->loadMissing('evacuator')));
+        }
         // Шаг сдвинуло письмо страховой — менеджеру пишет «Страховая ответила» с этим ходом (`AdvanceOnReply`).
         if (! $deal?->buyer || $e->letter) {
             return;
@@ -219,6 +232,30 @@ final class Notify
         } elseif ($e->from?->block_id !== $e->to->block_id && $deal->created_at->lt(now()->subMinute())) {
             // Первый шаг только что открытой сделки не пишем: менеджеру уже идёт «подтверждение принято».
             $deal->buyer->notify(new DealStepNotice($deal->load('offer'), $e->to));
+        }
+    }
+
+    /** Счёт Р.О.С. оплачен целиком — сотрудникам громко и владельцу в Telegram: перевести Альфе (10.10.2026). */
+    private function rosPaid(Invoice $i): void
+    {
+        if ($i->seller !== Seller::Ros || $i->direction !== 'issued' || $i->state !== InvoiceState::Paid || ! $i->deal_id) {
+            return;
+        }
+        $i->load(['party', 'deal.offer.vendor']);
+        Notification::send($this->staff(), MoneyNotice::rosReceived($i));
+        NotifyOwner::dispatch(new RosTransferDue($i));
+    }
+
+    /** Можно забирать: менеджеру сделки, что забирает сам, — контакт владельца; иначе вывозчику — «пора забирать». */
+    private function pickupOpened(Deal $deal): void
+    {
+        $offer = $deal->offer;
+        if ($deal->buyerPicksUp()) {
+            if (($handover = Handover::for($deal))->open) {
+                $deal->buyer?->notify(new HandoverNotice($deal, $handover));
+            }
+        } elseif ($offer->evacuator && $offer->position(Track::Service)?->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()) {
+            $offer->evacuator->notify(new PickupNotice($offer, turn: true));
         }
     }
 
@@ -372,6 +409,7 @@ final class Notify
     public function paymentConfirmed(PaymentConfirmed $e): void
     {
         $p = $e->payment->load(['invoice.deal.offer', 'invoice.deal.buyer']);
+        $this->rosPaid($p->invoice->fresh());
         ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paymentConfirmed($p));
     }
 
@@ -385,6 +423,7 @@ final class Notify
     public function paymentRecorded(PaymentRecorded $e): void
     {
         $i = $e->invoice;
+        $this->rosPaid($i);
         $garage = $i->deal_id ? null : GarageCar::ofInvoice($i);
         if (! $i->isAgentFee() || (! $i->deal_id && ! $garage)) {
             return;

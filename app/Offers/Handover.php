@@ -137,7 +137,8 @@ final class Handover
         // менеджеру ещё не нужен.
         $waiting = $sale && $sale->stage->exits->contains(fn (Outcome $e) => preg_match('/^поставщик (согласовал|отказал)/u', mb_strtolower($e->label)) === 1);
         // Гаражную Совкомбанка менеджер забирает сам, без оплаты (10.10.2026) — контакт ему нужен сразу.
-        $open = $deal->isActive() && (! $deal->isGarage() || $deal->namesBuyer()) && ! $waiting;
+        // Альфа — только после оплаты (`Deal::mayPickUp`, 10.10.2026): до неё контакт владельца не нужен.
+        $open = $deal->isActive() && (! $deal->isGarage() || $deal->namesBuyer()) && ! $waiting && $deal->mayPickUp();
 
         return new self(
             open: $open,

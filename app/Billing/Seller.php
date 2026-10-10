@@ -9,12 +9,14 @@ use App\Vendors\Vendor;
  * Кто выставляет счёт — одно из наших лиц. Парковка — бизнес ИП Кузнецова, сделки и гараж — ООО «ПРАЙМ»
  * (решение владельца 30.09.2026). У каждого свои реквизиты (`billing_parties.seller`), своя ставка НДС и
  * своя нумерация счетов. Продавца определяет сам счёт: по ТС парковки — продавец парковки её вендора (ИП, у Альфы СПб —
- * ПРАЙМ), остальное — ПРАЙМ.
+ * ПРАЙМ), остальное — ПРАЙМ. ООО «Р.О.С.» (10.10.2026) — только сделки АльфаСтрахования с НДС (`DealScheme::Ros`):
+ * покупатель платит ему по счёту, оно переводит Альфе.
  */
 enum Seller: string
 {
     case Prime = 'prime';
     case Park = 'park';
+    case Ros = 'ros';
 
     public static function for(?Vehicle $vehicle): self
     {
@@ -33,7 +35,11 @@ enum Seller: string
     /** Реквизиты из конфига: ими печатаются акты парковки и заводится строка `billing_parties` при первом счёте. */
     public function config(): array
     {
-        return config($this === self::Prime ? 'xcar.company' : 'xcar.park_company', []);
+        return config(match ($this) {
+            self::Prime => 'xcar.company',
+            self::Park => 'xcar.park_company',
+            self::Ros => 'xcar.ros_company',
+        }, []);
     }
 
     /** Ставка НДС продавца; 0 — без НДС. У обоих УСН с НДС 5 %. */
@@ -42,10 +48,22 @@ enum Seller: string
         return (int) ($this->config()['vat_rate'] ?? 0);
     }
 
-    /** Выбор «Счета от» у вендора парковки: короткие имена из реквизитов. @return array<string, string> */
+    /** Выбор «Счета от» у вендора парковки: короткие имена из реквизитов; Р.О.С. парковке не продаёт. @return array<string, string> */
     public static function options(): array
     {
-        return array_combine(array_map(fn (self $s) => $s->value, self::cases()), array_map(fn (self $s) => (string) ($s->config()['short'] ?? $s->config()['name'] ?? $s->value), self::cases()));
+        $cases = [self::Park, self::Prime];
+
+        return array_combine(array_map(fn (self $s) => $s->value, $cases), array_map(fn (self $s) => (string) ($s->config()['short'] ?? $s->config()['name'] ?? $s->value), $cases));
+    }
+
+    /** Коротко в подписях: «Счёт ПРАЙМ», «ДКП Р.О.С.». */
+    public function short(): string
+    {
+        return match ($this) {
+            self::Prime => 'ПРАЙМ',
+            self::Park => 'ИП',
+            self::Ros => 'Р.О.С.',
+        };
     }
 
     public function party(): Party

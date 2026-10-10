@@ -71,7 +71,7 @@ class DealContract extends Model
     /** Продавец: у ДКП — собственник по СТС (вносит сотрудник), у ПРАЙМ — сам ПРАЙМ. */
     public function sellerParty(): ?Party
     {
-        return $this->deal->isDkp() ? $this->seller : Party::seller(Seller::Prime);
+        return $this->deal->isDkp() ? $this->seller : Party::seller($this->deal->seller());
     }
 
     public function buyerParty(): ?Party

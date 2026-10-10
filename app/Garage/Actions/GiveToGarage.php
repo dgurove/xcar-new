@@ -52,7 +52,7 @@ final class GiveToGarage
         return DB::transaction(function () use ($offer, $manager, $payer, $by, $where, $evacuator, $legacy) {
             $offer->bids()->where('state', BidState::Active)->get()->each(fn (Bid $bid) => app(DeclineBid::class)($bid, $by));
             $deal = Deal::create(['offer_id' => $offer->id, 'buyer_id' => $manager?->id, 'state' => DealState::Active, 'cost' => $offer->floor_price, 'garage_payer' => $payer,
-                'scheme' => DealScheme::forVendor($offer->vendor?->deal_format)]);
+                'scheme' => DealScheme::forOffer($offer)]);
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['garage' => $payer->value, 'manager' => $manager?->id]));
             $deal->setRelation('offer', $offer);
             $car = ($this->reserve)($deal, $by);

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class Numbering
 {
-    private const LOCKS = ['prime' => 7_000_000, 'park' => 7_100_000];
+    private const LOCKS = ['prime' => 7_000_000, 'park' => 7_100_000, 'ros' => 7_200_000];
 
     public static function next(Seller $seller, int $year): int
     {

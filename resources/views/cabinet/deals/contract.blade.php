@@ -120,13 +120,13 @@
             @if (! $missing)
                 <x-ui.doc :doc="$pdf" class="row">
                     <x-ui.row-icon name="file" size="s" tone="open"/>
-                    <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП ПРАЙМ' : 'ДКП' }}</span><span class="row-sub text-open">готов, распечатайте</span></span>
+                    <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}</span><span class="row-sub text-open">готов, распечатайте</span></span>
                     <x-ui.chevron/>
                 </x-ui.doc>
             @else
                 <div class="row">
                     <x-ui.row-icon name="file" size="s" tone="muted"/>
-                    <span class="min-w-0 flex-1"><span class="block text-ink-muted">{{ $prime ? 'ДКП ПРАЙМ' : 'ДКП' }}</span>
+                    <span class="min-w-0 flex-1"><span class="block text-ink-muted">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}</span>
                         @php $need = array_values(array_filter([in_array('покупатель', $missing, true) ? 'выберите покупателя' : null, in_array('данные покупателя', $missing, true) ? 'нужны данные покупателя' : null, $ours ? 'готовим: '.implode(', ', $ours) : null])); @endphp
                         <span class="row-sub !whitespace-normal">{{ implode(', ', $need) }}</span></span>
                 </div>

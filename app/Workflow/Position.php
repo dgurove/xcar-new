@@ -69,7 +69,24 @@ class Position extends Model
         // Через связь: списки, где часы стоят в каждой строке, грузят её разом (`with('deal')`).
         $gap = $this->deal?->invoiceGap();
 
-        return in_array($gap, ['share', 'commission'], true) ? $gap : 'invoice';
+        return in_array($gap, ['share', 'commission', 'ros_requisites'], true) ? $gap : 'invoice';
+    }
+
+    /**
+     * Что сделать нам, когда счёт не встал сам: заголовок уведомления, подпись кнопки и куда она ведёт (CRM). Одно место
+     * для ленты, Telegram, часов и пути. @return array{title: string, button: string, url: string}
+     */
+    public static function gapAction(?string $gap, \App\Offers\Deal $deal): array
+    {
+        $money = \App\Support\Surface::Crm->url('/work/deals/'.$deal->id.'#money');
+
+        return match ($gap) {
+            'share' => ['title' => 'Впишите нашу долю', 'button' => 'Вписать нашу долю', 'url' => $money],
+            'commission' => ['title' => 'Назначьте вознаграждение', 'button' => 'Назначить вознаграждение', 'url' => $money],
+            // Реквизиты продавцов правятся на парковке («Реквизиты»), Р.О.С. — первой строкой «мы».
+            'ros_requisites' => ['title' => 'Заполните реквизиты Р.О.С.', 'button' => 'Заполнить реквизиты Р.О.С.', 'url' => \App\Support\Surface::Park->url('/money/parties')],
+            default => ['title' => 'Выставите счёт', 'button' => 'Выставить счёт', 'url' => \App\Support\Surface::Crm->url('/work/invoices/new?offer='.$deal->offer->number)],
+        };
     }
 
     /** Идущая сделка оффера этой позиции. */

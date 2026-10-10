@@ -19,6 +19,10 @@ final class PickUp
         if (! $by->isAdmin() && $offer->evacuator_id !== $by->id) {
             throw ValidationException::withMessages(['exit' => 'Вывоз поручен не вам']);
         }
+        // Альфа — только после оплаты (10.10.2026): сотрудник отметит факт и сам, менеджеру рано.
+        if (! $by->isAdmin() && $offer->deal && ! $offer->deal->mayPickUp()) {
+            throw ValidationException::withMessages(['exit' => 'Забирать можно после оплаты']);
+        }
         $exit = $offer->position(Track::Service)?->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->first();
         if (! $exit) {
             throw ValidationException::withMessages(['exit' => 'Забирать пока рано']);

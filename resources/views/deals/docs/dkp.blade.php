@@ -45,7 +45,7 @@
     ];
     $date = $contract->signed_at ? $contract->signed_at->translatedFormat('«j» F Y г.') : '«___» ______________ 20___ г.';
     $embed = ! ($pdf ?? false) && request()->boolean('embed');
-    $title = $prime ? 'ДКП ПРАЙМ' : 'ДКП';
+    $title = $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП';
 @endphp
 <!doctype html>
 <html lang="ru">

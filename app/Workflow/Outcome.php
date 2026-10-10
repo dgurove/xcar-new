@@ -35,8 +35,14 @@ class Outcome extends Model
     /** Ветка обычной сделки — не гаражной (у Каркаде передача с площадки, где развилки «кто забирает» нет). */
     public const DEAL = 'deal';
 
+    /** Ветка оплаты через ООО «Р.О.С.» (Альфа с НДС, 10.10.2026): деньги пришли на Р.О.С. — сначала переводим Альфе. */
+    public const ROS = 'ros';
+
+    /** Ветка оплаты не через Р.О.С.: деньги у страховой сразу (напрямую) или у ПРАЙМ. */
+    public const NOT_ROS = 'not_ros';
+
     /** Ветки продажи: в маршруте вывоза их не бывает (`Workflow::problems`). */
-    public const SALE_BRANCHES = [self::GARAGE, self::BUYER, self::BUYER_PICKS, self::WE_HAND, self::KEEPS, self::DEAL];
+    public const SALE_BRANCHES = [self::GARAGE, self::BUYER, self::BUYER_PICKS, self::WE_HAND, self::KEEPS, self::DEAL, self::ROS, self::NOT_ROS];
 
     protected function casts(): array
     {
@@ -66,6 +72,7 @@ class Outcome extends Model
         $keeps = $for instanceof Deal && $for->isGarage();
         $picks = $for instanceof Deal && $for->buyerPicksUp();
         $to = $for instanceof Destination ? $for : Destination::Ours;
+        $ros = $for instanceof Deal && $for->schemeOf() === \App\Offers\DealScheme::Ros;
 
         return match ($this->branch) {
             null, '' => true,
@@ -75,6 +82,8 @@ class Outcome extends Model
             self::WE_HAND => ! $picks && ! $keeps,
             self::KEEPS => $keeps,
             self::DEAL => ! $keeps,
+            self::ROS => $ros,
+            self::NOT_ROS => ! $ros,
             default => $to->value === $this->branch,
         };
     }

@@ -7,7 +7,7 @@
      07.10.2026: суммы строками (.fields), кнопка .sheet-foot (форма всегда в шторке). `fee` false — без вознаграждения
      (супер-покупатель покупает у нас сам, 10.10.2026): поле и режим спрятаны, «Нам остаётся» — вся разница. --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'ownerPrice' => null, 'fee' => true])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true])
 @php
     use App\Offers\CommissionMode;
     use App\Offers\DealScheme;
@@ -30,7 +30,7 @@
         <div class="flex flex-col gap-1.5">
             <span class="field-label">За ТС платят</span>
             <div class="flex flex-wrap gap-2">
-                @foreach (DealScheme::cases() as $s)
+                @foreach ($schemes ?? DealScheme::casesFor(null) as $s)
                     <label class="choice"><input type="radio" name="scheme" value="{{ $s->value }}" @checked($scheme === $s) data-action="commission#scheme" data-selection="{{ $s->paysSelection() ? 1 : 0 }}" data-payee="{{ $s->payeeLabel() }}"><span>{{ $s->label() }}</span></label>
                 @endforeach
             </div>

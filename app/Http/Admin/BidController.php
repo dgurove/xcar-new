@@ -33,7 +33,7 @@ class BidController
     {
         $switch = $bid->offer->deal()->exists();
         $stage = $this->stageId($bid);
-        $default = DealScheme::forVendor($bid->offer->vendor?->deal_format);
+        $default = DealScheme::forOffer($bid->offer);
         if ($bid->isGarage()) {
             $request->merge(['share' => preg_replace('/\D+/', '', (string) $request->input('share')) ?: null]);
             $data = $request->validate(['payer' => ['nullable', Rule::enum(GaragePayer::class)], 'pickup' => ['nullable', Rule::in(['manager', 'us'])],
@@ -58,6 +58,8 @@ class BidController
         ]);
         // Оптом (Каркаде) схема одна — ПРАЙМ, выбора в шторке нет и с запроса её не берём.
         $scheme = DealScheme::choiceFor($bid->offer->vendor?->deal_format) ? (DealScheme::tryFrom($data['scheme'] ?? '') ?? $default) : $default;
+        // Р.О.С. — только у Альфы (`DealScheme::casesFor`).
+        $scheme = in_array($scheme, DealScheme::casesFor($bid->offer->vendor), true) ? $scheme : $default;
         if ($scheme->paysSelection() && ! isset($data['owner_price']) && ! $bid->offer->owner_price && ! $bid->offer->floor_price) {
             return back()->withErrors(['owner_price' => $scheme === DealScheme::OwnerDkp ? 'Сколько покупатель отдаёт страхователю по ДКП' : 'Сколько покупатель отдаёт страховой'])->withInput();
         }

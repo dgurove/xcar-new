@@ -11,6 +11,7 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
+use App\Billing\Seller;
 use App\Offers\Deal;
 use App\Offers\OfferEventType;
 use App\Support\Money;
@@ -121,6 +122,10 @@ final class SyncDealInvoices
         if (! $contract?->buyer_user_id || $deal->amount === null || ($deal->namesBuyer() && $deal->commission === null)) {
             return null;
         }
+        // Р.О.С. без реквизитов — счёт с прочерками не выставляем: ход наш «Заполните реквизиты Р.О.С.» (`Deal::invoiceGap`).
+        if ($deal->seller() !== Seller::Prime && ! $deal->seller()->party()->billable()) {
+            return null;
+        }
         // Платит покупатель — удерживать не из чего, `Deal::withholds` тогда ложь: вознаграждение выплачиваем после оплаты.
         $managerPays = $contract->managerPays();
         $party = Party::forUser($managerPays ? $deal->buyer : $contract->buyer);
@@ -144,7 +149,9 @@ final class SyncDealInvoices
             ->with(['payments', 'claims', 'charges'])->get();
         $total = $want ? round(array_sum(array_map(fn ($l) => $l['price'] * $l['qty'], $want['lines'])), 2) : null;
         // Сверяем строки, а не итог: у плательщика с «НДС сверху» итог больше строк.
-        $fits = fn (Invoice $i) => $want && $i->party_id === $want['party']->id && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $total) < 0.01
+        $seller = $kind === ChargeKind::Sale ? $deal->seller() : Seller::Prime;
+        // Сменили схему ПРАЙМ ↔ Р.О.С. — счёт другого продавца перевыставляется.
+        $fits = fn (Invoice $i) => $want && $i->seller === $seller && $i->party_id === $want['party']->id && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $total) < 0.01
             && abs($i->payments->where('source', PaymentSource::Offset)->sum('amount') - $want['offset']) < 0.01;
         // Зачёт оплаты по ссылке — не оплата этого счёта: счёт перевыставляется, зачёт ляжет в новый (`ApplyDealCredits`).
         $paid = fn (Invoice $i) => $i->claims->isNotEmpty() || $i->payments->contains(fn ($p) => ! $p->source->isSoft());
@@ -158,7 +165,7 @@ final class SyncDealInvoices
         if ($keep) {
             return;
         }
-        $invoice = ($this->issue)($want['party'], $by, 'issued', $kind, $this->dueFor($deal, $kind), lines: $want['lines'], dealId: $deal->id, offerId: $deal->offer_id);
+        $invoice = ($this->issue)($want['party'], $by, 'issued', $kind, $this->dueFor($deal, $kind), lines: $want['lines'], dealId: $deal->id, offerId: $deal->offer_id, seller: $seller);
         if ($want['offset'] > 0) {
             ($this->record)($invoice, $by, $want['offset'], null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
             $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));

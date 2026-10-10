@@ -29,6 +29,20 @@ return [
         'vat_rate' => (int) env('XCAR_PARK_VAT_RATE', 5),
     ],
 
+    // ООО «Р.О.С.» (`Seller::Ros`, 10.10.2026): только сделки АльфаСтрахования с НДС — покупатель платит ему, оно
+    // переводит Альфе. Реквизиты пришлёт владелец: до них счёт Р.О.С. не выставляется (`Deal::invoiceGap` → `ros_requisites`),
+    // правятся в CRM «Реквизиты» (строка `billing_parties` с seller = ros), конфиг — только для первой строки.
+    'ros_company' => [
+        'name' => env('ROS_NAME', 'ООО «Р.О.С.»'), 'full_name' => env('ROS_FULL_NAME', 'Общество с ограниченной ответственностью «Р.О.С.»'),
+        'short' => 'Р.О.С.',
+        'inn' => env('ROS_INN'), 'kpp' => env('ROS_KPP'), 'ogrn' => env('ROS_OGRN'), 'address' => env('ROS_ADDRESS'),
+        'phone' => env('ROS_PHONE'), 'email' => env('ROS_EMAIL'),
+        'bank' => env('ROS_BANK'), 'bik' => env('ROS_BIK'), 'account' => env('ROS_ACCOUNT'), 'corr_account' => env('ROS_CORR_ACCOUNT'),
+        'director' => env('ROS_DIRECTOR'), 'director_full' => env('ROS_DIRECTOR_FULL'),
+        // Альфа продаёт с НДС — и Р.О.С. перепродаёт с НДС; ставку скажет владелец вместе с реквизитами.
+        'vat_rate' => (int) env('ROS_VAT_RATE', 20),
+    ],
+
     // Стоянка: после скольких дней хранения без движения ТС попадает в «стоят долго».
     'park_idle_days' => 30,          // стоит долго: с этого дня тревожно, с удвоенного — красно
     'system_account' => env('XCAR_SYSTEM_ACCOUNT', 'deal'), // slug ящика для «Забыл пароль»

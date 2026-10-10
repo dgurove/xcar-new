@@ -135,6 +135,21 @@ final class MoneyNotice extends Notice
         return $notice;
     }
 
+    /**
+     * Деньги пришли на Р.О.С. (Альфа с НДС, 10.10.2026, владелец: «надо срочно перекинуть альфе… это редко, но чтобы не
+     * пропустили»): сотрудникам громко — сколько и кому перевести, ссылка на сделку с шагом «Перевод поставщику с Р.О.С.».
+     */
+    public static function rosReceived(Invoice $i): self
+    {
+        $deal = $i->deal;
+        $sum = Money::rub((int) ($deal?->cost ?? $i->total));
+        $notice = (new self('Переведите '.$sum.' '.($deal?->offer?->vendor?->name ?? 'поставщику').' с Р.О.С.', 'Оплачен счёт Р.О.С. '.$i->label().', '.($deal?->offer?->titleWithYear() ?? $i->party->name),
+            Surface::Crm->url('/work/deals/'.$i->deal_id), $deal?->offer?->number, true))->about($i);
+        $notice->loud = true;
+
+        return $notice;
+    }
+
     /** Оплатили по ссылке — менеджеру: его счёт закрылся или уменьшился сам. */
     public static function paidOnline(PayLink $link, Payment $p): self
     {

@@ -82,6 +82,13 @@ final class EnterStage
         ]);
         $offer->unsetRelation('positions');
 
+        // Оплата за ТС подтверждена (поставщик получил, «платим мы» — оплатили сами): у Альфы только теперь можно забирать
+        // (`Deal::mayPickUp`, 10.10.2026). Откат шага отметку не снимает — деньги уже ушли.
+        if ($track === Track::Sale && $deal?->isActive() && ! $deal->prepaid_at && $exit
+            && in_array(mb_strtolower(trim($exit->label)), ['оплата получена', 'поставщику оплачено'], true)) {
+            $deal->forceFill(['prepaid_at' => $now])->save();
+        }
+
         if ($track === Track::Sale && $to->offer_state && $offer->state !== $to->offer_state && $offer->state->allows($to->offer_state)) {
             $offer = ($this->changeState)($offer, $to->offer_state, $by, followRoute: false);
         }

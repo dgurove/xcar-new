@@ -67,7 +67,7 @@ class Party extends Model
         return self::firstOrCreate(['seller' => $seller->value], [
             'is_self' => true, 'kind' => $seller === Seller::Park ? PartyKind::Entrepreneur : PartyKind::Company, 'name' => $c['name'],
             'inn' => $c['inn'] ?? null, 'kpp' => $c['kpp'] ?? null, 'ogrn' => $c['ogrn'] ?? null, 'legal_address' => $c['address'] ?? null,
-            'director' => $c['director'] ?? null, 'director_basis' => $seller === Seller::Prime ? 'Устава' : null,
+            'director' => $c['director'] ?? null, 'director_basis' => $seller === Seller::Park ? null : 'Устава',
             'bank_name' => $c['bank'] ?? null, 'bik' => $c['bik'] ?? null, 'account' => $c['account'] ?? null, 'corr_account' => $c['corr_account'] ?? null,
             'phone' => $c['phone'] ?? null, 'email' => $c['email'] ?? null,
         ]);

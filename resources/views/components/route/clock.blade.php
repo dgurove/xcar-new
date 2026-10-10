@@ -6,7 +6,7 @@
     $overdue = $position->isOverdue();
     $invoice = $position->awaitsInvoice();
     $gap = $invoice ? $position->gap() : null;
-    $who = $invoice ? ($side === 'manager' ? 'Готовим счёт' : (match ($gap) { 'share' => 'Вписать нашу долю', 'commission' => 'Назначить вознаграждение', default => 'Выставить счёт' })) : match ($position->waitsFor()) {
+    $who = $invoice ? ($side === 'manager' ? 'Готовим счёт' : \App\Workflow\Position::gapAction($gap, $position->deal)['button']) : match ($position->waitsFor()) {
         \App\Workflow\WaitsFor::Manager => $side === 'manager' ? 'Ваш ход' : 'Ждём менеджера',
         \App\Workflow\WaitsFor::Supplier => 'Ждём поставщика',
         \App\Workflow\WaitsFor::Us => $side === 'manager' ? 'Ждём нас' : 'Наш ход',

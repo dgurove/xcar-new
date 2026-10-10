@@ -178,8 +178,8 @@
                             @endif
                             @if ($wantsInvoice)
                                 {{-- Счета ставятся сами (`SyncDealInvoices`); гаражной не хватает нашей доли — вписать её в «Деньгах» сделки. --}}
-                                @if (in_array($position->gap(), ['share', 'commission'], true))<a href="/work/deals/{{ $deal->id }}#money" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $position->gap() === 'share' ? 'Вписать нашу долю' : 'Назначить вознаграждение' }}</a>
-                                @else<a href="/work/invoices/new?offer={{ $n }}" class="btn btn-s btn-accent" data-turbo-frame="_top">Выставить счёт</a>@endif
+                                @php $action = \App\Workflow\Position::gapAction($position->gap(), $deal); @endphp
+                                <a href="{{ $action['url'] }}" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $action['button'] }}</a>
                             @endif
                             @foreach ($moves->values() as $i => $exit)
                                 @php $variant = $i === 0 && ! $wantsInvoice ? 'primary' : 'secondary'; @endphp

@@ -40,7 +40,7 @@ final class UpdateDealMoney
             $deal->offer->log(OfferEventType::Note, $by, ['text' => match (true) {
                 $garage => 'Наша доля: '.($deal->share ? Money::rub($deal->share) : 'нет'),
                 $selection => $scheme->payeeLabel().' '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),
-                default => 'ПРАЙМ по счёту, вознаграждение '.($commission ? Money::rub($commission) : 'нет').', '.mb_strtolower($deal->commission_mode->label()),
+                default => $scheme->label().', вознаграждение '.($commission ? Money::rub($commission) : 'нет').', '.mb_strtolower($deal->commission_mode->label()),
             }]);
             // Ушли со схемы, где менеджер платит подбор, или стёрли гаражную долю — неоплаченный подбор гаснет (ссылка с ним).
             $fresh = $deal->fresh();

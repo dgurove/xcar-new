@@ -38,7 +38,7 @@
                         </form>
                     @else
                         <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()" :mode="$deal->commission_mode"
-                            :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" :owner-price="$deal->owner_price" submit="Сохранить"/>
+                            :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" :schemes="\App\Offers\DealScheme::casesFor($deal->offer->vendor)" :owner-price="$deal->owner_price" submit="Сохранить"/>
                     @endif
                 </x-ui.sheet>
             </div>

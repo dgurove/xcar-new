@@ -25,6 +25,8 @@ final class PickupState
             ! $stage => ['вывоз не начат', 'plain'],
             $stage->car_place === CarPlace::Keeper => self::keeper($offer, $viewer),
             $stage->car_place === CarPlace::WithUs => ['стоит у нас', 'open'],
+            // Альфа: забирать после оплаты (10.10.2026) — ещё не время, чей бы ход вывоза ни был.
+            self::unpaid($offer) => ['после оплаты', 'plain'],
             $stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty() => [$who ? 'забирает '.$who : 'забрать', 'urgent'],
             // Шаг продажи сам просит «Автомобиль забрал» (Совкомбанк: без оплаты, сразу) — документы не ждём.
             (bool) $offer->position(Track::Sale)?->stage->isPickupStep() => self::picking($offer, $viewer),
@@ -55,7 +57,15 @@ final class PickupState
     /** Ход ответственного: «забрать» — его бейдж в табе «Гараж». */
     public static function awaits(Offer $offer): bool
     {
-        return (bool) $offer->position(Track::Service)?->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty();
+        return ! self::unpaid($offer) && (bool) $offer->position(Track::Service)?->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty();
+    }
+
+    /** Сделка Альфы ещё не оплачена — забирать рано (`Deal::mayPickUp`). */
+    private static function unpaid(Offer $offer): bool
+    {
+        $deal = $offer->deal;
+
+        return $deal && ! $deal->setRelation('offer', $offer)->mayPickUp();
     }
 
     /** Сколько дней на текущем шаге вывоза. */

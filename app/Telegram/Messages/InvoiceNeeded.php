@@ -4,7 +4,6 @@ namespace App\Telegram\Messages;
 
 use App\Offers\Deal;
 use App\Support\Money;
-use App\Support\Surface;
 use App\Telegram\Text;
 
 /** Владельцу: сделка дошла до оплаты, счёта нет — кнопка ведёт прямо в «Выставить счёт». */
@@ -14,7 +13,7 @@ final class InvoiceNeeded extends Message
 
     protected function title(): string
     {
-        return (match ($this->gap) { 'share' => 'Впишите нашу долю: ', 'commission' => 'Назначьте вознаграждение: ', default => 'Выставите счёт: ' }).$this->deal->offer->titleWithYear();
+        return \App\Workflow\Position::gapAction($this->gap, $this->deal)['title'].': '.$this->deal->offer->titleWithYear();
     }
 
     protected function lines(): array
@@ -31,8 +30,8 @@ final class InvoiceNeeded extends Message
 
     protected function link(): array
     {
-        return in_array($this->gap, ['share', 'commission'], true)
-            ? ['text' => $this->gap === 'share' ? 'Вписать долю' : 'Назначить вознаграждение', 'url' => Surface::Crm->url('/work/deals/'.$this->deal->id.'#money')]
-            : ['text' => 'Выставить счёт', 'url' => Surface::Crm->url('/work/invoices/new?offer='.$this->deal->offer->number)];
+        $action = \App\Workflow\Position::gapAction($this->gap, $this->deal);
+
+        return ['text' => $action['button'], 'url' => $action['url']];
     }
 }
