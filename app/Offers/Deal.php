@@ -155,7 +155,7 @@ class Deal extends Model
         if (! $this->garage_payer) {
             return null;
         }
-        if ($this->offer?->vendor?->deal_format === \App\Vendors\DealFormat::Commission) {
+        if ($this->isCommission()) {
             return $this->garage_payer === \App\Garage\GaragePayer::Manager ? 'без оплаты, счёт ПРАЙМ при продаже' : 'поставщику платим мы';
         }
 
@@ -178,7 +178,7 @@ class Deal extends Model
      */
     public function isCommission(): bool
     {
-        return $this->offer?->vendor?->deal_format === \App\Vendors\DealFormat::Commission;
+        return (bool) $this->offer?->vendor?->isCommission();
     }
 
     /**
@@ -187,7 +187,8 @@ class Deal extends Model
      */
     public function namesBuyer(): bool
     {
-        return $this->isGarage() && $this->isCommission();
+        // «Взяли под себя» (платим мы, менеджера нет) — не она: там машину оплачиваем и оформляем на ПРАЙМ сами.
+        return $this->garage_payer === GaragePayer::Manager && $this->isCommission();
     }
 
     /** Договор собираем мы: ДКП собственника или ПРАЙМ (в том числе с менеджером гаражной); «страховой» — нет. */

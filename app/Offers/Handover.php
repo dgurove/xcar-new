@@ -102,7 +102,9 @@ final class Handover
         // Выдача у поставщика (Каркаде): забирает сам менеджер — шаг «Выдача у поставщика» ждёт его «Забрал».
         $atSupplier = $sale && ! $service && $sale->stage->workflow->stages->contains(fn (Stage $s) => in_array('адрес выдачи', self::labels($s), true));
         // Шаг продажи сам просит его «Автомобиль забрал» (Совкомбанк, Т-Страхование) — забирает он, а не мы.
-        $picks = $picks || $atSupplier || $saleExit !== null;
+        // Везём мы (гаражной «Везёт в гараж: Мы») — шаг догонит вывоз, ему не ехать.
+        $weTow = ! $offer->evacuator_id && $offer->evacuation_to !== null;
+        $picks = $picks || $atSupplier || ($saleExit !== null && ! $weTow);
         $where = match (true) {
             $place === CarPlace::Keeper => $offer->keeper()?->id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
             $place === CarPlace::WithUs => CarPlace::WithUs->label(),

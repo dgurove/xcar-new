@@ -69,7 +69,7 @@ final class AcceptBid
                 [$commission, $mode] = [null, CommissionMode::Payout];
                 // Наша доля — только у «платит менеджер»: он платит её по ссылке сразу (05.10.2026).
                 // Совкомбанк: доли нет — машина уходит без оплаты, нашу часть даёт продажа (`Deal::namesBuyer`).
-                $share = $payer === GaragePayer::Manager && $offer->vendor?->deal_format !== \App\Vendors\DealFormat::Commission ? $share : null;
+                $share = $payer === GaragePayer::Manager && ! $offer->vendor?->isCommission() ? $share : null;
             } else {
                 [$payer, $share] = [null, null];
             }

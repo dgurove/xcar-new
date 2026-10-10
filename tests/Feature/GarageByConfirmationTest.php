@@ -148,6 +148,7 @@ class GarageByConfirmationTest extends TestCase
     public function test_sovcombank_garage_picks_up_without_payment_and_sells_through_deal(): void
     {
         Storage::fake('private');
+        \Illuminate\Support\Facades\Notification::fake();
         $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $manager = User::create(['name' => 'Филипп Бородин', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
@@ -196,6 +197,8 @@ class GarageByConfirmationTest extends TestCase
                 'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2010-10-10', 'reg_address' => 'г. Москва']], $manager);
         $this->assertSame('commission', $deal->fresh()->invoiceGap());
         $this->assertSame(\App\Workflow\WaitsFor::Us, $offer->fresh()->position(Track::Sale)->waits_for);
+        // Ход наш — сотрудникам «Назначьте вознаграждение», а не тишина.
+        \Illuminate\Support\Facades\Notification::assertSentTo($admin, \App\Notifications\InvoiceNeededNotice::class);
 
         $deal->fresh()->update(['commission' => 100000]);
         app(\App\Offers\Actions\SyncDealInvoices::class)($deal->fresh(), $admin);
@@ -210,6 +213,10 @@ class GarageByConfirmationTest extends TestCase
         $this->assertSame(CarState::Settled, $car->fresh()->state);
         $this->assertFalse($car->fresh()->costs()->where('kind', \App\Garage\Cost::SUPPLIER)->exists());
         $this->assertSame(1, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->where('state', '!=', 'void')->count());
+
+        // «Взяли под себя» (платим мы, без менеджера) — не она: машину оплачиваем и оформляем сами, расчёт по машине свой.
+        $ours = (new \App\Offers\Deal(['garage_payer' => GaragePayer::Us]))->setRelation('offer', $offer->fresh());
+        $this->assertFalse($ours->namesBuyer());
     }
 
     /** Жать первые не тупиковые кнопки ветки, пока не выполнится условие. */

@@ -17,7 +17,13 @@
         CarState::Waiting => $where,
         CarState::Ready => $car->papersPending() ? 'ждём документы со страховой' : null,
         CarState::Repair, CarState::Selling => $days($car->stageDays()),
-        CarState::Sold => match (true) {
+        // Совкомбанк: счёт ПРАЙМ — у сделки (покупателю), своего расчёта у машины нет.
+        CarState::Sold => $car->settledByDeal() ? match ($car->deal->invoiceGap()) {
+            'buyer' => $staff ? 'менеджер указывает покупателя' : 'укажите покупателя',
+            'commission' => $staff ? 'назначить вознаграждение' : 'готовим счёт',
+            null => $car->deal->issuedInvoices()->where('state', \App\Billing\InvoiceState::Issued)->exists() ? 'ждём оплату покупателя' : null,
+            default => $staff ? 'выставить счёт' : 'готовим счёт',
+        } : match (true) {
             ! $invoice => $staff ? 'выставить счёт' : 'готовим счёт',
             // Сумма — крупно в деньгах: здесь только что и до когда.
             $unpaid && $current->isOwed() => $staff ? 'отдаём менеджеру' : 'выплата вам',

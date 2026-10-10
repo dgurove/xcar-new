@@ -49,7 +49,7 @@
                             @endif
                             {{-- Платит поставщику менеджер — нашу долю он платит по ссылке сразу (05.10.2026). --}}
                             {{-- У Совкомбанка доли нет: машина уходит без оплаты, нашу часть даёт продажа (`Deal::namesBuyer`). --}}
-                            @unless ($offer->vendor?->deal_format === \App\Vendors\DealFormat::Commission)
+                            @unless ($offer->vendor?->isCommission())
                             <div class="fields" data-reveal-target="pane" data-reveal-key="manager" @if ($branch && old('payer', 'us') !== 'manager') hidden @endif>
                                 <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')" data-controller="digits" data-action="input->digits#format"/>
                             </div>
@@ -74,7 +74,10 @@
                             <input type="hidden" name="bid" value="{{ $bid->id }}">
                             {{-- ТС ещё у владельца — кто её забирает (04.10.2026): менеджер сделки по умолчанию; поручено
                                  другому — по умолчанию «Мы», то есть как назначено. --}}
-                            @if ($offer->pickupChoosable())
+                            {{-- Совкомбанк: машину забирает сам менеджер, его шаг «Заберите автомобиль» (10.10.2026) — выбора нет. --}}
+                            @if ($offer->pickupChoosable() && $offer->vendor?->isCommission())
+                                <input type="hidden" name="pickup" value="manager">
+                            @elseif ($offer->pickupChoosable())
                                 @php $byBuyer = ! $offer->evacuator_id || $offer->evacuator_id === $bid->user_id; @endphp
                                 <div class="flex flex-col gap-1.5">
                                     <span class="field-label">Забирает автомобиль</span>

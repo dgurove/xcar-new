@@ -62,6 +62,7 @@ use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
+use App\Offers\Deal;
 use Illuminate\Support\Facades\Notification;
 
 /** Кому что рассказать, когда в офферах что-то произошло. */
@@ -198,10 +199,7 @@ final class Notify
         // доля или счёт не встал (сотрудникам и владельцу — словами того, что нужно); ПРАЙМ без покупателя — ход менеджера.
         $position = $deal?->isActive() ? Position::where('offer_id', $e->offer->id)->where('track', Track::Sale)->with('stage.exits')->first() : null;
         if ($position?->awaitsInvoice()) {
-            $deal->setRelation('offer', $e->offer)->loadMissing('buyer');
-            $gap = $position->gap();
-            Notification::send($this->staff(), new InvoiceNeededNotice($deal, $gap));
-            NotifyOwner::dispatch(new InvoiceNeededMessage($deal, $gap));
+            $this->invoiceNeeded($deal->setRelation('offer', $e->offer), $position->gap());
         } elseif ($position && $e->to->isPayStep() && $deal->buyer && $deal->invoiceGap() === 'buyer') {
             $deal->setRelation('offer', $e->offer)->buyer->notify(new BuyerNeededNotice($deal));
 
@@ -455,6 +453,14 @@ final class Notify
     }
 
     /** Сторона площадки: подтверждения, интерес, сроки, деньги, чаты — админам; модератору их нет. */
+    /** Ход наш на оплате без счёта: сотрудникам и владельцу — что нужно (выставить, вписать долю, назначить вознаграждение). */
+    public function invoiceNeeded(Deal $deal, ?string $gap): void
+    {
+        $deal->loadMissing(['buyer', 'offer']);
+        Notification::send($this->staff(), new InvoiceNeededNotice($deal, $gap));
+        NotifyOwner::dispatch(new InvoiceNeededMessage($deal, $gap));
+    }
+
     private function staff()
     {
         return User::withRole(Role::Admin)->get();

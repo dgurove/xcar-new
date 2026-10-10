@@ -34,9 +34,10 @@ final class PickupState
 
     private static function picking(Offer $offer, ?User $viewer): array
     {
-        $keeper = $offer->keeper();
+        // Забирает держатель гаража или вывозчик, а без них — менеджер сделки: сотруднику — по имени, ему — «забрать».
+        $who = $offer->keeper() ?? $offer->deal?->buyer;
 
-        return [$viewer && $keeper && $keeper->id !== $viewer->id ? 'забирает '.$keeper->shortName() : 'забрать', 'urgent'];
+        return [$who && $who->id !== $viewer?->id ? 'забирает '.$who->shortName() : 'забрать', 'urgent'];
     }
 
     /** Стоит «у менеджера»: у держателя гаража, иначе у вывозчика (`Offer::keeper`) — своему «у вас», другим по имени. */

@@ -61,6 +61,10 @@ class BidController
         if ($scheme->paysSelection() && ! isset($data['owner_price']) && ! $bid->offer->owner_price && ! $bid->offer->floor_price) {
             return back()->withErrors(['owner_price' => $scheme === DealScheme::OwnerDkp ? 'Сколько покупатель отдаёт страхователю по ДКП' : 'Сколько покупатель отдаёт страховой'])->withInput();
         }
+        // Совкомбанк: забирает всегда менеджер сделки — шаг «Заберите автомобиль» (10.10.2026).
+        if ($bid->offer->vendor?->isCommission()) {
+            $data['pickup'] = 'manager';
+        }
         DB::transaction(function () use ($bid, $data, $request, $accept, $scheme) {
             $offer = $bid->offer->loadMissing('vendor.workflows', 'parkVehicle');
             $choosable = isset($data['pickup']) && $offer->pickupChoosable();

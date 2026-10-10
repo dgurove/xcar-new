@@ -53,7 +53,7 @@
             @if ($needsBuyer)
                 <h3 class="mt-5 text-lg">Укажите покупателя</h3>
             @elseif ($needsPrice)
-                <h3 class="mt-5 text-lg">Когда продадите, нажмите «Продаю» и укажите цену</h3>
+                <h3 class="mt-5 text-lg">Укажите цену продажи</h3>
             @elseif ($requirement && ! ($pickupSteps ?? null))
                 {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
                 <h3 class="mt-5 text-lg">{{ \App\Users\Wording::mine($requirement->title) }}</h3>

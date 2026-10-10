@@ -132,6 +132,15 @@ class Vendor extends Model implements HasMedia
         return $partyId ? self::badges()->firstWhere('party_id', $partyId) : null;
     }
 
+    /**
+     * Продаёт по договору комиссии (Совкомбанк): машину забирают без оплаты, ПРАЙМ платит ему после продажи (10.10.2026).
+     * Одна проверка на сделку, принятие и шторку.
+     */
+    public function isCommission(): bool
+    {
+        return $this->deal_format === DealFormat::Commission;
+    }
+
     public function logoUrl(): ?string
     {
         $media = (self::badges()->get($this->id) ?? $this)->getFirstMedia('logo');

@@ -71,6 +71,10 @@ final class SyncDealInvoices
         $who = $deal->managerGap() ? WaitsFor::Manager : WaitsFor::Us;
         if ($position->waits_for !== $who) {
             $position->update(['waits_for' => $who, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null]);
+            // Менеджер назвал цену и покупателя — дело за нами: без уведомления сделка молча ждала бы вознаграждение.
+            if ($who === WaitsFor::Us) {
+                app(\App\Notifications\Notify::class)->invoiceNeeded($deal, $position->gap());
+            }
         }
     }
 
