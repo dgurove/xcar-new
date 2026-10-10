@@ -52,10 +52,10 @@
                 </div>
                 <label class="check"><input type="checkbox" data-share-target="watermark" data-action="share#photosChanged"><span>Водяной знак на фото</span></label>
             @endif
-            {{-- «PDF готов, 6 фото, 619 КБ» — нажатие скачивает файл (значок справа), пока PDF не готов — просто строка. --}}
-            <button type="button" class="flex w-full items-center gap-2 text-left text-sm text-ink-muted enabled:hover:text-ink" data-share-target="statusRow" data-action="share#downloadPdf" disabled>
-                <span class="min-w-0 flex-1" data-share-target="status"></span>
-                <span class="hidden shrink-0" data-share-target="statusIcon"><x-ui.icon name="download" class="size-5"/></span>
+            {{-- «PDF готов, 6 фото, 619 КБ» — нажатие скачивает файл (значок сразу за текстом), пока PDF не готов — просто строка. --}}
+            <button type="button" class="inline-flex items-center gap-1.5 self-start text-left text-sm text-ink-muted enabled:hover:text-ink" data-share-target="statusRow" data-action="share#downloadPdf" disabled>
+                <span data-share-target="status"></span>
+                <span class="hidden shrink-0" data-share-target="statusIcon"><x-ui.icon name="download" class="size-4"/></span>
             </button>
             <div class="flex flex-col gap-2 sm:flex-row">
                 <x-ui.button type="button" class="sm:flex-1" data-action="share#send" data-share-target="send"><x-ui.icon name="share" class="size-5"/> <span data-share-target="label">Поделиться PDF</span></x-ui.button>
