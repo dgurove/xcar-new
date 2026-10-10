@@ -2,7 +2,7 @@
     @if (! $cards)
         <x-ui.empty>Пока ни одной закупки нет</x-ui.empty>
     @else
-        <div class="list max-w-[56rem]">
+        <div class="list">
             @foreach ($cards as $card)<x-purchase.row :card="$card"/>@endforeach
         </div>
     @endif

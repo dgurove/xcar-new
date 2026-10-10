@@ -70,7 +70,7 @@
         {{-- Строки — сгруппированный список `.list`, плитки — `x-garage.card`; без выбора вид решает ширина: на телефоне
              строки, от 640 плитки (оба куска в разметке, кадры ленивые — скрытый их не грузит). --}}
         @foreach (array_filter(['list' => $view === ListView::LIST || ! $view, 'grid' => $view === ListView::GRID || ! $view]) as $kind => $_)
-            <div @class(['flex flex-col', 'max-w-[56rem]' => $kind === 'list', 'sm:hidden' => ! $view && $kind === 'list', 'max-sm:hidden' => ! $view && $kind === 'grid'])>
+            <div @class(['flex flex-col', 'sm:hidden' => ! $view && $kind === 'list', 'max-sm:hidden' => ! $view && $kind === 'grid'])>
                 @foreach ($groups as $head => $rows)
                     @if ($head)<h2 class="list-head">{{ $head }}<span class="nums text-base font-normal text-ink-muted">{{ $rows->count() }}</span></h2>@endif
                     @if ($kind === 'list')

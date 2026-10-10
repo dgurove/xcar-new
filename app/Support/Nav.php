@@ -283,7 +283,7 @@ final class Nav
         $links = [self::link('Профиль', '/account', exact: true)];
         if ($user->hasDeals()) {
             // Сделки, покупатели и гараж — разделы таб-бара; в кабинете остаются деньги.
-            $links[] = self::link('Деньги', '/account/money', also: ['/account/money/details'], icon: 'wallet');
+            $links[] = self::link('Оплаты', '/account/money', also: ['/account/money/details'], icon: 'wallet');
             // Супер-покупатель оставляет интерес в галерее — его список здесь же (у менеджера интерес — в «Покупателях»).
             if ($user->isSuperBuyer()) {
                 $links[] = self::link('Интерес', '/account/interests', icon: 'flag');

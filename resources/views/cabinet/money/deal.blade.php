@@ -17,8 +17,8 @@
         $phrase = preg_replace('/^К выплате /u', '', $phrase);
     }
 @endphp
-<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Деньги', '/account/money']">
-    <div class="flex max-w-[30rem] flex-col gap-6">
+<x-ui.cabinet :title="$offer->titleWithYear()" :back="['Оплаты', '/account/money']">
+    <div class="flex flex-col gap-6">
         @if ($m->amount !== null)
             <x-money.hero :offer="$offer" :caption="$m->caption" :amount="$m->amount" :phrase="$phrase" :tone="$tone"/>
         @endif

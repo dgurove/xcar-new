@@ -14,7 +14,7 @@
 @if ($titled && $deals->isNotEmpty())
     <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="deals-head"/></x-slot:actions>
 @endif
-<div class="flex max-w-[56rem] flex-col gap-4">
+<div class="flex flex-col gap-4">
     @if (! $titled || $deals->isNotEmpty())
         <div @class(['search-head', 'max-md:hidden' => $titled])>
             @unless ($titled)<div class="min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>@endunless

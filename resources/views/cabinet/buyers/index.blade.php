@@ -2,7 +2,7 @@
      «Пригласить» (свои экраны вложены сюда), затем группы — свои строки, последняя «Новая группа»; ниже люди.
      Лупа справа от пилюль (при поиске верхних блоков нет: ищут людей). --}}
 <x-ui.shell title="Покупатели" :phone-heading="false" :desktop-heading="false">
-<div class="flex max-w-[56rem] flex-col gap-4">
+<div class="flex flex-col gap-4">
     {{-- Лупа — справа от пилюль раздела; в поиске поле встаёт на их место. --}}
     <div class="search-head">
         <div class="min-w-0 flex-1"><x-deal.tabs current="/buyers"/></div>
