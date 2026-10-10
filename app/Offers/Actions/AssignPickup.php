@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Logistics\Actions\SyncPickupTransport;
 use App\Offers\Destination;
 use App\Offers\Events\PickupAssigned;
 use App\Offers\Offer;
@@ -18,12 +19,14 @@ use Illuminate\Validation\ValidationException;
  * держит у себя (или мы — у себя). Машину в гараже везут к её менеджеру (`Offer::keeper`), сам он или мы. Парковки
  * здесь нет: вывоз CRM дел на park.xcar не заводит.
  * Запускает маршрут вывоза, если его ещё нет; поменять можно, пока ТС не забрали.
+ * «Мы» (без менеджера) с 10.10.2026 — это логистика: перевозку заводит `SyncPickupTransport` (`transport: false` — её
+ * сейчас же заведёт и назначит сам вызывающий, шторка «Вывоз» → `SendToLogistics`).
  */
 final class AssignPickup
 {
-    public function __construct(private StartRoute $start) {}
+    public function __construct(private StartRoute $start, private SyncPickupTransport $transport) {}
 
-    public function __invoke(Offer $offer, ?User $evacuator, Destination $to, User $by): Offer
+    public function __invoke(Offer $offer, ?User $evacuator, Destination $to, User $by, bool $transport = true): Offer
     {
         // Супер-покупатель забирает только машину своей сделки — так его и назначает «Принять».
         $ownDeal = $evacuator?->isSuperBuyer() && $offer->deal()->where('buyer_id', $evacuator->id)->exists();
@@ -49,12 +52,15 @@ final class AssignPickup
             throw ValidationException::withMessages(['evacuator_id' => 'ТС уже забрали']);
         }
 
-        return DB::transaction(function () use ($offer, $evacuator, $to, $by, $position) {
+        return DB::transaction(function () use ($offer, $evacuator, $to, $by, $position, $transport) {
             $previous = $offer->evacuator;
             $offer->update(['evacuator_id' => $evacuator?->id, 'evacuation_to' => $to->value]);
-            $offer->log(OfferEventType::PickupAssigned, $by, ['who' => $evacuator?->name ?? 'мы', 'to' => $to->value]);
+            $offer->log(OfferEventType::PickupAssigned, $by, ['who' => $evacuator?->name ?? 'логистика', 'to' => $to->value]);
             if (! $position) {
                 $offer = ($this->start)($offer->load('vendor.workflows'), $by, Track::Service);
+            }
+            if ($transport) {
+                ($this->transport)($offer->fresh(['positions.stage', 'garageCar.manager']), $by);
             }
             PickupAssigned::dispatch($offer->fresh(), $previous, $by);
 

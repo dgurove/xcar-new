@@ -81,7 +81,9 @@ class BidController
             $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow']);
             if ($data['pickup'] === 'manager') {
                 app(AssignPickup::class)($offer, $bid->user, Destination::Keeper, $request->user());
-            } elseif ($wasPicker) {
+            } elseif ($wasPicker || ! $offer->evacuation_to) {
+                // «Логистика»: вывоз ещё никому не поручен (или забирал прежний) — везём мы, перевозка встаёт в логистику
+                // (`SyncPickupTransport`); поручен другому менеджеру — как назначено.
                 app(AssignPickup::class)($offer, null, Destination::Ours, $request->user());
             }
         });

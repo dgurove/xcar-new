@@ -13,14 +13,17 @@ use App\Users\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** Отмена перевозки — админу и логисту, пока машину не сдали: неоплаченный долг исполнителю и расход гаража уходят. */
+/**
+ * Отмена перевозки — админу и логисту, пока машину не сдали: неоплаченный долг исполнителю и расход гаража уходят.
+ * `system` — отменяет сама система (вывоз поручили менеджеру, `SyncPickupTransport`): роль того, кто нажал, не проверяется.
+ */
 final class Cancel
 {
     public function __construct(private VoidInvoice $void, private RemoveCost $removeCost) {}
 
-    public function __invoke(Transport $t, User $by): Transport
+    public function __invoke(Transport $t, User $by, bool $system = false): Transport
     {
-        if (! $by->seesAllTransports()) {
+        if (! $system && ! $by->seesAllTransports()) {
             throw ValidationException::withMessages(['transport' => 'Отменяет логист']);
         }
         if (! $t->isOpen()) {

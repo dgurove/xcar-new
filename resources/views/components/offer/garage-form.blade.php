@@ -34,7 +34,7 @@
             <span class="field-label">Везёт</span>
             <div class="flex flex-wrap gap-2">
                 <label class="choice"><input type="radio" name="pickup" value="manager" @checked(old('pickup', 'manager') === 'manager')><span>Менеджер</span></label>
-                <label class="choice"><input type="radio" name="pickup" value="us" @checked(old('pickup') === 'us')><span>Мы</span></label>
+                <label class="choice"><input type="radio" name="pickup" value="us" @checked(old('pickup') === 'us')><span>Логистика</span></label>
             </div>
         </div>
     @else

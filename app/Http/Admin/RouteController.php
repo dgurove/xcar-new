@@ -85,10 +85,11 @@ class RouteController
     /**
      * «Нужен вывоз» и его правка (10.10.2026 — развилкой): «Везёт сам менеджер» — кто из менеджеров и куда (`Destination`:
      * к нему или к нам); «Логистика» — перевозка в logistics.xcar.ru (`SendToLogistics`), везём не мы руками менеджера,
-     * а партнёр, наш эвакуатор или перевозчик. Перешли с логистики на менеджера — открытая перевозка отменяется.
+     * а партнёр, наш эвакуатор или перевозчик. Перешли с логистики на менеджера — открытая перевозка отменяется
+     * (`SyncPickupTransport`), уже везут — нельзя.
      * Отвечает туда, откуда нажали: редактор, «Без цены».
      */
-    public function pickup(Request $request, Offer $offer, AssignPickup $assign, SendToLogistics $send, CancelTransport $cancel)
+    public function pickup(Request $request, Offer $offer, AssignPickup $assign, SendToLogistics $send)
     {
         $logistics = $request->validate(['mode' => ['required', Rule::in(['self', 'logistics'])]], ['mode.required' => 'Кто везёт: менеджер или логистика'])['mode'] === 'logistics';
         $data = $request->validate([
@@ -104,20 +105,12 @@ class RouteController
         }
         $offer->loadMissing('vendor.workflows', 'positions.stage.workflow');
         $by = $request->user();
-        // Машина уже на эвакуаторе — менеджеру её не передать, пока в логистике не нажали «Сдал» или не отменили.
-        if (! $logistics) {
-            self::notMoving($offer, 'mode');
-        }
-        $transport = DB::transaction(function () use ($offer, $evacuator, $to, $by, $logistics, $data, $assign, $send, $cancel) {
-            $offer = $assign($offer, $evacuator, $to, $by);
-            if ($logistics) {
-                return $send($offer, $data, $by);
-            }
-            if ($open = Transport::openFor($offer)) {
-                $cancel($open, $by);
-            }
+        // Логистика — перевозку заводит и назначает шторка (`SendToLogistics`); менеджеру — открытую перевозку отменит
+        // сам `AssignPickup` (`SyncPickupTransport`), а уже везут — откажет.
+        $transport = DB::transaction(function () use ($offer, $evacuator, $to, $by, $logistics, $data, $assign, $send) {
+            $offer = $assign($offer, $evacuator, $to, $by, transport: ! $logistics);
 
-            return null;
+            return $logistics ? $send($offer, $data, $by) : null;
         });
         // Имя не склоняем («к Сергей К.» резало глаз): куда — стрелкой.
         $toast = $transport

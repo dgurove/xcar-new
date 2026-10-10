@@ -62,7 +62,7 @@
                                     <span class="field-label">Везёт в гараж</span>
                                     <div class="flex flex-wrap gap-2">
                                         <label class="choice"><input type="radio" name="pickup" value="manager" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'manager')><span>{{ $bid->user->shortName() }}</span></label>
-                                        <label class="choice"><input type="radio" name="pickup" value="us" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'us')><span>Мы</span></label>
+                                        <label class="choice"><input type="radio" name="pickup" value="us" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'us')><span>Логистика</span></label>
                                     </div>
                                 </div>
                             @endif
@@ -83,7 +83,7 @@
                                     <span class="field-label">Забирает автомобиль</span>
                                     <div class="flex flex-wrap gap-2">
                                         <label class="choice"><input type="radio" name="pickup" value="manager" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'manager')><span>{{ $bid->user->shortName() }}</span></label>
-                                        <label class="choice"><input type="radio" name="pickup" value="us" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'us')><span>Мы</span></label>
+                                        <label class="choice"><input type="radio" name="pickup" value="us" @checked(old('pickup', $byBuyer ? 'manager' : 'us') === 'us')><span>Логистика</span></label>
                                     </div>
                                 </div>
                             @endif
