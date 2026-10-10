@@ -12,25 +12,16 @@ use App\Workflow\Requirement;
  */
 final class InsurerReplyNotice extends Notice
 {
-    /** Ждём «Беру в работу» — текст ответа (контакт владельца) не показываем, только что он пришёл (10.10.2026). */
-    private bool $locked;
-
-    public function __construct(private Deal $deal, private string $reply, private ?Requirement $turn = null)
-    {
-        $this->locked = $deal->awaitsConsent();
-    }
+    public function __construct(private Deal $deal, private string $reply, private ?Requirement $turn = null) {}
 
     public function title(): string
     {
-        return ($this->locked ? 'Пришли контакты владельца: ' : 'Страховая ответила: ').$this->deal->offer->titleWithYear();
+        // Прислали телефон — это контакты владельца, а не просто «ответила» (10.10.2026).
+        return (\App\Mail\Extraction\Patterns::phones($this->reply) ? 'Контакты владельца: ' : 'Страховая ответила: ').$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
-        if ($this->locked) {
-            return 'Возьмите сделку в работу, чтобы их увидеть';
-        }
-
         return implode("\n", array_filter([$this->reply, $this->turn ? 'Ваш ход: '.$this->turn->title : null])) ?: null;
     }
 
@@ -56,8 +47,6 @@ final class InsurerReplyNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        $lines = $this->locked ? [$this->text()] : [$this->reply, $this->turn ? 'Ваш ход: '.$this->turn->title : null];
-
-        return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, ...$lines), 'button' => 'Открыть сделку'];
+        return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, $this->reply, $this->turn ? 'Ваш ход: '.$this->turn->title : null), 'button' => 'Открыть сделку'];
     }
 }

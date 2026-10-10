@@ -52,6 +52,9 @@ final class BidAcceptedNotice extends Notice
             return ['title' => 'В гараж: '.$offer->titleWithYear(), 'lines' => Text::lines($offer, 'Ждём страховую'), 'button' => 'Открыть в гараже'];
         }
 
-        return ['title' => 'Подтверждение '.$offer->titleWithYear().' принято', 'lines' => Text::lines($offer, Money::rub($this->deal->amount)), 'button' => 'Открыть сделку'];
+        // Что дальше — одной строкой: сначала ответ страховой (контакт придёт сам), иначе сразу шаг менеджера.
+        $next = $offer->position(\App\Workflow\Track::Sale)?->waitsFor() === \App\Workflow\WaitsFor::Supplier ? 'Ждём ответа страховой' : null;
+
+        return ['title' => 'Подтверждение '.$offer->titleWithYear().' принято', 'lines' => Text::lines($offer, Money::rub($this->deal->amount), $next), 'button' => 'Открыть сделку'];
     }
 }

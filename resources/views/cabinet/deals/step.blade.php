@@ -36,9 +36,9 @@
     $replies = ($replies ?? collect())->reverse()->values();
     $early = $replies->count() > 3 ? $replies->slice(0, $replies->count() - 2) : collect();
     $late = $replies->slice($early->count());
-    // Страховая ответила, а менеджер ещё не взял сделку в работу — ответы тизером (`cabinet.deals.teaser`).
-    $teaser = $replies->isNotEmpty() && $deal->awaitsConsent();
-    $contactCame = $teaser && $replies->contains(fn ($r) => \App\Offers\InsurerReplies::hasContact($r));
+    // Согласие менеджера (Альфа, Каркаде): поставщик уже согласовал — блок «Согласование с поставщиком» и «Ваш ход»
+    // сбивали с толку, будто ждём поставщика (10.10.2026, владелец). Шапка — что случилось и вопрос, рядом только часы.
+    $consent = $deal->isActive() && $requirement && $position?->stage->asksConsent();
 @endphp
 <div class="flex flex-col gap-6">
     @if ($deal->state !== DealState::Active)
@@ -48,17 +48,24 @@
 
     @if ($deal->state === DealState::Active && $position)
         <div class="box {{ $requirement && $position->isOverdue() ? 'box-urgent' : '' }}">
+            @if ($consent)
+                <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h2>Поставщик согласовал</h2>
+                    <x-route.clock :position="$position" bare/>
+                </div>
+                <h3 class="mt-5 text-lg">Подтверждаете, что берёте в работу?</h3>
+            @else
             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <h2>{{ \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа' }}</h2>
                 @if ($noInvoice)<p class="text-sm text-ink-muted">ждём нас</p>@else<x-route.clock :position="$position"/>@endif
             </div>
+            @endif
 
-            @if ($needsBuyer)
+            @if ($consent)
+            @elseif ($needsBuyer)
                 <h3 class="mt-5 text-lg">Укажите покупателя</h3>
             @elseif ($needsPrice)
                 <h3 class="mt-5 text-lg">Укажите цену продажи</h3>
-            @elseif ($contactCame)
-                <h3 class="mt-5 text-lg">Пришли контакты владельца</h3>
             @elseif ($requirement && ! ($pickupSteps ?? null))
                 {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
                 <h3 class="mt-5 text-lg">{{ \App\Users\Wording::mine($requirement->title) }}</h3>
@@ -126,8 +133,7 @@
             @else
             @if ($showHandover)@include('cabinet.deals.handover')@endif
             @include('cabinet.deals.payload')
-            @if ($teaser)@include('cabinet.deals.teaser')
-            @elseif ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
+            @if ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
 
             @if ($stepInvoices->isNotEmpty())
                 <div class="list mt-5">

@@ -73,37 +73,6 @@ class DealController
         return view('cabinet.deals.chat-card', ['deal' => $deal, 'offer' => $deal->offer]);
     }
 
-    /**
-     * Картинка ответа страховой до «Беру в работу» (10.10.2026): пикселизированная копия — уменьшена до 16 px и растянута,
-     * восстановить нельзя. Оригинал до согласия не отдаём (`FileController`).
-     */
-    public function teaser(Request $request, Deal $deal, int $media)
-    {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
-        // Картинка или PDF (паспорт Т-Страхование шлёт PDF-сканом) — первая страница, как плитка документа (`Thumb`).
-        $file = $deal->offer->papers()->first(fn ($m) => $m->id === $media && $m->getCustomProperty('letter') && \App\Offers\InsurerReplies::teasable($m));
-        abort_unless($file, 404);
-        $cache = \Illuminate\Support\Facades\Storage::disk('cache');
-        $key = 'teaser/'.$file->id.'.jpg';
-        if (! $cache->exists($key)) {
-            $page = \App\Media\Thumb::of($file->getPath(), $file->mime_type === 'application/pdf', "thumb-m{$file->id}");
-            $src = $page ? @imagecreatefromstring((string) @file_get_contents($page)) : false;
-            abort_unless($src, 404);
-            [$w, $h] = [imagesx($src), imagesy($src)];
-            $tw = 16;
-            $th = max(1, (int) round($h * $tw / max(1, $w)));
-            $tiny = imagecreatetruecolor($tw, $th);
-            imagecopyresampled($tiny, $src, 0, 0, 0, 0, $tw, $th, $w, $h);
-            $out = imagecreatetruecolor(160, max(1, (int) round(160 * $th / $tw)));
-            imagecopyresampled($out, $tiny, 0, 0, 0, 0, imagesx($out), imagesy($out), $tw, $th);
-            ob_start();
-            imagejpeg($out, null, 70);
-            $cache->put($key, (string) ob_get_clean());
-        }
-
-        return response($cache->get($key), 200, ['Content-Type' => 'image/jpeg', 'Cache-Control' => 'private, max-age=86400']);
-    }
-
     /** Сделка с текущим шагом, путём и счетами — для её страницы и карточки машины в гараже. */
     public static function stepData(Deal $deal): array
     {

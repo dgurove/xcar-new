@@ -15,7 +15,18 @@ final class StageDueNotice extends Notice
 
     public function title(): string
     {
-        return ($this->overdue ? 'Срок вышел: ' : 'Срок подходит: ').$this->position->stage->name.' — № '.$this->offer->number;
+        return ($this->overdue ? 'Срок вышел: ' : 'Срок подходит: ').$this->what().' — № '.$this->offer->number;
+    }
+
+    /**
+     * Что сделать — просьбой к менеджеру («Свяжитесь с владельцем»), а не именем этапа маршрута («Контакты владельца
+     * переданы менеджеру»): этапы — наш язык (10.10.2026). Просьбы нет — этап.
+     */
+    private function what(): string
+    {
+        $ask = $this->dealId ? \App\Workflow\Requirement::where('deal_id', $this->dealId)->where('stage_id', $this->position->stage_id)->whereNull('done_at')->latest('id')->value('title') : null;
+
+        return $ask ?? $this->position->stage->name;
     }
 
     public function text(): ?string
@@ -56,7 +67,7 @@ final class StageDueNotice extends Notice
     {
         return $this->dealId === null ? null : [
             'title' => ($this->overdue ? 'Срок вышел по ' : 'Срок подходит по ').$this->offer->titleWithYear(),
-            'lines' => Text::lines($this->offer, $this->position->stage->name.($this->position->deadline_at ? ' до '.$this->position->deadline_at->translatedFormat('j M, H:i') : '')),
+            'lines' => Text::lines($this->offer, $this->what().($this->position->deadline_at ? ' до '.$this->position->deadline_at->translatedFormat('j M, H:i') : '')),
             'button' => 'Открыть сделку',
         ];
     }

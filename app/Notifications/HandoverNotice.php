@@ -49,6 +49,6 @@ final class HandoverNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, $this->text()), 'button' => 'Открыть'];
+        return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, $this->text()), 'button' => 'Открыть сделку'];
     }
 }

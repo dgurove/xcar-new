@@ -111,7 +111,7 @@ class ManualLinkCreditTest extends TestCase
         $this->assertTrue($manual->isService());
         app(RecordPayment::class)($manual->fresh(), $this->admin, 50000, now(), PaymentSource::Bank);
 
-        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->walkTo($deal, 'Контакты владельца переданы менеджеру');
 
         $this->assertSelection($deal, 80000, 50000, link: 30000);
         $this->assertEqualsWithDelta(0, $deal->fresh()->creditExtra(), 0.01);
@@ -135,7 +135,7 @@ class ManualLinkCreditTest extends TestCase
         $deal = $this->accepted();
         $manual = $this->manual(50000, $this->offer);
         $payment = app(RecordPayment::class)($manual->fresh(), $this->admin, 50000, now(), PaymentSource::Bank);
-        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->walkTo($deal, 'Контакты владельца переданы менеджеру');
         $this->assertSelection($deal, 80000, 50000);
 
         app(VoidPayment::class)($payment, $this->admin, 'возврат');
@@ -148,7 +148,7 @@ class ManualLinkCreditTest extends TestCase
         $deal = $this->accepted();
         $manual = $this->manual(80000, $this->offer);
 
-        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->walkTo($deal, 'Контакты владельца переданы менеджеру');
 
         $this->assertNotNull($manual->fresh()->openLink());
         $this->assertNotNull($this->selection($deal)->openLink());
@@ -166,7 +166,7 @@ class ManualLinkCreditTest extends TestCase
         $manual->update(['offer_id' => $this->offer->id, 'credit_deal_id' => null]);
         app(RecordPayment::class)($manual->fresh(), $this->admin, 50000, now(), PaymentSource::Bank);
 
-        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->walkTo($deal, 'Контакты владельца переданы менеджеру');
 
         $this->assertSame($deal->id, $manual->fresh()->credit_deal_id);
         $this->assertSelection($deal, 80000, 50000);
@@ -175,7 +175,7 @@ class ManualLinkCreditTest extends TestCase
     public function test_existing_link_warns_but_force_creates_second(): void
     {
         $deal = $this->accepted();
-        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->walkTo($deal, 'Контакты владельца переданы менеджеру');
         $own = $this->selection($deal)->openLink();
 
         try {
@@ -199,7 +199,7 @@ class ManualLinkCreditTest extends TestCase
         $deal = $this->accepted();
         $manual = $this->manual(53000);
         app(RecordPayment::class)($manual->fresh(), $this->admin, 53000, now(), PaymentSource::Bank);
-        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->walkTo($deal, 'Контакты владельца переданы менеджеру');
         app(RecordPayment::class)($this->selection($deal), $this->admin, 30000, now(), PaymentSource::Bank);
 
         app(AttachServiceCar::class)($manual->fresh(), $this->offer, null, $this->admin);
@@ -215,7 +215,7 @@ class ManualLinkCreditTest extends TestCase
         $deal = $this->accepted();
         $manual = $this->manual(50000, $this->offer);
         app(RecordPayment::class)($manual->fresh(), $this->admin, 50000, now(), PaymentSource::Bank);
-        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->walkTo($deal, 'Контакты владельца переданы менеджеру');
         $this->assertSelection($deal, 80000, 50000);
 
         app(AttachServiceCar::class)($manual->fresh(), null, null, $this->admin);
@@ -227,7 +227,7 @@ class ManualLinkCreditTest extends TestCase
     public function test_share_text_names_payer_car_and_amount(): void
     {
         $deal = $this->accepted();
-        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->walkTo($deal, 'Контакты владельца переданы менеджеру');
         $link = $this->selection($deal)->openLink();
 
         $lines = explode("\n", $link->message());
@@ -241,7 +241,7 @@ class ManualLinkCreditTest extends TestCase
     public function test_links_list_shows_deal_and_manual_links(): void
     {
         $deal = $this->accepted();
-        $this->walkTo($deal, 'Подтвердили покупку поставщику');
+        $this->walkTo($deal, 'Контакты владельца переданы менеджеру');
         $manual = $this->manual(10000, null, 'Морковин  Дмитрий Евгеньевич');
         $manual->update(['car_title' => 'Lada Vesta']);
         $crm = 'http://'.config('xcar.crm_host');

@@ -57,11 +57,11 @@ class DkpDealFlowTest extends TestCase
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 850000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::OwnerDkp);
-        // Пока поставщик не согласовал и менеджер не сказал «Беру в работу» — ни счёта, ни ссылки.
+        // Пока поставщик не согласовал — ни счёта, ни ссылки. Согласия менеджера у Т-Страхования нет (10.10.2026: написали
+        // один раз — передумать нельзя): ответ с контактом — сразу контакты менеджеру.
         $this->assertFalse($deal->fresh()->issuedInvoices()->exists());
-        $this->walkTo($offer, $deal->fresh(), 'Согласие менеджера');
-        $this->assertFalse($deal->fresh()->issuedInvoices()->exists());
-        $this->walkTo($offer, $deal->fresh(), 'Подтвердили покупку поставщику');
+        $this->assertFalse(Stage::where('workflow_id', $offer->fresh()->stage()->workflow_id)->with('exits')->get()->contains(fn ($s) => $s->asksConsent()));
+        $this->walkTo($offer, $deal->fresh(), 'Контакты владельца переданы менеджеру');
 
         return [$offer, $deal->fresh()];
     }

@@ -79,9 +79,7 @@ final class FileController
             return (bool) $offer?->isEditableBy($user);
         }
         // Файлы ТС — менеджеру, который с ней работает (гараж, вывоз, сделка); документы — только отмеченные админом.
-        // Файлы ответа страховой — после «Беру в работу»: до него менеджер видит только тизер (10.10.2026).
-        $works = fn () => $offer && $offer->worksWith($user) && ($media->collection_name !== 'papers' || ForManagers::is($media))
-            && ! ($media->getCustomProperty('letter') && $offer->deal?->awaitsConsent());
+        $works = fn () => $offer && $offer->worksWith($user) && ($media->collection_name !== 'papers' || ForManagers::is($media));
 
         return match ($media->model_type) {
             Offer::class => $works(),
