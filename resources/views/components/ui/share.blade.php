@@ -50,7 +50,7 @@
                         </label>
                     @endforeach
                 </div>
-                <label class="check"><input type="checkbox" data-share-target="watermark" data-action="share#photosChanged" @checked(\App\Support\Surface::current() !== \App\Support\Surface::Crm)><span>Водяной знак на фото</span></label>
+                <label class="check"><input type="checkbox" data-share-target="watermark" data-action="share#photosChanged" @checked(! \App\Support\Surface::inCrm())><span>Водяной знак на фото</span></label>
             @endif
             <div class="text-sm text-ink-muted" data-share-target="status"></div>
             <div class="flex flex-col gap-2 sm:flex-row">

@@ -32,7 +32,8 @@ final class SharePdf
         if ($media->isEmpty()) {
             throw new RuntimeException('Не выбрано ни одной фотографии');
         }
-        $key = substr(sha1($subject->cacheDir().':'.$media->pluck('id')->implode(',').':'.(int) $watermark.':'.$media->max('updated_at')), 0, 16);
+        // Строка знака — в ключе: у машины закупки она своя в CRM (ДЛ) и на xcar (номер в закупке).
+        $key = substr(sha1($subject->cacheDir().':'.$media->pluck('id')->implode(',').':'.($watermark ? $this->stamp($subject) : 0).':'.$media->max('updated_at')), 0, 16);
         // Готовый PDF — кэш: пересобирается из фото, storage:gc стирает старые.
         $path = $subject->cacheDir()."/{$key}.pdf";
         $disk = Storage::disk(self::DISK);
@@ -63,7 +64,8 @@ final class SharePdf
      */
     public function jpeg(Subject $subject, Media $m, bool $watermark): string
     {
-        $path = $subject->cacheDir().'/photos/'.$m->id.'-'.(int) $watermark.'-'.$m->updated_at?->timestamp.'.jpg';
+        $mark = $watermark ? substr(sha1($this->stamp($subject)), 0, 8) : '0';
+        $path = $subject->cacheDir().'/photos/'.$m->id.'-'.$mark.'-'.$m->updated_at?->timestamp.'.jpg';
         $disk = Storage::disk(self::DISK);
         if ($disk->exists($path)) {
             return $disk->path($path);

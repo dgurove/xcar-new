@@ -50,7 +50,7 @@
                                     </div>
                                     {{-- Приложенное остаётся видно и после ответа. --}}
                                     @foreach ($req->getMedia('files') as $media)
-                                        <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" class="mt-2"/>
+                                        <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" :refs="[$offer->claim_ref]" class="mt-2"/>
                                     @endforeach
                                 </div>
                         @endforeach
@@ -71,9 +71,7 @@
                         <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</a>
                         @if ($deal->state !== DealState::Active)<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="mt-2">{{ mb_strtolower($deal->state->label()) }}</x-ui.state>@endif
                         <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
-                            @foreach (['Предложение' => $offer->number] as $label => $value)
-                                @if ($value)<div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal"><x-ui.copy-code :value="(string) $value"/></dd></div>@endif
-                            @endforeach
+                            <div class="min-w-0"><dt class="text-sm text-ink-dim">Предложение</dt><dd class="nums mt-0.5 break-words font-normal"><x-ui.copy-code :value="(string) $offer->number"/></dd></div>
                             @if ($feeState !== CommissionState::Hidden)
                                 <div class="col-span-2 min-w-0"><dt class="text-sm text-ink-dim">Агентское вознаграждение</dt><dd class="mt-0.5 flex flex-wrap items-baseline justify-between gap-2"><a href="/account/money/deals/{{ $deal->id }}" class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</a><x-ui.state :tone="$feeState->tone()">{{ mb_strtolower($feeState->label()) }}</x-ui.state></dd></div>
                             @endif
@@ -87,7 +85,7 @@
                     <h2 class="list-head lg:pt-0">Документы</h2>
                     <div class="flex flex-col">
                         @foreach ($docs as $media)
-                            <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}"/>
+                            <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" :refs="[$offer->claim_ref]"/>
                         @endforeach
                     </div>
                 </section>

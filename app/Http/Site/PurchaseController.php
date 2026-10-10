@@ -23,7 +23,8 @@ class PurchaseController
 {
     public const PRESETS = ['all' => 'Все', 'mine' => 'С моей ценой', 'none' => 'Без моей цены', 'photos' => 'С фото'];
 
-    public const SORTS = ['dl' => ['Порядок файла', 'asc'], 'fresh' => ['Дата', 'desc'], 'brand' => ['Марка', 'asc']];
+    // ДЛ на xcar нет (владелец 10.10.2026): номер машины — `ref`, он же по порядку файла.
+    public const SORTS = ['number' => ['Номер', 'asc'], 'fresh' => ['Дата', 'desc'], 'brand' => ['Марка', 'asc']];
 
     public function index(Request $request)
     {
@@ -49,7 +50,7 @@ class PurchaseController
 
         return view('site.purchases.show', [
             'purchase' => $purchase, 'cars' => $cars, 'filters' => $filters, 'total' => $total, 'done' => $done, 'kinds' => $kinds, 'group' => $group, 'detail' => $detail,
-            'sort' => Sort::from($filters['sort'] ?? null, self::SORTS, 'dl'),
+            'sort' => Sort::from($filters['sort'] ?? null, self::SORTS, 'number'),
         ]);
     }
 
@@ -135,15 +136,17 @@ class PurchaseController
         }
         if ($search !== '') {
             $term = '%'.mb_strtolower(trim($filters['q'])).'%';
-            $q->where(fn ($w) => $w->whereRaw('lower(dl) like ?', [$term])->orWhereRaw('lower(vin) like ?', [$term])->orWhereRaw('lower(brand_raw) like ?', [$term])->orWhereRaw('lower(model_raw) like ?', [$term])
+            // Номер — тот, что на экране («№ 12»), а не ДЛ: по ДЛ на xcar не ищут.
+            $number = preg_replace('/\D+/', '', $filters['q']);
+            $q->where(fn ($w) => $w->when(preg_match('/^\s*№?\s*\d{1,9}\s*$/u', $filters['q']), fn ($n) => $n->orWhere('ref', (int) $number))->orWhereRaw('lower(vin) like ?', [$term])->orWhereRaw('lower(brand_raw) like ?', [$term])->orWhereRaw('lower(model_raw) like ?', [$term])
                 ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$term])->orWhereRaw('lower(name_ru) like ?', [$term])));
         }
-        $sort = Sort::from($filters['sort'] ?? null, self::SORTS, 'dl');
+        $sort = Sort::from($filters['sort'] ?? null, self::SORTS, 'number');
         $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $q->orderBy('id', $dir),
             'brand' => $q->orderBy('brand_raw', $dir)->orderBy('model_raw', $dir),
-            default => $q->orderBy('dl', $dir),
+            default => $q->orderBy('ref', $dir),
         };
 
         return $q;

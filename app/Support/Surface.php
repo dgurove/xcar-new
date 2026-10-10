@@ -35,6 +35,12 @@ enum Surface: string
         return app()->runningInConsole() || ! app()->has('request') ? self::Site : self::fromHost(request()->getHost());
     }
 
+    /** Запрос из CRM — там видны внутренние номера (убыток, ДЛ) и умолчания шеринга сотрудника. */
+    public static function inCrm(): bool
+    {
+        return self::current() === self::Crm;
+    }
+
     public function host(): string
     {
         return match ($this) {

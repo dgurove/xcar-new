@@ -77,6 +77,16 @@ class Car extends Model implements HasMedia
         return $this->hasMany(Offer::class, 'car_id')->orderByDesc('amount');
     }
 
+    /** Номер для людей: в CRM — ДЛ, на xcar — номер машины в закупке «№ 12» (ДЛ на xcar нет, владелец 10.10.2026). */
+    public function shownNumber(): string
+    {
+        if (! \App\Support\Surface::inCrm()) {
+            return '№ '.$this->ref;
+        }
+
+        return str_starts_with(mb_strtoupper((string) $this->dl), 'ДЛ') ? (string) $this->dl : 'ДЛ '.$this->dl;
+    }
+
     public function title(): string
     {
         return trim(($this->brand?->name ?? $this->brand_raw ?? '').' '.($this->model?->name ?? $this->model_raw ?? '')) ?: 'ТС';

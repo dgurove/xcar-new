@@ -10,6 +10,7 @@ use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
 use App\Offers\Jobs\ShareReplyFiles;
 use App\Offers\OfferEventType;
+use App\Support\InternalRefs;
 use App\Vendors\DealFormat;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
@@ -65,7 +66,7 @@ final class AdvanceOnReply
         }
         // Сдвинулся шаг — его ход в том же уведомлении: «Ваш ход» по этому шагу `Notify` не шлёт (`StageEntered::$letter`).
         $turn = $moved ? Requirement::where('deal_id', $deal->id)->whereNull('done_at')->latest('id')->first() : null;
-        $deal->buyer->notify(new InsurerReplyNotice($deal, mb_substr($e->message->replyText(), 0, 1500), $turn));
+        $deal->buyer->notify(new InsurerReplyNotice($deal, mb_substr(InternalRefs::hide($e->message->replyText(), [$deal->offer->claim_ref]), 0, 1500), $turn));
     }
 
     public function entered(StageEntered $e): void

@@ -75,6 +75,10 @@ final class PostMessage
         });
         // После коммита: иначе браузер придёт за «всё после N» раньше, чем сообщение видно.
         ChatMessagePosted::dispatch($message->load('chat.offer', 'chat.user', 'chat.manager', 'files'));
+        // Сотрудник ответил в чате площадки — автоответ «Получили Ваше сообщение…» больше не нужен.
+        if ($message->author_kind === AuthorKind::Staff && $by && ! $message->chat->manager_id) {
+            app(AutoReply::class)->retract($message->chat);
+        }
 
         return $message;
     }

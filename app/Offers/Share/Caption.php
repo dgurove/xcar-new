@@ -21,7 +21,7 @@ final class Caption
      */
     public static function staff(?User $user): bool
     {
-        return ($user?->isAdmin() ?? false) && Surface::current() === Surface::Crm;
+        return ($user?->isAdmin() ?? false) && Surface::inCrm();
     }
 
     /** @return list<array{key: string, label: string, value: string, on: bool, group: ?string}> */
@@ -29,7 +29,7 @@ final class Caption
     {
         $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
         $staff = self::staff($user);
-        $crm = Surface::current() === Surface::Crm;
+        $crm = Surface::inCrm();
         $price = PriceView::for($offer, $user);
         // Цены — последней строкой: клиент собирает отмеченные сверху вниз, цены склеивает стрелкой «от → до» в конце.
         // VIN — как этому человеку на сайте (`Offer::vinFor`): скрытый уходит маской.
@@ -56,7 +56,7 @@ final class Caption
             ['publish_price', 'Заявленная', $staff ? $money($offer->declaredPrice()) : ($price->visible ? $money($price->declared) : null), true],
             ['price', 'Цена', $price->visible ? $money($offer->asking_price) : null, true],
             // Ссылка на машину на сайте — последней строкой; из CRM включена (владелец 07.10.2026: «очень не хватает ссылки»).
-            ['link', 'Ссылка', self::link($offer), Surface::current() === Surface::Crm],
+            ['link', 'Ссылка', self::link($offer), $crm],
         ];
 
         return self::rows($rows);
@@ -67,9 +67,9 @@ final class Caption
     {
         $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
         $prices = $user?->canSeePrices() ?? false;
-        $crm = Surface::current() === Surface::Crm;
+        $crm = Surface::inCrm();
         $rows = [
-            ['number', 'Номер', $crm ? (str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl) : '№ '.$car->ref, $crm],
+            ['number', 'Номер', $car->shownNumber(), $crm],
             ['city', 'Город', $car->settlement?->title() ?? $car->city, true],
             ['model', 'Марка, модель, год', $car->titleWithYear(), true],
             ['vin', 'VIN', $car->vin ?: null, true],
@@ -79,7 +79,7 @@ final class Caption
             ['encumbrance', 'Обременения', $car->encumbrance, false],
             ['until', 'Приём цен до', $car->purchase?->offers_close_at?->translatedFormat('d.m.Y H:i'), false],
             ['price', 'Наша цена', $prices ? $money($car->price_listing) : null, true],
-            ['link', 'Ссылка', $car->purchase ? Surface::Site->url("/purchases/{$car->purchase->number}/{$car->ref}") : null, Surface::current() === Surface::Crm],
+            ['link', 'Ссылка', $car->purchase ? Surface::Site->url("/purchases/{$car->purchase->number}/{$car->ref}") : null, $crm],
         ];
 
         return self::rows($rows);

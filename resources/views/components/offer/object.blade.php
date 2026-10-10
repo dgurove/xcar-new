@@ -18,7 +18,7 @@
                 <h2 class="list-head lg:pt-0">Документы</h2>
                 <div class="flex flex-col">
                     @foreach ($docs as $media)
-                        <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}"/>
+                        <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" :refs="[$offer->claim_ref]"/>
                     @endforeach
                 </div>
             </section>

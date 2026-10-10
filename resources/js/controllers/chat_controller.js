@@ -97,6 +97,8 @@ export default class extends Controller {
 
     async refetch(seq) {
         const r = await fetch(`${this.urlValue}/${seq}`, { headers: this.headers() });
+        // Сообщения больше нет (стёртый автоответ) — пузырь уходит.
+        if (r.status === 404) this.listTarget.querySelector(`.msg[data-seq="${seq}"]`)?.remove();
         if (!r.ok) return;
         const box = document.createElement('div');
         box.innerHTML = await r.text();

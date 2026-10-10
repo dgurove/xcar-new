@@ -7,7 +7,9 @@ use App\Media\PhotoIngest;
 use App\Media\Thumb;
 use App\Offers\Offer;
 use App\Park\Vehicle;
+use App\Support\InternalRefs;
 use App\Support\OfficePreview;
+use App\Support\Surface;
 use App\Users\Section;
 use App\Users\User;
 use App\Workflow\Requirement;
@@ -55,7 +57,7 @@ final class FileController
 
         return response()->file($media->getPath(), [
             'Content-Type' => $media->mime_type,
-            'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($media->file_name),
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode(Surface::current() === Surface::Site ? InternalRefs::fileName($media->file_name, [$media->model?->claim_ref ?? null]) : $media->file_name),
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=86400',
         ]);

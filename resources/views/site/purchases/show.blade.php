@@ -28,7 +28,7 @@
                 <x-slot:head>
                     <tr>
                         <x-ui.th :sort="$sort" key="brand" class="grow">Марка, модель</x-ui.th>
-                        <x-ui.th :sort="$sort" key="dl" class="cell-dim hidden sm:table-cell">№</x-ui.th>
+                        <x-ui.th :sort="$sort" key="number" class="cell-dim hidden sm:table-cell">№</x-ui.th>
                         @if (count($kinds) > 1)<th class="cell-dim hidden sm:table-cell">Тип</th>@endif
                         <th class="cell-dim col-detail-hide hidden sm:table-cell">Город</th>
                         <th class="num">Цена</th>

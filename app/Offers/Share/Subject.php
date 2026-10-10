@@ -40,11 +40,8 @@ final class Subject
     public static function car(Car $car): self
     {
         $car->loadMissing('purchase');
-        // ДЛ — внутренний номер: на знаке и в имени файла с xcar — номер машины в закупке.
-        $label = \App\Support\Surface::current() !== \App\Support\Surface::Crm ? '№ '.$car->ref
-            : (str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl);
 
-        return new self($car, $label, $car->purchase->offers_close_at, $car->titleWithYear(), "/purchases/{$car->purchase->number}/{$car->ref}/pdf");
+        return new self($car, $car->shownNumber(), $car->purchase->offers_close_at, $car->titleWithYear(), "/purchases/{$car->purchase->number}/{$car->ref}/pdf");
     }
 
     public function fields(?User $user): array

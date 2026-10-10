@@ -46,7 +46,7 @@
         @php $line = array_values(array_filter([$showKind ? $car->kind->label() : null, ...$facts])); @endphp
         @if ($line)<span class="nums text-sm text-ink-muted">{{ implode(', ', $line) }}</span>@endif
     </div>
-    <span class="card-aside"><span class="nums text-sm font-normal text-ink-dim">{{ \App\Support\Surface::current() === \App\Support\Surface::Crm ? $car->dl : '№ '.$car->ref }}</span></span>
+    <span class="card-aside"><span class="nums text-sm font-normal text-ink-dim">{{ $car->shownNumber() }}</span></span>
     <div class="card-place">@if ($car->settlement?->title() ?? $car->city)<x-ui.place class="truncate text-sm text-ink-dim">{{ $car->settlement?->title() ?? $car->city }}</x-ui.place>@endif</div>
     <div class="card-action">
         {{-- Ссылка на предложение — только тому, кому оно уже открыто: черновик и чужая волна показа дали бы 404. --}}
