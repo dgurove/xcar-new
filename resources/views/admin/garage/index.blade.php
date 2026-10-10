@@ -1,21 +1,49 @@
-{{-- «Работа → Гараж»: у кого что стоит и во что обошлось — таблицей CRM (как список iOS), группами по менеджеру
-     (взятые под себя — последними). Нажатие по строке — карточка: путь машины, деньги, расходы и действия; «Открыть
-     страницу» — редактор предложения с карточкой «Гараж». --}}
+{{-- «Работа → Гараж»: у кого что стоит и во что обошлось — группами по менеджеру (взятые под себя — последними), в четырёх
+     видах, как остальные списки CRM: таблица (по умолчанию), подробная, плитки и строки (`x-garage.card`). Нажатие — карточка
+     рядом: путь машины, деньги, расходы и действия; «Открыть страницу» — редактор предложения с карточкой «Гараж». --}}
+@php
+    use App\Support\ListView;
+    $view = ListView::pick(request(), $total);
+    $user = auth()->user();
+@endphp
 <x-ui.shell title="Гараж" :heading="false" :detail="$detail">
     <x-admin.work-titles current="garage" :count="$total"/>
-    <x-ui.toolbar class="mt-5" :sort="$sort" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets"/>
+    <x-ui.toolbar class="mt-5" :sort="$sort" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets">
+        <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
+    </x-ui.toolbar>
 
     @if ($groups->isEmpty())
         <x-ui.empty class="mt-6">В гараже пусто</x-ui.empty>
-    @else
-        <x-ui.table id="garage-table" class="mt-4">
+    @elseif (ListView::isTable($view))
+        <x-ui.table id="garage-table" class="mt-4" :view="$view" :titles="$groups->flatten()->map(fn ($c) => $c->offer->titleWithYear())">
             <x-slot:head>
-                <tr><th class="grow">Марка, модель</th><th class="cell-dim hidden sm:table-cell">Вендор, № убытка</th><th class="num hidden sm:table-cell col-detail-hide">Расходы</th><th class="num">Сумма</th></tr>
+                <tr>
+                    <th class="grow">Марка, модель</th>
+                    <th class="hidden sm:table-cell">Вендор, № убытка</th>
+                    <th class="num hidden xl:table-cell col-detail-hide">В гараже с</th>
+                    <th class="num hidden xl:table-cell col-detail-hide">Отдали за</th>
+                    <th class="num hidden sm:table-cell col-detail-hide">Расходы</th>
+                    <th class="num hidden lg:table-cell col-detail-hide">Цена продажи</th>
+                    <x-ui.th :sort="$sort" key="amount" class="num">Сумма</x-ui.th>
+                </tr>
             </x-slot:head>
             @foreach ($groups as $cars)
-                <tr class="table-group"><th colspan="4"><span class="table-group-name">{{ $cars->first()->manager?->name ?? 'Взяли под себя' }} <span class="nums">{{ $cars->count() }}</span></span></th></tr>
+                <tr class="table-group"><th colspan="7"><span class="table-group-name">{{ $cars->first()->manager?->name ?? 'Взяли под себя' }} <span class="nums">{{ $cars->count() }}</span></span></th></tr>
                 @foreach ($cars as $car)<x-admin.garage-row :car="$car"/>@endforeach
             @endforeach
         </x-ui.table>
+    @else
+        <div class="mt-4 flex flex-col">
+            @foreach ($groups as $cars)
+                <h2 class="list-head">{{ $cars->first()->manager?->name ?? 'Взяли под себя' }}<span class="nums text-base font-normal text-ink-muted">{{ $cars->count() }}</span></h2>
+                <div class="{{ ListView::containerClass($view) }} mb-6" data-controller="ticker">
+                    @foreach ($cars as $car)
+                        @php $line = \App\Garage\CarLine::for($car, $user, crm: true); @endphp
+                        <x-garage.card :offer="$car->offer" :href="\App\Support\Detail::url($car->offer->number)" detail vendor
+                                       :word="$line->word" :tone="$line->tone" :when="$line->when" :value="$line->value" :caption="$line->caption"/>
+                    @endforeach
+                </div>
+            @endforeach
+        </div>
     @endif
 </x-ui.shell>

@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Garage\Car;
+use App\Garage\CarLine;
 use App\Garage\CarState;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
@@ -22,8 +23,11 @@ class GarageController
 {
     public const PRESETS = ['work' => 'В работе', 'sold' => 'Проданы', 'settled' => 'Рассчитались', 'all' => 'Все'];
 
-    /** Внутри группы менеджера: «Этап» — по этапу, потом дольше стоящие; «Дата» — когда машина пришла в гараж. */
-    public const SORTS = ['stage' => ['Этап', 'asc'], 'created' => ['Дата', 'desc']];
+    /**
+     * Внутри группы менеджера: «Этап» — по этапу, потом дольше стоящие; «Дата» — когда машина пришла в гараж; «Дней» — сколько
+     * на этапе; «Сумма» — главное число строки (`CarLine`: вложено, к оплате, цена продажи).
+     */
+    public const SORTS = ['stage' => ['Этап', 'asc'], 'created' => ['Дата', 'desc'], 'days' => ['Дней на этапе', 'desc'], 'amount' => ['Сумма', 'desc']];
 
     public function index(Request $request)
     {
@@ -49,7 +53,13 @@ class GarageController
         $cars = $facets->apply($q)->orderBy('stage_at')->get();
 
         // Группы — менеджеры по имени, взятые под себя — последними; внутри — выбранная сортировка.
-        $groups = $cars->sortBy(fn (Car $c) => $sort->key === 'created' ? [$c->created_at?->timestamp ?? 0, $c->id] : [$c->state->order(), $c->stage_at?->timestamp ?? 0], SORT_REGULAR, $sort->desc)
+        $user = $request->user();
+        $groups = $cars->sortBy(fn (Car $c) => match ($sort->key) {
+            'created' => [$c->created_at?->timestamp ?? 0, $c->id],
+            'days' => [$c->stageDays(), $c->id],
+            'amount' => [(float) CarLine::for($c, $user, crm: true)->value, $c->id],
+            default => [$c->state->order(), $c->stage_at?->timestamp ?? 0],
+        }, SORT_REGULAR, $sort->desc)
             ->groupBy(fn (Car $c) => $c->manager_id ?? 0)
             ->sortBy(fn ($rows, $id) => $id ? $rows->first()->manager->name : "\u{FFFF}");
 

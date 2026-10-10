@@ -25,7 +25,7 @@ use Illuminate\Validation\Rule;
 class CarController
 {
     /** «Этап» — где ход менеджера первыми, дальше по пути, дольше стоящие выше; «Дата» — когда машина пришла в гараж. */
-    public const SORTS = ['stage' => ['Этап', 'asc'], 'fresh' => ['Дата', 'desc']];
+    public const SORTS = ['stage' => ['Этап', 'asc'], 'fresh' => ['Дата', 'desc'], 'days' => ['Дней на этапе', 'desc'], 'amount' => ['Сумма', 'desc']];
 
     /** Машины в гараже: менеджеру — свои, сотруднику — все; группами по этапу, внутри — дольше стоящие первыми. */
     public function index(Request $request)
@@ -38,9 +38,17 @@ class CarController
         // Вывозы, порученные менеджеру, — своей группой сверху: ТС у него физически, но продаёт не обязательно он.
         $pickups = Offer::pickupsOf($request->user())
             ->with(['brand', 'model', 'media', 'evacuator', 'positions.stage.exits', 'positions.stage.block'])
-            ->get()->sortBy(fn (Offer $o) => [PickupState::awaits($o) ? 0 : 1, $o->position(Track::Service)?->block_entered_at?->timestamp ?? 0])->values();
+            ->get()->sortBy(fn (Offer $o) => [PickupState::awaits($o) ? 0 : 1, $o->position(Track::Service)?->block_entered_at?->timestamp ?? 0]);
+        // Машина, что уже стоит в гараже («ждёт ТС, забирает …»), второй раз в «Вывозе» не показывается; её строка ведёт
+        // на страницу вывоза — там «Забрал» (и «Забрал за менеджера» сотруднику), своему менеджеру она сама уводит в гараж.
+        [$picking, $pickups] = $pickups->partition(fn (Offer $o) => $cars->contains('offer_id', $o->id));
 
-        return view('garage.cars.index', ['cars' => $cars, 'pickups' => $pickups, 'sort' => Sort::from($request->query('sort'), self::SORTS, 'stage')]);
+        return view('garage.cars.index', [
+            'cars' => $cars,
+            'pickups' => $pickups->values(),
+            'picking' => $picking->pluck('id')->all(),
+            'sort' => Sort::from($request->query('sort'), self::SORTS, 'stage'),
+        ]);
     }
 
     public function show(Request $request, Offer $offer)

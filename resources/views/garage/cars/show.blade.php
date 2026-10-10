@@ -6,14 +6,17 @@
      счёт с вознаграждением, «Поступило», «Оплатить». --}}
 @php extract($view); @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Гараж', '/garage']">
-    {{-- Состояние — словом в строке заголовка, рядом с названием, а не отдельной строкой под ним. --}}
-    <x-slot:actions>
-    <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 text-sm">
-        <x-ui.state :tone="$car->state->tone()" class="text-sm">{{ mb_lcfirst($car->state->label()) }}</x-ui.state>
-        @if ($staff)<span class="text-ink-muted">{{ $car->manager?->shortName() ?? 'взяли под себя' }}</span>@endif
-        @if ($staff && $car->dealOpen())<a href="{{ \App\Support\Surface::Crm->url('/work/deals/'.$car->deal_id) }}" class="text-accent-text" data-turbo="false">Сделка в CRM</a>@endif
-    </div>
-    </x-slot:actions>
+    {{-- Состояние — мелким цветным словом у названия (`.title-state`, как у карточек), чья и «Сделка в CRM» — строкой
+         справа; на ПК слово больше не висит в углу шапки оторванно от названия (10.10.2026). --}}
+    <x-slot:badge><x-ui.state :tone="$car->state->tone()" class="title-state">{{ mb_lcfirst($car->state->label()) }}</x-ui.state></x-slot:badge>
+    @if ($staff)
+        <x-slot:actions>
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 text-sm">
+            <span class="text-ink-muted">{{ $car->manager?->shortName() ?? 'взяли под себя' }}</span>
+            @if ($car->dealOpen())<a href="{{ \App\Support\Surface::Crm->url('/work/deals/'.$car->deal_id) }}" class="text-accent-text" data-turbo="false">Сделка в CRM</a>@endif
+        </div>
+        </x-slot:actions>
+    @endif
     @error('car')<x-ui.flash tone="danger" class="mb-4">{{ $message }}</x-ui.flash>@enderror
 
     <x-offer.object :offer="$offer" :photos="$photos" :docs="$docs">

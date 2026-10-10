@@ -2952,6 +2952,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* Факты под названием — одной строкой текста (.card-sub), как во второй строке таблицы, а не рядом чипов. */
 .card-sub { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-ink-muted); }
 .card-sub > * + * { margin-left: .5rem; }
+/* Гараж (x-garage.card): этап — своя фраза, переносится, а не режется многоточием; число этапа с подписью — столбиком справа. */
+.card-sub.garage-sub { white-space: normal; overflow: visible; }
+.garage-money { display: block; margin-left: auto; text-align: right; line-height: 1.3; white-space: nowrap; }
+.card--garage > .card-aside { justify-self: stretch; }
+.card--garage > .card-extra { align-self: start; }
+/* На сайте у плитки гаража нет города и кнопки снизу — число этапа последней строкой с нижним полем, плитки одной высоты. */
+.surface-site .cards--grid > .card--garage { --card-areas: "media media" "body body" "extra extra" "aside aside"; --card-rows: auto auto 1fr auto; --aside-align: end; --aside-pad: .5rem 1.25rem 1.25rem; }
 .surface-crm .cards:not(.cards--grid) .card-extra > .card-sub, .surface-park .cards:not(.cards--grid) .card-extra > .card-sub { flex: 1 1 auto; }
 /* Строки стоянки и CRM — сгруппированным списком, как «Настройки» iOS: одна плашка, строки без зазора и
    своего скругления, между ними волосяная линия. Плитки остаются плитками. */
