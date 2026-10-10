@@ -33,7 +33,8 @@ export default class extends Controller {
             this.frameTarget.removeAttribute('src');
             this.frameTarget.innerHTML = '';
             this.renderRecent();
-            this.open();
+            // Пустой блок не рисуется: без последних запросов показывать нечего.
+            if (this.recent().length) this.open(); else this.close();
             return;
         }
         if (this.hasRecentTarget) this.recentTarget.hidden = true;

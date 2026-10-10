@@ -69,15 +69,17 @@ final class Cars
         $hit->rank = min($hit->rank, $this->exact($v->ref_key, $v->vin) ? 0 : ($v->state->isFinal() ? 2 : 1));
     }
 
-    public function legacy(LegacyClaim $c): void
+    /**
+     * Номер из таблицы Кати. Живого предложения нет (не заводили или оно в архиве) — «Завести» рядом со строкой: из архива
+     * оно поднимается в черновик. `$offer` — предложение этого номера, найденное одним запросом на всю выдачу.
+     */
+    public function legacy(LegacyClaim $c, ?Offer $offer): void
     {
-        $offer = $c->offer();
         $live = $offer && ! in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true);
-        $hit = $this->hit($this->key($c->claim_ref_key, null, 'l'.$c->id), fn () => new Hit($c->claim_ref, ref: $c->claim_ref));
+        $hit = $this->hit($this->key($c->claim_ref_key, null, 'l'.$c->id), fn () => new Hit($c->claim_ref, '/?preset=legacy', ref: $c->claim_ref));
         $hit->line[] = $live ? 'в таблице Кати' : 'в таблице Кати, не заведена';
-        if (! $live && ! $hit->href) {
+        if (! $live) {
             $hit->action = ['url' => "/offers/legacy/{$c->id}/create", 'label' => 'Завести'];
-            $hit->href = '/?preset=legacy';
         }
         $hit->rank = min($hit->rank, $this->exact($c->claim_ref_key) ? 0 : 1);
     }

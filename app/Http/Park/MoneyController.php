@@ -16,6 +16,7 @@ use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
+use App\Search\Term;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
@@ -49,7 +50,7 @@ class MoneyController
         $qs = trim((string) $request->query('q'));
         $q = self::scoped(Invoice::with(['party', 'vehicle.brand', 'vehicle.model']))
             ->when($request->query('car'), fn ($w, $id) => $w->forVehicle((int) $id))
-            ->when($qs !== '', fn ($w) => $w->search($qs));
+            ->search($qs);
         // Лупа — по всем счетам, мимо пилюли и чипа.
         if ($qs === '') {
             match ($preset) {
@@ -226,9 +227,10 @@ class MoneyController
     public function debts(Request $request)
     {
         $sort = Sort::from($request->query('sort'), self::DEBT_SORTS, '-overdue');
-        $qs = mb_strtolower(trim((string) $request->query('q')));
+        // Долги считаются в памяти — лупа тем же разбором запроса (`Term::matches`): имя и ИНН контрагента.
+        $term = Term::of((string) $request->query('q'));
         $debts = Ledger::debts()
-            ->when($qs !== '', fn ($c) => $c->filter(fn ($d) => str_contains(mb_strtolower($d['party']->name), $qs)))
+            ->when(! $term->blank(), fn ($c) => $c->filter(fn ($d) => $term->matches($d['party']->name, $d['party']->inn)))
             ->sortBy(fn ($d) => [$d[$sort->key], $d['overdue'], $d['owed_to_us']], SORT_REGULAR, $sort->desc)->values();
         $page = max(1, (int) $request->query('page', 1));
         $per = 30;

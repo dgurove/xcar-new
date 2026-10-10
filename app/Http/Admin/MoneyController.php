@@ -90,13 +90,12 @@ class MoneyController
         $tab === 'links' || $facets->apply(Invoice::crmMoney()->where(fn ($w) => $w->where(fn ($x) => $x->where('direction', 'issued')->whereNot(self::oneOff()))
             ->orWhere(fn ($x) => $x->where('direction', 'owed')->where('kind', ChargeKind::AgentFee))));
         $qs = trim((string) $request->query('q'));
-        $find = self::find($qs);
         // Лупа — по всем трём вкладкам сразу (мимо пилюли), без страниц у оплаченного.
         $tabs = $qs === '' ? [$tab] : array_keys(self::TABS);
         $sort = fn (string $t) => $t === 'links' ? Sort::from($request->query('sort'), MoneyLinks::sorts(), '-created') : Sort::from($request->query('sort'), self::sorts($t), '-auto');
         $sections = collect($tabs)->mapWithKeys(fn ($t) => [$t => $t === 'links'
-            ? ['links' => MoneyLinks::list($links, MoneyLinks::find($qs), $sort($t), $qs === '')]
-            : $this->section($t, $facets, $find, $qs === '', $sort($t))])->all();
+            ? ['links' => MoneyLinks::list($links, $qs, $sort($t))]
+            : $this->section($t, $facets, $qs, $sort($t))])->all();
         $paid = collect($sections)->except('links')->flatMap(fn ($s) => $s['paid'] instanceof Collection ? $s['paid'] : $s['paid']->items())->flatMap(fn ($i) => $i->payments->pluck('id'));
 
         // Выбран один менеджер — его расчёт строкой сверху (бывший экран «Расчёты с менеджерами»).
@@ -134,14 +133,15 @@ class MoneyController
      * Вкладка группами: claims — менеджер пишет, что оплатил (только «Нам должны»); open — ждём, сверху то, где по ссылке
      * пытались и не вышло; paid — оплаченные свежими сверху, по 50 на страницу.
      */
-    private function section(string $tab, Facets $facets, ?Closure $find, bool $paged, Sort $sort): array
+    private function section(string $tab, Facets $facets, string $qs, Sort $sort): array
     {
-        $q = fn () => self::of($tab, $facets)->when($find, $find)->with(self::WITH);
+        // Лупа — `Invoice::search` (пустой запрос — без отбора); без неё у оплаченного страницы.
+        $q = fn () => self::of($tab, $facets)->search($qs)->with(self::WITH);
         $claims = $tab === 'owed'
-            ? Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereIn('billing_invoices.id', self::of('owed', $facets, links: true)->when($find, $find)->select('billing_invoices.id')))
+            ? Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereIn('billing_invoices.id', self::of('owed', $facets, links: true)->search($qs)->select('billing_invoices.id')))
                 ->with(['invoice' => fn ($i) => $i->with(self::WITH)])->orderBy('paid_at')->orderBy('id')->get()
             : collect();
-        $tried = $tab === 'payouts' ? collect() : self::tried(self::of($tab, $facets)->when($find, $find))->pluck('billing_invoices.id');
+        $tried = $tab === 'payouts' ? collect() : self::tried(self::of($tab, $facets)->search($qs))->pluck('billing_invoices.id');
         $auto = $sort->key === 'auto';
         $open = $q()->where('state', InvoiceState::Issued)->with('payLinks.attempts')
             ->when($tab === 'owed', fn ($w) => $w->whereDoesntHave('claims'))
@@ -151,7 +151,7 @@ class MoneyController
         $last = Payment::select('paid_at')->whereColumn('invoice_id', 'billing_invoices.id')->where('state', PaymentState::Confirmed)->whereNull('voided_at')->latest('paid_at')->limit(1);
         $paid = $q()->where('state', InvoiceState::Paid)->when($auto, fn ($w) => $w->orderByDesc($last), fn ($w) => self::order($w, $sort, open: false))->orderByDesc('billing_invoices.id');
 
-        return ['claims' => $claims, 'open' => $open, 'tried' => $tried, 'paid' => $paged ? $paid->paginate(50)->withQueryString() : $paid->limit(50)->get()];
+        return ['claims' => $claims, 'open' => $open, 'tried' => $tried, 'paid' => $qs === '' ? $paid->paginate(50)->withQueryString() : $paid->limit(50)->get()];
     }
 
     /** Поле сортировки столбца: у открытых сумма — остаток, у оплаченных — итог. */
@@ -198,12 +198,6 @@ class MoneyController
     public static function linkUrl(PayLink $link): string
     {
         return '/work/money?tab=links&peek='.$link->id;
-    }
-
-    /** Лупа по счёту — `Invoice::search`. */
-    public static function find(string $qs): ?Closure
-    {
-        return $qs === '' ? null : fn ($q) => $q->search($qs);
     }
 
     /** Откуда деньги в ручной оплате: зачёт вознаграждения ставит только система, руками его не выбрать. */

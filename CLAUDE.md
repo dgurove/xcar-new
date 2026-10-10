@@ -257,9 +257,11 @@
   экранирует `%` и `_`, запрос без букв и цифр — пустой), ищут **скоупы моделей** `search(string|Term)`: `Offer`
   (`searchCrm` — с номером убытка и телефоном, на сайте их нет), `Park\Vehicle`, `User`, `Billing\Invoice`,
   `Acquiring\PayLink`, `Chats\Chat`, `Purchases\Car` (`crm` — ДЛ, на сайте «№ 12»), `Mail\Thread`, `Vendor`,
-  `Bank\Transaction`, `Telegram\Chat`, `Cars\Brand` (`prefix` — подсказка поля). «Марка, модель, год по словам через И» —
-  `Search\CarWords`. В контроллерах `ilike` для поиска нет — только вызов скоупа (лупы списков, «Наличие», «Заявки»,
-  «Оплаты» обеих сторон, подсказки `/reference/cars|managers|brands`). **Поиск в шапке** — `x-search.box` на трёх хостах
+  `Bank\Transaction`, `Telegram\Chat`, `Cars\Brand` и `Cars\CarModel` (имя и русское имя; `prefix` — подсказка поля),
+  `Cars\Settlement` (начало имени, число в конце — номер региона; `region: false` — слово поиска). Пустой запрос скоуп
+  пропускает сам — `when($q !== '')` вокруг не нужен. «Марка, модель, год, кусок VIN по словам через И» — `Search\CarWords`;
+  список, посчитанный в памяти (долги парковки), — `Term::matches`. В контроллерах `ilike` и `like` для поиска нет — только
+  вызов скоупа (лупы списков, «Наличие», «Заявки», «Оплаты» обеих сторон, подсказки `/reference/*`). **Поиск в шапке** — `x-search.box` на трёх хостах
   (ПК — поле с выпадающей выдачей `.search-pop`, телефон — лупа и шторка; в CRM и на парковке лупа справа у колокольчика),
   `global_search_controller` (со 2 знака через 150 мс фрейм `/search?q=`, ↑/↓, Enter — выбранная или первая, без выдачи —
   страница `/search`, Esc, «/» и ⌘K, пять последних запросов), `SearchController` → `Search\Search::for(user, term,

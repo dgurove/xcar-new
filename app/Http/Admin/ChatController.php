@@ -70,7 +70,7 @@ class ChatController
         $q = trim((string) $request->query('q'));
         // Заведённый кнопкой «Написать» и брошенный без сообщения — не строка списка.
         $chats = Chat::withLast()->whereNull('manager_id')->where('messages_count', '>', 0)
-            ->when($q !== '', fn ($c) => $c->search($q, crm: true));
+            ->search($q, crm: true);
         // Непрочитанные сверху, дальше свежие. Страницы списка ведут на список, даже когда справа открыт чат.
         $chats = $chats->orderByRaw('unread_for_staff > 0 desc')->orderByDesc('last_message_at')
             ->paginate(ListView::perPage($request, ListView::PER_ROWS))->withPath('/work/chats')->withQueryString();

@@ -153,7 +153,7 @@ class TelegramChatController
     {
         $q = trim((string) $request->query('q'));
         $chats = Chat::withLast()
-            ->when($q !== '', fn ($c) => $c->search($q))
+            ->search($q)
             ->orderByRaw('last_message_at desc nulls last')->orderBy('id')
             ->paginate(ListView::perPage($request, ListView::PER_ROWS))->withPath('/settings/telegram')->withQueryString();
 

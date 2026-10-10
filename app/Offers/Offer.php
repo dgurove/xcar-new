@@ -818,9 +818,8 @@ class Offer extends Model implements HasMedia
             ->when($crm && $t->phone, fn ($w) => $w->orWhereRaw(Term::digitsSql('offers.insured_phone').' like ?', [Term::like($t->phone)]))
             // Слова — через И: «kia rio», «рио 2021», «крета москва».
             ->orWhere(fn ($all) => CarWords::apply($all, $t, 'offers', fn ($one, $word, $like) => $one
-                ->orWhereHas('settlement', fn ($c) => $c->whereRaw('lower(name) like ?', [Term::like($word, prefix: true)]))
+                ->orWhereHas('settlement', fn ($c) => $c->search($word, region: false))
                 ->orWhereRaw('cast(offers.number as text) like ?', [$like])
-                ->orWhereRaw('lower(offers.vin) like ?', [$like])
                 ->when($crm, fn ($o) => $o->orWhereRaw('lower(offers.claim_ref) like ?', [$like])))));
     }
 

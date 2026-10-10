@@ -12,7 +12,6 @@ use App\Support\Facets\Option;
 use App\Support\Sort;
 use App\Users\User;
 use Carbon\CarbonInterface;
-use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -60,11 +59,12 @@ final class MoneyLinks
         return self::query()->when(! $facets->on('canceled'), fn ($q) => $q->where('billing_pay_links.state', '!=', PayLinkState::Canceled->value));
     }
 
-    public static function list(Facets $facets, ?Closure $find, Sort $sort, bool $paged)
+    public static function list(Facets $facets, string $qs, Sort $sort)
     {
         $q = self::base($facets);
         $facets->apply($q);
-        $q->when($find, $find)->with(self::WITH);
+        // Лупа — `PayLink::search` (пустой запрос — без отбора), по всем ссылкам и без страниц.
+        $q->search($qs)->with(self::WITH);
         $dir = $sort->dir();
         match ($sort->key) {
             'payer' => $q->orderByRaw("coalesce(nullif(billing_pay_links.payer_name, ''), (select name from billing_parties where billing_parties.id = billing_invoices.party_id)) {$dir}"),
@@ -73,7 +73,7 @@ final class MoneyLinks
         };
         $q->orderBy('billing_pay_links.id', $dir);
 
-        return $paged ? $q->paginate(50)->withQueryString() : $q->limit(50)->get();
+        return $qs === '' ? $q->paginate(50)->withQueryString() : $q->limit(50)->get();
     }
 
     public static function openCount(): int
@@ -86,12 +86,6 @@ final class MoneyLinks
     {
         return self::query()->where('billing_pay_links.state', PayLinkState::Open->value)
             ->where(fn ($w) => $w->whereNotNull('billing_pay_links.error_at')->orWhereHas('attempts', fn ($a) => $a->where('status', 'canceled')))->exists();
-    }
-
-    /** Лупа «По ссылкам» — `PayLink::search`. */
-    public static function find(string $qs): ?Closure
-    {
-        return $qs === '' ? null : fn ($q) => $q->search($qs);
     }
 
     /** «Сделка», «Гараж», «Вручную», у ручной, засчитанной в сделку, — «Вручную, в сделку». */

@@ -2,7 +2,9 @@
 
 namespace App\Cars;
 
+use App\Search\Term;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -22,6 +24,23 @@ class Settlement extends Model
 
     /** @var array<string, ?array{id: int, name: string, title: string}> запрос → место справочника (`named`) */
     private static array $named = [];
+
+    /**
+     * Место по началу имени — поле «Город» и слова поиска. С `region` число в конце — номер региона, как на номерах машин
+     * («никольское 47», «Москва, 77», просто «77» — крупные места региона); место-регион («Республика Татарстан», тип
+     * `рег`) находится и по второму слову.
+     */
+    public function scopeSearch(Builder $q, string $term, bool $region = true): Builder
+    {
+        $term = mb_strtolower(trim($term));
+        $code = $region && preg_match('/(?:^|[\s,])(\d{1,3})$/u', $term, $m) ? str_pad($m[1], 2, '0', STR_PAD_LEFT) : null;
+        $name = $region ? trim((string) preg_replace('/(?:^|[\s,])\d{1,3}$/u', '', $term), ' ,') : $term;
+        $like = Term::like($name, prefix: true);
+
+        return $q->when($name !== '', fn ($s) => $s->where(fn ($w) => $w->whereRaw('lower(settlements.name) like ?', [$like])
+            ->orWhere(fn ($r) => $r->where('settlements.type', 'рег')->whereRaw('lower(settlements.name) like ?', ['% '.$like]))))
+            ->when($code, fn ($s) => $s->where('settlements.region_code', $code));
+    }
 
     public function region(): BelongsTo
     {

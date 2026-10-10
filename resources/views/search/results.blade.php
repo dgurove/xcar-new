@@ -32,5 +32,5 @@
         @endforeach
     </div>
 @elseif (mb_strlen($q) >= 2)
-    <p class="px-1 py-6 text-center text-sm text-ink-muted">Ничего не нашли</p>
+    <p class="px-1 py-6 text-center text-sm text-ink-muted">Ничего не нашлось</p>
 @endif

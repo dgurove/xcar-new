@@ -137,7 +137,7 @@ class PurchaseController
 
         $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user', 'offer:id,number,state'])
             ->when($preset === 'moved', fn ($c) => $c->whereNotNull('offer_id'), fn ($c) => $c->whereNull('offer_id'))
-            ->when($q !== '', $this->search($q))
+            ->search($q, crm: true)
             ->when($kind, fn ($c) => $c->where('kind', $kind));
         match ($preset) {
             'priced' => $cars->whereHas('offers', $live),
@@ -172,11 +172,6 @@ class PurchaseController
             'highlight' => count($users) === 1 ? $users[0] : null,
             'vendors' => Vendor::where('is_active', true)->orWhere('id', $purchase->vendor_id)->orderBy('name')->pluck('name', 'id'),
         ]);
-    }
-
-    private function search(string $q): \Closure
-    {
-        return fn ($c) => $c->search($q, crm: true);
     }
 
     public function update(Request $request, Purchase $purchase)

@@ -29,7 +29,7 @@ final class Term
     /** Кусок госномера без пробелов, латиницей. */
     public readonly ?string $plate;
 
-    /** Телефон — цифры без кода страны (до десяти), от пяти. */
+    /** Телефон — цифры без кода страны (до десяти): полный номер или кусок от семи с признаками телефона. */
     public readonly ?string $phone;
 
     /** Только цифры (номер предложения, счёта, прежний номер). */
@@ -50,10 +50,16 @@ final class Term
         $key = self::meaningful($raw) ? Code::key($raw) : null;
         $this->key = $key !== '' ? $key : null;
         $this->claim = $this->key && preg_match_all('/\d/', $this->key) >= 4 ? $this->key : null;
+        // VIN — своей картой (`Vin::normalize`: О→0, З→3), и только когда в запросе нет ничего, кроме букв и цифр: тогда
+        // нормализация не выкидывает ни знака.
         $vin = Vin::normalize($raw);
-        $this->vin = $vin && strlen($vin) >= 5 && $vin === preg_replace('/[^A-Z0-9]/', '', $compact) && preg_match('/\d/', $vin) ? $vin : null;
+        $chars = (string) preg_replace('/[\s\-]+/u', '', $raw);
+        $this->vin = $vin && strlen($vin) >= 5 && strlen($vin) === mb_strlen($chars) && preg_match('/\d/', $vin) ? $vin : null;
         $this->plate = mb_strlen($compact) >= 3 && preg_match('/\d/', $compact) && preg_match('/^[A-Z0-9]+$/', $compact) ? $compact : null;
-        $this->phone = strlen($onlyDigits) >= 5 && preg_match('/^[\d\s()+\-]+$/', $raw)
+        // Телефон — полный номер (10–11 цифр) или кусок от семи с признаками телефона («+7», скобки, цифры через пробел):
+        // номер убытка и номер предложения телефоном не считаются, иначе тянули бы машины с похожим телефоном владельца.
+        $phoneLike = strlen($onlyDigits) >= 10 || (strlen($onlyDigits) >= 7 && preg_match('/[+()]|\d\s+\d/', $raw));
+        $this->phone = $phoneLike && strlen($onlyDigits) <= 11 && preg_match('/^[\d\s()+\-]+$/', $raw)
             ? substr(Phone::normalize($onlyDigits) ?? $onlyDigits, -10) : null;
         $this->digits = $onlyDigits !== '' && preg_match('/^[\d\s№#]+$/u', $raw) ? $onlyDigits : null;
         $this->invoice = preg_match('/^(?:сч[её]т|№|#)\s*№?\s*(\d{1,6})$/ui', $raw, $m) ? (int) $m[1]
@@ -70,6 +76,17 @@ final class Term
     public function blank(): bool
     {
         return ! self::meaningful($this->raw);
+    }
+
+    /**
+     * То же правило для списка в памяти (долги парковки считаются, а не выбираются): каждое слово запроса — кусок хоть
+     * одного из значений; пустой запрос подходит всему.
+     */
+    public function matches(?string ...$values): bool
+    {
+        $haystack = mb_strtolower(implode(' ', array_filter($values)));
+
+        return array_all($this->words, fn ($w) => str_contains($haystack, $w));
     }
 
     /** Строка для `like` подстрокой: `%` и `_` из запроса — буквально. */

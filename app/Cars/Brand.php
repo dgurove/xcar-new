@@ -23,9 +23,10 @@ class Brand extends Model
     /** Марка по имени или русскому имени: кусок слова (поиск) или начало (`prefix`, подсказка поля «Марка»). */
     public function scopeSearch(Builder $q, string $word, bool $prefix = false): Builder
     {
-        $like = Term::like(mb_strtolower(trim($word)), $prefix);
+        $word = mb_strtolower(trim($word));
+        $like = Term::like($word, $prefix);
 
-        return $q->where(fn ($b) => $b->whereRaw('lower(brands.name) like ?', [$like])->orWhereRaw('lower(brands.name_ru) like ?', [$like]));
+        return $word === '' ? $q : $q->where(fn ($b) => $b->whereRaw('lower(brands.name) like ?', [$like])->orWhereRaw('lower(brands.name_ru) like ?', [$like]));
     }
 
     public function offers(): HasMany

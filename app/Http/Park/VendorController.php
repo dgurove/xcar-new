@@ -53,7 +53,7 @@ class VendorController
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'active';
         $q = trim((string) $request->query('q'));
         $vendors = $facets->apply(Vendor::onPark())->with(['contacts', 'party'])->withCount(['vehicles as stored_count' => fn ($q) => $q->where('state', VehicleState::Stored)])
-            ->when($q !== '', fn ($w) => $w->search($q))
+            ->search($q)
             ->orderBy(match ($sort->key) {
                 'created' => 'created_at', 'stored' => 'stored_count', default => 'name'
             }, $sort->dir())->orderBy('id')->get();

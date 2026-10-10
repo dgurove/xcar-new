@@ -2,7 +2,9 @@
 
 namespace App\Cars;
 
+use App\Search\Term;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,6 +16,15 @@ class CarModel extends Model
     {
         static::saved(fn () => Names::forget());
         static::deleted(fn () => Names::forget());
+    }
+
+    /** Модель по имени или русскому имени: кусок (поиск) или начало (`prefix`, подсказка поля «Модель»). */
+    public function scopeSearch(Builder $q, string $word, bool $prefix = false): Builder
+    {
+        $word = mb_strtolower(trim($word));
+        $like = Term::like($word, $prefix);
+
+        return $word === '' ? $q : $q->where(fn ($m) => $m->whereRaw('lower(car_models.name) like ?', [$like])->orWhereRaw('lower(car_models.name_ru) like ?', [$like]));
     }
 
     public function brand(): BelongsTo

@@ -61,8 +61,9 @@ final class Search
                 ->each(fn (Vehicle $v) => $cars->vehicle($v, link: Surface::Park->url("/cars/{$v->id}"), external: true));
         }
         if ($admin && $t->claim) {
-            LegacyClaim::where('claim_ref_key', 'like', Term::like($t->claim))->orderBy('position')->limit(8)->get()
-                ->each(fn (LegacyClaim $c) => $cars->legacy($c));
+            $claims = LegacyClaim::where('claim_ref_key', 'like', Term::like($t->claim))->orderBy('position')->limit(8)->get();
+            $owned = Offer::where('is_demo', false)->whereIn('claim_ref_key', $claims->pluck('claim_ref_key'))->get(['id', 'state', 'claim_ref_key'])->keyBy('claim_ref_key');
+            $claims->each(fn (LegacyClaim $c) => $cars->legacy($c, $owned->get($c->claim_ref_key)));
         }
         if ($user->canCrmMail()) {
             self::candidates(Scope::Offers, $t)->each(fn (Candidate $c) => $cars->candidate($c, '/offers/from-mail?q='.urlencode($t->raw)));
@@ -153,7 +154,7 @@ final class Search
         ));
         if ($crm && $rows->count() < self::ROWS) {
             // Ручные ссылки без сделки: у них счёт «Услуга», его номер не ищут — ищут плательщика.
-            MoneyLinks::query()->search($t)->whereNotIn('billing_pay_links.invoice_id', $invoices->pluck('id'))
+            MoneyLinks::query()->search($t, deep: false)->whereNotIn('billing_pay_links.invoice_id', $invoices->pluck('id'))
                 ->latest('billing_pay_links.id')->limit(self::ROWS - $rows->count())->get()
                 ->each(fn (PayLink $l) => $rows->push(new Hit('Ссылка на оплату', MoneyController::linkUrl($l),
                     array_values(array_filter([Money::rub($l->amount), $l->payerLabel()])), icon: 'wallet')));
@@ -168,11 +169,12 @@ final class Search
         if (! $scope) {
             return ['title' => 'Письма', 'rows' => []];
         }
-        $threads = Thread::whereIn('account_id', Account::where('scope', $scope)->pluck('id'))->where('messages_count', '>', 0)->search($t);
-        $count = (clone $threads)->count();
-        $rows = $threads->latest('last_message_at')->limit(3)->get()
+        // Полнотекст по письмам — самый тяжёлый запрос выдачи: один раз, четвёртая строка только говорит, что есть ещё.
+        $threads = Thread::whereIn('account_id', Account::where('scope', $scope)->pluck('id'))->where('messages_count', '>', 0)->search($t)
+            ->latest('last_message_at')->limit(4)->get();
+        $rows = $threads->take(3)
             ->map(fn (Thread $th) => new Hit($th->subject ?: 'Без темы', $base.'?window='.$th->id, [$th->last_message_at?->translatedFormat('j M')], icon: 'mail'))->all();
 
-        return ['title' => 'Письма', 'rows' => $rows] + ($count > count($rows) ? ['more' => ['label' => 'Все письма, '.$count, 'href' => $base.'?q='.urlencode($t->raw)]] : []);
+        return ['title' => 'Письма', 'rows' => $rows] + self::more($threads->count() > 3, 'Все письма', $base.'?q='.urlencode($t->raw));
     }
 }

@@ -38,10 +38,11 @@ class PayLink extends Model
     }
 
     /**
-     * Поиск ссылки на оплату — лупа «По ссылкам» и шапка CRM: плательщик (двойные пробелы не мешают), код ссылки, ТС
-     * словами у ручной, счёт (`Invoice::search`: плательщик, менеджер, ТС).
+     * Поиск ссылки на оплату — лупа «По ссылкам» и шапка CRM: плательщик (двойные пробелы не мешают), код ссылки и счёт
+     * (`Invoice::search`: плательщик, менеджер, ТС словами у ручной). `deep: false` — без счёта: в шапке счета уже
+     * найдены своим запросом, второй раз весь `Invoice::search` вложенным EXISTS не нужен.
      */
-    public function scopeSearch(Builder $q, string|Term $term): Builder
+    public function scopeSearch(Builder $q, string|Term $term, bool $deep = true): Builder
     {
         $t = Term::of($term);
         if ($t->blank()) {
@@ -51,7 +52,7 @@ class PayLink extends Model
 
         return $q->where(fn ($s) => $s->where('billing_pay_links.payer_name', 'ilike', $like)
             ->orWhere('billing_pay_links.code', mb_strtolower($t->raw))
-            ->orWhereHas('invoice', fn ($i) => $i->search($t)));
+            ->when($deep, fn ($s) => $s->orWhereHas('invoice', fn ($i) => $i->search($t))));
     }
 
     public static function freshCode(): string
