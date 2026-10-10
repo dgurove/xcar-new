@@ -145,8 +145,8 @@
             <div data-controller="sheet" data-action="link-{{ $id }}-qr:open@window->sheet#open" class="contents">
                 <x-ui.sheet :id="'link-qr-'.$id" title="QR-код">
                     <div class="flex flex-col items-center gap-4">
-                        <div class="w-56 rounded-(--radius-l) bg-white p-3 text-black">{!! \App\Support\Qr::svg($link->url()) !!}</div>
                         <div class="nums select-all break-all text-center text-ink-muted">{{ $link->shortUrl() }}</div>
+                        <x-billing.pay-qr :link="$link" size="w-56" class="w-full"/>
                     </div>
                 </x-ui.sheet>
             </div>
