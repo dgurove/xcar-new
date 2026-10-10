@@ -1195,6 +1195,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .cell-title:has(> .cell-name) > :not(.cell-name), .ref-line > :is(svg, img, .vendor-logo), .chip.person > .avatar { align-self: center; }
   .cell-title > .cell-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cell-title > .cell-name ~ * { flex-shrink: 0; }
+  /* Дата и аватар создателя в строке названия (краткая таблица предложений): у правого края, мелко и тускло. */
+  .cell-title > .title-meta { margin-left: auto; padding-left: .5rem; display: inline-flex; align-items: center; gap: .375rem; align-self: center; font-size: var(--text-sm); font-weight: 400; color: var(--color-ink-muted); font-variant-numeric: normal; }
   @media (max-width: 639.98px) {
     .cell-title > .title-plate { display: inline; flex-shrink: 0; margin-left: .3em; font-size: var(--text-sm); }
     .cell-sub .sub-plate { display: none; }
@@ -1267,6 +1269,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       & .table .sm\:hidden { display: revert !important; }
       /* revert у span — строчный: закупочная вставала справа от «Оценить», а не под ней, как на телефоне. */
       & .table td.num > .cell-sub.sm\:hidden { display: block !important; }
+      & .table .cell-title > .title-meta { display: inline-flex !important; }
       & .table tbody tr { height: 3rem; }
       & .table td.grow .cell-title { display: block; }
       & .table td.grow .cell-title:has(> .cell-name) { display: flex; max-width: none; }
