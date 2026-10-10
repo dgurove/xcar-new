@@ -18,7 +18,7 @@
     <td class="grow">
         <x-ui.row-link :key="$n"><span class="cell-title">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
-            @if ($ref = $offer->leaseRef())<span>ДЛ {{ $ref }}</span>@else<span class="sm:hidden">№ {{ $n }}</span>@endif
+            <span class="sm:hidden">№ {{ $n }}</span>
             @if ($gallery)<x-offer.gallery-left :offer="$offer" word="" class="sm:hidden"/>
             @elseif ($left !== null && $left > 0)<span class="cell-timer sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
             @elseif ($offer->state === \App\Offers\OfferState::Sold)<span class="sm:hidden text-urgent">идёт сделка</span>

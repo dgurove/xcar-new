@@ -5,7 +5,7 @@
     $asSheet = $purchase->acceptsOffers() && $mine?->state !== \App\Purchases\OfferState::Chosen;
     $facts = $car->factsList();
 @endphp
-<x-ui.shell :title="$car->titleWithYear()" :back="[$purchase->publicTitle($group), $back]" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group), $back], [$car->dl]]">
+<x-ui.shell :title="$car->titleWithYear()" :back="[$purchase->publicTitle($group), $back]" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group), $back], ['№ '.$car->ref]]">
     <x-slot:actions>
         @if ($car->visiblePhotos()->isNotEmpty())<x-purchase.share :car="$car" icon/>@endif
         <x-ui.nav-arrows class="ml-auto sm:ml-0"

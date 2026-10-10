@@ -29,13 +29,15 @@ final class Caption
     {
         $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
         $staff = self::staff($user);
+        $crm = Surface::current() === Surface::Crm;
         $price = PriceView::for($offer, $user);
         // Цены — последней строкой: клиент собирает отмеченные сверху вниз, цены склеивает стрелкой «от → до» в конце.
         // VIN — как этому человеку на сайте (`Offer::vinFor`): скрытый уходит маской.
         $rows = [
             // Номер с датой — первой строкой с решёткой (`#2610041229`); черновику его выдаёт `Subject::offer` при шеринге.
-            ['number', 'Номер', OfferNumber::isPublic($offer) ? '#'.$offer->number : null, true],
-            ['dl', 'ДЛ', $offer->leaseRef() ? 'ДЛ '.$offer->leaseRef() : null, true],
+            // На xcar по умолчанию снят, ДЛ там нет совсем: номер убытка и ДЛ — внутренние (владелец 10.10.2026).
+            ['number', 'Номер', OfferNumber::isPublic($offer) ? '#'.$offer->number : null, $crm],
+            ['dl', 'ДЛ', $crm && $offer->leaseRef() ? 'ДЛ '.$offer->leaseRef() : null, true],
             ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
             // VIN — сразу под машиной (владелец 05.10.2026: «вин повыше»), без слова «VIN».
             ['vin', 'VIN', $offer->vin ? ($staff ? $offer->vin : $offer->vinFor($user)) : null, true],
@@ -60,13 +62,14 @@ final class Caption
         return self::rows($rows);
     }
 
-    /** Машина закупки: ДЛ и наша цена вместо номера и цены оффера, срок — приём цен по закупке. */
+    /** Машина закупки: ДЛ (на xcar — номер машины в закупке) и наша цена вместо номера и цены оффера, срок — приём цен по закупке. */
     public static function car(Car $car, ?User $user): array
     {
         $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
         $prices = $user?->canSeePrices() ?? false;
+        $crm = Surface::current() === Surface::Crm;
         $rows = [
-            ['number', 'Номер', str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl, true],
+            ['number', 'Номер', $crm ? (str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl) : '№ '.$car->ref, $crm],
             ['city', 'Город', $car->settlement?->title() ?? $car->city, true],
             ['model', 'Марка, модель, год', $car->titleWithYear(), true],
             ['vin', 'VIN', $car->vin ?: null, true],

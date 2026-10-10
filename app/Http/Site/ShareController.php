@@ -3,7 +3,6 @@
 namespace App\Http\Site;
 
 use App\Offers\Offer;
-use App\Offers\Share\Caption;
 use App\Offers\Share\SharePdf;
 use App\Offers\Share\Subject;
 use App\Purchases\Car;
@@ -78,10 +77,10 @@ class ShareController
         return response()->file($path, ['Content-Type' => 'image/jpeg', 'Content-Disposition' => "inline; filename*=UTF-8''".rawurlencode($subject->photoName($index + 1)), 'Cache-Control' => 'private, max-age=3600']);
     }
 
-    // Знак снимает только сотрудник: файл с витрины уходит человеку, которого мы не знаем.
+    // Галка «Водяной знак на фото» — у всех (владелец 10.10.2026): на xcar по умолчанию включена, в CRM выключена.
     private function watermark(Request $request): bool
     {
-        return Caption::staff($request->user()) ? $request->boolean('watermark', true) : true;
+        return $request->boolean('watermark', true);
     }
 
     private function respond(Request $request, Subject $subject, SharePdf $pdf)

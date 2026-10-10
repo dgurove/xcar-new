@@ -71,7 +71,7 @@
                         <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</a>
                         @if ($deal->state !== DealState::Active)<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="mt-2">{{ mb_strtolower($deal->state->label()) }}</x-ui.state>@endif
                         <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
-                            @foreach (['Предложение' => $offer->number, 'ДЛ' => $offer->leaseRef()] as $label => $value)
+                            @foreach (['Предложение' => $offer->number] as $label => $value)
                                 @if ($value)<div class="min-w-0"><dt class="text-sm text-ink-dim">{{ $label }}</dt><dd class="nums mt-0.5 break-words font-normal"><x-ui.copy-code :value="(string) $value"/></dd></div>@endif
                             @endforeach
                             @if ($feeState !== CommissionState::Hidden)
