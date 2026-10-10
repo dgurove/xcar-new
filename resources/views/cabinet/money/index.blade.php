@@ -60,6 +60,8 @@
                     @foreach ($deals as $row)
                         @if ($row instanceof \App\Garage\Car)
                             <x-money.deal-row :deal="$row" :href="$row->url()"/>
+                        @elseif ($row instanceof \App\Logistics\Transport)
+                            <x-money.deal-row :deal="$row" :href="\App\Support\Surface::Logistics->url('/transports/'.$row->id)"/>
                         @else
                             <x-money.deal-row :deal="$row" :href="'/account/money/deals/'.$row->id"/>
                         @endif

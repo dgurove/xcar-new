@@ -93,6 +93,8 @@ class Invite extends Model
             Role::Moderator => 'модератору',
             Role::Admin => 'администратору',
             Role::Parking => ($this->park_readonly ? 'помощнику парковки' : 'управляющему парковкой').(($city = City::name($this->park_city_id)) ? ', '.$city : ''),
+            Role::Logist => 'логисту',
+            Role::Driver => 'водителю',
             default => $this->role->label(),
         };
     }
@@ -113,6 +115,8 @@ class Invite extends Model
             Role::Parking => $this->park_readonly
                 ? 'Вам откроется приём и выдача ТС на парковке XCar'.$city
                 : 'Вам откроется парковка XCar'.$city.': заявки, приём, выдача и оплаты',
+            Role::Logist => 'Вам откроется Logistics XCar: перевозки, перевозчики, стоимость и сроки',
+            Role::Driver => 'Вам откроется Logistics XCar: ваши рейсы',
             default => 'Вам откроется доступ к предложениям XCar и кабинету менеджера',
         };
     }
@@ -135,6 +139,8 @@ class Invite extends Model
             Role::Moderator => 'модератором',
             Role::Admin => 'администратором',
             Role::Parking => ($this->park_readonly ? 'помощником на парковку' : 'управляющим парковкой').(($city = City::name($this->park_city_id)) ? " ({$city})" : ''),
+            Role::Logist => 'логистом',
+            Role::Driver => 'водителем',
             default => mb_strtolower($this->role->label()),
         }.'. Ссылка одноразовая';
         if ($this->expires_at) {

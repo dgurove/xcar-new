@@ -60,6 +60,26 @@ final class PickupState
         return ! self::unpaid($offer) && (bool) $offer->position(Track::Service)?->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty();
     }
 
+    /**
+     * Почему забирать пока нельзя — для логистики (10.10.2026: «Забрал» водителя и партнёра держат те же условия, что
+     * «Забрал» в CRM): у Альфы — до оплаты, у остальных — пока маршрут вывоза не дошёл до «Вывоза и осмотра» (или шаг
+     * продажи сам не просит забрать, как у Совкомбанка). null — можно; ТС уже стоит у нас или у менеджера — тоже можно.
+     */
+    public static function blocker(Offer $offer): ?string
+    {
+        $stage = $offer->position(Track::Service)?->stage;
+        if ($stage && in_array($stage->car_place, [CarPlace::Keeper, CarPlace::WithUs], true)) {
+            return null;
+        }
+        if (self::unpaid($offer)) {
+            return 'Забирать после оплаты';
+        }
+        $ready = ! $stage || $stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()
+            || (bool) $offer->position(Track::Sale)?->stage->isPickupStep();
+
+        return $ready ? null : 'Документы ещё не готовы';
+    }
+
     /** Сделка Альфы ещё не оплачена — забирать рано (`Deal::mayPickUp`). */
     private static function unpaid(Offer $offer): bool
     {

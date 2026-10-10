@@ -6,6 +6,8 @@ use App\Billing\Invoice;
 use App\Cars\Region;
 use App\Media\HasPhotos;
 use App\Offers\Offer;
+use App\Offers\PickupState;
+use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\Yard;
 use App\Search\Term;
@@ -24,7 +26,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * свойство `at`), в продажу машины они не попадают.
  */
 #[Fillable(['offer_id', 'vehicle_id', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'from_address', 'to_address',
-    'receiver', 'to_yard_id', 'cost', 'ship_on', 'arrive_on', 'state', 'invoice_id', 'garage_cost_id', 'note', 'created_by', 'assigned_at', 'picked_at', 'delivered_at', 'cancelled_at'])]
+    'receiver', 'to_yard_id', 'cost', 'ship_on', 'arrive_on', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at', 'picked_at', 'delivered_at', 'cancelled_at'])]
 class Transport extends Model implements HasMedia
 {
     use HasPhotos;
@@ -50,9 +52,10 @@ class Transport extends Model implements HasMedia
         return $this->belongsTo(Offer::class);
     }
 
+    /** ТС парковки — любого города: логистике город управляющего (`Park\City`) не указ. */
     public function vehicle(): BelongsTo
     {
-        return $this->belongsTo(Vehicle::class);
+        return $this->belongsTo(Vehicle::class)->withoutGlobalScope(City::SCOPE);
     }
 
     public function fromRegion(): BelongsTo
@@ -72,7 +75,7 @@ class Transport extends Model implements HasMedia
 
     public function toYard(): BelongsTo
     {
-        return $this->belongsTo(Yard::class, 'to_yard_id');
+        return $this->belongsTo(Yard::class, 'to_yard_id')->withoutGlobalScope(City::SCOPE);
     }
 
     public function invoice(): BelongsTo
@@ -94,12 +97,6 @@ class Transport extends Model implements HasMedia
     public function title(): string
     {
         return $this->car()?->titleWithYear() ?? 'ТС';
-    }
-
-    /** Госномер — у ТС парковки; у предложения его нет. */
-    public function plate(): ?string
-    {
-        return $this->vehicle?->plate;
     }
 
     /** Кто везёт словом: «Сахиб М.», «ТК Деловые линии»; пусто — ещё не назначили. */
@@ -129,6 +126,19 @@ class Transport extends Model implements HasMedia
     public function photosAt(string $at)
     {
         return $this->photos()->filter(fn (Media $m) => $m->getCustomProperty('at') === $at)->values();
+    }
+
+    /**
+     * Почему этот человек пока не может забрать машину (`PickupState::blocker`: оплата Альфы, документы); админ
+     * отмечает за исполнителя, как «Забрал» в CRM. Забрали уже или это ТС парковки — null.
+     */
+    public function pickupBlocker(User $by): ?string
+    {
+        if ($by->isAdmin() || ! $this->offer || $this->state !== TransportState::Assigned) {
+            return null;
+        }
+
+        return PickupState::blocker($this->offer);
     }
 
     /** Ведёт ли человек эту перевозку как исполнитель. */

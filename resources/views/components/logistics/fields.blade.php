@@ -30,17 +30,14 @@
     <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="local" @if ($scope !== 'local') hidden @endif>
         <div class="flex flex-col gap-4" data-controller="reveal">
             <div class="flex flex-wrap gap-2">
-                @foreach ([Executor::Partner, Executor::Driver] as $e)
+                {{-- Кого нет (партнёров, водителей) — того и не выбрать: без подписей-пояснений. --}}
+                @foreach (array_filter([$partners ? Executor::Partner : null, $drivers ? Executor::Driver : null]) as $e)
                     <label class="choice"><input type="radio" name="executor" value="{{ $e->value }}" @checked($scope === 'local' && $executor === $e->value) data-action="reveal#pick"><span>{{ $e->label() }}</span></label>
                 @endforeach
             </div>
             <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="partner" @if ($executor !== 'partner') hidden @endif>
-                @if ($partners)
-                    <x-ui.field name="executor_id" id="{{ $prefix }}-partner" label="Партнёр" :options="$partners" placeholder="Выберите" :value="old('executor_id', $t?->executor === Executor::Partner ? $t->executor_id : null)"/>
-                    <x-ui.field name="cost" id="{{ $prefix }}-partner-cost" label="Стоимость эвакуации, ₽" inputmode="decimal" :value="$cost"/>
-                @else
-                    <p class="text-sm text-ink-muted">Партнёров нет: регионы отмечаются менеджеру в CRM, «Пользователи»</p>
-                @endif
+                <x-ui.field name="executor_id" id="{{ $prefix }}-partner" label="Партнёр" :options="$partners" placeholder="Выберите" :value="old('executor_id', $t?->executor === Executor::Partner ? $t->executor_id : null)"/>
+                <x-ui.field name="cost" id="{{ $prefix }}-partner-cost" label="Стоимость эвакуации, ₽" inputmode="decimal" :value="$cost"/>
             </div>
             <div data-reveal-target="pane" data-reveal-key="driver" @if ($scope !== 'local' || $executor !== 'driver') hidden @endif>
                 <x-ui.field name="executor_id" id="{{ $prefix }}-local-driver" label="Водитель" :options="$drivers" placeholder="Выберите" :value="old('executor_id', $t?->executor === Executor::Driver ? $t->executor_id : null)"/>
@@ -55,7 +52,7 @@
         <div class="flex flex-col gap-4" data-controller="reveal">
             <div class="flex flex-wrap gap-2">
                 @unless ($logist)<label class="choice"><input type="radio" name="executor" value="" @checked($scope === 'intercity' && $executor === '') data-action="reveal#pick"><span>Назначит логист</span></label>@endunless
-                @foreach ([Executor::Driver, Executor::Carrier] as $e)
+                @foreach (array_filter([$drivers ? Executor::Driver : null, Executor::Carrier]) as $e)
                     <label class="choice"><input type="radio" name="executor" value="{{ $e->value }}" @checked($scope === 'intercity' && $executor === $e->value) data-action="reveal#pick"><span>{{ $e === Executor::Driver ? 'Наш водитель' : $e->label() }}</span></label>
                 @endforeach
             </div>

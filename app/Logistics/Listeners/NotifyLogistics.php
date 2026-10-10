@@ -29,7 +29,7 @@ final class NotifyLogistics
         Notification::send(User::withRole(Role::Logist)->get(), TransportNotice::requested($e->transport));
     }
 
-    /** Назначили — исполнителю (кроме того, кто назначил сам себя). */
+    /** Назначили — новому исполнителю; прежнему поручение снято молча. */
     public function assigned(TransportAssigned $e): void
     {
         $executor = $e->transport->executorUser;

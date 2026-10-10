@@ -13,21 +13,23 @@ use App\Users\User;
  */
 final class TransportNotice extends Notice
 {
-    private function __construct(private Transport $transport, private string $title, private ?string $text, private bool $critical) {}
+    private function __construct(private Transport $transport, private string $title, private ?string $text, private bool $critical, private bool $telegram) {}
 
+    /** Межрегион ждёт логиста — ему и в Telegram. */
     public static function requested(Transport $t): self
     {
-        return new self($t, 'Нужен перевозчик: '.$t->title(), $t->regions(), false);
+        return new self($t, 'Нужен перевозчик: '.$t->title(), $t->regions(), false, true);
     }
 
     public static function assigned(Transport $t): self
     {
-        return new self($t, 'Вам перевозка: '.$t->title(), self::route($t), true);
+        return new self($t, 'Вам перевозка: '.$t->title(), self::route($t), true, true);
     }
 
+    /** Забрали, сдали, отменили — отправившему строкой в ленту, без Telegram. */
     public static function moved(Transport $t): self
     {
-        return new self($t, $t->state->label().': '.$t->title(), implode(', ', array_filter([$t->executorName(), self::route($t)])), false);
+        return new self($t, $t->state->label().': '.$t->title(), implode(', ', array_filter([$t->executorName(), self::route($t)])), false, false);
     }
 
     /** «Откуда → куда» адресами; без адресов — регионами. */
@@ -68,7 +70,7 @@ final class TransportNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return $this->critical || str_starts_with($this->title, 'Нужен') ? ['title' => $this->title, 'lines' => [$this->text], 'button' => 'Открыть'] : null;
+        return $this->telegram ? ['title' => $this->title, 'lines' => [$this->text], 'button' => 'Открыть'] : null;
     }
 
     /** Кнопка в Telegram — прямо в логистику. */

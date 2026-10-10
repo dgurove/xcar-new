@@ -30,6 +30,7 @@ use App\Garage\Listeners\ReopenWhenVoided;
 use App\Garage\Listeners\StartPrepOnArrival;
 use App\Live\PublishLiveUpdates;
 use App\Logistics\Listeners\NotifyLogistics;
+use App\Logistics\Listeners\RefreshLogistics;
 use App\Mail\Extraction\AttachmentReader;
 use App\Mail\Extraction\TextAttachmentReader;
 use App\Mail\OnMessage;
@@ -83,6 +84,7 @@ class AppServiceProvider extends ServiceProvider
         }
         Event::subscribe(Notify::class);
         Event::subscribe(NotifyLogistics::class);
+        Event::subscribe(RefreshLogistics::class);
         Event::listen(NotificationSent::class, CollapseNotices::class);
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);

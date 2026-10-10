@@ -4,6 +4,7 @@ namespace App\Logistics\Actions;
 
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\InvoiceState;
+use App\Garage\Actions\RemoveCost;
 use App\Garage\Cost;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Transport;
@@ -15,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 /** Отмена перевозки — админу и логисту, пока машину не сдали: неоплаченный долг исполнителю и расход гаража уходят. */
 final class Cancel
 {
-    public function __construct(private VoidInvoice $void) {}
+    public function __construct(private VoidInvoice $void, private RemoveCost $removeCost) {}
 
     public function __invoke(Transport $t, User $by): Transport
     {
@@ -29,10 +30,13 @@ final class Cancel
             if ($t->invoice && $t->invoice->state === InvoiceState::Issued && (float) $t->invoice->paid === 0.0) {
                 ($this->void)($t->invoice, $by, 'Перевозка отменена');
             }
-            if ($t->garage_cost_id && ($cost = Cost::find($t->garage_cost_id)) && ! $cost->car->isFrozen()) {
-                $cost->delete();
+            // Расход гаража уходит вместе с перевозкой; по машине уже выставлен счёт — строка в нём остаётся, и связь с ней тоже.
+            $cost = $t->garage_cost_id ? Cost::find($t->garage_cost_id) : null;
+            if ($cost && ! $cost->car->isFrozen()) {
+                ($this->removeCost)($cost, $by);
+                $cost = null;
             }
-            $t->update(['state' => TransportState::Cancelled, 'cancelled_at' => now(), 'garage_cost_id' => null]);
+            $t->update(['state' => TransportState::Cancelled, 'cancelled_at' => now(), 'garage_cost_id' => $cost?->id]);
         });
         TransportMoved::dispatch($t, $by);
 

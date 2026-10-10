@@ -10,7 +10,10 @@ use App\Users\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 
-/** «Забрал»: исполнитель (или логист и админ за него — у внешнего перевозчика) — машина в пути, кадры погрузки. */
+/**
+ * «Забрал»: исполнитель (или логист и админ за него — у внешнего перевозчика) — машина в пути, кадры погрузки. Забрать
+ * рано (Альфа до оплаты, документы не готовы) — нельзя, кроме админа (`Transport::pickupBlocker`).
+ */
 final class PickUp
 {
     public function __construct(private PhotoIngest $photos) {}
@@ -23,6 +26,9 @@ final class PickUp
         }
         if ($t->state !== TransportState::Assigned) {
             throw ValidationException::withMessages(['transport' => 'Перевозка '.mb_strtolower($t->state->label())]);
+        }
+        if ($reason = $t->pickupBlocker($by)) {
+            throw ValidationException::withMessages(['transport' => $reason]);
         }
         foreach ($files as $file) {
             $this->photos->fromUpload($t, 'photos', $file, ['at' => 'pickup']);

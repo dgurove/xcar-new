@@ -21,10 +21,10 @@
         'Куда' => $t->toYard ? $t->toYard->name.($t->to_address ? ', '.$t->to_address : '') : $t->to_address,
         'Принимает' => $t->receiver,
         'Кто везёт' => $t->executorName() ? $t->executorName().($all && $t->executorUser?->phone ? ', '.\App\Support\Phone::format($t->executorUser->phone) : '') : null,
-        'Стоимость' => $t->cost !== null && $all ? Money::rub($t->cost) : null,
+        // Стоимость — логисту и админу, и партнёру: это его деньги за эвакуацию.
+        'Стоимость' => $t->cost !== null && ($all || $t->isExecutedBy($me)) ? Money::rub($t->cost) : null,
         'Отправка' => $t->ship_on?->translatedFormat('j F'),
         'Прибытие' => $t->arrive_on?->translatedFormat('j F'),
-        'Заметка' => $t->note,
     ]);
 @endphp
 <x-ui.detail>
@@ -67,8 +67,14 @@
         @php
             $step = $acts && in_array($t->state, [TransportState::Assigned, TransportState::Moving], true) && ($t->executor !== Executor::Carrier || $all)
                 ? ($t->state === TransportState::Assigned ? 'pickup' : 'deliver') : null;
+            // Забирать рано (Альфа до оплаты, документы не готовы) — кнопка называет, чего ждём, и не нажимается.
+            $blocked = $step ? $t->pickupBlocker($me) : null;
         @endphp
-        @if ($step)
+        @if ($blocked)
+            <x-slot:foot>
+                <div class="detail-action"><button type="button" class="btn btn-quiet w-full" disabled>{{ $blocked }}</button></div>
+            </x-slot:foot>
+        @elseif ($step)
             <x-slot:foot>
                 <div class="detail-action">
                     <form method="post" action="/transports/{{ $t->id }}/{{ $step }}" enctype="multipart/form-data" class="flex flex-col gap-3"

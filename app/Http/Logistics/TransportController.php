@@ -8,7 +8,9 @@ use App\Logistics\Actions\PickUp;
 use App\Logistics\Actions\SaveTransport;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
+use App\Notifications\ReadNotices;
 use App\Support\Detail;
+use App\Support\Surface;
 use Illuminate\Http\Request;
 
 /**
@@ -40,7 +42,7 @@ class TransportController
             ->when($preset === 'waiting', fn ($q) => $q->where('state', TransportState::New))
             ->when($preset === 'work', fn ($q) => $q->whereIn('state', [TransportState::Assigned, TransportState::Moving]))
             ->when($preset === 'done', fn ($q) => $q->where('state', TransportState::Delivered))
-            ->search((string) $request->query('q'))
+            ->search(is_string($q = $request->query('q')) ? $q : '')
             // В работе — ближайшие сверху: по дате отправки, потом по назначению; доставленные — свежие сверху.
             ->when(in_array($preset, ['done', 'all'], true), fn ($q) => $q->latest('updated_at'), fn ($q) => $q->orderByRaw('ship_on nulls last')->oldest('id'))
             ->limit(300)->get();
@@ -60,6 +62,11 @@ class TransportController
 
     public function detail(Transport $transport)
     {
+        // Карточку открывают и из списка (`?peek=`), а уведомление о перевозке живёт по адресу `/transports/{id}` —
+        // открыл карточку, значит прочитал (`ReadNoticesOnVisit` видит только адрес списка).
+        if (($me = request()->user()) && ! request()->prefetch()) {
+            app(ReadNotices::class)([$me->id], ['/transports/'.$transport->id], Surface::Logistics);
+        }
         $transport->load(['offer.brand', 'offer.model', 'offer.media', 'vehicle.brand', 'vehicle.model', 'vehicle.media', 'executorUser', 'fromRegion', 'toRegion', 'toYard', 'media', 'invoice']);
 
         return view('logistics.transports.detail', ['t' => $transport, 'me' => request()->user()]);
@@ -105,7 +112,8 @@ class TransportController
 
     private function files(Request $request): array
     {
-        $request->validate(['photos' => ['nullable', 'array', 'max:30'], 'photos.*' => ['file', 'max:30720']]);
+        $request->validate(['photos' => ['nullable', 'array', 'max:30'], 'photos.*' => ['file', 'max:30720', 'mimes:jpg,jpeg,png,webp,heic,heif']],
+            ['photos.*.mimes' => 'Только фото: JPG, PNG, WEBP или HEIC', 'photos.*.max' => 'Фото больше 30 МБ']);
 
         return array_values($request->file('photos', []));
     }

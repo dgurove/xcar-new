@@ -6,6 +6,7 @@ use App\Logistics\Actions\Cancel as CancelTransport;
 use App\Logistics\Actions\SaveTransport;
 use App\Logistics\Actions\SendToLogistics;
 use App\Logistics\Transport;
+use App\Logistics\TransportState;
 use App\Offers\Actions\AssignPickup;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Destination;
@@ -25,6 +26,7 @@ use App\Workflow\Track;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /** Маршрут на карточке оффера: наши исходы, отмена шага, вывоз и возврат на пройденный шаг. */
 class RouteController
@@ -102,6 +104,10 @@ class RouteController
         }
         $offer->loadMissing('vendor.workflows', 'positions.stage.workflow');
         $by = $request->user();
+        // Машина уже на эвакуаторе — менеджеру её не передать, пока в логистике не нажали «Сдал» или не отменили.
+        if (! $logistics) {
+            self::notMoving($offer, 'mode');
+        }
         $transport = DB::transaction(function () use ($offer, $evacuator, $to, $by, $logistics, $data, $assign, $send, $cancel) {
             $offer = $assign($offer, $evacuator, $to, $by);
             if ($logistics) {
@@ -124,6 +130,7 @@ class RouteController
     /** «Вывоз не нужен»: маршрут вывоза снят, открытая перевозка в логистике отменена. */
     public function dropPickup(Request $request, Offer $offer, DropRoute $drop, CancelTransport $cancel)
     {
+        self::notMoving($offer, 'exit');
         DB::transaction(function () use ($request, $offer, $drop, $cancel) {
             $drop($offer, Track::Service, $request->user());
             if ($open = Transport::openFor($offer)) {
@@ -132,5 +139,13 @@ class RouteController
         });
 
         return redirect("/offers/{$offer->number}")->with('toast', 'Вывоз отменён');
+    }
+
+    /** Открытая перевозка уже везёт машину («Забрал» в логистике) — отменять её из CRM молча нельзя. */
+    private static function notMoving(Offer $offer, string $field): void
+    {
+        if (Transport::openFor($offer)?->state === TransportState::Moving) {
+            throw ValidationException::withMessages([$field => 'Машину уже везут: сначала «Сдал» или отмена в логистике']);
+        }
     }
 }

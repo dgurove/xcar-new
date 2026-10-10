@@ -1,9 +1,10 @@
 {{-- Сделка-расчёт строкой в два этажа: фото, ТС и под ним одной строкой, что с деньгами (цветом состояния); справа число,
      под ним — что это за число. href — куда ведёт (кабинет: расчёт, CRM: сделка). person — показать менеджера (CRM).
-     staff — смотрит сотрудник: подпись без «Вам» (выплата менеджеру — не ему). Фраза переносится, а не режется:
+     staff — смотрит сотрудник: подпись без «Вам» (выплата менеджеру — не ему). Строкой бывает и перевозка партнёра
+     (логистика): машина — её, деньги — наш долг за эвакуацию. Фраза переносится, а не режется:
      «Укажите покупат…» на телефоне прятала то, что надо сделать. --}}
 @props(['deal', 'href', 'person' => false, 'staff' => false])
-@php use App\Support\Money; $offer = $deal->offer; $m = $deal->money ?? \App\Billing\DealMoney::of($deal); $caption = $staff ? preg_replace('/^Вам /u', '', (string) $m->caption) : $m->caption; @endphp
+@php use App\Support\Money; $offer = $deal instanceof \App\Logistics\Transport ? $deal->car() : $deal->offer; $m = $deal->money ?? \App\Billing\DealMoney::of($deal); $caption = $staff ? preg_replace('/^Вам /u', '', (string) $m->caption) : $m->caption; @endphp
 <a href="{{ $href }}" class="row">
     <span class="row-photo row-photo-s"><x-offer.photo :media="$offer->mainPhoto()" sizes="48px"/></span>
     <span class="min-w-0 flex-1">

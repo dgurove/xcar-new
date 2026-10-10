@@ -9,6 +9,7 @@ use App\Logistics\Scope;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
 use App\Users\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -38,8 +39,7 @@ final class SaveTransport
             'receiver' => ['nullable', 'string', 'max:200'],
             'to_yard_id' => ['nullable', 'integer', Rule::exists('park_yards', 'id')],
             'ship_on' => ['nullable', 'date'],
-            'arrive_on' => ['nullable', 'date', 'after_or_equal:ship_on'],
-            'note' => ['nullable', 'string', 'max:2000'],
+            'arrive_on' => ['nullable', 'date'],
         ];
     }
 
@@ -47,7 +47,6 @@ final class SaveTransport
     {
         return [
             'from_region_id.required' => 'Выберите регион',
-            'arrive_on.after_or_equal' => 'Прибытие раньше отправки',
         ];
     }
 
@@ -81,6 +80,10 @@ final class SaveTransport
         if ($executor === Executor::Driver) {
             $cost = null;
         }
+        // Прибытие раньше отправки — только когда известны обе даты: одно прибытие — тоже срок.
+        if ($scope === Scope::Intercity && ! empty($data['ship_on']) && ! empty($data['arrive_on']) && Carbon::parse($data['arrive_on'])->lt(Carbon::parse($data['ship_on']))) {
+            throw ValidationException::withMessages(['arrive_on' => 'Прибытие раньше отправки']);
+        }
 
         return DB::transaction(function () use ($t, $data, $by, $scope, $from, $to, $executor, $user, $carrier, $cost) {
             $was = $t->exists ? $t->replicate() : null;
@@ -89,14 +92,25 @@ final class SaveTransport
             $t->fill([
                 'scope' => $scope, 'from_region_id' => $from, 'to_region_id' => $to,
                 'executor' => $executor, 'executor_id' => $user?->id, 'carrier' => $carrier, 'cost' => $cost,
-                'from_address' => self::text($data['from_address'] ?? null), 'to_address' => self::text($data['to_address'] ?? null),
-                'receiver' => self::text($data['receiver'] ?? null), 'to_yard_id' => $data['to_yard_id'] ?? null,
-                'ship_on' => $scope === Scope::Intercity ? ($data['ship_on'] ?? null) : null,
-                'arrive_on' => $scope === Scope::Intercity ? ($data['arrive_on'] ?? null) : null,
-                'note' => self::text($data['note'] ?? null),
                 'state' => $assigned ? TransportState::Assigned : TransportState::New,
                 'assigned_at' => $assigned ? ($t->assigned_at && $previous?->is($user) ? $t->assigned_at : now()) : null,
             ]);
+            // Точки, кто принимает и парковка — только то, что в форме было: у логиста нет выбора парковки, и его
+            // «Сохранить» не должно стирать парковку, которую выбрала парковка (иначе ТС не переведётся по «Сдал»).
+            foreach (['from_address', 'to_address', 'receiver'] as $key) {
+                if (array_key_exists($key, $data)) {
+                    $t->{$key} = self::text($data[$key]);
+                }
+            }
+            if (array_key_exists('to_yard_id', $data)) {
+                $t->to_yard_id = $data['to_yard_id'] ?: null;
+            }
+            // Сроки — у межрегиона; внутри региона их нет.
+            foreach (['ship_on', 'arrive_on'] as $key) {
+                if ($scope === Scope::Local || array_key_exists($key, $data)) {
+                    $t->{$key} = $scope === Scope::Intercity ? ($data[$key] ?: null) : null;
+                }
+            }
             $t->created_by ??= $by->id;
             $t->save();
             ($this->settle)($t, $by);

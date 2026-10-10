@@ -146,12 +146,26 @@ final class DealMoney
             };
         }
         if ($payout) {
-            return $payout->state === InvoiceState::Issued
-                ? new self(($staff ? 'Выплатить до ' : 'К выплате до ').$date($payout->due_at), $payout->remaining(), 'accent', 'payout', $staff ? 'должны ему' : 'Вам к выплате', toHim: $payout->remaining())
-                : new self(($staff ? 'Выплатили ' : 'Выплачено ').$date($payout->paid_at), (float) $payout->total, 'muted', 'closed', $staff ? 'выплатили' : 'Вам выплачено');
+            return self::payout($payout, $staff);
         }
 
         return $invoice ? new self('Оплачено', (float) $invoice->total, 'muted', 'closed', $staff ? 'оплатил' : 'Отдали нам') : null;
+    }
+
+    /** Перевозка партнёра (логистика, 10.10.2026) строкой «Денег»: наш долг ему за эвакуацию — как выплата гаража. */
+    public static function transport(Invoice $invoice, bool $staff = false): self
+    {
+        return self::payout($invoice, $staff);
+    }
+
+    /** Наша выплата менеджеру (`owed`): к выплате до срока — или выплачено. */
+    private static function payout(Invoice $payout, bool $staff): self
+    {
+        $date = fn ($at) => $at?->translatedFormat('j M');
+
+        return $payout->state === InvoiceState::Issued
+            ? new self(($staff ? 'Выплатить до ' : 'К выплате до ').$date($payout->due_at), $payout->remaining(), 'accent', 'payout', $staff ? 'должны ему' : 'Вам к выплате', toHim: $payout->remaining())
+            : new self(($staff ? 'Выплатили ' : 'Выплачено ').$date($payout->paid_at), (float) $payout->total, 'muted', 'closed', $staff ? 'выплатили' : 'Вам выплачено');
     }
 
     /**

@@ -5,11 +5,15 @@ namespace App\Logistics\Actions;
 use App\Billing\Actions\IssueInvoice;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\ChargeKind;
+use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Billing\WorkDays;
+use App\Garage\Actions\RemoveCost;
+use App\Garage\Actions\UpdateCost;
 use App\Garage\Cost;
+use App\Garage\Events\GarageChanged;
 use App\Garage\Payer;
 use App\Logistics\Executor;
 use App\Logistics\Transport;
@@ -25,7 +29,7 @@ final class SettleCost
 {
     public const DAYS = 5;
 
-    public function __construct(private IssueInvoice $issue, private VoidInvoice $void) {}
+    public function __construct(private IssueInvoice $issue, private VoidInvoice $void, private UpdateCost $updateCost, private RemoveCost $removeCost) {}
 
     public function __invoke(Transport $t, User $by): void
     {
@@ -39,13 +43,18 @@ final class SettleCost
         };
         $party = $cost > 0 ? $party : null;
 
-        $old = $t->invoice;
+        // Аннулированный счёт (руками в «Оплатах» или прошлой правкой) — всё равно что его нет: долг выставится заново.
+        $old = $t->invoice?->state === InvoiceState::Void ? null : $t->invoice;
         $same = $old && $party && $old->party_id === $party->id && (float) $old->total === $cost;
-        if ($old && ! $same && $old->state !== InvoiceState::Void && (float) $old->paid === 0.0) {
+        if ($old && ! $same && (float) $old->paid === 0.0) {
             ($this->void)($old, $by, 'Перевозка: исполнитель или стоимость изменились');
+            $old = null;
+        }
+        if (! $old) {
             $t->update(['invoice_id' => null]);
         }
-        if ($party && ! $same && (! $old || (float) $old->paid === 0.0)) {
+        // Оплаченный, хоть частично, счёт не трогаем: перевыставлять поверх уже переведённых денег нельзя.
+        if ($party && ! $same && ! $old) {
             $invoice = ($this->issue)($party, $by, 'owed', ChargeKind::Tow, WorkDays::add(now(), self::DAYS),
                 lines: [['title' => 'Перевозка, '.$t->title().($t->regions() ? ', '.$t->regions() : ''), 'qty' => 1, 'unit' => 'pc', 'price' => $cost, 'kind' => ChargeKind::Tow->value]],
                 vehicle: $t->vehicle, offerId: $t->offer_id);
@@ -55,13 +64,20 @@ final class SettleCost
         $this->garageCost($t, $by, $cost);
     }
 
-    /** Внешний перевозчик — контрагент-компания по названию: тот же, что в прошлый раз. */
+    /**
+     * Внешний перевозчик — контрагент по названию среди прежних перевозчиков (долги `Tow`): тот же, что в прошлый раз.
+     * Вендор или менеджер с таким же именем — не он: долг ушёл бы чужому контрагенту.
+     */
     private function carrier(string $name): Party
     {
-        return Party::where('name', $name)->first() ?? Party::create(['kind' => PartyKind::Company, 'name' => $name]);
+        return Party::where('name', $name)->whereIn('id', Invoice::where('direction', 'owed')->where('kind', ChargeKind::Tow)->select('party_id'))->first()
+            ?? Party::create(['kind' => PartyKind::Company, 'name' => $name]);
     }
 
-    /** Гаражная машина: строка расхода «Перевозка» — одна на перевозку, правится вместе со стоимостью. */
+    /**
+     * Гаражная машина: строка расхода «Перевозка» — одна на перевозку, правится вместе со стоимостью (`UpdateCost`,
+     * `RemoveCost`; новая — как «Оплата поставщику» у `CloseGarageDeal`: строка, запись в историю машины, событие).
+     */
     private function garageCost(Transport $t, User $by, float $cost): void
     {
         $car = $t->offer?->garageCar;
@@ -70,18 +86,24 @@ final class SettleCost
             return;
         }
         if ($cost <= 0 || ! in_array($t->executor, [Executor::Partner, Executor::Carrier], true)) {
-            $row?->delete();
+            if ($row) {
+                ($this->removeCost)($row, $by);
+            }
             $t->update(['garage_cost_id' => null]);
 
             return;
         }
         $data = ['title' => 'Перевозка'.($t->executorName() ? ', '.$t->executorName() : ''), 'amount' => $cost];
         if ($row) {
-            $row->update($data);
+            if ($row->title !== $data['title'] || (float) $row->amount !== $cost) {
+                ($this->updateCost)($row, $data, $by);
+            }
 
             return;
         }
         $row = $car->costs()->create($data + ['spent_at' => now()->toDateString(), 'payer' => Payer::Xcar, 'kind' => Cost::TRANSPORT, 'created_by' => $by->id]);
+        $car->log($by, ['do' => 'cost', 'title' => $row->title, 'amount' => $row->amount, 'payer' => Payer::Xcar->value]);
+        GarageChanged::dispatch($car);
         $t->update(['garage_cost_id' => $row->id]);
     }
 }

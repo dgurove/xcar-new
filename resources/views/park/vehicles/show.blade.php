@@ -18,6 +18,10 @@
     $cur = App\Park\Timeline::current($steps);
     // Блок кадров стоит в ленте того шага, на котором их снимают, и справа на всех остальных: видны всегда.
     $shooting = match ($cur?->key) { 'intake' => PhotoStage::Intake, 'release' => PhotoStage::Release, default => null };
+    // Перевозка в логистике (10.10.2026) — строкой шапки: ход, кто везёт, прибытие. Ссылка — тому, кому логистика открыта.
+    $transport = \App\Logistics\Transport::openFor($vehicle);
+    $transportLine = $transport ? implode(', ', array_filter([mb_strtolower($transport->state->label()), $transport->executorName(),
+        $transport->arrive_on ? 'прибытие '.$transport->arrive_on->translatedFormat('j M') : null])) : null;
 @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
     <x-slot:badge><x-ui.links :vehicle="$vehicle"><x-park.sale :vehicle="$vehicle" menu/></x-ui.links></x-slot:badge>
@@ -37,6 +41,11 @@
                     <span class="nums text-urgent">На выдачу с {{ $vehicle->sold_at->translatedFormat('j M') }}</span>@if ($vehicle->pickup_name || $canManage)<span class="text-ink-muted">, </span>@endif
                     @if ($canManage)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif
                     @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="nums ml-1 whitespace-nowrap text-accent-text">{{ $vehicle->pickup_phone }}</a>@endif
+                </p>
+            @endif
+            @if ($transport)
+                <p class="mt-1 text-sm">
+                    @if (Surface::Logistics->opensFor(auth()->user()))<a href="{{ Surface::Logistics->url('/transports/'.$transport->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>@else<span>Логистика</span>@endif<span class="text-ink-muted">, {{ $transportLine }}</span>
                 </p>
             @endif
         </div>
@@ -283,11 +292,8 @@
                         </form>
                     @endif
                 @endif
-                {{-- Логистика (10.10.2026): перевод в другой город и любая перевозка ТС — перевозкой на logistics.xcar.ru. --}}
-                @php $transport = \App\Logistics\Transport::openFor($vehicle); @endphp
-                @if ($transport)
-                    <a href="{{ \App\Support\Surface::Logistics->url('/transports/'.$transport->id) }}" class="btn btn-quiet w-full" data-turbo="false">Логистика: {{ mb_strtolower($transport->state->label()) }}</a>
-                @elseif ($canManage && in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
+                {{-- Логистика (10.10.2026): перевод в другой город и любая перевозка ТС — перевозкой на logistics.xcar.ru; идущая — в шапке. --}}
+                @if (! $transport && $canManage && in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
                     <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send" data-emit-event-param="logistics:open">В логистику</x-ui.button>
                 @endif
                 @if ($canManage && UndoIntake::allowed($vehicle))
@@ -299,7 +305,7 @@
             </div>
         </x-ui.sheet>
     </div>
-    @if ($canManage && ! ($transport ?? null) && in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
+    @if ($canManage && ! $transport && in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
         <div data-controller="sheet" data-action="logistics:open@window->sheet#open" class="contents">
             <x-ui.sheet id="vehicle-logistics" title="В логистику" :open="$errors->hasAny(['scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'cost', 'arrive_on'])">
                 <form method="post" action="/cars/{{ $vehicle->id }}/logistics" class="flex flex-col gap-4">

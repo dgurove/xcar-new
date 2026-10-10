@@ -19,10 +19,12 @@ use App\Billing\PartyKind;
 use App\Billing\PartyRules;
 use App\Billing\Payment;
 use App\Garage\Car as GarageCar;
+use App\Logistics\Transport;
 use App\Offers\Deal;
 use App\Support\Money;
 use App\Support\OfficePreview;
 use App\Support\Sort;
+use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -62,8 +64,13 @@ class MoneyController
     public function invoice(Request $request, Invoice $invoice)
     {
         abort_unless($invoice->isVisibleToManager($request->user()), 404);
-        // Гаражный счёт без сделки — расчёт живёт на машине в гараже.
-        $url = $invoice->deal_id ? '/account/money/deals/'.$invoice->deal_id : GarageCar::ofInvoice($invoice)?->url();
+        // Гаражный счёт без сделки — расчёт живёт на машине в гараже; долг за перевозку партнёру — в логистике.
+        $transport = $invoice->isTransport() ? Transport::firstWhere('invoice_id', $invoice->id) : null;
+        $url = match (true) {
+            (bool) $invoice->deal_id => '/account/money/deals/'.$invoice->deal_id,
+            (bool) $transport => Surface::Logistics->url('/transports/'.$transport->id),
+            default => GarageCar::ofInvoice($invoice)?->url(),
+        };
         abort_unless($url, 404);
 
         return redirect($url, 301);

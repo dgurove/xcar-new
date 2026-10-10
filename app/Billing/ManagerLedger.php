@@ -70,21 +70,36 @@ final class ManagerLedger
         return $preset === 'all' ? $this->cars : $this->cars->filter(fn (GarageCar $c) => $c->money->preset === $preset)->values();
     }
 
+    /** Перевозки, где он партнёр и мы ему должны (логистика, 10.10.2026) — строками рядом со сделками. */
+    private ?Collection $transports = null;
+
+    /** @return Collection<int, Transport> с `money` */
+    public function transports(string $preset = 'all'): Collection
+    {
+        $this->transports ??= $this->manager->party_id
+            ? Transport::whereHas('invoice', fn ($i) => $i->where('party_id', $this->manager->party_id)->where('direction', 'owed')->where('kind', ChargeKind::Tow)->where('state', '!=', InvoiceState::Void))
+                ->with(['invoice', 'offer.brand', 'offer.model', 'offer.media', 'vehicle.brand', 'vehicle.model', 'vehicle.media'])->latest('id')->get()
+                ->each(fn (Transport $t) => $t->setAttribute('money', DealMoney::transport($t->invoice, $this->staff)))
+            : collect();
+
+        return $preset === 'all' ? $this->transports : $this->transports->filter(fn (Transport $t) => $t->money->preset === $preset)->values();
+    }
+
     /**
-     * Строки «Денег»: сделки и машины гаража одним списком — требующие действия первыми, дальше свежие.
+     * Строки «Денег»: сделки, машины гаража и перевозки партнёра одним списком — требующие действия первыми, дальше свежие.
      *
-     * @return Collection<int, Deal|GarageCar>
+     * @return Collection<int, Deal|GarageCar|Transport>
      */
     public function rows(string $preset = 'all'): Collection
     {
-        return $this->deals($preset)->concat($this->cars($preset))
+        return $this->deals($preset)->concat($this->cars($preset))->concat($this->transports($preset))
             ->sortBy([fn ($a, $b) => ($b->money->needsAction() <=> $a->money->needsAction()) ?: (($b->created_at ?? $b->stage_at) <=> ($a->created_at ?? $a->stage_at))])->values();
     }
 
     /** Числа для пилюль пресетов, нули не отдаются. */
     public function counts(): array
     {
-        $all = $this->deals()->concat($this->cars());
+        $all = $this->deals()->concat($this->cars())->concat($this->transports());
 
         return array_filter(['all' => $all->count()] + $all->countBy(fn ($r) => $r->money->preset)->all());
     }

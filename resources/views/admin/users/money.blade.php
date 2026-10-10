@@ -56,7 +56,8 @@
             @foreach ($moneyDeals as $row)
                 {{-- Сделка живёт в CRM: с сайта (/account/users) — с хостом, иначе 404. Машина гаража — в гараж CRM. --}}
                 @php $path = $row instanceof \App\Garage\Car ? '/work/garage?preset=all&peek='.$row->offer->number : '/work/deals/'.$row->id; @endphp
-                <x-money.deal-row :deal="$row" :href="$crm ? $path : \App\Support\Surface::Crm->url($path)"/>
+                {{-- Перевозка партнёра — в логистике. --}}
+                <x-money.deal-row :deal="$row" :href="$row instanceof \App\Logistics\Transport ? \App\Support\Surface::Logistics->url('/transports/'.$row->id) : ($crm ? $path : \App\Support\Surface::Crm->url($path))"/>
             @endforeach
         </div>
     @endif
