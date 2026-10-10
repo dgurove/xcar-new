@@ -227,7 +227,7 @@ final class Nav
         }
 
         return array_values(array_filter([
-            $surface !== Surface::Site && ! Surface::onlyFor($user) ? $make('На сайт', Surface::Site->url(), 'car') : null,
+            $surface !== Surface::Site && ! Surface::onlyFor($user) ? $make('На сайт', Surface::Site->url(), 'cat-car') : null,
             $surface !== Surface::Crm && Surface::Crm->opensFor($user) ? $make('CRM', Surface::Crm->url(), 'deal') : null,
             $surface !== Surface::Park && Surface::Park->opensFor($user) ? $make('Парковка', Surface::Park->url(), 'park') : null,
         ]));

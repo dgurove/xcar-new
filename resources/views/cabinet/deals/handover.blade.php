@@ -8,7 +8,7 @@
 @endphp
 <div class="handover mt-4">
     <p class="handover-facts">
-        @if ($handover->where)<span><x-ui.icon name="car" class="size-4"/><span>{{ $handover->where }}@if ($who)<span class="text-ink-muted">, {{ $who }}</span>@endif</span></span>@endif
+        @if ($handover->where)<span><x-ui.icon name="cat-car" class="size-4"/><span>{{ $handover->where }}@if ($who)<span class="text-ink-muted">, {{ $who }}</span>@endif</span></span>@endif
         @if ($handover->address)<x-ui.place>{{ $handover->address }}</x-ui.place>@endif
         @if ($handover->dateLabel())<span class="nums"><x-ui.icon name="clock" class="size-4"/>{{ $handover->dateLabel() }}</span>@endif
     </p>

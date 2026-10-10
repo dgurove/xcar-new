@@ -2376,18 +2376,40 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .dark .on-dark  { display: block; }
   .header-search input { @apply h-full w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-dim; }
   /* Поиск в шапке (`x-search.box`, global_search_controller): выдача — выпадающим листом под полем, как меню (тот же фон
-     и тень), шириной 34rem, своя прокрутка; на телефоне та же выдача в шторке. Выбранная стрелками строка — лаймом. */
-  .search-pop { @apply rounded-(--radius-l) bg-surface text-ink shadow-(--shadow-drop); position: absolute; top: calc(100% + .5rem); inset-inline-start: 0; z-index: 60; width: min(34rem, calc(100vw - 2rem)); max-height: min(70dvh, 40rem); overflow-y: auto; overscroll-behavior: contain; padding: .75rem; }
+     и тень), шириной 34rem, своя прокрутка; на телефоне та же выдача в шторке, страницей `/search` — плашками групп.
+     Группа — мелкая подпись с «Все ›» справа; строка — два этажа, как строка таблицы CRM: название 15, под ним 13
+     тусклым; значков нет. В листе строки идут прямо по его фону (плашка в плашке — нет), на странице и в шторке — плашкой
+     через волосяную линию. Совпадение с запросом — лаймовой подложкой (`Term::mark`), выбранная стрелками строка — лаймом. */
+  .search-pop { @apply rounded-(--radius-l) bg-surface text-ink shadow-(--shadow-drop); position: absolute; top: calc(100% + .5rem); inset-inline-start: 0; z-index: 60; width: min(34rem, calc(100vw - 2rem)); max-height: min(70dvh, 40rem); overflow-y: auto; overscroll-behavior: contain; padding: .375rem; }
   .search-pop[hidden] { display: none; }
+  .search-pop > .pills { padding: .375rem; }
+  .search-field { max-width: none; }
+  .sheet .search-field { @apply bg-surface-2; }
   .search-results { display: flex; flex-direction: column; gap: .75rem; }
-  .search-results .list-head { @apply pb-1 text-sm text-ink-muted; }
-  .search-results .list { @apply bg-surface-2; }
-  .search-hit { display: flex; align-items: center; }
-  .list .search-line { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .3em; }
-  .list .search-line > :not(:last-child) { margin-right: 0; }
-  .list .search-line > .search-ref { margin-right: .3em; }
-  .search-line > :not(:last-child):not(.search-ref)::after { content: ','; color: var(--color-ink-muted); }
-  .search-results .list [data-hit].is-active { background: var(--color-accent-soft); }
+  .search-pop .search-results { gap: .25rem; }
+  .search-head { @apply flex items-baseline justify-between gap-3 px-3 pb-1 text-xs font-medium text-ink-dim; }
+  .search-pop .search-head { @apply pt-1.5; }
+  .search-all { @apply inline-flex items-center gap-0.5 rounded-(--radius-s) text-sm font-normal text-accent-text; }
+  .search-all > svg { color: currentColor; }
+  .search-rows { @apply flex flex-col overflow-clip rounded-(--radius-l) bg-surface; }
+  .sheet .search-rows { @apply bg-surface-2; }
+  .search-pop .search-rows { background: none; border-radius: 0; overflow: visible; }
+  .search-hit { position: relative; display: flex; align-items: center; }
+  .search-hit + .search-hit::before { content: ''; position: absolute; top: 0; left: .75rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; }
+  .search-pop .search-hit + .search-hit::before { content: none; }
+  .search-link { display: block; min-width: 0; flex: 1 1 0; min-height: 2.75rem; padding: .4375rem .75rem; }
+  .search-pop .search-link, .search-pop .search-all { border-radius: var(--radius-m); }
+  @media (hover: hover) { .search-link:hover, .search-all:hover { background: var(--color-hover); } }
+  .search-results [data-hit].is-active { background: var(--color-accent-soft); }
+  .search-title { @apply block truncate text-base text-ink; }
+  .search-line { @apply mt-0.5 flex flex-wrap items-baseline text-sm text-ink-muted; column-gap: .3em; }
+  .search-line > .search-ref { margin-right: .3em; }
+  .search-line > :not(:last-child):not(.search-ref)::after { content: ','; }
+  .search-mark { border-radius: 3px; background: var(--color-accent-soft); color: var(--color-ink); box-shadow: 0 0 0 1px var(--color-accent-soft); }
+  .is-active .search-mark { background: color-mix(in oklab, var(--color-accent) 35%, transparent); box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-accent) 35%, transparent); }
+  .search-do { flex-shrink: 0; padding-inline: .5rem .75rem; }
+  .search-do .pill { min-height: 1.75rem; padding-inline: .75rem; }
+  .search-none { @apply px-3 py-4 text-center text-sm text-ink-muted; }
   .header-btn .badge, .btn .badge { position: absolute; top: -.25rem; inset-inline-end: -.25rem; }
 
   /* Подвал на телефоне — над таб-баром. */

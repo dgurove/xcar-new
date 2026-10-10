@@ -89,7 +89,7 @@ final class Search
             'cars' => ['title' => 'ТС', 'rows' => $cars->top(self::CARS)] + self::more($vehicles->isNotEmpty(), 'Все ТС', '/cars?q='.urlencode($t->raw)),
             'money' => ['title' => 'Деньги', 'rows' => $manage ? self::money(Invoice::ofPark(), $t, crm: false) : []],
             'vendors' => ['title' => 'Вендоры', 'rows' => Vendor::onPark()->search($t)->orderBy('name')->limit(self::ROWS)->get()
-                ->map(fn (Vendor $v) => new Hit($v->name, "/vendors/{$v->id}", array_filter([$v->inn ? 'ИНН '.$v->inn : null]), icon: 'park'))->all()],
+                ->map(fn (Vendor $v) => new Hit($v->name, "/vendors/{$v->id}", array_filter([$v->inn ? 'ИНН '.$v->inn : null])))->all()],
             'mail' => self::mail($manage ? Scope::Park : null, $t, '/mail'),
         ];
     }
@@ -116,6 +116,16 @@ final class Search
         ];
     }
 
+    /** Подсказка в поле поиска — что здесь ищут. */
+    public static function hint(): string
+    {
+        return match (Surface::current()) {
+            Surface::Crm => 'Номер, VIN, марка, имя',
+            Surface::Park => 'Номер, VIN, госномер',
+            Surface::Site => 'Марка, модель, номер',
+        };
+    }
+
     /** «Все ›» группы — только когда в её списке что-то есть: ссылка на пустой список ни к чему. */
     private static function more(bool $any, string $label, string $href): array
     {
@@ -139,7 +149,7 @@ final class Search
     private static function people($query, Term $t, \Closure $href): array
     {
         return $query->search($t)->orderBy('users.name')->limit(self::ROWS)->get()
-            ->map(fn (User $u) => new Hit($u->name, $href($u), array_values(array_filter([$u->rolesLabel(), $u->phone ? $u->phoneFormatted() : null])), icon: 'user'))->all();
+            ->map(fn (User $u) => new Hit($u->name, $href($u), array_values(array_filter([$u->rolesLabel(), $u->phone ? $u->phoneFormatted() : null]))))->all();
     }
 
     /** @return list<Hit> */
@@ -150,14 +160,13 @@ final class Search
             $i->number ? ($i->isOwed() ? 'Выплата' : 'Счёт').' № '.$i->number : ($i->isOwed() ? 'Выплата' : 'Счёт'),
             $crm ? MoneyController::url($i) : "/money?peek={$i->id}",
             array_values(array_filter([Money::rub($i->total), $i->party?->name, $i->state->label()])),
-            icon: 'wallet',
         ));
         if ($crm && $rows->count() < self::ROWS) {
             // Ручные ссылки без сделки: у них счёт «Услуга», его номер не ищут — ищут плательщика.
             MoneyLinks::query()->search($t, deep: false)->whereNotIn('billing_pay_links.invoice_id', $invoices->pluck('id'))
                 ->latest('billing_pay_links.id')->limit(self::ROWS - $rows->count())->get()
                 ->each(fn (PayLink $l) => $rows->push(new Hit('Ссылка на оплату', MoneyController::linkUrl($l),
-                    array_values(array_filter([Money::rub($l->amount), $l->payerLabel()])), icon: 'wallet')));
+                    array_values(array_filter([Money::rub($l->amount), $l->payerLabel()])))));
         }
 
         return $rows->all();
@@ -173,7 +182,7 @@ final class Search
         $threads = Thread::whereIn('account_id', Account::where('scope', $scope)->pluck('id'))->where('messages_count', '>', 0)->search($t)
             ->latest('last_message_at')->limit(4)->get();
         $rows = $threads->take(3)
-            ->map(fn (Thread $th) => new Hit($th->subject ?: 'Без темы', $base.'?window='.$th->id, [$th->last_message_at?->translatedFormat('j M')], icon: 'mail'))->all();
+            ->map(fn (Thread $th) => new Hit($th->subject ?: 'Без темы', $base.'?window='.$th->id, [$th->last_message_at?->translatedFormat('j M')]))->all();
 
         return ['title' => 'Письма', 'rows' => $rows] + self::more($threads->count() > 3, 'Все письма', $base.'?q='.urlencode($t->raw));
     }

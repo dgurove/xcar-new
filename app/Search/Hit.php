@@ -21,7 +21,6 @@ final class Hit
         public ?int $vendorId = null,
         public ?array $action = null,
         public bool $external = false,
-        public string $icon = 'car',
         public int $rank = 1,
     ) {}
 }

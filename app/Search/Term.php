@@ -5,6 +5,7 @@ namespace App\Search;
 use App\Cars\Vin\Vin;
 use App\Mail\Extraction\Code;
 use App\Support\Phone;
+use Illuminate\Support\HtmlString;
 
 /**
  * Запрос поиска, разобранный один раз на всё, что из него можно вынуть (10.10.2026, владелец: «поиск должен быть прям
@@ -101,6 +102,57 @@ final class Term
     public function contains(): string
     {
         return self::like(mb_strtolower($this->raw));
+    }
+
+    /**
+     * Строка выдачи с совпадением, выделенным `<mark>`: запрос целиком и каждое слово сравниваются по буквам и цифрам
+     * (разделители, регистр и кириллица того же начертания не мешают: «647953-26» горит в «647953/2026» целиком —
+     * по ключу номера, «а123вс» — в «А 123 ВС»). Текст экранируется здесь же.
+     */
+    public function mark(?string $text): HtmlString
+    {
+        $chars = mb_str_split((string) $text);
+        $hay = '';
+        $at = [];
+        foreach ($chars as $i => $c) {
+            if (preg_match('/[\p{L}\p{N}]/u', $c)) {
+                $hay .= self::fold($c);
+                $at[] = $i;
+            }
+        }
+        $lit = [];
+        foreach ($this->needles() as $needle) {
+            $len = mb_strlen($needle);
+            for ($from = 0; ($p = mb_strpos($hay, $needle, $from)) !== false; $from = $p + $len) {
+                for ($k = $at[$p]; $k <= $at[$p + $len - 1]; $k++) {
+                    $lit[$k] = true;
+                }
+            }
+        }
+        $html = '';
+        $open = false;
+        foreach ($chars as $i => $c) {
+            if (isset($lit[$i]) !== $open) {
+                $html .= ($open = ! $open) ? '<mark class="search-mark">' : '</mark>';
+            }
+            $html .= e($c);
+        }
+
+        return new HtmlString($html.($open ? '</mark>' : ''));
+    }
+
+    /** @return list<string> что выделять: запрос целиком и слова, свёрнутые как `mark` сворачивает текст */
+    private function needles(): array
+    {
+        $parts = array_unique([$this->raw, (string) $this->key, ...(count($this->words) > 1 ? $this->words : [])]);
+        $folded = array_map(fn ($p) => implode('', array_map(self::fold(...), mb_str_split((string) preg_replace('/[^\p{L}\p{N}]+/u', '', $p)))), $parts);
+
+        return array_values(array_filter($folded, fn ($n) => mb_strlen($n) >= 2));
+    }
+
+    private static function fold(string $char): string
+    {
+        return mb_strtolower(self::latin(mb_strtoupper($char)));
     }
 
     /** Кириллица того же начертания — латиницей (`Code::HOMOGLYPHS`). */

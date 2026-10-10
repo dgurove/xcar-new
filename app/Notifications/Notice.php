@@ -84,7 +84,7 @@ abstract class Notice extends Notification implements ShouldQueue
             'money' => 'wallet',
             'park' => 'park',
             'park_money' => 'wallet',
-            'offers', 'purchases', 'interest' => 'car',
+            'offers', 'purchases', 'interest' => 'cat-car',
             'letters' => 'mail',
             'people' => 'user',
             'chats' => 'chat',

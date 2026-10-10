@@ -19,13 +19,13 @@ class PwaController
             // Манифест один на всех и без cookie (браузер берёт его без входа): ярлыки — только то, что есть у каждой роли.
             // Иконки ярлыков делает scripts/icons.mjs по тому же списку (SHORTCUT_ICONS).
             Surface::Site => ['Предложения, сделки, закупки, гараж', [
-                ['Предложения', '/offers', 'car'], ['Уведомления', '/account/notifications', 'bell'],
+                ['Предложения', '/offers', 'cat-car'], ['Уведомления', '/account/notifications', 'bell'],
             ]],
             Surface::Crm => ['Предложения, галерея, работа, закупки', [
-                ['Предложения', '/', 'car'], ['Галерея', '/gallery', 'photo'], ['Работа', '/work', 'deal'], ['Закупки', '/purchases', 'cart'],
+                ['Предложения', '/', 'cat-car'], ['Галерея', '/gallery', 'photo'], ['Работа', '/work', 'deal'], ['Закупки', '/purchases', 'cart'],
             ]],
             Surface::Park => ['Заявки, ТС, парковки', [
-                ['Заявки', '/requests', 'flag'], ['ТС', '/cars', 'car'],
+                ['Заявки', '/requests', 'flag'], ['ТС', '/cars', 'cat-car'],
             ]],
         };
 

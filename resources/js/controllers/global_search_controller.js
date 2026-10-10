@@ -3,10 +3,11 @@ import { Controller } from '@hotwired/stimulus';
 // Поиск в шапке — один на три хоста (10.10.2026): со второго знака через 150 мс фрейм `global-search` берёт выдачу
 // `/search?q=` (устаревший ответ отбрасывает сам фрейм — новый src отменяет прежний запрос). На ПК выдача — выпадающим
 // листом под полем, на телефоне — в шторке. ↑/↓ — по строкам `[data-hit]`, Enter — выбранная (иначе первая), Esc —
-// закрыть; «/» и ⌘K — фокус в поле из любого места. Пустое поле — пять последних запросов пилюлями.
+// закрыть; «/» и ⌘K — фокус в поле из любого места (`hotkey: false` — на странице `/search`, там поле своё). Пустое
+// поле — пять последних запросов пилюлями. «Все ›» стоит в подписи группы, а стрелками идёт после её строк.
 export default class extends Controller {
-    static targets = ['input', 'frame', 'pop', 'recent'];
-    static values = { url: { type: String, default: '/search' } };
+    static targets = ['input', 'frame', 'pop', 'recent', 'clear'];
+    static values = { url: { type: String, default: '/search' }, hotkey: { type: Boolean, default: true } };
 
     connect() {
         this.index = -1;
@@ -29,6 +30,7 @@ export default class extends Controller {
     input() {
         clearTimeout(this.timer);
         const q = this.inputTarget.value.trim();
+        if (this.hasClearTarget) this.clearTarget.hidden = !this.inputTarget.value;
         if (q.length < 2) {
             this.frameTarget.removeAttribute('src');
             this.frameTarget.innerHTML = '';
@@ -79,6 +81,12 @@ export default class extends Controller {
         if (event.target.closest('[data-hit]')) this.remember(this.inputTarget.value.trim());
     }
 
+    clear() {
+        this.inputTarget.value = '';
+        this.inputTarget.focus();
+        this.input();
+    }
+
     pick(event) {
         this.inputTarget.value = event.params.q;
         this.inputTarget.focus();
@@ -89,7 +97,7 @@ export default class extends Controller {
         const typing = event.target.closest?.('input, textarea, select, [contenteditable]');
         const slash = event.key === '/' && !typing;
         const cmdK = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
-        if (!slash && !cmdK) return;
+        if (!this.hotkeyValue || (!slash && !cmdK)) return;
         // Поле на телефоне — в шторке: его открывает своя кнопка, клавиатурой не зовём.
         if (!this.inputTarget.offsetParent) return;
         event.preventDefault();
@@ -108,7 +116,7 @@ export default class extends Controller {
     }
 
     hits() {
-        return [...this.frameTarget.querySelectorAll('[data-hit]')];
+        return [...this.frameTarget.querySelectorAll('.search-group')].flatMap((g) => [...g.querySelectorAll('.search-rows [data-hit]'), ...g.querySelectorAll('.search-all')]);
     }
 
     mark() {

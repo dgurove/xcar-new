@@ -14,7 +14,7 @@ const BLACK = '#000000';
 const SURFACES = ['site', 'crm', 'park'];
 
 // Ярлыки манифеста по поверхностям → иконки кита; тот же список — в PwaController::manifest.
-const SHORTCUT_ICONS = { site: ['car', 'bell'], crm: ['car', 'photo', 'deal', 'cart'], park: ['flag', 'car'] };
+const SHORTCUT_ICONS = { site: ['cat-car', 'bell'], crm: ['cat-car', 'photo', 'deal', 'cart'], park: ['flag', 'cat-car'] };
 
 // Экраны iPhone в точках и плотности; тот же список — в components/ui/startup.blade.php.
 const SCREENS = [

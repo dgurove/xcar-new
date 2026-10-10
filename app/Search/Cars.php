@@ -87,7 +87,7 @@ final class Cars
     public function candidate(Candidate $c, string $link): void
     {
         $key = $this->key(Code::key($c->code), $c->value('vin'), 'c'.$c->id);
-        $hit = $this->hit($key, fn () => new Hit($c->title(), $link, ref: $c->code, vendorId: $c->vendor_id, icon: 'mail'));
+        $hit = $this->hit($key, fn () => new Hit($c->title(), $link, ref: $c->code, vendorId: $c->vendor_id));
         $hit->line[] = 'в письмах, не заведена';
         $hit->rank = min($hit->rank, 1);
     }
