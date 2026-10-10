@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Bot;
 use App\Users\User;
+use App\Users\Wording;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -24,7 +25,9 @@ final class TelegramChannel
             return;
         }
         $lines = array_filter($message['lines'], fn ($l) => $l !== null && $l !== '');
-        $text = implode("\n", ['<b>'.e($message['title']).'</b>', ...array_map(fn ($l) => e($l), $lines)]);
+        // Шаг сделки супер-покупателю — без слова «менеджер» (`Users\Wording`); готовый HTML строки — как есть.
+        $say = fn ($l) => $l instanceof \Illuminate\Support\HtmlString || ! $notice->speaksRoute() ? $l : Wording::for($user, (string) $l);
+        $text = implode("\n", ['<b>'.e($say($message['title'])).'</b>', ...array_map(fn ($l) => e($say($l)), $lines)]);
         try {
             $sent = $this->bot->send((int) $user->telegram_chat_id, $text, [[['text' => $message['button'], 'url' => $notice->telegramUrl()]]], $user->quietHours());
             // О чём сообщение — чтобы удалить его у всех, когда предмет ушёл (завели цепочку «Из писем»).

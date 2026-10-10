@@ -28,7 +28,7 @@ final class SaveDealContract
     {
         $deal = $contract->deal;
         // У супер-покупателя покупатель по договору — он сам: другого он не выбирает и не заводит.
-        if ($deal->buyer?->isSuperBuyer()) {
+        if ($deal->isDirect()) {
             unset($data['new_buyer'], $data['buyer_id'], $data['payer']);
             $contract->buyer_user_id ??= $deal->buyer_id;
             $contract->payer = 'manager';

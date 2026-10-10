@@ -494,19 +494,16 @@ class Offer extends Model implements HasMedia
                 $any = true;
                 $w->orWhere(fn ($m) => $m->whereIn('moderator_id', $user->teamIds())->whereDoesntHave('purchaseCar'));
             }
-            if ($user->hasRole(Role::Manager)) {
+            // Менеджер и супер-покупатель — открытое, когда наступила его волна показа (`offer_viewers`; супер-покупатели в
+            // волнах — один менеджер, `AudienceRules`).
+            if ($user->hasRole(Role::Manager, Role::SuperBuyer)) {
                 $any = true;
                 $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
                     ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now())));
-                // Сделка, открытая ему белым списком: видна в предложениях с меткой «Идёт сделка».
-                $w->orWhere(fn ($m) => $m->dealOpenTo($user));
             }
-            // Супер-покупатель — как менеджер своей волны (все супер-покупатели в волнах одной строкой, `AudienceRules`),
-            // без сделок, открытых белым списком.
-            if ($user->hasRole(Role::SuperBuyer)) {
-                $any = true;
-                $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
-                    ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now())));
+            // Сделка, открытая менеджеру белым списком: видна в предложениях с меткой «Идёт сделка».
+            if ($user->hasRole(Role::Manager)) {
+                $w->orWhere(fn ($m) => $m->dealOpenTo($user));
             }
             // Проверяющий: открытые, которые всем сразу и без исключений; без показов и менеджера.
             if ($user->hasRole(Role::Reviewer)) {

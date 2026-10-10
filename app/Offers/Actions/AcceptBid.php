@@ -71,11 +71,6 @@ final class AcceptBid
             } else {
                 [$payer, $share] = [null, null];
             }
-            // Супер-покупатель покупает сам у нас: вознаграждения нет.
-            $super = (bool) $bid->user?->isSuperBuyer();
-            if ($super) {
-                $commission = null;
-            }
             // Покупатель платит не нам (ДКП, страховой) — вознаграждение остаётся у менеджера, нам он платит подбор.
             if ($scheme->paysSelection()) {
                 $mode = CommissionMode::Withheld;
@@ -83,11 +78,12 @@ final class AcceptBid
             $deal = Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid->id, 'buyer_id' => $bid->user_id, 'amount' => $bid->amount, 'state' => DealState::Active,
                 'cost' => $offer->floor_price, 'owner_price' => $scheme->paysSelection() && ! $bid->isGarage() ? ($ownerPrice ?? $offer->owner_price ?? $offer->floor_price) : null,
                 'share' => $share, 'commission' => $commission, 'commission_mode' => $mode, 'scheme' => $scheme, 'garage_payer' => $payer]);
-            $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid->id, 'amount' => $bid->amount, 'commission' => $commission, 'mode' => $mode->value, 'garage' => $payer?->value,
+            $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid->id, 'amount' => $bid->amount, 'commission' => $deal->commission, 'mode' => $mode->value, 'garage' => $payer?->value,
                 'scheme' => $scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $share], fn ($v) => $v !== null));
             $deal->setRelation('offer', $offer);
-            // Покупатель по договору у супер-покупателя — он сам, выбирать некого (`DealContract::for`).
-            if ($super) {
+            // Покупатель по договору у супер-покупателя — он сам, выбирать некого (`DealContract::for`); вознаграждения у
+            // его сделки нет — его снимает сама сделка (`Deal::booted`).
+            if ($deal->isDirect()) {
                 DealContract::for($deal);
             }
             if ($deal->isGarage()) {

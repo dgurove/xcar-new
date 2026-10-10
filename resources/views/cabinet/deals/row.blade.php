@@ -35,7 +35,7 @@
             <x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'">{{ $deal->state->label() }}</x-ui.state>
         @else
             {{-- Этап в покое серый: лайм — глагол. Оранжевым становится просрочка. --}}
-            <x-ui.state :tone="$alarm ? 'urgent' : 'plain'" class="max-w-full"><span class="min-w-0">{{ $position?->stage->block?->name ?? 'Идёт работа' }}</span></x-ui.state>
+            <x-ui.state :tone="$alarm ? 'urgent' : 'plain'" class="max-w-full"><span class="min-w-0">{{ \App\Users\Wording::mine($position?->stage->block?->name) ?? 'Идёт работа' }}</span></x-ui.state>
         @endif
     </span>
 </a>

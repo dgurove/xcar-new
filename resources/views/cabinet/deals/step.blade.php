@@ -43,7 +43,7 @@
     @if ($deal->state === DealState::Active && $position)
         <div class="box {{ $requirement && $position->isOverdue() ? 'box-urgent' : '' }}">
             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h2>{{ $position->stage->block?->name ?? 'Идёт работа' }}</h2>
+                <h2>{{ \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа' }}</h2>
                 @if ($noInvoice)<p class="text-sm text-ink-muted">ждём нас</p>@else<x-route.clock :position="$position"/>@endif
             </div>
 
@@ -51,7 +51,7 @@
                 <h3 class="mt-5 text-lg">Укажите покупателя</h3>
             @elseif ($requirement && ! ($pickupSteps ?? null))
                 {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
-                <h3 class="mt-5 text-lg">{{ $requirement->title }}</h3>
+                <h3 class="mt-5 text-lg">{{ \App\Users\Wording::mine($requirement->title) }}</h3>
                 @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ $rejected->paid_at->translatedFormat('j M') }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                 {{-- Срок просьбы — тот же, что часы в шапке шага: второй раз его не пишем. --}}
                 @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
@@ -98,7 +98,7 @@
                                 <span class="task-step-mark">@if ($mark === 'done')<x-ui.icon name="check" class="size-3.5"/>@else{{ $k + 1 }}@endif</span>
                             @endif
                             <div class="task-step-body">
-                                <h4 class="task-step-title">{{ $title }}</h4>
+                                <h4 class="task-step-title">{{ \App\Users\Wording::mine($title) }}</h4>
                                 @if ($key === 'contact')
                                     @if ($showHandover)@include('cabinet.deals.handover')@endif
                                     @include('cabinet.deals.payload')

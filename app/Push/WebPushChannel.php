@@ -34,8 +34,8 @@ final class WebPushChannel
             return;
         }
         $notification = [
-            'title' => $notice->title(),
-            'body' => (string) $notice->text(),
+            'title' => $notice->titleFor($user),
+            'body' => (string) $notice->textFor($user),
             'tag' => $notice->tag(),
             'lang' => 'ru',
         ];

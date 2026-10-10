@@ -48,9 +48,26 @@ class Deal extends Model
         return $this->belongsTo(Bid::class);
     }
 
+    protected static function booted(): void
+    {
+        // Супер-покупатель покупает у нас сам: вознаграждения у его сделки не бывает, какой бы путь её ни правил
+        // («Принять», «Деньги» в CRM, передача резерву).
+        static::saving(function (self $deal) {
+            if ($deal->commission !== null && $deal->isDirect()) {
+                $deal->commission = null;
+            }
+        });
+    }
+
     public function buyer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'buyer_id');
+    }
+
+    /** Сделка супер-покупателя: он покупает сам, без вознаграждения; покупатель и плательщик по договору — он же. */
+    public function isDirect(): bool
+    {
+        return (bool) $this->buyer?->isSuperBuyer();
     }
 
     public function requirements(): HasMany

@@ -221,7 +221,7 @@ final class PublishLiveUpdates
         // Сообщение чата карточкой показывает сам live-канал (событие chat) — второй раз не надо; тихое — только строка
         // в ленте и бейдж.
         if ($e->notification instanceof Notice && ! $e->notification instanceof ChatNotice && ! $e->notification->quiet()) {
-            $this->publish->notice($topic, Banner::of($e->notification, (string) $e->notification->id));
+            $this->publish->notice($topic, Banner::of($e->notification, (string) $e->notification->id, $e->notifiable));
         }
         $this->publish->badges($topic);
     }

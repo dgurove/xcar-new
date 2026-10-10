@@ -65,24 +65,36 @@ final class AudienceRules
         return [...array_values($rows), $rest];
     }
 
-    /** @return array<int, int> id менеджера => через сколько минут после публикации он видит */
-    public static function openings(array $rules): array
+    /**
+     * Кто бывает в волнах — один раз на пересчёт (`SyncViewers::all` проходит все открытые предложения, `$people`
+     * передаётся по ссылке и заполняется при первом предложении): менеджеры, супер-покупатели, а состав групп — когда
+     * правила их называют. Без предложений ничего не читается: старые миграции зовут пересчёт до таблиц групп.
+     *
+     * @param  array{managers?: list<int>, super?: list<int>, members?: array<int, list<int>>, withSuper?: list<int>}|null  $people
+     * @return array<int, int> id менеджера или супер-покупателя => через сколько минут после публикации он видит
+     */
+    public static function openings(array $rules, ?array &$people = null): array
     {
-        $rules = self::normalize($rules ?: self::everyone());
+        $rules = collect(self::normalize($rules ?: self::everyone()));
+        $people ??= [];
         // Демо-менеджеры тоже видят (кабинет для показа), в списках выбора их нет.
-        $managers = User::withoutGlobalScope('demo')->withRole(Role::Manager)->pluck('id')->all();
-        $groups = collect($rules)->where('type', 'group');
-        $managerGroups = $groups->isNotEmpty() ? UserGroup::where('kind', UserGroup::MANAGERS)->whereIn('id', $groups->pluck('id'))->get(['id', 'with_super']) : collect();
-        $members = $managerGroups->isNotEmpty()
-            ? DB::table('user_group_user')->whereIn('group_id', $managerGroups->pluck('id')->all())->get()->groupBy('user_id')->map(fn ($r) => $r->pluck('group_id')->all())
-            : collect();
-        $groupDelay = $groups->pluck('delay', 'id');
-        $own = collect($rules)->where('type', 'user')->pluck('delay', 'id');
-        $rest = collect($rules)->firstWhere('type', 'rest')['delay'];
-        $delayOf = function (bool $hasOwn, ?int $ownDelay, ?array $in) use ($groupDelay, $rest): ?int {
+        $people['managers'] ??= User::withoutGlobalScope('demo')->withRole(Role::Manager)->pluck('id')->all();
+        $people['super'] ??= User::withRole(Role::SuperBuyer)->pluck('id')->all();
+        if ($rules->contains('type', 'group') && ! isset($people['members'])) {
+            $groups = UserGroup::where('kind', UserGroup::MANAGERS)->get(['id', 'with_super']);
+            $people['members'] = DB::table('user_group_user')->whereIn('group_id', $groups->pluck('id'))->get()
+                ->groupBy('user_id')->map(fn ($r) => $r->pluck('group_id')->all())->all();
+            $people['withSuper'] = $groups->where('with_super', true)->pluck('id')->all();
+        }
+        $groupDelay = $rules->where('type', 'group')->pluck('delay', 'id');
+        $own = $rules->where('type', 'user')->pluck('delay', 'id');
+        $rest = $rules->firstWhere('type', 'rest')['delay'];
+        // Своя строка важнее групп, группа — «Остальных»; в нескольких группах — самое раннее время.
+        $delayOf = function (bool $hasOwn, ?int $ownDelay, array $groups) use ($groupDelay, $rest): ?int {
             if ($hasOwn) {
                 return $ownDelay;
             }
+            $in = array_values(array_filter($groups, fn ($g) => $groupDelay->has($g)));
             if ($in) {
                 $delays = array_filter(array_map(fn ($g) => $groupDelay[$g], $in), fn ($d) => $d !== null);
 
@@ -93,17 +105,17 @@ final class AudienceRules
         };
 
         $open = [];
-        foreach ($managers as $id) {
-            $delay = $delayOf($own->has($id), $own[$id] ?? null, $members[$id] ?? null);
+        foreach ($people['managers'] as $id) {
+            $delay = $delayOf($own->has($id), $own[$id] ?? null, $people['members'][$id] ?? []);
             if ($delay !== null) {
                 $open[$id] = $delay;
             }
         }
         // Супер-покупатели — один менеджер на всех: время одно, закрыли — закрыто всем.
-        $super = collect($rules)->firstWhere('type', self::SUPER);
-        $delay = $delayOf($super !== null, $super['delay'] ?? null, $managerGroups->where('with_super', true)->pluck('id')->all() ?: null);
+        $super = $rules->firstWhere('type', self::SUPER);
+        $delay = $delayOf($super !== null, $super['delay'] ?? null, $people['withSuper'] ?? []);
         if ($delay !== null) {
-            foreach (User::withRole(Role::SuperBuyer)->pluck('id') as $id) {
+            foreach ($people['super'] as $id) {
                 $open[$id] ??= $delay;
             }
         }

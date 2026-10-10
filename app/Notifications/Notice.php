@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Push\WebPushChannel;
 use App\Support\Surface;
 use App\Users\User;
+use App\Users\Wording;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -184,17 +185,34 @@ abstract class Notice extends Notification implements ShouldQueue
         return $via;
     }
 
+    /** Текст из маршрута сделки (этап, просьба): супер-покупателю его слова «менеджер» переводятся (`Users\Wording`). */
+    public function speaksRoute(): bool
+    {
+        return false;
+    }
+
+    /** Заголовок для этого человека: в уведомлении о шаге сделки супер-покупателю — без слова «менеджер». */
+    public function titleFor(?User $user): string
+    {
+        return $this->speaksRoute() ? (string) Wording::for($user, $this->title()) : $this->title();
+    }
+
+    public function textFor(?User $user): ?string
+    {
+        return $this->speaksRoute() ? Wording::for($user, $this->text()) : $this->text();
+    }
+
     public function toArray(User $user): array
     {
-        return ['title' => $this->title(), 'text' => $this->text(), 'href' => $this->href(), 'offer' => $this->offerNumber(), 'subject' => $this->subject()]
+        return ['title' => $this->titleFor($user), 'text' => $this->textFor($user), 'href' => $this->href(), 'offer' => $this->offerNumber(), 'subject' => $this->subject()]
             + ($this->surface() ? ['surface' => $this->surface()->value] : []);
     }
 
     public function toMail(User $user): MailMessage
     {
-        $mail = (new MailMessage)->subject($this->title())->greeting($user->name.',')->line($this->title());
+        $mail = (new MailMessage)->subject($this->titleFor($user))->greeting($user->name.',')->line($this->titleFor($user));
         if ($this->text()) {
-            $mail->line($this->text());
+            $mail->line($this->textFor($user));
         }
 
         return $mail->action('Открыть', url($this->href()))->salutation(config('app.name'))

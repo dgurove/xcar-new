@@ -19,9 +19,9 @@ use Illuminate\Support\Str;
 final class Banner
 {
     /** @return Payload */
-    public static function of(Notice $notice, string $id): array
+    public static function of(Notice $notice, string $id, ?User $reader = null): array
     {
-        return self::make($id, $notice->title(), $notice->text(), $notice->href(), $notice->actor(), $notice->icon(),
+        return self::make($id, $notice->titleFor($reader), $notice->textFor($reader), $notice->href(), $notice->actor(), $notice->icon(),
             $notice->important(), $notice->subject(), $notice->surface());
     }
 

@@ -36,7 +36,7 @@
                             <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                         </form>
                     @else
-                        <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :mode="$deal->commission_mode"
+                        <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()" :mode="$deal->commission_mode"
                             :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" :owner-price="$deal->owner_price" submit="Сохранить"/>
                     @endif
                 </x-ui.sheet>

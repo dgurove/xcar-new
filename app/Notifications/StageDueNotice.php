@@ -60,4 +60,9 @@ final class StageDueNotice extends Notice
             'button' => 'Открыть сделку',
         ];
     }
+
+    public function speaksRoute(): bool
+    {
+        return true;
+    }
 }

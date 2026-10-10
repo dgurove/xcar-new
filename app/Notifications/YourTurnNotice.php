@@ -51,4 +51,9 @@ final class YourTurnNotice extends Notice
 
         return ['title' => 'Ваш ход по '.$r->offer->titleWithYear(), 'lines' => Text::lines($r->offer, $ask), 'button' => 'Открыть сделку'];
     }
+
+    public function speaksRoute(): bool
+    {
+        return true;
+    }
 }

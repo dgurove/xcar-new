@@ -18,7 +18,7 @@
             {{-- Один исход — во всю ширину, два — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
             <div @class(['gap-3', 'grid' => $exits->count() <= 2, 'grid-cols-2' => $exits->count() === 2, 'flex flex-wrap' => $exits->count() > 2])>
                 @foreach ($exits as $exit)
-                    <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="$exit->confirm" class="min-w-0 px-4">{{ $exit->label }}</x-ui.button>
+                    <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="\App\Users\Wording::mine($exit->confirm)" class="min-w-0 px-4">{{ \App\Users\Wording::mine($exit->label) }}</x-ui.button>
                 @endforeach
             </div>
         </form>

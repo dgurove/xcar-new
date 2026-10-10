@@ -97,20 +97,23 @@ class Invite extends Model
         };
     }
 
-    /** Кем зовут — строкой под заголовком регистрации (покупателю вместо неё его менеджер). */
+    /**
+     * Что откроется — строкой под заголовком регистрации (покупателю вместо неё его менеджер). Как в приложениях:
+     * «Вам откроется доступ к предложениям XCar», а не «Вы будете…» (владелец 10.10.2026).
+     */
     public function intro(): string
     {
         $city = ($name = City::name($this->park_city_id)) ? " ({$name})" : '';
 
         return match ($this->role) {
-            Role::Moderator => 'Вы будете заводить предложения в CRM xcar',
-            Role::Admin => 'Вы будете администратором xcar',
+            Role::Moderator => 'Вам откроется доступ к предложениям в CRM XCar',
+            Role::Admin => 'Вам откроется доступ к CRM XCar с правами администратора',
             // «Супер» — имя для админов: человеку он просто покупатель (владелец 10.10.2026).
-            Role::SuperBuyer => 'Вы будете покупать автомобили в xcar',
+            Role::SuperBuyer => 'Вам откроется доступ к предложениям XCar',
             Role::Parking => $this->park_readonly
-                ? 'Вы будете принимать и выдавать ТС на парковке xcar'.$city
-                : 'Вы будете управляющим парковкой xcar'.$city.': заявки, приём, выдача и оплаты',
-            default => 'Вы будете работать в xcar как менеджер: подтверждать предложения и вести своих покупателей',
+                ? 'Вам откроется приём и выдача ТС на парковке XCar'.$city
+                : 'Вам откроется парковка XCar'.$city.': заявки, приём, выдача и оплаты',
+            default => 'Вам откроется доступ к предложениям XCar и кабинету менеджера',
         };
     }
 
@@ -122,12 +125,12 @@ class Invite extends Model
     public function message(): string
     {
         if ($this->forBuyer()) {
-            return ($this->manager ? $this->manager->name.' приглашает вас' : 'Вас приглашают').' в xcar';
+            return ($this->manager ? $this->manager->name.' приглашает вас' : 'Вас приглашают').' в XCar';
         }
         if ($this->role === Role::SuperBuyer) {
-            return 'Вас приглашают в xcar. Ссылка одноразовая'.($this->expires_at ? ', действует до '.$this->expires_at->translatedFormat('j F H:i') : '');
+            return 'Вас приглашают в XCar. Ссылка одноразовая'.($this->expires_at ? ', действует до '.$this->expires_at->translatedFormat('j F H:i') : '');
         }
-        $text = 'Вас приглашают в xcar '.match ($this->role) {
+        $text = 'Вас приглашают в XCar '.match ($this->role) {
             Role::Manager => 'менеджером',
             Role::Moderator => 'модератором',
             Role::Admin => 'администратором',

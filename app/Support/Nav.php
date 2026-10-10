@@ -284,6 +284,10 @@ final class Nav
         if ($user->hasDeals()) {
             // Сделки, покупатели и гараж — разделы таб-бара; в кабинете остаются деньги.
             $links[] = self::link('Деньги', '/account/money', also: ['/account/money/details'], icon: 'wallet');
+            // Супер-покупатель оставляет интерес в галерее — его список здесь же (у менеджера интерес — в «Покупателях»).
+            if ($user->isSuperBuyer()) {
+                $links[] = self::link('Интерес', '/account/interests', icon: 'flag');
+            }
         } elseif ($user->isAdmin()) {
             $links[] = self::link('Пользователи', '/account/users', icon: 'users');
             $links[] = self::link('Приглашения', '/account/invites', icon: 'link');
@@ -460,7 +464,7 @@ final class Nav
                 // Как в заголовке «Гаража»: машины в работе, рассчитанные не считаются.
                 // И вывозы, порученные менеджеру (группа «Вывоз»): ТС у него, хоть и не его гаража.
                 '/garage' => $user->canGarage() ? GarageCar::of($user)->where('state', '!=', CarState::Settled)->count() + Offer::pickupsOf($user)->count() : null,
-                '/account/interests' => $user->isBuyer() ? Interest::where('user_id', $user->id)->count() : null,
+                '/account/interests' => $user->isBuyer() || $user->isSuperBuyer() ? Interest::where('user_id', $user->id)->count() : null,
                 '/account/favorites' => Favorite::where('user_id', $user->id)->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
                 '/offers' => (clone $open)->where('published_at', '>', $day)->count(),

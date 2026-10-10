@@ -15,13 +15,14 @@ use Illuminate\Support\Facades\DB;
  */
 final class SyncViewers
 {
-    public function __invoke(Offer $offer): void
+    /** $people — состав волн (`AudienceRules::openings`), общий на много предложений подряд. */
+    public function __invoke(Offer $offer, ?array &$people = null): void
     {
         if (! in_array($offer->state, [OfferState::Open, OfferState::Gallery], true)) {
             return;
         }
         $base = $offer->published_at ?? now();
-        $open = AudienceRules::openings(AudienceRules::of($offer));
+        $open = AudienceRules::openings(AudienceRules::of($offer), $people);
 
         DB::transaction(function () use ($offer, $base, $open) {
             OfferViewer::where('offer_id', $offer->id)->whereNotIn('user_id', array_keys($open) ?: [0])->delete();
@@ -37,6 +38,9 @@ final class SyncViewers
     /** Все опубликованные — после смены групп или нового менеджера. */
     public function all(): void
     {
-        Offer::whereIn('state', [OfferState::Open, OfferState::Gallery])->lazyById()->each(fn (Offer $o) => $this($o));
+        $people = null;
+        Offer::whereIn('state', [OfferState::Open, OfferState::Gallery])->with('vendor')->lazyById()->each(function (Offer $o) use (&$people) {
+            $this($o, $people);
+        });
     }
 }

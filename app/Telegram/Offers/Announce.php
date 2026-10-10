@@ -100,7 +100,13 @@ final class Announce
      */
     private static function openingsAt(Carbon $slot): array
     {
-        return Cache::remember('offers-bot:openings:'.$slot->format('YmdHi'), 300, fn () => Offer::scheduled()->where('slot_at', $slot)->get()
-            ->mapWithKeys(fn (Offer $o) => [$o->id => AudienceRules::openings(AudienceRules::of($o))])->all());
+        return Cache::remember('offers-bot:openings:'.$slot->format('YmdHi'), 300, function () use ($slot) {
+            $people = null;
+
+            return Offer::scheduled()->where('slot_at', $slot)->with('vendor')->get()
+                ->mapWithKeys(function (Offer $o) use (&$people) {
+                    return [$o->id => AudienceRules::openings(AudienceRules::of($o), $people)];
+                })->all();
+        });
     }
 }

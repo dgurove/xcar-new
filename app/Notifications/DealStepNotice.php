@@ -45,4 +45,9 @@ final class DealStepNotice extends Notice
     {
         return true;
     }
+
+    public function speaksRoute(): bool
+    {
+        return true;
+    }
 }
