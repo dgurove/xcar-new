@@ -152,11 +152,8 @@ class TelegramChatController
     private function list(Request $request): array
     {
         $q = trim((string) $request->query('q'));
-        $like = '%'.mb_strtolower(ltrim($q, '@')).'%';
         $chats = Chat::withLast()
-            ->when($q !== '', fn ($c) => $c->where(fn ($w) => $w->whereRaw('lower(name) like ?', [$like])->orWhereRaw('lower(username) like ?', [$like])
-                ->orWhereHas('user', fn ($u) => $u->whereRaw('lower(name) like ?', [$like]))
-                ->orWhereHas('messages', fn ($m) => $m->whereRaw('lower(text) like ?', [$like]))))
+            ->when($q !== '', fn ($c) => $c->search($q))
             ->orderByRaw('last_message_at desc nulls last')->orderBy('id')
             ->paginate(ListView::perPage($request, ListView::PER_ROWS))->withPath('/settings/telegram')->withQueryString();
 

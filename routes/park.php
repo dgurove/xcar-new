@@ -17,6 +17,7 @@ use App\Http\Park\VehicleInvoiceController;
 use App\Http\Park\VendorContactController;
 use App\Http\Park\VendorController;
 use App\Http\Park\YardController;
+use App\Http\SearchController;
 use App\Http\Site\LandingController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,8 @@ Route::domain(config('xcar.park_host'))->get('/', [LandingController::class, 'pa
 
 // Стоянка — свой хост того же приложения. Вход общий; пускает раздел «park».
 Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->group(function () {
+    // Поиск в шапке: ТС своего города, «Из писем», деньги и письма — по правам (`Search\Search::for`).
+    Route::get('/search', SearchController::class);
     Route::get('/requests', [RequestController::class, 'index']);
 
     Route::get('/requests/new', [RequestController::class, 'create']);

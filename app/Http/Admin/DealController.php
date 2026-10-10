@@ -63,9 +63,8 @@ class DealController
         if ($searching) {
             // Лупа — по всем сделкам: номер предложения, VIN, марка, убыток, менеджер.
             $term = trim((string) $request->query('q'));
-            $like = '%'.mb_strtolower($term).'%';
             $q->where(fn ($w) => $w->whereHas('offer', fn ($o) => $o->searchCrm($term))
-                ->orWhereHas('buyer', fn ($u) => $u->whereRaw('lower(name) like ?', [$like])));
+                ->orWhereHas('buyer', fn ($u) => $u->search($term)));
         } else {
             match ($preset) {
                 'hot' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->where(fn ($w) => $w

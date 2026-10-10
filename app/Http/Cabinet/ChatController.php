@@ -80,12 +80,9 @@ class ChatController
     private function list(User $me, ?Request $request = null)
     {
         $q = trim((string) $request?->query('q'));
-        $like = '%'.mb_strtolower($q).'%';
 
         return Chat::where('messages_count', '>', 0)->where(fn ($w) => $w->where('user_id', $me->id)->orWhere('manager_id', $me->id)->when($me->isAdmin(), fn ($w) => $w->orWhereNull('manager_id')))
-            ->when($q !== '', fn ($c) => $c->where(fn ($w) => $w->whereHas('user', fn ($u) => $u->whereRaw('lower(name) like ?', [$like]))
-                ->orWhereHas('manager', fn ($u) => $u->whereRaw('lower(name) like ?', [$like]))
-                ->orWhereHas('offer', fn ($o) => $o->where('number', (int) $q)->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$like]))->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$like])))))
+            ->when($q !== '', fn ($c) => $c->search($q))
             ->withLast()->orderByDesc('last_message_at')->paginate(30)->withPath('/account/chats')->withQueryString();
     }
 }

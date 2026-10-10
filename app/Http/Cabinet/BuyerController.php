@@ -34,13 +34,15 @@ class BuyerController
         $term = trim((string) $request->query('q'));
         // «Видит N» — подзапросом в той же выборке (было по два запроса на человека); аватары — сразу.
         $q = $me->buyers()->with(['groups', 'media' => fn ($m) => $m->where('collection_name', 'avatar')])
-            ->orderBy(match ($sort->key) { 'created' => 'users.created_at', 'seen' => 'seen_count', default => 'users.name' }, $sort->dir())->orderBy('users.id')
+            ->orderBy(match ($sort->key) {
+                'created' => 'users.created_at', 'seen' => 'seen_count', default => 'users.name'
+            }, $sort->dir())->orderBy('users.id')
             ->addSelect(['seen_count' => Offer::query()->selectRaw('count(*)')->where('state', OfferState::Open)
                 ->whereHas('showings', fn ($s) => $s->where('manager_id', $me->id)->where(fn ($w) => $w->whereColumn('showings.user_id', 'users.id')
                     ->orWhereIn('showings.group_id', DB::table('buyer_group_user')->select('group_id')->whereColumn('buyer_group_user.user_id', 'users.id'))))
                 ->whereHas('viewers', fn ($v) => $v->where('user_id', $me->id)->where('opens_at', '<=', now()))]);
         if ($term) {
-            $q->where(fn ($w) => $w->where('name', 'ilike', "%{$term}%")->orWhere('login', 'ilike', "%{$term}%")->orWhere('phone', 'like', '%'.preg_replace('/\D+/', '', $term).'%'));
+            $q->search($term);
         }
         $buyers = $q->paginate(50)->withQueryString();
 

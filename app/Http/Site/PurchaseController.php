@@ -135,11 +135,8 @@ class PurchaseController
             $q->where('kind', $filters['kind']);
         }
         if ($search !== '') {
-            $term = '%'.mb_strtolower(trim($filters['q'])).'%';
-            // Номер — тот, что на экране («№ 12»), а не ДЛ: по ДЛ на xcar не ищут.
-            $number = preg_replace('/\D+/', '', $filters['q']);
-            $q->where(fn ($w) => $w->when(preg_match('/^\s*№?\s*\d{1,9}\s*$/u', $filters['q']), fn ($n) => $n->orWhere('ref', (int) $number))->orWhereRaw('lower(vin) like ?', [$term])->orWhereRaw('lower(brand_raw) like ?', [$term])->orWhereRaw('lower(model_raw) like ?', [$term])
-                ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$term])->orWhereRaw('lower(name_ru) like ?', [$term])));
+            // Номер — тот, что на экране («№ 12»), а не ДЛ: по ДЛ на xcar не ищут (`Car::search` без `crm`).
+            $q->search($filters['q']);
         }
         $sort = Sort::from($filters['sort'] ?? null, self::SORTS, 'number');
         $dir = $sort->dir();

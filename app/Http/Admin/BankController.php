@@ -44,7 +44,7 @@ class BankController
         $q = Transaction::where('direction', 'in')->with('invoice')
             // Лупа — по всем поступлениям, мимо пилюли.
             ->when($preset !== 'all' && $qs === '', fn ($w) => $w->where('state', $preset))
-            ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s->where('counterparty', 'ilike', "%{$qs}%")->orWhere('purpose', 'ilike', "%{$qs}%")->orWhere('counterparty_inn', $qs)))
+            ->when($qs !== '', fn ($w) => $w->search($qs))
             ->when($sort->key === 'amount', fn ($w) => $w->orderBy('amount', $sort->dir()))
             ->when($sort->key === 'payer', fn ($w) => $w->orderBy('counterparty', $sort->dir()))
             ->orderBy('booked_at', $sort->key === 'booked' ? $sort->dir() : 'desc')->latest('id');

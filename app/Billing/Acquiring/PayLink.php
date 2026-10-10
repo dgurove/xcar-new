@@ -8,13 +8,16 @@ use App\Billing\InvoiceState;
 use App\Billing\Payment;
 use App\Billing\Seller;
 use App\Garage\Car;
+use App\Search\Term;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * Ссылка на оплату счёта: наша, постоянная (`/pay/{code}`), отдаётся плательщику как есть. За ней —
@@ -32,6 +35,23 @@ class PayLink extends Model
     protected function casts(): array
     {
         return ['amount' => 'float', 'payer_kind' => PayerKind::class, 'state' => PayLinkState::class, 'paid_at' => 'datetime', 'canceled_at' => 'datetime', 'error_at' => 'datetime', 'auto' => 'bool'];
+    }
+
+    /**
+     * Поиск ссылки на оплату — лупа «По ссылкам» и шапка CRM: плательщик (двойные пробелы не мешают), код ссылки, ТС
+     * словами у ручной, счёт (`Invoice::search`: плательщик, менеджер, ТС).
+     */
+    public function scopeSearch(Builder $q, string|Term $term): Builder
+    {
+        $t = Term::of($term);
+        if ($t->blank()) {
+            return $q;
+        }
+        $like = '%'.str_replace(' ', '%', str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], self::squash($t->raw))).'%';
+
+        return $q->where(fn ($s) => $s->where('billing_pay_links.payer_name', 'ilike', $like)
+            ->orWhere('billing_pay_links.code', mb_strtolower($t->raw))
+            ->orWhereHas('invoice', fn ($i) => $i->search($t)));
     }
 
     public static function freshCode(): string
@@ -137,7 +157,7 @@ class PayLink extends Model
      * Что со ссылкой — один разбор на фразу (`stateLine`) и слово строки списка (`MoneyLinks::short`): ключ (paid, canceled,
      * error, new, pending, abandoned, declined, waiting), время события и последняя попытка плательщика.
      *
-     * @return array{string, ?\Illuminate\Support\Carbon, ?AcquiringPayment}
+     * @return array{string, ?Carbon, ?AcquiringPayment}
      */
     public function status(): array
     {

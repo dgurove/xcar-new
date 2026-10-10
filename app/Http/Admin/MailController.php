@@ -22,9 +22,7 @@ use App\Mail\Chains\ChainBuilder;
 use App\Mail\Composer;
 use App\Mail\Direction;
 use App\Mail\Extraction\ArchivePhotoExtractor;
-use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Intent;
-use App\Mail\Extraction\Keys;
 use App\Mail\Jobs\ImportCandidateFiles;
 use App\Mail\Jobs\ParseMessage;
 use App\Mail\Jobs\PushFlag;
@@ -144,16 +142,7 @@ class MailController
         // вшитой выборки: экран про одно дело. Адрес он не меняет.
         $threads = $q !== '' && ! $forced ? (clone $all) : $pick($box);
         if ($q !== '') {
-            $tsquery = self::tsquery($q);
-            // Кусок номера («05481» из «0890/046/05481/26»): полнотекст держит номер с косыми одним словом, а
-            // `Keys::fromQuery` ищет номер целиком — ищем в номерах ветки подстрокой, как «Наличие».
-            $part = Code::key($q);
-            $threads->where(fn ($w) => $w
-                ->when($tsquery, fn ($w, $ts) => $w->whereHas('messages', fn ($m) => $m->whereRaw("search @@ to_tsquery('russian', ?)", [$ts])))
-                ->orWhereRaw('participants::text ilike ?', ['%'.$q.'%'])
-                ->orWhereHas('attachments', fn ($a) => $a->where('filename', 'ilike', '%'.$q.'%'))
-                ->when(Keys::fromQuery($q), fn ($w, $keys) => $w->orWhere(fn ($k) => $k->withAnyKey($keys)))
-                ->when($part && mb_strlen($part) >= 4, fn ($w) => $w->orWhereRaw('mail_threads.keys::text ilike ?', ['%'.$part.'%'])));
+            $threads->search($q);
         }
         $facets->apply($threads);
         $order = fn ($t) => $t->orderBy('last_message_at', $sort->dir());
@@ -246,22 +235,6 @@ class MailController
             // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
             'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window' : null,
         ]);
-    }
-
-    /**
-     * Запрос для полнотекста. `websearch_to_tsquery` ищет только целые слова, а при наборе последнее
-     * слово почти всегда неполное — оно уходит с префиксом, и «колбас» находит «Колбасина». Строка
-     * разбирается здесь, а не в SQL: `to_tsquery` падает на любом постороннем знаке.
-     */
-    private static function tsquery(string $q): ?string
-    {
-        $words = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        if (! $words) {
-            return null;
-        }
-        $last = array_key_last($words);
-
-        return implode(' & ', array_map(fn ($w, $i) => $w.($i === $last ? ':*' : ''), $words, array_keys($words)));
     }
 
     /** «Всё в архив» у «Прочего»: автоответы и рассылки уходят из входящих разом. */

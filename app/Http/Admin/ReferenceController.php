@@ -8,10 +8,14 @@ use App\Cars\CarModel;
 use App\Cars\CarText;
 use App\Cars\Drive;
 use App\Cars\Fuel;
+use App\Cars\Region;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Cars\Vin\VinAutofill;
+use App\Search\Term;
 use App\Support\Liters;
+use App\Users\Role;
+use App\Users\User;
 use Illuminate\Http\Request;
 
 /** Подсказки комбобоксов и создание записей справочника на лету. */
@@ -62,7 +66,7 @@ class ReferenceController
     {
         $q = mb_strtolower(trim($request->query('q', '')));
         $brands = Brand::query()
-            ->when($q, fn ($b) => $b->whereRaw('lower(name) like ?', ["{$q}%"])->orWhereRaw('lower(name_ru) like ?', ["{$q}%"]))
+            ->when($q, fn ($b) => $b->search($q, prefix: true))
             ->orderByDesc('is_popular')->orderBy('name')->limit(20)->get();
 
         return response()->json($brands->map(fn ($b) => ['id' => $b->id, 'label' => $b->name, 'hint' => $b->name_ru]));
@@ -78,11 +82,11 @@ class ReferenceController
     {
         $q = mb_strtolower(trim((string) $request->query('q', '')));
         $plate = preg_match('/(?:^|[\s,])(\d{1,3})$/u', $q, $m) ? str_pad($m[1], 2, '0', STR_PAD_LEFT) : null;
-        $q = trim((string) preg_replace('/(?:^|[\s,])\d{1,3}$/u', '', $q), " ,");
+        $q = trim((string) preg_replace('/(?:^|[\s,])\d{1,3}$/u', '', $q), ' ,');
         $places = Settlement::query()->with('region:id,short')
             // Место-регион («Республика Татарстан», тип `рег`) находится и по второму слову: ищут «татарстан».
-            ->when($q, fn ($s) => $s->where(fn ($w) => $w->whereRaw('lower(name) like ?', [str_replace(['%', '_'], ['\\%', '\\_'], $q).'%'])
-                ->orWhere(fn ($r) => $r->where('type', 'рег')->whereRaw('lower(name) like ?', ['% '.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%']))))
+            ->when($q, fn ($s) => $s->where(fn ($w) => $w->whereRaw('lower(name) like ?', [Term::like($q, prefix: true)])
+                ->orWhere(fn ($r) => $r->where('type', 'рег')->whereRaw('lower(name) like ?', ['% '.Term::like($q, prefix: true)]))))
             ->when($plate, fn ($s) => $s->where('region_code', $plate))
             ->orderBy('rank')->orderBy('name')->limit(20)->get(['id', 'name', 'type', 'region_code', 'region_id', 'district']);
 
@@ -102,7 +106,7 @@ class ReferenceController
         $name = trim((string) preg_replace('/\s+/u', ' ', $request->validate(['name' => ['required', 'string', 'max:120']])['name']), ' ,');
         $plate = preg_match('/[\s,]+(\d{1,3})$/u', $name, $m) ? str_pad($m[1], 2, '0', STR_PAD_LEFT) : null;
         $name = $plate ? trim((string) preg_replace('/[\s,]+\d{1,3}$/u', '', $name)) : $name;
-        $region = $plate ? \App\Cars\Region::where('plate', $plate)->first() : null;
+        $region = $plate ? Region::where('plate', $plate)->first() : null;
         $place = Settlement::firstOrCreate(
             ['name' => $name, 'type' => 'своб', 'region_code' => $region?->plate],
             ['region_id' => $region?->id, 'rank' => 9],
@@ -114,11 +118,9 @@ class ReferenceController
     /** Менеджеры по имени или телефону — «Подтверждение за менеджера». */
     public function managers(Request $request)
     {
-        $q = mb_strtolower(trim((string) $request->query('q', '')));
-        $digits = preg_replace('/\D+/', '', $q);
-        $users = \App\Users\User::withRole(\App\Users\Role::Manager)
-            ->when($q, fn ($u) => $u->where(fn ($w) => $w->whereRaw('lower(name) like ?', ['%'.str_replace(['%', '_'], ['\\%', '\\_'], $q).'%'])
-                ->when(strlen($digits) >= 3, fn ($w) => $w->orWhere('phone', 'like', '%'.$digits.'%'))))
+        $q = trim((string) $request->query('q', ''));
+        $users = User::withRole(Role::Manager)
+            ->when($q !== '', fn ($u) => $u->search($q))
             ->orderBy('name')->limit(20)->get(['id', 'name', 'phone']);
 
         return response()->json($users->map(fn ($u) => ['id' => $u->id, 'label' => $u->name, 'hint' => $u->phone ? $u->phoneFormatted() : null]));
@@ -128,7 +130,7 @@ class ReferenceController
     {
         $q = mb_strtolower(trim($request->query('q', '')));
         $models = CarModel::query()->where('brand_id', $request->query('brand'))
-            ->when($q, fn ($b) => $b->whereRaw('lower(name) like ?', ["{$q}%"]))
+            ->when($q, fn ($b) => $b->whereRaw('lower(name) like ?', [Term::like($q, prefix: true)]))
             ->orderBy('name')->limit(30)->get();
 
         return response()->json($models->map(fn ($m) => ['id' => $m->id, 'label' => $m->name, 'hint' => $m->name_ru]));

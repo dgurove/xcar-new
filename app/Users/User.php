@@ -10,6 +10,7 @@ use App\Offers\Actions\SyncViewers;
 use App\Offers\Interest;
 use App\Offers\Offer;
 use App\Park\City;
+use App\Search\Term;
 use App\Support\Demo\HidesDemo;
 use App\Support\Phone;
 use App\Support\Surface;
@@ -108,6 +109,24 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /** Люди с любой из ролей: `User::withRole(Role::Manager)`. */
+
+    /**
+     * Поиск человека — одна дверь для «Пользователей», покупателей менеджера, «За менеджера», чатов, сделок и шапок: имя,
+     * логин, почта, телефон цифрами (от трёх — иначе поиск по имени находил всех с телефоном).
+     */
+    public function scopeSearch(Builder $q, string|Term $term): Builder
+    {
+        $t = Term::of($term);
+        if ($t->blank()) {
+            return $q;
+        }
+        $like = Term::like($t->raw);
+        $digits = (string) preg_replace('/\D+/', '', $t->raw);
+
+        return $q->where(fn ($w) => $w->where('users.name', 'ilike', $like)->orWhere('users.login', 'ilike', $like)->orWhere('users.email', 'ilike', $like)
+            ->when(strlen($digits) >= 3, fn ($w) => $w->orWhere('users.phone', 'like', Term::like($digits))));
+    }
+
     public function scopeWithRole(Builder $query, Role ...$roles): Builder
     {
         return $query->where(function ($w) use ($roles) {

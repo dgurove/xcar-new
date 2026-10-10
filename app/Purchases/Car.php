@@ -9,8 +9,12 @@ use App\Cars\Region;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Media\HasPhotos;
+use App\Search\CarWords;
+use App\Search\Term;
+use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,6 +43,27 @@ class Car extends Model implements HasMedia
             'specs_at' => 'datetime', 'photos_at' => 'datetime', 'cloud_leftovers' => 'array', 'locked_fields' => 'array',
             'is_published' => 'bool', 'share_locked' => 'bool', 'announced_at' => 'datetime', 'fssp' => 'bool', 'year' => 'int',
         ];
+    }
+
+    /**
+     * Поиск машины закупки — CRM и сайт одной дверью: VIN, марка и модель (как в файле поставщика и по справочнику, по
+     * словам). В CRM ещё ДЛ куском; на сайте ДЛ нет — номер «№ 12» (`shownNumber`).
+     */
+    public function scopeSearch(Builder $q, string|Term $term, bool $crm = false): Builder
+    {
+        $t = Term::of($term);
+        if ($t->blank()) {
+            return $q;
+        }
+        $number = preg_match('/^\s*№?\s*(\d{1,9})\s*$/u', $t->raw, $m) ? (int) $m[1] : null;
+
+        return $q->where(fn ($w) => $w
+            ->when($crm, fn ($w) => $w->orWhereRaw('lower(purchase_cars.dl) like ?', [$t->contains()]))
+            ->when(! $crm && $number, fn ($w) => $w->orWhere('purchase_cars.ref', $number))
+            ->when($t->vin, fn ($w, $vin) => $w->orWhere('purchase_cars.vin', 'like', Term::like($vin)))
+            ->orWhere(fn ($all) => CarWords::apply($all, $t, 'purchase_cars', fn ($one, $word, $like) => $one
+                ->orWhereRaw('lower(purchase_cars.brand_raw) like ?', [$like])
+                ->orWhereRaw('lower(purchase_cars.model_raw) like ?', [$like]))));
     }
 
     public function getRouteKeyName(): string
@@ -80,7 +105,7 @@ class Car extends Model implements HasMedia
     /** Номер для людей: в CRM — ДЛ, на xcar — номер машины в закупке «№ 12» (ДЛ на xcar нет, владелец 10.10.2026). */
     public function shownNumber(): string
     {
-        if (! \App\Support\Surface::inCrm()) {
+        if (! Surface::inCrm()) {
             return '№ '.$this->ref;
         }
 

@@ -2375,6 +2375,19 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .dark .on-light { display: none; }
   .dark .on-dark  { display: block; }
   .header-search input { @apply h-full w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-dim; }
+  /* Поиск в шапке (`x-search.box`, global_search_controller): выдача — выпадающим листом под полем, как меню (тот же фон
+     и тень), шириной 34rem, своя прокрутка; на телефоне та же выдача в шторке. Выбранная стрелками строка — лаймом. */
+  .search-pop { @apply rounded-(--radius-l) bg-surface text-ink shadow-(--shadow-drop); position: absolute; top: calc(100% + .5rem); inset-inline-start: 0; z-index: 60; width: min(34rem, calc(100vw - 2rem)); max-height: min(70dvh, 40rem); overflow-y: auto; overscroll-behavior: contain; padding: .75rem; }
+  .search-pop[hidden] { display: none; }
+  .search-results { display: flex; flex-direction: column; gap: .75rem; }
+  .search-results .list-head { @apply pb-1 text-sm text-ink-muted; }
+  .search-results .list { @apply bg-surface-2; }
+  .search-hit { display: flex; align-items: center; }
+  .list .search-line { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .3em; }
+  .list .search-line > :not(:last-child) { margin-right: 0; }
+  .list .search-line > .search-ref { margin-right: .3em; }
+  .search-line > :not(:last-child):not(.search-ref)::after { content: ','; color: var(--color-ink-muted); }
+  .search-results .list [data-hit].is-active { background: var(--color-accent-soft); }
   .header-btn .badge, .btn .badge { position: absolute; top: -.25rem; inset-inline-end: -.25rem; }
 
   /* Подвал на телефоне — над таб-баром. */

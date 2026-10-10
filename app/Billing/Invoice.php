@@ -10,6 +10,7 @@ use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Park\City;
 use App\Park\Vehicle;
+use App\Search\Term;
 use App\Support\Demo\HidesDemo;
 use App\Support\Sort;
 use App\Users\User;
@@ -90,6 +91,38 @@ class Invoice extends Model implements HasMedia
      * Ждёт письма в бухгалтерию: выставлен страховой стороне (реестр, вендор или страхователь) и ещё не уходил. Счёт
      * покупателю письмом не шлют — его берут на выдаче, в «Отправить» его нет.
      */
+    /**
+     * Поиск счёта — одна дверь для «Оплат» CRM и парковки и шапок: номер («счёт 12», «№ 12», голое число) и чужой номер,
+     * плательщик, текст услуги, менеджер, ТС предложения (`Offer::search`) и ТС парковки, в том числе любая машина
+     * реестра (`Vehicle::search`).
+     */
+    public function scopeSearch(Builder $q, string|Term $term): Builder
+    {
+        $t = Term::of($term);
+        if ($t->blank()) {
+            return $q;
+        }
+        $like = Term::like($t->raw);
+        $name = fn ($u) => $u->where('name', 'ilike', $like);
+        $car = fn ($v) => $v->search($t);
+
+        return $q->where(fn ($s) => $s
+            ->when($t->invoice, fn ($x, $n) => $x->orWhere('billing_invoices.number', $n))
+            ->orWhere('billing_invoices.external_no', 'ilike', $like)
+            ->orWhere('billing_invoices.car_title', 'ilike', $like)
+            ->orWhereHas('party', $name)
+            ->orWhereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Service->value)->where('title', 'ilike', $like))
+            ->orWhereHas('deal.buyer', $name)
+            ->orWhereHas('garageCar.manager', $name)
+            ->orWhereHas('garagePayoutCar.manager', $name)
+            ->orWhereHas('offer', $offer = fn ($o) => $o->searchCrm($t))
+            ->orWhereHas('deal.offer', $offer)
+            ->orWhereHas('garageCar.offer', $offer)
+            ->orWhereHas('vehicle', $car)
+            // Реестр находится по любой своей машине.
+            ->orWhereHas('charges.vehicle', $car));
+    }
+
     public function scopeToSend(Builder $q): Builder
     {
         return $q->where('direction', 'issued')->where('state', InvoiceState::Issued)->whereNull('sent_at')

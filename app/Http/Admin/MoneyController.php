@@ -4,9 +4,9 @@ namespace App\Http\Admin;
 
 use App\Billing\Acquiring\AcquiringPayment;
 use App\Billing\Acquiring\ExistingLink;
+use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\LinkExists;
 use App\Billing\Acquiring\PayLink;
-use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Actions\ConfirmPayment;
 use App\Billing\Actions\IssueServiceInvoice;
@@ -22,7 +22,10 @@ use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
+use App\Offers\DealCredit;
+use App\Offers\DealState;
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
@@ -32,9 +35,9 @@ use App\Support\Nav;
 use App\Support\Sort;
 use App\Users\User;
 use Closure;
-use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 /**
@@ -197,23 +200,10 @@ class MoneyController
         return '/work/money?tab=links&peek='.$link->id;
     }
 
-    /** Лупа по счёту: номер счёта или предложения, плательщик, менеджер, марка, модель, текст услуги. */
-    private static function find(string $qs): ?Closure
+    /** Лупа по счёту — `Invoice::search`. */
+    public static function find(string $qs): ?Closure
     {
-        if ($qs === '') {
-            return null;
-        }
-        $like = "%{$qs}%";
-
-        return fn ($q) => $q->where(fn ($s) => $s
-            ->when(ctype_digit($qs), fn ($x) => $x->orWhere('billing_invoices.number', (int) $qs)->orWhereHas('offer', fn ($o) => $o->where('number', (int) $qs)))
-            ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', $like))
-            ->orWhereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Service->value)->where('title', 'ilike', $like))
-            ->orWhereHas('deal.buyer', fn ($u) => $u->where('name', 'ilike', $like))
-            ->orWhereHas('garageCar.manager', fn ($u) => $u->where('name', 'ilike', $like))
-            ->orWhereHas('garagePayoutCar.manager', fn ($u) => $u->where('name', 'ilike', $like))
-            ->orWhereHas('offer.brand', fn ($b) => $b->where('name', 'ilike', $like))
-            ->orWhereHas('offer.model', fn ($m) => $m->where('name', 'ilike', $like)));
+        return $qs === '' ? null : fn ($q) => $q->search($qs);
     }
 
     /** Откуда деньги в ручной оплате: зачёт вознаграждения ставит только система, руками его не выбрать. */
@@ -290,13 +280,13 @@ class MoneyController
             return response()->json([]);
         }
         $offers = Offer::query()->with(['brand', 'model', 'deal.buyer'])->searchCrm($q)
-            ->orderByRaw('exists (select 1 from deals d where d.offer_id = offers.id and d.state = ?) desc', [\App\Offers\DealState::Active->value])
+            ->orderByRaw('exists (select 1 from deals d where d.offer_id = offers.id and d.state = ?) desc', [DealState::Active->value])
             ->latest('updated_at')->limit(max(1, min(20, (int) $request->query('limit', 20))))->get();
 
         return response()->json($offers->map(fn (Offer $o) => [
             'id' => $o->id,
             'label' => trim($o->title().' '.$o->year),
-            'hint' => implode(', ', array_filter([\App\Offers\OfferNumber::isPublic($o) ? '№ '.$o->number : null, $o->deal?->buyer?->shortName(), $o->deal ? \App\Offers\DealCredit::status($o->deal) : null])),
+            'hint' => implode(', ', array_filter([OfferNumber::isPublic($o) ? '№ '.$o->number : null, $o->deal?->buyer?->shortName(), $o->deal ? DealCredit::status($o->deal) : null])),
             'payer' => $o->deal?->buyer?->name, 'party_id' => $o->deal?->buyer?->party_id,
         ])->values());
     }

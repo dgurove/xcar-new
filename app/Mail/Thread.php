@@ -2,9 +2,11 @@
 
 namespace App\Mail;
 
+use App\Mail\Extraction\Keys;
 use App\Offers\Offer;
 use App\Park\City;
 use App\Park\Vehicle;
+use App\Search\Term;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -111,6 +113,44 @@ class Thread extends Model
     }
 
     /** Ветки с любым из номеров (`keys` пересекаются с `$keys`). */
+    /**
+     * Поиск по письмам — одна дверь для почты CRM и парковки и шапок: полнотекст с префиксом последнего слова, участники,
+     * имена файлов, номера ветки целиком (`Keys::fromQuery`) и куском («05481» из «0890/046/05481/26»: полнотекст держит
+     * номер с косыми одним словом).
+     */
+    public function scopeSearch(Builder $query, string|Term $term): Builder
+    {
+        $t = Term::of($term);
+        if ($t->blank()) {
+            return $query;
+        }
+        $q = $t->raw;
+        $tsquery = self::tsquery($q);
+
+        return $query->where(fn ($w) => $w
+            ->when($tsquery, fn ($w, $ts) => $w->whereHas('messages', fn ($m) => $m->whereRaw("search @@ to_tsquery('russian', ?)", [$ts])))
+            ->orWhereRaw('participants::text ilike ?', [Term::like($q)])
+            ->orWhereHas('attachments', fn ($a) => $a->where('filename', 'ilike', Term::like($q)))
+            ->when(Keys::fromQuery($q), fn ($w, $keys) => $w->orWhere(fn ($k) => $k->withAnyKey($keys)))
+            ->when($t->key && mb_strlen($t->key) >= 4, fn ($w) => $w->orWhereRaw('mail_threads.keys::text ilike ?', [Term::like($t->key)])));
+    }
+
+    /**
+     * Запрос для полнотекста. `websearch_to_tsquery` ищет только целые слова, а при наборе последнее
+     * слово почти всегда неполное — оно уходит с префиксом, и «колбас» находит «Колбасина». Строка
+     * разбирается здесь, а не в SQL: `to_tsquery` падает на любом постороннем знаке.
+     */
+    private static function tsquery(string $q): ?string
+    {
+        $words = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if (! $words) {
+            return null;
+        }
+        $last = array_key_last($words);
+
+        return implode(' & ', array_map(fn ($w, $i) => $w.($i === $last ? ':*' : ''), $words, array_keys($words)));
+    }
+
     public function scopeWithAnyKey($query, array $keys)
     {
         // `?|` спорит с плейсхолдерами PDO — та же проверка функцией.

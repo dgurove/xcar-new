@@ -11,6 +11,7 @@ use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\Sort;
 use App\Users\User;
+use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -87,26 +88,10 @@ final class MoneyLinks
             ->where(fn ($w) => $w->whereNotNull('billing_pay_links.error_at')->orWhereHas('attempts', fn ($a) => $a->where('status', 'canceled')))->exists();
     }
 
-    /** Лупа: плательщик (двойные пробелы не мешают), ТС словами, марка, модель, номер предложения, код ссылки. */
+    /** Лупа «По ссылкам» — `PayLink::search`. */
     public static function find(string $qs): ?Closure
     {
-        if ($qs === '') {
-            return null;
-        }
-        $like = '%'.str_replace(' ', '%', PayLink::squash($qs)).'%';
-        $offer = fn ($o) => $o->where(fn ($w) => $w->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs))
-            ->orWhereHas('brand', fn ($b) => $b->where('name', 'ilike', $like))->orWhereHas('model', fn ($m) => $m->where('name', 'ilike', $like)));
-
-        return fn ($q) => $q->where(fn ($s) => $s
-            ->where('billing_pay_links.payer_name', 'ilike', $like)
-            ->orWhere('billing_pay_links.code', mb_strtolower($qs))
-            ->orWhere('billing_invoices.car_title', 'ilike', $like)
-            ->orWhereHas('invoice', fn ($i) => $i->where(fn ($w) => $w
-                ->whereHas('party', fn ($p) => $p->where('name', 'ilike', $like))
-                ->orWhereHas('offer', $offer)
-                ->orWhereHas('deal.offer', $offer)
-                ->orWhereHas('deal.buyer', fn ($u) => $u->where('name', 'ilike', $like))
-                ->orWhereHas('garageCar.offer', $offer))));
+        return $qs === '' ? null : fn ($q) => $q->search($qs);
     }
 
     /** «Сделка», «Гараж», «Вручную», у ручной, засчитанной в сделку, — «Вручную, в сделку». */
@@ -150,6 +135,7 @@ final class MoneyLinks
     /**
      * Что со ссылкой одним-двумя словами — для строки списка (09.10.2026, владелец: «схалтурил»): длинная фраза
      * «ждём оплату, ещё не открывали» в каждой строке была стеной текста. Полная — `state()`, в карточке.
+     *
      * @return array{string, string}
      */
     public static function short(PayLink $l): array
@@ -167,7 +153,7 @@ final class MoneyLinks
     }
 
     /** День группы в списке: «Сегодня», «Вчера», «5 октября», прошлый год — с годом. */
-    public static function day(\Carbon\CarbonInterface $t): string
+    public static function day(CarbonInterface $t): string
     {
         return match (true) {
             $t->isToday() => 'Сегодня',

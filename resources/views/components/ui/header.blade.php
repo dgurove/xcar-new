@@ -1,5 +1,5 @@
 {{-- Шапка xcar.ru. Телефон: квадраты (поиск, закладка, логотип, колокольчик, тема);
-     в CRM и на стоянке поиска нет — слева знак приложения (x-ui.brand).
+     в CRM и на стоянке слева знак приложения (x-ui.brand), лупа — справа у колокольчика (`x-search.box phone`).
      Десктоп: знак и два ряда капсул — справочное и разделы; «назад» здесь
      только на телефоне, на десктопе он у заголовка (x-ui.back). --}}
 @props(['overHero' => false, 'back' => null, 'heading' => null])
@@ -12,10 +12,8 @@
     $capsules = \App\Support\Nav::capsules($user);
     $top = \App\Support\Nav::top($user);
     $badges = \App\Support\Nav::badges($user);
-    $searchAction = $park ? '/cars' : ($site ? '/offers' : '/');
     // Логотип ведёт вошедшего в его список, гостя — на первый экран.
     $home = $user ? $surface->home() : '/';
-    $searchHint = $park ? 'VIN, госномер, марка' : 'Марка, модель, номер';
     $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
 @endphp
@@ -31,18 +29,7 @@
         @elseif ($site)
             <div class="flex gap-1">
                 @if ($user)
-                <div class="contents" data-controller="sheet">
-                    <button type="button" class="header-btn header-sq" data-action="sheet#open" aria-label="Поиск">
-                        <x-ui.icon name="search" class="size-[18px]"/>
-                    </button>
-                    <x-ui.sheet id="search-sheet" title="Поиск" data-controller="search" data-search-url-value="/search">
-                        <form method="get" action="{{ $searchAction }}" data-turbo-action="replace" data-action="submit->search#submit">
-                            <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" class="field-input" placeholder="Марка, модель, VIN" enterkeyhint="search" autocomplete="off" autofocus data-search-target="input" data-action="input->search#input">
-                        </form>
-                        <div class="pills mt-3" data-search-target="recent" hidden></div>
-                        <turbo-frame id="search-results" target="_top" class="mt-3 block" data-search-target="frame"></turbo-frame>
-                    </x-ui.sheet>
-                </div>
+                <x-search.box phone/>
                 <a href="/account/favorites" class="header-btn header-sq relative" aria-label="Избранное">
                     <x-ui.icon name="bookmark" class="size-[18px]"/><x-ui.badge href="/account/favorites" :badges="$badges"/>
                 </a>
@@ -54,6 +41,8 @@
         @endif
         <div class="flex items-center gap-1">
             <span class="net" aria-live="polite"></span>
+            {{-- CRM и парковка: лупа справа, у колокольчика (на сайте она слева, у закладки). --}}
+            @if ($user && ! $site)<x-search.box phone/>@endif
             @if ($user)
                 <div class="contents header-sq-wrap" data-controller="sheet notifications">
                     <button type="button" class="header-btn header-sq relative" data-action="sheet#open notifications#refresh" aria-label="Уведомления">
@@ -87,10 +76,7 @@
         <div class="header-row">
             {{-- Поиск — по закрытому: гостю не нужен. --}}
             @if ($user)
-            <form method="get" action="{{ $searchAction }}" class="header-btn header-h header-search relative justify-start px-3" role="search" data-turbo-action="replace">
-                <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
-                <input type="search" name="q" value="{{ is_string(request('q')) ? request('q') : '' }}" placeholder="{{ $searchHint }}" class="w-28 sm:w-36 lg:w-52" aria-label="Поиск">
-            </form>
+            <x-search.box/>
             @endif
             @foreach ($top as $item)
                 <a href="{{ $item['href'] }}" class="header-btn header-h flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @endif>{{ $item['label'] }}</a>

@@ -14,6 +14,7 @@ use App\Cars\Papers;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Cars\Vin\Vin;
+use App\Garage\GaragePayer;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Thread;
@@ -22,9 +23,12 @@ use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Purchases\Car;
+use App\Search\CarWords;
+use App\Search\Term;
 use App\Support\Demo\HidesDemo;
 use App\Users\Role;
 use App\Users\User;
+use App\Vendors\DealFormat;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
 use App\Workflow\Outcome;
@@ -277,9 +281,9 @@ class Offer extends Model implements HasMedia
      * или покупатель — ПРАЙМ по счёту (10.10.2026, владелец), то есть «платит менеджер»; без гаражной ветки маршрута
      * (Т-Страхование) — тоже менеджер. null — выбор есть.
      */
-    public function garagePayerFixed(): ?\App\Garage\GaragePayer
+    public function garagePayerFixed(): ?GaragePayer
     {
-        return $this->vendor?->deal_format === \App\Vendors\DealFormat::Commission || ! $this->garageBranch() ? \App\Garage\GaragePayer::Manager : null;
+        return $this->vendor?->deal_format === DealFormat::Commission || ! $this->garageBranch() ? GaragePayer::Manager : null;
     }
 
     public function garageBranch(): bool
@@ -793,24 +797,37 @@ class Offer extends Model implements HasMedia
         return $this->state->acceptsBids() && $this->bids_close_at?->isPast() === true;
     }
 
-    /** Поиск в списках CRM: номер (и прежний), VIN, марка, модель. */
-    public function scopeSearch(Builder $q, string $term): Builder
+    /**
+     * Поиск: номер (и прежний), VIN куском, марка, модель, год, город — по словам (10.10.2026: «Kia Rio» не находилось —
+     * фраза сравнивалась целиком). Строка целиком — как номер; иначе каждое слово должно найтись хоть в чём-то
+     * (`Search\CarWords`). Запрос разбирает `Search\Term` — тем же разбором ищут шапки трёх хостов.
+     */
+    public function scopeSearch(Builder $q, string|Term $term, bool $crm = false): Builder
     {
-        $like = '%'.mb_strtolower(trim($term)).'%';
+        $t = Term::of($term);
+        if ($t->blank()) {
+            return $q;
+        }
 
-        $digits = trim($term);
-
-        return $q->where(fn ($w) => $w->whereRaw('cast(number as text) like ?', [$like])->orWhereRaw('lower(vin) like ?', [$like])
-            // Прежний номер (до первой публикации или до перенумерации) — точным совпадением.
-            ->when(ctype_digit($digits), fn ($w) => $w->orWhereIn('id', DB::table('offer_number_aliases')->where('number', $digits)->select('offer_id')))
-            ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$like])->orWhereRaw('lower(name_ru) like ?', [$like]))
-            ->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$like])));
+        return $q->where(fn ($w) => $w
+            // Строка целиком — номер: предложения, прежний, VIN; в CRM ещё номер убытка и телефон владельца.
+            ->when($t->digits, fn ($w, $d) => $w->orWhereRaw('cast(offers.number as text) like ?', [Term::like($d)])
+                ->orWhereIn('offers.id', DB::table('offer_number_aliases')->where('number', $d)->select('offer_id')))
+            ->when($t->vin, fn ($w, $vin) => $w->orWhere('offers.vin', 'like', Term::like($vin)))
+            ->when($crm && $t->key, fn ($w) => $w->orWhere('offers.claim_ref_key', 'like', Term::like($t->key)))
+            ->when($crm && $t->phone, fn ($w) => $w->orWhereRaw(Term::digitsSql('offers.insured_phone').' like ?', [Term::like($t->phone)]))
+            // Слова — через И: «kia rio», «рио 2021», «крета москва».
+            ->orWhere(fn ($all) => CarWords::apply($all, $t, 'offers', fn ($one, $word, $like) => $one
+                ->orWhereHas('settlement', fn ($c) => $c->whereRaw('lower(name) like ?', [Term::like($word, prefix: true)]))
+                ->orWhereRaw('cast(offers.number as text) like ?', [$like])
+                ->orWhereRaw('lower(offers.vin) like ?', [$like])
+                ->when($crm, fn ($o) => $o->orWhereRaw('lower(offers.claim_ref) like ?', [$like])))));
     }
 
-    /** Поиск в CRM: то же, что `search`, плюс номер убытка (`claim_ref`) — на витрине его нет. */
-    public function scopeSearchCrm(Builder $q, string $term): Builder
+    /** Поиск в CRM: то же, что `search`, плюс номер убытка (ключом и куском) и телефон владельца — на витрине их нет. */
+    public function scopeSearchCrm(Builder $q, string|Term $term): Builder
     {
-        return $q->where(fn ($w) => $w->search($term)->orWhereRaw('lower(claim_ref) like ?', ['%'.mb_strtolower(trim($term)).'%']));
+        return $this->scopeSearch($q, $term, crm: true);
     }
 
     // -------------------------------------------------------------- метки

@@ -26,8 +26,8 @@ use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
-use App\Support\OfficePreview;
 use App\Support\Liters;
+use App\Support\OfficePreview;
 use App\Support\Sort;
 use App\Users\Role;
 use App\Users\User;
@@ -176,7 +176,7 @@ class PurchaseController
 
     private function search(string $q): \Closure
     {
-        return fn ($c) => $c->where(fn ($w) => $w->whereRaw('lower(dl) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('lower(brand_raw) like ?', ['%'.mb_strtolower($q).'%'])->orWhereRaw('lower(model_raw) like ?', ['%'.mb_strtolower($q).'%'])->orWhere('vin', 'like', '%'.strtoupper($q).'%'));
+        return fn ($c) => $c->search($q, crm: true);
     }
 
     public function update(Request $request, Purchase $purchase)

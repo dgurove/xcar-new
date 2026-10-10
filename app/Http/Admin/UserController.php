@@ -104,9 +104,7 @@ class UserController
             'managers' => UserGroup::MANAGERS, 'staff' => UserGroup::MODERATORS, default => null
         } : null;
         if ($term = trim((string) $request->query('q'))) {
-            $digits = preg_replace('/\D+/', '', $term);
-            $q->where(fn ($w) => $w->where('name', 'ilike', "%{$term}%")->orWhere('login', 'ilike', "%{$term}%")->orWhere('email', 'ilike', "%{$term}%")
-                ->when($digits !== '', fn ($w) => $w->orWhere('phone', 'like', "%{$digits}%")));
+            $q->search($term);
         }
         $facets->apply($q);
         $sort = Sort::from($request->query('sort'), self::SORTS, in_array($preset, ['waiting', 'buyers', 'rejected'], true) && ! $searching ? '-created' : 'name');

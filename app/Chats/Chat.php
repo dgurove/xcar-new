@@ -3,6 +3,7 @@
 namespace App\Chats;
 
 use App\Offers\Offer;
+use App\Search\Term;
 use App\Support\Linkify;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -52,6 +53,23 @@ class Chat extends Model
     }
 
     /** Для строки списка: последнее сообщение (текст, автор, удалено) подзапросами, без второй выборки. */
+    /**
+     * Лупа чатов — одна на CRM и кабинет: собеседник и менеджер (`User::search`: имя, логин, почта, телефон), гость по
+     * имени, ТС (`Offer::search`, в CRM ещё номер убытка).
+     */
+    public function scopeSearch(Builder $q, string|Term $term, bool $crm = false): Builder
+    {
+        $t = Term::of($term);
+        if ($t->blank()) {
+            return $q;
+        }
+        $person = fn ($u) => $u->search($t->raw);
+
+        return $q->where(fn ($w) => $w->whereHas('user', $person)->orWhereHas('manager', $person)
+            ->orWhere('chats.guest_name', 'ilike', Term::like($t->raw))
+            ->orWhereHas('offer', fn ($o) => $o->search($t, crm: $crm)));
+    }
+
     public function scopeWithLast(Builder $query): Builder
     {
         $last = fn (string $column) => Message::select($column)->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1);

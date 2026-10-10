@@ -2,6 +2,7 @@
 
 namespace App\Telegram;
 
+use App\Search\Term;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,20 @@ class Chat extends Model
     protected function casts(): array
     {
         return ['last_message_at' => 'datetime', 'left_at' => 'datetime'];
+    }
+
+    /** Лупа «Бота Telegram»: имя, @username, человек, текст переписки. */
+    public function scopeSearch(Builder $q, string|Term $term): Builder
+    {
+        $t = Term::of(ltrim(is_string($term) ? $term : $term->raw, '@'));
+        if ($t->blank()) {
+            return $q;
+        }
+        $like = $t->contains();
+
+        return $q->where(fn ($w) => $w->whereRaw('lower(name) like ?', [$like])->orWhereRaw('lower(username) like ?', [$like])
+            ->orWhereHas('user', fn ($u) => $u->search($t))
+            ->orWhereHas('messages', fn ($m) => $m->whereRaw('lower(text) like ?', [$like])));
     }
 
     public function user(): BelongsTo

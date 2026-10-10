@@ -66,8 +66,7 @@ class RequestController
         $qs = trim((string) $request->query('q'));
         // Счётчики пилюль — с выбранными чипами; лупа — по всем открытым заявкам, мимо пилюли и чипов.
         $filters = fn ($q) => $facets->applyTo($q)
-            ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%')
-                ->orWhereHas('brand', fn ($b) => $b->where('name', 'ilike', "%{$qs}%")->orWhere('name_ru', 'ilike', "%{$qs}%"))));
+            ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->search($qs)));
         $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'letter', 'creator']));
         $q->whereIn('state', RequestState::open());
         if ($qs !== '') {

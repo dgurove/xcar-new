@@ -9,6 +9,7 @@ use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
 use App\Http\Admin\InterestController;
 use App\Http\Admin\InvoiceController;
+use App\Http\Admin\LegacyClaimController;
 use App\Http\Admin\MailAccountController;
 use App\Http\Admin\MailController;
 use App\Http\Admin\MailTemplateController;
@@ -17,7 +18,6 @@ use App\Http\Admin\OfferController;
 use App\Http\Admin\OfferDraftController;
 use App\Http\Admin\OfferPhotoController;
 use App\Http\Admin\OfferValuationController;
-use App\Http\Admin\LegacyClaimController;
 use App\Http\Admin\PayLinkController;
 use App\Http\Admin\PickupController;
 use App\Http\Admin\PurchaseCarPhotoController;
@@ -38,6 +38,7 @@ use App\Http\Garage\CarController as GarageCarController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
+use App\Http\SearchController;
 use App\Http\Site\ShareController;
 use App\Purchases\Car;
 use App\Purchases\Purchase;
@@ -50,6 +51,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // (опубликованное, из закупки) — 404 через `offer.edit`. Всё остальное ниже — `ability:canManageCrm`: новый раздел, не
     // внесённый сюда, модератору закрыт сам.
     Route::get('/', [OfferController::class, 'index'])->name('crm.offers');
+    // Поиск в шапке — модератору тоже: свои черновики (`Search\Search::for` сам решает, кому какие группы).
+    Route::get('/search', SearchController::class);
     Route::get('/offers', fn () => redirect('/'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
     Route::post('/offers', [OfferController::class, 'store']);
     // Из писем: та же почта с вшитой выборкой «надо завести» — раньше `/offers/{offer}`, иначе from-mail примут за номер.

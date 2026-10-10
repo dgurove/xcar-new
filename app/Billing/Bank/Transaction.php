@@ -4,8 +4,10 @@ namespace App\Billing\Bank;
 
 use App\Billing\Invoice;
 use App\Billing\Payment;
+use App\Search\Term;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -31,6 +33,15 @@ class Transaction extends Model
     protected function casts(): array
     {
         return ['booked_at' => 'date', 'amount' => 'float', 'decided_at' => 'datetime', 'payload' => 'array'];
+    }
+
+    /** Лупа выписки: плательщик, назначение, ИНН целиком. */
+    public function scopeSearch(Builder $q, string|Term $term): Builder
+    {
+        $t = Term::of($term);
+
+        return $t->blank() ? $q : $q->where(fn ($s) => $s->where('counterparty', 'ilike', Term::like($t->raw))
+            ->orWhere('purpose', 'ilike', Term::like($t->raw))->orWhere('counterparty_inn', $t->raw));
     }
 
     public function invoice(): BelongsTo

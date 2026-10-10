@@ -20,6 +20,8 @@ use App\Mail\Thread;
 use App\Media\HasPhotos;
 use App\Offers\Flag;
 use App\Offers\Offer;
+use App\Search\CarWords;
+use App\Search\Term;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Users\User;
@@ -113,6 +115,30 @@ class Vehicle extends Model implements HasMedia
     public static function keyFor(string $ref): string
     {
         return (string) Code::key($ref);
+    }
+
+    /**
+     * Поиск ТС — одна дверь для «Наличия», «Заявок», «Оплат» парковки, подсказки ТС и шапок: номер убытка куском в любой
+     * записи, VIN, госномер (латиницей или кириллицей, без региона, с пробелами), СТС, ПТС, полис, телефон, марка, модель и
+     * год по словам (`Search\CarWords`).
+     */
+    public function scopeSearch(Builder $q, string|Term $term): Builder
+    {
+        $t = Term::of($term);
+        if ($t->blank()) {
+            return $q;
+        }
+        $compact = Term::like(mb_strtoupper((string) preg_replace('/\s+/u', '', $t->raw)));
+
+        return $q->where(fn ($w) => $w
+            ->when($t->key, fn ($w, $key) => $w->orWhere('park_vehicles.ref_key', 'like', Term::like($key)))
+            ->when($t->vin, fn ($w, $vin) => $w->orWhere('park_vehicles.vin', 'like', Term::like($vin)))
+            ->when($t->plate, fn ($w, $p) => $w->orWhereRaw(Term::latinSql('park_vehicles.plate').' like ?', [Term::like($p)]))
+            ->orWhereRaw("upper(replace(coalesce(park_vehicles.sts, ''), ' ', '')) like ?", [$compact])
+            ->orWhereRaw("upper(replace(coalesce(park_vehicles.pts, ''), ' ', '')) like ?", [$compact])
+            ->orWhere('park_vehicles.policy_no', 'ilike', Term::like($t->raw))
+            ->when($t->phone, fn ($w, $p) => $w->orWhereRaw(Term::digitsSql("concat_ws(' ', park_vehicles.contact_phone, park_vehicles.pickup_phone)").' like ?', [Term::like($p)]))
+            ->orWhere(fn ($all) => CarWords::apply($all, $t, 'park_vehicles')));
     }
 
     public function brand(): BelongsTo

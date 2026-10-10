@@ -20,6 +20,7 @@ use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Live\FragmentController;
 use App\Http\Pwa\PushController;
 use App\Http\Pwa\PwaController;
+use App\Http\SearchController;
 use App\Http\Site\BidController;
 use App\Http\Site\CatalogController;
 use App\Http\Site\ChatController;
@@ -80,7 +81,7 @@ Route::get('/', [LandingController::class, 'site']);
 // Сайт закрыт: дальше только с открытым доступом (SiteWall).
 Route::middleware('wall')->group(function () {
     Route::get('/offers', [CatalogController::class, 'index'])->name('home');
-    Route::get('/search', [CatalogController::class, 'search']);
+    Route::get('/search', SearchController::class);
     Route::view('/faq', 'site.pages.voprosy');
     Route::get('/gallery', [CatalogController::class, 'gallery']);
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');

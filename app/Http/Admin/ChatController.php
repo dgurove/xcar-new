@@ -68,13 +68,9 @@ class ChatController
     private function list(Request $request): array
     {
         $q = trim((string) $request->query('q'));
-        $like = '%'.mb_strtolower($q).'%';
-        $digits = preg_replace('/\D/', '', $q);
         // Заведённый кнопкой «Написать» и брошенный без сообщения — не строка списка.
         $chats = Chat::withLast()->whereNull('manager_id')->where('messages_count', '>', 0)
-            ->when($q !== '', fn ($c) => $c->where(fn ($w) => $w->whereHas('user', fn ($u) => $u->whereRaw('lower(name) like ?', [$like])->when($digits !== '', fn ($u) => $u->orWhere('phone', 'like', '%'.$digits.'%')))
-                ->orWhereRaw('lower(guest_name) like ?', [$like])
-                ->orWhereHas('offer', fn ($o) => $o->where('number', (int) $q)->orWhereHas('model', fn ($m) => $m->whereRaw('lower(name) like ?', [$like]))->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$like])))));
+            ->when($q !== '', fn ($c) => $c->search($q, crm: true));
         // Непрочитанные сверху, дальше свежие. Страницы списка ведут на список, даже когда справа открыт чат.
         $chats = $chats->orderByRaw('unread_for_staff > 0 desc')->orderByDesc('last_message_at')
             ->paginate(ListView::perPage($request, ListView::PER_ROWS))->withPath('/work/chats')->withQueryString();

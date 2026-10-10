@@ -49,12 +49,7 @@ class MoneyController
         $qs = trim((string) $request->query('q'));
         $q = self::scoped(Invoice::with(['party', 'vehicle.brand', 'vehicle.model']))
             ->when($request->query('car'), fn ($w, $id) => $w->forVehicle((int) $id))
-            ->when($qs !== '', fn ($w) => $w->where(fn ($s) => $s->where('external_no', 'ilike', "%{$qs}%")
-                ->when(ctype_digit($qs), fn ($x) => $x->orWhere('number', (int) $qs))
-                ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', "%{$qs}%"))
-                ->orWhereHas('vehicle', $car = fn ($v) => $v->where('ref', 'ilike', "%{$qs}%")->orWhere('vin', 'ilike', "%{$qs}%")->orWhere('plate', 'ilike', '%'.mb_strtoupper(str_replace(' ', '', $qs)).'%'))
-                // Реестр находится по любой своей машине.
-                ->orWhereHas('charges.vehicle', $car)));
+            ->when($qs !== '', fn ($w) => $w->search($qs));
         // Лупа — по всем счетам, мимо пилюли и чипа.
         if ($qs === '') {
             match ($preset) {

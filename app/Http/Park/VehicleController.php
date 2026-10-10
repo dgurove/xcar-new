@@ -592,7 +592,6 @@ class VehicleController
         $q = trim((string) $request->query('q'));
         $preset = self::preset($request);
         $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q !== '' ? null : ($preset === 'out' ? VehicleState::Released : VehicleState::Stored));
-        $like = '%'.mb_strtoupper(preg_replace('/\s+/', '', $q)).'%';
         // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
         $vehicles = Vehicle::withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
             ->with(['brand', 'model', 'vendor', 'yard', 'offer.deal', 'requests',
@@ -600,10 +599,7 @@ class VehicleController
             ->when($state, fn ($v, $s) => $v->where('state', $s))
             // Деньги выданной словом — в строке, карточке и выгрузке, тем же выражением, что чип «Деньги».
             ->when($state === VehicleState::Released, fn ($v) => $v->addSelect(DB::raw(OutMoney::sql().' as money_state')))
-            ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')
-                ->orWhere('plate', 'like', $like)->orWhereRaw("upper(replace(coalesce(sts, ''), ' ', '')) like ?", [$like])->orWhereRaw("upper(replace(coalesce(pts, ''), ' ', '')) like ?", [$like])
-                ->orWhere('policy_no', 'ilike', '%'.$q.'%')
-                ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', ['%'.mb_strtolower($q).'%']))));
+            ->when($q !== '', fn ($v) => $v->search($q));
         $facets->apply($vehicles);
         $sort = Sort::from($request->query('sort'), self::SORTS, $state === VehicleState::Released ? '-out' : '-days');
         match ($sort->key) {
@@ -634,7 +630,7 @@ class VehicleController
     {
         $q = trim((string) $request->query('q'));
         $vehicles = Vehicle::with(['brand', 'model'])->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])
-            ->when($q !== '', fn ($v) => $v->where(fn ($w) => $w->where('ref_key', 'like', '%'.Vehicle::keyFor($q).'%')->orWhere('vin', 'like', '%'.strtoupper($q).'%')->orWhere('plate', 'like', '%'.mb_strtoupper($q).'%')))
+            ->when($q !== '', fn ($v) => $v->search($q))
             ->latest()->limit(20)->get();
 
         return response()->json($vehicles->map(fn ($v) => ['id' => $v->id, 'label' => $v->titleWithYear(), 'hint' => implode(', ', array_filter([$v->ref, $v->plate, $v->vin]))]));

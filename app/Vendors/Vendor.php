@@ -14,9 +14,11 @@ use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Search\Term;
 use App\Workflow\Track;
 use App\Workflow\Workflow;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -86,6 +88,15 @@ class Vendor extends Model implements HasMedia
             'park_senders' => 'array',
             'intake_docs' => 'array',
         ];
+    }
+
+    /** Лупа вендоров: имя, юридическое имя, ИНН. */
+    public function scopeSearch(Builder $q, string|Term $term): Builder
+    {
+        $t = Term::of($term);
+
+        return $t->blank() ? $q : $q->where(fn ($s) => $s->where('vendors.name', 'ilike', Term::like($t->raw))
+            ->orWhere('vendors.legal_name', 'ilike', Term::like($t->raw))->orWhere('vendors.inn', 'like', Term::like($t->raw)));
     }
 
     public function registerMediaCollections(): void
