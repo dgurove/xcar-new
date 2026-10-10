@@ -26,11 +26,10 @@
         @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
             <x-slot:media>@include('park.vehicles.detail-photos')</x-slot:media>
         @endif
-        {{-- Под названием — машина (коды чипами: госномер, убыток с логотипом вендора, VIN) и что не так; где и с какого
-             времени стоит — фразой ниже (`$where`). Владелец 10.10.2026: «одно к машине относится, другое к фактам — что-то
-             чипами, что-то текстом». Ставки нет — дни и сумма справа. --}}
+        {{-- Под названием — машина (коды чипами: госномер, убыток с логотипом вендора, VIN) и что не так; состояние, где и с
+             какого времени — фразой ниже. Владелец 10.10.2026: «одно к машине относится, другое к фактам», «статус „на
+             парковке“ тут не к месту» — среди кодов. Ставки нет — дни и сумма справа. --}}
         <x-slot:marks>
-            <x-ui.state :tone="$state->tone()">{{ $state->label() }}</x-ui.state>
             @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
             @if ($vehicle->ref)<x-vendor.ref :vendor="$vehicle->vendor" :ref="$vehicle->ref" copy class="tag nums"/>
             @elseif ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
@@ -59,24 +58,40 @@
         @if ($foot)
             <x-slot:foot><div class="detail-action"><button type="submit" form="{{ $foot[0] }}" class="btn btn-accent w-full">{{ $foot[1] }}</button></div></x-slot:foot>
         @endif
-        {{-- Где и с какого времени — фразой: «Краснопутиловская, с 6 окт, 12:00». Парковка у стоящей — кнопка шторки
-             «Переставить», даты — календарь администратору парковки (`x-park.date-edit`); нажимаемое — пунктиром. --}}
+        {{-- Положение фразой, состояние — её первым словом цветом: «На парковке Краснопутиловская, с 6 окт, 12:00»,
+             «Выдана 10 окт, 00:49, стояла с 11 авг, 61 день», «Ожидается, Краснопутиловская». Парковка у стоящей — кнопка
+             шторки «Переставить», даты — календарь администратору парковки (`x-park.date-edit`); нажимаемое — пунктиром.
+             Не <p>: всплывашка календаря — <div>, и разбор HTML закрывал абзац на ней. Строка — flex: пробелы между кусками
+             (компоненты кончаются переводом строки) не рисуются; свои пробелы — внутри кусков (whitespace-pre). --}}
         @php
             $at = fn ($d) => $d->translatedFormat($d->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i');
             $dotted = 'underline decoration-dotted decoration-ink-dim underline-offset-4';
             $admin = auth()->user()->isParkAdmin();
+            $stored = $state === VehicleState::Stored;
+            $out = $state === VehicleState::Released && $vehicle->released_at;
         @endphp
-        @if ($vehicle->yard || $vehicle->accepted_at)
-            {{-- Не <p>: всплывашка календаря — <div>, и разбор HTML закрывал абзац на ней. Строка — flex: пробелы между кусками (компоненты кончаются переводом строки) не рисуются, перед запятой
-                 пробела нет; свои пробелы — в кусках с whitespace-pre. Куски в <span>: директиву вплотную за словом Blade
-                 не разбирает. --}}
-            @php
-                $since = $vehicle->accepted_at && $state !== VehicleState::Expected;
-                $out = $state === VehicleState::Released && $vehicle->released_at;
-            @endphp
-            <div class="mt-2 flex flex-wrap items-baseline"><span>@if ($vehicle->yard && $state === VehicleState::Stored && ! ($fromRequests ?? false))<x-park.place-move :vehicle="$vehicle" :chevron="false" :class="$dotted"/>@elseif ($vehicle->yard)<x-ui.place>{{ $vehicle->yard->name }}</x-ui.place>@endif</span>@if ($since)<span class="whitespace-pre text-ink-muted">{{ $vehicle->yard ? ', с ' : 'Принята ' }}</span><span>@if ($admin)<x-park.date-edit :vehicle="$vehicle" field="accepted_at" :class="'nums '.$dotted"/>@else<span class="nums">{{ $at($vehicle->accepted_at) }}</span>@endif</span>@endif<span>@if ($since && $out)<span class="whitespace-pre text-ink-muted"> по </span>@endif</span><span>@if ($since && $out && $admin)<x-park.date-edit :vehicle="$vehicle" field="released_at" :class="'nums '.$dotted"/>@elseif ($since && $out)<span class="nums">{{ $at($vehicle->released_at) }}</span>@endif</span><span>@if ($since && $out && $vehicle->daysStored() !== null)<span class="nums whitespace-pre text-ink-muted">, {{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif</span></div>
-            @if ($handedTo)<p class="text-ink-muted">{{ $handedTo }}{{ $released && ! empty($released->payload['pass']) ? ', по QR' : ($released && ! empty($released->payload['without_qr']) ? ', без QR' : '') }}</p>@endif
-        @endif
+        @php
+            // Куски фразы — неразрывными связками «слово, разделитель» (inline-flex: переводы строк компонентов не рисуются, свои
+            // пробелы — в whitespace-pre): разделитель хвостом, перенос не начинает строку с запятой.
+            $seg = 'inline-flex items-baseline whitespace-nowrap';
+            $day = fn ($field) => $admin ? null : $at($vehicle->{$field});
+        @endphp
+        <div class="detail-where mt-2 flex flex-wrap items-baseline">
+            <span class="{{ $seg }}"><x-ui.state :tone="$state->tone()">{{ $state->label() }}</x-ui.state>@if ($stored || $out)<span class="whitespace-pre"> </span>@endif @if (! $stored && ! $out && $vehicle->yard)<span class="whitespace-pre text-ink-muted">, </span>@endif</span>
+            @if ($stored)
+                @if ($vehicle->yard)<span class="{{ $seg }}">@if (! ($fromRequests ?? false))<x-park.place-move :vehicle="$vehicle" :chevron="false" :class="$dotted"/>@else<x-ui.place>{{ $vehicle->yard->name }}</x-ui.place>@endif<span class="whitespace-pre text-ink-muted">{{ $vehicle->accepted_at ? ', ' : '' }}</span></span>@endif
+                @if ($vehicle->accepted_at)<span class="{{ $seg }}"><span class="whitespace-pre text-ink-muted">с </span>@if ($admin)<x-park.date-edit :vehicle="$vehicle" field="accepted_at" :class="'nums '.$dotted"/>@else<span class="nums">{{ $day('accepted_at') }}</span>@endif</span>@endif
+            @elseif ($out)
+                <span class="{{ $seg }}">@if ($admin)<x-park.date-edit :vehicle="$vehicle" field="released_at" :class="'nums '.$dotted"/>@else<span class="nums">{{ $day('released_at') }}</span>@endif<span class="whitespace-pre text-ink-muted">{{ $vehicle->accepted_at ? ', ' : '' }}</span></span>
+                @if ($vehicle->accepted_at)<span class="{{ $seg }}"><span class="whitespace-pre text-ink-muted">стояла с </span>@if ($admin)<x-park.date-edit :vehicle="$vehicle" field="accepted_at" :class="'nums '.$dotted"/>@else<span class="nums">{{ $day('accepted_at') }}</span>@endif<span class="whitespace-pre text-ink-muted">{{ $vehicle->daysStored() !== null ? ', ' : '' }}</span></span>@endif
+                @if ($vehicle->accepted_at && $vehicle->daysStored() !== null)<span class="nums text-ink-muted">{{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
+            @elseif ($vehicle->yard)
+                <x-ui.place>{{ $vehicle->yard->name }}</x-ui.place>
+            @elseif ($state === VehicleState::Cancelled && $vehicle->cancel_reason)
+                <span class="text-ink-muted">{{ $vehicle->cancel_reason }}</span>
+            @endif
+        </div>
+        @if ($handedTo)<p class="text-ink-muted">{{ $handedTo }}{{ $released && ! empty($released->payload['pass']) ? ', по QR' : ($released && ! empty($released->payload['without_qr']) ? ', без QR' : '') }}</p>@endif
         @unless ($fromRequests ?? false)<x-park.sale :vehicle="$vehicle" forms/>@endunless
         @if ($task)@include('park.vehicles.task')@endif
         <x-park.date-forms :vehicle="$vehicle"/>

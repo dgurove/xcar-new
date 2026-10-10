@@ -2,10 +2,8 @@
 <x-ui.detail>
     <x-ui.row-card :href="'/cars?yard='.$yard->id" :title="$yard->name" :photo="false" action="ТС на парковке">
         {{-- Закрыта — словом, адрес и места — фразой (10.10.2026: «что-то чипами, что-то текстом»). --}}
-        <x-slot:marks>
-            @unless ($yard->is_active)<x-ui.state tone="closed">Закрыта</x-ui.state>@endunless
-        </x-slot:marks>
         <x-slot:line>
+            @unless ($yard->is_active)<x-ui.state tone="closed">Закрыта</x-ui.state>@endunless
             @if ($yard->settlement || $yard->address)<x-ui.place>{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</x-ui.place>@endif
             @if ($yard->capacity)<span class="nums text-ink-muted">{{ max(0, $yard->capacity - $yard->stored_vehicles_count) }} свободно из {{ $yard->capacity }}</span>@endif
         </x-slot:line>

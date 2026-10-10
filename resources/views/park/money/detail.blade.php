@@ -2,11 +2,9 @@
 @php use App\Support\Money; use App\Billing\InvoiceState; $i = $invoice; $href = '/money/invoices/'.$i->id; @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$i->party->name" :photo="$i->vehicle?->mainPhoto()">
-        {{-- Состояние словом, фразой — какой счёт, от какого дня, за что и по какой ТС (ТС — ссылкой в дело). --}}
-        <x-slot:marks>
-            <x-billing.light :invoice="$i"/>
-        </x-slot:marks>
+        {{-- Фразой — состояние первым словом, дальше какой счёт, от какого дня, за что и по какой ТС (ТС — ссылкой в дело). --}}
         <x-slot:line>
+            <x-billing.light :invoice="$i"/>
             <span class="nums">{{ $i->isOwed() ? 'мы должны' : $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}</span>
             <span>{{ mb_strtolower($i->kind->label()) }}</span>
             @if ($i->vehicle)<a href="/cars/{{ $i->vehicle_id }}" class="text-accent-text">{{ $i->vehicle->titleWithYear() }}</a>@elseif ($i->isRegistry())<span>{{ $i->what() }}</span>@endif

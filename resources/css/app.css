@@ -2125,6 +2125,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Запятая — хвостом куска, а не началом следующего: при переносе строка не начинается с «, ». */
   .detail-line > :not(:last-child)::after { content: ','; color: var(--color-ink-muted); }
   /* У места метка отступом, а не gap: иначе запятая (::after — тоже flex-элемент) отходила от слова. */
+  /* Состояние первым словом фразы — тем же кеглем, что фраза (`.state` сам по себе 13). */
+  :is(.detail-line, .detail-where) .state { font-size: inherit; }
   .detail-line > .place { gap: 0; }
   .detail-line > .place > svg { margin-inline-end: .25em; }
   @media (max-width: 639.98px) {
