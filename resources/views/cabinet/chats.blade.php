@@ -31,7 +31,8 @@
      кабинете чаты обычно не ищут — пусть будут и там и там»), и в кабинете (`/account/chats`). --}}
 @if (str_starts_with($base, '/deals'))
 <x-ui.shell :title="$current ? $name : 'Чаты'" :back="$current ? ['Чаты', $base] : false" :phone-heading="false" :desktop-heading="false">
-    <div @class(['mb-4', 'max-md:hidden' => $current])><x-deal.tabs current="/deals/chats"/></div>
+    {{-- Тот же ряд, что в «Сделках» и «Покупателях» (`.search-head`), и тот же отступ до списка — пилюли не прыгают. --}}
+    <div @class(['search-head mb-4', 'max-md:hidden' => $current])><div class="min-w-0 flex-1"><x-deal.tabs current="/deals/chats"/></div></div>
     @include('cabinet.chats-split')
 </x-ui.shell>
 @else

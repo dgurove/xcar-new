@@ -793,7 +793,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .has-back:has(.toolbar[data-searching]) > div:has(> .toolbar) { flex: 1 1 0; width: auto !important; margin-left: 0; }
   }
   /* Лупа рядом с пилюлями раздела (Покупатели): в поиске поле встаёт на их место. */
-  .search-head { @apply flex items-center gap-2; }
+  /* Ряд пилюль раздела с кнопками справа: высота кнопки и без кнопок — пилюли «Сделки | Покупатели | Чаты» стоят на
+     одном месте на всех трёх экранах, а не прыгают (11.10.2026). */
+  .search-head { @apply flex items-center gap-2; min-height: 2.75rem; }
   .search-head > .toolbar { @apply shrink-0; }
   .search-head:has(> .toolbar[data-searching]) > :first-child { display: none; }
   .search-head > .toolbar[data-searching] { @apply flex-1; }
@@ -2389,8 +2391,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet .search-field { @apply bg-surface-2; }
   .search-results { display: flex; flex-direction: column; gap: .75rem; }
   .search-pop .search-results { gap: .25rem; }
-  .search-head { @apply flex items-baseline justify-between gap-3 px-3 pb-1 text-xs font-medium text-ink-dim; }
-  .search-pop .search-head { @apply pt-1.5; }
+  /* Заголовок группы выдачи поиска. Не `.search-head`: то имя — у ряда пилюль с лупой («Сделки», «Покупатели»), и
+     отступы отсюда сдвигали пилюли там вправо (11.10.2026, «всё скачет»). */
+  .search-group-head { @apply flex items-baseline justify-between gap-3 px-3 pb-1 text-xs font-medium text-ink-dim; }
+  .search-pop .search-group-head { @apply pt-1.5; }
   .search-all { @apply inline-flex items-center gap-0.5 rounded-(--radius-s) text-sm font-normal text-accent-text; }
   .search-all > svg { color: currentColor; }
   .search-rows { @apply flex flex-col overflow-clip rounded-(--radius-l) bg-surface; }

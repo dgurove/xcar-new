@@ -8,7 +8,7 @@
     <div class="search-results">
         @foreach ($groups as $group)
             <section class="search-group">
-                <div class="search-head">
+                <div class="search-group-head">
                     <span>{{ $group['title'] }}</span>
                     @isset ($group['more'])<a href="{{ $group['more']['href'] }}" class="search-all" data-hit data-turbo-frame="_top">{{ $group['more']['label'] }}<x-ui.chevron class="size-3.5"/></a>@endisset
                 </div>
