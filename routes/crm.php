@@ -72,6 +72,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/legacy', [LegacyClaimController::class, 'store']);
         Route::post('/offers/legacy/{claim}/create', [LegacyClaimController::class, 'create']);
         Route::delete('/offers/legacy/{claim}', [LegacyClaimController::class, 'destroy']);
+        Route::post('/offers/{offer}/legacy-drop', [LegacyClaimController::class, 'drop']);
     });
     Route::middleware('offer.edit')->group(function () {
         Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');

@@ -6,6 +6,7 @@ use App\Cars\CarText;
 use App\Offers\Actions\AddLegacyClaims;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
+use App\Offers\Actions\DeleteDraft;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -35,9 +36,23 @@ final class LegacyClaimController
         if ($offer && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true)) {
             $offer = $change($offer, OfferState::Draft, $request->user());
         }
-        $offer ??= $create($request->user(), array_filter(['claim_ref' => $claim->claim_ref, 'vendor_id' => CarText::vendorOf($claim->claim_ref)]));
+        if (! $offer) {
+            $offer = $create($request->user(), array_filter(['claim_ref' => $claim->claim_ref, 'vendor_id' => CarText::vendorOf($claim->claim_ref)]));
+            // До первого «Сохранить» внизу редактора — «Отменить» (drop).
+            session()->put("legacy-draft.{$offer->id}", $claim->id);
+        }
 
         return redirect("/offers/{$offer->number}");
+    }
+
+    /** «Отменить» в редакторе после «Завести»: черновик удаляется, номер снова в «Не заведены». */
+    public function drop(Request $request, Offer $offer, DeleteDraft $delete)
+    {
+        abort_unless(session()->has("legacy-draft.{$offer->id}") && $offer->isDeletableBy($request->user()), 404);
+        $delete($offer, $request->user());
+        session()->forget("legacy-draft.{$offer->id}");
+
+        return redirect('/?preset=legacy')->with('toast', $offer->claim_ref.' снова в «Не заведены»');
     }
 
     /** Убрать номер из списка: черновик возвращается в свою рабочую вкладку. */

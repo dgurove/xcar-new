@@ -453,6 +453,8 @@ class OfferController
             'showingSummary' => $admin ? Showing::summary($offer) : collect(),
             // Черновик только что заведён из писем и ещё ни разу не сохранён: внизу «Отменить» и «Не заявка».
             'fromMail' => $fromMail,
+            // Только что заведён «Завести» из таблицы Кати: внизу «Отменить» — пока не сохранили.
+            'fromLegacy' => ! $fromMail && $offer->state === OfferState::Draft && session()->has("legacy-draft.{$offer->id}"),
             'empty' => $empty,
             // Машина в гараже ведётся здесь же, дорожкой «Гараж» (подготовка) и хвостом «Продажи»: путь, деньги, расходы и
             // все действия сотрудника.
@@ -550,7 +552,7 @@ class OfferController
         $unpriced = $offer->state === OfferState::Draft && ! $offer->asking_price;
         $hadFloor = (bool) $offer->floor_price;
         $update($offer, $request->payload(), $request->user());
-        session()->forget("mail-draft.{$offer->id}");
+        session()->forget(["mail-draft.{$offer->id}", "legacy-draft.{$offer->id}"]);
         // Нажали знак Мигторга в поле номера убытка: несохранённые правки формы (вендор, цены) легли вместе с номером.
         if ($request->input('then') === 'migtorg') {
             return back()->with('toast', ImportMigtorgLot::take($offer->refresh(), $request->user()));

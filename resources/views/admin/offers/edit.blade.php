@@ -229,6 +229,10 @@
             <form method="post" action="/offers/{{ $n }}/drop" class="contents">@csrf<x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Отменить</x-ui.button></form>
             <form method="post" action="/offers/{{ $n }}/drop" class="contents" data-turbo-confirm="Не заявка? Цепочка уйдёт в архив">@csrf<input type="hidden" name="decline" value="1"><x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Не заявка</x-ui.button></form>
             <x-ui.button form="offer-form" class="min-w-0 flex-1">Сохранить</x-ui.button>
+        @elseif ($fromLegacy)
+            {{-- Только что «Завести» из таблицы Кати: передумали — черновика нет, номер снова строкой «Не заведены». --}}
+            <form method="post" action="/offers/{{ $n }}/legacy-drop" class="contents" data-turbo-confirm="Отменить? Черновик удалится, номер останется в списке" data-turbo-confirm-label="Отменить">@csrf<x-ui.button variant="ghost" class="shrink-0 px-3 sm:px-7">Отменить</x-ui.button></form>
+            <x-ui.button form="offer-form" name="then" value="close" class="min-w-0 flex-1">Сохранить</x-ui.button>
         @elseif ($draft)
             {{-- Черновик заводят пачкой подряд — и модератор, и админ (владелец 04.10.2026): «Сохранить» сохраняет и закрывает
                  редактор (в список), «+ Новый» сохраняет и открывает следующий черновик с тем же вендором. Публикуют из
@@ -241,7 +245,7 @@
         @else
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
-        @if (($transitions->isNotEmpty() || $publishItems || ($deletable && $admin)) && ! $fromMail)
+        @if (($transitions->isNotEmpty() || $publishItems || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
             {{-- Контроллер шторки — только вместе с ней: у сделки «···» нет, и пустой контроллер падал в консоль. --}}
             <div class="contents" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
