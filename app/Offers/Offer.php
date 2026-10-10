@@ -271,6 +271,17 @@ class Offer extends Model implements HasMedia
      * Есть ли у маршрута продажи гаражная ветка — «платим поставщику мы». Нет (Т-Страхование: машину забирают у
      * владельца по договору с ним) — платит менеджер, путём обычной сделки. Нет маршрута вовсе — выбор свободный.
      */
+    /**
+     * Кто платит поставщику у гаражной сделки, когда выбирать нечего (тогда шторки «Принять» и «Отдать в гараж» вопроса не
+     * задают): у Совкомбанка (договор комиссии, `DealFormat::Commission`) поставщику всегда платит ООО «ПРАЙМ», а менеджер
+     * или покупатель — ПРАЙМ по счёту (10.10.2026, владелец), то есть «платит менеджер»; без гаражной ветки маршрута
+     * (Т-Страхование) — тоже менеджер. null — выбор есть.
+     */
+    public function garagePayerFixed(): ?\App\Garage\GaragePayer
+    {
+        return $this->vendor?->deal_format === \App\Vendors\DealFormat::Commission || ! $this->garageBranch() ? \App\Garage\GaragePayer::Manager : null;
+    }
+
     public function garageBranch(): bool
     {
         $workflow = $this->stage()?->workflow ?? $this->vendor?->workflow(Track::Sale);

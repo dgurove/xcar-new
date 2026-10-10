@@ -50,7 +50,7 @@
         $rows = [];
         if ($deal->isGarage()) {
             // Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику.
-            $rows[] = ['В гараж', 'поставщику платит '.mb_strtolower($deal->garage_payer->label()), 'text-right font-medium', true];
+            $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
         } else {
             $rows[] = ['Цена подтверждения', Money::rub($deal->amount), $dd.' font-medium', true];
         }

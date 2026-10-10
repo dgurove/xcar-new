@@ -10,7 +10,7 @@
 <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
         @if ($car->manager)<x-ui.person :user="$car->manager"/>@else<span class="text-ink-muted">взяли под себя</span>@endif
-        @if ($car->deal?->garage_payer)<span class="text-ink-muted">{{ $car->deal->garage_payer === \App\Garage\GaragePayer::Us ? 'поставщику платим мы' : 'поставщику платит менеджер' }}</span>@endif
+        @if ($car->deal?->garage_payer)<span class="text-ink-muted">{{ $car->deal->garagePayerLine() }}</span>@endif
         @if ($routeHere)<x-ui.state :tone="$car->state->tone()">{{ mb_strtolower($car->state->label()) }}</x-ui.state>@endif
         @php $menu = $routeHere ? $more : $morePrep; @endphp
         @if ($menu)<span class="ml-auto">@include('garage.cars.actions', ['buttons' => [], 'more' => $menu, 'bar' => false])</span>@endif

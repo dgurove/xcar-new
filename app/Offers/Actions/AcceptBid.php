@@ -63,8 +63,9 @@ final class AcceptBid
 
             $bid->update(['state' => BidState::Accepted, 'decided_at' => now(), 'decided_by' => $by->id]);
             if ($bid->isGarage()) {
-                // Без гаражной ветки у маршрута (Т-Страхование) поставщику платит менеджер — путём обычной сделки.
-                $payer = $offer->garageBranch() ? ($payer ?? GaragePayer::Us) : GaragePayer::Manager;
+                // Совкомбанк (менеджер платит ПРАЙМ по счёту) и маршрут без гаражной ветки (Т-Страхование) — платит менеджер,
+                // путём обычной сделки (`Offer::garagePayerFixed`).
+                $payer = $offer->garagePayerFixed() ?? $payer ?? GaragePayer::Us;
                 [$commission, $mode] = [null, CommissionMode::Payout];
                 // Наша доля — только у «платит менеджер»: он платит её по ссылке сразу (05.10.2026).
                 $share = $payer === GaragePayer::Manager ? $share : null;

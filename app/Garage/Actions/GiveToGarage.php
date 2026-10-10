@@ -45,8 +45,9 @@ final class GiveToGarage
         if (! $legacy && ! in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true)) {
             throw ValidationException::withMessages(['state' => 'В гараж можно из черновика или продажи']);
         }
-        // Без менеджера — «взяли под себя»: поставщику платим мы. Без гаражной ветки маршрута (Т-Страхование) — платит менеджер.
-        $payer = ! $manager ? GaragePayer::Us : ($offer->garageBranch() ? $payer : GaragePayer::Manager);
+        // Без менеджера — «взяли под себя»: поставщику платим мы. Совкомбанк и маршрут без гаражной ветки — платит менеджер
+        // (`Offer::garagePayerFixed`).
+        $payer = ! $manager ? GaragePayer::Us : ($offer->garagePayerFixed() ?? $payer);
 
         return DB::transaction(function () use ($offer, $manager, $payer, $by, $where, $evacuator, $legacy) {
             $offer->bids()->where('state', BidState::Active)->get()->each(fn (Bid $bid) => app(DeclineBid::class)($bid, $by));

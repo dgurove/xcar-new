@@ -3,7 +3,8 @@
      и карточка строки «Без цены» (цены продажи для гаража не нужно); prefix — свои id полей у каждой. --}}
 @props(['offer', 'managers', 'prefix' => 'garage'])
 @php
-    $branch = $offer->garageBranch();
+    // Выбор «Платит поставщику» — только где он есть: у Совкомбанка и без гаражной ветки платит менеджер (`garagePayerFixed`).
+    $branch = ! $offer->garagePayerFixed();
     $picked = $offer->pickedUp();
 @endphp
 <form method="post" action="/offers/{{ $offer->number }}/garage" {{ $attributes->class(['flex flex-col gap-4']) }}>

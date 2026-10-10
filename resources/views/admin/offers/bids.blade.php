@@ -13,7 +13,8 @@
     $garageBids = $offer->bids->filter->isGarage();
     $parked = $garageBids->isEmpty() ? collect() : \App\Garage\Car::whereIn('manager_id', $garageBids->pluck('user_id'))
         ->whereNotIn('state', [\App\Garage\CarState::Sold, \App\Garage\CarState::Settled])->selectRaw('manager_id, count(*) as n')->groupBy('manager_id')->pluck('n', 'manager_id');
-    $branch = $garageBids->isNotEmpty() && $offer->garageBranch();
+    // Выбор «Платит поставщику» — только где он есть: у Совкомбанка и без гаражной ветки платит менеджер (`garagePayerFixed`).
+    $branch = $garageBids->isNotEmpty() && ! $offer->garagePayerFixed();
     $best = $priced->count() > 1 ? $priced->first() : null;
     $accepted = $deal ? $offer->bids->firstWhere('id', $deal->bid_id) : null;
     // Заменённое новой ценой — не отдельное подтверждение: смена цены видна в «Истории».

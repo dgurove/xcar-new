@@ -32,8 +32,9 @@
                 <x-ui.sheet id="accept-{{ $bid->id }}" :title="$give ? 'Отдать другому' : ($garage ? 'Отдать в гараж' : 'Принять подтверждение')" :open="$errors->hasAny(['commission', 'payer', 'share', 'owner_price']) && old('bid') == $bid->id">
                     <div class="mb-4 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$bid->user" full/><span class="tag">{{ $offer->titleWithYear() }}</span></div>
                     @if ($garage)
-                        {{-- Вознаграждения тут нет: его назначают, когда менеджер продаст машину из гаража. Без гаражной
-                             ветки у маршрута (Т-Страхование) поставщику платит менеджер — выбора нет. --}}
+                        {{-- Вознаграждения тут нет: его назначают, когда менеджер продаст машину из гаража. У Совкомбанка
+                             (менеджер платит ПРАЙМ по счёту) и без гаражной ветки маршрута (Т-Страхование) платит менеджер —
+                             выбора нет (`Offer::garagePayerFixed`). --}}
                         <form method="post" action="/confirmations/{{ $bid->id }}/accept" class="flex flex-col gap-4" data-controller="reveal">
                             @csrf<input type="hidden" name="bid" value="{{ $bid->id }}">
                             @if ($branch)

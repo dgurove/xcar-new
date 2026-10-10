@@ -146,6 +146,22 @@ class Deal extends Model
         return ! $this->isGarage() && $this->schemeOf()->paysSelection();
     }
 
+    /**
+     * Кто платит у гаражной — словами: у Совкомбанка (договор комиссии) поставщику платит ПРАЙМ, а менеджер — ПРАЙМ по
+     * счёту (10.10.2026, владелец: «совкому всегда платит только ООО ПРАЙМ»), у остальных — «поставщику платит …».
+     */
+    public function garagePayerLine(): ?string
+    {
+        if (! $this->garage_payer) {
+            return null;
+        }
+        if ($this->offer?->vendor?->deal_format === \App\Vendors\DealFormat::Commission) {
+            return $this->garage_payer === \App\Garage\GaragePayer::Manager ? 'менеджер платит ПРАЙМ по счёту' : 'поставщику платим мы';
+        }
+
+        return $this->garage_payer === \App\Garage\GaragePayer::Us ? 'поставщику платим мы' : 'поставщику платит менеджер';
+    }
+
     /** Гаражная «платит менеджер»: за машину — счёт ПРАЙМ на закупочную (у ПРАЙМ), наша доля — по ссылке. */
     public function isGarageManager(): bool
     {
