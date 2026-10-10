@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Pwa\PwaController;
 use App\Support\Surface;
 use Closure;
 use Illuminate\Http\Request;
@@ -47,6 +48,10 @@ class ResolveSurface
         $landing = $surface === Surface::Park && $request->path() === '/' && ! $request->user();
         if ($surface !== Surface::Site && ! $landing && method_exists($response, 'header')) {
             $response->header('X-Robots-Tag', 'noindex, nofollow');
+        }
+        // Сборка страницы — воркеру: экран другой сборки из кэша он выбрасывает (sw.js, петля перезагрузок 10.10.2026).
+        if (method_exists($response, 'header') && str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
+            $response->header('X-Build', PwaController::build());
         }
 
         return $response;

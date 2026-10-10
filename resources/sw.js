@@ -102,7 +102,7 @@ self.addEventListener('fetch', (event) => {
                 }
                 return response;
             })();
-            const cached = cacheable && await caches.match(request);
+            const cached = cacheable && await (await caches.open(PAGES)).match(request);
             // Экран менеджера, которого касается замок (X-Lockable, DeviceGate): сначала сеть, кэш — только если она не
             // успела за 0,7 с. Включили замок — сервер отвечает окном подтверждения, и экран с ценами из кэша не мелькает.
             if (cached && cached.headers.get('X-Lockable')) {
@@ -110,8 +110,20 @@ self.addEventListener('fetch', (event) => {
                 if (quick) return quick;
             }
             if (cached) {
-                later(event, network.then((response) => {
+                later(event, network.then(async (response) => {
                     if (!response.ok || response.redirected) return;
+                    // В сети уже другая сборка (выкладка, а этот воркер ещё прежний): экран из кэша — со старыми файлами,
+                    // и тихое обновление страницы (app.js stalePage) приведёт Turbo к полной перезагрузке. Старую копию
+                    // выбрасываем раньше, чем страница перезагрузится: иначе, если свежая не легла в кэш (место на
+                    // iPhone), каждая перезагрузка снова получала старую — петля (10.10.2026, «pwa: петля перезагрузок»).
+                    const build = response.headers.get('X-Build');
+                    if (build && cached.headers.get('X-Build') !== build) {
+                        try {
+                            const pages = await caches.open(PAGES);
+                            const current = await pages.match(request);
+                            if (current && current.headers.get('X-Build') !== build) await pages.delete(request);
+                        } catch {}
+                    }
                     for (const [key, entry] of recent) if (Date.now() - entry.at > 10_000) recent.delete(key);
                     recent.set(url.href, { response: response.clone(), at: Date.now() });
                 }).catch(() => {}));

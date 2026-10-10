@@ -95,12 +95,23 @@ class PwaController
             return response("self.addEventListener('install', () => self.skipWaiting());\nself.addEventListener('activate', (e) => e.waitUntil(caches.keys().then((k) => Promise.all(k.map((n) => caches.delete(n)))).then(() => self.registration.unregister())));\n",
                 200, ['Content-Type' => 'text/javascript; charset=utf-8', 'Cache-Control' => 'no-cache']);
         }
-        $manifest = public_path('build/manifest.json');
-        $version = is_file($manifest) ? 'b'.substr(md5_file($manifest), 0, 8) : 'dev';
+        $version = self::build();
         // Тумблер замка менеджеров — в версии: включили, и воркер обновится сам, стерев экраны, накопленные до замка.
         $version .= Lock::enabled() ? 'L' : '';
         $js = str_replace('__VERSION__', $version, file_get_contents(resource_path('sw.js')));
 
         return response($js, 200, ['Content-Type' => 'text/javascript; charset=utf-8', 'Cache-Control' => 'no-cache']);
+    }
+
+    /**
+     * Метка сборки: хэш манифеста Vite. Ею помечен воркер и каждая страница (`X-Build`, `ResolveSurface`) — воркер
+     * выбрасывает экран прошлой сборки из кэша, не дожидаясь своей смены (иначе — петля перезагрузок, см. sw.js).
+     * Сборка меняется только с выкладкой (новый контейнер) — память процесса её не переживёт.
+     */
+    public static function build(): string
+    {
+        static $build;
+
+        return $build ??= is_file($manifest = public_path('build/manifest.json')) ? 'b'.substr(md5_file($manifest), 0, 8) : 'dev';
     }
 }
