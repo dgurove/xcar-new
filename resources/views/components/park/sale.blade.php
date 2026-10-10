@@ -2,26 +2,35 @@
      Не в продаже — лаймовая «Выставить в продажу» с подтверждением (машина, госномер, убыток). В продаже — капсула
      состоянием продажи со стрелкой: шторка «Продажа» — предложение в CRM строкой, сделка, если идёт, и красная «Убрать из
      продажи» (`TakeOffSale`: черновик удаляется, опубликованное — в архив; ТС с фото и документами остаётся). Сделку,
-     гараж и проданную так не снять — кнопки нет.
-     tag — тегом последним среди фактов карточки «Наличия» (10.10.2026, владелец: три кнопки рядом «как равнозначные
-     действия»): «В продажу ›» или состояние продажи ›. --}}
-@props(['vehicle', 'tag' => false])
+     гараж и проданную так не снять — кнопки нет. Так — в деле ТС.
+     В карточке «Наличия» продажа — пунктами значка связи (10.10.2026, владелец: «одно к машине относится, другое к
+     фактам»): menu — пункты «Выставить в продажу» / «Убрать из продажи» в слот `x-ui.links` (переход «Продажа ›» в CRM
+     даёт `CarLinks`), forms — их скрытые формы в теле карточки: значок стоит внутри ссылки названия, форма туда нельзя. --}}
+@props(['vehicle', 'menu' => false, 'forms' => false])
 @php
     use App\Offers\OfferState;
     use App\Support\Surface;
     $offer = $vehicle->offer;
     $id = 'sale-'.$vehicle->id;
+    // Страховая уже продала или ТС ждёт выдачи — выставлять нечего (владелец 09.10.2026: «зачем выставлять в продажу,
+    // если её уже выдавать надо»).
+    $canSell = ! $offer && ! ($vehicle->state->isFinal() || $vehicle->sold_at || $vehicle->openRequest(\App\Park\RequestType::Release));
+    $canUnsell = $offer && \App\Park\Actions\TakeOffSale::allowed($offer->state, (bool) $offer->deal);
 @endphp
-@if (auth()->user()?->isAdmin())
+@if (! auth()->user()?->isAdmin())
+@elseif ($menu)
+    @if ($canSell)<span class="menu-item cursor-pointer py-2" role="menuitem" tabindex="0" data-form="sell-{{ $vehicle->id }}" data-action="click->menu#submit keydown.enter->menu#submit">Выставить в продажу</span>@endif
+    @if ($canUnsell)<span class="menu-item cursor-pointer py-2 text-danger" role="menuitem" tabindex="0" data-form="unsell-{{ $vehicle->id }}" data-action="click->menu#submit keydown.enter->menu#submit">Убрать из продажи</span>@endif
+@elseif ($forms)
+    @if ($canSell)<form method="post" action="/cars/{{ $vehicle->id }}/sell" id="sell-{{ $vehicle->id }}" hidden data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf</form>@endif
+    @if ($canUnsell)<form method="post" action="/cars/{{ $vehicle->id }}/unsell" id="unsell-{{ $vehicle->id }}" hidden data-turbo-frame="_top" data-turbo-confirm="Убрать из продажи?" data-turbo-confirm-text="ТС с фото и документами остаётся на парковке">@csrf</form>@endif
+@else
     @if (! $offer)
-        {{-- Страховая уже продала или ТС ждёт выдачи — выставлять нечего (владелец 09.10.2026: «зачем выставлять в продажу,
-             если её уже выдавать надо»). --}}
-        @unless ($vehicle->state->isFinal() || $vehicle->sold_at || $vehicle->openRequest(\App\Park\RequestType::Release))
+        @if ($canSell)
             <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf
-                @if ($tag)<button class="tag tag-accent gap-0.5">В продажу<x-ui.icon name="chevron-right" class="size-3.5"/></button>
-                @else<button class="btn btn-s btn-accent">Выставить в продажу</button>@endif
+                <button class="btn btn-s btn-accent">Выставить в продажу</button>
             </form>
-        @endunless
+        @endif
     @else
         @php
             $deal = $offer->deal;
@@ -38,11 +47,7 @@
             $price = $offer->asking_price ? \App\Support\Money::rub($offer->asking_price) : null;
         @endphp
         <span class="contents" data-controller="sheet">
-            @if ($tag)
-                <button type="button" class="tag gap-0.5 {{ ['open' => 'tag-accent', 'urgent' => 'tag-urgent'][$tone] ?? '' }}" data-action="sheet#open">{{ $word }}<x-ui.icon name="chevron-right" class="size-3.5"/></button>
-            @else
-                <button type="button" class="pill pill-{{ $tone }} gap-1" data-action="sheet#open">{{ $word }}<x-ui.icon name="chevron-down" class="size-3.5"/></button>
-            @endif
+            <button type="button" class="pill pill-{{ $tone }} gap-1" data-action="sheet#open">{{ $word }}<x-ui.icon name="chevron-down" class="size-3.5"/></button>
             <x-ui.sheet :id="$id" title="Продажа">
                 <div class="list">
                     <a href="{{ Surface::Crm->url('/offers/'.$offer->number) }}" class="row" data-turbo="false">
@@ -56,7 +61,7 @@
                         </a>
                     @endif
                 </div>
-                @if (\App\Park\Actions\TakeOffSale::allowed($offer->state, (bool) $deal))
+                @if ($canUnsell)
                     <form method="post" action="/cars/{{ $vehicle->id }}/unsell" class="mt-4" data-turbo-frame="_top" data-turbo-confirm="Убрать из продажи?" data-turbo-confirm-text="ТС с фото и документами остаётся на парковке">
                         @csrf<button class="btn btn-danger w-full">Убрать из продажи</button>
                     </form>

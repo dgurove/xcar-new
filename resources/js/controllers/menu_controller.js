@@ -31,6 +31,14 @@ export default class extends Controller {
         window.location.href = event.currentTarget.dataset.href;
     }
 
+    // Пункт-действие без <button> (то же меню внутри ссылки): отправляет форму вне ссылки по id в data-form —
+    // подтверждение Turbo у формы срабатывает и так.
+    submit(event) {
+        event.preventDefault();
+        this.close();
+        document.getElementById(event.currentTarget.dataset.form)?.requestSubmit();
+    }
+
     close() {
         if (this.listTarget.matches(':popover-open')) this.listTarget.hidePopover();
     }
