@@ -32,6 +32,6 @@
     </td>
     <td class="num nums">
         {{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}
-        <span class="cell-sub ml-auto max-w-36 !whitespace-normal sm:hidden {{ $tone }}">{{ $word }}</span>
+        <span class="cell-sub ml-auto min-w-28 max-w-36 !whitespace-normal sm:hidden {{ $tone }}">{{ $word }}</span>
     </td>
 </tr>
