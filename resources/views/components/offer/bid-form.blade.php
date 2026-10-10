@@ -1,11 +1,10 @@
-{{-- Форма предложения цены: кнопка полной цены и скидки, которые порог не пробивают, поле с разделителями. Нижний порог покупателю не показываем —
-     иначе все напишут ровно его; сервер просто не примет цену ниже. --}}
+{{-- Форма предложения цены: кнопка полной цены и скидки (доля разницы между заявленной и продажной, `Offer::bidDiscounts`),
+     которые порог не пробивают, поле с разделителями. Нижний порог не показываем — иначе все напишут ровно его; сервер
+     просто не примет цену ниже. --}}
 @props(['offer', 'myBid' => null])
 @php
     $asking = (int) $offer->asking_price;
-    $min = (int) ($offer->minBid() ?? 0);
-    // Кнопки скидки — только те, что не уводят ниже порога: сам порог наружу не выдаём.
-    $discounts = array_filter([2, 5], fn ($p) => round($asking * (1 - $p / 100) / 1000) * 1000 >= $min);
+    $discounts = $offer->bidDiscounts();
 @endphp
 @php
     // Админ подтверждает за менеджера (08.10.2026): та же форма, в шторке в конце — за кого. Можно ли в гараж, решит
@@ -24,8 +23,8 @@
     @if ($asking)
         <div class="flex flex-wrap gap-2">
             <button type="button" class="btn btn-s btn-quiet nums" data-action="bid#set" data-bid-amount-param="{{ $asking }}">{{ \App\Support\Money::nums($asking) }}</button>
-            @foreach ($discounts as $percent)
-                <button type="button" class="btn btn-s btn-quiet" data-action="bid#discount" data-bid-percent-param="{{ $percent }}">−{{ $percent }}%</button>
+            @foreach ($discounts as $percent => $price)
+                <button type="button" class="btn btn-s btn-quiet" data-action="bid#set" data-bid-amount-param="{{ $price }}">−{{ $percent }}%</button>
             @endforeach
         </div>
     @endif

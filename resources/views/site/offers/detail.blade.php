@@ -17,8 +17,7 @@
     $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
     $asking = (int) $offer->asking_price;
-    $min = (int) ($offer->minBid() ?? 0);
-    $discounts = array_filter([2, 5], fn ($p) => round($asking * (1 - $p / 100) / 1000) * 1000 >= $min);
+    $discounts = $offer->bidDiscounts();
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)" :action="false">
@@ -66,7 +65,7 @@
                     <div class="flex flex-wrap items-center gap-1.5">
                         @if ($asking)
                             <button type="button" class="pill pill-plain nums" data-action="bid#set" data-bid-amount-param="{{ $asking }}">{{ \App\Support\Money::nums($asking) }}</button>
-                            @foreach ($discounts as $percent)<button type="button" class="pill pill-plain nums" data-action="bid#discount" data-bid-percent-param="{{ $percent }}">−{{ $percent }}%</button>@endforeach
+                            @foreach ($discounts as $percent => $price)<button type="button" class="pill pill-plain nums" data-action="bid#set" data-bid-amount-param="{{ $price }}">−{{ $percent }}%</button>@endforeach
                         @endif
                         <input name="comment" class="field-input field-s min-w-0 flex-1 sm:text-sm" placeholder="Комментарий" value="{{ old('comment', $myBid?->comment) }}">
                     </div>

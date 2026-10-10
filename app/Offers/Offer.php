@@ -733,6 +733,32 @@ class Offer extends Model implements HasMedia
         return $this->asking_price;
     }
 
+    /**
+     * Быстрые скидки формы подтверждения: «−2%» и «−5%» — доля **разницы** между заявленной и продажной, а не всей
+     * цены (владелец 10.10.2026: заявленная 90 000, продажи 100 000 — «−5%» это −500 ₽, а не −5 000). Скидка — до 100 ₽;
+     * кнопки, что уводят ниже порога (`minBid`) или ничего не скидывают, не показываются: сам порог наружу не выдаём.
+     *
+     * @return array<int, int> процент => цена с этой скидкой
+     */
+    public function bidDiscounts(array $percents = [2, 5]): array
+    {
+        $asking = (int) $this->asking_price;
+        $spread = $asking - (int) $this->declaredPrice();
+        if (! $asking || ! $this->declaredPrice() || $spread <= 0) {
+            return [];
+        }
+        $min = (int) ($this->minBid() ?? 0);
+        $out = [];
+        foreach ($percents as $p) {
+            $off = (int) round($spread * $p / 100, -2);
+            if ($off > 0 && $asking - $off >= $min) {
+                $out[$p] = $asking - $off;
+            }
+        }
+
+        return $out;
+    }
+
     /** В слоте: черновик или галерея, которые часы выпустят в `slot_at` (`Offers\Slots`, `PublishDueSlots`). */
     public function isScheduled(): bool
     {
