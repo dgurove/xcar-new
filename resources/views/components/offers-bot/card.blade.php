@@ -1,9 +1,9 @@
-{{-- Строка «Предложения в Telegram» в начале каталога (владелец 03.10.2026: «строка в начале списка») — менеджеру, пока
-     он не подписан на бот предложений и не скрыл её (× — на 30 дней). Вся строка открывает шторку подписки. --}}
+{{-- Строка «Предложения в Telegram» в начале каталога (владелец 03.10.2026: «строка в начале списка») — менеджеру и админу
+     (бот пускает обоих), пока он не подписан на бот предложений и не скрыл её (× — на 30 дней). Вся строка открывает шторку подписки. --}}
 @php
     $user = auth()->user();
     $hidden = $user?->notification_settings['offers_bot_hidden'] ?? null;
-    $show = $user && $user->isManager() && ! $user->is_demo && \App\Telegram\Offers\Handler::eligible($user)
+    $show = \App\Telegram\Offers\Handler::eligible($user)
         && app(\App\Telegram\Offers\OffersBot::class)->configured() && ! \App\Telegram\Offers\Handler::subscribed($user)
         && (! $hidden || $hidden < now()->toDateString());
 @endphp
