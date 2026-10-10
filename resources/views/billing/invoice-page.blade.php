@@ -10,13 +10,13 @@
 @endphp
 {{-- Выплата без номера — по имени получателя: label() отдал бы вид («Агентское вознаграждение»). --}}
 <x-ui.shell :title="($i->isOwed() ? ($i->isAgentFee() ? 'Выплата менеджеру '.$i->party->name : 'Перечисление вендору '.$i->label()) : 'Счёт '.$i->label())" :back="$back" cache="no-cache">
+    <x-slot:badge><x-billing.light :invoice="$i" class="title-state"/></x-slot:badge>
     <div class="-mt-3 mb-6 flex items-start gap-3" data-controller="sheet">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-        {{-- Фразой — состояние первым словом, дальше что за счёт и когда (владелец 10.10.2026: «что-то чипами, что-то текстом»);
+        {{-- Состояние — у заголовка; фразой — что за счёт и когда (владелец 10.10.2026: «что-то чипами, что-то текстом»);
              чипом только чужой номер — его сверяют и копируют. --}}
         @if ($i->external_no)<span class="tag nums gap-1">№<x-ui.copy-code :value="$i->external_no"/></span>@endif
         <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted">
-            <x-billing.light :invoice="$i"/>
             <span>{{ $i->kind->label() }}</span>
             <span class="nums">от {{ $i->issued_at->translatedFormat($i->issued_at->isCurrentYear() ? 'j M' : 'j M Y') }}</span>
             <span>{{ $i->vatRate() ? 'НДС '.$i->vatRate().' %' : 'без НДС' }}</span>

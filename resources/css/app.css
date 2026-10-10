@@ -2125,8 +2125,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Запятая — хвостом куска, а не началом следующего: при переносе строка не начинается с «, ». */
   .detail-line > :not(:last-child)::after { content: ','; color: var(--color-ink-muted); }
   /* У места метка отступом, а не gap: иначе запятая (::after — тоже flex-элемент) отходила от слова. */
-  /* Состояние первым словом фразы — тем же кеглем, что фраза (`.state` сам по себе 13). */
-  :is(.detail-line, .detail-where) .state { font-size: inherit; }
+  /* Состояние у названия карточки и страницы (слот badge): мелким цветным словом после имени, не переносится по слогам. */
+  .title-state { display: inline-block; margin-inline-start: .5em; font-size: var(--text-sm); white-space: nowrap; vertical-align: .1em; }
+  .title-state::first-letter { text-transform: lowercase; } /* «Оплачен» светофора счёта у названия — со строчной */
   .detail-line > .place { gap: 0; }
   .detail-line > .place > svg { margin-inline-end: .25em; }
   @media (max-width: 639.98px) {

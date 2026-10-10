@@ -39,7 +39,9 @@
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
-        <x-slot:badge><x-ui.links :offer="$offer"/></x-slot:badge>
+        {{-- Состояние — словом у названия, а не среди кодов (владелец 10.10.2026: «статус тут не к месту»); слова «черновик»
+             нет, как и в строке: вкладка и так говорит, на каком он шаге. --}}
+        <x-slot:badge>@if ($offer->state !== OfferState::Draft)<x-ui.state :tone="$offer->state->tone()" class="title-state">{{ mb_strtolower($offer->state->labelFor(auth()->user())) }}</x-ui.state>@endif<x-ui.links :offer="$offer"/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         {{-- Под названием — что это за машина (состояние словом, коды чипами: №, убыток или ДЛ, VIN), ниже фразой — где она
              и сколько осталось (`line`): владелец 10.10.2026 «одно к машине относится, другое к фактам». --}}
@@ -50,9 +52,6 @@
             <x-ui.vin-code :vin="$offer->vin" class="tag"/>
         </x-slot:marks>
         <x-slot:line>
-            {{-- Состояние — первым словом фразы, а не среди кодов (владелец 10.10.2026: «статус тут не к месту»); слова
-                 «черновик» нет, как и в строке: вкладка и так говорит, на каком он шаге. --}}
-            @if ($offer->state !== OfferState::Draft)<x-ui.state :tone="$offer->state->tone()">{{ $offer->state->labelFor(auth()->user()) }}</x-ui.state>@endif
             @if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif
             @if ($offer->car_place)<span>{{ mb_strtolower($offer->car_place->label()) }}</span>@endif
             @if ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
