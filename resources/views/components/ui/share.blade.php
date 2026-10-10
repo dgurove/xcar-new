@@ -1,4 +1,4 @@
-{{-- Поделиться оффером или машиной закупки: текст из отмеченных строк в буфер, PDF из отмеченных фото — в системный лист или во встроенный браузер, или те же фото альбомом. --}}
+{{-- Поделиться оффером или машиной закупки: текст из отмеченных строк в буфер, PDF из отмеченных фото — в системный лист «Поделиться» (и на компьютере), скачать — строкой «PDF готов», или те же фото альбомом. --}}
 @props(['subject', 'variant' => 'secondary', 'size' => null, 'icon' => false])
 @php
     $user = auth()->user();
@@ -52,13 +52,17 @@
                 </div>
                 <label class="check"><input type="checkbox" data-share-target="watermark" data-action="share#photosChanged"><span>Водяной знак на фото</span></label>
             @endif
-            <div class="text-sm text-ink-muted" data-share-target="status"></div>
+            {{-- «PDF готов, 6 фото, 619 КБ» — нажатие скачивает файл (значок справа), пока PDF не готов — просто строка. --}}
+            <button type="button" class="flex w-full items-center gap-2 text-left text-sm text-ink-muted enabled:hover:text-ink" data-share-target="statusRow" data-action="share#downloadPdf" disabled>
+                <span class="min-w-0 flex-1" data-share-target="status"></span>
+                <span class="hidden shrink-0" data-share-target="statusIcon"><x-ui.icon name="download" class="size-5"/></span>
+            </button>
             <div class="flex flex-col gap-2 sm:flex-row">
                 <x-ui.button type="button" class="sm:flex-1" data-action="share#send" data-share-target="send"><x-ui.icon name="share" class="size-5"/> <span data-share-target="label">Поделиться PDF</span></x-ui.button>
                 {{-- Те же кадры альбомом: где документы не качаются, фото доходят. --}}
                 @if ($photos->isNotEmpty())<x-ui.button type="button" variant="secondary" class="sm:flex-1" data-action="share#sendPhotos" data-share-target="photosSend"><x-ui.icon name="share" class="size-5"/> <span data-share-target="photosLabel">Поделиться фото</span></x-ui.button>@endif
             </div>
-            {{-- Получившийся текст — с копированием в углу; PDF поверх окна — только запасным путём, когда лист не открылся. --}}
+            {{-- Получившийся текст — с копированием в углу. --}}
             <div class="vin-box">
                 <pre class="box-nested min-h-12 whitespace-pre-wrap pr-14 font-sans text-sm" data-share-target="preview"></pre>
                 <button type="button" class="vin-magic field-copy bottom-auto h-12" data-action="share#copy" aria-label="Скопировать текст" title="Скопировать текст"><x-ui.icon name="copy" class="size-5"/></button>
@@ -70,7 +74,6 @@
                     <button type="button" class="vin-magic field-copy" data-copy-target="button" data-action="copy#copy" aria-label="Скопировать ссылку" title="Скопировать ссылку"><x-ui.icon name="copy" class="size-5"/></button>
                 </div>
             @endif
-            @if ($photos->isNotEmpty())<x-ui.doc :doc="['url' => $subject->url, 'type' => 'pdf', 'name' => $subject->fileName(), 'label' => \App\Support\Docs::label($subject->fileName())]" class="hidden" data-share-target="pdfLink" data-action="share#openPdf">Открыть PDF</x-ui.doc>@endif
         </div>
     </dialog>
 </div>

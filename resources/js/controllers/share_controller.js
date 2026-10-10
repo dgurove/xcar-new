@@ -8,10 +8,10 @@ import { fileName } from '../docs/share';
 //
 // PDF собирается заранее (fetch при открытии шторки), «Отправить» до готовности
 // выключена: иначе в лист уходил один текст. Файл уходит через
-// navigator.share({files}); где его нет или он однажды упал — тот же адрес
-// в шторке документов поверх окна (скрытая ссылка `a[data-doc]`): у неё
-// свои «Поделиться» и «Скачать». Каждый сбой — тостом и на сервер (/share/error):
-// иначе с чужого телефона не видно ничего.
+// navigator.share({files}) — и на компьютере тоже (10.10.2026, владелец: «пусть будет
+// именно поделиться, открывать документ не надо»); где листа нет или он однажды упал —
+// файл скачивается. Скачать и так — строка «PDF готов, …» со значком справа.
+// Каждый сбой — тостом и на сервер (/share/error): иначе с чужого телефона не видно ничего.
 //
 // «Фото» — те же кадры JPEG-ами одним вызовом share: так их отдаёт Google Фото, и
 // WhatsApp собирает альбом, а получатель качает картинки там, где документ не
@@ -22,7 +22,6 @@ const MAX_FILES = 10;
 // Сколько ждём системный лист, прежде чем признать его зависшим: промис share
 // тогда не выполняется и не падает, а флаг отправки режет повторные нажатия.
 const SHARE_HANG_MS = 15000;
-const COARSE = matchMedia('(pointer: coarse)');
 // iPad с iPadOS 13 представляется Mac — его выдают касания.
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -30,7 +29,7 @@ const PRICES = ['publish_price', 'price'];
 const FROM = ['publish_price'];
 
 export default class extends Controller {
-    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'send', 'label', 'all', 'pdfLink', 'photosSend', 'photosLabel'];
+    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'statusRow', 'statusIcon', 'send', 'label', 'all', 'photosSend', 'photosLabel'];
     static values = { url: String, photoUrl: String, vat: String, name: String, locked: String };
 
     connect() {
@@ -120,14 +119,6 @@ export default class extends Controller {
         return this.hasWatermarkTarget && !this.watermarkTarget.checked ? '0' : '1';
     }
 
-    // Тот же адрес, что у fetch, но строкой запроса — для шторки документов.
-    openUrl() {
-        const params = new URLSearchParams();
-        this.selectedPhotos().forEach((id) => params.append('photos[]', id));
-        params.set('watermark', this.watermark());
-        return `${this.urlValue}?${params}`;
-    }
-
     ready(on, text = '') {
         if (this.hasSendTarget) this.sendTarget.disabled = !on;
         if (this.hasLabelTarget) this.labelTarget.textContent = on ? 'Поделиться PDF' : text || 'Поделиться PDF';
@@ -193,15 +184,22 @@ export default class extends Controller {
             const blob = await r.blob();
             if (seq !== this.seq) return;
             this.pdf = new File([blob], this.nameValue, { type: 'application/pdf' });
-            this.status(`PDF готов, ${photos.length} фото, ${Math.round(this.pdf.size / 1024)} КБ`);
+            this.status(`PDF готов, ${photos.length} фото, ${Math.round(this.pdf.size / 1024)} КБ`, true);
             this.ready(true);
         } catch (e) {
             if (seq === this.seq) this.fail('prepare', e, 'Связь с сервером потерялась');
         }
     }
 
-    status(text) {
+    // download — строка готового PDF нажимается и скачивает его (значок справа).
+    status(text, download = false) {
         if (this.hasStatusTarget) this.statusTarget.textContent = text;
+        if (this.hasStatusRowTarget) this.statusRowTarget.disabled = !download;
+        if (this.hasStatusIconTarget) this.statusIconTarget.classList.toggle('hidden', !download);
+    }
+
+    downloadPdf() {
+        if (this.pdf) this.download([this.pdf]);
     }
 
     writeCaption() {
@@ -223,14 +221,6 @@ export default class extends Controller {
         } catch { window.toast?.('Не получилось', 'danger'); }
     }
 
-    // Скрытая ссылка PDF: адрес с отмеченными фото ставится перед нажатием, нажимаем её сами, когда лист не открылся.
-    openPdf(event) {
-        if (!this.selectedPhotos().length) { event?.preventDefault(); window.toast?.('Отметьте фото'); return; }
-        if (!this.hasPdfLinkTarget) return;
-        this.pdfLinkTarget.href = this.openUrl();
-        if (!event) this.pdfLinkTarget.click();
-    }
-
     async send() {
         if (this.sending) return;
         this.sending = true;
@@ -248,14 +238,11 @@ export default class extends Controller {
 
     async share() {
         this.writeCaption();
-        // На компьютере системного листа нет (а где есть — с файлом виснет):
-        // сразу документ, у него «Скачать» и «Печать».
-        if (!COARSE.matches) {
-            if (this.pdf) { this.openPdf(); return; }
-        } else if (this.pdf) {
+        if (this.pdf) {
             const files = [this.pdf];
             const facts = { files: files.length, bytes: files.reduce((s, f) => s + f.size, 0), canshare: !!navigator.canShare?.({ files }), hasshare: typeof navigator.share };
-            if (!facts.canshare || this.broken()) { this.openPdf(); return; }
+            // Листа с файлом нет (Firefox, старый Chrome на Windows) или он уже падал — файл скачивается.
+            if (!facts.canshare || this.broken()) { this.download([this.pdf]); return; }
             let hang;
             try {
                 await Promise.race([
@@ -271,8 +258,8 @@ export default class extends Controller {
                     return;
                 }
                 this.markBroken();
-                this.fail('share', e, 'Лист не открылся, открываем PDF', facts);
-                this.openPdf();
+                this.fail('share', e, 'Лист не открылся, скачиваем PDF', facts);
+                this.download([this.pdf]);
             } finally {
                 clearTimeout(hang);
             }
@@ -329,7 +316,8 @@ export default class extends Controller {
             a.remove();
             setTimeout(() => URL.revokeObjectURL(a.href), 10000);
         }, i * 250));
-        window.toast?.(files.length > 1 ? `Скачиваем ${files.length} фото` : 'Скачиваем фото');
+        const pdf = files[0]?.type === 'application/pdf';
+        window.toast?.(pdf ? 'Скачиваем PDF' : files.length > 1 ? `Скачиваем ${files.length} фото` : 'Скачиваем фото');
     }
 
     fail(stage, e, text, facts = {}) {
