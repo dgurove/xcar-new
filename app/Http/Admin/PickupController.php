@@ -47,7 +47,7 @@ class PickupController
         // везёт, выбирают руками (`AssignPickup`).
         $q = Offer::whereNotNull('evacuation_to')->whereHas('positions', fn ($p) => $p->where('track', Track::Service))
             ->whereNotIn('state', [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived])
-            ->with(['brand', 'model', 'media', 'vendor', 'evacuator', 'positions.stage.exits', 'positions.stage.block']);
+            ->with(['brand', 'model', 'media', 'vendor', 'settlement', 'evacuator', 'positions.stage.exits', 'positions.stage.block']);
         $offers = $facets->apply($q)->get()
             // Стоят — дошли до конца вывоза (у этапа нет выходов), в работе — остальные.
             ->filter(fn (Offer $o) => match ($preset) {

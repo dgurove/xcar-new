@@ -91,7 +91,8 @@ final class CarLine
     private static function crmMoney(Car $car, $current): array
     {
         return match ($car->state) {
-            CarState::Waiting => [$car->cost ?? $car->deal?->cost, $car->cost === null ? 'платит менеджер' : 'отдали за'],
+            // Совкомбанк в гараж — без оплаты (`Car::settledByDeal`): платить поставщику некому, числа нет.
+            CarState::Waiting => $car->settledByDeal() ? [null, null] : [$car->cost ?? $car->deal?->cost, $car->cost === null ? 'платит менеджер' : 'отдали за'],
             CarState::Sold => $current && $current->remaining() > 0
                 ? [$current->remaining(), $current->isOwed() ? 'отдаём' : ($car->invoice_to === 'buyer' ? 'платит покупатель' : 'отдаёт нам')]
                 : [$car->sold_price, $car->invoice ? 'продана за' : 'счёта нет'],

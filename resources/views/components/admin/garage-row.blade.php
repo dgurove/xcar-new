@@ -13,17 +13,18 @@
     $hasRef = $vendor || $offer->claim_ref;
     $spent = $car->spent();
     $ours = $car->spent(Payer::Xcar);
-    $cost = $car->cost ?? $car->deal?->cost;
+    // Совкомбанк в гараж — без оплаты: «Отдали за» пусто.
+    $cost = $car->settledByDeal() ? null : ($car->cost ?? $car->deal?->cost);
     // Сделка со страховой идёт — её шаг и чей ход строкой ниже, как в «Сделках».
     $sale = $car->dealOpen() ? $offer->positions->first(fn ($p) => $p->track === \App\Workflow\Track::Sale) : null;
 @endphp
 <tr data-detail-key="{{ $offer->number }}" id="garage-{{ $offer->number }}">
     <td class="grow">
         <x-ui.row-link :key="$offer->number"><span class="cell-title">{{ $offer->titleWithYear() }}</span></x-ui.row-link>
-        <span class="cell-sub"><span><span class="{{ $line->tone }}">{{ $line->word }}</span>, {{ $line->when }}</span>@if ($hasRef)<x-vendor.ref class="sm:hidden" :vendor="$vendor" :ref="$offer->claim_ref"/>@endif</span>
+        <span class="cell-sub"><span><span class="{{ $line->tone }}">{{ $line->word }}</span>, {{ $line->when }}</span>@if ($hasRef)<span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>@endif</span>
         @if ($sale)<x-route.clock :position="$sale" side="staff" class="mt-0.5 line-clamp-2 sm:truncate"/>@endif
     </td>
-    <td class="hidden sm:table-cell">@if ($hasRef)<x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy/>@endif</td>
+    <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>
     <td class="num nums cell-dim hidden xl:table-cell col-detail-hide">{{ $car->taken_at?->translatedFormat('j M') }}</td>
     <td class="num nums hidden xl:table-cell col-detail-hide">@if ($cost){{ Money::nums($cost) }}@endif</td>
     <td class="num nums hidden sm:table-cell col-detail-hide">@if ($spent > 0){{ Money::nums($spent) }}@if ($ours > 0)<span class="cell-sub">наши {{ Money::nums($ours) }}</span>@endif @endif</td>

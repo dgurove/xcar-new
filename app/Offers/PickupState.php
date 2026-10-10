@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Garage\CarLine;
 use App\Users\User;
 use App\Workflow\Actor;
 use App\Workflow\Track;
@@ -66,6 +67,25 @@ final class PickupState
         $deal = $offer->deal;
 
         return $deal && ! $deal->setRelation('offer', $offer)->mayPickUp();
+    }
+
+    /**
+     * Вывоз строкой «Работы → Вывоза» (таблица, плитки, строки): слово, класс цвета и дни на шаге («5 дней» без переноса).
+     * До «Вывоза и осмотра» — блок маршрута словом: «автомобиль у владельца», «вывоз автомобиля».
+     *
+     * @return array{0: string, 1: string, 2: ?string}
+     */
+    public static function crmLine(Offer $offer): array
+    {
+        [$word, $tone] = self::of($offer);
+        if ($tone === 'plain') {
+            $word = mb_strtolower($offer->position(Track::Service)?->stage->block?->name ?? $word);
+        }
+        $days = self::days($offer);
+
+        return [$word, match ($tone) {
+            'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted'
+        }, $days ? CarLine::days($days) : null];
     }
 
     /** Сколько дней на текущем шаге вывоза. */

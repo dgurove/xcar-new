@@ -8,13 +8,17 @@
     $salePosition = $routeHere && $car->dealOpen() ? $offer->position(\App\Workflow\Track::Sale) : null;
 @endphp
 <div class="flex flex-col gap-4">
+    {{-- В карточке строки чья, кто платит и этап — в шапке карточки (`admin/garage/detail`), здесь только «⋯». --}}
+    @php $menu = $routeHere ? $more : $morePrep; @endphp
+    @if (! $routeHere || $menu)
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
-        @if ($car->manager)<x-ui.person :user="$car->manager"/>@else<span class="text-ink-muted">взяли под себя</span>@endif
-        @if ($car->deal?->garage_payer)<span class="text-ink-muted">{{ $car->deal->garagePayerLine() }}</span>@endif
-        @if ($routeHere)<x-ui.state :tone="$car->state->tone()">{{ mb_strtolower($car->state->label()) }}</x-ui.state>@endif
-        @php $menu = $routeHere ? $more : $morePrep; @endphp
+        @unless ($routeHere)
+            @if ($car->manager)<x-ui.person :user="$car->manager"/>@else<span class="text-ink-muted">взяли под себя</span>@endif
+            @if ($car->deal?->garage_payer)<span class="text-ink-muted">{{ $car->deal->garagePayerLine() }}</span>@endif
+        @endunless
         @if ($menu)<span class="ml-auto">@include('garage.cars.actions', ['buttons' => [], 'more' => $menu, 'bar' => false])</span>@endif
     </div>
+    @endif
     @error('car')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
     @if ($salePosition)
         <section>

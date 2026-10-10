@@ -19,10 +19,11 @@
     if ($canPick && ! $fields->has('Контакт') && ($offer->insured_name || $offer->insured_phone)) $fields['Контакт'] = trim($offer->insured_name.' '.$offer->insured_phone);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Гараж', '/garage']">
-    <div class="-mt-3 mb-5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
-        <x-ui.state :tone="$tone" class="text-sm">{{ $word }}</x-ui.state>
-        @if ($user->isAdmin())<span class="text-ink-muted">{{ mb_strtolower($offer->pickupDestination()->label()) }}</span>@endif
-    </div>
+    {{-- Состояние — словом у названия, как на странице машины; сотруднику куда везём — строкой справа. --}}
+    <x-slot:badge><x-ui.state :tone="$tone" class="title-state">{{ $word }}</x-ui.state></x-slot:badge>
+    @if ($user->isAdmin())
+        <x-slot:actions><span class="text-sm text-ink-muted">{{ mb_strtolower($offer->pickupDestination()->label()) }}</span></x-slot:actions>
+    @endif
     @error('exit')<x-ui.flash tone="danger" class="mb-4">{{ $message }}</x-ui.flash>@enderror
 
     <x-offer.object :offer="$offer" :photos="$photos" :docs="$docs">
