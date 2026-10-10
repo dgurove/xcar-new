@@ -19,7 +19,7 @@
 @endphp
 <x-ui.detail>
     {{-- Запасной «Открыть» на месте пустого ряда действий не нужен: дело открывает значок в полосе карточки. --}}
-    <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()" :action="false">
+    <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()" :blank="false" :action="false">
         <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
         {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
         @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
@@ -37,27 +37,29 @@
             @if ($total && $total['amount'] > 0)<span @class(['nums whitespace-nowrap', 'text-lg font-bold' => $state === VehicleState::Released, 'text-sm text-ink-dim' => $state !== VehicleState::Released])>{{ \App\Support\Money::rub($total['amount']) }}</span>@endif
             @if ($money && ($money !== 'unbilled' || ($total['amount'] ?? 0) > 0))<span class="whitespace-nowrap text-sm {{ \App\Park\OutMoney::TONES[$money] }}">{{ mb_strtolower(\App\Park\OutMoney::LABELS[$money]) }}</span>@endif
         </x-slot:aside>
-        <x-slot:actions>
-            {{-- Из «Заявок» карточка — про заявку (владелец 09.10.2026: «понятие машина и заявка смешаны»): машинного
-                 (перестановка, акты, продажа) нет — это в «Наличии» и деле. Заявку делают формой ниже (`task`). --}}
-            @unless ($fromRequests ?? false)
-            @if ($state === VehicleState::Expected)
-                @php $open = $vehicle->openRequest(\App\Park\RequestType::Intake); @endphp
-                {{-- Открытая заявка — формой ниже (`task`); заявки нет — «Принять» заводит её, и карточка показывает форму. --}}
-                @unless ($open)<form method="post" action="/requests" class="contents">@csrf<input type="hidden" name="type" value="intake"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Принять</button></form>@endunless
-            @endif
-            @if ($state === VehicleState::Stored)
-                {{-- Выдача — через заявку: открыта — форма ниже (`task`); нет — «Выдать» заводит её, и карточка показывает форму. --}}
-                @unless ($vehicle->openRequest(\App\Park\RequestType::Release))
-                    <form method="post" action="/requests" class="contents">@csrf<input type="hidden" name="type" value="release"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><button class="btn btn-s btn-accent">Выдать</button></form>
-                @endunless
-            @endif
-            @endunless
-        </x-slot:actions>
+        {{-- Главное действие карточки — одно и подвалом листа во всю ширину (10.10.2026, владелец: «кнопки действий справа
+             выравнивают, а не слева», «уебанская вёрстка»): у заявки — кнопка её формы (task, атрибут form), без заявки —
+             «Принять» / «Выдать» заводят её (форма spawn ниже), и карточка показывает форму. Выдача по QR — кнопка в форме:
+             она появляется после скана. Из «Заявок» машинного в карточке нет (владелец 09.10.2026). --}}
+        @php
+            $foot = match (true) {
+                $task && $task->type === \App\Park\RequestType::Intake && $state->isBefore() => ['task-form-'.$task->id, 'Принять'],
+                $task && $task->type === \App\Park\RequestType::Release && $state === VehicleState::Stored && ! ($byQr ?? false) => ['task-form-'.$task->id, 'Выдать'],
+                ! $task && ! ($fromRequests ?? false) && $state === VehicleState::Expected => ['spawn-'.$vehicle->id, 'Принять'],
+                ! $task && ! ($fromRequests ?? false) && $state === VehicleState::Stored => ['spawn-'.$vehicle->id, 'Выдать'],
+                default => null,
+            };
+        @endphp
+        @if ($foot)
+            <x-slot:foot><div class="detail-action"><button type="submit" form="{{ $foot[0] }}" class="btn btn-accent w-full">{{ $foot[1] }}</button></div></x-slot:foot>
+        @endif
         {{-- Факты строками (`facts`): у заявки — под её задачей, у ТС из «Наличия» — сразу под кнопкой. --}}
         @if ($task)@include('park.vehicles.task')@endif
         @include('park.vehicles.facts')
         <x-park.date-forms :vehicle="$vehicle"/>
+        @if (! $task && in_array($state, [VehicleState::Expected, VehicleState::Stored], true))
+            <form method="post" action="/requests" id="spawn-{{ $vehicle->id }}" hidden>@csrf<input type="hidden" name="type" value="{{ $state === VehicleState::Expected ? 'intake' : 'release' }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>
+        @endif
         @if ($state === VehicleState::Stored && ! ($fromRequests ?? false))
             @include('park.vehicles.move-sheet')
         @endif

@@ -7,8 +7,9 @@
      media — свой ряд кадров вместо ленты (карточка предложения CRM: кадры правят прямо тут).
      foot — подвал под телом, вне прокрутки («Сохранить изменения» формы карточки — всегда на экране).
      Поток letters (session letters) — окно писем с черновиком письма вендору после «Принять».
+     blank=false — нет фото, нет и ленты (без серой заглушки с машинкой: парковка, 10.10.2026).
      head=false — без шапки с названием и метками: тело рисует свою (карточки «Оплат»: сумма крупно по центру). --}}
-@props(['head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null, 'foot' => null])
+@props(['head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
     <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
@@ -20,7 +21,7 @@
 </div>
 <div class="detail-body">
 @if ($photos !== null || $media)
-    @if ($media){{ $media }}@else<x-offer.gallery :photos="$photos" :alt="$title" strip/>@endif
+    @if ($media){{ $media }}@elseif ($blank || ($photos && $photos->isNotEmpty()))<x-offer.gallery :photos="$photos" :alt="$title" strip/>@endif
     {{-- Шапка с лентой: название, справа цена, под названием метки; на телефоне цена — своей строкой под названием,
          метки — во всю ширину рядом (узкая колонка рядом с ценой ставила их столбиком). --}}
     <div class="detail-head mt-3">

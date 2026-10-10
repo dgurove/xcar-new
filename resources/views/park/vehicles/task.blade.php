@@ -30,8 +30,10 @@
         <p class="text-sm">{{ $who }}</p>
     @endif
     @if ($intake)
-        <form method="post" action="/requests/{{ $t->id }}/intake" class="flex flex-col">
+        {{-- Блок дела — с заголовком, иначе поля шли сразу под госномером без смысла; кнопка — подвалом листа (detail). --}}
+        <form method="post" action="/requests/{{ $t->id }}/intake" id="task-form-{{ $t->id }}" class="flex flex-col">
             @csrf
+            <h3 class="list-head !pb-0">Приём</h3>
             @if ($gaps)
                 <input type="hidden" name="vehicle_form" value="1">
                 <div class="grid grid-cols-2 gap-3">
@@ -39,13 +41,14 @@
                     <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#cb-brand_id [name=brand_id]" :value="old('model_id', $vehicle->model_id)" :text="$vehicle->model?->name" required/>
                 </div>
             @endif
-            @include('park.vehicles.steps.intake', ['req' => $t])
+            @include('park.vehicles.steps.intake', ['req' => $t, 'footSubmit' => true])
         </form>
     @elseif ($release)
-        <form method="post" action="/requests/{{ $t->id }}/release" id="release-form-{{ $t->id }}" class="flex flex-col">
+        <form method="post" action="/requests/{{ $t->id }}/release" id="task-form-{{ $t->id }}" class="flex flex-col">
             @csrf
-            @include('park.vehicles.steps.release', ['req' => $t, 'canManage' => $canManage])
+            <h3 class="list-head !pb-0">Выдача</h3>
+            @include('park.vehicles.steps.release', ['req' => $t, 'canManage' => $canManage, 'footSubmit' => true])
         </form>
-        @include('park.vehicles.release-sheets', ['req' => $t, 'canManage' => $canManage, 'formId' => 'release-form-'.$t->id])
+        @include('park.vehicles.release-sheets', ['req' => $t, 'canManage' => $canManage, 'formId' => 'task-form-'.$t->id])
     @endif
 </section>

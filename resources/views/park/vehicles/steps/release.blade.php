@@ -55,7 +55,7 @@
 </div>
 <x-park.photos :vehicle="$vehicle" :stage="PhotoStage::Release" nested collapsed edit class="mt-3"/>
 <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-    <x-ui.button id="act-submit" class="w-full sm:w-auto" :data-qr-release-target="$qr ? 'submit' : null" :hidden="$qr">Выдать</x-ui.button>
+    @unless (($footSubmit ?? false) && ! $qr)<x-ui.button id="act-submit" class="w-full sm:w-auto" :data-qr-release-target="$qr ? 'submit' : null" :hidden="$qr">Выдать</x-ui.button>@endunless
     @if ($vehicle->sold_at && $canManage)
         {{-- Редкий исход — маленькой серой, как «Выдать без QR», а не второй кнопкой ростом с «Выдать» (10.10.2026). --}}
         <button type="button" class="btn btn-s btn-quiet self-center sm:ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="refusal:open">Покупатель отказался</button>

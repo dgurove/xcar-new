@@ -20,4 +20,5 @@
 </div>
 {{-- Кадры приёма — обычным блоком с добавлением (`x-park.photos`), как после приёма в деле. --}}
 <x-park.photos :vehicle="$vehicle" :stage="\App\Park\PhotoStage::Intake" nested edit class="mt-3"/>
-<div class="mt-4"><x-ui.button id="act-submit" class="w-full sm:w-auto">Принять</x-ui.button></div>
+{{-- В окне заявки кнопка — подвалом листа (`$footSubmit`, task): во всю ширину внизу, как «Сохранить изменения». --}}
+@unless ($footSubmit ?? false)<div class="mt-4"><x-ui.button id="act-submit" class="w-full sm:w-auto">Принять</x-ui.button></div>@endunless

@@ -1991,6 +1991,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      колонка листается целиком — подвал липнет к её низу. */
   .detail-foot { position: sticky; bottom: 0; z-index: 10; }
   .detail-foot > .save-bar { position: static; margin-inline: 0; box-shadow: inset 0 .5px 0 var(--color-line); }
+  /* Главное действие карточки подвалом (парковка: «Принять» / «Выдать», 10.10.2026) — видом как «Сохранить изменения», но
+     не `.save-bar`: по ней карточка считает, что есть несохранённое, и спрашивала «Не сохранять?». */
+  .detail-foot > .detail-action { @apply bg-surface px-4 pb-3 pt-3; box-shadow: inset 0 .5px 0 var(--color-line); }
   @media (min-width: 768px) { .save-bar--page { bottom: 1.5rem; } }
   .detail-count { @apply ml-1 text-xs leading-none text-ink-muted; }
   .bar-btn { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
@@ -2089,8 +2092,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     html.kb-open .split-detail .detail-body { padding-bottom: 1rem; }
     /* Подвал листа («Сохранить изменения») — вне прокрутки, над полосой «Домой»; с клавиатурой — прямо на ней. */
     .detail-foot { flex: none; }
-    .detail-foot > .save-bar { padding-bottom: max(env(safe-area-inset-bottom), .75rem); }
-    html.kb-open .split-detail .detail-foot > .save-bar { padding-bottom: .75rem; }
+    .detail-foot > .save-bar, .detail-foot > .detail-action { padding-bottom: max(env(safe-area-inset-bottom), .75rem); }
+    html.kb-open .split-detail .detail-foot > .save-bar, html.kb-open .split-detail .detail-foot > .detail-action { padding-bottom: .75rem; }
     /* «Сохранить» блоков внутри тела листа (сделка CRM: получение, договор, заметка) липнет к низу листа — над полосой
        «Домой» и во всю ширину плашкой, а не над таб-баром (page) и не в полосу жеста: её нижнюю часть iPhone не нажимал. */
     .split-detail .detail-body .save-bar { bottom: 0; margin-inline: -1rem; padding-inline: 1rem; padding-bottom: max(env(safe-area-inset-bottom), .75rem); background: var(--color-surface); }
