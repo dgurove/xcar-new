@@ -3,6 +3,7 @@
 namespace App\Offers\Actions;
 
 use App\Offers\AudienceRules;
+use App\Offers\Jobs\RetractOfferNotices;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\OfferViewer;
@@ -25,7 +26,10 @@ final class SyncViewers
         $open = AudienceRules::openings(AudienceRules::of($offer), $people);
 
         DB::transaction(function () use ($offer, $base, $open) {
-            OfferViewer::where('offer_id', $offer->id)->whereNotIn('user_id', array_keys($open) ?: [0])->delete();
+            // Выпавшим из волны — убрать и анонс (карточку бота, «Новое предложение»).
+            if (OfferViewer::where('offer_id', $offer->id)->whereNotIn('user_id', array_keys($open) ?: [0])->delete()) {
+                RetractOfferNotices::dispatch($offer->id);
+            }
             if ($open) {
                 DB::table('offer_viewers')->upsert(
                     array_map(fn ($id, $delay) => ['offer_id' => $offer->id, 'user_id' => $id, 'opens_at' => $base->copy()->addMinutes($delay)], array_keys($open), $open),

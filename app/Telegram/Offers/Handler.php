@@ -270,9 +270,13 @@ final class Handler
         // Запрет шеринга у предложения — и в Telegram не переслать и не сохранить.
         $extra = $offer->share_locked ? ['protect_content' => 'true'] : [];
         $photo = $offer->mainPhoto();
-        $this->bot->quietly(fn () => $photo
+        $sent = $this->bot->quietly(fn () => $photo
             ? PhotoCache::send($this->bot, $sub->chat_id, $photo, $caption, $buttons, $extra)
             : $this->bot->say($sub->chat_id, $caption, $buttons, $extra));
+        // Ушло из продажи — карточку удалят (`Offers\Jobs\RetractOfferNotices`).
+        if ($sent) {
+            Feed::remember($user, $offer, (int) $sub->chat_id, (int) $sent);
+        }
     }
 
     private function next(Subscriber $sub, string $reaction): void
@@ -313,7 +317,8 @@ final class Handler
         $offer = $sub->offer;
         if ($text === Keys::BACK || ! $offer) {
             $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, '✨🔍', Keys::feed()));
-            $offer ? $this->card($sub, $offer) : $this->next($sub, 'next');
+            // Пока писал вопрос, предложение могло уйти в сделку — тогда не его карточку, а следующую.
+            $offer && Feed::showable($sub->user, $offer) ? $this->card($sub, $offer) : $this->next($sub, 'next');
 
             return;
         }

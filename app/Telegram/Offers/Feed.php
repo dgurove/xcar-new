@@ -34,6 +34,20 @@ final class Feed
         return self::query($user)->count();
     }
 
+    /** Предложение ещё можно показать карточкой: открыто ему, в продаже, приём идёт. */
+    public static function showable(User $user, Offer $offer): bool
+    {
+        return Offer::visibleTo($user)->whereKey($offer->id)->where('state', OfferState::Open)
+            ->where(fn ($q) => $q->whereNull('bids_close_at')->orWhere('bids_close_at', '>', now()))->exists();
+    }
+
+    /** Какое сообщение — карточка этого предложения у человека: ушло из продажи — её удалят. */
+    public static function remember(User $user, Offer $offer, int $chatId, int $messageId): void
+    {
+        DB::connection('pgsql_async')->table('offer_bot_seen')->where('user_id', $user->id)->where('offer_id', $offer->id)
+            ->update(['chat_id' => $chatId, 'message_id' => $messageId]);
+    }
+
     /** Показали (`reaction` пусто) или отреагировали: ➡️ next, 📌 pin, 💬 ask, 💤 sleep. */
     public static function mark(User $user, Offer $offer, ?string $reaction = null): void
     {
