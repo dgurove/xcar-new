@@ -73,6 +73,7 @@
     </td>
     {{-- Вендор и номер убытка одним столбцом, как в «Наличии»: логотип (имя — подсказкой), номер с копированием. --}}
     @if ($has('vendor'))<td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>@endif
+    <td class="cell-dim col-detail-hide hidden nums sm:table-cell">@if (\App\Offers\OfferNumber::isPublic($offer))<x-ui.copy-code :value="(string) $offer->number"/>@endif</td>
     {{-- Город — именем без номера региона: столбец узкий, регион виден в карточке. --}}
     @if ($has('city'))<td class="col-detail-hide hidden sm:table-cell">@if ($offer->settlement)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $offer->settlement->name }}</x-ui.place>@endif</td>@endif
     @if (! $has('state'))<td class="hidden sm:table-cell"></td>
