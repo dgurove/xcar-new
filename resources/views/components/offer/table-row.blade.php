@@ -59,10 +59,6 @@
              прочие столбцы — в «Подробной таблице». --}}
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
-            {{-- Краткая таблица (телефон, карточка рядом): кто завёл и когда — первым блоком второй строки постоянной ширины,
-                 аватар под значком ТС, за ним дата, дальше номер (09.10.2026, начальник: с телефона непонятно, что когда
-                 создано и кем; справа место занято ценой — там дата висела посередине). Сегодня — время, иначе дата. --}}
-            @if ($when)<span class="sub-meta sm:hidden">@if ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="16" title="{{ $offer->moderator->name }}"/>@else<span class="sub-meta-gap"></span>@endif{{ $when->translatedFormat($when->isToday() ? 'H:i' : ($when->isCurrentYear() ? 'j M' : 'j M Y')) }}</span>@endif
             <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>
             @if ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($slot && $has('state'))<span class="sm:hidden text-accent-text">{{ $slot }}</span>
@@ -98,6 +94,10 @@
     @if ($has('floor') && $floorSide)<td class="num nums">@if ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price){{ \App\Support\Money::nums($offer->floor_price) }}@endif</td>
     @elseif ($has('floor'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '' }}</td>@endif
     @if ($has('price'))<td class="num nums">
+        {{-- Краткая таблица (телефон, карточка рядом): кто завёл и когда — вплотную слева от цены (10.10.2026, начальник: с
+             телефона непонятно, что когда создано и кем; слева всегда номер убытка, под ценой — подтверждения). Сегодня —
+             время, иначе дата, за ней аватар. Столбец «Создано» в краткой таблице спрятан. --}}
+        @if ($when)<span class="num-meta sm:hidden">{{ $when->translatedFormat($when->isToday() ? 'H:i' : ($when->isCurrentYear() ? 'j M' : 'j M Y')) }}@if ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="16" title="{{ $offer->moderator->name }}"/>@endif</span>@endif
         @if ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)
         @elseif ($price->shown()){{ $price::money($price->to) }}

@@ -1195,10 +1195,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .cell-title:has(> .cell-name) > :not(.cell-name), .ref-line > :is(svg, img, .vendor-logo), .chip.person > .avatar { align-self: center; }
   .cell-title > .cell-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cell-title > .cell-name ~ * { flex-shrink: 0; }
-  /* Аватар и дата создателя — первым блоком второй строки краткой таблицы предложений: ширина постоянная (в rem — fitline
-     ужимает шрифт, а не блок), чтобы номер убытка в каждой строке начинался с одной вертикали. */
-  .cell-sub > .sub-meta { display: inline-flex; flex: none; align-items: center; gap: .375rem; width: 4.75rem; white-space: nowrap; }
-  .sub-meta-gap { display: inline-block; width: 16px; flex: none; }
+  /* Дата и аватар создателя — в первой строке правого столбца краткой таблицы предложений, вплотную слева от цены (10.10.2026,
+     владелец: слева всегда номер убытка, под ценой — подтверждения). */
+  .num-meta { display: inline-flex; align-items: center; gap: .375rem; margin-right: .5rem; vertical-align: middle; font-size: var(--text-sm); color: var(--color-ink-muted); }
   @media (max-width: 639.98px) {
     .cell-title > .title-plate { display: inline; flex-shrink: 0; margin-left: .3em; font-size: var(--text-sm); }
     .cell-sub .sub-plate { display: none; }
@@ -1271,7 +1270,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       & .table .sm\:hidden { display: revert !important; }
       /* revert у span — строчный: закупочная вставала справа от «Оценить», а не под ней, как на телефоне. */
       & .table td.num > .cell-sub.sm\:hidden { display: block !important; }
-      & .table .cell-sub > .sub-meta { display: inline-flex !important; }
+      & .table .num-meta { display: inline-flex !important; }
       & .table tbody tr { height: 3rem; }
       & .table td.grow .cell-title { display: block; }
       & .table td.grow .cell-title:has(> .cell-name) { display: flex; max-width: none; }
@@ -1540,7 +1539,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Столбец «Вендор, № убытка»: логотип с именем и номер в одну строку. Логотип перед названием ТС — только пока
      этого столбца нет (краткая таблица телефона). */
   .vendor-ref { display: inline-flex; align-items: baseline; gap: .5em; min-width: 0; max-width: 100%; }
-  .vendor-ref > .vendor-tip, .vincode > svg, .place > svg, .status-cell::before { align-self: center; }
+  /* Логотип в кнопке подсказки — по центру строки номера: по базовой линии кнопка-flex садилась низом на линию букв, и
+     логотип торчал вверх над номером (10.10.2026, владелец: «логотип какой-то поехавший»). */
+  .vendor-ref > .vendor-tip, .ref-line > .vendor-tip, .vincode > svg, .place > svg, .status-cell::before { align-self: center; }
   /* Имя вендора подсказкой у логотипа: наведение на ПК, нажатие на телефоне (кнопка — карточка строки не открывается).
      Справа от логотипа поверх номера, а не сверху: ячейка таблицы режет всё, что выходит за её высоту. */
   .vendor-tip { position: relative; display: inline-flex; line-height: 1; cursor: default; -webkit-tap-highlight-color: transparent; }
