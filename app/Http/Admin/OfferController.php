@@ -27,6 +27,7 @@ use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
+use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
@@ -65,16 +66,16 @@ class OfferController
      */
     public const PRESETS = [
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
-        'bids' => 'Есть подтверждения', 'archive' => 'Архив',
+        'bids' => 'Есть подтверждения', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати',
     ];
 
     /** Опубликованное: «Опубликованные» и «Есть подтверждения» — одни правила групп, сортировки и чипов. */
     private const OPEN = ['published', 'bids'];
 
-    /** Вкладки человека: подтверждения видит только админ. */
+    /** Вкладки человека: подтверждения и «Из таблицы Кати» видит только админ. */
     public static function presets(User $user): array
     {
-        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true]);
+        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'legacy' => true]);
     }
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
@@ -192,7 +193,8 @@ class OfferController
 
         $count = $q->count();
         // Вид — на любой вкладке (начальник 04.10.2026: «вернуть кнопку видов»); по умолчанию в CRM таблица, поиск — таблицей.
-        $view = $searching ? ListView::TABLE : ListView::pick($request, $count);
+        // «Из таблицы Кати» — только таблица: призрачные строки есть только у неё.
+        $view = $searching || $preset === 'legacy' ? ListView::TABLE : ListView::pick($request, $count);
         $offers = ListView::isTable($view) ? $q->paginate(max($count, 1), total: $count)->withQueryString() : ListView::paginate($request, $q, $count);
         // Кадры нужны плиткам и строкам; в таблице их нет — кроме «Оцененных»: там по ним видно, готово ли к продаже.
         if (! ListView::isTable($view) || ($preset === 'priced' && ! $searching)) {
@@ -221,6 +223,7 @@ class OfferController
             'pick' => $admin && ! $searching && in_array($preset, ['priced', 'slots', 'archive'], true),
             'cols' => self::columns($preset, $request->user(), $searching),
             'counts' => $counts,
+            'ghosts' => $preset === 'legacy' && ! $searching && self::ghostsShown($facets) ? LegacyClaim::ghosts()->get() : collect(),
         ]);
     }
 
@@ -250,7 +253,13 @@ class OfferController
     {
         $bids = fn ($b) => $b->where('state', BidState::Active);
 
+        // Черновики из таблицы Кати (10.10.2026) — только в своей вкладке, рабочим не мешают.
+        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots'], true)) {
+            LegacyClaim::offList($q);
+        }
+
         return match ($preset) {
+            'legacy' => LegacyClaim::onList($q->where('offers.state', OfferState::Draft)),
             'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
                 ->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
@@ -336,7 +345,7 @@ class OfferController
             // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»). Оценочной в таблице нет
             // (владелец 05.10.2026: «скрой») — она в карточке строки, в «Деньгах».
-            'unpriced', 'priced' => ['vendor', 'city', 'floor', 'price', 'created'],
+            'unpriced', 'priced', 'legacy' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
             'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
@@ -365,10 +374,20 @@ class OfferController
             if ($facets) {
                 $facets->applyTo($q, in_array($key, self::OPEN, true) ? null : 'recommended');
             }
-            $counts[$key] = $q->count();
+            // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки.
+            $counts[$key] = $q->count() + ($key === 'legacy' && self::ghostsShown($facets) ? LegacyClaim::ghosts()->count() : 0);
         }
 
         return $counts;
+    }
+
+    /**
+     * Незаведённые номера «Из таблицы Кати» — пока не выбрали вендора, город или тип: у призрачной строки их нет.
+     * Исключение («Кроме Каркаде») их не прячет.
+     */
+    private static function ghostsShown(?Facets $facets): bool
+    {
+        return ! $facets || ! array_any($facets->keys(), fn ($k) => $facets->excluded($k) === null && $facets->selected($k) !== []);
     }
 
     /** Чипы списка предложений — те же у галереи. */

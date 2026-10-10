@@ -19,20 +19,24 @@
     // одной группой.
     $groups = match (true) {
         $searching => collect(['' => $offers->getCollection()]),
+        // «Из таблицы Кати»: заведённые черновики, под ними незаведённые номера ($ghosts) своей группой.
+        $preset === 'legacy' => collect(['legacy' => $offers->getCollection()])->filter(fn ($list) => $list->isNotEmpty()),
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
         in_array($preset, ['published', 'bids'], true) && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
         default => collect(['' => $offers->getCollection()]),
     };
     $groupTitle = fn ($key, $list) => match (true) {
         $key === '' => null,
+        $key === 'legacy' => $ghosts->isEmpty() ? null : 'Черновики',
         $preset === 'slots' => $list->first()->slot_at->isPast() ? 'Выходит сейчас' : Slots::label($list->first()->slot_at),
         default => OfferController::PICK_GROUPS[$key],
     };
 @endphp
-<x-ui.shell title="Предложения" :count="$step ? null : $offers->total()" :phone-heading="false" :detail="$detail">
+<x-ui.shell title="Предложения" :count="$step || $preset === 'legacy' ? null : $offers->total()" :phone-heading="false" :detail="$detail">
     <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
-        <x-slot:extra>@unless ($searching)<x-ui.view-switch :current="$view"/>@endunless</x-slot:extra>
+        <x-slot:extra>@unless ($searching || $preset === 'legacy')<x-ui.view-switch :current="$view"/>@endunless</x-slot:extra>
         <x-slot:actions>
+            @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями. --}}
             @if (in_array($preset, ['nofloor', 'unpriced'], true) && ! $searching)
                 <div class="contents" data-controller="menu sheet">
@@ -50,8 +54,22 @@
     </x-ui.toolbar>
 
     <div class="mt-6" id="list" @if ($pick) data-controller="pick" @endif>
-        @if ($offers->isEmpty())
-            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'bids' => 'Подтверждений нет', default => 'Предложений нет' } }}</x-ui.empty>
+        {{-- После вставки номеров: что уже в сделке или в продаже — в список не попало, строкой к самой машине. --}}
+        @foreach (['deals' => 'Уже в сделке', 'published' => 'В продаже'] as $part => $head)
+            @if ($items = session('legacy.'.$part))
+                <div class="list-head">{{ $head }} <span class="nums">{{ count($items) }}</span></div>
+                <div class="list mb-6">
+                    @foreach ($items as $item)
+                        <a href="/offers/{{ $item['number'] }}" class="row" data-turbo-frame="_top">
+                            <span class="min-w-0 flex-1"><span class="block truncate">{{ $item['title'] }}</span><span class="row-sub"><x-vendor.ref :vendor="$item['vendor_id'] ? \App\Vendors\Vendor::badges()->get($item['vendor_id']) : null" :ref="$item['claim_ref']"/>@if ($item['manager'])<span>{{ $item['manager'] }}</span>@endif</span></span>
+                            <x-ui.chevron/>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+        @endforeach
+        @if ($offers->isEmpty() && $ghosts->isEmpty())
+            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)
                 <form id="offers-pick" method="post" action="/offers/schedule">@csrf</form>
@@ -66,6 +84,10 @@
                         @endif
                         @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :cols="$cols" :checkable="$pick" :group="$preset === 'slots' ? $key : null"/>@endforeach
                     @endforeach
+                    @if ($ghosts->isNotEmpty())
+                        <tr class="table-group"><th colspan="{{ $span }}"><span class="table-group-name">Не заведены <span class="nums">{{ $ghosts->count() }}</span></span></th></tr>
+                        @foreach ($ghosts as $claim)<x-offer.legacy-row :claim="$claim" :cols="$cols"/>@endforeach
+                    @endif
                 </x-ui.table>
             @else
                 @foreach ($groups as $key => $list)

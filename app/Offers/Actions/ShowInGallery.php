@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferNumber;
@@ -52,8 +53,9 @@ final class ShowInGallery
     public function due(): int
     {
         $shown = 0;
-        Offer::where('state', OfferState::Draft)->whereNull('gallery_from')->whereNotNull('brand_id')->whereNotNull('model_id')
-            ->whereHas('vendor', fn ($v) => $v->where('to_gallery', true))
+        // Черновики из таблицы Кати — сделки вне системы: менеджерам в галерею не показываем.
+        LegacyClaim::offList(Offer::where('state', OfferState::Draft)->whereNull('gallery_from')->whereNotNull('brand_id')->whereNotNull('model_id')
+            ->whereHas('vendor', fn ($v) => $v->where('to_gallery', true)))
             ->orderBy('id')->get()
             ->each(function (Offer $offer) use (&$shown) {
                 try {

@@ -291,7 +291,7 @@ final class CarText
      * Вендор по номеру убытка: чей номер того же вида встречался чаще за последние две сотни записей. Названия
      * страховых в коде не нужны — новая страховая узнаётся сама после первого заведённого руками.
      */
-    private static function vendorOf(string $code): ?int
+    public static function vendorOf(string $code): ?int
     {
         $pattern = CodeMatcher::patternOf($code);
         if ($pattern === null) {

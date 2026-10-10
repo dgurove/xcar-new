@@ -17,6 +17,7 @@ use App\Http\Admin\OfferController;
 use App\Http\Admin\OfferDraftController;
 use App\Http\Admin\OfferPhotoController;
 use App\Http\Admin\OfferValuationController;
+use App\Http\Admin\LegacyClaimController;
 use App\Http\Admin\PayLinkController;
 use App\Http\Admin\PickupController;
 use App\Http\Admin\PurchaseCarPhotoController;
@@ -66,6 +67,12 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // «Оценить → Из текста»: оценочные из сообщения — модератору тоже, он ставит закупочную.
     Route::post('/offers/valuations/preview', [OfferValuationController::class, 'preview']);
     Route::post('/offers/valuations', [OfferValuationController::class, 'apply']);
+    // «Из таблицы Кати» (10.10.2026): номера списком, «Завести» и «Убрать» — только админу.
+    Route::middleware('ability:canManageCrm')->group(function () {
+        Route::post('/offers/legacy', [LegacyClaimController::class, 'store']);
+        Route::post('/offers/legacy/{claim}/create', [LegacyClaimController::class, 'create']);
+        Route::delete('/offers/legacy/{claim}', [LegacyClaimController::class, 'destroy']);
+    });
     Route::middleware('offer.edit')->group(function () {
         Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
         Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters'])->middleware('ability:canCrmMail');

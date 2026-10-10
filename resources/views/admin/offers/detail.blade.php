@@ -129,9 +129,11 @@
                 $purge = $admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true);
                 $calm = $transitions->reject(fn ($t) => $t[0] === OfferState::Archived || $t[0]->tone() === 'danger');
                 $danger = $transitions->diffKeys($calm);
+                // Черновик из таблицы Кати — «Вернуть в черновики»: номер уходит из списка, машина — в свою рабочую вкладку.
+                $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                 $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
             @endphp
-            @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge)
+            @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed)
                 <div class="contents" data-controller="menu">
                     <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
                     <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
@@ -152,6 +154,14 @@
                                         <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$c['at'] ? 'clock' : 'send'" class="size-5 text-ink-muted"/>{{ $c['at'] ? str_replace(', ', ' в ', \App\Offers\Slots::label($c['at'])) : 'Сейчас' }}</button>
                                     </form>
                                 @endforeach
+                            </div>
+                        @endif
+                        @if ($listed)
+                            <div class="menu-group">
+                                <form method="post" action="/offers/legacy/{{ $listed->id }}">
+                                    @csrf @method('delete')
+                                    <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="undo" class="size-5 text-ink-muted"/>Вернуть в черновики</button>
+                                </form>
                             </div>
                         @endif
                         @if ($calm->isNotEmpty())
