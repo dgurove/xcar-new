@@ -21,6 +21,8 @@
         $state === CommissionState::Payable => 'к выплате',
         default => 'к выплате после оплаты счёта',
     };
+    // Совкомбанк: счёт встаёт после «Автомобиль забрал», а не после ответа поставщика (10.10.2026).
+    $notYet = $deal->isCommission() ? 'после получения автомобиля' : 'после ответа поставщика';
     $pay = fn ($i) => '/account/money/deals/'.$deal->id.($i && $i->state === InvoiceState::Issued ? '?pay=1' : '');
 @endphp
 <div class="box">
@@ -49,7 +51,7 @@
                     <span class="block">Оплата услуг подбора</span>
                     @php
                         $when = match (true) {
-                            ! $selection => $deal->agreed() ? 'готовим счёт' : 'после ответа поставщика',
+                            ! $selection => $deal->agreed() ? 'готовим счёт' : $notYet,
                             $selection->state === InvoiceState::Paid => 'оплачено',
                             $selection->claimed() > 0 => 'оплата ждёт подтверждения',
                             default => null,
@@ -70,7 +72,7 @@
             <a href="{{ $sale ? $pay($sale) : '#dkp-buyer' }}" class="row">
                 <span class="min-w-0 flex-1">
                     <span class="block">{{ $sale ? 'Счёт ПРАЙМ '.$sale->label() : 'Счёт ПРАЙМ' }}</span>
-                    <span class="row-sub">@if (! $sale && ! $deal->agreed())после ответа поставщика@elseif (! $sale)<span class="text-urgent">укажите покупателя</span>@elseif ($sale->state === InvoiceState::Paid)<span class="text-open">оплачен</span>@else<x-billing.light :invoice="$sale"/> платит {{ $sale->party?->name }}@endif</span>
+                    <span class="row-sub">@if (! $sale && ! $deal->agreed()){{ $notYet }}@elseif (! $sale)<span class="text-urgent">укажите покупателя</span>@elseif ($sale->state === InvoiceState::Paid)<span class="text-open">оплачен</span>@else<x-billing.light :invoice="$sale"/> платит {{ $sale->party?->name }}@endif</span>
                 </span>
                 @if ($sale)<span class="nums font-semibold">{{ Money::rub($sale->state === InvoiceState::Paid ? $sale->total : $sale->remaining()) }}</span>@endif
             </a>

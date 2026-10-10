@@ -26,8 +26,17 @@ final class PickupState
             $stage->car_place === CarPlace::Keeper => self::keeper($offer, $viewer),
             $stage->car_place === CarPlace::WithUs => ['стоит у нас', 'open'],
             $stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty() => [$who ? 'забирает '.$who : 'забрать', 'urgent'],
+            // Шаг продажи сам просит «Автомобиль забрал» (Совкомбанк: без оплаты, сразу) — документы не ждём.
+            (bool) $offer->position(Track::Sale)?->stage->isPickupStep() => self::picking($offer, $viewer),
             default => ['готовим документы', 'plain'],
         };
+    }
+
+    private static function picking(Offer $offer, ?User $viewer): array
+    {
+        $keeper = $offer->keeper();
+
+        return [$viewer && $keeper && $keeper->id !== $viewer->id ? 'забирает '.$keeper->shortName() : 'забрать', 'urgent'];
     }
 
     /** Стоит «у менеджера»: у держателя гаража, иначе у вывозчика (`Offer::keeper`) — своему «у вас», другим по имени. */

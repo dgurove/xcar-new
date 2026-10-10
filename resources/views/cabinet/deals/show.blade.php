@@ -14,7 +14,10 @@
     $pickupSteps = \App\Offers\Handover::checklist($deal, $position);
     $contractStep = $deal->isActive() && $deal->hasContract() && $requirement && ($pickupSteps || ($requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep()));
     // ПРАЙМ без покупателя: задача и есть выбор покупателя — он в ней, а не вторым блоком с той же кнопкой.
-    $needsBuyer = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() && $deal->invoiceGap() === 'buyer';
+    $gap = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
+    $needsBuyer = $gap === 'buyer';
+    // Гаражная Совкомбанка: счёт и договор — когда менеджер продаст (`Deal::namesBuyer`): цену он пишет «Продаю».
+    $needsPrice = $gap === 'price';
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
     {{-- Сделка — не объявление (05.10.2026, владелец): первым делом задача, справа расчёт, кадры — плиткой в самом низу

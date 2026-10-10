@@ -48,9 +48,12 @@
                                 </div>
                             @endif
                             {{-- Платит поставщику менеджер — нашу долю он платит по ссылке сразу (05.10.2026). --}}
+                            {{-- У Совкомбанка доли нет: машина уходит без оплаты, нашу часть даёт продажа (`Deal::namesBuyer`). --}}
+                            @unless ($offer->vendor?->deal_format === \App\Vendors\DealFormat::Commission)
                             <div class="fields" data-reveal-target="pane" data-reveal-key="manager" @if ($branch && old('payer', 'us') !== 'manager') hidden @endif>
                                 <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')" data-controller="digits" data-action="input->digits#format"/>
                             </div>
+                            @endunless
                             {{-- Везут к нему в гараж: сам или мы (05.10.2026); выбрано, кто уже вывозит. Вывоз у гаражной
                                  есть всегда (06.10.2026), даже у вендора без маршрута — заведётся сам. --}}
                             @if (! $offer->pickedUp() && $offer->parkVehicle?->state !== \App\Park\VehicleState::Stored)

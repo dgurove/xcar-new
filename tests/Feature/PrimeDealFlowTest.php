@@ -26,6 +26,8 @@ use App\Users\User;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\ApplyPreset;
 use App\Workflow\Actions\EnterStage;
+use App\Workflow\Actions\TakeExit;
+use App\Workflow\Actor;
 use App\Workflow\Position;
 use App\Workflow\Preset;
 use App\Workflow\Stage;
@@ -50,14 +52,14 @@ class PrimeDealFlowTest extends TestCase
 
     private User $manager;
 
-    private function offer(int $floor = 944000): Offer
+    private function offer(int $floor = 944000, string $format = 'commission'): Offer
     {
         Storage::fake('private');
         Notification::fake();
         config(['xcar.yookassa.shop_id' => '1', 'xcar.yookassa.secret' => 'test']);
         $this->admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $this->manager = User::create(['name' => 'Тужиков Евгений', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
-        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => $format]);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
         $offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => $floor, 'asking_price' => 1050000, 'bids_close_at' => now()->addDay()]);
         $offer->forceFill(['state' => OfferState::Open])->save();
@@ -65,6 +67,15 @@ class PrimeDealFlowTest extends TestCase
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
 
         return $offer->fresh();
+    }
+
+    /** Совкомбанк: машину забирают без оплаты, счёт и договор — после «Автомобиль забрал». */
+    private function pickedUp(Offer $offer): void
+    {
+        $stage = $offer->fresh()->position(Track::Sale)->stage;
+        $exit = $stage->exits->firstWhere('label', 'Автомобиль забрал');
+        $this->assertNotNull($exit, 'шаг «'.$stage->name.'» без «Автомобиль забрал»');
+        app(TakeExit::class)($offer->fresh(), $exit, Actor::Manager, $this->manager);
     }
 
     private function buyerData(): array
@@ -77,6 +88,10 @@ class PrimeDealFlowTest extends TestCase
     {
         $offer = $this->offer();
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        // До получения счетов нет и покупателя никто не спрашивает.
+        $this->assertSame('Менеджер забирает автомобиль', $offer->fresh()->stage()->name);
+        $this->assertSame(0, $deal->fresh()->issuedInvoices()->count());
+        $this->pickedUp($offer);
 
         // Шаг оплаты без счёта — ход менеджера «Укажите покупателя», а не наш «Выставите счёт».
         $position = Position::where('offer_id', $offer->id)->where('track', Track::Sale)->with('stage')->firstOrFail();
@@ -105,6 +120,7 @@ class PrimeDealFlowTest extends TestCase
     {
         $offer = $this->offer();
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $this->pickedUp($offer);
         $manual = app(IssueServiceInvoice::class)(['name' => 'Покупаев Пётр Петрович'], $this->admin, 100000, ServiceTitle::DEFAULT, $offer);
         app(RecordPayment::class)($manual->fresh(), $this->admin, 100000, now(), PaymentSource::Bank);
 
@@ -120,6 +136,7 @@ class PrimeDealFlowTest extends TestCase
     {
         $offer = $this->offer();
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Withheld, scheme: DealScheme::Prime);
+        $this->pickedUp($offer);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'me'], $this->manager);
 
         $invoice = $deal->fresh()->issuedInvoices()->sole();
@@ -132,6 +149,7 @@ class PrimeDealFlowTest extends TestCase
     {
         $offer = $this->offer(779000);
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer, ownerPrice: 750000);
+        $this->pickedUp($offer);
 
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame(ChargeKind::Selection, $invoice->kind);
@@ -142,7 +160,8 @@ class PrimeDealFlowTest extends TestCase
 
     public function test_garage_manager_pays_car_by_invoice_and_share_by_link(): void
     {
-        $offer = $this->offer(1300000);
+        // Не комиссия: у гаражной Совкомбанка счёта за машину при принятии нет (`SovcomPathTest`).
+        $offer = $this->offer(1300000, 'supplier');
         $bid = app(PlaceBid::class)($offer, $this->manager, null, kind: BidKind::Garage);
         $deal = app(AcceptBid::class)($bid, $this->admin, payer: GaragePayer::Manager, scheme: DealScheme::Prime, share: 50000);
 
@@ -164,6 +183,7 @@ class PrimeDealFlowTest extends TestCase
     {
         $offer = $this->offer();
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Withheld, scheme: DealScheme::Prime);
+        $this->pickedUp($offer);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), $this->buyerData(), $this->manager);
         $this->assertEqualsWithDelta(1050000, $deal->fresh()->issuedInvoices()->sole()->remaining(), 0.01);
         $this->assertFalse($deal->fresh()->withholds());

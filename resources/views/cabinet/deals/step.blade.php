@@ -14,7 +14,10 @@
     // Оплата, а счёта ещё нет: ход наш (`Position::awaitsInvoice`), просить оплатить нечего — счёт готовим.
     $noInvoice = (bool) $position?->awaitsInvoice();
     // ПРАЙМ без покупателя — ход менеджера: счёт встанет сам, как только он укажет, кому (`Deal::invoiceGap`).
-    $needsBuyer = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() && $deal->invoiceGap() === 'buyer';
+    $gap = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
+    $needsBuyer = $gap === 'buyer';
+    // Гаражная Совкомбанка: счёт и договор — когда менеджер продаст (`Deal::namesBuyer`): цену он пишет «Продаю».
+    $needsPrice = $gap === 'price';
     // Строки счетов — только в гараже, где «Расчёта» нет; на странице сделки счёт в «Расчёте», а здесь — сама оплата.
     // На шаге оплаты — только сама оплата (ссылка и «Оплатить N ₽»), строка счёта повторяла бы ту же сумму.
     $stepInvoices = ($withInvoices ?? false) && ! $payStep ? $unpaid : collect();
@@ -49,6 +52,8 @@
 
             @if ($needsBuyer)
                 <h3 class="mt-5 text-lg">Укажите покупателя</h3>
+            @elseif ($needsPrice)
+                <h3 class="mt-5 text-lg">Когда продадите, нажмите «Продаю» и укажите цену</h3>
             @elseif ($requirement && ! ($pickupSteps ?? null))
                 {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
                 <h3 class="mt-5 text-lg">{{ \App\Users\Wording::mine($requirement->title) }}</h3>

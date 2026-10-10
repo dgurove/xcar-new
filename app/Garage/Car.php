@@ -168,6 +168,21 @@ class Car extends Model
         return $this->deal_id !== null && $this->deal?->state === DealState::Active;
     }
 
+    /**
+     * Продавать рано: идёт сделка со страховой, и бумаги по ней ещё не закрыты. У Совкомбанка (`Deal::namesBuyer`, 10.10.2026)
+     * не держит: машину забирают без оплаты, продают, и уже продажа выставляет счёт ПРАЙМ с договором.
+     */
+    public function papersPending(): bool
+    {
+        return $this->dealOpen() && ! $this->deal->namesBuyer();
+    }
+
+    /** Гаражная Совкомбанка: деньги идут сделкой (счёт ПРАЙМ покупателю), расчёта по машине нет. */
+    public function settledByDeal(): bool
+    {
+        return (bool) $this->deal?->namesBuyer();
+    }
+
     /** Поставщику платил сам менеджер: документы на нём, счёт по продаже — только ему. */
     public function managerPaidSupplier(): bool
     {

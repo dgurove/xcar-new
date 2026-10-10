@@ -29,6 +29,8 @@ use App\Users\User;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\ApplyPreset;
 use App\Workflow\Actions\EnterStage;
+use App\Workflow\Actions\TakeExit;
+use App\Workflow\Actor;
 use App\Workflow\Preset;
 use App\Workflow\Stage;
 use App\Workflow\Track;
@@ -49,14 +51,14 @@ class MoneyDirectionTest extends TestCase
 
     private User $manager;
 
-    private function offer(int $floor = 944000): Offer
+    private function offer(int $floor = 944000, string $format = 'commission'): Offer
     {
         Storage::fake('private');
         Notification::fake();
         config(['xcar.yookassa.shop_id' => '1', 'xcar.yookassa.secret' => 'test']);
         $this->admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $this->manager = User::create(['name' => 'Бородин Филипп', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
-        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => $format]);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
         $offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => $floor, 'asking_price' => 1050000, 'garage_allowed' => true, 'bids_close_at' => now()->addDay()]);
         $offer->forceFill(['state' => OfferState::Open])->save();
@@ -71,6 +73,8 @@ class MoneyDirectionTest extends TestCase
     {
         $offer = $this->offer();
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        // Совкомбанк: счёт и договор — после «Автомобиль забрал».
+        app(TakeExit::class)($offer->fresh(), $offer->fresh()->position(Track::Sale)->stage->exits->firstWhere('label', 'Автомобиль забрал'), Actor::Manager, $this->manager);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'new', 'new_buyer' => ['phone' => '+7 900 555-44-33'], 'buyer' => ['kind' => 'person',
             'name' => 'Покупаев Пётр Петрович', 'birth_at' => '1985-05-05', 'passport' => '11 11 111111', 'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2010-10-10', 'reg_address' => 'г. Москва']], $this->manager);
         app(RecordPayment::class)($deal->fresh()->issuedInvoices()->sole(), $this->admin, 1050000, now(), PaymentSource::Bank);
@@ -88,7 +92,8 @@ class MoneyDirectionTest extends TestCase
     /** Гараж «платит менеджер»: два счёта (машина и доля) — строка и пилюля показывают одну сумму, сотруднику «должен нам». */
     public function test_position_is_sum_of_rows(): void
     {
-        $offer = $this->offer(1300000);
+        // Не комиссия: гаражная Совкомбанка счетов при принятии не получает.
+        $offer = $this->offer(1300000, 'supplier');
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, null, kind: BidKind::Garage), $this->admin, payer: GaragePayer::Manager, scheme: DealScheme::Prime, share: 50000);
 
         $ledger = new ManagerLedger($this->manager);

@@ -41,7 +41,8 @@ final class GarageView
             ! $staff && $car->state === CarState::Selling => [['emit', 'selling', 'Продаю']],
             ! $staff && $unpaid && ! $current->isOwed() && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0 => [['emit', 'pay', 'Оплатить']],
             $staff && $car->state === CarState::Selling => [['emit', 'sold', 'Продана']],
-            $staff && $car->state === CarState::Sold && ! $invoice => [['emit', 'settle', $car->manager ? 'Выставить счёт' : 'Закрыть расчёт']],
+            // Совкомбанк: счёт ПРАЙМ покупателю выставляет сделка, расчёта по машине нет.
+            $staff && $car->state === CarState::Sold && ! $invoice && ! $car->settledByDeal() => [['emit', 'settle', $car->manager ? 'Выставить счёт' : 'Закрыть расчёт']],
             $staff && $car->awaitsPayout() => [['emit', 'payout', 'Выплата менеджеру']],
             $staff && $unpaid => [['emit', 'paid', $current->isOwed() ? 'Выплатили' : 'Поступило']],
             default => [],
@@ -65,7 +66,7 @@ final class GarageView
             // Куда сотрудник может вернуть машину кнопкой в пути: пройденные этапы работы с ней.
             // «Готова» после закрытой сделки — та же продажа (`MoveCar`), туда не возвращают.
             'back' => $staff && $car->state->isWorking() && ! $frozen ? array_values(array_filter(CarState::cases(), fn (CarState $s) => $s->isWorking() && $s->order() < $car->state->order()
-                && ($s !== CarState::Ready || $car->dealOpen()))) : [],
+                && ($s !== CarState::Ready || $car->papersPending()))) : [],
             // Деньги плашкой — сотруднику всегда (вложено, прибыль), менеджеру — с продажи: до неё его расходы — итогом списка.
             'money' => $staff || $car->isSold(),
             'step' => $step,

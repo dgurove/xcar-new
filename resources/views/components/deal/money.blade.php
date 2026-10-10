@@ -23,10 +23,11 @@
 @endphp
 <x-ui.card title="Деньги" {{ $attributes }}>
     {{-- «Изменить» — лаймовым словом в заголовке, как у ТС, цен, ДКП и заметки (07.10.2026), а не чипом среди схемы. --}}
-    @if ($deal->isActive() && $deal->moneyEditable() && (! $deal->isGarage() || $deal->isGarageManager()))
+    {{-- Гаражная Совкомбанка (`namesBuyer`): вознаграждение назначаем, когда менеджер назвал цену продажи. --}}
+    @if ($deal->isActive() && $deal->moneyEditable() && (! $deal->isGarage() || $deal->isGarageManager() || ($deal->namesBuyer() && $deal->amount !== null)))
         <x-slot:actions>
             <div data-controller="sheet" class="contents">
-                <button type="button" class="edit-card-toggle" data-action="sheet#open">{{ $deal->isGarageManager() && ! $deal->share ? 'Вписать долю' : 'Изменить' }}</button>
+                <button type="button" class="edit-card-toggle" data-action="sheet#open">{{ match (true) { $deal->isGarageManager() && ! $deal->share => 'Вписать долю', $deal->namesBuyer() && $deal->commission === null => 'Назначить вознаграждение', default => 'Изменить' } }}</button>
                 <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки" :open="$errors->hasAny(['commission', 'owner_price', 'share'])">
                     @if ($deal->isGarageManager())
                         {{-- Гаражная «платит менеджер»: наша доля — счёт со ссылкой встаёт сам (`SyncDealInvoices`). --}}
@@ -51,6 +52,7 @@
         if ($deal->isGarage()) {
             // Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику.
             $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
+            if ($deal->namesBuyer() && $deal->amount !== null) $rows[] = ['Цена продажи', Money::rub($deal->amount), $dd.' font-medium', true];
         } else {
             $rows[] = ['Цена подтверждения', Money::rub($deal->amount), $dd.' font-medium', true];
         }
@@ -65,7 +67,7 @@
         } elseif ($deal->margin() !== null) {
             $rows[] = ['Разница', Money::rub($deal->margin()), $dd.($deal->margin() < 0 ? ' text-danger' : ''), false];
         }
-        if (! $deal->isGarage()) $rows[] = ['Вознаграждение', $deal->commission ? Money::rub($deal->commission) : 'нет', $dd, false];
+        if (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['Вознаграждение', $deal->commission ? Money::rub($deal->commission) : 'нет', $dd, false];
         if ($deal->ours() !== null) $rows[] = ['Нам', Money::rub($deal->ours()), $dd.' text-lg font-semibold'.($deal->ours() < 0 ? ' text-danger' : ''), true];
         $rest = $compact ? array_filter($rows, fn ($r) => ! $r[3]) : [];
         $shown = $compact ? array_filter($rows, fn ($r) => $r[3]) : $rows;

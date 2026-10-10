@@ -15,7 +15,7 @@
     [$where] = PickupState::of($offer, $user);
     $hint = match ($car->state) {
         CarState::Waiting => $where,
-        CarState::Ready => $car->dealOpen() ? 'ждём документы со страховой' : null,
+        CarState::Ready => $car->papersPending() ? 'ждём документы со страховой' : null,
         CarState::Repair, CarState::Selling => $days($car->stageDays()),
         CarState::Sold => match (true) {
             ! $invoice => $staff ? 'выставить счёт' : 'готовим счёт',

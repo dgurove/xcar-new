@@ -178,7 +178,7 @@
                             @endif
                             @if ($wantsInvoice)
                                 {{-- Счета ставятся сами (`SyncDealInvoices`); гаражной не хватает нашей доли — вписать её в «Деньгах» сделки. --}}
-                                @if ($position->gap() === 'share')<a href="/work/deals/{{ $deal->id }}#money" class="btn btn-s btn-accent" data-turbo-frame="_top">Вписать нашу долю</a>
+                                @if (in_array($position->gap(), ['share', 'commission'], true))<a href="/work/deals/{{ $deal->id }}#money" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $position->gap() === 'share' ? 'Вписать нашу долю' : 'Назначить вознаграждение' }}</a>
                                 @else<a href="/work/invoices/new?offer={{ $n }}" class="btn btn-s btn-accent" data-turbo-frame="_top">Выставить счёт</a>@endif
                             @endif
                             @foreach ($moves->values() as $i => $exit)

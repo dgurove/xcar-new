@@ -156,22 +156,44 @@ class Deal extends Model
             return null;
         }
         if ($this->offer?->vendor?->deal_format === \App\Vendors\DealFormat::Commission) {
-            return $this->garage_payer === \App\Garage\GaragePayer::Manager ? 'менеджер платит ПРАЙМ по счёту' : 'поставщику платим мы';
+            return $this->garage_payer === \App\Garage\GaragePayer::Manager ? 'без оплаты, счёт ПРАЙМ при продаже' : 'поставщику платим мы';
         }
 
         return $this->garage_payer === \App\Garage\GaragePayer::Us ? 'поставщику платим мы' : 'поставщику платит менеджер';
     }
 
-    /** Гаражная «платит менеджер»: за машину — счёт ПРАЙМ на закупочную (у ПРАЙМ), наша доля — по ссылке. */
+    /**
+     * Гаражная «платит менеджер»: за машину — счёт ПРАЙМ на закупочную (у ПРАЙМ), наша доля — по ссылке. Кроме Совкомбанка
+     * (`namesBuyer`): там машина уходит без оплаты, а платит покупатель, когда менеджер её продаст.
+     */
     public function isGarageManager(): bool
     {
-        return $this->garage_payer === GaragePayer::Manager;
+        return $this->garage_payer === GaragePayer::Manager && ! $this->isCommission();
+    }
+
+    /**
+     * Совкомбанк (договор комиссии, `DealFormat::Commission`; 10.10.2026, владелец): машину вывозят без оплаты, менеджер
+     * забирает её сразу; счёт ПРАЙМ и договор купли-продажи выставляются, когда он назовёт покупателя, ПРАЙМ платит
+     * Совкомбанку после оплаты.
+     */
+    public function isCommission(): bool
+    {
+        return $this->offer?->vendor?->deal_format === \App\Vendors\DealFormat::Commission;
+    }
+
+    /**
+     * Гаражная Совкомбанка: машина у менеджера без оплаты, цену он называет при продаже, мы — его вознаграждение; дальше
+     * как обычная ПРАЙМ-сделка: счёт и договор тому, кого он назовёт.
+     */
+    public function namesBuyer(): bool
+    {
+        return $this->isGarage() && $this->isCommission();
     }
 
     /** Договор собираем мы: ДКП собственника или ПРАЙМ (в том числе с менеджером гаражной); «страховой» — нет. */
     public function hasContract(): bool
     {
-        return $this->isDkp() || ($this->isPrime() && (! $this->isGarage() || $this->isGarageManager()));
+        return $this->isDkp() || ($this->isPrime() && (! $this->isGarage() || $this->isGarageManager() || $this->namesBuyer()));
     }
 
     /** Сколько покупатель отдаёт не нам — собственнику по ДКП или страховой: своя сумма, а без неё закупочная. */
@@ -193,8 +215,9 @@ class Deal extends Model
     }
 
     /**
-     * Почему этапу оплаты нечем платить: `buyer` — ПРАЙМ, а менеджер ещё не указал, кому счёт (ход его); `share` —
-     * гаражной не вписана наша доля (ход наш); `invoice` — счёт не встал сам, выставить руками. Есть счёт — null.
+     * Почему этапу оплаты нечем платить: `buyer` — ПРАЙМ, а менеджер ещё не указал, кому счёт (ход его); `price` —
+     * гаражной Совкомбанка не названа цена продажи (ход его); `commission` — ей не назначено вознаграждение (ход наш);
+     * `share` — гаражной не вписана наша доля (ход наш); `invoice` — счёт не встал сам, выставить руками. Есть счёт — null.
      */
     public function invoiceGap(): ?string
     {
@@ -203,10 +226,19 @@ class Deal extends Model
         }
 
         return match (true) {
+            // Гаражная Совкомбанка: цену продажи и покупателя называет менеджер («Продаю»), вознаграждение — мы.
+            $this->namesBuyer() && $this->amount === null => 'price',
             $this->isGarageManager() && ! $this->share => 'share',
-            $this->isPrime() && ! $this->isGarage() && ! $this->contract?->buyer_user_id => 'buyer',
+            $this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && ! $this->contract?->buyer_user_id => 'buyer',
+            $this->namesBuyer() && $this->commission === null => 'commission',
             default => 'invoice',
         };
+    }
+
+    /** Счёта нет, и ход за менеджером: не указал покупателя (ПРАЙМ) или цену продажи (гаражная Совкомбанка). */
+    public function managerGap(): bool
+    {
+        return in_array($this->invoiceGap(), ['buyer', 'price'], true);
     }
 
     /** Живые счета по сделке в обе стороны, старые первыми. */
@@ -367,7 +399,7 @@ class Deal extends Model
             return false;
         }
 
-        return ! ($this->isPrime() && ! $this->isGarage() && $this->contract?->buyer_user_id && ! $this->contract->managerPays());
+        return ! ($this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && $this->contract?->buyer_user_id && ! $this->contract->managerPays());
     }
 
     /** Менеджеру вознаграждение открывается с первого живого счёта по сделке. */

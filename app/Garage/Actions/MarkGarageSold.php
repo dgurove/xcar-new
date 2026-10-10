@@ -5,6 +5,8 @@ namespace App\Garage\Actions;
 use App\Garage\Car;
 use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
+use App\Offers\Actions\SyncDealInvoices;
+use App\Offers\DealContract;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\GarageSelling;
 use App\Users\User;
@@ -23,7 +25,7 @@ final class MarkGarageSold
             throw ValidationException::withMessages(['sold_price' => 'По ТС выставлен счёт: сначала аннулируйте его']);
         }
         $staff = $by->isAdmin();
-        if ($car->dealOpen()) {
+        if ($car->papersPending()) {
             throw ValidationException::withMessages(['sold_price' => 'Документы со страховой ещё не закрыты: продавать рано']);
         }
         if ($staff ? ! $car->state->isWorking() : ($car->state !== CarState::Selling || $car->manager_id !== $by->id)) {
@@ -36,6 +38,14 @@ final class MarkGarageSold
             'buyer_name' => $staff ? ($data['buyer_name'] ?? null) : null,
             'buyer_phone' => $staff ? ($data['buyer_phone'] ?? null) : null,
         ], $by);
+        // Совкомбанк (10.10.2026): цена продажи — цена сделки и договора; счёт ПРАЙМ и договор встанут, когда менеджер назовёт
+        // покупателя, а мы — его вознаграждение (`SyncDealInvoices`).
+        if ($car->settledByDeal()) {
+            $deal = $car->deal;
+            $deal->update(['amount' => (int) $data['sold_price']]);
+            DealContract::for($deal)->update(['price' => (int) $data['sold_price']]);
+            app(SyncDealInvoices::class)($deal->fresh(), $by);
+        }
         GarageChanged::dispatch($car);
         if (! $staff) {
             NotifyOwner::dispatch(new GarageSelling($car->load(['offer.brand', 'offer.model', 'manager', 'costs'])));

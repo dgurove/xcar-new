@@ -34,10 +34,10 @@ final class MoveCar
             }
         }
         // «Готова» без открытой сделки — сразу в продажу: ждать нечего.
-        if ($to === CarState::Ready && ! $car->dealOpen()) {
+        if ($to === CarState::Ready && ! $car->papersPending()) {
             $to = CarState::Selling;
         }
-        if ($to === CarState::Selling && $car->dealOpen()) {
+        if ($to === CarState::Selling && $car->papersPending()) {
             throw ValidationException::withMessages(['car' => 'Сначала закроем документы со страховой: в продажу ТС встанет сама']);
         }
         $car->moveTo($to, by: $by);

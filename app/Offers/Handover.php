@@ -101,7 +101,8 @@ final class Handover
         $atYard = $vehicle?->state === VehicleState::Stored && $vehicle->yard;
         // Выдача у поставщика (Каркаде): забирает сам менеджер — шаг «Выдача у поставщика» ждёт его «Забрал».
         $atSupplier = $sale && ! $service && $sale->stage->workflow->stages->contains(fn (Stage $s) => in_array('адрес выдачи', self::labels($s), true));
-        $picks = $picks || $atSupplier;
+        // Шаг продажи сам просит его «Автомобиль забрал» (Совкомбанк, Т-Страхование) — забирает он, а не мы.
+        $picks = $picks || $atSupplier || $saleExit !== null;
         $where = match (true) {
             $place === CarPlace::Keeper => $offer->keeper()?->id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
             $place === CarPlace::WithUs => CarPlace::WithUs->label(),
@@ -133,7 +134,8 @@ final class Handover
         // Сделка ещё согласуется (ждём поставщика, заявка не ушла) — рано: продажа может не состояться, контакт владельца
         // менеджеру ещё не нужен.
         $waiting = $sale && $sale->stage->exits->contains(fn (Outcome $e) => preg_match('/^поставщик (согласовал|отказал)/u', mb_strtolower($e->label)) === 1);
-        $open = $deal->isActive() && ! $deal->isGarage() && ! $waiting;
+        // Гаражную Совкомбанка менеджер забирает сам, без оплаты (10.10.2026) — контакт ему нужен сразу.
+        $open = $deal->isActive() && (! $deal->isGarage() || $deal->namesBuyer()) && ! $waiting;
 
         return new self(
             open: $open,

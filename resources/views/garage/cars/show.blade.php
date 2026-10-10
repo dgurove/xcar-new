@@ -9,7 +9,7 @@
     {{-- Состояние — словом в строке заголовка, рядом с названием, а не отдельной строкой под ним. --}}
     <x-slot:actions>
     <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 text-sm">
-        <x-ui.state :tone="$car->state->tone()" class="text-sm">{{ mb_strtolower($car->state->label()) }}</x-ui.state>
+        <x-ui.state :tone="$car->state->tone()" class="text-sm">{{ mb_lcfirst($car->state->label()) }}</x-ui.state>
         @if ($staff)<span class="text-ink-muted">{{ $car->manager?->shortName() ?? 'взяли под себя' }}</span>@endif
         @if ($staff && $car->dealOpen())<a href="{{ \App\Support\Surface::Crm->url('/work/deals/'.$car->deal_id) }}" class="text-accent-text" data-turbo="false">Сделка в CRM</a>@endif
     </div>

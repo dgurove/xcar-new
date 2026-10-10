@@ -58,14 +58,17 @@ final class EnterStage
 
         // Согласование позади (поставщик сказал «да», менеджер — «Покупаю») — только теперь у сделки встают счета
         // (09.10.2026): до входа сюда, чтобы этап оплаты сразу видел счёт и отдал ход менеджеру.
+        // Совкомбанк (10.10.2026): машину забирают без оплаты — этап получения счетов не ставит, они встают после «Забрал».
         if ($track === Track::Sale && $deal?->isActive() && ! $deal->agreed() && ! $to->isAgreement()
+            && ! ($deal->isCommission() && $to->isPickupStep())
             && in_array($to->offer_state, [null, OfferState::Sold], true)) {
             ($this->agree)($deal->setRelation('offer', $offer), $by);
         }
 
         $noInvoice = $track === Track::Sale && $deal?->isActive() && $to->isPayStep() && ! $deal->hasManagerInvoice();
         // ПРАЙМ: счёт встанет сам, как только менеджер укажет, кому он (05.10.2026) — ход его, а не наш «Выставите счёт».
-        $needsBuyer = $noInvoice && $deal->invoiceGap() === 'buyer';
+        // Гаражная Совкомбанка без цены продажи — тоже его ход: цену он называет, когда продаёт (`Deal::managerGap`).
+        $needsBuyer = $noInvoice && $deal->managerGap();
         $ours = $noInvoice && ! $needsBuyer;
         $position = Position::updateOrCreate(['offer_id' => $offer->id, 'track' => $track->value], [
             'stage_id' => $to->id,

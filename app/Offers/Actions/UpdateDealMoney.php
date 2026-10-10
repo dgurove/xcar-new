@@ -30,13 +30,15 @@ final class UpdateDealMoney
         $scheme ??= $deal->schemeOf();
         $selection = $scheme->paysSelection() && ! $deal->isGarage();
         $wasSelection = $deal->paysSelection();
-        DB::transaction(function () use ($deal, $by, $commission, $mode, $scheme, $selection, $wasSelection, $ownerPrice, $share) {
-            $deal->update($deal->isGarage()
+        // Гаражная Совкомбанка (`namesBuyer`) — деньги как у обычной ПРАЙМ: вознаграждение назначаем мы, когда менеджер продал.
+        $garage = $deal->isGarage() && ! $deal->namesBuyer();
+        DB::transaction(function () use ($deal, $by, $commission, $mode, $scheme, $selection, $wasSelection, $ownerPrice, $share, $garage) {
+            $deal->update($garage
                 ? ['scheme' => $scheme, 'share' => $deal->isGarageManager() ? $share : null]
                 : ['commission' => $commission, 'commission_mode' => $selection ? CommissionMode::Withheld : $mode, 'scheme' => $scheme,
                     'owner_price' => $selection ? ($ownerPrice ?? $deal->owner_price ?? $deal->cost) : null]);
             $deal->offer->log(OfferEventType::Note, $by, ['text' => match (true) {
-                $deal->isGarage() => 'Наша доля: '.($deal->share ? Money::rub($deal->share) : 'нет'),
+                $garage => 'Наша доля: '.($deal->share ? Money::rub($deal->share) : 'нет'),
                 $selection => $scheme->payeeLabel().' '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),
                 default => 'ПРАЙМ по счёту, вознаграждение '.($commission ? Money::rub($commission) : 'нет').', '.mb_strtolower($deal->commission_mode->label()),
             }]);

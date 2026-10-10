@@ -67,7 +67,9 @@ class Position extends Model
             return null;
         }
         // Через связь: списки, где часы стоят в каждой строке, грузят её разом (`with('deal')`).
-        return $this->deal?->invoiceGap() === 'share' ? 'share' : 'invoice';
+        $gap = $this->deal?->invoiceGap();
+
+        return in_array($gap, ['share', 'commission'], true) ? $gap : 'invoice';
     }
 
     /** Идущая сделка оффера этой позиции. */

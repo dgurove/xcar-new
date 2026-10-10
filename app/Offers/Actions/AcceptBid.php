@@ -68,7 +68,8 @@ final class AcceptBid
                 $payer = $offer->garagePayerFixed() ?? $payer ?? GaragePayer::Us;
                 [$commission, $mode] = [null, CommissionMode::Payout];
                 // Наша доля — только у «платит менеджер»: он платит её по ссылке сразу (05.10.2026).
-                $share = $payer === GaragePayer::Manager ? $share : null;
+                // Совкомбанк: доли нет — машина уходит без оплаты, нашу часть даёт продажа (`Deal::namesBuyer`).
+                $share = $payer === GaragePayer::Manager && $offer->vendor?->deal_format !== \App\Vendors\DealFormat::Commission ? $share : null;
             } else {
                 [$payer, $share] = [null, null];
             }

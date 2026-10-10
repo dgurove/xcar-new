@@ -23,6 +23,16 @@ final class CloseGarageDeal
         if (! $car) {
             return;
         }
+        // Совкомбанк (`namesBuyer`): машину продали через сделку — счёт ПРАЙМ покупателю оплачен, ПРАЙМ заплатил поставщику.
+        // Расхода на закупочную у менеджера нет, расчёт по машине закрыт этим же.
+        if ($deal->namesBuyer()) {
+            if ($car->state === CarState::Sold) {
+                $car->moveTo(CarState::Settled, by: $by);
+            }
+            GarageChanged::dispatch($car);
+
+            return;
+        }
         if ($deal->garage_payer === GaragePayer::Manager && $deal->cost && ! $car->costs()->where('kind', Cost::SUPPLIER)->exists()) {
             $car->costs()->create([
                 'title' => 'Оплата поставщику',

@@ -16,7 +16,9 @@ use App\Offers\OfferEventType;
 use App\Support\Money;
 use App\Users\User;
 use App\Workflow\Stage;
+use App\Workflow\Position;
 use App\Workflow\Track;
+use App\Workflow\WaitsFor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -53,6 +55,23 @@ final class SyncDealInvoices
             $this->slot($deal, $by, ChargeKind::Sale, $this->prime($deal));
         });
         ($this->credits)($deal, $by);
+        $this->syncTurn($deal);
+    }
+
+    /**
+     * Этап оплаты без счёта: чей ход — по тому, чего не хватает (`Deal::managerGap`). Гаражная Совкомбанка проходит
+     * «цена» → «покупатель» (ход менеджера) → «вознаграждение» (ход наш), пока счёт не встанет.
+     */
+    private function syncTurn(Deal $deal): void
+    {
+        $position = Position::where('offer_id', $deal->offer_id)->where('track', Track::Sale->value)->with('stage.exits')->first();
+        if (! $deal->isActive() || ! $position?->stage->isPayStep() || $deal->hasManagerInvoice()) {
+            return;
+        }
+        $who = $deal->managerGap() ? WaitsFor::Manager : WaitsFor::Us;
+        if ($position->waits_for !== $who) {
+            $position->update(['waits_for' => $who, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null]);
+        }
     }
 
     /**
@@ -87,13 +106,15 @@ final class SyncDealInvoices
             return null;
         }
         $car = 'Транспортное средство '.$deal->offer->titleWithYear();
-        if ($deal->isGarage()) {
+        // Гаражная Совкомбанка (`namesBuyer`) — как обычная ПРАЙМ: счёт на цену продажи тому, кого назвал менеджер.
+        if ($deal->isGarage() && ! $deal->namesBuyer()) {
             return $deal->isGarageManager()
                 ? ['party' => Party::forUser($deal->buyer), 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]]]
                 : null;
         }
         $contract = $deal->contract;
-        if (! $contract?->buyer_user_id || $deal->amount === null) {
+        // Гаражной Совкомбанка ещё и вознаграждение: его назначаем мы, когда менеджер назвал цену продажи.
+        if (! $contract?->buyer_user_id || $deal->amount === null || ($deal->namesBuyer() && $deal->commission === null)) {
             return null;
         }
         // Платит покупатель — удерживать не из чего, `Deal::withholds` тогда ложь: вознаграждение выплачиваем после оплаты.

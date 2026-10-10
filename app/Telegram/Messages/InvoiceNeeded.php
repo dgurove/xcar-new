@@ -14,7 +14,7 @@ final class InvoiceNeeded extends Message
 
     protected function title(): string
     {
-        return ($this->gap === 'share' ? 'Впишите нашу долю: ' : 'Выставите счёт: ').$this->deal->offer->titleWithYear();
+        return (match ($this->gap) { 'share' => 'Впишите нашу долю: ', 'commission' => 'Назначьте вознаграждение: ', default => 'Выставите счёт: ' }).$this->deal->offer->titleWithYear();
     }
 
     protected function lines(): array
@@ -31,8 +31,8 @@ final class InvoiceNeeded extends Message
 
     protected function link(): array
     {
-        return $this->gap === 'share'
-            ? ['text' => 'Вписать долю', 'url' => Surface::Crm->url('/work/deals/'.$this->deal->id.'#money')]
+        return in_array($this->gap, ['share', 'commission'], true)
+            ? ['text' => $this->gap === 'share' ? 'Вписать долю' : 'Назначить вознаграждение', 'url' => Surface::Crm->url('/work/deals/'.$this->deal->id.'#money')]
             : ['text' => 'Выставить счёт', 'url' => Surface::Crm->url('/work/invoices/new?offer='.$this->deal->offer->number)];
     }
 }

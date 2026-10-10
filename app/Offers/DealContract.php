@@ -57,12 +57,13 @@ class DealContract extends Model
         return tap(self::firstOrCreate(['deal_id' => $deal->id], $defaults), fn ($c) => $deal->setRelation('contract', $c));
     }
 
-    /** Цена договора по деньгам сделки: собственнику (ДКП), закупочная (гаражная), иначе цена подтверждения. */
+    /** Цена договора по деньгам сделки: собственнику (ДКП), закупочная (гаражная), иначе цена подтверждения (у гаражной
+     *  Совкомбанка — цена продажи, которую назвал менеджер). */
     public static function priceFor(Deal $deal): ?int
     {
         return match (true) {
             $deal->isDkp() => $deal->ownerPrice(),
-            $deal->isGarage() => $deal->cost,
+            $deal->isGarage() && ! $deal->namesBuyer() => $deal->cost,
             default => $deal->amount,
         };
     }

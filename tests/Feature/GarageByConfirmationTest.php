@@ -140,15 +140,17 @@ class GarageByConfirmationTest extends TestCase
     }
 
     /**
-     * Совкомбанк (05.10.2026): согласовывать с поставщиком нечего — принятие ведёт сразу к счёту; гаражную машину везём
-     * мы к менеджеру в гараж (Бородин: вывоз остался «к нам»), довезли — сделка догоняет, машина сразу на подготовке.
+     * Совкомбанк (10.10.2026, владелец: «в гараж совком ваще забирается без оплаты, потом уже при продаже менеджер
+     * предлагает цену и мы определяем его комиссию»): после принятия счетов нет, машина едет к менеджеру; довезли — она на
+     * подготовке, а сделка ждёт цену. «Продаю» ценой, покупатель от менеджера, вознаграждение от нас — счёт ПРАЙМ на цену
+     * продажи покупателю; закрыли сделку — расчёт по машине закрыт, расхода на закупочную нет.
      */
-    public function test_sovcombank_garage_goes_straight_to_invoice_and_pickup_to_keeper(): void
+    public function test_sovcombank_garage_picks_up_without_payment_and_sells_through_deal(): void
     {
         Storage::fake('private');
         $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $manager = User::create(['name' => 'Филипп Бородин', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
-        $vendor = Vendor::create(['name' => 'Совкомбанк тест']);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Service), Preset::Pickup);
         $sale = $vendor->fresh()->workflow(Track::Sale);
@@ -165,28 +167,49 @@ class GarageByConfirmationTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $offer->refresh();
-        $this->assertSame('Счёт выставлен менеджеру', $offer->stage()->name);
+        $deal = $offer->deal()->first();
+        $this->assertTrue($deal->namesBuyer());
+        $this->assertSame('Менеджер забирает автомобиль', $offer->stage()->name);
+        $this->assertSame(0, Invoice::where('deal_id', $deal->id)->count());
         $this->assertSame(Destination::Keeper, $offer->pickupDestination());
-        $this->assertNull($offer->evacuator_id);
         $this->assertSame($manager->id, $offer->keeper()?->id);
 
-        // Вывоз довёз машину к менеджеру раньше оплаты — подготовка идёт, сделка не перескакивает, продавать рано.
+        // Вывоз довёз машину к менеджеру — подготовка, сделка на оплате ждёт от него цену продажи; счетов по-прежнему нет.
         $this->drive($offer, Track::Service, $admin, fn (Offer $o) => $o->position(Track::Service)->stage->car_place === CarPlace::Keeper);
         $car = Car::where('offer_id', $offer->id)->firstOrFail();
         $this->assertSame(CarState::Repair, $car->state);
-        $this->assertSame('Счёт выставлен менеджеру', $offer->fresh()->stage()->name);
-        app(MoveCar::class)($car, CarState::Ready, $manager);
-        $this->assertSame(CarState::Ready, $car->fresh()->state);
+        $position = $offer->fresh()->position(Track::Sale);
+        $this->assertSame('Оплата по счёту ПРАЙМ', $position->stage->name);
+        $this->assertSame(\App\Workflow\WaitsFor::Manager, $position->waits_for);
+        $this->assertSame('price', $deal->fresh()->invoiceGap());
+        $this->assertSame(0, Invoice::where('deal_id', $deal->id)->count());
 
-        // Бумаги готовы — сделка закрыта сразу, без передачи автомобиля (его привёз вывоз), машина сама в продаже.
-        $deal = $offer->deal()->first();
-        $this->drive($offer, Track::Sale, $admin, fn (Offer $o) => $o->state !== OfferState::Sold, $manager);
-        $this->assertSame(OfferState::Garage, $offer->fresh()->state);
+        // Продавать можно, пока сделка идёт: «Готова» — сразу в продажу, «Продаю» ценой.
+        app(MoveCar::class)($car, CarState::Ready, $manager);
         $this->assertSame(CarState::Selling, $car->fresh()->state);
+        app(MarkGarageSold::class)($car->fresh(), ['sold_price' => 1500000], $manager);
+        $this->assertSame(1500000, (int) $deal->fresh()->amount);
+        $this->assertSame('buyer', $deal->fresh()->invoiceGap());
+
+        app(\App\Offers\Actions\SaveDealContract::class)(\App\Offers\DealContract::for($deal->fresh()), ['buyer_id' => 'new', 'new_buyer' => ['phone' => '+7 900 555-44-33'],
+            'buyer' => ['kind' => 'person', 'name' => 'Покупаев Пётр Петрович', 'birth_at' => '1985-05-05', 'passport' => '11 11 111111',
+                'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2010-10-10', 'reg_address' => 'г. Москва']], $manager);
+        $this->assertSame('commission', $deal->fresh()->invoiceGap());
+        $this->assertSame(\App\Workflow\WaitsFor::Us, $offer->fresh()->position(Track::Sale)->waits_for);
+
+        $deal->fresh()->update(['commission' => 100000]);
+        app(\App\Offers\Actions\SyncDealInvoices::class)($deal->fresh(), $admin);
+        $invoice = $deal->fresh()->issuedInvoices()->sole();
+        $this->assertSame('Покупаев Пётр Петрович', $invoice->party->name);
+        $this->assertEqualsWithDelta(1500000, $invoice->total, 0.01);
+        $this->assertNull($offer->fresh()->position(Track::Sale)->waits_for);
+
+        app(RecordPayment::class)($invoice->fresh(), $admin, 1500000, now(), PaymentSource::Bank);
+        $this->drive($offer, Track::Sale, $admin, fn (Offer $o) => $o->state !== OfferState::Sold, $manager);
         $this->assertSame(DealState::Done, $deal->fresh()->state);
-        $passed = $offer->events()->where('type', 'stage_entered')->get()->map(fn ($e) => $e->payload['to'] ?? null);
-        $this->assertNotContains('Передача автомобиля покупателю', $passed);
-        $this->assertNotContains('Менеджер забирает автомобиль', $passed);
+        $this->assertSame(CarState::Settled, $car->fresh()->state);
+        $this->assertFalse($car->fresh()->costs()->where('kind', \App\Garage\Cost::SUPPLIER)->exists());
+        $this->assertSame(1, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->where('state', '!=', 'void')->count());
     }
 
     /** Жать первые не тупиковые кнопки ветки, пока не выполнится условие. */
