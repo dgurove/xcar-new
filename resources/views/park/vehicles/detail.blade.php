@@ -25,12 +25,28 @@
         @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
             <x-slot:media>@include('park.vehicles.detail-photos')</x-slot:media>
         @endif
-        {{-- Шапка — только состояние, госномер и что не так; факты — строками ниже (`$facts`, 10.10.2026, владелец: «многие чипы
-             можно текстом, чтобы чувствовалось как полноценное приложение»). --}}
+        {{-- Факты — тегами под названием (10.10.2026, владелец про строки «Настроек»: «огромные значения, ужасное решение»):
+             убыток с логотипом вендора (имя — подсказкой логотипа), VIN, парковка — кнопка шторки «Переставить», дата —
+             календарь администратору парковки, долг, продажа тегом последней. Ставки нет — дни и сумма справа. --}}
         <x-slot:marks>
             <x-ui.state :tone="$state->tone()">{{ $state->label() }}</x-ui.state>
             @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
+            @if ($vehicle->ref)<x-vendor.ref :vendor="$vehicle->vendor" :ref="$vehicle->ref" copy class="tag nums"/>
+            @elseif ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
+            <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
+            @if ($vehicle->yard && $state === VehicleState::Stored && ! ($fromRequests ?? false))
+                <x-park.place-move :vehicle="$vehicle" class="tag"/>
+            @elseif ($vehicle->yard)<x-ui.place class="tag">{{ $vehicle->yard->name }}</x-ui.place>@endif
             <x-park.alerts :vehicle="$vehicle" :skip="$differences ? [\App\Park\Alerts::DOCS] : []"/>
+            @foreach (array_filter(['accepted_at' => $vehicle->accepted_at, 'released_at' => $state === VehicleState::Released ? $vehicle->released_at : null]) as $field => $at)
+                @php $word = $field === 'accepted_at' ? 'принята' : 'выдана'; @endphp
+                @if (auth()->user()->isParkAdmin())<x-park.date-edit :vehicle="$vehicle" :field="$field" :prefix="$word" class="tag nums"/>
+                @else<span class="tag nums">{{ $word }} {{ $at->translatedFormat($at->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}</span>@endif
+            @endforeach
+            @if ($state === VehicleState::Released && $vehicle->daysStored() !== null)<span class="tag nums">стояла {{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
+            @if ($handedTo)<span class="tag">{{ $handedTo }}{{ $released && ! empty($released->payload['pass']) ? ', по QR' : ($released && ! empty($released->payload['without_qr']) ? ', без QR' : '') }}</span>@endif
+            @if ($debt > 0 && $state === VehicleState::Stored)<span class="tag tag-danger nums">долг {{ \App\Support\Money::rub($debt) }}</span>@endif
+            @unless ($fromRequests ?? false)<x-park.sale :vehicle="$vehicle" tag/>@endunless
         </x-slot:marks>
         <x-slot:aside>
             @if ($state === VehicleState::Stored && $vehicle->daysStored() !== null)<span class="nums whitespace-nowrap text-lg font-bold">{{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
@@ -53,9 +69,7 @@
         @if ($foot)
             <x-slot:foot><div class="detail-action"><button type="submit" form="{{ $foot[0] }}" class="btn btn-accent w-full">{{ $foot[1] }}</button></div></x-slot:foot>
         @endif
-        {{-- Факты строками (`facts`): у заявки — под её задачей, у ТС из «Наличия» — сразу под кнопкой. --}}
         @if ($task)@include('park.vehicles.task')@endif
-        @include('park.vehicles.facts')
         <x-park.date-forms :vehicle="$vehicle"/>
         @if (! $task && in_array($state, [VehicleState::Expected, VehicleState::Stored], true))
             <form method="post" action="/requests" id="spawn-{{ $vehicle->id }}" hidden>@csrf<input type="hidden" name="type" value="{{ $state === VehicleState::Expected ? 'intake' : 'release' }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>

@@ -3,9 +3,9 @@
      состоянием продажи со стрелкой: шторка «Продажа» — предложение в CRM строкой, сделка, если идёт, и красная «Убрать из
      продажи» (`TakeOffSale`: черновик удаляется, опубликованное — в архив; ТС с фото и документами остаётся). Сделку,
      гараж и проданную так не снять — кнопки нет.
-     row — строкой списка фактов (карточка «Наличия», 10.10.2026, владелец: три кнопки рядом «как равнозначные действия»):
-     «Продажа» слева, справа «Выставить ›» или состояние продажи ›. --}}
-@props(['vehicle', 'row' => false])
+     tag — тегом последним среди фактов карточки «Наличия» (10.10.2026, владелец: три кнопки рядом «как равнозначные
+     действия»): «В продажу ›» или состояние продажи ›. --}}
+@props(['vehicle', 'tag' => false])
 @php
     use App\Offers\OfferState;
     use App\Support\Surface;
@@ -18,7 +18,7 @@
              если её уже выдавать надо»). --}}
         @unless ($vehicle->state->isFinal() || $vehicle->sold_at || $vehicle->openRequest(\App\Park\RequestType::Release))
             <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="contents" data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}">@csrf
-                @if ($row)<button class="row w-full justify-between text-left"><span class="text-ink-muted">Продажа</span><span class="flex items-center gap-1 text-accent-text">Выставить<x-ui.chevron/></span></button>
+                @if ($tag)<button class="tag tag-accent gap-0.5">В продажу<x-ui.icon name="chevron-right" class="size-3.5"/></button>
                 @else<button class="btn btn-s btn-accent">Выставить в продажу</button>@endif
             </form>
         @endunless
@@ -38,8 +38,8 @@
             $price = $offer->asking_price ? \App\Support\Money::rub($offer->asking_price) : null;
         @endphp
         <span class="contents" data-controller="sheet">
-            @if ($row)
-                <button type="button" class="row w-full justify-between text-left" data-action="sheet#open"><span class="text-ink-muted">Продажа</span><span class="flex items-center gap-1 {{ ['open' => 'text-open', 'urgent' => 'text-urgent'][$tone] ?? '' }}">{{ $word }}<x-ui.chevron/></span></button>
+            @if ($tag)
+                <button type="button" class="tag gap-0.5 {{ ['open' => 'tag-accent', 'urgent' => 'tag-urgent'][$tone] ?? '' }}" data-action="sheet#open">{{ $word }}<x-ui.icon name="chevron-right" class="size-3.5"/></button>
             @else
                 <button type="button" class="pill pill-{{ $tone }} gap-1" data-action="sheet#open">{{ $word }}<x-ui.icon name="chevron-down" class="size-3.5"/></button>
             @endif
