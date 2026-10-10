@@ -198,12 +198,21 @@ abstract class Notice extends Notification implements ShouldQueue
     /** Заголовок для этого человека: в уведомлении о шаге сделки супер-покупателю — без слова «менеджер». */
     public function titleFor(?User $user): string
     {
-        return $this->speaksRoute() ? (string) Wording::for($user, $this->title()) : $this->title();
+        return (string) self::glue($this->speaksRoute() ? (string) Wording::for($user, $this->title()) : $this->title());
     }
 
     public function textFor(?User $user): ?string
     {
-        return $this->speaksRoute() ? Wording::for($user, $this->text()) : $this->text();
+        return self::glue($this->speaksRoute() ? Wording::for($user, $this->text()) : $this->text());
+    }
+
+    /**
+     * Неразрывные пробелы там, где перенос рвёт смысл: «№» с номером, разряды суммы, сумма с «₽» (11.10.2026: в карточке
+     * уведомления «№» оставался в конце строки, а номер уезжал вниз). Зовут и строки ленты — старые заголовки в базе.
+     */
+    public static function glue(?string $text): ?string
+    {
+        return $text === null ? null : preg_replace(['/№ (?=\S)/u', '/(?<=\d) (?=\d{3}(?!\d))/u', '/ ₽/u'], ["№\u{00A0}", "\u{00A0}", "\u{00A0}₽"], $text);
     }
 
     public function toArray(User $user): array

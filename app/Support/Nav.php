@@ -474,8 +474,9 @@ final class Nav
                 '/purchases' => $user->canSeePurchases() ? Purchase::cardCount($user) : null,
                 // Всё, что стоит строкой на экране «Сделки»: сделки и подтверждения, ждущие решения.
                 '/deals' => match (true) {
-                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(),
-                    $user->isAdmin() => Deal::whereNull('garage_payer')->count(),
+                    // Только живое, как в списке (11.10.2026): закончившееся — в архиве.
+                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->where('state', DealState::Active)->count() + Bid::where('user_id', $user->id)->where('state', BidState::Active)->count(),
+                    $user->isAdmin() => Deal::whereNull('garage_payer')->where('state', DealState::Active)->count(),
                     default => null,
                 },
                 '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,

@@ -1,12 +1,11 @@
-{{-- Сделки менеджера одним экраном: подтверждения без решения, сделки в работе (где от него ждут ответа — первыми,
-     просьба прямо в строке), закончившиеся, внизу — не состоявшиеся. Админу — все сделки, без подтверждений и без
-     пилюли «Покупатели»: вместо пилюль заголовок. Супер-покупателю — заголовок тоже: покупателей у него нет. --}}
+{{-- Сделки менеджера одним экраном — только живое: подтверждения без решения и сделки в работе (где ход менеджера —
+     первыми, просьба прямо в строке). Закончившееся и не состоявшееся — в архиве, вход строкой «Архив N» в конце
+     (11.10.2026). Админу — все сделки, без подтверждений и без пилюли «Покупатели»: вместо пилюль заголовок.
+     Супер-покупателю — заголовок тоже: покупателей у него нет. --}}
 @php
     $staff = auth()->user()->isAdmin() && ! auth()->user()->isManager();
     // Заголовок вместо пилюль «Сделки | Покупатели».
     $titled = $staff || auth()->user()->isSuperBuyer();
-    $active = $deals->getCollection()->filter(fn ($d) => $d->state === \App\Offers\DealState::Active)->sortBy(fn ($d) => $d->openRequirement ? 0 : 1)->values();
-    $closed = $deals->getCollection()->reject(fn ($d) => $d->state === \App\Offers\DealState::Active)->values();
 @endphp
 <x-ui.shell title="Сделки" :phone-heading="$titled" :desktop-heading="$titled">
 {{-- Админу на телефоне сортировка — справа от заголовка, а не своим рядом под ним (09.10.2026: одна кнопка на целую
@@ -35,32 +34,30 @@
         </section>
     @endif
 
-    @if ($deals->isEmpty() && $pending->isEmpty() && $lost->isEmpty())
-        <x-ui.empty href="/offers" link="В предложения">Пока ни одной сделки</x-ui.empty>
+    @if ($deals->isEmpty() && $pending->isEmpty())
+        <x-ui.empty href="/offers" link="В предложения">{{ $archived ? 'Сейчас сделок в работе нет' : 'Пока ни одной сделки' }}</x-ui.empty>
     @endif
 
-    @foreach (['В работе' => $active, 'Закончены' => $closed] as $heading => $list)
-        @continue($list->isEmpty())
+    @if ($deals->isNotEmpty())
         <section>
-            <h2 class="list-head">{{ $heading }} <span class="nums">{{ $list->count() }}</span></h2>
+            <h2 class="list-head">В работе <span class="nums">{{ $deals->total() }}</span></h2>
             <div class="list">
-                @foreach ($list as $deal)
+                @foreach ($deals as $deal)
                     @include('cabinet.deals.row', ['deal' => $deal])
                 @endforeach
             </div>
         </section>
-    @endforeach
-    <x-ui.pager :of="$deals" :sizes="[]"/>
+        <x-ui.pager :of="$deals" :sizes="[]"/>
+    @endif
 
-    @if ($lost->isNotEmpty())
-        <section>
-            <h2 class="list-head">Не состоялись</h2>
-            <div class="list">
-                @foreach ($lost as $bid)
-                    @include('cabinet.deals.bid-row', ['bid' => $bid, 'state' => true])
-                @endforeach
-            </div>
-        </section>
+    @if ($archived)
+        <div class="list">
+            <a href="/deals?view=archive" class="row">
+                <span class="min-w-0 flex-1">Архив</span>
+                <span class="nums text-ink-muted">{{ $archived }}</span>
+                <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>
+            </a>
+        </div>
     @endif
 </div>
 </x-ui.shell>

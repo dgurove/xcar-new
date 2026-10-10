@@ -10,9 +10,11 @@ use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Actions\PickUp;
 use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\Handover;
 use App\Offers\InsurerReplies;
 use App\Support\ListPrefs;
+use App\Users\User;
 use App\Support\Sort;
 use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actor;
@@ -20,33 +22,80 @@ use App\Workflow\Outcome;
 use App\Workflow\Path;
 use App\Workflow\Requirement;
 use App\Workflow\Track;
+use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class DealController
 {
-    /** Внутри разделов «В работе» и «Закончены»: новые сверху (где ждут ответа — первыми, как было); сумма — выбором. */
+    /** «В работе»: где ход менеджера — первыми (просроченное, потом по сроку), дальше дата или сумма — выбором. */
     public const SORTS = ['fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
 
+    /** Архив — сколько строк каждого раздела показываем; сделки целиком ведёт CRM, тут — история менеджера. */
+    private const ARCHIVE = 100;
+
+    /**
+     * Сделки одним экраном — только живое (11.10.2026, владелец: «не состоявшиеся в общем списке не вижу смысла»):
+     * подтверждения без решения и сделки в работе. Закончившееся и не состоявшееся — в архиве (`?view=archive`), вход —
+     * строкой «Архив N» в конце списка.
+     */
     public function index(Request $request)
     {
         $me = $request->user();
         abort_unless($me->hasDeals() || $me->isAdmin(), 404);
+        if ($request->query('view') === 'archive') {
+            return $this->archive($request);
+        }
         ListPrefs::sync($request, 'deals', view: false, keep: ['sort']);
         $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
         // Гаражные сделки живут в «Гараже» (решение владельца 03.10.2026), здесь — только ждущее решения «В гараж».
-        $deals = Deal::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
-            ->when(! $me->hasDeals(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer')
-            ->orderByRaw("case when state = 'active' then 0 else 1 end")
+        // Ход менеджера — просьба к нему или этап, где ждут его (ПРАЙМ без покупателя — без просьбы): просроченное, потом остальное.
+        $open = 'requirements r where r.deal_id = deals.id and r.done_at is null';
+        $turn = "offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id and p.track = '".Track::Sale->value."' and coalesce(p.waits_for, s.waits_for) = '".WaitsFor::Manager->value."'";
+        $deals = self::deals($me)->where('state', DealState::Active)
+            ->orderByRaw("case when exists(select 1 from {$open} and r.due_at < now()) or exists(select 1 from {$turn} and p.deadline_at < now()) then 0"
+                ." when exists(select 1 from {$open}) or exists(select 1 from {$turn}) then 1 else 2 end")
+            ->orderByRaw("(select min(r.due_at) from {$open}) asc nulls last")
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id')->paginate(30);
 
-        // Подтверждения менеджера — на том же экране: ждущие решения — будущие сделки, отклонённые и отозванные —
-        // короткая история внизу; принятые уже стоят сделками. Админ подтверждения решает в CRM.
-        $bids = fn () => Bid::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $me->id)->latest();
-        $pending = $me->hasDeals() ? $bids()->where('state', BidState::Active)->get() : collect();
-        $lost = $me->hasDeals() ? $bids()->whereIn('state', [BidState::Declined, BidState::Withdrawn])->limit(10)->get() : collect();
+        // Ждущие решения подтверждения — будущие сделки; принятые уже стоят сделками. Админ подтверждения решает в CRM.
+        $pending = $me->hasDeals() ? self::bids($me)->where('state', BidState::Active)->get() : collect();
+        $archived = self::deals($me)->where('state', '!=', DealState::Active)->count() + ($me->hasDeals() ? self::lost($me)->count() : 0);
 
-        return view('cabinet.deals.index', ['deals' => $deals, 'pending' => $pending, 'lost' => $lost, 'sort' => $sort]);
+        return view('cabinet.deals.index', ['deals' => $deals, 'pending' => $pending, 'archived' => $archived, 'sort' => $sort]);
+    }
+
+    /** Архив: закончившиеся сделки и не состоявшиеся — отменённые сделки и отклонённые или отозванные подтверждения. */
+    private function archive(Request $request)
+    {
+        $me = $request->user();
+        $closed = self::deals($me)->where('state', '!=', DealState::Active)
+            ->orderByRaw('coalesce(closed_at, updated_at) desc')->orderByDesc('id')->limit(self::ARCHIVE)->get();
+        $lost = $me->hasDeals() ? self::lost($me)->limit(self::ARCHIVE)->get() : collect();
+        // Не состоялось — одной лентой по дате: отменённая сделка и подтверждение, которое не выбрали.
+        $failed = $closed->where('state', DealState::Cancelled)->concat($lost)
+            ->sortByDesc(fn ($x) => ($x instanceof Deal ? ($x->closed_at ?? $x->updated_at) : ($x->decided_at ?? $x->updated_at))?->timestamp ?? 0)->values();
+
+        return view('cabinet.deals.archive', ['done' => $closed->where('state', DealState::Done)->values(), 'failed' => $failed]);
+    }
+
+    /** Сделки экрана: без гаражных, с тем, что нужно строке. */
+    private static function deals(User $me)
+    {
+        return Deal::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
+            ->when(! $me->hasDeals(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer');
+    }
+
+    private static function bids(User $me)
+    {
+        return Bid::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $me->id)->latest();
+    }
+
+    /** Отклонённые и отозванные подтверждения — кроме тех, по которым была своя сделка: она уже в архиве строкой «Отменена». */
+    private static function lost(User $me)
+    {
+        return self::bids($me)->whereIn('state', [BidState::Declined, BidState::Withdrawn])
+            ->whereNotIn('id', Deal::where('buyer_id', $me->id)->whereNotNull('bid_id')->select('bid_id'));
     }
 
     public function show(Request $request, Deal $deal)

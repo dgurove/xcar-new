@@ -57,7 +57,8 @@
             @else
             <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <h2>{{ \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа' }}</h2>
-                @if ($noInvoice)<p class="text-sm text-ink-muted">ждём нас</p>@else<x-route.clock :position="$position"/>@endif
+                {{-- Счёта нет — ниже «Готовим счёт», второй раз в шапке не пишем. --}}
+                @unless ($noInvoice)<x-route.clock :position="$position"/>@endunless
             </div>
             @endif
 
