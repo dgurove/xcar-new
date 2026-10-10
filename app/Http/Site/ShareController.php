@@ -77,7 +77,8 @@ class ShareController
         return response()->file($path, ['Content-Type' => 'image/jpeg', 'Content-Disposition' => "inline; filename*=UTF-8''".rawurlencode($subject->photoName($index + 1)), 'Cache-Control' => 'private, max-age=3600']);
     }
 
-    // Галка «Водяной знак на фото» — у всех (владелец 10.10.2026): на xcar по умолчанию включена, в CRM выключена.
+    // Галка «Водяной знак на фото» — у всех, по умолчанию выключена везде.
+    // Без параметра знак ставится: незнакомый запрос уходит со знаком.
     private function watermark(Request $request): bool
     {
         return $request->boolean('watermark', true);

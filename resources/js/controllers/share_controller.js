@@ -19,6 +19,10 @@ import { fileName } from '../docs/share';
 // файлов Chrome в лист не пускает.
 const BROKEN = 'share:open';
 const MAX_FILES = 10;
+// Сколько ждём системный лист, прежде чем признать его зависшим: промис share
+// тогда не выполняется и не падает, а флаг отправки режет повторные нажатия.
+const SHARE_HANG_MS = 15000;
+const COARSE = matchMedia('(pointer: coarse)');
 // iPad с iPadOS 13 представляется Mac — его выдают касания.
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
@@ -230,22 +234,47 @@ export default class extends Controller {
     async send() {
         if (this.sending) return;
         this.sending = true;
-        try { await this.share(); } finally { this.sending = false; }
+        // Тап виден сразу: иначе пока система думает над листом, кнопка молчит
+        // и человек жмёт снова в пустоту.
+        this.ready(false, 'Открываем…');
+        try { await this.share(); } catch (e) { this.fail('share', e, 'Не получилось поделиться'); }
+        finally { this.sending = false; this.ready(true); }
     }
+
+    // sessionStorage бросает, когда печеньки запрещены: тогда любая отправка
+    // умирала молча, без тоста и без маяка.
+    broken() { try { return sessionStorage.getItem(BROKEN); } catch { return null; } }
+    markBroken() { try { sessionStorage.setItem(BROKEN, '1'); } catch {} }
 
     async share() {
         this.writeCaption();
-        if (this.pdf) {
+        // На компьютере системного листа нет (а где есть — с файлом виснет):
+        // сразу документ, у него «Скачать» и «Печать».
+        if (!COARSE.matches) {
+            if (this.pdf) { this.openPdf(); return; }
+        } else if (this.pdf) {
             const files = [this.pdf];
-            if (!navigator.canShare?.({ files }) || sessionStorage.getItem(BROKEN)) { this.openPdf(); return; }
+            const facts = { files: files.length, bytes: files.reduce((s, f) => s + f.size, 0), canshare: !!navigator.canShare?.({ files }), hasshare: typeof navigator.share };
+            if (!facts.canshare || this.broken()) { this.openPdf(); return; }
+            let hang;
             try {
-                await navigator.share({ files });
+                await Promise.race([
+                    navigator.share({ files }),
+                    new Promise((_, reject) => { hang = setTimeout(() => reject(Object.assign(new Error('timeout'), { name: 'ShareTimeout' })), SHARE_HANG_MS); }),
+                ]);
                 this.close();
             } catch (e) {
                 if (e.name === 'AbortError') return;
-                sessionStorage.setItem(BROKEN, '1');
-                this.fail('share', e, 'Лист не открылся, открываем PDF');
+                if (e.name === 'ShareTimeout') {
+                    this.beacon('share-hang', e, facts);
+                    this.status('Лист открывается долго — нажмите ещё раз');
+                    return;
+                }
+                this.markBroken();
+                this.fail('share', e, 'Лист не открылся, открываем PDF', facts);
                 this.openPdf();
+            } finally {
+                clearTimeout(hang);
             }
             return;
         }
@@ -303,10 +332,10 @@ export default class extends Controller {
         window.toast?.(files.length > 1 ? `Скачиваем ${files.length} фото` : 'Скачиваем фото');
     }
 
-    fail(stage, e, text) {
+    fail(stage, e, text, facts = {}) {
         this.status(text);
         window.toast?.(text, 'danger');
-        this.beacon(stage, e);
+        this.beacon(stage, e, facts);
     }
 
     beacon(stage, e, facts = {}) {
