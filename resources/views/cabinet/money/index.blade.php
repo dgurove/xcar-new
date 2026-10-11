@@ -12,6 +12,8 @@
     $pills = auth()->user()->isSuperBuyer() ? array_diff_key(DealMoney::PRESETS, ['payout' => true]) : DealMoney::PRESETS;
 @endphp
 <x-ui.cabinet title="Оплаты">
+    {{-- На телефоне сортировка — справа от заголовка, а не своим рядом под пилюлями (как «Гараж»); на ПК — в тулбаре. --}}
+    <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="money-head" action="/account/money"/></x-slot:actions>
     <div class="flex flex-col gap-6">
 
         @if ($needDetails && ($position['payout'] > 0 || $position['paid_out'] > 0))
@@ -24,7 +26,7 @@
             </div>
         @endif
 
-            <x-ui.toolbar :sort="$sort" :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['pay' => $overdue ? 'pill-danger' : '']" name="money" action="/account/money">
+            <x-ui.toolbar :sort="$sort" :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['pay' => $overdue ? 'pill-danger' : '']" name="money" action="/account/money" class="toolbar--sort-head">
                 <x-slot:pillsExtra>
                     <div class="ml-1 shrink-0 self-center" data-controller="sheet">
                         <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Реквизиты и документы"><x-ui.icon name="more" class="size-5"/></button>

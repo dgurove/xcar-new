@@ -16,6 +16,10 @@
 {{-- Шелл рисует «назад» в шапке телефона. h1 — на телефоне всегда, кроме корня (там карточка профиля); на ПК — только
      без пилюль: с ними раздел называет текущая пилюля. --}}
 <x-ui.shell :title="$title" :heading="$root && $pills ? false : $heading" :back="$back ?? false" :phone-back="$phoneBack" :back-row="false" :phone-heading="$phoneHeading ?? ! $root" :desktop-heading="! $pills" :detail="$detail">
+    {{-- Кнопки справа от h1 — слот шелла как есть (сортировка «Оплат» на телефоне). --}}
+    @isset($actions)
+        <x-slot:actions class="{{ $actions->attributes->get('class') }}">{{ $actions }}</x-slot:actions>
+    @endisset
     <div @class(['grid gap-6', 'lg:grid-cols-[15rem_minmax(0,56rem)] lg:gap-8' => $pills]) data-title-anchor>
         @if ($pills)
             {{-- min-w-0 обязателен: иначе лента шире экрана растягивает колонку сетки. --}}

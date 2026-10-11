@@ -15,7 +15,7 @@
             <a href="/money/closing?month={{ $closingMonth->format('Y-m') }}" class="row">
                 <span class="min-w-0 flex-1">
                     <span class="block">Закрытие месяца</span>
-                    <span class="row-sub"><span>{{ mb_strtolower($closingMonth->translatedFormat('F')) }}</span>@if ($closing['cars'])<span class="nums">{{ $closing['cars'] }} ТС</span><span class="nums">{{ \App\Support\Money::rub($closing['amount']) }}</span>@endif</span>
+                    <span class="row-sub"><span>{{ mb_strtolower($closingMonth->translatedFormat('F')) }}</span>@if ($closing['cars'])<span class="nums whitespace-nowrap">{{ $closing['cars'] }}&nbsp;ТС</span><span class="nums">{{ \App\Support\Money::rub($closing['amount']) }}</span>@endif</span>
                 </span>
                 @if ($closing['blocked'])<span class="shrink-0 text-sm text-urgent">нужны реквизиты</span>
                 @elseif ($closing['count'])<span class="nums shrink-0 text-sm text-urgent">выставить {{ $closing['count'] }}</span>@endif

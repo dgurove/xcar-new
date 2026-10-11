@@ -741,6 +741,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. Только до 640:
      от 640 подпись уже видна (sm:inline), и в круге 2,75rem она вылезала на соседнюю кнопку. */
   @media (max-width: 639px) { .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; } }
+  /* Сортировка вынесена в строку заголовка (x-slot:actions шелла) — в тулбаре на телефоне её нет («Оплаты» менеджера). */
+  @media (max-width: 767px) { .toolbar--sort-head > .toolbar-tools { display: none; } }
   /* Так же у кнопок в строке заголовка («Написать» почты, «+ Закупка»): кружок своей высоты. */
   @media (max-width: 639px) { .btn-s:has(> .hidden.sm\:inline):not(.toolbar .btn) { aspect-ratio: 1; padding: 0; } }
 
