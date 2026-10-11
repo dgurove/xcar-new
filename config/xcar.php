@@ -40,8 +40,8 @@ return [
         'phone' => env('ROS_PHONE'), 'email' => env('ROS_EMAIL'),
         'bank' => env('ROS_BANK'), 'bik' => env('ROS_BIK'), 'account' => env('ROS_ACCOUNT'), 'corr_account' => env('ROS_CORR_ACCOUNT'),
         'director' => env('ROS_DIRECTOR'), 'director_full' => env('ROS_DIRECTOR_FULL'),
-        // Альфа продаёт с НДС — и Р.О.С. перепродаёт с НДС; ставку скажет владелец вместе с реквизитами.
-        'vat_rate' => (int) env('ROS_VAT_RATE', 20),
+        // Альфа продаёт с НДС — и Р.О.С. перепродаёт с НДС: 22 % (владелец 11.10.2026).
+        'vat_rate' => (int) env('ROS_VAT_RATE', 22),
     ],
 
     // Стоянка: после скольких дней хранения без движения ТС попадает в «стоят долго».
