@@ -11,13 +11,20 @@ export default class extends Controller {
 
     connect() {
         this.apply(this.editingValue, false);
-        // Открыта сама (ошибки, расхождения): «Готово» сохраняет то, что в полях, а не прячет его.
-        if (this.editingValue) this.snapshot = '';
+        // Открыта сама (ошибки, расхождения Мигторга): «Готово» сохраняет, только если правили. Раньше считалась правленой
+        // всегда, а форма шлёт только тронутые поля (`save_bar`): отправки не было, кнопка висела выключенной (12.10.2026,
+        // владелец: «отклонил Мигторг — „Готово“ не жмётся»).
+        if (this.editingValue) this.snapshot = this.serialize();
     }
 
     toggle() {
         if (this.editingValue && this.changed()) {
-            this.buttonTarget.disabled = true;
+            const button = this.buttonTarget;
+            button.disabled = true;
+            const started = () => { clearTimeout(this.stuck); };
+            document.addEventListener('turbo:submit-start', started, { once: true });
+            // Отправка не ушла (форма отказала молча) — кнопка снова живая, а не мёртвая навсегда.
+            this.stuck = setTimeout(() => { document.removeEventListener('turbo:submit-start', started); button.disabled = false; }, 1500);
             this.form()?.requestSubmit();
             return;
         }
