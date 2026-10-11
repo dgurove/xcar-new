@@ -27,7 +27,7 @@
             </span>
             <x-park.request-source :req="$req" class="cell-source"/>
         @else
-            <x-ui.row-link :key="$req->id"><span class="cell-title"><span class="cell-name">{{ $v->titleWithYear() }}</span><x-ui.plate :value="$v->plate" class="title-plate"/></span></x-ui.row-link>
+            <x-ui.row-link :key="$req->id"><span class="cell-title"><span class="cell-name">{{ $v->titleWithYear() }}</span><x-ui.links :vehicle="$v"/><x-ui.plate :value="$v->plate" class="title-plate"/></span></x-ui.row-link>
             <span class="cell-sub" data-controller="fitline">
                 <span class="sm:hidden text-ink">{{ mb_strtolower($req->type->label()) }}</span>
                 <span class="fit-core"><x-park.ref :vehicle="$v" class="sm:hidden"/><x-ui.plate :value="$v->plate" class="sub-plate"/></span>
