@@ -17,6 +17,16 @@ remote() { ssh "$SSH_HOST" "$@"; }
 
 release_dir() { echo "$ROOT/releases/$TAG"; }
 
+# Шаблоны собираются (11.10.2026: «</x-slot:badge>@endif» вплотную ронял карточку сделки, view:cache это пропускает).
+# Проверяется рабочее дерево на маке — php@8.5 из brew; нет php — пропуск со словом, не падение.
+lint() {
+    local php=/opt/homebrew/opt/php@8.5/bin/php
+    [ -x "$php" ] || php=$(command -v php || true)
+    if [ -z "$php" ]; then echo "    шаблоны не проверены: нет php"; return; fi
+    echo "==> шаблоны"
+    "$php" scripts/blade-lint.php
+}
+
 snapshot() {
     echo "==> снимок $TAG"
     remote "mkdir -p $(release_dir)"
@@ -78,9 +88,9 @@ check() {
 }
 
 case "${1:-all}" in
-    all)      snapshot; build; migrate; up; check ;;
+    all)      lint; snapshot; build; migrate; up; check ;;
     snapshot) snapshot ;;
-    build)    snapshot; build ;;
+    build)    lint; snapshot; build ;;
     migrate)  compose_in "$(current_dir)" up -d --wait postgres; compose_in "$(current_dir)" run --rm --no-deps app php artisan migrate --force ;;
     up)       compose_in "$(current_dir)" up -d --remove-orphans ;;
     ps)       compose_in "$(current_dir)" ps ;;

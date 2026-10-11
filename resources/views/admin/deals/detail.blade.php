@@ -16,9 +16,12 @@
             <span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $offer->number" done="Номер в буфере"/></span>
         </x-slot:marks>
         {{-- Покупатель с телефоном ссылкой — фразой; состояние (закрыта, отменена) — у названия. --}}
-        @if ($deal->state !== DealState::Active)<x-slot:badge><x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="title-state">{{ mb_strtolower($deal->state->label()) }}</x-ui.state></x-slot:badge>@endif
+        {{-- Слот и @endif — на разных строках: вплотную («</x-slot:badge>@endif») Blade склеивает их и шаблон не собирается. --}}
+        @if ($deal->state !== DealState::Active)
+            <x-slot:badge><x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="title-state">{{ mb_strtolower($deal->state->label()) }}</x-ui.state></x-slot:badge>
+        @endif
         @if ($deal->buyer?->phone)
-            <x-slot:line>@if ($deal->buyer?->phone)<span>{{ $deal->buyer->name }}</span><a href="tel:+{{ $deal->buyer->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $deal->buyer->phoneFormatted() }}</a>@endif</x-slot:line>
+            <x-slot:line><span>{{ $deal->buyer->name }}</span><a href="tel:+{{ $deal->buyer->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $deal->buyer->phoneFormatted() }}</a></x-slot:line>
         @endif
         <x-slot:aside><span class="nums text-lg font-semibold">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span></x-slot:aside>
         <x-slot:actions>
