@@ -503,6 +503,20 @@ final class Nav
         });
     }
 
+    /**
+     * Открытые просьбы шага оплаты, когда счета сделки уже оплачены целиком: их не показывает строка «Сделок» и шаг —
+     * не считает и бейдж. Таких единицы, проверка в памяти.
+     *
+     * @return array{deals: int, garage: int}
+     */
+    private static function paidPayAsks(User $user): array
+    {
+        $paid = Requirement::where('user_id', $user->id)->whereNull('done_at')->with(['stage', 'deal'])->get()
+            ->filter(fn (Requirement $r) => $r->deal?->isActive() && $r->stage?->isPayStep() && $r->deal->fullyPaid());
+
+        return ['deals' => $paid->filter(fn ($r) => $r->deal->garage_payer === null)->count(), 'garage' => $paid->filter(fn ($r) => $r->deal->garage_payer !== null)->count()];
+    }
+
     private static function count(User $user, Surface $surface): array
     {
         $badges = ['/account/notifications' => $user->unreadCount()];
@@ -531,15 +545,18 @@ final class Nav
             // Просьбы по гаражной сделке (страховая ещё идёт) — на табе «Гараж»: там её и ведут.
             $asks = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->join('deals', 'deals.id', '=', 'requirements.deal_id')
                 ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
-            $badges['/deals/asks'] = (int) $asks->deals;
+            // Просьба «Оплатите счёт», а счета сделки уже оплачены (маршрут не догнал) — строка «Сделок» её не показывает
+            // («Оплата получена»), бейдж тоже не считает: иначе на пилюле 5, а оранжевых строк 4 (11.10.2026).
+            $paid = self::paidPayAsks($user);
+            $badges['/deals/asks'] = max(0, (int) $asks->deals - $paid['deals']);
             $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];
             // И «забрать» по вывозу: ход ответственного — порученные ему и своя гаражная, которую везёт сам.
-            $badges['/garage'] = (int) $asks->garage + Offer::pickupsOf($user)->awaitingPickup()->count()
+            $badges['/garage'] = max(0, (int) $asks->garage - $paid['garage']) + Offer::pickupsOf($user)->awaitingPickup()->count()
                 + Offer::where('evacuator_id', $user->id)->whereHas('garageCar', fn ($g) => $g->where('manager_id', $user->id))->awaitingPickup()->count();
         }
         if ($user->isSuperBuyer()) {
             // Что ждут от него по сделкам — на табе «Сделки», как у менеджера.
-            $badges['/deals/asks'] = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->count();
+            $badges['/deals/asks'] = max(0, Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->count() - array_sum(self::paidPayAsks($user)));
             $badges['/deals'] = $badges['/deals/asks'];
         }
         if ($user->isAdmin() && ! $user->isManager()) {

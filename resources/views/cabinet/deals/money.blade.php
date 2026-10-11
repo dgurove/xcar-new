@@ -21,13 +21,8 @@
         $state === CommissionState::Payable => 'к выплате',
         default => 'к выплате после оплаты счёта',
     };
-    // Совкомбанк: счёт встаёт после «Автомобиль забрал», а не после ответа поставщика (10.10.2026).
-    $notYet = match (true) {
-        $deal->isCommission() => 'после получения автомобиля',
-        // Поставщик согласовал, ждём менеджера: счёт встанет после «Беру в работу».
-        (bool) $deal->offer?->position(\App\Workflow\Track::Sale)?->stage->asksConsent() => 'после «Беру в работу»',
-        default => 'после ответа поставщика',
-    };
+    // Когда встанет счёт до согласия (`Deal::invoiceNotYet`): Совкомбанк — после «Забрал», Альфа — после «Беру в работу».
+    $notYet = $deal->invoiceNotYet() ?? 'после ответа поставщика';
     $pay = fn ($i) => '/account/money/deals/'.$deal->id.($i && $i->state === InvoiceState::Issued ? '?pay=1' : '');
 @endphp
 <div class="box">

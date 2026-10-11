@@ -20,6 +20,9 @@
     $contractStep = $deal->isActive() && $deal->hasContract() && $requirement && ($pickupSteps || ($requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep()));
     // ПРАЙМ без покупателя: задача и есть выбор покупателя — он в ней, а не вторым блоком с той же кнопкой.
     $needsBuyer = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() && in_array($deal->invoiceGap(), ['buyer', 'passport'], true);
+    // Каркаде, пока поставщик не согласовал заявку (11.10.2026): «Выбрать покупателя» и ДКП рано — лот ещё могут не отдать
+    // (владелец 09.10: «рано спрашивать у менеджера, покупает ли»). Блок встанет после ответа поставщика.
+    $tooEarly = $deal->isActive() && ! $deal->agreed() && $offer->vendor?->deal_format === \App\Vendors\DealFormat::Wholesale;
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
     {{-- Сделка — не объявление (05.10.2026, владелец): первым делом задача, справа расчёт, кадры — плиткой в самом низу
@@ -30,7 +33,7 @@
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
             <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps])</div>
             {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
-            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer && ($deal->isActive() || $deal->contract?->buyer_user_id))<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif
+            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isActive() || $deal->contract?->buyer_user_id))<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
             @if ($pastInvoices->isNotEmpty())

@@ -94,6 +94,11 @@ final class DealMoney
 
             return new self($phrase.$date($first->due_at).$also, $left, $first->light() === 'urgent' ? 'urgent' : 'plain', 'pay', $caption, ...$money);
         }
+        // Счёта ещё не может быть — поставщик не ответил (у Совкомбанка — до «Забрал»): серым, когда встанет, а не оранжевое
+        // «Укажите покупателя» (11.10.2026: в «Сделках» — «Ждём XCar», а в «Оплатах» — «ваш ход»).
+        if ($issued->isEmpty() && $deal->isActive() && ($notYet = $deal->invoiceNotYet()) !== null) {
+            return new self('Счёт '.$notYet, (float) $deal->base(), 'plain', 'open', $staff ? mb_strtolower($label) : $label);
+        }
         if ($issued->isEmpty() && $deal->isActive() && in_array($gap = $deal->invoiceGap(), ['buyer', 'passport'], true)) {
             return $staff
                 ? new self($gap === 'passport' ? 'Ждём паспорт покупателя' : 'Ждём покупателя', (float) $deal->base(), 'plain', 'open', mb_strtolower($label))

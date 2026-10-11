@@ -105,9 +105,12 @@ final class Path
     {
         $all = $stage->workflow->blocks()->with('stages.exits.to.block')->get();
         $current = $all->firstWhere('id', $stage->block_id);
+        // Блоки впереди по маршруту — журнал их «пройденными» не делает: маршрут поменяли на ходу (Совкомбанк 10.10.2026:
+        // сначала «Забрал», потом оплата), и вход в старый этап блока «Оплата» ставил его позади — путь кончался текущим.
+        $ahead = self::forward($all, $current, $deal);
         $behind = collect($passedNames)->map(fn ($name) => $all->firstWhere('name', $name))->filter()
             // Позади — в порядке журнала: он смотан на откатах, а порядок блоков в маршруте у веток свой.
-            ->reject(fn (Block $b) => $b->name === $current->name)->unique('name')->values();
+            ->reject(fn (Block $b) => $b->name === $current->name || in_array($b->id, $ahead, true))->unique('name')->values();
         $ladder = $behind->push($current);
         $seen = $ladder->pluck('id')->all();
         while (true) {
@@ -127,6 +130,28 @@ final class Path
             $current = $next->first();
             $seen[] = $current->id;
             $ladder->push($current);
+        }
+    }
+
+    /**
+     * Блоки строго впереди текущего, пока путь однозначный (главной дорогой на развилке — меньший номер): id. Только вперёд
+     * по маршруту — возвраты назад («Я передумал» → приём) сюда не входят.
+     *
+     * @return list<int>
+     */
+    private static function forward(Collection $all, Block $current, Deal|Destination|null $deal): array
+    {
+        $ids = [];
+        $seen = [$current->id];
+        while (true) {
+            $next = $current->nextBlocks($deal)->map(fn (Block $b) => $all->firstWhere('id', $b->id) ?? $b)
+                ->reject(fn (Block $b) => $b->isDeadEnd() || in_array($b->id, $seen, true) || ($b->position < $current->position && ! $b->isFinal()));
+            if ($next->isEmpty()) {
+                return $ids;
+            }
+            $current = $next->sortBy('position')->first();
+            $seen[] = $current->id;
+            $ids[] = $current->id;
         }
     }
 }
