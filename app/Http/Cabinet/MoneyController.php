@@ -20,6 +20,7 @@ use App\Billing\PartyRules;
 use App\Billing\Payment;
 use App\Garage\Car as GarageCar;
 use App\Logistics\Transport;
+use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Deal;
 use App\Support\Money;
 use App\Support\OfficePreview;
@@ -151,6 +152,8 @@ class MoneyController
         $data = $request->validate(PartyRules::rules());
         $party = Party::forUser($request->user());
         $party->update($data + ['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null]);
+        // «Я сам» с паспортом и сканом — счёт и договор его сделок встают сами.
+        PassportScanController::resyncFor($request->user(), $request->user(), app(SyncDealInvoices::class));
 
         return redirect('/account/money')->with('toast', 'Реквизиты сохранены');
     }

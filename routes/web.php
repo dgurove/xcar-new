@@ -9,6 +9,7 @@ use App\Http\Cabinet\DealContractController;
 use App\Http\Cabinet\DealController;
 use App\Http\Cabinet\GroupController;
 use App\Http\Cabinet\InviteController;
+use App\Http\Cabinet\PassportScanController;
 use App\Http\Cabinet\ListsController;
 use App\Http\Cabinet\MoneyController;
 use App\Http\Cabinet\NotificationController;
@@ -114,6 +115,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/account/chats/support', [CabinetChatController::class, 'support']);
         Route::get('/account/chats/{chat}', [CabinetChatController::class, 'show']);
         Route::get('/account/interests', [ListsController::class, 'interests']);
+        // Скан паспорта покупателя (11.10.2026): загрузка страницы и опрос распознанного.
+        Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
+        Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);
     });
 
     Route::get('/account/invoices/{invoice}/pdf', [MoneyController::class, 'pdf']);
@@ -190,6 +194,11 @@ Route::middleware(['auth', 'wall'])->group(function () {
     // Покупатели менеджера — вторая пилюля «Сделок» (интерес, группы, показы внутри).
     Route::middleware('ability:isManager')->group(function () {
         Route::get('/buyers', [BuyerController::class, 'index']);
+        // Приглашения менеджера — внутри «Покупателей» (тот же экран, что в кабинете у админа).
+        Route::get('/buyers/invites', [InviteController::class, 'index']);
+        Route::post('/buyers/invites', [InviteController::class, 'store']);
+        Route::post('/buyers/invites/{invite}/off', [InviteController::class, 'disable']);
+        Route::post('/buyers/invites/{invite}/on', [InviteController::class, 'enable']);
         Route::get('/buyers/interest', [BuyerInterestController::class, 'index']);
         Route::post('/buyers/interest/{interest}', [BuyerInterestController::class, 'update']);
         Route::post('/buyers/groups', [GroupController::class, 'store']);

@@ -7,6 +7,7 @@ use App\Billing\PartyKind;
 use App\Billing\PartyRules;
 use App\Chats\Chat;
 use App\Chats\Message;
+use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
@@ -80,6 +81,8 @@ class BuyerController
         $me = $request->user();
         abort_unless($user->manager_id === $me->id && $user->isBuyer(), 404);
         $user->load(['groups', 'party']);
+        // Скан паспорта прикрепляется к контрагенту — он нужен и до первого сохранения полей.
+        $user->party ?? $user->setRelation('party', Party::forUser($user));
 
         $direct = Showing::where('manager_id', $me->id)->where('user_id', $user->id)->pluck('offer_id')->all();
         $offers = Offer::with(['brand', 'model', 'settlement', 'media', 'favorites'])->where('state', OfferState::Open)->visibleTo($user)->orderByDesc('published_at')->get();
@@ -122,6 +125,8 @@ class BuyerController
         $data = $request->validate(PartyRules::passport('buyer'), [], ['buyer.name' => 'ФИО'])['buyer'];
         $party = Party::forUser($user);
         $party->fill(['kind' => PartyKind::Person] + array_map(fn ($v) => is_string($v) && trim($v) === '' ? null : $v, $data))->save();
+        // Паспорт со сканом готов — счёт и договор его сделок встают сами.
+        PassportScanController::resyncFor($user, $request->user(), app(SyncDealInvoices::class));
 
         return back()->with('toast', 'Паспорт сохранён');
     }

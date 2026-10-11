@@ -3,8 +3,9 @@
 # детектор строк и русская модель eslav (кириллица с латиницей и цифрами: VIN, номер). Модели грузятся один раз на
 # весь вызов, поэтому файлы передаются пачкой: `ocr page-1.png page-2.png photo.jpg`. На каждый файл — строка JSON
 # {"file": путь, "text": текст} сразу, как прочитан: PHP показывает готовность по файлам, не дожидаясь пачки.
-# Страница PDF (имя на «page-») сначала ставится прямо моделью ориентации — Альфа сканирует заявку боком; вышло
-# меньше SHORT знаков — перебор остальных поворотов. Фото — только по EXIF. Строка таблицы собирается из рамок по высоте: ячейки через три пробела, как ждёт `DocumentFields`.
+# Страница PDF (имя на «page-») и фото документа (имя на «doc-», паспорт) сначала ставятся прямо моделью ориентации —
+# Альфа сканирует заявку боком, паспорт снимают как придётся; вышло меньше SHORT знаков — перебор остальных поворотов.
+# Прочие фото — только по EXIF. Строка таблицы собирается из рамок по высоте: ячейки через три пробела, как ждёт `DocumentFields`.
 # `ocr --angle page.png` — только угол страницы (0/90/180/270, против часовой): миниатюра скана в окне «✨» стоит
 # прямо (`MailController::attachment`), модели OCR для этого не грузятся.
 import faulthandler
@@ -57,13 +58,29 @@ SHORT = 150
 
 
 def load(path):
-    """Картинка и, у страницы PDF, угол модели ориентации (в четвертях оборота против часовой)."""
+    """Картинка и угол модели ориентации (в четвертях оборота против часовой): у страницы PDF и у фото документа
+    (имя на «doc-»: паспорт с телефона снимают и боком). Прочие фото — только по EXIF."""
     image = np.asarray(ImageOps.exif_transpose(Image.open(path)).convert('RGB'))[:, :, ::-1]
-    if not os.path.basename(path).startswith('page-'):
+    if not os.path.basename(path).startswith(('page-', 'doc-')):
         return image, None
+    if os.path.basename(path).startswith('doc-'):
+        image = document(image)
     global orientation
     orientation = orientation or RapidOrientation()
     return image, int(orientation(np.ascontiguousarray(image))[0]) // 90
+
+
+def document(image):
+    """Фото документа с телефона: мелкое — крупнее, строка паспорта в 1000 px нечитаема. Выравнивание контраста (CLAHE)
+    пробовали на паспортах 11.10.2026 — цифры зоны читались хуже, не берём."""
+    h, w = image.shape[:2]
+    if max(h, w) < DOC_SIDE:
+        k = DOC_SIDE / max(h, w)
+        image = cv2.resize(np.ascontiguousarray(image), (int(w * k), int(h * k)), interpolation=cv2.INTER_CUBIC)
+    return image
+
+
+DOC_SIDE = 2200
 
 
 def read(path):
@@ -81,10 +98,14 @@ def read(path):
 def lines(result):
     if result.boxes is None:
         return []
+    # Фото с наклоном: строка уходит вверх или вниз, и по голой высоте рамки соседние строки перемешивались (машиночитаемая
+    # зона паспорта шла вперемешку). Высота считается вдоль общего наклона — медиана наклона длинных рамок.
+    slopes = sorted((b[1][1] - b[0][1]) / (b[1][0] - b[0][0]) for b in result.boxes if b[1][0] - b[0][0] > 2 * abs(b[3][1] - b[0][1]) > 0)
+    slope = slopes[len(slopes) // 2] if slopes else 0.0
     items = []
     for box, text in zip(result.boxes, result.txts):
         xs = [p[0] for p in box]
-        ys = [p[1] for p in box]
+        ys = [p[1] - slope * p[0] for p in box]
         items.append({'x0': min(xs), 'x1': max(xs), 'y': (min(ys) + max(ys)) / 2, 'h': max(ys) - min(ys), 't': text})
     items.sort(key=lambda i: i['y'])
     rows = []

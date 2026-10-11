@@ -94,10 +94,10 @@ final class DealMoney
 
             return new self($phrase.$date($first->due_at).$also, $left, $first->light() === 'urgent' ? 'urgent' : 'plain', 'pay', $caption, ...$money);
         }
-        if ($issued->isEmpty() && $deal->isActive() && $deal->invoiceGap() === 'buyer') {
+        if ($issued->isEmpty() && $deal->isActive() && in_array($gap = $deal->invoiceGap(), ['buyer', 'passport'], true)) {
             return $staff
-                ? new self('Ждём покупателя', (float) $deal->base(), 'plain', 'open', mb_strtolower($label))
-                : new self('Укажите покупателя', (float) $deal->base(), 'urgent', 'open', $label);
+                ? new self($gap === 'passport' ? 'Ждём паспорт покупателя' : 'Ждём покупателя', (float) $deal->base(), 'plain', 'open', mb_strtolower($label))
+                : new self($gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя', (float) $deal->base(), 'urgent', 'open', $label);
         }
         if ($issued->isEmpty()) {
             return $deal->state === DealState::Done

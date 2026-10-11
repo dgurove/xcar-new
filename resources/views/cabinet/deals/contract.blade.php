@@ -12,7 +12,9 @@
     $buyer = $contract->buyer;
     $me = auth()->user();
     $isMe = $buyer && $buyer->id === $me->id;
-    $ready = $buyer?->party?->readyForContract();
+    // Готов — с паспортом и его сканом у физлица (`Party::readyAsBuyer`, 11.10.2026); без скана — та же шторка данных.
+    $ready = $buyer?->party?->readyAsBuyer();
+    $noScan = $buyer?->party?->readyForContract() && ! $ready;
     $mine = $me->buyers()->orderBy('name')->get(['id', 'name']);
     $prime = $deal->isPrime();
     $editable = $deal->isActive();
@@ -27,7 +29,7 @@
     $pdf = ['url' => '/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => 'ДКП '.$deal->offer->titleWithYear().'.pdf', 'label' => 'ДКП'];
     $missing = $contract->missing();
     // Покупатель — пункт менеджера выше; у договора называем то, что вносим мы (продавец, документы ТС, цена).
-    $ours = array_values(array_diff($missing, ['покупатель', 'данные покупателя']));
+    $ours = array_values(array_diff($missing, ['покупатель', 'данные покупателя', 'скан паспорта покупателя']));
 @endphp
 <section @if ($part !== 'doc') id="dkp-buyer" @endif class="min-w-0">
     @unless ($embedded)<h2 class="list-head">{{ $garage ? 'Договор купли-продажи' : ($prime ? 'Покупатель: счёт и ДКП' : 'Покупатель по ДКП') }}</h2>@endunless
@@ -44,13 +46,15 @@
                 <div data-controller="sheet" class="contents">
                     <button type="button" class="row w-full text-left" data-action="sheet#open">
                         <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
-                            <span class="row-sub text-urgent">нужны данные для договора</span></span>
+                            <span class="row-sub text-urgent">{{ $noScan ? 'нужен скан паспорта' : 'нужны данные для договора' }}</span></span>
                         <x-ui.chevron/>
                     </button>
                     <x-ui.sheet id="deal-buyer-data" title="Данные для договора" :open="$dataErrors" tall>
-                        <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3">
+                        @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
+                        @if ($buyerParty->isPerson())<x-billing.passport-scan :party="$buyerParty" form="deal-buyer-data-form"/>@endif
+                        <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="deal-buyer-data-form">
                             @csrf @method('put')
-                            <x-billing.buyer-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" key="buyer-now"/>
+                            <x-billing.buyer-fields :party="$buyerParty" key="buyer-now"/>
                             <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                         </form>
                     </x-ui.sheet>
@@ -95,7 +99,7 @@
                                         <span class="check"><input type="radio" name="buyer_id" value="{{ $b->id }}" @checked($current === $b->id) data-action="change->autosubmit#submit"></span>
                                     </label>
                                 @endforeach
-                                <a href="/account/invites" class="row"><span class="min-w-0 flex-1">Пригласить по ссылке</span><x-ui.chevron/></a>
+                                <a href="/buyers/invites" class="row"><span class="min-w-0 flex-1">Пригласить по ссылке</span><x-ui.chevron/></a>
                             </div>
                             @error('buyer_id')<p class="field-error mt-2">{{ $message }}</p>@enderror
                         </form>
@@ -127,7 +131,7 @@
                 <div class="row">
                     <x-ui.row-icon name="file" size="s" tone="muted"/>
                     <span class="min-w-0 flex-1"><span class="block text-ink-muted">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}</span>
-                        @php $need = array_values(array_filter([in_array('покупатель', $missing, true) ? 'выберите покупателя' : null, in_array('данные покупателя', $missing, true) ? 'нужны данные покупателя' : null, $ours ? 'готовим: '.implode(', ', $ours) : null])); @endphp
+                        @php $need = array_values(array_filter([in_array('покупатель', $missing, true) ? 'выберите покупателя' : null, in_array('данные покупателя', $missing, true) ? 'нужны данные покупателя' : null, in_array('скан паспорта покупателя', $missing, true) ? 'нужен скан паспорта покупателя' : null, $ours ? 'готовим: '.implode(', ', $ours) : null])); @endphp
                         <span class="row-sub !whitespace-normal">{{ implode(', ', $need) }}</span></span>
                 </div>
             @endif

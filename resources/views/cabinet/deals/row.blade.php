@@ -14,7 +14,7 @@
     // а не голое «Ваш ход» серым.
     $mine = $active && ! $req && ! $paidUp && $position && $position->waitsFor() === \App\Workflow\WaitsFor::Manager && ! $position->awaitsInvoice();
     $gap = $mine && $position->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
-    $ask = $mine ? match ($gap) { 'buyer' => 'Укажите покупателя', 'price' => 'Укажите цену продажи', default => $position->stage->managerTitle() } : null;
+    $ask = $mine ? match ($gap) { 'buyer' => 'Укажите покупателя', 'passport' => 'Приложите паспорт покупателя', 'price' => 'Укажите цену продажи', default => $position->stage->managerTitle() } : null;
     $staff = auth()->user()->isAdmin() && $deal->buyer_id !== auth()->id();
     // Оранжевое — только просрочка того, кто смотрит: менеджеру — его ход, админу — любая (11.10.2026).
     $alarm = ! $paidUp && ($req?->due_at?->isPast() || ($position?->isOverdue() && ($staff || $position->waitsFor() === \App\Workflow\WaitsFor::Manager)));

@@ -20,6 +20,7 @@
         // Совкомбанк: счёт ПРАЙМ — у сделки (покупателю), своего расчёта у машины нет.
         CarState::Sold => $car->settledByDeal() ? match ($car->deal->invoiceGap()) {
             'buyer' => $staff ? 'менеджер указывает покупателя' : 'укажите покупателя',
+            'passport' => $staff ? 'менеджер прикладывает паспорт покупателя' : 'приложите паспорт покупателя',
             'commission' => $staff ? 'назначить вознаграждение' : 'готовим счёт',
             null => $car->deal->issuedInvoices()->where('state', \App\Billing\InvoiceState::Issued)->exists() ? 'ждём оплату покупателя' : null,
             default => $staff ? 'выставить счёт' : 'готовим счёт',

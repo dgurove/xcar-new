@@ -94,6 +94,8 @@ class DealContract extends Model
             $this->deal->seller() === Seller::Ros && ! Party::seller(Seller::Ros)->readyForContract() ? 'данные продавца' : null,
             ! $this->plate && ! $this->sts ? 'документы ТС' : null,
             $this->buyer ? ($this->buyerParty()?->readyForContract() ? null : 'данные покупателя') : 'покупатель',
+            // Скан паспорта покупателя-физлица (11.10.2026): без него договор не печатается.
+            $this->buyer && $this->buyerParty()?->readyForContract() && ! $this->buyerParty()->readyAsBuyer() ? 'скан паспорта покупателя' : null,
             $this->price ? null : 'цена',
         ]));
     }

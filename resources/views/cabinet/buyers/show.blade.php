@@ -101,20 +101,25 @@
             @endif
             {{-- Паспорт — для ДКП, когда покупатель покупает у страхователя напрямую (05.10.2026). Строкой со шторкой, а не
                  формой во весь экран (11.10.2026: восемь полей стояли посреди страницы между «Видит» и интересом). --}}
-            @php $ready = $buyer->party?->readyForContract(); @endphp
+            @php
+                $party = $buyer->party;
+                $ready = $party?->readyAsBuyer();
+                $status = match (true) { (bool) $ready => 'заполнен', (bool) $party?->readyForContract() => 'нет скана', default => 'не заполнен' };
+            @endphp
             <section class="mt-6" data-controller="sheet">
                 <div class="list">
                     <button type="button" class="row w-full text-left" data-action="sheet#open">
                         <x-ui.row-icon name="file"/>
                         <span class="min-w-0 flex-1">
                             <span class="block font-medium">Паспорт</span>
-                            <span @class(['row-sub', 'text-open' => $ready])>{{ $ready ? 'заполнен' : 'не заполнен' }}</span>
+                            <span @class(['row-sub', 'text-open' => $ready])>{{ $status }}</span>
                         </span>
                         <x-ui.chevron/>
                     </button>
                 </div>
                 <x-ui.sheet id="passport" title="Паспорт" :open="$errors->has('buyer.*')">
-                    <form method="post" action="/buyers/{{ $buyer->id }}/passport" class="flex flex-col gap-3">
+                    <x-billing.passport-scan :party="$party" form="buyer-passport-form"/>
+                    <form method="post" action="/buyers/{{ $buyer->id }}/passport" class="flex flex-col gap-3" id="buyer-passport-form">
                         @csrf @method('put')
                         <x-billing.passport-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" prefix="buyer" rows/>
                         <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>

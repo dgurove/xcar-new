@@ -13,7 +13,10 @@ use App\Billing\Events\PaymentClaimed;
 use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\Events\PaymentRejected;
+use App\Billing\Invoice;
+use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
+use App\Billing\Seller;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
@@ -21,6 +24,7 @@ use App\Garage\Car as GarageCar;
 use App\Mail\CandidateState;
 use App\Mail\Scope;
 use App\Offers\Actions\NotifyViewers;
+use App\Offers\Deal;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
@@ -49,6 +53,7 @@ use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
 use App\Telegram\Messages\OnlinePayment as OnlinePaymentMessage;
 use App\Telegram\Messages\ParkHandled;
 use App\Telegram\Messages\PaymentClaimed as PaymentClaimedMessage;
+use App\Telegram\Messages\RosTransferDue;
 use App\Users\Events\AccessDecided;
 use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
@@ -62,11 +67,6 @@ use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
-use App\Billing\Invoice;
-use App\Billing\InvoiceState;
-use App\Billing\Seller;
-use App\Telegram\Messages\RosTransferDue;
-use App\Offers\Deal;
 use Illuminate\Support\Facades\Notification;
 
 /** Кому что рассказать, когда в офферах что-то произошло. */
@@ -208,8 +208,8 @@ final class Notify
         $position = $deal?->isActive() ? Position::where('offer_id', $e->offer->id)->where('track', Track::Sale)->with('stage.exits')->first() : null;
         if ($position?->awaitsInvoice()) {
             $this->invoiceNeeded($deal->setRelation('offer', $e->offer), $position->gap());
-        } elseif ($position && $e->to->isPayStep() && $deal->buyer && $deal->invoiceGap() === 'buyer') {
-            $deal->setRelation('offer', $e->offer)->buyer->notify(new BuyerNeededNotice($deal));
+        } elseif ($position && $e->to->isPayStep() && $deal->buyer && in_array($deal->invoiceGap(), ['buyer', 'passport'], true)) {
+            $deal->setRelation('offer', $e->offer)->buyer->notify(new BuyerNeededNotice($deal, $deal->invoiceGap() === 'passport'));
 
             return;
         }

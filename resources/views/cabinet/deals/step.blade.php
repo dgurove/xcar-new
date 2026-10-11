@@ -17,7 +17,8 @@
     $noInvoice = (bool) $position?->awaitsInvoice();
     // ПРАЙМ без покупателя — ход менеджера: счёт встанет сам, как только он укажет, кому (`Deal::invoiceGap`).
     $gap = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
-    $needsBuyer = $gap === 'buyer';
+    // Покупатель не указан или у физлица нет паспорта со сканом (11.10.2026) — задача одна: покупатель в шторке договора.
+    $needsBuyer = in_array($gap, ['buyer', 'passport'], true);
     // Гаражная Совкомбанка: счёт и договор — когда менеджер продаст (`Deal::namesBuyer`): цену он пишет «Продаю».
     $needsPrice = $gap === 'price';
     // Строки счетов — только в гараже, где «Расчёта» нет; на странице сделки счёт в «Расчёте», а здесь — сама оплата.
@@ -69,7 +70,7 @@
 
             @if ($consent)
             @elseif ($needsBuyer)
-                <h3 class="mt-5 text-lg">Укажите покупателя</h3>
+                <h3 class="mt-5 text-lg">{{ $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя' }}</h3>
             @elseif ($needsPrice)
                 <h3 class="mt-5 text-lg">Укажите цену продажи</h3>
             @elseif ($paidUp)
@@ -102,12 +103,12 @@
                     $items = array_values(array_filter($flow ? [
                         ['contact', 'Свяжитесь с владельцем', $flow['contact']],
                         ['pickup', 'Заберите автомобиль', $flow['pickup']],
-                        ['buyer', 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyForContract())],
+                        ['buyer', 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyAsBuyer())],
                         ['doc', 'Договор купли-продажи', $state($contract->isReady())],
                         ['signed', 'Подписанный договор', $flow['signed'] === 'current' && $signedFiles ? 'done' : $flow['signed']],
                     ] : [
                         $contact ? ['contact', $handover?->where === 'У владельца' || $replies->isNotEmpty() ? 'Свяжитесь с владельцем' : 'Где автомобиль', 'open'] : null,
-                        ['buyer', $deal->isPrime() ? 'Покупатель' : 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyForContract())],
+                        ['buyer', $deal->isPrime() ? 'Покупатель' : 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyAsBuyer())],
                         ['doc', 'Договор купли-продажи', $state($contract->isReady())],
                         ['signed', 'Подписанный договор', $state($signedFiles)],
                     ]));

@@ -68,7 +68,7 @@ class InviteController
     public static function home(): string
     {
         return match (Surface::current()) {
-            Surface::Crm => '/settings/users?preset=invites', Surface::Park => '/users?preset=invites', default => '/account/invites'
+            Surface::Crm => '/settings/users?preset=invites', Surface::Park => '/users?preset=invites', default => self::site()
         };
     }
 
@@ -76,7 +76,13 @@ class InviteController
     public static function base(): string
     {
         return match (Surface::current()) {
-            Surface::Crm => '/settings/users/invites', Surface::Park => '/users/invites', default => '/account/invites'
+            Surface::Crm => '/settings/users/invites', Surface::Park => '/users/invites', default => self::site()
         };
+    }
+
+    /** На сайте менеджеру — в «Сделках → Покупатели» (11.10.2026), админу — в кабинете. */
+    private static function site(): string
+    {
+        return request()->is('buyers/invites*') ? '/buyers/invites' : '/account/invites';
     }
 }

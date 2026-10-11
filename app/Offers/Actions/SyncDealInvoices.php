@@ -12,13 +12,14 @@ use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
 use App\Billing\Seller;
+use App\Notifications\Notify;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\OfferEventType;
 use App\Support\Money;
 use App\Users\User;
-use App\Workflow\Stage;
 use App\Workflow\Position;
+use App\Workflow\Stage;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Support\Carbon;
@@ -75,7 +76,7 @@ final class SyncDealInvoices
             $position->update(['waits_for' => $who, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null]);
             // Менеджер назвал цену и покупателя — дело за нами: без уведомления сделка молча ждала бы вознаграждение.
             if ($who === WaitsFor::Us) {
-                app(\App\Notifications\Notify::class)->invoiceNeeded($deal, $position->gap());
+                app(Notify::class)->invoiceNeeded($deal, $position->gap());
             }
         }
     }
@@ -128,13 +129,18 @@ final class SyncDealInvoices
         }
         // Гаражная Совкомбанка (`namesBuyer`) — как обычная ПРАЙМ: счёт на цену продажи тому, кого назвал менеджер.
         if ($deal->isGarage() && ! $deal->namesBuyer()) {
-            return $deal->isGarageManager()
+            return $deal->isGarageManager() && $deal->passportReady()
                 ? ['party' => Party::forUser($deal->buyer), 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]]]
                 : null;
         }
         $contract = $deal->contract;
         // Гаражной Совкомбанка ещё и вознаграждение: его назначаем мы, когда менеджер назвал цену продажи.
         if (! $contract?->buyer_user_id || $deal->amount === null || ($deal->namesBuyer() && $deal->commission === null)) {
+            return null;
+        }
+        // Покупатель-физлицо — только с паспортом и его сканом (11.10.2026, владелец: руками ошибаются). Уже выставленный
+        // счёт не трогаем: `slot` без нужного счёта ничего не гасит.
+        if (! $deal->passportReady()) {
             return null;
         }
         // Платит покупатель — удерживать не из чего, `Deal::withholds` тогда ложь: вознаграждение выплачиваем после оплаты.

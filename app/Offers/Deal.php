@@ -5,9 +5,11 @@ namespace App\Offers;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
+use App\Billing\Seller;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
 use App\Support\Demo\HidesDemo;
@@ -105,6 +107,7 @@ class Deal extends Model
         if ($this->prepaid_at !== null || ! $this->offer?->vendor?->pay_before_pickup) {
             return true;
         }
+
         // Маршрута продажи у вендора нет (Альфа СПб завели без него) — `prepaid_at` ставить некому: забирать, когда
         // счета сделки оплачены, а не никогда.
         return ! $this->offer->vendor->workflow(Track::Sale)?->is_active && $this->fullyPaid();
@@ -159,7 +162,7 @@ class Deal extends Model
     }
 
     /** Кто продаёт ТС по этой сделке — от него счёт за ТС и ДКП. */
-    public function seller(): \App\Billing\Seller
+    public function seller(): Seller
     {
         return $this->schemeOf()->seller();
     }
@@ -180,10 +183,10 @@ class Deal extends Model
             return null;
         }
         if ($this->isCommission()) {
-            return $this->garage_payer === \App\Garage\GaragePayer::Manager ? 'без оплаты, счёт ПРАЙМ при продаже' : 'поставщику платим мы';
+            return $this->garage_payer === GaragePayer::Manager ? 'без оплаты, счёт ПРАЙМ при продаже' : 'поставщику платим мы';
         }
 
-        return $this->garage_payer === \App\Garage\GaragePayer::Us ? 'поставщику платим мы' : 'поставщику платит менеджер';
+        return $this->garage_payer === GaragePayer::Us ? 'поставщику платим мы' : 'поставщику платит менеджер';
     }
 
     /**
@@ -242,7 +245,8 @@ class Deal extends Model
     /**
      * Почему этапу оплаты нечем платить: `buyer` — ПРАЙМ, а менеджер ещё не указал, кому счёт (ход его); `price` —
      * гаражной Совкомбанка не названа цена продажи (ход его); `commission` — ей не назначено вознаграждение (ход наш);
-     * `share` — гаражной не вписана наша доля (ход наш); `invoice` — счёт не встал сам, выставить руками. Есть счёт — null.
+     * `share` — гаражной не вписана наша доля (ход наш); `passport` — у покупателя-физлица нет паспорта со сканом (ход
+     * менеджера); `invoice` — счёт не встал сам, выставить руками. Есть счёт — null.
      */
     public function invoiceGap(): ?string
     {
@@ -257,15 +261,28 @@ class Deal extends Model
             $this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && ! $this->contract?->buyer_user_id => 'buyer',
             $this->namesBuyer() && $this->commission === null => 'commission',
             // Р.О.С. без реквизитов (пришлёт владелец) — счёт выставить не от кого.
-            $this->seller() === \App\Billing\Seller::Ros && ! \App\Billing\Party::seller(\App\Billing\Seller::Ros)->billable() => 'ros_requisites',
+            $this->seller() === Seller::Ros && ! Party::seller(Seller::Ros)->billable() => 'ros_requisites',
+            // Покупатель-физлицо без паспорта со сканом (11.10.2026): счёта ПРАЙМ нет, ход менеджера.
+            $this->isPrime() && ! $this->passportReady() => 'passport',
             default => 'invoice',
         };
     }
 
-    /** Счёта нет, и ход за менеджером: не указал покупателя (ПРАЙМ) или цену продажи (гаражная Совкомбанка). */
+    /** Счёта нет, и ход за менеджером: не указал покупателя (ПРАЙМ), цену продажи (гаражная Совкомбанка) или паспорт покупателя. */
     public function managerGap(): bool
     {
-        return in_array($this->invoiceGap(), ['buyer', 'price'], true);
+        return in_array($this->invoiceGap(), ['buyer', 'price', 'passport'], true);
+    }
+
+    /**
+     * Паспорт покупателя по договору готов со сканом (`Party::readyAsBuyer`). Гаражной «платит менеджер» покупатель —
+     * сам менеджер; ПРАЙМ без договора — нечего проверять.
+     */
+    public function passportReady(): bool
+    {
+        $buyer = $this->isGarage() && ! $this->namesBuyer() ? ($this->isGarageManager() ? $this->buyer : null) : $this->contract?->buyer;
+
+        return ! $buyer || Party::forUser($buyer)->readyAsBuyer();
     }
 
     /** Живые счета по сделке в обе стороны, старые первыми. */

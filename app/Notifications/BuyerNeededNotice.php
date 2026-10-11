@@ -11,16 +11,17 @@ use App\Telegram\Text;
  */
 final class BuyerNeededNotice extends Notice
 {
-    public function __construct(private Deal $deal) {}
+    /** $passport — покупатель указан, но у физлица нет паспорта со сканом (11.10.2026). */
+    public function __construct(private Deal $deal, private bool $passport = false) {}
 
     public function title(): string
     {
-        return 'Укажите покупателя: '.$this->deal->offer->titleWithYear();
+        return ($this->passport ? 'Приложите паспорт покупателя: ' : 'Укажите покупателя: ').$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
-        return 'Счёт и ДКП соберутся по его данным';
+        return $this->passport ? 'Счёт и ДКП соберутся по скану паспорта' : 'Счёт и ДКП соберутся по его данным';
     }
 
     public function href(): string

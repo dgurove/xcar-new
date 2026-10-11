@@ -11,12 +11,20 @@ use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /** Контрагент счёта: юрлицо, ИП, самозанятый или физлицо с паспортом. Строки `is_self` — мы, по одной на продавца (`seller`). */
 #[Fillable(['kind', 'name', 'is_self', 'seller', 'inn', 'kpp', 'ogrn', 'legal_address', 'director', 'director_basis', 'bank_name', 'bik', 'account', 'corr_account',
     'passport', 'passport_issued', 'passport_issued_at', 'passport_code', 'reg_address', 'birth_at', 'birth_place', 'phone', 'email', 'card', 'payment_purpose', 'notes', 'vat_on_top'])]
-class Party extends Model
+class Party extends Model implements HasMedia
 {
+    use InteractsWithMedia;
+
+    /** Страницы скана паспорта (11.10.2026, владелец): разворот с фото и прописка — обе обязательны покупателю-физлицу. */
+    public const PASSPORT_PAGES = ['main' => 'Разворот с фото', 'reg' => 'Прописка'];
+
     /** Реквизиты плательщика поменялись — «нужны реквизиты» в закрытии месяца пересчитывается сразу, а не через 10 минут. */
     protected static function booted(): void
     {
@@ -83,6 +91,46 @@ class Party extends Model
     public function hasPassport(): bool
     {
         return filled($this->name) && $this->birth_at && filled($this->passport) && filled($this->passport_issued) && $this->passport_issued_at && filled($this->reg_address);
+    }
+
+    public function registerMediaCollections(): void
+    {
+        // Скан паспорта — только на закрытом диске, отдаёт `FileController` (админ, сам человек, его менеджер).
+        $this->addMediaCollection('passport')->useDisk('private');
+    }
+
+    /** Скан страницы паспорта (`main` — разворот с фото, `reg` — прописка); новый заменяет прежний. */
+    public function passportScan(string $page): ?Media
+    {
+        return $this->getMedia('passport')->first(fn (Media $m) => $m->getCustomProperty('page') === $page);
+    }
+
+    /** Физлицо (и самозанятый): у него паспорт, у организации и ИП — реквизиты. */
+    public function isPerson(): bool
+    {
+        return ! in_array($this->kind, [PartyKind::Company, PartyKind::Entrepreneur], true);
+    }
+
+    /** Обе страницы скана паспорта прикреплены. */
+    public function hasPassportScans(): bool
+    {
+        return $this->passportScan('main') && $this->passportScan('reg');
+    }
+
+    /**
+     * Покупатель готов к договору и счёту: как `readyForContract`, а физлицу — ещё и скан паспорта (11.10.2026, владелец:
+     * «пока скан паспорта не прикрепят, счёт и договор нельзя сформировать» — руками ошибаются). Продавцу (собственник по
+     * ДКП) скан не нужен: его паспорт вносит сотрудник по документам страховой.
+     */
+    public function readyAsBuyer(): bool
+    {
+        return $this->readyForContract() && (! $this->isPerson() || $this->hasPassportScans());
+    }
+
+    /** Чей это контрагент на сайте: сам человек (его `party_id`) или его менеджер — им можно прикреплять и смотреть скан. */
+    public function managedBy(User $me): bool
+    {
+        return User::where('party_id', $this->id)->where(fn ($w) => $w->whereKey($me->id)->orWhere('manager_id', $me->id))->exists();
     }
 
     /** Сторона договора внесена: у физлица — паспорт, у организации и ИП — название, ИНН, адрес (у юрлица и руководитель). */

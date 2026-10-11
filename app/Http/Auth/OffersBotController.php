@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Cache;
 final class OffersBotController
 {
     /** Куда ведёт кнопка: словом, а не путём — путь не перенаправление наружу. */
-    private const TARGETS = ['offers' => '/offers', 'favorites' => '/account/favorites', 'invites' => '/account/invites'];
+    private const TARGETS = ['offers' => '/offers', 'favorites' => '/account/favorites', 'invites' => '/buyers/invites'];
 
     public function open(Request $request, string $target)
     {

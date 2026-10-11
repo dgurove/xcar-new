@@ -102,6 +102,11 @@ class PrimeDealFlowTest extends TestCase
         Notification::assertNotSentTo($this->admin, InvoiceNeededNotice::class);
 
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), $this->buyerData(), $this->manager);
+        // Покупатель указан, паспорт вписан, а скана нет — счёта и ДКП нет, ход менеджера «Приложите паспорт» (11.10.2026).
+        $this->assertSame(0, $deal->fresh()->issuedInvoices()->count());
+        $this->assertSame('passport', $deal->fresh()->invoiceGap());
+        $this->assertContains('скан паспорта покупателя', DealContract::for($deal->fresh())->missing());
+        $this->passportFor($deal->fresh()->contract->buyer);
 
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame(ChargeKind::Sale, $invoice->kind);
@@ -125,6 +130,7 @@ class PrimeDealFlowTest extends TestCase
         app(RecordPayment::class)($manual->fresh(), $this->admin, 100000, now(), PaymentSource::Bank);
 
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), $this->buyerData(), $this->manager);
+        $this->passportFor($deal->fresh()->contract->buyer);
 
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame([944000.0, 106000.0], $invoice->charges()->orderBy('id')->pluck('price')->map(fn ($p) => (float) $p)->all());
@@ -138,6 +144,7 @@ class PrimeDealFlowTest extends TestCase
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Withheld, scheme: DealScheme::Prime);
         $this->pickedUp($offer);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'me'], $this->manager);
+        $this->passportFor($this->manager);
 
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame($this->manager->fresh()->party_id, $invoice->party_id);
@@ -162,6 +169,8 @@ class PrimeDealFlowTest extends TestCase
     {
         // Не комиссия: у гаражной Совкомбанка счёта за машину при принятии нет (`SovcomPathTest`).
         $offer = $this->offer(1300000, 'supplier');
+        // Гаражной «платит менеджер» покупатель по ДКП — сам менеджер: счёт за машину — с его паспортом и сканом.
+        $this->passportFor($this->manager);
         $bid = app(PlaceBid::class)($offer, $this->manager, null, kind: BidKind::Garage);
         $deal = app(AcceptBid::class)($bid, $this->admin, payer: GaragePayer::Manager, scheme: DealScheme::Prime, share: 50000);
 
@@ -185,6 +194,7 @@ class PrimeDealFlowTest extends TestCase
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Withheld, scheme: DealScheme::Prime);
         $this->pickedUp($offer);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), $this->buyerData(), $this->manager);
+        $this->passportFor($deal->fresh()->contract->buyer);
         $this->assertEqualsWithDelta(1050000, $deal->fresh()->issuedInvoices()->sole()->remaining(), 0.01);
         $this->assertFalse($deal->fresh()->withholds());
 

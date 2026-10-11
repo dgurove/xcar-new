@@ -25,7 +25,7 @@
                 <x-ui.chevron/>
             </a>
             {{-- На телефоне «Пригласить» — плашка внизу экрана; строкой — только на компьютере. --}}
-            <a href="/account/invites" class="row max-md:!hidden">
+            <a href="/buyers/invites" class="row max-md:!hidden">
                 <x-ui.row-icon name="link" tone="accent"/>
                 <span class="min-w-0 flex-1 font-medium">Пригласить</span>
                 <x-ui.chevron/>
@@ -71,7 +71,7 @@
             @if ($term)
                 <x-ui.empty href="/buyers" link="Все покупатели">Никого не нашлось</x-ui.empty>
             @else
-                <x-ui.empty href="/account/invites" link="Сделать ссылку">Покупатели приходят по вашей ссылке</x-ui.empty>
+                <x-ui.empty href="/buyers/invites" link="Сделать ссылку">Покупатели приходят по вашей ссылке</x-ui.empty>
             @endif
         @else
             <div class="list">
@@ -104,7 +104,7 @@
     {{-- На телефоне — ещё и плашка внизу; на компьютере хватает строки в списке. --}}
     <div class="contents md:hidden">
         <x-ui.action-bar>
-            <a href="/account/invites" class="btn btn-accent min-w-0 flex-1"><x-ui.icon name="link" class="size-5"/> Пригласить</a>
+            <a href="/buyers/invites" class="btn btn-accent min-w-0 flex-1"><x-ui.icon name="link" class="size-5"/> Пригласить</a>
         </x-ui.action-bar>
     </div>
 </div>

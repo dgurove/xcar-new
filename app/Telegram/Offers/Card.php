@@ -65,7 +65,7 @@ final class Card
         $target = match (true) {
             $path === '/offers' => 'offers',
             $path === '/account/favorites' => 'favorites',
-            $path === '/account/invites' => 'invites',
+            $path === '/account/invites', $path === '/buyers/invites' => 'invites',
             (bool) preg_match('~^/offers/(\d+)$~', $path, $m) => $m[1],
             default => 'offers',
         };

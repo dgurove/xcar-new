@@ -77,6 +77,7 @@ class MoneyDirectionTest extends TestCase
         app(TakeExit::class)($offer->fresh(), $offer->fresh()->position(Track::Sale)->stage->exits->firstWhere('label', 'Автомобиль забрал'), Actor::Manager, $this->manager);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'new', 'new_buyer' => ['phone' => '+7 900 555-44-33'], 'buyer' => ['kind' => 'person',
             'name' => 'Покупаев Пётр Петрович', 'birth_at' => '1985-05-05', 'passport' => '11 11 111111', 'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2010-10-10', 'reg_address' => 'г. Москва']], $this->manager);
+        $this->passportFor($deal->fresh()->contract->buyer);
         app(RecordPayment::class)($deal->fresh()->issuedInvoices()->sole(), $this->admin, 1050000, now(), PaymentSource::Bank);
         $this->assertSame(1, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->count());
 
@@ -94,6 +95,7 @@ class MoneyDirectionTest extends TestCase
     {
         // Не комиссия: гаражная Совкомбанка счетов при принятии не получает.
         $offer = $this->offer(1300000, 'supplier');
+        $this->passportFor($this->manager);
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, null, kind: BidKind::Garage), $this->admin, payer: GaragePayer::Manager, scheme: DealScheme::Prime, share: 50000);
 
         $ledger = new ManagerLedger($this->manager);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Site;
 
+use App\Billing\Party;
 use App\Media\ForManagers;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
@@ -87,6 +88,8 @@ final class FileController
             Requirement::class => Requirement::whereKey($media->model_id)->where('user_id', $user->id)->exists(),
             // На парковке — ТС, которую человек видит: у управляющего с городом область `Park\City` прячет чужие.
             Vehicle::class => ($user->canAccess(Section::Park) && Vehicle::whereKey($media->model_id)->exists()) || $works(),
+            // Скан паспорта — самому человеку и его менеджеру.
+            Party::class => (bool) Party::find($media->model_id)?->managedBy($user),
             default => false,
         };
     }

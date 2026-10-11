@@ -3,6 +3,7 @@
 namespace App\Mail\Extraction;
 
 use App\Mail\Parts;
+use App\Mail\Scan\DocumentPhoto;
 use App\Mail\Scan\ScanFile;
 use Closure;
 use Illuminate\Support\Facades\Log;
@@ -259,6 +260,14 @@ final class DocumentText
             sort($files);
 
             return $files;
+        }
+
+        // Фото документа — под именем «doc-…»: скрипт поставит его прямо и увеличит мелкое (`DocumentPhoto`).
+        if ($a instanceof DocumentPhoto) {
+            $link = $dir.'/doc-'.$a->scanId().'.'.(pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg');
+            @symlink($path, $link);
+
+            return [is_link($link) ? $link : $path];
         }
 
         return [$path];

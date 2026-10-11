@@ -32,7 +32,7 @@
             <section class="mt-6">
                 <h2 class="list-head">Состав</h2>
                 @if ($buyers->isEmpty())
-                    <x-ui.empty line href="/account/invites" link="Пригласить">Покупателей пока нет</x-ui.empty>
+                    <x-ui.empty line href="/buyers/invites" link="Пригласить">Покупателей пока нет</x-ui.empty>
                 @else
                     <form method="post" action="/buyers/groups/{{ $group->id }}/members" class="flex flex-col gap-2" data-controller="autosubmit select">
                         @csrf @method('put')

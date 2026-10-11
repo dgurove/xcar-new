@@ -32,7 +32,7 @@
         @endif
 
         @if ($rows === 0)
-            <x-ui.empty class="!py-12" href="/account/invites" link="Пригласить покупателей">Показывать пока некому</x-ui.empty>
+            <x-ui.empty class="!py-12" href="/buyers/invites" link="Пригласить покупателей">Показывать пока некому</x-ui.empty>
         @else
             @if ($rows > 8)<input type="search" class="field-input field-s" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif
             {{-- Видят ли отмеченные VIN целиком — решает менеджер (владелец 04.10.2026); не отмечено — звёздочки. --}}

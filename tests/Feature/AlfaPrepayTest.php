@@ -109,7 +109,10 @@ class AlfaPrepayTest extends TestCase
 
         // Реквизиты заполнили — счёт от Р.О.С., своей нумерацией, без ссылки.
         Party::seller(Seller::Ros)->update(['inn' => '7700000000', 'bank_name' => 'Банк', 'bik' => '044525000', 'account' => '40702810000000000001', 'corr_account' => '30101810000000000000']);
+        // Дальше ход менеджера: «Я сам» — физлицо, без паспорта со сканом счёта нет (11.10.2026).
         app(\App\Offers\Actions\SyncDealInvoices::class)($deal->fresh(), $this->admin);
+        $this->assertSame('passport', $deal->fresh()->invoiceGap());
+        $this->passportFor($this->manager);
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame(Seller::Ros, $invoice->seller);
         $this->assertSame(1, $invoice->number);

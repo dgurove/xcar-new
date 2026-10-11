@@ -202,6 +202,9 @@ class GarageByConfirmationTest extends TestCase
 
         $deal->fresh()->update(['commission' => 100000]);
         app(\App\Offers\Actions\SyncDealInvoices::class)($deal->fresh(), $admin);
+        // Вознаграждение назначено — дальше скан паспорта покупателя (11.10.2026), со сканом счёт встаёт сам.
+        $this->assertSame('passport', $deal->fresh()->invoiceGap());
+        $this->passportFor($deal->fresh()->contract->buyer);
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame('Покупаев Пётр Петрович', $invoice->party->name);
         $this->assertEqualsWithDelta(1500000, $invoice->total, 0.01);
