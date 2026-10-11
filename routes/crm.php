@@ -186,6 +186,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/estimates/keep', [OfferEstimateController::class, 'keep']);
         Route::post('/offers/{offer}/estimates/{estimate}/take', [OfferEstimateController::class, 'take']);
         Route::post('/offers/{offer}/estimates/{estimate}/reject', [OfferEstimateController::class, 'reject']);
+        Route::post('/offers/{offer}/estimates/{estimate}/again', [OfferEstimateController::class, 'again']);
         Route::delete('/offers/{offer}/estimates/{estimate}', [OfferEstimateController::class, 'destroy']);
         Route::post('/offers/{offer}/resale', [OfferController::class, 'resale']);
         // Пачкой из «Оцененных» и «Публикации»: галочки строк, `offers[]` — номера.

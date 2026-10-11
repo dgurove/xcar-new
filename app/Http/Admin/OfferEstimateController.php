@@ -71,6 +71,15 @@ final class OfferEstimateController
             ->with('detail-counts', OfferController::counts($request->user()));
     }
 
+    /** «Спросить снова» у отказа: новая просьба тому же менеджеру с прежним «показать / скрыть заявленную». */
+    public function again(Request $request, Offer $offer, Estimate $estimate, AskEstimates $ask)
+    {
+        abort_unless($estimate->offer_id === $offer->id && $estimate->state === \App\Offers\EstimateState::Declined, 404);
+        $ask($offer, [$estimate->user], $request->user(), [$estimate->user_id => $estimate->showsDeclared()]);
+
+        return back()->with('toast', 'Спросили снова: '.$estimate->user->shortName());
+    }
+
     public function destroy(Request $request, Offer $offer, Estimate $estimate, CloseEstimates $close)
     {
         abort_unless($estimate->offer_id === $offer->id, 404);

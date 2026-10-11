@@ -116,6 +116,12 @@ class Estimate extends Model
     }
 
     /** Когда оценил — «только что», «12 мин назад» (строка оценки в окошке CRM). */
+    /** Когда отказался: «17:48» сегодня, иначе «9 окт, 17:48». */
+    public function declinedWhen(): string
+    {
+        return $this->declined_at?->translatedFormat($this->declined_at->isToday() ? 'H:i' : 'j M, H:i') ?? '';
+    }
+
     public function givenAgo(): string
     {
         $ago = $this->estimated_at ? Ago::short($this->estimated_at) : 'сейчас';

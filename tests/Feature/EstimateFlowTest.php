@@ -123,6 +123,11 @@ class EstimateFlowTest extends TestCase
         $this->assertSame(2, $offer->declinedEstimates()->count());
         $this->assertFalse($offer->isVisibleTo($ivan));
         $this->assertFalse($offer->share_locked);
+
+        // «Спросить снова» — новая просьба с прежним «без заявленной», отказ уходит из группы.
+        $this->actingAs($admin)->post('http://crm.xcar.localhost/offers/'.$offer->number.'/estimates/'.Estimate::where('user_id', $petr->id)->first()->id.'/again')->assertRedirect();
+        $this->assertFalse(Estimate::openFor($offer->fresh(), $petr)->showsDeclared());
+        $this->assertSame(1, $offer->declinedEstimates()->count());
     }
 
     public function test_admin_lock_survives_and_own_price_closes(): void

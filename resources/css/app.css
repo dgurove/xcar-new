@@ -1462,6 +1462,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .estimate-due--accent { --bar: var(--color-accent); @apply text-ink-muted; }
   .estimate-due--urgent { --bar: var(--color-urgent); color: var(--color-urgent); }
   .estimate-due--danger { @apply justify-center; color: var(--color-danger); }
+  /* Отказ (11.10.2026): разница желаемой к ориентиру — следом за ним, тусклее; причина — поле, растущее по строкам. */
+  .estimate-diff:not(:empty) { @apply ml-1.5 text-ink-dim; }
+  .estimate-note { @apply block w-full rounded-(--radius-l) bg-surface-2 px-4 py-3 text-ink outline-none placeholder:text-ink-dim; resize: none; field-sizing: content; min-height: 2.875rem; max-height: 9rem; }
+  /* Причина отказа в CRM — словами менеджера, его репликой: пузырь входящего с острым углом у аватара. */
+  .estimate-reason { @apply mt-4 whitespace-pre-line rounded-(--radius-l) rounded-tl-[4px] bg-surface-2 px-4 py-3 text-left; overflow-wrap: anywhere; }
   /* Отправили — галочка в круге рисуется, как в разборе «Из текста». */
   .estimate-ok { @apply mb-3 size-14; fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
   .estimate-ok circle { stroke-dasharray: 176; stroke-dashoffset: 176; animation: valuation-draw .5s ease-out forwards; }

@@ -60,27 +60,41 @@
             @endif
         @endforeach
         @foreach ($offer->declinedEstimates as $e)
+            @php
+                // С чем сравнить желаемую: цена XCar у корректировки, иначе заявленная.
+                $mark = $e->isCorrection() ? $e->base_price : $offer->declaredPrice();
+                $delta = $mark ? $e->wish_price - $mark : 0;
+            @endphp
             <div class="contents" data-controller="sheet">
                 <button type="button" class="row w-full text-left" data-action="sheet#open">
                     <x-ui.avatar :user="$e->user" :size="32"/>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $e->user->shortName() }}</span>
-                        <span class="row-sub text-danger">отказался</span>
+                        <span class="row-sub"><span><span class="text-danger">отказался</span> {{ $e->declinedWhen() }}{{ $e->showsDeclared() ? '' : ', без заявленной' }}</span></span>
                     </span>
-                    <span class="nums shrink-0 text-sm text-ink-muted">хочет {{ \App\Support\Money::nums($e->wish_price) }}</span>
+                    <span class="flex shrink-0 flex-col items-end">
+                        <span class="nums">{{ \App\Support\Money::rub($e->wish_price) }}</span>
+                        <span class="text-sm text-ink-muted">хочет</span>
+                    </span>
                     <x-ui.chevron/>
                 </button>
-                <x-ui.sheet id="estimate-declined-{{ $e->id }}" title="{{ $e->user->shortName() }}: отказ от оценки">
-                    <div class="list">
-                        <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Отказался</span><span class="shrink-0">{{ $e->declined_at->translatedFormat($e->declined_at->isToday() ? 'H:i' : 'j M, H:i') }}</span></div>
-                        <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Желаемая стоимость</span><span class="nums shrink-0 font-semibold">{{ \App\Support\Money::rub($e->wish_price) }}</span></div>
-                        @if ($e->base_price)<div class="row"><span class="min-w-0 flex-1 text-ink-muted">Цена XCar</span><span class="nums shrink-0">{{ \App\Support\Money::rub($e->base_price) }}</span></div>@endif
-                        @if ($e->showsDeclared() && $offer->declaredPrice())<div class="row"><span class="min-w-0 flex-1 text-ink-muted">Заявленная</span><span class="nums shrink-0">{{ \App\Support\Money::rub($offer->declaredPrice()) }}</span></div>@endif
+                <x-ui.sheet id="estimate-declined-{{ $e->id }}" title="Отказ от оценки">
+                    <div class="money-hero">
+                        <span class="mb-2 block"><x-ui.avatar :user="$e->user" :size="64"/></span>
+                        <span class="text-base">{{ $e->user->shortName() }}</span>
+                        <span class="money-hero-state !mt-0.5"><span class="text-danger">отказался {{ $e->declinedWhen() }}</span>@unless ($e->showsDeclared())<span class="text-ink-muted">, без заявленной</span>@endunless</span>
+                        <span class="money-hero-cap mt-4">Хочет</span>
+                        <span class="money-hero-sum nums">{{ \App\Support\Money::nums($e->wish_price) }} <small>₽</small></span>
+                        {{-- Ориентир и разница — той же строкой, что у менеджера в листе отказа. --}}
+                        @if ($mark)<span class="money-hero-car mt-2 nums">{{ $e->isCorrection() ? 'цена XCar' : 'заявленная' }} {{ \App\Support\Money::rub($mark) }}@if ($delta)<span class="estimate-diff">{{ $delta > 0 ? '+' : '−' }}{{ \App\Support\Money::nums(abs($delta)) }}</span>@endif</span>@endif
                     </div>
                     @if ($e->decline_reason)
-                        <p class="list-cap mt-4 !px-1">Причина</p>
-                        <p class="whitespace-pre-line rounded-(--radius-m) bg-surface-2 px-4 py-3">{{ $e->decline_reason }}</p>
+                        <p class="estimate-reason">{{ $e->decline_reason }}</p>
                     @endif
+                    <form method="post" action="/offers/{{ $n }}/estimates/{{ $e->id }}/again" class="sheet-foot mt-5">
+                        @csrf
+                        <button type="submit" class="btn btn-accent w-full">Спросить снова</button>
+                    </form>
                 </x-ui.sheet>
             </div>
         @endforeach
