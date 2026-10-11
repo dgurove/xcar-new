@@ -17,6 +17,9 @@ final class DocumentScan
 
     private const COLOR = 0.03;
 
+    /** Чисто белого (ярче 225) — у документов от 0,69, у крупного плана белого кузова 0,53 (выборка 24 кадров с прода). */
+    private const PAPER = 0.6;
+
     public static function is(string $contents): bool
     {
         $sha = hash('sha256', $contents);
@@ -52,7 +55,7 @@ final class DocumentScan
             return false;
         }
         [$w, $h] = [imagesx($small), imagesy($small)];
-        $white = $color = 0;
+        $white = $color = $paper = 0;
         for ($x = 0; $x < $w; $x++) {
             for ($y = 0; $y < $h; $y++) {
                 $c = imagecolorat($small, $x, $y);
@@ -61,15 +64,16 @@ final class DocumentScan
                 $sat = $max ? ($max - min($r, $g, $b)) / $max : 0;
                 $white += (int) ($max > 200 && $sat < 0.15);
                 $color += (int) ($sat > 0.35 && $max > 60);
+                $paper += (int) ($max > 225);
             }
         }
         $n = max(1, $w * $h);
 
-        return $white / $n >= self::WHITE && $color / $n <= self::COLOR;
+        return $white / $n >= self::WHITE && $color / $n <= self::COLOR && $paper / $n >= self::PAPER;
     }
 
     private static function key(string $sha): string
     {
-        return 'docscan:'.$sha;
+        return 'docscan2:'.$sha;
     }
 }
