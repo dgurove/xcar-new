@@ -10,7 +10,8 @@
     $active = $deal->state === DealState::Active;
     [$word, $tone] = match (true) {
         ! $active => [$deal->state->label(), $deal->state === DealState::Done ? 'text-accent-text' : 'text-danger'],
-        (bool) $position => [$position->stage->block?->name ?? $position->stage->name, $position->isOverdue() ? 'text-urgent' : ''],
+        // Письмо поставщику не ушло или он ответил — ход наш, этап горит, как просроченный (11.10.2026).
+        (bool) $position => [$position->stage->block?->name ?? $position->stage->name, $position->isOverdue() || in_array($position->letterStatus(), ['unsent', 'replied'], true) ? 'text-urgent' : ''],
         default => [$offer->state->label(), 'text-ink-muted'],
     };
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;

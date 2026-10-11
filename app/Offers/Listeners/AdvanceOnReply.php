@@ -61,6 +61,10 @@ final class AdvanceOnReply
             ShareReplyFiles::dispatch($message->id);
         }
         $moved = $contact && $this->advance($deal, $message);
+        // Поставщик ответил на наше письмо, а шаг сам не прошёл — ход наш: отметить исход (11.10.2026, `Position::letterStatus`).
+        if (! $moved && ($position = $offer->unsetRelation('positions')->position(Track::Sale)) && $position->letterStatus() === 'sent') {
+            $position->update(['waits_for' => WaitsFor::Us, 'payload' => [...$position->payload, 'reply_at' => ($message->date_at ?? now())->toIso8601String()]]);
+        }
         if (! $deal->buyer) {
             return;
         }

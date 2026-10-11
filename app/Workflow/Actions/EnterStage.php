@@ -70,12 +70,15 @@ final class EnterStage
         // Гаражная Совкомбанка без цены продажи — тоже его ход: цену он называет, когда продаёт (`Deal::managerGap`).
         $needsBuyer = $noInvoice && $deal->managerGap();
         $ours = $noInvoice && ! $needsBuyer;
+        // Этап с письмом поставщику (11.10.2026): пока письмо не ушло, ход наш и срока нет — сутки на ответ считаются от
+        // письма (`MarkSupplierLetter`). Шаг, сдвинутый самим письмом, и откат — не трогаем.
+        $awaitsLetter = $track === Track::Sale && $deal?->isActive() && $to->isLetterStep() && ! $letter && ! $back;
         $position = Position::updateOrCreate(['offer_id' => $offer->id, 'track' => $track->value], [
             'stage_id' => $to->id,
-            'waits_for' => $ours ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null),
+            'waits_for' => $ours || $awaitsLetter ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null),
             'entered_at' => $now,
             'block_entered_at' => $from && $from->block_id === $to->block_id && $position?->block_entered_at ? $position->block_entered_at : $now,
-            'deadline_at' => $noInvoice ? null : $to->deadlineFor($offer, $now),
+            'deadline_at' => $noInvoice || $awaitsLetter ? null : $to->deadlineFor($offer, $now),
             'reminded_at' => null,
             'overdue_at' => null,
             'payload' => $payload ?: null,

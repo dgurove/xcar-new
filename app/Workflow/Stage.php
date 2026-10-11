@@ -84,6 +84,16 @@ class Stage extends Model
         return $this->loadedExits()->contains(fn (Outcome $e) => $e->actor === Actor::Manager && str_starts_with(mb_strtolower($e->label), 'платёжное поручение'));
     }
 
+    /**
+     * Этап с письмом поставщику (11.10.2026): шаблон письма и ход поставщика — «Согласование с поставщиком» Альфы
+     * («Уведомили поставщика о покупке»), «Подтвердили покупку поставщику». Пока письмо не ушло — ход наш, срок ответа
+     * считается от письма (`Position::letterStatus`, `Offers\Listeners\MarkSupplierLetter`).
+     */
+    public function isLetterStep(): bool
+    {
+        return $this->template_id !== null && $this->waits_for === WaitsFor::Supplier;
+    }
+
     /** Ждём согласия менеджера взять сделку в работу («Беру в работу»). */
     public function asksConsent(): bool
     {

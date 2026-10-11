@@ -35,7 +35,7 @@
     // Машина уже у менеджера — «У вас» одним словом над чужой задачей (оплата, договор) ни о чём: получения больше нет.
     $showHandover = $handover?->shows() && ! $handover->withBuyer;
     // Поля шага, что показаны в получении (контакт, адрес, дата), второй раз в шаге не пишем.
-    $payload = collect($position?->payload ?? [])->except($handover?->open ? $handover->keys : []);
+    $payload = collect($position?->fields() ?? [])->except($handover?->open ? $handover->keys : []);
     // Ответы — перепиской, по порядку писем: сначала контакт, потом документы. Много — ранние под «Ещё».
     $replies = ($replies ?? collect())->reverse()->values();
     $early = $replies->count() > 3 ? $replies->slice(0, $replies->count() - 2) : collect();

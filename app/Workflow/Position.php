@@ -2,10 +2,15 @@
 
 namespace App\Workflow;
 
+use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\Offer;
+use App\Support\Surface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * Где оффер стоит на ветке маршрута. Чей ход — `waitsFor()`: этап задаёт его, позиция может перебить (`waits_for`) —
@@ -51,6 +56,44 @@ class Position extends Model
         return $this->waits_for ?? $this->stage->waits_for;
     }
 
+    /**
+     * Письмо поставщику на этапе с письмом (`Stage::isLetterStep`, 11.10.2026: начальник не понимал, ушло письмо или
+     * нет): `unsent` — ход наш, письма нет; `sent` — ушло (`payload.letter_at`), ждём ответа, срок от письма;
+     * `replied` — поставщик ответил (`payload.reply_at`), ход наш — отметить исход. Не такой этап — null.
+     */
+    public function letterStatus(): ?string
+    {
+        if ($this->track !== Track::Sale || ! $this->stage->isLetterStep()) {
+            return null;
+        }
+
+        return match (true) {
+            isset($this->payload['reply_at']) => 'replied',
+            isset($this->payload['letter_at']) => 'sent',
+            $this->waits_for === WaitsFor::Us => 'unsent',
+            default => null,
+        };
+    }
+
+    /** Служебные ключи позиции (письмо поставщику) — не поля этапа: на экране их нет. */
+    public const LETTER_KEYS = ['letter_id', 'letter_at', 'reply_at'];
+
+    /** Поля этапа, что вписали люди (адрес, дата вывоза…), — без служебных ключей. */
+    public function fields(): array
+    {
+        return array_diff_key($this->payload ?? [], array_flip(self::LETTER_KEYS));
+    }
+
+    public function letterAt(): ?Carbon
+    {
+        return isset($this->payload['letter_at']) ? Carbon::parse($this->payload['letter_at']) : null;
+    }
+
+    public function replyAt(): ?Carbon
+    {
+        return isset($this->payload['reply_at']) ? Carbon::parse($this->payload['reply_at']) : null;
+    }
+
     /** Этап оплаты, а счёта ещё нет: наш ход — выставить счёт. */
     public function awaitsInvoice(): bool
     {
@@ -76,23 +119,23 @@ class Position extends Model
      * Что сделать нам, когда счёт не встал сам: заголовок уведомления, подпись кнопки и куда она ведёт (CRM). Одно место
      * для ленты, Telegram, часов и пути. @return array{title: string, button: string, url: string}
      */
-    public static function gapAction(?string $gap, \App\Offers\Deal $deal): array
+    public static function gapAction(?string $gap, Deal $deal): array
     {
-        $money = \App\Support\Surface::Crm->url('/work/deals/'.$deal->id.'#money');
+        $money = Surface::Crm->url('/work/deals/'.$deal->id.'#money');
 
         return match ($gap) {
             'share' => ['title' => 'Впишите нашу долю', 'button' => 'Вписать нашу долю', 'url' => $money],
             'commission' => ['title' => 'Назначьте вознаграждение', 'button' => 'Назначить вознаграждение', 'url' => $money],
             // Реквизиты продавцов правятся на парковке («Реквизиты»), Р.О.С. — первой строкой «мы».
-            'ros_requisites' => ['title' => 'Заполните реквизиты Р.О.С.', 'button' => 'Заполнить реквизиты Р.О.С.', 'url' => \App\Support\Surface::Park->url('/money/parties')],
-            default => ['title' => 'Выставите счёт', 'button' => 'Выставить счёт', 'url' => \App\Support\Surface::Crm->url('/work/invoices/new?offer='.$deal->offer->number)],
+            'ros_requisites' => ['title' => 'Заполните реквизиты Р.О.С.', 'button' => 'Заполнить реквизиты Р.О.С.', 'url' => Surface::Park->url('/money/parties')],
+            default => ['title' => 'Выставите счёт', 'button' => 'Выставить счёт', 'url' => Surface::Crm->url('/work/invoices/new?offer='.$deal->offer->number)],
         };
     }
 
     /** Идущая сделка оффера этой позиции. */
-    public function deal(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function deal(): HasOne
     {
-        return $this->hasOne(\App\Offers\Deal::class, 'offer_id', 'offer_id')->where('state', \App\Offers\DealState::Active);
+        return $this->hasOne(Deal::class, 'offer_id', 'offer_id')->where('state', DealState::Active);
     }
 
     /** Позиции, где ход за этим участником, — тем же правилом, что `waitsFor()`, в SQL. */

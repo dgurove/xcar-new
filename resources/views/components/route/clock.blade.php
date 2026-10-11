@@ -17,7 +17,18 @@
         default => null,
     };
 @endphp
-@if ($foreign && ! $bare)
+@php
+    // Этап с письмом поставщику — сотруднику словами про письмо (11.10.2026, начальник не понимал, ушло ли оно):
+    // «Письмо поставщику не отправлено», «Письмо ушло 9 окт, 12:59, ответа нет 1 д 8 ч», «Поставщик ответил …».
+    $letter = $side === 'staff' && ! $invoice ? $position->letterStatus() : null;
+@endphp
+@if ($letter)
+    <p {{ $attributes->merge(['class' => 'text-sm '.($letter === 'sent' && ! $position->isOverdue() ? 'text-ink-muted' : 'text-urgent')]) }}>
+        @if ($letter === 'unsent')Письмо поставщику не отправлено, идёт <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>
+        @elseif ($letter === 'replied')Поставщик ответил {{ $position->replyAt()->translatedFormat('j M, H:i') }}
+        @else Письмо ушло {{ $position->letterAt()->translatedFormat('j M, H:i') }}, ответа нет <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->letterAt()->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif
+    </p>
+@elseif ($foreign && ! $bare)
     @if ($who)<p {{ $attributes->merge(['class' => 'text-sm text-ink-muted']) }}>{{ $who }}</p>@endif
 @elseif ($who && ! ($bare && ! $position->deadline_at))
     <p {{ $attributes->merge(['class' => 'text-sm '.($overdue || ($invoice && $side !== 'manager') || ($side === 'manager' && ! $foreign) ? 'text-urgent' : 'text-ink-muted')]) }}>

@@ -31,13 +31,17 @@ use App\Garage\Listeners\StartPrepOnArrival;
 use App\Live\PublishLiveUpdates;
 use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Listeners\RefreshLogistics;
+use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\AttachmentReader;
 use App\Mail\Extraction\TextAttachmentReader;
 use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
 use App\Notifications\CollapseNotices;
 use App\Notifications\Notify;
+use App\Offers\Events\OfferStateChanged;
 use App\Offers\Listeners\AdvanceOnReply;
+use App\Offers\Listeners\MarkSupplierLetter;
+use App\Offers\Listeners\RetractWhenGone;
 use App\Offers\Listeners\SyncHandover;
 use App\Park\Actions\SendPickupLink;
 use App\Park\Events\VehicleSold;
@@ -58,8 +62,6 @@ use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laragear\WebAuthn\Assertion\Validator\AssertionValidator;
 use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
-use App\Offers\Events\OfferStateChanged;
-use App\Offers\Listeners\RetractWhenGone;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -91,6 +93,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(SyncOffer::class);
         Event::subscribe(SyncHandover::class);
         Event::subscribe(AdvanceOnReply::class);
+        Event::listen(MessageSent::class, MarkSupplierLetter::class);
         Event::listen(OfferStateChanged::class, RetractWhenGone::class);
         Event::listen(StageEntered::class, StartPrepOnArrival::class);
         Event::listen(VehicleSold::class, SendPickupLink::class);

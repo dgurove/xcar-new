@@ -130,7 +130,9 @@
                         @endif
                     </div>
                     @if ($wantsInvoice)<div>Счёт ещё не выставлен</div>
-                    @elseif ($stage->name !== $block->name)<div>{{ $stage->name }}</div>@endif
+                    {{-- Имя этапа с письмом («Уведомили поставщика о покупке») читалось как «письмо ушло», даже когда его не
+                         отправляли (11.10.2026) — что с письмом, говорит строка ниже. --}}
+                    @elseif ($stage->name !== $block->name && ! $position->letterStatus())<div>{{ $stage->name }}</div>@endif
                     @php
                         // Что ждём от менеджера — его ответами, а не текстом просьбы: «Подтвердите покупку» в CRM читалось как
                         // команда админу (05.10.2026, «что такое „проверьте покупку“?»). Это и есть подсказка шага — одной строкой
@@ -139,12 +141,15 @@
                         $replies = $req ? $stage->exitsFor(\App\Workflow\Actor::Manager, $deal)->pluck('label')->map(fn ($l) => '«'.$l.'»') : collect();
                         $waitsWord = $replies->count() > 1 ? 'Менеджер ответит '.$replies->slice(0, -1)->implode(', ').' или '.$replies->last() : ($replies->isNotEmpty() ? 'Ждём от менеджера '.$replies->first() : null);
                     @endphp
-                    @if (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
+                    @if ($position->letterStatus())
+                        {{-- Этап с письмом поставщику — что с письмом, а не «Ждём поставщика» (`x-route.clock`, 11.10.2026). --}}
+                        <x-route.clock :position="$position" side="staff" class="step-hint"/>
+                    @elseif (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
                         <p class="step-hint {{ $tone }}">@if ($keeperExits->isNotEmpty() && $evacuator && ! $overdue)Ждём {{ $evacuator->shortName() }}@elseif ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
                     @endif
-                    @if ($position->payload)
-                        <div class="mt-2 text-sm">@foreach ($position->payload as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
+                    @if ($position->fields())
+                        <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
                     @endif
                     @foreach ($answers as $r)
                         <div class="mt-1 text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['exit'] ?? $r->title }}</div>
@@ -182,7 +187,8 @@
                                 <a href="{{ $action['url'] }}" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $action['button'] }}</a>
                             @endif
                             @foreach ($moves->values() as $i => $exit)
-                                @php $variant = $i === 0 && ! $wantsInvoice ? 'primary' : 'secondary'; @endphp
+                                {{-- Письмо поставщику не ушло — главное «Написать поставщику», исходы серыми. --}}
+                                @php $variant = $i === 0 && ! $wantsInvoice && $position->letterStatus() !== 'unsent' ? 'primary' : 'secondary'; @endphp
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
                                     {{-- «Опубликовать» — сейчас или в слот, как кнопка редактора. --}}
                                     <div data-controller="sheet">
@@ -213,7 +219,12 @@
                                 @endif
                             @endforeach
                             @if ($stage->template_id)
-                                <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-quiet btn-s"><x-ui.icon name="send" class="size-4"/>Письмо вендору</a>
+                                {{-- Письмо не ушло — это и есть дело шага: лаймовой первой; ушло — серой «Написать ещё». --}}
+                                @if ($position->letterStatus() === 'unsent')
+                                    <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-accent btn-s order-first"><x-ui.icon name="send" class="size-4"/>Написать поставщику</a>
+                                @else
+                                    <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-quiet btn-s"><x-ui.icon name="send" class="size-4"/>{{ $position->letterStatus() ? 'Написать ещё' : 'Письмо вендору' }}</a>
+                                @endif
                             @endif
                             {{-- Поставщик отвечает списком (Каркаде): отметить ответ по всем его сделкам разом. --}}
                             @if ($deal && $stage->isAgreement() && $stage->waits_for === WaitsFor::Supplier && ($waiting = \App\Offers\Deal::awaitingSupplier($offer->vendor_id))->count() > 1)
