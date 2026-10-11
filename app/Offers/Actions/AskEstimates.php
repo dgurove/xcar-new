@@ -21,8 +21,11 @@ use Illuminate\Validation\ValidationException;
  */
 final class AskEstimates
 {
-    /** @param  iterable<User>  $managers */
-    public function __invoke(Offer $offer, iterable $managers, ?User $by): Collection
+    /**
+     * @param  iterable<User>  $managers
+     * @param  array<int, bool>  $declared  кому показать заявленную (id => да/нет); нет в карте — показать
+     */
+    public function __invoke(Offer $offer, iterable $managers, ?User $by, array $declared = []): Collection
     {
         // Без цены продажи — оценка; с ценой (вкладка «Оцененные», 11.10.2026) — корректировка: её цена в `base_price`.
         if ($offer->state !== OfferState::Draft || $offer->isScheduled()) {
@@ -34,18 +37,20 @@ final class AskEstimates
             throw ValidationException::withMessages(['managers' => 'Выберите менеджера']);
         }
 
-        $created = DB::transaction(function () use ($offer, $managers, $by, $base) {
+        $created = DB::transaction(function () use ($offer, $managers, $by, $base, $declared) {
             $open = $offer->estimates()->open()->pluck('user_id')->all();
             $created = $managers->reject(fn (User $u) => in_array($u->id, $open, true))->map(fn (User $u) => Estimate::create([
                 'offer_id' => $offer->id, 'user_id' => $u->id, 'asked_by' => $by?->id,
                 'state' => EstimateState::Asked, 'due_at' => now()->addHours(Estimate::HOURS), 'base_price' => $base,
+                'show_declared' => $declared[$u->id] ?? true,
             ]))->values();
             if ($created->isNotEmpty() && ! $offer->share_locked) {
                 $offer->forceFill(['share_locked' => true, 'share_locked_by_estimate' => true])->save();
                 StampPhotos::dispatch($offer);
             }
             if ($created->isNotEmpty()) {
-                $offer->log(OfferEventType::Estimate, $by, array_filter(['do' => 'asked', 'users' => $created->map(fn ($e) => $e->user_id)->all(), 'base' => $base]));
+                $offer->log(OfferEventType::Estimate, $by, array_filter(['do' => 'asked', 'users' => $created->map(fn ($e) => $e->user_id)->all(), 'base' => $base,
+                    'hidden' => $created->reject(fn ($e) => $e->show_declared)->map(fn ($e) => $e->user_id)->values()->all()]));
             }
 
             return $created;

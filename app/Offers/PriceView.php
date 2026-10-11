@@ -32,7 +32,8 @@ final class PriceView
         $staffCrm = $crm && $user->isStaff();
         $from = match (true) {
             $staffCrm => $offer->floor_price,
-            $user->isAdmin(), $user->isManager() => $offer->declaredPrice(),
+            // Черновик на оценке без заявленной (админ скрыл при просьбе) — менеджеру и «от» нет.
+            $user->isAdmin(), $user->isManager() => $offer->declaredFor($user),
             default => null,
         };
         $declared = $staffCrm && $offer->declaredPrice() !== $offer->floor_price ? $offer->declaredPrice() : null;

@@ -44,6 +44,22 @@ class EstimateFlowTest extends TestCase
         return User::create(['name' => $name, 'phone' => '7900'.random_int(1000000, 9999999), 'roles' => [$role], 'approved_at' => now()]);
     }
 
+    /** Заявленная — кому админ показал (11.10.2026): одному скрыли, другому показали; страница и «от» в цене — так же. */
+    public function test_declared_shown_per_manager(): void
+    {
+        $offer = $this->draft();
+        $admin = $this->user('Админов Андрей', Role::Admin);
+        [$ivan, $petr] = [$this->user('Иванов Иван', Role::Manager), $this->user('Петров Пётр', Role::Manager)];
+
+        app(AskEstimates::class)($offer, [$ivan, $petr], $admin, [$ivan->id => false, $petr->id => true]);
+        $offer->refresh();
+        $this->assertFalse(Estimate::openFor($offer, $ivan)->showsDeclared());
+        $this->assertNull($offer->declaredFor($ivan));
+        $this->assertNull(\App\Offers\PriceView::for($offer, $ivan)->from);
+        $this->assertSame(500000, $offer->declaredFor($petr));
+        $this->assertSame(500000, $offer->declaredFor($admin));
+    }
+
     public function test_asked_manager_sees_draft_and_take_sets_price(): void
     {
         $offer = $this->draft();

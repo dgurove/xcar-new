@@ -55,7 +55,7 @@
         {{-- На оценке: «Оценить» в строке, оценил — его сумма; под ней заявленная — ориентир (закупочной на сайте нет). --}}
         {{-- Корректировка — цена XCar числом, как цена в строке; оценка — кнопкой. Под ними заявленная. --}}
         @if ($estimate)@if ($estimate->isGiven())<span>ваша {{ $price::money($estimate->amount) }}</span>@elseif ($estimate->isCorrection()){{ $price::money($estimate->base_price) }}@else<a href="{{ $href }}" class="btn btn-get">Оценить</a>@endif
-            @if ($offer->declaredPrice())<span class="cell-sub">заявленная {{ $price::money($offer->declaredPrice()) }}</span>@endif
+            @if ($estimate->showsDeclared() && $offer->declaredPrice())<span class="cell-sub">заявленная {{ $price::money($offer->declaredPrice()) }}</span>@endif
         @elseif ($gallery)<a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
         @elseif ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
         {{-- Заявленная (менеджеру — закупочная для него) под ценой, пока стрелка «от → до» не влезает. --}}

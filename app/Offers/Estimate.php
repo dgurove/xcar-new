@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * у каждого 48 часов; оценка — ориентир под полем цены продажи в CRM, ценой она становится только по «Взять».
  * Срок вышел — просьба висит просроченной, пока менеджер не оценит или админ не снимет. Действия — `Actions\*Estimate*`.
  */
-#[Fillable(['offer_id', 'user_id', 'asked_by', 'state', 'due_at', 'base_price', 'amount', 'estimated_at', 'rejected_amount', 'rejected_at', 'reminded_at'])]
+#[Fillable(['offer_id', 'user_id', 'asked_by', 'state', 'due_at', 'base_price', 'amount', 'estimated_at', 'rejected_amount', 'rejected_at', 'reminded_at', 'show_declared'])]
 class Estimate extends Model
 {
     protected $table = 'offer_estimates';
@@ -35,6 +35,7 @@ class Estimate extends Model
             'amount' => 'integer',
             'base_price' => 'integer',
             'rejected_amount' => 'integer',
+            'show_declared' => 'boolean',
         ];
     }
 
@@ -98,6 +99,12 @@ class Estimate extends Model
     public function proposes(): bool
     {
         return $this->isGiven() && ! $this->agreed();
+    }
+
+    /** Заявленную этому менеджеру показали — админ решает при просьбе, за каждого (11.10.2026). */
+    public function showsDeclared(): bool
+    {
+        return (bool) $this->show_declared;
     }
 
     /** Ждём менеджера, а срок вышел. Оценённая не просрочена: дальше ход админа. */

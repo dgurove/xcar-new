@@ -53,7 +53,8 @@ abstract class EstimateNotice extends Notice
     protected function lines(?string ...$middle): array
     {
         $offer = $this->estimate->offer;
-        $declared = $offer->declaredPrice();
+        // Заявленную менеджеру скрыли при просьбе — и в уведомлении её нет (11.10.2026).
+        $declared = $this->estimate->showsDeclared() ? $offer->declaredPrice() : null;
 
         return array_values(array_filter([Text::vin($offer), $offer->settlement?->title(), $declared ? 'Заявленная '.Money::rub($declared) : null, ...$middle]));
     }

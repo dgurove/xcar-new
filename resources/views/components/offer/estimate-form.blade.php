@@ -8,7 +8,8 @@
      Отклонили — словом сверху, ответить снова, срок прежний. --}}
 @props(['offer', 'estimate'])
 @php
-    $declared = $offer->declaredPrice();
+    // Заявленную менеджеру могли скрыть при просьбе (11.10.2026).
+    $declared = $estimate->showsDeclared() ? $offer->declaredPrice() : null;
     $given = $estimate->isGiven();
     $correction = $estimate->isCorrection();
     $due = $estimate->due_at;

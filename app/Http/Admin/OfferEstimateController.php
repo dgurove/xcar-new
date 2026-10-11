@@ -12,6 +12,7 @@ use App\Support\Money;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Оценка менеджером в окошке «Оценить» вкладки «Без продажной цены» (11.10.2026, начальник): «Отдать менеджеру на оценку»,
@@ -23,7 +24,18 @@ final class OfferEstimateController
     public function store(Request $request, Offer $offer, AskEstimates $ask)
     {
         $ids = array_map('intval', (array) $request->validate(['managers' => ['required', 'array', 'min:1'], 'managers.*' => ['integer']])['managers']);
-        $created = $ask($offer, User::withRole(Role::Manager)->whereIn('id', $ids)->get(), $request->user());
+        // Заявленная есть — за каждого ответили, показывать её или нет (11.10.2026, владелец: «пусть просто спрашивает»).
+        $declared = [];
+        if ($offer->declaredPrice()) {
+            $answers = (array) $request->input('declared', []);
+            foreach ($ids as $id) {
+                if (! in_array((string) ($answers[$id] ?? ''), ['0', '1'], true)) {
+                    throw ValidationException::withMessages(['managers' => 'Выберите, показывать ли заявленную']);
+                }
+                $declared[$id] = $answers[$id] === '1';
+            }
+        }
+        $created = $ask($offer, User::withRole(Role::Manager)->whereIn('id', $ids)->get(), $request->user(), $declared);
 
         return back()->with('toast', $created->isEmpty() ? 'Уже на оценке' : 'Отдано на оценку: '.$created->map(fn (Estimate $e) => $e->user->shortName())->implode(', '));
     }

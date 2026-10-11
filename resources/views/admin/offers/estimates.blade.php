@@ -20,7 +20,7 @@
                     <x-ui.avatar :user="$e->user" :size="32"/>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $e->user->shortName() }}</span>
-                        <span class="row-sub">{{ $e->givenAgo() }}</span>
+                        <span class="row-sub">{{ $e->givenAgo() }}{{ $e->showsDeclared() ? '' : ', без заявленной' }}</span>
                     </span>
                     <x-ui.state tone="open" class="shrink-0">согласен</x-ui.state>
                 </div>
@@ -30,7 +30,7 @@
                         <x-ui.avatar :user="$e->user" :size="32"/>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate">{{ $e->user->shortName() }}</span>
-                            <span class="row-sub">{{ $e->givenAgo() }}</span>
+                            <span class="row-sub">{{ $e->givenAgo() }}{{ $e->showsDeclared() ? '' : ', без заявленной' }}</span>
                         </span>
                         <span class="flex shrink-0 flex-col items-end">
                             <span class="nums font-semibold">{{ \App\Support\Money::rub($e->amount) }}</span>
@@ -49,7 +49,9 @@
                         <span class="min-w-0 flex-1">
                             <span class="block truncate">{{ $e->user->shortName() }}</span>
                             {{-- Одна мысль под именем: что делает и сколько осталось; прежняя сумма отклонённого — справа зачёркнутой. --}}
-                            <span class="row-sub">@if ($e->isOverdue())<x-offer.estimate-left :estimate="$e"/>@else<span>{{ $correction ? 'проверяет' : 'оценивает' }}{{ $e->rejected_at ? ' заново' : '' }}, <x-offer.estimate-left :estimate="$e" class="!text-current"/></span>@endif</span>
+                            <span class="row-sub">@if ($e->isOverdue())<x-offer.estimate-left :estimate="$e"/>@else<span>{{ $correction ? 'проверяет' : 'оценивает' }}{{ $e->rejected_at ? ' заново' : '' }}, <x-offer.estimate-left :estimate="$e" class="!text-current"/></span>@endif
+                                @unless ($e->showsDeclared())<span>, без заявленной</span>@endunless
+                            </span>
                         </span>
                         @if ($e->rejected_at && $e->rejected_amount)<span class="nums shrink-0 text-sm text-ink-dim line-through">{{ \App\Support\Money::nums($e->rejected_amount) }}</span>@endif
                     </button>

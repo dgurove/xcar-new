@@ -766,6 +766,19 @@ class Offer extends Model implements HasMedia
         return $this->publish_price ?? self::declaredFrom($this->floor_price);
     }
 
+    /**
+     * Заявленная глазами человека: менеджеру, у которого черновик на оценке без заявленной (админ скрыл в шторке
+     * «Отдать на оценку», 11.10.2026), — ничего; остальным — как есть.
+     */
+    public function declaredFor(?User $user): ?int
+    {
+        if ($this->state === OfferState::Draft && ($estimate = Estimate::openFor($this, $user)) && ! $estimate->showsDeclared()) {
+            return null;
+        }
+
+        return $this->declaredPrice();
+    }
+
     public static function declaredFrom(?int $floor): ?int
     {
         return $floor ? (int) (ceil($floor / 1000) * 1000) : null;

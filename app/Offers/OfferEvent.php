@@ -100,9 +100,10 @@ class OfferEvent extends Model
         $sum = isset($p['amount']) ? Money::rub((int) $p['amount']) : '';
 
         return match ($p['do'] ?? null) {
-            'asked' => isset($p['base'])
+            'asked' => (isset($p['base'])
                 ? 'На корректировку '.Money::rub((int) $p['base']).': '.$names($p['users'] ?? [])
-                : 'Отдано на оценку: '.$names($p['users'] ?? []),
+                : 'Отдано на оценку: '.$names($p['users'] ?? []))
+                .(empty($p['hidden']) ? '' : ', без заявленной: '.$names($p['hidden'])),
             'given' => ! empty($p['agreed']) ? 'Согласен с ценой '.$sum : 'Оценка: '.$sum,
             'kept' => 'Оставлена цена '.$sum,
             'rejected' => 'Оценка отклонена: '.$one().', '.$sum,
