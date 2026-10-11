@@ -38,6 +38,9 @@ export function confirmSheet(message, options = {}) {
             alt.textContent = options.alt.label;
             alt.classList.add('btn-quiet', ...(options.alt.danger ? ['text-danger'] : []));
             alt.hidden = false;
+            // Три кнопки в ряд на ПК не помещаются («Отмена» обрезалась, 11.10.2026) — столбиком, как лист действий iOS.
+            alt.parentElement.classList.remove('sm:flex-row-reverse');
+            alt.parentElement.querySelectorAll('.sm\\:flex-1').forEach((b) => b.classList.remove('sm:flex-1'));
         }
         const text = form?.dataset.turboConfirmText;
         if (text) { const p = d.querySelector('[data-text]'); p.textContent = text; p.hidden = false; }

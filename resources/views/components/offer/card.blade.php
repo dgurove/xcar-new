@@ -87,7 +87,7 @@
     <span class="card-aside">
         @if ($estimate)
             {{-- Цены продажи ещё нет — ориентир менеджеру заявленная (владелец 11.10.2026), закупочной на сайте нет. --}}
-            @if ($offer->declaredPrice())<span class="nums text-xs text-ink-dim">заявленная {{ $price::money($offer->declaredPrice()) }}</span>@endif
+            @if ($offer->declaredPrice())<span class="nums text-sm text-ink-muted">заявленная {{ $price::money($offer->declaredPrice()) }}&nbsp;₽</span>@endif
         @elseif ($prices)
             @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
             @if ($price->declared)<span class="nums text-xs text-ink-dim">заявленная {{ $price::money($price->declared) }}</span>@endif

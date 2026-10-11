@@ -4,9 +4,11 @@
 @php
     $n = $offer->number;
     $asked = $offer->openEstimates->pluck('user_id')->all();
+    // Сколько у человека уже открытых просьб — чтобы не завалить одного (подписью под именем).
+    $busy = \App\Offers\Estimate::waiting()->whereIn('user_id', $managers->pluck('id'))->selectRaw('user_id, count(*) n')->groupBy('user_id')->pluck('n', 'user_id')->all();
 @endphp
 <div data-controller="sheet" class="contents">
-    <button type="button" class="btn btn-s btn-quiet self-start" data-action="sheet#open"><x-ui.icon name="users" class="size-4"/> Отдать менеджеру на оценку</button>
+    <button type="button" class="row w-full text-left text-accent-text" data-action="sheet#open"><x-ui.row-icon name="plus" tone="accent" size="s"/><span class="min-w-0 flex-1">Отдать на оценку</span></button>
     <x-ui.sheet id="estimate-ask-{{ $n }}" title="Отдать на оценку">
         <form method="post" action="/offers/{{ $n }}/estimates" class="flex flex-col gap-4" data-controller="select">
             @csrf
@@ -17,7 +19,10 @@
                     {{-- Уже оценивает — отмечен и не нажимается; без имени поля: `disabled` здесь снимает reveal панели «Оценить». --}}
                     <label @class(['row row-check', 'pointer-events-none opacity-60' => $on]) data-select-target="item" data-name="{{ mb_strtolower($m->name) }}">
                         <x-ui.avatar :user="$m" :size="40"/>
-                        <span class="min-w-0 flex-1 truncate">{{ $m->name }}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate">{{ $m->name }}</span>
+                            @if ($on)<span class="row-sub">уже оценивает</span>@elseif ($busy[$m->id] ?? 0)<span class="row-sub nums">на оценке {{ $busy[$m->id] }} ТС</span>@endif
+                        </span>
                         <span class="check">@if ($on)<input type="checkbox" checked tabindex="-1" aria-disabled="true">@else<input type="checkbox" name="managers[]" value="{{ $m->id }}" data-select-target="box" data-action="select#count">@endif</span>
                     </label>
                 @endforeach

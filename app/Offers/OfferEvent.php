@@ -102,8 +102,8 @@ class OfferEvent extends Model
         return match ($p['do'] ?? null) {
             'asked' => 'Отдано на оценку: '.$names($p['users'] ?? []),
             'given' => 'Оценка: '.$sum,
-            'rejected' => 'Оценка '.$one().' '.$sum.' отклонена',
-            'taken' => 'Взята оценка '.$one().' '.$sum,
+            'rejected' => 'Оценка отклонена: '.$one().', '.$sum,
+            'taken' => 'Оценка взята: '.$one().', '.$sum,
             'closed' => 'Снято с оценки: '.$names($p['users'] ?? []),
             default => 'Оценка',
         };

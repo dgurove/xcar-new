@@ -29,24 +29,46 @@
             <div class="mt-6" id="catalog-list">
                 {{-- Подписка на бот предложений — строкой в начале списка (владелец 03.10.2026), только в каталоге. --}}
                 @unless ($gallery)<x-offers-bot.card/>@endunless
-                {{-- «Нужно оценить» (11.10.2026): отданное менеджеру на оценку — первой липкой пачкой, тем же видом, что список. --}}
-                @if ($estimates->isNotEmpty())
+                {{-- Оценка менеджером (11.10.2026): что оценить — первой липкой пачкой плиток тем же видом, что список, с полосой
+                     «ваш ход»; что уже оценено и ждёт решения XCar — строками под ней, без полосы: делать там нечего. --}}
+                @php
+                    $toEstimate = $estimates->reject(fn ($o) => $o->openEstimates->first()?->isGiven());
+                    $estimated = $estimates->filter(fn ($o) => $o->openEstimates->first()?->isGiven());
+                @endphp
+                @if ($toEstimate->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
                     <x-ui.table id="catalog-estimates" :view="$view" class="mb-6">
                         <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
-                        <tr class="table-group"><th colspan="99" scope="colgroup">Нужно оценить <span class="nums">{{ $estimates->count() }}</span></th></tr>
-                        @foreach ($estimates as $offer)
+                        <tr class="table-group"><th colspan="99" scope="colgroup">Нужно оценить <span class="nums">{{ $toEstimate->count() }}</span></th></tr>
+                        @foreach ($toEstimate as $offer)
                             <x-offer.site-table-row :offer="$offer" :deadline="$deadline" :estimate="$offer->openEstimates->first()"/>
                         @endforeach
                     </x-ui.table>
                     @else
                     <div class="{{ \App\Support\ListView::containerClass($view) }} mb-6" id="catalog-estimates">
-                        <h2 class="cards-group">Нужно оценить <span class="nums">{{ $estimates->count() }}</span></h2>
-                        @foreach ($estimates as $offer)
+                        <h2 class="cards-group">Нужно оценить <span class="nums">{{ $toEstimate->count() }}</span></h2>
+                        @foreach ($toEstimate as $offer)
                             <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>
                         @endforeach
                     </div>
                     @endif
+                @endif
+                @if ($estimated->isNotEmpty())
+                    <section class="mb-6" id="catalog-estimated">
+                        <h2 class="list-head !px-0">Ждут решения <span class="nums">{{ $estimated->count() }}</span></h2>
+                        <div class="list">
+                            @foreach ($estimated as $offer)
+                                <a href="/offers/{{ $offer->number }}" class="row">
+                                    <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block truncate">{{ $offer->titleWithYear() }}</span>
+                                        <span class="row-sub nums">ваша оценка {{ \App\Support\Money::rub($offer->openEstimates->first()->amount) }}</span>
+                                    </span>
+                                    <x-ui.chevron/>
+                                </a>
+                            @endforeach
+                        </div>
+                    </section>
                 @endif
                 @if ($offers->isEmpty())
                     @if ($buyer && ! $narrowed)

@@ -10,14 +10,14 @@
     // Рядом с кружком «показать» длинная подпись не помещается на 375 px — коротко.
     // На оценке (11.10.2026): «Оценить» / «Ваша оценка N» открывают тот же лист цены.
     $estimate = $offer->state === \App\Offers\OfferState::Draft && $user?->isManager() ? \App\Offers\Estimate::openFor($offer, $user) : null;
-    $label = $estimate ? ($estimate->isGiven() ? 'Изменить оценку' : 'Оценить') : ($canBid && $prices ? ($myBid ? ($canShow ? 'Изменить' : 'Изменить предложение') : ($canShow ? 'Подтвердить' : 'Подтвердить предложение')) : ($interest ? ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') : null));
+    $label = $estimate ? ($estimate->isGiven() ? 'Ваша оценка '.\App\Support\Money::nums($estimate->amount) : 'Оценить') : ($canBid && $prices ? ($myBid ? ($canShow ? 'Изменить' : 'Изменить предложение') : ($canShow ? 'Подтвердить' : 'Подтвердить предложение')) : ($interest ? ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') : null));
 @endphp
 @if ($label || $canShow)
     <x-ui.action-bar class="lg:hidden">
         @if (!$user)
             <a href="/login?intended={{ urlencode(request()->getRequestUri()) }}" class="btn btn-accent min-w-0 flex-1">Войти</a>
         @elseif ($label)
-            <button type="button" class="btn btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="deal:open" @if ($canBid && $prices) data-closes-with-timer @endif>{{ $label }}</button>
+            <button type="button" class="btn {{ $estimate?->isGiven() ? 'btn-quiet' : 'btn-accent' }} min-w-0 flex-1 nums" data-controller="emit" data-action="emit#send" data-emit-event-param="deal:open" @if ($canBid && $prices) data-closes-with-timer @endif>{{ $label }}</button>
         @endif
         @if ($canShow)
             <button type="button" class="btn shrink-0 {{ $label ? 'btn-quiet btn-round btn-lg' : 'btn-accent min-w-0 flex-1' }}" data-controller="emit" data-action="emit#send" data-emit-event-param="show:open" aria-label="Показать покупателям"><x-ui.icon name="users" class="size-6"/>@unless ($label) Показать покупателям @endunless</button>

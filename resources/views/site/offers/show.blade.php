@@ -11,10 +11,13 @@
         @if ($user?->canShare())<x-offer.share :offer="$offer" icon/>@endif
         {{-- Черновик на оценке (11.10.2026) в избранное не кладётся: в списке «Избранного» его не будет. --}}
         @if ($user && ($offer->isGallery() || $offer->state !== \App\Offers\OfferState::Draft))<x-offer.favorite :offer="$offer" variant="compact"/>@endif
+        {{-- Черновик на оценке — задача, а не страница списка: листать соседей не из чего. --}}
+        @unless ($offer->isAskedOf($user))
         <x-ui.nav-arrows class="ml-auto sm:ml-0"
             :prev="$position['prev'] ? $context->offerUrl($position['prev']) : null"
             :next="$position['next'] ? $context->offerUrl($position['next']) : null"
             :back="$back" :index="$position['index']" :total="$position['total']"/>
+        @endunless
     </x-slot:actions>
 
     <div class="-mt-3 mb-6 flex flex-wrap gap-1.5">@if ($offer->recommended)<x-offer.recommended label/>@endif<x-offer.tags :offer="$offer" :facts="false"/></div>

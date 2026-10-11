@@ -14,7 +14,7 @@ final class EstimateGivenNotice extends Notice
 
     public function title(): string
     {
-        return $this->estimate->user->shortName().' оценил: '.Money::rub($this->estimate->amount);
+        return $this->estimate->user->shortName().': оценка '.Money::rub($this->estimate->amount);
     }
 
     public function text(): ?string

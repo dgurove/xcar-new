@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\Ago;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -75,6 +76,14 @@ class Estimate extends Model
     public function isOverdue(): bool
     {
         return $this->state === EstimateState::Asked && $this->due_at->isPast();
+    }
+
+    /** Когда оценил — «только что», «12 мин назад» (строка оценки в окошке CRM). */
+    public function givenAgo(): string
+    {
+        $ago = $this->estimated_at ? Ago::short($this->estimated_at) : 'сейчас';
+
+        return $ago === 'сейчас' ? 'только что' : $ago.' назад';
     }
 
     /** Последняя открытая просьба этому человеку по предложению — одна дверь для каталога, страницы и формы. */

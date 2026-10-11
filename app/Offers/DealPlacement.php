@@ -18,6 +18,11 @@ final class DealPlacement
         }
         $prices = PriceView::for($offer, $user)->visible;
 
+        // Черновик на оценке у этого менеджера (11.10.2026): «Оценить» снизу открывает лист с суммой.
+        if ($offer->state === OfferState::Draft && $user->isManager() && Estimate::openFor($offer, $user)) {
+            return true;
+        }
+
         return ($user->bidsOnSite() && ($offer->bidsOpen() || $offer->canBidInDeal($user)) && $prices)
             || ($user->canInterestIn($offer) && ! $myInterest);
     }
