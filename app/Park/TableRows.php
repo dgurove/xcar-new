@@ -30,7 +30,7 @@ final class TableRows
             $common, $v->id, $v->updated_at?->getTimestamp(), $v->threads_count, $v->waiting_count ?? 0,
             $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','), today()->toDateString(),
             $v->vendor?->name, $v->vendor?->logoUrl(), $v->yard?->name,
-            json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place, $docs[$v->id], $out, $v->getAttribute('money_state')]),
+            json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place, $docs[$v->id], $out, $v->getAttribute('money_state'), $v->getAttribute('task_keys')]),
         ]))])->all();
         $cached = Cache::many(array_values($keys));
         $rows = $fresh = [];

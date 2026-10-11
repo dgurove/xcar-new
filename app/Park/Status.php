@@ -16,6 +16,14 @@ final class Status
         if ($v->state !== VehicleState::Stored) {
             return $say(mb_strtolower($v->state->label()).($v->state === VehicleState::Released && $v->released_at ? ' '.$v->released_at->translatedFormat('j M') : ''));
         }
+        // Висящие задачи (`Tasks`, список кладёт их атрибутом `task_keys`): первая — словом, остальные числом.
+        $tasks = $v->getAttribute('task_keys');
+        if ($tasks) {
+            return $say(mb_strtolower(Tasks::LABELS[$tasks[0]]).(count($tasks) > 1 ? ' +'.(count($tasks) - 1) : ''), true);
+        }
+        if (is_array($tasks)) {
+            return $say($v->sold_at ? 'на выдачу, ждём покупателя' : 'на парковке');
+        }
         if ($v->waiting_count ?? 0) {
             return $say('ответить на письмо', true);
         }

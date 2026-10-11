@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Media\DocumentScan;
 use App\Mail\Extraction\AttachmentClassifier;
 use App\Mail\Scan\ScanFile;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -73,7 +74,8 @@ class Attachment extends Model implements ScanFile
     /** Фото — картинка без вида документа в имени: «СТС.jpg» и «акт.png» — документы (шторка, «✨ Распознать»). */
     public function isPhoto(): bool
     {
-        return $this->isImage() && AttachmentClassifier::kindOf($this->filename) === null;
+        // Скан документа (заявка картинкой) — не фото: его читают вместе с документами (`DocumentScan`, вердикт ставит импорт).
+        return $this->isImage() && AttachmentClassifier::kindOf($this->filename) === null && DocumentScan::known($this->blob_sha) !== true;
     }
 
     /** Один и тот же файл в нескольких письмах цепочки (пересылка, «ч.2»): имя без регистра и размер. */

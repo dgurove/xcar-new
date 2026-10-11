@@ -2,6 +2,7 @@
 
 namespace App\Mail\Extraction;
 
+use App\Media\DocumentScan;
 use App\Mail\Attachment;
 use App\Mail\Message;
 use App\Media\PdfPhotos;
@@ -77,6 +78,13 @@ final class AttachmentImporter
         }
         foreach ($sources as $i => $photo) {
             $progress && $progress('Разбираем фотографии', $i, count($sources));
+            // Скан документа среди кадров (заявка Альфы картинкой, 12.10.2026) — в документы: там его прочтёт «✨» и
+            // автозаполнение, а в ленте фото машины ему не место (`DocumentScan`).
+            if ($documentsCollection !== '' && DocumentScan::is($photo['contents'])) {
+                $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $photo['name'], $photo['contents'], 'mail', $documentProperties);
+
+                continue;
+            }
             // Лист со снимками режет сам приём (`PhotoIngest` → `PageScan`) — у всех дверей одинаково.
             $this->guard(function () use ($model, $photosCollection, $photo, &$added) {
                 $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $photo['contents'], $photo['name'], $photo['properties']);

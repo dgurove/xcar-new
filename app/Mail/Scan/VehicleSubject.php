@@ -49,7 +49,9 @@ final class VehicleSubject implements Subject
     /** Оценочная стоимость — только у вендора, чья ставка от неё (`rate_by_value`). */
     public function fields(): array
     {
-        return array_values(array_diff(array_keys(ScanFields::LABELS), $this->vehicle->vendor?->rate_by_value ? [] : ['value']));
+        // Оценочная — всем вендорам (12.10.2026, владелец: стоимость из заявки Альфы СПб не вставала): хранение по ней
+        // считают только с «ставкой от оценочной», но продаже нужна закупочная от неё (`Sale::floorFrom`).
+        return array_keys(ScanFields::LABELS);
     }
 
     public function title(): string

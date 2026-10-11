@@ -55,6 +55,16 @@ final class DocumentFields
             }
         }
         self::carRow($text, $f, $put);
+        // Таблица прочлась столбцами (повёрнутый скан): число стоит в одной строке с подписью «Стоимость … п.1.8»
+        // («Подпись 4209900 с п.1.8, руб. соответствии Стоимость в»).
+        if (! isset($f['value']) && self::priced($text)) {
+            foreach (preg_split('/\n/u', $text) as $line) {
+                if (preg_match('/стоимост|п\.\s*1\.8/iu', $line) && preg_match('/(?<![\d.,\-\/])(\d{5,9})(?![\d.,\-\/])/u', $line, $m) && (int) $m[1] >= 10_000) {
+                    $put('value', (int) $m[1]);
+                    break;
+                }
+            }
+        }
         if (! isset($f['brand']) && ($mark = self::values($text, 'Марка(?:\s+ТС)?')[0] ?? null)) {
             $model = self::values($text, 'Модель(?:,\s*модификация)?(?:\s+ТС)?|Коммерческое\s+наименование')[0] ?? '';
             if ($found = ScanCar::of(str_starts_with(mb_strtolower($model), mb_strtolower($mark)) ? $model : $mark.' '.$model)) {
@@ -199,6 +209,17 @@ final class DocumentFields
         if (preg_match('/(?<![\d.,])(\d{1,3}(?:\.\d{3}){1,3}(?:,\d{2})?|\d{1,3}(?: \d{3}){1,3},\d{2})(?![\d.])/u', $after, $m) && ($n = (int) preg_replace('/\D/', '', preg_replace('/,\d{2}$/', '', $m[1]))) >= 10_000) {
             $put('value', $n);
         }
+        // Без разделителей («TANK 300 LGWF… серый 2023 1602000 Краснопутиловская», 12.10.2026) — только в документе со
+        // столбцом стоимости («Стоимость в соответствии с п.1.8»): число сразу за годом. Телефоны длиннее (10–11 цифр).
+        if (self::priced($text) && preg_match('/(?<![\d.,\/])(?:'.Patterns::YEAR.')\s+(\d{5,9})(?![\d.,\-])/u', $after, $m) && (int) $m[1] >= 10_000) {
+            $put('value', (int) $m[1]);
+        }
+    }
+
+    /** В документе есть столбец стоимости — заявка Альфы «Стоимость в соответствии с п.1.8, руб.». */
+    private static function priced(string $text): bool
+    {
+        return (bool) preg_match('/стоимост\S*\s+в\s+соответстви|п\.\s*1\.8/iu', $text);
     }
 
     /**

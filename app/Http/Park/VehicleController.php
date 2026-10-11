@@ -24,6 +24,7 @@ use App\Media\PhotoBlocks;
 use App\Media\PhotoIngest;
 use App\Offers\OfferNumber;
 use App\Park\Actions\CancelVehicle;
+use App\Park\Tasks;
 use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\LinkOffer;
 use App\Park\Actions\MarkDoc;
@@ -76,7 +77,11 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class VehicleController
 {
     /** «Дней на парковке» по убыванию — дольше всех стоят (принятые раньше) сверху; у выбывших — по дате выбытия. */
-    public const SORTS = ['days' => ['Дней на парковке', 'desc'], 'out' => ['Дата выбытия', 'desc'], 'fresh' => ['Дата заведения', 'desc'], 'amount' => ['Начислено', 'desc']];
+    // Поля по столбцам таблицы — заголовок сортирует нажатием (12.10.2026, владелец: «как в CRM»). «Ставка», «Начислено» и
+    // «Задачи» — в памяти: таблица целиком на одной странице.
+    public const SORTS = ['accepted' => ['Дата принятия', 'asc'], 'days' => ['Дней на парковке', 'desc'], 'name' => ['Марка, модель', 'asc'],
+        'vendor' => ['Вендор', 'asc'], 'tasks' => ['Задачи', 'desc'], 'rate' => ['Ставка', 'desc'], 'amount' => ['Начислено', 'desc'],
+        'yard' => ['Парковка', 'asc'], 'out' => ['Дата выбытия', 'desc'], 'fresh' => ['Дата заведения', 'desc']];
 
     /**
      * Пилюли «Наличия»: на парковке и выданы (09.10.2026 — у Питера таблица приёмов и выбытий, сверку с вендором ведут по
@@ -97,7 +102,9 @@ class VehicleController
         }
         // «Наличие» — таблицей по умолчанию (решение владельца 22.09.2026); вид на парковке не помнится (`ListPrefs`).
         $facets = $this->facets($request);
-        ListPrefs::sync($request, 'park-vehicles', keep: $facets->keys());
+        // Сортировка не помнится (12.10.2026, владелец: по умолчанию — по дате принятия, а у него открывалось запомненное
+        // «Начислено»); «По парковкам» (`flat`) и чипы — помнятся.
+        ListPrefs::sync($request, 'park-vehicles', keep: [...$facets->keys(), 'flat'], sort: false);
         if (! $request->query->has(ListView::PARAM)) {
             $request->query->set(ListView::PARAM, ListView::TABLE);
         }
@@ -109,15 +116,27 @@ class VehicleController
         $vehicles->when(! ListView::isTable(ListView::fromRequest($request)), fn ($v) => $v->with('media'));
         // Без выбранной парковки (или с несколькими) и без поиска строки собраны под заголовками парковок, выбывшие — под
         // месяцами выбытия. Плитками пачка — лента вбок, весь список одной страницей, как у таблицы (11.10.2026).
-        $grouped = count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1;
+        $flat = $request->query('flat') === '1';
+        $grouped = ! $flat && count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1;
         $byMonth = $out && $q === '' && $sort->key === 'out';
         $page = ListView::paginate($request, $vehicles, whole: ($grouped || $byMonth) && ListView::fromRequest($request) === ListView::GRID);
         // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
         $totals = Accrual::cachedTotals($page->getCollection());
         // «Больше набежало» — по посчитанному: в базе этой суммы нет. Таблица целиком на одной странице,
         // так что сортировка в памяти честная; у карточек — в пределах страницы.
-        if ($sort->key === 'amount') {
-            $page->setCollection($page->getCollection()->sortBy(fn (Vehicle $v) => $totals[$v->id]['amount'] ?? 0, SORT_REGULAR, $sort->desc)->values());
+        // Висящие задачи (`Park\Tasks`) — одним запросом на страницу: слово в «Статусе» и сортировка «Задачи».
+        $tasks = Tasks::of($page->getCollection()->pluck('id')->all());
+        $page->getCollection()->each(fn (Vehicle $v) => $v->setAttribute('task_keys', $tasks[$v->id] ?? []));
+        $order = array_flip(array_keys(Tasks::LABELS));
+        $inMemory = match ($sort->key) {
+            'amount' => fn (Vehicle $v) => $totals[$v->id]['amount'] ?? 0,
+            'rate' => fn (Vehicle $v) => $totals[$v->id]['rate'] ?? 0,
+            // Сначала с делом, важнее — выше (порядок `Tasks::LABELS`), потом по числу задач.
+            'tasks' => fn (Vehicle $v) => ($tasks[$v->id] ?? []) ? 100 - $order[$tasks[$v->id][0]] * 10 + count($tasks[$v->id]) : 0,
+            default => null,
+        };
+        if ($inMemory) {
+            $page->setCollection($page->getCollection()->sortBy($inMemory, SORT_REGULAR, $sort->desc)->values());
         }
         $data = [
             'vehicles' => $page,
@@ -125,6 +144,7 @@ class VehicleController
             'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
             'totals' => $totals,
             'grouped' => $grouped,
+            'flat' => $flat,
             'byMonth' => $byMonth,
             'out' => $out,
             'q' => $q,
@@ -553,6 +573,7 @@ class VehicleController
         // Выданным — месяц выдачи и деньги вместо «Без ставки» (ставка — дело стоящих).
         if (self::preset($request) === 'out') {
             return Facets::for($request, 'park-vehicles',
+                Tasks::facet(),
                 Common::vendor('park_vehicles.vendor_id'),
                 Common::yard('park_vehicles.yard_id'),
                 Common::category('park_vehicles.category', 'Без типа'),
@@ -565,6 +586,7 @@ class VehicleController
         }
 
         return $facets = Facets::for($request, 'park-vehicles',
+            Tasks::facet(),
             Common::vendor('park_vehicles.vendor_id'),
             Common::yard('park_vehicles.yard_id'),
             Common::category('park_vehicles.category', 'Без типа'),
@@ -602,9 +624,15 @@ class VehicleController
             ->when($state === VehicleState::Released, fn ($v) => $v->addSelect(DB::raw(OutMoney::sql().' as money_state')))
             ->search($q);
         $facets->apply($vehicles);
-        $sort = Sort::from($request->query('sort'), self::SORTS, $state === VehicleState::Released ? '-out' : '-days');
+        $sort = Sort::from($request->query('sort'), self::SORTS, $state === VehicleState::Released ? '-out' : 'accepted');
+        $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $vehicles->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir()),
+            'accepted' => $vehicles->orderByRaw("accepted_at {$dir} nulls last")->orderBy('id', $dir),
+            'name' => $vehicles->orderByRaw("(select b.name from brands b where b.id = park_vehicles.brand_id) {$dir} nulls last")
+                ->orderByRaw("(select m.name from car_models m where m.id = park_vehicles.model_id) {$dir} nulls last")->orderBy('year', $dir),
+            'vendor' => $vehicles->orderByRaw("(select vd.name from vendors vd where vd.id = park_vehicles.vendor_id) {$dir} nulls last")->orderBy('ref', $dir),
+            'yard' => $vehicles->orderByRaw("(select y.name from park_yards y where y.id = park_vehicles.yard_id) {$dir} nulls last")->orderByRaw('accepted_at asc nulls last'),
             'out' => $vehicles->orderByRaw('released_at '.$sort->dir().' nulls last')->orderBy('id', $sort->dir()),
             default => $vehicles->orderByRaw('accepted_at '.($sort->key === 'days' && ! $sort->desc ? 'desc' : 'asc').' nulls last')->latest(),
         };

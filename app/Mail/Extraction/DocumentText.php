@@ -270,7 +270,8 @@ final class DocumentText
         }
 
         // Фото документа — под именем «doc-…»: скрипт поставит его прямо и увеличит мелкое (`DocumentPhoto`).
-        if ($a instanceof DocumentPhoto) {
+        // Картинка-документ (СТС по имени, скан заявки — `DocumentScan`) — тоже: заявку Альфы присылают и боком.
+        if ($a instanceof DocumentPhoto || ! $a->isPhoto()) {
             $link = $dir.'/doc-'.$a->scanId().'.'.(pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg');
             @symlink($path, $link);
 
