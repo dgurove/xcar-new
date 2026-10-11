@@ -37,7 +37,7 @@ class CatalogController
         }
         $user = $request->user();
         $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...CatalogQuery::facets());
-        ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: $facets->keys());
+        ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: $facets->keys(), sort: false);
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
         $prices = ! $gallery && ($user?->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
