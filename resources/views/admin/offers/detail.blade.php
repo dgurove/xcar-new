@@ -128,6 +128,8 @@
             @php
                 $extend = $admin && $offer->state === OfferState::Open && $offer->bids_close_at;
                 $purge = $admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true);
+                // «Вернуть в продажу» из сделки и гаража — шторкой с ценами (`x-offer.resale-sheet`, стоит вне меню).
+                $resale = $admin && in_array($offer->state, [OfferState::Sold, OfferState::Garage], true);
                 // Отмена сделки — красным, с подтверждением: оба пункта у сделки (в продажу, в черновики) её гасят.
                 $calm = $offer->state === OfferState::Sold ? collect() : $transitions->reject(fn ($t) => $t[0] === OfferState::Archived || $t[0]->tone() === 'danger');
                 $danger = $transitions->diffKeys($calm);
@@ -135,7 +137,7 @@
                 $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                 $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
             @endphp
-            @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed)
+            @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale)
                 <div class="contents" data-controller="menu">
                     <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
                     <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
@@ -176,8 +178,11 @@
                                 @endforeach
                             </div>
                         @endif
-                        @if ($danger->isNotEmpty() || $purge)
+                        @if ($danger->isNotEmpty() || $purge || $resale)
                             <div class="menu-group">
+                                @if ($resale)
+                                    <button type="button" class="menu-item text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="resale:open"><x-ui.icon name="undo" class="size-5"/>Вернуть в продажу</button>
+                                @endif
                                 @foreach ($danger as [$next, $label])
                                     <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @else data-turbo-confirm="{{ $next->label() }}?" @endif>
                                         @csrf<input type="hidden" name="state" value="{{ $next->value }}">
@@ -196,6 +201,7 @@
                 </div>
             @endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
+            @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
         </x-slot:actions>
         {{-- Последнее письмо, как в редакторе и деле ТС; вся переписка — окном поверх списка (x-mail.window на странице). --}}
         {{-- Оценки из закупки — у машины по контрпредложению всегда, а не только под «Оценить»: цену продажи правят и

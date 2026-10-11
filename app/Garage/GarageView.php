@@ -53,6 +53,8 @@ final class GarageView
             $staff && $unpaid ? ['form', 'DELETE', "/garage/cars/{$n}/invoice", 'Аннулировать', 'Аннулировать документ? Расходы и итог снова можно будет поправить'] : null,
         ]));
         $morePrep = array_values(array_filter([
+            // «Вернуть в продажу» с переоценкой (`ReturnToSale`, шторка `x-offer.resale-sheet`) — только в CRM, и сделку тоже снимает.
+            $staff && Surface::current() === Surface::Crm && ! $car->isSold() && $car->costs->isEmpty() ? ['emit', 'resale', 'Вернуть в продажу'] : null,
             $staff && ! $car->isSold() && ! $car->dealOpen() && $car->costs->isEmpty() ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', 'Вернуть ТС в черновики?'] : null,
         ]));
         $more = [...$moreSale, ...$morePrep];

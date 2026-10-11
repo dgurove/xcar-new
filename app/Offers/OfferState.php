@@ -87,7 +87,8 @@ enum OfferState: string
             self::Archived => [self::Draft->value => 'Вернуть в черновики'],
             // Отменить сделку руками (10.10.2026, владелец: «отдал в сделку — нет кнопки отменить»): назад в продажу к
             // остальным подтверждениям или в черновики; гасит сделку `ChangeOfferState::settleDeal` → `CancelDeal`.
-            self::Sold => [self::Open->value => 'Отменить сделку, вернуть в продажу', self::Draft->value => 'Отменить сделку, в черновики'],
+            // В продажу — шторкой с ценами (`x-offer.resale-sheet`, `ReturnToSale`), не этой кнопкой.
+            self::Sold => [self::Draft->value => 'Отменить сделку, в черновики'],
             self::Garage => [],
         };
     }
@@ -98,8 +99,9 @@ enum OfferState: string
             self::Draft => [self::Open, self::Sold, self::Garage, self::Cancelled, self::Archived],
             self::Gallery => [self::Draft, self::Open, self::Sold, self::Garage, self::Cancelled, self::Archived],
             self::Open => [self::Draft, self::Sold, self::Garage, self::Cancelled, self::Archived],
-            // Из гаража машина на витрину не возвращается: «отдали по ошибке» — обратно в черновик.
-            self::Garage => [self::Draft, self::Archived],
+            // Из гаража на витрину — только «Вернуть в продажу» с новыми ценами (`ReturnToSale`, 11.10.2026), «отдали по
+            // ошибке» — в черновик.
+            self::Garage => [self::Draft, self::Open, self::Archived],
             // В гараж из сделки — только гаражной, концом её маршрута (`ChangeOfferState`); руками «Отдать в гараж» у Sold нет.
             self::Sold => [self::Delivered, self::Garage, self::Cancelled, self::Open, self::Draft],
             self::Archived => [self::Draft],

@@ -12,5 +12,7 @@
             @unless ($car->isSold())<span>{{ \App\Garage\CarLine::days($car->stageDays()) }} на этапе</span>@endunless
         </x-slot:line>
         <div class="mt-4">@include('admin.offers.garage-card', ['routeHere' => true])</div>
+        {{-- «Вернуть в продажу» из «⋯» карточки — шторка с ценами (в редакторе её ставит сам редактор). --}}
+        <x-offer.resale-sheet :offer="$offer"/>
     </x-ui.row-card>
 </x-ui.detail>

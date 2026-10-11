@@ -42,6 +42,18 @@
                 </section>
             @endif
             <x-deal.note :deal="$deal"/>
+            {{-- Сделка не состоялась (11.10.2026, владелец: «отдали в сделку — и нигде нет кнопки обратно в продажу»): назад в
+                 продажу с переоценкой (`x-offer.resale-sheet`) или в черновики — красными строками внизу, как опасное в «Оплатах». --}}
+            @if ($deal->state === DealState::Active)
+                @if ($errors->has('state'))<x-ui.flash tone="danger">{{ $errors->first('state') }}</x-ui.flash>@endif
+                <div class="list">
+                    <button type="button" class="row row-danger" data-controller="emit" data-action="emit#send" data-emit-event-param="resale:open">Вернуть в продажу</button>
+                    <form method="post" action="/offers/{{ $offer->number }}/state" class="contents" data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="ТС уйдёт в черновики, подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются">
+                        @csrf<input type="hidden" name="state" value="draft"><button class="row row-danger">Отменить сделку, в черновики</button>
+                    </form>
+                </div>
+                <x-offer.resale-sheet :offer="$offer"/>
+            @endif
         </div>
         <x-slot:row><x-deal.table-row :deal="$deal"/></x-slot:row>
     </x-ui.row-card>

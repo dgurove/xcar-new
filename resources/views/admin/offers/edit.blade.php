@@ -3,13 +3,15 @@
     use App\Offers\{OfferState, BidState, InterestState};
     $n = $offer->number;
     // «В гараже» ставит не кнопка состояния, а «Отдать в гараж»: там выбирают менеджера и цену.
-    // Кнопки состояния — только уместные (OfferState::actions): в сделке — «Отменить сделку» (в продажу или черновики),
+    // Кнопки состояния — только уместные (OfferState::actions): в сделке — «Вернуть в продажу» шторкой с ценами и «Отменить сделку, в черновики»,
     // «Снять с продажи» — у того, что в продаже.
     // Модератор правит только поля черновика: состояния, гаража, подтверждений и круга показа у него нет.
     $transitions = $admin ? collect($offer->stateActions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
     $garage = $garageView['car'] ?? null;
     // Машину из гаража уводит только «Отдали по ошибке» там же: кнопки состояния тут отбились бы ошибкой.
     if ($garage) $transitions = collect();
+    // «Вернуть в продажу» с новыми ценами — из сделки и из гаража (`ReturnToSale`, 11.10.2026).
+    $resale = $admin && (in_array($offer->state, [OfferState::Sold, OfferState::Garage], true) || $garage);
     // Руками в гараж — не из сделки: идущую сначала отменяют; отдают как гаражную сделку (`GiveToGarage`), со страховой — маршрутом.
     $canGarage = $admin && ! $garage && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     // Подтверждения: ждущие по сумме вниз, потом решённые.
@@ -224,6 +226,7 @@
         if ($draft || $offer->state === OfferState::Gallery) $transitions = $transitions->except(OfferState::Open->value);
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
+    @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
     @php $deletable = ! $fromMail && $offer->isDeletableBy(auth()->user()); @endphp
     <x-ui.action-bar>
         @if ($fromMail)
@@ -246,13 +249,16 @@
         @else
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
-        @if (($transitions->isNotEmpty() || $publishItems || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
+        @if (($transitions->isNotEmpty() || $resale || $publishItems || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
             {{-- Контроллер шторки — только вместе с ней: у сделки «···» нет, и пустой контроллер падал в консоль. --}}
             <div class="contents" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
             <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
                 <div class="flex flex-col gap-2">
                     @if ($publishItems)<x-offer.publish-items :offer="$offer" button/>@endif
+                    @if ($resale)
+                        <x-ui.button type="button" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="resale:open">Вернуть в продажу</x-ui.button>
+                    @endif
                     @foreach ($transitions as [$next, $label])
                         <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @elseif (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @if ($offer->parkVehicle) data-turbo-confirm-text="ТС снимется с продажи, на парковке она остаётся с фото и документами" @endif @endif>
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">

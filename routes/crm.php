@@ -180,6 +180,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
         Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
         Route::post('/offers/{offer}/rate', [OfferController::class, 'rate']);
+        Route::post('/offers/{offer}/resale', [OfferController::class, 'resale']);
         // Пачкой из «Оцененных» и «Публикации»: галочки строк, `offers[]` — номера.
         Route::post('/offers/schedule', [OfferController::class, 'scheduleMany']);
         Route::post('/offers/unschedule', [OfferController::class, 'unscheduleMany']);

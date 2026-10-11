@@ -16,6 +16,7 @@ use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\MergeOffers;
+use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Actions\ShowInGallery;
@@ -781,6 +782,20 @@ class OfferController
         $change($offer, $next, $request->user());
 
         return redirect("/offers/{$offer->number}")->with('toast', $next->label())->with(self::gone($request, $offer));
+    }
+
+    /**
+     * «Вернуть в продажу» из сделки или гаража с новыми ценами (шторка `x-offer.resale-sheet`): закупочная, заявленная
+     * (пусто — от закупочной) и цена продажи; сделка отменяется, строка гаража уходит (`ReturnToSale`).
+     */
+    public function resale(Request $request, Offer $offer, ReturnToSale $return)
+    {
+        $data = $request->validate(['floor_price' => ['nullable', 'string', 'max:20'], 'publish_price' => ['nullable', 'string', 'max:20'],
+            'asking_price' => ['required', 'string', 'max:20']], ['asking_price.required' => 'Укажите цену продажи']);
+        $money = fn (?string $v) => (int) preg_replace('/\D+/', '', (string) $v) ?: null;
+        $offer = $return($offer, $request->user(), array_map($money, $data + ['floor_price' => null, 'publish_price' => null]));
+
+        return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number)->with(self::gone($request, $offer));
     }
 
     /**
