@@ -93,7 +93,7 @@ class CatalogController
 
         // Пачки по сроку («До 17:00 сегодня») — только по сроку и тому, кто срок видит; плитками они — ленты вбок, весь
         // список одной страницей: пачку, порванную страницей, в ленте не долистать (11.10.2026).
-        $groups = ! $gallery && $sort === 'closing' && ($user?->bidsOnSite() ?? false);
+        $groups = CatalogQuery::grouped($user, $gallery);
         $shelves = $groups && ListView::pick($request, $count) === ListView::GRID;
         $offers = ListView::paginate($request, $query, $count, whole: $shelves);
         // «Нужно оценить» (11.10.2026): черновики, отданные этому менеджеру на оценку, — первой пачкой на первой странице
@@ -116,7 +116,7 @@ class CatalogController
             'groups' => $groups,
             'exclusive' => $offers->currentPage() === 1 ? $exclusive : collect(),
             'shelves' => $shelves,
-            'groupSizes' => $groups ? \App\Offers\CloseGroups::sizes($query) : [],
+            'groupSizes' => $groups ? \App\Offers\CloseGroups::sizes($query, $gallery) : [],
             'views' => $views,
             'view' => $view,
             'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),

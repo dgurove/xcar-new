@@ -103,15 +103,15 @@
                         <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)
-                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer)))@php $group = $label; @endphp<tr class="table-group"><th colspan="99" scope="colgroup">{{ $label }} <span class="nums">{{ $groupSizes[$label] ?? '' }}</span></th></tr>@endif
+                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer, $gallery)))@php $group = $label; @endphp<tr class="table-group"><th colspan="99" scope="colgroup">{{ $label }} <span class="nums">{{ $groupSizes[$label] ?? '' }}</span></th></tr>@endif
                             <x-offer.site-table-row :offer="$offer" :context="$context" :deadline="$deadline"/>
                         @endforeach
                     </x-ui.table>
                     @elseif ($shelves)
                     {{-- По сроку плитками — пачка на ленту вбок (11.10.2026, владелец и начальник: «горизонтальный скролл в разы
                          удобнее»), весь список одной страницей. Выбор и живые правки — на обёртке, плитки ищутся вглубь. --}}
-                    <div id="catalog" data-list="catalog" data-prepend="false" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
-                        @foreach ($offers->getCollection()->groupBy(fn ($o) => \App\Offers\CloseGroups::label($o)) as $label => $pack)
+                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="false" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                        @foreach ($offers->getCollection()->groupBy(fn ($o) => \App\Offers\CloseGroups::label($o, $gallery)) as $label => $pack)
                             <x-ui.shelf :title="$label" :count="$groupSizes[$label] ?? $pack->count()">
                                 @foreach ($pack as $offer)
                                     <x-offer.card :offer="$offer" :context="$context"/>
@@ -120,11 +120,11 @@
                         @endforeach
                     </div>
                     @else
-                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ in_array($sort, ['-published', '-opened'], true) ? 'true' : 'false' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && in_array($sort, ['-published', '-opened'], true) ? 'true' : 'false' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         {{-- По сроку — подписью над каждой пачкой слота («До 17:00 сегодня»), владелец 10.10.2026. --}}
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)
-                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer)))@php $group = $label; @endphp<h2 class="cards-group">{{ $label }} <span class="nums">{{ $groupSizes[$label] ?? '' }}</span></h2>@endif
+                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer, $gallery)))@php $group = $label; @endphp<h2 class="cards-group">{{ $label }} <span class="nums">{{ $groupSizes[$label] ?? '' }}</span></h2>@endif
                             <x-offer.card :offer="$offer" :context="$context"/>
                         @endforeach
                     </div>

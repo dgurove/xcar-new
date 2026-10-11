@@ -13,9 +13,12 @@ use Illuminate\Support\Carbon;
  */
 final class CloseGroups
 {
-    public static function label(Offer $offer): string
+    /** Галерея (11.10.2026) — пачки по концу окна показа: «До 23:59 сегодня». */
+    public static function label(Offer $offer, bool $gallery = false): string
     {
-        return self::of($offer->bids_close_at, $offer->bidsOpen() && $offer->state === OfferState::Open);
+        return $gallery
+            ? self::of($offer->gallery_until, true)
+            : self::of($offer->bids_close_at, $offer->bidsOpen() && $offer->state === OfferState::Open);
     }
 
     public static function of(?CarbonInterface $at, bool $open): string
@@ -40,8 +43,17 @@ final class CloseGroups
      *
      * @return array<string, int> подпись → число
      */
-    public static function sizes(Builder $list): array
+    public static function sizes(Builder $list, bool $gallery = false): array
     {
+        if ($gallery) {
+            $out = [];
+            foreach (Facet::bare($list->toBase())->selectRaw('offers.gallery_until as at, count(*) as n')->groupBy('offers.gallery_until')->get() as $r) {
+                $label = self::of($r->at ? Carbon::parse($r->at) : null, true);
+                $out[$label] = ($out[$label] ?? 0) + (int) $r->n;
+            }
+
+            return $out;
+        }
         $rows = Facet::bare($list->toBase())
             ->selectRaw("offers.bids_close_at as at, (offers.state = ? and (offers.bids_close_at is null or offers.bids_close_at > now())) as open, count(*) as n", [OfferState::Open->value])
             ->groupBy('offers.bids_close_at', 'offers.state')->get();

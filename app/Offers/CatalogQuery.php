@@ -103,6 +103,12 @@ final class CatalogQuery
         return $q;
     }
 
+    /** Пачки по сроку (`CloseGroups`): в каталоге — тому, кто видит срок приёма; в галерее — всем (окно показа). */
+    public static function grouped(?User $user, bool $gallery): bool
+    {
+        return $gallery || ($user?->bidsOnSite() ?? false);
+    }
+
     public static function for(?User $user, array $filters = [], bool $gallery = false): Builder
     {
         $prices = ! $gallery && ($user?->canSeePrices() ?? false);
@@ -137,13 +143,21 @@ final class CatalogQuery
 
         $sort = self::sort($filters, $gallery, $prices, $user);
         $dir = str_starts_with($sort, '-') ? 'desc' : 'asc';
+        // Пачки по сроку при любой сортировке (11.10.2026, владелец): сначала порядок пачек — каталог: открытый приём по
+        // сроку, закрытый и «Идёт сделка» после; галерея — по концу окна показа. Выбранная сортировка — внутри пачки;
+        // «по сроку» по убыванию переворачивает и пачки.
+        if (self::grouped($user, $gallery)) {
+            $packs = ltrim($sort, '-') === 'closing' ? $dir : 'asc';
+            $gallery
+                ? $q->orderByRaw("offers.gallery_until {$packs} nulls last")
+                : $q->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() then 0 else 1 end', [OfferState::Open->value])
+                    ->orderByRaw("offers.bids_close_at {$packs} nulls last");
+        }
         match (ltrim($sort, '-')) {
-            // В галерее «скоро закроется» — конец окна показа, «свежие» — когда появилось.
+            // Внутри пачки слота (или окна галереи) — рекомендованные, потом новые показы.
             'closing' => $gallery
-                ? $q->orderByRaw("gallery_until {$dir} nulls last")
-                // Открытый приём — по сроку, закрытый и «Идёт сделка» — после него. Слот закрывает пачку в один час:
-                // внутри неё рекомендованные, потом новые показы.
-                : $q->orderByRaw("case when offers.state = ? and offers.bids_close_at > now() then 0 else 1 end", [OfferState::Open->value])
+                ? $q->orderByRaw("gallery_until {$dir} nulls last")->orderByDesc('sort_weight')->orderByRaw("{$opened} desc nulls last")
+                : $q->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() then 0 else 1 end', [OfferState::Open->value])
                     ->orderByRaw("offers.bids_close_at {$dir} nulls last")->orderByDesc('sort_weight')->orderByRaw("{$opened} desc nulls last"),
             'opened' => $q->orderByRaw("{$opened} {$dir} nulls last"),
             'price' => $q->orderByRaw("asking_price {$dir} nulls last"),
