@@ -24,7 +24,7 @@
         $transport->arrive_on ? 'прибытие '.$transport->arrive_on->translatedFormat('j M') : null])) : null;
 @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
-    <x-slot:badge><x-ui.links :vehicle="$vehicle"><x-park.sale :vehicle="$vehicle" menu/></x-ui.links></x-slot:badge>
+    <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
     {{-- Шапка — только положение и люди, текстом: состояние с местом и днями, что не так, долг красным словом; строкой ниже —
          продажа страховой («На выдачу с 6 окт», кто заберёт — нажатие открывает шторку «Покупатель», телефон ссылкой).
          Справа — только действия: документы и «⋯». Продажа в CRM — пунктами значка связи у названия (как в карточке
@@ -43,6 +43,8 @@
                     @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="nums ml-1 whitespace-nowrap text-accent-text">{{ $vehicle->pickup_phone }}</a>@endif
                 </p>
             @endif
+            {{-- Продажа — кнопкой на виду под положением (11.10.2026, владелец: пункт в значке связи не находили). --}}
+            @if (auth()->user()?->isAdmin())<div class="mt-2 flex"><x-park.sale :vehicle="$vehicle"/></div>@endif
             @if ($transport)
                 <p class="mt-1 text-sm">
                     @if (Surface::Logistics->opensFor(auth()->user()))<a href="{{ Surface::Logistics->url('/transports/'.$transport->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>@else<span>Логистика</span>@endif<span class="text-ink-muted">, {{ $transportLine }}</span>
@@ -50,7 +52,6 @@
             @endif
         </div>
         <x-ui.docs-pill :docs="$docs" class="!min-h-0 shrink-0 !py-1 text-xs"/>
-        <x-park.sale :vehicle="$vehicle" forms/>
         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif
