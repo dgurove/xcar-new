@@ -25,8 +25,9 @@ final class PickupState
             ! $stage => ['вывоз не начат', 'plain'],
             $stage->car_place === CarPlace::Keeper => self::keeper($offer, $viewer),
             $stage->car_place === CarPlace::WithUs => ['стоит у нас', 'open'],
-            // Альфа: забирать после оплаты (10.10.2026) — ещё не время, чей бы ход вывоза ни был.
-            self::unpaid($offer) => ['после оплаты', 'plain'],
+            // Забирать рано, чей бы ход вывоза ни был: Альфа — после оплаты (10.10.2026), Каркаде — пока поставщик не согласовал
+            // заявку (11.10.2026).
+            ($hold = self::hold($offer)) !== null => [$hold, 'plain'],
             $stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty() => [$who ? 'забирает '.$who : 'забрать', 'urgent'],
             // Шаг продажи сам просит «Автомобиль забрал» (Совкомбанк: без оплаты, сразу) — документы не ждём.
             (bool) $offer->position(Track::Sale)?->stage->isPickupStep() => self::picking($offer, $viewer),
@@ -57,7 +58,7 @@ final class PickupState
     /** Ход ответственного: «забрать» — его бейдж в табе «Гараж». */
     public static function awaits(Offer $offer): bool
     {
-        return ! self::unpaid($offer) && (bool) $offer->position(Track::Service)?->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty();
+        return self::hold($offer) === null && (bool) $offer->position(Track::Service)?->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty();
     }
 
     /**
@@ -71,8 +72,8 @@ final class PickupState
         if ($stage && in_array($stage->car_place, [CarPlace::Keeper, CarPlace::WithUs], true)) {
             return null;
         }
-        if (self::unpaid($offer)) {
-            return 'Забирать после оплаты';
+        if (($hold = self::hold($offer)) !== null) {
+            return $hold === 'после оплаты' ? 'Забирать после оплаты' : 'Ждём согласия поставщика';
         }
         $ready = ! $stage || $stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()
             || (bool) $offer->position(Track::Sale)?->stage->isPickupStep();
@@ -80,12 +81,10 @@ final class PickupState
         return $ready ? null : 'Документы ещё не готовы';
     }
 
-    /** Сделка Альфы ещё не оплачена — забирать рано (`Deal::mayPickUp`). */
-    private static function unpaid(Offer $offer): bool
+    /** Забирать рано — почему словом (`Deal::pickupHold`): Альфа не оплачена, Каркаде без согласия поставщика. */
+    private static function hold(Offer $offer): ?string
     {
-        $deal = $offer->deal;
-
-        return $deal && ! $deal->setRelation('offer', $offer)->mayPickUp();
+        return $offer->deal?->setRelation('offer', $offer)->pickupHold();
     }
 
     /** Сколько дней на текущем шаге вывоза. */

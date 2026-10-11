@@ -231,7 +231,7 @@ final class Notify
             if ($e->exit && $offer->evacuator && $e->to->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()) {
                 // Забирает сам менеджер сделки: «пора» скажет его шаг сделки, если у продажи он есть («Заберите автомобиль»).
                 $deal = $offer->deal;
-                // Альфа до оплаты (`Deal::mayPickUp`) — «пора» скажем, когда оплатят.
+                // Альфа до оплаты, Каркаде до согласия поставщика (`Deal::mayPickUp`) — «пора» скажем, когда станет можно.
                 if ($deal && ! $deal->mayPickUp()) {
                     return;
                 }
@@ -256,6 +256,11 @@ final class Notify
         // Альфа оплачена — теперь можно забирать (10.10.2026): тому, кто забирает, контакт и адрес.
         if ($deal?->prepaid_at && $e->exit && $e->offer->vendor?->pay_before_pickup
             && in_array(mb_strtolower(trim($e->exit->label)), ['оплата получена', 'поставщику оплачено'], true)) {
+            $this->pickupOpened($deal->setRelation('offer', $e->offer->loadMissing('evacuator')));
+        }
+        // Каркаде: поставщик согласовал заявку — теперь можно забирать (11.10.2026), до того менеджер только ждал.
+        if ($deal && $e->exit && $e->offer->vendor?->deal_format === \App\Vendors\DealFormat::Wholesale
+            && str_starts_with(mb_strtolower(trim($e->exit->label)), 'поставщик согласовал') && $deal->refresh()->agreed_at) {
             $this->pickupOpened($deal->setRelation('offer', $e->offer->loadMissing('evacuator')));
         }
         // Шаг сдвинуло письмо страховой — менеджеру пишет «Страховая ответила» с этим ходом (`AdvanceOnReply`).
@@ -306,6 +311,11 @@ final class Notify
         if ($offer->evacuator && $offer->evacuator->isNot($e->previous)) {
             // Менеджер сделки забирает сам: до согласия поставщика молчим (скажет `HandoverNotice`), после — сразу оно.
             $deal = $offer->deal;
+            // Забирать рано (Каркаде до согласия поставщика, Альфа до оплаты): «Вам поручен вывоз» не шлём — менеджер ждёт;
+            // «Можно забирать» скажет `pickupOpened`, когда станет можно (11.10.2026).
+            if ($deal && ! $deal->setRelation('offer', $offer)->mayPickUp()) {
+                return;
+            }
             if ($deal?->buyerPicksUp()) {
                 if (($handover = Handover::for($deal))->open) {
                     $offer->evacuator->notify(new HandoverNotice($deal, $handover));

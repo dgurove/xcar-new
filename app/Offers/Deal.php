@@ -100,17 +100,29 @@ class Deal extends Model
 
     /**
      * Забирать можно (10.10.2026, владелец: «альфастрахование — только с предварительной оплатой»): у вендора с
-     * `pay_before_pickup` — когда маршрут прошёл проверку оплаты (`prepaid_at`, ставит `EnterStage`), у остальных — всегда.
+     * `pay_before_pickup` — когда маршрут прошёл проверку оплаты (`prepaid_at`, ставит `EnterStage`); у оптового (Каркаде,
+     * «выкупаем мы», 11.10.2026, владелец: «набираем лот, отправляем заявку на десятки машин, и только после этого их можно
+     * забрать») — когда поставщик согласовал (`agreed_at`); у остальных — всегда.
      */
     public function mayPickUp(): bool
     {
-        if ($this->prepaid_at !== null || ! $this->offer?->vendor?->pay_before_pickup) {
-            return true;
+        return $this->pickupHold() === null;
+    }
+
+    /** Почему забирать рано — словом для пути и вывоза: «ждём поставщика», «после оплаты»; null — можно. */
+    public function pickupHold(): ?string
+    {
+        $vendor = $this->offer?->vendor;
+        if ($vendor?->deal_format === \App\Vendors\DealFormat::Wholesale && $this->agreed_at === null) {
+            return 'ждём поставщика';
+        }
+        if ($this->prepaid_at !== null || ! $vendor?->pay_before_pickup) {
+            return null;
         }
 
         // Маршрута продажи у вендора нет (Альфа СПб завели без него) — `prepaid_at` ставить некому: забирать, когда
         // счета сделки оплачены, а не никогда.
-        return ! $this->offer->vendor->workflow(Track::Sale)?->is_active && $this->fullyPaid();
+        return ! $vendor->workflow(Track::Sale)?->is_active && $this->fullyPaid() ? null : 'после оплаты';
     }
 
     /**

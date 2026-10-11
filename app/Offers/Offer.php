@@ -488,7 +488,12 @@ class Offer extends Model implements HasMedia
     public function scopeAwaitingPickup(Builder $q): Builder
     {
         return $q->whereHas('positions', fn ($p) => $p->where('track', Track::Service)
-            ->whereHas('stage.exits', fn ($e) => $e->where('actor', 'keeper')->whereColumn('workflow_exits.branch', 'offers.evacuation_to')));
+            ->whereHas('stage.exits', fn ($e) => $e->where('actor', 'keeper')->whereColumn('workflow_exits.branch', 'offers.evacuation_to')))
+            // Забирать рано (`Deal::pickupHold`): Каркаде — до согласия поставщика, Альфа — до оплаты. Бейдж «Гаража» не горит.
+            ->whereNot(fn ($o) => $o->whereHas('vendor', fn ($v) => $v->where('deal_format', \App\Vendors\DealFormat::Wholesale))
+                ->whereHas('deal', fn ($d) => $d->whereNull('agreed_at')))
+            ->whereNot(fn ($o) => $o->whereHas('vendor', fn ($v) => $v->where('pay_before_pickup', true))
+                ->whereHas('deal', fn ($d) => $d->whereNull('prepaid_at')));
     }
 
     public function scopeEmptyDraft(Builder $q): Builder
