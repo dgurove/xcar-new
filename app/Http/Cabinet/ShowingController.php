@@ -28,7 +28,8 @@ class ShowingController
         return view('cabinet.showings.form', [
             'offers' => $offers,
             'single' => $single,
-            'groups' => $me->ownGroups()->withCount('members')->get(),
+            // Пустая группа показать некому — её нет в выборе (11.10.2026); уже отмеченная остаётся, чтобы снять показ.
+            'groups' => $me->ownGroups()->withCount('members')->get()->filter(fn ($g) => $g->members_count > 0 || $current->contains('group_id', $g->id))->values(),
             'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get(),
             'checkedUsers' => $current->pluck('user_id')->filter()->all(),
             'checkedGroups' => $current->pluck('group_id')->filter()->all(),

@@ -1,10 +1,11 @@
 {{-- Интерес покупателя строкой. Менеджеру важен человек: аватар, имя, ниже машина и цена;
-     на странице покупателя (person=false) — с машины. «Связались» / «Закрыть» — словом в хвосте и смахиванием. Нажатие — страница предложения; car=false — без строки
+     на странице покупателя (person=false) — с машины. «Я связался» / «Закрыть» — словом в хвосте и смахиванием. Нажатие — страница предложения; car=false — без строки
      о машине (на её собственной странице). --}}
 @php
     $offer = $interest->offer; $person ??= true; $car ??= true; $new = $interest->state === \App\Offers\InterestState::New;
     $price = \App\Offers\PriceView::for($offer, auth()->user());
-    $verb = $new ? ['contacted', 'Связались', 'check', 'swipe-btn-accent'] : ['closed', 'Закрыть', 'x', ''];
+    // Кнопка называет исход, от первого лица (11.10.2026: голое «Связались» — правило no-em-dash-in-ui).
+    $verb = $new ? ['contacted', 'Я связался', 'check', 'swipe-btn-accent'] : ['closed', 'Закрыть', 'x', ''];
 @endphp
 <x-ui.swipe id="interest-{{ $interest->id }}">
     <div class="row relative transition-colors hover:bg-hover">

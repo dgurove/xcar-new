@@ -18,7 +18,22 @@ final class StartSelectionDue
 {
     public function handle(StageEntered $e): void
     {
-        if ($e->track !== Track::Sale || ! $e->to->isPayStep()) {
+        if ($e->track !== Track::Sale) {
+            return;
+        }
+        // Шаг оплаты отменили назад («Отменить», «Вернуть на шаг» — без исхода): срок, поставленный входом на него, снимается
+        // у неоплаченного счёта подбора — иначе счёт висел «Просрочен», пока менеджер ещё связывается с владельцем
+        // (11.10.2026). Вернутся на оплату — срок встанет заново.
+        if ($e->exit === null && $e->from?->isPayStep() && ! $e->to->isPayStep()) {
+            $deal = $e->deal ?? $e->offer->deal()->first();
+            if ($deal) {
+                Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('kind', ChargeKind::Selection)
+                    ->where('state', InvoiceState::Issued)->where('paid', 0)->whereDoesntHave('payments')->update(['due_at' => null]);
+            }
+
+            return;
+        }
+        if (! $e->to->isPayStep()) {
             return;
         }
         $deal = $e->deal ?? $e->offer->deal()->first();

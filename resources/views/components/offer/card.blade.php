@@ -95,7 +95,8 @@
             @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
             @if ($price->declared)<span class="nums text-xs text-ink-dim">заявленная {{ $price::money($price->declared) }}</span>@endif
         @elseif ($gallery)
-            <x-offer.gallery-left :offer="$offer" class="text-sm"/>
+            {{-- В «Галерее» срок понятен и так; в «Избранном» и поиске рядом сроки приёма — говорим, чего осталось. --}}
+            <x-offer.gallery-left :offer="$offer" class="text-sm" :word="request()->is('gallery') ? 'осталось' : 'в галерее ещё'"/>
         @else
             <span class="text-sm text-accent-text">Узнать цену</span>
         @endif
