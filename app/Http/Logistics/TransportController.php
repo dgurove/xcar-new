@@ -10,6 +10,7 @@ use App\Logistics\Transport;
 use App\Logistics\TransportState;
 use App\Notifications\ReadNotices;
 use App\Support\Detail;
+use App\Support\Sort;
 use App\Support\Surface;
 use Illuminate\Http\Request;
 
@@ -20,6 +21,9 @@ use Illuminate\Http\Request;
 class TransportController
 {
     public const PRESETS = ['waiting' => 'Ждут логиста', 'work' => 'В работе', 'done' => 'Доставлены', 'all' => 'Все'];
+
+    /** «Когда» — дата строки (`Transport::shownAt`): в работе ближайшие сверху; ещё по названию и по дате заведения. */
+    public const SORTS = ['when' => ['Когда', 'asc'], 'title' => ['Марка, модель', 'asc'], 'created' => ['Заведена', 'desc']];
 
     public function index(Request $request)
     {
@@ -46,9 +50,16 @@ class TransportController
             // В работе — ближайшие сверху: по дате отправки, потом по назначению; доставленные — свежие сверху.
             ->when(in_array($preset, ['done', 'all'], true), fn ($q) => $q->latest('updated_at'), fn ($q) => $q->orderByRaw('ship_on nulls last')->oldest('id'))
             ->limit(300)->get();
+        // Доставленные и «Все» по умолчанию — свежие сверху, в работе — ближайшие.
+        $sort = Sort::from($request->query('sort'), self::SORTS, in_array($preset, ['done', 'all'], true) ? '-when' : 'when');
+        $transports = $transports->sortBy(fn (Transport $t) => match ($sort->key) {
+            'title' => [mb_strtolower($t->title()), $t->id],
+            'created' => [$t->created_at?->timestamp ?? 0, $t->id],
+            default => [$t->shownAt()?->timestamp ?? PHP_INT_MAX, $t->id],
+        }, SORT_REGULAR, $sort->desc)->values();
 
         return view('logistics.transports.index', [
-            'detail' => $detail, 'transports' => $transports, 'preset' => $preset, 'pills' => $pills, 'counts' => array_filter($counts), 'home' => $home,
+            'detail' => $detail, 'transports' => $transports, 'preset' => $preset, 'pills' => $pills, 'counts' => array_filter($counts), 'home' => $home, 'sort' => $sort,
         ]);
     }
 

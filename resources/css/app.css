@@ -741,6 +741,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. Только до 640:
      от 640 подпись уже видна (sm:inline), и в круге 2,75rem она вылезала на соседнюю кнопку. */
   @media (max-width: 639px) { .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; } }
+  /* Так же у кнопок в строке заголовка («Написать» почты, «+ Закупка»): кружок своей высоты. */
+  @media (max-width: 639px) { .btn-s:has(> .hidden.sm\:inline):not(.toolbar .btn) { aspect-ratio: 1; padding: 0; } }
 
   /* Поиск в тулбаре: не фильтр, а поле — стоит слева, растёт до своей доли строки, крестик
      появляется с первым знаком. Ищет по ходу набора (live_search_controller), адрес не меняет. */
@@ -799,6 +801,22 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .toolbar:has(> .toolbar-chips) { flex-wrap: wrap; row-gap: .75rem; }
     .toolbar:not(:has(> .toolbar-pills)) > .toolbar-chips { order: 4; flex: 1 1 0; }
     .toolbar:not(:has(> .toolbar-pills)) > .toolbar-actions { order: 5; }
+  }
+  /* Широкий тулбар (11.10.2026, владелец: «шапка столько места занимает, кнопки можно компактнее»): чипы — в строке
+     пилюль, между ними и кнопками, а не своей строкой ниже; пилюли по своей ширине, чипы забирают остаток и листаются
+     с затуханием у края. Узкий (карточка справа, планшет) — как было. Меряется сам тулбар, не экран. */
+  /* Только у короткого ряда пилюль (`.toolbar--fit`, сумма подписей до 40 знаков — `x-ui.toolbar`): длинный («Без
+     закупочной цены…» предложений) сжался бы до одной пилюли. Контейнер — только такой тулбар: он во всю ширину, а тулбар
+     по содержимому (рядом с h1) сжался бы в ноль. */
+  .toolbar--fit:has(> .toolbar-chips) { container-type: inline-size; width: 100%; }
+  @media (min-width: 768px) {
+    @container (min-width: 50rem) {
+      .toolbar--fit > .toolbar-pills { order: -2; flex: 0 0 auto !important; } /* утилита flex-1 у ряда сильнее слоя компонентов */
+      .toolbar--fit > .toolbar-chips {
+        order: -1; flex: 1 1 0; flex-basis: 0; min-width: 6rem;
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+      }
+    }
   }
   /* Кнопки списка в строке заголовка (телефон: «Гараж», «Долги» — слот actions у x-ui.shell): в поиске поле встаёт на
      место заголовка во всю строку. */

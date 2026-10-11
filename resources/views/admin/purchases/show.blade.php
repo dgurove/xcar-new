@@ -7,7 +7,7 @@
         {{-- Состояние и срок — строкой текста, продление — лаймовыми словами (как в редакторе предложения, 10.10.2026). --}}
         <span class="flex basis-full flex-wrap items-baseline gap-x-3 gap-y-1 text-sm sm:basis-auto">
             @if ($purchase->closed())
-                <span class="nums text-ink-muted">Приём закрыт с {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span>
+                <span class="nums text-ink-muted">Приём закрыт {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span>
             @else
                 <x-ui.state :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}@if ($purchase->state === PurchaseState::Open && $purchase->offers_close_at)<span class="nums font-normal text-ink-muted"> до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif</x-ui.state>
             @endif
@@ -76,12 +76,12 @@
     @php $kindPills = count($kinds) > 1 ? ['' => 'Все'] + collect(Kind::cases())->filter(fn ($k) => isset($kinds[$k->value]))->mapWithKeys(fn ($k) => [$k->value => $k->label()])->all() : []; @endphp
     <x-ui.toolbar :sort="$sort" :pills="$kindPills" :pill="$kind?->value ?? ''" pill-param="kind" :pill-default="false" :counts="['' => array_sum($kinds)] + $kinds" name="purchase" :facets="$facets" search="ДЛ, VIN, марка">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
+        {{-- Оценка идёт в карточке таблицы: первая без нашей цены открывается сразу, «Дальше» ведёт по строкам. Кнопка —
+             действием экрана справа в тулбаре, а не своей строкой над таблицей. --}}
+        @if ($counts['unfinal'] > 0 && !($preset === 'unfinal' && \App\Support\ListView::isTable($view)))
+            <x-slot:actions><a href="/purchases/{{ $n }}?preset=unfinal&vid=table&peek=first{{ $kind ? '&kind='.$kind->value : '' }}" class="btn btn-s btn-accent shrink-0 rounded-full" data-turbo-action="replace">Оценить<span class="nums opacity-70 max-sm:hidden"> {{ $counts['unfinal'] }}</span></a></x-slot:actions>
+        @endif
     </x-ui.toolbar>
-
-    {{-- Оценка идёт в карточке таблицы: первая без нашей цены открывается сразу, «Дальше» ведёт по строкам. --}}
-    @if ($counts['unfinal'] > 0 && !($preset === 'unfinal' && \App\Support\ListView::isTable($view)))
-        <div class="mt-3 flex"><a href="/purchases/{{ $n }}?preset=unfinal&vid=table&peek=first{{ $kind ? '&kind='.$kind->value : '' }}" class="btn btn-s btn-accent w-full sm:ml-auto sm:w-auto" data-turbo-action="replace">Оценить</a></div>
-    @endif
 
     <div id="list">
 

@@ -94,6 +94,25 @@ class Transport extends Model implements HasMedia
         return $this->offer ?? $this->vehicle;
     }
 
+    /** Дата строки списка: прибытие или отправка у межрегиона, иначе когда назначили, забрали, сдали (сортировка «Когда» — по ней же). */
+    public function shownAt(): ?\Illuminate\Support\Carbon
+    {
+        return match ($this->state) {
+            TransportState::Delivered => $this->delivered_at,
+            TransportState::Moving => $this->arrive_on ?? $this->picked_at,
+            TransportState::Cancelled => $this->cancelled_at,
+            default => $this->ship_on ?? $this->assigned_at ?? $this->created_at,
+        };
+    }
+
+    /** Тип ТС машины — иконкой перед названием, как в таблицах CRM. */
+    public function category(): ?\App\Cars\Category
+    {
+        $car = $this->car();
+
+        return $car instanceof Offer ? $car->category() : $car?->category;
+    }
+
     public function title(): string
     {
         return $this->car()?->titleWithYear() ?? 'ТС';

@@ -1,6 +1,6 @@
 {{-- Карточка перевозки (Logistics XCar): кадры машины, название, ход перевозки и маршрут фразой; факты строками — откуда,
      куда, принимает, кто везёт, стоимость, сроки; кадры погрузки и выгрузки. Главное действие подвалом во всю ширину:
-     исполнителю «Забрал» → «Сдал» с фото, логисту — «Назначить»; правка и отмена — пилюлями. --}}
+     исполнителю «Забрал» → «Сдал» с фото, логисту — «Назначить»; правка — пилюлей, отмена — красной строкой внизу. --}}
 @php
     use App\Logistics\Executor;
     use App\Logistics\TransportState;
@@ -30,19 +30,14 @@
 <x-ui.detail>
     <x-ui.row-card :title="$t->title()" :photos="$car?->visiblePhotos() ?? collect()" :action="false" :blank="false">
         <x-slot:row><x-logistics.row :t="$t"/></x-slot:row>
+        {{-- Состояние — словом у названия; фразой — маршрут (регионы), без них — «внутри региона» / «между регионами». --}}
+        <x-slot:badge><span class="title-state {{ $t->state === TransportState::Assigned ? 'text-ink-muted' : $t->state->tone() }}">{{ mb_strtolower($t->state->label()) }}</span></x-slot:badge>
         <x-slot:line>
-            <span class="{{ $t->state->tone() }}">{{ mb_strtolower($t->state->label()) }}</span>
-            <span>{{ mb_strtolower($t->scope->label()) }}</span>
-            @if ($t->regions())<span>{{ $t->regions() }}</span>@endif
+            <span>{{ $t->regions() ?: mb_strtolower($t->scope->label()) }}</span>
         </x-slot:line>
         <x-slot:actions>
             @if ($editable && $t->executor)<button type="button" class="pill" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">Изменить</button>@endif
             @if ($carLink)<a href="{{ $carLink }}" class="pill" data-turbo="false">{{ $t->offer ? 'Предложение в CRM' : 'Дело на парковке' }}</a>@endif
-            @if ($all && $t->isOpen())
-                <form method="post" action="/transports/{{ $t->id }}/cancel" class="contents" data-turbo-confirm="Отменить перевозку?" data-turbo-confirm-label="Отменить перевозку">
-                    @csrf<button type="submit" class="pill">Отменить</button>
-                </form>
-            @endif
         </x-slot:actions>
         @error('transport')<x-ui.flash tone="danger" class="mt-3">{{ $message }}</x-ui.flash>@enderror
 
@@ -63,6 +58,12 @@
                 <x-ui.photos :photos="$shots" id="transport-{{ $t->id }}-{{ $at }}" readonly :hide="false" :main="false" grid/>
             @endif
         @endforeach
+        {{-- Опасное — красной строкой внизу, как «Отменить ссылку» в «Оплатах», а не пилюлей рядом с «Изменить». --}}
+        @if ($all && $t->isOpen())
+            <form method="post" action="/transports/{{ $t->id }}/cancel" class="list mt-4" data-turbo-confirm="Отменить перевозку?" data-turbo-confirm-label="Отменить перевозку">
+                @csrf<button type="submit" class="row row-danger">Отменить перевозку</button>
+            </form>
+        @endif
 
         @php
             $step = $acts && in_array($t->state, [TransportState::Assigned, TransportState::Moving], true) && ($t->executor !== Executor::Carrier || $all)

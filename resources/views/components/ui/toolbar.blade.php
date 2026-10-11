@@ -24,8 +24,10 @@
     $q ??= is_string(request('q')) ? request('q') : '';
     // searchOpen — поле открыто всегда, без лупы и «Отмена» (колонка чатов, 06.10.2026: «нет смысла сворачивать»).
     $searching = $search && ($searchOpen || trim($q) !== '');
+    // Короткий ряд пилюль — на широком экране чипы встают в его строку (`.toolbar--fit`, app.css).
+    $fit = $pills && mb_strlen(implode('', $pills)) <= 40;
 @endphp
-<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-2 max-md:gap-y-3']) }} @if ($search) data-controller="live-search" data-live-search-target-value="{{ $searchTarget }}" @if ($searchUrl) data-live-search-url-value="{{ $searchUrl }}" @endif @if ($searchOpen) data-live-search-open-value="true" @endif @endif @if ($searching) data-searching @endif>
+<div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-2 max-md:gap-y-3'.($fit ? ' toolbar--fit' : '')]) }} @if ($search) data-controller="live-search" data-live-search-target-value="{{ $searchTarget }}" @if ($searchUrl) data-live-search-url-value="{{ $searchUrl }}" @endif @if ($searchOpen) data-live-search-open-value="true" @endif @endif @if ($searching) data-searching @endif>
     @if ($search)
         <form class="toolbar-search" role="search" data-action="submit->live-search#stop">
             <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>

@@ -41,7 +41,7 @@
             {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями. --}}
             @if (in_array($preset, ['nofloor', 'unpriced'], true) && ! $searching)
                 <div class="contents" data-controller="menu sheet">
-                    <button type="button" class="btn btn-s btn-quiet toolbar-wide shrink-0 rounded-full" data-action="menu#toggle" aria-haspopup="menu" aria-controls="rate-menu">Оценить<x-ui.icon name="chevron-down" class="size-4"/></button>
+                    <button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="menu#toggle" aria-haspopup="menu" aria-controls="rate-menu">Оценить<x-ui.icon name="chevron-down" class="size-4"/></button>
                     <div id="rate-menu" class="menu" popover data-menu-target="list" role="menu">
                         <a href="/?preset={{ $preset }}&peek=first" class="menu-item" role="menuitem" data-action="menu#close">По одной</a>
                         <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close sheet#open">Из текста</button>
