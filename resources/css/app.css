@@ -1223,9 +1223,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      иначе расстояние от первой строки до второй было не таким, как от второй до третьей. */
   .cell-title { line-height: 1.25rem; }
   .cell-sub, .cell-extra { line-height: 1.125rem; }
-  /* Госномер на телефоне — в строке названия через пробел: название режется многоточием, номер виден всегда. На ПК
-     второй этаж и так в линию за названием — там номер во втором этаже, в названии его нет. */
-  .cell-title > .title-plate { display: none; }
+  /* Госномер — в строке названия сразу за ним, на любой ширине; значок связи — после номера (12.10.2026, владелец). Во
+     втором этаже номера нет. Название режется многоточием, номер виден всегда. */
+  .cell-title > .title-plate { display: inline; flex-shrink: 0; margin-left: .3em; font-size: var(--text-sm); }
+  .cell-sub .sub-plate { display: none; }
   /* Режется только само название (.cell-name), значки за ним — связь, «Рекомендуем», госномер — стоят целиком: раньше
      многоточие ставила ячейка, и значок связи налезал на точки. */
   .table td.grow .cell-title:has(> .cell-name) { display: flex; align-items: baseline; }
