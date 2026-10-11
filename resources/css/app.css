@@ -3760,3 +3760,11 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
     .btn[aria-busy="true"]::after { animation: none; border-top-color: var(--spin); opacity: .5; }
   }
 }
+
+/* Сворачивание групп таблицы (`group_fold_controller`, «Наличие», 12.10.2026): заголовок — кнопка, шеврон справа от имени,
+   свёрнутая — шеврон влево. */
+@layer components {
+  .table tbody tr.table-group.is-foldable, .table tbody tr.table-group.is-foldable:hover { cursor: pointer; }
+  .table tr.table-group .fold-chevron { display: inline-block; margin-left: .375rem; vertical-align: -.1em; color: var(--color-ink-dim); transition: rotate .15s; }
+  .table tr.table-group.is-folded .fold-chevron { rotate: -90deg; }
+}

@@ -3,7 +3,7 @@
      По убыванию», ниже поля строками, у текущего — лаймовая галка. Всё — ссылки: поле включается со своим
      естественным направлением, сегмент переворачивает текущее. Сортировка не по умолчанию — кнопка отмечена.
      Предзагрузки у ссылок нет: ListPrefs запомнил бы сортировку от наведения. --}}
-@props(['sort', 'url', 'name' => 'list'])
+@props(['sort', 'url', 'name' => 'list', 'toggles' => []])
 @php $id = 'sort-'.$name; @endphp
 <div class="contents" data-controller="sheet">
     <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 sort-btn" data-action="sheet#open" aria-controls="{{ $id }}" aria-label="Сортировка: {{ mb_strtolower($sort->label()) }}" @unless ($sort->isDefault()) aria-current="true" @endunless><x-ui.icon name="sort" class="size-5"/></button>
@@ -21,5 +21,17 @@
                 </a>
             @endforeach
         </div>
+        {{-- Переключатели вида рядом с сортировкой («По парковкам» в «Наличии», 12.10.2026): строка — ссылка на адрес с другим
+             значением, сам переключатель только показывает. --}}
+        @if ($toggles)
+            <div class="list mt-3">
+                @foreach ($toggles as [$label, $href, $on])
+                    <a href="{{ $href }}" class="row" data-turbo-action="replace" data-turbo-prefetch="false">
+                        <span class="min-w-0 flex-1">{{ $label }}</span>
+                        <input type="checkbox" class="switch pointer-events-none shrink-0" tabindex="-1" aria-hidden="true" @checked($on)>
+                    </a>
+                @endforeach
+            </div>
+        @endif
     </x-ui.sheet>
 </div>

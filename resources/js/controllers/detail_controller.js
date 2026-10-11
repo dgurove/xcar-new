@@ -399,7 +399,8 @@ export default class extends Controller {
             [rows[i + 1], rows[i - 1]].forEach((r) => r && fetchCard(this.urlFor(r)));
         }, 400);
     }
-    get rows() { return [...this.element.querySelectorAll('[data-detail-key]')]; }
+    // Свёрнутые группы (`group_fold_controller`) листанием ↑/↓ пропускаются.
+    get rows() { return [...this.element.querySelectorAll('[data-detail-key]')].filter((r) => !r.hidden); }
     get current() { return this.element.querySelector('[data-detail-key][aria-selected="true"]'); }
 
     // Нажатие по строке мимо её кнопок — её ссылка; по открытой — закрыть.

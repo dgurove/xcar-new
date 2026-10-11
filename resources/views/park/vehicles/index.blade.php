@@ -4,7 +4,12 @@
      или карточки. Справа — «Скачать»: тот же список файлом с колонками таблицы парковки (сверка с вендором). --}}
 @php use App\Support\ListView; $view = ListView::pick(request(), $vehicles->total()); @endphp
 <x-ui.shell title="Наличие" :count="$vehicles->total()" :detail="$detail" :phone-heading="false">
-    <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="vehicles" :facets="$facets"
+    @php
+        // «По парковкам» (12.10.2026, владелец): по умолчанию разбивать; выключили — плоский список, парковка в строке.
+        $flatUrl = fn (bool $flat) => request()->fullUrlWithQuery(['flat' => $flat ? '1' : '', 'peek' => null, 'page' => null]);
+        $toggles = $preset === 'out' ? [] : [['По парковкам', $flatUrl(! ($flat ?? false)), ! ($flat ?? false)]];
+    @endphp
+    <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="vehicles" :facets="$facets" :sort-toggles="$toggles"
                   search="Номер, VIN, госномер, СТС, марка" search-target="#cars" :q="$q">
         <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
         @if (auth()->user()->canManagePark())

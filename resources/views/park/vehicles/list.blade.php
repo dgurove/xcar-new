@@ -8,7 +8,8 @@
     $byMonth ??= false;
     // Выданные — свои столбцы (архив дела): принята, выдана со сроком стоянки, хранение с деньгами словом.
     $out ??= false;
-    $sort ??= \App\Support\Sort::from(request('sort'), \App\Http\Park\VehicleController::SORTS, '-days');
+    $sort ??= \App\Support\Sort::from(request('sort'), \App\Http\Park\VehicleController::SORTS, $out ? '-out' : 'accepted');
+    $flat ??= false;
     $groups = match (true) {
         $byMonth => $vehicles->getCollection()->groupBy(fn ($v) => $v->released_at?->format('Y-m') ?? ''),
         $grouped => $vehicles->getCollection()->groupBy(fn ($v) => $v->yard_id ?? 0)->sortBy(fn ($g, $id) => $id ? $g->first()->yard->name : "\u{10FFFF}"),
@@ -17,38 +18,39 @@
     $groupName = fn ($key, $group) => $byMonth
         ? ($key ? mb_convert_case(\Illuminate\Support\Carbon::createFromFormat('Y-m', $key)->translatedFormat('F Y'), MB_CASE_TITLE) : 'Без даты')
         : ($key ? $group->first()->yard->name : 'Без парковки');
-    // Шапка сортирует нажатием (x-ui.th): «Дней» и «Начислено».
+    // Шапка сортирует нажатием (x-ui.th) — каждый столбец (12.10.2026, владелец: «как в CRM»).
 @endphp
 @if ($vehicles->isEmpty())
     <x-ui.empty class="py-6">{{ $q !== '' ? 'Ничего не нашлось' : 'ТС нет' }}</x-ui.empty>
 @else
     @if (ListView::isTable($view))
-        <x-ui.table id="vehicles" :view="$view">
+        <x-ui.table id="vehicles" :view="$view" data-controller="table-scroll group-fold" data-group-fold-name-value="park-fold">
             <x-slot:head>
                 @if ($out)
                 <tr>
-                    <th class="grow">Марка, модель</th>
-                    <th class="hidden sm:table-cell">Вендор, № убытка</th>
-                    <th class="num col-detail-hide hidden lg:table-cell">Принята</th>
+                    <x-ui.th :sort="$sort" key="name" class="grow">Марка, модель</x-ui.th>
+                    <x-ui.th :sort="$sort" key="vendor" class="hidden sm:table-cell">Вендор, № убытка</x-ui.th>
+                    <x-ui.th :sort="$sort" key="accepted" class="num col-detail-hide hidden lg:table-cell">Принята</x-ui.th>
                     <x-ui.th :sort="$sort" key="out" class="num">Выдана</x-ui.th>
                     <x-ui.th :sort="$sort" key="amount" class="num">Хранение</x-ui.th>
                 </tr>
                 @else
                 <tr>
-                    <th class="grow">Марка, модель</th>
-                    <th class="hidden sm:table-cell">Вендор, № убытка</th>
-                    <th class="hidden sm:table-cell">Статус</th>
-                    <th class="num col-detail-hide hidden lg:table-cell">Принята</th>
+                    <x-ui.th :sort="$sort" key="name" class="grow">Марка, модель</x-ui.th>
+                    <x-ui.th :sort="$sort" key="vendor" class="hidden sm:table-cell">Вендор, № убытка</x-ui.th>
+                    <x-ui.th :sort="$sort" key="tasks" class="hidden sm:table-cell">Статус</x-ui.th>
+                    <x-ui.th :sort="$sort" key="accepted" class="num col-detail-hide hidden lg:table-cell">Принята</x-ui.th>
                     <x-ui.th :sort="$sort" key="days" class="num">Дней</x-ui.th>
-                    <th class="num hidden sm:table-cell">Ставка</th>
+                    <x-ui.th :sort="$sort" key="rate" class="num hidden sm:table-cell">Ставка</x-ui.th>
                     <x-ui.th :sort="$sort" key="amount" class="num">Начислено</x-ui.th>
                 </tr>
                 @endif
             </x-slot:head>
-            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, ($q !== '' || $byMonth) && auth()->user()?->seesYards(), $out); @endphp
+            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, ($q !== '' || $byMonth || $flat) && auth()->user()?->seesYards(), $out); @endphp
             @foreach ($groups as $key => $group)
                 @if ($grouped || $byMonth)
-                    <tr class="table-group"><th colspan="{{ $out ? 5 : 7 }}"><span class="table-group-name">{{ $groupName($key, $group) }} <span class="nums">{{ $group->count() }}</span></span></th></tr>
+                    {{-- Заголовок группы сворачивает её (12.10.2026, владелец): память по парковке или месяцу в браузере. --}}
+                    <tr class="table-group is-foldable" data-group-fold-target="head" data-fold-key="{{ $byMonth ? 'm' : 'y' }}{{ $key }}" data-action="click->group-fold#toggle"><th colspan="{{ $out ? 5 : 7 }}"><span class="table-group-name">{{ $groupName($key, $group) }} <span class="nums">{{ $group->count() }}</span></span><x-ui.icon name="chevron-down" class="fold-chevron size-4"/></th></tr>
                 @endif
                 @foreach ($group as $vehicle){!! $rows[$vehicle->id] !!}@endforeach
             @endforeach
