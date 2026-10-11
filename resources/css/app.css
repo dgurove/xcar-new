@@ -2958,6 +2958,16 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     background: var(--color-ground); font-size: var(--text-lg); font-weight: 500; color: var(--color-ink);
   }
   .cards-group:first-child { margin-top: 0; }
+  /* Полка «Нужно оценить» (11.10.2026): плитки одной строкой вбок — на телефоне 72 % ширины, видно край следующей, навылет
+     за поля; от 640 — по 18rem. Плитка та же, что в сетке. */
+  .cards-shelf {
+    grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 72%; gap: .75rem;
+    overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain;
+    margin-inline: -1rem; padding-inline: 1rem; scroll-padding-inline: 1rem;
+  }
+  .cards-shelf::-webkit-scrollbar { display: none; }
+  .cards-shelf > .card { scroll-snap-align: start; }
+  @media (min-width: 640px) { .cards-shelf { grid-auto-columns: 18rem; gap: 1rem; margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; } }
   .cards-group .nums { font-weight: 400; color: var(--color-ink-dim); }
   .card-body { grid-area: body; min-width: 0; display: flex; flex-direction: column; gap: var(--body-gap); padding: var(--body-pad); }
   .card-body:last-child { padding-bottom: var(--body-pad-end); }

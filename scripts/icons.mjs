@@ -127,7 +127,9 @@ const WM = { width: 1200, pad: 16, body: '#DCDCDC', bodyAlpha: 0.38, haloBlur: 3
     const size = { width: WM.width + WM.pad * 2, height: WM_H + WM.pad * 2 };
     const halo = await sharp(Buffer.from(shape('black', 1))).extend({ top: WM.pad, bottom: WM.pad, left: WM.pad, right: WM.pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .blur(WM.haloBlur).ensureAlpha().linear([1, 1, 1, WM.haloAlpha], [0, 0, 0, 0]).png().toBuffer();
-    const body = await sharp(Buffer.from(shape(WM.body, WM.bodyAlpha))).png().toBuffer();
+    // Тело — непрозрачным, прозрачность всему слою разом: пути логотипа перекрываются, и с прозрачностью у каждого пути
+    // на пересечениях выходили тёмные швы (11.10.2026, владелец: «слои полупрозрачные, накладываются»). Ореол — так же.
+    const body = await sharp(Buffer.from(shape(WM.body, 1))).ensureAlpha().linear([1, 1, 1, WM.bodyAlpha], [0, 0, 0, 0]).png().toBuffer();
     mkdirSync(at('../resources/images/'), { recursive: true });
     await sharp({ create: { ...size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
         .composite([{ input: halo, left: 0, top: 0 }, { input: body, left: WM.pad, top: WM.pad }])

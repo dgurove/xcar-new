@@ -25,6 +25,8 @@
     {{-- Слева галерея и описание, справа цена и характеристики: всё о машине — в первом экране. --}}
     <div class="grid gap-6 lg:grid-cols-[1fr_22rem] lg:gap-8">
         <div class="lg:col-start-1 lg:row-start-1">
+            {{-- Знак на кадрах поставила оценка — уйдёт вместе с ней (владелец 11.10.2026). Запрет шеринга админа — строки нет. --}}
+            @if ($offer->share_locked_by_estimate && $photos->isNotEmpty() && \App\Offers\Estimate::openFor($offer, $user))<p class="mb-2 text-sm text-ink-muted">Водяные знаки пропадут после оценки</p>@endif
             <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()"/>
         </div>
 

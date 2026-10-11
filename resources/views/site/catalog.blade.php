@@ -45,12 +45,16 @@
                         @endforeach
                     </x-ui.table>
                     @else
-                    <div class="{{ \App\Support\ListView::containerClass($view) }} mb-6" id="catalog-estimates">
+                    {{-- Лентой вбок (владелец 11.10.2026: плитки во всю ширину «гигантские»): узкие плитки одной строкой, сколько бы
+                         их ни было, на любом виде списка. --}}
+                    <section class="mb-6" id="catalog-estimates">
                         <h2 class="cards-group">Нужно оценить <span class="nums">{{ $toEstimate->count() }}</span></h2>
-                        @foreach ($toEstimate as $offer)
-                            <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>
-                        @endforeach
-                    </div>
+                        <div class="cards cards--grid cards-shelf">
+                            @foreach ($toEstimate as $offer)
+                                <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>
+                            @endforeach
+                        </div>
+                    </section>
                     @endif
                 @endif
                 @if ($estimated->isNotEmpty())

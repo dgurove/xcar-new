@@ -54,12 +54,18 @@
     <td class="num nums">
         {{-- На оценке: «Оценить» в строке, оценил — его сумма; под ней заявленная — ориентир (закупочной на сайте нет). --}}
         {{-- Корректировка — цена XCar числом, как цена в строке; оценка — кнопкой. Под ними заявленная. --}}
-        @if ($estimate)@if ($estimate->isGiven())<span>ваша {{ $price::money($estimate->amount) }}</span>@elseif ($estimate->isCorrection()){{ $price::money($estimate->base_price) }}@else<a href="{{ $href }}" class="btn btn-get">Оценить</a>@endif
-            @if ($estimate->showsDeclared() && $offer->declaredPrice())<span class="cell-sub">заявленная {{ $price::money($offer->declaredPrice()) }}</span>@endif
+        @if ($estimate)
+            {{-- Как цена соседних строк: «заявленная → …» — «Нужна оценка» или цена XCar; оценил — его сумма. --}}
+            @php $from = $estimate->showsDeclared() ? $offer->declaredPrice() : null; @endphp
+            @if ($estimate->isGiven())<span>ваша {{ $price::money($estimate->amount) }}</span>
+            @else
+                @if ($from)<span class="text-ink-muted">{{ $price::money($from) }} → </span>@endif{!! $estimate->isCorrection() ? e($price::money($estimate->base_price)) : '<span class="text-urgent">Нужна оценка</span>' !!}
+                @unless ($estimate->isCorrection())<a href="{{ $href }}" class="btn btn-get mt-1">Оценить</a>@endunless
+            @endif
         @elseif ($gallery)<a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
         @elseif ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
         {{-- Заявленная (менеджеру — закупочная для него) под ценой, пока стрелка «от → до» не влезает. --}}
-        @if ($price->shown() && $price->withFrom())<span class="cell-sub lg:hidden">{{ $price::money($price->from) }}</span>@endif
+        @if (! $estimate && $price->shown() && $price->withFrom())<span class="cell-sub lg:hidden">{{ $price::money($price->from) }}</span>@endif
         @if ($myBid)<span class="cell-sub">{{ $myBid->isGarage() ? 'в гараж' : 'ваша '.$price::money($myBid->amount) }}</span>@endif
     </td>
     <td class="cell-dim num col-detail-hide hidden sm:table-cell">{!! \App\Support\Ago::time($since) !!}</td>
