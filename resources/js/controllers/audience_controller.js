@@ -60,7 +60,16 @@ export default class extends Controller {
         name.textContent = this.name(r);
         const when = el('select', 'row-select');
         when.setAttribute('aria-label', `Когда: ${this.name(r)}`);
-        for (const [min, label] of this.optionsValue.delays || []) when.append(new Option(label, min, false, r.delay === min));
+        // Дни — группой «Через несколько дней»: 1–5 одним списком, а не пятью строками «Через N дней» вперемешку с часами.
+        let days = null;
+        for (const [min, label] of this.optionsValue.delays || []) {
+            if (min < DAY) {
+                when.append(new Option(label, min, false, r.delay === min));
+                continue;
+            }
+            days ??= when.appendChild(Object.assign(document.createElement('optgroup'), { label: 'Через несколько дней' }));
+            days.append(new Option(label, min, false, r.delay === min));
+        }
         when.append(new Option('Не показывать', 'never', false, r.delay === null));
         if (r.type !== 'rest') when.append(new Option('Убрать', 'drop'));
         when.addEventListener('change', () => {
@@ -113,6 +122,8 @@ export default class extends Controller {
         return text[0].toUpperCase() + text.slice(1);
     }
 }
+
+const DAY = 1440;
 
 function el(tag, cls) {
     const e = document.createElement(tag);
