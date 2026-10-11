@@ -19,7 +19,8 @@
         default => [$c->deal?->openRequirement ? 0 : 1, $c->state->order(), $c->stage_at?->timestamp ?? 0],
     }, SORT_REGULAR, $sort->desc)->values();
     $count = $open->count() + $pickups->count();
-    $view = ListView::pick(request(), $count + $closed->count());
+    // Гараж по умолчанию — строками (11.10.2026, владелец), не плитками, как остальные списки сайта.
+    $view = ListView::fromRequest(request()) ?? ListView::LIST;
     // Строка вывоза — те же поля, что у машины: слово вывоза цветом и дни.
     $pickupRow = function ($offer) use ($user) {
         [$word, $tone] = \App\Offers\PickupState::of($offer, $user);
