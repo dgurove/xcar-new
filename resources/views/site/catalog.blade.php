@@ -56,7 +56,8 @@
                 @if ($estimated->isNotEmpty())
                     <section class="mb-6" id="catalog-estimated">
                         <h2 class="list-head !px-0">Ждут решения <span class="nums">{{ $estimated->count() }}</span></h2>
-                        <div class="list">
+                        {{-- Строки — сеткой: на ПК одна строка во всю ширину пустовала. --}}
+                        <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                             @foreach ($estimated as $offer)
                                 <a href="/offers/{{ $offer->number }}" class="row">
                                     <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>

@@ -73,7 +73,10 @@
     <div class="card-aside">
         @if ($offer->settlement)<x-ui.place class="card-city text-sm text-ink-dim">{{ $offer->settlement->title() }}</x-ui.place>@endif
         <span class="card-price">
-            @if ($unpriced)
+            @if ($unpriced && $rate && $offer->relationLoaded('openEstimates') && $offer->openEstimates->contains->isGiven())
+                {{-- Менеджер оценил (11.10.2026): закупочная → его оценка, как «закупочная → продажи» у оценённого. --}}
+                @if ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;→&nbsp;</span>@endif<x-offer.rate-chip :offer="$offer"/>
+            @elseif ($unpriced)
                 @if ($rate)<x-offer.rate-chip :offer="$offer"/>@endif
                 @if ($offer->floor_price)<span class="nums">{{ Money::nums($offer->floor_price) }}&nbsp;₽</span>@endif
             {{-- Закупочная — слева от цены стрелкой (04.10.2026, владелец: «очень важно»), как в таблице. --}}

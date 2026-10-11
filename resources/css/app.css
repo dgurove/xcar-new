@@ -1435,13 +1435,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .pay-amount::placeholder { color: var(--color-ink-dim); }
   /* Оценка менеджером (11.10.2026): сумма крупно, как итог money-hero; под ней полоса 48 часов — сколько осталось. */
   .estimate .money-hero { @apply pt-2; }
-  .estimate-amount { font-size: 2.5rem; letter-spacing: -.01em; }
+  .estimate-amount { font-size: 2.5rem; letter-spacing: -.01em; min-width: 1ch; }
   .estimate-due { @apply mt-5 flex items-center gap-3 text-sm; }
   .estimate-bar { @apply h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3; }
   .estimate-bar > span { @apply block h-full rounded-full; background: var(--bar, var(--color-accent)); }
   .estimate-due--accent { --bar: var(--color-accent); @apply text-ink-muted; }
   .estimate-due--urgent { --bar: var(--color-urgent); color: var(--color-urgent); }
-  .estimate-due--danger { --bar: var(--color-danger); color: var(--color-danger); }
+  .estimate-due--danger { @apply justify-center; color: var(--color-danger); }
   /* Отправили — галочка в круге рисуется, как в разборе «Из текста». */
   .estimate-ok { @apply mb-3 size-14; fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
   .estimate-ok circle { stroke-dasharray: 176; stroke-dashoffset: 176; animation: valuation-draw .5s ease-out forwards; }

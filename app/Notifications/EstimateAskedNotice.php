@@ -12,11 +12,11 @@ final class EstimateAskedNotice extends EstimateNotice
 
     public function text(): ?string
     {
-        return 'Ваша оценка цены продажи '.$this->due();
+        return 'Срок '.$this->due();
     }
 
     public function toTelegram(): ?array
     {
-        return ['title' => 'Оцените '.$this->estimate->offer->titleWithYear(), 'lines' => $this->lines('Ваша оценка цены продажи '.$this->due()), 'button' => 'Оценить'];
+        return ['title' => 'Оцените '.$this->estimate->offer->titleWithYear(), 'lines' => $this->lines('Срок '.$this->due()), 'button' => 'Оценить'];
     }
 }

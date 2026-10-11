@@ -18,7 +18,7 @@
     @php $first = $waiting->first(); @endphp
     <a href="{{ $href }}" {{ $attributes->class(['inline-flex items-center gap-1.5 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false" title="Оценивает: {{ $waiting->map(fn ($e) => $e->user->shortName())->implode(', ') }}">
         <span class="flex -space-x-1.5">@foreach ($waiting->take(3) as $e)<x-ui.avatar :user="$e->user" :size="18" class="ring-2 ring-surface"/>@endforeach</span>
-        <x-offer.estimate-left :estimate="$first" word=""/>
+        <x-offer.estimate-left :estimate="$first" word="" short/>
     </a>
 @else
 <a href="{{ $href }}" {{ $attributes->class(['pill pill-accent !min-h-6 !py-0 !px-3 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false">{{ $label }}</a>
