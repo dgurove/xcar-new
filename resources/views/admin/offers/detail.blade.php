@@ -268,6 +268,6 @@
             @include('admin.offers.detail-tools')
         </x-slot:tools>
         {{-- Свежая строка — с галочкой, если список с галочками («Оцененные», «Публикация»). --}}
-        <x-slot:row>@if ($list)<x-offer.gallery-row :offer="$offer"/>@else<x-offer.table-row :offer="$offer" :checkable="$admin && ! $list && in_array(request('preset'), ['priced', 'slots'], true) && blank(request('q'))" :group="$offer->slot_at?->format('YmdHi')" :cols="$list ? null : \App\Http\Admin\OfferController::columns(request('preset'), auth()->user(), filled(request('q')))"/>@endif</x-slot:row>
+        <x-slot:row>@if ($list)<x-offer.gallery-row :offer="$offer"/>@else<x-offer.table-row :offer="$offer" :checkable="! $list && \App\Http\Admin\OfferController::pickable(auth()->user(), request('preset'), filled(request('q')))" :group="request('preset') === 'slots' ? $offer->slot_at?->format('YmdHi') : null" :cols="$list ? null : \App\Http\Admin\OfferController::columns(request('preset'), auth()->user(), filled(request('q')))"/>@endif</x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

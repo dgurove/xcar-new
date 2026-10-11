@@ -226,7 +226,7 @@ class OfferController
             'sort' => $searching ? null : $sort,
             'facets' => $facets,
             // Галочки и отправка — админу, в «Оцененных» и «Публикации».
-            'pick' => $admin && ! $searching && in_array($preset, ['priced', 'slots', 'archive'], true),
+            'pick' => self::pickable($request->user(), $preset, $searching),
             'cols' => self::columns($preset, $request->user(), $searching),
             'counts' => $counts,
             'ghosts' => $preset === 'legacy' && ! $searching && self::ghostsShown($facets) ? LegacyClaim::ghosts()->get() : collect(),
@@ -319,6 +319,16 @@ class OfferController
             default => $q->orderBy('offers.id', $dir),
         };
         $q->orderByDesc('offers.id');
+    }
+
+    /**
+     * Галочки первым столбцом — админу в «Оцененных», «Публикации» и «Архиве», не в поиске. Одна дверь для списка и свежей
+     * строки из карточки (`admin/offers/detail` → `row`): там своё правило без «Архива» давало строку без галочки, и
+     * открытая строка съезжала относительно соседей (11.10.2026).
+     */
+    public static function pickable(User $user, ?string $preset, bool $searching): bool
+    {
+        return $user->canManageCrm() && ! $searching && in_array($preset, ['priced', 'slots', 'archive'], true);
     }
 
     /** Группа опубликованного (PICK_GROUPS) — то же правило, что у порядка. */

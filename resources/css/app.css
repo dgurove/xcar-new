@@ -2564,6 +2564,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     body:has(.action-bar) .main-app, body.surface-site:has(.action-bar) #main { padding-bottom: 6rem; }
   }
   @media (min-width: 1280px) { .action-bar { right: max(2rem, calc((100% - var(--container-site)) / 2 + 2rem)); } }
+  /* Карточка строки открыта справа (от 1024) — парящие кнопки списка («Удалить навсегда», «Отправить в продажу») встают
+     левее неё, над своим списком, а не поверх карточки (11.10.2026). Свои кнопки карточки живут в её подвале. */
+  @media (min-width: 1024px) {
+    body:has(.split[data-open]) .action-bar:not(.split-detail .action-bar) { right: max(calc(1.5rem + 27rem), calc((100% - var(--container-site)) / 2 + 1.5rem + 27rem)); }
+  }
+  @media (min-width: 1280px) {
+    body:has(.split[data-open]) .action-bar:not(.split-detail .action-bar) { right: max(calc(2rem + 27rem), calc((100% - var(--container-site)) / 2 + 2rem + 27rem)); }
+  }
 }
 
 /* ------------------------------------------------------------- шторка документов */
