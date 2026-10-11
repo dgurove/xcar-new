@@ -97,4 +97,46 @@ class EstimateFlowTest extends TestCase
         // Запрет ставил админ — оценка его не снимает.
         $this->assertTrue($offer->share_locked);
     }
+
+    public function test_correction_agree_take_keep_and_schedule(): void
+    {
+        $offer = $this->draft();
+        $offer->forceFill(['asking_price' => 1200000])->save();
+        $admin = $this->user('Админов Андрей', Role::Admin);
+        [$ivan, $petr] = [$this->user('Иванов Иван', Role::Manager), $this->user('Петров Пётр', Role::Manager)];
+
+        app(AskEstimates::class)($offer->fresh(), [$ivan, $petr], $admin);
+        $ask = Estimate::openFor($offer, $ivan);
+        $this->assertTrue($ask->isCorrection());
+        $this->assertSame(1200000, $ask->base_price);
+
+        // «Согласен» — его сумма и есть цена админа; решать нечего.
+        app(GiveEstimate::class)($ask, 1200000, $ivan);
+        $this->assertTrue($ask->fresh()->agreed());
+        $this->assertSame(0, Estimate::needsDecision()->count());
+
+        // Своя цена — решать админу; «Взять» ставит её ценой продажи и закрывает остальные.
+        $own = Estimate::openFor($offer, $petr);
+        app(GiveEstimate::class)($own, 1150000, $petr);
+        $this->assertSame(1, Estimate::needsDecision()->count());
+        app(TakeEstimate::class)($own->fresh(), $admin);
+        $this->assertSame(1150000, $offer->fresh()->asking_price);
+        $this->assertSame(0, $offer->estimates()->open()->count());
+
+        // «Оставить свою» — цена прежняя, просьбы закрыты.
+        app(AskEstimates::class)($offer->fresh(), [$ivan], $admin);
+        app(GiveEstimate::class)(Estimate::openFor($offer, $ivan), 1100000, $ivan);
+        app(\App\Offers\Actions\CloseEstimates::class)($offer->fresh(), $admin, keep: true);
+        $this->assertSame(1150000, $offer->fresh()->asking_price);
+        $this->assertSame(0, $offer->estimates()->open()->count());
+
+        // Отправили в продажу слотом, пока ждём, — просьбы снимаются сами.
+        \Spatie\MediaLibrary\MediaCollections\Models\Media::create(['model_type' => Offer::class, 'model_id' => $offer->id, 'collection_name' => 'photos',
+            'name' => 'кадр', 'file_name' => 'kadr.jpg', 'mime_type' => 'image/jpeg', 'disk' => 'media', 'size' => 10,
+            'manipulations' => [], 'custom_properties' => [], 'generated_conversions' => [], 'responsive_images' => []]);
+        app(AskEstimates::class)($offer->fresh(), [$petr], $admin);
+        $this->assertSame(1, $offer->estimates()->open()->count());
+        app(\App\Offers\Actions\ScheduleOffer::class)->__invoke($offer->fresh(), 'next', $admin);
+        $this->assertSame(0, $offer->estimates()->open()->count());
+    }
 }

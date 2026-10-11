@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * у каждого 48 часов; оценка — ориентир под полем цены продажи в CRM, ценой она становится только по «Взять».
  * Срок вышел — просьба висит просроченной, пока менеджер не оценит или админ не снимет. Действия — `Actions\*Estimate*`.
  */
-#[Fillable(['offer_id', 'user_id', 'asked_by', 'state', 'due_at', 'amount', 'estimated_at', 'rejected_amount', 'rejected_at', 'reminded_at'])]
+#[Fillable(['offer_id', 'user_id', 'asked_by', 'state', 'due_at', 'base_price', 'amount', 'estimated_at', 'rejected_amount', 'rejected_at', 'reminded_at'])]
 class Estimate extends Model
 {
     protected $table = 'offer_estimates';
@@ -33,6 +33,7 @@ class Estimate extends Model
             'rejected_at' => 'datetime',
             'reminded_at' => 'datetime',
             'amount' => 'integer',
+            'base_price' => 'integer',
             'rejected_amount' => 'integer',
         ];
     }
@@ -62,6 +63,12 @@ class Estimate extends Model
         return $q->where('offer_estimates.state', EstimateState::Given);
     }
 
+    /** Ответ, по которому решать админу: оценка без цены или своя цена вместо цены админа (не «Согласен»). */
+    public function scopeNeedsDecision(Builder $q): Builder
+    {
+        return $q->given()->where(fn ($w) => $w->whereNull('offer_estimates.base_price')->orWhereColumn('offer_estimates.amount', '!=', 'offer_estimates.base_price'));
+    }
+
     public function isOpen(): bool
     {
         return $this->state->isOpen();
@@ -70,6 +77,27 @@ class Estimate extends Model
     public function isGiven(): bool
     {
         return $this->state === EstimateState::Given;
+    }
+
+    /**
+     * Корректировка (11.10.2026): админ цену поставил и спрашивает, согласны ли (`base_price` — его цена на момент просьбы).
+     * Иначе оценка черновика без цены.
+     */
+    public function isCorrection(): bool
+    {
+        return $this->base_price !== null;
+    }
+
+    /** Ответ на корректировку — «Согласен»: его сумма и есть цена админа. */
+    public function agreed(): bool
+    {
+        return $this->isCorrection() && $this->isGiven() && $this->amount === $this->base_price;
+    }
+
+    /** Предложил свою цену вместо цены админа — решение за админом. */
+    public function proposes(): bool
+    {
+        return $this->isGiven() && ! $this->agreed();
     }
 
     /** Ждём менеджера, а срок вышел. Оценённая не просрочена: дальше ход админа. */

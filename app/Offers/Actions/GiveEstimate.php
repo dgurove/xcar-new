@@ -28,7 +28,7 @@ final class GiveEstimate
             return $estimate;
         }
         $estimate->update(['state' => EstimateState::Given, 'amount' => $amount, 'estimated_at' => now()]);
-        $estimate->offer->log(OfferEventType::Estimate, $by, ['do' => 'given', 'amount' => $amount]);
+        $estimate->offer->log(OfferEventType::Estimate, $by, array_filter(['do' => 'given', 'amount' => $amount, 'agreed' => $estimate->agreed() ?: null]));
         Nav::forgetStaffCounts();
         EstimateGiven::dispatch($estimate, $by);
 

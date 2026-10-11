@@ -33,6 +33,10 @@ final class OfferEstimateController
     {
         abort_unless($estimate->offer_id === $offer->id, 404);
         $take($estimate, $request->user());
+        // Корректировка: строка остаётся в «Оцененных» с новой ценой — карточка просто перечитывается.
+        if ($estimate->isCorrection()) {
+            return back()->with('toast', 'Цена продажи: '.Money::rub($estimate->amount))->with('detail-counts', OfferController::counts($request->user()));
+        }
 
         return back()->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', OfferController::counts($request->user()))
             ->with('toast', 'Оценено: '.Money::rub($estimate->amount));
@@ -44,6 +48,15 @@ final class OfferEstimateController
         $reject($estimate, $request->user());
 
         return back()->with('toast', 'Оценка отклонена')->with('detail-counts', OfferController::counts($request->user()));
+    }
+
+    /** «Оставить свою» у корректировки: цена админа остаётся, просьбы закрываются. */
+    public function keep(Request $request, Offer $offer, CloseEstimates $close)
+    {
+        $close($offer, $request->user(), keep: true);
+
+        return back()->with('toast', 'Цена '.Money::rub((int) $offer->asking_price).' остаётся')
+            ->with('detail-counts', OfferController::counts($request->user()));
     }
 
     public function destroy(Request $request, Offer $offer, Estimate $estimate, CloseEstimates $close)

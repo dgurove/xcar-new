@@ -102,7 +102,7 @@
         @if ($when)<span class="num-meta sm:hidden">{{ $when->translatedFormat($when->isToday() ? 'H:i' : ($when->isCurrentYear() ? 'j M' : 'j M Y')) }}@if ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="16" title="{{ $offer->moderator->name }}"/>@endif</span>@endif
         @if ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)
-        @elseif ($price->shown()){{ $price::money($price->to) }}
+        @elseif ($price->shown()){{ $price::money($price->to) }}@if ($offer->state === \App\Offers\OfferState::Draft && auth()->user()?->canManageCrm())<span class="mt-1 flex justify-end"><x-offer.correction-chip :offer="$offer"/></span>@endif
         @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
         {{-- Телефон: подтверждения — под ценой, а не в конце второй строки: там их съедало «…» за номерами (владелец
              04.10.2026: «самое важное, никогда нельзя скрывать»). Есть подтверждения — они вместо закупочной. --}}

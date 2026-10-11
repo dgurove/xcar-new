@@ -22,6 +22,8 @@
     if ($offer->state !== OfferState::Sold) $transitions = $transitions->except(OfferState::Open->value);
     // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
     $rate = $admin && $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled();
+    // Оценённый черновик («Оцененные»), пока не в слоте — корректировки менеджеров и «+ Спросить менеджеров» (11.10.2026).
+    $correct = $admin && $offer->state === OfferState::Draft && $offer->asking_price && ! $offer->isScheduled();
     // Закупочной нет — сначала она (вкладка «Без закупочной цены», 05.10.2026): у всех, и у модератора; у админа — на месте
     // «Оценить», цену продажи без закупочной не ставят. У Альфы первой — оценочная, закупочная от неё на лету.
     $floorFirst = $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->floor_price && ! $offer->isScheduled();
@@ -123,6 +125,11 @@
                             <x-offer.pickup-form :offer="$offer" :managers="$managers" prefix="detail-pickup-{{ $n }}"/>
                         </div>
                     @endif
+                </div>
+            @elseif ($correct)
+                {{-- Цена поставлена, админ не уверен — менеджерам на корректировку: «Согласен» или своя цена. --}}
+                <div class="flex w-full flex-col rounded-(--radius-l) bg-surface-2 p-3">
+                    @include('admin.offers.estimates', ['correction' => true])
                 </div>
             @endif
             @if ($admin && $offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif

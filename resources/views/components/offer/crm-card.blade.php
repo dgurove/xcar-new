@@ -80,7 +80,7 @@
                 @if ($rate)<x-offer.rate-chip :offer="$offer"/>@endif
                 @if ($offer->floor_price)<span class="nums">{{ Money::nums($offer->floor_price) }}&nbsp;₽</span>@endif
             {{-- Закупочная — слева от цены стрелкой (04.10.2026, владелец: «очень важно»), как в таблице. --}}
-            @elseif ($price->shown())@if ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;→&nbsp;</span>@endif<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>
+            @elseif ($price->shown())@if ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;→&nbsp;</span>@endif<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>@if ($draft && $admin)<x-offer.correction-chip :offer="$offer"/>@endif
             @elseif ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;₽</span>
             @elseif ($gallery)<span class="text-sm text-accent-text">скоро</span>@endif
         </span>

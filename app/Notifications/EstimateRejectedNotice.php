@@ -9,19 +9,19 @@ final class EstimateRejectedNotice extends EstimateNotice
 {
     public function title(): string
     {
-        return 'Оценку '.$this->estimate->offer->titleWithYear().' отклонили';
+        return ($this->estimate->isCorrection() ? 'Цену ' : 'Оценку ').$this->estimate->offer->titleWithYear().' отклонили';
     }
 
     public function text(): ?string
     {
-        return 'Оцените ещё раз '.$this->due();
+        return ($this->estimate->isCorrection() ? 'Предложите снова ' : 'Оцените ещё раз ').$this->due();
     }
 
     public function toTelegram(): ?array
     {
-        return ['title' => 'Оценку '.$this->estimate->offer->titleWithYear().' отклонили', 'lines' => $this->lines(
-            $this->estimate->rejected_amount ? 'Ваша оценка '.Money::rub($this->estimate->rejected_amount) : null,
-            'Оцените ещё раз '.$this->due(),
-        ), 'button' => 'Оценить'];
+        return ['title' => $this->title(), 'lines' => $this->lines(
+            $this->estimate->rejected_amount ? 'Ваша '.($this->estimate->isCorrection() ? 'цена ' : 'оценка ').Money::rub($this->estimate->rejected_amount) : null,
+            $this->text(),
+        ), 'button' => $this->estimate->isCorrection() ? 'Проверить' : 'Оценить'];
     }
 }

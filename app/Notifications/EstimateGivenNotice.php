@@ -14,7 +14,13 @@ final class EstimateGivenNotice extends Notice
 
     public function title(): string
     {
-        return $this->estimate->user->shortName().': оценка '.Money::rub($this->estimate->amount);
+        $e = $this->estimate;
+
+        return $e->user->shortName().': '.match (true) {
+            $e->agreed() => 'согласен с ценой '.Money::rub($e->amount),
+            $e->isCorrection() => Money::rub($e->amount).' вместо '.Money::rub($e->base_price),
+            default => 'оценка '.Money::rub($e->amount),
+        };
     }
 
     public function text(): ?string
@@ -24,7 +30,7 @@ final class EstimateGivenNotice extends Notice
 
     public function href(): string
     {
-        return Surface::Crm->url('/?'.http_build_query(['preset' => 'unpriced', 'vid' => 'table', 'peek' => $this->estimate->offer->number]));
+        return Surface::Crm->url('/?'.http_build_query(['vid' => 'table', 'preset' => $this->estimate->isCorrection() ? 'priced' : 'unpriced', 'peek' => $this->estimate->offer->number]));
     }
 
     public function category(): string
@@ -32,9 +38,15 @@ final class EstimateGivenNotice extends Notice
         return 'bids';
     }
 
+    /** Своя цена или оценка — решать админу, со звуком; «Согласен» с его ценой — тихо, строкой в ленте. */
     public function important(): bool
     {
-        return true;
+        return ! $this->estimate->agreed();
+    }
+
+    public function quiet(): bool
+    {
+        return $this->estimate->agreed();
     }
 
     public function actor(): ?User

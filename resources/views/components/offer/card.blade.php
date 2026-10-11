@@ -87,7 +87,9 @@
     <span class="card-aside">
         @if ($estimate)
             {{-- Цены продажи ещё нет — ориентир менеджеру заявленная (владелец 11.10.2026), закупочной на сайте нет. --}}
-            @if ($offer->declaredPrice())<span class="nums text-sm text-ink-muted">заявленная {{ $price::money($offer->declaredPrice()) }}&nbsp;₽</span>@endif
+            {{-- Корректировка — цена XCar, которую проверить; оценка — заявленная ориентиром. --}}
+            @if ($estimate->isCorrection())<span class="nums text-sm">цена XCar {{ $price::money($estimate->base_price) }}&nbsp;₽</span>
+            @elseif ($offer->declaredPrice())<span class="nums text-sm text-ink-muted">заявленная {{ $price::money($offer->declaredPrice()) }}&nbsp;₽</span>@endif
         @elseif ($prices)
             @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
             @if ($price->declared)<span class="nums text-xs text-ink-dim">заявленная {{ $price::money($price->declared) }}</span>@endif
@@ -102,7 +104,7 @@
     <div class="card-action">
         {{-- Глагол — лаймовой капсулой .btn-get, переход («Открыть») и сделанное — тихой; чат и показ — значками. --}}
         @if ($estimate)
-            <a href="{{ $href }}" class="btn btn-get nums {{ $estimate->isGiven() ? 'btn-get-quiet' : '' }}">{{ $estimate->isGiven() ? 'Ваша оценка '.\App\Support\Money::nums($estimate->amount) : 'Оценить' }}</a>
+            <a href="{{ $href }}" class="btn btn-get nums {{ $estimate->isGiven() ? 'btn-get-quiet' : '' }}">{{ $estimate->isGiven() ? 'Ваша оценка '.\App\Support\Money::nums($estimate->amount) : ($estimate->isCorrection() ? 'Проверить цену' : 'Оценить') }}</a>
         @elseif ($user?->isBuyer())
             {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
             <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>

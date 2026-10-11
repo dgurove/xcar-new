@@ -14,14 +14,20 @@ class EstimateController
 {
     public function store(Request $request, Offer $offer, GiveEstimate $give)
     {
-        $raw = (string) $request->validate(['amount' => ['required', 'string', 'max:30']], ['amount.required' => 'Укажите цену'])['amount'];
-        $amount = (int) preg_replace('/\D+/', '', preg_split('/[,.]/', $raw)[0]);
         $estimate = Estimate::openFor($offer, $request->user());
         if (! $estimate) {
             throw ValidationException::withMessages(['amount' => 'Оценка уже не нужна']);
         }
+        // Корректировка: «Согласен» — его сумма и есть цена админа.
+        if ($request->boolean('agree') && $estimate->isCorrection()) {
+            $give($estimate, $estimate->base_price, $request->user());
+
+            return back()->with('toast', 'Вы согласны с ценой '.Money::rub($estimate->base_price));
+        }
+        $raw = (string) $request->validate(['amount' => ['required', 'string', 'max:30']], ['amount.required' => 'Укажите цену'])['amount'];
+        $amount = (int) preg_replace('/\D+/', '', preg_split('/[,.]/', $raw)[0]);
         $give($estimate, $amount, $request->user());
 
-        return back()->with('toast', 'Оценка '.Money::rub($amount).' отправлена');
+        return back()->with('toast', ($estimate->isCorrection() ? 'Ваша цена ' : 'Оценка ').Money::rub($amount).' отправлена');
     }
 }

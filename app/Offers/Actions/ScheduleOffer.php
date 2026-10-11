@@ -30,6 +30,8 @@ final class ScheduleOffer
         ChangeOfferState::assertReady($offer);
         $offer->forceFill(['slot_at' => $at, 'slot_by' => $by->id])->save();
         $offer->log(OfferEventType::Scheduled, $by, ['at' => $at->toDateTimeString()]);
+        // Отправили в продажу — корректировки менеджеров больше не нужны (владелец 11.10.2026: «можно и пока не ответили»).
+        app(CloseEstimates::class)($offer, $by);
 
         return $offer;
     }

@@ -1,19 +1,15 @@
 import { Controller } from '@hotwired/stimulus';
 
-// «Изменить оценку» (11.10.2026): вместо карточки «отправлена» — то же поле с нынешней суммой, «Отмена» возвращает
-// карточку. Две крупные суммы подряд не стоят.
+// Лист оценки менеджера (11.10.2026) — одна из панелей на виду: «отправлена» (done), выбор корректировки «Согласен /
+// Предложить свою» (choose) или поле суммы (form). Переключение — без перезагрузки; у поля сумма сразу выделена.
 export default class extends Controller {
-    static targets = ['done', 'form', 'input'];
+    static targets = ['pane', 'input'];
 
-    edit() {
-        this.doneTarget.hidden = true;
-        this.formTarget.hidden = false;
-        this.inputTarget.focus();
-        this.inputTarget.select();
-    }
-
-    cancel() {
-        this.formTarget.hidden = true;
-        this.doneTarget.hidden = false;
+    show({ params: { pane } }) {
+        this.paneTargets.forEach((p) => { p.hidden = p.dataset.pane !== pane; });
+        if (pane === 'form' && this.hasInputTarget) {
+            this.inputTarget.focus();
+            this.inputTarget.select();
+        }
     }
 }

@@ -9,7 +9,7 @@ final class EstimateTakenNotice extends EstimateNotice
 {
     public function title(): string
     {
-        return 'Вашу оценку взяли: '.Money::rub($this->estimate->amount);
+        return ($this->estimate->isCorrection() ? 'Взяли вашу цену ' : 'Вашу оценку взяли: ').Money::rub($this->estimate->amount);
     }
 
     public function text(): ?string

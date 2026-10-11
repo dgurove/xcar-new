@@ -603,7 +603,7 @@ final class Nav
             $badges = [
                 // Раздел «Предложения» горит и подтверждениями, и оценками менеджеров, ждущими решения (11.10.2026).
                 '/' => Bid::where('state', BidState::Active)->count()
-                    + Offer::where('state', OfferState::Draft)->whereHas('estimates', fn ($e) => $e->given())->count(),
+                    + Offer::where('state', OfferState::Draft)->whereHas('estimates', fn ($e) => $e->needsDecision())->count(),
                 '/offers/from-mail' => Boxes::registerCount(Scope::Offers),
                 '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),

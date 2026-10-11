@@ -183,6 +183,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/rate', [OfferController::class, 'rate']);
         // Оценка менеджером (11.10.2026): «Отдать менеджеру на оценку», «Взять», «Отклонить», «×».
         Route::post('/offers/{offer}/estimates', [OfferEstimateController::class, 'store']);
+        Route::post('/offers/{offer}/estimates/keep', [OfferEstimateController::class, 'keep']);
         Route::post('/offers/{offer}/estimates/{estimate}/take', [OfferEstimateController::class, 'take']);
         Route::post('/offers/{offer}/estimates/{estimate}/reject', [OfferEstimateController::class, 'reject']);
         Route::delete('/offers/{offer}/estimates/{estimate}', [OfferEstimateController::class, 'destroy']);

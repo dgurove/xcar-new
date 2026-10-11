@@ -10,7 +10,7 @@
     // Рядом с кружком «показать» длинная подпись не помещается на 375 px — коротко.
     // На оценке (11.10.2026): «Оценить» / «Ваша оценка N» открывают тот же лист цены.
     $estimate = $offer->state === \App\Offers\OfferState::Draft && $user?->isManager() ? \App\Offers\Estimate::openFor($offer, $user) : null;
-    $label = $estimate ? ($estimate->isGiven() ? 'Ваша оценка '.\App\Support\Money::nums($estimate->amount) : 'Оценить') : ($canBid && $prices ? ($myBid ? ($canShow ? 'Изменить' : 'Изменить предложение') : ($canShow ? 'Подтвердить' : 'Подтвердить предложение')) : ($interest ? ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') : null));
+    $label = $estimate ? ($estimate->isGiven() ? ($estimate->isCorrection() ? 'Ваш ответ' : 'Ваша оценка '.\App\Support\Money::nums($estimate->amount)) : ($estimate->isCorrection() ? 'Проверить цену' : 'Оценить')) : ($canBid && $prices ? ($myBid ? ($canShow ? 'Изменить' : 'Изменить предложение') : ($canShow ? 'Подтвердить' : 'Подтвердить предложение')) : ($interest ? ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') : null));
 @endphp
 @if ($label || $canShow)
     <x-ui.action-bar class="lg:hidden">

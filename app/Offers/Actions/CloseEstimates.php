@@ -20,12 +20,15 @@ use App\Users\User;
  */
 final class CloseEstimates
 {
-    public function __invoke(Offer $offer, ?User $by = null, ?array $only = null): void
+    /** @param  bool  $keep  «Оставить свою» у корректировки: цена админа остаётся, просьбы закрываются (в истории — словами) */
+    public function __invoke(Offer $offer, ?User $by = null, ?array $only = null, bool $keep = false): void
     {
         $open = $offer->estimates()->open()->when($only !== null, fn ($q) => $q->whereIn('id', $only))->get(['id', 'user_id']);
         if ($open->isNotEmpty()) {
             Estimate::whereIn('id', $open->pluck('id'))->update(['state' => EstimateState::Closed, 'updated_at' => now()]);
-            if ($only !== null) {
+            if ($keep) {
+                $offer->log(OfferEventType::Estimate, $by, ['do' => 'kept', 'amount' => $offer->asking_price]);
+            } elseif ($only !== null) {
                 $offer->log(OfferEventType::Estimate, $by, ['do' => 'closed', 'users' => $open->pluck('user_id')->all()]);
             }
         }

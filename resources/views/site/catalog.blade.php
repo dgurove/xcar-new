@@ -63,7 +63,8 @@
                                     <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
                                     <span class="min-w-0 flex-1">
                                         <span class="block truncate">{{ $offer->titleWithYear() }}</span>
-                                        <span class="row-sub nums">ваша оценка {{ \App\Support\Money::rub($offer->openEstimates->first()->amount) }}</span>
+                                        @php $e = $offer->openEstimates->first(); @endphp
+                                        <span class="row-sub nums">{{ match (true) { $e->agreed() => 'вы согласны с ценой '.\App\Support\Money::rub($e->amount), $e->isCorrection() => 'ваша цена '.\App\Support\Money::rub($e->amount), default => 'ваша оценка '.\App\Support\Money::rub($e->amount) } }}</span>
                                     </span>
                                     <x-ui.chevron/>
                                 </a>

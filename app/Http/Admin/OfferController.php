@@ -299,7 +299,7 @@ class OfferController
             $preset === 'slots' => $q->orderBy('slot_at'),
             $pick => $q->orderByRaw(self::PICK_GROUP),
             // Менеджер оценил — решение за админом: такие строки первыми (11.10.2026), дальше выбранный порядок.
-            $preset === 'unpriced' && $sort->isDefault() => $q->orderByRaw("exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given') desc"),
+            in_array($preset, ['unpriced', 'priced'], true) && $sort->isDefault() => $q->orderByRaw("exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given' and (e.base_price is null or e.amount <> e.base_price)) desc"),
             default => null,
         };
         // Закрытие приёма у групп опубликованного — как было: в «Выбрать» и «Идёт приём» ближние выше, в «Без
@@ -399,9 +399,10 @@ class OfferController
             }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки.
             $counts[$key] = $q->count() + ($key === 'legacy' && self::ghostsShown($facets) ? LegacyClaim::ghosts()->count() : 0);
-            // Лаймовый бейдж у «Без продажной цены» — сколько оценок менеджеров ждут решения (11.10.2026).
-            if ($key === 'unpriced' && $user->canManageCrm()) {
-                $counts['unpriced_given'] = (clone $q)->whereHas('estimates', fn ($e) => $e->given())->count();
+            // Лаймовый бейдж у «Без продажной цены» и «Оцененных» — сколько ответов менеджеров ждут решения: оценки и свои цены
+            // вместо цены админа («Согласен» решения не ждёт), 11.10.2026.
+            if (in_array($key, ['unpriced', 'priced'], true) && $user->canManageCrm()) {
+                $counts[$key.'_given'] = (clone $q)->whereHas('estimates', fn ($e) => $e->needsDecision())->count();
             }
         }
 
@@ -565,8 +566,8 @@ class OfferController
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'chats' => $admin ? Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']) : collect(),
             'list' => $gallery ?? $request->boolean('gallery'),
-            // Кому отдать в гараж — только у черновика без цены (блок «Оценить» / «В гараж»).
-            'managers' => $admin && $offer->state === OfferState::Draft && ! $offer->asking_price ? User::withRole(Role::Manager)->with(User::withAvatar())->orderBy('name')->get() : collect(),
+            // Кому отдать в гараж и на оценку — у черновика без цены; на корректировку — у оценённого, пока не в слоте.
+            'managers' => $admin && $offer->state === OfferState::Draft && ! $offer->isScheduled() ? User::withRole(Role::Manager)->with(User::withAvatar())->orderBy('name')->get() : collect(),
         ]);
     }
 
