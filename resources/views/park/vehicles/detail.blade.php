@@ -90,7 +90,15 @@
         </div>
         @if ($handedTo)<p class="text-ink-muted">{{ $handedTo }}{{ $released && ! empty($released->payload['pass']) ? ', по QR' : ($released && ! empty($released->payload['without_qr']) ? ', без QR' : '') }}</p>@endif
         @unless ($fromRequests ?? false)<x-park.sale :vehicle="$vehicle" forms/>@endunless
-        @if ($task)@include('park.vehicles.task')@endif
+        @if ($task)
+            @include('park.vehicles.task')
+        @elseif ($messages->isNotEmpty())
+            {{-- Без заявки — письма ТС той же лентой, что в задаче и деле (x-mail.letters). --}}
+            <section class="mt-3">
+                <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ \App\Mail\Chains\NodeTitle::count($messages) }}</span></h2>
+                <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :reply="! $state->isFinal()"/>
+            </section>
+        @endif
         <x-park.date-forms :vehicle="$vehicle"/>
         @if (! $task && in_array($state, [VehicleState::Expected, VehicleState::Stored], true))
             <form method="post" action="/requests" id="spawn-{{ $vehicle->id }}" hidden>@csrf<input type="hidden" name="type" value="{{ $state === VehicleState::Expected ? 'intake' : 'release' }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>

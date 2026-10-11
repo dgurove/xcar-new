@@ -83,6 +83,7 @@ class GarageController
             return view('admin.garage.gone', ['key' => $offer->number]);
         }
 
-        return view('admin.garage.detail', ['garageView' => $view]);
+        // Письма по машине — как в карточке сделки и предложения (`OfferFiles::letters`): с почтой — тем, у кого она есть.
+        return view('admin.garage.detail', ['garageView' => $view] + (request()->user()->canCrmMail() ? \App\Offers\OfferFiles::letters($offer, request()->user()) : ['letters' => 0]));
     }
 }

@@ -82,7 +82,7 @@ final class CaseView
             'verb' => $open?->verb(),
             'phases' => $vehicle->requests->filter(fn (Request $r) => $r->state === RequestState::Done)->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
             'others' => $vehicle->requests->filter(fn (Request $r) => $r->isOpen() && $open && $r->isNot($open))->values(),
-            'letters' => $messages->count(),
+            'letters' => \App\Mail\Chains\NodeTitle::count($messages),
             'steps' => Timeline::for($vehicle, $open, $messages->isNotEmpty() || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $asks, $pass),
             'asks' => $asks,
             'threads' => $threads,

@@ -1,6 +1,6 @@
 {{-- Карточка машины в «Работе → Гараже»: кадры, название с этапом словом у него, ниже фразой — чья, кто платил поставщику и
      сколько дней на этапе (10.10.2026: прежде чип человека и слово этапа стояли рядом капсулами); дальше то же, что в
-     карточке «Гараж» редактора — путь, деньги (с закупочной), расходы и действия сотрудника. «Открыть страницу» —
+     карточке «Гараж» редактора — путь, деньги (с закупочной), расходы и действия сотрудника, письма по машине строками. «Открыть страницу» —
      редактор предложения в CRM. --}}
 @php $offer = $garageView['offer']; $car = $garageView['car']; @endphp
 <x-ui.detail>
@@ -12,6 +12,12 @@
             @unless ($car->isSold())<span>{{ \App\Garage\CarLine::days($car->stageDays()) }} на этапе</span>@endunless
         </x-slot:line>
         <div class="mt-4">@include('admin.offers.garage-card', ['routeHere' => true])</div>
+        @if ($letters)
+            <section class="mt-5">
+                <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
+                <x-mail.letters :messages="$messages" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" :stages="$stages"/>
+            </section>
+        @endif
         {{-- «Вернуть в продажу» из «⋯» карточки — шторка с ценами (в редакторе её ставит сам редактор). --}}
         <x-offer.resale-sheet :offer="$offer"/>
     </x-ui.row-card>

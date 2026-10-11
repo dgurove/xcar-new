@@ -182,8 +182,9 @@ class VehicleController
         $letterId = $task?->type === RequestType::Release && $vehicle->sold_message_id ? $vehicle->sold_message_id : $task?->letter_id;
         // Письмо заявки — пометкой среди всех писем ТС (строки, как в «Почте»).
         $letterId ??= $task?->thread_id ? Message::where('thread_id', $task->thread_id)->where('direction', Direction::In)->orderBy('date_at')->value('id') : null;
-        $messages = $task ? Message::whereIn('thread_id', Thread::ofCar($vehicle, $request->user())->select('id'))
-            ->with(['author', 'attachments', 'account'])->orderBy('date_at')->orderBy('id')->get() : collect();
+        // Все письма ТС — и в карточке «Наличия» без заявки (11.10.2026, владелец: «в окошках очень не хватает писем»).
+        $messages = Message::whereIn('thread_id', Thread::ofCar($vehicle, $request->user())->select('id'))
+            ->with(['author', 'attachments', 'account'])->orderBy('date_at')->orderBy('id')->get();
 
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
 

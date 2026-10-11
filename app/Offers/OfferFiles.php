@@ -3,6 +3,7 @@
 namespace App\Offers;
 
 use App\Mail\Candidate;
+use App\Mail\Chains\NodeTitle;
 use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Thread;
@@ -40,7 +41,7 @@ final class OfferFiles
 
         return [
             'messages' => $messages,
-            'letters' => $messages->count(),
+            'letters' => NodeTitle::count($messages),
             'asks' => $messages->filter(fn (Message $m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->values(),
             'stages' => $messages->isEmpty() ? collect() : collect(Candidate::where('offer_id', $offer->id)->latest('id')->first(['id', 'stages'])?->stages ?? [])->pluck('message_id'),
         ];

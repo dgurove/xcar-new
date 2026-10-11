@@ -1,7 +1,7 @@
 {{-- Карточка сделки рядом со списком (фрейм detail): почти вся сделка шириной телефона — кадры, состояние, номер убытка с
      логотипом, № предложения, телефон менеджера, сумма; сразу под шапкой — чат с менеджером (07.10.2026, владелец: «чат на
-     видное место, он чуть ли не самый важный во время сделки»), дальше путь маршрута с выходами, деньги, ДКП, все письма
-     строками и заметка. Поля — свёрнуты («Изменить / Готово»), расклад денег — под «Расклад»; получение — одно, внутри
+     видное место, он чуть ли не самый важный во время сделки»), дальше путь маршрута с выходами, все письма строками, деньги, ДКП
+     и заметка. Поля — свёрнуты («Изменить / Готово»), расклад денег — под «Расклад»; получение — одно, внутри
      «Вывоза» (без вывоза — отдельно). Менеджер — аватаром в чате, чипа в шапке нет; «Предложение» — «Открыть страницу»
      в полосе. История — на странице сделки. Формы отвечают в карточку (DetailBack), строка таблицы — свежей из row. --}}
 @php
@@ -31,16 +31,17 @@
         <div class="mt-4 flex flex-col gap-6">
             @if ($deal->buyer)<x-deal.chat-card :deal="$deal"/>@endif
             @if ($offer->positions->isNotEmpty())@include('admin.offers.route', ['cardClass' => ''])@endif
-            {{-- Получение — внутри «Вывоза» (`admin.offers.route`); вывоза нет — своим разделом. --}}
-            @unless ($offer->position(\App\Workflow\Track::Service))<x-deal.handover :deal="$deal" compact/>@endunless
-            <x-deal.money :deal="$deal" compact/>
-            @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
+            {{-- Письма — сразу за путём (11.10.2026): шаг говорит о письме поставщику, само письмо рядом. --}}
             @if ($letters)
                 <section>
                     <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
                     <x-mail.letters :messages="$messages" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" :stages="$stages"/>
                 </section>
             @endif
+            {{-- Получение — внутри «Вывоза» (`admin.offers.route`); вывоза нет — своим разделом. --}}
+            @unless ($offer->position(\App\Workflow\Track::Service))<x-deal.handover :deal="$deal" compact/>@endunless
+            <x-deal.money :deal="$deal" compact/>
+            @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
             <x-deal.note :deal="$deal"/>
             {{-- Сделка не состоялась (11.10.2026, владелец: «отдали в сделку — и нигде нет кнопки обратно в продажу»): назад в
                  продажу с переоценкой (`x-offer.resale-sheet`) или в черновики — красными строками внизу, как опасное в «Оплатах». --}}

@@ -79,6 +79,14 @@ final class NodeTitle
         return Str::limit(trim((string) preg_replace('/\s+/u', ' ', $m->ownText())), $limit, '…');
     }
 
+    /** Сколько строк у писем в ленте (x-mail.rail): «ч.2» склеена со своим письмом — число в заголовке «Письма N» с ними сходится. */
+    public static function count(iterable $messages): int
+    {
+        $messages = collect($messages)->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
+
+        return $messages->count() - count(self::continued($messages));
+    }
+
     /**
      * «Ч.2» того же письма: тот же адрес и те же слова не позже суток — продолжение, текст не повторяется, только файлы.
      * Письма — по времени. @return array<int, int> id продолжения → id письма, которое оно продолжает
