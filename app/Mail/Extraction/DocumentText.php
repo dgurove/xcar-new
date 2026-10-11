@@ -42,12 +42,19 @@ final class DocumentText
     /** Секунд без ответа `ocr`, после которых он считается зависшим. */
     private const IDLE = 120;
 
+    /** Документы с текстовым слоем, что читаются без OCR (`AttachmentText::of`). */
+    public const OFFICE = ['docx', 'xlsx', 'xlsm', 'csv', 'txt'];
+
     /** Файл, который «✨» умеет прочитать: PDF или картинка, не встроенная в тело письма. */
     public static function scannable(ScanFile $file): bool
     {
-        $isPdf = $file->isPdf() || strtolower(pathinfo($file->scanName(), PATHINFO_EXTENSION)) === 'pdf';
+        $ext = strtolower(pathinfo($file->scanName(), PATHINFO_EXTENSION));
+        $isPdf = $file->isPdf() || $ext === 'pdf';
+        // Word, Excel, csv и txt — текстовым слоем без OCR (11.10.2026: VIN Mercedes лежал в «асп.docx» Альфы под «ТС:», а
+        // чтение документов брало только PDF и картинки — машина осталась без VIN).
+        $office = in_array($ext, self::OFFICE, true);
 
-        return ($isPdf || $file->isImage()) && ! $file->isInline() && $file->scanSize() <= self::MAX_BYTES;
+        return ($isPdf || $office || $file->isImage()) && ! $file->isInline() && $file->scanSize() <= self::MAX_BYTES;
     }
 
     /** Прочитанный текст из кеша; null — ещё не читали. */
