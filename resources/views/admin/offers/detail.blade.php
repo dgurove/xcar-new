@@ -126,8 +126,8 @@
                         </div>
                     @endif
                 </div>
-            @elseif ($correct)
-                {{-- Цена поставлена, админ не уверен — менеджерам на корректировку: «Согласен» или своя цена. --}}
+            @elseif ($correct && $offer->openEstimates->isNotEmpty())
+                {{-- Цена поставлена, админ не уверен — ответы менеджеров на корректировку: «Согласен» или своя цена. --}}
                 <div class="flex w-full flex-col rounded-(--radius-l) bg-surface-2 p-3">
                     @include('admin.offers.estimates', ['correction' => true])
                 </div>
@@ -148,7 +148,8 @@
                 $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                 $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
             @endphp
-            @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale)
+            @php $askMenu = $correct && $offer->openEstimates->isEmpty(); @endphp
+            @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu)
                 <div class="contents" data-controller="menu">
                     <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
                     <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
@@ -169,6 +170,13 @@
                                         <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$c['at'] ? 'clock' : 'send'" class="size-5 text-ink-muted"/>{{ $c['at'] ? str_replace(', ', ' в ', \App\Offers\Slots::label($c['at'])) : 'Сейчас' }}</button>
                                     </form>
                                 @endforeach
+                            </div>
+                        @endif
+                        {{-- Цена стоит, админ не уверен — менеджерам на корректировку (11.10.2026): пунктом, а не плашкой у каждой
+                             оценённой; спросили — плашка с ответами сверху карточки. --}}
+                        @if ($askMenu)
+                            <div class="menu-group">
+                                <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="estimate-ask-{{ $n }}:open"><x-ui.icon name="users" class="size-5 text-ink-muted"/>Спросить менеджеров</button>
                             </div>
                         @endif
                         @if ($listed)
@@ -213,6 +221,7 @@
             @endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
             @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
+            @if ($askMenu)<x-offer.estimate-ask :offer="$offer" :managers="$managers" :trigger="false"/>@endif
         </x-slot:actions>
         {{-- Письма — сразу под шапкой, над подтверждениями и полями (11.10.2026, владелец: «в окошке очень не хватает писем»;
              по ним заполняют поля и оценивают): все строками, как в «Почте», строка открывает окно поверх списка на письме. --}}

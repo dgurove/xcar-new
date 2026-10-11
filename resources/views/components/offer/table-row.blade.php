@@ -35,6 +35,11 @@
     $unpriced = $draft && ! $offer->asking_price;
     // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
     $rate = $unpriced && auth()->user()?->canManageCrm();
+    // Корректировки менеджеров у оценённого черновика (11.10.2026) — что показать у цены (`x-offer.correction-chip`).
+    $corrections = ! $rate && $offer->state === \App\Offers\OfferState::Draft && auth()->user()?->canManageCrm() && $offer->relationLoaded('openEstimates') ? $offer->openEstimates->filter->isCorrection() : collect();
+    $correcting = $corrections->isNotEmpty();
+    $proposes = $corrections->contains->proposes();
+    $waits = $corrections->contains(fn ($e) => ! $e->isGiven());
     // Закупочной нет — «Заполнить» в её ячейке (вкладка «Без закупочной цены», дело модератора); там же столбца цены нет,
     // и на телефоне справа стоит закупочная.
     $nofloor = $unpriced && ! $offer->floor_price && ! $offer->isScheduled();
@@ -102,12 +107,17 @@
         @if ($when)<span class="num-meta sm:hidden">{{ $when->translatedFormat($when->isToday() ? 'H:i' : ($when->isCurrentYear() ? 'j M' : 'j M Y')) }}@if ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="16" title="{{ $offer->moderator->name }}"/>@endif</span>@endif
         @if ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)
-        @elseif ($price->shown()){{ $price::money($price->to) }}@if ($offer->state === \App\Offers\OfferState::Draft && auth()->user()?->canManageCrm())<span class="mt-1 flex justify-end"><x-offer.correction-chip :offer="$offer"/></span>@endif
+        {{-- Корректировка («Оцененные», 11.10.2026): своя цена менеджера — «620 000 → пилюля», как «закупочная → продажи»;
+             согласились — галочка с числом у цены; ждём — аватары и срок под ценой вместо закупочной. --}}
+        @elseif ($price->shown() && $correcting)
+            @if ($proposes)<span class="text-ink-muted">{{ $price::money($price->to) }}&nbsp;→</span> <x-offer.correction-chip :offer="$offer" part="proposal"/>@else{{ $price::money($price->to) }} <x-offer.correction-chip :offer="$offer" part="agreed"/>@endif
+            @if ($waits)<span class="mt-1 flex justify-end"><x-offer.correction-chip :offer="$offer" part="waiting"/></span>@endif
+        @elseif ($price->shown()){{ $price::money($price->to) }}
         @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
         {{-- Телефон: подтверждения — под ценой, а не в конце второй строки: там их съедало «…» за номерами (владелец
              04.10.2026: «самое важное, никогда нельзя скрывать»). Есть подтверждения — они вместо закупочной. --}}
         @if ($count)<span class="cell-sub sm:hidden nums {{ $gallery ? '!text-accent-text' : '!text-urgent' }}">{{ $countWord }}</span>
-        @elseif ($offer->floor_price && $has('floor'))<span class="cell-sub sm:hidden">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
+        @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span class="cell-sub sm:hidden">{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>@endif
     {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет. --}}
     @if ($has('created') || ($cols !== null && $has('published')))<td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">

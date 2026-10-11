@@ -1,15 +1,16 @@
 {{-- «Отдать менеджеру на оценку» (11.10.2026): менеджеры строками с галкой, поиск от девяти, кому уже отдано — отмечено и
-     не нажимается; «Отдать (N)» внизу. Кнопка шторки стоит под ценами в окошке «Оценить». --}}
-@props(['offer', 'managers', 'label' => 'Отдать на оценку'])
+     не нажимается; «Отдать (N)» внизу. Кнопка шторки — строкой в группе оценок; trigger=false — только шторка, её открывает
+     событие `estimate-ask-{n}:open` (пункт «Спросить менеджеров» в «Действиях» карточки «Оцененных»). --}}
+@props(['offer', 'managers', 'label' => 'Отдать на оценку', 'trigger' => true])
 @php
     $n = $offer->number;
     $asked = $offer->openEstimates->pluck('user_id')->all();
     // Сколько у человека уже открытых просьб — чтобы не завалить одного (подписью под именем).
     $busy = \App\Offers\Estimate::waiting()->whereIn('user_id', $managers->pluck('id'))->selectRaw('user_id, count(*) n')->groupBy('user_id')->pluck('n', 'user_id')->all();
 @endphp
-<div data-controller="sheet" class="contents">
-    <button type="button" class="row w-full text-left text-accent-text" data-action="sheet#open"><x-ui.row-icon name="plus" tone="accent" size="s"/><span class="min-w-0 flex-1">{{ $label }}</span></button>
-    <x-ui.sheet id="estimate-ask-{{ $n }}" :title="$label">
+<div data-controller="sheet" class="contents" data-action="estimate-ask-{{ $n }}:open@window->sheet#open">
+    @if ($trigger)<button type="button" class="row w-full text-left text-accent-text" data-action="sheet#open"><x-ui.row-icon name="plus" tone="accent" size="s"/><span class="min-w-0 flex-1">{{ $label }}</span></button>@endif
+    <x-ui.sheet id="estimate-ask-{{ $n }}" :title="$offer->asking_price ? 'Спросить менеджеров' : 'Отдать на оценку'">
         <form method="post" action="/offers/{{ $n }}/estimates" class="flex flex-col gap-4" data-controller="select">
             @csrf
             @if ($managers->count() > 8)<input type="search" class="field-input field-s" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif

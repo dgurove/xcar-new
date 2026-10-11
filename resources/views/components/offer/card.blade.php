@@ -87,9 +87,10 @@
     <span class="card-aside">
         @if ($estimate)
             {{-- Цены продажи ещё нет — ориентир менеджеру заявленная (владелец 11.10.2026), закупочной на сайте нет. --}}
-            {{-- Корректировка — цена XCar, которую проверить; оценка — заявленная ориентиром. --}}
-            @if ($estimate->isCorrection())<span class="nums text-sm">цена XCar {{ $price::money($estimate->base_price) }}&nbsp;₽</span>
-            @elseif ($offer->declaredPrice())<span class="nums text-sm text-ink-muted">заявленная {{ $price::money($offer->declaredPrice()) }}&nbsp;₽</span>@endif
+            {{-- Корректировка — цена XCar главным числом плитки, как цена у обычной (что с ней делать, говорит кнопка «Проверить
+                 цену»); заявленная — тусклой строкой ниже. Оценка без цены — только заявленная ориентиром. --}}
+            @if ($estimate->isCorrection())<span class="card-price nums" data-controller="fit"><span class="card-price-now">{{ $price::money($estimate->base_price) }}&nbsp;₽</span></span>@endif
+            @if ($offer->declaredPrice())<span class="nums {{ $estimate->isCorrection() ? 'text-xs text-ink-dim' : 'text-sm text-ink-muted' }}">заявленная {{ $price::money($offer->declaredPrice()) }}@unless ($estimate->isCorrection())&nbsp;₽@endunless</span>@endif
         @elseif ($prices)
             @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
             @if ($price->declared)<span class="nums text-xs text-ink-dim">заявленная {{ $price::money($price->declared) }}</span>@endif

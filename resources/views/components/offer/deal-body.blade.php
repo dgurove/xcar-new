@@ -15,7 +15,7 @@
     $estimate = $offer->state === \App\Offers\OfferState::Draft && $user?->isManager() ? \App\Offers\Estimate::openFor($offer, $user) : null;
 @endphp
 @if ($inSheet)
-    <div class="mb-2 flex items-center justify-end lg:hidden">@if ($estimate)<h2 class="mr-auto truncate text-lg">{{ $estimate->isCorrection() ? 'Цена' : 'Оценка' }} {{ $offer->titleWithYear() }}</h2>@endif<button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>
+    <div class="mb-2 flex items-center justify-end lg:hidden">@if ($estimate)<h2 class="mr-auto truncate text-lg">{{ $estimate->isCorrection() ? 'Проверьте цену' : 'Оцените цену продажи' }}</h2>@endif<button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>
 @endif
 
 @if ($estimate)

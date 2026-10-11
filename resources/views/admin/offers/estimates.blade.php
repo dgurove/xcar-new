@@ -10,7 +10,9 @@
     $proposals = $correction && $offer->openEstimates->contains->proposes();
 @endphp
 <div @class(['mt-4' => ! $correction])>
-    @if ($offer->openEstimates->isNotEmpty())<p class="list-cap !px-1">{{ $correction ? 'Корректировки менеджеров' : 'Оценки менеджеров' }}</p>@endif
+    {{-- Корректировка — о какой цене ответы: строкой сверху; у оценки над группой поле цены, ей хватает подписи. --}}
+    @if ($correction)<p class="mb-2 flex items-baseline justify-between gap-3 px-1"><span class="text-sm text-ink-muted">Цена продажи</span><span class="nums font-semibold">{{ \App\Support\Money::rub($price) }}</span></p>
+    @elseif ($offer->openEstimates->isNotEmpty())<p class="list-cap !px-1">Оценки менеджеров</p>@endif
     <div class="list">
         @foreach ($offer->openEstimates as $e)
             @if ($e->agreed())
@@ -46,11 +48,10 @@
                         <x-ui.avatar :user="$e->user" :size="32"/>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate">{{ $e->user->shortName() }}</span>
-                            <span class="row-sub">
-                                @if ($e->rejected_at)<span class="nums">отклонена {{ \App\Support\Money::nums($e->rejected_amount) }},</span>@endif
-                                @if ($e->isOverdue())<x-offer.estimate-left :estimate="$e"/>@else<span>{{ $correction ? 'проверяет' : 'оценивает' }}, <x-offer.estimate-left :estimate="$e" class="!text-current"/></span>@endif
-                            </span>
+                            {{-- Одна мысль под именем: что делает и сколько осталось; прежняя сумма отклонённого — справа зачёркнутой. --}}
+                            <span class="row-sub">@if ($e->isOverdue())<x-offer.estimate-left :estimate="$e"/>@else<span>{{ $correction ? 'проверяет' : 'оценивает' }}{{ $e->rejected_at ? ' заново' : '' }}, <x-offer.estimate-left :estimate="$e" class="!text-current"/></span>@endif</span>
                         </span>
+                        @if ($e->rejected_at && $e->rejected_amount)<span class="nums shrink-0 text-sm text-ink-dim line-through">{{ \App\Support\Money::nums($e->rejected_amount) }}</span>@endif
                     </button>
                 </form>
             @endif
@@ -61,6 +62,6 @@
                 <button type="submit" class="row w-full text-left"><x-ui.row-icon name="check" tone="soft" size="s"/><span class="min-w-0 flex-1">Оставить <span class="nums">{{ \App\Support\Money::rub($price) }}</span></span></button>
             </form>
         @endif
-        <x-offer.estimate-ask :offer="$offer" :managers="$managers" :label="$correction ? 'Спросить менеджеров' : 'Отдать на оценку'"/>
+        <x-offer.estimate-ask :offer="$offer" :managers="$managers" :label="$correction ? 'Спросить ещё' : 'Отдать на оценку'"/>
     </div>
 </div>

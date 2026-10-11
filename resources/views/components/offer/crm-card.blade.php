@@ -22,6 +22,10 @@
     $unpriced = $draft && ! $offer->asking_price;
     // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
     $rate = $unpriced && $admin;
+    // Корректировки менеджеров у оценённого черновика (11.10.2026, `x-offer.correction-chip`).
+    $corrections = ! $unpriced && $draft && $admin && $offer->relationLoaded('openEstimates') ? $offer->openEstimates->filter->isCorrection() : collect();
+    $correcting = $corrections->isNotEmpty();
+    $proposes = $corrections->contains->proposes();
     $left = $gallery || ! $admin ? null : $offer->secondsLeft();
     $timer = $left !== null && $left > 0;
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink' };
@@ -80,7 +84,9 @@
                 @if ($rate)<x-offer.rate-chip :offer="$offer"/>@endif
                 @if ($offer->floor_price)<span class="nums">{{ Money::nums($offer->floor_price) }}&nbsp;₽</span>@endif
             {{-- Закупочная — слева от цены стрелкой (04.10.2026, владелец: «очень важно»), как в таблице. --}}
-            @elseif ($price->shown())@if ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;→&nbsp;</span>@endif<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>@if ($draft && $admin)<x-offer.correction-chip :offer="$offer"/>@endif
+            {{-- Корректировка: своя цена менеджера — «цена → пилюля» вместо «закупочная → цена»; согласие — галочкой. --}}
+            @elseif ($price->shown() && $proposes)<span class="nums text-ink-muted">{{ $price::money($price->to) }}&nbsp;→&nbsp;</span><x-offer.correction-chip :offer="$offer" part="proposal"/>
+            @elseif ($price->shown())@if ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;→&nbsp;</span>@endif<span class="nums">{{ $price::money($price->to) }}&nbsp;₽</span>@if ($correcting) <x-offer.correction-chip :offer="$offer" part="agreed"/> <x-offer.correction-chip :offer="$offer" part="waiting"/>@endif
             @elseif ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;₽</span>
             @elseif ($gallery)<span class="text-sm text-accent-text">скоро</span>@endif
         </span>
