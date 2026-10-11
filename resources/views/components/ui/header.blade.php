@@ -1,7 +1,6 @@
-{{-- Шапка xcar.ru. Телефон: квадраты (поиск, закладка, логотип, колокольчик, тема);
-     в CRM и на стоянке слева знак приложения (x-ui.brand), лупа — справа у колокольчика (`x-search.box phone`).
-     Десктоп: знак и два ряда капсул — справочное и разделы; «назад» здесь
-     только на телефоне, на десктопе он у заголовка (x-ui.back). --}}
+{{-- Шапка всех четырёх хостов одним видом (11.10.2026, владелец: «разные, разного размера»). Телефон: логотип по
+     центру, квадраты по бокам. Десктоп: знак и два ряда капсул — справочное и разделы; «назад» здесь только на телефоне,
+     на десктопе он у заголовка (x-ui.back). --}}
 @props(['overHero' => false, 'back' => null, 'heading' => null])
 @php
     $surface = \App\Support\Surface::current();
@@ -16,33 +15,35 @@
     $home = $user ? $surface->home() : '/';
     $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
+    // Чаты площадки в шапке CRM — на месте «Избранного» сайта; у модератора их нет.
+    $crmChats = $surface === \App\Support\Surface::Crm && $user?->canManageCrm();
 @endphp
 <header id="header" class="header{{ $overHero ? ' header--over' : '' }}">
-    {{-- Телефон --}}
-    <div class="container-site grid {{ $site ? 'grid-cols-[auto_1fr_auto]' : 'grid-cols-[1fr_auto]' }} items-center gap-3 py-2 md:hidden">
-        @if ($back)
-            {{-- В глубине раздела: слева «‹ Раздел», на сайте знак остаётся по центру. --}}
-            <a href="{{ $back[1] }}" class="header-btn header-back {{ $site ? '' : 'justify-self-start' }}" data-controller="back" data-action="back#go" data-turbo-action="replace">
-                <x-ui.icon name="chevron-left" class="-ml-1 size-5 shrink-0"/><span class="truncate">Назад</span>
-            </a>
-            @if ($site)<a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>@endif
-        @elseif ($site)
-            <div class="flex gap-1">
-                @if ($user)
-                <x-search.box phone/>
-                <a href="/account/favorites" class="header-btn header-sq relative" aria-label="Избранное">
-                    <x-ui.icon name="bookmark" class="size-[18px]"/><x-ui.badge href="/account/favorites" :badges="$badges"/>
+    {{-- Телефон: на всех хостах горизонтальный логотип ровно по центру (1fr | auto | 1fr), по бокам квадраты. Слева лупа и
+         второе своё (сайт — избранное, CRM — чаты; у парковки и логистики второго нет), в глубине раздела — «‹» квадратом;
+         справа колокольчик и тема. --}}
+    <div class="container-site grid grid-cols-[1fr_auto_1fr] items-center gap-2 py-2 md:hidden">
+        <div class="flex items-center gap-1 justify-self-start">
+            @if ($back)
+                <a href="{{ $back[1] }}" class="header-btn header-sq" aria-label="Назад" title="Назад" data-controller="back" data-action="back#go" data-turbo-action="replace">
+                    <x-ui.icon name="chevron-left" class="-ml-px size-5"/>
                 </a>
+            @elseif ($user)
+                <x-search.box phone/>
+                @if ($site)
+                    <a href="/account/favorites" class="header-btn header-sq relative" aria-label="Избранное">
+                        <x-ui.icon name="bookmark" class="size-[18px]"/><x-ui.badge href="/account/favorites" :badges="$badges"/>
+                    </a>
+                @elseif ($crmChats)
+                    <a href="/work/chats" class="header-btn header-sq relative" aria-label="Чаты">
+                        <x-ui.icon name="chat" class="size-[18px]"/><x-ui.badge href="/work/chats" :badges="$badges"/>
+                    </a>
                 @endif
-            </div>
-            <a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10"/></a>
-        @else
-            <a href="{{ $home }}" class="header-brand flex min-w-0 items-center justify-self-start" aria-label="XCar"><x-ui.brand class="h-10"/></a>
-        @endif
-        <div class="flex items-center gap-1">
+            @endif
+        </div>
+        <a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10 max-w-[9.75rem] object-contain"/></a>
+        <div class="flex items-center gap-1 justify-self-end">
             <span class="net" aria-live="polite"></span>
-            {{-- CRM и парковка: лупа справа, у колокольчика (на сайте она слева, у закладки). --}}
-            @if ($user && ! $site)<x-search.box phone/>@endif
             @if ($user)
                 <div class="contents header-sq-wrap" data-controller="sheet notifications">
                     <button type="button" class="header-btn header-sq relative" data-action="sheet#open notifications#refresh" aria-label="Уведомления">
@@ -70,9 +71,13 @@
 
     {{-- Десктоп --}}
     <div class="container-site hidden grid-cols-[auto_1fr] items-start gap-1 py-2 md:grid">
-        {{-- Знак приложения, а не шапка сайта: надпись CRM широкая — ниже ростом и по центру двух рядов, квадратные знаки как были. --}}
-        @php $wordmark = $surface === \App\Support\Surface::Crm; @endphp
-        <a href="{{ $home }}" class="row-span-2 mr-2 flex shrink-0 items-center {{ $wordmark ? 'self-center' : 'self-start' }}" aria-label="XCar"><x-ui.brand :class="$wordmark ? 'h-9' : 'h-16'"/></a>
+        {{-- Компактный знак на два ряда: xcar, P, L вписаны в одну коробку 64 px, чтобы были одного размера; у CRM — та же
+             надпись, что на телефоне, ниже ростом и по центру рядов. --}}
+        @if ($surface === \App\Support\Surface::Crm)
+            <a href="{{ $home }}" class="row-span-2 mr-2 flex shrink-0 items-center self-center" aria-label="XCar"><x-ui.brand class="h-9"/></a>
+        @else
+            <a href="{{ $home }}" class="header-mark row-span-2 mr-2" aria-label="XCar"><x-ui.brand class="h-16"/></a>
+        @endif
         <div class="header-row">
             {{-- Поиск — по закрытому: гостю не нужен. --}}
             @if ($user)
@@ -116,6 +121,10 @@
                 @if ($site)
                     <a href="/account/favorites" class="header-btn header-btn-square header-h relative w-[1.875rem]" aria-label="Избранное">
                         <x-ui.icon name="bookmark" class="size-4"/><x-ui.badge href="/account/favorites" :badges="$badges"/>
+                    </a>
+                @elseif ($crmChats)
+                    <a href="/work/chats" class="header-btn header-btn-square header-h relative w-[1.875rem]" aria-label="Чаты">
+                        <x-ui.icon name="chat" class="size-4"/><x-ui.badge href="/work/chats" :badges="$badges"/>
                     </a>
                 @endif
             @endif

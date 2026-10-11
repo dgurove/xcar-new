@@ -1,13 +1,13 @@
-{{-- Логотип приложения в шапке — знак с его иконки, в цвете темы: CRM — надпись CRM,
-     стоянка — P, логистика — L, сайт — знак xcar на десктопе и широкий логотип на телефоне (wide).
-     Высота — классом (h-10 / h-16). --}}
+{{-- Логотип приложения в шапке, в цвете темы (11.10.2026, владелец: шапки одного вида). wide — горизонтальный, для
+     телефона: надписи XCAR, CRM, PARK, LOGISTICS (две последние — scripts/wordmarks.py); без него — компактный знак ПК:
+     знак xcar, P, L; у CRM надпись и там, и там. Высота — классом. --}}
 @props(['class' => 'h-10', 'wide' => false])
 @php
     $surface = \App\Support\Surface::current();
     [$name, $w, $h] = match ($surface) {
         \App\Support\Surface::Crm => ['crm', 1300, 335],
-        \App\Support\Surface::Park => ['park', 960, 1024],
-        \App\Support\Surface::Logistics => ['logistics', 838, 1024],
+        \App\Support\Surface::Park => $wide ? ['park-wide', 1543, 334] : ['park', 960, 1024],
+        \App\Support\Surface::Logistics => $wide ? ['logistics-wide', 2610, 334] : ['logistics', 838, 1024],
         default => $wide ? ['xcar', 180, 45] : ['xcar-mark', 64, 64],
     };
 @endphp

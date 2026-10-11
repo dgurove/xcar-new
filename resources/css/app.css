@@ -156,7 +156,7 @@
 }
 
 :root { color-scheme: light; }
-@media (min-width: 768px) { :root { --spacing-header: 88px; } }
+@media (min-width: 768px) { :root { --spacing-header: 80px; } } /* py-2 + два ряда по 30 px + 4 px между */
 
 /* Тёмная тема — ступени тёмной iOS: фон чёрный, группа светлее фона (#1c1c1e), внутри группы и в шторке —
    ещё светлее (#2c2c2e), поле и переключатель — третья ступень (#3a3a3c). Раньше было наоборот: группы темнее
@@ -2367,12 +2367,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     opacity: 0; transition: opacity var(--dur-fast), translate var(--dur-fast) var(--ease-out);
   }
   .header.is-past-title .header-title { opacity: 1; translate: -50% -50%; }
-  /* Заголовок в центре — «‹ Раздел» сжимается до шеврона, как в iOS. */
-  .header.is-past-title .header-back span { display: none; }
-  .header.is-past-title .header-back { padding-right: .5rem; }
-  /* На сайте центр занят логотипом — он уступает место заголовку. В CRM и на парковке на телефоне логотип слева широкий
-     и наезжал на заголовок по центру (07.10.2026) — тоже уступает. */
-  .surface-site .header.is-past-title .header-brand { opacity: 0; transition: opacity var(--dur-fast); }
+  /* Центр телефона занят логотипом на всех хостах — он уступает место заголовку. */
   @media (max-width: 1023.98px) { .header.is-past-title .header-brand { opacity: 0; } }
   .header-brand { transition: opacity var(--dur-fast); }
   .header--over { @apply fixed inset-x-0; }
@@ -2392,7 +2387,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { .header-btn-cta:hover { background: var(--color-accent-hover); } }
 
   /* «‹ Раздел» слева на телефоне: капсула под палец, подпись обрезается. */
-  .header-back { height: 2.5rem; max-width: 11rem; padding: 0 .875rem 0 .5rem; border-radius: 9999px; font-size: var(--text-base); }
+  /* Знак ПК на два ряда: xcar, P и L вписаны в одну коробку — одного размера на всех хостах (11.10.2026). */
+  .header-mark { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 4rem; height: 4rem; }
 
   /* «‹» у заголовка на десктопе: в потоке перед h1, а когда у контейнера есть
      поля — в левом поле, чтобы заголовок не уходил с линии содержимого. */
@@ -2405,7 +2401,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .header-sq { height: 2.5rem; width: 2.5rem; border-radius: 0; }
   .header-h  { height: 1.875rem; }
 
-  /* Ряд капсул: внешние углы 8px, между — полный радиус. Квадрат
+  /* Ряд капсул: внешние углы 8px, между — полный радиус; в шапке край к знаку прямой (как в подвале, 11.10.2026 — у
+     поиска и у единственной капсулы «Перевозки» он был скруглён). Квадрат
      (.header-btn-square) обрезает соседям обращённую к нему сторону. Кнопка
      со шторкой стоит в обёртке display: contents — обёртка помечена
      .header-sq-wrap, чтобы соседство считалось сквозь неё. */
@@ -2414,6 +2411,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .header-row > :first-child { border-radius: var(--radius-s) 9999px 9999px var(--radius-s); }
   .header-row > :last-child, .header-row > :last-child.header-sq-wrap > .header-btn { border-radius: 9999px var(--radius-s) var(--radius-s) 9999px; }
   .header-row > :only-child  { border-radius: var(--radius-s); }
+  .header .header-row > :first-child { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+  /* Поиск сидит в обёртке (ей нужен relative для выдачи) — край к знаку достаётся самой форме. */
+  .header .header-row > :first-child > .header-search { border-top-left-radius: 0; border-bottom-left-radius: 0; }
   .header-row .header-btn-square, .header-row > .header-sq-wrap > .header-btn-square { border-radius: 0 !important; }
   .header-row > :has(+ .header-btn-square, + .header-sq-wrap),
   .header-row > .header-sq-wrap:has(+ .header-btn-square, + .header-sq-wrap) > .header-btn { border-top-right-radius: 0; border-bottom-right-radius: 0; }
@@ -3660,7 +3660,7 @@ dialog.lightbox.lb-one .lb-pill--left { display: none; }
 /* ------------------------------------------------------------- системный шрифт хрома */
 
 @layer components {
-  .tabbar, .header-btn, .header-back, .header-title, .btn, .pill, .field-input, .field-label, .field-error, .choice span, .check,
+  .tabbar, .header-btn, .header-title, .btn, .pill, .field-input, .field-label, .field-error, .choice span, .check,
   .chip, .tag, .mark, .badge, .sheet, .toast, .banner, .action-bar, .combobox-list, .swipe-btn, .net, .crumbs, .empty, .empty-line {
     font-family: var(--font-ui);
     letter-spacing: normal;
