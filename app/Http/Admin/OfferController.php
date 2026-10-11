@@ -559,7 +559,7 @@ class OfferController
     public function detail(Request $request, Offer $offer, ?bool $gallery = null)
     {
         $admin = $request->user()->canManageCrm();
-        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,offer_id,accepted_at,created_at', 'vendor.workflows', 'positions.stage', 'evacuator', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media')] : [])])
+        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,offer_id,accepted_at,created_at', 'vendor.workflows', 'positions.stage', 'evacuator', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media')] : [])])
             ->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.detail', OfferFiles::letters($offer, $request->user()) + [

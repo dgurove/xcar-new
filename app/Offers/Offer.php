@@ -316,6 +316,18 @@ class Offer extends Model implements HasMedia
     }
 
     /**
+     * Отказы от оценки текущего круга (11.10.2026): после последнего «Взять» или снятия, и только последняя просьба
+     * человеку — спросили его снова, отказ уходит.
+     */
+    public function declinedEstimates(): HasMany
+    {
+        return $this->hasMany(Estimate::class)->where('offer_estimates.state', EstimateState::Declined)
+            ->whereRaw("offer_estimates.declined_at > coalesce((select max(x.updated_at) from offer_estimates x where x.offer_id = offer_estimates.offer_id and x.state in ('taken', 'closed')), '-infinity')")
+            ->whereRaw('not exists (select 1 from offer_estimates y where y.offer_id = offer_estimates.offer_id and y.user_id = offer_estimates.user_id and y.id > offer_estimates.id)')
+            ->latest('declined_at');
+    }
+
+    /**
      * «Нужно оценить» менеджера: черновики, которые админ отдал ему на оценку и ещё не решил. Свой круг — не волны:
      * черновик менеджеру иначе не виден (`scopeVisibleTo` не трогаем).
      */

@@ -21,8 +21,15 @@ final class GiveEstimate
         if (! $estimate->isOpen() || $estimate->user_id !== $by->id) {
             throw ValidationException::withMessages(['amount' => 'Оценка уже не нужна']);
         }
-        if ($amount < 1000) {
-            throw ValidationException::withMessages(['amount' => 'Укажите цену в рублях']);
+        if ($amount < 1) {
+            throw ValidationException::withMessages(['amount' => 'Укажите цену']);
+        }
+        // Не ниже заявленной (11.10.2026, владелец); «Согласен» с ценой XCar не проверяется. Заявленную ему скрыли — без суммы.
+        $declared = $estimate->offer->declaredPrice();
+        $agrees = $estimate->isCorrection() && $amount === $estimate->base_price;
+        if ($declared && $amount < $declared && ! $agrees) {
+            throw ValidationException::withMessages(['amount' => $estimate->showsDeclared()
+                ? 'Не ниже заявленной '.\App\Support\Money::rub($declared) : 'Оценка ниже допустимой']);
         }
         if ($estimate->isGiven() && $estimate->amount === $amount) {
             return $estimate;

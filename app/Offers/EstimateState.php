@@ -12,6 +12,8 @@ enum EstimateState: string
     case Given = 'given';
     case Taken = 'taken';
     case Closed = 'closed';
+    /** Менеджер отказался оценивать (желаемая стоимость и причина — в просьбе). */
+    case Declined = 'declined';
 
     public const OPEN = [self::Asked, self::Given];
 

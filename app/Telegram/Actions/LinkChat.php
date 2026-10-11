@@ -22,6 +22,10 @@ final class LinkChat
             Chat::where('user_id', $user->id)->whereKeyNot($chatId)->update(['user_id' => null]);
             Chat::updateOrCreate(['id' => $chatId], ['user_id' => $user->id, 'username' => $username ?: null]);
         });
+        // Своего аватара нет — фото профиля Telegram (11.10.2026).
+        if (! $user->getFirstMedia('avatar')) {
+            \App\Users\Jobs\TakeTelegramAvatar::dispatch($user->id);
+        }
         // Открытая страница с карточкам или профилем перерисуется сама.
         ($this->publish)(Topics::user($user), 'telegram', ['state' => 'linked']);
     }

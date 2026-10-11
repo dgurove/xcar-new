@@ -98,6 +98,33 @@ class EstimateFlowTest extends TestCase
         $this->assertFalse($offer->isVisibleTo($petr));
     }
 
+    /** Не ниже заявленной; скрытая — без суммы. Отказ — желаемая стоимость, просьба закрыта, шеринг снова можно. */
+    public function test_floor_and_decline(): void
+    {
+        $offer = $this->draft();
+        $admin = $this->user('Админов Андрей', Role::Admin);
+        [$ivan, $petr] = [$this->user('Иванов Иван', Role::Manager), $this->user('Петров Пётр', Role::Manager)];
+        app(AskEstimates::class)($offer, [$ivan, $petr], $admin, [$ivan->id => true, $petr->id => false]);
+
+        foreach ([[$ivan, 'Не ниже заявленной'], [$petr, 'Оценка ниже допустимой']] as [$who, $text]) {
+            try {
+                app(GiveEstimate::class)(Estimate::openFor($offer->fresh(), $who), 400000, $who);
+                $this->fail('ниже заявленной прошла');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $this->assertStringStartsWith($text, $e->errors()['amount'][0]);
+                $this->assertStringNotContainsString('500', $who === $petr ? $e->errors()['amount'][0] : '');
+            }
+        }
+
+        app(\App\Offers\Actions\DeclineEstimate::class)(Estimate::openFor($offer->fresh(), $ivan), 450000, 'Дорого', $ivan);
+        app(\App\Offers\Actions\DeclineEstimate::class)(Estimate::openFor($offer->fresh(), $petr), 420000, null, $petr);
+        $offer->refresh();
+        $this->assertSame(450000, Estimate::where('user_id', $ivan->id)->first()->wish_price);
+        $this->assertSame(2, $offer->declinedEstimates()->count());
+        $this->assertFalse($offer->isVisibleTo($ivan));
+        $this->assertFalse($offer->share_locked);
+    }
+
     public function test_admin_lock_survives_and_own_price_closes(): void
     {
         $offer = $this->draft(locked: true);

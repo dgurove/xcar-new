@@ -63,6 +63,7 @@ use App\Telegram\Offers\Console\Poke as OffersBotPoke;
 use App\Telegram\Offers\Console\Profile as OffersBotProfile;
 use App\Telegram\Offers\Console\Run as OffersBotRun;
 use App\Users\Console\CreateUser;
+use App\Users\Console\TelegramAvatars;
 use App\Users\Console\SeedDemo;
 use App\Workflow\Console\RefillVendors;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -80,6 +81,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
+        TelegramAvatars::class,
         CreateUser::class,
         TickOffers::class,
         PruneEmptyDrafts::class,

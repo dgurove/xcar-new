@@ -2,7 +2,8 @@
      оценил — справа сумма, нажатие — лист «Взять ценой продажи N ₽?» с «Взять» / «Отклонить» (`estimate_pick_controller`);
      думает — срок под именем, нажатие — «Снять с оценки?». Последняя строка — «Отдать ещё»; первый раз отдают из «Действий» карточки.
      correction — «Оцененные»: цена уже стоит, менеджеры её корректируют. «Согласен» — зелёным словом, решать нечего;
-     своя цена — с разницей к цене админа; «Оставить N ₽» закрывает просьбы с ценой админа. --}}
+     своя цена — с разницей к цене админа; «Оставить N ₽» закрывает просьбы с ценой админа.
+     Отказ (11.10.2026) — строкой «отказался», справа «хочет N»; когда и почему — шторкой по нажатию. --}}
 @php
     $n = $offer->number;
     $correction ??= false;
@@ -12,7 +13,7 @@
 <div @class(['mt-4' => ! $correction])>
     {{-- Корректировка — о какой цене ответы: строкой сверху; у оценки над группой поле цены, ей хватает подписи. --}}
     @if ($correction)<p class="mb-2 flex items-baseline justify-between gap-3 px-1"><span class="text-sm text-ink-muted">Цена продажи</span><span class="nums font-semibold">{{ \App\Support\Money::rub($price) }}</span></p>
-    @elseif ($offer->openEstimates->isNotEmpty())<p class="list-cap !px-1">Оценки менеджеров</p>@endif
+    @elseif ($offer->openEstimates->isNotEmpty() || $offer->declinedEstimates->isNotEmpty())<p class="list-cap !px-1">Оценки менеджеров</p>@endif
     <div class="list">
         @foreach ($offer->openEstimates as $e)
             @if ($e->agreed())
@@ -57,6 +58,31 @@
                     </button>
                 </form>
             @endif
+        @endforeach
+        @foreach ($offer->declinedEstimates as $e)
+            <div class="contents" data-controller="sheet">
+                <button type="button" class="row w-full text-left" data-action="sheet#open">
+                    <x-ui.avatar :user="$e->user" :size="32"/>
+                    <span class="min-w-0 flex-1">
+                        <span class="block truncate">{{ $e->user->shortName() }}</span>
+                        <span class="row-sub text-danger">отказался</span>
+                    </span>
+                    <span class="nums shrink-0 text-sm text-ink-muted">хочет {{ \App\Support\Money::nums($e->wish_price) }}</span>
+                    <x-ui.chevron/>
+                </button>
+                <x-ui.sheet id="estimate-declined-{{ $e->id }}" title="{{ $e->user->shortName() }}: отказ от оценки">
+                    <div class="list">
+                        <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Отказался</span><span class="shrink-0">{{ $e->declined_at->translatedFormat($e->declined_at->isToday() ? 'H:i' : 'j M, H:i') }}</span></div>
+                        <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Желаемая стоимость</span><span class="nums shrink-0 font-semibold">{{ \App\Support\Money::rub($e->wish_price) }}</span></div>
+                        @if ($e->base_price)<div class="row"><span class="min-w-0 flex-1 text-ink-muted">Цена XCar</span><span class="nums shrink-0">{{ \App\Support\Money::rub($e->base_price) }}</span></div>@endif
+                        @if ($e->showsDeclared() && $offer->declaredPrice())<div class="row"><span class="min-w-0 flex-1 text-ink-muted">Заявленная</span><span class="nums shrink-0">{{ \App\Support\Money::rub($offer->declaredPrice()) }}</span></div>@endif
+                    </div>
+                    @if ($e->decline_reason)
+                        <p class="list-cap mt-4 !px-1">Причина</p>
+                        <p class="whitespace-pre-line rounded-(--radius-m) bg-surface-2 px-4 py-3">{{ $e->decline_reason }}</p>
+                    @endif
+                </x-ui.sheet>
+            </div>
         @endforeach
         @if ($proposals)
             <form method="post" action="/offers/{{ $n }}/estimates/keep" class="contents" data-turbo-confirm="Оставить цену {{ \App\Support\Money::rub($price) }}?" data-turbo-confirm-text="Корректировки менеджеров закроются" data-turbo-confirm-label="Оставить">

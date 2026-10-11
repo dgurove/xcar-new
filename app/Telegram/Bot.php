@@ -178,6 +178,26 @@ class Bot
         return [$contents, $local];
     }
 
+    /**
+     * Фото профиля человека (11.10.2026 — в аватар xcar, если своего нет): самый крупный размер первого фото. Нет фото
+     * или человек его скрыл — null.
+     *
+     * @return array{0: string, 1: string}|null содержимое и имя на диске
+     */
+    public function profilePhoto(int $userId): ?array
+    {
+        try {
+            $sizes = $this->guard(fn () => $this->client(10)->get('getUserProfilePhotos', ['user_id' => $userId, 'limit' => 1])->throw()->json('result.photos.0'));
+        } catch (Throwable $e) {
+            Log::info('Telegram: фото профиля не взялось', ['user' => $userId, 'error' => $this->scrub($e->getMessage())]);
+
+            return null;
+        }
+        $big = collect($sizes ?: [])->sortByDesc(fn ($s) => ($s['width'] ?? 0) * ($s['height'] ?? 0))->first();
+
+        return $big ? $this->file($big['file_id'], $big['file_unique_id']) : null;
+    }
+
     /** Человек закрыл нам чат: заблокировал бота или удалил переписку — слать туда больше нечего. */
     public static function chatGone(Throwable $e): bool
     {

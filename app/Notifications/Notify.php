@@ -194,6 +194,12 @@ final class Notify
         Notification::send($this->staff(), new EstimateGivenNotice($e->estimate->loadMissing('offer', 'user')));
     }
 
+    /** Отказ от оценки — админам тихо (`DeclineEstimate` зовёт напрямую). */
+    public function estimateDeclined(\App\Offers\Estimate $estimate): void
+    {
+        Notification::send($this->staff(), new EstimateDeclinedNotice($estimate));
+    }
+
     public function estimateRejected(EstimateRejected $e): void
     {
         $e->estimate->loadMissing('offer', 'user')->user?->notify(new EstimateRejectedNotice($e->estimate));

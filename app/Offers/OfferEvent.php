@@ -106,6 +106,7 @@ class OfferEvent extends Model
                 .(empty($p['hidden']) ? '' : ', без заявленной: '.$names($p['hidden'])),
             'given' => ! empty($p['agreed']) ? 'Согласен с ценой '.$sum : 'Оценка: '.$sum,
             'kept' => 'Оставлена цена '.$sum,
+            'declined' => 'Отказ от оценки: '.$one().', хочет '.$sum.(empty($p['reason']) ? '' : ', «'.$p['reason'].'»'),
             'rejected' => 'Оценка отклонена: '.$one().', '.$sum,
             'taken' => 'Оценка взята: '.$one().', '.$sum,
             'closed' => 'Снято с оценки: '.$names($p['users'] ?? []),

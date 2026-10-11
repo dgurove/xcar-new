@@ -901,7 +901,16 @@ Telegram, с почтой — «Новое из писем» (`OfferLetterNotice
   нет; `POST /offers/{n}/estimate`. Уведомления: `EstimateAskedNotice` (Telegram «Оценить»), за 6 ч — `EstimateDueNotice`
   (`offers:tick` → `RemindEstimates`), отклонили, взяли (тихо); закрыли просьбу — «Оцените» стирается из ленты и Telegram
   (`RetractEstimateNotices`). Глаголов по полу нет («Иванов И.: оценка N ₽»). История — `OfferEventType::Estimate`. Тест —
-  `EstimateFlowTest`.
+  `EstimateFlowTest`. **Не ниже заявленной** (11.10.2026, владелец): `GiveEstimate` отбивает сумму меньше `declaredPrice()` —
+  «Не ниже заявленной N ₽», скрытой заявленной — «Оценка ниже допустимой» без суммы; «Согласен» с ценой XCar не проверяется;
+  других ограничений суммы нет (минимум 1000 снят), «1.150.000» и «1 150 000,50» читаются целыми рублями
+  (`EstimateController::rubles`). **«Отказаться от оценки»** — серая маленькая кнопка под главными в листе (панель
+  `decline`): желаемая стоимость обязательна, причина по желанию, `POST /offers/{n}/estimate/decline` → `DeclineEstimate`
+  (состояние `declined`, поля `declined_at`, `wish_price`, `decline_reason`; «Оцените» стирается, запрет шеринга снимается,
+  как у `CloseEstimates`; админам тихо `EstimateDeclinedNotice`). В CRM — строкой «отказался», справа «хочет N», когда и
+  почему — шторкой по нажатию (`Offer::declinedEstimates` — отказы текущего круга, после последнего «Взять» или снятия;
+  спросили снова — отказ уходит). **Аватар из Telegram**: привязал бота, своего аватара нет — фото профиля
+  (`Bot::profilePhoto`, задача `Users\Jobs\TakeTelegramAvatar` из `LinkChat`; привязанным раньше — `telegram:avatars {--apply}`).
   **Корректировка цены** (11.10.2026, владелец: «админ не уверен в цене продажи — менеджеры отмечают, согласны или своя»):
   та же просьба с ценой админа (`offer_estimates.base_price`, `Estimate::isCorrection|agreed|proposes`, скоуп
   `needsDecision`), только из «Оцененных» — пунктом «Спросить менеджеров» в «Действиях» карточки (шторка

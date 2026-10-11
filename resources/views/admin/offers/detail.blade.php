@@ -108,7 +108,7 @@
                         </div>
                         {{-- Оценка менеджером (11.10.2026): кто оценил — «Взять» / «Отклонить», кто думает — срок, «+ Отдать ещё»; группа —
                              только когда уже отдали, первый раз — пунктом «Действий» (владелец: «отдать на оценку в действия»). --}}
-                        @if ($rate && $offer->openEstimates->isNotEmpty())
+                        @if ($rate && ($offer->openEstimates->isNotEmpty() || $offer->declinedEstimates->isNotEmpty()))
                             @include('admin.offers.estimates')
                         @endif
                         @endif
@@ -127,7 +127,7 @@
                         </div>
                     @endif
                 </div>
-            @elseif ($correct && $offer->openEstimates->isNotEmpty())
+            @elseif ($correct && ($offer->openEstimates->isNotEmpty() || $offer->declinedEstimates->isNotEmpty()))
                 {{-- Цена поставлена, админ не уверен — ответы менеджеров на корректировку: «Согласен» или своя цена. --}}
                 <div class="flex w-full flex-col rounded-(--radius-l) bg-surface-2 p-3">
                     @include('admin.offers.estimates', ['correction' => true])
@@ -149,7 +149,7 @@
                 $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                 $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
             @endphp
-            @php $askMenu = ($correct || ($rate && ! $floorFirst)) && $offer->openEstimates->isEmpty(); @endphp
+            @php $askMenu = ($correct || ($rate && ! $floorFirst)) && $offer->openEstimates->isEmpty() && $offer->declinedEstimates->isEmpty(); @endphp
             @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu)
                 <div class="contents" data-controller="menu">
                     <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>

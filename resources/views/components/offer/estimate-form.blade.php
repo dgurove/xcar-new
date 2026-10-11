@@ -5,7 +5,9 @@
      - choose — корректировка (цена уже стоит, админ не уверен): крупно «Цена XCar», «Согласен» лаймом и «Предложить свою»,
        она открывает form;
      - done — ответил: галочка рисуется, сумма, когда отправлено, «Изменить».
-     Отклонили — словом сверху, ответить снова, срок прежний. --}}
+     Отклонили — словом сверху, ответить снова, срок прежний.
+     - decline — «Отказаться от оценки» (11.10.2026): серая маленькая кнопка под главными, желаемая стоимость обязательна,
+       причина по желанию. --}}
 @props(['offer', 'estimate'])
 @php
     // Заявленную менеджеру могли скрыть при просьбе (11.10.2026).
@@ -16,7 +18,8 @@
     $total = \App\Offers\Estimate::HOURS * 3600;
     $left = max(0, now()->diffInSeconds($due, false));
     $tone = match (true) { $due->isPast() => 'danger', $left <= \App\Offers\Estimate::REMIND_HOURS * 3600 => 'urgent', default => 'accent' };
-    $open = match (true) { $errors->has('amount') => 'form', $given => 'done', $correction => 'choose', default => 'form' };
+    $home = match (true) { $given => 'done', $correction => 'choose', default => 'form' };
+    $open = match (true) { $errors->has('wish') => 'decline', $errors->has('amount') => 'form', default => $home };
     $back = $given ? 'done' : ($correction ? 'choose' : null);
     $money = fn ($v) => \App\Support\Money::nums($v);
 @endphp
@@ -34,6 +37,7 @@
                 @elseif ($declared)<span class="money-hero-car nums">заявленная {{ \App\Support\Money::rub($declared) }}</span>@endif
             </div>
             <button type="button" class="btn btn-quiet mt-5 w-full" data-action="estimate-edit#show" data-estimate-edit-pane-param="{{ $correction ? 'choose' : 'form' }}">Изменить</button>
+            <div class="mt-3 flex justify-center"><button type="button" class="btn btn-s btn-quiet" data-action="estimate-edit#show" data-estimate-edit-pane-param="decline">Отказаться от оценки</button></div>
         </div>
     @endif
 
@@ -51,6 +55,9 @@
             </form>
             <button type="button" class="btn btn-quiet mt-2 w-full" data-action="estimate-edit#show" data-estimate-edit-pane-param="form">Предложить свою</button>
             @if ($given)<button type="button" class="btn btn-quiet mt-2 w-full" data-action="estimate-edit#show" data-estimate-edit-pane-param="done">Отмена</button>@endif
+            @unless ($given)
+                <div class="mt-3 flex justify-center"><button type="button" class="btn btn-s btn-quiet" data-action="estimate-edit#show" data-estimate-edit-pane-param="decline">Отказаться от оценки</button></div>
+            @endunless
         </div>
     @endif
 
@@ -71,5 +78,28 @@
         @unless ($given)@include('components.offer.estimate-due')@endunless
         <button type="submit" class="btn btn-accent mt-5 w-full">{{ $given ? 'Сохранить' : 'Отправить' }}</button>
         @if ($back)<button type="button" class="btn btn-quiet mt-2 w-full" data-action="estimate-edit#show" data-estimate-edit-pane-param="{{ $back }}">Отмена</button>@endif
+        @unless ($back)
+            <div class="mt-3 flex justify-center"><button type="button" class="btn btn-s btn-quiet" data-action="estimate-edit#show" data-estimate-edit-pane-param="decline">Отказаться от оценки</button></div>
+        @endunless
+    </form>
+
+    <form method="post" action="/offers/{{ $offer->number }}/estimate/decline" class="flex flex-col" data-estimate-edit-target="pane" data-pane="decline" @if ($open !== 'decline') hidden @endif>
+        @csrf
+        <div class="money-hero">
+            <label for="estimate-wish" class="money-hero-cap">Желаемая стоимость</label>
+            <span class="mt-1 flex items-baseline justify-center gap-1.5">
+                <input id="estimate-wish" type="text" name="wish" required inputmode="decimal" enterkeyhint="next" autocomplete="off" placeholder="0" data-check-text="Укажите желаемую стоимость"
+                    class="pay-amount estimate-amount nums" data-controller="digits" data-action="input->digits#format" data-estimate-edit-target="wish" value="{{ old('wish') }}">
+                <span class="text-2xl font-medium text-ink-muted">₽</span>
+            </span>
+            @error('wish')<span class="mt-2 text-sm text-danger">{{ $message }}</span>@enderror
+            @if ($correction)<span class="money-hero-car mt-2 nums">цена XCar {{ \App\Support\Money::rub($estimate->base_price) }}</span>
+            @elseif ($declared)<span class="money-hero-car mt-2 nums">заявленная {{ \App\Support\Money::rub($declared) }}</span>@endif
+        </div>
+        <div class="fields mt-4">
+            <x-ui.field name="reason" label="Причина" type="textarea" rows="2"/>
+        </div>
+        <button type="submit" class="btn btn-accent mt-5 w-full">Отказаться</button>
+        <button type="button" class="btn btn-quiet mt-2 w-full" data-action="estimate-edit#show" data-estimate-edit-pane-param="{{ $home }}">Отмена</button>
     </form>
 </div>
