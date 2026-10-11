@@ -34,6 +34,8 @@
         <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-1.5">
                 <x-park.state :vehicle="$vehicle" :move="$state === VehicleState::Stored"/>
+                {{-- Продажа — капсулой рядом с местом (11.10.2026, владелец: пункт в значке связи не находили). --}}
+                <x-park.sale :vehicle="$vehicle"/>
                 @if ($debt > 0 && $money)<a href="/money?preset=all&car={{ $vehicle->id }}" class="fact nums !text-danger">долг {{ Money::rub($debt) }}</a>@endif
             </div>
             @if ($vehicle->sold_at)
@@ -43,8 +45,6 @@
                     @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="nums ml-1 whitespace-nowrap text-accent-text">{{ $vehicle->pickup_phone }}</a>@endif
                 </p>
             @endif
-            {{-- Продажа — кнопкой на виду под положением (11.10.2026, владелец: пункт в значке связи не находили). --}}
-            @if (auth()->user()?->isAdmin())<div class="mt-2 flex"><x-park.sale :vehicle="$vehicle"/></div>@endif
             @if ($transport)
                 <p class="mt-1 text-sm">
                     @if (Surface::Logistics->opensFor(auth()->user()))<a href="{{ Surface::Logistics->url('/transports/'.$transport->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>@else<span>Логистика</span>@endif<span class="text-ink-muted">, {{ $transportLine }}</span>

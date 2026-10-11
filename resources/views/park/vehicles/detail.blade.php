@@ -21,11 +21,10 @@
     {{-- Запасной «Открыть» на месте пустого ряда действий не нужен: дело открывает значок в полосе карточки. --}}
     <x-ui.row-card :href="$href" :title="$vehicle->titleWithYear()" :photos="$vehicle->visiblePhotos()" :blank="false" :action="false">
         {{-- Продажа — кнопкой на виду (11.10.2026, владелец: «куда-то делась кнопка, не можем найти» — пункт в значке связи
-             не находили): «Выставить в продажу» лаймовой, в продаже — капсула состояния со шторкой; и в «Заявках». --}}
+             не находили): строкой группы над задачей, как «Заполнить из документов»; и в «Заявках». --}}
         {{-- Состояние — словом у названия и только когда фраза его не говорит: стоит на парковке — видно по «Краснопутиловская,
              с 8 окт» (владелец 10.10.2026: «если написано, что он на Краснопутиловской с 8 октября, и так понятно»). --}}
         <x-slot:badge>@if ($state !== VehicleState::Stored)<x-ui.state :tone="$state->tone()" class="title-state">{{ mb_strtolower($state->label()) }}</x-ui.state>@endif<x-ui.links :vehicle="$vehicle"/></x-slot:badge>
-        <x-slot:actions><x-park.sale :vehicle="$vehicle"/></x-slot:actions>
         {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
         @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
             <x-slot:media>@include('park.vehicles.detail-photos')</x-slot:media>
@@ -91,6 +90,7 @@
             @endif
         </div>
         @if ($handedTo)<p class="text-ink-muted">{{ $handedTo }}{{ $released && ! empty($released->payload['pass']) ? ', по QR' : ($released && ! empty($released->payload['without_qr']) ? ', без QR' : '') }}</p>@endif
+        <x-park.sale :vehicle="$vehicle" row/>
         @if ($task)
             @include('park.vehicles.task')
         @elseif ($messages->isNotEmpty())
