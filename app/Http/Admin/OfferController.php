@@ -16,9 +16,9 @@ use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\MergeOffers;
-use App\Offers\Actions\ShowInGallery;
 use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\ScheduleOffer;
+use App\Offers\Actions\ShowInGallery;
 use App\Offers\Actions\UnlistParkOffer;
 use App\Offers\Actions\UnscheduleOffer;
 use App\Offers\Actions\UpdateOffer;
@@ -28,6 +28,7 @@ use App\Offers\BidState;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
+use App\Offers\MigtorgDiff;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
@@ -185,7 +186,7 @@ class OfferController
         }
         $facets->apply($q);
         // Числа вкладок — с тем же выбором, что и список (и «кроме Каркаде» по умолчанию).
-        $counts = self::counts($request->user(), $facets);
+        $counts = self::counts($request->user(), $facets, $carcadeHidden);
         if ($carcadeHidden) {
             $facets->chips();
             $request->query->remove('vendor');
@@ -236,6 +237,11 @@ class OfferController
     /** Подставить в запрос «все, кроме Каркаде» (`!id` — исключение, Facets); Каркаде на вкладке нет — false. */
     private function hideCarcade(Request $request, string $preset): bool
     {
+        // «Есть подтверждения» — всё, что подтвердили менеджеры (11.10.2026, владелец: подтверждения Армена на Каркаде
+        // админ не видел): умолчание «Кроме Каркаде» на этой вкладке не встаёт.
+        if ($preset === 'bids') {
+            return false;
+        }
         $carcade = self::carcadeId();
         if (! $carcade || ! self::scopeFor($preset, Offer::visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft()), $request->user()->canManageCrm())->where('vendor_id', $carcade)->exists()) {
             return false;
@@ -356,7 +362,8 @@ class OfferController
      *
      * @return array<string, int>
      */
-    public static function counts(User $user, ?Facets $facets = null): array
+    /** carcadeDefault — «Кроме Каркаде» стоит умолчанием, а не выбором: число «Есть подтверждения» считается без него. */
+    public static function counts(User $user, ?Facets $facets = null, bool $carcadeDefault = false): array
     {
         $base = fn () => Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft());
         $counts = [];
@@ -367,7 +374,11 @@ class OfferController
                 $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
             }
             if ($facets) {
-                $facets->applyTo($q, in_array($key, self::OPEN, true) ? null : 'recommended');
+                $facets->applyTo($q, match (true) {
+                    $key === 'bids' && $carcadeDefault => 'vendor',
+                    in_array($key, self::OPEN, true) => null,
+                    default => 'recommended',
+                });
             }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки.
             $counts[$key] = $q->count() + ($key === 'legacy' && self::ghostsShown($facets) ? LegacyClaim::ghosts()->count() : 0);
@@ -661,9 +672,9 @@ class OfferController
     /** «!» Мигторга: «Взять» его значение или «Отклонить» (`MigtorgDiff`); ответ — новый список разниц. */
     public function migtorg(Request $request, Offer $offer, string $field, string $act)
     {
-        $done = $act === 'take' ? \App\Offers\MigtorgDiff::take($offer, $field, $request->user()) : \App\Offers\MigtorgDiff::reject($offer, $field, $request->user());
+        $done = $act === 'take' ? MigtorgDiff::take($offer, $field, $request->user()) : MigtorgDiff::reject($offer, $field, $request->user());
 
-        return response()->json(['ok' => $done, 'fields' => (object) \App\Offers\MigtorgDiff::of($offer->refresh())]);
+        return response()->json(['ok' => $done, 'fields' => (object) MigtorgDiff::of($offer->refresh())]);
     }
 
     /**
