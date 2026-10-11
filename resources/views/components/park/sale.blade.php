@@ -2,7 +2,7 @@
      Вид — как документы в том же месте (11.10.2026, владелец: кнопку не находили, «подумай над дизайном»):
      - row — строкой группы в карточке «Наличия» и «Заявок», как «Заполнить из документов»: не в продаже — «Выставить в
        продажу» лаймовым словом с подтверждением; в продаже — «Продажа» и состояние справа, нажатие — шторка;
-     - иначе капсулой в шапке дела рядом с местом («Измайловский лес ⌄»): «В продажу» с корзиной / состояние ⌄.
+     - иначе капсулой в шапке дела рядом с местом («Измайловский лес ⌄»): «В продажу» с сумкой / состояние ⌄.
      Шторка «Продажа» — предложение в CRM, сделка, если идёт, и красная «Убрать из продажи» (`TakeOffSale`: черновик
      удаляется, опубликованное — в архив; ТС с фото и документами остаётся). Сделку, гараж и проданную так не снять.
      Лаймовой заливки нет: главное действие карточки — «Принять» / «Выдать» подвалом. --}}
@@ -34,16 +34,16 @@
 @elseif (! $offer)
     <form method="post" action="/cars/{{ $vehicle->id }}/sell" @class(['list mt-3' => $row, 'contents' => ! $row]) data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}" data-turbo-confirm-label="Выставить">@csrf
         @if ($row)
-            <button class="row w-full text-left"><x-ui.row-icon name="cart" tone="soft" size="s"/><span class="min-w-0 flex-1 text-accent-text">Выставить в продажу</span><x-ui.chevron/></button>
+            <button class="row w-full text-left"><x-ui.row-icon name="bag" tone="soft" size="s"/><span class="min-w-0 flex-1 text-accent-text">Выставить в продажу</span><x-ui.chevron/></button>
         @else
-            <button class="pill pill-soft gap-1.5"><x-ui.icon name="cart" class="size-4"/>В продажу</button>
+            <button class="pill pill-soft gap-1.5"><x-ui.icon name="bag" class="size-4"/>В продажу</button>
         @endif
     </form>
 @else
     <span @class(['list mt-3' => $row, 'contents' => ! $row]) data-controller="sheet">
         @if ($row)
             <button type="button" class="row w-full text-left" data-action="sheet#open">
-                <x-ui.row-icon name="cart" :tone="$tone === 'plain' ? 'muted' : $tone" size="s"/>
+                <x-ui.row-icon name="bag" :tone="$tone === 'plain' ? 'muted' : $tone" size="s"/>
                 <span class="min-w-0 flex-1">Продажа</span>
                 <span class="shrink-0 text-right"><span @class(['block', 'text-open' => $tone === 'open', 'text-urgent' => $tone === 'urgent', 'text-ink-muted' => $tone === 'plain'])>{{ mb_strtolower($word) }}</span>@if ($price)<span class="block nums text-sm text-ink-muted">{{ $price }}</span>@endif</span>
                 <x-ui.chevron/>
