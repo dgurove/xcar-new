@@ -98,10 +98,16 @@ class PwaController
         $version = self::build();
         // Тумблер замка менеджеров — в версии: включили, и воркер обновится сам, стерев экраны, накопленные до замка.
         $version .= Lock::enabled() ? 'L' : '';
-        $js = str_replace('__VERSION__', $version, file_get_contents(resource_path('sw.js')));
+        $js = str_replace(['__VERSION__', '__RESET__'], [$version, self::RESET], file_get_contents(resource_path('sw.js')));
 
         return response($js, 200, ['Content-Type' => 'text/javascript; charset=utf-8', 'Cache-Control' => 'no-cache']);
     }
+
+    /**
+     * Метка принудительного сброса (sw.js): сменили — у всех стираются кэши воркера и разово HTTP-кэш браузера
+     * (`Clear-Site-Data: "cache"`, ResolveSurface по cookie `xcar-reset`). Вход, черновики и подписка пушей остаются.
+     */
+    public const RESET = '2026-10-11-1';
 
     /**
      * Метка сборки: хэш манифеста Vite. Ею помечен воркер и каждая страница (`X-Build`, `ResolveSurface`) — воркер

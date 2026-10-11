@@ -52,6 +52,13 @@ class ResolveSurface
         // Сборка страницы — воркеру: экран другой сборки из кэша он выбрасывает (sw.js, петля перезагрузок 10.10.2026).
         if (method_exists($response, 'header') && str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
             $response->header('X-Build', PwaController::build());
+            // Принудительный сброс (11.10.2026, владелец: «у начальника не отображаются изменения»): один раз на метку —
+            // браузер выбрасывает свой HTTP-кэш; кэши воркера стирает он сам по той же метке. «storage» не шлём: он снял бы
+            // подписку на пуши, черновики и память вида.
+            if ($request->cookie('xcar-reset') !== PwaController::RESET) {
+                $response->header('Clear-Site-Data', '"cache"');
+                $response->headers->setCookie(cookie()->forever('xcar-reset', PwaController::RESET, '/', config('session.domain'), null, false));
+            }
         }
 
         return $response;

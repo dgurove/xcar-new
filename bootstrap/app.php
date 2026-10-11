@@ -133,7 +133,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
         $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, DetailBack::class, Impersonated::class, DeviceGate::class, TouchSeen::class, ReadNoticesOnVisit::class, DemoReadOnly::class]);
-        $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE]);
+        $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE, 'xcar-reset']);
         // Уведомления провайдеров: подписи у ЮKassa нет, статус перечитывается по API (`PayController::hook`).
         $middleware->validateCsrfTokens(except: ['hooks/*']);
     })
