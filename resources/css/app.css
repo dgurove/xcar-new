@@ -2966,7 +2966,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     margin-inline: -1rem; padding-inline: 1rem; scroll-padding-inline: 1rem;
   }
   .cards-shelf::-webkit-scrollbar { display: none; }
-  .cards-shelf > .card { scroll-snap-align: start; }
+  /* Плитка — своей высоты: растянутая до самой высокой соседки, она отдавала пустоту строке над «Оценить» (владелец 11.10.2026). */
+  .cards-shelf { align-items: start; }
+  .cards-shelf > .card { scroll-snap-align: start; --card-rows: auto auto auto auto auto; }
   @media (min-width: 640px) { .cards-shelf { grid-auto-columns: 18rem; gap: 1rem; margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; } }
   .cards-group .nums { font-weight: 400; color: var(--color-ink-dim); }
   .card-body { grid-area: body; min-width: 0; display: flex; flex-direction: column; gap: var(--body-gap); padding: var(--body-pad); }
