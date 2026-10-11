@@ -1,5 +1,6 @@
-{{-- Заголовки раздела «Работа»: Сделки, Гараж, Вывоз, Почта, Чаты, Оплаты. Активный — h1 со
-     своим числом, у остальных — счётчик из Nav::badges (горящие, непрочитанные). На телефоне — одной строкой, лента
+{{-- Заголовки раздела «Работа»: Сделки, Гараж, Вывоз, Почта, Чаты, Оплаты. Число у заголовка одно и то же, открыт он или
+     нет, — счётчик из Nav::badges (горящие, непрочитанные; им же горит таб «Работа»); 10.10.2026 владелец: «на табе 26, а
+     внутри 42». Своё число (`count`) — только у раздела без бейджа (Гараж). На телефоне — одной строкой, лента
      листается вбок от края до края, текущий в кадре (`activePillIntoView`); 09.10.2026 владелец: в две строки шапка
      «Оплат» занимала полэкрана. --}}
 {{-- edge — лента до правого края экрана; рядом справа кнопка (почта: «Написать») — обрывается у неё. --}}
@@ -12,7 +13,7 @@
 <div class="work-titles flex items-baseline gap-x-6 gap-y-2 sm:flex-wrap {{ $edge ? 'max-sm:-mx-4 max-sm:px-4' : 'max-sm:-ml-4 max-sm:pl-4' }} max-sm:overflow-x-auto max-sm:whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
     @foreach ($titles as $key => $label)
         @if ($key === $current)
-            <x-ui.section-title level="h1" :count="$count" aria-current="page" class="shrink-0">{{ $label }}</x-ui.section-title>
+            <x-ui.section-title level="h1" :count="array_key_exists('/work/'.$key, $badges) ? $badges['/work/'.$key] : $count" aria-current="page" class="shrink-0">{{ $label }}</x-ui.section-title>
         @else
             <x-ui.section-title :href="'/work/'.$key" :current="false" :count="$badges['/work/'.$key] ?? null" class="shrink-0">{{ $label }}</x-ui.section-title>
         @endif

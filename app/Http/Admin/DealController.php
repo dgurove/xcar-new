@@ -66,16 +66,11 @@ class DealController
             $q->where(fn ($w) => $w->whereHas('offer', fn ($o) => $o->searchCrm($term))
                 ->orWhereHas('buyer', fn ($u) => $u->search($term)));
         } else {
-            match ($preset) {
-                'hot' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->where(fn ($w) => $w
-                    ->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)))),
-                // Чей ход — позиции (`Position::waiting`): этап оплаты без счёта ждёт нас, а не менеджера.
-                'manager' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->waiting(WaitsFor::Manager)),
-                'done' => $q->whereIn('state', [DealState::Done, DealState::Cancelled]),
-                default => $q->where('state', DealState::Active),
-            };
+            self::scope($q, $preset);
         }
         $facets->apply($q);
+        // Числа пилюль — с чипами (10.10.2026: «Горит» без числа, а таб «Работа» горел им же — владелец не понимал, откуда 26).
+        $counts = collect(['active', 'hot', 'manager'])->mapWithKeys(fn (string $p) => [$p => self::scope($facets->applyTo(Deal::query()), $p)->count()])->all();
         $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $q->orderBy('created_at', $dir),
@@ -88,10 +83,24 @@ class DealController
             // Таблица — вся на одной странице; строками — постранично.
             'deals' => ListView::isTable(ListView::pick($request, 0)) ? ListView::paginate($request, $q) : $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset,
+            'counts' => $counts,
             'sort' => $sort,
             'facets' => $facets,
             'detail' => $detail,
         ]);
+    }
+
+    /** Пилюля списка: «Горит» — просрочено или ход наш (им же горит таб «Работа», `Nav::staffCounts`), «Ждём менеджера» — его ход. */
+    private static function scope($q, string $preset)
+    {
+        return match ($preset) {
+            'hot' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->where(fn ($w) => $w
+                ->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)))),
+            // Чей ход — позиции (`Position::waiting`): этап оплаты без счёта ждёт нас, а не менеджера.
+            'manager' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->waiting(WaitsFor::Manager)),
+            'done' => $q->whereIn('state', [DealState::Done, DealState::Cancelled]),
+            default => $q->where('state', DealState::Active),
+        };
     }
 
     /**
