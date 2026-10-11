@@ -16,7 +16,8 @@ enum VehicleState: string
     public function label(): string
     {
         return match ($this) {
-            self::Expected => 'Ожидается',
+            // 12.10.2026, владелец: не «ожидается», а «заявка на приём».
+            self::Expected => 'Заявка на приём',
             self::Stored => 'На парковке',
             self::Released => 'Выдана',
             self::Cancelled => 'Не привезена',

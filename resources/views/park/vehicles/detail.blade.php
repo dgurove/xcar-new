@@ -24,7 +24,8 @@
              не находили): строкой группы над задачей, как «Заполнить из документов»; и в «Заявках». --}}
         {{-- Состояние — словом у названия и только когда фраза его не говорит: стоит на парковке — видно по «Краснопутиловская,
              с 8 окт» (владелец 10.10.2026: «если написано, что он на Краснопутиловской с 8 октября, и так понятно»). --}}
-        <x-slot:badge>@if ($state !== VehicleState::Stored)<x-ui.state :tone="$state->tone()" class="title-state">{{ mb_strtolower($state->label()) }}</x-ui.state>@endif<x-ui.links :vehicle="$vehicle"/></x-slot:badge>
+        {{-- У названия по порядку: госномер, значок связи, состояние (12.10.2026, владелец). --}}
+        <x-slot:badge>@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm"/>@endif<x-ui.links :vehicle="$vehicle"/>@if ($state !== VehicleState::Stored)<x-ui.state :tone="$state->tone()" class="title-state">{{ mb_strtolower($state->label()) }}</x-ui.state>@endif</x-slot:badge>
         {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
         @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
             <x-slot:media>@include('park.vehicles.detail-photos')</x-slot:media>
@@ -33,7 +34,6 @@
              времени — фразой ниже. Владелец 10.10.2026: «одно к машине относится, другое к фактам», «статус „на
              парковке“ тут не к месту» — среди кодов; состояние — у названия). Ставки нет — дни и сумма справа. --}}
         <x-slot:marks>
-            @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate"/>@endif
             @if ($vehicle->ref)<x-vendor.ref :vendor="$vehicle->vendor" :ref="$vehicle->ref" copy class="tag nums"/>
             @elseif ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
