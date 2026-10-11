@@ -55,7 +55,11 @@ final class TableRows
      */
     private static function templates(): string
     {
-        return once(fn () => (@filemtime(app_path('Park/Status.php')) ?: 0).','.implode(',', array_map(fn ($f) => @filemtime(resource_path("views/components/{$f}.blade.php")) ?: 0,
-            ['park/table-row', 'park/alerts', 'park/ref', 'ui/plate', 'ui/copy-code', 'ui/icon', 'ui/links', 'vendor/logo', 'vendor/name'])));
+        // Содержимое, а не дата файла: в образе у всех файлов одна дата, и правка шаблона кэш не сбрасывала (12.10.2026,
+        // госномер и значок связи стояли в старом порядке). Процесс живёт до выкладки — хэш считается раз.
+        static $hash;
+
+        return $hash ??= md5(implode(',', array_map(fn ($path) => @md5_file($path) ?: '', [app_path('Park/Status.php'), ...array_map(fn ($f) => resource_path("views/components/{$f}.blade.php"),
+            ['park/table-row', 'park/alerts', 'park/ref', 'ui/plate', 'ui/copy-code', 'ui/icon', 'ui/links', 'vendor/logo', 'vendor/name'])])));
     }
 }
