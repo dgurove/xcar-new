@@ -130,7 +130,7 @@ async function card({ number }) {
         return;
     }
     Turbo.renderStreamMessage(html);
-    if (document.getElementById('catalog')?.children.length) document.getElementById('catalog-empty')?.remove();
+    if (document.querySelector('#catalog .card, #catalog tr')) document.getElementById('catalog-empty')?.remove();
 }
 
 function pending() {

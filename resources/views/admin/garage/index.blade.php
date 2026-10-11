@@ -35,7 +35,19 @@
     @else
         <div class="mt-4 flex flex-col">
             @foreach ($groups as $cars)
-                <h2 class="list-head">{{ $cars->first()->manager?->name ?? 'Взяли под себя' }}<span class="nums text-base font-normal text-ink-muted">{{ $cars->count() }}</span></h2>
+                @php $who = $cars->first()->manager?->name ?? 'Взяли под себя'; @endphp
+                {{-- Плитками пачка менеджера — лентой вбок (x-ui.shelf, 11.10.2026), строками — как была. --}}
+                @if ($view === ListView::GRID)
+                    <x-ui.shelf :title="$who" :count="$cars->count()" data-controller="ticker">
+                        @foreach ($cars as $car)
+                            @php $line = \App\Garage\CarLine::for($car, $user, crm: true); @endphp
+                            <x-garage.card :offer="$car->offer" :href="\App\Support\Detail::url($car->offer->number)" detail vendor
+                                           :word="$line->word" :tone="$line->tone" :when="$line->when" :value="$line->value" :caption="$line->caption"/>
+                        @endforeach
+                    </x-ui.shelf>
+                    @continue
+                @endif
+                <h2 class="list-head">{{ $who }}<span class="nums text-base font-normal text-ink-muted">{{ $cars->count() }}</span></h2>
                 <div class="{{ ListView::containerClass($view) }} mb-6" data-controller="ticker">
                     @foreach ($cars as $car)
                         @php $line = \App\Garage\CarLine::for($car, $user, crm: true); @endphp

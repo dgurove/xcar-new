@@ -2958,9 +2958,18 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     background: var(--color-ground); font-size: var(--text-lg); font-weight: 500; color: var(--color-ink);
   }
   .cards-group:first-child { margin-top: 0; }
-  /* Полка «Нужно оценить» (11.10.2026): плитки одной строкой вбок — на телефоне 72 % ширины, видно край следующей, навылет
-     за поля; от 640 — по 18rem. Плитка та же, что в сетке. */
-  .cards-shelf {
+  /* Пачка лентой (x-ui.shelf, 11.10.2026): заголовок с числом и стрелками ПК, под ним плитки одной строкой вбок — на
+     телефоне 72 % ширины, видно край следующей, навылет за поля; от 640 — по 18rem. Плитка та же, что в сетке. Не липкая:
+     высота пачки — одна плитка. */
+  .shelf + .shelf { margin-top: 1.5rem; }
+  .shelf-head { display: flex; align-items: center; gap: .5rem; min-height: 2.25rem; margin-bottom: .5rem; }
+  .shelf-title { display: flex; flex: 1; min-width: 0; align-items: baseline; gap: .375rem; font-size: var(--text-lg); font-weight: 500; color: var(--color-ink); }
+  .shelf-title .nums { font-weight: 400; color: var(--color-ink-dim); }
+  .shelf-arrows { display: flex; flex-shrink: 0; gap: .375rem; }
+  .shelf-arrows .btn:disabled { opacity: .35; }
+  @media (hover: none) { .shelf-arrows { display: none !important; } }
+  /* .cards.cards-shelf — вес выше .cards:not(.cards--list) сетки от 640, иначе плитки ленты сжимались в сетку. */
+  .cards.cards-shelf {
     grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 72%; gap: .75rem;
     overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain;
     margin-inline: -1rem; padding-inline: 1rem; scroll-padding-inline: 1rem;
@@ -2972,8 +2981,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .cards.cards-shelf > .card { scroll-snap-align: start; content-visibility: visible; }
   .cards-shelf .card-extra { flex-wrap: nowrap; overflow: hidden; mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent); }
   .cards-shelf .card-extra > * { flex: none; }
-  .cards-shelf .card-extra, .cards-shelf .card-extra:empty { display: flex; min-height: calc(1.1875rem + .375rem); }
-  @media (min-width: 640px) { .cards-shelf { grid-auto-columns: 18rem; gap: 1rem; margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; } }
+  .cards-shelf:has(.card-extra > *) .card-extra { display: flex; min-height: calc(1.1875rem + .375rem); }
+  @media (min-width: 640px) { .cards.cards-shelf { grid-auto-columns: 18rem; gap: 1rem; margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; } }
   .cards-group .nums { font-weight: 400; color: var(--color-ink-dim); }
   .card-body { grid-area: body; min-width: 0; display: flex; flex-direction: column; gap: var(--body-gap); padding: var(--body-pad); }
   .card-body:last-child { padding-bottom: var(--body-pad-end); }
@@ -3162,6 +3171,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* Плитки чуть уже и без зазора в 1.25rem — их помещается заметно больше. */
 .surface-crm .cards--grid, .surface-park .cards--grid { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; }
 @media (min-width: 640px) { .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) { grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .625rem; } }
+/* Ленты пачек (x-ui.shelf) в CRM и на парковке: сетка выше вне слоёв перебила бы ленту — колонки обратно лентой, плитки
+   плотнее, чем на сайте: 16rem. */
+.surface-crm .cards.cards-shelf, .surface-park .cards.cards-shelf { grid-template-columns: none; grid-auto-columns: 72%; gap: .625rem; }
+@media (min-width: 640px) { .surface-crm .cards.cards-shelf, .surface-park .cards.cards-shelf { grid-auto-columns: 16rem; } }
 .surface-crm .card-title > a, .surface-park .card-title > a { font-size: .9375rem; }
 .surface-crm .card-marks, .surface-park .card-marks { top: .5rem; left: .5rem; gap: .25rem; }
 .surface-crm .card-marks .mark, .surface-park .card-marks .mark { font-size: 11px; padding-block: 2px; padding-inline: .375rem; }

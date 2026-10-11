@@ -73,12 +73,13 @@ final class ListView
      * от длины (pick), поэтому счёт идёт до paginate. Шаблон берёт вид тем же pick по total().
      * Таблица — вся на одной странице.
      */
-    public static function paginate(Request $request, Builder|Relation $q, ?int $count = null): LengthAwarePaginator
+    /** whole — весь список одной страницей, как таблица: плитки пачками лентами (x-ui.shelf), пачку страница не рвёт. */
+    public static function paginate(Request $request, Builder|Relation $q, ?int $count = null, bool $whole = false): LengthAwarePaginator
     {
         // Число уже посчитано — второй раз его не считает и сама постраничка (`total:`).
         $count ??= $q->count();
         $view = self::pick($request, $count);
-        $per = self::isTable($view) ? max($count, 1) : self::perPage($request, self::perSizes($view));
+        $per = self::isTable($view) || $whole ? max($count, 1) : self::perPage($request, self::perSizes($view));
 
         return $q->paginate($per, total: $count)->withQueryString();
     }

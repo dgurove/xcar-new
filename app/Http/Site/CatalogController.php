@@ -84,7 +84,11 @@ class CatalogController
             };
         }
 
-        $offers = ListView::paginate($request, $query, $count);
+        // Пачки по сроку («До 17:00 сегодня») — только по сроку и тому, кто срок видит; плитками они — ленты вбок, весь
+        // список одной страницей: пачку, порванную страницей, в ленте не долистать (11.10.2026).
+        $groups = ! $gallery && $sort === 'closing' && ($user?->bidsOnSite() ?? false);
+        $shelves = $groups && ListView::pick($request, $count) === ListView::GRID;
+        $offers = ListView::paginate($request, $query, $count, whole: $shelves);
         // «Нужно оценить» (11.10.2026): черновики, отданные этому менеджеру на оценку, — первой пачкой на первой странице
         // каталога, без пилюли и поиска. Сначала неоценённые, ближний срок выше; оценённые — ждут решения админа.
         $estimates = ! $gallery && $user?->isManager() && blank($filters['view'] ?? null) && blank($filters['q'] ?? null) && $offers->currentPage() === 1
@@ -102,8 +106,8 @@ class CatalogController
             'sort' => $sort,
             // Сортировка объектом — тулбару и заголовкам таблицы; строкой `sort` — стрелкам страницы предложения.
             'sorting' => Sort::from($sort, CatalogQuery::allowedSorts($gallery, $prices, $user), CatalogQuery::defaultSort($user, $gallery)),
-            // Подписи «До 17:00 сегодня» между пачками — только по сроку и тому, кто срок видит.
-            'groups' => ($groups = ! $gallery && $sort === 'closing' && ($user?->bidsOnSite() ?? false)),
+            'groups' => $groups,
+            'shelves' => $shelves,
             'groupSizes' => $groups ? \App\Offers\CloseGroups::sizes($query) : [],
             'views' => $views,
             'view' => $view,

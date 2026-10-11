@@ -107,7 +107,11 @@ class VehicleController
 
         // Кадры нужны плиткам и строкам; таблице — нет (миниатюр в ней нет, карточка грузит своё).
         $vehicles->when(! ListView::isTable(ListView::fromRequest($request)), fn ($v) => $v->with('media'));
-        $page = ListView::paginate($request, $vehicles);
+        // Без выбранной парковки (или с несколькими) и без поиска строки собраны под заголовками парковок, выбывшие — под
+        // месяцами выбытия. Плитками пачка — лента вбок, весь список одной страницей, как у таблицы (11.10.2026).
+        $grouped = count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1;
+        $byMonth = $out && $q === '' && $sort->key === 'out';
+        $page = ListView::paginate($request, $vehicles, whole: ($grouped || $byMonth) && ListView::fromRequest($request) === ListView::GRID);
         // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
         $totals = Accrual::cachedTotals($page->getCollection());
         // «Больше набежало» — по посчитанному: в базе этой суммы нет. Таблица целиком на одной странице,
@@ -120,10 +124,8 @@ class VehicleController
             'sort' => $sort,
             'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
             'totals' => $totals,
-            // Без выбранной парковки (или с несколькими) и без поиска строки собраны под заголовками парковок,
-            // выбывшие — под месяцами выбытия.
-            'grouped' => count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1,
-            'byMonth' => $out && $q === '' && $sort->key === 'out',
+            'grouped' => $grouped,
+            'byMonth' => $byMonth,
             'out' => $out,
             'q' => $q,
             'view' => ListView::pick($request, $page->total()),

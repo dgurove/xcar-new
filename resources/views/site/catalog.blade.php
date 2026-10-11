@@ -47,14 +47,13 @@
                     @else
                     {{-- Лентой вбок (владелец 11.10.2026: плитки во всю ширину «гигантские»): узкие плитки одной строкой, сколько бы
                          их ни было, на любом виде списка. --}}
-                    <section class="mb-6" id="catalog-estimates">
-                        <h2 class="cards-group">Нужно оценить <span class="nums">{{ $toEstimate->count() }}</span></h2>
-                        <div class="cards cards--grid cards-shelf">
+                    <div class="mb-6" data-controller="ticker">
+                        <x-ui.shelf title="Нужно оценить" :count="$toEstimate->count()" id="catalog-estimates">
                             @foreach ($toEstimate as $offer)
                                 <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>
                             @endforeach
-                        </div>
-                    </section>
+                        </x-ui.shelf>
+                    </div>
                     @endif
                 @endif
                 @if ($estimated->isNotEmpty())
@@ -98,6 +97,18 @@
                             <x-offer.site-table-row :offer="$offer" :context="$context" :deadline="$deadline"/>
                         @endforeach
                     </x-ui.table>
+                    @elseif ($shelves)
+                    {{-- По сроку плитками — пачка на ленту вбок (11.10.2026, владелец и начальник: «горизонтальный скролл в разы
+                         удобнее»), весь список одной страницей. Выбор и живые правки — на обёртке, плитки ищутся вглубь. --}}
+                    <div id="catalog" data-list="catalog" data-prepend="false" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                        @foreach ($offers->getCollection()->groupBy(fn ($o) => \App\Offers\CloseGroups::label($o)) as $label => $pack)
+                            <x-ui.shelf :title="$label" :count="$groupSizes[$label] ?? $pack->count()">
+                                @foreach ($pack as $offer)
+                                    <x-offer.card :offer="$offer" :context="$context"/>
+                                @endforeach
+                            </x-ui.shelf>
+                        @endforeach
+                    </div>
                     @else
                     <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ in_array($sort, ['-published', '-opened'], true) ? 'true' : 'false' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         {{-- По сроку — подписью над каждой пачкой слота («До 17:00 сегодня»), владелец 10.10.2026. --}}
@@ -108,7 +119,7 @@
                         @endforeach
                     </div>
                     @endif
-                    <div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
+                    @unless ($shelves)<div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>@endunless
                 @endif
             </div>
         </div>

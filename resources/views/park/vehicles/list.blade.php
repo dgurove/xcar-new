@@ -53,6 +53,15 @@
                 @foreach ($group as $vehicle){!! $rows[$vehicle->id] !!}@endforeach
             @endforeach
         </x-ui.table>
+    @elseif ($view === ListView::GRID && ($grouped || $byMonth))
+        {{-- Плитками пачка парковки (или месяца выбытия) — лентой вбок (x-ui.shelf, 11.10.2026). --}}
+        <div data-controller="ticker">
+            @foreach ($groups as $key => $group)
+                <x-ui.shelf :title="$groupName($key, $group)" :count="$group->count()">
+                    @foreach ($group as $vehicle)<x-park.card :vehicle="$vehicle" :debt="$debts[$vehicle->id] ?? 0" :total="$totals[$vehicle->id] ?? null"/>@endforeach
+                </x-ui.shelf>
+            @endforeach
+        </div>
     @else
         <div class="{{ ListView::containerClass($view) }}" data-controller="ticker">
             @foreach ($vehicles as $vehicle)<x-park.card :vehicle="$vehicle" :debt="$debts[$vehicle->id] ?? 0" :total="$totals[$vehicle->id] ?? null"/>@endforeach

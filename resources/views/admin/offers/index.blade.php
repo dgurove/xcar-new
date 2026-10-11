@@ -94,12 +94,27 @@
                     @endif
                 </x-ui.table>
             @else
+                @php $shelves = $view === \App\Support\ListView::GRID && $groups->keys()->first() !== ''; @endphp
+                @if ($shelves)
+                    {{-- Пачки плитками — ленты вбок (11.10.2026), галка пачки — в заголовке ленты. --}}
+                    <div id="offers" data-controller="ticker">
+                        @foreach ($groups as $key => $list)
+                            <x-ui.shelf :title="$groupTitle($key, $list) ?? ''" :count="$list->count()">
+                                @if ($pick)
+                                    <x-slot:head><label class="row-check" aria-label="Выбрать всю пачку"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label></x-slot:head>
+                                @endif
+                                @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$preset === 'slots' ? $key : null"/>@endforeach
+                            </x-ui.shelf>
+                        @endforeach
+                    </div>
+                @else
                 @foreach ($groups as $key => $list)
                     @if ($title = $groupTitle($key, $list))<h2 class="box-title flex items-center gap-2 {{ $loop->first ? '' : 'mt-6' }}">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums text-ink-dim">{{ $list->count() }}</span></h2>@endif
                     <div @if ($loop->first) id="offers" @endif class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
                         @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$preset === 'slots' ? $key : null"/>@endforeach
                     </div>
                 @endforeach
+                @endif
             @endif
             <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
             {{-- Сделали последнюю — тост ведёт дальше по шагу (detail_controller#advance); модератору дальше ничего нет. --}}

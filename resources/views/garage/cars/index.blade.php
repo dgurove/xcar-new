@@ -71,15 +71,22 @@
         {{-- Строки — сгруппированный список `.list`, плитки — `x-garage.card`; без выбора вид решает ширина: на телефоне
              строки, от 640 плитки (оба куска в разметке, кадры ленивые — скрытый их не грузит). --}}
         @foreach (array_filter(['list' => $view === ListView::LIST || ! $view, 'grid' => $view === ListView::GRID || ! $view]) as $kind => $_)
-            <div @class(['flex flex-col', 'sm:hidden' => ! $view && $kind === 'list', 'max-sm:hidden' => ! $view && $kind === 'grid'])>
+            <div @class(['flex flex-col', 'sm:hidden' => ! $view && $kind === 'list', 'max-sm:hidden' => ! $view && $kind === 'grid']) @if ($kind === 'grid') data-controller="ticker" @endif>
                 @foreach ($groups as $head => $rows)
+                    {{-- Плитками пачка — лентой вбок (x-ui.shelf, 11.10.2026); без пачек — сеткой. --}}
+                    @if ($kind === 'grid' && $head)
+                        <x-ui.shelf :title="$head" :count="$rows->count()">
+                            @foreach ($rows as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach
+                        </x-ui.shelf>
+                        @continue
+                    @endif
                     @if ($head)<h2 class="list-head">{{ $head }}<span class="nums text-base font-normal text-ink-muted">{{ $rows->count() }}</span></h2>@endif
                     @if ($kind === 'list')
                         <div class="list mb-4">
                             @foreach ($rows as $row)<x-garage.row :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach
                         </div>
                     @else
-                        <div class="cards cards--grid mb-6" data-controller="ticker">
+                        <div class="cards cards--grid mb-6">
                             @foreach ($rows as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach
                         </div>
                     @endif

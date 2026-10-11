@@ -53,8 +53,9 @@ export default class extends Controller {
         if (this.stopped) return;
         // Вид «строки»: кадр — миниатюра, точек нет — не листаем и не качаем остальные кадры.
         if (this.hasDotTarget && !this.dotTargets[0].offsetParent) return;
+        // И по горизонтали: плитка за краем ленты пачки (x-ui.shelf) не крутит кадры и не качает их.
         const r = this.element.getBoundingClientRect();
-        if (r.bottom > 0 && r.top < innerHeight) this.show(this.i + 1);
+        if (r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth) this.show(this.i + 1);
     }
 
     manual(event) {
