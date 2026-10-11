@@ -19,8 +19,10 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 final class Sale
 {
     /** Поле ТС => поле предложения. */
+    // Страхователь с телефоном — тоже (11.10.2026: у всех 26 выставленных с парковки он не доезжал до предложения).
     public const MAP = ['ref' => 'claim_ref', 'vin' => 'vin', 'brand_id' => 'brand_id', 'model_id' => 'model_id', 'year' => 'year',
-        'color' => 'color', 'mileage' => 'mileage', 'vendor_id' => 'vendor_id', 'value' => 'value'];
+        'color' => 'color', 'mileage' => 'mileage', 'vendor_id' => 'vendor_id', 'value' => 'value',
+        'contact_name' => 'insured_name', 'contact_phone' => 'insured_phone'];
 
     /** Связь сменилась: файлы прежнего предложения, принесённые им, — назад; файлы нового — к ТС, без копий. */
     public static function relinked(Vehicle $vehicle, ?int $was): void
