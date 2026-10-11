@@ -1,6 +1,5 @@
 {{-- Интерес покупателя строкой. Менеджеру важен человек: аватар, имя, ниже машина и цена;
-     на странице покупателя (person=false) — с машины. Смахивание — «Связались» / «Закрыть»,
-     на десктопе та же кнопка в хвосте. Нажатие — страница предложения; car=false — без строки
+     на странице покупателя (person=false) — с машины. «Связались» / «Закрыть» — словом в хвосте и смахиванием. Нажатие — страница предложения; car=false — без строки
      о машине (на её собственной странице). --}}
 @php
     $offer = $interest->offer; $person ??= true; $car ??= true; $new = $interest->state === \App\Offers\InterestState::New;
@@ -31,8 +30,8 @@
         </span>
         <span class="flex shrink-0 flex-col items-end gap-2">
             <span class="nums text-sm text-ink-dim">{{ $interest->created_at->translatedFormat($interest->created_at->isToday() ? 'H:i' : 'j M') }}</span>
-            {{-- На ПК вместо смахивания — слово-действие в хвосте, а не лаймовая кнопка на каждой строке. --}}
-            <button type="submit" form="interest-{{ $interest->id }}-form" class="relative z-10 hidden text-sm font-medium md:inline {{ $new ? 'text-accent-text' : 'text-ink-muted' }} hover:underline">{{ $verb[1] }}</button>
+            {{-- Слово-действие в хвосте — и на телефоне: смахивание одно не находят (как с долгим нажатием, владелец 04.10.2026). --}}
+            <button type="submit" form="interest-{{ $interest->id }}-form" class="relative z-10 text-sm font-medium {{ $new ? 'text-accent-text' : 'text-ink-muted' }} hover:underline">{{ $verb[1] }}</button>
         </span>
     </div>
     <form id="interest-{{ $interest->id }}-form" method="post" action="/buyers/interest/{{ $interest->id }}" hidden data-queue>@csrf<input type="hidden" name="state" value="{{ $verb[0] }}"><input type="hidden" name="row" value="1"></form>

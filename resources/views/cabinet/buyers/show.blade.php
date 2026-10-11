@@ -1,5 +1,5 @@
 {{-- Покупатель — как контакт в телефоне: кружок, имя, чипы, ряд действий (позвонить, написать, пароль).
-     Ниже — что видит (строки, прямой показ снимается смахиванием) и интерес. Группы — действие «Группы» в том же ряду.
+     Ниже — что видит (строки, прямой показ снимается смахиванием), интерес, чаты, паспорт строкой. Группы — действие «Группы» в том же ряду.
      Главное действие — «Открыть предложения» — в полосе внизу. --}}
 @php $me = auth()->user(); $link = ($link['user'] ?? null) === $buyer->id ? $link : null; @endphp
 <x-ui.cabinet :title="$buyer->name" :back="$back" :phone-heading="false">
@@ -73,32 +73,6 @@
                 </x-ui.action-bar>
             </section>
 
-            {{-- Паспорт — для ДКП, когда покупатель покупает у страхователя напрямую (05.10.2026). --}}
-            <section class="mt-6" id="passport">
-                <h2 class="list-head">Паспорт</h2>
-                <form method="post" action="/buyers/{{ $buyer->id }}/passport" class="box flex flex-col gap-3" data-controller="save-bar">
-                    @csrf @method('put')
-                    <x-billing.passport-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" prefix="buyer"/>
-                    <x-ui.save-bar page/>
-                </form>
-            </section>
-
-            @if ($chats->isNotEmpty())
-                <section class="mt-6">
-                    <h2 class="list-head">Чаты</h2>
-                    <div class="list">
-                        @foreach ($chats as $chat)
-                            <a href="/account/chats/{{ $chat->id }}" class="row">
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->offer?->titleWithYear() ?? 'Обращение' }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span></div>
-                                    <div class="truncate text-sm {{ $chat->unread_for_staff ? '' : 'text-ink-muted' }}">{{ $chat->last_text ? \Illuminate\Support\Str::limit($chat->last_text, 90) : 'Файл' }}</div>
-                                </div>
-                                @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
-                            </a>
-                        @endforeach
-                    </div>
-                </section>
-            @endif
             @if ($interests->isNotEmpty())
                 <section class="mt-6">
                     <h2 class="list-head">Интерес</h2>
@@ -109,6 +83,44 @@
                     </div>
                 </section>
             @endif
+            @if ($chats->isNotEmpty())
+                <section class="mt-6">
+                    <h2 class="list-head">Чаты</h2>
+                    <div class="list">
+                        @foreach ($chats as $chat)
+                            <a href="/deals/chats/{{ $chat->id }}" class="row">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->offer?->titleWithYear() ?? 'Обращение' }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span></div>
+                                    <div class="truncate text-sm {{ $chat->unread_for_staff ? '' : 'text-ink-muted' }}">{{ $chat->last_text ? \Illuminate\Support\Str::limit($chat->last_text, 90) : 'Файл' }}</div>
+                                </div>
+                                @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+            {{-- Паспорт — для ДКП, когда покупатель покупает у страхователя напрямую (05.10.2026). Строкой со шторкой, а не
+                 формой во весь экран (11.10.2026: восемь полей стояли посреди страницы между «Видит» и интересом). --}}
+            @php $ready = $buyer->party?->readyForContract(); @endphp
+            <section class="mt-6" data-controller="sheet">
+                <div class="list">
+                    <button type="button" class="row w-full text-left" data-action="sheet#open">
+                        <x-ui.row-icon name="file"/>
+                        <span class="min-w-0 flex-1">
+                            <span class="block font-medium">Паспорт</span>
+                            <span @class(['row-sub', 'text-open' => $ready])>{{ $ready ? 'заполнен' : 'не заполнен' }}</span>
+                        </span>
+                        <x-ui.chevron/>
+                    </button>
+                </div>
+                <x-ui.sheet id="passport" title="Паспорт" :open="$errors->has('buyer.*')">
+                    <form method="post" action="/buyers/{{ $buyer->id }}/passport" class="flex flex-col gap-3">
+                        @csrf @method('put')
+                        <x-billing.passport-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" prefix="buyer" rows/>
+                        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                    </form>
+                </x-ui.sheet>
+            </section>
         </div>
     </div>
 </x-ui.cabinet>
