@@ -62,7 +62,8 @@ class RequestController
             Common::category($vehicle('category'), 'Без типа'),
         );
         ListPrefs::sync($request, 'park-requests', keep: $facets->keys());
-        $type = $request->query('preset', 'all');
+        // По умолчанию — приём (11.10.2026, владелец: «по умолчанию в заявках — заявки на приём, а не все»); «Все» — ?preset=all.
+        $type = $request->query('preset', RequestType::Intake->value);
         $qs = trim((string) $request->query('q'));
         // Счётчики пилюль — с выбранными чипами; лупа — по всем открытым заявкам, мимо пилюли и чипов.
         $filters = fn ($q) => $facets->applyTo($q)

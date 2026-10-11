@@ -3,7 +3,7 @@
      таблица x-park.request-row с карточкам. Страниц нет: список подгружается при листании (endless). --}}
 @php use App\Support\ListView; @endphp
 <x-ui.shell title="Заявки" :count="$requests->total()" :phone-heading="false" :detail="$detail">
-    <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" :counts="$counts" name="requests" :facets="$facets" search="Убыток, VIN, госномер, марка" search-target="#requests" :q="$q">
+    <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" pill-home="intake" :counts="$counts" name="requests" :facets="$facets" search="Убыток, VIN, госномер, марка" search-target="#requests" :q="$q">
         <x-slot:extra>
             <x-ui.view-switch :current="$view"/>
         </x-slot:extra>
