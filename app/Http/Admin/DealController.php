@@ -90,7 +90,7 @@ class DealController
         ]);
     }
 
-    /** Пилюля списка: «Горит» — просрочено или ход наш (им же горит таб «Работа», `Nav::staffCounts`), «Ждём менеджера» — его ход. */
+    /** Пилюля списка: «Горит» — просрочено или ход наш (им же горит заголовок «Сделки», `Nav::staffCounts`), «Ждём менеджера» — его ход. */
     private static function scope($q, string $preset)
     {
         return match ($preset) {
