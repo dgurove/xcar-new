@@ -28,6 +28,12 @@ use App\Offers\Deal;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
+use App\Offers\Events\EstimateGiven;
+use App\Offers\Events\EstimateRejected;
+use App\Offers\Events\EstimatesAsked;
+use App\Offers\Events\EstimatesClosed;
+use App\Offers\Events\EstimateTaken;
+use App\Offers\Jobs\RetractEstimateNotices;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
@@ -79,6 +85,11 @@ final class Notify
             BidPlaced::class => 'bidPlaced',
             BidAccepted::class => 'bidAccepted',
             BidDeclined::class => 'bidDeclined',
+            EstimatesAsked::class => 'estimatesAsked',
+            EstimateGiven::class => 'estimateGiven',
+            EstimateRejected::class => 'estimateRejected',
+            EstimateTaken::class => 'estimateTaken',
+            EstimatesClosed::class => 'estimatesClosed',
             InterestRegistered::class => 'interest',
             OffersShown::class => 'offersShown',
             StageEntered::class => 'stageEntered',
@@ -168,6 +179,35 @@ final class Notify
     public function bidDeclined(BidDeclined $e): void
     {
         $e->bid->user->notify(new BidDeclinedNotice($e->bid->load('offer')));
+    }
+
+    /** Оценка менеджером (11.10.2026): просьба — менеджеру, оценка — админам, решение — снова менеджеру. */
+    public function estimatesAsked(EstimatesAsked $e): void
+    {
+        foreach ($e->estimates as $estimate) {
+            $estimate->loadMissing('user')->user?->notify(new EstimateAskedNotice($estimate));
+        }
+    }
+
+    public function estimateGiven(EstimateGiven $e): void
+    {
+        Notification::send($this->staff(), new EstimateGivenNotice($e->estimate->loadMissing('offer', 'user')));
+    }
+
+    public function estimateRejected(EstimateRejected $e): void
+    {
+        $e->estimate->loadMissing('offer', 'user')->user?->notify(new EstimateRejectedNotice($e->estimate));
+    }
+
+    public function estimateTaken(EstimateTaken $e): void
+    {
+        $e->estimate->loadMissing('offer', 'user')->user?->notify(new EstimateTakenNotice($e->estimate));
+    }
+
+    /** Просьбу закрыли — «Оцените» у менеджеров стирается из ленты и Telegram. */
+    public function estimatesClosed(EstimatesClosed $e): void
+    {
+        RetractEstimateNotices::dispatch($e->estimateIds, $e->userIds, '/offers/'.$e->offer->number);
     }
 
     /** Интерес покупателя — его менеджеру; интерес посетителя — сотрудникам, как раньше. */

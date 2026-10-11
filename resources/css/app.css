@@ -850,6 +850,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { a.pill[aria-current="true"]:hover, a.pill[aria-current="page"]:hover, a.pill-accent:hover { @apply bg-accent-hover text-white; } }
   /* Бейдж нового в пилюле: на лаймовой текущей лаймовый пропадал — инверсия, как у текущего таба. */
   .pill .badge { min-width: 1.125rem; line-height: 1.125rem; }
+  .pill .badge:empty { display: none; }
   .pill[aria-current="true"] .badge, .pill[aria-current="page"] .badge { background: var(--color-white, #fff); color: var(--color-accent); }
   /* Метка предложения пилюлей (шапка редактора) — того же роста, что состояние рядом, своим цветом. */
   .pill-tag { background: var(--tag-bg); color: var(--tag-text); }

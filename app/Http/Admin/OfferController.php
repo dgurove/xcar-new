@@ -204,6 +204,10 @@ class OfferController
         }
         // Кто завёл — аватар у даты (столбец «Создано» на ПК у черновика, краткая таблица телефона — у всех строк, 09.10.2026).
         $offers->getCollection()->load('moderator.media');
+        // Оценки менеджеров — на месте «Оценить» у черновика без цены продажи (`x-offer.rate-chip`).
+        if ($admin) {
+            $offers->getCollection()->load(['openEstimates.user', ...User::withAvatar('openEstimates.user.media')]);
+        }
         // «Оценить» с чипа или из закупки: first — первая строка, где у человека есть дело.
         if (Detail::key($request) === 'first') {
             $first = $offers->first(fn ($o) => self::todo($o, $request->user())) ?? $offers->first();
@@ -294,6 +298,8 @@ class OfferController
         match (true) {
             $preset === 'slots' => $q->orderBy('slot_at'),
             $pick => $q->orderByRaw(self::PICK_GROUP),
+            // Менеджер оценил — решение за админом: такие строки первыми (11.10.2026), дальше выбранный порядок.
+            $preset === 'unpriced' && $sort->isDefault() => $q->orderByRaw("exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given') desc"),
             default => null,
         };
         // Закрытие приёма у групп опубликованного — как было: в «Выбрать» и «Идёт приём» ближние выше, в «Без
@@ -383,6 +389,10 @@ class OfferController
             }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки.
             $counts[$key] = $q->count() + ($key === 'legacy' && self::ghostsShown($facets) ? LegacyClaim::ghosts()->count() : 0);
+            // Лаймовый бейдж у «Без продажной цены» — сколько оценок менеджеров ждут решения (11.10.2026).
+            if ($key === 'unpriced' && $user->canManageCrm()) {
+                $counts['unpriced_given'] = (clone $q)->whereHas('estimates', fn ($e) => $e->given())->count();
+            }
         }
 
         return $counts;
@@ -534,7 +544,7 @@ class OfferController
     public function detail(Request $request, Offer $offer, ?bool $gallery = null)
     {
         $admin = $request->user()->canManageCrm();
-        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,offer_id,accepted_at,created_at', 'vendor.workflows', 'positions.stage', 'evacuator'] : [])])
+        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,offer_id,accepted_at,created_at', 'vendor.workflows', 'positions.stage', 'evacuator', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media')] : [])])
             ->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.detail', OfferFiles::letters($offer, $request->user()) + [
@@ -546,7 +556,7 @@ class OfferController
             'chats' => $admin ? Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']) : collect(),
             'list' => $gallery ?? $request->boolean('gallery'),
             // Кому отдать в гараж — только у черновика без цены (блок «Оценить» / «В гараж»).
-            'managers' => $admin && $offer->state === OfferState::Draft && ! $offer->asking_price ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
+            'managers' => $admin && $offer->state === OfferState::Draft && ! $offer->asking_price ? User::withRole(Role::Manager)->with(User::withAvatar())->orderBy('name')->get() : collect(),
         ]);
     }
 

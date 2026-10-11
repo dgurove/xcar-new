@@ -25,4 +25,5 @@ enum OfferEventType: string
     case Garage = 'garage';
     case Gallery = 'gallery_window';
     case SupplierLetter = 'supplier_letter';
+    case Estimate = 'estimate';
 }

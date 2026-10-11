@@ -9,7 +9,8 @@
 <x-ui.shell :title="$offer->titleWithYear()" :back="[$gallery ? 'Галерея' : 'Предложения', $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
     <x-slot:actions>
         @if ($user?->canShare())<x-offer.share :offer="$offer" icon/>@endif
-        @auth<x-offer.favorite :offer="$offer" variant="compact"/>@endauth
+        {{-- Черновик на оценке (11.10.2026) в избранное не кладётся: в списке «Избранного» его не будет. --}}
+        @if ($user && ($offer->isGallery() || $offer->state !== \App\Offers\OfferState::Draft))<x-offer.favorite :offer="$offer" variant="compact"/>@endif
         <x-ui.nav-arrows class="ml-auto sm:ml-0"
             :prev="$position['prev'] ? $context->offerUrl($position['prev']) : null"
             :next="$position['next'] ? $context->offerUrl($position['next']) : null"

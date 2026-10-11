@@ -16,6 +16,11 @@ use App\Notifications\Notice;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
+use App\Offers\Events\EstimateGiven;
+use App\Offers\Events\EstimateRejected;
+use App\Offers\Events\EstimatesAsked;
+use App\Offers\Events\EstimatesClosed;
+use App\Offers\Events\EstimateTaken;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersHidden;
@@ -43,6 +48,11 @@ final class PublishLiveUpdates
             BidAccepted::class => 'bidDecided',
             BidDeclined::class => 'bidDecided',
             InterestRegistered::class => 'interest',
+            EstimatesAsked::class => 'estimate',
+            EstimateGiven::class => 'estimate',
+            EstimateRejected::class => 'estimate',
+            EstimateTaken::class => 'estimate',
+            EstimatesClosed::class => 'estimate',
             OffersShown::class => 'shown',
             OffersHidden::class => 'hidden',
             StageEntered::class => 'stage',
@@ -98,6 +108,25 @@ final class PublishLiveUpdates
         $this->publish->refresh(Topics::user($e->bid->user_id), ['/deals', "/offers/{$n}"]);
         // Отклонили последнее — машина возвращается из «Есть подтверждения» в «Опубликованные»: список перечитывается.
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/']);
+    }
+
+    /**
+     * Оценка менеджером: у менеджеров «Нужно оценить» в «Предложениях» и бейдж таба, у сотрудников — строка вкладки
+     * «Без продажной цены» и число у пилюли.
+     */
+    public function estimate(EstimatesAsked|EstimateGiven|EstimateRejected|EstimateTaken|EstimatesClosed $e): void
+    {
+        [$offer, $users] = match (true) {
+            $e instanceof EstimatesAsked => [$e->offer, $e->estimates->pluck('user_id')->all()],
+            $e instanceof EstimatesClosed => [$e->offer, $e->userIds],
+            default => [$e->estimate->offer, [$e->estimate->user_id]],
+        };
+        $n = $offer->number;
+        foreach (array_unique($users) as $id) {
+            $this->publish->refresh(Topics::user($id), ['/offers', "/offers/{$n}"]);
+            $this->publish->badges(Topics::user($id));
+        }
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/']);
     }
 
     public function interest(InterestRegistered $e): void

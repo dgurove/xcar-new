@@ -103,6 +103,10 @@ final class ChangeOfferState
             if ($galleryClosed) {
                 $offer->log(OfferEventType::Gallery, $by);
             }
+            // Черновик ушёл дальше — просьбы оценить его снимаются (11.10.2026).
+            if ($from === OfferState::Draft && $next !== OfferState::Draft) {
+                app(CloseEstimates::class)($offer, $by);
+            }
             $this->settleDeal($offer, $next, $by);
 
             OfferStateChanged::dispatch($offer, $by);

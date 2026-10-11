@@ -2,7 +2,7 @@
      (сетка областей: media, body, extra, star, aside, place, action). Закладка, цена и город —
      прямые дети карточки: закладка в правом верхнем углу, под ней цена, внизу кнопка, город
      слева вровень с кнопкой. Якорь живых обновлений: id и data-offer-number. Витрина; в CRM — x-offer.crm-card. --}}
-@props(['offer', 'context' => null])
+@props(['offer', 'context' => null, 'estimate' => null])
 @php
     $user = auth()->user();
     $n = $offer->number;
@@ -27,7 +27,9 @@
     $bidder = $user?->bidsOnSite() ?? false;
     $hasMarks = (bool) $offer->car_place;
     // Горящее важнее нового: полоса у плитки под кадром, точка у строки (владелец 10.10.2026). Горящее — тем, кто видит срок.
+    // Отдано на оценку (11.10.2026): ход менеджера — оранжевой полосой, как горящее; оценил — без полосы, ждём админа.
     $tone = match (true) {
+        $estimate !== null => $estimate->isGiven() ? null : 'hot',
         $gallery => null,
         $bidder && $offer->isEndingSoon() => 'hot',
         $offer->isFresh() => 'fresh',
@@ -58,17 +60,22 @@
     @else
         <a href="{{ $href }}" class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
     @endif
-    @if ($user)<x-offer.favorite :offer="$offer"/>@endif
-    @if (!$gallery && $user?->isManager())
+    @if ($user && ! $estimate)<x-offer.favorite :offer="$offer"/>@endif
+    @if (!$gallery && ! $estimate && $user?->isManager())
         {{-- Кружок режима выбора: в разметке всегда, виден только когда лента в режиме (selection). --}}
         <label class="card-check"><input type="checkbox" value="{{ $offer->id }}" aria-label="Выбрать"><span><x-ui.icon name="check" class="size-4"/></span></label>
     @endif
 
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="card-name block min-w-0 flex-1 leading-snug hover:text-accent-text"><span>@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $tone === 'hot' ? 'Горящее' : 'Новое' }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
+            <a href="{{ $href }}" class="card-name block min-w-0 flex-1 leading-snug hover:text-accent-text"><span>@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : ($tone === 'hot' ? 'Горящее' : 'Новое') }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
         </div>
+        @if ($estimate)
+            {{-- Срок оценки на месте срока приёма; отклонили — словом впереди, срок прежний. --}}
+            @unless ($estimate->isGiven())<span class="card-when">@if ($estimate->rejected_at)<span class="text-urgent">оценку отклонили,</span> @endif<x-ui.icon name="timer" class="size-3.5 {{ $estimate->isOverdue() ? 'text-danger' : 'text-ink-muted' }}"/><x-offer.estimate-left :estimate="$estimate"/></span>@endunless
+        @else
         <x-offer.when :offer="$offer"/>
+        @endif
         @if ($hasMarks)
             <div class="card-marks"><x-offer.marks :offer="$offer"/></div>
         @endif
@@ -78,7 +85,10 @@
         <x-offer.tags :offer="$offer" :extra="$seen && !$canShow ? ['видят '.$seen] : []"/>
     </div>
     <span class="card-aside">
-        @if ($prices)
+        @if ($estimate)
+            {{-- Цены продажи ещё нет — ориентир менеджеру заявленная (владелец 11.10.2026), закупочной на сайте нет. --}}
+            @if ($offer->declaredPrice())<span class="nums text-xs text-ink-dim">заявленная {{ $price::money($offer->declaredPrice()) }}</span>@endif
+        @elseif ($prices)
             @if ($price->shown())<span class="card-price nums" data-controller="fit">@if ($price->withFrom())<span class="card-price-from">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="card-price-now">{{ $price::money($price->to) }}&nbsp;₽</span></span>@endif
             @if ($price->declared)<span class="nums text-xs text-ink-dim">заявленная {{ $price::money($price->declared) }}</span>@endif
         @elseif ($gallery)
@@ -91,7 +101,9 @@
 
     <div class="card-action">
         {{-- Глагол — лаймовой капсулой .btn-get, переход («Открыть») и сделанное — тихой; чат и показ — значками. --}}
-        @if ($user?->isBuyer())
+        @if ($estimate)
+            <a href="{{ $href }}" class="btn btn-get nums {{ $estimate->isGiven() ? 'btn-get-quiet' : '' }}">{{ $estimate->isGiven() ? 'Ваша оценка '.\App\Support\Money::nums($estimate->amount) : 'Оценить' }}</a>
+        @elseif ($user?->isBuyer())
             {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
             <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
         @elseif ($gallery || !$prices)
@@ -106,7 +118,7 @@
         @if ($canShow)
             <a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="btn btn-icon relative" aria-label="{{ $seen ? 'Показано '.$seen.' покупателям' : 'Показать покупателям' }}"><x-ui.icon name="users" class="size-[22px]"/>@if ($seen)<span class="badge nums">{{ $seen }}</span>@endif</a>
         @endif
-        @if (!$gallery && $user?->canChat() && $offer->chat_enabled)
+        @if (!$gallery && ! $estimate && $user?->canChat() && $offer->chat_enabled)
             <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-icon" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-[22px]"/></a>
         @endif
     </div>

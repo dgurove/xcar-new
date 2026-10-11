@@ -78,7 +78,15 @@ final class UpdateOffer
             $offer->bids()->where('state', BidState::Active)->where('kind', BidKind::Garage)->get()->each(fn (Bid $bid) => app(DeclineBid::class)($bid, $by));
         }
         if (in_array('share_locked', $changed, true)) {
+            // Запрет шеринга переключил админ — он его и держит: оценка менеджером при закрытии его не снимет.
+            if ($offer->share_locked_by_estimate) {
+                $offer->forceFill(['share_locked_by_estimate' => false])->saveQuietly();
+            }
             StampPhotos::dispatch($offer);
+        }
+        // Цена продажи поставлена (своя админа, «Взять», «Из текста») — оценка менеджеров больше не нужна.
+        if (in_array('asking_price', $changed, true) && $offer->asking_price) {
+            app(CloseEstimates::class)($offer, $by);
         }
         if (in_array('insurer_deadline_at', $changed, true)) {
             // Срок от страховой могли вписать после того, как оффер встал на этап.

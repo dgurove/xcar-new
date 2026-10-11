@@ -15,6 +15,7 @@ use App\Http\Admin\MailController;
 use App\Http\Admin\MailTemplateController;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
+use App\Http\Admin\OfferEstimateController;
 use App\Http\Admin\OfferDraftController;
 use App\Http\Admin\OfferPhotoController;
 use App\Http\Admin\OfferValuationController;
@@ -180,6 +181,11 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
         Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
         Route::post('/offers/{offer}/rate', [OfferController::class, 'rate']);
+        // Оценка менеджером (11.10.2026): «Отдать менеджеру на оценку», «Взять», «Отклонить», «×».
+        Route::post('/offers/{offer}/estimates', [OfferEstimateController::class, 'store']);
+        Route::post('/offers/{offer}/estimates/{estimate}/take', [OfferEstimateController::class, 'take']);
+        Route::post('/offers/{offer}/estimates/{estimate}/reject', [OfferEstimateController::class, 'reject']);
+        Route::delete('/offers/{offer}/estimates/{estimate}', [OfferEstimateController::class, 'destroy']);
         Route::post('/offers/{offer}/resale', [OfferController::class, 'resale']);
         // Пачкой из «Оцененных» и «Публикации»: галочки строк, `offers[]` — номера.
         Route::post('/offers/schedule', [OfferController::class, 'scheduleMany']);

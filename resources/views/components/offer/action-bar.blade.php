@@ -8,7 +8,9 @@
     $interest = ($user?->canInterestIn($offer) ?? false) && !$myInterest;
     $canShow = $user?->isManager() && !$gallery && $offer->state->isPublic();
     // Рядом с кружком «показать» длинная подпись не помещается на 375 px — коротко.
-    $label = $canBid && $prices ? ($myBid ? ($canShow ? 'Изменить' : 'Изменить предложение') : ($canShow ? 'Подтвердить' : 'Подтвердить предложение')) : ($interest ? ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') : null);
+    // На оценке (11.10.2026): «Оценить» / «Ваша оценка N» открывают тот же лист цены.
+    $estimate = $offer->state === \App\Offers\OfferState::Draft && $user?->isManager() ? \App\Offers\Estimate::openFor($offer, $user) : null;
+    $label = $estimate ? ($estimate->isGiven() ? 'Изменить оценку' : 'Оценить') : ($canBid && $prices ? ($myBid ? ($canShow ? 'Изменить' : 'Изменить предложение') : ($canShow ? 'Подтвердить' : 'Подтвердить предложение')) : ($interest ? ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') : null));
 @endphp
 @if ($label || $canShow)
     <x-ui.action-bar class="lg:hidden">

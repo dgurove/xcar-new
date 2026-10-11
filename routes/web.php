@@ -23,6 +23,7 @@ use App\Http\Pwa\PushController;
 use App\Http\Pwa\PwaController;
 use App\Http\SearchController;
 use App\Http\Site\BidController;
+use App\Http\Site\EstimateController;
 use App\Http\Site\CatalogController;
 use App\Http\Site\ChatController;
 use App\Http\Site\EnquiryController;
@@ -91,6 +92,8 @@ Route::middleware('wall')->group(function () {
 
 Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/confirm', [BidController::class, 'store']);
+    // Оценка цены продажи черновика, отданного менеджеру на оценку (11.10.2026).
+    Route::post('/offers/{offer}/estimate', [EstimateController::class, 'store'])->middleware('ability:isManager');
     // Админ подтверждает за менеджера — выбор в шторке «За какого менеджера?».
     Route::get('/reference/managers', [ReferenceController::class, 'managers'])->middleware('ability:isAdmin');
     Route::post('/confirmations/{bid}/withdraw', [BidController::class, 'withdraw']);

@@ -23,6 +23,7 @@ use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Park\City;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -395,7 +396,15 @@ final class Nav
         }
 
         return self::perRequest("nav.badges:{$user->id}:{$surface->value}",
-            fn () => array_filter(self::count($user, $surface) + self::counts($user, $surface)['fresh']));
+            function () use ($user, $surface) {
+                // Бейдж раздела — сумма: у «Предложений» менеджера и «Нужно оценить», и новые за 12 часов.
+                $badges = self::count($user, $surface);
+                foreach (self::counts($user, $surface)['fresh'] as $path => $n) {
+                    $badges[$path] = ($badges[$path] ?? 0) + $n;
+                }
+
+                return array_filter($badges);
+            });
     }
 
     /**
@@ -514,6 +523,8 @@ final class Nav
         }
 
         if ($user->isManager()) {
+            // «Нужно оценить» (11.10.2026): черновики, отданные ему на оценку и ещё не оценённые, — на табе «Предложения».
+            $badges['/offers'] = Offer::askedOf($user)->whereHas('estimates', fn ($e) => $e->waiting()->where('user_id', $user->id))->count();
             // Новый интерес — на пилюле «Покупатели» и строке «Интерес»; таб «Сделки» горит и тем, что ждут от него, и им.
             $badges['/buyers/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
             $badges['/buyers'] = $badges['/buyers/interest'];
@@ -565,7 +576,9 @@ final class Nav
                 ];
             }
             $badges = [
-                '/' => Bid::where('state', BidState::Active)->count(),
+                // Раздел «Предложения» горит и подтверждениями, и оценками менеджеров, ждущими решения (11.10.2026).
+                '/' => Bid::where('state', BidState::Active)->count()
+                    + Offer::where('state', OfferState::Draft)->whereHas('estimates', fn ($e) => $e->given())->count(),
                 '/offers/from-mail' => Boxes::registerCount(Scope::Offers),
                 '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),

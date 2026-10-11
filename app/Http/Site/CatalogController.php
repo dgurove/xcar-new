@@ -85,6 +85,12 @@ class CatalogController
         }
 
         $offers = ListView::paginate($request, $query, $count);
+        // «Нужно оценить» (11.10.2026): черновики, отданные этому менеджеру на оценку, — первой пачкой на первой странице
+        // каталога, без пилюли и поиска. Сначала неоценённые, ближний срок выше; оценённые — ждут решения админа.
+        $estimates = ! $gallery && $user?->isManager() && blank($filters['view'] ?? null) && blank($filters['q'] ?? null) && $offers->currentPage() === 1
+            ? CatalogQuery::cards($user)->askedOf($user)->with(['openEstimates' => fn ($e) => $e->where('user_id', $user->id)])->get()
+                ->sortBy(fn (Offer $o) => [$o->openEstimates->first()?->isGiven() ? 1 : 0, $o->openEstimates->first()?->due_at?->timestamp])->values()
+            : collect();
         Showing::remember($user, $offers->pluck('id')->all());
         $view = ListView::pick($request, $offers->total());
 
@@ -107,6 +113,7 @@ class CatalogController
             'prices' => $prices,
             'counts' => $pills + $counts,
             'manager' => $user?->isBuyer() ? $user->manager : null,
+            'estimates' => $estimates,
         ]);
     }
 }

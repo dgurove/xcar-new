@@ -29,6 +29,25 @@
             <div class="mt-6" id="catalog-list">
                 {{-- Подписка на бот предложений — строкой в начале списка (владелец 03.10.2026), только в каталоге. --}}
                 @unless ($gallery)<x-offers-bot.card/>@endunless
+                {{-- «Нужно оценить» (11.10.2026): отданное менеджеру на оценку — первой липкой пачкой, тем же видом, что список. --}}
+                @if ($estimates->isNotEmpty())
+                    @if (\App\Support\ListView::isTable($view))
+                    <x-ui.table id="catalog-estimates" :view="$view" class="mb-6">
+                        <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
+                        <tr class="table-group"><th colspan="99" scope="colgroup">Нужно оценить <span class="nums">{{ $estimates->count() }}</span></th></tr>
+                        @foreach ($estimates as $offer)
+                            <x-offer.site-table-row :offer="$offer" :deadline="$deadline" :estimate="$offer->openEstimates->first()"/>
+                        @endforeach
+                    </x-ui.table>
+                    @else
+                    <div class="{{ \App\Support\ListView::containerClass($view) }} mb-6" id="catalog-estimates">
+                        <h2 class="cards-group">Нужно оценить <span class="nums">{{ $estimates->count() }}</span></h2>
+                        @foreach ($estimates as $offer)
+                            <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>
+                        @endforeach
+                    </div>
+                    @endif
+                @endif
                 @if ($offers->isEmpty())
                     @if ($buyer && ! $narrowed)
                         {{-- Покупателю пока ничего не открыли: одна фраза и контакт менеджера строкой. --}}

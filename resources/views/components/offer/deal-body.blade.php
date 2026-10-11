@@ -11,11 +11,16 @@
     $reserve = !$gallery && !$offer->bidsOpen() && $offer->canBidInDeal($user);
     $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
+    // Черновик, отданный этому менеджеру на оценку (11.10.2026): вместо цены и подтверждения — оценка.
+    $estimate = $offer->state === \App\Offers\OfferState::Draft && $user?->isManager() ? \App\Offers\Estimate::openFor($offer, $user) : null;
 @endphp
 @if ($inSheet)
     <div class="mb-2 flex justify-end lg:hidden"><button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>
 @endif
 
+@if ($estimate)
+    <x-offer.estimate-form :offer="$offer" :estimate="$estimate"/>
+@else
 @if ($price->shown())
     <div class="nums text-[32px] font-bold leading-tight" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
     @if ($price->declared)<div class="mt-2"><span class="nums text-sm text-ink-dim">заявленная {{ $price::money($price->declared) }}</span></div>@endif
@@ -69,3 +74,4 @@
         <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet mt-3 w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="chat:open" data-emit-wide-param="1024"><x-ui.icon name="chat" class="size-5"/> {{ $manager ? 'Написать '.$manager->shortName() : 'Написать в чат' }}@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>
     @endif
 @endguest
+@endif

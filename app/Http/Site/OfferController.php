@@ -18,6 +18,11 @@ class OfferController
     public function show(Request $request, Offer $offer)
     {
         $user = $request->user();
+        // Оценка больше не нужна (цену поставили, просьбу сняли), а черновик ему не виден — в «Предложения» словом, не 404:
+        // сюда ведут уведомления «Оцените».
+        if (! $offer->isVisibleTo($user) && $user && $offer->estimates()->where('user_id', $user->id)->exists()) {
+            return redirect('/offers')->with('toast', 'Оценка уже не нужна');
+        }
         abort_unless($offer->isVisibleTo($user), 404);
 
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);

@@ -52,7 +52,7 @@ use Spatie\MediaLibrary\HasMedia;
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
     'incident_date', 'description', 'settlement_id', 'inspection_address', 'show_address', 'floor_price', 'owner_price', 'value', 'publish_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
-    'chat_enabled', 'share_locked', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
+    'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
     'garage_allowed', 'evacuator_id', 'evacuation_to',
 ])]
@@ -131,6 +131,7 @@ class Offer extends Model implements HasMedia
             'prices_include_vat' => 'bool',
             'chat_enabled' => 'bool',
             'share_locked' => 'bool',
+            'share_locked_by_estimate' => 'bool',
             'recommended' => 'bool',
             'garage_allowed' => 'bool',
             'audience_rules' => 'array',
@@ -298,6 +299,28 @@ class Offer extends Model implements HasMedia
         }
 
         return Outcome::whereIn('stage_id', Stage::where('workflow_id', $workflow->id)->select('id'))->where('branch', Outcome::GARAGE)->exists();
+    }
+
+    /** Оценки цены продажи менеджерами (11.10.2026, `Estimate`). */
+    public function estimates(): HasMany
+    {
+        return $this->hasMany(Estimate::class)->latest('id');
+    }
+
+    /** Открытые просьбы оценить: ждём менеджера или решения админа. Оценённые — первыми, дальше по сроку. */
+    public function openEstimates(): HasMany
+    {
+        return $this->hasMany(Estimate::class)->open()->orderByRaw("case when offer_estimates.state = 'given' then 0 else 1 end")->orderBy('due_at')->orderBy('id');
+    }
+
+    /**
+     * «Нужно оценить» менеджера: черновики, которые админ отдал ему на оценку и ещё не решил. Свой круг — не волны:
+     * черновик менеджеру иначе не виден (`scopeVisibleTo` не трогаем).
+     */
+    public function scopeAskedOf(Builder $q, User $user): Builder
+    {
+        return $q->where('offers.state', OfferState::Draft)
+            ->whereHas('estimates', fn ($e) => $e->open()->where('user_id', $user->id));
     }
 
     public function interests(): HasMany
@@ -595,7 +618,14 @@ class Offer extends Model implements HasMedia
     public function isVisibleTo(?User $user): bool
     {
         return $user?->isAdmin() || self::query()->whereKey($this->id)->visibleTo($user)->exists()
-            || ($user && $this->bids()->where('user_id', $user->id)->exists());
+            || ($user && $this->bids()->where('user_id', $user->id)->exists())
+            || $this->isAskedOf($user);
+    }
+
+    /** Черновик отдан этому менеджеру на оценку, и просьба открыта — страница ему открыта (11.10.2026). */
+    public function isAskedOf(?User $user): bool
+    {
+        return $user !== null && $this->state === OfferState::Draft && Estimate::openFor($this, $user) !== null;
     }
 
     /** CRM: что человеку можно открыть и править. Админу — всё, модератору — предложения его группы не из закупки. */

@@ -93,7 +93,7 @@
             @elseif ($bids && !$gallery && !$offer->bidsOpen() && $offer->state !== OfferState::Draft)
                 <span class="text-sm text-ink-muted">Приём подтверждений закрыт</span>
             @endif
-            @auth<x-offer.favorite :offer="$offer" variant="pill"/>@endauth
+            @if (auth()->check() && ($offer->isGallery() || $offer->state !== \App\Offers\OfferState::Draft))<x-offer.favorite :offer="$offer" variant="pill"/>@endif
             @if ($canChat)<a href="/account/chats/offer/{{ $offer->number }}" class="pill pill-plain"><x-ui.icon name="chat" class="size-4"/> Чат@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>@endif
             @if ($user?->isManager() && $offer->state === OfferState::Open)@php $seen = \App\Offers\Showing::countsFor($user, [$offer->id])[$offer->id] ?? 0; @endphp<a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="pill pill-plain"><x-ui.icon name="users" class="size-4"/> @if ($seen)Показано <span class="nums">{{ $seen }}</span>@else Показать покупателям@endif</a>@endif
             {{-- Покупателю — его менеджер: кто и как позвонить, одной пилюлей. --}}

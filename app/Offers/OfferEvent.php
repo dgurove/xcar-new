@@ -78,6 +78,7 @@ class OfferEvent extends Model
             OfferEventType::RouteDropped => 'Вывоз отменён',
             OfferEventType::InsurerReplied => 'Страховая ответила'.(! empty($p['contact']) ? ', есть контакт' : ''),
             OfferEventType::SupplierLetter => 'Письмо поставщику отправлено',
+            OfferEventType::Estimate => self::estimateText($p),
             OfferEventType::PickupAssigned => 'Вывоз: '.($p['who'] ?? 'мы').', '.mb_strtolower(Destination::tryFrom($p['to'] ?? '')?->label() ?? ''),
             // Слот: поставили («В слот 4 окт, 16:00»), убрали или часы не смогли выпустить (`error` — чего не хватило).
             OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Carbon::parse($p['at'])->translatedFormat('j M, H:i') : 'Убрано из слота'),
@@ -88,6 +89,23 @@ class OfferEvent extends Model
             OfferEventType::Garage => self::garageText($p),
             OfferEventType::RequirementAnswered => 'Менеджер: «'.($p['exit'] ?? '').'»'.(! empty($p['fields']) ? ' — '.implode(', ', $p['fields']) : ''),
             default => $this->type->value,
+        };
+    }
+
+    /** Оценка менеджером (11.10.2026): кому отдали, кто оценил, что отклонили и взяли. */
+    private static function estimateText(array $p): string
+    {
+        $names = fn (array $ids) => User::whereIn('id', $ids)->get(['id', 'name'])->map(fn (User $u) => $u->shortName())->implode(', ');
+        $one = fn () => isset($p['user']) ? $names([(int) $p['user']]) : '';
+        $sum = isset($p['amount']) ? Money::rub((int) $p['amount']) : '';
+
+        return match ($p['do'] ?? null) {
+            'asked' => 'Отдано на оценку: '.$names($p['users'] ?? []),
+            'given' => 'Оценка: '.$sum,
+            'rejected' => 'Оценка '.$one().' '.$sum.' отклонена',
+            'taken' => 'Взята оценка '.$one().' '.$sum,
+            'closed' => 'Снято с оценки: '.$names($p['users'] ?? []),
+            default => 'Оценка',
         };
     }
 

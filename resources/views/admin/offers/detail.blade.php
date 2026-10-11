@@ -104,6 +104,10 @@
                                 data-controller="digits" data-action="input->digits#format" value="" data-detail-focus>
                             <button type="submit" form="detail-edit-{{ $n }}" name="then" value="advance" class="btn btn-s btn-accent shrink-0">Оценить</button>
                         </div>
+                        {{-- Оценка менеджером (11.10.2026): кто оценил — «Взять» / «Отклонить», кто думает — срок; «Отдать менеджеру на оценку». --}}
+                        @if ($rate)
+                            @include('admin.offers.estimates')
+                        @endif
                         @endif
                         @if ($offer->purchaseCar)
                             @include('admin.offers.purchase-prices', ['car' => $offer->purchaseCar])
@@ -203,7 +207,14 @@
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
             @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
         </x-slot:actions>
-        {{-- Последнее письмо, как в редакторе и деле ТС; вся переписка — окном поверх списка (x-mail.window на странице). --}}
+        {{-- Письма — сразу под шапкой, над подтверждениями и полями (11.10.2026, владелец: «в окошке очень не хватает писем»;
+             по ним заполняют поля и оценивают): все строками, как в «Почте», строка открывает окно поверх списка на письме. --}}
+        @if ($letters && auth()->user()->canCrmMail())
+            <section class="mt-4">
+                <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
+                <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages"/>
+            </section>
+        @endif
         {{-- Оценки из закупки — у машины по контрпредложению всегда, а не только под «Оценить»: цену продажи правят и
              после оценки. Заголовком номер закупки — рядом подтверждения продажи, их не спутать. --}}
         @if ($admin && $offer->purchaseCar && ! $rate && ! $floorFirst)
@@ -249,13 +260,6 @@
             <h2 class="detail-section">Документы</h2>
             @include('admin.offers.papers-block')
         </section>
-        {{-- Письма — под документами: все строками, как в «Почте»; строка открывает окно поверх списка на этом письме. --}}
-        @if ($letters && auth()->user()->canCrmMail())
-            <section class="mt-5">
-                <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
-                <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages"/>
-            </section>
-        @endif
         {{-- Тронули поле — внизу листа выезжает «Сохранить изменения» (save_bar_controller, кнопка привязана к форме form=):
              подвалом карточки, вне прокрутки — всегда на экране, а не в конце формы. Уходят только тронутые. --}}
         <x-slot:foot><x-ui.save-bar :form="'detail-edit-'.$n"/></x-slot:foot>

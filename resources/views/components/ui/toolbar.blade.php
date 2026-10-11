@@ -4,7 +4,7 @@
      data-searching, ряд кнопок и чипов уходит, на месте — поле с «Отмена» (как в iOS); список сужается по ходу
      набора по всему списку, мимо пилюль и чипов (live_search_controller), адрес не меняется.
      sort — App\Support\Sort списка (поля и текущее значение), пусто — кнопки сортировки нет;
-     pills: ключ → подпись; dots: ключ → тон точки перед подписью (fresh, hot — легенда полос каталога); counts: ключ → число или сумма строкой («360 500 ₽» в «Деньгах»); tones: ключ → класс пилюли (pill-danger у «Просрочено»);
+     pills: ключ → подпись; dots: ключ → тон точки перед подписью (fresh, hot — легенда полос каталога); counts: ключ → число или сумма строкой («360 500 ₽» в «Деньгах»); tones: ключ → класс пилюли (pill-danger у «Просрочено»); badges: ключ → ключ числа в counts, лаймовый бейдж после числа (у «Без продажной цены» — оценки менеджеров ждут решения);
      pillDefault=false — первая пилюля («Все») не выделяется: зелёное только у сужающего фильтра;
      pillHome — пилюля экрана по умолчанию, её ключа нет в адресе (обычно первая; у почты первая «Требуют внимания», а открывается «Все»);
      facets — App\Support\Facets списка (чипы); search — подсказка в поле поиска (пусто — лупы нет),
@@ -15,7 +15,7 @@
      слот actions — у правого края («+», «Из писем»).
      Сортировка — окошко x-ui.sort: поле и направление (владелец 06.10.2026: «кнопка сортировки, окошко — выбор
      критерия и ascending/descending»); прежнего меню исходов словами («Сначала дешёвые») больше нет. --}}
-@props(['sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false])
+@props(['sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'badges' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -42,6 +42,7 @@
                 @foreach ($pills as $key => $label)
                     <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
                         @isset($dots[$key])<span class="card-tone card-tone--{{ $dots[$key] }}"></span>@endisset{{ $label }}@if (array_key_exists($key, $counts)) <span class="nums opacity-70" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
+                        @isset($badges[$key])<span class="badge nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset
                     </a>
                 @endforeach
                 {{ $pillsExtra ?? '' }}
