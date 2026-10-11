@@ -2209,6 +2209,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .photo-tile img { @apply size-full object-cover; }
   .photo-tile-more { @apply absolute inset-0 flex items-center justify-center bg-black/55 text-lg font-medium text-white; }
   /* Задача сделки: получение фактами одной строкой, ответы страховой подложками. */
+  /* Получение по сделке — сведения поставщика, как «Найдено в Почте»: подпись источника, подложка, поля подписаны слева. */
+  .handover-cap { @apply mb-1.5 flex items-center gap-1.5 text-sm text-ink-dim; }
+  .handover-card { @apply rounded-(--radius-m) bg-surface-2 px-4 py-1; }
+  .handover-row { @apply grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-x-3 py-2; }
+  .handover-row + .handover-row { border-top: 1px solid var(--color-line); }
+  .handover-row > dt { @apply text-sm text-ink-muted; }
+  .handover-row > dd { @apply min-w-0 break-words; }
+  .handover-phone { @apply mt-0.5 inline-flex items-center gap-1.5 font-medium text-accent-text; }
   .handover-facts { @apply flex flex-wrap items-center gap-x-4 gap-y-1.5; }
   .handover-facts > span { @apply inline-flex min-w-0 items-center gap-1.5; }
   .handover-facts > span > svg, .handover-facts > .place > svg { @apply size-4 shrink-0 text-ink-dim; }

@@ -71,7 +71,8 @@
     @endif
 
     @if ($canChat)
-        <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet mt-3 w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="chat:open" data-emit-wide-param="1024"><x-ui.icon name="chat" class="size-5"/> {{ $manager ? 'Написать '.$manager->shortName() : 'Написать в чат' }}@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>
+        {{-- В шторке на телефоне чат — круглой кнопкой в плашке снизу, второй раз здесь не нужен; на ПК плашки нет. --}}
+        <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet mt-3 w-full {{ $inSheet ? 'max-lg:!hidden' : '' }}" data-controller="emit" data-action="emit#send" data-emit-event-param="chat:open" data-emit-wide-param="1024"><x-ui.icon name="chat" class="size-5"/> {{ $manager ? 'Написать '.$manager->shortName() : 'Написать в чат' }}@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>
     @endif
 @endguest
 @endif

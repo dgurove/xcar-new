@@ -72,7 +72,12 @@
             @endif
 
             @if ($dealInSheet && $price->shown())
-                <div class="nums order-1 text-2xl leading-none lg:hidden" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
+                {{-- Телефон: цена и под ней срок приёма — тем, кто подтверждает (11.10.2026: на плитке «осталось 3 д», а на
+                     странице срок был только в шторке «Подтвердить»). --}}
+                <div class="order-1 lg:hidden">
+                    <div class="nums text-2xl leading-none" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.55em] font-normal text-ink-muted">с НДС</span>@endif</div>
+                    <x-offer.when :offer="$offer" class="mt-2"/>
+                </div>
             @endif
 
             <x-offer.facts :offer="$offer" class="order-2 lg:order-3"/>

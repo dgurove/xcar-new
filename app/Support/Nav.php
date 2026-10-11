@@ -554,6 +554,14 @@ final class Nav
             $badges['/garage'] = max(0, (int) $asks->garage - $paid['garage']) + Offer::pickupsOf($user)->awaitingPickup()->count()
                 + Offer::where('evacuator_id', $user->id)->whereHas('garageCar', fn ($g) => $g->where('manager_id', $user->id))->awaitingPickup()->count();
         }
+        if ($user->hasDeals()) {
+            // «Оплаты» в кабинете горят тем, что ждёт его: оплатить, просрочено, указать покупателя (11.10.2026: в «Оплатах»
+            // красное «Оплатить», а строка кабинета молчала).
+            // Число — строки самих «Оплат», где нужен он (`DealMoney::needsAction`), иначе бейдж и список расходятся; расчёт
+            // тяжёлый — полминуты в кэше, как итоги таб-бара.
+            $badges['/account/money'] = Cache::remember("nav.money:{$user->id}", 30,
+                fn () => (new \App\Billing\ManagerLedger($user))->rows()->filter(fn ($r) => $r->money->needsAction())->count());
+        }
         if ($user->isSuperBuyer()) {
             // Что ждут от него по сделкам — на табе «Сделки», как у менеджера.
             $badges['/deals/asks'] = max(0, Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->count() - array_sum(self::paidPayAsks($user)));
