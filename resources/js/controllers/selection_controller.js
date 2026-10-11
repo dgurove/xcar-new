@@ -26,12 +26,13 @@ export default class extends Controller {
         document.removeEventListener('click', this.onShowOne);
     }
 
+    // Списков бывает несколько: основной и пачка «Открыты только Вам» над ним (11.10.2026) — режим и галки общие.
     get active() { return this.hasListTarget && this.listTarget.hasAttribute('data-selecting'); }
 
-    boxes() { return [...this.listTarget.querySelectorAll('.card-check input')]; }
+    boxes() { return this.listTargets.flatMap((l) => [...l.querySelectorAll('.card-check input')]); }
 
     start(card) {
-        this.listTarget.setAttribute('data-selecting', '');
+        this.listTargets.forEach((l) => l.setAttribute('data-selecting', ''));
         if (card) { const b = card.querySelector('.card-check input'); if (b) b.checked = true; }
         this.update();
     }
@@ -40,7 +41,7 @@ export default class extends Controller {
 
     cancel() {
         this.boxes().forEach((b) => { b.checked = false; });
-        this.listTarget.removeAttribute('data-selecting');
+        this.listTargets.forEach((l) => l.removeAttribute('data-selecting'));
         this.update();
     }
 

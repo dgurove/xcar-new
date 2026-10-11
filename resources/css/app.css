@@ -2940,11 +2940,13 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card-tone { display: var(--tone-dot, inline-block); width: .5rem; height: .5rem; margin-right: .4375rem; border-radius: 999px; vertical-align: .1em; }
   .card-tone--fresh { background: var(--color-accent); }
   .card-tone--hot { background: var(--color-urgent); }
+  .card-tone--only { background: var(--color-danger); }
   /* На выбранной пилюле лайм сливается с подложкой — точка цветом надписи. */
   .pill[aria-current="true"] .card-tone { background: currentColor; }
-  .card--fresh::before, .card--hot::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
+  .card--fresh::before, .card--hot::before, .card--only::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
   .card--fresh::before { background: var(--color-accent); }
   .card--hot::before { background: var(--color-urgent); }
+  .card--only::before { background: var(--color-danger); }
   /* Без контейнерных единиц (iOS до 16) полоса плитки встала бы на кадр — там в плитке точка у названия. */
   @supports not (top: 1cqi) {
     .cards--grid { --tone-stripe: none !important; --tone-dot: inline-block !important; }

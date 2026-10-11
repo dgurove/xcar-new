@@ -46,6 +46,13 @@ class CatalogController
 
         // Чипы кладёт Facets (ему нужна база без них — для вариантов и чисел), остальное — CatalogQuery.
         $query = $facets->apply(CatalogQuery::for($user, array_diff_key($filters, array_flip($facets->keys())) + ['sort' => $sort], $gallery));
+        // «Открыты только Вам» (11.10.2026, владелец): открытое одному этому менеджеру — своей пачкой выше остальных (после
+        // «Нужно оценить»), из основного списка уходит, чтобы не стоять дважды. С тем же фильтром и сортировкой; в поиске — нет.
+        $exclusive = ! $gallery && $user?->isManager() && blank($filters['q'] ?? null)
+            ? (clone $query)->onlyFor($user)->get() : collect();
+        if ($exclusive->isNotEmpty()) {
+            $query->notOnlyFor($user);
+        }
         $count = $query->count();
         if (ListView::isTable(ListView::pick($request, $count))) {
             // Строке таблицы кадры не нужны.
@@ -65,7 +72,7 @@ class CatalogController
             : [
                 // Без фильтров «Все» — это и есть длина списка: второй раз не считаем. Та же дверь, что у списка и таба
                 // (`Offer::siteList`: со сделками, открытыми менеджеру), — иначе с фильтром число расходилось с табом.
-                'offers' => ! $gallery && ! $narrowed ? $count : Offer::siteList($user)->count(),
+                'offers' => ! $gallery && ! $narrowed ? $count + $exclusive->count() : Offer::siteList($user)->count(),
                 'gallery' => Offer::visibleTo($user)->inGallery()->count(),
                 'recommended' => ($gallery ? Offer::visibleTo($user)->inGallery() : Offer::siteList($user))->where('recommended', true)->count(),
             ];
@@ -107,6 +114,7 @@ class CatalogController
             // Сортировка объектом — тулбару и заголовкам таблицы; строкой `sort` — стрелкам страницы предложения.
             'sorting' => Sort::from($sort, CatalogQuery::allowedSorts($gallery, $prices, $user), CatalogQuery::defaultSort($user, $gallery)),
             'groups' => $groups,
+            'exclusive' => $offers->currentPage() === 1 ? $exclusive : collect(),
             'shelves' => $shelves,
             'groupSizes' => $groups ? \App\Offers\CloseGroups::sizes($query) : [],
             'views' => $views,

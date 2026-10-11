@@ -325,6 +325,23 @@ class Offer extends Model implements HasMedia
             ->whereHas('estimates', fn ($e) => $e->open()->where('user_id', $user->id));
     }
 
+    /**
+     * Открыто только этому человеку (11.10.2026, владелец: «Открыты только Вам»): в волнах показа (`offer_viewers`) он
+     * один, никому другому — ни сейчас, ни позже — предложение не откроется.
+     */
+    public function scopeOnlyFor(Builder $q, User $user): Builder
+    {
+        return $q->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id))
+            ->whereDoesntHave('viewers', fn ($v) => $v->where('user_id', '!=', $user->id));
+    }
+
+    /** Всё, кроме открытого только ему (`scopeOnlyFor`): основной список, когда «Открыты только Вам» стоит своей пачкой. */
+    public function scopeNotOnlyFor(Builder $q, User $user): Builder
+    {
+        return $q->where(fn ($w) => $w->whereDoesntHave('viewers', fn ($v) => $v->where('user_id', $user->id))
+            ->orWhereHas('viewers', fn ($v) => $v->where('user_id', '!=', $user->id)));
+    }
+
     public function interests(): HasMany
     {
         return $this->hasMany(Interest::class)->latest();

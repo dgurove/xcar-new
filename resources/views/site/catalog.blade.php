@@ -29,8 +29,8 @@
             <div class="mt-6" id="catalog-list">
                 {{-- Подписка на бот предложений — строкой в начале списка (владелец 03.10.2026), только в каталоге. --}}
                 @unless ($gallery)<x-offers-bot.card/>@endunless
-                {{-- Оценка менеджером (11.10.2026): что оценить — первой липкой пачкой плиток тем же видом, что список, с полосой
-                     «ваш ход»; что уже оценено и ждёт решения XCar — строками под ней, без полосы: делать там нечего. --}}
+                {{-- Оценка менеджером (11.10.2026): что оценить — первой пачкой лентой, с полосой «ваш ход»; что уже оценено и ждёт
+                     решения XCar — такой же лентой в самом конце списка (владелец: «Ждут решения» первым рядом и строками не просил). --}}
                 @php
                     $toEstimate = $estimates->reject(fn ($o) => $o->openEstimates->first()?->isGiven());
                     $estimated = $estimates->filter(fn ($o) => $o->openEstimates->first()?->isGiven());
@@ -56,24 +56,33 @@
                     </div>
                     @endif
                 @endif
-                @if ($estimated->isNotEmpty())
-                    <section class="mb-6" id="catalog-estimated">
-                        <h2 class="list-head !px-0">Ждут решения <span class="nums">{{ $estimated->count() }}</span></h2>
-                        {{-- Строки — сеткой: на ПК одна строка во всю ширину пустовала. --}}
-                        <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                            @foreach ($estimated as $offer)
-                                <a href="/offers/{{ $offer->number }}" class="row">
-                                    <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
-                                    <span class="min-w-0 flex-1">
-                                        <span class="block truncate">{{ $offer->titleWithYear() }}</span>
-                                        @php $e = $offer->openEstimates->first(); @endphp
-                                        <span class="row-sub nums">{{ match (true) { $e->agreed() => 'вы согласны с ценой '.\App\Support\Money::rub($e->amount), $e->isCorrection() => 'ваша цена '.\App\Support\Money::rub($e->amount), default => 'ваша оценка '.\App\Support\Money::rub($e->amount) } }}</span>
-                                    </span>
-                                    <x-ui.chevron/>
-                                </a>
+                {{-- «Открыты только Вам» (11.10.2026, владелец): открытое одному этому менеджеру — выше остальных, красной пометкой
+                     (новое — лайм, горящее — оранжевое). Плитками — лентой вбок, строками и таблицей — первыми строками с заголовком. --}}
+                @if ($exclusive->isNotEmpty())
+                    @if (\App\Support\ListView::isTable($view))
+                    <x-ui.table id="catalog-only" :view="$view" class="mb-6">
+                        <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
+                        <tr class="table-group"><th colspan="99" scope="colgroup"><span class="card-tone card-tone--only"></span>Открыты только Вам <span class="nums">{{ $exclusive->count() }}</span></th></tr>
+                        @foreach ($exclusive as $offer)
+                            <x-offer.site-table-row :offer="$offer" :context="$context" :deadline="$deadline" only/>
+                        @endforeach
+                    </x-ui.table>
+                    @elseif ($view === \App\Support\ListView::LIST)
+                    <div id="catalog-only" class="cards cards--list mb-6" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                        <h2 class="cards-group"><span class="card-tone card-tone--only self-center"></span>Открыты только Вам <span class="nums">{{ $exclusive->count() }}</span></h2>
+                        @foreach ($exclusive as $offer)
+                            <x-offer.card :offer="$offer" :context="$context" only/>
+                        @endforeach
+                    </div>
+                    @else
+                    <div class="mb-6" data-controller="ticker">
+                        <x-ui.shelf title="Открыты только Вам" tone="only" :count="$exclusive->count()" id="catalog-only" :data-selection-target="$selecting ? 'list' : null" :data-action="$selecting ? 'click->selection#tap:capture change->selection#change' : null">
+                            @foreach ($exclusive as $offer)
+                                <x-offer.card :offer="$offer" :context="$context" only/>
                             @endforeach
-                        </div>
-                    </section>
+                        </x-ui.shelf>
+                    </div>
+                    @endif
                 @endif
                 @if ($offers->isEmpty())
                     @if ($buyer && ! $narrowed)
@@ -87,6 +96,7 @@
                         @if ($narrowed) По этим условиям ничего нет @elseif ($gallery) Пока пусто @else Предложений пока нет @endif
                     </x-ui.empty>
                     @endif
+                    @include('site.catalog-estimated')
                 @else
                     @if (\App\Support\ListView::isTable($view))
                     <x-ui.table id="catalog" :view="$view" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="false">
@@ -119,6 +129,7 @@
                         @endforeach
                     </div>
                     @endif
+                    @include('site.catalog-estimated')
                     @unless ($shelves)<div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>@endunless
                 @endif
             </div>

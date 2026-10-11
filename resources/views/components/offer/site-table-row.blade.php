@@ -2,7 +2,7 @@
      «рекомендуем», под ним номер, приём (срок с иконкой секундомера, 07.10.2026: «осталось» и голое «12 д 5 ч» владельцу не нравились)
      и город; от 640 номер, приём и город встают
      столбцами. Справа цена так, как видит человек, или «Узнать», под ней заявленная, на телефоне без «сколько прошло» (07.10.2026, владелец: «зачем писать 2 дн»), на ПК — столбцом. Нажатие — карточка. --}}
-@props(['offer', 'context' => null, 'deadline' => true, 'estimate' => null])
+@props(['offer', 'context' => null, 'deadline' => true, 'estimate' => null, 'only' => false])
 @php
     $user = auth()->user();
     $n = $offer->number;
@@ -12,8 +12,10 @@
     $left = $gallery || !$bids ? null : $offer->secondsLeft();
     // Новое и горящее — точкой перед названием, как непрочитанное (владелец 10.10.2026); горящее важнее.
     // Отдано на оценку (11.10.2026): ход менеджера — оранжевой точкой; у черновика номер временный, его не пишем.
+    // Открыто только ему (пачка «Открыты только Вам», 11.10.2026) — красной точкой, важнее нового и горящего.
     $tone = match (true) {
         $estimate !== null => $estimate->isGiven() ? null : 'hot',
+        $only => 'only',
         $gallery => null,
         $bids && $offer->isEndingSoon() => 'hot',
         $offer->isFresh() => 'fresh',
@@ -29,7 +31,7 @@
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}">
     <td class="grow">
-        <x-ui.row-link :key="$n"><span class="cell-title">@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : ($tone === 'hot' ? 'Горящее' : 'Новое') }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title">@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : match ($tone) { 'only' => 'Только вам', 'hot' => 'Горящее', default => 'Новое' } }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
             @unless ($estimate)<span class="sm:hidden">№ {{ $n }}</span>@endunless
             @if ($estimate)@unless ($estimate->isGiven())<span class="cell-timer sm:hidden"><x-ui.icon name="timer" class="size-3.5"/><x-offer.estimate-left :estimate="$estimate" word=""/></span>@endunless

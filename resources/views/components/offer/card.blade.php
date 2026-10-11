@@ -2,7 +2,7 @@
      (сетка областей: media, body, extra, star, aside, place, action). Закладка, цена и город —
      прямые дети карточки: закладка в правом верхнем углу, под ней цена, внизу кнопка, город
      слева вровень с кнопкой. Якорь живых обновлений: id и data-offer-number. Витрина; в CRM — x-offer.crm-card. --}}
-@props(['offer', 'context' => null, 'estimate' => null])
+@props(['offer', 'context' => null, 'estimate' => null, 'only' => false])
 @php
     $user = auth()->user();
     $n = $offer->number;
@@ -28,8 +28,10 @@
     $hasMarks = (bool) $offer->car_place;
     // Горящее важнее нового: полоса у плитки под кадром, точка у строки (владелец 10.10.2026). Горящее — тем, кто видит срок.
     // Отдано на оценку (11.10.2026): ход менеджера — оранжевой полосой, как горящее; оценил — без полосы, ждём админа.
+    // Открыто только ему («Открыты только Вам», 11.10.2026) — красной полосой, важнее нового и горящего.
     $tone = match (true) {
         $estimate !== null => $estimate->isGiven() ? null : 'hot',
+        $only => 'only',
         $gallery => null,
         $bidder && $offer->isEndingSoon() => 'hot',
         $offer->isFresh() => 'fresh',
@@ -68,7 +70,7 @@
 
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="card-name block min-w-0 flex-1 leading-snug hover:text-accent-text"><span>@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : ($tone === 'hot' ? 'Горящее' : 'Новое') }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
+            <a href="{{ $href }}" class="card-name block min-w-0 flex-1 leading-snug hover:text-accent-text"><span>@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : match ($tone) { 'only' => 'Только вам', 'hot' => 'Горящее', default => 'Новое' } }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
         </div>
         @if ($estimate)
             {{-- Срок оценки на месте срока приёма; отклонили — словом впереди, срок прежний. --}}
@@ -87,11 +89,12 @@
     <span class="card-aside">
         @if ($estimate)
             {{-- Как цена обычной плитки — «заявленная → продажи» (владелец 11.10.2026): у оценки на месте цены «Нужна оценка»,
-                 у корректировки — цена XCar. Заявленную скрыли при просьбе — без неё и без стрелки. Закупочной на сайте нет. --}}
+                 у корректировки — цена XCar, у оценённой («Ждут решения») — его сумма, кнопка — «Изменить». Заявленную скрыли при просьбе — без неё и без стрелки. Закупочной на сайте нет. --}}
             @php $from = $estimate->showsDeclared() ? $offer->declaredPrice() : null; @endphp
             <span class="card-price nums" data-controller="fit">
                 @if ($from)<span class="card-price-from">{{ $price::money($from) }}&nbsp;→</span>@endif
-                @if ($estimate->isCorrection())<span class="card-price-now">{{ $price::money($estimate->base_price) }}&nbsp;₽</span>
+                @if ($estimate->isGiven())<span class="card-price-now">{{ $price::money($estimate->amount) }}&nbsp;₽</span>
+                @elseif ($estimate->isCorrection())<span class="card-price-now">{{ $price::money($estimate->base_price) }}&nbsp;₽</span>
                 @else<span class="card-price-now font-normal text-urgent">Нужна оценка</span>@endif
             </span>
         @elseif ($prices)
@@ -109,7 +112,7 @@
     <div class="card-action">
         {{-- Глагол — лаймовой капсулой .btn-get, переход («Открыть») и сделанное — тихой; чат и показ — значками. --}}
         @if ($estimate)
-            <a href="{{ $href }}" class="btn btn-get nums {{ $estimate->isGiven() ? 'btn-get-quiet' : '' }}">{{ $estimate->isGiven() ? 'Ваша оценка '.\App\Support\Money::nums($estimate->amount) : ($estimate->isCorrection() ? 'Проверить цену' : 'Оценить') }}</a>
+            <a href="{{ $href }}" class="btn btn-get nums {{ $estimate->isGiven() ? 'btn-get-quiet' : '' }}">{{ $estimate->isGiven() ? 'Изменить' : ($estimate->isCorrection() ? 'Проверить цену' : 'Оценить') }}</a>
         @elseif ($user?->isBuyer())
             {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
             <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
