@@ -72,7 +72,7 @@
         </div>
         @if ($estimate)
             {{-- Срок оценки на месте срока приёма; отклонили — словом впереди, срок прежний. --}}
-            @unless ($estimate->isGiven())<span class="card-when flex-wrap gap-x-1.5">@if ($estimate->rejected_at)<span class="whitespace-nowrap text-urgent">оценку отклонили,</span>@endif<span class="inline-flex items-center gap-1 whitespace-nowrap"><x-ui.icon name="timer" class="size-3.5 {{ $estimate->isOverdue() ? 'text-danger' : 'text-ink-muted' }}"/><x-offer.estimate-left :estimate="$estimate"/></span></span>@endunless
+            @unless ($estimate->isGiven())<span class="card-when flex-wrap gap-x-1.5">@if ($estimate->rejected_at)<span class="whitespace-nowrap text-urgent">отклонили,</span>@endif<span class="inline-flex items-center gap-1 whitespace-nowrap"><x-ui.icon name="timer" class="size-3.5 {{ $estimate->isOverdue() ? 'text-danger' : 'text-ink-muted' }}"/><x-offer.estimate-left :estimate="$estimate"/></span></span>@endunless
         @else
         <x-offer.when :offer="$offer"/>
         @endif
