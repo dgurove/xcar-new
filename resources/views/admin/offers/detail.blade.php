@@ -106,8 +106,9 @@
                                 data-controller="digits" data-action="input->digits#format" value="" data-detail-focus>
                             <button type="submit" form="detail-edit-{{ $n }}" name="then" value="advance" class="btn btn-s btn-accent shrink-0">Оценить</button>
                         </div>
-                        {{-- Оценка менеджером (11.10.2026): кто оценил — «Взять» / «Отклонить», кто думает — срок; «Отдать менеджеру на оценку». --}}
-                        @if ($rate)
+                        {{-- Оценка менеджером (11.10.2026): кто оценил — «Взять» / «Отклонить», кто думает — срок, «+ Отдать ещё»; группа —
+                             только когда уже отдали, первый раз — пунктом «Действий» (владелец: «отдать на оценку в действия»). --}}
+                        @if ($rate && $offer->openEstimates->isNotEmpty())
                             @include('admin.offers.estimates')
                         @endif
                         @endif
@@ -148,7 +149,7 @@
                 $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                 $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
             @endphp
-            @php $askMenu = $correct && $offer->openEstimates->isEmpty(); @endphp
+            @php $askMenu = ($correct || ($rate && ! $floorFirst)) && $offer->openEstimates->isEmpty(); @endphp
             @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu)
                 <div class="contents" data-controller="menu">
                     <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
@@ -172,11 +173,11 @@
                                 @endforeach
                             </div>
                         @endif
-                        {{-- Цена стоит, админ не уверен — менеджерам на корректировку (11.10.2026): пунктом, а не плашкой у каждой
-                             оценённой; спросили — плашка с ответами сверху карточки. --}}
+                        {{-- Менеджерам на оценку (без цены) или на корректировку (цена стоит, админ не уверен), 11.10.2026: пунктом, а не
+                             строкой у каждой карточки; отдали — ответы группой в карточке. --}}
                         @if ($askMenu)
                             <div class="menu-group">
-                                <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="estimate-ask-{{ $n }}:open"><x-ui.icon name="users" class="size-5 text-ink-muted"/>Спросить менеджеров</button>
+                                <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="estimate-ask-{{ $n }}:open"><x-ui.icon name="users" class="size-5 text-ink-muted"/>{{ $correct ? 'Спросить менеджеров' : 'Отдать на оценку' }}</button>
                             </div>
                         @endif
                         @if ($listed)
