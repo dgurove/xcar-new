@@ -11,6 +11,9 @@ final class VinText
 {
     private const LOOKALIKE = ['А' => 'A', 'В' => 'B', 'С' => 'C', 'Е' => 'E', 'Н' => 'H', 'К' => 'K', 'М' => 'M', 'О' => '0', 'Р' => 'P', 'Т' => 'T', 'Х' => 'X', 'У' => 'Y', 'З' => '3', 'O' => '0', 'I' => '1', 'Q' => '0'];
 
+    /** Что OCR читает вместо X на месте контрольной цифры, где буквы, кроме X, не бывает. */
+    private const CHECK_SLIPS = ['C' => 'X', 'K' => 'X', 'Y' => 'X'];
+
     /** Буквы и цифры, которые OCR путает: VIN здесь, модель скана — `ScanCar`. */
     public const SLIPS = ['8' => 'B', 'B' => '8', '5' => 'S', 'S' => '5', '2' => 'Z', 'Z' => '2', '6' => 'G', 'G' => '6', '0' => 'D', 'D' => '0', '1' => 'L', 'L' => '1', '4' => 'A', 'A' => '4', '7' => 'T', 'T' => '7'];
 
@@ -73,9 +76,12 @@ final class VinText
         // Ошибка бывает и в самом WMI («LSSA…» вместо «LS5A…» у Changan): правка проверяется целиком.
 
         $fixed = [];
+        // Место контрольной цифры (9-й знак) — только цифра или X; C, K, Y там — это X, прочитанный OCR (12.10.2026:
+        // «LYVUZA8ACKB319325» вместо «…8AXKB…» у Volvo Китай — VIN не встал, хотя скан читался хорошо).
+        $slips = fn (int $i, string $char) => $i === 8 && isset(self::CHECK_SLIPS[$char]) ? self::CHECK_SLIPS[$char] : (self::SLIPS[$char] ?? null);
         foreach (str_split($vin) as $i => $char) {
-            if (isset(self::SLIPS[$char])) {
-                $try = substr_replace($vin, self::SLIPS[$char], $i, 1);
+            if (($to = $slips($i, $char)) !== null) {
+                $try = substr_replace($vin, $to, $i, 1);
                 if (self::plausible($try) && VinDecoder::expectedCheckChar($try) === $try[8] && self::knownWmi($try)) {
                     $fixed[$try] = true;
                 }
