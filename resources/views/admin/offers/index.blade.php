@@ -38,8 +38,11 @@
         <x-slot:extra>@unless ($searching || $preset === 'legacy')<x-ui.view-switch :current="$view"/>@endunless</x-slot:extra>
         <x-slot:actions>
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
-            {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями. --}}
-            @if (in_array($preset, ['nofloor', 'unpriced'], true) && ! $searching)
+            {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями, оно даёт
+                 только закупочную, поэтому меню — у «Без закупочной», у «Без продажной» — одна кнопка (11.10.2026). --}}
+            @if ($preset === 'unpriced' && ! $searching)
+                <a href="/?preset=unpriced&peek=first" class="btn btn-s btn-quiet shrink-0 rounded-full">Оценить</a>
+            @elseif ($preset === 'nofloor' && ! $searching)
                 <div class="contents" data-controller="menu sheet">
                     <button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="menu#toggle" aria-haspopup="menu" aria-controls="rate-menu">Оценить<x-ui.icon name="chevron-down" class="size-4"/></button>
                     <div id="rate-menu" class="menu" popover data-menu-target="list" role="menu">

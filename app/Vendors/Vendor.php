@@ -10,6 +10,7 @@ use App\Mail\Account;
 use App\Mail\Scope;
 use App\Media\MediaUrl;
 use App\Offers\Offer;
+use App\Offers\Tag;
 use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -177,6 +179,12 @@ class Vendor extends Model implements HasMedia
     public function workflows(): HasMany
     {
         return $this->hasMany(Workflow::class);
+    }
+
+    /** Метки, которые его предложения получают сами (11.10.2026, `Offers\VendorTags`); та же связь, что у метки. */
+    public function defaultTags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'tag_vendor')->orderBy('sort');
     }
 
     public function offers(): HasMany

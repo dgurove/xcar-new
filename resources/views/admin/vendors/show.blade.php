@@ -42,6 +42,18 @@
                 <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание означает покупку</x-ui.check>
                 <x-ui.check name="offers_include_vat" :checked="$vendor->offers_include_vat">Цены предложений с НДС</x-ui.check>
                 <x-ui.check name="to_gallery" :checked="$vendor->to_gallery">Черновики в галерею на {{ config('xcar.gallery_days') }} дня</x-ui.check>
+                {{-- Метки по умолчанию (11.10.2026, начальник): черновик вендора получает их сам, у одного предложения их можно
+                     снять. Та же связь — «Ставится вендорам» в «Настройках → Метки». --}}
+                @php $mine = $vendor->defaultTags->pluck('id')->all(); @endphp
+                <div class="field">
+                    <span class="field-label">Метки по умолчанию</span>
+                    <input type="hidden" name="_tags" value="1">
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach (\App\Offers\Tag::orderBy('sort')->get() as $t)
+                            <label class="choice choice-tag" style="{{ \App\Offers\Tag::style($t->color) }}"><input type="checkbox" name="tags[]" value="{{ $t->id }}" @checked(in_array($t->id, $mine, true))><span>{{ $t->name }}</span></label>
+                        @endforeach
+                    </div>
+                </div>
                 <div class="list-head">Почта</div>
                 <div class="fields">
                     <x-ui.field name="mail_account_id" label="Отвечаем с ящика" :options="$accounts" placeholder="Первый активный" :value="$vendor->mail_account_id"/>

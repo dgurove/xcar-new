@@ -156,6 +156,10 @@ class VendorController
             'to_gallery' => $request->boolean('to_gallery'),
         ]));
 
+        // Метки по умолчанию из шторки «Продажа» (11.10.2026): та же связь, что «Ставится вендорам» у метки.
+        if ($request->boolean('_tags')) {
+            $vendor->defaultTags()->sync(\App\Offers\Tag::whereKey(array_map('intval', (array) $request->input('tags', [])))->pluck('id')->all());
+        }
         $setLogo($vendor, $request);
         // Волны вендора сменились — предложения без своих правил видят теперь другие.
         if ($vendor->wasChanged('audience_rules')) {

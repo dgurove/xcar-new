@@ -3,7 +3,9 @@
 namespace App\Offers;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /** Метка на оффере: название и цвет. Сами метки лежат в offers.tags списком названий. */
 #[Fillable(['name', 'color', 'sort'])]
@@ -20,6 +22,12 @@ class Tag extends Model
         'grey' => ['#ececec', '#666666', '#242424', '#9a9a9a'],
         'amber' => ['#fef3c7', '#92400e', '#3f2606', '#fcd34d'],
     ];
+
+    /** Вендоры, чьим предложениям метка ставится сама (11.10.2026, `VendorTags`). */
+    public function vendors(): BelongsToMany
+    {
+        return $this->belongsToMany(Vendor::class, 'tag_vendor');
+    }
 
     /** CSS-переменные цвета для style="" у .tag и .choice-tag. */
     public static function style(?string $color): string

@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Offers\Offer;
 use App\Offers\Tag;
+use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -15,14 +16,17 @@ class TagController
     {
         $used = Offer::query()->select(DB::raw('t as name, count(*) as n'))->crossJoin(DB::raw('jsonb_array_elements_text(tags) as t'))->groupBy('t')->pluck('n', 'name');
 
-        return view('admin.tags.index', ['tags' => Tag::orderBy('sort')->get(), 'used' => $used]);
+        // Вендоры CRM для «Ставится вендорам» (11.10.2026): парковочный двойник («Альфа СПб») здесь не стоит.
+        $vendors = Vendor::whereNull('crm_vendor_id')->where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.tags.index', ['tags' => Tag::with('vendors')->orderBy('sort')->get(), 'used' => $used, 'vendors' => $vendors]);
     }
 
     public function store(Request $request)
     {
         $data = $this->data($request);
         $data['sort'] = (int) Tag::max('sort') + 1;
-        Tag::create($data);
+        Tag::create($data)->vendors()->sync($this->vendors($request));
 
         return redirect('/settings/tags')->with('toast', 'Добавлена');
     }
@@ -30,11 +34,13 @@ class TagController
     public function update(Request $request, Tag $tag)
     {
         $data = $this->data($request, $tag);
-        DB::transaction(function () use ($tag, $data) {
+        $vendors = $this->vendors($request);
+        DB::transaction(function () use ($tag, $data, $vendors) {
             if ($data['name'] !== $tag->name) {
                 $this->rename($tag->name, $data['name']);
             }
             $tag->update($data);
+            $tag->vendors()->sync($vendors);
         });
 
         return redirect('/settings/tags')->with('toast', 'Сохранено');
@@ -74,6 +80,14 @@ class TagController
             'name' => ['required', 'string', 'max:40', Rule::unique('tags', 'name')->ignore($tag)],
             'color' => ['required', Rule::in(array_keys(Tag::COLORS))],
         ]);
+    }
+
+    /** Вендоры, чьим черновикам метка ставится сама; только CRM-вендоры. */
+    private function vendors(Request $request): array
+    {
+        $ids = array_map('intval', (array) ($request->validate(['vendors' => ['array'], 'vendors.*' => ['integer']])['vendors'] ?? []));
+
+        return Vendor::whereKey($ids)->whereNull('crm_vendor_id')->pluck('id')->all();
     }
 
     /** Переименовать метку на офферах; null — убрать. */

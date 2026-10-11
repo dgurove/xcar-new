@@ -80,6 +80,8 @@ class Offer extends Model implements HasMedia
             if ($o->isDirty('vendor_id')) {
                 $o->vendor_id = Vendor::forCrm($o->vendor_id);
             }
+            // Вендор встал черновику — его метки по умолчанию (11.10.2026).
+            VendorTags::apply($o);
             if ($o->vehicle_category === null || $o->isDirty(['body', 'brand_id', 'model_id'])) {
                 foreach (['brand' => 'brand_id', 'model' => 'model_id'] as $rel => $col) {
                     if ($o->isDirty($col)) {
