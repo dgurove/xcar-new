@@ -17,12 +17,7 @@ use App\Park\VehicleState;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Facades\DB;
-use App\Mail\Extraction\ScanFields;
-use App\Mail\Scan\OfferSubject;
-use App\Mail\Scan\Reader;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Throwable;
 
 /**
  * «В продажу» в деле ТС: черновик предложения этой машины. Своих файлов у него нет — фото и документы ТС он видит сам
@@ -40,7 +35,7 @@ final class PutOnSale
             return $vehicle->offer;
         }
 
-        return $this->specs(DB::transaction(function () use ($vehicle, $by) {
+        return DB::transaction(function () use ($vehicle, $by) {
             // Предложение этой машины уже завели в CRM (номер убытка или VIN, `Identity`) — связать с ним, второго нет.
             if ($holder = Identity::offerFor($vehicle->ref_key, $vehicle->vin)) {
                 if (Vehicle::withoutGlobalScope(City::SCOPE)->where('offer_id', $holder->id)->exists() || in_array($holder->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
@@ -69,26 +64,7 @@ final class PutOnSale
             $this->threads->forOffer($offer->refresh());
 
             return $offer;
-        }), $by);
-    }
-
-    /**
-     * Характеристики из документов ТС, которые парковка уже прочитала (СТС, ПТС, акт: КПП, привод, объём, мощность), —
-     * в пустые поля предложения, как автозаполнение заявки (`AutoScan`). Не прочитанное — читает «✨» в редакторе.
-     */
-    private function specs(Offer $offer, User $by): Offer
-    {
-        try {
-            $subject = new OfferSubject($offer->refresh(), false);
-            $rows = ScanFields::of($subject->current(), Reader::docs(Reader::files($subject)), $subject->fields());
-            $picks = collect($rows)->filter(fn (array $row) => $row['state'] === 'new' && $row['options'])
-                ->map(fn (array $row) => $row['options'][0]['text'])->all();
-            $picks && $subject->apply(ScanFields::chosen($rows, $picks), $by);
-        } catch (Throwable $e) {
-            Log::warning('Характеристики из документов не вписались в продажу', ['offer' => $offer->id, 'error' => $e->getMessage()]);
-        }
-
-        return $offer->refresh();
+        });
     }
 
     /** Прежнее предложение этой ТС — по последней отвязке в её истории, если оно в архиве и ни с кем не связано. */
