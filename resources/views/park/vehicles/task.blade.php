@@ -1,5 +1,5 @@
-{{-- Задача сверху карточки строки: письмо, по которому заявка заведена (у выдачи — письмо о продаже: x-mail.last-letter
-     compact, «Вся переписка» и «Ответить») и само дело формой — прямо здесь, без перехода в дело (владелец 10.10.2026: «в
+{{-- Задача сверху карточки строки: все письма ТС строками, как в «Почте» (x-mail.letters; письмо, по которому заявка
+     заведена, у выдачи — письмо о продаже, — этапом; строка открывает окно на письме, «Ответить») и само дело формой — прямо здесь, без перехода в дело (владелец 10.10.2026: «в
      окошке заявки полный бардак… тут чисто приём и всё», потом «пройдись так по другим этапам»).
      Приём: телефон страхователя, обязательные поля ТС, которых письмо не дало (марка и модель), форма `steps/intake`
      (парковка, место, когда, ключи, документы, фото). Отмена — «⋯» дела (под «Принять» владелец её не хотел). Выдача стоящей ТС: форма `steps/release` (QR, кто заберёт, когда,
@@ -18,9 +18,7 @@
 @endphp
 <section class="mt-3 flex flex-col gap-3">
     @if ($t->type === RequestType::Release && ! $release)<p class="text-sm text-ink-muted">Выдача после приёма</p>@endif
-    @if ($taskLetter)
-        <x-mail.last-letter :message="$taskLetter" :count="$letterCount" :url="'/cars/'.$vehicle->id.'/letters'" compact/>
-    @endif
+    <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :stages="[$taskLetterId]"/>
     @if ($intake && $phone)
         <a href="tel:+{{ preg_replace('/\D+/', '', $phone) }}" class="flex items-center gap-3 rounded-(--radius-l) bg-surface-2 px-4 py-3">
             <span class="btn btn-quiet btn-round shrink-0"><x-ui.icon name="phone" class="size-5"/></span>

@@ -16,4 +16,6 @@
     {{-- Сделали в карточке последнюю заявку — тост вместо следующей (`detail#advance`). --}}
     <span data-advance-done hidden>Заявок больше нет</span>
     <div id="requests" class="mt-6 {{ ListView::isTable($view) ? '' : ListView::containerClass($view) }}" data-controller="endless ticker">@include('park.requests.list')</div>
+    {{-- Окно писем для строк «Письма» в карточке заявки. --}}
+    <x-mail.window/>
 </x-ui.shell>

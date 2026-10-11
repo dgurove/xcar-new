@@ -73,6 +73,8 @@ final class CaseView
         $asks = $waiting->isEmpty() ? collect() : Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)
             ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'subject', 'from_name', 'from_email', 'date_at', 'text_body', 'html_body', 'intent'])
             ->groupBy('thread_id')->map->last()->sortBy('date_at')->values();
+        // Блок «Письма» над таймлайном — все письма строками, как в «Почте»; этапы — из цепочки кандидата этой ТС.
+        $messages = $ids->isEmpty() ? collect() : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderBy('date_at')->orderBy('id')->get();
 
         return [
             'vehicle' => $vehicle,
@@ -80,12 +82,11 @@ final class CaseView
             'verb' => $open?->verb(),
             'phases' => $vehicle->requests->filter(fn (Request $r) => $r->state === RequestState::Done)->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
             'others' => $vehicle->requests->filter(fn (Request $r) => $r->isOpen() && $open && $r->isNot($open))->values(),
-            'letters' => $letters = $ids->isEmpty() ? 0 : Message::whereIn('thread_id', $ids)->count(),
-            'steps' => Timeline::for($vehicle, $open, $letters > 0 || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $asks, $pass),
+            'letters' => $messages->count(),
+            'steps' => Timeline::for($vehicle, $open, $messages->isNotEmpty() || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $asks, $pass),
             'asks' => $asks,
             'threads' => $threads,
-            // Блок «Письма» над таймлайном: последнее письмо словами, этапы — из цепочки кандидата этой ТС.
-            'lastLetter' => $ids->isEmpty() ? null : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
+            'messages' => $messages,
             'docs' => self::docs($vehicle, $ids),
             'candidate' => $threads->isEmpty() ? null : Candidate::where('vehicle_id', $vehicle->id)->latest('id')->first(),
             'yards' => $yards->pluck('name', 'id'),

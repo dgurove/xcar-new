@@ -17,6 +17,8 @@
     $words = NodeTitle::words($m, 200) ?: ($files ? 'Вложения' : 'Без своих слов');
     // Примечание того, кто переслал, — первым и ярче: ради него и пересылали («Ростовские, 1190 отдали»).
     $note = $m->forwardNote();
+    // Наше письмо, что ещё не ушло или упало, — словом на месте тега: «отправили или нет» видно в строке, не в окне.
+    $unsent = $m->isOurs() && $m->send_state && $m->send_state !== \App\Mail\SendState::Sent ? $m->send_state : null;
 @endphp
 <div class="letter{{ $kind ? ' '.implode(' ', array_map(fn ($k) => 'letter--'.$k, explode(' ', $kind))) : '' }}" id="letter-{{ $m->id }}" data-search-row>
     @if ($repeat)<span class="letter-dot"></span>@else<span class="letter-face"><x-mail.sender-avatar :message="$m" :size="24"/></span>@endif
@@ -28,7 +30,7 @@
             <span class="letter-title">@if ($note)<span class="text-ink">{{ NodeTitle::forwarder($m) }}: {{ preg_replace('/\s+/u', ' ', $note) }}</span> @endif{{ $words }}</span>
             @if ($files)<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif
             {{-- Подпись и дата — одним куском через пробел. --}}
-            <span class="letter-meta">@if ($waits)<span class="letter-tag tag tag-urgent">Ждёт ответа</span> @elseif ($tag)<span class="letter-tag tag {{ $intent === Intent::Intake ? 'tag-accent' : '' }}">{{ $tag }}</span> @endif<span class="letter-when nums">{{ $when }}</span></span>
+            <span class="letter-meta">@if ($unsent)<span class="letter-tag tag {{ $unsent === \App\Mail\SendState::Failed ? 'tag-danger' : 'tag-urgent' }}">{{ $unsent->label() }}</span> @elseif ($waits)<span class="letter-tag tag tag-urgent">Ждёт ответа</span> @elseif ($tag)<span class="letter-tag tag {{ $intent === Intent::Intake ? 'tag-accent' : '' }}">{{ $tag }}</span> @endif<span class="letter-when nums">{{ $when }}</span></span>
         </button>
     </div>
 </div>

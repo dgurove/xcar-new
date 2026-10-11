@@ -3,7 +3,9 @@
 {{-- `bare` — только часы («осталось 3 ч 55 мин»): шапка шага сама говорит, что сделать (согласие менеджера). --}}
 {{-- Менеджеру часы и оранжевое — только у его хода (11.10.2026, владелец: «зачем рыжим „просрочено“, если ждём
      поставщика, менеджер что с этим может сделать?»): чужой ход — серым словом без часов. Сотруднику — все часы. --}}
-@props(['position', 'side' => 'manager', 'bare' => false])
+{{-- letters — окно писем машины (шаг пути): «Письмо ушло 9 окт, 12:59» открывает его на этом письме, «Поставщик ответил» —
+     на непрочитанном. В строке таблицы ссылки нет — строка сама ссылка. --}}
+@props(['position', 'side' => 'manager', 'bare' => false, 'letters' => null])
 @php
     $stage = $position->stage;
     $invoice = $position->awaitsInvoice();
@@ -25,8 +27,8 @@
 @if ($letter)
     <p {{ $attributes->merge(['class' => 'text-sm '.($letter === 'sent' && ! $position->isOverdue() ? 'text-ink-muted' : 'text-urgent')]) }}>
         @if ($letter === 'unsent')Письмо поставщику не отправлено, идёт <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>
-        @elseif ($letter === 'replied')Поставщик ответил {{ $position->replyAt()->translatedFormat('j M, H:i') }}
-        @else Письмо ушло {{ $position->letterAt()->translatedFormat('j M, H:i') }}, ответа нет <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->letterAt()->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif
+        @elseif ($letter === 'replied')@if ($letters)<button type="button" class="underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $letters }}">Поставщик ответил {{ $position->replyAt()->translatedFormat('j M, H:i') }}</button>@else Поставщик ответил {{ $position->replyAt()->translatedFormat('j M, H:i') }}@endif
+        @else @if ($letters && isset($position->payload['letter_id']))<button type="button" class="underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $letters }}?at={{ $position->payload['letter_id'] }}">Письмо ушло {{ $position->letterAt()->translatedFormat('j M, H:i') }}</button>@else Письмо ушло {{ $position->letterAt()->translatedFormat('j M, H:i') }}@endif, ответа нет <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->letterAt()->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif
     </p>
 @elseif ($foreign && ! $bare)
     @if ($who)<p {{ $attributes->merge(['class' => 'text-sm text-ink-muted']) }}>{{ $who }}</p>@endif

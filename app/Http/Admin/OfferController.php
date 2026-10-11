@@ -443,7 +443,7 @@ class OfferController
             Offer::whereKey($offer->id)->update(['updated_at' => now()]);
         }
 
-        return view('admin.offers.edit', OfferFiles::letters($offer, $threads) + [
+        return view('admin.offers.edit', OfferFiles::letters($offer, $request->user()) + [
             'offer' => $offer,
             'admin' => $admin,
             'threads' => $threads,
@@ -536,7 +536,7 @@ class OfferController
         $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,offer_id,accepted_at,created_at', 'vendor.workflows', 'positions.stage', 'evacuator'] : [])])
             ->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->loadMax('activeBids as top_bid', 'amount');
 
-        return view('admin.offers.detail', OfferFiles::letters($offer, Thread::where('offer_id', $offer->id)->get()) + [
+        return view('admin.offers.detail', OfferFiles::letters($offer, $request->user()) + [
             'offer' => $offer,
             'admin' => $admin,
             // Поля редактора в карточке — те же справочники, что у страницы; модератору денег, кроме закупочной, и круга нет.

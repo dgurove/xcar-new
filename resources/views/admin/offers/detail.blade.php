@@ -243,11 +243,11 @@
             <h2 class="detail-section">Документы</h2>
             @include('admin.offers.papers-block')
         </section>
-        {{-- Письма — под документами: последнее словами, вся переписка — окном поверх списка. --}}
-        @if ($lastLetter && auth()->user()->canCrmMail())
+        {{-- Письма — под документами: все строками, как в «Почте»; строка открывает окно поверх списка на этом письме. --}}
+        @if ($letters && auth()->user()->canCrmMail())
             <section class="mt-5">
                 <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
-                <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$n.'/letters'" :asks="$asks" compact/>
+                <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages"/>
             </section>
         @endif
         {{-- Тронули поле — внизу листа выезжает «Сохранить изменения» (save_bar_controller, кнопка привязана к форме form=):

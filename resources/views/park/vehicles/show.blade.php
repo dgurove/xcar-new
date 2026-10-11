@@ -76,7 +76,7 @@
                     <input type="hidden" name="vehicle_form" value="1">
                     @include('park.vehicles.fields-block')
                 @endif
-                @if ($lastLetter)@include('park.vehicles.letters-card')@endif
+                @if ($letters)@include('park.vehicles.letters-card')@endif
                 @include('park.vehicles.timeline')
             </form>
         @else
@@ -86,7 +86,7 @@
                     @include('park.vehicles.fields-block', ['save' => true])
                 </form>
             @endif
-            @if ($lastLetter)@include('park.vehicles.letters-card')@endif
+            @if ($letters)@include('park.vehicles.letters-card')@endif
             @include('park.vehicles.timeline')
         @endif
         @foreach ($others as $r)

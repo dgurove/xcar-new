@@ -180,11 +180,10 @@ class VehicleController
         }
         $task = $task?->isOpen() ? $task : ($vehicle->openRequest(RequestType::Intake) ?? $vehicle->openRequest(RequestType::Release));
         $letterId = $task?->type === RequestType::Release && $vehicle->sold_message_id ? $vehicle->sold_message_id : $task?->letter_id;
-        $taskLetter = match (true) {
-            $letterId !== null => Message::find($letterId),
-            (bool) $task?->thread_id => Message::where('thread_id', $task->thread_id)->where('direction', Direction::In)->orderBy('date_at')->first(),
-            default => null,
-        };
+        // Письмо заявки — пометкой среди всех писем ТС (строки, как в «Почте»).
+        $letterId ??= $task?->thread_id ? Message::where('thread_id', $task->thread_id)->where('direction', Direction::In)->orderBy('date_at')->value('id') : null;
+        $messages = $task ? Message::whereIn('thread_id', Thread::ofCar($vehicle, $request->user())->select('id'))
+            ->with(['author', 'attachments', 'account'])->orderBy('date_at')->orderBy('id')->get() : collect();
 
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
 
@@ -202,8 +201,7 @@ class VehicleController
             'fromRequests' => $fromRequests, 'listed' => $listed,
             // Строка заявки, которую почта завела и документы ещё читаются, остаётся силуэтом с ходом, как в списке.
             'arrive' => $listed ? (AutoScan::states([$vehicle])[$vehicle->id] ?? null) : null,
-            'task' => $task, 'taskLetter' => $taskLetter?->load(['author', 'attachments', 'account']),
-            'letterCount' => $taskLetter ? Message::whereIn('thread_id', Thread::ofCar($vehicle, $request->user())->select('id'))->count() : 0,
+            'task' => $task, 'messages' => $messages, 'taskLetterId' => $letterId,
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
             'debt' => Ledger::vehicleDebt($vehicle),
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),

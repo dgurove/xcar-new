@@ -14,4 +14,6 @@
         @endif
     </x-ui.toolbar>
     <div class="mt-4" id="cars">@include('park.vehicles.list')</div>
+    {{-- Окно писем для строк «Письма» в карточке ТС. --}}
+    <x-mail.window/>
 </x-ui.shell>

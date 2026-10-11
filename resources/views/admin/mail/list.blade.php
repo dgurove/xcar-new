@@ -1,5 +1,5 @@
 {{-- Список дел: секция — машина, цепочка «Из писем», предложение или письмо без них; каждая — карточка беседы
-     (.chain-card): шапка, под ней письма дела лентой на линии (x-mail.letter-row), даже если под пилюлю подошло одно
+     (.chain-card): шапка, под ней письма дела строками на линии (x-mail.rail), даже если под пилюлю подошло одно
      из них — действие требуется от дела. Шапка: незаведённая цепочка — x-mail.chain-head с «Завести»; заведённое —
      имя дела ссылкой, под ним логотип вендора с номером и состояние словом, справа шеврон в дело. У дела, которое
      требует нас, полоска слева. Писем — все, и веток в архиве тоже (`letters` секции).
@@ -40,13 +40,9 @@
                     default => $base.'/'.$m->thread_id.'/window?at='.$m->id,
                 };
                 $letters = $section['letters']->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
-                $continued = \App\Mail\Chains\NodeTitle::continued($letters);
-                $files = $letters->groupBy(fn ($m) => $continued[$m->id] ?? $m->id)->map(fn ($g) => $g->sum(fn ($m) => $m->files()->count()));
                 // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
                 $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
                 $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
-                $staged = collect($c?->stages ?? [])->pluck('message_id')->all();
-                $prev = null;
             @endphp
             {{-- Смахивается дело целиком: архивировать одно письмо из цепочки смысла нет. --}}
             <x-ui.swipe id="case-{{ $section['kind'] }}-{{ $section['id'] }}" data-search-group>
@@ -83,14 +79,7 @@
                         @if ($head['href'])<a href="{{ $head['href'] }}" class="-mr-1.5 shrink-0 p-1.5" aria-label="Открыть" @if ($v && $crm) data-turbo="false" @endif><x-ui.chevron/></a>@endif
                     </div>
                 @endif
-                <div class="chain rail">
-                    @foreach ($letters as $m)
-                        @continue(isset($continued[$m->id]))
-                        <x-mail.letter-row :message="$m" :url="$url($m)" :waits="in_array($m->id, $asks, true)"
-                            :stage="in_array($m->id, $staged, true)" :repeat="$prev?->from_email === $m->from_email" :files="$files[$m->id] ?? 0"/>
-                        @php $prev = $m; @endphp
-                    @endforeach
-                </div>
+                <x-mail.rail :messages="$letters" :url="$url" :asks="$asks" :stages="collect($c?->stages ?? [])->pluck('message_id')"/>
             </section>
             <x-slot:actions>
                 <form method="post" action="{{ $base }}/case/{{ $section['kind'] }}/{{ $section['id'] }}/archive" data-queue>@csrf

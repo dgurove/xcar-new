@@ -1804,11 +1804,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .chain-card > .chain-head .chain-head-title { min-width: 0; flex: 0 1 auto; }
     .chain-card > .chain-head .chain-head-sub { margin-top: 0; flex-shrink: 0; }
   }
-  /* Строка письма. Телефон — два этажа: кто, подпись с датой; слова и скрепка. От 640 — одна строка: кто, слова,
+  /* Строка письма. Узкая лента — два этажа: кто, подпись с датой; слова и скрепка. От 36rem ленты — одна строка: кто, слова,
      скрепка, подпись с датой. Всё одним кеглем и шрифтом текста: мелкие дата и тег рядом со словами «скакали».
      Подряд от того же адреса (.letter--repeat) — точка и одна строка без имени. */
   .rail .letter-body { padding-bottom: .5rem; }
-  .rail .letter-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 1.875rem auto; column-gap: .625rem; align-items: center; min-height: 1.875rem; cursor: pointer; }
+  .rail .letter-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 1.875rem auto; column-gap: .625rem; align-items: center; min-height: 1.875rem; cursor: pointer; }
   .rail .letter-who { grid-column: 1; grid-row: 1; }
   .rail .letter-meta { grid-column: 2; grid-row: 1; white-space: nowrap; }
   .rail .letter-title { grid-column: 1; grid-row: 2; }
@@ -1820,7 +1820,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .rail .letter--repeat .letter-head { display: flex; gap: .625rem; }
   .rail .letter--repeat .letter-title { flex: 1 1 0; }
   .rail .letter-head:hover .letter-title { color: var(--color-ink); }
-  @media (min-width: 640px) {
+  /* Одна строка — по ширине самой ленты, а не экрана: в карточке сделки, предложения и заявки (колонка 26rem на ПК)
+     лента узкая, и в одну линию имя и слова резались до трёх букв. */
+  .rail { container-type: inline-size; }
+  @container (min-width: 36rem) {
     .rail .letter-body { padding-bottom: .375rem; }
     .rail .letter-head { display: flex; flex-wrap: nowrap; gap: .75rem; }
     .rail .letter-who { flex: 0 1 auto; max-width: 14rem; }

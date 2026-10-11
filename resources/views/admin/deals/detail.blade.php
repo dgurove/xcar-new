@@ -1,7 +1,7 @@
 {{-- Карточка сделки рядом со списком (фрейм detail): почти вся сделка шириной телефона — кадры, состояние, номер убытка с
      логотипом, № предложения, телефон менеджера, сумма; сразу под шапкой — чат с менеджером (07.10.2026, владелец: «чат на
-     видное место, он чуть ли не самый важный во время сделки»), дальше путь маршрута с выходами, деньги, ДКП, последнее
-     письмо и заметка. Поля — свёрнуты («Изменить / Готово»), расклад денег — под «Расклад»; получение — одно, внутри
+     видное место, он чуть ли не самый важный во время сделки»), дальше путь маршрута с выходами, деньги, ДКП, все письма
+     строками и заметка. Поля — свёрнуты («Изменить / Готово»), расклад денег — под «Расклад»; получение — одно, внутри
      «Вывоза» (без вывоза — отдельно). Менеджер — аватаром в чате, чипа в шапке нет; «Предложение» — «Открыть страницу»
      в полосе. История — на странице сделки. Формы отвечают в карточку (DetailBack), строка таблицы — свежей из row. --}}
 @php
@@ -35,10 +35,10 @@
             @unless ($offer->position(\App\Workflow\Track::Service))<x-deal.handover :deal="$deal" compact/>@endunless
             <x-deal.money :deal="$deal" compact/>
             @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
-            @if ($lastLetter)
+            @if ($letters)
                 <section>
                     <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
-                    <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" compact/>
+                    <x-mail.letters :messages="$messages" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" :stages="$stages"/>
                 </section>
             @endif
             <x-deal.note :deal="$deal"/>

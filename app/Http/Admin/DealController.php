@@ -136,7 +136,7 @@ class DealController
         $threads = OfferFiles::threads($offer);
 
         // Письма и документы — как в редакторе: письмо вендору, документы к подписанию и ответ страховой ведут отсюда.
-        return OfferFiles::letters($offer, $threads) + [
+        return OfferFiles::letters($offer, auth()->user()) + [
             'docs' => OfferFiles::docs($offer, $threads),
             'deal' => $deal,
             'offer' => $offer,

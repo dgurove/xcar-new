@@ -1,4 +1,5 @@
-{{-- Блок «Письма» в деле над таймлайном — общая карточка последнего письма (x-mail.last-letter), лента всех веток ТС окном. --}}
+{{-- Блок «Письма» в деле над таймлайном — все письма веток ТС строками, как в «Почте» (x-mail.letters); строка открывает
+     окно писем на этом письме, «Ответить» — окно с редактором. --}}
 <x-ui.card title="Письма" :count="$letters">
-    <x-mail.last-letter :message="$lastLetter" :count="$letters" :url="'/cars/'.$vehicle->id.'/letters'" :asks="$asks ?? collect()" :candidate="$candidate ?? null" :reply="! $vehicle->state->isFinal()"/>
+    <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :asks="$asks ?? collect()" :stages="collect($candidate?->stages ?? [])->pluck('message_id')" :reply="! $vehicle->state->isFinal()"/>
 </x-ui.card>

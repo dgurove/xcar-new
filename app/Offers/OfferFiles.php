@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Mail\Candidate;
 use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Thread;
@@ -12,7 +13,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Письма и документы предложения — одно место на редактор, карточка строки и страницу сделки: карточка «Письма»
- * (последнее письмо, число, ждущие ответа) и шторка документов (письмо вендора, документы, файлы писем, фото).
+ * (все письма строками, число, ждущие ответа) и шторка документов (письмо вендора, документы, файлы писем, фото).
  */
 final class OfferFiles
 {
@@ -23,21 +24,25 @@ final class OfferFiles
     }
 
     /**
-     * Карточка «Письма» (x-mail.last-letter), как в деле ТС: последнее письмо всех веток предложения, их число и письма,
-     * что ждут ответа (одно правило почты — `needs_reply_at`, само письмо — последнее входящее ветки).
+     * Карточка «Письма» (x-mail.letters): все письма по машине строками, как в «Почте», — те же ветки, что окно писем
+     * (`Thread::ofCar`: ящики продаж, у того, кто ведёт парковку, ещё ветки её ТС), поэтому число в заголовке и окно
+     * сходятся. asks — последнее входящее ветки, что ждёт ответа (одно правило почты — `needs_reply_at`), stages —
+     * письма этапов цепочки «Из писем».
      *
-     * @return array{lastLetter: ?Message, letters: int, asks: Collection}
+     * @return array{messages: Collection<int, Message>, letters: int, asks: Collection, stages: Collection}
      */
-    public static function letters(Offer $offer, Collection $threads): array
+    public static function letters(Offer $offer, ?User $user): array
     {
-        $ids = $threads->pluck('id');
-        $waiting = $threads->whereNotNull('needs_reply_at')->pluck('id');
+        $threads = Thread::ofCar($offer, $user)->get(['id', 'needs_reply_at']);
+        $messages = $threads->isEmpty() ? collect() : Message::whereIn('thread_id', $threads->pluck('id'))
+            ->with(['author', 'attachments', 'account'])->orderBy('date_at')->orderBy('id')->get();
+        $waiting = $threads->whereNotNull('needs_reply_at')->pluck('id')->all();
 
         return [
-            'lastLetter' => $ids->isEmpty() ? null : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderByDesc('date_at')->first(),
-            'letters' => $ids->isEmpty() ? 0 : Message::whereIn('thread_id', $ids)->count(),
-            'asks' => $waiting->isEmpty() ? collect() : Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)
-                ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'date_at'])->groupBy('thread_id')->map->last()->values(),
+            'messages' => $messages,
+            'letters' => $messages->count(),
+            'asks' => $messages->filter(fn (Message $m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->values(),
+            'stages' => $messages->isEmpty() ? collect() : collect(Candidate::where('offer_id', $offer->id)->latest('id')->first(['id', 'stages'])?->stages ?? [])->pluck('message_id'),
         ];
     }
 
