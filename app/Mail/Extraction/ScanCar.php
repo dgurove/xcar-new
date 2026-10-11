@@ -75,7 +75,9 @@ final class ScanCar
             $phrase = implode(' ', array_slice($tokens, 0, $len));
             // «Нз» — словарь уже сделал из «НЗ» слово с заглавной; заглавными это снова H3.
             foreach (array_unique([$phrase, Names::latin($phrase), Names::latin(mb_strtoupper($phrase))]) as $variant) {
-                if ($known = Names::knownModel($brand, $variant)) {
+                // Фраза из нескольких слов — только если найденная модель её начало: «GLE 350D» нечётко давало «GL350»,
+                // хотя «GLE» в справочнике есть точно (12.10.2026, Mercedes 0810/046/02064/26).
+                if (($known = Names::knownModel($brand, $variant)) && ($len === 1 || str_starts_with(self::flat($variant), self::flat($known)))) {
                     return $known;
                 }
             }
@@ -95,5 +97,10 @@ final class ScanCar
         }
 
         return preg_match('/^[A-Z0-9][A-Z0-9\-]{0,11}$/i', $code) && preg_match('/\d/', $code) ? strtoupper($code) : (preg_match('/^[A-Za-z][A-Za-z\-]{1,15}$/', $first) && $code === $first ? $first : null);
+    }
+
+    private static function flat(string $s): string
+    {
+        return (string) preg_replace('/[^A-Z0-9]/', '', mb_strtoupper($s));
     }
 }
