@@ -116,7 +116,8 @@ final class AutoOffer
     public function catchUp(): int
     {
         $done = 0;
-        foreach ($this->waiting()->whereBetween('created_at', [now()->subHour(), now()->subMinutes(2)]) as $candidate) {
+        // Окно — запросом к базе: `whereBetween` коллекции с датами пропускал всё (12.10.2026 часы завели хвост разом).
+        foreach ($this->waiting(fn ($q) => $q->whereBetween('created_at', [now()->subHour(), now()->subMinutes(2)])) as $candidate) {
             try {
                 $done += (int) (bool) $this($candidate);
             } catch (Throwable $e) {
@@ -128,9 +129,9 @@ final class AutoOffer
     }
 
     /** @return Collection<int, Candidate> ждущие цепочки предложений, старые первыми */
-    public function waiting(): Collection
+    public function waiting(?callable $scope = null): Collection
     {
-        return Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->orderBy('id')->get();
+        return Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->when($scope, $scope)->orderBy('id')->get();
     }
 
     /** Письмо-предложение: то, с которого цепочка началась, иначе первое входящее. */
