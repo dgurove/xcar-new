@@ -5,6 +5,7 @@ namespace App\Park\Console;
 use App\Mail\Scan\AutoScan;
 use App\Park\Actions\AutoRequest;
 use App\Park\Actions\ReleaseByLetters;
+use App\Park\Actions\ReportByLetters;
 use App\Park\Actions\StoreByLetters;
 use App\Park\Events\VehicleIdle;
 use App\Park\Idle;
@@ -24,7 +25,7 @@ class TickPark extends Command
 
     protected $description = 'Сроки заявок парковки и простой ТС';
 
-    public function handle(StoreByLetters $store, ReleaseByLetters $release, AutoRequest $auto): int
+    public function handle(StoreByLetters $store, ReleaseByLetters $release, ReportByLetters $report, AutoRequest $auto): int
     {
         $now = now();
         $threshold = Idle::warn();
@@ -37,9 +38,10 @@ class TickPark extends Command
         }
         $stored = $store->all();
         $released = $release->all();
+        $reported = $report->all();
         $requested = $auto->catchUp();
         $swept = AutoScan::sweep();
-        $this->info("стоят долго {$idle->count()}, заведено по письмам {$stored}, выдано по письмам {$released}, заявок из писем {$requested}, дочитываем {$swept}");
+        $this->info("стоят долго {$idle->count()}, заведено по письмам {$stored}, выдано по письмам {$released}, отчётов о приёме по письмам {$reported}, заявок из писем {$requested}, дочитываем {$swept}");
 
         return self::SUCCESS;
     }

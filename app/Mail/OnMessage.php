@@ -19,6 +19,7 @@ use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\ReleaseByLetters;
+use App\Park\Actions\ReportByLetters;
 use App\Park\Actions\StoreByLetters;
 use App\Park\City;
 use App\Park\Events\LetterArrived;
@@ -82,6 +83,10 @@ final class OnMessage
         if ($vehicle && $message->account->scope === Scope::Park && $message->intent === Intent::Released->value && $message->isOurs()) {
             app(ReleaseByLetters::class)($vehicle);
         }
+        // Наш отчёт о приёме из почтовой программы — шаг «Отчёт вендору» сделан.
+        if ($vehicle && $message->account->scope === Scope::Park && $message->intent === Intent::Accepted->value && $message->isOurs()) {
+            app(ReportByLetters::class)($vehicle);
+        }
         if ($vehicle && $message->direction === Direction::In) {
             $vehicle->log(EventType::Letter, null, ['from' => $message->from_name ?: $message->from_email, 'subject' => $message->subject, 'thread' => $message->thread_id, 'message' => $message->id, 'intent' => $message->intent]);
             // «Продано, заберёт такой-то» по ТС на стоянке — дата продажи и покупатель из письма, заявка на выдачу.
@@ -122,6 +127,10 @@ final class OnMessage
         // Наше «подписанный АПП» по стоящей ТС — выдана с этого дня.
         if ($park && $message->thread?->vehicle && $message->intent === Intent::Released->value) {
             app(ReleaseByLetters::class)($message->thread->vehicle);
+        }
+        // Наше «принята» не окном шага (ответ в ветке) — отчёт о приёме тоже сделан.
+        if ($park && $message->thread?->vehicle && $message->intent === Intent::Accepted->value) {
+            app(ReportByLetters::class)($message->thread->vehicle);
         }
         $this->publish->refresh($park ? Topics::PARK : Topics::STAFF, [($park ? '/mail/' : '/work/mail/').$e->message->thread_id]);
     }
