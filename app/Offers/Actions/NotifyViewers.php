@@ -4,9 +4,11 @@ namespace App\Offers\Actions;
 
 use App\Live\Publisher;
 use App\Live\Topics;
+use App\Notifications\GalleryInterestOnSaleNotice;
 use App\Notifications\OfferPublishedNotice;
 use App\Notifications\PurchaseCarOnSaleNotice;
 use App\Notifications\SlotPublishedNotice;
+use App\Offers\Interest;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\OfferViewer;
@@ -47,6 +49,10 @@ final class NotifyViewers
                 $car->update(['announced_at' => now()]);
             }
         }
+        // Отмечали интерес в галерее — своё «В продаже, вы отмечали интерес» вместо «Нового предложения» (12.10.2026).
+        $liked = self::galleryInterest($offer);
+        [$ours, $managers] = $managers->partition(fn ($u) => in_array($u->id, $liked, true));
+        Notification::send($ours, new GalleryInterestOnSaleNotice($offer));
         Notification::send($managers, new OfferPublishedNotice($offer));
         if ($live) {
             $this->publish->card($offer->number, Topics::CATALOG);
@@ -84,7 +90,9 @@ final class NotifyViewers
                     $car->update(['announced_at' => now()]);
                 }
             }
-            foreach ($ids as $id) {
+            $liked = array_intersect($ids, self::galleryInterest($offer));
+            Notification::send($users->only($liked)->values(), new GalleryInterestOnSaleNotice($offer));
+            foreach (array_diff($ids, $liked) as $id) {
                 $fresh[$id][] = $offer;
             }
             $this->publish->card($offer->number, Topics::CATALOG);
@@ -94,5 +102,11 @@ final class NotifyViewers
         }
 
         return $rows->count();
+    }
+
+    /** @return list<int> кто проявлял интерес к машине, пока она была в галерее */
+    private static function galleryInterest(Offer $offer): array
+    {
+        return $offer->gallery_from ? Interest::where('offer_id', $offer->id)->pluck('user_id')->map(fn ($id) => (int) $id)->all() : [];
     }
 }
