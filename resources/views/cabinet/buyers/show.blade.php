@@ -1,6 +1,7 @@
 {{-- Покупатель — как контакт в телефоне: кружок, имя, чипы, ряд действий (позвонить, написать, пароль).
-     Ниже — что видит (строки, прямой показ снимается смахиванием), интерес, чаты, паспорт строкой. Группы — действие «Группы» в том же ряду.
-     Главное действие — «Открыть предложения» — в полосе внизу. --}}
+     Ниже — что видит: строка режима («Все предложения» / «Выбранные»), у выбранных — строки показов (прямой снимается
+     смахиванием); интерес, чаты, паспорт строкой. Группы — действие «Группы» в том же ряду.
+     Главное действие «выбранных» — «Открыть предложения» — в полосе внизу. --}}
 @php $me = auth()->user(); $link = ($link['user'] ?? null) === $buyer->id ? $link : null; @endphp
 <x-ui.cabinet :title="$buyer->name" :back="$back" :phone-heading="false">
 
@@ -47,30 +48,61 @@
         </div>
 
         <div class="min-w-0 lg:col-start-1 lg:row-start-1">
+            {{-- Что видит (12.10.2026, владелец: «менеджеры не понимают, как открывать покупателям доступ»): строка режима со
+                 шторкой — «Все предложения» (всё открытое менеджеру, сразу с ценой) или «Выбранные» (открытое вручную, список
+                 ниже и «Открыть предложения» внизу). --}}
             <section data-controller="sheet">
-                <h2 class="list-head">Видит @if ($offers->isNotEmpty())<span class="nums">{{ $offers->count() }}</span>@endif</h2>
-                <x-ui.sheet id="pick" title="Открыть {{ $buyer->shortName() }}" wide>
-                    <turbo-frame id="pick-frame" src="/buyers/showings/pick?user={{ $buyer->id }}" loading="lazy" class="block min-h-40">
-                        <x-ui.skeleton :rows="3"/>
-                    </turbo-frame>
-                </x-ui.sheet>
-                @if ($offers->isEmpty())
-                    <x-ui.empty line>Пока ничего не открыто</x-ui.empty>
-                @else
-                    <div class="list">
-                        @foreach ($offers as $offer)
-                            @include('cabinet.buyers.offer-row', [
-                                'offer' => $offer,
-                                'via' => $via[$offer->id] ?? collect(),
-                                'hide' => in_array($offer->id, $direct, true) ? ['user' => $buyer->id] : null,
-                                'hideText' => $buyer->shortName().' больше не увидит это предложение.',
-                            ])
-                        @endforeach
-                    </div>
-                @endif
-                <x-ui.action-bar>
-                    <button type="button" class="btn btn-accent min-w-0 flex-1 md:flex-none" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Открыть предложения</button>
-                </x-ui.action-bar>
+                <div data-controller="sheet" class="list">
+                    <button type="button" class="row w-full text-left" data-action="sheet#open">
+                        <x-ui.row-icon name="eye"/>
+                        <span class="min-w-0 flex-1">
+                            <span class="block font-medium">{{ $seesAll ? 'Видит все ваши предложения' : 'Видит выбранные' }}</span>
+                            <span class="row-sub"><span class="nums">{{ $seenCount }} {{ \App\Support\Plural::of($seenCount, ['предложение', 'предложения', 'предложений']) }}</span>@if ($seesAll && $buyer->buyer_show_vin)<span>с VIN</span>@endif</span>
+                        </span>
+                        <x-ui.chevron/>
+                    </button>
+                    <x-ui.sheet id="buyer-sees" title="Что видит {{ $buyer->shortName() }}">
+                        <form method="post" action="/buyers/{{ $buyer->id }}/sees" class="flex flex-col gap-4" data-controller="reveal">
+                            @csrf @method('put')
+                            <div class="segment">
+                                <label><input type="radio" name="buyer_sees" value="all" @checked($seesAll) data-action="reveal#pick"><span>Все предложения</span></label>
+                                <label><input type="radio" name="buyer_sees" value="picked" @checked(! $seesAll) data-action="reveal#pick"><span>Выбранные</span></label>
+                            </div>
+                            <div data-reveal-target="pane" data-reveal-key="all" @unless ($seesAll) hidden @endunless>
+                                <div class="list">
+                                    <label class="row row-check">
+                                        <span class="min-w-0 flex-1">Показывать VIN</span>
+                                        <span class="check"><input type="checkbox" name="buyer_show_vin" value="1" @checked($buyer->buyer_show_vin)></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                        </form>
+                    </x-ui.sheet>
+                </div>
+                @unless ($seesAll)
+                    <x-ui.sheet id="pick" title="Открыть {{ $buyer->shortName() }}" wide>
+                        <turbo-frame id="pick-frame" src="/buyers/showings/pick?user={{ $buyer->id }}" loading="lazy" class="block min-h-40">
+                            <x-ui.skeleton :rows="3"/>
+                        </turbo-frame>
+                    </x-ui.sheet>
+                    {{-- Пусто — строка режима и так говорит «0 предложений». --}}
+                    @if ($offers->isNotEmpty())
+                        <div class="list mt-4">
+                            @foreach ($offers as $offer)
+                                @include('cabinet.buyers.offer-row', [
+                                    'offer' => $offer,
+                                    'via' => $via[$offer->id] ?? collect(),
+                                    'hide' => in_array($offer->id, $direct, true) ? ['user' => $buyer->id] : null,
+                                    'hideText' => $buyer->shortName().' больше не увидит это предложение.',
+                                ])
+                            @endforeach
+                        </div>
+                    @endif
+                    <x-ui.action-bar>
+                        <button type="button" class="btn btn-accent min-w-0 flex-1 md:flex-none" data-action="sheet#open"><x-ui.icon name="plus" class="size-5"/> Открыть предложения</button>
+                    </x-ui.action-bar>
+                @endunless
             </section>
 
             @if ($interests->isNotEmpty())

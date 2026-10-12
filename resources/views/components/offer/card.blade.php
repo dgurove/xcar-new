@@ -17,8 +17,9 @@
     // Интерес уже отмечен? У покупателя, а в галерее у всех (08.10.2026). Каталог грузит его одним запросом, иначе — точечно.
     $myInterest = $user && ($user->isBuyer() || $gallery) ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
     $seen = $user?->isManager() && !$gallery ? \App\Offers\Showing::remembered($offer->id) : null;
-    // «Показать покупателям» — значком рядом с «Подтвердить», число открытых — бейджем на нём (чипа «видят N» тогда нет).
-    $canShow = $user?->isManager() && $offer->state === \App\Offers\OfferState::Open;
+    // «Открыть покупателям» — значком рядом с «Подтвердить», число видящих — бейджем на нём (чипа «видят N» тогда нет); только
+    // когда есть покупатели в «Выбранных» (12.10.2026), иначе все и так видят всё — чип «видят N».
+    $canShow = $user?->isManager() && $offer->state === \App\Offers\OfferState::Open && \App\Offers\Showing::pickable($user);
     $sizes = \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()));
     // Первые две карточки страницы — кадр с высоким приоритетом (счётчик на запросе).
     $nth = request()->attributes->get('card.nth', 0);
@@ -63,7 +64,7 @@
         <a href="{{ $href }}" class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
     @endif
     @if ($user && ! $estimate)<x-offer.favorite :offer="$offer"/>@endif
-    @if (!$gallery && ! $estimate && $user?->isManager())
+    @if (!$gallery && ! $estimate && $canShow)
         {{-- Кружок режима выбора: в разметке всегда, виден только когда лента в режиме (selection). --}}
         <label class="card-check"><input type="checkbox" value="{{ $offer->id }}" aria-label="Выбрать"><span><x-ui.icon name="check" class="size-4"/></span></label>
     @endif
@@ -115,7 +116,7 @@
             <a href="{{ $href }}" class="btn btn-get nums {{ $estimate->isGiven() ? 'btn-get-quiet' : '' }}">{{ $estimate->isGiven() ? 'Изменить' : ($estimate->isCorrection() ? 'Проверить цену' : 'Оценить') }}</a>
         @elseif ($user?->isBuyer())
             {{-- Кнопка ведёт на страницу и сразу открывает форму интереса (?interes=1). --}}
-            <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
+            <a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : '' }}">{{ $gallery ? ($myInterest ? 'Сообщим о продаже' : 'Сообщить о продаже') : ($myInterest ? 'Интерес отмечен' : 'Проявить интерес') }}</a>
         @elseif ($gallery || !$prices)
             <a href="{{ $href }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $gallery ? ($myInterest ? 'Интерес отмечен' : 'Проявить интерес') : 'Узнать цену' }}</a>
         @elseif ($myBid)
@@ -126,7 +127,7 @@
             <a href="{{ $href }}" class="btn btn-get btn-get-quiet">Открыть</a>
         @endif
         @if ($canShow)
-            <a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="btn btn-icon relative" aria-label="{{ $seen ? 'Показано '.$seen.' покупателям' : 'Показать покупателям' }}"><x-ui.icon name="users" class="size-[22px]"/>@if ($seen)<span class="badge nums">{{ $seen }}</span>@endif</a>
+            <a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="btn btn-icon relative" aria-label="{{ $seen ? 'Открыто '.$seen.' покупателям' : 'Открыть покупателям' }}"><x-ui.icon name="users" class="size-[22px]"/>@if ($seen)<span class="badge nums">{{ $seen }}</span>@endif</a>
         @endif
         @if (!$gallery && ! $estimate && $user?->canChat() && $offer->chat_enabled)
             <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-icon" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-[22px]"/></a>

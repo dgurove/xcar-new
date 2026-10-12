@@ -10,11 +10,12 @@
                         @foreach ($chats as $c)
                             <x-chat.row :chat="$c" :me="$me" :href="$base.'/'.$c->id" :current="$c->id === $current"/>
                         @endforeach
-                        {{-- Обращения ещё нет — та же строка, что у чата: аватар площадки и имя, пустой экран по нажатию. --}}
+                        {{-- Обращения ещё нет — та же строка, что у чата: аватар площадки и имя (покупателю — его менеджер), пустой
+                             экран по нажатию. --}}
                         @if ($support)
                             <a href="{{ $base }}/support" class="chat-row" data-search-row @if ($current === 'support') aria-current="true" @endif data-turbo-action="advance">
-                                <x-chat.avatar :size="44"/>
-                                <div class="min-w-0 flex-1"><span class="truncate">{{ \App\Chats\Chat::PLATFORM }}</span></div>
+                                @if ($supportTo)<x-ui.avatar :user="$supportTo" :size="44"/>@else<x-chat.avatar :size="44"/>@endif
+                                <div class="min-w-0 flex-1"><span class="truncate">{{ $supportTo?->name ?? \App\Chats\Chat::PLATFORM }}</span></div>
                             </a>
                         @endif
                     </div>

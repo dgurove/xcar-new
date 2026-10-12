@@ -2,7 +2,8 @@
 @php
     $user = auth()->user();
     $trail = [['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения']];
-    $selecting = $user?->isManager() && !$gallery;
+    // Выбор пачкой «Открыть покупателям» — только когда есть покупатели в «Выбранных» (12.10.2026).
+    $selecting = $user?->isManager() && !$gallery && \App\Offers\Showing::pickable($user);
     // Покупателю та же лента и тот же тулбар: у него нет только первого экрана, а пустая лента — с контактом менеджера.
     $buyer = $user?->isBuyer() ?? false;
     $title = $gallery ? 'Галерея' : 'Предложения';
@@ -85,9 +86,10 @@
                     @endif
                 @endif
                 @if ($offers->isEmpty())
-                    @if ($buyer && ! $narrowed)
-                        {{-- Покупателю пока ничего не открыли: одна фраза и контакт менеджера строкой. --}}
-                        <x-ui.empty id="catalog-empty" class="pb-0">{{ $manager ? $manager->shortName().' пока ничего вам не открыл' : 'Вам пока ничего не открыли' }}</x-ui.empty>
+                    @if ($buyer && ! $narrowed && ! $gallery)
+                        {{-- Покупателю пусто: одна фраза и контакт менеджера строкой. Видит всё (12.10.2026) — значит, у менеджера
+                             сейчас ничего нет; видит выбранные — менеджер ещё не открыл. Галерея от менеджера не зависит. --}}
+                        <x-ui.empty id="catalog-empty" class="pb-0">{{ $user->buyerSeesAll() ? 'Предложений в продаже сейчас нет' : ($manager ? $manager->shortName().' пока ничего вам не открыл' : 'Вам пока ничего не открыли') }}</x-ui.empty>
                         @if ($manager)<div class="list mx-auto mt-4 max-w-sm"><x-ui.person-row :user="$manager" :size="44" class="row"/></div>@endif
                     @else
                     {{-- «Сбросить» снимает чипы пустыми значениями, иначе ListPrefs вернёт запомненный город; пилюля и поиск — тоже.
@@ -135,13 +137,13 @@
             </div>
         </div>
         @if ($selecting && $offers->isNotEmpty())
-            {{-- Полоса режима выбора и шторка «Показать…» с фреймом под отмеченные. --}}
+            {{-- Полоса режима выбора и шторка «Открыть…» с фреймом под отмеченные. --}}
             <div data-controller="sheet" data-action="selection:open@window->sheet#open" class="contents">
                 <x-ui.action-bar data-selection-target="bar" hidden>
-                    <button type="button" class="btn btn-accent min-w-0 flex-1" data-action="selection#show" data-selection-submit disabled>Показать… <span class="nums" data-selection-target="count"></span></button>
+                    <button type="button" class="btn btn-accent min-w-0 flex-1" data-action="selection#show" data-selection-submit disabled>Открыть <span class="nums" data-selection-target="count"></span></button>
                     <button type="button" class="btn btn-quiet btn-round btn-lg" data-action="selection#cancel" aria-label="Отмена"><x-ui.icon name="x" class="size-6"/></button>
                 </x-ui.action-bar>
-                <x-ui.sheet id="show-many" title="Показать покупателям" wide>
+                <x-ui.sheet id="show-many" title="Открыть покупателям" wide>
                     <turbo-frame id="show-frame" data-selection-target="frame" class="block min-h-40" target="_top">
                         <x-ui.skeleton :rows="3"/>
                     </turbo-frame>

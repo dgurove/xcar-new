@@ -601,10 +601,12 @@ class Offer extends Model implements HasMedia
                 if (! $user->manager_id) {
                     $w->orWhereRaw('false');
                 } else {
+                    // Всё, что открыто его менеджеру (волна менеджера наступила), — или только открытое менеджером вручную
+                    // (`buyer_sees = picked`, 12.10.2026).
                     $groups = $user->groupIds();
                     $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
-                        ->whereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)
-                            ->where(fn ($g) => $g->where('user_id', $user->id)->when($groups, fn ($g) => $g->orWhereIn('group_id', $groups))))
+                        ->when(! $user->buyerSeesAll(), fn ($m) => $m->whereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)
+                            ->where(fn ($g) => $g->where('user_id', $user->id)->when($groups, fn ($g) => $g->orWhereIn('group_id', $groups)))))
                         ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->manager_id)->where('opens_at', '<=', now())));
                 }
             }
@@ -753,6 +755,10 @@ class Offer extends Model implements HasMedia
     public function vinOpenTo(?User $user): bool
     {
         if ($user?->isBuyer()) {
+            if ($user->buyerSeesAll() && $user->buyer_show_vin) {
+                return true;
+            }
+
             return Showing::where('offer_id', $this->id)->where('show_vin', true)
                 ->where(fn ($w) => $w->where('user_id', $user->id)->orWhereIn('group_id', DB::table('buyer_group_user')->where('user_id', $user->id)->select('group_id')))
                 ->exists();

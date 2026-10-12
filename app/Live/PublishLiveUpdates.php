@@ -70,7 +70,7 @@ final class PublishLiveUpdates
     {
         $n = $e->offer->number;
         // Покупатели каталог не слушают — карточка и страница едут им в личные темы: продажа снимает её и у них.
-        $buyers = Showing::buyerIdsOf($e->offer)->map(fn ($id) => Topics::user($id))->all();
+        $buyers = Showing::seersOf($e->offer)->map(fn ($id) => Topics::user($id))->all();
         $this->publish->card($n, [Topics::CATALOG, ...$buyers]);
         $this->publish->refresh([Topics::CATALOG, ...$buyers], ["/offers/{$n}"]);
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/', '/work/deals']);

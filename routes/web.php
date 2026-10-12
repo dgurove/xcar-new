@@ -218,6 +218,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::delete('/buyers/showings', [ShowingController::class, 'destroy']);
         Route::get('/buyers/{user}', [BuyerController::class, 'show'])->whereNumber('user');
         Route::put('/buyers/{user}/groups', [BuyerController::class, 'groups'])->whereNumber('user');
+        Route::put('/buyers/{user}/sees', [BuyerController::class, 'sees'])->whereNumber('user');
         Route::post('/buyers/{user}/password', [BuyerController::class, 'passwordLink'])->whereNumber('user');
         Route::put('/buyers/{user}/passport', [BuyerController::class, 'passport'])->whereNumber('user');
     });

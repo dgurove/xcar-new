@@ -80,7 +80,13 @@
                     {{-- Числа — столбиком, как цена и состояние в сделках. --}}
                     <span class="flex shrink-0 flex-col items-end gap-1.5">
                         @if ($interests[$buyer->id] ?? 0)<span class="nums text-sm font-medium text-accent-text">интерес {{ $interests[$buyer->id] }}</span>@endif
-                        @if ($seen[$buyer->id] ?? 0)<span class="nums text-sm text-ink-muted">видит {{ $seen[$buyer->id] }}</span>@endif
+                        @if ($buyer->buyerSeesAll())
+                            <span class="text-sm text-ink-muted">видит все</span>
+                        @elseif ($seen[$buyer->id] ?? 0)
+                            <span class="nums text-sm text-ink-muted">открыто {{ $seen[$buyer->id] }}</span>
+                        @else
+                            <span class="text-sm text-urgent">ничего не открыто</span>
+                        @endif
                     </span>
                     <x-ui.chevron/>
                 </div>

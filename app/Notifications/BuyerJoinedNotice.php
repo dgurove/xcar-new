@@ -16,7 +16,8 @@ final class BuyerJoinedNotice extends Notice
 
     public function text(): ?string
     {
-        return 'Теперь можно открывать ему предложения.';
+        // Видит всё открытое менеджеру (12.10.2026, по умолчанию) — делать ничего не нужно; «Выбранные» — ждут менеджера.
+        return $this->buyer->buyerSeesAll() ? 'Видит все ваши предложения' : 'Откройте ему предложения';
     }
 
     public function href(): string

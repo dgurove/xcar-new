@@ -26,6 +26,8 @@ final class IssueInvite
     {
         $fields = ['phone' => (bool) ($data['phone'] ?? false), 'email' => (bool) ($data['email'] ?? false)];
         $label = trim((string) ($data['label'] ?? '')) ?: null;
+        // Что увидит покупатель: всё открытое менеджеру (по умолчанию) или только открытое вручную (12.10.2026).
+        $sees = ($data['buyer_sees'] ?? 'all') === 'picked' ? 'picked' : 'all';
 
         if (! $by->isAdmin()) {
             return Invite::create([
@@ -36,6 +38,7 @@ final class IssueInvite
                 'label' => $label,
                 'group_id' => $data['group_id'] ?? null ?: null,
                 'fields' => $fields,
+                'buyer_sees' => $sees,
             ]);
         }
 
@@ -51,6 +54,7 @@ final class IssueInvite
             'max_uses' => $once ? 1 : null,
             'expires_at' => $once ? ($data['expires_at'] ?? null) : null,
             'fields' => $once ? ['phone' => true, 'email' => true] : $fields,
+            'buyer_sees' => $sees,
             // Модератору — что открыто сверх черновиков.
             ...($role === Role::Moderator ? ['access' => array_values($data['crm_areas'] ?? [])] : []),
             // Менеджер и модератор — сразу в группе своего вида (UserGroup), если выбрана.
@@ -77,7 +81,7 @@ final class IssueInvite
     /** Правила формы — по тому, кто создаёт. */
     public static function rules(User $by): array
     {
-        $rules = ['label' => ['nullable', 'string', 'max:60']];
+        $rules = ['label' => ['nullable', 'string', 'max:60'], 'buyer_sees' => ['nullable', Rule::in(['all', 'picked'])]];
         if ($by->isAdmin()) {
             $rules['role'] = ['required', Rule::in(array_map(fn ($r) => $r->value, self::ROLES))];
             $rules['manager_id'] = ['required_if:role,buyer', 'nullable', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))];

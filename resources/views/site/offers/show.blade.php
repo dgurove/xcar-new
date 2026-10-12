@@ -34,29 +34,45 @@
             <x-offer.deal-box :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat" :can-chat="$canChat"/>
 
             @if ($user?->isManager() && $offer->state->isPublic())
-                {{-- Менеджер: кому из его покупателей открыто (чип — и есть кнопка «закрыть», с подтверждением)
-                     и кто проявил интерес. На телефоне — после цены и характеристик, в правой колонке — вторым. --}}
+                {{-- Менеджер: кто из его покупателей это видит. Видящие всё (12.10.2026, по умолчанию) — одной строкой со
+                     ссылкой в «Покупатели»; «Выбранным» — чипы открытого (чип — и есть кнопка «закрыть», с подтверждением) и
+                     «Открыть…»; покупателей нет — «Пригласить». Ниже — кто проявил интерес. На телефоне — после цены. --}}
+                @php
+                    $seeAll = \App\Offers\Showing::seeAllCount($user);
+                    $pickable = \App\Offers\Showing::pickable($user);
+                @endphp
                 <section class="box order-3 lg:order-2" data-controller="sheet" data-action="show:open@window->sheet#open">
                     <h2 class="box-title">Покупатели</h2>
-                    @if ($showings->isEmpty())
-                        <button type="button" class="btn btn-accent mt-4 w-full" data-action="sheet#open"><x-ui.icon name="users" class="size-5"/> Показать покупателям</button>
+                    @if ($seeAll || $showings->isNotEmpty() || $pickable)
+                        @if ($seeAll)
+                            <a href="/buyers" class="mt-3 flex items-center gap-2 text-ink-muted">
+                                <x-ui.icon name="eye" class="size-5 shrink-0"/>
+                                <span class="min-w-0 flex-1">{{ \App\Support\Plural::of($seeAll, ['Видит', 'Видят', 'Видят']) }} <span class="nums">{{ $seeAll }}</span> {{ \App\Support\Plural::of($seeAll, ['покупатель', 'покупателя', 'покупателей']) }}</span>
+                                <x-ui.chevron/>
+                            </a>
+                        @endif
+                        @if ($showings->isNotEmpty() || $pickable)
+                            <div class="mt-3 flex flex-wrap gap-1.5">
+                                @foreach ($showings as $s)
+                                    @php $who = $s->group ? 'группы «'.$s->group->name.'»' : $s->user?->shortName(); @endphp
+                                    <form method="post" action="/buyers/showings" class="contents" data-turbo-confirm="Закрыть для {{ $who }}?" data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $offer->titleWithYear() }} пропадёт из ленты">
+                                        @csrf @method('delete')
+                                        <input type="hidden" name="offer" value="{{ $offer->id }}">
+                                        <input type="hidden" name="{{ $s->group ? 'group' : 'user' }}" value="{{ $s->group_id ?? $s->user_id }}">
+                                        @if ($s->group)
+                                            <button type="submit" class="chip"><x-ui.icon name="users" class="size-4"/>{{ $s->group->name }}<x-ui.icon name="x" class="size-3.5 text-ink-dim"/></button>
+                                        @elseif ($s->user)
+                                            <button type="submit" class="chip person"><x-ui.avatar :user="$s->user" :size="20"/><span class="truncate">{{ $s->user->shortName() }}</span><x-ui.icon name="x" class="size-3.5 text-ink-dim"/></button>
+                                        @endif
+                                    </form>
+                                @endforeach
+                                @if ($pickable && $offer->state === \App\Offers\OfferState::Open)
+                                    <button type="button" class="chip rounded-full !py-0.5 text-accent-text" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Открыть…</button>
+                                @endif
+                            </div>
+                        @endif
                     @else
-                        <div class="mt-3 flex flex-wrap gap-1.5">
-                            @foreach ($showings as $s)
-                                @php $who = $s->group ? 'группы «'.$s->group->name.'»' : $s->user?->shortName(); @endphp
-                                <form method="post" action="/buyers/showings" class="contents" data-turbo-confirm="Закрыть для {{ $who }}?" data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $offer->titleWithYear() }} пропадёт из ленты">
-                                    @csrf @method('delete')
-                                    <input type="hidden" name="offer" value="{{ $offer->id }}">
-                                    <input type="hidden" name="{{ $s->group ? 'group' : 'user' }}" value="{{ $s->group_id ?? $s->user_id }}">
-                                    @if ($s->group)
-                                        <button type="submit" class="chip"><x-ui.icon name="users" class="size-4"/>{{ $s->group->name }}<x-ui.icon name="x" class="size-3.5 text-ink-dim"/></button>
-                                    @elseif ($s->user)
-                                        <button type="submit" class="chip person"><x-ui.avatar :user="$s->user" :size="20"/><span class="truncate">{{ $s->user->shortName() }}</span><x-ui.icon name="x" class="size-3.5 text-ink-dim"/></button>
-                                    @endif
-                                </form>
-                            @endforeach
-                            <button type="button" class="chip rounded-full !py-0.5 text-accent-text" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/> Показать…</button>
-                        </div>
+                        <a href="/buyers/invites" class="btn btn-quiet mt-4 w-full"><x-ui.icon name="link" class="size-5"/> Пригласить покупателей</a>
                     @endif
                     @if ($buyerInterests->isNotEmpty())
                         <div class="list mt-4">
@@ -65,11 +81,13 @@
                             @endforeach
                         </div>
                     @endif
-                    <x-ui.sheet id="show" title="Показать покупателям" wide>
-                        <turbo-frame id="show-frame" src="/buyers/showings/new?offers[]={{ $offer->id }}&back={{ urlencode(request()->getRequestUri()) }}" loading="lazy" target="_top" class="block min-h-40">
-                            <x-ui.skeleton :rows="3"/>
-                        </turbo-frame>
-                    </x-ui.sheet>
+                    @if ($pickable)
+                        <x-ui.sheet id="show" title="Открыть покупателям" wide>
+                            <turbo-frame id="show-frame" src="/buyers/showings/new?offers[]={{ $offer->id }}&back={{ urlencode(request()->getRequestUri()) }}" loading="lazy" target="_top" class="block min-h-40">
+                                <x-ui.skeleton :rows="3"/>
+                            </turbo-frame>
+                        </x-ui.sheet>
+                    @endif
                 </section>
             @endif
 

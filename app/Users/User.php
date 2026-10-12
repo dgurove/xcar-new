@@ -36,7 +36,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'partner_regions'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'partner_regions', 'buyer_sees', 'buyer_show_vin'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -78,6 +78,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'seen_at' => 'datetime',
             'list_prefs' => 'array',
             'contact_fields' => 'array',
+            'buyer_show_vin' => 'bool',
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
@@ -197,6 +198,15 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function isBuyer(): bool
     {
         return $this->hasRole(Role::Buyer);
+    }
+
+    /**
+     * Покупатель видит всё, что открыто его менеджеру (12.10.2026, владелец; `users.buyer_sees = all`, по умолчанию), а не
+     * только открытое вручную (`picked`). Одна дверь видимости, «нового», VIN и уведомлений о новых предложениях.
+     */
+    public function buyerSeesAll(): bool
+    {
+        return $this->isBuyer() && ($this->buyer_sees ?? 'all') !== 'picked';
     }
 
     public function isManager(): bool

@@ -35,7 +35,7 @@ final class CatalogQuery
 
     /**
      * Когда предложение открылось этому человеку — SQL-выражение над `offers`. Менеджеру и супер-покупателю — его волна
-     * показа (`offer_viewers`), покупателю — первый показ его менеджера (лично или группе) и волна этого менеджера,
+     * показа (`offer_viewers`), покупателю — волна его менеджера, а в режиме «выбранные» ещё и первый показ (лично или группе),
      * остальным — публикация. Раньше публикации не бывает. Одно выражение на «Новые», метку, сортировку и бейдж таба.
      */
     public static function openedAtSql(?User $user): string
@@ -46,6 +46,9 @@ final class CatalogQuery
         $id = (int) $user->id;
         if ($user->isBuyer() && $user->manager_id) {
             $manager = (int) $user->manager_id;
+            if ($user->buyerSeesAll()) {
+                return "greatest(offers.published_at, (select v.opens_at from offer_viewers v where v.offer_id = offers.id and v.user_id = {$manager}))";
+            }
             $groups = implode(',', array_map('intval', $user->groupIds()));
             $to = $groups === '' ? "s.user_id = {$id}" : "(s.user_id = {$id} or s.group_id in ({$groups}))";
 

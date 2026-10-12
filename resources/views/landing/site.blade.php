@@ -7,7 +7,7 @@
         :primary="['Войти', '/login']">
         <section>
             <h2 class="landing-h2">Каждое предложение целиком</h2>
-            <p class="landing-lead mt-3">Фото, пробег, VIN, город и цена. Новое приходит уведомлением на телефон</p>
+            <p class="landing-lead mt-3">Фото, пробег, город и цена. Новое приходит уведомлением на телефон</p>
         </section>
     </x-landing>
 </x-ui.shell>

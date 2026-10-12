@@ -64,7 +64,7 @@
                 @if ($from)<span class="text-ink-muted">{{ $price::money($from) }} → </span>@endif{!! $estimate->isCorrection() ? e($price::money($estimate->base_price)) : '<span class="text-urgent">Нужна оценка</span>' !!}
                 @unless ($estimate->isCorrection())<a href="{{ $href }}" class="btn btn-get mt-1">Оценить</a>@endunless
             @endif
-        @elseif ($gallery)<a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $myInterest ? 'Интерес отмечен' : 'Проявить интерес' }}</a>
+        @elseif ($gallery)<a href="{{ $myInterest ? $href : $href.(str_contains($href, '?') ? '&' : '?').'interes=1' }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $user->isBuyer() ? ($myInterest ? 'Сообщим о продаже' : 'Сообщить о продаже') : ($myInterest ? 'Интерес отмечен' : 'Проявить интерес') }}</a>
         @elseif ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
         {{-- Заявленная (менеджеру — закупочная для него) под ценой, пока стрелка «от → до» не влезает. --}}
         @if (! $estimate && $price->shown() && $price->withFrom())<span class="cell-sub lg:hidden">{{ $price::money($price->from) }}</span>@endif

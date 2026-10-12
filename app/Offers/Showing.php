@@ -58,8 +58,47 @@ class Showing extends Model
         $viaGroups = DB::table('buyer_group_user')
             ->whereIn('group_id', self::where('offer_id', $offerId)->when($manager, fn ($q) => $q->where('manager_id', $manager))->whereNotNull('group_id')->select('group_id'))
             ->pluck('user_id');
+        $ids = $direct->merge($viaGroups)->unique()->values();
 
-        return $direct->merge($viaGroups)->unique()->values();
+        // Кто видит всё, что открыто менеджеру (12.10.2026), показом ничего не получает — его здесь нет.
+        return $ids->isEmpty() ? $ids : User::whereIn('id', $ids)->where('buyer_sees', 'picked')->pluck('id')->values();
+    }
+
+    /**
+     * Все покупатели, кому предложение сейчас видно: открытые вручную плюс те, кто видит всё, у менеджеров, чья волна
+     * наступила. Живое обновление карточки и уведомления о выходе в продажу — по этому списку.
+     *
+     * @return Collection<int, int>
+     */
+    public static function seersOf(Offer $offer): Collection
+    {
+        $managers = DB::table('offer_viewers')->where('offer_id', $offer->id)->where('opens_at', '<=', now())->select('user_id');
+        $all = User::withRole(Role::Buyer)->where('buyer_sees', '!=', 'picked')->whereIn('manager_id', $managers)->whereNull('rejected_at')->pluck('id');
+
+        return self::buyerIdsOf($offer)->merge($all)->unique()->values();
+    }
+
+    /**
+     * Есть ли у менеджера кому открывать вручную: покупатели в режиме «Выбранные». Нет — значка «Открыть покупателям» на
+     * плитке и «Выбрать» нет: все и так видят всё. Раз на запрос.
+     */
+    public static function pickable(User $manager): bool
+    {
+        if (app()->runningInConsole()) {
+            return User::withRole(Role::Buyer)->where('manager_id', $manager->id)->where('buyer_sees', 'picked')->exists();
+        }
+        $key = 'showings.pickable.'.$manager->id;
+        if (! request()->attributes->has($key)) {
+            request()->attributes->set($key, User::withRole(Role::Buyer)->where('manager_id', $manager->id)->where('buyer_sees', 'picked')->whereNull('rejected_at')->exists());
+        }
+
+        return request()->attributes->get($key);
+    }
+
+    /** Покупатели менеджера, что видят всё открытое ему (`buyer_sees = all`). */
+    public static function seeAllCount(User $manager): int
+    {
+        return User::withRole(Role::Buyer)->where('manager_id', $manager->id)->where('buyer_sees', '!=', 'picked')->whereNull('rejected_at')->count();
     }
 
     /**
@@ -76,13 +115,18 @@ class Showing extends Model
         }
         $rows = DB::table('showings as s')
             ->leftJoin('buyer_group_user as m', 'm.group_id', '=', 's.group_id')
+            ->join('users as u', 'u.id', '=', DB::raw('coalesce(s.user_id, m.user_id)'))
+            ->where('u.buyer_sees', 'picked')
             ->where('s.manager_id', $manager->id)
             ->whereIn('s.offer_id', $offerIds)
             ->selectRaw('s.offer_id, count(distinct coalesce(s.user_id, m.user_id)) as n')
             ->groupBy('s.offer_id')
             ->pluck('n', 'offer_id');
 
-        return array_map('intval', $rows->all());
+        // Видящие всё видят каждое открытое менеджеру — прибавляются к каждому.
+        $all = self::seeAllCount($manager);
+
+        return array_map(fn ($n) => (int) $n + $all, $rows->all() + array_fill_keys($offerIds, 0));
     }
 
     /**

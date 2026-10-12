@@ -25,7 +25,8 @@
     <div class="nums text-[32px] font-bold leading-tight" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
     @if ($price->declared)<div class="mt-2"><span class="nums text-sm text-ink-dim">заявленная {{ $price::money($price->declared) }}</span></div>@endif
 @elseif ($gallery)
-    <div class="text-lg text-accent-text">Скоро в продаже</div>
+    {{-- Покупателю — прямо про цену (12.10.2026: в галерее спрашивали «Цена?»). --}}
+    <div class="text-lg text-accent-text">{{ $user?->isBuyer() ? 'Цена при выходе в продажу' : 'Скоро в продаже' }}</div>
     <x-offer.gallery-left :offer="$offer" class="mt-1 block text-sm"/>
 @endif
 
@@ -51,7 +52,7 @@
         <div data-closes-with-timer><x-offer.bid-form :offer="$offer" :my-bid="$myBid"/></div>
     @elseif ($wantsInterest)
         @if ($myInterest)
-            <p class="flash flash-accent mt-6">{{ $gallery ? 'Интерес отправлен' : ($myInterest->state === \App\Offers\InterestState::New ? ($manager ? $manager->shortName().' свяжется с вами' : 'Менеджер свяжется с Вами') : 'С Вами связались') }}</p>
+            <p class="flash flash-accent mt-6">{{ $gallery ? ($user->isBuyer() ? 'Сообщим о выходе в продажу' : 'Интерес отправлен') : ($myInterest->state === \App\Offers\InterestState::New ? ($manager ? $manager->shortName().' свяжется с вами' : 'Менеджер свяжется с Вами') : 'С Вами связались') }}</p>
             @if ($myInterest->comment)<p class="mt-2 text-sm text-ink-muted">{{ $myInterest->comment }}</p>@endif
             <form method="post" action="/offers/{{ $offer->number }}/interest" class="mt-3" data-turbo-confirm="Снять интерес?" data-turbo-confirm-label="Снять" @unless ($gallery && ! $manager) data-turbo-confirm-text="{{ $manager?->shortName() ?? 'Менеджер' }} увидит, что вы передумали" @endunless>
                 @csrf @method('delete')
@@ -61,7 +62,7 @@
             <form method="post" action="/offers/{{ $offer->number }}/interest" class="mt-6 flex flex-col gap-3" @if ($user->isBuyer()) data-telegram-moment="bid" @endif>
                 @csrf
                 <textarea name="comment" rows="2" class="field-input !min-h-0 sm:text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру' : 'Что важно уточнить' }}">{{ old('comment') }}</textarea>
-                <button type="submit" class="btn btn-accent w-full">{{ $gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену' }}</button>
+                <button type="submit" class="btn btn-accent w-full">{{ $gallery && $user->isBuyer() ? 'Сообщить о продаже' : ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') }}</button>
             </form>
         @endif
         @if ($manager)

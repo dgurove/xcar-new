@@ -56,7 +56,12 @@ final class ChatNotice extends Notice
         }
         $chat = $m->chat;
         $who = $this->who();
-        $title = $chat->isEnquiry() ? "{$who}: обращение с сайта" : "{$who} пишет по {$chat->offer->titleWithYear()}";
+        // Общий чат покупателя с его менеджером (без машины, 12.10.2026) — просто «пишет», это не обращение к площадке.
+        $title = match (true) {
+            $chat->isEnquiry() && $chat->isBuyerChat() => "{$who} пишет",
+            $chat->isEnquiry() => "{$who}: обращение с сайта",
+            default => "{$who} пишет по {$chat->offer->titleWithYear()}",
+        };
 
         // Покупателю пишет его менеджер — без VIN и номера: VIN покупателю по умолчанию скрыт (`Offer::vinFor`).
         $toBuyer = $chat->isBuyerChat() && $m->author_id !== null && $m->author_id === $chat->manager_id;

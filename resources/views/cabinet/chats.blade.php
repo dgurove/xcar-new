@@ -7,7 +7,7 @@
     $base ??= '/account/chats';
     $chat ??= null;
     $offer ??= null;
-    $other = $chat ? ($chat->isCounterpart($me) ? $chat->user : $chat->manager) : ($offer && $me->isBuyer() ? $me->manager : null);
+    $other = $chat ? ($chat->isCounterpart($me) ? $chat->user : $chat->manager) : (($offer || $current === 'support') && $me->isBuyer() ? $me->manager : null);
     $name = $chat ? $chat->counterpartName($me) : ($other?->shortName() ?? \App\Chats\Chat::PLATFORM);
     // Шапка ведёт к собеседнику: менеджеру — страница покупателя с возвратом в чат; покупателю и всем,
     // кто пишет площадке, — шторка-контакт; статус там по рабочему времени, а не по seen_at.
@@ -22,10 +22,12 @@
     };
     $status = $mine ? false : \App\Chats\Hours::presence(feminine: $other === null);
     $others = $mine || ! $other ? collect() : $chats->filter(fn ($c) => $c->manager_id === $other->id && $c->id !== $chat?->id);
-    // «Администрация XCar» в списке есть всегда: обращения ещё нет — строка ведёт на пустой экран.
+    // «Администрация XCar» в списке есть всегда: обращения ещё нет — строка ведёт на пустой экран. Покупателю менеджера —
+    // вместо неё его менеджер (12.10.2026, владелец: «покупатель пишет менеджеру, площадку убрать»).
     $q ??= '';
-    // При поиске строку «Администрации» без обращения не рисуем: она не совпала ни с чем.
-    $support = !$me->isAdmin() && $q === '' && $chats->doesntContain(fn ($c) => $c->isEnquiry());
+    $supportTo = $me->isBuyer() ? $me->manager : null;
+    // При поиске строку без обращения не рисуем: она не совпала ни с чем.
+    $support = !$me->isAdmin() && $q === '' && $chats->doesntContain(fn ($c) => $c->isEnquiry() && $c->manager_id === $supportTo?->id);
 @endphp
 {{-- Те же чаты — и в «Сделках» (`/deals/chats`, пилюля рядом со «Сделками» и «Покупателями»; 11.10.2026, владелец: «в
      кабинете чаты обычно не ищут — пусть будут и там и там»), и в кабинете (`/account/chats`). --}}

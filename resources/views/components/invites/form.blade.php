@@ -30,6 +30,8 @@
                 <x-ui.field name="group_id" label="В группу" :options="$groups->pluck('name', 'id')" placeholder="Без группы"/>
             @endif
         </div>
+        {{-- Что увидит покупатель (12.10.2026, владелец: «неразбериха с покупателями»): по умолчанию всё, что открыто менеджеру. --}}
+        <x-buyer.sees-segment/>
         <div class="flex flex-col gap-2">
             {{-- Телефон по умолчанию спрашивается (владелец 05.10.2026); снять — если менеджер не хочет отдавать номер покупателя. --}}
             <x-ui.check name="phone" :checked="old('_token') ? (bool) old('phone') : true">Покупатель указывает телефон</x-ui.check>

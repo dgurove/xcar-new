@@ -7,11 +7,13 @@ use App\Support\Money;
 
 /**
  * Тому, кто в галерее проявил интерес к машине: она вышла в продажу (12.10.2026, владелец). Идёт вместо «Нового
- * предложения», не вдобавок, — когда его волна наступила (`NotifyViewers`).
+ * предложения», не вдобавок, — когда его волна наступила (`NotifyViewers`); покупателю менеджера — когда наступила волна
+ * менеджера и машина ему видна.
  */
 final class GalleryInterestOnSaleNotice extends Notice
 {
-    public function __construct(private Offer $offer) {}
+    /** buyer — покупателю менеджера: он не подтверждает ценой, срок приёма ему ни к чему. */
+    public function __construct(private Offer $offer, private bool $buyer = false) {}
 
     public function title(): string
     {
@@ -22,7 +24,7 @@ final class GalleryInterestOnSaleNotice extends Notice
     {
         return collect([
             $this->offer->asking_price ? Money::rub($this->offer->asking_price) : null,
-            $this->offer->bids_close_at ? 'приём подтверждений до '.$this->offer->bids_close_at->translatedFormat('j M, H:i') : null,
+            ! $this->buyer && $this->offer->bids_close_at ? 'приём подтверждений до '.$this->offer->bids_close_at->translatedFormat('j M, H:i') : null,
         ])->filter()->implode(', ') ?: null;
     }
 
@@ -44,5 +46,10 @@ final class GalleryInterestOnSaleNotice extends Notice
     public function important(): bool
     {
         return true;
+    }
+
+    public function toTelegram(): ?array
+    {
+        return ['title' => $this->title(), 'lines' => array_values(array_filter([$this->text()])), 'button' => 'Посмотреть'];
     }
 }

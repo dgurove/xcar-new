@@ -1,0 +1,10 @@
+{{-- «Видит» покупателя одним сегментом (12.10.2026): «Все предложения» — всё, что открыто менеджеру, сразу с ценой
+     продажи; «Выбранные» — только открытое менеджером вручную. В ссылке-приглашении и в шторке покупателя. --}}
+@props(['value' => 'all'])
+<div class="flex flex-col gap-1.5">
+    <h3 class="list-head !pb-0">Покупатель видит</h3>
+    <div class="segment">
+        <label><input type="radio" name="buyer_sees" value="all" @checked(old('buyer_sees', $value) !== 'picked')><span>Все предложения</span></label>
+        <label><input type="radio" name="buyer_sees" value="picked" @checked(old('buyer_sees', $value) === 'picked')><span>Выбранные</span></label>
+    </div>
+</div>

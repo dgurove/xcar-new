@@ -4,6 +4,8 @@ namespace App\Offers\Actions;
 
 use App\Live\Publisher;
 use App\Live\Topics;
+use App\Notifications\BuyerOffersNotice;
+use App\Notifications\BuyerWaitedNotice;
 use App\Notifications\GalleryInterestOnSaleNotice;
 use App\Notifications\OfferPublishedNotice;
 use App\Notifications\PurchaseCarOnSaleNotice;
@@ -14,7 +16,9 @@ use App\Offers\OfferState;
 use App\Offers\OfferViewer;
 use App\Purchases\Car as PurchaseCar;
 use App\Purchases\OfferState as PurchaseOfferState;
+use App\Users\Role;
 use App\Users\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
@@ -23,7 +27,9 @@ use Illuminate\Support\Facades\Notification;
  * (offers:tick) — для слота и следующих волн; тогда же карточка въезжает им в каталог. Часы пишут человеку одно
  * уведомление на всё, что открылось ему за тик: «Опубликовано 17 предложений» (слот, владелец 03.10.2026), одно —
  * как раньше. Вышло из закупки по контрпредложению — тем, кто называл за ТС цену в закупке, своё «ТС из закупки
- * в продаже» на каждое.
+ * в продаже» на каждое. Покупателям менеджера (12.10.2026) — вместе с волной менеджера: видящим всё — «Новое
+ * предложение» одним на пачку (или «В продаже, вы отмечали интерес»), а «выбранным», что ждали машину из галереи, —
+ * менеджеру «ждал, откройте».
  */
 final class NotifyViewers
 {
@@ -54,6 +60,7 @@ final class NotifyViewers
         [$ours, $managers] = $managers->partition(fn ($u) => in_array($u->id, $liked, true));
         Notification::send($ours, new GalleryInterestOnSaleNotice($offer));
         Notification::send($managers, new OfferPublishedNotice($offer));
+        $this->buyers([$offer->id => $due], collect([$offer->id => $offer]));
         if ($live) {
             $this->publish->card($offer->number, Topics::CATALOG);
         }
@@ -100,8 +107,52 @@ final class NotifyViewers
         foreach ($fresh as $id => $list) {
             $users->get($id)?->notify(count($list) === 1 ? new OfferPublishedNotice($list[0]) : new SlotPublishedNotice(count($list)));
         }
+        $this->buyers($rows->groupBy('offer_id')->map(fn ($v) => $v->pluck('user_id')->all())->all(), $offers);
 
         return $rows->count();
+    }
+
+    /**
+     * Покупатели менеджеров, чья волна наступила. Видящий всё — одно уведомление на всё, что открылось ему за раз;
+     * ждал машину из галереи — своё. «Выбранный», что ждал, машину не видит — менеджеру «ждал, откройте».
+     *
+     * @param  array<int, list<int>>  $opened  offer_id → кому открылось (менеджеры)
+     * @param  Collection<int, Offer>  $offers
+     */
+    private function buyers(array $opened, Collection $offers): void
+    {
+        $managers = array_values(array_unique(array_merge(...array_values($opened))));
+        if (! $managers) {
+            return;
+        }
+        $buyers = User::withRole(Role::Buyer)->whereIn('manager_id', $managers)->whereNull('rejected_at')->get()->groupBy('manager_id');
+        if ($buyers->isEmpty()) {
+            return;
+        }
+        $fresh = [];
+        foreach ($opened as $offerId => $ids) {
+            $offer = $offers->get($offerId);
+            if (! $offer) {
+                continue;
+            }
+            $liked = self::galleryInterest($offer);
+            foreach ($ids as $managerId) {
+                foreach ($buyers->get($managerId, collect()) as $buyer) {
+                    $waited = in_array($buyer->id, $liked, true);
+                    if ($buyer->buyerSeesAll() && $waited) {
+                        $buyer->notify(new GalleryInterestOnSaleNotice($offer, buyer: true));
+                    } elseif ($buyer->buyerSeesAll()) {
+                        $fresh[$buyer->id][] = $offer->id;
+                    } elseif ($waited && ! $offer->isVisibleTo($buyer)) {
+                        User::find($managerId)?->notify(new BuyerWaitedNotice($buyer, $offer));
+                    }
+                }
+            }
+        }
+        $all = $buyers->flatten(1)->keyBy('id');
+        foreach ($fresh as $id => $list) {
+            $all->get($id)?->notify(new BuyerOffersNotice($list));
+        }
     }
 
     /** @return list<int> кто проявлял интерес к машине, пока она была в галерее */

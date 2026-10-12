@@ -41,7 +41,7 @@
                 <span class="nums block whitespace-nowrap text-lg">@if ($price->withFrom())<span class="text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif<span class="font-bold">{{ $price::money($price->to) }}&nbsp;₽</span>@if ($price->vat) <span class="text-xs font-normal text-ink-muted">с НДС</span>@endif</span>
                 @if ($price->declared)<span class="text-xs text-ink-dim nums">заявленная {{ $price::money($price->declared) }}</span>@endif
             @elseif ($gallery)
-                <span class="text-sm text-accent-text">Скоро в продаже</span>
+                <span class="text-sm text-accent-text">{{ $user?->isBuyer() ? 'Цена при выходе в продажу' : 'Скоро в продаже' }}</span>
                 <x-offer.gallery-left :offer="$offer" class="block text-xs"/>
             @endif
         </x-slot:aside>
@@ -78,7 +78,7 @@
                 <x-offer.my-bid :offer="$offer" :bid="$myBid" class="w-full"/>
             @elseif ($wantsInterest)
                 @if ($myInterest)
-                    <span class="flash flash-accent w-full text-sm">{{ $gallery ? 'Интерес отправлен' : ($myInterest->state === InterestState::New ? ($manager ? $manager->shortName().' свяжется с вами' : 'Менеджер свяжется с Вами') : 'С Вами связались') }}</span>
+                    <span class="flash flash-accent w-full text-sm">{{ $gallery ? ($user->isBuyer() ? 'Сообщим о выходе в продажу' : 'Интерес отправлен') : ($myInterest->state === InterestState::New ? ($manager ? $manager->shortName().' свяжется с вами' : 'Менеджер свяжется с Вами') : 'С Вами связались') }}</span>
                     <form method="post" action="/offers/{{ $n }}/interest" class="contents" data-turbo-confirm="Снять интерес?" data-turbo-confirm-label="Снять" @unless ($gallery && ! $manager) data-turbo-confirm-text="{{ $manager?->shortName() ?? 'Менеджер' }} увидит, что вы передумали" @endunless>
                         @csrf @method('delete')
                         <button type="submit" class="pill pill-plain">Передумал</button>
@@ -87,7 +87,7 @@
                     <form method="post" action="/offers/{{ $n }}/interest" class="flex w-full gap-2" @if (auth()->user()?->isBuyer()) data-telegram-moment="bid" @endif>
                         @csrf
                         <input name="comment" class="field-input field-s min-w-0 flex-1 sm:text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру' : 'Что важно уточнить' }}" value="{{ old('comment') }}">
-                        <button type="submit" class="btn btn-s btn-accent shrink-0">{{ $gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену' }}</button>
+                        <button type="submit" class="btn btn-s btn-accent shrink-0">{{ $gallery && $user->isBuyer() ? 'Сообщить о продаже' : ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') }}</button>
                     </form>
                 @endif
             @elseif ($bids && !$gallery && !$offer->bidsOpen() && $offer->state !== OfferState::Draft)
@@ -95,7 +95,7 @@
             @endif
             @if (auth()->check() && ($offer->isGallery() || $offer->state !== \App\Offers\OfferState::Draft))<x-offer.favorite :offer="$offer" variant="pill"/>@endif
             @if ($canChat)<a href="/account/chats/offer/{{ $offer->number }}" class="pill pill-plain"><x-ui.icon name="chat" class="size-4"/> Чат@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>@endif
-            @if ($user?->isManager() && $offer->state === OfferState::Open)@php $seen = \App\Offers\Showing::countsFor($user, [$offer->id])[$offer->id] ?? 0; @endphp<a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="pill pill-plain"><x-ui.icon name="users" class="size-4"/> @if ($seen)Показано <span class="nums">{{ $seen }}</span>@else Показать покупателям@endif</a>@endif
+            @if ($user?->isManager() && $offer->state === OfferState::Open && \App\Offers\Showing::pickable($user))@php $seen = \App\Offers\Showing::countsFor($user, [$offer->id])[$offer->id] ?? 0; @endphp<a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="pill pill-plain"><x-ui.icon name="users" class="size-4"/> @if ($seen)Открыто <span class="nums">{{ $seen }}</span>@else Открыть покупателям@endif</a>@endif
             {{-- Покупателю — его менеджер: кто и как позвонить, одной пилюлей. --}}
             @if ($manager?->phone)<a href="tel:+{{ $manager->phone }}" class="pill pill-plain"><x-ui.avatar :user="$manager" :size="20"/> {{ $manager->shortName() }} <span class="nums">{{ $manager->phoneFormatted() }}</span> <x-ui.icon name="phone" class="size-4"/></a>@endif
         </x-slot:actions>

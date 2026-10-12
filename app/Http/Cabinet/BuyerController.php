@@ -7,6 +7,8 @@ use App\Billing\PartyKind;
 use App\Billing\PartyRules;
 use App\Chats\Chat;
 use App\Chats\Message;
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Interest;
 use App\Offers\InterestState;
@@ -35,6 +37,7 @@ class BuyerController
         $term = trim((string) $request->query('q'));
         // «Видит N» — подзапросом в той же выборке (было по два запроса на человека); аватары — сразу.
         $q = $me->buyers()->with(['groups', 'media' => fn ($m) => $m->where('collection_name', 'avatar')])
+            ->when($sort->key === 'seen', fn ($q) => $q->orderByRaw("(users.buyer_sees <> 'picked') ".$sort->dir()))
             ->orderBy(match ($sort->key) {
                 'created' => 'users.created_at', 'seen' => 'seen_count', default => 'users.name'
             }, $sort->dir())->orderBy('users.id')
@@ -56,7 +59,9 @@ class BuyerController
 
         // Числа на строках — одним проходом: сколько машин видит и сколько интересов в работе.
         $ids = $buyers->pluck('id')->all();
-        $seen = $buyers->getCollection()->mapWithKeys(fn ($b) => [$b->id => (int) $b->seen_count]);
+        // Видящий всё видит всё открытое менеджеру — одно число на всех.
+        $all = Offer::where('state', OfferState::Open)->whereHas('viewers', fn ($v) => $v->where('user_id', $me->id)->where('opens_at', '<=', now()))->count();
+        $seen = $buyers->getCollection()->mapWithKeys(fn ($b) => [$b->id => $b->buyerSeesAll() ? $all : (int) $b->seen_count]);
         $interests = Interest::whereIn('user_id', $ids)->where('state', InterestState::New)->selectRaw('user_id, count(*) as n')->groupBy('user_id')->pluck('n', 'user_id');
         // Строка «Интерес» над списком: новых — лаймом, иначе сколько всего.
         $mine = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id));
@@ -91,7 +96,10 @@ class BuyerController
         $user->party ?? $user->setRelation('party', Party::forUser($user));
 
         $direct = Showing::where('manager_id', $me->id)->where('user_id', $user->id)->pluck('offer_id')->all();
-        $offers = Offer::with(['brand', 'model', 'settlement', 'media', 'favorites'])->where('state', OfferState::Open)->visibleTo($user)->orderByDesc('published_at')->get();
+        // Видит всё открытое менеджеру — списка нет (это весь его каталог), только число.
+        $seesAll = $user->buyerSeesAll();
+        $seenCount = Offer::where('state', OfferState::Open)->visibleTo($user)->count();
+        $offers = $seesAll ? collect() : Offer::with(['brand', 'model', 'settlement', 'media', 'favorites'])->where('state', OfferState::Open)->visibleTo($user)->orderByDesc('published_at')->get();
         // Через какую группу пришёл показ — чипом на карточке; прямой показ снимается здесь же.
         $via = Showing::where('manager_id', $me->id)->whereIn('offer_id', $offers->pluck('id'))->whereIn('group_id', $user->groups->pluck('id'))->with('group')->get()->groupBy('offer_id');
 
@@ -103,6 +111,8 @@ class BuyerController
             'buyer' => $user,
             'groups' => $me->ownGroups,
             'offers' => $offers,
+            'seesAll' => $seesAll,
+            'seenCount' => $seenCount,
             'direct' => $direct,
             'via' => $via,
             'interests' => $user->interests()->with('offer.brand', 'offer.model', 'offer.media')->latest()->get(),
@@ -110,6 +120,20 @@ class BuyerController
                 ->addSelect(['*', 'last_text' => Message::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'link' => session('password_link'),
         ]);
+    }
+
+    /**
+     * Что видит покупатель (12.10.2026): всё, что открыто менеджеру, или только открытое вручную; VIN в режиме «все».
+     * Ручные показы при переключении не трогаются — вернулся к «выбранным», выбор прежний.
+     */
+    public function sees(Request $request, User $user)
+    {
+        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer(), 404);
+        $data = $request->validate(['buyer_sees' => ['required', 'in:all,picked']]);
+        $user->update(['buyer_sees' => $data['buyer_sees'], 'buyer_show_vin' => $request->boolean('buyer_show_vin')]);
+        app(Publisher::class)->refresh(Topics::user($user->id), ['/offers', '/account']);
+
+        return back()->with('toast', $data['buyer_sees'] === 'picked' ? 'Видит только выбранные' : 'Видит все предложения');
     }
 
     /** В каких группах покупатель — чипы с автосохранением. */

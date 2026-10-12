@@ -12,7 +12,7 @@ use App\Users\BuyerGroup;
 use App\Users\User;
 use Illuminate\Http\Request;
 
-/** Показы: шторка «Показать…» у предложения или пачки, выбор предложений для покупателя или группы. */
+/** Показы: шторка «Открыть покупателям» у предложения или пачки, выбор предложений для покупателя или группы. */
 class ShowingController
 {
     /** Тело шторки: группы и покупатели чипами; для одного предложения отмечено текущее. */
@@ -30,7 +30,8 @@ class ShowingController
             'single' => $single,
             // Пустая группа показать некому — её нет в выборе (11.10.2026); уже отмеченная остаётся, чтобы снять показ.
             'groups' => $me->ownGroups()->withCount('members')->get()->filter(fn ($g) => $g->members_count > 0 || $current->contains('group_id', $g->id))->values(),
-            'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get(),
+            // Видящие всё (12.10.2026) и так видят — открывать вручную только «выбранным».
+            'buyers' => $me->buyers()->where('buyer_sees', 'picked')->with(User::withAvatar())->orderBy('name')->get(),
             'checkedUsers' => $current->pluck('user_id')->filter()->all(),
             'checkedGroups' => $current->pluck('group_id')->filter()->all(),
             'showVin' => $current->contains('show_vin', true),

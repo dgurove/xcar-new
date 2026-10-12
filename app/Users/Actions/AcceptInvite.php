@@ -41,6 +41,7 @@ final class AcceptInvite
                 'manager_id' => $buyer ? $invite->manager_id : null,
                 'invite_id' => $invite->id,
                 'contact_fields' => $buyer ? $invite->contactFields() : [],
+                'buyer_sees' => $buyer && $invite->buyer_sees === 'picked' ? 'picked' : 'all',
                 'approved_at' => now(),
                 'approved_by' => $invite->created_by,
                 // Модератор получает доступ, заданный в ссылке; роль «Парковка» — только приёмку или нет.

@@ -61,12 +61,16 @@ class ChatController
         ]);
     }
 
-    /** «Администрация XCar» в списке есть всегда: обращение заведено — на его экран, нет — пустой экран, первое сообщение заведёт. */
+    /**
+     * «Администрация XCar» в списке есть всегда (покупателю менеджера — его менеджер, 12.10.2026): обращение заведено — на
+     * его экран, нет — пустой экран, первое сообщение заведёт.
+     */
     public function support(Request $request)
     {
         $user = $request->user();
         abort_if($user->isAdmin(), 404);
-        if ($chat = Chat::whereNull('offer_id')->where('user_id', $user->id)->latest('last_message_at')->first()) {
+        $manager = $user->isBuyer() ? $user->manager_id : null;
+        if ($chat = Chat::whereNull('offer_id')->where('user_id', $user->id)->where('manager_id', $manager)->latest('last_message_at')->first()) {
             return redirect(self::base($request).'/'.$chat->id);
         }
 

@@ -1,4 +1,4 @@
-{{-- Тело шторки «Показать…»: сверху сам оффер (или сколько их), ниже один список строк с галкой —
+{{-- Тело шторки «Открыть покупателям»: сверху сам оффер (или сколько их), ниже один список строк с галкой —
      группы, затем покупатели. Одному предложению — текущее состояние (sync), пачке — только
      добавление. Грузится фреймом, чтобы галки были свежими. --}}
 @php $count = $offers->count(); $rows = $groups->count() + $buyers->count(); @endphp
@@ -32,7 +32,7 @@
         @endif
 
         @if ($rows === 0)
-            <x-ui.empty class="!py-12" href="/buyers/invites" link="Пригласить покупателей">Показывать пока некому</x-ui.empty>
+            <x-ui.empty class="!py-12" href="/buyers/invites" link="Пригласить покупателей">Открывать некому</x-ui.empty>
         @else
             @if ($rows > 8)<input type="search" class="field-input field-s" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif
             {{-- Видят ли отмеченные VIN целиком — решает менеджер (владелец 04.10.2026); не отмечено — звёздочки. --}}
@@ -65,7 +65,7 @@
                 @endforeach
             </div>
             <div class="sticky bottom-0 -mx-1 bg-surface px-1 pb-1 pt-3">
-                <button type="submit" class="btn btn-accent w-full" @unless ($single) data-select-target="submit" disabled @endunless>{{ $single ? 'Сохранить' : 'Показать' }} <span class="nums" data-select-target="count"></span></button>
+                <button type="submit" class="btn btn-accent w-full" @unless ($single) data-select-target="submit" disabled @endunless>{{ $single && ($checkedUsers || $checkedGroups) ? 'Сохранить' : 'Открыть' }} <span class="nums" data-select-target="count"></span></button>
             </div>
         @endif
     </form>
