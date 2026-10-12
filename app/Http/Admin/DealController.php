@@ -113,11 +113,11 @@ class DealController
     }
 
     /** Карточка чата сделки — фрейм перечитывает её по новому сообщению (`x-deal.chat-card`). */
-    public function chat(Deal $deal)
+    public function chat(Request $request, Deal $deal)
     {
         abort_unless($deal->buyer, 404);
 
-        return Blade::render('<x-deal.chat-card :deal="$deal"/>', ['deal' => $deal]);
+        return Blade::render('<x-deal.chat-card :deal="$deal" :compact="$compact"/>', ['deal' => $deal, 'compact' => $request->boolean('compact')]);
     }
 
     /** Карточка сделки рядом со списком (Detail): путь, деньги, письма, заметка — без истории. */

@@ -24,12 +24,13 @@
             <x-slot:line><span>{{ $deal->buyer->name }}</span><a href="tel:+{{ $deal->buyer->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $deal->buyer->phoneFormatted() }}</a></x-slot:line>
         @endif
         <x-slot:aside><span class="nums text-lg font-semibold">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span></x-slot:aside>
+        {{-- Ряд кнопок одним видом с окошком предложения (12.10.2026): «Чат» пилюлей вместо большой карточки, документы. --}}
         <x-slot:actions>
+            @if ($deal->buyer)<x-deal.chat-card :deal="$deal" compact/>@endif
             @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
         </x-slot:actions>
         @if ($errors->has('exit'))<x-ui.flash tone="danger" class="mt-3">{{ $errors->first('exit') }}</x-ui.flash>@endif
         <div class="mt-4 flex flex-col gap-6">
-            @if ($deal->buyer)<x-deal.chat-card :deal="$deal"/>@endif
             @if ($offer->positions->isNotEmpty())@include('admin.offers.route', ['cardClass' => ''])@endif
             {{-- Письма — сразу за путём (11.10.2026): шаг говорит о письме поставщику, само письмо рядом. --}}
             @if ($letters)

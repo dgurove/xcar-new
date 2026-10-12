@@ -5,7 +5,7 @@
      (`Admin\ChatController::start`). Новое сообщение по этой машине перечитывает карточку само (`reload` по `live:chat` с
      отбором по `offer`: сотрудникам идут сообщения всех чатов). chat — уже выбранный (редактор берёт из своих `$chats`),
      null — переписки нет; не передан — карточка выбирает сама. --}}
-@props(['deal', 'chat' => false])
+@props(['deal', 'chat' => false, 'compact' => false])
 @php
     $offer = $deal->offer;
     $buyer = $deal->buyer;
@@ -15,6 +15,17 @@
     $unread = (int) ($chat?->unread_for_staff ?? 0);
     $at = $chat?->last_message_at;
 @endphp
+@if ($compact)
+{{-- Пилюлей «Чат» в ряду окошка сделки (12.10.2026, владелец: «Чат вот так красиво компактно везде и у сделок»): число
+     непрочитанных — счётчиком, пилюля оранжевая; переписки нет — та же пилюля заводит чат. --}}
+<turbo-frame id="deal-chat-pill-{{ $deal->id }}" class="contents" data-controller="reload" data-reload-url-value="/work/deals/{{ $deal->id }}/chat?compact=1" data-reload-key-value="offer" data-reload-match-value="{{ $offer->id }}" data-action="live:chat@document->reload#load">
+    @if ($chat)
+        <x-ui.pill :tone="$unread ? 'urgent' : 'plain'" href="/work/chats/{{ $chat->id }}" data-turbo-frame="_top"><x-ui.icon name="chat" class="size-4"/> Чат@if ($unread) <span class="badge">{{ $unread }}</span>@endif</x-ui.pill>
+    @else
+        <form method="post" action="/work/chats/offer/{{ $offer->number }}/{{ $buyer->id }}" class="contents" data-turbo-frame="_top">@csrf<button type="submit" class="pill pill-plain"><x-ui.icon name="chat" class="size-4"/> Чат</button></form>
+    @endif
+</turbo-frame>
+@else
 <turbo-frame id="deal-chat-{{ $deal->id }}" {{ $attributes->class(['block min-w-0']) }} data-controller="reload" data-reload-url-value="/work/deals/{{ $deal->id }}/chat" data-reload-key-value="offer" data-reload-match-value="{{ $offer->id }}" data-action="live:chat@document->reload#load">
     @if ($chat)
         <a href="/work/chats/{{ $chat->id }}" data-turbo-frame="_top" class="box deal-chat" aria-label="Чат с {{ $buyer->shortName() }}">
@@ -49,3 +60,4 @@
         </form>
     @endif
 </turbo-frame>
+@endif

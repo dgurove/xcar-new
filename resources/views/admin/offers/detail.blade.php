@@ -67,9 +67,99 @@
         </x-slot:line>
         {{-- Цен в шапке нет: закупочная, заявленная и продажи — поля «Деньги» ниже. --}}
         <x-slot:actions>
-            @if ($admin && $offer->isScheduled())
-                <x-offer.slot-menu :offer="$offer"/>
-            @elseif ($rate || $floorFirst)
+            {{-- Ряд кнопок над плашкой дела (12.10.2026, владелец выбрал вариант «В»): слот, сделка и чат слева, «Действия»
+                 справа; ниже — плашка «Закупочная / Оценить / В гараж / Вывоз» или ответы менеджеров. --}}
+            <div class="flex w-full flex-wrap items-center gap-2">
+                @if ($admin && $offer->isScheduled())<x-offer.slot-menu :offer="$offer"/>@endif
+                @if ($admin && $offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
+                @if ($chats->isNotEmpty())<x-ui.pill :tone="$unread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чаты' }}@if ($chats->count() > 1 && ! $unread) <span class="nums text-ink-dim">{{ $chats->count() }}</span>@endif @if ($unread) <span class="badge">{{ $unread }}</span>@endif</x-ui.pill>@endif
+                {{-- «Действия» (05.10.2026, начальник: одной кнопкой справа, как в приложениях) — меню группами, как в iOS: продлить
+                     приём, опубликовать (сейчас или в слот), смена состояния; архив и удаление — красным последними. --}}
+                @php
+                    $extend = $admin && $offer->state === OfferState::Open && $offer->bids_close_at;
+                    $purge = $admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true);
+                    // «Вернуть в продажу» из сделки и гаража — шторкой с ценами (`x-offer.resale-sheet`, стоит вне меню).
+                    $resale = $admin && in_array($offer->state, [OfferState::Sold, OfferState::Garage], true);
+                    // Отмена сделки — красным, с подтверждением: оба пункта у сделки (в продажу, в черновики) её гасят.
+                    $calm = $offer->state === OfferState::Sold ? collect() : $transitions->reject(fn ($t) => $t[0] === OfferState::Archived || $t[0]->tone() === 'danger');
+                    $danger = $transitions->diffKeys($calm);
+                    // Черновик из таблицы Кати — «Убрать из таблицы Кати»: номер уходит из списка, в рабочих вкладках черновик и так стоит.
+                    $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
+                    $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
+                @endphp
+                @php $askMenu = ($correct || ($rate && ! $floorFirst)) && $offer->openEstimates->isEmpty() && $offer->declinedEstimates->isEmpty(); @endphp
+                @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu)
+                    <div class="contents" data-controller="menu">
+                        <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
+                        <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
+                            @if ($extend)
+                                <div class="menu-group">
+                                    <div class="menu-head">Продлить приём</div>
+                                    @foreach ([15 => '15 минут', 60 => '1 час'] as $minutes => $label)
+                                        <form method="post" action="/offers/{{ $n }}/extend">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="clock" class="size-5 text-ink-muted"/><span class="nums">+{{ $label }}</span></button></form>
+                                    @endforeach
+                                </div>
+                            @endif
+                            @if ($publishItems)
+                                <div class="menu-group">
+                                    <div class="menu-head">Опубликовать</div>
+                                    @foreach (\App\Offers\Slots::choices() as $c)
+                                        <form method="post" action="/offers/{{ $n }}/state">
+                                            @csrf<input type="hidden" name="state" value="open"><input type="hidden" name="when" value="{{ $c['when'] }}">
+                                            <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$c['at'] ? 'clock' : 'send'" class="size-5 text-ink-muted"/>{{ $c['at'] ? str_replace(', ', ' в ', \App\Offers\Slots::label($c['at'])) : 'Сейчас' }}</button>
+                                        </form>
+                                    @endforeach
+                                </div>
+                            @endif
+                            {{-- Менеджерам на оценку (без цены) или на корректировку (цена стоит, админ не уверен), 11.10.2026: пунктом, а не
+                                 строкой у каждой карточки; отдали — ответы группой в карточке. --}}
+                            @if ($askMenu)
+                                <div class="menu-group">
+                                    <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="estimate-ask-{{ $n }}:open"><x-ui.icon name="users" class="size-5 text-ink-muted"/>{{ $correct ? 'Спросить менеджеров' : 'Отдать на оценку' }}</button>
+                                </div>
+                            @endif
+                            @if ($listed)
+                                <div class="menu-group">
+                                    <form method="post" action="/offers/legacy/{{ $listed->id }}">
+                                        @csrf @method('delete')
+                                        <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="x" class="size-5 text-ink-muted"/>Убрать из таблицы Кати</button>
+                                    </form>
+                                </div>
+                            @endif
+                            @if ($calm->isNotEmpty())
+                                <div class="menu-group">
+                                    @foreach ($calm as [$next, $label])
+                                        <form method="post" action="/offers/{{ $n }}/state">
+                                            @csrf<input type="hidden" name="state" value="{{ $next->value }}">
+                                            <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$icon($next)" class="size-5 text-ink-muted"/>{{ $label }}</button>
+                                        </form>
+                                    @endforeach
+                                </div>
+                            @endif
+                            @if ($danger->isNotEmpty() || $purge || $resale)
+                                <div class="menu-group">
+                                    @if ($resale)
+                                        <button type="button" class="menu-item text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="resale:open"><x-ui.icon name="undo" class="size-5"/>Вернуть в продажу</button>
+                                    @endif
+                                    @foreach ($danger as [$next, $label])
+                                        <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @else data-turbo-confirm="{{ $next->label() }}?" @endif>
+                                            @csrf<input type="hidden" name="state" value="{{ $next->value }}">
+                                            <button class="menu-item text-danger" role="menuitem" data-action="menu#close"><x-ui.icon :name="$icon($next)" class="size-5"/>{{ $label }}</button>
+                                        </form>
+                                    @endforeach
+                                    {{-- Из архива — навсегда, со всем связанным (PurgeOffer): кадры, документы, сделки, чаты, счета. --}}
+                                    @if ($purge)
+                                        <form method="post" action="/offers/{{ $n }}/purge" data-turbo-frame="_top" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">
+                                            @csrf<button class="menu-item text-danger" role="menuitem" data-action="menu#close"><x-ui.icon name="trash" class="size-5"/>Удалить навсегда</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+            </div>
+            @if ($rate || $floorFirst)
                 {{-- «Оценить» (вкладка «Без цены»): только цена продажи — машина уходит в «Оцененные», карточка переходит к
                      следующей без цены; пустое поле — просто дальше. В продажу отправляют пачкой из «Оцененных». Под полем
                      ориентиры из закупки, если черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
@@ -132,93 +222,6 @@
                 {{-- Цена поставлена, админ не уверен — ответы менеджеров на корректировку: «Согласен» или своя цена. --}}
                 <div class="flex w-full flex-col rounded-(--radius-l) bg-surface-2 p-3">
                     @include('admin.offers.estimates', ['correction' => true])
-                </div>
-            @endif
-            @if ($admin && $offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
-            @if ($chats->isNotEmpty())<x-ui.pill :tone="$unread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чатов: '.$chats->count() }}@if ($unread) <span class="badge">{{ $unread }}</span>@endif</x-ui.pill>@endif
-            {{-- «Действия» (05.10.2026, начальник: одной кнопкой справа, как в приложениях) — меню группами, как в iOS: продлить
-                 приём, опубликовать (сейчас или в слот), смена состояния; архив и удаление — красным последними. --}}
-            @php
-                $extend = $admin && $offer->state === OfferState::Open && $offer->bids_close_at;
-                $purge = $admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true);
-                // «Вернуть в продажу» из сделки и гаража — шторкой с ценами (`x-offer.resale-sheet`, стоит вне меню).
-                $resale = $admin && in_array($offer->state, [OfferState::Sold, OfferState::Garage], true);
-                // Отмена сделки — красным, с подтверждением: оба пункта у сделки (в продажу, в черновики) её гасят.
-                $calm = $offer->state === OfferState::Sold ? collect() : $transitions->reject(fn ($t) => $t[0] === OfferState::Archived || $t[0]->tone() === 'danger');
-                $danger = $transitions->diffKeys($calm);
-                // Черновик из таблицы Кати — «Убрать из таблицы Кати»: номер уходит из списка, в рабочих вкладках черновик и так стоит.
-                $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
-                $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
-            @endphp
-            @php $askMenu = ($correct || ($rate && ! $floorFirst)) && $offer->openEstimates->isEmpty() && $offer->declinedEstimates->isEmpty(); @endphp
-            @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu)
-                <div class="contents" data-controller="menu">
-                    <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
-                    <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
-                        @if ($extend)
-                            <div class="menu-group">
-                                <div class="menu-head">Продлить приём</div>
-                                @foreach ([15 => '15 минут', 60 => '1 час'] as $minutes => $label)
-                                    <form method="post" action="/offers/{{ $n }}/extend">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="clock" class="size-5 text-ink-muted"/><span class="nums">+{{ $label }}</span></button></form>
-                                @endforeach
-                            </div>
-                        @endif
-                        @if ($publishItems)
-                            <div class="menu-group">
-                                <div class="menu-head">Опубликовать</div>
-                                @foreach (\App\Offers\Slots::choices() as $c)
-                                    <form method="post" action="/offers/{{ $n }}/state">
-                                        @csrf<input type="hidden" name="state" value="open"><input type="hidden" name="when" value="{{ $c['when'] }}">
-                                        <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$c['at'] ? 'clock' : 'send'" class="size-5 text-ink-muted"/>{{ $c['at'] ? str_replace(', ', ' в ', \App\Offers\Slots::label($c['at'])) : 'Сейчас' }}</button>
-                                    </form>
-                                @endforeach
-                            </div>
-                        @endif
-                        {{-- Менеджерам на оценку (без цены) или на корректировку (цена стоит, админ не уверен), 11.10.2026: пунктом, а не
-                             строкой у каждой карточки; отдали — ответы группой в карточке. --}}
-                        @if ($askMenu)
-                            <div class="menu-group">
-                                <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="estimate-ask-{{ $n }}:open"><x-ui.icon name="users" class="size-5 text-ink-muted"/>{{ $correct ? 'Спросить менеджеров' : 'Отдать на оценку' }}</button>
-                            </div>
-                        @endif
-                        @if ($listed)
-                            <div class="menu-group">
-                                <form method="post" action="/offers/legacy/{{ $listed->id }}">
-                                    @csrf @method('delete')
-                                    <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="x" class="size-5 text-ink-muted"/>Убрать из таблицы Кати</button>
-                                </form>
-                            </div>
-                        @endif
-                        @if ($calm->isNotEmpty())
-                            <div class="menu-group">
-                                @foreach ($calm as [$next, $label])
-                                    <form method="post" action="/offers/{{ $n }}/state">
-                                        @csrf<input type="hidden" name="state" value="{{ $next->value }}">
-                                        <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$icon($next)" class="size-5 text-ink-muted"/>{{ $label }}</button>
-                                    </form>
-                                @endforeach
-                            </div>
-                        @endif
-                        @if ($danger->isNotEmpty() || $purge || $resale)
-                            <div class="menu-group">
-                                @if ($resale)
-                                    <button type="button" class="menu-item text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="resale:open"><x-ui.icon name="undo" class="size-5"/>Вернуть в продажу</button>
-                                @endif
-                                @foreach ($danger as [$next, $label])
-                                    <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @else data-turbo-confirm="{{ $next->label() }}?" @endif>
-                                        @csrf<input type="hidden" name="state" value="{{ $next->value }}">
-                                        <button class="menu-item text-danger" role="menuitem" data-action="menu#close"><x-ui.icon :name="$icon($next)" class="size-5"/>{{ $label }}</button>
-                                    </form>
-                                @endforeach
-                                {{-- Из архива — навсегда, со всем связанным (PurgeOffer): кадры, документы, сделки, чаты, счета. --}}
-                                @if ($purge)
-                                    <form method="post" action="/offers/{{ $n }}/purge" data-turbo-frame="_top" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">
-                                        @csrf<button class="menu-item text-danger" role="menuitem" data-action="menu#close"><x-ui.icon name="trash" class="size-5"/>Удалить навсегда</button>
-                                    </form>
-                                @endif
-                            </div>
-                        @endif
-                    </div>
                 </div>
             @endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
