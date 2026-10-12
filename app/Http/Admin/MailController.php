@@ -36,6 +36,7 @@ use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
+use App\Offers\Actions\AutoOffer;
 use App\Offers\Actions\MarkSupplierRequestSent;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
@@ -352,6 +353,8 @@ class MailController
             $candidate->update(['state' => CandidateState::New, 'offer_id' => null]);
             $offer->delete();
         });
+        // Цепочка снова ждёт человека — сама черновиком больше не заводится (`AutoOffer`).
+        AutoOffer::declined($candidate->id);
         session()->forget("mail-draft.{$offer->id}");
         Nav::forgetStaffCounts();
         if ($request->boolean('decline')) {

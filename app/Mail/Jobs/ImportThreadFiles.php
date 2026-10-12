@@ -21,6 +21,7 @@ use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -38,6 +39,9 @@ use Throwable;
 final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;
+
+    /** Ход до того, как работник взял задачу (`attachNow`). */
+    public const QUEUED = 'Прикрепляем фото';
 
     public int $timeout = 1500;
 
@@ -67,9 +71,11 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         }
         $key = self::keyFor($model);
         // Сколько всего — из прошлого шага, пока свой счёт не начался: заглушки в ряду фото не мигают.
-        $report = function (string $stage, ?int $i = null, ?int $n = null) use ($key) {
+        $report = function (string $stage, ?int $i = null, ?int $n = null) use ($key, $offer) {
             $was = Cache::get($key) ?? [];
             Cache::put($key, ['stage' => $stage, 'i' => $i ?? ($was['i'] ?? 0), 'n' => $n ?? ($was['n'] ?? null)], 1800);
+            // Черновик из письма — строка списка видит ход фото («Забираем фото, 3 из 23»).
+            $offer && AutoScan::photoArrived($offer);
         };
         try {
             $report('Забираем файлы из ящика');
@@ -85,8 +91,10 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             }
         } finally {
             Cache::forget($key);
-            // Черновик завела почта — файлы доехали, теперь документы читаются сами (`AutoScan`).
-            AutoScan::filesArrived($offer);
+            if ($offer) {
+                // Черновик завела почта — файлы всех веток доехали, теперь документы читаются сами (`AutoScan`).
+                AutoScan::filesArrived($offer);
+            }
         }
         if ($offer) {
             OfferStateChanged::dispatch($offer->fresh());
@@ -176,6 +184,27 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         return Cache::get(self::keyFor($model));
     }
 
+    /**
+     * Ждёт ли в очереди задача файлов другой ветки предложения. Ход (`progressOf`) один на предложение, а задача — на
+     * ветку: первая кончившаяся стирала ход, и чтение черновика из письма начиналось до архива второй ветки. Смотрим
+     * саму очередь (не взятые задачи — взятая и есть та, что сейчас кончается): счётчик сбивался бы на уникальности
+     * задачи, вторая на ту же ветку не встаёт.
+     */
+    public static function queued(Offer $offer): bool
+    {
+        $threads = Thread::where('offer_id', $offer->id)->pluck('id');
+        if ($threads->isEmpty()) {
+            return false;
+        }
+        $conn = config('queue.connections.database-long');
+
+        // В теле задачи — сериализованная команда в JSON: «threadId\";i:123;» (между именем и значением — два знака).
+        return DB::connection($conn['connection'] ?? null)->table($conn['table'] ?? 'jobs')
+            ->where('queue', 'files')->whereNull('reserved_at')
+            ->where(fn ($q) => $threads->each(fn ($id) => $q->orWhere('payload', 'like', '%threadId__;i:'.$id.';%')))
+            ->exists();
+    }
+
     /** Заглушек «прикрепляется» в ряду фото: сколько кадров осталось, не больше восьми — остальное скажет строка хода. */
     public static function pending(Offer|Vehicle $model): int
     {
@@ -220,7 +249,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             Log::warning('Документы письма не прикрепились сразу', ['thread' => $thread->id, 'error' => $e->getMessage()]);
         }
         if ($n = $importer->photosToCome($attachments)) {
-            Cache::put(self::keyFor($model), ['stage' => 'Прикрепляем фото', 'i' => 0, 'n' => $n], 1800);
+            Cache::put(self::keyFor($model), ['stage' => self::QUEUED, 'i' => 0, 'n' => $n], 1800);
         }
         self::dispatch($thread->id);
     }

@@ -41,7 +41,7 @@
     $missing = $checkable && $draft && ! $offer->isScheduled() ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
 @endphp
 {{-- data-todo — как у строки таблицы (OfferController::todo): по таким карточка идёт к следующей и в плитках. --}}
-<article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group {{ $mark ? 'card--'.$mark : '' }} {{ $arrive ? 'arrive' : '' }} {{ $busy ? 'arrive--busy arrive--'.$arriving : '' }}" @if (auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user())) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif>
+<article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group {{ $mark ? 'card--'.$mark : '' }} {{ $arrive ? 'arrive arrive--offer' : '' }} {{ $busy ? 'arrive--busy arrive--'.$arriving : '' }}" @if (auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user())) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif>
     <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1" {!! $peek !!}></a>
     @if ($checkable && ! $missing)<label class="card-check card-check--on" aria-label="Выбрать"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"><span><x-ui.icon name="check" class="size-4"/></span></label>@endif
     @if ($photos->isNotEmpty())
@@ -66,7 +66,7 @@
     @endif
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" {!! $peek !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif<x-ui.links :offer="$offer"/>@if (blank($offer->vin) && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery, \App\Offers\OfferState::Open], true))<span class="shrink-0 text-sm text-danger">Нет VIN</span>@endif</a>
+            <a href="{{ $href }}" {!! $peek !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif<x-ui.links :offer="$offer"/>@if (! $busy && blank($offer->vin) && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery, \App\Offers\OfferState::Open], true))<span class="shrink-0 text-sm text-danger">Нет VIN</span>@endif</a>
         </div>
     </div>
     <div class="card-extra">
@@ -83,7 +83,7 @@
     </div>
     <div class="card-aside">
         @if ($offer->settlement)<x-ui.place class="card-city text-sm text-ink-dim">{{ $offer->settlement->title() }}</x-ui.place>@endif
-        <span class="card-price">
+        <span class="card-price arrive-late">
             @if ($unpriced && $rate && $offer->relationLoaded('openEstimates') && $offer->openEstimates->contains->isGiven())
                 {{-- Менеджер оценил (11.10.2026): закупочная → его оценка, как «закупочная → продажи» у оценённого. --}}
                 @if ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;→&nbsp;</span>@endif<x-offer.rate-chip :offer="$offer"/>

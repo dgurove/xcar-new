@@ -13,24 +13,18 @@ import { refreshPage } from '../live.js';
 // строки помнится здесь, по id, а не в контроллере: переставленная не входит второй раз и не теряет проявление.
 // С 12.10.2026 так же черновик предложения из письма (AutoOffer, предмет o:): files — едут фото, «Забираем фото, 3 из
 // 23»; вход — закупочная отсчитывается от нуля, номер убытка печатается; взлетевшей с места призрака строке (flip.js,
-// «Из таблицы Кати») вход сверху снимает flip.js — она загорается волной. Ход файлов событием не приходит — пока такая строка ждёт,
-// список перечитывается раз в POLL мс.
+// «Из таблицы Кати») вход сверху снимает flip.js — она загорается волной. Ход фото присылает сервер событием refresh
+// (`AutoScan::photoArrived`), чтения — событием scan; опроса нет. Силуэта при проявлении у черновика нет: его номер,
+// машина и закупочная стоят с первой секунды, проявляется только то, что пришло потом (`.arrive-late`).
 const SILHOUETTE = 1200;
 const ENTER_WINDOW = 1500;
-const POLL = 3000;
 const BUSY = ['ghost', 'files', 'reading'];
 
-let poll = null;
-function watchOffers() {
-    if (poll) return;
-    poll = setInterval(() => {
-        if (!document.querySelector('[data-arrive-subject-value^="o:"].arrive--busy')) {
-            clearInterval(poll);
-            poll = null;
-            return;
-        }
-        if (document.visibilityState === 'visible') refreshPage();
-    }, POLL);
+// Событие scan приходит за каждым файлом каждой строки: одно перечитывание на всех, а не по таймеру на строку.
+let scanTimer = null;
+function refreshSoon() {
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(refreshPage, 600);
 }
 
 let morphedAt = -Infinity;
@@ -52,20 +46,16 @@ export default class extends Controller {
             this.play('is-entering', 1800);
             this.countUp();
         }
-        if (busy && this.subjectValue.startsWith('o:')) watchOffers();
         seen.set(id, { state: this.stateValue, since: was?.since ?? performance.now() });
         if (was && BUSY.includes(was.state) && !busy) this.reveal(was.since);
         this.onScan = (e) => {
-            if (e.detail?.subject !== this.subjectValue || !BUSY.includes(this.stateValue)) return;
-            clearTimeout(this.timer);
-            this.timer = setTimeout(refreshPage, 600);
+            if (e.detail?.subject === this.subjectValue && BUSY.includes(this.stateValue)) refreshSoon();
         };
         document.addEventListener('live:scan', this.onScan);
     }
 
     disconnect() {
         document.removeEventListener('live:scan', this.onScan);
-        clearTimeout(this.timer);
         clearTimeout(this.revealTimer);
     }
 
@@ -80,6 +70,7 @@ export default class extends Controller {
 
     // Силуэт не успел постоять — сначала он, потом строка.
     reveal(since) {
+        if (this.subjectValue.startsWith('o:')) return this.play('is-revealed', 1400);
         const left = SILHOUETTE - (performance.now() - since);
         this.element.classList.add('is-holding');
         clearTimeout(this.revealTimer);

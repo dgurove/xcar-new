@@ -16,6 +16,7 @@ use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Support\Nav;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -37,6 +38,9 @@ final class AutoOffer
     /** Письмо старше — не новое предложение, а догнавшая история: решит человек. */
     private const FRESH_DAYS = 7;
 
+    /** Сколько отставших цепочек часы заводят за тик: тик держит слоты и волны, а строки входят по одной, не пачкой. */
+    private const CATCH_UP = 5;
+
     public function __construct(private PromoteCandidate $promote) {}
 
     /** Почему цепочка не заводится сама; null — заводится. `$old` — прогон руками: возраст письма не в счёт. */
@@ -44,6 +48,9 @@ final class AutoOffer
     {
         if ($candidate->scope !== Scope::Offers || $candidate->state !== CandidateState::New) {
             return 'не ждёт в «Из писем»';
+        }
+        if (Cache::has(self::declinedKey($candidate->id))) {
+            return 'черновик по ней удалили руками';
         }
         $letter = $this->letter($candidate);
         if (! $letter) {
@@ -86,8 +93,6 @@ final class AutoOffer
         if ($this->blocker($candidate, $old)) {
             return null;
         }
-        // Уже заведено (номер, VIN) — письма к нему, новой строки нет.
-        $fresh = ! $this->promote->existing($candidate);
         try {
             $offer = ($this->promote)($candidate, null);
         } catch (Throwable $e) {
@@ -95,7 +100,8 @@ final class AutoOffer
 
             return null;
         }
-        if (! $fresh) {
+        // Номер или VIN уже у другого (и `IdentityTaken` внутри «Завести») — письма легли к нему, новой строки нет.
+        if (! $offer->wasRecentlyCreated) {
             return null;
         }
         AutoScan::await($offer);
@@ -110,14 +116,14 @@ final class AutoOffer
 
     /**
      * Подстраховка часов (`offers:tick`): цепочка последнего часа, что должна была завестись при письме, но не завелась
-     * (письмо пришло посреди выкладки). Свежие две минуты не трогаем — их заводит само письмо. Старее часа — хвост
-     * до автозаведения: его заводит `offers:auto-drafts` по одной, чтобы строки входили вереницей, а не разом.
+     * (письмо пришло посреди выкладки). Свежие две минуты не трогаем — их заводит само письмо. Не больше `CATCH_UP` за
+     * тик: 12.10.2026 после выкладки часы завели разом 44 цепочки, которые Андрей переслал пачкой за час до неё, — тик
+     * держался полторы минуты, строки вошли кучей. Старее часа — хвост: его заводит `offers:auto-drafts`.
      */
     public function catchUp(): int
     {
         $done = 0;
-        // Окно — запросом к базе: `whereBetween` коллекции с датами пропускал всё (12.10.2026 часы завели хвост разом).
-        foreach ($this->waiting(fn ($q) => $q->whereBetween('created_at', [now()->subHour(), now()->subMinutes(2)])) as $candidate) {
+        foreach ($this->waiting(fn ($q) => $q->whereBetween('created_at', [now()->subHour(), now()->subMinutes(2)])->limit(self::CATCH_UP)) as $candidate) {
             try {
                 $done += (int) (bool) $this($candidate);
             } catch (Throwable $e) {
@@ -132,6 +138,20 @@ final class AutoOffer
     public function waiting(?callable $scope = null): Collection
     {
         return Candidate::where('scope', Scope::Offers)->where('state', CandidateState::New)->when($scope, $scope)->orderBy('id')->get();
+    }
+
+    /**
+     * Черновик из письма удалили руками («Отменить», корзина): цепочка снова ждёт в «Из писем», и сама больше не
+     * заводится — иначе часы завели бы её снова через минуту.
+     */
+    public static function declined(int $candidateId): void
+    {
+        Cache::forever(self::declinedKey($candidateId), true);
+    }
+
+    private static function declinedKey(int $candidateId): string
+    {
+        return "auto-offer:declined:{$candidateId}";
     }
 
     /** Письмо-предложение: то, с которого цепочка началась, иначе первое входящее. */

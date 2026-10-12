@@ -26,8 +26,9 @@ class TickOffers extends Command
         return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves, $gallery, $estimates, $auto) {
             // Слот — первым: выпущенные им предложения тем же тиком уходят менеджерам одним уведомлением (волны).
             $counts = ['slot' => $slots(), 'gallery' => $gallery->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'waves' => $waves->due(), 'estimates' => $estimates->due()]
-                // Письмо-предложение не завелось черновиком при приходе (выкладка), документы черновика не дочитаны.
-                + ['drafts' => $auto->catchUp(), 'read' => AutoScan::sweep(offers: true)];
+                // Письмо-предложение не завелось черновиком при приходе (выкладка); документы черновиков из писем дочитать —
+                // раз в пять минут, как у парковки: проход читает письма всех их веток.
+                + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0];
             $this->line(collect($counts)->filter()->map(fn ($n, $k) => "{$k}: {$n}")->implode(', ') ?: 'тихо');
 
             return self::SUCCESS;

@@ -51,11 +51,21 @@ final class AutoScan
     /** Дочитывать документы ТС и черновиков, заведённых из писем не раньше стольких дней назад. */
     private const SWEEP_DAYS = 7;
 
-    /** @param list<string> $ids дописать в чтение и эти файлы — фото (`park:find-values --photos`); пусто — документы */
+    /** Не чаще — пинг списку о ходе фото: они ложатся по одному, а морф списка из сотни строк не бесплатный. */
+    private const NUDGE_SECONDS = 2;
+
+    /**
+     * Метка предмета — ход: `pass` (files — едут файлы письма, docs — читаем документы), `i` прочитано из `n`. Строке
+     * списка ход берётся отсюда и из хода файлов (`ImportThreadFiles::progressOf`), без разбора писем на каждую отрисовку.
+     *
+     * @param  list<string>  $ids  дописать в чтение и эти файлы — фото (`park:find-values --photos`); пусто — документы
+     */
     public static function start(Vehicle|Offer $model, array $ids = []): void
     {
         $subject = self::subject($model);
-        Cache::put(self::key($subject->key()), 'docs', self::TTL);
+        $files = Reader::files($subject);
+        $read = $files->filter(fn (ScanFile $f) => DocumentText::cached($f) !== null)->count();
+        Cache::put(self::key($subject->key()), ['pass' => 'docs', 'i' => $read, 'n' => $files->count()], self::TTL);
         self::register($subject->key());
         Reader::read($subject, $ids);
         // Читать нечего или всё уже в кеше — итог сразу, задачи не будет.
@@ -70,15 +80,37 @@ final class AutoScan
      */
     public static function await(Offer $offer): void
     {
-        Cache::put(self::key('o:'.$offer->id), 'files', self::TTL);
+        Cache::put(self::key('o:'.$offer->id), ['pass' => 'files', 'i' => 0, 'n' => 0], self::TTL);
         self::register('o:'.$offer->id);
     }
 
-    /** Задача файлов ветки кончилась (`ImportThreadFiles::handle`): у черновика из письма — читать документы. */
+    /**
+     * Задача файлов ветки кончилась (`ImportThreadFiles::handle`): у черновика из письма — читать документы, когда
+     * доехали файлы всех его веток (`ImportThreadFiles::queued`), а не первой.
+     */
     public static function filesArrived(Offer|Vehicle|null $model): void
     {
-        if ($model instanceof Offer && Cache::get(self::key('o:'.$model->id))) {
+        if ($model instanceof Offer && Cache::get(self::key('o:'.$model->id)) && ! ImportThreadFiles::queued($model)) {
             self::start($model);
+        }
+    }
+
+    /** Файл прочитан задачей предмета (`ScanAttachments`): ход строки на шаг вперёд. */
+    public static function advance(string $subjectKey): void
+    {
+        $mark = self::mark($subjectKey);
+        if (! $mark || $mark['pass'] !== 'docs') {
+            return;
+        }
+        // Список перечитывает событие `scan`, что задача шлёт за каждым файлом (`arrive_controller`), — здесь только счёт.
+        Cache::put(self::key($subjectKey), ['i' => min($mark['i'] + 1, max($mark['n'], $mark['i'] + 1))] + $mark, self::TTL);
+    }
+
+    /** Фото черновика из письма легло (`ImportThreadFiles`): строке — новый ход, не чаще раза в `NUDGE_SECONDS`. */
+    public static function photoArrived(Offer $offer): void
+    {
+        if (self::mark('o:'.$offer->id)) {
+            self::nudge();
         }
     }
 
@@ -89,16 +121,17 @@ final class AutoScan
             return;
         }
         $key = $subject->key();
-        $mark = Cache::get(self::key($key));
+        $mark = self::mark($key);
         if (! $mark) {
             self::unregister($key);
 
             return;
         }
         $subject = self::subject(self::model($subject)->refresh());
-        // Файлы ещё едут — читать будем после них. Другая пачка тех же файлов ещё читается — итог подведёт она.
+        // Файлы ещё едут — читать будем после них (`filesArrived`). Другая пачка тех же файлов ещё читается — итог подведёт она.
         $offer = $subject instanceof OfferSubject;
-        if (($offer && ($mark === 'files' || ImportThreadFiles::progressOf($subject->offer))) || ScanAttachments::reading(Reader::files($subject))) {
+        if (($offer && ($mark['pass'] === 'files' || ImportThreadFiles::progressOf($subject->offer) || ImportThreadFiles::queued($subject->offer)))
+            || ScanAttachments::reading(Reader::files($subject))) {
             return;
         }
         self::fill($subject);
@@ -149,7 +182,7 @@ final class AutoScan
         foreach ($models as $model) {
             $subject = self::subject($model);
             $files = Reader::files($subject);
-            if (ScanAttachments::reading($files) || ImportThreadFiles::progressOf($model)) {
+            if (ScanAttachments::reading($files) || ImportThreadFiles::progressOf($model) || ($model instanceof Offer && ImportThreadFiles::queued($model))) {
                 continue;
             }
             $unread = $files->filter(fn (ScanFile $f) => DocumentText::cached($f) === null && DocumentText::scannable($f) && ! ScanAttachments::lost($f->scanId()));
@@ -168,8 +201,12 @@ final class AutoScan
                 self::unregister($key);
             } elseif ($since < now()->subMinutes(self::STALE_MINUTES)->getTimestamp() && ! ScanAttachments::reading(Reader::files($subject))) {
                 // Файлы так и не доехали (задачу убила выкладка) — читаем что есть, итог подведёт чтение.
-                if (Cache::get(self::key($key)) === 'files') {
-                    Cache::put(self::key($key), 'docs', self::TTL);
+                if ($subject instanceof OfferSubject) {
+                    if ((self::mark($key)['pass'] ?? null) === 'files') {
+                        self::start($subject->offer);
+
+                        continue;
+                    }
                 }
                 self::finished($subject);
             }
@@ -211,11 +248,12 @@ final class AutoScan
         $prefix = $models->first() instanceof Offer ? 'o:' : 'v:';
         $ids = $models->keys();
         $passes = Cache::many($ids->map(fn ($id) => self::key($prefix.$id))->all());
+        $running = Cache::many($ids->map(fn ($id) => "scan:run:{$prefix}{$id}")->all());
         $done = Cache::many($ids->map(fn ($id) => self::doneKey($prefix.$id))->all());
         $out = [];
         foreach ($ids as $id) {
             if ($pass = $passes[self::key($prefix.$id)] ?? null) {
-                $out[$id] = self::progress($models[$id], $pass);
+                $out[$id] = self::progress($models[$id], self::normalize($pass), (bool) ($running["scan:run:{$prefix}{$id}"] ?? false));
             } elseif ($done[self::doneKey($prefix.$id)] ?? null) {
                 $out[$id] = ['state' => 'done'];
             }
@@ -224,24 +262,34 @@ final class AutoScan
         return $out;
     }
 
-    /** @return array{state: string, i?: int, n?: int, what?: string} */
-    private static function progress(Vehicle|Offer $model, string $pass): array
+    /**
+     * Ход строки — из метки и хода файлов, без разбора писем (у черновиков из письма их на странице десятки):
+     * - `files` — едут фото, `i` из `n`;
+     * - `ghost` — ждём: `what` = files (файлы в очереди за чужими) или docs (работник читает чужое);
+     * - `reading` — читаем документы, `i` из `n`.
+     *
+     * @return array{state: string, i?: int, n?: int, what?: string}
+     */
+    private static function progress(Vehicle|Offer $model, array $pass, bool $running): array
     {
-        if ($model instanceof Offer && ($import = ImportThreadFiles::progressOf($model)) && ($import['n'] ?? 0)) {
+        $import = $model instanceof Offer ? ImportThreadFiles::progressOf($model) : null;
+        // Задача файлов ещё не взята работником — ход ставит `attachNow` заранее («Прикрепляем фото», ноль из N): ждём.
+        if ($import && ($import['stage'] ?? null) === ImportThreadFiles::QUEUED && ! $import['i']) {
+            return ['state' => 'ghost', 'what' => 'files'];
+        }
+        if ($import && ($import['n'] ?? 0)) {
             return ['state' => 'files', 'i' => min((int) $import['i'] + 1, (int) $import['n']), 'n' => (int) $import['n'], 'what' => 'photos'];
         }
-        if ($pass === 'files') {
-            return ['state' => 'ghost'];
+        if ($pass['pass'] === 'files') {
+            return ['state' => 'ghost', 'what' => 'files'];
         }
-        $subject = self::subject($model);
-        $files = Reader::files($subject)->reject->isPhoto()->values();
-        $read = $files->filter(fn (ScanFile $f) => DocumentText::cached($f) !== null)->count();
         // Ничего ещё не прочитано и работник не взялся (ждёт очереди за чужим чтением) — силуэт.
-        if (! $read && ! ScanAttachments::running($subject)) {
-            return ['state' => 'ghost'];
+        if (! $pass['i'] && ! $running) {
+            return ['state' => 'ghost', 'what' => 'docs'];
         }
+        $n = max($pass['n'], 1);
 
-        return ['state' => 'reading', 'i' => min($read + 1, max($files->count(), 1)), 'n' => max($files->count(), 1), 'what' => 'docs'];
+        return ['state' => 'reading', 'i' => min($pass['i'] + 1, $n), 'n' => $n, 'what' => 'docs'];
     }
 
     /**
@@ -268,6 +316,28 @@ final class AutoScan
         $subject instanceof VehicleSubject
             ? app(Publisher::class)->refresh(Topics::PARK, ['/requests', "/cars/{$subject->vehicle->id}"])
             : app(Publisher::class)->refresh(Topics::STAFF, ['/', "/offers/{$subject->offer->number}"]);
+    }
+
+    /** Пинг списку CRM о ходе фото — не чаще раза в `NUDGE_SECONDS`: у сотни строк в пути. */
+    private static function nudge(): void
+    {
+        if (Cache::add('scan:auto:nudge', true, self::NUDGE_SECONDS)) {
+            app(Publisher::class)->refresh(Topics::STAFF, ['/']);
+        }
+    }
+
+    /** @return array{pass: string, i: int, n: int}|null метка предмета; до 12.10.2026 — строкой 'docs' */
+    private static function mark(string $subjectKey): ?array
+    {
+        $mark = Cache::get(self::key($subjectKey));
+
+        return $mark ? self::normalize($mark) : null;
+    }
+
+    /** @return array{pass: string, i: int, n: int} */
+    private static function normalize(array|string $mark): array
+    {
+        return is_array($mark) ? $mark + ['pass' => 'docs', 'i' => 0, 'n' => 0] : ['pass' => $mark, 'i' => 0, 'n' => 0];
     }
 
     private static function subject(Vehicle|Offer $model): VehicleSubject|OfferSubject

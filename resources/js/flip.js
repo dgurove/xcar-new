@@ -6,13 +6,24 @@
 // - число пилюли вкладки и группы (`[data-pill-count]`, `[data-count]`) тикает к новому, выросшее — вспыхивает
 //   `is-bumped`, как пилюля, куда уехала строка из карточки (`StreamActions.count`).
 // Только морф этой страницы и только видимое: на другой странице или без движения ничего не делается.
+// Морф ставит класс строки с сервера и снимал бы классы идущих анимаций (вход, вспышка, отсчёт) — их возвращаем тем же
+// кадром, браузер снятия не видит, и анимация не обрывается: пока едут фото, список перечитывается раз в пару секунд.
 const EASE = 'cubic-bezier(.2, .8, .2, 1)';
 const SHIFT = 420;
 const FLY = 700;
 const ROWS = '#list tr[id], #list .card[id]';
 const COUNTS = '[data-pill-count], [data-count]';
 
+const TRANSIENT = ['is-entering', 'is-flown', 'is-revealed', 'is-holding', 'is-bumped', 'arrive-counting'];
+
 let before = null;
+
+document.addEventListener('turbo:before-morph-attribute', (e) => {
+    if (e.detail.attributeName !== 'class') return;
+    const el = e.target;
+    const keep = TRANSIENT.filter((name) => el.classList.contains(name));
+    if (keep.length) queueMicrotask(() => el.classList.add(...keep));
+});
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const numberOf = (el) => Number(el.textContent.replace(/\D/g, '')) || 0;

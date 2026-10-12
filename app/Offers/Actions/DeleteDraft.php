@@ -21,7 +21,10 @@ final class DeleteDraft
     {
         DB::transaction(function () use ($offer) {
             Thread::where('offer_id', $offer->id)->update(['offer_id' => null]);
-            Candidate::where('offer_id', $offer->id)->where('state', CandidateState::Promoted)->update(['state' => CandidateState::New, 'offer_id' => null]);
+            $ids = Candidate::where('offer_id', $offer->id)->where('state', CandidateState::Promoted)->pluck('id');
+            Candidate::whereIn('id', $ids)->update(['state' => CandidateState::New, 'offer_id' => null]);
+            // Удалили черновик, что завела почта, — цепочка ждёт человека, сама больше не заводится.
+            $ids->each(fn ($id) => AutoOffer::declined($id));
             $offer->delete();
         });
         Nav::forgetStaffCounts();

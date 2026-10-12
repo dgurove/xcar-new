@@ -658,15 +658,29 @@ class Offer extends Model implements HasMedia
             return $q;
         }
         if ($user->isModerator()) {
-            // Черновик, что завела почта сама (`AutoOffer`, без автора), — тем, кому открыта почта CRM: раньше его
-            // заводили они «Завести».
+            // Черновик, что завела почта сама (`AutoOffer`), — тем, кому открыта почта CRM: раньше его заводили они
+            // «Завести». Именно заведённый почтой (`autoDrafted`), а не любой без автора: у удалённого человека автор
+            // тоже пуст.
             return $q->where(fn ($w) => $w->whereIn('moderator_id', $user->teamIds())
-                ->when($user->canCrmMail(), fn ($m) => $m->orWhere(fn ($n) => $n->whereNull('moderator_id')
-                    ->whereExists(fn ($t) => $t->from('mail_threads')->whereColumn('mail_threads.offer_id', 'offers.id')))))
+                ->when($user->canCrmMail(), fn ($m) => $m->orWhere(fn ($n) => $n->autoDrafted())))
                 ->whereDoesntHave('purchaseCar');
         }
 
         return $q->whereRaw('false');
+    }
+
+    /** Заведено почтой само (`AutoOffer`): без автора, в истории «Заведён из письма». */
+    public function scopeAutoDrafted(Builder $q): Builder
+    {
+        return $q->whereNull('offers.moderator_id')->whereExists(fn ($e) => $e->from('offer_events')->whereColumn('offer_events.offer_id', 'offers.id')
+            ->where('offer_events.type', OfferEventType::Created)->whereRaw("(offer_events.payload->>'mail')::boolean"));
+    }
+
+    /** Черновик, который завела почта и который ещё не выходил наружу: его можно снять «Не заявка», как после «Завести». */
+    public function isAutoDraft(): bool
+    {
+        return $this->state === OfferState::Draft && $this->published_at === null && $this->moderator_id === null
+            && once(fn () => self::query()->whereKey($this->id)->autoDrafted()->exists());
     }
 
     /** Страница предложения: круг видимости, а своё подтверждение открывает её в любом состоянии — без 404 после решения. */
@@ -691,12 +705,14 @@ class Offer extends Model implements HasMedia
 
     /**
      * Удалить можно только черновик, который ни разу не выходил наружу: без подтверждений, сделки и закупки. Модератор —
-     * только заведённый им самим (владелец 04.10.2026: «свои можно, чужие нет»), админ — любой. ТС парковки, стоявшая
-     * раньше черновика, — не его: такое снимают «Снять с продажи».
+     * только заведённый им самим (владелец 04.10.2026: «свои можно, чужие нет») и заведённый почтой, если у него почта
+     * (раньше его заводил он сам), админ — любой. ТС парковки, стоявшая раньше черновика, — не его: такое снимают «Снять
+     * с продажи».
      */
     public function isDeletableBy(User $user): bool
     {
-        if ($this->state !== OfferState::Draft || $this->published_at !== null || ! ($user->isAdmin() || ($user->isModerator() && $this->moderator_id === $user->id))) {
+        $mine = $this->moderator_id === $user->id || ($user->canCrmMail() && $this->isAutoDraft());
+        if ($this->state !== OfferState::Draft || $this->published_at !== null || ! ($user->isAdmin() || ($user->isModerator() && $mine))) {
             return false;
         }
 

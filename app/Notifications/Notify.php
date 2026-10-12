@@ -25,6 +25,7 @@ use App\Mail\CandidateState;
 use App\Mail\Scope;
 use App\Offers\Actions\NotifyViewers;
 use App\Offers\Deal;
+use App\Offers\Estimate;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
@@ -33,12 +34,12 @@ use App\Offers\Events\EstimateRejected;
 use App\Offers\Events\EstimatesAsked;
 use App\Offers\Events\EstimatesClosed;
 use App\Offers\Events\EstimateTaken;
-use App\Offers\Jobs\RetractEstimateNotices;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
 use App\Offers\Events\PickupAssigned;
 use App\Offers\Handover;
+use App\Offers\Jobs\RetractEstimateNotices;
 use App\Offers\OfferViewer;
 use App\Park\City;
 use App\Park\Events\BuyerFormSubmitted;
@@ -65,6 +66,7 @@ use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
 use App\Users\Role;
 use App\Users\User;
+use App\Vendors\DealFormat;
 use App\Workflow\Actor;
 use App\Workflow\Events\StageDue;
 use App\Workflow\Events\StageEntered;
@@ -195,7 +197,7 @@ final class Notify
     }
 
     /** Отказ от оценки — админам тихо (`DeclineEstimate` зовёт напрямую). */
-    public function estimateDeclined(\App\Offers\Estimate $estimate): void
+    public function estimateDeclined(Estimate $estimate): void
     {
         Notification::send($this->staff(), new EstimateDeclinedNotice($estimate));
     }
@@ -265,7 +267,7 @@ final class Notify
             $this->pickupOpened($deal->setRelation('offer', $e->offer->loadMissing('evacuator')));
         }
         // Каркаде: поставщик согласовал заявку — теперь можно забирать (11.10.2026), до того менеджер только ждал.
-        if ($deal && $e->exit && $e->offer->vendor?->deal_format === \App\Vendors\DealFormat::Wholesale
+        if ($deal && $e->exit && $e->offer->vendor?->deal_format === DealFormat::Wholesale
             && str_starts_with(mb_strtolower(trim($e->exit->label)), 'поставщик согласовал') && $deal->refresh()->agreed_at) {
             $this->pickupOpened($deal->setRelation('offer', $e->offer->loadMissing('evacuator')));
         }
@@ -378,10 +380,18 @@ final class Notify
 
             return;
         }
-        if ($c->fresh()?->state !== CandidateState::New) {
+        $c = $c->fresh();
+        $moderators = User::withRole(Role::Moderator)->get()->filter->canCrmMail();
+        // Письмо само стало черновиком (`AutoOffer`) — о черновике, а не «завести из писем».
+        if ($c?->state === CandidateState::Promoted && ($offer = $c->offer) && $offer->isAutoDraft()) {
+            Notification::send($moderators, new OfferDraftNotice($offer->load('vendor', 'brand', 'model')));
+
             return;
         }
-        Notification::send(User::withRole(Role::Moderator)->get()->filter->canCrmMail(), new OfferLetterNotice($c));
+        if ($c?->state !== CandidateState::New) {
+            return;
+        }
+        Notification::send($moderators, new OfferLetterNotice($c));
     }
 
     /** Письмо в ветку привязанной ТС — управляющим её города (исполнителя у заявки нет с 10.10.2026). */

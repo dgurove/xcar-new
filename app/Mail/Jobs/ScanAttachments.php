@@ -153,6 +153,8 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
                 self::mark([$file->scanId()], false);
                 $text === null ? Cache::put("scan:x:{$file->scanId()}", true, 86400) : Cache::forget("scan:x:{$file->scanId()}");
                 $this->ping($publish, $file->scanId());
+                // Предмет читается сам (ТС заявки, черновик из письма) — строка списка на шаг вперёд.
+                AutoScan::advance($this->subject);
             }, $this->timeout - 60, fn () => Cache::has($stop));
             foreach (Message::with(['account', 'attachments', 'thread'])->whereIn('id', $attachments->pluck('message_id')->unique())->get() as $message) {
                 $reader->apply($message);
