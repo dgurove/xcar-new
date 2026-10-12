@@ -8,6 +8,7 @@ use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Extraction\Code;
+use App\Mail\Extraction\QuotationStripper;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
 use App\Mail\Scan\AutoScan;
@@ -15,6 +16,7 @@ use App\Mail\Scope;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Support\Nav;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -59,6 +61,10 @@ final class AutoOffer
         if (! $old && $letter->date_at && $letter->date_at->lt(now()->subDays(self::FRESH_DAYS))) {
             return 'письмо старше недели';
         }
+        $body = $letter->text_body ?: strip_tags((string) $letter->html_body);
+        if ($why = self::notAnOffer((string) $letter->subject, $body, $letter->attachments->pluck('filename')->all(), $letter->date_at ?? now())) {
+            return $why;
+        }
         if (! $candidate->vendor_id && ! $candidate->value('vendor_id')) {
             return 'вендор не узнан';
         }
@@ -71,6 +77,42 @@ final class AutoOffer
         }
         if (! Vin::full((string) $candidate->value('vin')) && ! ($candidate->value('brand') && Brand::known((string) $candidate->value('brand')))) {
             return 'машины нет: ни VIN, ни марки';
+        }
+
+        return null;
+    }
+
+    /** Пересылка старше — давнее дело, а не новое предложение (12.10.2026: Fwd письма от 22.07.2025). */
+    private const FORWARD_DAYS = 30;
+
+    /**
+     * Письмо похоже на предложение полями, но это переписка (12.10.2026, 154671/2026: «RE: Вывоз ГОТС…», «ПП прикладываю,
+     * банк поторопил» — платёжное поручение Совкома Кате; черновик встал в «Без продажной»). Не предложение:
+     * - ответ «RE:» / «Ответ:» — своей темой или темой пересланного;
+     * - письмо о платеже: «ПП», «платёжное поручение» в своих словах или все вложения — платёжки;
+     * - пересылка письма старше `FORWARD_DAYS` дней — давнее дело.
+     *
+     * @param  list<string>  $files
+     */
+    public static function notAnOffer(string $subject, string $body, array $files, \DateTimeInterface $on): ?string
+    {
+        $reply = '/^\s*(?:re|ответ|отв)\s*:/iu';
+        $inner = QuotationStripper::forwardedBody($body);
+        $innerSubject = $inner !== null && preg_match('/^\s*(?:Тема|Subject)\s*:\s*(.+)$/umi', $inner, $m) ? $m[1] : '';
+        if (preg_match($reply, $subject) || preg_match($reply, $innerSubject)) {
+            return 'ответ в переписке';
+        }
+        // «№ п/п» бывает шапкой таблицы в самом предложении — в словах письма только «ПП» и «платёжн…».
+        $pay = '/(?<![\p{L}])ПП(?![\p{L}])|платёжн|платежн/u';
+        $own = QuotationStripper::ownText($body);
+        $docs = array_values(array_filter($files, fn ($f) => ! preg_match('/^image\d*\.(png|jpe?g|gif)$/i', $f)));
+        $payFile = '/^\s*(?:ПП|п\/п|пп)(?![\p{L}])|платёжн|платежн/iu';
+        if (preg_match($pay, $own) || ($docs && count(array_filter($docs, fn ($f) => preg_match($payFile, $f))) === count($docs))) {
+            return 'письмо о платеже';
+        }
+        $sent = QuotationStripper::forwardedDate($body);
+        if ($sent && $sent->lt(Carbon::instance($on)->subDays(self::FORWARD_DAYS))) {
+            return 'пересылка старого письма';
         }
 
         return null;

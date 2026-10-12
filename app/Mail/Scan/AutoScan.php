@@ -182,7 +182,8 @@ final class AutoScan
         foreach ($models as $model) {
             $subject = self::subject($model);
             $files = Reader::files($subject);
-            if (ScanAttachments::reading($files) || ImportThreadFiles::progressOf($model) || ($model instanceof Offer && ImportThreadFiles::queued($model))) {
+            if (ScanAttachments::queuedFor($subject) || ScanAttachments::reading($files) || ImportThreadFiles::progressOf($model)
+                || ($model instanceof Offer && ImportThreadFiles::queued($model))) {
                 continue;
             }
             $unread = $files->filter(fn (ScanFile $f) => DocumentText::cached($f) === null && DocumentText::scannable($f) && ! ScanAttachments::lost($f->scanId()));

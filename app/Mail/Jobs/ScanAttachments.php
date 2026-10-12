@@ -70,10 +70,30 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
     }
 
     /** Метка «читается» на файлах пачки: ставит контроллер при постановке, снимает задача — по файлу, как прочтёт. */
+    /**
+     * Метка «файл читается» живёт, пока задача может ждать в очереди: 12.10.2026 очередь стояла час, метка в 960 с гасла
+     * раньше, и дочитка часов ставила те же файлы снова (8–20 задач каждые 5 минут). Снимают её `finally` и `failed`.
+     */
+    private const MARK_TTL = 21600;
+
+    /**
+     * Стоит ли в очереди не взятая задача этого предмета: дочитка и автозапуск не ставят вторую. В теле задачи —
+     * сериализованная команда: «subject\";s:5:\"o:605\"» (между именем и значением — `\";s:N:\"`).
+     */
+    public static function queuedFor(Subject $subject): bool
+    {
+        $conn = config('queue.connections.database-scan');
+        $key = $subject->key();
+
+        return DB::connection($conn['connection'] ?? null)->table($conn['table'] ?? 'jobs')
+            ->where('queue', 'scan')->whereNull('reserved_at')
+            ->where('payload', 'like', '%subject__;s:'.strlen($key).':__'.$key.'__;%')->exists();
+    }
+
     public static function mark(array $ids, bool $on = true): void
     {
         foreach ($ids as $id) {
-            $on ? Cache::put("scan:a:{$id}", true, 960) : Cache::forget("scan:a:{$id}");
+            $on ? Cache::put("scan:a:{$id}", true, self::MARK_TTL) : Cache::forget("scan:a:{$id}");
         }
     }
 
