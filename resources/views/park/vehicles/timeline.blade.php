@@ -1,9 +1,9 @@
 {{-- Таймлайн дела: точки на линии слева, как трекинг посылки. Сделанное — строкой с раскрытием, текущее — подсказка и
-     форма прямо тут, будущее — серым. Форма act-form оборачивает весь список (внутри сделанных шагов форм нет). --}}
+     кнопка окна действия (приём, письмо вендору, выдача — `x-park.act-window`), будущее — серым. --}}
 @php use App\Park\Step; @endphp
 <div class="steps">
     @foreach ($steps as $step)
-        @php $partial = match (true) { $step->key === 'report-release' => 'report', $step->key === 'intake' && ($step->plate['kind'] ?? null) === 'spawn' => 'intake-spawn', str_starts_with($step->key, 'reply') => 'reply', default => $step->key }; $r = $step->request; @endphp
+        @php $partial = match (true) { $step->key === 'report-release' => 'report', in_array($step->key, ['intake', 'report', 'release'], true) => 'act', str_starts_with($step->key, 'reply') => 'reply', default => $step->key }; $r = $step->request; @endphp
         <div class="step step--{{ $step->state }}{{ $step->danger ? ' step--danger' : '' }}{{ $step->key === 'reply' || ($step->key === 'buyer' && $step->state === Step::TODO && $step->at) ? ' step--ask' : '' }}">
             <span class="step-dot">@if ($step->isDone() && ! $step->danger)<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
@@ -48,7 +48,7 @@
                 @else
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>
-                        @if ($step->state === Step::TODO && $step->plate && $step->plate['kind'] === 'window')<x-mail.window-button :url="$step->plate['url']" :label="$step->plate['label']" chip/>@elseif ($step->state === Step::TODO && ($step->plate['kind'] ?? null) === 'anchor')<a href="{{ $step->plate['url'] }}" class="chip">{{ $step->plate['label'] }}</a>@endif
+                        @if ($step->state === Step::TODO && $step->plate && $step->plate['kind'] === 'window')<x-mail.window-button :url="$step->plate['url']" :label="$step->plate['label']" chip/>@elseif ($step->state === Step::TODO && ($step->plate['kind'] ?? null) === 'act')<x-park.act-button :vehicle="$vehicle" :step="$step->plate['step']" :label="$step->plate['label']" chip/>@endif
                     </div>
                     @if ($step->state === Step::TODO && $step->hint)<p class="step-hint">{{ $step->hint }}</p>@endif
                 @endif

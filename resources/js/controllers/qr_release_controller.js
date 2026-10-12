@@ -62,7 +62,7 @@ export default class extends Controller {
         if (data.status === 'ok') { haptic('success'); this.ready(data); return; }
         haptic('error');
         this.passTarget.value = '';
-        this.submitTarget.hidden = true;
+        this.submitTargets.forEach((b) => { b.hidden = true; });
         if (data.status === 'unconfirmed') {
             this.scanTarget.hidden = true;
             this.render('urgent', data, '<button type="button" class="btn btn-s btn-accent mt-3" data-action="qr-release#confirmOrally">Подтвердила устно, выдаю</button>');
@@ -78,7 +78,7 @@ export default class extends Controller {
         this.passTarget.value = data.code;
         this.render('open', data);
         this.scanTarget.hidden = true;
-        this.submitTarget.hidden = false;
+        this.submitTargets.forEach((b) => { b.hidden = false; });
     }
 
     // Карточка итога: иконка тона, заголовок, человек (или ТС), пояснение; справа — сканировать снова.

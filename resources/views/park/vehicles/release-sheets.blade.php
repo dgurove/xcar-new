@@ -1,10 +1,10 @@
-{{-- Шторки выдачи — общие у дела (`show`) и окна заявки (`detail`): «Покупатель» (кто заберёт, sold:open), «Покупатель
-     отказался» (refusal:open) и «Выдать без QR» (without-qr:open). Поле причины без QR привязано к форме выдачи — `$formId`
-     (в деле `act-form`, в окне — форма выдачи карточки). Нужны `$vehicle`, `$req`, `$canManage`, `$byQr`. --}}
-@php use App\Park\{RequestType, VehicleState}; $state = $vehicle->state; @endphp
+{{-- Шторки выдачи: «Покупатель» (кто заберёт, sold:open) — у дела и в окне действия; «Покупатель отказался»
+     (refusal:open) и «Выдать без QR» (without-qr:open) — только в окне выдачи (`$window`, события с приставкой act-). Поле
+     причины без QR привязано к форме выдачи окна — `$formId`. Нужны `$vehicle`, `$req`, `$canManage`, `$byQr`. --}}
+@php use App\Park\{RequestType, VehicleState}; $state = $vehicle->state; $ev = ($window ?? false) ? 'act-' : ''; @endphp
     @if ($canManage && ($state === VehicleState::Stored || $vehicle->sold_at))
-        <div data-controller="sheet" data-action="sold:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="sold" title="Покупатель" :open="$errors->hasAny(['sold_at', 'pickup_name', 'pickup_phone'])">
+        <div data-controller="sheet" data-action="{{ $ev }}sold:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="$ev.'sold'" title="Покупатель" :open="$errors->hasAny(['sold_at', 'pickup_name', 'pickup_phone'])">
                 {{-- Страховая продала ТС: дата письма, кому выдать; дальше дни за счёт вендора и покупатель по множителю. --}}
                 <form method="post" action="/cars/{{ $vehicle->id }}/sold" class="flex flex-col gap-3">
                     @csrf
@@ -25,9 +25,9 @@
         </div>
     @endif
 
-    @if ($canManage && $vehicle->sold_at && $state === VehicleState::Stored && $req?->type === RequestType::Release)
-        <div data-controller="sheet" data-action="refusal:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="refusal" title="Покупатель отказался" :open="$errors->has('reason')">
+    @if (($window ?? false) && $canManage && $vehicle->sold_at && $state === VehicleState::Stored && $req?->type === RequestType::Release)
+        <div data-controller="sheet" data-action="{{ $ev }}refusal:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="$ev.'refusal'" title="Покупатель отказался" :open="$errors->has('reason')">
                 {{-- Приехал, посмотрел и не взял: продажа снимается, ТС снова просто стоит, дальше письмо вендору. --}}
                 <form method="post" action="/requests/{{ $req->id }}/refuse" class="flex flex-col gap-3">
                     @csrf
@@ -38,9 +38,9 @@
         </div>
     @endif
 
-    @if ($canManage && ($byQr ?? false) && $state === VehicleState::Stored && $req?->type === RequestType::Release)
-        <div data-controller="sheet" data-action="without-qr:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="without-qr" title="Выдать без QR-кода?" :open="$errors->has('without_qr_reason')">
+    @if (($window ?? false) && $canManage && ($byQr ?? false) && $state === VehicleState::Stored && (! $req || $req->type === RequestType::Release))
+        <div data-controller="sheet" data-action="{{ $ev }}without-qr:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="$ev.'without-qr'" title="Выдать без QR-кода?" :open="$errors->has('without_qr_reason')">
                 {{-- Крайний случай: причина от 20 знаков уходит в историю ТС, в акт и владельцу в Telegram. Поле связано с
                      формой выдачи (form="{{ $formId }}"): дата и остальное берутся оттуда. Счётчик — внутри поля,
                      кнопка оживает на 20 знаках. --}}

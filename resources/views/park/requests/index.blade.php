@@ -18,4 +18,5 @@
     <div id="requests" class="mt-6 {{ ListView::isTable($view) ? '' : ListView::containerClass($view) }}" data-controller="endless ticker">@include('park.requests.list')</div>
     {{-- Окно писем для строк «Письма» в карточке заявки. --}}
     <x-mail.window/>
+    <x-park.act-window/>
 </x-ui.shell>

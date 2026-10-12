@@ -18,7 +18,7 @@ final class Step
 
     /**
      * @param  list<string>  $chips  факты сделанного шага (дата, кто, куда)
-     * @param  ?array{kind: string, label: string, url?: string}  $plate  главная кнопка плашки: submit (act-form), spawn (spawn-form), window (окно писем)
+     * @param  ?array{kind: string, label: string, url?: string, step?: string}  $plate  главная кнопка плашки: act (окно действия, `step` — его шаг), submit (своя форма шага), window (окно писем)
      */
     public function __construct(
         public string $key,

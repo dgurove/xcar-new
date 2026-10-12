@@ -1,5 +1,5 @@
 {{-- Карточка строки таблицы машин стоянки (фрейм detail) — работа с ТС без страницы:
-     лента фото, метки, дней на стоянке; у заявки на приём — задача с формой приёма прямо в карточке (`task`); переставить
+     лента фото, метки, дней на стоянке; у заявки — письма и телефон (`task`), приём и выдача — окном действия; переставить
      (метка парковки — кнопка шторки «Переставить»), выдать (дата, с
      подтверждением), акты; ниже расхождения карточки с документами строками «Взять» (FillFromDocs), заявки строками и
      заметка с последними событиями. Под действиями — группа документов: расхождения и «Заполнить из документов»
@@ -46,21 +46,25 @@
             @if ($money && ($money !== 'unbilled' || ($total['amount'] ?? 0) > 0))<span class="whitespace-nowrap text-sm {{ \App\Park\OutMoney::TONES[$money] }}">{{ mb_strtolower(\App\Park\OutMoney::LABELS[$money]) }}</span>@endif
         </x-slot:aside>
         {{-- Главное действие карточки — одно и подвалом листа во всю ширину (10.10.2026, владелец: «кнопки действий справа
-             выравнивают, а не слева», «уебанская вёрстка»): у заявки — кнопка её формы (task, атрибут form), без заявки —
-             «Принять» / «Выдать» заводят её (форма spawn ниже), и карточка показывает форму. Выдача по QR — кнопка в форме:
-             она появляется после скана. Из «Заявок» машинного в карточке нет (владелец 09.10.2026). --}}
+             выравнивают, а не слева»): открывает окно действия (`x-park.act-window`, 12.10.2026 — «разграничить машину и
+             действие»): «Принять», «Выдать» (по QR — сканер в окне), висящий отчёт — «Отправить акт приёма» (окно сразу на
+             письме) и «Отправить акт выдачи» (окно писем с черновиком). Из «Заявок» после окна — к следующей заявке. --}}
         @php
+            $advance = $fromRequests ?? false;
+            $releaseReport = $state === VehicleState::Released && ($releaseReportUrl ?? null);
             $foot = match (true) {
-                $task && $task->type === \App\Park\RequestType::Intake && $state->isBefore() => ['task-form-'.$task->id, 'Принять'],
-                $task && $task->type === \App\Park\RequestType::Release && $state === VehicleState::Stored && ! ($byQr ?? false) => ['task-form-'.$task->id, 'Выдать'],
-                ! $task && ! ($fromRequests ?? false) && $state === VehicleState::Expected => ['spawn-'.$vehicle->id, 'Принять'],
-                // Пока не ушёл отчёт, главное в карточке — он (своя кнопка в форме), второй лаймовой «Выдать» нет.
-                ! $task && ! ($fromRequests ?? false) && $state === VehicleState::Stored && ! ($reportDue ?? false) => ['spawn-'.$vehicle->id, 'Выдать'],
+                $task && $task->type === \App\Park\RequestType::Intake && $state->isBefore() => ['intake', 'Принять'],
+                $task && $task->type === \App\Park\RequestType::Release && $state === VehicleState::Stored => ['release', 'Выдать'],
+                ! $task && ! $advance && $state === VehicleState::Expected => ['intake', 'Принять'],
+                ! $task && ($reportDue ?? false) => ['report', 'Отправить акт приёма'],
+                ! $task && ! $advance && $state === VehicleState::Stored => ['release', 'Выдать'],
                 default => null,
             };
         @endphp
         @if ($foot)
-            <x-slot:foot><div class="detail-action"><button type="submit" form="{{ $foot[0] }}" class="btn btn-accent w-full">{{ $foot[1] }}</button></div></x-slot:foot>
+            <x-slot:foot><div class="detail-action"><x-park.act-button :vehicle="$vehicle" :step="$foot[0]" :label="$foot[1]" :advance="$advance" class="w-full"/></div></x-slot:foot>
+        @elseif ($releaseReport)
+            <x-slot:foot><div class="detail-action"><x-mail.window-button :url="$releaseReportUrl" label="Отправить акт выдачи" icon="mail" class="btn-accent w-full"/></div></x-slot:foot>
         @endif
         {{-- Положение фразой: «Краснопутиловская, с 6 окт, 12:00», у выданной «Измайловский лес, с 11 авг по 10 окт, 61 день»
              (состояние — у названия, у стоящей его нет). Парковка у стоящей — кнопка
@@ -96,12 +100,6 @@
         <x-park.sale :vehicle="$vehicle" row/>
         @if ($task)
             @include('park.vehicles.task')
-        @else
-            {{-- Отчёт о приёме ещё не ушёл — форма сверху карточки (сразу после «Принять» в «Заявках» и в «Наличии»). --}}
-            @if ($reportDue)
-                <h2 class="detail-section mt-4">Отчёт вендору</h2>
-                <x-park.report-form :vehicle="$vehicle" :advance="$fromRequests ?? false"/>
-            @endif
         @endif
         @if (! $task && $messages->isNotEmpty())
             {{-- Без заявки — письма ТС той же лентой, что в задаче и деле (x-mail.letters). --}}
@@ -111,9 +109,6 @@
             </section>
         @endif
         <x-park.date-forms :vehicle="$vehicle"/>
-        @if (! $task && in_array($state, [VehicleState::Expected, VehicleState::Stored], true))
-            <form method="post" action="/requests" id="spawn-{{ $vehicle->id }}" hidden>@csrf<input type="hidden" name="type" value="{{ $state === VehicleState::Expected ? 'intake' : 'release' }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>
-        @endif
         @if ($state === VehicleState::Stored && ! ($fromRequests ?? false))
             @include('park.vehicles.move-sheet')
         @endif

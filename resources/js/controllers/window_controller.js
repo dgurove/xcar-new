@@ -8,6 +8,8 @@ import * as Turbo from '@hotwired/turbo';
 // Письмо из черновика после «Принять» (then=close) — окно закрывается само, без перечитывания (letters:close).
 // Кнопки предмета в заголовок окна — шаблоном data-window-tools во фрейме (✨ у писем ТС и предложения).
 // reload=false — окно перечитывает страницу само (✨ Распознать: итог scan_controller бережёт карточка строки).
+// Окно действия парковки (x-park.act-window): заголовок шага — шаблоном data-window-title, формы шага шлют свой адрес
+// заголовком X-Window — ошибка проверки возвращается в окно, а не на страницу под ним (ActWindowBack).
 export default class extends Controller {
     static targets = ['frame', 'tools'];
     static values = { url: String, reload: { type: Boolean, default: true } };
@@ -17,6 +19,12 @@ export default class extends Controller {
         this.onEnd = (e) => { if (this.reloadValue && e.detail?.success && this.element.contains(e.target)) this.dirty = true; };
         this.onClose = () => { if (this.dirty) { this.dirty = false; Turbo.visit(location.href, { action: 'replace' }); } };
         this.onLoad = (e) => { if (e.target === this.frameTarget) this.tools(); };
+        this.onFetch = (e) => {
+            if (!this.element.contains(e.target) || String(e.detail.fetchOptions.method).toUpperCase() === 'GET') return;
+            const step = this.frameTarget.querySelector('[data-window-url]')?.dataset.windowUrl;
+            if (step) e.detail.fetchOptions.headers['X-Window'] = step;
+        };
+        document.addEventListener('turbo:before-fetch-request', this.onFetch);
         document.addEventListener('turbo:submit-end', this.onEnd);
         document.addEventListener('turbo:frame-load', this.onLoad);
         this.element.querySelector('dialog')?.addEventListener('close', this.onClose);
@@ -32,11 +40,15 @@ export default class extends Controller {
 
     disconnect() {
         this.ready = false;
+        document.removeEventListener('turbo:before-fetch-request', this.onFetch);
         document.removeEventListener('turbo:submit-end', this.onEnd);
         document.removeEventListener('turbo:frame-load', this.onLoad);
     }
 
     tools() {
+        const title = this.frameTarget.querySelector('template[data-window-title]');
+        const head = this.element.querySelector('dialog .sheet-bar h2');
+        if (title && head) head.replaceChildren(...title.content.cloneNode(true).childNodes);
         if (!this.hasToolsTarget) return;
         // Ответ без шаблона (редактор письма в том же фрейме) — кнопки окна остаются прежними.
         const tools = this.frameTarget.querySelector('template[data-window-tools]');

@@ -1,9 +1,9 @@
-{{-- Отчёт о приёме вендору (12.10.2026, владелец: «висит задача отправить акты приёма — а где это делать», «подумай, как
-     удобнее, и в окошке, и в редакторе»): то, что раньше уходило руками из mail.ru, — одной формой. Кому (ответ в ветке
-     заявки), фото приёма плиткой — все отмечены, нажатие снимает, «+» добавляет снимки; документы — слоты из настроек
-     вендора (`vendors.intake_report_docs`): лежащий у ТС скан отмечен, «Снять» — камера (несколько страниц → один PDF),
-     «Файл» — загрузка; фраза письма — как писали («фотоотчет и скан-копии документов…»). Кнопка считает, что уйдёт.
-     «Уже отправили» — отчёт ушёл с личной почты. advance — после отправки карточка к следующей заявке («Заявки»). --}}
+{{-- Отчёт о приёме вендору (12.10.2026, владелец: «висит задача отправить акты приёма — а где это делать»): шаг «Письмо
+     вендору» окна действия (`park/act/report`). То, что раньше уходило руками из mail.ru, — одной формой. Кому (ответ в
+     ветке заявки), фото приёма плиткой — все отмечены, нажатие снимает, «Добавить» — новые снимки; документы — слоты из
+     настроек вендора (`vendors.intake_report_docs`): лежащий у ТС скан отмечен, «Снять» — камера (несколько страниц → один
+     PDF), «Файл» — загрузка; фраза письма — как писали («фотоотчет и скан-копии документов…»). Подвалом листа — кнопка,
+     что считает, что уйдёт, и тихое «Уже отправили с другой почты» (отчёт ушёл с личной почты). advance — из «Заявок». --}}
 @props(['vehicle', 'advance' => false])
 @php
     use App\Media\MediaUrl;
@@ -69,19 +69,26 @@
                 <x-ui.field name="text" :id="$id.'-text'" label="Текст" type="textarea" rows="2" :value="old('text', IntakeReport::text(collect($report->slots)->flatten()->isNotEmpty()))" data-report-target="text" data-action="input->report#edited"/>
             </div>
 
-            <button type="submit" class="btn btn-accent w-full" data-report-target="submit">Отправить отчёт</button>
+            <div class="sheet-foot flex flex-col items-center gap-1">
+                <button type="submit" class="btn btn-accent w-full" data-report-target="submit">Отправить отчёт</button>
+                @if (auth()->user()?->canManagePark())
+                    <button type="submit" form="report-sent-{{ $vehicle->id }}" class="act-quiet">Уже отправили с другой почты</button>
+                @endif
+            </div>
         </form>
     </section>
 @else
     {{-- Ящика парковки для отправки нет — отчёт ушёл другим путём: только отметка. --}}
     <section {{ $attributes->merge(['class' => 'report']) }}>
         <p class="text-sm text-ink-muted">Ящик парковки для отправки не подключён</p>
+        @if (auth()->user()?->canManagePark())
+            <div class="sheet-foot mt-4"><button type="submit" form="report-sent-{{ $vehicle->id }}" class="btn btn-accent w-full">Уже отправили с другой почты</button></div>
+        @endif
     </section>
 @endif
-{{-- Вне формы отчёта (формы не вкладываются); отметку ставит тот, кто ведёт парковку, не помощник. --}}
+{{-- Вне формы отчёта (формы не вкладываются), кнопка — в её подвале; отметку ставит тот, кто ведёт парковку, не помощник. --}}
 @if (auth()->user()?->canManagePark())
-    <form method="post" action="/cars/{{ $vehicle->id }}/report-sent" class="mt-2 text-center" data-turbo-confirm="Отчёт уже ушёл с другой почты?" data-turbo-confirm-label="Уже отправили">
+    <form method="post" action="/cars/{{ $vehicle->id }}/report-sent" id="report-sent-{{ $vehicle->id }}" hidden data-turbo-confirm="Отчёт уже ушёл с другой почты?" data-turbo-confirm-label="Уже отправили">
         @csrf @if ($advance)<input type="hidden" name="advance" value="1">@endif
-        <button class="text-sm text-ink-muted hover:text-ink">Уже отправили с другой почты</button>
     </form>
 @endif

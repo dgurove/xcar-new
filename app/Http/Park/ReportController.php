@@ -8,7 +8,6 @@ use App\Park\Actions\SendIntakeReport;
 use App\Park\IntakeReport;
 use App\Park\ReportDoc;
 use App\Park\Vehicle;
-use App\Support\Detail;
 use App\Support\Pdf;
 use App\Mail\Composer;
 use Illuminate\Http\Request;
@@ -18,8 +17,8 @@ use Spatie\Image\Enums\Fit;
 use Spatie\Image\Image;
 
 /**
- * Отчёт о приёме вендору (12.10.2026): форма `x-park.report-form` в карточке заявки после «Принять», в карточке
- * «Наличия» и в деле. Новые фото — в «Фото при приёме», снимки документа — одним PDF в документы ТС с видом; дальше
+ * Отчёт о приёме вендору (12.10.2026): форма `x-park.report-form` — шаг «Письмо вендору» окна действия (после «Принять
+ * и сформировать письмо» и по задаче «Отправить акт приёма»). Новые фото — в «Фото при приёме», снимки документа — одним PDF в документы ТС с видом; дальше
  * письмо (`SendIntakeReport`). «Уже отправили» — отчёт ушёл с личной почты.
  */
 class ReportController
@@ -82,14 +81,15 @@ class ReportController
         return $this->back($request, count($sent) > 1 ? 'Отчёт ушёл '.count($sent).' письмами' : 'Отчёт в очереди');
     }
 
-    /** Из «Заявок» (сразу после «Принять») — к следующей заявке; из «Наличия» — та же карточка; из дела — дело. */
+    /** Из окна действия — окно закрывается (из «Заявок» — к следующей заявке); иначе дело. */
     private function back(Request $request, string $toast)
     {
-        if ($request->header('Turbo-Frame') === Detail::FRAME) {
-            return back()->with('toast', $toast)->with($request->boolean('advance') ? ['detail-advance' => true] : []);
+        $vehicle = $request->route('vehicle');
+        if ($request->header('Turbo-Frame') === RequestController::WINDOW) {
+            return redirect(RequestController::window($vehicle, 'done', $request))->with('toast', $toast);
         }
 
-        return redirect('/cars/'.$request->route('vehicle')->id)->with('toast', $toast);
+        return redirect('/cars/'.$vehicle->id)->with('toast', $toast);
     }
 
     /** «Уже отправили»: отчёт ушёл не через нас (личная почта) — шаг сделан без письма. */

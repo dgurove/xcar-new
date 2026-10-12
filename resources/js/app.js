@@ -38,6 +38,27 @@ Turbo.StreamActions.letters = function () {
 Turbo.StreamActions['letters-close'] = function () {
     window.dispatchEvent(new CustomEvent('letters:close'));
 };
+// Окно действия парковки сделало своё (x-park.act-window, шаг done): окно закрывается, карточка строки перечитывается
+// (из «Заявок» её ответ ведёт к следующей заявке — flash detail-advance), без карточки — страница. url — письмо вендору
+// окном писем: в карточке — когда она встанет, в деле — адресом ?window=.
+Turbo.StreamActions['act-done'] = function () {
+    window.dispatchEvent(new CustomEvent('act:close'));
+    const url = this.getAttribute('url');
+    const frame = document.getElementById('detail');
+    if (frame?.childElementCount) {
+        const src = location.pathname + location.search;
+        if (frame.getAttribute('src') === src) frame.reload(); else frame.src = src;
+        if (url) Turbo.StreamActions.letters.call(this);
+        return;
+    }
+    if (url) {
+        const to = new URL(location.href);
+        to.searchParams.set('window', url);
+        Turbo.visit(to.pathname + to.search, { action: 'replace' });
+        return;
+    }
+    Turbo.StreamActions.reload.call(this);
+};
 // Дело в карточке поменяло весь список (лента «Оплат»: строка уходит из «Надо сделать» в «Историю») — страница
 // перечитывается морфом с той же карточкой. Штатный refresh Turbo молча пропускает, пока идёт визит фрейма карточки
 // (у фрейма turbo-action="replace"), поэтому ждём его конца, но не дольше секунды.

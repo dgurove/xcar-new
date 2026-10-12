@@ -1,5 +1,6 @@
 @php use App\Park\{RequestState, ReleasedTo, Inspection}; use App\Support\Money; @endphp
-{{-- Шаг «Приём»: площадка, место, когда, ключи, документы, фото при приёме. Осмотра пока нет — будет модулем. --}}
+{{-- Поля приёма в окне действия (`park/act/intake`, кнопки — подвалом листа): площадка, место, когда, ключи, документы,
+     фото при приёме. Осмотра пока нет — будет модулем. --}}
 <div class="mt-3 grid grid-cols-2 gap-3" data-controller="spots" data-spots-map-value="{{ json_encode($yardRows) }}">
     <x-park.yard-field :yards="$yards" :value="$req->yard_id ?? $yards->keys()->first()" required data-spots-target="yard" data-action="change->spots#sync"/>
     <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters"/>
@@ -27,5 +28,3 @@
 </div>
 {{-- Кадры приёма — обычным блоком с добавлением (`x-park.photos`), как после приёма в деле. --}}
 <x-park.photos :vehicle="$vehicle" :stage="\App\Park\PhotoStage::Intake" nested edit class="mt-3"/>
-{{-- В окне заявки кнопка — подвалом листа (`$footSubmit`, task): во всю ширину внизу, как «Сохранить изменения». --}}
-@unless ($footSubmit ?? false)<div class="mt-4"><x-ui.button id="act-submit" class="w-full sm:w-auto">Принять</x-ui.button></div>@endunless

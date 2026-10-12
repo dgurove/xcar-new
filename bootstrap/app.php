@@ -10,6 +10,7 @@ use App\Cars\Console\MergeCarsCommand;
 use App\Cars\Console\MergeDuplicatesCommand;
 use App\Garage\Console\GarageReformFixCommand;
 use App\Http\Middleware\DemoReadOnly;
+use App\Http\Middleware\ActWindowBack;
 use App\Http\Middleware\DetailBack;
 use App\Http\Middleware\DeviceGate;
 use App\Http\Middleware\EnsureAbility;
@@ -138,7 +139,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend([ServerTiming::class, RedirectLegacyPaths::class, MarkPrefetch::class, ScalarSearch::class]);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
-        $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, DetailBack::class, Impersonated::class, DeviceGate::class, TouchSeen::class, ReadNoticesOnVisit::class, DemoReadOnly::class]);
+        $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, DetailBack::class, ActWindowBack::class, Impersonated::class, DeviceGate::class, TouchSeen::class, ReadNoticesOnVisit::class, DemoReadOnly::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE, 'xcar-reset']);
         // Уведомления провайдеров: подписи у ЮKassa нет, статус перечитывается по API (`PayController::hook`).
         $middleware->validateCsrfTokens(except: ['hooks/*']);

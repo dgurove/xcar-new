@@ -269,9 +269,27 @@ class RequestController
         $vehicle->refresh();
     }
 
+    /** @return array<string, list<mixed>> поля приёма */
+    private static function intakeRules(): array
+    {
+        return ['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'], 'accepted_at' => ['nullable', 'date']] + self::inspectionRules();
+    }
+
+    /** Приём из окна действия (`ActWindowController`): заявки нет (отменили, ТС ждут без письма) — она заводится тут же. */
+    public function intakeCar(Request $request, Vehicle $vehicle, CreateRequest $create, Intake $intake)
+    {
+        $req = $vehicle->openRequest(RequestType::Intake);
+        if (! $req) {
+            $request->validate(self::intakeRules());
+            $req = $create($request->user(), RequestType::Intake, $vehicle, []);
+        }
+
+        return $this->intake($request, $req, $intake);
+    }
+
     public function intake(Request $request, ParkRequest $req, Intake $intake)
     {
-        $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'], 'accepted_at' => ['nullable', 'date']] + self::inspectionRules());
+        $data = $request->validate(self::intakeRules());
         $this->saveVehicle($request, $req->vehicle);
         // Тип ТС и своя ставка из формы приёма — свои имена полей (в деле рядом редактор с той же «Категорией»).
         if ($request->user()->canManagePark() && $request->has('intake_rate')) {
@@ -280,15 +298,35 @@ class RequestController
         }
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data, $req, $data['spot'] ?? null);
 
-        // Из окна заявки (фрейм карточки) — строка уходит; карточка показывает форму отчёта вендору, а без отчёта — к
-        // следующей заявке. Из дела — дело, где отчёт — текущим шагом с той же формой.
-        // Отчёт вендору (фото и сканы) — тут же, в той же карточке: к следующей заявке она уйдёт после отправки (12.10.2026).
-        $report = ($req->vehicle->vendor?->kind->billable() ?? false) && ! \App\Park\Actions\MarkReportSent::done($req->vehicle);
-        if ($request->header('Turbo-Frame') === Detail::FRAME) {
-            return $report ? back()->with('toast', 'Принята, осталось отправить отчёт') : back()->with('detail-advance', true)->with('toast', 'Принята');
+        // Из окна действия: «Принять и сформировать письмо» — письмо вендору следующим шагом того же окна; «Принять без
+        // письма» — окно закрывается, акт приёма ждёт задачей.
+        if ($request->header('Turbo-Frame') === self::WINDOW) {
+            $due = ActWindowController::reportDue($req->vehicle->fresh(['vendor']));
+            $next = $due && $request->input('then') === 'letter' ? 'report' : 'done';
+
+            return redirect(self::window($req->vehicle, $next, $request))->with('toast', $due && $next === 'done' ? 'Принята, акт приёма ждёт отправки' : 'Принята');
         }
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Принята');
+    }
+
+    /** Фрейм окна действия (`x-park.act-window`). */
+    public const WINDOW = 'act-frame';
+
+    /** Адрес шага окна действия; `advance` — окно открыли из «Заявок», после него карточка к следующей заявке. */
+    public static function window(Vehicle $vehicle, string $step, Request $request, array $query = []): string
+    {
+        $query += $request->boolean('advance') ? ['advance' => 1] : [];
+
+        return "/cars/{$vehicle->id}/window/{$step}".($query ? '?'.http_build_query($query) : '');
+    }
+
+    /** Выдача из окна действия: заявки нет (ТС просто стоит) — она заводится тут же. */
+    public function releaseCar(Request $request, Vehicle $vehicle, CreateRequest $create, Release $release)
+    {
+        $req = $vehicle->openRequest(RequestType::Release) ?? $create($request->user(), RequestType::Release, $vehicle, []);
+
+        return $this->release($request, $req, $release);
     }
 
     /** Выдача: когда, кому, ключи и документы в акт, подпись; дальше редактор письма вендору с актом выдачи. */
@@ -307,9 +345,12 @@ class RequestController
         $qr = $request->boolean('without_qr') ? ['without' => $data['without_qr_reason']] : ['pass' => $data['pass'] ?? null, 'confirm' => $request->boolean('pass_confirm')];
         $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? '') ?? ($req->vehicle->sold_at ? ReleasedTo::Buyer : null), $data, $req, $request->boolean('force') && $request->user()->canManagePark(), $request->boolean('cash'), $qr);
 
-        // Из окна заявки — строка уходит, окно к следующей выдаче; отчёт вендору ждёт шагом в деле.
-        if ($request->header('Turbo-Frame') === Detail::FRAME) {
-            return back()->with('detail-advance', true)->with('toast', 'Выдана');
+        // Из окна действия: «Выдать и сформировать письмо» — окно писем с черновиком акта выдачи; без письма — акт ждёт задачей.
+        if ($request->header('Turbo-Frame') === self::WINDOW) {
+            $vehicle = $req->vehicle->fresh(['vendor']);
+            $letter = $request->input('then') === 'letter' && ActWindowController::billable($vehicle) ? $vehicle->reportUrl('release', "/cars/{$vehicle->id}") : null;
+
+            return redirect(self::window($vehicle, 'done', $request, $letter ? ['letters' => $letter] : []))->with('toast', 'Выдана');
         }
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Выдана');
@@ -321,8 +362,11 @@ class RequestController
         abort_unless($request->user()->canManagePark(), 404);
         $reason = $request->validate(['reason' => ['required', 'string', 'max:500']])['reason'];
         $refuse($req->vehicle, $request->user(), $reason);
-        if ($request->header('Turbo-Frame') === Detail::FRAME) {
-            return back()->with('toast', 'Отказ записан');
+        if ($request->header('Turbo-Frame') === self::WINDOW) {
+            $vehicle = $req->vehicle->fresh();
+            $letter = $vehicle->reportUrl('refusal', "/cars/{$vehicle->id}");
+
+            return redirect(self::window($vehicle, 'done', $request, $letter ? ['letters' => $letter] : []))->with('toast', 'Отказ записан');
         }
 
         return redirect(self::withReport($req->vehicle->fresh(), 'refusal'))->with('toast', 'Отказ записан, письмо вендору готово');

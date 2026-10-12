@@ -1883,6 +1883,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .report-shot > input:not(:checked) ~ img { opacity: .35; }
   .report-shot > input:not(:checked) ~ .report-tick { background: color-mix(in oklab, var(--color-surface) 80%, transparent); color: transparent; box-shadow: inset 0 0 0 1.5px var(--color-ink-dim); }
   .report-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .125rem; color: var(--color-ink-muted); }
+  /* Окно действия парковки (x-park.act-window): на ПК уже окна писем — форма, а не чтение; второе действие подвала —
+     тихой строкой текста под главной кнопкой («Принять без письма»), не второй кнопкой того же роста. */
+  @media (min-width: 640px) { .sheet-tall.sheet-act { max-width: 36rem; } }
+  .act-quiet { padding: .5rem 1rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .act-quiet:hover { color: var(--color-ink); }
   .report { container-type: inline-size; }
   /* Конверт раскрытого письма (x-mail.letter): «От адрес», «Переслал адрес», «Кому адрес, адрес» — строками текста,
      подпись через пробел (владелец: «зачем огромный отступ от "От", если достаточно пробела»). Каждый адрес берётся

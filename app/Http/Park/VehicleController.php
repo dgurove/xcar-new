@@ -213,21 +213,19 @@ class VehicleController
 
         return view('park.vehicles.detail', [
             'vehicle' => $vehicle, 'yards' => $yards->pluck('name', 'id'),
-            // Свободные места парковок — форме приёма и шторке «Переставить» в карточке (spots_controller).
-            'yardRows' => $task?->type === RequestType::Intake || $vehicle->state === VehicleState::Stored ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],
-            // Выдача в карточке (`steps/release`): QR, что держит выдачу и что выставим вендору — как в деле (`CaseView`).
-            ...($task?->type === RequestType::Release && $vehicle->state === VehicleState::Stored) ? [
-                'byQr' => $vehicle->releasesByQr(), 'pass' => $vehicle->releasesByQr() ? $vehicle->pass() : null, 'scannedPass' => null,
-                'releaseDebt' => Ledger::releaseDebt($vehicle), 'cashDue' => Ledger::buyerUnbilled($vehicle), 'vendorDue' => Ledger::vendorUnbilled($vehicle),
-            ] : ['byQr' => false],
+            // Свободные места парковок — шторке «Переставить» в карточке (spots_controller); приём и выдача — окном действия.
+            'yardRows' => $vehicle->state === VehicleState::Stored ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],
             'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
             // Из «Заявок» (заявку передали явно) главное — задача: кадры одной лентой, без блоков по стадиям над ней.
             'fromRequests' => $fromRequests, 'listed' => $listed,
             // Строка заявки, которую почта завела и документы ещё читаются, остаётся силуэтом с ходом, как в списке.
             'arrive' => $listed ? (AutoScan::states([$vehicle])[$vehicle->id] ?? null) : null,
             'task' => $task, 'messages' => $messages, 'taskLetterId' => $letterId,
-            // Отчёт о приёме вендору не ушёл — форма в карточке (`x-park.report-form`).
-            'reportDue' => ! $task && $vehicle->accepted_at && ($vehicle->vendor?->kind->billable() ?? false) && ! \App\Park\Actions\MarkReportSent::done($vehicle),
+            // Висящие отчёты вендору — кнопкой подвала: о приёме — окно действия сразу на письме, о выдаче — окно писем.
+            'reportDue' => ! $task && ActWindowController::reportDue($vehicle),
+            'releaseReportUrl' => $vehicle->state === VehicleState::Released && ActWindowController::billable($vehicle)
+                && ! $vehicle->events->contains(fn ($e) => $e->type === \App\Park\EventType::ReportSent && ($e->payload['what'] ?? null) === 'Акт выдачи')
+                ? $vehicle->reportUrl('release', "/cars/{$vehicle->id}") : null,
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
             'debt' => Ledger::vehicleDebt($vehicle),
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),

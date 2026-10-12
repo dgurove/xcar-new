@@ -10,9 +10,6 @@
     // Деньги дела (счета, начисления, долг) — тем, кому они открыты на парковке (галка «Деньги» у управляющего).
     $money = auth()->user()->canManagePark();
     $open = $req !== null;
-    // Нет открытой заявки: у ожидаемой — «Принять», у стоящей — «Выдать» (POST /requests заводит заявку и показывает её форму).
-    $hasChain = $open && in_array($req->type, [RequestType::Intake, RequestType::Release], true);
-    $spawn = ! $hasChain ? match ($state) { VehicleState::Expected => ['intake', 'Принять'], VehicleState::Stored => ['release', 'Выдать'], default => null } : null;
     // Поля ТС сверху, пока ТС ожидается (данные из письма надо сверить); после приёма — строкой с раскрытием среди фаз.
     $vehicleOpen = $state->isBefore();
     $cur = App\Park\Timeline::current($steps);
@@ -60,51 +57,26 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="flex min-w-0 flex-col gap-4">
-        @php
-            $submit = $cur?->plate['kind'] === 'submit' ? $cur : null;
-            $action = $submit ? match ($submit->key) {
-                'intake' => "/requests/{$submit->request->id}/intake",
-                'release' => "/requests/{$submit->request->id}/release",
-                'yard' => "/cars/{$vehicle->id}/yard",
-            } : null;
-        @endphp
-        {{-- Отчёт вендору не ушёл — форма отдельной карточкой над делом: в act-form её не вложить (12.10.2026). --}}
-        @if ($reportDue)
-            <x-ui.card title="Отчёт вендору" id="report"><x-park.report-form :vehicle="$vehicle"/></x-ui.card>
-        @endif
-        {{-- Одна форма на поля ТС и текущий шаг: кнопка шага сохраняет всё, «Сохранить изменения» у полей — только поля ТС.
-             Внутри сделанных шагов форм нет. --}}
-        @if ($submit)
-            <form method="post" action="{{ $action }}" id="act-form" class="flex flex-col gap-4" data-controller="vin save-bar draft next reveal" data-save-bar-scope-value="[data-save-scope]" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" data-reveal-label-selector-value="#act-submit">
-                @csrf
-                @if ($canManage)
-                    <input type="hidden" name="vehicle_form" value="1">
-                    @include('park.vehicles.fields-block')
-                @endif
-                @if ($letters)@include('park.vehicles.letters-card')@endif
-                @include('park.vehicles.timeline')
+        {{-- Машина — страницей, действие — окном (`x-park.act-window`, 12.10.2026): приём, письмо вендору и выдача
+             открываются кнопкой текущего шага; поля ТС — своей формой с «Сохранить изменения». --}}
+        @if ($canManage && ! $state->isFinal())
+            <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin save-bar draft next" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}">
+                @csrf @method('put')
+                @include('park.vehicles.fields-block', ['save' => true])
             </form>
-        @else
-            @if ($canManage && ! $state->isFinal())
-                <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin save-bar draft next" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}">
-                    @csrf @method('put')
-                    @include('park.vehicles.fields-block', ['save' => true])
-                </form>
-            @endif
-            @if ($letters)@include('park.vehicles.letters-card')@endif
-            @include('park.vehicles.timeline')
         @endif
+        @if ($letters)@include('park.vehicles.letters-card')@endif
+        @include('park.vehicles.timeline')
         @foreach ($others as $r)
             <a href="/cars/{{ $vehicle->id }}?req={{ $r->id }}" class="row !py-2.5"><span class="chip bg-accent-soft text-accent-text">{{ $r->type->label() }}</span><span class="text-sm text-ink-muted">ещё открыта</span></a>
         @endforeach
-        {{-- «Сделано» у каждого ждущего письма своё: форма не может лежать внутри act-form. --}}
+        {{-- «Сделано» у каждого ждущего письма — своей формой. --}}
         @foreach ($asks ?? [] as $a)<form method="post" action="/cars/{{ $vehicle->id }}/letters/{{ $a->id }}/done" id="reply-form-{{ $a->id }}">@csrf</form>@endforeach
         @if ($byQr ?? false)
             <form method="post" action="/cars/{{ $vehicle->id }}/buyer/confirm" id="buyer-confirm-form">@csrf</form>
         @endif
         {{-- Даты приёма и выдачи в шагах таймлайна (`x-park.date-edit`): их формы — здесь, вне формы текущего шага. --}}
         <x-park.date-forms :vehicle="$vehicle"/>
-        @if ($spawn)<form method="post" action="/requests" id="spawn-form">@csrf<input type="hidden" name="type" value="{{ $spawn[0] }}"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"></form>@endif
 
         {{-- На телефоне факты дела идут под формой; на ПК — правая колонка (ниже). --}}
     </div>
@@ -254,7 +226,7 @@
         </div>
     @endif
     @if ($state === VehicleState::Stored)@include('park.vehicles.move-sheet')@endif
-    @include('park.vehicles.release-sheets', ['formId' => 'act-form'])
+    @include('park.vehicles.release-sheets', ['formId' => null])
 
     @if ($canManage && ($pass ?? null)?->isLive() && ! $pass->isConfirmed())
         <div data-controller="sheet" data-action="buyer-reject:open@window->sheet#open" class="contents">
@@ -320,4 +292,6 @@
         </div>
     @endif
     <x-mail.window :url="$window" :title="$vehicle->titleWithYear()"/>
+    {{-- Открыли камерой телефона QR покупателя (?pass=) — окно выдачи сразу со сканом. --}}
+    <x-park.act-window :url="$scannedPass && $state === VehicleState::Stored ? '/cars/'.$vehicle->id.'/window/release?pass='.urlencode($scannedPass) : null"/>
 </x-ui.shell>

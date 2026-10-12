@@ -10,7 +10,10 @@ use App\Park\Actions\MarkReportSent;
 use App\Park\Actions\SendIntakeReport;
 use App\Park\IntakeReport;
 use App\Park\Vehicle;
+use App\Park\Request as ParkRequest;
+use App\Park\RequestType;
 use App\Park\VehicleState;
+use App\Park\Yard;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Kind;
@@ -94,5 +97,31 @@ class IntakeReportTest extends TestCase
         $this->assertStringEndsWith(' ч.1', $sent[0]->subject);
         $this->assertSame('Альфа акт 0367.pdf', $sent[0]->attachments()->first()->filename);
         $this->assertSame(4, collect($sent)->sum(fn ($m) => $m->attachments()->count()));
+    }
+
+    /**
+     * Окно действия (12.10.2026): приём окном — ошибка проверки остаётся в окне (а не пустой фрейм страницы), «Принять и
+     * сформировать письмо» ведёт на письмо вендору тем же окном, из «Заявок» — с advance до самого конца.
+     */
+    public function test_intake_window_flows_into_report_and_keeps_errors_in_window(): void
+    {
+        [$v, $user] = $this->vehicle();
+        $v->forceFill(['state' => VehicleState::Expected, 'accepted_at' => null])->save();
+        $yard = Yard::create(['name' => 'Краснопутиловская', 'is_active' => true]);
+        ParkRequest::create(['vehicle_id' => $v->id, 'type' => RequestType::Intake]);
+        $park = 'http://'.config('xcar.park_host');
+        $step = "/cars/{$v->id}/window/intake?advance=1";
+        $frame = ['Turbo-Frame' => 'act-frame', 'X-Window' => $step, 'Referer' => $park.'/requests?peek=1'];
+        $this->actingAs($user);
+
+        $this->get($park.$step, ['Turbo-Frame' => 'act-frame'])->assertOk()->assertSee('Принять и сформировать письмо')->assertSee('Принять без письма');
+        $this->post($park."/cars/{$v->id}/intake", ['advance' => 1], $frame)->assertRedirect($step);
+        $this->post($park."/cars/{$v->id}/intake", ['advance' => 1, 'yard_id' => $yard->id, 'then' => 'letter'], $frame)
+            ->assertRedirect("/cars/{$v->id}/window/report?advance=1");
+        $this->assertSame(VehicleState::Stored, $v->fresh()->state);
+        $this->get($park."/cars/{$v->id}/window/report?advance=1", ['Turbo-Frame' => 'act-frame'])->assertOk()->assertSee('Отправить отчёт');
+        $this->get($park."/cars/{$v->id}", [])->assertOk()->assertSee('Нужно отправить отчёт');
+        $this->get($park."/cars/{$v->id}/window/done?advance=1", ['Turbo-Frame' => 'act-frame'])->assertOk()->assertSee('act-done', false);
+        $this->get($park."/cars/{$v->id}/window/release", ['Turbo-Frame' => 'act-frame'])->assertOk()->assertSee('Выдать')->assertSee('Когда');
     }
 }

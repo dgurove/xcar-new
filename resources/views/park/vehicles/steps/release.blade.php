@@ -3,6 +3,9 @@
     $qr = $byQr ?? false;
     $hold = $releaseDebt + $cashDue;
     $who = ($pass ?? null)?->name ?? $vehicle->pickup_name;
+    // В окне действия (`park/act/release`) шторки свои — события с приставкой, чтобы не открыть заодно шторки дела под окном.
+    $win = $window ?? false;
+    $ev = $win ? 'act-' : '';
 @endphp
 {{-- Шаг «Выдача». По QR первым — «Сканировать QR» (сначала убедиться, что приехал покупатель), его место занимает
      итог скана. Дальше одна плашка: когда (по умолчанию сейчас) и деньги строками. «Кому» и «Кто получил» не
@@ -32,7 +35,7 @@
     @elseif (! $qr && $canManage)
         <div class="row justify-between">
             <span class="text-ink-muted">Кто заберёт</span>
-            <button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">Указать</button>
+            <button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}sold:open">Указать</button>
         </div>
     @endif
     {{-- Держат выдачу только неоплаченное покупателем и наличные с него; страховая сторона платит счётом. --}}
@@ -55,13 +58,23 @@
 </div>
 <x-park.photos :vehicle="$vehicle" :stage="PhotoStage::Release" nested collapsed edit class="mt-3"/>
 <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-    @unless (($footSubmit ?? false) && ! $qr)<x-ui.button id="act-submit" class="w-full sm:w-auto" :data-qr-release-target="$qr ? 'submit' : null" :hidden="$qr">Выдать</x-ui.button>@endunless
     @if ($vehicle->sold_at && $canManage)
         {{-- Редкий исход — маленькой серой, как «Выдать без QR», а не второй кнопкой ростом с «Выдать» (10.10.2026). --}}
-        <button type="button" class="btn btn-s btn-quiet self-center sm:ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="refusal:open">Покупатель отказался</button>
+        <button type="button" class="btn btn-s btn-quiet self-center sm:ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}refusal:open">Покупатель отказался</button>
     @endif
     @if ($qr && $canManage)
-        <button type="button" class="btn btn-s btn-quiet self-center sm:ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="without-qr:open">Выдать без QR</button>
+        <button type="button" class="btn btn-s btn-quiet self-center sm:ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}without-qr:open">Выдать без QR</button>
     @endif
 </div>
+{{-- Окно действия: кнопки подвалом листа; по QR — появляются, когда код подошёл. --}}
+@if ($win)
+    <div class="sheet-foot mt-4 flex flex-col items-center gap-1">
+        @if ($letter ?? false)
+            <button type="submit" name="then" value="letter" class="btn btn-accent w-full" @if ($qr) data-qr-release-target="submit" hidden @endif>Выдать и сформировать письмо</button>
+            <button type="submit" name="then" value="none" class="act-quiet" @if ($qr) data-qr-release-target="submit" hidden @endif>Выдать без письма</button>
+        @else
+            <button type="submit" class="btn btn-accent w-full" @if ($qr) data-qr-release-target="submit" hidden @endif>Выдать</button>
+        @endif
+    </div>
+@endif
 </div>

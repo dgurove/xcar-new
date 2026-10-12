@@ -36,8 +36,9 @@ final class Timeline
             $ready = $ir && $ir->isOpen();
             // Заявки нет (отменили) — шаг всё равно текущий: «Принять» заводит заявку и открывает форму.
             $orphan = ! $ready && $v->state === VehicleState::Expected;
+            // Сам приём — окном действия (`x-park.act-window`): шаг — кнопка, заявки нет — окно заведёт её.
             $steps[] = new Step('intake', 'Нужно принять', Step::CURRENT, $orphan ? 'Заявки нет: принять, когда привезут' : 'Поставить на место и снять фото', null, [],
-                $ready ? ['kind' => 'submit', 'label' => 'Принять'] : ['kind' => 'spawn', 'label' => 'Принять'], $ready ? $ir : null);
+                ['kind' => 'act', 'label' => 'Принять', 'step' => 'intake'], $ready ? $ir : null);
         }
 
         // Что впереди — серым, чтобы было видно весь путь.
@@ -51,9 +52,9 @@ final class Timeline
 
         if ($v->accepted_at && $billable) {
             $ok = $sent('Акт приёма');
-            // Сам отчёт — формой карточкой над делом (`x-park.report-form`, #report): шаг ведёт к ней.
+            // Сам отчёт — шагом «Письмо вендору» окна действия (`x-park.report-form`).
             $steps[] = new Step('report', $ok ? 'Отчёт отправлен' : 'Нужно отправить отчёт', $ok ? Step::DONE : Step::CURRENT, null, null, [],
-                $ok ? null : ['kind' => 'anchor', 'label' => 'Отправить отчёт', 'url' => '#report']);
+                $ok ? null : ['kind' => 'act', 'label' => 'Отправить отчёт', 'step' => 'report']);
         }
 
         // Заведена без парковки (по письмам или по факту): сначала сказать, где стоит — хранение считается по площадке.
@@ -68,7 +69,7 @@ final class Timeline
             $storageState = $v->released_at || $releasing ? Step::DONE : ($v->state === VehicleState::Stored && ! $noYard ? Step::CURRENT : Step::NEXT);
             $chips = array_values(array_filter([$v->sold_at ? 'на выдачу с '.$v->sold_at->translatedFormat('j M') : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
             $steps[] = new Step('storage', $storageState === Step::CURRENT ? 'На хранении' : 'Хранение', $storageState,
-                null, $v->sold_at, $chips, $storageState === Step::CURRENT ? ['kind' => 'spawn', 'label' => 'Выдать'] : null);
+                null, $v->sold_at, $chips, $storageState === Step::CURRENT ? ['kind' => 'act', 'label' => 'Выдать', 'step' => 'release'] : null);
 
             // Покупатель приехал и не взял: продажа снята, ТС снова просто стоит — исход виден шагом, а не заметкой.
             foreach ($events->where('type', EventType::ReleaseRefused)->sortBy('created_at') as $refusal) {
@@ -93,7 +94,7 @@ final class Timeline
             $chips = array_values(array_filter([$release?->doneBy?->shortName(), $release?->note]));
             $steps[] = new Step('release', $v->released_at ? 'Выдана' : ($releasing ? 'Нужно выдать' : 'Выдача'), $v->released_at ? Step::DONE : ($releasing ? Step::CURRENT : Step::NEXT),
                 null, $v->released_at, $v->released_at ? $chips : [],
-                $releasing ? ['kind' => 'submit', 'label' => 'Выдать'] : null, $release?->isOpen() ? $release : ($v->released_at ? $release : null));
+                $releasing ? ['kind' => 'act', 'label' => 'Выдать', 'step' => 'release'] : null, $release?->isOpen() ? $release : ($v->released_at ? $release : null));
 
             if ($v->released_at && $billable) {
                 $ok = $sent('Акт выдачи');
