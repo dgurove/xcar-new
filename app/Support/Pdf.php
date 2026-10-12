@@ -15,7 +15,7 @@ final class Pdf
     public static function make(string $view, array $data, string $orientation = 'portrait', array $chroot = []): Dompdf
     {
         $dir = storage_path('app/private/dompdf');
-        @mkdir($dir, 0775, true);
+        is_dir($dir) || @mkdir($dir, 0775, true);
         $options = (new Options)->setIsRemoteEnabled(false)->setDefaultFont('Onest')->setDefaultPaperSize('a4')->setDefaultPaperOrientation($orientation)
             ->setTempDir($dir)->setFontCache($dir)->setChroot([$dir, resource_path('fonts/pdf'), public_path('images'), ...$chroot]);
         $pdf = new Dompdf($options);
