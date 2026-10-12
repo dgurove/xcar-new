@@ -58,7 +58,10 @@ final class ChatNotice extends Notice
         $who = $this->who();
         $title = $chat->isEnquiry() ? "{$who}: обращение с сайта" : "{$who} пишет по {$chat->offer->titleWithYear()}";
 
-        return ['title' => $title, 'lines' => Text::lines($chat->offer, $m->preview(1000)), 'button' => 'Открыть чат'];
+        // Покупателю пишет его менеджер — без VIN и номера: VIN покупателю по умолчанию скрыт (`Offer::vinFor`).
+        $toBuyer = $chat->isBuyerChat() && $m->author_id !== null && $m->author_id === $chat->manager_id;
+
+        return ['title' => $title, 'lines' => $toBuyer ? [$m->preview(1000)] : Text::lines($chat->offer, $m->preview(1000)), 'button' => 'Открыть чат'];
     }
 
     /** Сотруднику в чате площадки — CRM (там и обращения с сайта), остальным — сайт. */

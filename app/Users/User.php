@@ -537,12 +537,13 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /**
-     * Подключить Telegram можно: менеджеру, админу, модератору (вход в CRM, новое из писем) и парковке без привязки. Не за человека —
+     * Подключить Telegram можно: менеджеру, его покупателю и супер-покупателю (12.10.2026: машины от менеджера и чат),
+     * админу, модератору (вход в CRM, новое из писем) и парковке без привязки. Не за человека —
      * админ привязал бы свой чат к чужому аккаунту.
      */
     public function canLinkTelegram(): bool
     {
-        return ($this->isManager() || $this->isSuperBuyer() || $this->isAdmin() || $this->isModerator() || $this->isParking() || $this->isParkAdmin() || $this->isLogist() || $this->isDriver()) && $this->telegram_chat_id === null && ! $this->is_demo
+        return ($this->isManager() || $this->isBuyer() || $this->isSuperBuyer() || $this->isAdmin() || $this->isModerator() || $this->isParking() || $this->isParkAdmin() || $this->isLogist() || $this->isDriver()) && $this->telegram_chat_id === null && ! $this->is_demo
             && app(Bot::class)->username() !== null;
     }
 
@@ -557,7 +558,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     /**
      * Когда шторка подключения открывается сама (решение владельца 30.09.2026):
-     * intro — один раз за всё время при входе; bid — после подтверждения ценой, не чаще раза в неделю и не больше
+     * intro — один раз за всё время при входе; bid — после подтверждения ценой (покупателю — после интереса), не чаще раза в неделю и не больше
      * трёх раз; card — карточка в «Сделках», пока не скрыли. Отметки ставит TelegramController::seen.
      *
      * @return list<'intro'|'bid'|'card'>

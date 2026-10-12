@@ -58,7 +58,7 @@
                 <button type="submit" class="btn btn-s btn-ghost w-full">Передумал</button>
             </form>
         @else
-            <form method="post" action="/offers/{{ $offer->number }}/interest" class="mt-6 flex flex-col gap-3">
+            <form method="post" action="/offers/{{ $offer->number }}/interest" class="mt-6 flex flex-col gap-3" @if ($user->isBuyer()) data-telegram-moment="bid" @endif>
                 @csrf
                 <textarea name="comment" rows="2" class="field-input !min-h-0 sm:text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру' : 'Что важно уточнить' }}">{{ old('comment') }}</textarea>
                 <button type="submit" class="btn btn-accent w-full">{{ $gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену' }}</button>

@@ -43,4 +43,14 @@ final class OffersShownNotice extends Notice
     {
         return 'offers';
     }
+
+    /** В Telegram покупателю (12.10.2026): одна машина — с ценой, пачка — числом; кнопка в ленту или на машину. */
+    public function toTelegram(): ?array
+    {
+        $offer = count($this->offerIds) === 1 ? Offer::find($this->offerIds[0]) : null;
+        // Покупателю — одна цена, продажная (`PriceView`); VIN ему по умолчанию скрыт — его тут нет.
+        $price = $offer?->asking_price ? \App\Support\Money::rub($offer->asking_price) : null;
+
+        return ['title' => $this->title(), 'lines' => array_values(array_filter([$price, $this->text()])), 'button' => $offer ? 'Посмотреть' : 'Открыть ленту'];
+    }
 }

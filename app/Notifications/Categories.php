@@ -77,6 +77,8 @@ final class Categories
     {
         $keys = [
             ...($user->hasRole(Role::Manager, Role::Admin, Role::SuperBuyer) ? ['chats'] : []),
+            // Покупателю — машины, что открыл менеджер, и его сообщения (12.10.2026).
+            ...($user->hasRole(Role::Buyer) ? ['offers', 'chats'] : []),
             ...($user->hasRole(Role::Moderator) ? ['letters'] : []),
             ...($user->hasRole(Role::Parking) ? ['park', 'park_money'] : []),
             ...($user->hasRole(Role::Logist) ? ['logistics'] : []),

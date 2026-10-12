@@ -84,7 +84,7 @@
                         <button type="submit" class="pill pill-plain">Передумал</button>
                     </form>
                 @else
-                    <form method="post" action="/offers/{{ $n }}/interest" class="flex w-full gap-2">
+                    <form method="post" action="/offers/{{ $n }}/interest" class="flex w-full gap-2" @if (auth()->user()?->isBuyer()) data-telegram-moment="bid" @endif>
                         @csrf
                         <input name="comment" class="field-input field-s min-w-0 flex-1 sm:text-sm" placeholder="{{ $user->isBuyer() ? 'Пара слов менеджеру' : 'Что важно уточнить' }}" value="{{ old('comment') }}">
                         <button type="submit" class="btn btn-s btn-accent shrink-0">{{ $gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену' }}</button>

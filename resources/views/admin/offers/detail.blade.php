@@ -234,7 +234,10 @@
             </section>
         @endif
         @if ($bids->isNotEmpty() || ($admin && $offer->state === OfferState::Open))
-            <div class="mt-4">@include('admin.offers.bids')</div>
+            <section class="mt-4">
+                <h2 class="detail-section">Подтверждения @if ($waiting->isNotEmpty())<span class="nums font-normal text-ink-dim">{{ $waiting->count() }}</span>@endif</h2>
+                @include('admin.offers.bids')
+            </section>
         @endif
         {{-- Интерес — под подтверждениями строками `.list`, как все группы однотипного (12.10.2026: плашками с тегами — хаос). --}}
         @if ($admin && $offer->interests->isNotEmpty())
@@ -248,13 +251,13 @@
                                 <span class="block truncate font-medium">{{ $interest->user->name }}</span>
                                 <span class="row-sub">
                                     @if ($interest->user->manager)<span>покупатель {{ $interest->user->manager->shortName() }}</span>@endif
-                                    @if ($interest->user->phone)<a href="tel:+{{ $interest->user->phone }}" class="nums text-accent-text">{{ $interest->user->phoneFormatted() }}</a>@endif
-                                    <span class="nums">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span>
+                                    @if ($interest->user->phone)<a href="tel:+{{ $interest->user->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $interest->user->phoneFormatted() }}</a>@endif
+                                    <span class="nums whitespace-nowrap">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span>
                                 </span>
                                 @if ($interest->comment)<span class="mt-1 block text-sm">{{ $interest->comment }}</span>@endif
                             </span>
                             @if ($interest->state === InterestState::New)
-                                <form method="post" action="/interests/{{ $interest->id }}" class="shrink-0">@csrf<input type="hidden" name="state" value="contacted"><button class="btn btn-s btn-accent">Мы связались</button></form>
+                                <form method="post" action="/interests/{{ $interest->id }}" class="shrink-0">@csrf<input type="hidden" name="state" value="contacted"><button class="btn btn-s btn-quiet">Мы связались</button></form>
                             @elseif ($interest->state === InterestState::Contacted)
                                 <form method="post" action="/interests/{{ $interest->id }}" class="shrink-0">@csrf<input type="hidden" name="state" value="closed"><button class="btn btn-s btn-quiet">Закрыть</button></form>
                             @else

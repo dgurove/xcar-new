@@ -60,9 +60,6 @@
                 </x-ui.sheet>
             </div>
         </div>
-        @if ($mode === 'deal')
-            <p class="col-span-2 text-sm text-ink-muted">В сделке с {{ $deal->buyer?->shortName() ?? '—' }}</p>
-        @endif
         @if ($mode === 'offer' && ($summary ?? collect())->isNotEmpty())
             <div class="col-span-2 flex flex-col gap-1.5 text-sm">
                 @foreach ($summary as $row)

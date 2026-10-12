@@ -1,7 +1,7 @@
 {{-- Подключение Telegram — одна шторка на страницу, в оболочке у того, кому можно подключить (User::canLinkTelegram).
      Три шага в одной шторке: предложение (пример сообщения бота, синяя кнопка, «Не сейчас») → ожидание
      («Нажмите «Запустить»», на ПК QR) → готово. Открывают её события telegram:open (карточка «Сделок», строка
-     профиля, настройки), сама — один раз при входе на /offers и /deals и после подтверждения ценой
+     профиля, настройки), сама — один раз при входе на /offers и /deals и после подтверждения ценой (покупателю — после интереса)
      (User::telegramMoments, telegram_controller). --}}
 @php
     $user = auth()->user();
@@ -14,6 +14,8 @@
     // Сама шторка — на сайте в списках менеджера, в CRM у модератора на «Предложениях»; с почтой ему есть что получать.
     $intro = $user?->isModerator() ? ['/'] : ['/offers', '/deals'];
     [$head, $lead] = match (true) {
+        // Покупателю — машины от менеджера и его ответы (12.10.2026); сама шторка — при входе и после интереса.
+        (bool) $user?->isBuyer() => ['Новые машины в Telegram', ($user->manager?->shortName() ?? 'Менеджер').' откроет вам автомобиль или ответит в чате, сообщение придёт сразу'],
         (bool) $user?->hasDeals() => ['Узнавайте о сделках первым', 'Когда выбрали вас, нужен ваш ответ или пришли деньги. Без рассылок'],
         // Модератору — заявки с почты прямо в бот (владелец 02.10.2026: вход без пароля не привлекает).
         (bool) $user?->isModerator() => ['Заявки с почты в Telegram', 'Новые заявки от страховых будут приходить в бот'],
@@ -34,7 +36,7 @@
             <div class="tg-step" data-telegram-target="step" data-step="offer">
                 <x-telegram.bubble :message="\App\Telegram\Preview::for($user)"/>
                 <div class="tg-lead">
-                    <h2 class="text-lg" data-telegram-target="title" @if ($user->hasDeals()) data-bid="Узнайте первым, если выберут вас" @endif>{{ $head }}</h2>
+                    <h2 class="text-lg" data-telegram-target="title" @if ($user->isBuyer()) data-bid="Ответ менеджера придёт в Telegram" @elseif ($user->hasDeals()) data-bid="Узнайте первым, если выберут вас" @endif>{{ $head }}</h2>
                     <p>{{ $lead }}</p>
                 </div>
                 <div class="flex flex-col gap-1">
