@@ -42,6 +42,12 @@ final class Facet
 
     public ?string $tone = null;
 
+    /** Точка цветом метки перед подписью переключателя («Новые» голубая, «Горящие» рыжая) — и свой цвет включённого. */
+    public ?string $dot = null;
+
+    /** Переключатель считает себя сам по выборке списка с прочими чипами (число как у пилюли). */
+    public bool $selfCount = false;
+
     /** Переключатель с числом («Без ставки 4»): нуль — переключателя нет, пока он не включён. */
     public ?Closure $tally = null;
 
@@ -139,6 +145,15 @@ final class Facet
     public function counted(Closure $fn): self
     {
         $this->tally = $fn;
+
+        return $this;
+    }
+
+    /** Точка и цвет включённого переключателя: `fresh` | `hot` (как пилюли каталога). Число — по выборке списка. */
+    public function dot(string $tone): self
+    {
+        $this->dot = $tone;
+        $this->selfCount = true;
 
         return $this;
     }

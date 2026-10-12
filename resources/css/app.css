@@ -116,6 +116,8 @@
   --color-danger: #ff0037;
   --color-danger-soft: #ffe8ec;
   --color-recommended: #229ed9;
+  /* Новое — голубым, как непрочитанное в Telegram (владелец 12.10.2026; было лаймом), тот же голубой, что «Рекомендуем». */
+  --color-fresh: #229ed9;
 
   --radius-s: 8px;
   --radius-m: 12px;
@@ -998,6 +1000,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .offer-head span.pill-plain { background: var(--color-surface) !important; }
   /* x-ui.state — то же словом без капсулы, одним классом вместо «!min-h-0 !py-1 text-xs» у каждой пилюли. */
   .state { @apply inline-flex items-center whitespace-nowrap text-xs font-medium; }
+  .state-fresh { color: var(--color-fresh); }
   .state-open { @apply text-open; } .state-urgent { @apply text-urgent; } .state-closed { @apply text-closed; }
   .state-danger { @apply text-danger; } .state-accent, .state-soft { @apply text-accent-text; } .state-plain { @apply font-normal text-ink-muted; }
 
@@ -2967,13 +2970,22 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      у строки — полоса на всю высоту, в таблице — точка перед названием (полоса там — выделение открытой строки). Горящее
      важнее нового. */
   .card-tone { display: var(--tone-dot, inline-block); width: .5rem; height: .5rem; margin-right: .4375rem; border-radius: 999px; vertical-align: .1em; }
-  .card-tone--fresh { background: var(--color-accent); }
+  .card-tone--fresh { background: var(--color-fresh); }
   .card-tone--hot { background: var(--color-urgent); }
   .card-tone--only { background: var(--color-danger); }
-  /* На выбранной пилюле лайм сливается с подложкой — точка цветом надписи. */
+  /* Выбранная пилюля «Новые» / «Горящие» (каталог, переключатели CRM) — своим цветом, а не лаймом (владелец 12.10.2026);
+     точка на ней — цветом надписи. */
   .pill[aria-current="true"] .card-tone { background: currentColor; }
+  .pill[data-tone="fresh"][aria-current="true"] { background: var(--color-fresh); color: #fff; }
+  .pill[data-tone="hot"][aria-current="true"] { background: var(--color-urgent); color: #fff; }
+  @media (hover: hover) {
+    a.pill[data-tone="fresh"][aria-current="true"]:hover { background: color-mix(in srgb, var(--color-fresh) 85%, #000); }
+    a.pill[data-tone="hot"][aria-current="true"]:hover { background: color-mix(in srgb, var(--color-urgent) 85%, #000); }
+  }
+  .pill[data-tone="fresh"][aria-current="true"] .badge { color: var(--color-fresh); }
+  .pill[data-tone="hot"][aria-current="true"] .badge { color: var(--color-urgent); }
   .card--fresh::before, .card--hot::before, .card--only::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
-  .card--fresh::before { background: var(--color-accent); }
+  .card--fresh::before { background: var(--color-fresh); }
   .card--hot::before { background: var(--color-urgent); }
   .card--only::before { background: var(--color-danger); }
   /* Без контейнерных единиц (iOS до 16) полоса плитки встала бы на кадр — там в плитке точка у названия. */
@@ -3800,6 +3812,8 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .dark .header-btn:active, .dark .header-btn.is-pending { background: rgb(255 255 255 / .2); }
   .pill[aria-current]:active, .pill-accent:active, .header-btn[aria-current="page"]:active, .header-btn-cta:active,
   .pill[aria-current].is-pending, .header-btn[aria-current="page"].is-pending { background: var(--color-accent-hover); }
+  .pill[data-tone="fresh"][aria-current]:active, .pill[data-tone="fresh"][aria-current].is-pending { background: color-mix(in srgb, var(--color-fresh) 85%, #000); }
+  .pill[data-tone="hot"][aria-current]:active, .pill[data-tone="hot"][aria-current].is-pending { background: color-mix(in srgb, var(--color-urgent) 85%, #000); }
 
   .card { transition: scale var(--dur) var(--ease-out); }
   .card:has(> a:active, .card-media a:active, .card-title a:active), .card.is-pending { scale: .985; transition: scale 0s 60ms; }

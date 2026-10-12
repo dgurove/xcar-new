@@ -23,7 +23,7 @@
     <x-ui.row-card :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)" :action="false">
         {{-- Коды и метки — чипами, где и сколько осталось — фразой (`line`, как в CRM; владелец 10.10.2026: «одно к машине
              относится, другое к фактам»). --}}
-        <x-slot:badge>@if (!$gallery && $offer->isFresh())<x-ui.state tone="open" class="title-state">новый</x-ui.state>@endif</x-slot:badge>
+        <x-slot:badge>@if (!$gallery && $offer->isFresh())<x-ui.state tone="fresh" class="title-state">новый</x-ui.state>@endif</x-slot:badge>
         <x-slot:marks>
             @if ($offer->recommended)<x-offer.recommended label/>@endif
             <x-ui.vin-code :vin="$offer->vinFor(auth()->user())" :copy="$offer->vinOpenTo(auth()->user())" class="tag"/>

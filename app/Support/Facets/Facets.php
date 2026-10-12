@@ -212,6 +212,12 @@ final class Facets
             $selected = $this->selected($key);
             if ($f->toggle) {
                 $n = $f->tally ? ($f->tally)() : null;
+                if ($f->selfCount) {
+                    $sub = clone $this->base;
+                    $this->applyTo($sub, $key);
+                    ($f->apply)($sub);
+                    $n = $sub->count();
+                }
                 if ($n === 0 && ! $selected) {
                     return null;
                 }

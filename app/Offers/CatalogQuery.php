@@ -27,8 +27,8 @@ final class CatalogQuery
         'year' => ['Год', 'desc'],
     ];
 
-    /** «Новые» и «Горящие» — окна по 12 ч (`Offer::NEW_HOURS`, `Offer::HOT_HOURS`), подписи владельца 10.10.2026. */
-    public const VIEWS = ['' => 'Все', 'recommended' => 'Рекомендуем', 'fresh' => 'Новые за 12ч', 'ending' => 'Горящие (12ч)', 'favorite' => 'Избранное'];
+    /** «Новые» за 24 ч и «Горящие» за 12 ч (`Offer::NEW_HOURS`, `Offer::HOT_HOURS`); подписи без часов — владелец 12.10.2026. */
+    public const VIEWS = ['' => 'Все', 'recommended' => 'Рекомендуем', 'fresh' => 'Новые', 'ending' => 'Горящие', 'favorite' => 'Избранное'];
 
     /** city и category — чипы (`CatalogQuery::facets`), значения через запятую; марки, года и цены нет (03.10.2026). */
     public const FILTERS = ['city', 'category', 'q', 'view', 'sort'];
@@ -171,7 +171,7 @@ final class CatalogQuery
         return $q->orderByDesc('id');
     }
 
-    /** Новые за 12 ч: открылось этому человеку недавно; в галерее — окно показа открылось за 12 ч (пилюля та же). */
+    /** Новые за 24 ч: открылось этому человеку недавно; в галерее — окно показа открылось за 24 ч (пилюля та же). */
     public static function fresh(Builder $q, ?User $user, bool $gallery = false): Builder
     {
         $since = now()->subHours(Offer::NEW_HOURS);

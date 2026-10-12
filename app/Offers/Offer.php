@@ -63,8 +63,8 @@ class Offer extends Model implements HasMedia
 
     public const DEFAULT_SHARE = 0.6;
 
-    /** Окна «Новые за 12ч» и «Горящие (12ч)» в часах (владелец 10.10.2026). */
-    public const NEW_HOURS = 12;
+    /** Окна «Новые» и «Горящие» в часах (владелец 10.10.2026; новые — сутки с 12.10.2026). */
+    public const NEW_HOURS = 24;
 
     public const HOT_HOURS = 12;
 
@@ -528,7 +528,7 @@ class Offer extends Model implements HasMedia
         return $q->whereHas('positions', fn ($p) => $p->where('track', Track::Service)
             ->whereHas('stage.exits', fn ($e) => $e->where('actor', 'keeper')->whereColumn('workflow_exits.branch', 'offers.evacuation_to')))
             // Забирать рано (`Deal::pickupHold`): Каркаде — до согласия поставщика, Альфа — до оплаты. Бейдж «Гаража» не горит.
-            ->whereNot(fn ($o) => $o->whereHas('vendor', fn ($v) => $v->where('deal_format', \App\Vendors\DealFormat::Wholesale))
+            ->whereNot(fn ($o) => $o->whereHas('vendor', fn ($v) => $v->where('deal_format', DealFormat::Wholesale))
                 ->whereHas('deal', fn ($d) => $d->whereNull('agreed_at')))
             ->whereNot(fn ($o) => $o->whereHas('vendor', fn ($v) => $v->where('pay_before_pickup', true))
                 ->whereHas('deal', fn ($d) => $d->whereNull('prepaid_at')));
@@ -632,8 +632,8 @@ class Offer extends Model implements HasMedia
         return $q->where('state', OfferState::Sold)->whereHas('deal')
             ->where(fn ($w) => $w->whereNull('deal_show_until')->orWhere('deal_show_until', '>', now()))
             ->where(fn ($w) => $w
-            ->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::USER)->where('audience_id', $user->id))
-            ->orWhere(fn ($g) => $g->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::GROUP)->whereIn('audience_id', $groups ?: [0]))));
+                ->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::USER)->where('audience_id', $user->id))
+                ->orWhere(fn ($g) => $g->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::GROUP)->whereIn('audience_id', $groups ?: [0]))));
     }
 
     /**
@@ -990,7 +990,7 @@ class Offer extends Model implements HasMedia
         return $at !== null ? Carbon::parse($at) : $this->published_at;
     }
 
-    /** Новое: открылось этому человеку за последние 12 ч (владелец 10.10.2026). */
+    /** Новое: открылось этому человеку за последние сутки (`NEW_HOURS`). */
     public function isFresh(): bool
     {
         return $this->openedAt()?->gt(now()->subHours(self::NEW_HOURS)) ?? false;
@@ -1002,6 +1002,20 @@ class Offer extends Model implements HasMedia
         $left = $this->secondsLeft();
 
         return $left !== null && $left > 0 && $left < self::HOT_HOURS * 3600;
+    }
+
+    /**
+     * Метка строки CRM (12.10.2026, владелец: «в CRM тоже помечать голубым и рыжим»): у открытого — горящее важнее
+     * нового (опубликовано за сутки); `hot` | `fresh` | null.
+     */
+    public function crmTone(): ?string
+    {
+        return match (true) {
+            $this->state !== OfferState::Open => null,
+            $this->isEndingSoon() => 'hot',
+            (bool) $this->published_at?->gt(now()->subHours(self::NEW_HOURS)) => 'fresh',
+            default => null,
+        };
     }
 
     /** Секунд до закрытия приёма; null — приём не ограничен или закрыт. */

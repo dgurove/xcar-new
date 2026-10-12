@@ -16,8 +16,8 @@ use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\MergeOffers;
-use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\PurgeOffer;
+use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Actions\ShowInGallery;
 use App\Offers\Actions\UnlistParkOffer;
@@ -25,6 +25,7 @@ use App\Offers\Actions\UnscheduleOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\BidKind;
 use App\Offers\BidState;
+use App\Offers\CatalogQuery;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
@@ -162,7 +163,16 @@ class OfferController
         // «Без цены» — без сортировки и вида, чипы есть (владелец 04.10.2026: «не хватает фильтров»), по умолчанию — без
         // Каркаде. «Рекомендуем» — переключатель у опубликованных.
         $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
-            'published', 'bids' => [...self::facets(), Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true))],
+            // «Новые» (опубликовано за сутки) и «Горящие» (приём закрывается за 12 ч) — как пилюли каталога, голубой и рыжей
+            // точкой и своим цветом включённого (12.10.2026, владелец); подтверждения и сроки видит только админ.
+            'published', 'bids' => [
+                ...self::facets(),
+                ...($admin ? [
+                    Facet::toggle('fresh', 'Новые', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.published_at', '>=', now()->subHours(Offer::NEW_HOURS)))->dot('fresh'),
+                    Facet::toggle('ending', 'Горящие', fn ($o) => CatalogQuery::ending($o))->dot('hot'),
+                ] : []),
+                Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true)),
+            ],
             default => self::facets(),
         })->always();
         ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys());

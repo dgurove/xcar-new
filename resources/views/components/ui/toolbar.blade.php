@@ -42,7 +42,7 @@
         <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-md:order-first max-md:-mx-4 max-md:flex-initial max-md:px-4" data-title-anchor>
             <div class="flex flex-nowrap items-center gap-2">
                 @foreach ($pills as $key => $label)
-                    <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
+                    <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" @isset($dots[$key]) data-tone="{{ $dots[$key] }}" @endisset data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
                         @isset($dots[$key])<span class="card-tone card-tone--{{ $dots[$key] }}"></span>@endisset{{ $label }}@if (array_key_exists($key, $counts)) <span class="nums opacity-70" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                         @isset($badges[$key])<span class="badge nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset
                     </a>

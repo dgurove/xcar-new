@@ -25,6 +25,8 @@
     $priceBids = $count - $garageBids;
     $countWord = $gallery ? 'интерес '.$count : implode(', ', array_filter([$priceBids ? $priceBids.' подтв.' : null, $garageBids ? $garageBids.' в гараж' : null]));
     $timer = $left !== null && $left > 0;
+    // Новое (опубликовано за сутки) — голубой точкой, горящее — рыжей, как на витрине (12.10.2026); только админу.
+    $mark = $admin && ! $gallery ? $offer->crmTone() : null;
     // Приём закрылся, а подтверждения есть — ход наш: «выбрать» оранжевым; без них — «приём закрыт».
     $pick = $admin && $offer->state === OfferState::Open && ! $timer && $offer->bids_close_at;
     $stateWord = $offer->state === OfferState::Open ? ($admin ? ($pick ? ($count ? 'выбрать' : 'приём закрыт') : 'приём') : 'в продаже') : mb_strtolower($offer->state->label());
@@ -59,7 +61,7 @@
 <tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($todo) data-todo @endif>
     @if ($checkable)<td class="pick-cell">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>@endif
     <td class="grow">
-        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/>@if ($noVin)<span class="ml-1.5 text-sm text-danger">Нет VIN</span>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">@if ($mark)<span class="card-tone card-tone--{{ $mark }}" aria-label="{{ $mark === 'hot' ? 'Горящее' : 'Новое' }}"></span>@endif{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif<x-ui.links :offer="$offer"/>@if ($noVin)<span class="ml-1.5 text-sm text-danger">Нет VIN</span>@endif</span></x-ui.row-link>
         {{-- Телефон: строка переносится, а не режется «…» (владелец 04.10.2026: «поля не должны исчезать»); город, даты и
              прочие столбцы — в «Подробной таблице». --}}
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">
