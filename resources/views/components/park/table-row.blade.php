@@ -58,11 +58,12 @@
                 <span>{{ $days }}&nbsp;д</span>
             @endif
         </td>
-        <td class="num nums hidden sm:table-cell">@if ($rate){{ Money::rub($rate) }}/д@endif</td>
+        {{-- Своя ставка — с пометкой «своя» (12.10.2026), нет ставки — оранжевое «нет»: правят шторкой «Ставка» в окошке. --}}
+        <td class="num nums hidden sm:table-cell">@if ($rate){{ Money::rub($rate) }}/д@if ($vehicle->storage_rate !== null)<span class="cell-sub">своя</span>@endif @elseif ($state === VehicleState::Stored)<span class="text-urgent">нет</span>@endif</td>
         <td class="num nums">
             @if ($amount > 0)<span class="block">{{ Money::rub($amount) }}</span>@endif
             @if ($debt > 0)<span class="cell-sub text-danger">долг {{ Money::nums($debt) }}</span>
-            @elseif ($rate)<span class="cell-sub sm:hidden">{{ Money::rub($rate) }}/д</span>@endif
+            @elseif ($rate)<span class="cell-sub sm:hidden">{{ Money::rub($rate) }}/д{{ $vehicle->storage_rate !== null ? ', своя' : '' }}</span>@endif
         </td>
     @endif
 </tr>

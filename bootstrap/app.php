@@ -48,6 +48,8 @@ use App\Offers\Console\PruneEmptyDrafts;
 use App\Offers\Console\TickOffers;
 use App\Park\Console\AutoRequestsCommand;
 use App\Park\Console\FillFromDocsCommand;
+use App\Park\Console\FindValuesCommand;
+use App\Park\Console\GuessCategoriesCommand;
 use App\Park\Console\MirrorOffersCommand;
 use App\Park\Console\ParkDigestCommand;
 use App\Park\Console\ReleaseByLettersCommand;
@@ -126,6 +128,8 @@ return Application::configure(basePath: dirname(__DIR__))
         GarageReformFixCommand::class,
         DealAgreementFixCommand::class,
         FillFromDocsCommand::class,
+        FindValuesCommand::class,
+        GuessCategoriesCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');

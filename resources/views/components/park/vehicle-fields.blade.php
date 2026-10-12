@@ -5,7 +5,6 @@
 @php
     $v = fn (string $k) => old($k, $vehicle?->{$k} ?? $values[$k] ?? null);
     $brand ??= $vehicle?->brand; $model ??= $vehicle?->model;
-    $byValue = once(fn () => \App\Vendors\Vendor::where('rate_by_value', true)->pluck('id')->all());
 @endphp
 <div {{ $attributes->merge(['class' => 'grid gap-3 '.$cols]) }} data-controller="twins" data-twins-url-value="/reference/twins" data-twins-except-value="{{ $vehicle?->id }}" data-twins-candidate-value="{{ $candidate }}" data-action="input->twins#changed">
     <x-ui.field name="ref" label="Номер убытка" :value="$v('ref')" autocapitalize="characters" autocorrect="off" spellcheck="false" copy/>
@@ -24,9 +23,12 @@
     {{-- Свои id: у формы звонка и эвакуации могут быть те же имена. --}}
     <x-ui.field name="contact_name" id="v-contact_name" label="Страхователь" :value="$v('contact_name')"/>
     <x-ui.field name="contact_phone" id="v-contact_phone" label="Телефон" type="tel" :value="$v('contact_phone')"/>
-    {{-- Оценочная стоимость — только у вендора, чья ставка от неё (тумблер вендора «Ставка от оценочной стоимости»,
-         договор Альфы); сменили вендора в форме — поле появляется или прячется сразу (by_vendor_controller). --}}
-    <div data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array((int) $v('vendor_id'), $byValue, true)) hidden @endunless>
-        <x-ui.field name="value" label="Оценочная стоимость, ₽" :value="$v('value')" autocomplete="off" data-controller="digits" data-action="input->digits#format"/>
-    </div>
+    {{-- Оценочная стоимость — у всех вендоров (12.10.2026, владелец: найти её у всех машин; до того — только у тех, чья
+         ставка от неё). --}}
+    <x-ui.field name="value" label="Оценочная стоимость, ₽" :value="$v('value')" autocomplete="off" data-controller="digits" data-action="input->digits#format"/>
+    {{-- Своя ставка — у принятой (12.10.2026): та же, что шторкой «Ставка» у места; пусто — по тарифу, он подсказкой. --}}
+    @if ($vehicle?->accepted_at)
+        <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" inputmode="decimal" autocomplete="off" data-controller="digits" data-action="input->digits#format"
+            :value="old('storage_rate', $vehicle->storage_rate !== null ? \App\Support\Money::nums((int) round($vehicle->storage_rate)) : null)" :placeholder="\App\Park\VehicleRate::hint($vehicle)"/>
+    @endif
 </div>

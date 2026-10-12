@@ -7,6 +7,7 @@ use App\Cars\CarModel;
 use App\Cars\Colors;
 use App\Live\Publisher;
 use App\Live\Topics;
+use App\Mail\Extraction\DocumentText;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Extraction\ScanFields;
 use App\Park\Actions\FillFromDocs;
@@ -83,8 +84,11 @@ final class VehicleSubject implements Subject
     {
         $this->vehicle->loadMissing('threads.messages.attachments');
 
-        // Все письма веток, и наши тоже: документы машины часто лежат в нашей пересылке или ответе вендору.
-        return Files::of($this->vehicle->threads->flatMap(fn ($t) => $t->messages));
+        // Все письма веток, и наши тоже: документы машины часто лежат в нашей пересылке или ответе вендору. И свои документы
+        // ТС (12.10.2026): туда легли сканы из фото (`media:doc-scans`) и то, что кладут руками.
+        $papers = collect(Paper::wrap($this->vehicle->papers()))->filter(fn (Paper $p) => DocumentText::scannable($p))->values();
+
+        return Files::of($this->vehicle->threads->flatMap(fn ($t) => $t->messages), $papers);
     }
 
     public function current(): array

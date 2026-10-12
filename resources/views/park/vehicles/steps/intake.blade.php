@@ -5,6 +5,13 @@
     <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters"/>
     <datalist id="spots-list" data-spots-target="list"></datalist>
     <x-ui.field name="accepted_at" label="Когда" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" now/>
+    {{-- Ставка — видна до «Принять» (12.10.2026, `VehicleRate`): тип ТС угадан по марке, своя ставка пусто — по тарифу. Свои
+         имена: в деле рядом стоит редактор полей ТС с той же «Категорией». --}}
+    @if (auth()->user()->canManagePark())
+        <x-ui.field name="intake_category" label="Тип ТС" :options="collect(\App\Cars\Category::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all()" placeholder="—" :value="old('intake_category', $vehicle->category?->value)"/>
+        <x-ui.field name="intake_rate" label="Своя ставка, ₽/сут" inputmode="decimal" autocomplete="off" data-controller="digits" data-action="input->digits#format"
+            :value="old('intake_rate', $vehicle->storage_rate !== null ? \App\Support\Money::nums((int) round($vehicle->storage_rate)) : null)" :placeholder="\App\Park\VehicleRate::hint($vehicle)"/>
+    @endif
     <div class="field">
         <span class="field-label">Ключей</span>
         <div class="flex gap-1.5">

@@ -54,6 +54,7 @@ use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleExport;
 use App\Park\VehicleFields;
+use App\Park\VehicleRate;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\Detail;
@@ -512,6 +513,15 @@ class VehicleController
         $move($vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
 
         return back()->with('toast', 'Переставлена');
+    }
+
+    /** Ставка машины одной шторкой (`x-park.rate`): тип ТС, своя ставка, почему, оценочная (`VehicleRate`). */
+    public function rate(Request $request, Vehicle $vehicle, UpdateVehicle $update)
+    {
+        $update($vehicle, VehicleRate::from($request), $request->user());
+        $shown = VehicleRate::shown($vehicle->refresh());
+
+        return back()->with('toast', $shown['text'] ? 'Ставка '.$shown['text'] : 'Сохранено, ставки нет');
     }
 
     /** Перевод в другой город (`Transfer`): после него управляющий прежнего города ТС не видит — назад в «Наличие». */

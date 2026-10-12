@@ -63,6 +63,12 @@ class Vehicle extends Model implements HasMedia
                 $v->city_id = City::forVehicle($v);
             }
         });
+        // Тип ТС пуст, а марка есть — угадываем (12.10.2026: у 59 машин не было ставки только из-за пустого типа).
+        static::saving(function (self $v) {
+            if (! $v->category && $v->brand_id) {
+                $v->category = $v->guessCategory();
+            }
+        });
         // Одна машина — одна запись: номер убытка или VIN другой ТС не встанет (`Identity`).
         static::saving(fn (self $v) => Identity::guardVehicle($v));
         // ТС вендора на парковке — вендор становится её вендором (раздел «Вендоры» парковки).
@@ -368,6 +374,14 @@ class Vehicle extends Model implements HasMedia
     public function saleLabel(): string
     {
         return implode(', ', array_filter([$this->titleWithYear(), $this->plate, $this->ref ? 'убыток '.$this->ref : null]));
+    }
+
+    /** Тип ТС заново: как у связанного предложения, иначе по марке и модели («Газель», «КАМАЗ»), не понять — легковой. */
+    public function guessCategory(): Category
+    {
+        $offer = $this->offer_id ? Offer::find($this->offer_id, ['id', 'vehicle_category']) : null;
+
+        return Category::tryFrom((string) $offer?->vehicle_category) ?? Category::guess($this->titleWithYear()) ?? Category::Passenger;
     }
 
     public function titleWithYear(): string

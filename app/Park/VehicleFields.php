@@ -51,6 +51,11 @@ final class VehicleFields
             $digits = preg_replace('/\D+/', '', (string) $request->input('value'));
             $request->merge(['value' => $digits === '' ? null : $digits]);
         }
+        // Своя ставка набирается разрядами и с запятой («1 200», «120,5»).
+        if ($request->has('storage_rate')) {
+            $rate = str_replace([' ', ' ', ','], ['', '', '.'], (string) $request->input('storage_rate'));
+            $request->merge(['storage_rate' => $rate === '' ? null : $rate]);
+        }
         if ($request->filled('color')) {
             $request->merge(['color' => Colors::normalize($request->input('color'), fuzzy: false) ?? trim((string) $request->input('color'))]);
         }

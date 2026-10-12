@@ -29,7 +29,7 @@
          продажа страховой («На выдачу с 6 окт», кто заберёт — нажатие открывает шторку «Покупатель», телефон ссылкой).
          Справа — только действия: документы и «⋯». Продажа в CRM — пунктами значка связи у названия (как в карточке
          «Наличия», владелец 10.10.2026: «одно к машине относится, другое к фактам»). Всё, что есть в полях (номер, вендор,
-         телефон страхователя) и в «Деньгах» (ставка, начислено), тут не повторяется. --}}
+         телефон страхователя) и в «Деньгах» (начислено), тут не повторяется; ставка — здесь, у места, шторкой `x-park.rate` (12.10.2026). --}}
     <div class="-mt-3 mb-6 flex items-start gap-3">
         <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-1.5">
@@ -233,7 +233,7 @@
     {{-- Шторки: даты приёма и выдачи, договор, продано, действия «⋯», отмена заявки. --}}
     @if ($canManage)
         <div data-controller="sheet" data-action="contract:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="contract" title="Условия" tall :open="$errors->hasAny(['contract_kind', 'assigned_price', 'storage_rate'])">
+            <x-ui.sheet id="contract" title="Условия" tall :open="$errors->hasAny(['contract_kind', 'assigned_price'])">
                 <form method="post" action="/cars/{{ $vehicle->id }}" class="flex flex-col gap-3">
                     @csrf @method('put')
                     <div class="fields">
@@ -242,8 +242,6 @@
                         <x-ui.field name="contract_at" label="Дата" type="date" :value="$vehicle->contract_at?->toDateString()"/>
                         <x-ui.field name="assigned_price" label="Назначенная цена, ₽" :value="$vehicle->assigned_price"/>
                         <x-ui.field name="owner_party_id" label="Комитент" :options="$owners" placeholder="—" :value="$vehicle->owner_party_id"/>
-                        <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" :value="$vehicle->storage_rate"/>
-                        <x-ui.field name="storage_rate_note" label="Почему своя" :value="$vehicle->storage_rate_note"/>
                         <x-ui.field name="billing_cadence" label="Счёт за хранение" :options="\App\Billing\Cadence::options()" :placeholder="'Как у вендора'.($vehicle->vendor ? ': '.mb_strtolower($vehicle->vendor->billing_cadence->label()) : '')" :value="$vehicle->billing_cadence?->value"/>
                     </div>
                     <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>

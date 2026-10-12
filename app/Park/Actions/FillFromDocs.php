@@ -58,10 +58,6 @@ final class FillFromDocs
         $fill = [];
         $disputed = [];
         foreach (self::FIELDS as $field) {
-            // Оценочная стоимость нужна только вендорам, чья ставка от неё (`rate_by_value`): остальным её не пишем и не сверяем.
-            if ($field === 'value' && ! $vehicle->vendor?->rate_by_value) {
-                continue;
-            }
             $values = $found[$field] ?? [];
             if ($field === 'vin') {
                 $values = $this->vins($vehicle, $values, $disputed);

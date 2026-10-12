@@ -27,6 +27,7 @@ use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleFields;
+use App\Park\VehicleRate;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\Detail;
@@ -262,7 +263,9 @@ class RequestController
         }
         VehicleFields::clean($request);
         $data = VehicleFields::only($request->validate(VehicleFields::rules()));
-        app(UpdateVehicle::class)($vehicle, $data, $request->user());
+        // Своя ставка — поле редактора у принятой ТС (`VehicleRate`), в тождество не входит.
+        $rate = array_intersect_key(VehicleRate::from($request), array_flip(['storage_rate']));
+        app(UpdateVehicle::class)($vehicle, $data + $rate, $request->user());
         $vehicle->refresh();
     }
 
@@ -270,6 +273,11 @@ class RequestController
     {
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'], 'accepted_at' => ['nullable', 'date']] + self::inspectionRules());
         $this->saveVehicle($request, $req->vehicle);
+        // Тип ТС и своя ставка из формы приёма — свои имена полей (в деле рядом редактор с той же «Категорией»).
+        if ($request->user()->canManagePark() && $request->has('intake_rate')) {
+            $rate = VehicleRate::from(new Request(['category' => $request->input('intake_category'), 'storage_rate' => $request->input('intake_rate')]));
+            app(UpdateVehicle::class)($req->vehicle, $rate, $request->user());
+        }
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data, $req, $data['spot'] ?? null);
 
         // Из окна заявки (фрейм карточки) — строка уходит, окно к следующей заявке; из дела — дело, где шаг «Отчёт вендору»

@@ -43,12 +43,13 @@ final class AutoScan
     /** Дочитывать документы ТС, чья заявка из письма заведена не раньше стольких дней назад. */
     private const SWEEP_DAYS = 7;
 
-    public static function start(Vehicle $vehicle): void
+    /** @param list<string> $ids дописать в чтение и эти файлы — фото (`park:find-values --photos`); пусто — документы */
+    public static function start(Vehicle $vehicle, array $ids = []): void
     {
         Cache::put(self::key($vehicle->id), 'docs', self::TTL);
         self::register($vehicle->id);
         $subject = new VehicleSubject($vehicle);
-        Reader::read($subject);
+        Reader::read($subject, $ids);
         // Читать нечего или всё уже в кеше — итог сразу, задачи не будет.
         if (! ScanAttachments::reading(Reader::files($subject))) {
             self::finished($subject);
