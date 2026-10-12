@@ -2,8 +2,6 @@
 
 namespace App\Mail\Extraction;
 
-use Illuminate\Support\Carbon;
-
 /** Письма приходят пересылкой: настоящий отправитель и тема сидят в теле за «От:» и «Тема:». */
 final class QuotationStripper
 {
@@ -84,37 +82,6 @@ final class QuotationStripper
         }
         if (preg_match('/^\s*(?:'.$headers.')\s*:\s*([^<>@\s]+@[^<>@\s]+)/umi', $text, $m)) {
             return mb_strtolower(rtrim($m[1], '.,;'));
-        }
-
-        return null;
-    }
-
-    /**
-     * Когда написано пересланное письмо: «Дата: Вторник, 22 июля 2025, 15:55 +03:00», «Date: Fri, 9 Oct 2026»,
-     * «Sent: Friday, October 9, 2026 5:12 PM». Нет строки или не разобрать — null.
-     */
-    public static function forwardedDate(?string $body): ?Carbon
-    {
-        $text = self::forwardedBody($body);
-        if ($text === null || ! preg_match('/^\s*(?:Дата|Отправлено|Date|Sent)\s*:\s*(.+)$/umi', $text, $m)) {
-            return null;
-        }
-        $months = ['январ' => 1, 'феврал' => 2, 'март' => 3, 'апрел' => 4, 'ма' => 5, 'июн' => 6, 'июл' => 7, 'август' => 8, 'сентябр' => 9,
-            'октябр' => 10, 'ноябр' => 11, 'декабр' => 12, 'jan' => 1, 'feb' => 2, 'mar' => 3, 'apr' => 4, 'may' => 5, 'jun' => 6, 'jul' => 7,
-            'aug' => 8, 'sep' => 9, 'oct' => 10, 'nov' => 11, 'dec' => 12];
-        $line = mb_strtolower($m[1]);
-        // «22 июля 2025» / «9 oct 2026»
-        if (preg_match('/(\d{1,2})\s+(\p{L}+)\.?,?\s+(\d{4})/u', $line, $d) || preg_match('/(\p{L}+)\s+(\d{1,2}),?\s+(\d{4})/u', $line, $e)) {
-            [$day, $word, $year] = isset($d[0]) ? [$d[1], $d[2], $d[3]] : [$e[2], $e[1], $e[3]];
-            foreach ($months as $stem => $n) {
-                if (str_starts_with($word, $stem) && checkdate($n, (int) $day, (int) $year)) {
-                    return Carbon::create((int) $year, $n, (int) $day);
-                }
-            }
-        }
-        // «22.07.2025»
-        if (preg_match('/(\d{1,2})\.(\d{1,2})\.(\d{4})/', $line, $d) && checkdate((int) $d[2], (int) $d[1], (int) $d[3])) {
-            return Carbon::create((int) $d[3], (int) $d[2], (int) $d[1]);
         }
 
         return null;
