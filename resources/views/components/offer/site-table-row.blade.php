@@ -13,8 +13,10 @@
     // Новое и горящее — точкой перед названием, как непрочитанное (владелец 10.10.2026); горящее важнее.
     // Отдано на оценку (11.10.2026): ход менеджера — оранжевой точкой; у черновика номер временный, его не пишем.
     // Открыто только ему (пачка «Открыты только Вам», 11.10.2026) — красной точкой, важнее нового и горящего.
+    // Срочное (12.10.2026) — огненной точкой, важнее всего, кроме оценки.
     $tone = match (true) {
         $estimate !== null => $estimate->isGiven() ? null : 'hot',
+        $offer->isUrgent() => 'urgent',
         $only => 'only',
         $gallery => null,
         $bids && $offer->isEndingSoon() => 'hot',
@@ -31,7 +33,7 @@
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}">
     <td class="grow">
-        <x-ui.row-link :key="$n"><span class="cell-title">@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : match ($tone) { 'only' => 'Только вам', 'hot' => 'Горящее', default => 'Новое' } }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title">@if ($tone && $tone !== 'urgent')<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : match ($tone) { 'only' => 'Только вам', 'hot' => 'Горящее', 'urgent' => 'Срочно', default => 'Новое' } }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
             @unless ($estimate)<span class="sm:hidden">№ {{ $n }}</span>@endunless
             @if ($estimate)@unless ($estimate->isGiven())<span class="cell-timer sm:hidden"><x-ui.icon name="timer" class="size-3.5"/><x-offer.estimate-left :estimate="$estimate" word=""/></span>@endunless

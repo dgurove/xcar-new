@@ -144,6 +144,7 @@ class Offer extends Model implements HasMedia
             'slot_at' => 'datetime',
             'gallery_from' => 'datetime',
             'gallery_until' => 'datetime',
+            'urgent_at' => 'datetime',
             'floor_price' => 'int',
             'value' => 'int',
             'publish_price' => 'int',
@@ -605,8 +606,10 @@ class Offer extends Model implements HasMedia
                     // (`buyer_sees = picked`, 12.10.2026).
                     $groups = $user->groupIds();
                     $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
-                        ->when(! $user->buyerSeesAll(), fn ($m) => $m->whereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)
-                            ->where(fn ($g) => $g->where('user_id', $user->id)->when($groups, fn ($g) => $g->orWhereIn('group_id', $groups)))))
+                        // Срочное (12.10.2026) — всем покупателям менеджера, и «выбранным» тоже.
+                        ->when(! $user->buyerSeesAll(), fn ($m) => $m->where(fn ($p) => $p->whereNotNull('offers.urgent_at')
+                            ->orWhereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)
+                                ->where(fn ($g) => $g->where('user_id', $user->id)->when($groups, fn ($g) => $g->orWhereIn('group_id', $groups))))))
                         ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->manager_id)->where('opens_at', '<=', now())));
                 }
             }
@@ -1005,6 +1008,21 @@ class Offer extends Model implements HasMedia
     }
 
     /**
+     * Срочное (12.10.2026, владелец: «срочно, всем, огоньком»): опубликовано «Срочно» и приём ещё идёт. Закрылся приём —
+     * огонёк гаснет сам; `urgent_at` остаётся историей.
+     */
+    public function isUrgent(): bool
+    {
+        return $this->urgent_at !== null && $this->state === OfferState::Open && $this->bidsOpen();
+    }
+
+    /** Срочные с идущим приёмом — запросом (лента «Срочно», пилюля, чип CRM). */
+    public function scopeUrgent(Builder $q): Builder
+    {
+        return $q->where('offers.state', OfferState::Open)->whereNotNull('offers.urgent_at')->where('offers.bids_close_at', '>', now());
+    }
+
+    /**
      * Метка строки CRM (12.10.2026, владелец: «в CRM тоже помечать голубым и рыжим»): у открытого — горящее важнее
      * нового (опубликовано за сутки); `hot` | `fresh` | null.
      */
@@ -1012,6 +1030,7 @@ class Offer extends Model implements HasMedia
     {
         return match (true) {
             $this->state !== OfferState::Open => null,
+            $this->isUrgent() => 'urgent',
             $this->isEndingSoon() => 'hot',
             (bool) $this->published_at?->gt(now()->subHours(self::NEW_HOURS)) => 'fresh',
             default => null,

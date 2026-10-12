@@ -28,7 +28,7 @@ final class CatalogQuery
     ];
 
     /** «Новые» за 24 ч и «Горящие» за 12 ч (`Offer::NEW_HOURS`, `Offer::HOT_HOURS`); подписи без часов — владелец 12.10.2026. */
-    public const VIEWS = ['' => 'Все', 'recommended' => 'Рекомендуем', 'fresh' => 'Новые', 'ending' => 'Горящие', 'favorite' => 'Избранное'];
+    public const VIEWS = ['' => 'Все', 'urgent' => 'Срочные', 'recommended' => 'Рекомендуем', 'fresh' => 'Новые', 'ending' => 'Горящие', 'favorite' => 'Избранное'];
 
     /** city и category — чипы (`CatalogQuery::facets`), значения через запятую; марки, года и цены нет (03.10.2026). */
     public const FILTERS = ['city', 'category', 'q', 'view', 'sort'];
@@ -136,6 +136,7 @@ final class CatalogQuery
 
         if ($search === '') {
             match ($filters['view'] ?? '') {
+                'urgent' => $q->urgent(),
                 'recommended' => $q->where('recommended', true),
                 'fresh' => self::fresh($q, $user, $gallery),
                 'ending' => self::ending($q),
@@ -213,9 +214,11 @@ final class CatalogQuery
     }
 
     /** Пилюли для тулбара: «Рекомендуем» пока есть отмеченные, «Горящие» только в каталоге и не покупателю, «Избранное» только вошедшему. */
-    public static function allowedViews(?User $user, bool $gallery, int $recommended = 0): array
+    public static function allowedViews(?User $user, bool $gallery, int $recommended = 0, int $urgent = 0): array
     {
         return array_filter(self::VIEWS, fn ($_, $key) => match ($key) {
+            // «Срочные» (12.10.2026) — пока такие есть.
+            'urgent' => ! $gallery && $urgent > 0,
             'recommended' => $recommended > 0,
             'ending' => ! $gallery && ! $user?->isBuyer(),
             'favorite' => $user !== null,

@@ -24,6 +24,10 @@ final class SyncViewers
         }
         $base = $offer->published_at ?? now();
         $open = AudienceRules::openings(AudienceRules::of($offer), $people);
+        // Срочное (12.10.2026) — всем сразу: задержки волн снимаются, «Не показывать» (кого нет в волнах) — как было.
+        if ($offer->urgent_at) {
+            $open = array_map(fn () => 0, $open);
+        }
 
         DB::transaction(function () use ($offer, $base, $open) {
             // Выпавшим из волны — убрать и анонс (карточку бота, «Новое предложение»).

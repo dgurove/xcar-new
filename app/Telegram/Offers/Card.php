@@ -37,7 +37,7 @@ final class Card
         }
         $price = PriceView::for($offer, $user);
         $lines = [
-            'Поступило новое предложение'.($more > 0 ? ' (и ещё '.$more.')' : ''),
+            ($offer->isUrgent() ? '🔥 Срочно, приём до '.$offer->bids_close_at->translatedFormat('j M, H:i') : 'Поступило новое предложение').($more > 0 ? ' (и ещё '.$more.')' : ''),
             '',
             $title,
             $facts ? implode('; ', $facts) : null,

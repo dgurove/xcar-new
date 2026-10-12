@@ -43,7 +43,7 @@
             <div class="flex flex-nowrap items-center gap-2">
                 @foreach ($pills as $key => $label)
                     <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" @isset($dots[$key]) data-tone="{{ $dots[$key] }}" @endisset data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
-                        @isset($dots[$key])<span class="card-tone card-tone--{{ $dots[$key] }}"></span>@endisset{{ $label }}@if (array_key_exists($key, $counts)) <span class="nums opacity-70" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
+                        @isset($dots[$key])@if ($dots[$key] === 'urgent')<x-ui.icon name="fire" fill class="mr-1 size-4 {{ (string) $pill === (string) $key ? '' : 'text-fire' }}"/>@else<span class="card-tone card-tone--{{ $dots[$key] }}"></span>@endif @endisset{{ $label }}@if (array_key_exists($key, $counts)) <span class="nums opacity-70" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                         @isset($badges[$key])<span class="badge nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset
                     </a>
                 @endforeach

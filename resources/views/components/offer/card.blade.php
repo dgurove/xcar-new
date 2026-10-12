@@ -30,8 +30,10 @@
     // Горящее важнее нового: полоса у плитки под кадром, точка у строки (владелец 10.10.2026). Горящее — тем, кто видит срок.
     // Отдано на оценку (11.10.2026): ход менеджера — оранжевой полосой, как горящее; оценил — без полосы, ждём админа.
     // Открыто только ему («Открыты только Вам», 11.10.2026) — красной полосой, важнее нового и горящего.
+    // Срочное (12.10.2026) — огненной полосой, важнее всего, кроме оценки.
     $tone = match (true) {
         $estimate !== null => $estimate->isGiven() ? null : 'hot',
+        $offer->isUrgent() => 'urgent',
         $only => 'only',
         $gallery => null,
         $bidder && $offer->isEndingSoon() => 'hot',
@@ -71,7 +73,7 @@
 
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" class="card-name block min-w-0 flex-1 leading-snug hover:text-accent-text"><span>@if ($tone)<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : match ($tone) { 'only' => 'Только вам', 'hot' => 'Горящее', default => 'Новое' } }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span></a>
+            <a href="{{ $href }}" class="card-name block min-w-0 flex-1 leading-snug hover:text-accent-text"><span>@if ($tone && $tone !== 'urgent')<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : match ($tone) { 'only' => 'Только вам', 'hot' => 'Горящее', 'urgent' => 'Срочно', default => 'Новое' } }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif</span></a>
         </div>
         @if ($estimate)
             {{-- Срок оценки на месте срока приёма; отклонили — словом впереди, срок прежний. --}}

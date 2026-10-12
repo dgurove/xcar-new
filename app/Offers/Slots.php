@@ -18,7 +18,31 @@ final class Slots
 
     public const NEXT = 'next';
 
-    public const WHEN = [self::NOW, self::NEAREST, self::NEXT];
+    /** «Срочно» (12.10.2026): сейчас, всем сразу, громко, со своим сроком приёма (`urgentUntil`). */
+    public const URGENT = 'urgent';
+
+    public const WHEN = [self::NOW, self::NEAREST, self::NEXT, self::URGENT];
+
+    /** Срок приёма срочного: из поля «Приём до», не раньше чем через 30 минут; пусто — через 3 часа, по 5 минут. */
+    public static function urgentUntil(?string $input): Carbon
+    {
+        $at = null;
+        try {
+            $at = filled($input) ? Carbon::parse($input) : null;
+        } catch (\Throwable) {
+        }
+        $at ??= self::urgentDefault();
+
+        return $at->max(now()->addMinutes(30))->second(0);
+    }
+
+    /** Подставленный срок срочного: через 3 часа, вверх до 5 минут. */
+    public static function urgentDefault(): Carbon
+    {
+        $at = now()->addHours(3)->second(0);
+
+        return $at->minute((int) ceil($at->minute / 5) * 5);
+    }
 
     /** Ближайший слот строго после этой минуты: до 16:00 — сегодня, с 16:00 — завтра. */
     public static function nearest(?Carbon $from = null): Carbon

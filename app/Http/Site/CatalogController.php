@@ -46,6 +46,13 @@ class CatalogController
 
         // Чипы кладёт Facets (ему нужна база без них — для вариантов и чисел), остальное — CatalogQuery.
         $query = $facets->apply(CatalogQuery::for($user, array_diff_key($filters, array_flip($facets->keys())) + ['sort' => $sort], $gallery));
+        // «Срочно» (12.10.2026, владелец): срочные с идущим приёмом — первой лентой, ближний срок выше; из основного списка
+        // уходят, как «Открыты только Вам». С тем же фильтром; в поиске и на пилюле «Срочные» — нет.
+        $urgent = ! $gallery && blank($filters['q'] ?? null) && blank($filters['view'] ?? null)
+            ? (clone $query)->urgent()->reorder()->orderBy('offers.bids_close_at')->get() : collect();
+        if ($urgent->isNotEmpty()) {
+            $query->whereNotIn('offers.id', $urgent->pluck('id'));
+        }
         // «Открыты только Вам» (11.10.2026, владелец): открытое одному этому менеджеру — своей пачкой выше остальных (после
         // «Нужно оценить»), из основного списка уходит, чтобы не стоять дважды. С тем же фильтром и сортировкой; в поиске — нет.
         $exclusive = ! $gallery && $user?->isManager() && blank($filters['q'] ?? null)
@@ -72,19 +79,21 @@ class CatalogController
             : [
                 // Без фильтров «Все» — это и есть длина списка: второй раз не считаем. Та же дверь, что у списка и таба
                 // (`Offer::siteList`: со сделками, открытыми менеджеру), — иначе с фильтром число расходилось с табом.
-                'offers' => ! $gallery && ! $narrowed ? $count + $exclusive->count() : Offer::siteList($user)->count(),
+                'offers' => ! $gallery && ! $narrowed ? $count + $exclusive->count() + $urgent->count() : Offer::siteList($user)->count(),
                 'gallery' => Offer::visibleTo($user)->inGallery()->count(),
                 'recommended' => ($gallery ? Offer::visibleTo($user)->inGallery() : Offer::siteList($user))->where('recommended', true)->count(),
             ];
         // «Рекомендуем» — пилюля есть, пока в разделе есть отмеченные.
         $recommended = $counts[$gallery && $user?->isAdmin() ? 'recommended_gallery' : 'recommended'] ?? 0;
-        $views = CatalogQuery::allowedViews($user, $gallery, $recommended);
+        $urgentCount = $gallery ? 0 : $facets->applyTo(Offer::siteList($user))->urgent()->count();
+        $views = CatalogQuery::allowedViews($user, $gallery, $recommended, $urgentCount);
         // Числа на пилюлях — с выбранными чипами (город, тип ТС): сколько покажет нажатие. Считаем только пилюли, которые
         // человеку видны; «новое» у каждого своё (волна, показ) — не из общего кэша.
         $section = fn () => $facets->applyTo($gallery ? Offer::visibleTo($user)->inGallery() : Offer::siteList($user));
         $pills = [];
-        foreach (array_intersect(['recommended', 'fresh', 'ending'], array_keys($views)) as $key) {
+        foreach (array_intersect(['urgent', 'recommended', 'fresh', 'ending'], array_keys($views)) as $key) {
             $pills[$key] = match ($key) {
+                'urgent' => $urgentCount,
                 'recommended' => $section()->where('recommended', true)->count(),
                 'fresh' => CatalogQuery::fresh($section(), $user, $gallery)->count(),
                 'ending' => CatalogQuery::ending($section())->count(),
@@ -115,6 +124,7 @@ class CatalogController
             'sorting' => Sort::from($sort, CatalogQuery::allowedSorts($gallery, $prices, $user), CatalogQuery::defaultSort($user, $gallery)),
             'groups' => $groups,
             'exclusive' => $offers->currentPage() === 1 ? $exclusive : collect(),
+            'urgent' => $offers->currentPage() === 1 ? $urgent : collect(),
             'shelves' => $shelves,
             'groupSizes' => $groups ? \App\Offers\CloseGroups::sizes($query, $gallery) : [],
             'views' => $views,

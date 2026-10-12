@@ -7,10 +7,12 @@ use App\Live\Topics;
 use App\Mail\Actions\PinThread;
 use App\Mail\Attachment;
 use App\Mail\Extraction\AttachmentImporter;
+use App\Mail\Extraction\CloudShare;
 use App\Mail\Extraction\Intent;
 use App\Mail\Thread;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
@@ -19,6 +21,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -75,6 +78,10 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $hidden = $offer && $offer->state !== OfferState::Draft ? ['hidden' => true] : [];
             $properties = $vehicle ? fn (Attachment $a) => self::stageOf($a) + $hidden : $hidden;
             $added = $importer->import($model, $attachments, 'photos', 'papers', $properties, $report);
+            if ($offer) {
+                $cloud = self::cloud($thread, $offer, $importer, $hidden, $report);
+                $added = ['photos' => $added['photos'] + $cloud['photos'], 'documents' => $added['documents'] + $cloud['documents']];
+            }
         } finally {
             Cache::forget($key);
         }
@@ -89,6 +96,42 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $offer && $publish->toast(Topics::STAFF, $what, "/offers/{$offer->number}", 'photo');
             $car && $publish->toast(Topics::PARK, $what, "/cars/{$car->id}", 'photo');
         }
+    }
+
+    /**
+     * «Фото и документы по ссылке» (12.10.2026, Инсайт: облако Nextcloud в письме вместо вложений) — ссылки на облако из
+     * писем вендора в ветке скачиваются тем же `CloudShare`, что ответы по сделке, и кладутся к предложению: кадры в фото,
+     * остальное в документы. Каждая ссылка — один раз на предложение; не скачалась — запись в «Истории», без повтора.
+     *
+     * @return array{photos: int, documents: int}
+     */
+    private static function cloud(Thread $thread, Offer $offer, AttachmentImporter $importer, array $photos, callable $report): array
+    {
+        $added = ['photos' => 0, 'documents' => 0];
+        $links = $thread->messages()->get()->reject(fn ($m) => $m->isOurs())
+            ->flatMap(fn ($m) => CloudShare::links($m->ownText()."\n".$m->replyText(marks: true)))->unique('token');
+        foreach ($links as $link) {
+            if (! Cache::add('cloud-import:'.$offer->id.':'.$link['token'], 1, now()->addDays(60))) {
+                continue;
+            }
+            $path = sys_get_temp_dir().'/cloud-'.Str::uuid();
+            try {
+                $report('Забираем файлы по ссылке из письма');
+                $name = app(CloudShare::class)->download($link, $path);
+                $got = str_ends_with(mb_strtolower($name), '.zip')
+                    ? $importer->importArchive($offer, $path, 'photos', 'papers', $report, [], 'mail', $photos)
+                    : ['documents' => (int) $importer->importDocument($offer, 'papers', $name, (string) file_get_contents($path), 'mail'), 'photos' => 0];
+                $added = ['photos' => $added['photos'] + ($got['photos'] ?? 0), 'documents' => $added['documents'] + ($got['documents'] ?? 0)];
+                $offer->log(OfferEventType::Note, null, ['text' => 'Файлы по ссылке из письма: '.($got === null ? 'архив не открылся' : 'фото '.$got['photos'].', документов '.$got['documents'])]);
+            } catch (Throwable $e) {
+                Log::warning('Облако из письма не скачалось', ['offer' => $offer->id, 'url' => $link['url'], 'error' => $e->getMessage()]);
+                $offer->log(OfferEventType::Note, null, ['text' => 'Файлы по ссылке из письма не скачались: '.$e->getMessage()]);
+            } finally {
+                @unlink($path);
+            }
+        }
+
+        return $added;
     }
 
     /**

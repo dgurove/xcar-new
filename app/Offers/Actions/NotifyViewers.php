@@ -10,6 +10,7 @@ use App\Notifications\GalleryInterestOnSaleNotice;
 use App\Notifications\OfferPublishedNotice;
 use App\Notifications\PurchaseCarOnSaleNotice;
 use App\Notifications\SlotPublishedNotice;
+use App\Notifications\UrgentOfferNotice;
 use App\Offers\Interest;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -46,6 +47,16 @@ final class NotifyViewers
         }
         OfferViewer::where('offer_id', $offer->id)->whereIn('user_id', $due)->update(['notified_at' => now()]);
         $managers = User::whereIn('id', $due)->get();
+        // Срочное — всем одно громкое «Срочно: …» (12.10.2026), без «из закупки» и «вы отмечали интерес».
+        if ($offer->isUrgent()) {
+            $managers->each(fn (User $u) => $u->notify(new UrgentOfferNotice($offer, $u)));
+            $this->buyers([$offer->id => $due], collect([$offer->id => $offer]));
+            if ($live) {
+                $this->publish->card($offer->number, Topics::CATALOG);
+            }
+
+            return count($due);
+        }
 
         if ($car = PurchaseCar::where('offer_id', $offer->id)->first()) {
             $priced = $car->offers()->where('state', '!=', PurchaseOfferState::Withdrawn)->pluck('user_id')->all();
@@ -89,6 +100,12 @@ final class NotifyViewers
                 continue;
             }
             $ids = $viewers->pluck('user_id')->all();
+            if ($offer->isUrgent()) {
+                $users->only($ids)->each(fn (User $u) => $u->notify(new UrgentOfferNotice($offer, $u)));
+                $this->publish->card($offer->number, Topics::CATALOG);
+
+                continue;
+            }
             if ($car = PurchaseCar::where('offer_id', $offer->id)->first()) {
                 $priced = $car->offers()->where('state', '!=', PurchaseOfferState::Withdrawn)->pluck('user_id')->all();
                 Notification::send($users->only(array_intersect($ids, $priced))->values(), new PurchaseCarOnSaleNotice($offer));
@@ -138,6 +155,12 @@ final class NotifyViewers
             $liked = self::galleryInterest($offer);
             foreach ($ids as $managerId) {
                 foreach ($buyers->get($managerId, collect()) as $buyer) {
+                    // Срочное — каждому покупателю менеджера, и «выбранному» тоже (видно им всем).
+                    if ($offer->isUrgent()) {
+                        $buyer->notify(new UrgentOfferNotice($offer, $buyer));
+
+                        continue;
+                    }
                     $waited = in_array($buyer->id, $liked, true);
                     if ($buyer->buyerSeesAll() && $waited) {
                         $buyer->notify(new GalleryInterestOnSaleNotice($offer, buyer: true));

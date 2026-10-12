@@ -20,7 +20,7 @@
             </div>
 
             {{-- Лупа сайта — в шапке (поиск по разделам); пришли из неё — тулбар сразу в поиске, с полем и «Отмена». --}}
-            <x-ui.toolbar class="md:mt-5" :sort="$sorting" :pills="$views" :dots="$gallery ? [] : ['fresh' => 'fresh', 'ending' => 'hot']" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
+            <x-ui.toolbar class="md:mt-5" :sort="$sorting" :pills="$views" :dots="$gallery ? [] : ['urgent' => 'urgent', 'fresh' => 'fresh', 'ending' => 'hot']" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && ! \App\Support\ListView::isTable($view))<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
                     <x-ui.view-switch :current="$view"/>
@@ -36,6 +36,27 @@
                     $toEstimate = $estimates->reject(fn ($o) => $o->openEstimates->first()?->isGiven());
                     $estimated = $estimates->filter(fn ($o) => $o->openEstimates->first()?->isGiven());
                 @endphp
+                {{-- «Срочно» (12.10.2026, владелец): самой первой лентой, с огоньком и сроком приёма цветом огня. Строками и
+                     таблицей — первыми строками с заголовком. --}}
+                @if ($urgent->isNotEmpty())
+                    @if (\App\Support\ListView::isTable($view))
+                    <x-ui.table id="catalog-urgent" :view="$view" class="mb-6">
+                        <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
+                        <tr class="table-group"><th colspan="99" scope="colgroup"><x-ui.icon name="fire" fill class="mr-1 inline size-4 align-[-2px] text-fire"/>Срочно <span class="nums">{{ $urgent->count() }}</span></th></tr>
+                        @foreach ($urgent as $offer)
+                            <x-offer.site-table-row :offer="$offer" :context="$context" :deadline="$deadline"/>
+                        @endforeach
+                    </x-ui.table>
+                    @else
+                    <div class="mb-6" data-controller="ticker">
+                        <x-ui.shelf title="Срочно" tone="urgent" :count="$urgent->count()" id="catalog-urgent" :data-selection-target="$selecting ? 'list' : null" :data-action="$selecting ? 'click->selection#tap:capture change->selection#change' : null">
+                            @foreach ($urgent as $offer)
+                                <x-offer.card :offer="$offer" :context="$context"/>
+                            @endforeach
+                        </x-ui.shelf>
+                    </div>
+                    @endif
+                @endif
                 @if ($toEstimate->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
                     <x-ui.table id="catalog-estimates" :view="$view" class="mb-6">
@@ -86,7 +107,9 @@
                     @endif
                 @endif
                 @if ($offers->isEmpty())
-                    @if ($buyer && ! $narrowed && ! $gallery)
+                    {{-- Всё ушло в ленты сверху («Срочно», «Открыты только Вам») — «пусто» не пишем. --}}
+                    @if ($urgent->isNotEmpty() || $exclusive->isNotEmpty())
+                    @elseif ($buyer && ! $narrowed && ! $gallery)
                         {{-- Покупателю пусто: одна фраза и контакт менеджера строкой. Видит всё (12.10.2026) — значит, у менеджера
                              сейчас ничего нет; видит выбранные — менеджер ещё не открыл. Галерея от менеджера не зависит. --}}
                         <x-ui.empty id="catalog-empty" class="pb-0">{{ $user->buyerSeesAll() ? 'Предложений в продаже сейчас нет' : ($manager ? $manager->shortName().' пока ничего вам не открыл' : 'Вам пока ничего не открыли') }}</x-ui.empty>

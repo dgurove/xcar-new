@@ -386,8 +386,10 @@ final class Handler
      */
     private function prompt(Subscriber $sub, bool $remind): void
     {
+        // Срочное, что ждёт его в ленте (12.10.2026): анонс приходит и тому, кто сейчас листает, и со звуком в тихие часы.
+        $urgent = $remind ? null : Feed::query($sub->user)->urgent()->with(['brand', 'model'])->orderBy('bids_close_at')->first();
         // «Занят» — только пока он здесь: бросил ленту на середине и ушёл (10 минут тишины) — анонс приходит.
-        if (in_array($sub->mode, [Subscriber::FEED, Subscriber::ASKING, Subscriber::INVITE], true) && $sub->updated_at?->gt(now()->subMinutes(10))) {
+        if (! $urgent && in_array($sub->mode, [Subscriber::FEED, Subscriber::ASKING, Subscriber::INVITE], true) && $sub->updated_at?->gt(now()->subMinutes(10))) {
             return;
         }
         [$fresh, $slot] = $remind ? [0, 0] : $this->announce->fresh($sub);
@@ -401,12 +403,15 @@ final class Handler
         $head = ! $remind && $slot === $fresh && $fresh === $n
             ? "Опубликовано {$n} ".Plural::of($n, ['предложение', 'предложения', 'предложений']).', показать '.($n === 1 ? 'его' : 'их').'?'
             : "Появились новые предложения: {$n}, показать их?";
+        if ($urgent) {
+            $head = '🔥 Срочно: '.$urgent->titleWithYear().', приём до '.$urgent->bids_close_at->translatedFormat('j M, H:i')."\n\n".$head;
+        }
         if ($sub->prompt_message_id) {
             $this->bot->deleteQuietly($sub->chat_id, (int) $sub->prompt_message_id);
         }
         $id = $this->bot->quietly(fn () => $this->bot->say($sub->chat_id,
             $head."\n\n1. Показать\n2. Напомнить через 1 ч",
-            Keys::prompt(), $sub->user->quietHours() ? ['disable_notification' => 'true'] : []));
+            Keys::prompt(), $sub->user->quietHours() && ! $urgent ? ['disable_notification' => 'true'] : []));
         $sub->forceFill(['prompt_message_id' => $id ?: null])->save();
         $sub->moveTo(Subscriber::PROMPT);
     }

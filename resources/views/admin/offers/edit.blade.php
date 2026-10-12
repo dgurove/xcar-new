@@ -58,6 +58,10 @@
         @else
             <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
         @endif
+        {{-- Срочное (12.10.2026) — капсулой огня со сроком приёма. --}}
+        @if ($offer->isUrgent())
+            <span class="pill pill-fire"><x-ui.icon name="fire" fill class="size-4"/>Срочно, до {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
+        @endif
         @if ($admin)
             <div class="contents" data-controller="sheet tag-chips" data-action="change->tag-chips#render">
                 <span class="contents" data-tag-chips-target="chips">
@@ -231,6 +235,7 @@
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
     @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
+    @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/>@endif
     @php $deletable = ! $fromMail && $offer->isDeletableBy(auth()->user()); @endphp
     <x-ui.action-bar>
         @if ($fromMail)
@@ -259,7 +264,10 @@
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
             <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
                 <div class="flex flex-col gap-2">
-                    @if ($publishItems)<x-offer.publish-items :offer="$offer" button/>@endif
+                    @if ($publishItems)
+                        <x-offer.publish-items :offer="$offer" button/>
+                        <x-ui.button type="button" block class="btn-fire" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="urgent:open"><x-ui.icon name="fire" fill class="size-5"/> Срочно…</x-ui.button>
+                    @endif
                     @if ($resale)
                         {{-- Сделка — одна «Отменить сделку» шторкой: в продажу или в черновики (12.10.2026); гараж — «Вернуть в продажу». --}}
                         <x-ui.button type="button" block :variant="$offer->state === OfferState::Sold && ! $garage ? 'danger' : 'primary'" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="resale:open">{{ $offer->state === OfferState::Sold && ! $garage ? 'Отменить сделку' : 'Вернуть в продажу' }}</x-ui.button>

@@ -168,6 +168,7 @@ class OfferController
             'published', 'bids' => [
                 ...self::facets(),
                 ...($admin ? [
+                    Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent'),
                     Facet::toggle('fresh', 'Новые', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.published_at', '>=', now()->subHours(Offer::NEW_HOURS)))->dot('fresh'),
                     Facet::toggle('ending', 'Горящие', fn ($o) => CatalogQuery::ending($o))->dot('hot'),
                 ] : []),
@@ -607,7 +608,7 @@ class OfferController
             return redirect('/')->with('toast', 'Сохранено');
         }
         if ($request->input('then') === 'open' && $offer->state === OfferState::Draft && $request->user()->canManageCrm()) {
-            $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user());
+            $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
 
             return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer));
         }
@@ -745,7 +746,7 @@ class OfferController
         $failed = [];
         foreach ($offers as $offer) {
             try {
-                $schedule($offer, $when, $request->user(), batch: $offers->count() > 1);
+                $schedule($offer, $when, $request->user(), batch: $offers->count() > 1, until: Slots::urgentUntil($request->input('urgent_until')));
                 $done++;
             } catch (ValidationException $e) {
                 $failed[] = $offer->titleWithYear().', нет '.str_replace(['Для публикации не хватает: ', 'фотографии'], ['', 'фото'], (string) collect($e->errors())->flatten()->first());
@@ -808,7 +809,7 @@ class OfferController
             return redirect("/offers/{$offer->number}")->with('toast', $offer->isGallery() ? 'В галерее до '.$offer->gallery_until->translatedFormat('j M, H:i') : 'Убрано из галереи')->with(self::gone($request, $offer));
         }
         if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
-            $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user());
+            $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
 
             return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer))->with(self::gone($request, $offer));
         }
@@ -876,6 +877,10 @@ class OfferController
     /** Тост публикации: номер — уже публичный, у поставленного в слот — когда выйдет. */
     private function published(Offer $offer): string
     {
-        return $offer->isScheduled() ? 'Выйдет '.Slots::phrase($offer->slot_at) : 'В продаже № '.$offer->number;
+        return match (true) {
+            $offer->isScheduled() => 'Выйдет '.Slots::phrase($offer->slot_at),
+            $offer->isUrgent() => 'Срочно в продаже № '.$offer->number.', приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'),
+            default => 'В продаже № '.$offer->number,
+        };
     }
 }

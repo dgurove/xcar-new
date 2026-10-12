@@ -25,6 +25,7 @@
              относится, другое к фактам»). --}}
         <x-slot:badge>@if (!$gallery && $offer->isFresh())<x-ui.state tone="fresh" class="title-state">новый</x-ui.state>@endif</x-slot:badge>
         <x-slot:marks>
+            @if ($offer->isUrgent())<x-offer.urgent label/>@endif
             @if ($offer->recommended)<x-offer.recommended label/>@endif
             <x-ui.vin-code :vin="$offer->vinFor(auth()->user())" :copy="$offer->vinOpenTo(auth()->user())" class="tag"/>
             <x-offer.tags :offer="$offer" :facts="false" :vat="false"/>

@@ -20,10 +20,24 @@
                     <span class="check"><input type="radio" name="when" value="{{ $c['when'] }}" @if ($form) form="{{ $form }}" @endif @checked($c['when'] === \App\Offers\Slots::NEAREST)></span>
                 </label>
             @endforeach
+            {{-- «Срочно» (12.10.2026, владелец): сейчас, всем сразу, громко, свой срок приёма. Только одному предложению. --}}
+            @if ($offer && ! $move)
+                <label class="row row-check">
+                    <x-ui.icon name="fire" fill class="size-5 shrink-0 text-fire"/>
+                    <span class="min-w-0 flex-1">Срочно</span>
+                    <span class="check"><input type="radio" name="when" value="{{ \App\Offers\Slots::URGENT }}" @if ($form) form="{{ $form }}" @endif></span>
+                </label>
+            @endif
         </div>
+        @if ($offer && ! $move)
+            <div class="urgent-until fields">
+                <x-ui.field name="urgent_until" :id="$id.'-urgent-until'" label="Приём до" type="datetime-local" :value="\App\Offers\Slots::urgentDefault()->format('Y-m-d\TH:i')" :min="now()->addMinutes(30)->format('Y-m-d\TH:i')" :form="$form"/>
+            </div>
+        @endif
         {{-- Шторка закрывается сразу: ошибка поля (номер убытка, фото) должна быть видна, а не под шторкой. --}}
         <x-ui.button block :form="$form" :name="array_key_first($submit)" :value="$submit ? reset($submit) : null" data-action="sheet#close">
             @foreach ($choices as $c)<span data-when="{{ $c['when'] }}">{{ $c['at'] ? ($move ? 'Перенести на ' : 'Опубликовать ').\App\Offers\Slots::phrase($c['at']) : 'Опубликовать сейчас' }}</span>@endforeach
+            <span data-when="{{ \App\Offers\Slots::URGENT }}">Опубликовать срочно</span>
         </x-ui.button>
     @if ($action)</form>@else</div>@endif
 </x-ui.sheet>

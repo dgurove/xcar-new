@@ -38,9 +38,11 @@ class RouteController
         $when = (string) $request->input('when', Slots::NOW);
         if ($when !== Slots::NOW && in_array($when, Slots::WHEN, true) && $exit->to?->offer_state === OfferState::Open
             && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
-            $offer = $schedule($offer, $when, $request->user());
+            $offer = $schedule($offer, $when, $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
 
-            return back(fallback: "/offers/{$offer->number}")->with('toast', 'Выйдет '.Slots::phrase($offer->slot_at));
+            return back(fallback: "/offers/{$offer->number}")->with('toast', $offer->isUrgent()
+                ? 'Срочно в продаже, приём до '.$offer->bids_close_at->translatedFormat('j M, H:i')
+                : 'Выйдет '.Slots::phrase($offer->slot_at));
         }
         $payload = [];
         foreach ($exit->to?->staff_fields ?? [] as $field) {
