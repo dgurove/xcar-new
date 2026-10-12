@@ -28,8 +28,12 @@ use Illuminate\Validation\ValidationException;
  */
 final class CancelDeal
 {
-    /** $keepCar — машину из гаража уберёт вызывающий сам («Отдали по ошибке», `ReturnFromGarage`). */
-    public function __invoke(Deal $deal, ?User $by = null, bool $keepCar = false): Deal
+    /**
+     * $keepCar — машину из гаража уберёт вызывающий сам («Отдали по ошибке», `ReturnFromGarage`); $keepBid — подтверждение
+     * победителя снова ждёт среди прочих (12.10.2026, владелец: «отменяешь сделку и возвращаешь в продажу — пусть
+     * подтверждение менеджера остаётся», `ReturnToSale`).
+     */
+    public function __invoke(Deal $deal, ?User $by = null, bool $keepCar = false, bool $keepBid = false): Deal
     {
         // Машина гаражной уже у менеджера или по ней есть расходы — молча её не снять (владелец 06.10.2026): разбираемся
         // руками, сделка остаётся.
@@ -41,7 +45,7 @@ final class CancelDeal
         }
         $deal->update(['state' => DealState::Cancelled, 'closed_at' => now()]);
         if ($deal->bid?->state === BidState::Accepted) {
-            Bid::whereKey($deal->bid_id)->update(['state' => BidState::Declined]);
+            Bid::whereKey($deal->bid_id)->update($keepBid ? ['state' => BidState::Active, 'decided_at' => null, 'decided_by' => null] : ['state' => BidState::Declined]);
         }
         Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'deal'])]);
         // Гаражная сорвалась, пока машину ещё не привезли («Отказываюсь», отказ поставщика, отдали другому) — из гаража долой.

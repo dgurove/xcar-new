@@ -56,11 +56,9 @@
                  продажу с переоценкой (`x-offer.resale-sheet`) или в черновики — красными строками внизу, как опасное в «Оплатах». --}}
             @if ($deal->state === DealState::Active)
                 @if ($errors->has('state'))<x-ui.flash tone="danger">{{ $errors->first('state') }}</x-ui.flash>@endif
+                {{-- Одна красная строка — шторка «Отменить сделку»: в продажу (кому и до когда) или в черновики (12.10.2026). --}}
                 <div class="list">
-                    <button type="button" class="row row-danger" data-controller="emit" data-action="emit#send" data-emit-event-param="resale:open">Вернуть в продажу</button>
-                    <form method="post" action="/offers/{{ $offer->number }}/state" class="contents" data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="ТС уйдёт в черновики, подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются">
-                        @csrf<input type="hidden" name="state" value="draft"><button class="row row-danger">Отменить сделку, в черновики</button>
-                    </form>
+                    <button type="button" class="row row-danger" data-controller="emit" data-action="emit#send" data-emit-event-param="resale:open">{{ $deal->isGarage() ? 'Вернуть в продажу' : 'Отменить сделку' }}</button>
                 </div>
                 <x-offer.resale-sheet :offer="$offer"/>
             @endif

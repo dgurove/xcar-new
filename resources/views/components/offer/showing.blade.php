@@ -6,7 +6,7 @@
      ходят в форму `form` атрибутом. Только админу. --}}
 @props(['offer', 'form', 'as' => 'card', 'summary' => null])
 @php
-    use App\Offers\{AudienceRules, DealAudience, OfferState};
+    use App\Offers\{DealAudience, OfferState};
     $deal = $offer->deal;
     $mode = match (true) {
         ! auth()->user()->canManageCrm() => null,
@@ -15,14 +15,7 @@
         default => null,
     };
     $n = $offer->number;
-    $options = once(fn () => AudienceRules::options());
-    if ($mode === 'offer') {
-        $rules = AudienceRules::of($offer);
-        $who = AudienceRules::summary($rules);
-        $hidden = ['name' => 'audience_rules', 'value' => $offer->audience_rules ? json_encode($offer->audience_rules) : ''];
-    } elseif ($mode === 'deal') {
-        $who = DealAudience::summary($offer);
-        $hidden = ['name' => 'deal_audience', 'value' => DealAudience::toJson($offer)];
+    if ($mode === 'deal') {
         // Срок показа: идёт — первым пунктом «До …» (не трогать), кончился — «Показ закончился …»; ниже — выбрать заново.
         $until = $offer->deal_show_until;
         $for = ($until ? ['keep' => ($offer->dealShowOver() ? 'Показ закончился ' : 'До ').$until->translatedFormat('j M, H:i')] : [])
@@ -46,20 +39,7 @@
         @else
             <x-ui.field name="deal_show_for" id="f-deal_show_for-{{ $n }}" label="Сколько показывать" :options="$for" :value="$offer->deal_show_until ? 'keep' : ''" span="col-span-2" :form="$form"/>
         @endif
-        <div class="field col-span-2">
-            <span class="field-label">Кому показывать</span>
-            <div data-controller="audience sheet" data-audience-mode-value="{{ $mode === 'deal' ? 'list' : 'waves' }}" data-audience-options-value="{{ json_encode($options) }}" @if ($mode === 'offer') data-audience-effective-value="{{ json_encode($rules) }}" @endif>
-                <input type="hidden" name="{{ $hidden['name'] }}" value="{{ $hidden['value'] }}" form="{{ $form }}" data-audience-target="rules">
-                <button type="button" class="field-input flex w-full items-center gap-3 text-left" data-action="sheet#open">
-                    <x-ui.icon name="users" class="size-5 shrink-0 text-ink-muted"/>
-                    <span class="min-w-0 flex-1" data-audience-target="summary">{{ $who }}</span>
-                    <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
-                </button>
-                <x-ui.sheet id="audience-{{ $n }}-{{ $as }}" title="Кому показывать">
-                    <x-audience.editor/>
-                </x-ui.sheet>
-            </div>
-        </div>
+        <x-offer.audience-field :offer="$offer" :form="$form" :mode="$mode === 'deal' ? 'list' : 'waves'" :key="$as" class="col-span-2"/>
         @if ($mode === 'offer' && ($summary ?? collect())->isNotEmpty())
             <div class="col-span-2 flex flex-col gap-1.5 text-sm">
                 @foreach ($summary as $row)

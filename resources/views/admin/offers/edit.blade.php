@@ -226,6 +226,8 @@
         // «Опубликовать» — с выбором слота: у черновика шторкой из плашки, у галереи тремя пунктами в «···».
         $publishItems = $admin && $offer->state === OfferState::Gallery && ! $offer->isScheduled();
         if ($draft || $offer->state === OfferState::Gallery) $transitions = $transitions->except(OfferState::Open->value);
+        // «Отменить сделку, в черновики» — пунктом шторки «Отменить сделку» (`x-offer.resale-sheet`), второй кнопкой не нужна.
+        if ($resale && $offer->state === OfferState::Sold) $transitions = $transitions->except(OfferState::Draft->value);
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
     @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
@@ -259,7 +261,8 @@
                 <div class="flex flex-col gap-2">
                     @if ($publishItems)<x-offer.publish-items :offer="$offer" button/>@endif
                     @if ($resale)
-                        <x-ui.button type="button" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="resale:open">Вернуть в продажу</x-ui.button>
+                        {{-- Сделка — одна «Отменить сделку» шторкой: в продажу или в черновики (12.10.2026); гараж — «Вернуть в продажу». --}}
+                        <x-ui.button type="button" block :variant="$offer->state === OfferState::Sold && ! $garage ? 'danger' : 'primary'" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="resale:open">{{ $offer->state === OfferState::Sold && ! $garage ? 'Отменить сделку' : 'Вернуть в продажу' }}</x-ui.button>
                     @endif
                     @foreach ($transitions as [$next, $label])
                         <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @elseif (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @if ($offer->parkVehicle) data-turbo-confirm-text="ТС снимется с продажи, на парковке она остаётся с фото и документами" @endif @endif>

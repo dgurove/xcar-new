@@ -83,6 +83,8 @@
                     // Отмена сделки — красным, с подтверждением: оба пункта у сделки (в продажу, в черновики) её гасят.
                     $calm = $offer->state === OfferState::Sold ? collect() : $transitions->reject(fn ($t) => $t[0] === OfferState::Archived || $t[0]->tone() === 'danger');
                     $danger = $transitions->diffKeys($calm);
+                    // У сделки «в черновики» — внутри шторки «Отменить сделку» (12.10.2026), отдельным пунктом не нужен.
+                    if ($resale && $offer->state === OfferState::Sold) $danger = $danger->except(OfferState::Draft->value);
                     // Черновик из таблицы Кати — «Убрать из таблицы Кати»: номер уходит из списка, в рабочих вкладках черновик и так стоит.
                     $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                     $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
@@ -139,7 +141,7 @@
                             @if ($danger->isNotEmpty() || $purge || $resale)
                                 <div class="menu-group">
                                     @if ($resale)
-                                        <button type="button" class="menu-item text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="resale:open"><x-ui.icon name="undo" class="size-5"/>Вернуть в продажу</button>
+                                        <button type="button" class="menu-item text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="resale:open"><x-ui.icon name="undo" class="size-5"/>{{ $offer->state === OfferState::Sold && ! $offer->garageCar ? 'Отменить сделку' : 'Вернуть в продажу' }}</button>
                                     @endif
                                     @foreach ($danger as [$next, $label])
                                         <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @else data-turbo-confirm="{{ $next->label() }}?" @endif>
