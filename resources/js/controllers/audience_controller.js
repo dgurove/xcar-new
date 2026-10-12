@@ -5,13 +5,21 @@ import { Controller } from '@hotwired/stimulus';
 // системный выбор справа (минуты от публикации, «Не показывать» — null, у своих строк ещё «Убрать»). Итог — JSON в
 // скрытом поле и change с него: карточка сохраняет само, форма вендора — кнопкой. Сводка — те же слова, что
 // AudienceRules::summary.
+// Режим `list` — «Кому показывать» сделки (модуль «Показ», 12.10.2026): тот же список без времени — строка и «Убрать»,
+// без «Остальных» и супер-покупателей, итог `[{type, id}]`, пусто — «Никому» (DealAudience::summary).
 export default class extends Controller {
     static targets = ['rules', 'summary', 'list', 'add'];
-    static values = { options: Object, effective: Array };
+    static values = { options: Object, effective: Array, mode: { type: String, default: 'waves' } };
 
     connect() {
-        this.rows = this.clean(this.parse(this.rulesTarget.value) ?? this.effectiveValue);
+        this.rows = this.isList
+            ? (this.parse(this.rulesTarget.value) ?? []).map((r) => ({ type: r.type, id: Number(r.id) }))
+            : this.clean(this.parse(this.rulesTarget.value) ?? this.effectiveValue);
         this.render();
+    }
+
+    get isList() {
+        return this.modeValue === 'list';
     }
 
     parse(json) {
@@ -34,7 +42,8 @@ export default class extends Controller {
         const [type, id] = this.addTarget.value.split(':');
         this.addTarget.value = '';
         if (!type) return;
-        this.rows.splice(this.rows.length - 1, 0, { type, id: Number(id), delay: 0 });
+        if (this.isList) this.rows.push({ type, id: Number(id) });
+        else this.rows.splice(this.rows.length - 1, 0, { type, id: Number(id), delay: 0 });
         this.changed();
     }
 
@@ -55,9 +64,21 @@ export default class extends Controller {
     }
 
     row(r, i) {
-        const row = el('label', 'row audience-row');
+        // В списке без времени — div: label отдал бы нажатие по имени кнопке «Убрать».
+        const row = el(this.isList ? 'div' : 'label', 'row audience-row');
         const name = el('span', 'min-w-0 flex-1 truncate');
         name.textContent = this.name(r);
+        if (this.isList) {
+            const drop = el('button', 'shrink-0 text-sm text-danger');
+            drop.type = 'button';
+            drop.textContent = 'Убрать';
+            drop.addEventListener('click', () => {
+                this.rows.splice(i, 1);
+                this.changed();
+            });
+            row.append(name, drop);
+            return row;
+        }
         const when = el('select', 'row-select');
         when.setAttribute('aria-label', `Когда: ${this.name(r)}`);
         // Дни — группой «Через несколько дней»: 1–5 одним списком, а не пятью строками «Через N дней» вперемешку с часами.
@@ -86,7 +107,7 @@ export default class extends Controller {
         const taken = new Set(this.rows.map((r) => `${r.type}:${r.id}`));
         const select = this.addTarget;
         select.replaceChildren(new Option('', '', true, true));
-        const people = [...(this.optionsValue.super ? [{ id: 0, name: this.optionsValue.super, type: 'super' }] : []), ...(this.optionsValue.managers || [])];
+        const people = [...(this.optionsValue.super && !this.isList ? [{ id: 0, name: this.optionsValue.super, type: 'super' }] : []), ...(this.optionsValue.managers || [])];
         for (const [type, label, items] of [['group', 'Группы', this.optionsValue.groups], ['user', 'Менеджеры', people]]) {
             const free = (items || []).map((x) => ({ ...x, type: x.type || type })).filter((x) => !taken.has(`${x.type}:${x.id}`));
             if (!free.length) continue;
@@ -112,6 +133,10 @@ export default class extends Controller {
     }
 
     summary() {
+        if (this.isList) {
+            const text = this.rows.map((r) => this.name(r)).join(', ');
+            return text ? text[0].toUpperCase() + text.slice(1) : 'Никому';
+        }
         const rest = this.rows[this.rows.length - 1];
         if (this.rows.length === 1) return rest.delay === null ? 'Никому' : `Всем ${this.when(rest.delay)}`;
         const text = this.rows.map((r) => {

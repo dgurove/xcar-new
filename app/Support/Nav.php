@@ -95,7 +95,7 @@ final class Nav
         }
 
         // Сделки менеджера — раздел таб-бара; покупатели (интерес, приглашения, группы) — его вторая пилюля.
-        $deals = self::item('Сделки', '/deals', ['/deals', '/buyers', '/account/invites']);
+        $deals = self::item('Сделки', '/deals', ['/deals', '/buyers']);
 
         // Демо-кабинет менеджера: каталог вместо закупок — закупки настоящие и ему закрыты; гаража у демо нет.
         if ($user?->hasRole(Role::Manager) && $user->is_demo) {
@@ -297,6 +297,13 @@ final class Nav
         }
 
         $links = [self::link('Профиль', '/account', exact: true)];
+        // Покупатели и ссылки для них — и в кабинете, не только в «Сделках» (12.10.2026, владелец: «не могут найти»).
+        if ($user->isManager() && ! $user->isAdmin()) {
+            $links[] = self::link('Покупатели', '/account/buyers', icon: 'users');
+            $links[] = self::link('Ссылки', '/account/invites', icon: 'link');
+        } elseif ($user->isManager()) {
+            $links[] = self::link('Покупатели', '/account/buyers', icon: 'users');
+        }
         if ($user->hasDeals()) {
             // Сделки, покупатели и гараж — разделы таб-бара; в кабинете остаются деньги.
             $links[] = self::link('Оплаты', '/account/money', also: ['/account/money/details'], icon: 'wallet');
@@ -542,6 +549,7 @@ final class Nav
             // Новый интерес — на пилюле «Покупатели» и строке «Интерес»; таб «Сделки» горит и тем, что ждут от него, и им.
             $badges['/buyers/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
             $badges['/buyers'] = $badges['/buyers/interest'];
+            $badges['/account/buyers'] = $badges['/buyers'];
             // Просьбы по гаражной сделке (страховая ещё идёт) — на табе «Гараж»: там её и ведут.
             $asks = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->join('deals', 'deals.id', '=', 'requirements.deal_id')
                 ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
@@ -650,6 +658,7 @@ final class Nav
             $paths[] = '/account/chats';
             $paths[] = '/account/money';
             $paths[] = '/buyers';
+            $paths[] = '/account/buyers';
             $paths[] = '/buyers/interest';
             $paths[] = '/deals/asks';
         }
@@ -684,7 +693,7 @@ final class Nav
         if ($user) {
             $cabinet = self::cabinet($user, $surface);
             if ($surface === Surface::Site && $user->isManager()) {
-                $cabinet[] = [self::link('Покупатели', '/buyers', also: ['/account/invites'])];
+                $cabinet[] = [self::link('Покупатели', '/buyers')];
             }
             foreach ($cabinet as $links) {
                 foreach ($links as $l) {

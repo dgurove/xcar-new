@@ -1,7 +1,7 @@
 {{-- Карточка сделки рядом со списком (фрейм detail): почти вся сделка шириной телефона — кадры, состояние, номер убытка с
      логотипом, № предложения, телефон менеджера, сумма; сразу под шапкой — чат с менеджером (07.10.2026, владелец: «чат на
-     видное место, он чуть ли не самый важный во время сделки»), дальше путь маршрута с выходами, все письма строками, деньги, ДКП
-     и заметка. Поля — свёрнуты («Изменить / Готово»), расклад денег — под «Расклад»; получение — одно, внутри
+     видное место, он чуть ли не самый важный во время сделки»), дальше путь маршрута с выходами, все письма строками, деньги, ДКП,
+     «Показ» и заметка — тот же порядок, что в редакторе (12.10.2026). Поля — свёрнуты («Изменить / Готово»), расклад денег — под «Расклад»; получение — одно, внутри
      «Вывоза» (без вывоза — отдельно). Менеджер — аватаром в чате, чипа в шапке нет; «Предложение» — «Открыть страницу»
      в полосе. История — на странице сделки. Формы отвечают в карточку (DetailBack), строка таблицы — свежей из row. --}}
 @php
@@ -42,6 +42,14 @@
             @unless ($offer->position(\App\Workflow\Track::Service))<x-deal.handover :deal="$deal" compact/>@endunless
             <x-deal.money :deal="$deal" compact/>
             @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
+            {{-- «Показ» — тот же модуль, что справа в редакторе под «Ценами» (12.10.2026): сколько и кому показывать сделку; своя
+                 форма, «Сохранить изменения» подвалом карточки шлёт только тронутое. --}}
+            @if ($deal->isActive() && ! $deal->isGarage() && auth()->user()->canManageCrm())
+                <form method="post" action="/offers/{{ $offer->number }}" id="deal-show-{{ $offer->number }}" data-controller="save-bar" data-save-bar-partial-value="true" data-turbo-frame="detail">
+                    @csrf @method('put')
+                    <x-offer.showing :offer="$offer" :form="'deal-show-'.$offer->number" as="section"/>
+                </form>
+            @endif
             <x-deal.note :deal="$deal"/>
             {{-- Сделка не состоялась (11.10.2026, владелец: «отдали в сделку — и нигде нет кнопки обратно в продажу»): назад в
                  продажу с переоценкой (`x-offer.resale-sheet`) или в черновики — красными строками внизу, как опасное в «Оплатах». --}}
@@ -56,6 +64,9 @@
                 <x-offer.resale-sheet :offer="$offer"/>
             @endif
         </div>
+        @if ($deal->isActive() && ! $deal->isGarage() && auth()->user()->canManageCrm())
+            <x-slot:foot><x-ui.save-bar :form="'deal-show-'.$offer->number"/></x-slot:foot>
+        @endif
         <x-slot:row><x-deal.table-row :deal="$deal"/></x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

@@ -17,6 +17,33 @@ final class DealAudience
 
     public const GROUP = 'group';
 
+    /** «Сколько показывать» в модуле «Показ» (12.10.2026): минуты от сохранения; пусто — пока идёт сделка. */
+    public const FOR = [60 => '1 час', 180 => '3 часа', 360 => '6 часов', 720 => '12 часов', 1440 => 'Сутки', 2880 => '2 дня', 4320 => '3 дня'];
+
+    /**
+     * Список из скрытого поля модуля «Показ» (JSON `[{type, id}]`) — менеджеры и группы двумя списками для `sync`.
+     *
+     * @return array{users: list<int>, groups: list<int>}
+     */
+    public static function fromJson(?string $json): array
+    {
+        $rows = json_decode((string) $json, true);
+        $rows = collect(is_array($rows) ? $rows : [])->filter(fn ($r) => is_array($r) && isset($r['type'], $r['id']));
+
+        return [
+            'users' => $rows->where('type', self::USER)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            'groups' => $rows->where('type', self::GROUP)->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+        ];
+    }
+
+    /** То же в обратную сторону — для скрытого поля. */
+    public static function toJson(Offer $offer): string
+    {
+        $rows = $offer->relationLoaded('dealAudience') ? $offer->dealAudience : $offer->dealAudience()->get();
+
+        return json_encode($rows->map(fn ($r) => ['type' => $r->audience_type, 'id' => (int) $r->audience_id])->values()->all());
+    }
+
     /**
      * Привести списки из формы к строкам таблицы: [{type, id}]. Чужие id и дубли — мимо.
      *
@@ -64,11 +91,16 @@ final class DealAudience
         return ['changed' => $before !== $after, 'added' => array_values(array_diff($after, $before))];
     }
 
-    /** Стереть белый список — сделка кончилась или предложение вернулось в продажу. */
+    /** Стереть белый список и срок показа — сделка кончилась или предложение вернулось в продажу. */
     public static function clear(Offer $offer): void
     {
         OfferDealAudience::where('offer_id', $offer->id)->delete();
         $offer->unsetRelation('dealAudience');
+        if ($offer->deal_show_until !== null) {
+            Offer::whereKey($offer->id)->update(['deal_show_until' => null]);
+            $offer->deal_show_until = null;
+            $offer->syncOriginalAttribute('deal_show_until');
+        }
     }
 
     /** Все менеджеры белого списка: выбранные сами плюс состав выбранных групп. */

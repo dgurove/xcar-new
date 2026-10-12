@@ -63,7 +63,13 @@ class BuyerController
         $interestAll = $term ? 0 : (clone $mine)->count();
         $interestNew = $term ? 0 : $mine->where('state', InterestState::New)->count();
 
+        // Один экран по двум адресам (12.10.2026): «Сделки → Покупатели» и кабинет. «Пригласить» из кабинета — в кабинетные
+        // «Ссылки»; админу-менеджеру `/account/invites` — его приглашения сотрудников, ему — ссылки в «Покупателях».
+        $base = $request->is('account/*') ? '/account/buyers' : '/buyers';
+
         return view('cabinet.buyers.index', [
+            'base' => $base,
+            'invitesUrl' => $base === '/account/buyers' && ! $me->isAdmin() ? '/account/invites' : '/buyers/invites',
             'interestNew' => $interestNew,
             'interestAll' => $interestAll,
             'buyers' => $buyers,

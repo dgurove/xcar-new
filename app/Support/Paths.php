@@ -125,7 +125,8 @@ final class Paths
     public const MOVED = [
         'account/buyers/invites' => 'account/invites',
         'account/deals' => 'deals',
-        'account/buyers' => 'buyers',
+        // Сам `/account/buyers` — снова экран (кабинет, 12.10.2026); переехали только вложенные: ключ со слэшем — без корня.
+        'account/buyers/' => 'buyers/',
         'account/interest' => 'buyers/interest',
         'account/showings' => 'buyers/showings',
         'account/confirmations' => 'deals',
@@ -159,7 +160,7 @@ final class Paths
     private static function move(string $path): ?string
     {
         foreach (self::MOVED as $from => $to) {
-            if ($path === $from || str_starts_with($path, $from.'/')) {
+            if (str_ends_with($from, '/') ? str_starts_with($path, $from) : ($path === $from || str_starts_with($path, $from.'/'))) {
                 return $to.substr($path, strlen($from));
             }
         }

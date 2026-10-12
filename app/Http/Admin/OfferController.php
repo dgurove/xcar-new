@@ -23,7 +23,6 @@ use App\Offers\Actions\ShowInGallery;
 use App\Offers\Actions\UnlistParkOffer;
 use App\Offers\Actions\UnscheduleOffer;
 use App\Offers\Actions\UpdateOffer;
-use App\Offers\AudienceRules;
 use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\Jobs\DropEmptyDraft;
@@ -481,7 +480,6 @@ class OfferController
             'import' => ImportThreadFiles::progress($offer->id),
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'managers' => $admin ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
-            'audienceOptions' => $admin ? AudienceRules::options() : null,
             'showingSummary' => $admin ? Showing::summary($offer) : collect(),
             // Черновик только что заведён из писем и ещё ни разу не сохранён: внизу «Отменить» и «Не заявка».
             'fromMail' => $fromMail,
@@ -566,7 +564,6 @@ class OfferController
             'offer' => $offer,
             'admin' => $admin,
             // Поля редактора в карточке — те же справочники, что у страницы; модератору денег, кроме закупочной, и круга нет.
-            'audienceOptions' => $admin ? AudienceRules::options() : null,
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'chats' => $admin ? Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']) : collect(),
             'list' => $gallery ?? $request->boolean('gallery'),

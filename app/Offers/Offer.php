@@ -54,7 +54,7 @@ use Spatie\MediaLibrary\HasMedia;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'evacuator_id', 'evacuation_to',
+    'garage_allowed', 'evacuator_id', 'evacuation_to', 'deal_show_until',
 ])]
 class Offer extends Model implements HasMedia
 {
@@ -140,6 +140,7 @@ class Offer extends Model implements HasMedia
             'incident_date' => 'date',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
+            'deal_show_until' => 'datetime',
             'slot_at' => 'datetime',
             'gallery_from' => 'datetime',
             'gallery_until' => 'datetime',
@@ -474,11 +475,17 @@ class Offer extends Model implements HasMedia
         }
         // Страница дёргает это несколько раз (кнопка, плашка, шторка) — связи грузятся раз.
         $this->loadMissing(['deal', 'dealAudience']);
-        if (! $this->deal) {
+        if (! $this->deal || $this->dealShowOver()) {
             return false;
         }
 
         return DealAudience::visibleTo($this, $user);
+    }
+
+    /** «Сколько показывать» сделку прошло (`deal_show_until`): список остаётся, но его никто не видит. Пусто — пока идёт сделка. */
+    public function dealShowOver(): bool
+    {
+        return $this->deal_show_until !== null && ! $this->deal_show_until->isFuture();
     }
 
     /** Может подтвердить в сделке резервом: идёт сделка и менеджер в белом списке. */
@@ -620,7 +627,9 @@ class Offer extends Model implements HasMedia
         }
         $groups = DB::table('user_group_user')->where('user_id', $user->id)->pluck('group_id')->all();
 
-        return $q->where('state', OfferState::Sold)->whereHas('deal')->where(fn ($w) => $w
+        return $q->where('state', OfferState::Sold)->whereHas('deal')
+            ->where(fn ($w) => $w->whereNull('deal_show_until')->orWhere('deal_show_until', '>', now()))
+            ->where(fn ($w) => $w
             ->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::USER)->where('audience_id', $user->id))
             ->orWhere(fn ($g) => $g->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::GROUP)->whereIn('audience_id', $groups ?: [0]))));
     }

@@ -106,7 +106,7 @@
 
     {{-- Раскладка (06.10.2026, владелец): слева «Транспортное средство», под ним дорожки в ряд (`admin.offers.lanes`:
          «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения») — в основной колонке, правую не занимают (07.10.2026);
-         справа чат, «Цены», «Чаты» и «История»; фото, документы и письма — во всю ширину. На телефоне одной колонкой по order-*: дорожки первыми — в них ход. Колонки — по ширине
+         справа чат, «Цены», «Показ», заметка сделки, «Чаты» и «История» (12.10.2026); фото, документы и письма — во всю ширину. На телефоне одной колонкой по order-*: дорожки первыми — в них ход. Колонки — по ширине
          содержимого (@container): с открытой справа шторкой документов редактор в одну колонку. --}}
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -126,11 +126,6 @@
                 @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
                 @if ($published)<div data-edit-card-target="view" @unless ($foldCar) hidden @endunless>@include('admin.offers.fields.passport')</div>@endif
                 <div @if ($published) data-edit-card-target="edit" @if ($foldCar) hidden @endif @endif>@include('admin.offers.fields.car')</div>
-                {{-- Показ — пока машину показывают: в сделке и в гараже он ни о чём (галки при сохранении не трогаются, `_show`).
-                     «Кому показывать в сделке» живёт отдельной карточкой в дорожке «Сделка» — всегда на виду, рядом с резервом. --}}
-                @if (! $deal && ! $garage && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true))
-                    @include('admin.offers.fields.show', ['summary' => $showingSummary])
-                @endif
             </x-ui.card>
         </form>
 
@@ -153,6 +148,13 @@
                 @endif
                 <div @if ($published) data-edit-card-target="edit" @if ($foldMoney) hidden @endif @endif>@include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false, 'garageOnly' => (bool) $garageView])</div>
             </x-ui.card>
+
+            {{-- «Показ» — сразу под «Ценами», на ПК и на телефоне (12.10.2026, владелец): у предложения срок приёма и волны, у
+                 сделки — сколько и кому показывать, один модуль `x-offer.showing`; гараж и прочее — без него. Заметка сделки
+                 (и гаража — «как сделка») — под ним же, а не в дорожке. --}}
+            <x-offer.showing :offer="$offer" form="offer-form" :summary="$showingSummary" class="order-3"/>
+            @php $noteDeal = $garage?->deal ?? $deal; @endphp
+            @if ($admin && $noteDeal)<x-deal.note :deal="$noteDeal" id="deal-note" class="order-3"/>@endif
 
             @if ($otherChats->isNotEmpty())
             <x-ui.card title="Чаты" class="order-5">

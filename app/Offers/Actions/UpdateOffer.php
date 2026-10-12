@@ -28,6 +28,8 @@ final class UpdateOffer
     public function __invoke(Offer $offer, array $data, ?User $by, array $log = []): Offer
     {
         $was = $offer->value;
+        // Показ сделки кончился, а его продлили — список снова видит её: уведомление всем, а не только новым.
+        $showWasOver = $offer->deal_show_until !== null && $offer->dealShowOver();
         $offer->fill($data);
         // Сменили оценочную, закупочную не трогали — закупочная от неё же, если не вписана рукой (`Sale::floorFor`).
         if ($offer->isDirty('value') && ! $offer->isDirty('floor_price') && ($floor = Sale::floorFor($offer->floor_price, $was, $offer->value))) {
@@ -45,6 +47,7 @@ final class UpdateOffer
             app(NotifyViewers::class)($offer, live: true);
         }
         // Белый список «Кому показывать в сделке»: вновь добавленным — уведомление, как о новом.
+        $reopened = $showWasOver && in_array('deal_show_until', $changed, true) && ! $offer->dealShowOver();
         if (array_key_exists('deal_audience_users', $data) || array_key_exists('deal_audience_groups', $data)) {
             $sync = DealAudience::sync($offer,
                 (array) ($data['deal_audience_users'] ?? []),
@@ -52,9 +55,12 @@ final class UpdateOffer
             if ($sync['changed']) {
                 $offer->log(OfferEventType::Updated, $by, ['fields' => ['deal_audience']] + $log);
             }
-            if ($sync['added']) {
-                app(NotifyDealAudience::class)->added($offer->refresh(), $sync['added']);
+            $notify = $reopened ? DealAudience::managerIds($offer) : $sync['added'];
+            if ($notify && ! $offer->dealShowOver()) {
+                app(NotifyDealAudience::class)->added($offer->refresh(), $notify);
             }
+        } elseif ($reopened) {
+            app(NotifyDealAudience::class)->added($offer->refresh(), DealAudience::managerIds($offer));
         }
         if ($changed) {
             // Ключ номера убытка — производная колонка, в истории это тот же «номер убытка».

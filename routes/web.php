@@ -198,6 +198,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     // Покупатели менеджера — вторая пилюля «Сделок» (интерес, группы, показы внутри).
     Route::middleware('ability:isManager')->group(function () {
         Route::get('/buyers', [BuyerController::class, 'index']);
+        // Тот же список — пунктом кабинета (12.10.2026, владелец: «чтобы точно нашли»).
+        Route::get('/account/buyers', [BuyerController::class, 'index']);
         // Приглашения менеджера — внутри «Покупателей» (тот же экран, что в кабинете у админа).
         Route::get('/buyers/invites', [InviteController::class, 'index']);
         Route::post('/buyers/invites', [InviteController::class, 'store']);
