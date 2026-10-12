@@ -2,7 +2,7 @@
      (`steps/intake`). Внизу «Принять и сформировать письмо» (дальше письмо вендору в этом же окне) и тихое «Принять без
      письма» (акт приёма ждёт задачей); вендору без отчётов — одна «Принять». Заявки нет — её заводит `intakeCar`. --}}
 <x-park.act-frame title="Приём" :vehicle="$vehicle" :self="$self">
-    <form method="post" action="/cars/{{ $vehicle->id }}/intake" class="flex flex-col">
+    <form method="post" action="/cars/{{ $vehicle->id }}/intake" class="act-fill">
         @csrf
         @if ($advance)<input type="hidden" name="advance" value="1">@endif
         @if ($gaps)
@@ -13,7 +13,7 @@
             </div>
         @endif
         @include('park.vehicles.steps.intake', ['footSubmit' => true])
-        <div class="sheet-foot mt-4 flex flex-col items-center gap-1">
+        <div class="sheet-foot flex flex-col items-center gap-1">
             @if ($letter)
                 <button type="submit" name="then" value="letter" class="btn btn-accent w-full">Принять и сформировать письмо</button>
                 <button type="submit" name="then" value="none" class="act-quiet">Принять без письма</button>

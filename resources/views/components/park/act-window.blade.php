@@ -7,6 +7,6 @@
 <div data-controller="sheet window" data-action="act:open@window->window#open act:close@window->window#close" @if ($url) data-window-url-value="{{ $url }}" @endif class="contents">
     <x-ui.sheet id="act" title="Приём" tall class="sheet-act">
         <template data-skeleton><x-ui.skeleton :rows="4"/></template>
-        <turbo-frame id="act-frame" class="block" data-window-target="frame" @if ($url) src="{{ $url }}" @endif><x-ui.skeleton :rows="4"/></turbo-frame>
+        <turbo-frame id="act-frame" class="act-fill" data-window-target="frame" @if ($url) src="{{ $url }}" @endif><x-ui.skeleton :rows="4"/></turbo-frame>
     </x-ui.sheet>
 </div>

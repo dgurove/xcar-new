@@ -13,8 +13,8 @@
     $id = 'report-'.$vehicle->id;
 @endphp
 @if ($report)
-    <section {{ $attributes->merge(['class' => 'report']) }}>
-        <form method="post" action="/cars/{{ $vehicle->id }}/report" enctype="multipart/form-data" id="{{ $id }}" class="flex flex-col gap-4"
+    <section {{ $attributes->merge(['class' => 'report act-fill']) }}>
+        <form method="post" action="/cars/{{ $vehicle->id }}/report" enctype="multipart/form-data" id="{{ $id }}" class="act-fill gap-4"
               data-controller="report" data-report-docs-value="{{ IntakeReport::text(true) }}" data-report-plain-value="{{ IntakeReport::text(false) }}">
             @csrf
             @if ($advance)<input type="hidden" name="advance" value="1">@endif
@@ -48,7 +48,7 @@
                             @php $k = ReportDoc::from($kind); @endphp
                             <div class="row flex-wrap items-center gap-x-2 gap-y-2" data-report-target="slot">
                                 <span class="min-w-0 flex-1">{{ $k->label() }}
-                                    <span class="block text-sm text-ink-muted" data-report-target="slotNote">{{ $docs->isEmpty() ? 'нет' : '' }}</span>
+                                    <span class="block text-sm text-ink-muted empty:hidden" data-report-target="slotNote"></span>
                                 </span>
                                 @foreach ($docs as $doc)
                                     <label class="choice"><input type="checkbox" name="docs[{{ $kind }}][]" value="{{ $doc->id }}" checked data-action="report#count" data-report-target="doc"><span class="max-w-[10rem] truncate">{{ $doc->file_name }}</span></label>

@@ -1886,6 +1886,11 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Окно действия парковки (x-park.act-window): на ПК уже окна писем — форма, а не чтение; второе действие подвала —
      тихой строкой текста под главной кнопкой («Принять без письма»), не второй кнопкой того же роста. */
   @media (min-width: 640px) { .sheet-tall.sheet-act { max-width: 36rem; } }
+  /* Подвал окна — у низа экрана и при коротком шаге (выдача: две строки и фото), а не посреди: цепочка act-fill от листа
+     до формы тянется на всю высоту. */
+  .sheet-act[open] { display: flex; flex-direction: column; }
+  .act-fill { flex: 1 0 auto; display: flex; flex-direction: column; }
+  .act-fill > .sheet-foot { margin-top: auto; padding-top: 1.5rem; }
   .act-quiet { padding: .5rem 1rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .act-quiet:hover { color: var(--color-ink); }
   .report { container-type: inline-size; }

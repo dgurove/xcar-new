@@ -1,7 +1,7 @@
 {{-- Шаг окна действия (фрейм act-frame): заголовок окна — шаг и машина (шаблон data-window-title, `window_controller`),
      адрес шага — data-window-url (ошибка проверки возвращается сюда, `ActWindowBack`), тост ответа. --}}
 @props(['title', 'vehicle', 'self'])
-<turbo-frame id="act-frame" class="block">
+<turbo-frame id="act-frame" class="act-fill">
     <x-ui.flash-stream/>
     <template data-window-title><span class="block truncate">{{ $title }}</span><span class="block truncate text-sm font-normal text-ink-muted">{{ $vehicle->titleWithYear() }}@if ($vehicle->plate) <span class="nums">{{ $vehicle->plate }}</span>@endif</span></template>
     <div data-window-url="{{ $self }}" hidden></div>

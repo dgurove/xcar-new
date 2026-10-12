@@ -37,7 +37,7 @@ export default class extends Controller {
             const picked = shots + files;
             docs += kept + files + (shots ? 1 : 0);
             const note = this.slotNoteTargets[i];
-            if (note) note.textContent = picked ? `выбрано ${picked} ${plural(picked, ['файл', 'файла', 'файлов'])}` : (kept ? '' : 'нет');
+            if (note) note.textContent = picked ? `выбрано ${picked} ${plural(picked, ['файл', 'файла', 'файлов'])}` : '';
         });
 
         if (!this.touched && this.hasTextTarget) this.textTarget.value = docs ? this.docsValue : this.plainValue;
