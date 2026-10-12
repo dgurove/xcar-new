@@ -20,6 +20,9 @@ abstract class Template
     // Год не из номера убытка («677209-2026», «0790/046/00728/25»).
     protected const YEAR = '/(?<![\d\-\/])\b(?:'.Patterns::YEAR.')\b(?![\d\-\/])/u';
 
+    /** Цена ТС из письма не бывает дороже — дальше опечатка. */
+    public const MAX_PRICE = 100_000_000;
+
     protected const STOP_WORDS = ['ТС', 'авто', 'автомашина', 'транспортное средство'];
 
     public function __construct(protected CodeMatcher $matcher = new CodeMatcher) {}
@@ -267,7 +270,8 @@ abstract class Template
         ] as $pattern) {
             if (preg_match($pattern, $text, $m)) {
                 $digits = preg_replace('/\D/u', '', $m[1]) ?? '';
-                if ($digits !== '' && (int) $digits > 0) {
+                // «оценены 477 000 100 руб.» Совкомбанка — опечатка; сумму дороже сотни миллионов не берём.
+                if ($digits !== '' && (int) $digits > 0 && (int) $digits <= self::MAX_PRICE) {
                     return (int) $digits;
                 }
             }

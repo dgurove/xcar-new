@@ -159,7 +159,7 @@ final class Extractor
     private function body(array &$fields, string $text): void
     {
         if (! isset($fields['floor_price']) && preg_match_all('/^[\s>*_]*(\d{1,3}(?:[ \x{00A0}]\d{3})+|\d{5,8})\s*(?:руб\.?|р\.|₽)[\s*_]*$/um', $text, $m)) {
-            $prices = array_unique(array_map(fn ($v) => CarWords::digits($v), $m[1]));
+            $prices = array_unique(array_filter(array_map(fn ($v) => CarWords::digits($v), $m[1]), fn ($v) => (int) $v <= Template::MAX_PRICE));
             if (count($prices) === 1) {
                 $fields['floor_price'] = ['value' => reset($prices), 'source' => 'body'];
             }
