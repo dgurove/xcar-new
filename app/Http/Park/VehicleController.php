@@ -226,6 +226,8 @@ class VehicleController
             // Строка заявки, которую почта завела и документы ещё читаются, остаётся силуэтом с ходом, как в списке.
             'arrive' => $listed ? (AutoScan::states([$vehicle])[$vehicle->id] ?? null) : null,
             'task' => $task, 'messages' => $messages, 'taskLetterId' => $letterId,
+            // Отчёт о приёме вендору не ушёл — форма в карточке (`x-park.report-form`).
+            'reportDue' => ! $task && $vehicle->accepted_at && ($vehicle->vendor?->kind->billable() ?? false) && ! \App\Park\Actions\MarkReportSent::done($vehicle),
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
             'debt' => Ledger::vehicleDebt($vehicle),
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),

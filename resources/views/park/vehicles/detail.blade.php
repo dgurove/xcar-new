@@ -95,7 +95,14 @@
         <x-park.sale :vehicle="$vehicle" row/>
         @if ($task)
             @include('park.vehicles.task')
-        @elseif ($messages->isNotEmpty())
+        @else
+            {{-- Отчёт о приёме ещё не ушёл — форма сверху карточки (сразу после «Принять» в «Заявках» и в «Наличии»). --}}
+            @if ($reportDue)
+                <h2 class="detail-section mt-4">Отчёт вендору</h2>
+                <x-park.report-form :vehicle="$vehicle" :advance="$fromRequests ?? false"/>
+            @endif
+        @endif
+        @if (! $task && $messages->isNotEmpty())
             {{-- Без заявки — письма ТС той же лентой, что в задаче и деле (x-mail.letters). --}}
             <section class="mt-3">
                 <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ \App\Mail\Chains\NodeTitle::count($messages) }}</span></h2>

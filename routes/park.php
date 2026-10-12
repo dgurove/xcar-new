@@ -69,6 +69,9 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/media/{media}/rotate', [VehicleController::class, 'rotateMedia'])->middleware('park.manage');
     Route::delete('/cars/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/note', [VehicleController::class, 'note']);
+    // Отчёт о приёме вендору: письмо из формы и «Уже отправили» (12.10.2026).
+    Route::post('/cars/{vehicle}/report', [\App\Http\Park\ReportController::class, 'store']);
+    Route::post('/cars/{vehicle}/report-sent', [\App\Http\Park\ReportController::class, 'sent']);
     // «✨ Распознать» в деле ТС — то же окно, что у цепочки «Из писем» (ScanController, Scan\VehicleSubject).
     Route::get('/cars/{vehicle}/scan', [ScanController::class, 'vehicleShow'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/scan', [ScanController::class, 'vehicleScan'])->middleware('park.manage');

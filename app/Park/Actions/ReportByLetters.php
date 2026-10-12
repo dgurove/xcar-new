@@ -5,8 +5,6 @@ namespace App\Park\Actions;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
-use App\Park\DocState;
-use App\Park\EventType;
 use App\Park\Vehicle;
 use Illuminate\Support\Collection;
 
@@ -19,7 +17,7 @@ use Illuminate\Support\Collection;
  */
 final class ReportByLetters
 {
-    public function __construct(private MarkDoc $markDoc) {}
+    public function __construct(private MarkReportSent $mark) {}
 
     /** Письмо, которым отчёт о приёме уже отправлен, — или null (отчёт не нужен, уже отмечен или письма нет). */
     public function letter(Vehicle $vehicle): ?Message
@@ -38,10 +36,7 @@ final class ReportByLetters
         if (! ($letter = $this->letter($vehicle))) {
             return null;
         }
-        foreach ($vehicle->docs()->where('direction', 'out')->where('state', DocState::Pending)->get() as $doc) {
-            ($this->markDoc)($doc, null, DocState::Sent, $letter->date_at, null, $letter->thread_id);
-        }
-        $vehicle->log(EventType::ReportSent, null, ['what' => 'Акт приёма', 'thread' => $letter->thread_id, 'message' => $letter->id, 'by_letters' => true]);
+        ($this->mark)($vehicle, null, 'Акт приёма', $letter->date_at, $letter->thread_id, ['message' => $letter->id, 'by_letters' => true]);
 
         return $letter;
     }
@@ -63,6 +58,6 @@ final class ReportByLetters
 
     private function done(Vehicle $vehicle): bool
     {
-        return $vehicle->events()->where('type', EventType::ReportSent)->whereRaw("payload->>'what' = ?", ['Акт приёма'])->exists();
+        return MarkReportSent::done($vehicle);
     }
 }

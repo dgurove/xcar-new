@@ -48,7 +48,7 @@
                 @else
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>
-                        @if ($step->state === Step::TODO && $step->plate && $step->plate['kind'] === 'window')<x-mail.window-button :url="$step->plate['url']" :label="$step->plate['label']" chip/>@endif
+                        @if ($step->state === Step::TODO && $step->plate && $step->plate['kind'] === 'window')<x-mail.window-button :url="$step->plate['url']" :label="$step->plate['label']" chip/>@elseif ($step->state === Step::TODO && ($step->plate['kind'] ?? null) === 'anchor')<a href="{{ $step->plate['url'] }}" class="chip">{{ $step->plate['label'] }}</a>@endif
                     </div>
                     @if ($step->state === Step::TODO && $step->hint)<p class="step-hint">{{ $step->hint }}</p>@endif
                 @endif

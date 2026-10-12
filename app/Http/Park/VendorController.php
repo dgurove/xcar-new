@@ -184,6 +184,8 @@ class VendorController
             'intake_docs' => ['nullable', 'array'],
             'intake_docs.*' => [Rule::enum(DocRequirement::class)],
             'intake_note' => ['nullable', 'string', 'max:2000'],
+            'intake_report_docs' => ['nullable', 'array'],
+            'intake_report_docs.*' => [Rule::enum(\App\Park\ReportDoc::class)],
             'notes' => ['nullable', 'string', 'max:2000'],
         ] + SetLogo::RULES);
         $senders = Vendor::parseSenders($data['park_senders'] ?? null);
@@ -193,6 +195,7 @@ class VendorController
         $vendor->update(array_merge($data, [
             'park_senders' => $senders,
             'intake_docs' => array_values($data['intake_docs'] ?? []),
+            'intake_report_docs' => array_values($data['intake_report_docs'] ?? []),
             'is_active' => $request->boolean('is_active'),
             'buyer_pays_late' => $request->boolean('buyer_pays_late'),
             'release_without_payment' => $request->boolean('release_without_payment'),

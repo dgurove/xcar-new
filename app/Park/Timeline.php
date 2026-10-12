@@ -51,8 +51,9 @@ final class Timeline
 
         if ($v->accepted_at && $billable) {
             $ok = $sent('Акт приёма');
-            $steps[] = new Step('report', $ok ? 'Отчёт отправлен' : 'Нужно отправить отчёт', $ok ? Step::DONE : Step::CURRENT, $ok ? null : 'Отправить вендору акт приёма и фото', null, [],
-                $ok ? null : ['kind' => 'window', 'label' => 'Отправить', 'url' => $v->reportUrl('intake', "/cars/{$v->id}")]);
+            // Сам отчёт — формой карточкой над делом (`x-park.report-form`, #report): шаг ведёт к ней.
+            $steps[] = new Step('report', $ok ? 'Отчёт отправлен' : 'Нужно отправить отчёт', $ok ? Step::DONE : Step::CURRENT, null, null, [],
+                $ok ? null : ['kind' => 'anchor', 'label' => 'Отправить отчёт', 'url' => '#report']);
         }
 
         // Заведена без парковки (по письмам или по факту): сначала сказать, где стоит — хранение считается по площадке.

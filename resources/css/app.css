@@ -1871,6 +1871,19 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .rail .letter-title { flex: 1 1 0; }
   }
   .letter-text { font-size: var(--text-base); line-height: 1.45; }
+  /* Отчёт о приёме (x-park.report-form): подпись группы с числом, фото плиткой 4 в ряд (на ПК 6) — отмеченное с лаймовой
+     галкой, снятое тускнеет; последняя плитка — «Добавить» с камерой. */
+  .report-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .report-shots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .375rem; }
+  @container (min-width: 32rem) { .report-shots { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .report-shot { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--radius-s); background: var(--color-surface-2); cursor: pointer; }
+  .report-shot > img { width: 100%; height: 100%; object-fit: cover; transition: opacity .15s; }
+  .report-shot > input[type=checkbox] { position: absolute; opacity: 0; pointer-events: none; }
+  .report-tick { position: absolute; top: .25rem; right: .25rem; display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 999px; background: var(--color-accent); color: #fff; }
+  .report-shot > input:not(:checked) ~ img { opacity: .35; }
+  .report-shot > input:not(:checked) ~ .report-tick { background: color-mix(in oklab, var(--color-surface) 80%, transparent); color: transparent; box-shadow: inset 0 0 0 1.5px var(--color-ink-dim); }
+  .report-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .125rem; color: var(--color-ink-muted); }
+  .report { container-type: inline-size; }
   /* Конверт раскрытого письма (x-mail.letter): «От адрес», «Переслал адрес», «Кому адрес, адрес» — строками текста,
      подпись через пробел (владелец: «зачем огромный отступ от "От", если достаточно пробела»). Каждый адрес берётся
      нажатием (x-mail.address). Полная дата — в шапке письма вместо короткой (.letter-when-full). */

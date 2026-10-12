@@ -280,10 +280,12 @@ class RequestController
         }
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data, $req, $data['spot'] ?? null);
 
-        // Из окна заявки (фрейм карточки) — строка уходит, окно к следующей заявке; из дела — дело, где шаг «Отчёт вендору»
-        // ждёт с черновиком (акт и фото), отправит сотрудник, проверив.
+        // Из окна заявки (фрейм карточки) — строка уходит; карточка показывает форму отчёта вендору, а без отчёта — к
+        // следующей заявке. Из дела — дело, где отчёт — текущим шагом с той же формой.
+        // Отчёт вендору (фото и сканы) — тут же, в той же карточке: к следующей заявке она уйдёт после отправки (12.10.2026).
+        $report = ($req->vehicle->vendor?->kind->billable() ?? false) && ! \App\Park\Actions\MarkReportSent::done($req->vehicle);
         if ($request->header('Turbo-Frame') === Detail::FRAME) {
-            return back()->with('detail-advance', true)->with('toast', 'Принята');
+            return $report ? back()->with('toast', 'Принята, осталось отправить отчёт') : back()->with('detail-advance', true)->with('toast', 'Принята');
         }
 
         return redirect("/cars/{$req->vehicle_id}")->with('toast', 'Принята');

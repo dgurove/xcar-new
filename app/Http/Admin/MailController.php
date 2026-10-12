@@ -544,8 +544,8 @@ class MailController
         if ($parent && ! $offer) {
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
         }
-        // Письмо о принятой ТС уходит с актом и фото приёма (Альфа и Совкомбанк просят именно их); лишнее снимают в форме.
-        // `act=release` — акт выдачи (в том числе с отказом от получения, когда ТС осталась).
+        // Письмо о выдаче уходит с актом и фото выдачи; лишнее снимают в форме. `act=release` — акт выдачи (в том числе с
+        // отказом от получения, когда ТС осталась).
         if ($invoice && ! $request->old()) {
             foreach (['file', 'act'] as $collection) {
                 if ($media = $invoice->getFirstMedia($collection)) {
@@ -555,8 +555,9 @@ class MailController
             if (! $invoice->getFirstMedia('act') && $invoice->kind === ChargeKind::Storage) {
                 $defaults['files'][] = $outbox->put('akt-hraneniya-'.$invoice->number.'-'.$invoice->year.'.pdf', $actPdf->render($invoice));
             }
-        } elseif ($vehicle?->accepted_at && ! $request->old()) {
-            $intake = $request->query('act') ? $request->query('act') !== 'release' : ! $vehicle->released_at;
+        } elseif ($vehicle?->accepted_at && $request->query('act') === 'release' && ! $request->old()) {
+            // Отчёт о приёме — своей формой (`x-park.report-form`, 12.10.2026: наш акт и 12 фото никто не слал); здесь — выдача.
+            $intake = false;
             $defaults['files'][] = $outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake));
             $stage = $intake ? PhotoStage::Intake : PhotoStage::Release;
             // Сначала снятое на парковке, потом приехавшее из писем: вендору нужны наши кадры, а не его же.

@@ -87,6 +87,8 @@ final class CaseView
             'asks' => $asks,
             'threads' => $threads,
             'messages' => $messages,
+            // Отчёт о приёме не ушёл — форма карточкой над делом (`x-park.report-form`).
+            'reportDue' => $vehicle->accepted_at && ($vehicle->vendor?->kind->billable() ?? false) && ! \App\Park\Actions\MarkReportSent::done($vehicle),
             'docs' => self::docs($vehicle, $ids),
             'candidate' => $threads->isEmpty() ? null : Candidate::where('vehicle_id', $vehicle->id)->latest('id')->first(),
             'yards' => $yards->pluck('name', 'id'),
