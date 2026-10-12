@@ -521,7 +521,7 @@ export default class extends Controller {
         const seen = new Set();
         return this.owners().flatMap((owner) => [...owner.element.querySelectorAll('img[data-full]')].map((img) => ({
             src: img.dataset.full, mid: img.dataset.mid, el: img, thumb: img.src, download: img.dataset.download,
-            owner, id: img.dataset.id ?? img.closest('[data-id]')?.dataset.id,
+            owner, id: img.dataset.id ?? img.closest('[data-id]')?.dataset.id, group: owner.element.dataset.photosOrder ?? '',
         }))).filter((it) => !it.id || (!seen.has(it.id) && seen.add(it.id)));
     }
 

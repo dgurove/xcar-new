@@ -144,6 +144,57 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
         pswp.on('destroy', () => watch.disconnect());
         mirror();
     };
+    // Лента миниатюр внизу (владелец 12.10.2026: «удобно переключаться»): кадры одной ширины, текущий в лаймовой рамке
+    // и по центру, нажатие — этот кадр. Своим узлом в окне просмотра, как плашки: видна и прячется вместе с ними.
+    // Пересборка (refresh, reload) ставит новую. group у кадра (стадия ТС) — отступ между кусками, без подписей.
+    const strip = (pswp, list) => {
+        view.host.querySelector('.lb-strip')?.remove();
+        if (list.length < 2) return;
+        const el = document.createElement('div');
+        el.className = 'lb-strip';
+        const thumbs = list.map((it, i) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.tabIndex = -1;
+            b.className = 'lb-thumb' + (i && (it.group ?? '') !== (list[i - 1].group ?? '') ? ' lb-thumb--gap' : '');
+            b.setAttribute('aria-label', `Фото ${i + 1}`);
+            const img = Object.assign(document.createElement('img'), { alt: '', loading: 'lazy', decoding: 'async', draggable: false });
+            img.src = it.thumb || it.el?.currentSrc || it.src;
+            b.append(img);
+            b.addEventListener('click', (e) => { e.stopPropagation(); if (pswp.currIndex !== i) pswp.goTo(i); });
+            return b;
+        });
+        el.append(...thumbs);
+        // Листают ленту пальцем — не выдёргивать её к текущему кадру из-под пальца.
+        let touched = 0;
+        const touch = () => { touched = Date.now(); };
+        el.addEventListener('pointerdown', touch, { passive: true });
+        el.addEventListener('wheel', touch, { passive: true });
+        el.addEventListener('click', (e) => e.stopPropagation());
+        view.host.append(el);
+        const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let first = true;
+        const sync = () => {
+            const at = pswp.currIndex;
+            thumbs.forEach((b, i) => {
+                const on = i === at;
+                b.classList.toggle('is-current', on);
+                if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+                b.classList.toggle('is-hidden', list[i].el?.closest('.photo-cell')?.dataset.hidden === '1');
+            });
+            const b = thumbs[at];
+            if (b && (first || Date.now() - touched > 1500)) {
+                // Сама лента, без scrollIntoView: тот тянул бы и прокрутку страницы под окном.
+                const left = b.offsetLeft - (el.clientWidth - b.offsetWidth) / 2;
+                el.scrollTo({ left, behavior: first || calm ? 'instant' : 'smooth' });
+            }
+            first = false;
+        };
+        pswp.on('change', sync);
+        sync();
+    };
+    const STRIP_DESKTOP = matchMedia('(min-width: 1024px)');
+    const stripRoom = () => parseFloat(getComputedStyle(view.host).getPropertyValue('--lb-strip-room')) || 0;
     const around = (i) => { for (let k = -1; k <= 2; k++) measure(((i + k) % view.items.length + view.items.length) % view.items.length); };
 
     const build = (list, at, animate) => {
@@ -159,6 +210,8 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
             bgClickAction: 'close',
             wheelToZoom: true,
             loop: list.length > 2,
+            // На ПК кадр вписывается над лентой; на телефоне она стеклом поверх, как в «Фото» iOS.
+            paddingFn: () => ({ top: 0, left: 0, right: 0, bottom: list.length > 1 && STRIP_DESKTOP.matches ? stripRoom() : 0 }),
             returnFocus: false,
             trapFocus: false, // шторка подтверждения поверх просмотра получает фокус
             errorMsg: 'Фото не загрузилось',
@@ -279,6 +332,7 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
         });
         pswp.init();
         pills(pswp);
+        strip(pswp, list);
         view.pswp = pswp;
         return pswp;
     };
