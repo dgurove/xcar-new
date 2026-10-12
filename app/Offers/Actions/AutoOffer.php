@@ -16,6 +16,7 @@ use App\Mail\Scope;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Support\Nav;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -32,12 +33,16 @@ use Throwable;
  * распознанное догружаются на глазах.
  *
  * Не заводит — цепочка ждёт человека в «Из писем»: вендор не узнан, номера убытка нет или их несколько (письмо о двух
- * машинах), машины нет (ни VIN, ни марки из справочника), письмо старше недели (история ящика).
+ * машинах), номер в документах письма другой, машины нет (ни VIN, ни марки из справочника), письмо старше недели
+ * (история ящика), давняя пересылка с номером не из таблицы Кати.
  */
 final class AutoOffer
 {
     /** Письмо старше — не новое предложение, а догнавшая история: решит человек. */
     private const FRESH_DAYS = 7;
+
+    /** Пересланное письмо старше — давняя история: заводим, только если номер в таблице Кати (их Андрей и пересылает). */
+    private const FORWARD_DAYS = 30;
 
     /** Сколько отставших цепочек часы заводят за тик: тик держит слоты и волны, а строки входят по одной, не пачкой. */
     private const CATCH_UP = 5;
@@ -73,6 +78,22 @@ final class AutoOffer
         }
         if (! $candidate->code) {
             return 'номера убытка нет';
+        }
+        // 12.10.2026, 511791/2026: Совкомбанк в июньском письме «Вывоз ГОТС по делу 511791» приложил договор и акт по делу
+        // 114725-26 — номер встал из темы, машина и VIN из чужих документов. Номер в документах другой — решает человек;
+        // разница только в годе («-25» в теме, «-26» в договоре) — то же дело, его год берёт `__invoke` по таблице Кати.
+        $docs = self::docClaims($letter);
+        $number = self::number($candidate->code);
+        // Номер темы есть в таблице Кати — ему верим: в договоре бывает опечатка (564694 вместо 564964).
+        $listed = LegacyClaim::where('claim_ref_key', Code::key($candidate->code))->exists();
+        if ($docs && $number && ! $listed && ! in_array($number, array_map(self::number(...), $docs), true)) {
+            return 'номер убытка в теме и в документах разный';
+        }
+        // 12.10.2026: Катя переслала июньское письмо, машина продана давно. Давнюю пересылку заводим, только если номер в
+        // таблице Кати: её Андрей и пересылает пачкой.
+        $sent = self::forwardedAt($letter->text_body ?: strip_tags((string) $letter->html_body));
+        if (! $old && $sent && $sent->lt(now()->subDays(self::FORWARD_DAYS)) && ! $listed) {
+            return 'давнее пересланное письмо, номера нет в таблице Кати';
         }
         if (! Vin::full((string) $candidate->value('vin')) && ! ($candidate->value('brand') && Brand::known((string) $candidate->value('brand')))) {
             return 'машины нет: ни VIN, ни марки';
@@ -137,6 +158,14 @@ final class AutoOffer
         if (! $offer->wasRecentlyCreated) {
             return null;
         }
+        // Номер в теме и в договоре разнится только годом, и в таблице Кати — вариант из договора: берём его (12.10.2026,
+        // 678776-25 в теме, 678776-26 в договоре и в таблице — черновик встал мимо таблицы, призрак остался).
+        if (! LegacyClaim::where('claim_ref_key', $offer->claim_ref_key)->exists()) {
+            $fit = collect(self::docClaims($this->letter($candidate)))->first(fn ($c) => LegacyClaim::where('claim_ref_key', Code::key($c))->exists());
+            if ($fit) {
+                $offer->forceFill(['claim_ref' => $fit])->save();
+            }
+        }
         AutoScan::await($offer);
         // Файлы письма уже на месте (нечего тянуть из ящика) — читать сразу.
         if (! ImportThreadFiles::progressOf($offer)) {
@@ -185,6 +214,39 @@ final class AutoOffer
     private static function declinedKey(int $candidateId): string
     {
         return "auto-offer:declined:{$candidateId}";
+    }
+
+    /**
+     * Номера дел в именах документов письма: «Договор комиссии 114725-26.docx», «Акт приема-передачи 476135-26.docx».
+     *
+     * @return list<string> нормальной записью («114725/2026»)
+     */
+    public static function docClaims(?Message $letter): array
+    {
+        if (! $letter) {
+            return [];
+        }
+
+        return $letter->attachments->pluck('filename')
+            ->map(fn ($f) => preg_match('/(?:договор|акт)\D*?(\d{4,7}[-\/]\d{2,4})(?!\d)/iu', (string) $f, $m) ? Code::normalize($m[1]) : null)
+            ->filter()->unique()->values()->all();
+    }
+
+    /** Номер дела без года: «114725/2026» → «114725». */
+    private static function number(?string $claim): ?string
+    {
+        return preg_match('/^(\d{4,7})(?:\/\d{2,4})?$/', (string) Code::normalize($claim), $m) ? $m[1] : null;
+    }
+
+    /** Дата пересланного письма из шапки пересылки («Дата: Четверг, 18 июня 2026, 12:56 +03:00»); не пересылка — null. */
+    public static function forwardedAt(string $body): ?Carbon
+    {
+        $months = ['января' => 1, 'февраля' => 2, 'марта' => 3, 'апреля' => 4, 'мая' => 5, 'июня' => 6, 'июля' => 7, 'августа' => 8, 'сентября' => 9, 'октября' => 10, 'ноября' => 11, 'декабря' => 12];
+        if (! preg_match('/(?:Дата|Date|Отправлено|Sent)\s*:[^\n]*?(\d{1,2})\s+('.implode('|', array_keys($months)).')\s+(\d{4})/iu', $body, $m)) {
+            return null;
+        }
+
+        return Carbon::create((int) $m[3], $months[mb_strtolower($m[2])], (int) $m[1]);
     }
 
     /** Письмо-предложение: то, с которого цепочка началась, иначе первое входящее. */
