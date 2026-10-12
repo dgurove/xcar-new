@@ -7,6 +7,8 @@ use App\Cars\Settlement;
 use App\Mail\Extraction\Templates\Generic;
 use App\Mail\Extraction\Templates\Template;
 use App\Mail\Scope;
+use App\Offers\LegacyClaim;
+use App\Offers\Offer;
 use App\Support\Phone;
 use App\Vendors\Vendor;
 
@@ -36,6 +38,7 @@ final class Extractor
         $topic = Patterns::cleanSubject(QuotationStripper::forwardedSubject($body) ?? $subject);
 
         $this->car($fields, $topic);
+        $this->bareCode($fields, $topic);
         $this->body($fields, $text);
         foreach ($this->documents($attachments) as $field => $value) {
             $fields[$field] ??= $value;
@@ -47,6 +50,24 @@ final class Extractor
         $fields['sender'] = ['value' => $sender, 'source' => 'sender'];
 
         return $fields;
+    }
+
+    /**
+     * Номер без года («Вывоз ГОТС 771027 г Кемерово», «1188064 Exeed VX Тольятти» — так Совкомбанк пишет в теме): номер
+     * с годом берём из таблицы Кати или предложений, если такой ровно один. Иначе номера нет — угадывать год нельзя.
+     */
+    private function bareCode(array &$fields, string $topic): void
+    {
+        if (isset($fields['code']) || ! preg_match('/(?:^|ГОТС|делу|дело|уб\.?)\s*№?\s*(\d{5,7})(?![\d\/-])/ui', trim($topic), $m)) {
+            return;
+        }
+        $like = $m[1].'/%';
+        $codes = LegacyClaim::where('claim_ref', 'like', $like)->pluck('claim_ref')
+            ->merge(Offer::where('claim_ref', 'like', $like)->pluck('claim_ref'))
+            ->map(fn ($c) => Code::normalize($c))->unique()->values();
+        if ($codes->count() === 1) {
+            $fields['code'] = ['value' => $codes[0], 'source' => 'subject'];
+        }
     }
 
     /**

@@ -3,7 +3,7 @@
      x-offer.table-row вкладки (OfferController::columns), пустые — пусто. --}}
 @props(['claim', 'cols'])
 @php $has = fn (string $k) => in_array($k, $cols, true); @endphp
-<tr class="legacy-row" data-search-row>
+<tr class="legacy-row" data-search-row id="legacy-{{ $claim->id }}" data-flip="c:{{ $claim->claim_ref_key }}">
     <td class="grow">
         <span class="cell-title text-ink-muted"><x-ui.copy-code :value="$claim->claim_ref"/></span>
     </td>

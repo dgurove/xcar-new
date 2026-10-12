@@ -85,7 +85,7 @@
                     $danger = $transitions->diffKeys($calm);
                     // У сделки «в черновики» — внутри шторки «Отменить сделку» (12.10.2026), отдельным пунктом не нужен.
                     if ($resale && $offer->state === OfferState::Sold) $danger = $danger->except(OfferState::Draft->value);
-                    // Черновик из таблицы Кати — «Убрать из таблицы Кати»: номер уходит из списка, в рабочих вкладках черновик и так стоит.
+                    // Черновик из таблицы Кати — «Вернуть в черновики»: номер уходит из списка, машина — в свою рабочую вкладку.
                     $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                     $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
                 @endphp
@@ -125,7 +125,7 @@
                                 <div class="menu-group">
                                     <form method="post" action="/offers/legacy/{{ $listed->id }}">
                                         @csrf @method('delete')
-                                        <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="x" class="size-5 text-ink-muted"/>Убрать из таблицы Кати</button>
+                                        <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="undo" class="size-5 text-ink-muted"/>Вернуть в черновики</button>
                                     </form>
                                 </div>
                             @endif

@@ -4,7 +4,7 @@
      справа, в строке — цена справа, город под ней. Неоценённый черновик — чипом «Оценить» (только админу): ведёт в
      карточка таблицы на этой строке, рядом закупочная. Тегов года, коробки и НДС нет — они в карточке и на странице. Кнопок нет: вся
      карточка — ссылка на предложение. --}}
-@props(['offer', 'gallery' => false, 'checkable' => false, 'group' => null])
+@props(['offer', 'gallery' => false, 'checkable' => false, 'group' => null, 'arrive' => null])
 @php
     use App\Offers\OfferState;
     use App\Support\Money;
@@ -34,10 +34,14 @@
     $count = ! $admin ? 0 : ($gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0));
     // Выбор пачкой («Оцененные», «Публикация») — галочкой в углу кадра, как в строке таблицы; не готовое к продаже —
     // без галочки, «нет фото» красным в строке текста.
+    // Черновик из письма догружается (`AutoScan::states`): ход строкой, полоса бежит по карточке, «Оценить» — после.
+    $arriving = $arrive['state'] ?? null;
+    $busy = in_array($arriving, ['ghost', 'files', 'reading'], true);
+    $rate = $rate && ! $busy;
     $missing = $checkable && $draft && ! $offer->isScheduled() ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
 @endphp
 {{-- data-todo — как у строки таблицы (OfferController::todo): по таким карточка идёт к следующей и в плитках. --}}
-<article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group {{ $mark ? 'card--'.$mark : '' }}" @if (auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user())) data-todo @endif>
+<article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group {{ $mark ? 'card--'.$mark : '' }} {{ $arrive ? 'arrive' : '' }} {{ $busy ? 'arrive--busy arrive--'.$arriving : '' }}" @if (auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user())) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif>
     <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1" {!! $peek !!}></a>
     @if ($checkable && ! $missing)<label class="card-check card-check--on" aria-label="Выбрать"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"><span><x-ui.icon name="check" class="size-4"/></span></label>@endif
     @if ($photos->isNotEmpty())
@@ -74,6 +78,7 @@
             @elseif (! $draft)<span class="{{ $tone }}">{{ mb_strtolower($offer->state->labelFor(auth()->user())) }}</span>@endif
             @if ($count)<span class="{{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count }} {{ $gallery ? \App\Support\Plural::of($count, ['интерес', 'интереса', 'интересов']) : 'подтв.' }}</span>@endif
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
+            @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
         </span>
     </div>
     <div class="card-aside">

@@ -11,9 +11,27 @@ import { refreshPage } from '../live.js';
 // - по ходу чтения (событие scan своей ТС) страница перечитывается морфом — с тем же сторожем, что live.js.
 // Морф переставляет строки, вынимая их и вставляя заново (контроллер отключается и подключается), поэтому прошлое
 // строки помнится здесь, по id, а не в контроллере: переставленная не входит второй раз и не теряет проявление.
+// С 12.10.2026 так же черновик предложения из письма (AutoOffer, предмет o:): files — едут фото, «Забираем фото, 3 из
+// 23»; вход — закупочная отсчитывается от нуля, номер убытка печатается; взлетевшей с места призрака строке (flip.js,
+// «Из таблицы Кати») вход сверху снимает flip.js — она загорается волной. Ход файлов событием не приходит — пока такая строка ждёт,
+// список перечитывается раз в POLL мс.
 const SILHOUETTE = 1200;
 const ENTER_WINDOW = 1500;
-const BUSY = ['ghost', 'reading'];
+const POLL = 3000;
+const BUSY = ['ghost', 'files', 'reading'];
+
+let poll = null;
+function watchOffers() {
+    if (poll) return;
+    poll = setInterval(() => {
+        if (!document.querySelector('[data-arrive-subject-value^="o:"].arrive--busy')) {
+            clearInterval(poll);
+            poll = null;
+            return;
+        }
+        if (document.visibilityState === 'visible') refreshPage();
+    }, POLL);
+}
 
 let morphedAt = -Infinity;
 document.addEventListener('turbo:before-render', (e) => { if (e.detail.renderMethod === 'morph') morphedAt = performance.now(); });
@@ -30,7 +48,11 @@ export default class extends Controller {
         const id = this.element.id;
         const was = seen.get(id);
         const busy = BUSY.includes(this.stateValue);
-        if (!was && busy && performance.now() - morphedAt < ENTER_WINDOW) this.play('is-entering', 700);
+        if (!was && busy && performance.now() - morphedAt < ENTER_WINDOW) {
+            this.play('is-entering', 1800);
+            this.countUp();
+        }
+        if (busy && this.subjectValue.startsWith('o:')) watchOffers();
         seen.set(id, { state: this.stateValue, since: was?.since ?? performance.now() });
         if (was && BUSY.includes(was.state) && !busy) this.reveal(was.since);
         this.onScan = (e) => {
@@ -65,6 +87,26 @@ export default class extends Controller {
             this.element.classList.remove('is-holding');
             this.play('is-revealed', 900);
         }, Math.max(0, left));
+    }
+
+    // Закупочная из письма — отсчётом от нуля: видно, почему строка встала в «Без продажной цены».
+    countUp() {
+        for (const el of this.element.querySelectorAll('[data-arrive-count]')) {
+            const text = el.textContent;
+            const to = Number(text.replace(/\D/g, '')) || 0;
+            const space = text.match(/\d(\D)\d/)?.[1] ?? '\u00a0';
+            if (!to || matchMedia('(prefers-reduced-motion: reduce)').matches) continue;
+            const start = performance.now();
+            const frame = (now) => {
+                const t = Math.min(1, (now - start) / 1100);
+                const value = Math.round(to * (1 - (1 - t) ** 3));
+                el.textContent = t < 1 ? String(value).replace(/\B(?=(\d{3})+(?!\d))/g, space) : text;
+                if (t < 1) requestAnimationFrame(frame);
+            };
+            el.classList.add('arrive-counting');
+            setTimeout(() => el.classList.remove('arrive-counting'), 1800);
+            requestAnimationFrame(frame);
+        }
     }
 
     play(name, ms) {

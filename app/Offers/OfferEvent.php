@@ -50,6 +50,7 @@ class OfferEvent extends Model
             OfferEventType::Created => match (true) {
                 isset($p['purchase']) => "Создан из закупки № {$p['purchase']}, ДЛ {$p['dl']}",
                 isset($p['park']) => 'Выставлен с парковки',
+                isset($p['mail']) => 'Заведён из письма',
                 default => 'Создан',
             },
             // Правка задачи Мигторга: поля лота («ответ до» — тот же конец торгов, что «срок от вендора») или кадры.

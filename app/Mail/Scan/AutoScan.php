@@ -6,7 +6,10 @@ use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Extraction\ScanFields;
+use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Jobs\ScanAttachments;
+use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -28,27 +31,32 @@ use Throwable;
  * - итог подводит любая кончившаяся задача с файлами ТС (`settle`), а не только своя: файлы бывает читает цепочка
  *   «Из писем» или другой предмет;
  * - часы парковки дочитывают недочитанное (`sweep`): задачу убила выкладка, документ пришёл позже заведения.
+ *
+ * С 12.10.2026 так же черновик предложения, который завела почта (`Offers\Actions\AutoOffer`, владелец: «чтобы письма
+ * сами превращались в черновики, и строки появлялись с анимацией, как заявки на парковке»): предмет `o:{id}`. Сначала
+ * едут файлы письма (`ImportThreadFiles`: архивы, облако — документы бывают только там), строка — «Забираем фото»;
+ * задача файлов кончилась — читаем документы (`filesArrived`), итог вписывает пустые поля через `UpdateOffer`.
  */
 final class AutoScan
 {
     /** Метка живёт дольше любой задачи чтения: упавшая её снимает (`abandon`), забытая гаснет сама. */
     private const TTL = 7200;
 
-    /** ТС, ждущие итога: id → когда начали. По нему `settle` и `sweep` находят их без перебора всех ТС. */
+    /** Предметы, ждущие итога: `v:12` / `o:34` → когда начали. По нему `settle` и `sweep` находят их без перебора. */
     private const PENDING = 'scan:auto:pending';
 
     /** Ничего не читается, а итога всё нет столько минут — подвести самим: силуэт строки не висит вечно. */
     private const STALE_MINUTES = 20;
 
-    /** Дочитывать документы ТС, чья заявка из письма заведена не раньше стольких дней назад. */
+    /** Дочитывать документы ТС и черновиков, заведённых из писем не раньше стольких дней назад. */
     private const SWEEP_DAYS = 7;
 
     /** @param list<string> $ids дописать в чтение и эти файлы — фото (`park:find-values --photos`); пусто — документы */
-    public static function start(Vehicle $vehicle, array $ids = []): void
+    public static function start(Vehicle|Offer $model, array $ids = []): void
     {
-        Cache::put(self::key($vehicle->id), 'docs', self::TTL);
-        self::register($vehicle->id);
-        $subject = new VehicleSubject($vehicle);
+        $subject = self::subject($model);
+        Cache::put(self::key($subject->key()), 'docs', self::TTL);
+        self::register($subject->key());
         Reader::read($subject, $ids);
         // Читать нечего или всё уже в кеше — итог сразу, задачи не будет.
         if (! ScanAttachments::reading(Reader::files($subject))) {
@@ -56,48 +64,67 @@ final class AutoScan
         }
     }
 
+    /**
+     * Черновик завела почта: строка встаёт сразу, а читать нечего, пока файлы едут из ящика (`ImportThreadFiles`). Метка
+     * «ждём файлы»; задача файлов кончилась — `filesArrived` ставит чтение.
+     */
+    public static function await(Offer $offer): void
+    {
+        Cache::put(self::key('o:'.$offer->id), 'files', self::TTL);
+        self::register('o:'.$offer->id);
+    }
+
+    /** Задача файлов ветки кончилась (`ImportThreadFiles::handle`): у черновика из письма — читать документы. */
+    public static function filesArrived(Offer|Vehicle|null $model): void
+    {
+        if ($model instanceof Offer && Cache::get(self::key('o:'.$model->id))) {
+            self::start($model);
+        }
+    }
+
     /** Задача чтения кончилась (`ScanAttachments::handle`): вписать найденное и снять метку. */
     public static function finished(Subject $subject): void
     {
-        if (! $subject instanceof VehicleSubject) {
+        if (! $subject instanceof VehicleSubject && ! $subject instanceof OfferSubject) {
             return;
         }
-        if (! Cache::get(self::key($subject->vehicle->id))) {
-            self::unregister($subject->vehicle->id);
+        $key = $subject->key();
+        $mark = Cache::get(self::key($key));
+        if (! $mark) {
+            self::unregister($key);
 
             return;
         }
-        $vehicle = $subject->vehicle->refresh();
-        $subject = new VehicleSubject($vehicle);
-        // Другая пачка тех же файлов ещё читается (человек дописал файл искрой, читает цепочка) — итог подведёт она.
-        if (ScanAttachments::reading(Reader::files($subject))) {
+        $subject = self::subject(self::model($subject)->refresh());
+        // Файлы ещё едут — читать будем после них. Другая пачка тех же файлов ещё читается — итог подведёт она.
+        $offer = $subject instanceof OfferSubject;
+        if (($offer && ($mark === 'files' || ImportThreadFiles::progressOf($subject->offer))) || ScanAttachments::reading(Reader::files($subject))) {
             return;
         }
         self::fill($subject);
-        Cache::forget(self::key($vehicle->id));
-        self::unregister($vehicle->id);
+        Cache::forget(self::key($key));
+        self::unregister($key);
         // Минута «только что» — строка проявляется и вспыхивает у того, кто смотрит (`arrive_controller`).
-        Cache::put(self::doneKey($vehicle->id), true, 60);
-        self::ping($vehicle);
+        Cache::put(self::doneKey($key), true, 60);
+        self::ping($subject);
     }
 
     /**
-     * Кончилась задача с этими файлами (любого предмета): ТС из реестра, чьи файлы в ней были и больше не читаются, —
-     * итог. Иначе ТС, чьи файлы при заведении уже читала цепочка «Из писем», ждала бы итога своей задачи, которой нет.
+     * Кончилась задача с этими файлами (любого предмета): предметы из реестра, чьи файлы в ней были и больше не читаются,
+     * — итог. Иначе ТС, чьи файлы при заведении уже читала цепочка «Из писем», ждала бы итога своей задачи, которой нет.
      *
      * @param  list<int|string>  $ids
      */
     public static function settle(array $ids): void
     {
         $ids = array_map('strval', $ids);
-        foreach (array_keys(self::pending()) as $id) {
-            $vehicle = Vehicle::find($id);
-            if (! $vehicle) {
-                self::unregister($id);
+        foreach (array_keys(self::pending()) as $key) {
+            $subject = Subjects::find($key);
+            if (! $subject) {
+                self::unregister($key);
 
                 continue;
             }
-            $subject = new VehicleSubject($vehicle);
             if (array_intersect($ids, Reader::files($subject)->map->scanId()->all())) {
                 self::finished($subject);
             }
@@ -105,35 +132,46 @@ final class AutoScan
     }
 
     /**
-     * Часы парковки (`park:tick`): у ТС открытой заявки из письма за неделю есть непрочитанные документы и ничего не
-     * читается — читать (задачу убила выкладка, документ пришёл позже заведения); файл, что не прочёлся, — не раньше
-     * чем через сутки (`ScanAttachments::lost`). Ждёт итога давно, а читать нечего — подвести. Возвращает, скольким
-     * ТС поставлено чтение.
+     * Часы парковки и CRM (`park:tick`, `offers:tick`): у ТС открытой заявки из письма и у черновика из письма за неделю
+     * есть непрочитанные документы и ничего не читается — читать (задачу убила выкладка, документ пришёл позже
+     * заведения); файл, что не прочёлся, — не раньше чем через сутки (`ScanAttachments::lost`). Ждёт итога давно, а
+     * читать нечего — подвести. Возвращает, скольким предметам поставлено чтение.
      */
-    public static function sweep(): int
+    public static function sweep(bool $offers = false): int
     {
         $started = 0;
-        $vehicles = Request::whereNotNull('letter_id')->whereIn('state', RequestState::open())
-            ->where('created_at', '>', now()->subDays(self::SWEEP_DAYS))->with('vehicle')->get()
-            ->pluck('vehicle')->filter()->unique('id');
-        foreach ($vehicles as $vehicle) {
-            $subject = new VehicleSubject($vehicle);
+        $models = $offers
+            ? Offer::where('state', OfferState::Draft)->whereNull('moderator_id')->where('created_at', '>', now()->subDays(self::SWEEP_DAYS))
+                ->whereExists(fn ($t) => $t->from('mail_threads')->whereColumn('mail_threads.offer_id', 'offers.id'))->get()
+            : Request::whereNotNull('letter_id')->whereIn('state', RequestState::open())
+                ->where('created_at', '>', now()->subDays(self::SWEEP_DAYS))->with('vehicle')->get()
+                ->pluck('vehicle')->filter()->unique('id');
+        foreach ($models as $model) {
+            $subject = self::subject($model);
             $files = Reader::files($subject);
-            if (ScanAttachments::reading($files)) {
+            if (ScanAttachments::reading($files) || ImportThreadFiles::progressOf($model)) {
                 continue;
             }
             $unread = $files->filter(fn (ScanFile $f) => DocumentText::cached($f) === null && DocumentText::scannable($f) && ! ScanAttachments::lost($f->scanId()));
             if ($unread->isNotEmpty()) {
-                self::start($vehicle);
+                self::start($model);
                 $started++;
             }
         }
-        foreach (self::pending() as $id => $since) {
-            if ($since < now()->subMinutes(self::STALE_MINUTES)->getTimestamp() && ($vehicle = Vehicle::find($id))
-                && ! ScanAttachments::reading(Reader::files(new VehicleSubject($vehicle)))) {
-                self::finished(new VehicleSubject($vehicle));
-            } elseif (! Vehicle::whereKey($id)->exists()) {
-                self::unregister($id);
+        $prefix = $offers ? 'o:' : 'v:';
+        foreach (self::pending() as $key => $since) {
+            if (! str_starts_with($key, $prefix)) {
+                continue;
+            }
+            $subject = Subjects::find($key);
+            if (! $subject) {
+                self::unregister($key);
+            } elseif ($since < now()->subMinutes(self::STALE_MINUTES)->getTimestamp() && ! ScanAttachments::reading(Reader::files($subject))) {
+                // Файлы так и не доехали (задачу убила выкладка) — читаем что есть, итог подведёт чтение.
+                if (Cache::get(self::key($key)) === 'files') {
+                    Cache::put(self::key($key), 'docs', self::TTL);
+                }
+                self::finished($subject);
             }
         }
 
@@ -143,37 +181,42 @@ final class AutoScan
     /** Задача упала или убита по таймауту — строка не должна навсегда остаться силуэтом. */
     public static function abandon(string $subjectKey): void
     {
-        if (str_starts_with($subjectKey, 'v:')) {
-            self::unregister((int) substr($subjectKey, 2));
-            if (Cache::pull(self::key((int) substr($subjectKey, 2)))) {
-                app(Publisher::class)->refresh(Topics::PARK, ['/requests']);
-            }
+        if (! str_starts_with($subjectKey, 'v:') && ! str_starts_with($subjectKey, 'o:')) {
+            return;
+        }
+        self::unregister($subjectKey);
+        if (Cache::pull(self::key($subjectKey))) {
+            str_starts_with($subjectKey, 'v:')
+                ? app(Publisher::class)->refresh(Topics::PARK, ['/requests'])
+                : app(Publisher::class)->refresh(Topics::STAFF, ['/']);
         }
     }
 
     /**
      * Ход для строк списка — пачкой, без разбора писем у обычных строк:
      * - `ghost` — завели, ещё ничего не прочитано (файлы едут из ящика, чтение ждёт работника);
+     * - `files` — у черновика едут файлы письма, `i` из `n`;
      * - `reading` — читаем, `i` из `n` документов;
      * - `done` — только что закончили.
      *
-     * @param  iterable<Vehicle>  $vehicles
+     * @param  iterable<Vehicle|Offer>  $models
      * @return array<int, array{state: string, i?: int, n?: int, what?: string}>
      */
-    public static function states(iterable $vehicles): array
+    public static function states(iterable $models): array
     {
-        $vehicles = collect($vehicles)->keyBy('id');
-        if ($vehicles->isEmpty()) {
+        $models = collect($models)->filter()->keyBy('id');
+        if ($models->isEmpty()) {
             return [];
         }
-        $ids = $vehicles->keys();
-        $passes = Cache::many($ids->map(fn ($id) => self::key($id))->all());
-        $done = Cache::many($ids->map(fn ($id) => self::doneKey($id))->all());
+        $prefix = $models->first() instanceof Offer ? 'o:' : 'v:';
+        $ids = $models->keys();
+        $passes = Cache::many($ids->map(fn ($id) => self::key($prefix.$id))->all());
+        $done = Cache::many($ids->map(fn ($id) => self::doneKey($prefix.$id))->all());
         $out = [];
         foreach ($ids as $id) {
-            if ($pass = $passes[self::key($id)] ?? null) {
-                $out[$id] = self::progress($vehicles[$id]);
-            } elseif ($done[self::doneKey($id)] ?? null) {
+            if ($pass = $passes[self::key($prefix.$id)] ?? null) {
+                $out[$id] = self::progress($models[$id], $pass);
+            } elseif ($done[self::doneKey($prefix.$id)] ?? null) {
                 $out[$id] = ['state' => 'done'];
             }
         }
@@ -182,9 +225,15 @@ final class AutoScan
     }
 
     /** @return array{state: string, i?: int, n?: int, what?: string} */
-    private static function progress(Vehicle $vehicle): array
+    private static function progress(Vehicle|Offer $model, string $pass): array
     {
-        $subject = new VehicleSubject($vehicle);
+        if ($model instanceof Offer && ($import = ImportThreadFiles::progressOf($model)) && ($import['n'] ?? 0)) {
+            return ['state' => 'files', 'i' => min((int) $import['i'] + 1, (int) $import['n']), 'n' => (int) $import['n'], 'what' => 'photos'];
+        }
+        if ($pass === 'files') {
+            return ['state' => 'ghost'];
+        }
+        $subject = self::subject($model);
         $files = Reader::files($subject)->reject->isPhoto()->values();
         $read = $files->filter(fn (ScanFile $f) => DocumentText::cached($f) !== null)->count();
         // Ничего ещё не прочитано и работник не взялся (ждёт очереди за чужим чтением) — силуэт.
@@ -197,9 +246,9 @@ final class AutoScan
 
     /**
      * Пустое поле — первым вариантом прочитанного, как отмечено по умолчанию в окне «Распознать» (письмо, потом
-     * документы по `Files::rank`: СТС и ПТС первыми); заполненное — строками «в документе иначе» в деле.
+     * документы по `Files::rank`: СТС и ПТС первыми); заполненное — строками «в документе иначе» в деле и редакторе.
      */
-    private static function fill(VehicleSubject $subject): void
+    private static function fill(VehicleSubject|OfferSubject $subject): void
     {
         try {
             $rows = ScanFields::of($subject->current(), Reader::docs(Reader::files($subject)), $subject->fields());
@@ -210,42 +259,59 @@ final class AutoScan
             }
         } catch (Throwable $e) {
             // Не вписалось — строка всё равно становится полной: поля человек заполнит из документов в деле.
-            Log::warning('Поля из документов не вписались сами', ['vehicle' => $subject->vehicle->id, 'error' => $e->getMessage()]);
+            Log::warning('Поля из документов не вписались сами', ['subject' => $subject->key(), 'error' => $e->getMessage()]);
         }
     }
 
-    private static function ping(Vehicle $vehicle): void
+    private static function ping(VehicleSubject|OfferSubject $subject): void
     {
-        app(Publisher::class)->refresh(Topics::PARK, ['/requests', "/cars/{$vehicle->id}"]);
+        $subject instanceof VehicleSubject
+            ? app(Publisher::class)->refresh(Topics::PARK, ['/requests', "/cars/{$subject->vehicle->id}"])
+            : app(Publisher::class)->refresh(Topics::STAFF, ['/', "/offers/{$subject->offer->number}"]);
     }
 
-    /** @return array<int, int> */
+    private static function subject(Vehicle|Offer $model): VehicleSubject|OfferSubject
+    {
+        return $model instanceof Vehicle ? new VehicleSubject($model) : new OfferSubject($model);
+    }
+
+    private static function model(VehicleSubject|OfferSubject $subject): Vehicle|Offer
+    {
+        return $subject instanceof VehicleSubject ? $subject->vehicle : $subject->offer;
+    }
+
+    /** @return array<string, int> ключ предмета → когда начали; старые записи — id ТС числом */
     private static function pending(): array
     {
-        return (array) Cache::get(self::PENDING, []);
+        $out = [];
+        foreach ((array) Cache::get(self::PENDING, []) as $key => $since) {
+            $out[is_int($key) ? 'v:'.$key : (string) $key] = $since;
+        }
+
+        return $out;
     }
 
-    private static function register(int $vehicleId): void
+    private static function register(string $key): void
     {
-        Cache::forever(self::PENDING, [$vehicleId => now()->getTimestamp()] + self::pending());
+        Cache::forever(self::PENDING, [$key => now()->getTimestamp()] + self::pending());
     }
 
-    private static function unregister(int $vehicleId): void
+    private static function unregister(string $key): void
     {
         $pending = self::pending();
-        if (isset($pending[$vehicleId])) {
-            unset($pending[$vehicleId]);
+        if (isset($pending[$key])) {
+            unset($pending[$key]);
             Cache::forever(self::PENDING, $pending);
         }
     }
 
-    private static function key(int $vehicleId): string
+    private static function key(string $subjectKey): string
     {
-        return "scan:auto:v:{$vehicleId}";
+        return "scan:auto:{$subjectKey}";
     }
 
-    private static function doneKey(int $vehicleId): string
+    private static function doneKey(string $subjectKey): string
     {
-        return "scan:auto:done:v:{$vehicleId}";
+        return "scan:auto:done:{$subjectKey}";
     }
 }

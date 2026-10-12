@@ -84,12 +84,12 @@
                     <x-slot:head><x-offer.table-head :pick="$pick" :cols="$cols" :sort="$sort"/></x-slot:head>
                     @foreach ($groups as $key => $list)
                         @if ($title = $groupTitle($key, $list))
-                            <tr class="table-group"><th colspan="{{ $span }}"><span class="table-group-name">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums">{{ $list->count() }}</span></span></th></tr>
+                            <tr class="table-group"><th colspan="{{ $span }}"><span class="table-group-name">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums" data-count="group-{{ $key }}">{{ $list->count() }}</span></span></th></tr>
                         @endif
-                        @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :cols="$cols" :checkable="$pick" :group="$preset === 'slots' ? $key : null"/>@endforeach
+                        @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :cols="$cols" :checkable="$pick" :group="$preset === 'slots' ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
                     @endforeach
                     @if ($ghosts->isNotEmpty())
-                        <tr class="table-group"><th colspan="{{ $span }}"><span class="table-group-name">Не заведены <span class="nums">{{ $ghosts->count() }}</span></span></th></tr>
+                        <tr class="table-group"><th colspan="{{ $span }}"><span class="table-group-name">Не заведены <span class="nums" data-count="ghosts">{{ $ghosts->count() }}</span></span></th></tr>
                         @foreach ($ghosts as $claim)<x-offer.legacy-row :claim="$claim" :cols="$cols"/>@endforeach
                     @endif
                 </x-ui.table>
@@ -111,7 +111,7 @@
                 @foreach ($groups as $key => $list)
                     @if ($title = $groupTitle($key, $list))<h2 class="box-title flex items-center gap-2 {{ $loop->first ? '' : 'mt-6' }}">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums text-ink-dim">{{ $list->count() }}</span></h2>@endif
                     <div @if ($loop->first) id="offers" @endif class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">
-                        @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$preset === 'slots' ? $key : null"/>@endforeach
+                        @foreach ($list as $offer)<x-offer.crm-card :offer="$offer" :checkable="$pick" :group="$preset === 'slots' ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
                     </div>
                 @endforeach
                 @endif

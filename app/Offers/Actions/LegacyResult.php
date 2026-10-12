@@ -20,11 +20,11 @@ class LegacyResult
     /** @var list<Offer> */
     public array $published = [];
 
-    /** «Черновиков 10, не заведены 98, в сделке 10». */
+    /** «Перенесено 10, не заведены 98, в сделке 10». */
     public function summary(): string
     {
         $parts = array_filter([
-            $this->moved ? 'черновиков '.$this->moved : null,
+            $this->moved ? 'перенесено '.$this->moved : null,
             $this->ghosts ? 'не '.Plural::of($this->ghosts, ['заведён', 'заведены', 'заведены']).' '.$this->ghosts : null,
             $this->deals ? 'в сделке '.count($this->deals) : null,
             $this->published ? 'в продаже '.count($this->published) : null,

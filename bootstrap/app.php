@@ -9,8 +9,8 @@ use App\Billing\Console\TickBilling;
 use App\Cars\Console\MergeCarsCommand;
 use App\Cars\Console\MergeDuplicatesCommand;
 use App\Garage\Console\GarageReformFixCommand;
-use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\ActWindowBack;
+use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\DetailBack;
 use App\Http\Middleware\DeviceGate;
 use App\Http\Middleware\EnsureAbility;
@@ -42,6 +42,7 @@ use App\Media\Console\MoveConversionsHot;
 use App\Media\Console\Restamp;
 use App\Media\Console\TuneWatermarks;
 use App\Media\Console\UnmarkPhotos;
+use App\Offers\Console\AutoDraftsCommand;
 use App\Offers\Console\DealAgreementFixCommand;
 use App\Offers\Console\MigtorgArchive;
 use App\Offers\Console\MigtorgSync;
@@ -67,8 +68,8 @@ use App\Telegram\Offers\Console\Poke as OffersBotPoke;
 use App\Telegram\Offers\Console\Profile as OffersBotProfile;
 use App\Telegram\Offers\Console\Run as OffersBotRun;
 use App\Users\Console\CreateUser;
-use App\Users\Console\TelegramAvatars;
 use App\Users\Console\SeedDemo;
+use App\Users\Console\TelegramAvatars;
 use App\Workflow\Console\RefillVendors;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -88,6 +89,7 @@ return Application::configure(basePath: dirname(__DIR__))
         TelegramAvatars::class,
         CreateUser::class,
         TickOffers::class,
+        AutoDraftsCommand::class,
         PruneEmptyDrafts::class,
         MigtorgSync::class,
         MigtorgArchive::class,

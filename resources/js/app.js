@@ -9,6 +9,7 @@ import { confirmSheet } from './confirm';
 import { closeSheet } from './sheet';
 import { netGuards } from './net';
 import { live } from './live';
+import './flip';
 import { longPressMenu } from './longpress';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).

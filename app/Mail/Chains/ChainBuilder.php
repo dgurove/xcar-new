@@ -20,6 +20,7 @@ use App\Mail\Message;
 use App\Mail\Reading\ReadLetter;
 use App\Mail\Scope;
 use App\Mail\Thread;
+use App\Offers\Actions\AutoOffer;
 use App\Offers\Offer;
 use App\Park\Actions\AutoRequest;
 use App\Park\City;
@@ -67,15 +68,14 @@ final class ChainBuilder
             return $this->place($message, $force, $quiet, $files, $fresh);
         });
         // Новая цепочка — людям: парковке сначала заводится заявка (`AutoRequest`, вне замка ящика — там импорт файлов),
-        // и уведомление уже о ней; CRM — «Новое из писем» модераторам (Notify::candidateArrived). История ящика — молча.
+        // CRM — черновик (`AutoOffer`, когда уверены, что это предложение), и уведомление уже о них; иначе «Новое из
+        // писем» модераторам (Notify::candidateArrived). История ящика — молча.
         if ($fresh && ! $quiet && $candidate) {
-            if ($candidate->scope === Scope::Park) {
-                try {
-                    app(AutoRequest::class)($candidate);
-                } catch (Throwable $e) {
-                    // Не завелась сама — цепочка ждёт человека в «Из писем», а письмо всё равно принято.
-                    report($e);
-                }
+            try {
+                $candidate->scope === Scope::Park ? app(AutoRequest::class)($candidate) : app(AutoOffer::class)($candidate);
+            } catch (Throwable $e) {
+                // Не завелась сама — цепочка ждёт человека в «Из писем», а письмо всё равно принято.
+                report($e);
             }
             CandidateArrived::dispatch($candidate->fresh());
         }

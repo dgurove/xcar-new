@@ -578,7 +578,7 @@ class Offer extends Model implements HasMedia
         $q->where(function ($w) use ($user, &$any) {
             if ($user->isModerator()) {
                 $any = true;
-                $w->orWhere(fn ($m) => $m->whereIn('moderator_id', $user->teamIds())->whereDoesntHave('purchaseCar'));
+                $w->orWhere(fn ($m) => $m->inCrm($user));
             }
             // Менеджер и супер-покупатель — открытое, когда наступила его волна показа (`offer_viewers`; супер-покупатели в
             // волнах — один менеджер, `AudienceRules`).
@@ -658,7 +658,12 @@ class Offer extends Model implements HasMedia
             return $q;
         }
         if ($user->isModerator()) {
-            return $q->whereIn('moderator_id', $user->teamIds())->whereDoesntHave('purchaseCar');
+            // Черновик, что завела почта сама (`AutoOffer`, без автора), — тем, кому открыта почта CRM: раньше его
+            // заводили они «Завести».
+            return $q->where(fn ($w) => $w->whereIn('moderator_id', $user->teamIds())
+                ->when($user->canCrmMail(), fn ($m) => $m->orWhere(fn ($n) => $n->whereNull('moderator_id')
+                    ->whereExists(fn ($t) => $t->from('mail_threads')->whereColumn('mail_threads.offer_id', 'offers.id')))))
+                ->whereDoesntHave('purchaseCar');
         }
 
         return $q->whereRaw('false');

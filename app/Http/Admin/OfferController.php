@@ -11,6 +11,7 @@ use App\Garage\GarageView;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Jobs\ImportThreadFiles;
+use App\Mail\Scan\AutoScan;
 use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
@@ -244,6 +245,9 @@ class OfferController
             'pick' => self::pickable($request->user(), $preset, $searching),
             'cols' => self::columns($preset, $request->user(), $searching),
             'counts' => $counts,
+            // Черновик завела почта и файлы с документами ещё догружаются — строка входит живьём (`AutoScan::states`,
+            // `arrive_controller`), как заявка на парковке.
+            'arrive' => AutoScan::states($offers->getCollection()->filter(fn (Offer $o) => $o->state === OfferState::Draft && ! $o->moderator_id)),
             'ghosts' => $preset === 'legacy' && ! $searching && self::ghostsShown($facets) ? LegacyClaim::ghosts()->get() : collect(),
         ]);
     }
@@ -278,6 +282,12 @@ class OfferController
     public static function scopeFor(string $preset, Builder $q, bool $admin = true): Builder
     {
         $bids = fn ($b) => $b->where('state', BidState::Active);
+
+        // Черновики из таблицы Кати — только в своей вкладке, рабочим не мешают (10.10.2026; 12.10.2026 начальник снова:
+        // «не отображать»).
+        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots'], true)) {
+            LegacyClaim::offList($q);
+        }
 
         return match ($preset) {
             'legacy' => LegacyClaim::onList($q->where('offers.state', OfferState::Draft)),

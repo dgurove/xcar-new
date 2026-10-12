@@ -28,16 +28,20 @@ use Illuminate\Support\Facades\DB;
  */
 final class PromoteCandidate
 {
+    /** Закупочная меньше — не цена, а обрывок (у 154671/2026 письмо дало «582»). */
+    public const MIN_FLOOR = 10000;
+
     public function __construct(private CreateOffer $create, private UpdateOffer $update, private LinkThread $link) {}
 
-    public function __invoke(Candidate $candidate, User $by): Offer
+    /** `$by` null — завела почта сама (`Offers\Actions\AutoOffer`), в истории «Заведён из письма». */
+    public function __invoke(Candidate $candidate, ?User $by): Offer
     {
         if ($offer = $this->existing($candidate)) {
             return $this->into($candidate, $offer, $by);
         }
         try {
             $offer = DB::transaction(function () use ($candidate, $by) {
-                $offer = ($this->create)($by);
+                $offer = ($this->create)($by, [], $by ? [] : ['mail' => true]);
                 ($this->update)($offer, $this->data($candidate), $by);
                 $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
 
@@ -82,7 +86,8 @@ final class PromoteCandidate
             'engine_volume' => $v('engine_volume'),
             'engine_power' => $v('engine_power'),
             'color' => $v('color'),
-            'floor_price' => $v('floor_price'),
+            // «582» вместо суммы — недочитанное письмо, а не закупочная.
+            'floor_price' => (int) $v('floor_price') >= self::MIN_FLOOR ? $v('floor_price') : null,
             'owner_price' => $v('owner_price'),
             'inspection_address' => $v('location'),
             // Город письма, а нет его — место из адреса осмотра («Пермский край, д. Ванюки, …»).
@@ -134,7 +139,7 @@ final class PromoteCandidate
     }
 
     /** Письма — к уже заведённому; из архива по тому же номеру оно возвращается в черновики (номер — одно событие). */
-    private function into(Candidate $candidate, Offer $offer, User $by): Offer
+    private function into(Candidate $candidate, Offer $offer, ?User $by): Offer
     {
         if ($offer->state === OfferState::Archived) {
             $offer = app(ChangeOfferState::class)($offer, OfferState::Draft, $by);

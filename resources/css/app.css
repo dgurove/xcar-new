@@ -3573,6 +3573,36 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   @keyframes arrive-in { from { opacity: 0; translate: 0 -6px; } }
   @keyframes arrive-sweep { to { left: 100%; } }
   @keyframes arrive-glow { 0% { background-color: var(--color-accent-soft); box-shadow: 0 0 0 3px var(--color-accent-soft); border-radius: var(--radius-s); } 100% { background-color: transparent; box-shadow: 0 0 0 3px transparent; } }
+  /* Черновик из письма (AutoOffer, 12.10.2026): тот же вход, плюс «едут фото» (files) — полоса бежит, как при чтении;
+     строка влетает лаймовой волной, номер убытка печатается слева направо, закупочная отсчитывается от нуля
+     (`arrive-counting` — лаймом, пока бежит); взлетевшая с места призрака «Не заведены» (flip.js) — волной на новом месте.
+     Проявление — ячейки по очереди слева направо, «Оценить» и «Заполнить» встают вспышкой. */
+  .arrive-progress--wait { color: var(--color-ink-dim); }
+  /* Ход — второй строкой под названием и на ПК, где второй этаж стоит в линию: своя фраза не режется. */
+  .table tr.arrive--busy > td.grow > .cell-sub { display: flex; flex-wrap: wrap; align-items: center; column-gap: .5rem; margin: .125rem 0 0; }
+  .card.arrive--files, tr.arrive--files > td:first-child { position: relative; overflow: hidden; }
+  .card.arrive--files::after, tr.arrive--files > td:first-child::after {
+    content: ''; position: absolute; inset-block: 0; width: 40%; left: -40%; pointer-events: none;
+    background: linear-gradient(to right, transparent, color-mix(in oklab, var(--color-accent) 18%, transparent), transparent);
+  }
+  .arrive-counting { color: var(--color-accent-text); }
+  [data-arrive-count] { transition: color .8s ease-out; }
+  @media (prefers-reduced-motion: no-preference) {
+    .card.arrive--files::after, tr.arrive--files > td:first-child::after { animation: arrive-sweep 1.6s ease-in-out infinite; }
+    .arrive-progress--wait svg { animation: arrive-breathe 1.6s ease-in-out infinite; }
+    tr.arrive.is-entering > td, tr.is-flown > td, .card.arrive.is-entering, .card.is-flown { animation: arrive-wash 1.8s ease-out 1; }
+    .arrive.is-entering .arrive-type, .is-flown .arrive-type { animation: arrive-type .6s steps(14, end) .15s both; }
+    tr.arrive.is-revealed > td:nth-child(2) { animation-delay: 60ms; }
+    tr.arrive.is-revealed > td:nth-child(3) { animation-delay: 120ms; }
+    tr.arrive.is-revealed > td:nth-child(4) { animation-delay: 180ms; }
+    tr.arrive.is-revealed > td:nth-child(5) { animation-delay: 240ms; }
+    tr.arrive.is-revealed > td:nth-child(n+6) { animation-delay: 300ms; }
+    .arrive.is-revealed .pill-accent { animation: pill-bump .9s cubic-bezier(.2, .8, .2, 1) .45s 1; }
+  }
+  @keyframes arrive-wash { 0%, 25% { background-color: var(--color-accent-soft); } 100% { background-color: transparent; } }
+  @keyframes arrive-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes arrive-breathe { 50% { opacity: .35; } }
+  span.arrive-type:not(.fit-core) { display: inline-flex; }
   turbo-frame { display: block; transition: opacity var(--dur-fast); }
   /* Фрейм карточки строки не бледнеет: пока она в пути, в нём заглушка или прежняя карточка, а полупрозрачный лист —
      «некрасиво» (владелец, 07.10.2026). */

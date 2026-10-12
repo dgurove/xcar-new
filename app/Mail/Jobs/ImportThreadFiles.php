@@ -9,6 +9,7 @@ use App\Mail\Attachment;
 use App\Mail\Extraction\AttachmentImporter;
 use App\Mail\Extraction\CloudShare;
 use App\Mail\Extraction\Intent;
+use App\Mail\Scan\AutoScan;
 use App\Mail\Thread;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
@@ -84,6 +85,8 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             }
         } finally {
             Cache::forget($key);
+            // Черновик завела почта — файлы доехали, теперь документы читаются сами (`AutoScan`).
+            AutoScan::filesArrived($offer);
         }
         if ($offer) {
             OfferStateChanged::dispatch($offer->fresh());

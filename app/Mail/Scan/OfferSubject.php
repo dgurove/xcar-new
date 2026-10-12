@@ -102,10 +102,13 @@ final class OfferSubject implements Subject
         return ScanFields::ofOffer($this->offer->loadMissing(['brand', 'model', 'settlement']));
     }
 
-    /** Выбранное — в карточку по правилам формы (`ApplyCarFields`): характеристики — только в пустые. */
-    public function apply(array $chosen, User $by): void
+    /**
+     * Выбранное — в карточку по правилам формы (`ApplyCarFields`): характеристики — только в пустые. `$by` null — вписало
+     * фоновое чтение черновика из письма (`AutoScan`): тогда и марка, VIN, год, цвет — только в пустые.
+     */
+    public function apply(array $chosen, ?User $by): void
     {
-        app(ApplyCarFields::class)($this->offer, $chosen, $by);
+        app(ApplyCarFields::class)($this->offer, $chosen, $by, onlyEmpty: $by === null);
     }
 
     public function refresh(): void

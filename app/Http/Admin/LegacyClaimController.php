@@ -60,12 +60,12 @@ final class LegacyClaimController
         return redirect('/?preset=legacy')->with('toast', $offer->claim_ref.' снова в «Не заведены»');
     }
 
-    /** Убрать номер из списка: черновик остаётся в своей рабочей вкладке, из «Из таблицы Кати» уходит. */
+    /** Убрать номер из списка: черновик возвращается в свою рабочую вкладку. */
     public function destroy(Request $request, LegacyClaim $claim, RemoveLegacyClaim $remove)
     {
         $offer = $remove($claim);
         if ($offer && $request->header('Turbo-Frame') === 'detail') {
-            return redirect("/offers/{$offer->number}")->with('toast', 'Убрано из таблицы Кати')->with(OfferController::gone($request, $offer));
+            return redirect("/offers/{$offer->number}")->with('toast', 'Возвращено в черновики')->with(OfferController::gone($request, $offer));
         }
 
         return back(fallback: '/?preset=legacy')->with('toast', $claim->claim_ref.' убран из списка');
