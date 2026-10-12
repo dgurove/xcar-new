@@ -60,7 +60,7 @@ enum Category: string
             $has('прицеп', 'тонар', 'кроне', 'krone', 'schmitz', 'шмитц') => self::Trailer,
             $has('погрузчик', 'спецтехник', 'экскаватор', 'кран', 'бетономешалка', 'бетоносмесител', 'манипулятор') => self::Special,
             $has('мотоцикл', 'мототехник', 'скутер', 'квадроцикл') => self::Moto,
-            $has('газель', 'микроавтобус', 'фургон', 'легкий коммерческий', 'соболь', 'газ 2', 'gaz 2', 'газ 3', 'луидор', 'luidor', '3009', 'toano', 'jac n', 'белава', 'belava', 'boxer', 'transit', 'транзит', 'sprinter', 'спринтер', 'largus фургон', 'daily', 'isuzu clw', 'nqr', 'npr') => self::Light,
+            $has('газель', 'forland', 'форланд', 'микроавтобус', 'фургон', 'легкий коммерческий', 'соболь', 'газ 2', 'gaz 2', 'газ 3', 'луидор', 'luidor', '3009', 'toano', 'jac n', 'белава', 'belava', 'boxer', 'transit', 'транзит', 'sprinter', 'спринтер', 'largus фургон', 'daily', 'isuzu clw', 'nqr', 'npr') => self::Light,
             $has('тягач') => self::Long,
             $has('грузов', 'автобус', 'самосвал', 'камаз', 'kamaz', 'sitrak', 'ситрак', 'actros', 'актрос', 'man gpm', 'man tg', 'shacman', 'faw j', 'howo', 'маз ', 'урал', 'isuzu', 'scania', 'скания') => self::Truck,
             $has('легков') => self::Passenger,
