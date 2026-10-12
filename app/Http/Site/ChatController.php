@@ -15,6 +15,7 @@ use App\Chats\Message;
 use App\Chats\Presence;
 use App\Live\Publisher;
 use App\Live\Topics;
+use App\Media\Thumb;
 use App\Offers\Offer;
 use App\Support\OfficePreview;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -160,6 +161,13 @@ class ChatController
             abort_unless($disk->exists($file->path), 404);
 
             return OfficePreview::response($disk->path($file->path), $file->name);
+        }
+        // ?thumb — миниатюра 320 для ленты просмотра фото (с телефона приходят мегабайты), считается раз в cache/mail.
+        if ($request->boolean('thumb') && $file->isImage() && $file->mime !== 'image/svg+xml') {
+            $disk = Storage::disk('private');
+            if ($disk->exists($file->path) && ($small = Thumb::of($disk->path($file->path), false, "chat-thumb-{$file->id}"))) {
+                return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
+            }
         }
         $contents = $file->contents();
         abort_if($contents === null, 404);

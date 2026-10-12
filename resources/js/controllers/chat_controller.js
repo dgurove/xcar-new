@@ -459,7 +459,7 @@ export default class extends Controller {
         const images = [...this.listTarget.querySelectorAll('.msg-photos img')];
         const index = images.indexOf(event.currentTarget.querySelector('img'));
         this.viewer = await openLightbox({
-            items: images.map((img) => ({ src: img.closest('a')?.href || img.src, el: img, thumb: img.src })),
+            items: images.map((img) => ({ src: img.closest('a')?.href || img.src, el: img, thumb: img.dataset.thumb || img.src })),
             index: Math.max(0, index), download: true,
             onClose: () => { this.viewer = null; },
         });

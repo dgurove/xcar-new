@@ -8,7 +8,7 @@
 @elseif ($tiles)
     <div class="photo-tiles" data-controller="gallery" data-gallery-target="strip">
         @foreach ($photos as $i => $media)
-            <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" class="photo-tile" data-action="click->gallery#open" data-index="{{ $i }}" @if ($i > 5) hidden @endif>
+            <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" data-thumb="{{ \App\Media\MediaUrl::for($media, 'w320') }}" class="photo-tile" data-action="click->gallery#open" data-index="{{ $i }}" @if ($i > 5) hidden @endif>
                 @if ($i <= 5)<x-offer.photo :media="$media" sizes="120px" class="size-full object-cover"/>@endif
                 @if ($i === 5 && $photos->count() > 6)<span class="photo-tile-more nums">+{{ $photos->count() - 6 }}</span>@endif
             </a>
@@ -17,7 +17,7 @@
 @elseif ($strip)
     <div class="detail-strip" data-controller="gallery" data-gallery-target="strip">
         @foreach ($photos as $i => $media)
-            <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" class="detail-strip-frame" data-action="click->gallery#open" data-index="{{ $i }}">
+            <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" data-thumb="{{ \App\Media\MediaUrl::for($media, 'w320') }}" class="detail-strip-frame" data-action="click->gallery#open" data-index="{{ $i }}">
                 <x-offer.photo :media="$media" sizes="108px" :eager="$i < 2" class="size-full object-cover"/>
             </a>
         @endforeach
@@ -27,7 +27,7 @@
         <div class="relative overflow-hidden rounded-(--radius-xl) bg-surface-3">
             <div class="flex snap-x snap-mandatory overflow-x-auto" data-gallery-target="strip" style="scrollbar-width:none">
                 @foreach ($photos as $i => $media)
-                    <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" class="aspect-[4/3] w-full shrink-0 snap-center cursor-zoom-in" data-action="click->gallery#open" data-index="{{ $i }}">
+                    <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" data-thumb="{{ \App\Media\MediaUrl::for($media, 'w320') }}" class="aspect-[4/3] w-full shrink-0 snap-center cursor-zoom-in" data-action="click->gallery#open" data-index="{{ $i }}">
                         <x-offer.photo :media="$media" sizes="(min-width: 1024px) 60vw, 100vw" :eager="$i === 0" class="size-full object-cover"/>
                     </a>
                 @endforeach

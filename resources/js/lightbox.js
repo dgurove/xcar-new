@@ -147,6 +147,8 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
     // Лента миниатюр внизу (владелец 12.10.2026: «удобно переключаться»): кадры одной ширины, текущий в лаймовой рамке
     // и по центру, нажатие — этот кадр. Своим узлом в окне просмотра, как плашки: видна и прячется вместе с ними.
     // Пересборка (refresh, reload) ставит новую. group у кадра (стадия ТС) — отступ между кусками, без подписей.
+    // Миниатюра — thumb кадра (w320, ?thumb=1): зовущие дают маленькую версию, полный кадр сюда не годится.
+    // Сама лента нажатий не ловит (pointer-events только у кадров): пустые края и щели — по-прежнему кадр под ней.
     const strip = (pswp, list) => {
         view.host.querySelector('.lb-strip')?.remove();
         if (list.length < 2) return;
@@ -159,7 +161,7 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
             b.className = 'lb-thumb' + (i && (it.group ?? '') !== (list[i - 1].group ?? '') ? ' lb-thumb--gap' : '');
             b.setAttribute('aria-label', `Фото ${i + 1}`);
             const img = Object.assign(document.createElement('img'), { alt: '', loading: 'lazy', decoding: 'async', draggable: false });
-            img.src = it.thumb || it.el?.currentSrc || it.src;
+            img.src = it.thumb || it.src;
             b.append(img);
             b.addEventListener('click', (e) => { e.stopPropagation(); if (pswp.currIndex !== i) pswp.goTo(i); });
             return b;
@@ -167,34 +169,49 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
         el.append(...thumbs);
         // Листают ленту пальцем — не выдёргивать её к текущему кадру из-под пальца.
         let touched = 0;
-        const touch = () => { touched = Date.now(); };
-        el.addEventListener('pointerdown', touch, { passive: true });
-        el.addEventListener('wheel', touch, { passive: true });
-        el.addEventListener('click', (e) => e.stopPropagation());
+        el.addEventListener('pointerdown', () => { touched = Date.now(); }, { passive: true });
+        // Колесо мыши вертикальное, лента горизонтальная: без этого обычной мышью её не прокрутить.
+        el.addEventListener('wheel', (e) => {
+            touched = Date.now();
+            if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+            el.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientWidth : 1);
+        }, { passive: true });
         view.host.append(el);
         const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-        let first = true;
+        const hidden = (i) => list[i].el?.closest('.photo-cell')?.dataset.hidden === '1';
+        const mark = (i, on) => {
+            const b = thumbs[i];
+            if (!b) return;
+            b.classList.toggle('is-current', on);
+            b.tabIndex = on ? 0 : -1; // Tab попадает в ленту одной кнопкой (текущей), дальше ←/→ просмотра
+            if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+            b.classList.toggle('is-hidden', hidden(i));
+        };
+        let last = -1;
         const sync = () => {
             const at = pswp.currIndex;
-            thumbs.forEach((b, i) => {
-                const on = i === at;
-                b.classList.toggle('is-current', on);
-                if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
-                b.classList.toggle('is-hidden', list[i].el?.closest('.photo-cell')?.dataset.hidden === '1');
-            });
+            // Тот же кадр — это redraw (глаз, «Скрыть все»): перечитать скрытые у всех; иначе меняются две миниатюры.
+            if (at === last) thumbs.forEach((b, i) => b.classList.toggle('is-hidden', hidden(i)));
+            else { mark(last, false); mark(at, true); }
             const b = thumbs[at];
-            if (b && (first || Date.now() - touched > 1500)) {
-                // Сама лента, без scrollIntoView: тот тянул бы и прокрутку страницы под окном.
+            if (b && at !== last && (last < 0 || Date.now() - touched > 1500)) {
+                // Сама лента, без scrollIntoView: тот тянул бы и прокрутку страницы под окном. 'auto' — не 'instant':
+                // его старый WebKit не знает и бросает TypeError.
                 const left = b.offsetLeft - (el.clientWidth - b.offsetWidth) / 2;
-                el.scrollTo({ left, behavior: first || calm ? 'instant' : 'smooth' });
+                el.scrollTo({ left, behavior: last < 0 || calm ? 'auto' : 'smooth' });
             }
-            first = false;
+            last = at;
         };
         pswp.on('change', sync);
         sync();
     };
+    // Место под лентой на ПК — из тех же переменных, что её вёрстка (px, без calc: их читает paddingFn).
     const STRIP_DESKTOP = matchMedia('(min-width: 1024px)');
-    const stripRoom = () => parseFloat(getComputedStyle(view.host).getPropertyValue('--lb-strip-room')) || 0;
+    const stripRoom = () => {
+        const css = getComputedStyle(view.host);
+        const px = (name) => parseFloat(css.getPropertyValue(name)) || 0;
+        return px('--lb-strip-inset') + px('--lb-thumb-h') + 2 * px('--lb-strip-pad') + px('--lb-strip-gap');
+    };
     const around = (i) => { for (let k = -1; k <= 2; k++) measure(((i + k) % view.items.length + view.items.length) % view.items.length); };
 
     const build = (list, at, animate) => {

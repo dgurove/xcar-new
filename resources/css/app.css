@@ -3361,31 +3361,40 @@ dialog.lightbox .lb-pill--left { left: max(10px, env(safe-area-inset-left)); top
 dialog.lightbox .lb-pill--left .pswp__counter { margin: 0; height: 44px; font-size: var(--text-sm); line-height: 44px; color: #fff; text-shadow: none; opacity: 1; }
 dialog.lightbox.lb-one .lb-pill--left { display: none; }
 /* Лента миниатюр (lightbox.js `strip`): внизу во всю ширину, кадры одной ширины 4:3, текущий — лаймовой рамкой по
-   центру (поля по краям — полэкрана, чтобы и крайние вставали в центр), у краёв затухает. Видна вместе с плашками;
-   нижняя плашка встаёт над ней. На ПК кадр вписывается над лентой (`paddingFn` читает `--lb-strip-room`). */
-dialog.lightbox { --lb-thumb-w: 48px; --lb-thumb-h: 36px; --lb-strip-bottom: max(8px, env(safe-area-inset-bottom)); }
-@media (min-width: 1024px) { dialog.lightbox { --lb-thumb-w: 64px; --lb-thumb-h: 48px; --lb-strip-room: 84px; } }
+   центру, у краёв затухает. Поля по краям — распорки ::before/::after по полэкрана (padding-inline-end у прокручиваемого
+   flex WebKit не считает, и последние кадры не вставали в центр), чтобы и крайние вставали в центр. Нажатия ловят только
+   кадры: пустые края и щели — по-прежнему кадр (тап прячет кнопки, смахивание закрывает). Видна вместе с плашками;
+   нижняя плашка встаёт над ней. На ПК кадр вписывается над лентой: `paddingFn` складывает те же переменные (только px). */
+dialog.lightbox {
+  --lb-thumb-w: 48px; --lb-thumb-h: 36px; --lb-strip-pad: 6px; --lb-strip-gap: 8px; --lb-strip-inset: 8px;
+  --lb-strip-bottom: max(var(--lb-strip-inset), env(safe-area-inset-bottom));
+}
+@media (min-width: 1024px) { dialog.lightbox { --lb-thumb-w: 64px; --lb-thumb-h: 48px; } }
 dialog.lightbox .lb-strip {
   position: fixed; z-index: 100001; left: 0; right: 0; bottom: var(--lb-strip-bottom); display: flex; gap: 4px;
-  padding: 6px calc(50% - var(--lb-thumb-w) / 2); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
-  touch-action: pan-x; -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
+  padding: var(--lb-strip-pad) 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
   mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
   opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) ease-out;
 }
+dialog.lightbox .lb-strip::before, dialog.lightbox .lb-strip::after { content: ""; flex: none; width: calc(50% - var(--lb-thumb-w) / 2 - 4px); }
 dialog.lightbox .lb-strip::-webkit-scrollbar { display: none; }
-dialog.lightbox.lb-ui .lb-strip { opacity: 1; pointer-events: auto; }
+dialog.lightbox.lb-ui .lb-strip { opacity: 1; }
+dialog.lightbox.lb-ui .lb-thumb { pointer-events: auto; }
 dialog.lightbox.lb-one .lb-strip { display: none; }
 dialog.lightbox .lb-thumb {
   flex: none; width: var(--lb-thumb-w); height: var(--lb-thumb-h); margin: 0; padding: 0; border: 0; border-radius: 8px;
-  overflow: hidden; background: rgb(255 255 255 / .08); opacity: .5; cursor: pointer; transition: opacity var(--dur-fast) ease-out;
+  overflow: hidden; background: rgb(255 255 255 / .08); opacity: .5; cursor: pointer; touch-action: pan-x; pointer-events: none;
+  transition: opacity var(--dur-fast) ease-out;
 }
 dialog.lightbox .lb-thumb--gap { margin-left: 12px; }
 dialog.lightbox .lb-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 dialog.lightbox .lb-thumb.is-hidden img { filter: grayscale(1); opacity: .45; }
 dialog.lightbox .lb-thumb.is-current { opacity: 1; box-shadow: inset 0 0 0 2px var(--color-accent); }
 dialog.lightbox .lb-thumb.is-current img { border-radius: 8px; clip-path: inset(2px round 6px); }
+dialog.lightbox .lb-thumb:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 @media (hover: hover) { dialog.lightbox .lb-thumb:not(.is-current):hover { opacity: .8; } }
-dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bottom) + var(--lb-thumb-h) + 20px); }
+dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bottom) + var(--lb-thumb-h) + 2 * var(--lb-strip-pad) + var(--lb-strip-gap)); }
 .pswp .pswp__button.pswp__button--arrow { position: absolute; top: 50%; margin-top: -24px; width: 48px; height: 48px; }
 .pswp.pswp--one-slide .pswp__button.pswp__button--arrow, .pswp .pswp__button.pswp__button--arrow:disabled { display: none; }
 .pswp .pswp__button--arrow--prev { left: max(12px, env(safe-area-inset-left)); }
