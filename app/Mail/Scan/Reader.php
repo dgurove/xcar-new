@@ -32,11 +32,12 @@ final class Reader
 
     /**
      * «Читать»: без номеров — всё непрочитанное по порядку (автозапуск, «Дочитать», «Повторить»), с номерами —
-     * дописать эти файлы в конец (искра шторки документов). Прочитанное и читаемое в задачу не идёт.
+     * дописать эти файлы в конец (искра шторки документов). Прочитанное и читаемое в задачу не идёт. `$background` —
+     * читает фон (`AutoScan`): очередь `scan-bg`, за людской.
      *
      * @param  list<string>  $ids
      */
-    public static function read(Subject $subject, array $ids = []): array
+    public static function read(Subject $subject, array $ids = [], bool $background = false): array
     {
         if ($ids) {
             $ids = array_values(array_intersect($ids, $subject->files()->map->scanId()->all()));
@@ -44,7 +45,11 @@ final class Reader
         }
         $files = self::files($subject)->filter(fn (ScanFile $f) => ! $ids || in_array($f->scanId(), $ids, true));
         $busy = ScanAttachments::reading($files);
-        ScanAttachments::enqueue($subject, $files->filter(fn (ScanFile $f) => DocumentText::cached($f) === null && ! in_array($f->scanId(), $busy, true))->map->scanId()->values()->all());
+        ScanAttachments::enqueue($subject, $files->filter(fn (ScanFile $f) => ! DocumentText::isCached($f) && ! in_array($f->scanId(), $busy, true))->map->scanId()->values()->all(), $background);
+        // Читает человек, а файлы стоят в фоне (черновик из письма, ТС заявки) — они вперёд.
+        if (! $background && $busy) {
+            ScanAttachments::promote($subject);
+        }
 
         return self::live($subject);
     }

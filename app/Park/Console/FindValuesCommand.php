@@ -37,7 +37,7 @@ class FindValuesCommand extends Command
         foreach ($vehicles as $v) {
             $files = (new VehicleSubject($v))->files();
             $docs = Files::rank($files);
-            $photos = $files->filter(fn (ScanFile $f) => $f->isPhoto() && DocumentText::cached($f) === null)->take(20);
+            $photos = $files->filter(fn (ScanFile $f) => $f->isPhoto() && ! DocumentText::isCached($f))->take(20);
             $this->line("ТС {$v->id} {$v->titleWithYear()} ({$v->vendor?->name}): документов {$docs->count()}, непрочитанных фото {$photos->count()}");
             if ($this->option('photos') && $photos->isNotEmpty()) {
                 AutoScan::start($v, $photos->map->scanId()->values()->all());

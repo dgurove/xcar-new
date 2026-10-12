@@ -14,6 +14,7 @@ use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -64,10 +65,10 @@ final class AutoScan
     {
         $subject = self::subject($model);
         $files = Reader::files($subject);
-        $read = $files->filter(fn (ScanFile $f) => DocumentText::cached($f) !== null)->count();
+        $read = $files->filter(fn (ScanFile $f) => DocumentText::isCached($f))->count();
         Cache::put(self::key($subject->key()), ['pass' => 'docs', 'i' => $read, 'n' => $files->count()], self::TTL);
         self::register($subject->key());
-        Reader::read($subject, $ids);
+        Reader::read($subject, $ids, background: true);
         // Читать нечего или всё уже в кеше — итог сразу, задачи не будет.
         if (! ScanAttachments::reading(Reader::files($subject))) {
             self::finished($subject);
@@ -181,16 +182,24 @@ final class AutoScan
                 ->pluck('vehicle')->filter()->unique('id');
         foreach ($models as $model) {
             $subject = self::subject($model);
+            // Ничего не пришло с прошлого прохода (ни письма в ветках, ни файла у предмета) — файлы не перебираем: проход по
+            // письмам и вложениям сотни ТС и черновиков держал часы 5–8 с. Раз в сутки — всё равно: файл, что не
+            // прочёлся, повторяется через сутки (`ScanAttachments::lost`).
+            $sig = self::signature($model);
+            if (Cache::get(self::sweptKey($subject->key())) === $sig) {
+                continue;
+            }
             $files = Reader::files($subject);
             if (ScanAttachments::queuedFor($subject) || ScanAttachments::reading($files) || ImportThreadFiles::progressOf($model)
                 || ($model instanceof Offer && ImportThreadFiles::queued($model))) {
                 continue;
             }
-            $unread = $files->filter(fn (ScanFile $f) => DocumentText::cached($f) === null && DocumentText::scannable($f) && ! ScanAttachments::lost($f->scanId()));
+            $unread = $files->filter(fn (ScanFile $f) => ! DocumentText::isCached($f) && DocumentText::scannable($f) && ! ScanAttachments::lost($f->scanId()));
             if ($unread->isNotEmpty()) {
                 self::start($model);
                 $started++;
             }
+            Cache::put(self::sweptKey($subject->key()), $sig, 86400);
         }
         $prefix = $offers ? 'o:' : 'v:';
         foreach (self::pending() as $key => $since) {
@@ -349,6 +358,21 @@ final class AutoScan
     private static function model(VehicleSubject|OfferSubject $subject): Vehicle|Offer
     {
         return $subject instanceof VehicleSubject ? $subject->vehicle : $subject->offer;
+    }
+
+    /** Отпечаток того, что у предмета есть: последнее письмо его веток и последний файл. Пришло новое — отпечаток другой. */
+    private static function signature(Vehicle|Offer $model): string
+    {
+        $column = $model instanceof Offer ? 'offer_id' : 'vehicle_id';
+        $letter = DB::table('mail_messages')->whereIn('thread_id', DB::table('mail_threads')->where($column, $model->id)->select('id'))->max('id');
+        $file = DB::table('media')->where('model_type', $model->getMorphClass())->where('model_id', $model->id)->max('id');
+
+        return $letter.':'.$file;
+    }
+
+    private static function sweptKey(string $subjectKey): string
+    {
+        return "scan:swept:{$subjectKey}";
     }
 
     /** @return array<string, int> ключ предмета → когда начали; старые записи — id ТС числом */

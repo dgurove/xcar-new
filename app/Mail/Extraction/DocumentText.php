@@ -57,6 +57,15 @@ final class DocumentText
         return ($isPdf || $office || $file->isImage()) && ! $file->isInline() && $file->scanSize() <= self::MAX_BYTES;
     }
 
+    /**
+     * Прочитан ли файл — без чтения самого текста: ход строк, дочитка часов и «что ставить в чтение» спрашивают это у
+     * сотен файлов, а текст распознанного скана — десятки килобайт с HDD (12.10.2026: дочитка часов шла 5–8 с).
+     */
+    public static function isCached(ScanFile $attachment): bool
+    {
+        return Storage::disk(Parts::CACHE_DISK)->exists(self::key($attachment));
+    }
+
     /** Прочитанный текст из кеша; null — ещё не читали. */
     public static function cached(ScanFile $attachment): ?string
     {

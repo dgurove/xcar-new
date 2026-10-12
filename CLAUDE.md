@@ -808,6 +808,10 @@ VIN» — `users.buyer_show_vin`, `PUT /buyers/{id}/sees`); в списке — 
   прочитанных строк); миграция `foreign_key_indexes`. Новая колонка `*_id`, по которой ищут, — сразу с индексом.
   Метка «файл читается» `scan:a:{id}` — 6 ч (`ScanAttachments::MARK_TTL`), не меньше ожидания в очереди: короткая гасла,
   и дочитка ставила те же файлы снова; дочитка не ставит чтение, пока задача предмета стоит в очереди (`queuedFor`).
+  Фон читает очередь `scan-bg` (`AutoScan`), человек — `scan`; работник `--queue=scan,scan-bg`, открыл читалку на предмете
+  из фона — его задачи переезжают в `scan` (`ScanAttachments::promote`). «Прочитан ли» — `DocumentText::isCached` (только
+  наличие файла, текст с HDD не читается); дочитка пропускает предмет без новых писем и файлов (`AutoScan::signature`,
+  сутки) — часы шли 5–8 с. Марки — индексы `slug varchar_pattern_ops`, `lower(name)`; города — `region_id` (`lookup_indexes`).
 - **Кит строк** (01.10.2026): состояние словом — `x-ui.state` (не `x-ui.pill` с `!min-h-0`), шеврон перехода —
   `x-ui.chevron`, кружок значка — `x-ui.row-icon` (`tone` plain|accent|soft|open|urgent|danger|muted, `size="s"` — строки
   «Настроек» и «Денег»; значок пункта кабинета — `Nav::link(icon:)`), человек с `tel:` — `x-ui.person-row`; доступ к
@@ -2334,7 +2338,7 @@ VIN» — `users.buyer_show_vin`, `PUT /buyers/{id}/sees`); в списке — 
 ./serve-local.sh                 # http://xcar.localhost:8010 (php@8.5 и postgres из brew)
 php artisan queue:work database-long --queue=long,mail --stop-when-empty      # почта, фото, закупки
 php artisan queue:work --queue=notifications,default --stop-when-empty       # конверсии, уведомления
-php artisan queue:work database-scan --queue=scan --stop-when-empty         # «✨ Распознать»
+php artisan queue:work database-scan --queue=scan,scan-bg --stop-when-empty # «✨ Распознать» (scan-bg — фон)
 php artisan offers-bot:run | offers-bot:poke announce {user} --fresh | offers-bot:profile   # бот предложений
 php artisan offers:tick | park:tick | park:digest | billing:tick | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой

@@ -5,6 +5,7 @@ namespace App\Park\Actions;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
+use App\Park\EventType;
 use App\Park\Vehicle;
 use Illuminate\Support\Collection;
 
@@ -47,7 +48,9 @@ final class ReportByLetters
         return Vehicle::with('vendor')->whereNotNull('accepted_at')
             ->whereIn('id', Thread::park()->whereNotNull('vehicle_id')
                 ->whereIn('id', Message::where('intent', Intent::Accepted->value)->where('direction', 'out')->select('thread_id'))->select('vehicle_id'))
-            ->get()->reject(fn (Vehicle $v) => $this->done($v));
+            // Отмеченные — запросом, а не по запросу на ТС: часы гоняли 558 запросов каждые 5 минут.
+            ->whereDoesntHave('events', fn ($e) => $e->where('type', EventType::ReportSent)->whereRaw("payload->>'what' = ?", ['Акт приёма']))
+            ->get();
     }
 
     /** Все подходящие — `park:tick`. @return int сколько отчётов отмечено */

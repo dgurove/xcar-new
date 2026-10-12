@@ -15,7 +15,7 @@
      слот actions — у правого края («+», «Из писем»).
      Сортировка — окошко x-ui.sort: поле и направление (владелец 06.10.2026: «кнопка сортировки, окошко — выбор
      критерия и ascending/descending»); прежнего меню исходов словами («Сначала дешёвые») больше нет. --}}
-@props(['sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'badges' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => []])
+@props(['sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => []])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -42,7 +42,7 @@
         <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-md:order-first max-md:-mx-4 max-md:flex-initial max-md:px-4" data-title-anchor>
             <div class="flex flex-nowrap items-center gap-2">
                 @foreach ($pills as $key => $label)
-                    <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" @isset($dots[$key]) data-tone="{{ $dots[$key] }}" @endisset data-turbo-action="replace" @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
+                    <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" @isset($dots[$key]) data-tone="{{ $dots[$key] }}" @endisset data-turbo-action="replace" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
                         @isset($dots[$key])@if ($dots[$key] === 'urgent')<x-ui.icon name="fire" fill class="mr-1 size-4 {{ (string) $pill === (string) $key ? '' : 'text-fire' }}"/>@else<span class="card-tone card-tone--{{ $dots[$key] }}"></span>@endif @endisset{{ $label }}@if (array_key_exists($key, $counts)) <span class="nums opacity-70" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                         @isset($badges[$key])<span class="badge nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset
                     </a>

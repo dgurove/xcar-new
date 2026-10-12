@@ -59,9 +59,16 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
      * @param  string  $subject  `c:93` — цепочка, `v:266` — ТС, `o:512` — предложение (`Scan\Subjects`)
      * @param  list<int|string>  $ids  `ScanFile::scanId`; числа — вложения из задач до 02.10.2026
      */
-    public function __construct(public string $subject, public array $ids)
+    /**
+     * Очереди чтения: `scan` — человек ждёт (читалка «Завести», окно «Из документов»), `scan-bg` — фон (ТС заявки и черновик
+     * из письма, дочитка часов). Работник берёт фон, только когда людских нет (`--queue=scan,scan-bg`): 12.10.2026 пачка
+     * в 80 черновиков из писем держала очередь час, и «Завести» руками стояло за ней.
+     */
+    public const QUEUES = ['scan', 'scan-bg'];
+
+    public function __construct(public string $subject, public array $ids, bool $background = false)
     {
-        $this->onConnection('database-scan')->onQueue('scan');
+        $this->onConnection('database-scan')->onQueue($background ? 'scan-bg' : 'scan');
     }
 
     public function uniqueId(): string
@@ -86,7 +93,7 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
         $key = $subject->key();
 
         return DB::connection($conn['connection'] ?? null)->table($conn['table'] ?? 'jobs')
-            ->where('queue', 'scan')->whereNull('reserved_at')
+            ->whereIn('queue', self::QUEUES)->whereNull('reserved_at')
             ->where('payload', 'like', '%subject__;s:'.strlen($key).':__'.$key.'__;%')->exists();
     }
 
@@ -115,13 +122,24 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
      *
      * @param  list<string>  $ids
      */
-    public static function enqueue(Subject $subject, array $ids): void
+    public static function enqueue(Subject $subject, array $ids, bool $background = false): void
     {
         Cache::forget("scan:stop:{$subject->key()}");
         if ($ids) {
             self::mark($ids);
-            self::dispatch($subject->key(), $ids);
+            self::dispatch($subject->key(), $ids, $background);
         }
+    }
+
+    /** Человек открыл предмет, чьи файлы ждут в фоне, — его задачи вперёд, к людским: он смотрит на читалку. */
+    public static function promote(Subject $subject): void
+    {
+        $conn = config('queue.connections.database-scan');
+        $key = $subject->key();
+        DB::connection($conn['connection'] ?? null)->table($conn['table'] ?? 'jobs')
+            ->where('queue', 'scan-bg')->whereNull('reserved_at')
+            ->where('payload', 'like', '%subject__;s:'.strlen($key).':__'.$key.'__;%')
+            ->update(['queue' => 'scan']);
     }
 
     /**
@@ -147,7 +165,7 @@ final class ScanAttachments implements ShouldBeUniqueUntilProcessing, ShouldQueu
     /** Работник занят чтением: задача взята из очереди `scan` и ещё не кончилась. Свободен — наша вот-вот начнётся. */
     public static function workerBusy(): bool
     {
-        return DB::connection(config('queue.connections.database-scan.connection'))->table(config('queue.connections.database-scan.table', 'jobs'))->where('queue', 'scan')->whereNotNull('reserved_at')->exists();
+        return DB::connection(config('queue.connections.database-scan.connection'))->table(config('queue.connections.database-scan.table', 'jobs'))->whereIn('queue', self::QUEUES)->whereNotNull('reserved_at')->exists();
     }
 
     public function handle(ReadLetter $reader, Threads $threads, Publisher $publish): void

@@ -203,7 +203,7 @@ final class ScanController
         if (! $ids) {
             return redirect($subject->url());
         }
-        $todo = $picked->filter(fn (ScanFile $f) => DocumentText::cached($f) === null)->map->scanId()->values()->all();
+        $todo = $picked->filter(fn (ScanFile $f) => ! DocumentText::isCached($f))->map->scanId()->values()->all();
         ScanAttachments::enqueue($subject, $todo);
 
         return redirect($subject->url().'?'.http_build_query(['ids' => $ids]));

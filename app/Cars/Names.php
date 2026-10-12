@@ -36,6 +36,8 @@ final class Names
         // Сокращения из имён файлов актов («Альфа акт 1 воях фри 2290», «мб гле», «суб фор») и частые опечатки.
         'воях' => 'voyah', 'вояхс' => 'voyah', 'джаэко' => 'jaecoo', 'джаэка' => 'jaecoo', 'джаеко' => 'jaecoo', 'мб' => 'mercedes', 'м-б' => 'mercedes', 'm-b' => 'mercedes', 'мерсседес бенц' => 'mercedes', 'mersedes-benz' => 'mercedes', 'mersedes' => 'mercedes',
         'кроне' => 'krone', 'ситрак' => 'sitrak', 'кайи' => 'kaiyi', 'кайя' => 'kaiyi', 'суб' => 'subaru', 'lambo' => 'lamborghini', 'ламбо' => 'lamborghini', 'донфенг' => 'dongfeng', 'буд' => 'byd', 'бид' => 'byd',
+        // Автобус Higer, Dongfeng Fengon, полуприцепы FoxTank — Совкомбанк 12.10.2026, в справочнике их не было.
+        'higer' => 'higer', 'хайгер' => 'higer', 'хигер' => 'higer', 'fengon' => 'fengon', 'фенгон' => 'fengon', 'foxtank' => 'foxtank', 'фокстанк' => 'foxtank',
         'даф' => 'daf', 'daf' => 'daf', 'ман' => 'man', 'man' => 'man', 'krone' => 'krone', 'sitrak' => 'sitrak', 'belava' => 'belava', 'rr' => 'land-rover', 'шеви' => 'chevrolet', 'кадилак' => 'cadillac', 'хэндэ' => 'hyundai', 'хенде' => 'hyundai', 'хундэ' => 'hyundai', 'митсубиши' => 'mitsubishi', 'mitsi' => 'mitsubishi',
         'фольксавен' => 'volkswagen', 'фольксвагн' => 'volkswagen', 'beelgee' => 'belgee', 'белгее' => 'belgee', 'фхавал' => 'haval', 'нисан' => 'nissan', 'nisan' => 'nissan', 'лендровер' => 'land-rover', 'ленд-ровер' => 'land-rover',
         'scoda' => 'skoda', 'шкода' => 'skoda', 'infinity' => 'infiniti', 'кия' => 'kia', 'kia' => 'kia', 'kio' => 'kia',
@@ -93,7 +95,7 @@ final class Names
     ];
 
     /** Марки, которых в справочнике может не быть: как завести. */
-    private const CREATE = ['sollers' => 'Sollers', 'evolute' => 'Evolute', 'krone' => 'Krone', 'sitrak' => 'Sitrak', 'daf' => 'DAF', 'man' => 'MAN', 'belava' => 'Belava', 'chenglong' => 'Chenglong', 'moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'luidor' => 'Луидор', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ', 'forland' => 'Forland'];
+    private const CREATE = ['sollers' => 'Sollers', 'evolute' => 'Evolute', 'krone' => 'Krone', 'sitrak' => 'Sitrak', 'daf' => 'DAF', 'man' => 'MAN', 'belava' => 'Belava', 'chenglong' => 'Chenglong', 'moskvich' => 'Москвич', 'exeed' => 'Exeed', 'tonar' => 'Тонар', 'luidor' => 'Луидор', 'lada' => 'Lada', 'belgee' => 'Belgee', 'tenet' => 'Tenet', 'lixiang' => 'Lixiang', 'aito' => 'Aito', 'voyah' => 'Voyah', 'jaecoo' => 'Jaecoo', 'tank' => 'Tank', 'lynk-co' => 'Lynk & Co', 'jetour' => 'Jetour', 'hongqi' => 'Hongqi', 'zeekr' => 'Zeekr', 'omoda' => 'Omoda', 'kamaz' => 'КАМАЗ', 'uaz' => 'УАЗ', 'gaz' => 'ГАЗ', 'forland' => 'Forland', 'higer' => 'Higer', 'fengon' => 'Fengon', 'foxtank' => 'FoxTank'];
 
     /** Тот же завод под другим slug в справочнике. */
     private const ALT = ['lada' => 'vaz', 'lixiang' => 'li-auto', 'lynk-co' => 'lynk-and-co', 'mercedes' => 'mercedes-benz'];

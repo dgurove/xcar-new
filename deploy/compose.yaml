@@ -72,7 +72,8 @@ services:
   # пачка OCR идёт до 15 минут. Своё соединение database-scan: retry_after 960 больше таймаута задачи.
   queue-scan:
     <<: *app
-    command: php artisan queue:work database-scan --tries=1 --max-time=3600 --memory=256 --sleep=3 --queue=scan
+    # scan — человек ждёт, scan-bg — фон (заявки и черновики из писем): фон только когда людских нет.
+    command: php artisan queue:work database-scan --tries=1 --max-time=3600 --memory=256 --sleep=3 --queue=scan,scan-bg
     healthcheck:
       disable: true
 

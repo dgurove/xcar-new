@@ -13,6 +13,10 @@ const SHIFT = 420;
 const FLY = 700;
 const ROWS = '#list tr[id], #list .card[id]';
 const COUNTS = '[data-pill-count], [data-count]';
+// Пилюля, чьё число не меняется от прихода строки (у «Из таблицы Кати» в нём и призраки): своё число в `data-pill-bump`
+// «ключ:N» — выросло, пилюля вспыхивает.
+const BUMPS = '[data-pill-bump]';
+const bumpOf = (el) => el.dataset.pillBump.split(':');
 
 const TRANSIENT = ['is-entering', 'is-flown', 'is-revealed', 'is-holding', 'is-bumped', 'arrive-counting'];
 
@@ -46,12 +50,13 @@ document.addEventListener('turbo:before-render', (e) => {
     }
     const counts = new Map();
     for (const el of document.querySelectorAll(COUNTS)) counts.set(countKey(el), numberOf(el));
-    before = { rows, ids, keys, counts };
+    const bumps = new Map([...document.querySelectorAll(BUMPS)].map((el) => bumpOf(el)).map(([k, n]) => [k, Number(n)]));
+    before = { rows, ids, keys, counts, bumps };
 });
 
 document.addEventListener('turbo:render', () => {
     if (!before) return;
-    const { rows, ids, keys, counts } = before;
+    const { rows, ids, keys, counts, bumps } = before;
     before = null;
     for (const el of document.querySelectorAll(ROWS)) {
         let from = rows.get(el.id);
@@ -74,6 +79,10 @@ document.addEventListener('turbo:render', () => {
         if (was === undefined || was === now) continue;
         tick(el, was, now);
     }
+    for (const el of document.querySelectorAll(BUMPS)) {
+        const [key, n] = bumpOf(el);
+        if (bumps.has(key) && Number(n) > bumps.get(key)) flash(el);
+    }
 });
 
 /** Число бежит от прежнего к новому (не больше 12 шагов), выросшее — вспышка капсулы. */
@@ -86,8 +95,10 @@ function tick(el, from, to) {
         el.textContent = i >= steps ? text : String(Math.round(from + ((to - from) * i) / steps));
         if (i >= steps) clearInterval(timer);
     }, 360 / steps);
-    if (to < from) return;
-    const pill = el.closest('a, button') ?? el;
+    if (to > from) flash(el.closest('a, button') ?? el);
+}
+
+function flash(pill) {
     pill.classList.remove('is-bumped');
     void pill.offsetWidth;
     pill.classList.add('is-bumped');
