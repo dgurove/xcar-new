@@ -9,7 +9,7 @@ const plural = (n, [one, few, many]) => {
 };
 
 export default class extends Controller {
-    static targets = ['photo', 'newPhotos', 'newLabel', 'photoCount', 'doc', 'scan', 'slot', 'slotNote', 'text', 'submit'];
+    static targets = ['photo', 'newPhotos', 'newLabel', 'photoCount', 'doc', 'scan', 'file', 'slot', 'slotNote', 'text', 'submit'];
     static values = { docs: String, plain: String };
 
     connect() {
@@ -31,11 +31,11 @@ export default class extends Controller {
         let docs = 0;
         this.slotTargets.forEach((slot, i) => {
             const kept = [...slot.querySelectorAll('[data-report-target="doc"]')].filter((d) => d.checked).length;
-            const inputs = [...slot.querySelectorAll('[data-report-target="scan"]')];
-            const picked = inputs.reduce((sum, inp) => sum + inp.files.length, 0);
-            const pdfs = inputs.reduce((sum, inp) => sum + [...inp.files].filter((f) => !f.type.startsWith('image/')).length, 0);
-            const images = picked - pdfs;
-            docs += kept + pdfs + (images ? 1 : 0);
+            // «Снять» — страницы одного документа (один PDF), «Файл» — каждый файл своим документом.
+            const shots = [...slot.querySelectorAll('[data-report-target="scan"]')].reduce((sum, inp) => sum + inp.files.length, 0);
+            const files = [...slot.querySelectorAll('[data-report-target="file"]')].reduce((sum, inp) => sum + inp.files.length, 0);
+            const picked = shots + files;
+            docs += kept + files + (shots ? 1 : 0);
             const note = this.slotNoteTargets[i];
             if (note) note.textContent = picked ? `выбрано ${picked} ${plural(picked, ['файл', 'файла', 'файлов'])}` : (kept ? '' : 'нет');
         });

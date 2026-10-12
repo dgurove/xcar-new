@@ -22,6 +22,9 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 final class SendIntakeReport
 {
+    /** @var array<int, array{0: Media, 1: string}> кадр или скан → отпечаток ушедших байт */
+    private array $sha = [];
+
     public function __construct(private Composer $composer, private StoreOutboxFile $outbox, private MarkReportSent $mark) {}
 
     /**
@@ -41,8 +44,7 @@ final class SendIntakeReport
             foreach ($docs as $i => $m) {
                 $ext = strtolower(pathinfo($m->file_name, PATHINFO_EXTENSION)) ?: 'pdf';
                 $contents = (string) file_get_contents($m->getPath());
-                // Отпечаток: скан вернётся из «Отправленных» вложением — второй раз в документы не ляжет.
-                $m->setCustomProperty('sent_sha', hash('sha256', $contents))->save();
+                $this->sha[$m->id] = [$m, hash('sha256', $contents)];
                 $files[] = $this->outbox->put($report->fileName($kind, $i, $docs->count(), $ext), $contents);
             }
         }
@@ -79,6 +81,11 @@ final class SendIntakeReport
                 'files' => $chunk,
             ], $parent, $by);
         }
+        // Отпечатки отправленного — когда письма уже заведены: из «Отправленных» эти же кадры и сканы второй раз к ТС не лягут.
+        foreach ($this->sha as [$m, $sha]) {
+            $m->setCustomProperty('sent_sha', $sha)->save();
+        }
+        $this->sha = [];
         foreach ($sent as $message) {
             if ($message->thread && ! $message->thread->vehicle_id) {
                 $message->thread->update(['vehicle_id' => $v->id]);
@@ -99,8 +106,7 @@ final class SendIntakeReport
         } finally {
             @unlink($tmp);
         }
-        // Отпечаток отправленного: это же письмо из «Отправленных» не принесёт наши кадры вторым экземпляром.
-        $m->setCustomProperty('sent_sha', hash('sha256', $contents))->save();
+        $this->sha[$m->id] = [$m, hash('sha256', $contents)];
 
         return $this->outbox->put('priem-'.$n.'.jpg', $contents);
     }

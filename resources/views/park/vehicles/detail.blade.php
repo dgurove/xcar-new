@@ -54,7 +54,8 @@
                 $task && $task->type === \App\Park\RequestType::Intake && $state->isBefore() => ['task-form-'.$task->id, 'Принять'],
                 $task && $task->type === \App\Park\RequestType::Release && $state === VehicleState::Stored && ! ($byQr ?? false) => ['task-form-'.$task->id, 'Выдать'],
                 ! $task && ! ($fromRequests ?? false) && $state === VehicleState::Expected => ['spawn-'.$vehicle->id, 'Принять'],
-                ! $task && ! ($fromRequests ?? false) && $state === VehicleState::Stored => ['spawn-'.$vehicle->id, 'Выдать'],
+                // Пока не ушёл отчёт, главное в карточке — он (своя кнопка в форме), второй лаймовой «Выдать» нет.
+                ! $task && ! ($fromRequests ?? false) && $state === VehicleState::Stored && ! ($reportDue ?? false) => ['spawn-'.$vehicle->id, 'Выдать'],
                 default => null,
             };
         @endphp

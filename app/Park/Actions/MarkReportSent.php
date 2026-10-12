@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\EventType;
 use App\Park\Vehicle;
@@ -20,7 +21,8 @@ final class MarkReportSent
     /** @param array<string, mixed> $mark — что записать в событие (ветка, письмо, `manual`, `by_letters`) */
     public function __invoke(Vehicle $vehicle, ?User $by, string $what = 'Акт приёма', ?Carbon $at = null, ?int $threadId = null, array $mark = []): void
     {
-        foreach ($vehicle->docs()->where('direction', 'out')->where('state', DocState::Pending)->get() as $doc) {
+        // Только бумаги отчёта — акт и фото; договор комиссии, соглашение и прочее этим письмом не уходят.
+        foreach ($vehicle->docs()->where('direction', 'out')->where('state', DocState::Pending)->whereIn('kind', [DocKind::HandoverAct, DocKind::StorageAct, DocKind::Photos])->get() as $doc) {
             ($this->markDoc)($doc, $by, DocState::Sent, $at, null, $threadId);
         }
         $vehicle->log(EventType::ReportSent, $by, array_filter(['what' => $what, 'thread' => $threadId]) + $mark);

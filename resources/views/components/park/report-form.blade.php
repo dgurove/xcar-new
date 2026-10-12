@@ -57,7 +57,7 @@
                                     <input type="file" name="scans[{{ $kind }}][]" accept="image/*" capture="environment" multiple class="sr-only" data-action="change->report#count" data-report-target="scan">
                                 </label>
                                 <label class="btn btn-s btn-quiet shrink-0 rounded-full" aria-label="Файл"><x-ui.icon name="clip" class="size-4"/><span class="hidden sm:inline">Файл</span>
-                                    <input type="file" name="scans[{{ $kind }}][]" accept="image/*,.pdf,application/pdf" multiple class="sr-only" data-action="change->report#count" data-report-target="scan">
+                                    <input type="file" name="files[{{ $kind }}][]" accept="image/*,.pdf,application/pdf" multiple class="sr-only" data-action="change->report#count" data-report-target="file">
                                 </label>
                             </div>
                         @endforeach
@@ -71,10 +71,17 @@
 
             <button type="submit" class="btn btn-accent w-full" data-report-target="submit">Отправить отчёт</button>
         </form>
-        {{-- Вне формы отчёта: формы не вкладываются. --}}
-        <form method="post" action="/cars/{{ $vehicle->id }}/report-sent" class="mt-2 text-center" data-turbo-confirm="Отчёт уже ушёл с другой почты?" data-turbo-confirm-label="Уже отправили">
-            @csrf @if ($advance)<input type="hidden" name="advance" value="1">@endif
-            <button class="text-sm text-ink-muted hover:text-ink">Уже отправили с другой почты</button>
-        </form>
     </section>
+@else
+    {{-- Ящика парковки для отправки нет — отчёт ушёл другим путём: только отметка. --}}
+    <section {{ $attributes->merge(['class' => 'report']) }}>
+        <p class="text-sm text-ink-muted">Ящик парковки для отправки не подключён</p>
+    </section>
+@endif
+{{-- Вне формы отчёта (формы не вкладываются); отметку ставит тот, кто ведёт парковку, не помощник. --}}
+@if (auth()->user()?->canManagePark())
+    <form method="post" action="/cars/{{ $vehicle->id }}/report-sent" class="mt-2 text-center" data-turbo-confirm="Отчёт уже ушёл с другой почты?" data-turbo-confirm-label="Уже отправили">
+        @csrf @if ($advance)<input type="hidden" name="advance" value="1">@endif
+        <button class="text-sm text-ink-muted hover:text-ink">Уже отправили с другой почты</button>
+    </form>
 @endif
