@@ -29,7 +29,10 @@ final class TransferBuyer
             Showing::where('user_id', $buyer->id)->delete();
             $buyer->groups()->detach();
             $buyer->forceFill(['manager_id' => $to->id, 'invite_id' => null])->save();
+            // Переписка покупателя переезжает к новому менеджеру: прежний ему больше не пишет (13.10.2026).
+            \App\Chats\Chat::where('user_id', $buyer->id)->whereNotNull('manager_id')->update(['manager_id' => $to->id]);
         });
+        \App\Offers\Jobs\RetractOfferNotices::forUser($buyer);
         if ($seen) {
             OffersHidden::dispatch($to, [$buyer->id => $seen]);
         }

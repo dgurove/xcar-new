@@ -91,7 +91,8 @@ Route::middleware('wall')->group(function () {
 });
 
 Route::middleware(['auth', 'wall'])->group(function () {
-    Route::post('/offers/{offer}/confirm', [BidController::class, 'store']);
+    // Подбором суммы по «недостаточна для снятия резерва» не вычислить порог (13.10.2026): не чаще 6 раз в минуту.
+    Route::post('/offers/{offer}/confirm', [BidController::class, 'store'])->middleware('throttle:6,1');
     // «Просмотрено» на карточках — маячок при открытии с карточки или строки (`ReadOffer`).
     Route::post('/offers/{offer}/read', [OfferController::class, 'read']);
     // Оценка цены продажи черновика, отданного менеджеру на оценку (11.10.2026).

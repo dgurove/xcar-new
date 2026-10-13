@@ -53,4 +53,15 @@ final class OffersShownNotice extends Notice
 
         return ['title' => $this->title(), 'lines' => array_values(array_filter([$price, $this->text()])), 'button' => $offer ? 'Посмотреть' : 'Открыть ленту'];
     }
+
+    /** Одна машина — сообщение о ней: пропала у покупателя — `RetractOfferNotices` уберёт; пачку не трогаем. */
+    public function telegramSubject(): ?string
+    {
+        return count($this->offerIds) === 1 ? self::offerSubject($this->offerIds[0]) : null;
+    }
+
+    protected function visibleOffer(): ?Offer
+    {
+        return count($this->offerIds) === 1 ? Offer::find($this->offerIds[0]) : null;
+    }
 }

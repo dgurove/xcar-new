@@ -66,7 +66,12 @@ final class ChatNotice extends Notice
         // Покупателю пишет его менеджер — без VIN и номера: VIN покупателю по умолчанию скрыт (`Offer::vinFor`).
         $toBuyer = $chat->isBuyerChat() && $m->author_id !== null && $m->author_id === $chat->manager_id;
 
-        return ['title' => $title, 'lines' => $toBuyer ? [$m->preview(1000)] : Text::lines($chat->offer, $m->preview(1000)), 'button' => 'Открыть чат'];
+        // VIN строкой — только открытый у предложения и не покупателю: скрытый ушёл бы в Telegram целиком (13.10.2026).
+        $lines = $toBuyer || (! $this->forStaff && ! $chat->offer?->show_vin)
+            ? array_values(array_filter([$m->preview(1000), $chat->offer?->number ? Text::tag($chat->offer) : null]))
+            : Text::lines($chat->offer, $m->preview(1000));
+
+        return ['title' => $title, 'lines' => $lines, 'button' => 'Открыть чат'];
     }
 
     /** Сотруднику в чате площадки — CRM (там и обращения с сайта), остальным — сайт. */

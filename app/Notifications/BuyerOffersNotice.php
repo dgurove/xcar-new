@@ -61,4 +61,9 @@ final class BuyerOffersNotice extends Notice
     {
         return count($this->offerIds) === 1 ? self::offerSubject($this->offerIds[0]) : null;
     }
+
+    protected function visibleOffer(): ?Offer
+    {
+        return $this->single();
+    }
 }

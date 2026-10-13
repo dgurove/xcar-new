@@ -11,7 +11,8 @@
         ...$extra,
     ]));
 @endphp
-@foreach ($offer->tags ?? [] as $name)
+{{-- Покупателю меток нет: это условия сделки XCar с менеджером («Оплата по счету», «Отсрочка оплаты», 13.10.2026). --}}
+@foreach (auth()->user()?->isBuyer() ? [] : ($offer->tags ?? []) as $name)
     <span class="tag" style="{{ $style(\App\Offers\Tag::colorOf($name, $offer->tag_colors)) }}">{{ $name }}</span>
 @endforeach
 @if ($text)<span class="nums text-sm text-ink-muted">{{ implode(', ', $text) }}</span>@endif

@@ -132,6 +132,7 @@ class BuyerController
         $data = $request->validate(['buyer_sees' => ['required', 'in:all,picked']]);
         $user->update(['buyer_sees' => $data['buyer_sees'], 'buyer_show_vin' => $request->boolean('buyer_show_vin')]);
         app(Publisher::class)->refresh(Topics::user($user->id), ['/offers', '/account']);
+        \App\Offers\Jobs\RetractOfferNotices::forUser($user);
 
         return back()->with('toast', $data['buyer_sees'] === 'picked' ? 'Видит только выбранные' : 'Видит все предложения');
     }
@@ -144,6 +145,7 @@ class BuyerController
         $ids = collect($request->input('groups', []))->map(fn ($v) => (int) $v)->all();
         $allowed = BuyerGroup::whereIn('id', $ids)->where('manager_id', $me->id)->pluck('id')->all();
         $user->groups()->sync(collect($allowed)->mapWithKeys(fn ($id) => [$id => ['created_at' => now()]])->all());
+        \App\Offers\Jobs\RetractOfferNotices::forUser($user);
 
         return back()->with('toast', 'Группы сохранены');
     }

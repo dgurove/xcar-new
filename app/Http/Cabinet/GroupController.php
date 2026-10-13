@@ -52,7 +52,9 @@ class GroupController
         abort_unless($group->manager_id === $me->id, 404);
         $ids = collect($request->input('users', []))->map(fn ($v) => (int) $v)->all();
         $allowed = $me->buyers()->whereIn('id', $ids)->pluck('id')->all();
-        $group->members()->sync(collect($allowed)->mapWithKeys(fn ($id) => [$id => ['created_at' => now()]])->all());
+        $changes = $group->members()->sync(collect($allowed)->mapWithKeys(fn ($id) => [$id => ['created_at' => now()]])->all());
+        // Вышедшим из группы — «открыл вам …» по машинам, что пропали, убрать.
+        User::whereIn('id', $changes['detached'] ?? [])->get()->each(fn ($u) => \App\Offers\Jobs\RetractOfferNotices::forUser($u));
 
         return back()->with('toast', 'Состав сохранён');
     }

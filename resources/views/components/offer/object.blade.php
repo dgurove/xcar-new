@@ -27,10 +27,10 @@
 
     <section @class(["order-3 flex min-w-0 flex-col gap-6 lg:col-start-1", $photos->isNotEmpty() ? "lg:row-start-2" : "lg:row-start-1"])>
         {{ $slot }}
-        @if ($offer->description)
+        @if ($offer->publicDescription())
             <div>
                 <h2 class="list-head">Описание</h2>
-                <p class="whitespace-pre-line text-ink-muted">{{ $offer->description }}</p>
+                <p class="whitespace-pre-line text-ink-muted">{{ $offer->publicDescription() }}</p>
             </div>
         @endif
     </section>

@@ -147,8 +147,9 @@ final class SyncDealInvoices
         $managerPays = $contract->managerPays();
         $party = Party::forUser($managerPays ? $deal->buyer : $contract->buyer);
         // Супер-покупатель (`isDirect`) закупочную не видит нигде: ему одна строка на цену сделки, без разбивки на
-        // «Транспортное средство» по закупочной и «Агентское вознаграждение» — разница выдала бы её.
-        if ($deal->isDirect()) {
+        // «Транспортное средство» по закупочной и «Агентское вознаграждение» — разница выдала бы её. Так же покупателю
+        // менеджера, когда платит он (13.10.2026): счёт с разбивкой показал бы ему закупочную и долю менеджера.
+        if ($deal->isDirect() || ! $managerPays) {
             return ['party' => $party, 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->amount, 'kind' => ChargeKind::Sale->value]]];
         }
         $fee = max(0, (int) $deal->amount - (int) $deal->cost);

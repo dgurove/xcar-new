@@ -32,6 +32,10 @@ final class HideOffers
         }
         if ($gone) {
             OffersHidden::dispatch($manager, $gone);
+            // «Открыл вам …» у тех, у кого машина пропала, — убрать из ленты и Telegram (13.10.2026).
+            foreach ($offers as $offer) {
+                \App\Offers\Jobs\RetractOfferNotices::dispatch($offer->id);
+            }
         }
 
         return $removed;

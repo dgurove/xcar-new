@@ -9,6 +9,7 @@ use App\Notifications\DealOpenedNotice;
 use App\Notifications\GalleryInterestOnSaleNotice;
 use App\Notifications\Notice;
 use App\Notifications\OfferPublishedNotice;
+use App\Notifications\OffersShownNotice;
 use App\Notifications\PurchaseCarOnSaleNotice;
 use App\Notifications\UrgentOfferNotice;
 use App\Offers\Offer;
@@ -36,11 +37,20 @@ final class RetractOfferNotices implements ShouldQueue
 
     /** Уведомления «о предложении целиком»: их смысл — «вот машина, смотрите». */
     private const TYPES = [OfferPublishedNotice::class, UrgentOfferNotice::class, PurchaseCarOnSaleNotice::class,
-        GalleryInterestOnSaleNotice::class, BuyerOffersNotice::class, DealOpenedNotice::class];
+        GalleryInterestOnSaleNotice::class, BuyerOffersNotice::class, DealOpenedNotice::class, OffersShownNotice::class];
 
     public function __construct(public int $offerId)
     {
         $this->afterCommit();
+    }
+
+    /** Человеку сузили круг (группа, режим «Выбранные», передача покупателя): проверить каждую машину его уведомлений. */
+    public static function forUser(User $user): void
+    {
+        DatabaseNotification::whereIn('type', self::TYPES)->where('notifiable_type', User::class)->where('notifiable_id', $user->id)
+            ->whereNotNull('data->offer')->pluck('data')
+            ->map(fn ($d) => (is_array($d) ? $d : json_decode($d, true))['offer'] ?? null)->filter()->unique()
+            ->each(fn ($number) => ($id = Offer::where('number', $number)->value('id')) ? self::dispatch($id) : null);
     }
 
     public function handle(OffersBot $bot, Bot $main, Publisher $publish): void

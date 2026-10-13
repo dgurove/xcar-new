@@ -103,10 +103,10 @@
             <x-offer.facts :offer="$offer" class="order-2 lg:order-3"/>
         </aside>
 
-        @if ($offer->description)
+        @if ($offer->publicDescription())
             <section class="lg:col-start-1 lg:row-start-2">
                 <h2 class="list-head">Описание</h2>
-                <p class="whitespace-pre-line text-ink-muted">{{ $offer->description }}</p>
+                <p class="whitespace-pre-line text-ink-muted">{{ $offer->publicDescription() }}</p>
             </section>
         @endif
     </div>

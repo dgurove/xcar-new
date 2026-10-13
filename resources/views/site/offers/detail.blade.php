@@ -100,7 +100,7 @@
             {{-- Покупателю — его менеджер: кто и как позвонить, одной пилюлей. --}}
             @if ($manager?->phone)<a href="tel:+{{ $manager->phone }}" class="pill pill-plain"><x-ui.avatar :user="$manager" :size="20"/> {{ $manager->shortName() }} <span class="nums">{{ $manager->phoneFormatted() }}</span> <x-ui.icon name="phone" class="size-4"/></a>@endif
         </x-slot:actions>
-        @if ($offer->description)<p class="mt-3 whitespace-pre-line text-sm text-ink-muted">{{ $offer->description }}</p>@endif
+        @if ($offer->publicDescription())<p class="mt-3 whitespace-pre-line text-sm text-ink-muted">{{ $offer->publicDescription() }}</p>@endif
         <x-slot:row><x-offer.site-table-row :offer="$offer" :context="$context"/></x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

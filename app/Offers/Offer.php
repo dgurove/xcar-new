@@ -791,6 +791,10 @@ class Offer extends Model implements HasMedia
     public function vinOpenTo(?User $user): bool
     {
         if ($user?->isBuyer()) {
+            // Скрытый у предложения VIN не открывает покупателю никто: менеджер не отдаёт того, чего не видит сам (13.10.2026).
+            if (! $this->show_vin) {
+                return false;
+            }
             if ($user->buyerSeesAll() && $user->buyer_show_vin) {
                 return true;
             }
@@ -801,6 +805,18 @@ class Offer extends Model implements HasMedia
         }
 
         return (bool) $this->show_vin;
+    }
+
+    /**
+     * Описание для xcar: без ссылок (письмо вендора кладёт «Фото: <ссылка на его облако>») и без номеров убытка и ДЛ
+     * (`InternalRefs`, 13.10.2026). Пусто после чистки — null.
+     */
+    public function publicDescription(): ?string
+    {
+        $text = (string) preg_replace(['~^\s*Фото:\s*\S+\s*$~miu', '~https?://\S+~iu'], '', (string) $this->description);
+        $text = trim(\App\Support\InternalRefs::hide($text, [$this->claim_ref]));
+
+        return $text !== '' ? $text : null;
     }
 
     /** VIN, каким его видит человек: целиком или только первые пять знаков. */

@@ -73,6 +73,9 @@ final class ShowOffers
         }
         if ($gone) {
             OffersHidden::dispatch($manager, $gone);
+            foreach ($offers as $offer) {
+                \App\Offers\Jobs\RetractOfferNotices::dispatch($offer->id);
+            }
         }
 
         return ['shown' => $offers->count(), 'buyers' => count($fresh)];
