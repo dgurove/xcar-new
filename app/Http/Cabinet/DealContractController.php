@@ -43,6 +43,7 @@ class DealContractController
     public function show(Request $request, Deal $deal)
     {
         abort_unless($deal->buyer_id === $request->user()->id && $deal->hasContract(), 404);
+        abort_if($deal->state === \App\Offers\DealState::Cancelled, 404);
         // Менеджеру — только готовый договор: с прочерками вместо покупателя его не печатают (06.10.2026).
         abort_unless(DealContract::for($deal)->isReady(), 404);
 

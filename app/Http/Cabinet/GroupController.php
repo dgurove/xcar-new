@@ -33,7 +33,7 @@ class GroupController
             'group' => $group,
             // Участники сверху — состав читается сразу, остальных можно добавить ниже.
             'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get()->sortByDesc(fn ($b) => $group->members->contains('id', $b->id))->values(),
-            'offers' => Offer::with(['brand', 'model', 'settlement', 'media', 'favorites'])->whereIn('id', $offerIds)->where('state', OfferState::Open)->orderByDesc('published_at')->get(),
+            'offers' => Offer::with(['brand', 'model', 'settlement', 'media', 'favorites'])->whereIn('id', $offerIds)->where('state', OfferState::Open)->visibleTo($me)->orderByDesc('published_at')->get(),
         ]);
     }
 

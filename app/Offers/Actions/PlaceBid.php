@@ -30,7 +30,8 @@ final class PlaceBid
         if (! $by->canBid()) {
             throw ValidationException::withMessages(['amount' => 'Подтверждать ценой здесь нельзя']);
         }
-        if (! $offer->isVisibleTo($by)) {
+        // Круг видимости, без «своего подтверждения»: прежняя цена не даёт подтверждать заново вне круга.
+        if (! Offer::whereKey($offer->id)->visibleTo($by)->exists() && ! $offer->isAskedOf($by)) {
             throw ValidationException::withMessages(['amount' => 'Это предложение вам не открыто']);
         }
 

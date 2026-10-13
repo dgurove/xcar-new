@@ -112,6 +112,11 @@ self.addEventListener('fetch', (event) => {
             }
             if (cached) {
                 later(event, network.then(async (response) => {
+                    // Страницы больше нет у этого человека (предложение ушло от него) — копия с ценами из кэша уходит.
+                    if (response.status === 404 || response.status === 403) {
+                        try { await (await caches.open(PAGES)).delete(request); } catch {}
+                        return;
+                    }
                     if (!response.ok || response.redirected) return;
                     // В сети уже другая сборка (выкладка, а этот воркер ещё прежний): экран из кэша — со старыми файлами,
                     // и тихое обновление страницы (app.js stalePage) приведёт Turbo к полной перезагрузке. Старую копию

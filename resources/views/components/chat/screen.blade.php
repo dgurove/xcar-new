@@ -4,7 +4,9 @@
 @props(['chat', 'messages', 'user', 'name', 'other' => null, 'offer' => null, 'back' => '/account/chats', 'open' => null, 'firstUnread' => 0, 'more' => false, 'readonly' => false, 'link' => null, 'sheet' => false, 'status' => false, 'chats' => null])
 @php
     $offer ??= $chat?->offer;
-    $price = $offer ? \App\Offers\PriceView::for($offer, $user) : null;
+    // Машина ушла от человека (круг сузили, сделка, снята) — переписка остаётся, а цены и перехода к машине нет.
+    $carOpen = $offer && ($readonly || $offer->isVisibleTo($user));
+    $price = $carOpen ? \App\Offers\PriceView::for($offer, $user) : null;
     $seen = $status === false ? $other?->seenLabel() : $status;
     $crm = \App\Support\Surface::current() === \App\Support\Surface::Crm;
 @endphp
@@ -34,12 +36,12 @@
         @if ($sheet)<x-chat.contact :user="$other" :name="$name" :status="$seen" :chats="$chats" :me="$user"/>@endif
     </div>
     @if ($offer)
-        <a href="/offers/{{ $offer->number }}" class="chat-car" target="_top">
+        @if ($carOpen)<a href="/offers/{{ $offer->number }}" class="chat-car" target="_top">@else<div class="chat-car">@endif
             <div class="chat-car-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="40px"/></div>
             <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ $offer->titleWithYear() }}</span>
             @if ($price?->shown())<span class="nums shrink-0 text-sm text-ink-muted">{{ $price::money($price->to) }} ₽</span>@endif
-            <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
-        </a>
+            @if ($carOpen)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>@endif
+        @if ($carOpen)</a>@else</div>@endif
     @endif
     <x-chat.box :chat="$chat" :messages="$messages" :user="$user" :first-unread="$firstUnread" :more="$more" :readonly="$readonly" :open="$open ?? ($chat || !$offer ? null : '/offers/'.$offer->number.'/chat')" screen/>
 </div>

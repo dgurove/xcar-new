@@ -65,9 +65,9 @@ final class ChangeOfferState
                     $offer->bids_close_at = Slots::closeFor($at);
                 } else {
                     // Волны показа — от этого выхода из черновика (13.10.2026): «остальным через 5 дней» считаются заново, а
-                    // не от первой публикации, когда всё давно «наступило». Из сделки (сорвалась) — прежние: кому было
-                    // открыто, тому открыто и сейчас.
-                    $offer->published_at = $from === OfferState::Draft ? now() : ($offer->published_at ?? now());
+                    // не от первой публикации, когда всё давно «наступило»; из гаража («Вернуть в продажу») — так же. Из
+                    // сделки (сорвалась) — прежние: кому было открыто, тому открыто и сейчас.
+                    $offer->published_at = in_array($from, [OfferState::Draft, OfferState::Garage], true) ? now() : ($offer->published_at ?? now());
                     if (! $offer->bids_close_at || $offer->bids_close_at->isPast()) {
                         // Срок приёма по умолчанию — через 3 дня в 17:00 (владелец 04.10.2026), а не текущая минута.
                         $offer->bids_close_at = Slots::closeFor(now());

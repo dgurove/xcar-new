@@ -112,7 +112,8 @@ final class Search
         $cars = new Cars($t);
         // Свои сделки и гараж — выше витрины: это машины менеджера, о них и спрашивают.
         if ($user->hasDeals()) {
-            Deal::of($user)->whereHas('offer', fn ($o) => $o->search($t))->with(['offer.brand', 'offer.model'])->latest('id')->limit(6)->get()
+            // Отменённые — нет: такая сделка машину уже не открывает.
+            Deal::of($user)->whereIn('state', [\App\Offers\DealState::Active, \App\Offers\DealState::Done])->whereHas('offer', fn ($o) => $o->search($t))->with(['offer.brand', 'offer.model'])->latest('id')->limit(6)->get()
                 ->each(fn (Deal $d) => $cars->siteDeal($d));
         }
         if ($user->canGarage()) {

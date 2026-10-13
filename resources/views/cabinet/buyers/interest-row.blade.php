@@ -3,17 +3,19 @@
      о машине (на её собственной странице). --}}
 @php
     $offer = $interest->offer; $person ??= true; $car ??= true; $new = $interest->state === \App\Offers\InterestState::New;
+    // Машина ушла от менеджера (сузили круг, сделка, снята) — интерес остаётся строкой, но без цены, фото и ссылки.
+    $seen = $offer->isVisibleTo(auth()->user());
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     // Кнопка называет исход, от первого лица (11.10.2026: голое «Связались» — правило no-em-dash-in-ui).
     $verb = $new ? ['contacted', 'Я связался', 'check', 'swipe-btn-accent'] : ['closed', 'Закрыть', 'x', ''];
 @endphp
 <x-ui.swipe id="interest-{{ $interest->id }}">
     <div class="row relative transition-colors hover:bg-hover">
-        <a href="/offers/{{ $offer->number }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $offer->titleWithYear() }}"></a>
+        @if ($seen)<a href="/offers/{{ $offer->number }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $offer->titleWithYear() }}"></a>@endif
         @if ($person)
             <x-ui.avatar :user="$interest->user" :size="44"/>
         @else
-            <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+            <span class="row-photo">@if ($seen)<x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/>@endif</span>
         @endif
         <span class="min-w-0 flex-1">
             <span class="flex items-center gap-2">
@@ -23,7 +25,7 @@
             @if ($car || ($person && $interest->user->phone))
                 <span class="row-sub">
                     @if ($person && $car)<span class="truncate">{{ $offer->titleWithYear() }}</span>@endif
-                    @if ($car && $price->shown())<span class="nums font-semibold">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
+                    @if ($car && $seen && $price->shown())<span class="nums font-semibold">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
                     @if ($person && $interest->user->phone)<span class="tag nums">{{ $interest->user->phoneFormatted() }}</span>@endif
                 </span>
             @endif

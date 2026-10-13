@@ -124,6 +124,10 @@ class DealController
             return redirect()->away($deal->crmUrl());
         }
         abort_unless($deal->buyer_id === $me->id, 404);
+        // Отменённая сделка машину не открывает (13.10.2026): кадры, VIN и документы — только пока она ему видна.
+        if ($deal->state === DealState::Cancelled && ! $deal->offer->isVisibleTo($me)) {
+            return redirect('/deals?view=archive')->with('toast', 'Сделка отменена');
+        }
         // Гаражная сделка живёт в гараже: старые ссылки ленты и Telegram ведут туда же.
         if ($deal->isGarage() && $deal->garageCar()->exists()) {
             return redirect($deal->href());

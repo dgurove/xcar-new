@@ -245,6 +245,8 @@ final class PhotoIngest
     {
         $base = trim(preg_replace('/[^A-Za-z0-9._-]+/', '-', pathinfo($original, PATHINFO_FILENAME)) ?? '', '-.');
 
-        return ($base === '' ? 'kadr-'.Str::random(8) : $base).'.webp';
+        // Случайный хвост (13.10.2026): /media/ отдаётся без входа, номера кадров идут подряд, а имена с камеры
+        // (IMG_1234) угадываются — по ним вытягивали бы кадры закрытых предложений.
+        return ($base === '' ? 'kadr' : $base).'-'.Str::lower(Str::random(16)).'.webp';
     }
 }

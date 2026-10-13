@@ -315,6 +315,13 @@ final class Handler
     private function asking(Subscriber $sub, array $msg, string $text): void
     {
         $offer = $sub->offer;
+        // Пока писал, машина могла уйти от него (сузили круг, сделка) — чат по ней не заводим.
+        if ($offer && $text !== Keys::BACK && ! $offer->chatOpenFor($sub->user)) {
+            $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, 'Чат по этому предложению закрыт', Keys::feed()));
+            $this->next($sub, 'next');
+
+            return;
+        }
         if ($text === Keys::BACK || ! $offer) {
             $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, '✨🔍', Keys::feed()));
             // Пока писал вопрос, предложение могло уйти в сделку — тогда не его карточку, а следующую.

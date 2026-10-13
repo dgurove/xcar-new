@@ -582,7 +582,9 @@ class Offer extends Model implements HasMedia
         // Ролей может быть несколько (менеджер и модератор): видно то, что видно хоть одной из них.
         $any = false;
         $q->where(function ($w) use ($user, &$any) {
-            if ($user->isModerator()) {
+            // Модератор видит черновики группы в CRM; менеджер-модератор на сайте — менеджер, по своим волнам (13.10.2026:
+            // иначе видел всё открытое группы раньше волны и в обход «Не показывать»).
+            if ($user->isModerator() && (! $user->hasRole(Role::Manager, Role::SuperBuyer) || \App\Support\Surface::inCrm())) {
                 $any = true;
                 $w->orWhere(fn ($m) => $m->inCrm($user));
             }
@@ -689,11 +691,15 @@ class Offer extends Model implements HasMedia
             && once(fn () => self::query()->whereKey($this->id)->autoDrafted()->exists());
     }
 
-    /** Страница предложения: круг видимости, а своё подтверждение открывает её в любом состоянии — без 404 после решения. */
+    /**
+     * Страница предложения: круг видимости, а своё живое подтверждение (ждёт решения, в резерве, принято) открывает её и
+     * вне круга — без 404, пока решается. Отозванное, отклонённое и заменённое не открывает ничего (13.10.2026: менеджер
+     * отозвал цену, круг сузили — а он видел машину и дальше).
+     */
     public function isVisibleTo(?User $user): bool
     {
         return $user?->isAdmin() || self::query()->whereKey($this->id)->visibleTo($user)->exists()
-            || ($user && $this->bids()->where('user_id', $user->id)->exists())
+            || ($user && $this->bids()->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])->exists())
             || $this->isAskedOf($user);
     }
 
@@ -1013,6 +1019,11 @@ class Offer extends Model implements HasMedia
         if ($t->blank()) {
             return $q;
         }
+        // VIN на витрине: менеджеру — у тех, где он открыт (`show_vin`), покупателю — никак: VIN ему показан маской, а
+        // поиск по куску восстанавливал бы его знак за знаком (13.10.2026).
+        $viewer = auth()->user();
+        $vin = $crm || ($viewer?->hasRole(Role::Manager, Role::SuperBuyer) ?? false) || ($viewer?->isAdmin() ?? false);
+        $vinOpen = $crm ? null : fn ($x) => $x->where('offers.show_vin', true);
 
         return $q->where(fn ($w) => $w
             // Строка целиком — номер: предложения, прежний, VIN; в CRM ещё номер убытка и телефон владельца.
@@ -1020,14 +1031,14 @@ class Offer extends Model implements HasMedia
             // падала вся выдача — такие с прежними номерами не сравниваются.
             ->when($t->digits, fn ($w, $d) => $w->orWhereRaw('cast(offers.number as text) like ?', [Term::like($d)])
                 ->when(strlen($d) <= 18, fn ($a) => $a->orWhereIn('offers.id', DB::table('offer_number_aliases')->where('number', $d)->select('offer_id'))))
-            ->when($t->vin, fn ($w, $vin) => $w->orWhere('offers.vin', 'like', Term::like($vin)))
+            ->when($vin && $t->vin, fn ($w) => $w->orWhere(fn ($x) => $x->where('offers.vin', 'like', Term::like($t->vin))->when($vinOpen, $vinOpen)))
             ->when($crm && $t->key, fn ($w) => $w->orWhere('offers.claim_ref_key', 'like', Term::like($t->key)))
             ->when($crm && $t->phone, fn ($w) => $w->orWhereRaw(Term::digitsSql('offers.insured_phone').' like ?', [Term::like($t->phone)]))
             // Слова — через И: «kia rio», «рио 2021», «крета москва».
             ->orWhere(fn ($all) => CarWords::apply($all, $t, 'offers', fn ($one, $word, $like) => $one
                 ->orWhereHas('settlement', fn ($c) => $c->search($word, region: false))
                 ->orWhereRaw('cast(offers.number as text) like ?', [$like])
-                ->when($crm, fn ($o) => $o->orWhereRaw('lower(offers.claim_ref) like ?', [$like])))));
+                ->when($crm, fn ($o) => $o->orWhereRaw('lower(offers.claim_ref) like ?', [$like])), vin: $vin, vinOpen: $vinOpen)));
     }
 
     /** Поиск в CRM: то же, что `search`, плюс номер убытка (ключом и куском) и телефон владельца — на витрине их нет. */
