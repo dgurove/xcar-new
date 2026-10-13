@@ -92,6 +92,8 @@ Route::middleware('wall')->group(function () {
 
 Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/confirm', [BidController::class, 'store']);
+    // «Просмотрено» на карточках — маячок при открытии с карточки или строки (`ReadOffer`).
+    Route::post('/offers/{offer}/read', [OfferController::class, 'read']);
     // Оценка цены продажи черновика, отданного менеджеру на оценку (11.10.2026).
     Route::post('/offers/{offer}/estimate', [EstimateController::class, 'store'])->middleware('ability:isManager');
     Route::post('/offers/{offer}/estimate/decline', [EstimateController::class, 'decline'])->middleware('ability:isManager');

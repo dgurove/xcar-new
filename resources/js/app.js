@@ -154,6 +154,7 @@ activePillIntoView();
 haptics();
 neighbourDirection();
 noticeSeen();
+offerRead();
 longPressMenu();
 heroTransition();
 timerDone();
@@ -805,6 +806,24 @@ function neighbourDirection() {
         if (rel) document.documentElement.dataset.navDir = rel;
     });
     document.addEventListener('turbo:load', () => delete document.documentElement.dataset.navDir);
+}
+
+// «Просмотрено» на карточках сайта (`ReadOffer`): открыли предложение с карточки или строки списка — метка встаёт сразу
+// (снимок Turbo для «Назад» уже с ней), а сервер узнаёт маячком: страницу и окно строки Turbo часто берёт из предзагрузки,
+// и настоящий запрос до сервера не доходит. Закладка, «Подтвердить», стрелки кадров — не открытие.
+function offerRead() {
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('a[href]');
+        const card = link?.closest('[data-viewed-key]');
+        if (!card || card.hasAttribute('data-viewed')) return;
+        const n = card.dataset.viewedKey;
+        const href = link.getAttribute('href');
+        if (!new RegExp(`(/offers/${n}|[?&]peek=${n})([?#&]|$)`).test(href)) return;
+        card.setAttribute('data-viewed', '');
+        const body = new FormData();
+        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+        navigator.sendBeacon(`/offers/${n}/read`, body);
+    }, true);
 }
 
 // Уведомление открывает объект сразу (без промежуточной страницы); прочитанность

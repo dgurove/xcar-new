@@ -44,7 +44,7 @@
     $myBid = $bidder && !$gallery ? ($offer->relationLoaded('bids') ? $offer->bids->firstWhere('user_id', $user->id)
         : $offer->bids()->where('user_id', $user->id)->whereIn('state', [\App\Offers\BidState::Active, \App\Offers\BidState::Accepted])->first()) : null;
 @endphp
-<article id="offer-{{ $n }}" data-offer-number="{{ $n }}" {{ $attributes->merge(['class' => 'card group'.($tone ? ' card--'.$tone : '')]) }}>
+<article id="offer-{{ $n }}" data-offer-number="{{ $n }}" @if ($user) data-viewed-key="{{ $n }}" @endif @if ($offer->viewed) data-viewed @endif {{ $attributes->merge(['class' => 'card group'.($tone ? ' card--'.$tone : '')]) }}>
     @if ($hasMedia)
         <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
             <a href="{{ $href }}" class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
@@ -81,8 +81,10 @@
         @else
         <x-offer.when :offer="$offer"/>
         @endif
-        @if ($hasMarks)
-            <div class="card-marks"><x-offer.marks :offer="$offer"/></div>
+        {{-- «Просмотрено» — первым в левом верхнем углу кадра (13.10.2026, менеджеры; `ReadOffer`): в разметке всегда,
+             показывает `data-viewed` карточки — его ставит и клик (`app.js`), чтобы «Назад» к снимку списка уже знал. --}}
+        @if ($hasMarks || $user)
+            <div class="card-marks">@if ($user)<span class="mark mark-glass mark-viewed">Просмотрено</span>@endif<x-offer.marks :offer="$offer"/></div>
         @endif
     </div>
 

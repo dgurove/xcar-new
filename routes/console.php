@@ -23,6 +23,7 @@ Schedule::command('mail:archive-stale')->dailyAt('04:20');
 Schedule::command('queue:prune-batches')->daily();
 Schedule::command('storage:gc')->dailyAt('04:30');
 Schedule::command('offers:prune-drafts')->dailyAt('04:40');
+Schedule::call(fn () => \App\Offers\ReadOffer::prune())->dailyAt('04:45')->name('offer-reads:prune');
 // Номера дел лотов Мигторга и фото совпавшим предложениям: пять запросов списка раз в полчаса.
 Schedule::command('migtorg:sync')->everyThirtyMinutes()->withoutOverlapping()->runInBackground();
 // Архив Мигторга кусками: до 150 карточек раз в 5 минут, пока не пройдены 60 дней торгов назад (потом молчит).

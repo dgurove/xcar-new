@@ -2970,6 +2970,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card-marks { position: var(--float-pos); top: .75rem; left: .75rem; right: 3rem; display: flex; flex-wrap: wrap; gap: .375rem; }
   .mark:empty { display: none; }
   .card-marks .mark-glass { background: var(--glass-bg); color: var(--glass-ink); backdrop-filter: var(--glass-blur); }
+  /* «Просмотрено» (`ReadOffer`): метка в разметке всегда, видна по `data-viewed` карточки или строки; без неё и без места ТС
+     угол пуст — коробки меток нет. */
+  .mark-viewed, .row-viewed { display: none; }
+  [data-viewed] .mark-viewed { display: inline-flex; }
+  [data-viewed] .row-viewed { display: inline; color: var(--color-ink-dim); }
+  .card:not([data-viewed]) .card-marks:not(:has(> :not(.mark-viewed))) { display: none; }
   .card-star {
     grid-area: star; justify-self: end; align-self: var(--star-self);
     position: var(--star-pos); top: var(--star-off); right: var(--star-off); z-index: 1;

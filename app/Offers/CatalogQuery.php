@@ -81,7 +81,8 @@ final class CatalogQuery
     }
 
     /**
-     * Что нужно карточке витрины: фото, своя закладка, когда открылось этому человеку (`opened_at`), своё подтверждение
+     * Что нужно карточке витрины: фото, своя закладка, когда открылось этому человеку (`opened_at`), открывал ли он его
+     * (`viewed`), своё подтверждение
      * и свой интерес — одним запросом на список. Каталог и живое обновление карточки (`Live\FragmentController`)
      * берут одно и то же: иначе после обновления пропадали полоса «новое» и «Ваша цена».
      */
@@ -94,6 +95,10 @@ final class CatalogQuery
                 'media' => fn ($m) => $m->where('collection_name', 'photos'),
                 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)])
             ->select('offers.*')->selectRaw(self::openedAtSql($user).' as opened_at');
+        if ($user) {
+            // «Просмотрено» — открывал ли он предложение (`ReadOffer`): подзапрос по ключу пары, без чтения таблицы.
+            $q->selectRaw('exists(select 1 from offer_reads r where r.user_id = ? and r.offer_id = offers.id) as viewed', [$user->id]);
+        }
         if (! $gallery && ($user?->bidsOnSite() ?? false)) {
             // «Ваша цена» на карточке — своё действующее подтверждение, тем же правилом, что на странице предложения.
             $q->with(['bids' => fn ($b) => $b->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])]);

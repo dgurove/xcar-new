@@ -31,7 +31,7 @@
     $since = $offer->openedAt() ?? $offer->created_at;
     $city = $offer->settlement?->title();
 @endphp
-<tr data-detail-key="{{ $n }}" data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}">
+<tr data-detail-key="{{ $n }}" data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}" @if ($user) data-viewed-key="{{ $n }}" @endif @if ($offer->viewed) data-viewed @endif>
     <td class="grow">
         <x-ui.row-link :key="$n"><span class="cell-title">@if ($tone && $tone !== 'urgent')<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : match ($tone) { 'only' => 'Только вам', 'hot' => 'Горящее', 'urgent' => 'Срочно', default => 'Новое' } }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
@@ -42,6 +42,8 @@
             @elseif ($offer->state === \App\Offers\OfferState::Sold)<span class="sm:hidden text-urgent">идёт сделка</span>
             @elseif ($bids && !$offer->bidsOpen())<span class="sm:hidden">приём закрыт</span>@endif
             @if ($city)<span class="sm:hidden">{{ $city }}</span>@endif
+            {{-- Открывал — «просмотрено» (`ReadOffer`); показывает `data-viewed` строки, его же ставит клик (`app.js`). --}}
+            @if ($user)<span class="row-viewed">просмотрено</span>@endif
         </span>
     </td>
     <td class="cell-dim nums hidden sm:table-cell">{{ $estimate ? '' : $n }}</td>

@@ -9,6 +9,7 @@ use App\Offers\BidState;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\ReadOffer;
 use App\Support\ListContext;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class OfferController
             return redirect('/offers')->with('toast', 'Оценка уже не нужна');
         }
         abort_unless($offer->isVisibleTo($user), 404);
+        ReadOffer::mark($user, $offer);
 
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
@@ -59,11 +61,25 @@ class OfferController
         ]);
     }
 
+    /**
+     * Открыли с карточки или строки списка — маячок из браузера (`app.js`, `offerRead`): страницу и окно строки Turbo
+     * часто берёт из предзагрузки, и до `show`/`detail` настоящий запрос не доходит.
+     */
+    public function read(Request $request, Offer $offer)
+    {
+        if ($offer->isVisibleTo($request->user())) {
+            ReadOffer::mark($request->user(), $offer);
+        }
+
+        return response()->noContent();
+    }
+
     /** Карточка строки таблицы: фото, метки, факты, цена как видит человек; подтвердить ценой или проявить интерес прямо тут. */
     public function detail(Request $request, Offer $offer)
     {
         $user = $request->user();
         abort_unless($offer->isVisibleTo($user), 404);
+        ReadOffer::mark($user, $offer);
         $offer->load(['brand', 'model', 'settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
         CatalogQuery::withOpenedAt($offer, $user);
         $canChat = $offer->chatOpenFor($user);

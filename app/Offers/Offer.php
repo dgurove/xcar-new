@@ -72,6 +72,8 @@ class Offer extends Model implements HasMedia
     {
         // `opened_at` — вычисленное каталогом (`CatalogQuery::openedAtSql`), колонки нет: в запись не уходит.
         static::saving(fn (self $o) => $o->offsetUnset('opened_at'));
+        // `viewed` — «Просмотрено» из каталога (`CatalogQuery::cards`), тоже без колонки.
+        static::saving(fn (self $o) => $o->offsetUnset('viewed'));
         // Тип ТС колонкой — для фильтра; марка сменилась — прежняя связь уже не та.
         // Одна машина — одна запись: номер убытка или VIN другого предложения не встанет (`Identity`).
         static::saving(fn (self $o) => Identity::guardOffer($o));
