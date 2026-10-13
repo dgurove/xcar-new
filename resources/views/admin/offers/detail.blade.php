@@ -247,9 +247,10 @@
             </section>
         @endif
         {{-- Интерес — под подтверждениями строками `.list`, как все группы однотипного (12.10.2026: плашками с тегами — хаос). --}}
-        @if ($admin && $offer->interests->isNotEmpty())
-            <section class="mt-4">
-                <h2 class="detail-section">Интерес <span class="nums font-normal text-ink-dim">{{ $offer->interests->count() }}</span></h2>
+        @if ($admin && ($offer->interests->isNotEmpty() || $offer->isGallery()))
+            <section class="mt-4 flex flex-col gap-2">
+                <h2 class="detail-section">Интерес @if ($offer->interests->isNotEmpty())<span class="nums font-normal text-ink-dim">{{ $offer->interests->count() }}</span>@endif</h2>
+                @if ($offer->interests->isNotEmpty())
                 <div class="list">
                     @foreach ($offer->interests as $interest)
                         <div class="row">
@@ -260,6 +261,7 @@
                                     @if ($interest->user->manager)<span>покупатель {{ $interest->user->manager->shortName() }}</span>@endif
                                     @if ($interest->user->phone)<a href="tel:+{{ $interest->user->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $interest->user->phoneFormatted() }}</a>@endif
                                     <span class="nums whitespace-nowrap">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span>
+                                    @if ($interest->placer)<span>внёс {{ $interest->placer->shortName() }}</span>@endif
                                 </span>
                                 @if ($interest->comment)<span class="mt-1 block text-sm">{{ $interest->comment }}</span>@endif
                             </span>
@@ -273,6 +275,10 @@
                         </div>
                     @endforeach
                 </div>
+                @endif
+                @if ($offer->acceptsInterest())
+                    <x-offer.interest-for :offer="$offer"/>
+                @endif
             </section>
         @endif
         <form method="post" action="/offers/{{ $n }}" id="detail-edit-{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar migtorg-diff" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">

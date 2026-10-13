@@ -72,7 +72,7 @@ class OfferEvent extends Model
             OfferEventType::BidAccepted => isset($p['garage']) ? 'В гараж, поставщику платит '.mb_strtolower(GaragePayer::tryFrom($p['garage'])?->label() ?? '') : 'Подтверждение принято',
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
             OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
-            OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : 'Интерес',
+            OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : (! empty($p['placed_by']) ? 'Интерес, внесён за менеджера' : 'Интерес'),
             OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.$p['exit'].'»'.(! empty($p['letter']) ? ' по письму' : '').')' : '')),
             OfferEventType::StageOverdue => 'Срок вышел: '.($p['stage'] ?? ''),
             OfferEventType::StageReminded => 'Срок подходит: '.($p['stage'] ?? ''),

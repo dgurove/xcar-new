@@ -222,6 +222,10 @@ final class Notify
     public function interest(InterestRegistered $e): void
     {
         $interest = $e->interest->load('offer', 'user');
+        // Внёс сотрудник (за менеджера) или админ отметил себя — сотрудники и так знают.
+        if ($interest->placed_by || $interest->user->isAdmin()) {
+            return;
+        }
         if ($interest->user->isBuyer()) {
             $interest->user->manager?->notify(new BuyerInterestNotice($interest));
 

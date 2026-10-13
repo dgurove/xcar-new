@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['offer_id', 'user_id', 'state', 'comment'])]
+#[Fillable(['offer_id', 'user_id', 'state', 'comment', 'placed_by'])]
 class Interest extends Model
 {
     protected function casts(): array
@@ -23,5 +23,11 @@ class Interest extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Сотрудник, что внёс интерес за менеджера (`placed_by`); свой интерес — пусто. */
+    public function placer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'placed_by');
     }
 }

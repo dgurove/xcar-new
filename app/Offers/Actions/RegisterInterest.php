@@ -12,7 +12,8 @@ use Illuminate\Validation\ValidationException;
 
 final class RegisterInterest
 {
-    public function __invoke(Offer $offer, User $by, ?string $comment = null): Interest
+    /** `$placedBy` — сотрудник, что вносит интерес за менеджера (тот сказал устно); уведомлений тогда нет. */
+    public function __invoke(Offer $offer, User $by, ?string $comment = null, ?User $placedBy = null): Interest
     {
         if (! $offer->acceptsInterest()) {
             throw ValidationException::withMessages(['interest' => 'ТС уже недоступно']);
@@ -20,10 +21,11 @@ final class RegisterInterest
 
         $interest = $offer->interests()->firstOrNew(['user_id' => $by->id]);
         $fresh = ! $interest->exists;
-        $interest->fill(['comment' => $comment ?: $interest->comment, 'state' => $fresh ? InterestState::New : $interest->state])->save();
+        $interest->fill(['comment' => $comment ?: $interest->comment, 'state' => $fresh ? InterestState::New : $interest->state])
+            ->forceFill($fresh && $placedBy ? ['placed_by' => $placedBy->id] : [])->save();
 
         if ($fresh) {
-            $offer->log(OfferEventType::Interest, $by, ['interest_id' => $interest->id]);
+            $offer->log(OfferEventType::Interest, $by, ['interest_id' => $interest->id] + ($placedBy ? ['placed_by' => $placedBy->id] : []));
             InterestRegistered::dispatch($interest);
         }
 

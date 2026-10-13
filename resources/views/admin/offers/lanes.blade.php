@@ -14,6 +14,8 @@
         (bool) $g => 'garage',
         (bool) $deal => 'deal',
         $bids->isNotEmpty() || $offer->state === OfferState::Open => 'bids',
+        // Черновик в галерее: интерес и «+ Интерес» за менеджера (13.10.2026).
+        $offer->isGallery() || $offer->interests->isNotEmpty() => 'interest',
         default => null,
     };
     // Вывоз: идёт, или его можно назначить (у гаражной — всегда).
@@ -82,6 +84,8 @@
                     @include('admin.offers.interests')
                 @endif
             </div>
+        @elseif ($third === 'interest')
+            <div class="flex min-w-0 flex-col gap-4">@include('admin.offers.interests')</div>
         @endif
     </div>
 @endif
