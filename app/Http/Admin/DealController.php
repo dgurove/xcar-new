@@ -59,7 +59,8 @@ class DealController
         $searching = $facets->searching();
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
-        $q = Deal::query()->with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'buyer', 'openRequirement']);
+        // Гаражные сделки живут во вкладке «Гараж» (13.10.2026, владелец), здесь их нет ни в списке, ни в лупе, ни в числах.
+        $q = Deal::query()->whereNull('garage_payer')->with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'buyer', 'openRequirement']);
         if ($searching) {
             // Лупа — по всем сделкам: номер предложения, VIN, марка, убыток, менеджер.
             $term = trim((string) $request->query('q'));
@@ -70,7 +71,7 @@ class DealController
         }
         $facets->apply($q);
         // Числа пилюль — с чипами (10.10.2026: «Горит» без числа, а таб «Работа» горел им же — владелец не понимал, откуда 26).
-        $counts = collect(['active', 'hot', 'manager'])->mapWithKeys(fn (string $p) => [$p => self::scope($facets->applyTo(Deal::query()), $p)->count()])->all();
+        $counts = collect(['active', 'hot', 'manager'])->mapWithKeys(fn (string $p) => [$p => self::scope($facets->applyTo(Deal::query()->whereNull('garage_payer')), $p)->count()])->all();
         $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $q->orderBy('created_at', $dir),

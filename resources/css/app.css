@@ -1291,10 +1291,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
        и строка таблицы на ПК раздувалась в два этажа. */
     .table td.grow .cell-title, .table td.grow > .cell-sub { display: inline; }
     .table td.grow .cell-title:has(> .cell-name) { display: inline-flex; max-width: 100%; vertical-align: baseline; }
-    /* Второй этаж в линию за названием — flex с ровным шагом: скрытые на ПК куски (sm:hidden) и пробелы разметки
-       не дают лишнего отступа, как давали margin соседей. */
-    .table td.grow > .cell-sub { display: inline-flex; align-items: baseline; gap: .375rem; margin: 0 0 0 .125rem; vertical-align: baseline; }
+    /* Второй этаж в линию за названием — строчным текстом, не flex (13.10.2026): flex-коробка неделима, и не влезла — ячейка
+       меняла её целиком на «…» («Xcite X-Cross 8, 2024 …» без состояния). Строчный хвост режется многоточием в конце, как
+       и положено ячейке; шаг между кусками — отступом, скрытые на ПК (sm:hidden) места не занимают. */
+    .table td.grow > .cell-sub { display: inline; white-space: nowrap; margin-left: .375rem; }
     .table td.grow > .cell-sub > :not(:last-child) { margin-right: 0; }
+    .table td.grow > .cell-sub > * + * { margin-left: .375rem; }
     .table td.grow > .cell-sub:empty { display: none; }
   }
   /* Копирование номера — по наведению: иконка в каждой строке была шумом. На телефоне — в карточке. */
@@ -1338,6 +1340,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       & .table td.grow > .cell-sub { display: block; margin: 0; }
       & .table td.grow > .cell-source { display: flex; }
       & .table td.grow > .cell-sub > :not(:last-child) { margin-right: .375rem; }
+      & .table td.grow > .cell-sub > * + * { margin-left: 0; }
       & .cell-sub--wrap { display: flex; flex-wrap: wrap; align-items: center; column-gap: .375rem; white-space: normal; text-overflow: clip; }
       & .cell-sub--wrap > * { white-space: nowrap; }
       & .cell-sub--wrap > * + * { margin-left: 0 !important; }
