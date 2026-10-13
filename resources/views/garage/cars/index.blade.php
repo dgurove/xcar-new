@@ -3,7 +3,7 @@
      него (не его гараж: продаёт не обязательно он; машина, которая уже в гараже, второй раз здесь не стоит), «В гараже» —
      сначала то, где ход менеджера, дальше по пути, внутри дольше стоящие первыми; «Рассчитались» — ниже. Строка — кадр,
      название, этап цветным словом с днями (ждут ответа — «ваш ход» и что сделать) и главное число справа (`CarLine`).
-     До продажи главное число — цена гаража (13.10.2026, владелец: её видят все). Сотрудник видит всех и чьи. Нажатие —
+     До продажи главное число — закупочная (13.10.2026, владелец: её видят все). Сотрудник видит всех и чьи. Нажатие —
      страница машины. --}}
 @php
     use App\Garage\CarLine;
@@ -17,6 +17,7 @@
         'fresh' => [$c->created_at?->timestamp ?? 0, $c->id],
         'days' => [$c->stageDays(), $c->id],
         'amount' => [(float) $lines[$c->id]->value, $c->id],
+        'price' => [(float) $c->price(), $c->id],
         default => [$c->deal?->openRequirement ? 0 : 1, $c->state->order(), $c->stage_at?->timestamp ?? 0],
     }, SORT_REGULAR, $sort->desc)->values();
     $count = $open->count() + $pickups->count();
@@ -57,10 +58,10 @@
                         <th class="grow">Марка, модель</th>
                         @if ($staff)<th class="hidden md:table-cell">Менеджер</th>@endif
                         <th class="num hidden lg:table-cell col-detail-hide">В гараже с</th>
-                        <th class="num hidden sm:table-cell">Цена гаража</th>
+                        <x-ui.th :sort="$sort" key="price" class="num hidden sm:table-cell">Закупочная</x-ui.th>
                         <th class="num hidden sm:table-cell">Расходы</th>
-                        <th class="num hidden lg:table-cell">Цена продажи</th>
-                        <x-ui.th :sort="$sort" key="amount" class="num">Сумма</x-ui.th>
+                        <th class="num hidden sm:table-cell">Цена продажи</th>
+                        <th class="num sm:hidden">Сумма</th>
                     </tr>
                 </x-slot:head>
                 @foreach ($groups as $head => $rows)

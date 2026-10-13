@@ -10,7 +10,7 @@ use App\Users\User;
  * Машина гаража одной строкой — для плитки, строки и таблицы на сайте и в CRM (10.10.2026: раньше это считали три
  * шаблона каждый по-своему). Этап цветным словом (ждёт машину — словом вывоза, ждут ответа менеджера — «ваш ход»),
  * когда (дни на этапе, у проданной — с какого числа, у рассчитанной — дата) и главное число этапа с подписью.
- * До продажи главное число везде — цена гаража (`Car::price`, 13.10.2026: менеджеру, админу на сайте и в CRM), после —
+ * До продажи главное число везде — закупочная (`Car::price`, 13.10.2026: менеджеру, админу на сайте и в CRM), после —
  * итог продажи: к выплате, отдать нам, продана за.
  */
 final class CarLine
@@ -60,6 +60,19 @@ final class CarLine
         );
     }
 
+    /**
+     * Что с деньгами по продаже — строкой под ценой продажи в таблицах, где у неё свой столбец: «отдаёт нам 359 500»,
+     * «счёта нет». До продажи и у закрытого расчёта — ничего: закупочная и «продана за» стоят своими столбцами.
+     */
+    public function saleNote(?float $soldPrice): ?string
+    {
+        if ($this->caption === null || in_array($this->caption, ['закупочная', 'продана за'], true)) {
+            return null;
+        }
+
+        return (float) $this->value === (float) $soldPrice ? $this->caption : $this->caption.' '.\App\Support\Money::nums($this->value);
+    }
+
     /** «3 дня»: число и слово не разрываются переносом. */
     public static function days(int $d): string
     {
@@ -79,7 +92,7 @@ final class CarLine
     private static function siteMoney(Car $car, $current, bool $staff): array
     {
         return match ($car->state) {
-            CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling => [$car->price(), 'цена гаража'],
+            CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling => [$car->price(), 'закупочная'],
             CarState::Sold => $current && $current->remaining() > 0
                 ? [$current->remaining(), $current->isOwed() ? ($staff ? 'отдаём' : 'к выплате') : ($car->invoice_to === 'buyer' ? 'платит покупатель' : ($staff ? 'отдаёт нам' : 'отдать нам'))]
                 : [$car->sold_price, $staff ? 'счёта нет' : 'продана за'],
@@ -90,7 +103,7 @@ final class CarLine
     private static function crmMoney(Car $car, $current): array
     {
         return match ($car->state) {
-            CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling => [$car->price(), 'цена гаража'],
+            CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling => [$car->price(), 'закупочная'],
             CarState::Sold => $current && $current->remaining() > 0
                 ? [$current->remaining(), $current->isOwed() ? 'отдаём' : ($car->invoice_to === 'buyer' ? 'платит покупатель' : 'отдаёт нам')]
                 : [$car->sold_price, $car->invoice ? 'продана за' : 'счёта нет'],

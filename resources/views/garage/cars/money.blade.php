@@ -1,7 +1,7 @@
-{{-- Деньги машины одной плашкой. Сверху главное число этапа: до продажи — цена гаража (13.10.2026, владелец: её видят
+{{-- Деньги машины одной плашкой. Сверху главное число этапа: до продажи — закупочная (13.10.2026, владелец: её видят
      все — менеджер, админ на сайте и в CRM; `Car::price`), после продажи — прибыль (нам) или цена (ему), со счётом —
      сколько осталось отдать или ждём от покупателя, затем выплата менеджеру, после расчёта — цена продажи. Ниже строки,
-     из которых оно сложилось: расходы без оплаты поставщику (она и есть цена гаража), у сотрудника — «Вложено».
+     из которых оно сложилось: расходы без оплаты поставщику (она и есть закупочная), у сотрудника — «Вложено».
      Вознаграждение менеджер видит только со счётом, как у сделок. --}}
 @php
     use App\Support\Money;
@@ -12,7 +12,7 @@
     $mine = $car->extraSpent(\App\Garage\Payer::Manager);
     $ours = $car->extraSpent(\App\Garage\Payer::Xcar);
     [$label, $value, $tone] = match (true) {
-        ! $car->isSold() && $price => ['Цена гаража', $price, ''],
+        ! $car->isSold() && $price => ['Закупочная', $price, ''],
         ! $car->isSold() => [$staff ? 'Вложено в ТС' : 'Расходы', $mine + $ours, ''],
         $unpaid && $current->isOwed() => [$staff ? 'Должны менеджеру' : 'Вам к выплате', $current->remaining(), 'text-accent-text'],
         $unpaid && $buyerPays => ['Покупатель платит', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
@@ -36,7 +36,7 @@
 
     {{-- После продажи — за сколько взяли и за сколько продали рядом. --}}
     @if ($car->isSold() && $price)
-        <div class="{{ $row }}"><span>Цена гаража</span><span class="nums">{{ Money::rub($price) }}</span></div>
+        <div class="{{ $row }}"><span>Закупочная</span><span class="nums">{{ Money::rub($price) }}</span></div>
     @endif
     @if ($car->isSold() && $label !== 'Продана за')
         <div class="{{ $row }}"><span>Продана за</span><span class="nums">{{ Money::rub($car->sold_price) }}</span></div>

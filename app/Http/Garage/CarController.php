@@ -25,7 +25,7 @@ use Illuminate\Validation\Rule;
 class CarController
 {
     /** «Этап» — где ход менеджера первыми, дальше по пути, дольше стоящие выше; «Дата» — когда машина пришла в гараж. */
-    public const SORTS = ['stage' => ['Этап', 'asc'], 'fresh' => ['Дата', 'desc'], 'days' => ['Дней на этапе', 'desc'], 'amount' => ['Сумма', 'desc']];
+    public const SORTS = ['stage' => ['Этап', 'asc'], 'fresh' => ['Дата', 'desc'], 'days' => ['Дней на этапе', 'desc'], 'price' => ['Закупочная', 'desc'], 'amount' => ['Сумма', 'desc']];
 
     /** Машины в гараже: менеджеру — свои, сотруднику — все; группами по этапу, внутри — дольше стоящие первыми. */
     public function index(Request $request)

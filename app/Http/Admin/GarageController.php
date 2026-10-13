@@ -25,9 +25,9 @@ class GarageController
 
     /**
      * Внутри группы менеджера: «Этап» — по этапу, потом дольше стоящие; «Дата» — когда машина пришла в гараж; «Дней» — сколько
-     * на этапе; «Сумма» — главное число строки (`CarLine`: цена гаража, к оплате, цена продажи).
+     * на этапе; «Закупочная» — `Car::price`; «Сумма» — главное число строки (`CarLine`: закупочная, к оплате, цена продажи).
      */
-    public const SORTS = ['stage' => ['Этап', 'asc'], 'created' => ['Дата', 'desc'], 'days' => ['Дней на этапе', 'desc'], 'amount' => ['Сумма', 'desc']];
+    public const SORTS = ['stage' => ['Этап', 'asc'], 'created' => ['Дата', 'desc'], 'days' => ['Дней на этапе', 'desc'], 'price' => ['Закупочная', 'desc'], 'amount' => ['Сумма', 'desc']];
 
     public function index(Request $request)
     {
@@ -58,6 +58,7 @@ class GarageController
             'created' => [$c->created_at?->timestamp ?? 0, $c->id],
             'days' => [$c->stageDays(), $c->id],
             'amount' => [(float) CarLine::for($c, $user, crm: true)->value, $c->id],
+            'price' => [(float) $c->price(), $c->id],
             default => [$c->state->order(), $c->stage_at?->timestamp ?? 0],
         }, SORT_REGULAR, $sort->desc)
             ->groupBy(fn (Car $c) => $c->manager_id ?? 0)

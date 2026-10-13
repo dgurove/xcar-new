@@ -16,7 +16,7 @@
     // Куда и когда ехать: наши поля шага, а без них — страхователь и адрес осмотра из предложения.
     $fields = collect($stage?->staff_fields ?? [])->mapWithKeys(fn ($f) => [$f['label'] => $position->payload[$f['key']] ?? null])->filter();
     if ($canPick && ! $fields->has('Адрес') && $offer->inspection_address) $fields['Адрес'] = $offer->inspection_address;
-    // Машина едет в гараж — сотруднику её цена гаража первой строкой, как на странице машины (вывозчику-менеджеру — нет: машина не его).
+    // Машина едет в гараж — сотруднику её закупочная первой строкой, как на странице машины (вывозчику-менеджеру — нет: машина не его).
     $garagePrice = $user->isAdmin() ? $offer->garageCar?->price() : null;
     if ($canPick && ! $fields->has('Контакт') && ($offer->insured_name || $offer->insured_phone)) $fields['Контакт'] = trim($offer->insured_name.' '.$offer->insured_phone);
 @endphp
@@ -34,7 +34,7 @@
         @endif
         @if ($fields->isNotEmpty() || $garagePrice)
             <div class="list">
-                @if ($garagePrice)<div class="row justify-between gap-4"><span class="shrink-0 text-ink-muted">Цена гаража</span><span class="nums">{{ \App\Support\Money::rub($garagePrice) }}</span></div>@endif
+                @if ($garagePrice)<div class="row justify-between gap-4"><span class="shrink-0 text-ink-muted">Закупочная</span><span class="nums">{{ \App\Support\Money::rub($garagePrice) }}</span></div>@endif
                 @foreach ($fields as $label => $value)
                     <div class="row items-start justify-between gap-4">
                         <span class="shrink-0 text-ink-muted">{{ $label }}</span>

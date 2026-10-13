@@ -8,8 +8,8 @@
     $salePosition = $routeHere && $car->dealOpen() ? $offer->position(\App\Workflow\Track::Sale) : null;
 @endphp
 <div class="flex flex-col gap-4">
-    {{-- В карточке строки чья, кто платит и этап — в шапке карточки (`admin/garage/detail`), здесь только «⋯». --}}
-    @php $menu = $routeHere ? $more : $morePrep; @endphp
+    {{-- В карточке строки чья, кто платит и этап — в шапке карточки, «⋯» — в её полосе (`admin/garage/detail`). --}}
+    @php $menu = $routeHere ? [] : $morePrep; @endphp
     @if (! $routeHere || $menu)
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
         @unless ($routeHere)

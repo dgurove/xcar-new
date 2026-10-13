@@ -1,8 +1,9 @@
 {{-- Что сейчас можно сделать с машиной (`GarageView`): главные кнопки и «⋯» строками. bar — плашка действий страницы
-     на сайте; иначе ряд маленьких кнопок в карточке CRM. Шторки — `garage.cars.sheets`, их зовёт событие «имя:open». --}}
-@php $bar ??= false; $size = $bar ? 'min-w-0 flex-1' : 'btn-s'; @endphp
+     на сайте; иначе ряд маленьких кнопок в карточке CRM; menuOnly — только шторка «⋯», открывает её событие `car-more:open`
+     (кнопка — в полосе окна CRM: шторка в полосе ловила бы жест листа). Шторки — `garage.cars.sheets`, их зовёт событие «имя:open». --}}
+@php $bar ??= false; $menuOnly ??= false; $size = $bar ? 'min-w-0 flex-1' : 'btn-s'; @endphp
 @if ($buttons || $more)
-    <div @class(['contents' => $bar, 'flex flex-wrap items-center gap-2' => ! $bar])>
+    <div @class(['contents' => $bar || $menuOnly, 'flex flex-wrap items-center gap-2' => ! $bar && ! $menuOnly])>
         @foreach ($buttons as $i => $b)
             @if ($b[0] === 'post')
                 <form method="post" action="{{ $b[1] }}" class="contents">@csrf<button type="submit" class="btn {{ $i ? 'btn-quiet' : 'btn-accent' }} {{ $size }}">{{ $b[2] }}</button></form>
@@ -13,8 +14,10 @@
             @endif
         @endforeach
         @if ($more)
-            <span data-controller="sheet" class="contents">
-                <button type="button" class="btn btn-quiet btn-round {{ $bar ? 'btn-lg' : 'btn-s' }} {{ $buttons ? '' : 'ml-auto' }}" data-action="sheet#open" aria-label="Ещё"><x-ui.icon name="more" class="{{ $bar ? 'size-6' : 'size-5' }}"/></button>
+            <span data-controller="sheet" @if ($menuOnly) data-action="car-more:open@window->sheet#open" @endif class="contents">
+                @unless ($menuOnly)
+                    <button type="button" class="btn btn-quiet btn-round {{ $bar ? 'btn-lg' : 'btn-s' }} {{ $buttons ? '' : 'ml-auto' }}" data-action="sheet#open" aria-label="Ещё"><x-ui.icon name="more" class="{{ $bar ? 'size-6' : 'size-5' }}"/></button>
+                @endunless
                 <x-ui.sheet id="car-more-{{ $n }}{{ $menuKey ?? '' }}" title="{{ $offer->titleWithYear() }}">
                     {{-- Меню строками, как «···» в приложении: редкое действие — словом, опасное — красным, не стопка кнопок. --}}
                     <div class="list">
