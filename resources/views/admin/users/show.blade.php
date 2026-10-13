@@ -34,9 +34,7 @@
                     @if ($me->isAdmin() && $user->telegram_chat_id && \App\Support\Surface::current() === \App\Support\Surface::Crm)<a href="/settings/telegram/{{ $user->telegram_chat_id }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="chat"/></span>Переписка</a>@endif
                     @if ($me->isAdmin())<button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="edit"/></span>Изменить</button>@endif
                     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
-                        <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="contents"
-                            data-turbo-confirm="Войти как {{ $user->shortName() }}?" data-turbo-confirm-label="Получить ссылку"
-                            data-turbo-confirm-text="Одноразовая ссылка на {{ \App\Users\Impersonation::MINUTES }} минут. Откройте её в окне инкогнито, иначе в этом окне вы выйдете">
+                        <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="contents">
                             @csrf<button type="submit" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="login"/></span>Войти как</button>
                         </form>
                     @endif

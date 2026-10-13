@@ -1,19 +1,10 @@
 {{-- Шит «Изменить» человека (админ): имя, у покупателя менеджер, у остальных контакты, роли галками и доступ;
-     ниже «Войти как», ссылка на новый пароль, закрыть доступ или удалить. Открывается сам, если ссылка только что выдана.
+     ниже «Войти как», ссылка на новый пароль, закрыть доступ или удалить. Открывается сам, если ссылка на пароль только что выдана.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @props(['user', 'managers', 'link' => null, 'base', 'me'])
 @php
     use App\Http\Admin\UserController;
-    $as = (session('impersonation_link')['user'] ?? null) === $user->id ? session('impersonation_link') : null;
 @endphp
-{{-- Ссылка «Войти как» — своей шторкой: после выдачи Turbo морфит страницу, новая шторка подключается и открывается сама. --}}
-@if ($as)
-    <div data-controller="sheet" class="contents">
-        <x-ui.sheet :id="'as-'.$user->id" :title="'Вход как '.$user->shortName()" open>
-            <x-ui.copy-link :url="$as['url']" :title="'Вход как '.$user->shortName()"/>
-        </x-ui.sheet>
-    </div>
-@endif
 {{-- Не прошло проверку — шторка этого человека открывается снова с ошибками (old('_user')). --}}
 <x-ui.sheet id="user-{{ $user->id }}" :title="$user->name" tall :open="($link['user'] ?? null) === $user->id || (int) old('_user') === $user->id">
     @if (($link['user'] ?? null) === $user->id)
@@ -88,9 +79,7 @@
         <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
     </form>
     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
-        <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="mt-3"
-            data-turbo-confirm="Войти как {{ $user->shortName() }}?" data-turbo-confirm-label="Получить ссылку"
-            data-turbo-confirm-text="Одноразовая ссылка на {{ \App\Users\Impersonation::MINUTES }} минут. Откройте её в окне инкогнито, иначе в этом окне вы выйдете">
+        <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="mt-3">
             @csrf
             <x-ui.button type="submit" variant="secondary" block><x-ui.icon name="login" class="size-5"/> Войти как {{ $user->shortName() }}</x-ui.button>
         </form>

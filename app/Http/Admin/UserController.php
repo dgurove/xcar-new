@@ -294,10 +294,11 @@ class UserController
         return back()->with('toast', $on ? 'Вход с одного устройства включён' : 'Вход с одного устройства выключен');
     }
 
-    /** «Войти как»: одноразовая ссылка на вход за человека — админу, за не сотрудника. Открывают её в окне инкогнито. */
+    /** «Войти как»: одноразовая ссылка на вход за человека — админу, за не сотрудника; шторкой стримом, сразу по нажатию. */
     public function impersonate(Request $request, User $user, IssueImpersonation $issue)
     {
-        return back()->with('impersonation_link', ['user' => $user->id, 'url' => $issue($user, $request->user())]);
+        return response()->view('admin.users.as-stream', ['user' => $user, 'url' => $issue($user, $request->user())])
+            ->header('Content-Type', 'text/vnd.turbo-stream.html');
     }
 
     /**
