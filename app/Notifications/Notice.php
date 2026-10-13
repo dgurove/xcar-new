@@ -153,6 +153,12 @@ abstract class Notice extends Notification implements ShouldQueue
         return null;
     }
 
+    /** Предмет сообщений о предложении: ушло от человека (снято, сдвинули волну) — `RetractOfferNotices` их удалит. */
+    public static function offerSubject(int $offerId): string
+    {
+        return 'offer:'.$offerId;
+    }
+
     /** Куда ведёт кнопка в Telegram: абсолютный адрес как есть, путь — на сайте. */
     public function telegramUrl(): string
     {

@@ -49,10 +49,11 @@ class ChatController
     public function offer(Request $request, Offer $offer)
     {
         $user = $request->user();
-        abort_unless($offer->chatOpenFor($user), 404);
+        // Свой чат — на его экран и тогда, когда предложение от человека ушло; новый — только видящему (`chatOpenFor`).
         if ($chat = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first()) {
             return redirect(self::base($request).'/'.$chat->id);
         }
+        abort_unless($offer->chatOpenFor($user), 404);
         $offer->load(['brand', 'model', 'media']);
 
         return view('cabinet.chats', [

@@ -64,7 +64,9 @@ final class ChangeOfferState
                     $offer->published_at = $at;
                     $offer->bids_close_at = Slots::closeFor($at);
                 } else {
-                    $offer->published_at ??= now();
+                    // Волны показа — от этого выхода в продажу (13.10.2026): вернули из черновика или сделки — «остальным
+                    // через 5 дней» считаются заново, а не от первой публикации, когда всё давно «наступило».
+                    $offer->published_at = now();
                     if (! $offer->bids_close_at || $offer->bids_close_at->isPast()) {
                         // Срок приёма по умолчанию — через 3 дня в 17:00 (владелец 04.10.2026), а не текущая минута.
                         $offer->bids_close_at = Slots::closeFor(now());
@@ -86,6 +88,9 @@ final class ChangeOfferState
             // «На аукцион»: ушло из продажи — план снят (`SendToAuction`); черновик ушёл дальше — и с аукциона тоже.
             if ($from === OfferState::Open && $next !== OfferState::Open) {
                 $offer->auction_planned_at = null;
+                // «Срочно» — на этот выход в продажу (13.10.2026): вернулось потом — волны снова свои, а не всем сразу.
+                $offer->urgent_at = null;
+                $offer->urgent_by = null;
             }
             if ($from === OfferState::Draft && $next !== OfferState::Draft) {
                 $offer->auction_at = null;

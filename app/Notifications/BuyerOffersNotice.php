@@ -56,4 +56,9 @@ final class BuyerOffersNotice extends Notice
     {
         return ['title' => $this->title(), 'lines' => array_values(array_filter([$this->text()])), 'button' => $this->single() ? 'Посмотреть' : 'Открыть ленту'];
     }
+
+    public function telegramSubject(): ?string
+    {
+        return count($this->offerIds) === 1 ? self::offerSubject($this->offerIds[0]) : null;
+    }
 }

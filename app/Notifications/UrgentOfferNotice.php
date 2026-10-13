@@ -65,4 +65,9 @@ final class UrgentOfferNotice extends Notice
 
         return ['title' => '🔥 '.$this->title(), 'lines' => array_values(array_filter([$this->text()])), 'button' => $bids ? 'Подтвердить' : 'Посмотреть'];
     }
+
+    public function telegramSubject(): ?string
+    {
+        return self::offerSubject($this->offer->id);
+    }
 }

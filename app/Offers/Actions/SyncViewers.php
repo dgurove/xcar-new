@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Пересчитать, кто видит опубликованное предложение и с какого момента (от published_at). Вызывают публикация,
  * правка правил, смена состава групп и новый менеджер. Уже уведомлённым отметка остаётся; выпавшие из круга
- * теряют предложение сразу.
+ * теряют предложение сразу. Волну сдвинули на будущее (13.10.2026: «остальным через 2 дня» стало «через 5», а
+ * 21 менеджеру уже пришло «Новое предложение») — это тоже «выпал»: анонс отзывается, отметка снимается, и уведомление
+ * придёт, когда его волна наступит.
  */
 final class SyncViewers
 {
@@ -25,13 +27,20 @@ final class SyncViewers
         $base = $offer->published_at ?? now();
         $open = AudienceRules::openings(AudienceRules::of($offer), $people);
         // Срочное (12.10.2026) — всем сразу: задержки волн снимаются, «Не показывать» (кого нет в волнах) — как было.
-        if ($offer->urgent_at) {
+        if ($offer->isUrgent()) {
             $open = array_map(fn () => 0, $open);
         }
 
         DB::transaction(function () use ($offer, $base, $open) {
             // Выпавшим из волны — убрать и анонс (карточку бота, «Новое предложение»).
-            if (OfferViewer::where('offer_id', $offer->id)->whereNotIn('user_id', array_keys($open) ?: [0])->delete()) {
+            $gone = OfferViewer::where('offer_id', $offer->id)->whereNotIn('user_id', array_keys($open) ?: [0])->delete() > 0;
+            // Уведомлённым, чья волна теперь позже, — тоже: им писать, когда она наступит.
+            $later = array_keys(array_filter($open, fn ($delay) => $base->copy()->addMinutes($delay)->isFuture()));
+            if ($later) {
+                $gone = OfferViewer::where('offer_id', $offer->id)->whereIn('user_id', $later)->whereNotNull('notified_at')
+                    ->update(['notified_at' => null]) > 0 || $gone;
+            }
+            if ($gone) {
                 RetractOfferNotices::dispatch($offer->id);
             }
             if ($open) {

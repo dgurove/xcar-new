@@ -32,4 +32,9 @@ final class OfferPublishedNotice extends Notice
     {
         return 'offers';
     }
+
+    public function telegramSubject(): ?string
+    {
+        return self::offerSubject($this->offer->id);
+    }
 }
