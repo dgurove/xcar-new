@@ -87,6 +87,8 @@ class OfferEvent extends Model
                 ! empty($p['off']) => 'Убрано с аукциона',
                 default => ($p['why'] ?? null) === 'no_bids' ? 'На аукцион: подтверждений не было' : 'Отправлено на аукцион',
             },
+            // «Предложено из заявок на приём» (13.10.2026): ТС парковки выставила сама, админ принял.
+            OfferEventType::Proposal => ! empty($p['accepted']) ? 'Принято из заявок на приём' : 'Предложено из заявок на приём Park XCar',
             OfferEventType::PickupAssigned => 'Вывоз: '.($p['who'] ?? 'мы').', '.mb_strtolower(Destination::tryFrom($p['to'] ?? '')?->label() ?? ''),
             // Слот: поставили («В слот 4 окт, 16:00»), убрали или часы не смогли выпустить (`error` — чего не хватило).
             OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Carbon::parse($p['at'])->translatedFormat('j M, H:i') : 'Убрано из слота'),

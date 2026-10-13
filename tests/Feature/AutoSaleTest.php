@@ -8,6 +8,7 @@ use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Offers\LegacyClaim;
+use App\Offers\Offer;
 use App\Park\Actions\AutoSale;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -15,6 +16,8 @@ use App\Park\RequestType;
 use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Users\Role;
+use App\Users\User;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -73,6 +76,24 @@ class AutoSaleTest extends TestCase
         $this->assertSame(1, $sale->sweep(), 'часы подбирают, когда всё доехало');
 
         $this->assertNull($sale($this->vehicle(['ref' => '785R/046/00064/26', 'vin' => 'LS5A2ASE6PD930369'], autoSale: false)));
+    }
+
+    public function test_proposal_accept_and_decline(): void
+    {
+        $admin = User::create(['name' => 'Админов Андрей', 'phone' => '79001234567', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $offer = app(AutoSale::class)($this->vehicle());
+        $this->assertTrue($offer->fresh()->proposed());
+        $this->assertTrue($offer->fresh()->awaitingPark());
+
+        $this->actingAs($admin)->post('http://crm.xcar.localhost/offers/'.$offer->number.'/proposal')->assertRedirect();
+        $this->assertFalse($offer->fresh()->proposed());
+
+        $other = app(AutoSale::class)($this->vehicle(['ref' => '785R/046/00065/26', 'vin' => 'LS5A2ASE6PD930370']));
+        $this->actingAs($admin)->delete('http://crm.xcar.localhost/offers/'.$other->number.'/proposal')->assertRedirect();
+        $this->assertNull(Offer::find($other->id));
+        $vehicle = Vehicle::where('ref', '785R/046/00065/26')->first();
+        $this->assertNull($vehicle->offer_id, 'ТС осталась на парковке');
+        $this->assertSame(0, app(AutoSale::class)->sweep(), 'отклонённая сама не выставляется');
     }
 
     public function test_claim_from_katya_table_goes_to_legacy(): void

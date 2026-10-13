@@ -66,6 +66,10 @@
         @if ($offer->auctionPlanned())
             <span class="pill pill-plain"><x-ui.icon name="flag" class="size-4"/>На аукцион после {{ $offer->bids_close_at?->translatedFormat('j M, H:i') }}</span>
         @endif
+        {{-- ТС ещё в «Заявках на приём» парковки (13.10.2026) — капсулой с парковкой, если она известна. --}}
+        @if ($admin && $offer->awaitingPark())
+            <span class="pill pill-plain"><x-ui.icon name="clock" class="size-4"/>Ждём на парковке{{ $offer->parkVehicle->yard ? ', '.$offer->parkVehicle->yard->name : '' }}</span>
+        @endif
         @if ($admin)
             <div class="contents" data-controller="sheet tag-chips" data-action="change->tag-chips#render">
                 <span class="contents" data-tag-chips-target="chips">
@@ -101,7 +105,7 @@
                 {{-- Действия с предложением целиком — справа этой строки, а не капсулами среди меток. --}}
                 @if ($admin)
                     <span class="ml-auto flex items-center gap-1">
-                        @if ($offer->state === OfferState::Draft && $offer->published_at === null && $offer->parkVehicle)
+                        @if ($offer->state === OfferState::Draft && $offer->published_at === null && $offer->parkVehicle && ! $offer->proposed())
                             <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="btn btn-s btn-quiet">Снять с продажи</button></form>
                         @endif
                         @include('admin.offers.share-button')
@@ -111,6 +115,7 @@
         @endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
+    @if ($admin && $offer->proposed())<x-offer.proposal :offer="$offer" class="mb-4"/>@endif
 
     {{-- Раскладка (06.10.2026, владелец): слева «Транспортное средство», под ним дорожки в ряд (`admin.offers.lanes`:
          «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения») — в основной колонке, правую не занимают (07.10.2026);

@@ -5,7 +5,9 @@ namespace App\Park\Actions;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Scan\AutoScan;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Park\City;
+use App\Park\EventType;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -39,6 +41,9 @@ final class AutoSale
 
             return null;
         }
+        // Решение за админом: плашка «Принять / Отклонить» в окошке и редакторе.
+        $offer->forceFill(['proposed_at' => now()])->save();
+        $offer->log(OfferEventType::Proposal);
         Nav::forgetStaffCounts();
         AutoScan::arrived($offer);
 
@@ -65,6 +70,8 @@ final class AutoSale
             // Только пока в «Заявках на приём»: принятую раньше чтения админ выставляет кнопкой, как прежде.
             ->where('state', VehicleState::Expected)
             ->whereHas('vendor', fn ($q) => $q->where('auto_sale', true))
+            // Отклонили или сняли с продажи — больше сама не выставляется.
+            ->whereDoesntHave('events', fn ($q) => $q->where('type', EventType::Unlinked))
             ->whereHas('requests', fn ($q) => $q->withoutGlobalScope(City::SCOPE)->where('type', RequestType::Intake)
                 ->whereNotNull('letter_id')->where('created_at', '>', now()->subDays(self::DAYS)));
     }

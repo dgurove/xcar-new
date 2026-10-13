@@ -27,4 +27,5 @@ enum OfferEventType: string
     case SupplierLetter = 'supplier_letter';
     case Estimate = 'estimate';
     case Auction = 'auction';
+    case Proposal = 'proposal';
 }

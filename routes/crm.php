@@ -15,8 +15,8 @@ use App\Http\Admin\MailController;
 use App\Http\Admin\MailTemplateController;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
-use App\Http\Admin\OfferEstimateController;
 use App\Http\Admin\OfferDraftController;
+use App\Http\Admin\OfferEstimateController;
 use App\Http\Admin\OfferPhotoController;
 use App\Http\Admin\OfferValuationController;
 use App\Http\Admin\PayLinkController;
@@ -183,6 +183,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // «На аукцион» (13.10.2026): отправить сейчас или по истечении срока; DELETE — отменить или убрать с аукциона.
         Route::post('/offers/{offer}/auction', [OfferController::class, 'auction']);
         Route::delete('/offers/{offer}/auction', [OfferController::class, 'auctionCancel']);
+        // «Предложено из заявок на приём» (13.10.2026): принять черновик или отклонить — ТС остаётся на парковке.
+        Route::post('/offers/{offer}/proposal', [OfferController::class, 'acceptProposal']);
+        Route::delete('/offers/{offer}/proposal', [OfferController::class, 'declineProposal']);
         Route::post('/offers/{offer}/rate', [OfferController::class, 'rate']);
         // Оценка менеджером (11.10.2026): «Отдать менеджеру на оценку», «Взять», «Отклонить», «×».
         Route::post('/offers/{offer}/estimates', [OfferEstimateController::class, 'store']);

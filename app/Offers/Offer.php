@@ -15,6 +15,7 @@ use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Cars\Vin\Vin;
 use App\Garage\GaragePayer;
+use App\Http\Admin\OfferController;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Thread;
@@ -149,6 +150,7 @@ class Offer extends Model implements HasMedia
             'urgent_at' => 'datetime',
             'auction_at' => 'datetime',
             'auction_planned_at' => 'datetime',
+            'proposed_at' => 'datetime',
             'floor_price' => 'int',
             'value' => 'int',
             'publish_price' => 'int',
@@ -913,7 +915,7 @@ class Offer extends Model implements HasMedia
     public function crmTab(?User $user = null): string
     {
         $user ??= auth()->user();
-        $presets = \App\Http\Admin\OfferController::PRESETS;
+        $presets = OfferController::PRESETS;
 
         return match ($this->state) {
             OfferState::Draft, OfferState::Gallery => match (true) {
@@ -931,6 +933,18 @@ class Offer extends Model implements HasMedia
             OfferState::Garage => 'Гараж',
             default => $presets['archive'],
         };
+    }
+
+    /** Черновик предложила ТС из «Заявок на приём» (`Park\Actions\AutoSale`), админ ещё не решил: плашка `x-offer.proposal`. */
+    public function proposed(): bool
+    {
+        return $this->proposed_at !== null && $this->state === OfferState::Draft;
+    }
+
+    /** ТС этого предложения ещё ждём на парковке (заявка на приём): метка «Ждём приём». */
+    public function awaitingPark(): bool
+    {
+        return $this->parkVehicle?->state === VehicleState::Expected;
     }
 
     /** Во вкладке «На аукцион» (`SendToAuction`). */

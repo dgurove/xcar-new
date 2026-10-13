@@ -3910,3 +3910,36 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .table tr.table-group .fold-chevron { display: inline-block; margin-left: .375rem; vertical-align: -.1em; color: var(--color-ink-dim); transition: rotate .15s; }
   .table tr.table-group.is-folded .fold-chevron { rotate: -90deg; }
 }
+
+/* «Предложено из заявок на приём» (13.10.2026, `x-offer.proposal`): плашка наверху окошка и редактора — искра, фраза,
+   «Отклонить» и «Принять». «Принять» (`is-accepting`): по плашке идёт лаймовая волна, искра оборачивается галочкой, плашка
+   схлопывается по высоте; «Отклонить» (`is-declining`): плашка гаснет и съезжает вниз. Высоту для схлопывания ставит
+   `proposal_controller` (`--h`). Метка «Ждём приём» у названия — `.tag-await`. */
+@layer components {
+  .proposal { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; padding: .875rem 1rem; border-radius: var(--radius-l); background: var(--color-accent-soft); }
+  .proposal-body { display: flex; align-items: flex-start; gap: .625rem; flex: 1 1 16rem; min-width: 0; }
+  .proposal-mark { position: relative; display: grid; place-items: center; flex: none; width: 1.75rem; height: 1.75rem; margin-top: -.125rem; border-radius: 999px; background: var(--color-surface); color: var(--color-accent-text); }
+  .proposal-mark > * { grid-area: 1 / 1; transition: opacity .25s, scale .35s cubic-bezier(.2, .8, .2, 1); }
+  .proposal-check { opacity: 0; scale: .4; }
+  .proposal-acts { display: flex; gap: .5rem; margin-left: auto; }
+  .proposal-acts form { display: contents; }
+  .proposal::after { content: ''; position: absolute; inset-block: 0; left: -60%; width: 60%; pointer-events: none; background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-accent) 45%, transparent), transparent); opacity: 0; }
+  .proposal.is-accepting .proposal-spark { opacity: 0; scale: 1.6; }
+  .proposal.is-accepting .proposal-check { opacity: 1; scale: 1; }
+  .proposal.is-accepting .proposal-mark { background: var(--color-accent); color: #fff; transition: background .25s; }
+  .proposal.is-busy .proposal-acts { pointer-events: none; }
+  .tag-await { gap: .25rem; --tag-bg: var(--color-surface-3); --tag-text: var(--color-ink-muted); }
+  @media (prefers-reduced-motion: no-preference) {
+    .proposal { animation: proposal-in .5s cubic-bezier(.2, .8, .2, 1) both; }
+    .proposal .proposal-spark { animation: spark-glow 2.4s ease-in-out infinite; }
+    .proposal.is-accepting .proposal-spark { animation: none; }
+    .proposal.is-accepting::after { animation: proposal-wave .6s ease-out both; }
+    .proposal.is-accepting .proposal-mark { animation: pop .45s cubic-bezier(.2, .8, .2, 1) .15s 1; }
+    .proposal.is-closing { height: var(--h); animation: proposal-fold .38s cubic-bezier(.4, 0, .2, 1) both; }
+    .proposal.is-declining { animation: proposal-drop .36s cubic-bezier(.4, 0, 1, 1) both; }
+  }
+  @keyframes proposal-in { from { opacity: 0; translate: 0 -6px; } }
+  @keyframes proposal-wave { 0% { left: -60%; opacity: 1; } 100% { left: 100%; opacity: 1; } }
+  @keyframes proposal-fold { to { height: 0; padding-block: 0; margin-block: 0; opacity: 0; } }
+  @keyframes proposal-drop { to { opacity: 0; translate: 0 10px; scale: .98; } }
+}

@@ -8,6 +8,7 @@ use App\Offers\Actions\SyncViewers;
 use App\Offers\AudienceRules;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Tag;
 use App\Support\ListPrefs;
 use App\Support\Sort;
 use App\Support\Surface;
@@ -113,7 +114,7 @@ class VendorController
         } else {
             $vendor->load('mailAccount');
             $data += [
-                'offers' => Offer::where('vendor_id', $vendor->id)->whereNotIn('state', [OfferState::Archived])->with(['brand', 'model', 'parkVehicle:id,offer_id,accepted_at,created_at', 'deal', 'garageCar'])->latest()->limit(12)->get(),
+                'offers' => Offer::where('vendor_id', $vendor->id)->whereNotIn('state', [OfferState::Archived])->with(['brand', 'model', 'parkVehicle:id,offer_id,state,accepted_at,created_at', 'deal', 'garageCar'])->latest()->limit(12)->get(),
                 'offersTotal' => Offer::where('vendor_id', $vendor->id)->count(),
             ];
         }
@@ -158,7 +159,7 @@ class VendorController
 
         // Метки по умолчанию из шторки «Продажа» (11.10.2026): та же связь, что «Ставится вендорам» у метки.
         if ($request->boolean('_tags')) {
-            $vendor->defaultTags()->sync(\App\Offers\Tag::whereKey(array_map('intval', (array) $request->input('tags', [])))->pluck('id')->all());
+            $vendor->defaultTags()->sync(Tag::whereKey(array_map('intval', (array) $request->input('tags', [])))->pluck('id')->all());
         }
         $setLogo($vendor, $request);
         // Волны вендора сменились — предложения без своих правил видят теперь другие.

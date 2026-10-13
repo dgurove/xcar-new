@@ -33,6 +33,7 @@ use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
 use App\Offers\MigtorgDiff;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
@@ -189,7 +190,7 @@ class OfferController
         $carcadeHidden = ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request, $preset);
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
-        $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,accepted_at,created_at', 'deal', 'garageCar'])
+        $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,state,accepted_at,created_at', 'deal', 'garageCar'])
             ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
 
         if ($searching) {
@@ -589,7 +590,7 @@ class OfferController
     public function detail(Request $request, Offer $offer, ?bool $gallery = null)
     {
         $admin = $request->user()->canManageCrm();
-        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,offer_id,accepted_at,created_at', 'vendor.workflows', 'positions.stage', 'evacuator', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media')] : [])])
+        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,offer_id,state,yard_id,accepted_at,created_at', 'parkVehicle.yard:id,name', 'vendor.workflows', 'positions.stage', 'evacuator', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media')] : [])])
             ->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.detail', OfferFiles::letters($offer, $request->user()) + [
@@ -675,6 +676,33 @@ class OfferController
         $unlist($offer, request()->user());
 
         return redirect('/')->with('toast', 'Снято с продажи');
+    }
+
+    /** «Принять» на плашке «Предложено из заявок на приём»: черновик остаётся в своей вкладке, плашка уходит. */
+    public function acceptProposal(Request $request, Offer $offer)
+    {
+        if ($offer->proposed()) {
+            $offer->forceFill(['proposed_at' => null])->save();
+            $offer->log(OfferEventType::Proposal, $request->user(), ['accepted' => true]);
+        }
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Принято');
+    }
+
+    /**
+     * «Отклонить» на той же плашке: черновик удаляется, ТС остаётся на парковке со всеми файлами (`UnlistParkOffer`), сама
+     * больше не выставляется (`AutoSale` пропускает снятые). Из окошка — строка уходит, окно к следующей.
+     */
+    public function declineProposal(Request $request, Offer $offer, UnlistParkOffer $unlist)
+    {
+        $number = $offer->number;
+        $unlist($offer, $request->user());
+        if ($request->header('Turbo-Frame') === Detail::FRAME) {
+            return response()->view('admin.offers.proposal-gone', ['number' => $number, 'counts' => self::counts($request->user())])
+                ->header('Content-Type', 'text/vnd.turbo-stream.html');
+        }
+
+        return redirect('/?preset=unpriced')->with('toast', 'ТС осталась на парковке');
     }
 
     /** Продлить приём на ходу: от текущего срока, если он ещё не прошёл, иначе от сейчас. */
