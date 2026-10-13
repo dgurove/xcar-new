@@ -29,7 +29,9 @@
     $mark = $admin && ! $gallery ? $offer->crmTone() : null;
     // Приём закрылся, а подтверждения есть — ход наш: «выбрать» оранжевым; без них — «приём закрыт».
     $pick = $admin && $offer->state === OfferState::Open && ! $timer && $offer->bids_close_at;
-    $stateWord = $pick ? ($count ? 'выбрать' : 'приём закрыт') : $offer->crmTab();
+    $stateWord = $offer->crmTab();
+    // В поиске (столбцы не заданы — список смешанный) про строку важнее всего, где она: вкладкой, без часов и «выбрать».
+    $mixed = $cols === null;
     // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $offer->loadMissing(['parkVehicle:id,offer_id,category,accepted_at,created_at', 'deal', 'garageCar']);
@@ -77,11 +79,12 @@
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
             <span class="fit-core sm:hidden @if ($busy) arrive-type @endif"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>
             @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
-            @if ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
+            @if ($mixed)<span class="sm:hidden {{ $tone }}">{{ $stateWord }}</span>
+            @elseif ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($slot && $has('state'))<span class="sm:hidden text-accent-text">{{ $slot }}</span>
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
             @elseif ($pick && $cols !== null && ! $count)<span class="sm:hidden nums text-ink-muted">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
-            @elseif (! $draft && ! ($pick && $cols !== null))<span class="sm:hidden {{ $tone }}">{{ $stateWord }}</span>@endif
+            @endif
             {{-- Черновик висит в галерее (08.10.2026) — видно и в шагах работы, с числом интереса. --}}
             @if (! $gallery && $offer->isGallery())<span class="text-accent-text nums">в галерее@if ($offer->interests_count), {{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}@endif</span>@endif
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
@@ -96,7 +99,8 @@
     @if (! $has('state'))<td class="hidden sm:table-cell"></td>
     @else
     <td class="hidden sm:table-cell">
-        @if ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
+        @if ($mixed)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $stateWord }}</span>
+        @elseif ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
         @elseif ($slot)<span class="text-accent-text">{{ $slot }}</span>
         {{-- Во вкладке «Опубликованные» «выбрать» говорит заголовок группы — в строке когда закрылся приём. --}}
         @elseif ($pick && $cols !== null)<span class="nums {{ $count ? 'text-urgent' : 'text-ink-muted' }}">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
