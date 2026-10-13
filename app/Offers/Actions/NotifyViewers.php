@@ -7,7 +7,6 @@ use App\Live\Topics;
 use App\Notifications\BuyerWaitedNotice;
 use App\Notifications\GalleryInterestOnSaleNotice;
 use App\Notifications\OfferPublishedNotice;
-use App\Notifications\PurchaseCarOnSaleNotice;
 use App\Notifications\SlotPublishedNotice;
 use App\Notifications\UrgentOfferNotice;
 use App\Offers\Interest;
@@ -15,7 +14,6 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\OfferViewer;
 use App\Purchases\Car as PurchaseCar;
-use App\Purchases\OfferState as PurchaseOfferState;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Support\Collection;
@@ -32,8 +30,8 @@ use Illuminate\Support\Facades\Notification;
  * менеджеру «ждал, откройте».
  *
  * Общих «Новое предложение» нет (13.10.2026, владелец: «их там сотни каждый день, с ума можно сойти»): пишем только о
- * срочных — всем, и о «Открыты только Вам» — одному (`solo`: в волнах он один, как пачка в каталоге). Адресные —
- * «ТС из закупки, где вы называли цену» и «вы отмечали интерес» — остаются; покупателям общей рассылки тоже нет.
+ * срочных — всем, и о «Открыты только Вам» — одному (`solo`: в волнах он один, как пачка в каталоге). Адресное
+ * «вы отмечали интерес» остаётся, «ТС из закупки, где вы называли цену» — нет; покупателям общей рассылки тоже нет.
  */
 final class NotifyViewers
 {
@@ -61,14 +59,7 @@ final class NotifyViewers
             return count($due);
         }
 
-        if ($car = PurchaseCar::where('offer_id', $offer->id)->first()) {
-            $priced = $car->offers()->where('state', '!=', PurchaseOfferState::Withdrawn)->pluck('user_id')->all();
-            [$ours, $managers] = $managers->partition(fn ($u) => in_array($u->id, $priced, true));
-            Notification::send($ours, new PurchaseCarOnSaleNotice($offer));
-            if (! $car->announced_at) {
-                $car->update(['announced_at' => now()]);
-            }
-        }
+        $this->announcePurchase($offer);
         // Отмечали интерес в галерее — своё «В продаже, вы отмечали интерес» вместо «Нового предложения» (12.10.2026).
         $liked = self::galleryInterest($offer);
         [$ours, $managers] = $managers->partition(fn ($u) => in_array($u->id, $liked, true));
@@ -111,14 +102,7 @@ final class NotifyViewers
 
                 continue;
             }
-            if ($car = PurchaseCar::where('offer_id', $offer->id)->first()) {
-                $priced = $car->offers()->where('state', '!=', PurchaseOfferState::Withdrawn)->pluck('user_id')->all();
-                Notification::send($users->only(array_intersect($ids, $priced))->values(), new PurchaseCarOnSaleNotice($offer));
-                $ids = array_diff($ids, $priced);
-                if (! $car->announced_at) {
-                    $car->update(['announced_at' => now()]);
-                }
-            }
+            $this->announcePurchase($offer);
             $liked = array_intersect($ids, self::galleryInterest($offer));
             Notification::send($users->only($liked)->values(), new GalleryInterestOnSaleNotice($offer));
             if (self::solo($offer->id)) {
@@ -176,6 +160,12 @@ final class NotifyViewers
                 }
             }
         }
+    }
+
+    /** ТС из закупки вышла в продажу — только отметка; уведомления «вы называли цену» нет (владелец 13.10.2026). */
+    private function announcePurchase(Offer $offer): void
+    {
+        PurchaseCar::where('offer_id', $offer->id)->whereNull('announced_at')->update(['announced_at' => now()]);
     }
 
     /** «Открыты только Вам»: в волнах показа предложения ровно один человек (`Offer::scopeOnlyFor`). */
