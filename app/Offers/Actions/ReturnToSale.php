@@ -7,6 +7,7 @@ use App\Garage\Events\GarageChanged;
 use App\Offers\AudienceRules;
 use App\Offers\DealState;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Users\User;
 use Carbon\CarbonInterface;
@@ -19,6 +20,7 @@ use Illuminate\Validation\ValidationException;
  * менеджерам с новыми ценами. Идущая сделка отменяется (`CancelDeal`: подтверждение снова ждёт, неоплаченные счета
  * гаснут), строка гаража стирается; цены — `UpdateOffer`, публикация — `ChangeOfferState` (срок приёма — новый).
  * Гаражная машина, по которой менеджер уже тратил или продал её, — не молча: сначала разбирают расходы и продажу.
+ * Так же — черновик с аукциона («Вернуть в продажу…», 13.10.2026): цены, срок приёма и «Кому показывать» одной шторкой.
  */
 final class ReturnToSale
 {
@@ -31,8 +33,9 @@ final class ReturnToSale
      */
     public function __invoke(Offer $offer, User $by, array $prices, ?CarbonInterface $closeAt = null, ?array $audience = null): Offer
     {
-        if (! in_array($offer->state, [OfferState::Sold, OfferState::Garage], true)) {
-            throw ValidationException::withMessages(['state' => 'ТС не в сделке и не в гараже']);
+        $auction = $offer->onAuction();
+        if (! $auction && ! in_array($offer->state, [OfferState::Sold, OfferState::Garage], true)) {
+            throw ValidationException::withMessages(['state' => 'ТС не в сделке, не в гараже и не на аукционе']);
         }
         $car = GarageCar::where('offer_id', $offer->id)->first();
         if ($car?->isSold()) {
@@ -42,7 +45,7 @@ final class ReturnToSale
             throw ValidationException::withMessages(['state' => 'По ТС в гараже есть расходы: сначала уберите их']);
         }
 
-        return DB::transaction(function () use ($offer, $by, $prices, $car, $closeAt, $audience) {
+        return DB::transaction(function () use ($offer, $by, $prices, $car, $closeAt, $audience, $auction) {
             // Гаражная сделка — и закончившаяся (машина уже в гараже), как у «Отдали по ошибке»: машины у менеджера больше
             // нет, «завершённой» сделки без неё в его истории не остаётся. Строка гаража уходит здесь же: `CancelDeal`
             // молча снимает только ждущую машину без расходов.
@@ -65,6 +68,10 @@ final class ReturnToSale
 
             // Приём — выбранный срок, иначе заново, как у публикации (через 3 дня в 17:00, `ChangeOfferState`).
             Offer::whereKey($offer->id)->update(['bids_close_at' => $closeAt?->isFuture() ? $closeAt : null]);
+            // С аукциона (13.10.2026): `auction_at` гасит сам переход из черновика, в «Истории» — куда ушла.
+            if ($auction) {
+                $offer->log(OfferEventType::Auction, $by, ['off' => true, 'to' => 'sale']);
+            }
 
             return ($this->change)($offer->refresh(), OfferState::Open, $by);
         });

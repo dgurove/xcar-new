@@ -27,6 +27,8 @@ use App\Purchases\Car;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Demo\HidesDemo;
+use App\Support\InternalRefs;
+use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\DealFormat;
@@ -584,7 +586,7 @@ class Offer extends Model implements HasMedia
         $q->where(function ($w) use ($user, &$any) {
             // Модератор видит черновики группы в CRM; менеджер-модератор на сайте — менеджер, по своим волнам (13.10.2026:
             // иначе видел всё открытое группы раньше волны и в обход «Не показывать»).
-            if ($user->isModerator() && (! $user->hasRole(Role::Manager, Role::SuperBuyer) || \App\Support\Surface::inCrm())) {
+            if ($user->isModerator() && (! $user->hasRole(Role::Manager, Role::SuperBuyer) || Surface::inCrm())) {
                 $any = true;
                 $w->orWhere(fn ($m) => $m->inCrm($user));
             }
@@ -814,7 +816,7 @@ class Offer extends Model implements HasMedia
     public function publicDescription(): ?string
     {
         $text = (string) preg_replace(['~^\s*Фото:\s*\S+\s*$~miu', '~https?://\S+~iu'], '', (string) $this->description);
-        $text = trim(\App\Support\InternalRefs::hide($text, [$this->claim_ref]));
+        $text = trim(InternalRefs::hide($text, [$this->claim_ref]));
 
         return $text !== '' ? $text : null;
     }
@@ -985,12 +987,13 @@ class Offer extends Model implements HasMedia
 
     /**
      * Пункты «На аукцион» в «Действиях» (админу): [действие, подпись, вопрос перед]. now — отправить сейчас, after — по
-     * истечении срока, cancel — отменить план или убрать с аукциона.
+     * истечении срока, cancel — отменить план или вернуть в черновики, sale — шторка «Вернуть в продажу» (`x-offer.resale-sheet`,
+     * 13.10.2026, владелец: «не хватает возможности вернуть из аукциона в продажу или в черновики»).
      */
     public function auctionActions(): array
     {
         return match (true) {
-            $this->onAuction() => [['cancel', 'Убрать с аукциона', null]],
+            $this->onAuction() => [['sale', 'Вернуть в продажу…', null], ['cancel', 'Вернуть в черновики', null]],
             $this->state === OfferState::Open => array_values(array_filter([
                 ['now', 'Отправить на аукцион', 'Снять с публикации и отправить на аукцион?'],
                 $this->auctionPlanned() ? ['cancel', 'Отменить отправку на аукцион', null]
@@ -1090,6 +1093,10 @@ class Offer extends Model implements HasMedia
         $actions = $this->state->actions();
         if ($this->isGallery() && isset($actions[OfferState::Gallery->value])) {
             $actions[OfferState::Gallery->value] = 'Убрать из галереи';
+        }
+        // С аукциона в продажу — шторкой с ценами и показом (`auctionActions`), в галерею — не отсюда.
+        if ($this->onAuction()) {
+            unset($actions[OfferState::Open->value], $actions[OfferState::Gallery->value]);
         }
 
         return $actions;

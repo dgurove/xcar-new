@@ -18,7 +18,8 @@
     $transitions = $admin ? collect($offer->stateActions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
     // «Опубликовать» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
     // Без цены продажи публиковать нечего — пунктов нет, пока её не поставили.
-    $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled() && $offer->asking_price;
+    // На аукционе — «Вернуть в продажу…» шторкой (`auctionActions`), слотов нет.
+    $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled() && $offer->asking_price && ! $offer->onAuction();
     // «Опубликовать» у черновика — пунктами слота; у сделки «вернуть в продажу» — обычным пунктом (отмена сделки).
     if ($offer->state !== OfferState::Sold) $transitions = $transitions->except(OfferState::Open->value);
     // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
@@ -235,7 +236,7 @@
                 </div>
             @endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
-            @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
+            @if ($resale || ($admin && $offer->onAuction()))<x-offer.resale-sheet :offer="$offer"/>@endif
             @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
             @if ($askMenu)<x-offer.estimate-ask :offer="$offer" :managers="$managers" :trigger="false"/>@endif
         </x-slot:actions>

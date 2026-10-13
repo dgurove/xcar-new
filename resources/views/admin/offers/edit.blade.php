@@ -243,7 +243,7 @@
         if ($resale && $offer->state === OfferState::Sold) $transitions = $transitions->except(OfferState::Draft->value);
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
-    @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
+    @if ($resale || ($admin && $offer->onAuction()))<x-offer.resale-sheet :offer="$offer"/>@endif
     @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
     @php $deletable = ! $fromMail && $offer->isDeletableBy(auth()->user()); @endphp
     <x-ui.action-bar>
@@ -283,13 +283,15 @@
                         {{-- Сделка — одна «Отменить сделку» шторкой: в продажу или в черновики (12.10.2026); гараж — «Вернуть в продажу». --}}
                         <x-ui.button type="button" block :variant="$offer->state === OfferState::Sold && ! $garage ? 'danger' : 'primary'" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="resale:open">{{ $offer->state === OfferState::Sold && ! $garage ? 'Отменить сделку' : 'Вернуть в продажу' }}</x-ui.button>
                     @endif
+                    {{-- На аукционе «Вернуть в продажу… / в черновики» — первыми, красное «В архив» под ними. --}}
+                    @if ($auctionItems && $offer->onAuction())@include('admin.offers.auction-items', ['offer' => $offer])@endif
                     @foreach ($transitions as [$next, $label])
                         <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @elseif (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @if ($offer->parkVehicle) data-turbo-confirm-text="ТС снимется с продажи, на парковке она остаётся с фото и документами" @endif @endif>
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                             <x-ui.button block :variant="$offer->state === OfferState::Sold ? 'danger' : ($next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary'))">{{ $label }}</x-ui.button>
                         </form>
                     @endforeach
-                    @if ($auctionItems)@include('admin.offers.auction-items', ['offer' => $offer])@endif
+                    @if ($auctionItems && ! $offer->onAuction())@include('admin.offers.auction-items', ['offer' => $offer])@endif
                     @if ($canGarage)
                         <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="garage:open">Отдать в гараж</x-ui.button>
                     @endif

@@ -4,13 +4,15 @@
      «Показ» — срок приёма (по умолчанию через 3 дня в 17:00) и «Кому показывать» тем же куском, что в модуле «Показ»;
      подтверждение менеджера остаётся ждать среди прочих. В черновики — состояние Draft: подтверждение отклоняется. У машины
      в гараже — только «Вернуть в продажу», без сегмента. Открывает событие resale:open (пункт «···» редактора, «Действий»
-     карточки, красная строка карточки сделки и гаража) — шторка стоит вне меню: поповер прячет вложенное. --}}
+     карточки, красная строка карточки сделки и гаража) — шторка стоит вне меню: поповер прячет вложенное. Черновик на
+     аукционе («Вернуть в продажу…», 13.10.2026) — как гараж, без сегмента и без второго вопроса: шторка и есть вопрос. --}}
 @props(['offer'])
 @php
     use App\Support\Money;
     $n = $offer->number;
     $garage = $offer->state === \App\Offers\OfferState::Garage || \App\Garage\Car::where('offer_id', $offer->id)->exists();
     $isDeal = ! $garage && $offer->state === \App\Offers\OfferState::Sold;
+    $auction = $offer->onAuction();
     $closeAt = old('bids_close_at', \App\Offers\Slots::closeFor(now())->format('Y-m-d\TH:i'));
     $confirm = $garage
         ? 'ТС уйдёт из гаража менеджера, гаражная сделка отменится, неоплаченные счета аннулируются'
@@ -26,7 +28,7 @@
                 </div>
             @endif
             <div data-reveal-target="pane" data-reveal-key="sale">
-                <form method="post" action="/offers/{{ $n }}/resale" class="flex flex-col gap-4" data-turbo-confirm="{{ $isDeal ? 'Отменить сделку и вернуть в продажу?' : 'Вернуть в продажу?' }}" data-turbo-confirm-text="{{ $confirm }}" data-turbo-confirm-label="Вернуть">
+                <form method="post" action="/offers/{{ $n }}/resale" class="flex flex-col gap-4" @unless ($auction) data-turbo-confirm="{{ $isDeal ? 'Отменить сделку и вернуть в продажу?' : 'Вернуть в продажу?' }}" data-turbo-confirm-text="{{ $confirm }}" data-turbo-confirm-label="Вернуть" @endunless>
                     @csrf
                     <div>
                         <h3 class="list-head">Цены</h3>

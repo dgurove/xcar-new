@@ -25,9 +25,16 @@ export default class extends Controller {
         // Телефон — без клавиатуры: поле только открывает календарь.
         if (this.field && matchMedia('(pointer: coarse)').matches) this.textTarget.readOnly = true;
         this.render();
+        // POST → редирект на ту же страницу Turbo делает морфом: контроллер не переподключается, скрытое поле получает
+        // новое значение, а слова остаются прежними (13.10.2026: «Вернуть в продажу» — срок приёма показывал старый).
+        this.onMorph = () => { if (!this.popTarget.matches(':popover-open')) this.render(); };
+        document.addEventListener('turbo:morph', this.onMorph);
     }
 
-    disconnect() { this.close(); }
+    disconnect() {
+        document.removeEventListener('turbo:morph', this.onMorph);
+        this.close();
+    }
 
     get parts() {
         const [date, time] = (this.valueTarget.value || '').split('T');

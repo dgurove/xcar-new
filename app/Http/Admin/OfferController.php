@@ -875,8 +875,9 @@ class OfferController
 
     public function auctionCancel(Request $request, Offer $offer, SendToAuction $send)
     {
-        $was = $offer->auction_planned_at ? 'Отправка на аукцион отменена' : 'Убрано с аукциона';
-        $send->cancel($offer, $request->user());
+        $planned = (bool) $offer->auction_planned_at;
+        $offer = $send->cancel($offer, $request->user());
+        $was = $planned ? 'Отправка на аукцион отменена' : 'В черновиках: '.$offer->crmTab();
 
         return redirect("/offers/{$offer->number}")->with('toast', $was)->with(self::gone($request, $offer));
     }

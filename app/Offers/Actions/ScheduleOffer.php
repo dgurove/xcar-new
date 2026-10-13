@@ -38,7 +38,8 @@ final class ScheduleOffer
             return ($this->change)($offer, OfferState::Open, $by, batch: $batch);
         }
         ChangeOfferState::assertReady($offer);
-        $offer->forceFill(['slot_at' => $at, 'slot_by' => $by->id])->save();
+        // В слоте — во вкладке «Публикация», а не «На аукцион», из какой бы двери ни поставили.
+        $offer->forceFill(['slot_at' => $at, 'slot_by' => $by->id, 'auction_at' => null])->save();
         $offer->log(OfferEventType::Scheduled, $by, ['at' => $at->toDateTimeString()]);
         // Отправили в продажу — корректировки менеджеров больше не нужны (владелец 11.10.2026: «можно и пока не ответили»).
         app(CloseEstimates::class)($offer, $by);
