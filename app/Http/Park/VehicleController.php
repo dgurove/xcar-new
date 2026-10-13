@@ -472,12 +472,40 @@ class VehicleController
     }
 
     /** «В продажу»: черновик предложения этой ТС в CRM; чип в шапке становится ссылкой на него. */
-    public function sell(Request $request, Vehicle $vehicle, PutOnSale $sell)
+    /**
+     * «В продажу» шторкой (13.10.2026, владелец: «админу важно понимать, что закупочная считается корректно»): оценочная —
+     * поправить можно, закупочная — по правилу от оценочной (`Sale::floorFrom`), равна оценочной или своя.
+     */
+    public function sell(Request $request, Vehicle $vehicle, PutOnSale $sell, UpdateVehicle $updateVehicle, \App\Offers\Actions\UpdateOffer $updateOffer)
     {
         abort_unless($request->user()->isAdmin(), 403);
-        $sell($vehicle, $request->user());
+        $data = $request->validate([
+            'value' => ['nullable', 'string', 'max:20'],
+            'floor_mode' => ['nullable', 'in:rule,value,own'],
+            'floor' => ['nullable', 'string', 'max:20'],
+        ]);
+        $rubles = fn (?string $v) => ($n = (int) preg_replace('/\D+/', '', explode(',', (string) $v)[0])) > 0 ? $n : null;
+        $value = $rubles($data['value'] ?? null);
+        $mode = $data['floor_mode'] ?? null;
+        $floor = match ($mode) {
+            'rule' => $value ? \App\Park\Sale::floorFrom($value) : null,
+            'value' => $value,
+            'own' => $rubles($data['floor'] ?? null),
+            default => null,
+        };
+        if ($mode && ! $floor) {
+            throw ValidationException::withMessages([$mode === 'own' ? 'floor' : 'value' => $mode === 'own' ? 'Впишите закупочную' : 'Впишите оценочную']);
+        }
+        $by = $request->user();
+        if ($value && $value !== (int) $vehicle->value) {
+            $updateVehicle($vehicle, ['value' => $value], $by);
+        }
+        $offer = $sell($vehicle->refresh(), $by);
+        if ($floor && (int) $offer->floor_price !== $floor) {
+            $offer = $updateOffer($offer, ['floor_price' => $floor], $by);
+        }
 
-        return back()->with('toast', 'Черновик продажи в CRM');
+        return back()->with('toast', $floor ? 'В продажу за '.\App\Support\Money::rub($floor).', черновик в CRM' : 'Черновик продажи в CRM');
     }
 
     /** «Убрать из продажи»: черновик удаляется, опубликованное — в архив; ТС с файлами остаётся (`TakeOffSale`). */

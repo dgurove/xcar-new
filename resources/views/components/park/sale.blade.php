@@ -1,7 +1,7 @@
 {{-- Продажа этой ТС — только админу (владелец 05.10.2026: «выставить и убрать на парковке, красиво и удобно»).
      Вид — как документы в том же месте (11.10.2026, владелец: кнопку не находили, «подумай над дизайном»):
      - row — строкой группы в карточке «Наличия» и «Заявок», как «Заполнить из документов»: не в продаже — «Выставить в
-       продажу» лаймовым словом с подтверждением; в продаже — «Продажа» и состояние справа, нажатие — шторка;
+       продажу» лаймовым словом, шторка с оценочной и закупочной (`x-park.sell-sheet`); в продаже — «Продажа» и состояние справа, нажатие — шторка;
      - иначе капсулой в шапке дела рядом с местом («Измайловский лес ⌄»): «В продажу» с сумкой / состояние ⌄.
      Шторка «Продажа» — предложение в CRM, сделка, если идёт, и красная «Убрать из продажи» (`TakeOffSale`: черновик
      удаляется, опубликованное — в архив; ТС с фото и документами остаётся). Сделку, гараж и проданную так не снять.
@@ -32,13 +32,15 @@
 @endphp
 @if (! auth()->user()?->isAdmin() || (! $offer && ! $canSell))
 @elseif (! $offer)
-    <form method="post" action="/cars/{{ $vehicle->id }}/sell" @class(['list mt-3' => $row, 'contents' => ! $row]) data-turbo-frame="_top" data-turbo-confirm="Выставить в продажу?" data-turbo-confirm-text="{{ $vehicle->saleLabel() }}" data-turbo-confirm-label="Выставить">@csrf
+    {{-- 13.10.2026: шторкой с оценочной и закупочной (`x-park.sell-sheet`), а не подтверждением без цифр. --}}
+    <span @class(['list mt-3' => $row, 'contents' => ! $row]) data-controller="sheet">
         @if ($row)
-            <button class="row w-full text-left"><x-ui.row-icon name="bag" tone="soft" size="s"/><span class="min-w-0 flex-1 text-accent-text">Выставить в продажу</span><x-ui.chevron/></button>
+            <button type="button" class="row w-full text-left" data-action="sheet#open"><x-ui.row-icon name="bag" tone="soft" size="s"/><span class="min-w-0 flex-1 text-accent-text">Выставить в продажу</span><x-ui.chevron/></button>
         @else
-            <button class="pill pill-soft gap-1.5"><x-ui.icon name="bag" class="size-4"/>В продажу</button>
+            <button type="button" class="pill pill-soft gap-1.5" data-action="sheet#open"><x-ui.icon name="bag" class="size-4"/>В продажу</button>
         @endif
-    </form>
+        <x-park.sell-sheet :vehicle="$vehicle" :id="'sell-'.$vehicle->id"/>
+    </span>
 @else
     <span @class(['list mt-3' => $row, 'contents' => ! $row]) data-controller="sheet">
         @if ($row)
@@ -52,6 +54,16 @@
             <button type="button" class="pill pill-{{ $tone }} gap-1" data-action="sheet#open">{{ $word }}<x-ui.icon name="chevron-down" class="size-3.5"/></button>
         @endif
         <x-ui.sheet :id="$id" title="Продажа">
+            {{-- Оценочная и закупочная — проверить, что закупочная посчитана верно (13.10.2026); правка — в CRM. --}}
+            @php
+                $value = $vehicle->value ? (int) $vehicle->value : null;
+                $floor = $offer->floor_price ? (int) $offer->floor_price : null;
+                $how = match (\App\Park\Sale::floorMode($floor, $value)) { 'rule' => 'по правилу '.\Illuminate\Support\Str::between(\App\Park\Sale::floorLabel($floor, $value), '(', ')'), 'value' => 'равна оценочной', default => 'своя' };
+            @endphp
+            <div class="list mb-4">
+                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Оценочная</span><span class="nums shrink-0">{{ $value ? \App\Support\Money::rub($value) : 'нет' }}</span></div>
+                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Закупочная</span><span class="shrink-0 text-right"><span class="block nums">{{ $floor ? \App\Support\Money::rub($floor) : 'нет' }}</span>@if ($floor)<span class="block text-sm text-ink-muted">{{ $how }}</span>@endif</span></div>
+            </div>
             <div class="list">
                 <a href="{{ Surface::Crm->url('/offers/'.$offer->number) }}" class="row" data-turbo="false">
                     <span class="min-w-0 flex-1">Предложение № {{ $offer->number }}<span class="row-sub">{{ $offer->crmTab() }}@if ($price), {{ $price }}@endif</span></span>

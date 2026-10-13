@@ -104,7 +104,8 @@ final class Sale
 
     /**
      * Закупочная из оценочной стоимости (владелец, 04.10.2026): до 500 000 — плюс 50 000, от 500 000 до 2 000 000 — плюс
-     * 10 %, от 2 000 000 — плюс 200 000; вверх до тысячи.
+     * 10 %, от 2 000 000 — плюс 200 000; вверх до тысячи. Правило продублировано в `sale_floor_controller.js` (шторка
+     * «В продажу» пересчитывает на лету) — менять вместе.
      */
     public static function floorFrom(int $value): int
     {
@@ -115,6 +116,17 @@ final class Sale
         };
 
         return (int) (ceil(round($price, 2) / 1000) * 1000);
+    }
+
+    /** Как получена закупочная (13.10.2026, шторка «В продажу»): `rule` — по правилу от оценочной, `value` — равна ей, `own` — своя. */
+    public static function floorMode(?int $floor, ?int $value): string
+    {
+        return match (true) {
+            ! $value => 'own',
+            ! $floor, $floor === self::floorFrom($value) => 'rule',
+            $floor === $value => 'value',
+            default => 'own',
+        };
     }
 
     /**
