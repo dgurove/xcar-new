@@ -2412,7 +2412,7 @@ VIN» — `users.buyer_show_vin`, `PUT /buyers/{id}/sees`); в списке — 
 ```bash
 ./serve-local.sh                 # http://xcar.localhost:8010 (php@8.5 и postgres из brew)
 php artisan queue:work database-long --queue=long,mail --stop-when-empty      # почта, фото, закупки
-php artisan queue:work --queue=notifications,default --stop-when-empty       # конверсии, уведомления
+php artisan queue:work --queue=notifications,default,media --stop-when-empty # уведомления, потом сжатые копии кадров (media)
 php artisan queue:work database-scan --queue=scan,scan-bg --stop-when-empty # «✨ Распознать» (scan-bg — фон)
 php artisan offers-bot:run | offers-bot:poke announce {user} --fresh | offers-bot:profile   # бот предложений
 php artisan offers:tick | park:tick | park:digest | billing:tick | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
