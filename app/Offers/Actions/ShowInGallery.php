@@ -54,7 +54,7 @@ final class ShowInGallery
     {
         $shown = 0;
         // Черновики из таблицы Кати — сделки вне системы: менеджерам в галерею не показываем.
-        LegacyClaim::offList(Offer::where('state', OfferState::Draft)->whereNull('gallery_from')->whereNotNull('brand_id')->whereNotNull('model_id')
+        LegacyClaim::offList(Offer::where('state', OfferState::Draft)->whereNull('auction_at')->whereNull('gallery_from')->whereNotNull('brand_id')->whereNotNull('model_id')
             ->whereHas('vendor', fn ($v) => $v->where('to_gallery', true)))
             ->orderBy('id')->get()
             ->each(function (Offer $offer) use (&$shown) {

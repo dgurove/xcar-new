@@ -83,6 +83,13 @@ final class ChangeOfferState
                 $offer->published_at ??= now();
             }
 
+            // «На аукцион»: ушло из продажи — план снят (`SendToAuction`); черновик ушёл дальше — и с аукциона тоже.
+            if ($from === OfferState::Open && $next !== OfferState::Open) {
+                $offer->auction_planned_at = null;
+            }
+            if ($from === OfferState::Draft && $next !== OfferState::Draft) {
+                $offer->auction_at = null;
+            }
             $offer->state = $next;
             // Черновик ушёл дальше (в продажу, сделку, гараж) — окно галереи закрывается сейчас, как «Убрать из
             // галереи» (`ShowInGallery::hide`): из галереи ушло, интерес остался — в «Откликах» CRM и рядом с

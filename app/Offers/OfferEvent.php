@@ -80,6 +80,13 @@ class OfferEvent extends Model
             OfferEventType::InsurerReplied => 'Страховая ответила'.(! empty($p['contact']) ? ', есть контакт' : ''),
             OfferEventType::SupplierLetter => 'Письмо поставщику отправлено',
             OfferEventType::Estimate => self::estimateText($p),
+            // «На аукцион» (13.10.2026): отправили, запланировали по истечении срока, сняли план или убрали с аукциона.
+            OfferEventType::Auction => match (true) {
+                ! empty($p['planned']) => 'На аукцион по истечении срока, если не будет подтверждений',
+                ! empty($p['unplanned']) => ($p['why'] ?? null) === 'bids' ? 'Подтверждения есть, на аукцион не отправлено' : 'Отправка на аукцион отменена',
+                ! empty($p['off']) => 'Убрано с аукциона',
+                default => ($p['why'] ?? null) === 'no_bids' ? 'На аукцион: подтверждений не было' : 'Отправлено на аукцион',
+            },
             OfferEventType::PickupAssigned => 'Вывоз: '.($p['who'] ?? 'мы').', '.mb_strtolower(Destination::tryFrom($p['to'] ?? '')?->label() ?? ''),
             // Слот: поставили («В слот 4 окт, 16:00»), убрали или часы не смогли выпустить (`error` — чего не хватило).
             OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Carbon::parse($p['at'])->translatedFormat('j M, H:i') : 'Убрано из слота'),

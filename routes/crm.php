@@ -180,6 +180,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
         Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
+        // «На аукцион» (13.10.2026): отправить сейчас или по истечении срока; DELETE — отменить или убрать с аукциона.
+        Route::post('/offers/{offer}/auction', [OfferController::class, 'auction']);
+        Route::delete('/offers/{offer}/auction', [OfferController::class, 'auctionCancel']);
         Route::post('/offers/{offer}/rate', [OfferController::class, 'rate']);
         // Оценка менеджером (11.10.2026): «Отдать менеджеру на оценку», «Взять», «Отклонить», «×».
         Route::post('/offers/{offer}/estimates', [OfferEstimateController::class, 'store']);

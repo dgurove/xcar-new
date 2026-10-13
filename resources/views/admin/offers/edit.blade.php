@@ -62,6 +62,10 @@
         @if ($offer->isUrgent())
             <span class="pill pill-fire"><x-ui.icon name="fire" fill class="size-4"/>Срочно, до {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
         @endif
+        {{-- «По истечению срока на аукцион» (13.10.2026) — капсулой с концом приёма. --}}
+        @if ($offer->auctionPlanned())
+            <span class="pill pill-plain"><x-ui.icon name="flag" class="size-4"/>На аукцион после {{ $offer->bids_close_at?->translatedFormat('j M, H:i') }}</span>
+        @endif
         @if ($admin)
             <div class="contents" data-controller="sheet tag-chips" data-action="change->tag-chips#render">
                 <span class="contents" data-tag-chips-target="chips">
@@ -258,7 +262,8 @@
         @else
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
-        @if (($transitions->isNotEmpty() || $resale || $publishItems || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
+        @php $auctionItems = $admin && $offer->auctionActions() !== []; @endphp
+        @if (($transitions->isNotEmpty() || $resale || $publishItems || $auctionItems || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
             {{-- Контроллер шторки — только вместе с ней: у сделки «···» нет, и пустой контроллер падал в консоль. --}}
             <div class="contents" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
@@ -279,6 +284,7 @@
                             <x-ui.button block :variant="$offer->state === OfferState::Sold ? 'danger' : ($next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary'))">{{ $label }}</x-ui.button>
                         </form>
                     @endforeach
+                    @if ($auctionItems)@include('admin.offers.auction-items', ['offer' => $offer])@endif
                     @if ($canGarage)
                         <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="garage:open">Отдать в гараж</x-ui.button>
                     @endif

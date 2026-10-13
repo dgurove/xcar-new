@@ -45,7 +45,7 @@
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         {{-- Состояние — словом у названия, а не среди кодов (владелец 10.10.2026: «статус тут не к месту»); слова «черновик»
              нет, как и в строке: вкладка и так говорит, на каком он шаге. --}}
-        <x-slot:badge><x-ui.state :tone="$offer->state->tone()" class="title-state">{{ $offer->crmTab() }}</x-ui.state><x-ui.links :offer="$offer"/></x-slot:badge>
+        <x-slot:badge><x-ui.state :tone="$offer->state->tone()" class="title-state">{{ $offer->crmTab() }}</x-ui.state>@if ($offer->auctionPlanned())<x-offer.auction/>@endif<x-ui.links :offer="$offer"/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         {{-- Под названием — что это за машина (состояние словом, коды чипами: №, убыток или ДЛ, VIN), ниже фразой — где она
              и сколько осталось (`line`): владелец 10.10.2026 «одно к машине относится, другое к фактам». --}}
@@ -90,7 +90,8 @@
                     $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
                 @endphp
                 @php $askMenu = ($correct || ($rate && ! $floorFirst)) && $offer->openEstimates->isEmpty() && $offer->declinedEstimates->isEmpty(); @endphp
-                @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu)
+                @php $auctionMenu = $admin && $offer->auctionActions() !== []; @endphp
+                @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu || $auctionMenu)
                     <div class="contents" data-controller="menu">
                         <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
                         <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
@@ -121,6 +122,9 @@
                                 <div class="menu-group">
                                     <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="estimate-ask-{{ $n }}:open"><x-ui.icon name="users" class="size-5 text-ink-muted"/>{{ $correct ? 'Спросить менеджеров' : 'Отдать на оценку' }}</button>
                                 </div>
+                            @endif
+                            @if ($auctionMenu)
+                                <div class="menu-group">@include('admin.offers.auction-items', ['offer' => $offer, 'menu' => true])</div>
                             @endif
                             @if ($listed)
                                 <div class="menu-group">

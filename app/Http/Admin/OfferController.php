@@ -20,6 +20,7 @@ use App\Offers\Actions\MergeOffers;
 use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\ScheduleOffer;
+use App\Offers\Actions\SendToAuction;
 use App\Offers\Actions\ShowInGallery;
 use App\Offers\Actions\UnlistParkOffer;
 use App\Offers\Actions\UnscheduleOffer;
@@ -70,16 +71,16 @@ class OfferController
      */
     public const PRESETS = [
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
-        'bids' => 'Есть подтверждения', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати',
+        'bids' => 'Есть подтверждения', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
 
     /** Опубликованное: «Опубликованные» и «Есть подтверждения» — одни правила групп, сортировки и чипов. */
     private const OPEN = ['published', 'bids'];
 
-    /** Вкладки человека: подтверждения и «Из таблицы Кати» видит только админ. */
+    /** Вкладки человека: подтверждения, «Из таблицы Кати» и «На аукцион» видит только админ. */
     public static function presets(User $user): array
     {
-        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'legacy' => true]);
+        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'legacy' => true, 'auction' => true]);
     }
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
@@ -288,9 +289,14 @@ class OfferController
         if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots'], true)) {
             LegacyClaim::offList($q);
         }
+        // Отправленные на аукцион (13.10.2026) — только во вкладке «На аукцион», рабочим и таблице Кати не мешают.
+        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots', 'legacy'], true)) {
+            $q->whereNull('offers.auction_at');
+        }
 
         return match ($preset) {
             'legacy' => LegacyClaim::onList($q->where('offers.state', OfferState::Draft)),
+            'auction' => $q->where('offers.state', OfferState::Draft)->whereNotNull('offers.auction_at'),
             'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
                 ->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
@@ -388,7 +394,7 @@ class OfferController
             // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»). Оценочной в таблице нет
             // (владелец 05.10.2026: «скрой») — она в карточке строки, в «Деньгах».
-            'unpriced', 'priced', 'legacy' => ['vendor', 'city', 'floor', 'price', 'created'],
+            'unpriced', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
             'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
@@ -830,6 +836,27 @@ class OfferController
         $change($offer, $next, $request->user());
 
         return redirect("/offers/{$offer->number}")->with('toast', $next->label())->with(self::gone($request, $offer));
+    }
+
+    /**
+     * «На аукцион» из «Действий» (13.10.2026): `mode=now` — снять с публикации и сразу во вкладку, `after` — по истечении
+     * срока, если подтверждений не будет (`SendToAuction`); DELETE — отменить план или убрать с аукциона.
+     */
+    public function auction(Request $request, Offer $offer, SendToAuction $send)
+    {
+        $mode = $request->validate(['mode' => ['required', 'in:now,after']])['mode'];
+        $offer = $mode === 'now' ? $send->now($offer, $request->user()) : $send->plan($offer, $request->user());
+        $toast = $mode === 'now' ? 'На аукционе' : 'Уйдёт на аукцион '.$offer->bids_close_at->translatedFormat('j M, H:i').', если не будет подтверждений';
+
+        return redirect("/offers/{$offer->number}")->with('toast', $toast)->with(self::gone($request, $offer));
+    }
+
+    public function auctionCancel(Request $request, Offer $offer, SendToAuction $send)
+    {
+        $was = $offer->auction_planned_at ? 'Отправка на аукцион отменена' : 'Убрано с аукциона';
+        $send->cancel($offer, $request->user());
+
+        return redirect("/offers/{$offer->number}")->with('toast', $was)->with(self::gone($request, $offer));
     }
 
     /**

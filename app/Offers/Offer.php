@@ -147,6 +147,8 @@ class Offer extends Model implements HasMedia
             'gallery_from' => 'datetime',
             'gallery_until' => 'datetime',
             'urgent_at' => 'datetime',
+            'auction_at' => 'datetime',
+            'auction_planned_at' => 'datetime',
             'floor_price' => 'int',
             'value' => 'int',
             'publish_price' => 'int',
@@ -915,6 +917,7 @@ class Offer extends Model implements HasMedia
 
         return match ($this->state) {
             OfferState::Draft, OfferState::Gallery => match (true) {
+                $this->onAuction() => $presets['auction'],
                 $this->state === OfferState::Draft && LegacyClaim::listed($this) !== null => $presets['legacy'],
                 $this->slot_at !== null => $presets['slots'],
                 $this->state === OfferState::Gallery => 'Галерея',
@@ -927,6 +930,36 @@ class Offer extends Model implements HasMedia
             OfferState::Sold, OfferState::Delivered => 'Сделки',
             OfferState::Garage => 'Гараж',
             default => $presets['archive'],
+        };
+    }
+
+    /** Во вкладке «На аукцион» (`SendToAuction`). */
+    public function onAuction(): bool
+    {
+        return $this->auction_at !== null && $this->state === OfferState::Draft;
+    }
+
+    /** «По истечению срока на аукцион» — ждёт конца приёма; метка «На аукцион» в CRM. */
+    public function auctionPlanned(): bool
+    {
+        return $this->auction_planned_at !== null && $this->state === OfferState::Open;
+    }
+
+    /**
+     * Пункты «На аукцион» в «Действиях» (админу): [действие, подпись, вопрос перед]. now — отправить сейчас, after — по
+     * истечении срока, cancel — отменить план или убрать с аукциона.
+     */
+    public function auctionActions(): array
+    {
+        return match (true) {
+            $this->onAuction() => [['cancel', 'Убрать с аукциона', null]],
+            $this->state === OfferState::Open => array_values(array_filter([
+                ['now', 'Отправить на аукцион', 'Снять с публикации и отправить на аукцион?'],
+                $this->auctionPlanned() ? ['cancel', 'Отменить отправку на аукцион', null]
+                    : ($this->bidsOpen() && $this->bids_close_at ? ['after', 'По истечению срока на аукцион', null] : null),
+            ])),
+            in_array($this->state, [OfferState::Draft, OfferState::Gallery], true) => [['now', 'Отправить на аукцион', null]],
+            default => [],
         };
     }
 
