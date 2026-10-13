@@ -23,6 +23,7 @@ use App\Billing\Listeners\RevokeAgentFee;
 use App\Billing\Listeners\StartSelectionDue;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Listeners\AttachGuestEnquiry;
+use App\Chats\Listeners\MailGuestReply;
 use App\Chats\Listeners\ScheduleAutoReply;
 use App\Garage\Listeners\CloseWhenPaid;
 use App\Garage\Listeners\PayoutWhenBuyerPaid;
@@ -115,6 +116,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Login::class, AttachGuestEnquiry::class);
         Event::listen(Login::class, EnrollOnLogin::class);
         Event::listen(ChatMessagePosted::class, ScheduleAutoReply::class);
+        Event::listen(ChatMessagePosted::class, MailGuestReply::class);
         Event::subscribe(Passkeys::class);
         Event::listen(MediaHasBeenAddedEvent::class, StampOnAdd::class);
         Auth::provider('xcar-webauthn', fn (Application $app, array $config) => new WebAuthnProvider(

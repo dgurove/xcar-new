@@ -17,7 +17,9 @@
             <x-chat.avatar :user="$other" :size="36" :online="$seen === 'в сети'"/>
             <div class="min-w-0 flex-1">
                 <div class="truncate font-medium leading-tight">{{ $name }}</div>
-                <div class="truncate text-sm leading-tight text-ink-muted" data-chat-status>{{ $seen }}</div>
+                {{-- Гость «Написать нам» — почта, куда уйдёт ответ сотрудника (`SendGuestReply`), нажатие её копирует. --}}
+                @if ($crm && $chat && ! $chat->user_id && $chat->guest_email)<div class="truncate text-sm leading-tight text-ink-muted"><x-mail.address :email="$chat->guest_email"/></div>
+                @else<div class="truncate text-sm leading-tight text-ink-muted" data-chat-status>{{ $seen }}</div>@endif
             </div>
         @if ($link)</a>@elseif ($sheet)</button>@else</div>@endif
         @if ($readonly && $chat?->manager)

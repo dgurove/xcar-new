@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
  * Вторая сторона — сотрудники площадки, а с manager_id — менеджер, с которым говорит его покупатель:
  * тогда счётчик unread_for_staff и AuthorKind::Staff означают «вторая сторона», сотрудники в чате не участвуют.
  */
-#[Fillable(['offer_id', 'user_id', 'manager_id', 'guest_name', 'guest_token', 'messages_count', 'unread_for_user', 'unread_for_staff', 'read_seq_user', 'read_seq_staff', 'last_message_at'])]
+#[Fillable(['offer_id', 'user_id', 'manager_id', 'guest_name', 'guest_email', 'guest_token', 'messages_count', 'unread_for_user', 'unread_for_staff', 'read_seq_user', 'read_seq_staff', 'last_message_at'])]
 class Chat extends Model
 {
     /** Как площадка называется собеседнику — в списке, баре чата, тосте и пуше. */

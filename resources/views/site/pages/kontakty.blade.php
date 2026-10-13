@@ -16,7 +16,10 @@
                 <form method="post" action="/contacts" class="flex flex-col gap-3">
                     @csrf
                     <input type="text" name="website" tabindex="-1" autocomplete="off" class="absolute left-[-9999px]" aria-hidden="true">
-                    @guest<x-ui.field name="name" placeholder="Имя" autocomplete="name"/>@endguest
+                    @guest
+                        <x-ui.field name="name" placeholder="Имя" autocomplete="name"/>
+                        <x-ui.field name="email" type="email" placeholder="Почта для ответа" autocomplete="email"/>
+                    @endguest
                     <x-ui.field name="text" type="textarea" rows="5" placeholder="С чем к нам"/>
                     @guest
                         <label class="flex items-start gap-2.5 px-1 pt-1 text-sm text-ink-muted">

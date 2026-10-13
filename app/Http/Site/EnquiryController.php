@@ -8,6 +8,7 @@ use App\Chats\Actions\PostMessage;
 use App\Chats\Chat;
 use App\Chats\GuestEnquiry;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * «Написать нам» на странице контактов — чат: у вошедшего он привязан к
@@ -36,6 +37,21 @@ class EnquiryController
         ]);
     }
 
+    /**
+     * «Продолжить переписку» из письма с ответом (`SendGuestReply`): подписанная ссылка выдаёт этому браузеру обращение —
+     * новый токен в cookie, прежний браузер его теряет. Вошедшему — просто страница: обращение гостя не его.
+     */
+    public function open(Request $request, Chat $chat, GuestEnquiry $guest)
+    {
+        if (! $request->user() && $chat->isEnquiry() && $chat->user_id === null) {
+            $plain = Str::random(40);
+            $chat->update(['guest_token' => hash('sha256', $plain)]);
+            $guest->issue($chat, $plain);
+        }
+
+        return redirect('/contacts');
+    }
+
     public function store(Request $request, GuestEnquiry $guest, OpenEnquiry $open, PostMessage $post)
     {
         // Приманка для роботов: людям поле не видно.
@@ -47,15 +63,19 @@ class EnquiryController
         abort_if($user?->isAdmin(), 404);
         $data = $request->validate([
             'name' => [$user ? 'nullable' : 'required', 'string', 'max:100'],
+            'email' => [$user ? 'nullable' : 'required', 'email', 'max:255'],
             'text' => ['required', 'string', 'max:4000'],
             'consent' => [$user ? 'nullable' : 'accepted'],
         ], [
             'name.required' => 'Как к Вам обращаться?',
+            'email.required' => 'Куда прислать ответ?',
+            'email.email' => 'Проверьте почту',
             'text.required' => 'Напишите, с чем к нам.',
             'consent.accepted' => 'Без согласия на обработку данных сообщение не отправить.',
         ]);
 
-        $chat = $open($user, $data['name'] ?? null, $guest->token($request));
+        $email = $user ? null : mb_strtolower(trim($data['email']));
+        $chat = $open($user, $data['name'] ?? null, $guest->token($request), $email);
         $post($chat, $user, $data['text']);
         if ($chat->plainToken) {
             $guest->issue($chat, $chat->plainToken);
