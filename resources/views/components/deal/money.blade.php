@@ -18,6 +18,8 @@
     $state = $deal->commissionState();
     $party = $deal->buyer ? \App\Billing\Party::forUser($deal->buyer, false) : null;
     // Этап «Проверка оплаты» сам показывает заявку менеджера с «Поступило» — здесь она только строкой, без второй пары кнопок.
+    // Шаг оплаты сам несёт «Деньги пришли» (`x-route.path`) — у строки счёта её тогда нет.
+    $payStep = $deal->isActive() && $offer->position()?->stage->isPayStep();
     $inStep = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Staff, $deal)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата получена'));
     // Первый счёт на этапе оплаты предлагает сам шаг пути — здесь его второй раз не ставим.
 @endphp
@@ -135,6 +137,13 @@
                         <span class="row-sub"><x-billing.light :invoice="$i"/>@if ($i->isPartial())<span class="tag nums">из {{ Money::rub($i->total) }}</span>@endif</span>
                     </a>
                     <span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
+                    @if (! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && ! $payStep && auth()->user()?->canManageCrm())
+                        {{-- Деньги пришли мимо менеджера — отметить тут; на шаге оплаты кнопка стоит в самом шаге. --}}
+                        <span data-controller="sheet" class="contents">
+                            <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Деньги пришли</x-ui.button>
+                            <x-ui.sheet id="paid-{{ $i->id }}" :title="'Оплата по счёту '.$i->label()"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" :sources="\App\Billing\PaymentSource::manual()" sheet/></x-ui.sheet>
+                        </span>
+                    @endif
                     @if ($i->isAgentFee() && $i->state === InvoiceState::Issued)
                         <span data-controller="sheet" class="contents">
                             <x-ui.button type="button" size="sm" data-action="sheet#open">Выплатить</x-ui.button>

@@ -206,7 +206,7 @@ class MoneyController
     /** Откуда деньги в ручной оплате: зачёт вознаграждения ставит только система, руками его не выбрать. */
     private static function sources(): array
     {
-        return array_diff_key(PaymentSource::options(), array_flip(PaymentSource::soft()));
+        return PaymentSource::manual();
     }
 
     /** Число у «Оплат»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки в счёте нет (07.10.2026). */

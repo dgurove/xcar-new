@@ -35,6 +35,12 @@ enum PaymentSource: string
         return [self::Offset->value, self::Credit->value];
     }
 
+    /** Откуда деньги в ручной оплате: зачёт ставит только система, руками его не выбрать. @return array<string, string> */
+    public static function manual(): array
+    {
+        return array_diff_key(self::options(), array_flip(self::soft()));
+    }
+
     public function isSoft(): bool
     {
         return in_array($this->value, self::soft(), true);

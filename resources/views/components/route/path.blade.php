@@ -48,6 +48,11 @@
     if ($claims->isNotEmpty()) {
         $moves = $moves->reject($paidExit);
     }
+    // Деньги пришли мимо менеджера (наличными, на карту, увидели в банке) — отметить прямо в шаге оплаты, не ища счёт в
+    // «Оплатах»: оплата сама проходит шаг за менеджера и наш «Оплата получена» (`AdvanceOnPayment`). 13.10.2026, владелец.
+    $payNow = $deal && $stage->isPayStep() && $claims->isEmpty() && auth()->user()?->canManageCrm()
+        ? $invoices->filter(fn ($i) => $i->state === InvoiceState::Issued && $i->remaining() > 0)->values()
+        : collect();
     $undo = \App\Workflow\Actions\StepBack::undoable($offer, $position->track);
     // Черновик без цены продажи (владелец 04.10.2026): первый шаг продажи — назначить цену, а не «Опубликовать». Шаг не
     // из маршрута — он стоит перед ним текущим с «Оценить» (`/offers/{n}/rate`), а этап маршрута ждёт впереди серым.
@@ -175,7 +180,7 @@
                             </div>
                         </div>
                     @endforeach
-                    @if ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests)
+                    @if ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty())
                         <div class="mt-3 flex flex-wrap gap-2">
                             {{-- Заявка поставщику пачкой: окно письма со списком файлом, отправили — все её сделки дальше. --}}
                             @if ($requests)
@@ -186,9 +191,17 @@
                                 @php $action = \App\Workflow\Position::gapAction($position->gap(), $deal); @endphp
                                 <a href="{{ $action['url'] }}" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $action['button'] }}</a>
                             @endif
+                            @foreach ($payNow as $i)
+                                <div data-controller="sheet">
+                                    <x-ui.button type="button" size="sm" data-action="sheet#open">{{ $payNow->count() > 1 ? 'Деньги пришли, счёт '.$i->label() : 'Деньги пришли' }}</x-ui.button>
+                                    <x-ui.sheet :id="'paid-'.$i->id" :title="'Оплата по счёту '.$i->label()">
+                                        <x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" :sources="\App\Billing\PaymentSource::manual()" sheet/>
+                                    </x-ui.sheet>
+                                </div>
+                            @endforeach
                             @foreach ($moves->values() as $i => $exit)
                                 {{-- Письмо поставщику не ушло — главное «Написать поставщику», исходы серыми. --}}
-                                @php $variant = $i === 0 && ! $wantsInvoice && $position->letterStatus() !== 'unsent' ? 'primary' : 'secondary'; @endphp
+                                @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent' ? 'primary' : 'secondary'; @endphp
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
                                     {{-- «Опубликовать» — сейчас или в слот, как кнопка редактора. --}}
                                     <div data-controller="sheet">
