@@ -62,9 +62,12 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+  # Уведомления и прочее — первыми, сжатые копии кадров (media, 4 размера на кадр) — после них: пачка лотов Мигторга
+  # даёт сотни задач, и уведомления стояли за ними (14.10.2026). nice — фон уступает процессор живым запросам сайта:
+  # на двух ядрах страница менеджера не открывалась за 30 с, пока шли выкачки.
   queue:
     <<: *app
-    command: php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,default
+    command: nice -n 10 php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,default,media
     healthcheck:
       disable: true
 
@@ -81,7 +84,7 @@ services:
   # retry_after, чтобы работник не считал их зависшими.
   queue-long:
     <<: *app
-    command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=migtorg,long
+    command: nice -n 15 php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=migtorg,long
     # Минута на SIGTERM: короткие задачи дочитываются, длинную выкачку добирает повтор джобы.
     stop_grace_period: 60s
     healthcheck:
@@ -98,6 +101,7 @@ services:
 
   # Фото и архивы из писем в машину (ImportThreadFiles): человек только что нажал «Завести» и смотрит на ряд фото —
   # не ждать за Мигторгом и разбором ящика в queue-long. Документы к этому времени уже прикреплены (LinkThread).
+  # Здесь же знак на кадрах по «Запретить шеринг» и оценке (StampPhotos, 14.10.2026): за выкачкой Мигторга он ждал час.
   queue-files:
     <<: *app
     command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=2 --queue=files
