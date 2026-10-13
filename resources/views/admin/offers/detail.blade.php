@@ -246,39 +246,11 @@
                 @include('admin.offers.bids')
             </section>
         @endif
-        {{-- Интерес — под подтверждениями строками `.list`, как все группы однотипного (12.10.2026: плашками с тегами — хаос). --}}
+        {{-- Интерес — под подтверждениями группой строк `x-offer.interests` (как в редакторе), «+ Интерес» последней строкой. --}}
         @if ($admin && ($offer->interests->isNotEmpty() || $offer->isGallery()))
-            <section class="mt-4 flex flex-col gap-2">
+            <section class="mt-4">
                 <h2 class="detail-section">Интерес @if ($offer->interests->isNotEmpty())<span class="nums font-normal text-ink-dim">{{ $offer->interests->count() }}</span>@endif</h2>
-                @if ($offer->interests->isNotEmpty())
-                <div class="list">
-                    @foreach ($offer->interests as $interest)
-                        <div class="row">
-                            <x-ui.avatar :user="$interest->user" :size="36"/>
-                            <span class="min-w-0 flex-1">
-                                <span class="block truncate font-medium">{{ $interest->user->name }}</span>
-                                <span class="row-sub">
-                                    @if ($interest->user->manager)<span>покупатель {{ $interest->user->manager->shortName() }}</span>@endif
-                                    @if ($interest->user->phone)<a href="tel:+{{ $interest->user->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $interest->user->phoneFormatted() }}</a>@endif
-                                    <span class="nums whitespace-nowrap">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span>
-                                    @if ($interest->placer)<span>внёс {{ $interest->placer->shortName() }}</span>@endif
-                                </span>
-                                @if ($interest->comment)<span class="mt-1 block text-sm">{{ $interest->comment }}</span>@endif
-                            </span>
-                            @if ($interest->state === InterestState::New)
-                                <form method="post" action="/interests/{{ $interest->id }}" class="shrink-0">@csrf<input type="hidden" name="state" value="contacted"><button class="btn btn-s btn-quiet">Мы связались</button></form>
-                            @elseif ($interest->state === InterestState::Contacted)
-                                <form method="post" action="/interests/{{ $interest->id }}" class="shrink-0">@csrf<input type="hidden" name="state" value="closed"><button class="btn btn-s btn-quiet">Закрыть</button></form>
-                            @else
-                                <x-ui.state tone="closed" class="shrink-0">{{ mb_strtolower($interest->state->label()) }}</x-ui.state>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-                @endif
-                @if ($offer->acceptsInterest())
-                    <x-offer.interest-for :offer="$offer"/>
-                @endif
+                <x-offer.interests :offer="$offer"/>
             </section>
         @endif
         <form method="post" action="/offers/{{ $n }}" id="detail-edit-{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar migtorg-diff" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">

@@ -110,7 +110,7 @@ class MoneyController
         self::guard($invoice);
         $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'charges', 'payments']);
 
-        return view('park.money.detail', ['invoice' => $invoice, 'sources' => array_diff_key(PaymentSource::options(), array_flip(PaymentSource::soft()))]);
+        return view('park.money.detail', ['invoice' => $invoice, 'sources' => PaymentSource::manual()]);
     }
 
     public function show(Invoice $invoice)
@@ -118,7 +118,7 @@ class MoneyController
         self::guard($invoice);
         $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
 
-        return view('park.money.show', ['invoice' => $invoice, 'sources' => array_diff_key(PaymentSource::options(), array_flip(PaymentSource::soft())), 'file' => $invoice->getFirstMedia('file')]);
+        return view('park.money.show', ['invoice' => $invoice, 'sources' => PaymentSource::manual(), 'file' => $invoice->getFirstMedia('file')]);
     }
 
     public function pay(Request $request, Invoice $invoice, RecordPayment $record)

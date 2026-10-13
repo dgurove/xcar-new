@@ -137,13 +137,6 @@
                         <span class="row-sub"><x-billing.light :invoice="$i"/>@if ($i->isPartial())<span class="tag nums">из {{ Money::rub($i->total) }}</span>@endif</span>
                     </a>
                     <span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
-                    @if (! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && ! $payStep && auth()->user()?->canManageCrm())
-                        {{-- Деньги пришли мимо менеджера — отметить тут; на шаге оплаты кнопка стоит в самом шаге. --}}
-                        <span data-controller="sheet" class="contents">
-                            <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Деньги пришли</x-ui.button>
-                            <x-ui.sheet id="paid-{{ $i->id }}" :title="'Оплата по счёту '.$i->label()"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" :sources="\App\Billing\PaymentSource::manual()" sheet/></x-ui.sheet>
-                        </span>
-                    @endif
                     @if ($i->isAgentFee() && $i->state === InvoiceState::Issued)
                         <span data-controller="sheet" class="contents">
                             <x-ui.button type="button" size="sm" data-action="sheet#open">Выплатить</x-ui.button>
@@ -153,6 +146,13 @@
                 </div>
                 {{-- Ссылка счёта — строкой в «Ссылках на оплату» выше; открытой нет, а остаток есть — «Новая ссылка на оплату» здесь
                      (`pay-status` сам решает, можно ли её взять). --}}
+                @if (! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && ! $payStep && auth()->user()?->canManageCrm())
+                    {{-- Деньги пришли мимо менеджера — строкой под счётом, как «+ Интерес» и «Отдать ещё»; на шаге оплаты — в самом шаге. --}}
+                    <div data-controller="sheet" class="contents">
+                        <button type="button" class="row w-full text-left text-accent-text" data-action="sheet#open"><x-ui.row-icon name="check" tone="accent" size="s"/><span class="min-w-0 flex-1">Деньги пришли</span></button>
+                        <x-ui.sheet id="paid-{{ $i->id }}" :title="'Оплата по счёту '.$i->label()"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" sheet/></x-ui.sheet>
+                    </div>
+                @endif
                 @if (! $i->isOwed() && ! $i->openLink())<x-billing.pay-status :invoice="$i" staff/>@endif
                 @foreach ($i->claims as $p)
                     <x-money.payment :payment="$p" :slip="'/work/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'" staff>
