@@ -14,12 +14,16 @@
     $stages = collect($stages)->filter()->map(fn ($id) => (int) $id)->all();
     $href = $url instanceof Closure ? $url : fn ($m) => $url.(str_contains($url, '?') ? '&' : '?').'at='.$m->id;
     $prev = null;
+    // Письма разных ящиков в одной ленте (предложение: offer@ принимает, deal@ отвечает) — у каждого метка ящика
+    // (13.10.2026, владелец: «письма только с offer и только с deal»; в «Почте» ещё переключатель ящика).
+    $boxes = $letters->pluck('account_id')->unique()->count() > 1 ? once(fn () => \App\Mail\Account::query()->pluck('email', 'id')) : null;
 @endphp
 <div {{ $attributes->merge(['class' => 'chain rail']) }}>
     @foreach ($letters as $m)
         @continue(isset($continued[$m->id]))
         <x-mail.letter-row :message="$m" :url="$href($m)" :waits="in_array($m->id, $asks, true)"
-            :stage="in_array($m->id, $stages, true)" :repeat="$prev?->from_email === $m->from_email" :files="$files[$m->id] ?? 0"/>
+            :stage="in_array($m->id, $stages, true)" :repeat="$prev?->from_email === $m->from_email" :files="$files[$m->id] ?? 0"
+            :mailbox="$boxes && isset($boxes[$m->account_id]) ? \Illuminate\Support\Str::before($boxes[$m->account_id], '@').'@' : null"/>
         @php $prev = $m; @endphp
     @endforeach
 </div>

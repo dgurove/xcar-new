@@ -19,7 +19,21 @@
         <x-slot:actions class="!ml-auto !w-auto">@include('admin.mail.actions')</x-slot:actions>
     @endif
 
-    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sort="$sort" :pills="$forced ? [] : \App\Mail\Boxes::BOXES" :pill="$forced ? '' : $box" pill-param="box" pill-home="all" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
+    {{-- Ящик (13.10.2026, владелец: «письма только с offer и только с deal»): сегмент над пилюлями, выбран — дела и письма
+         в них только этого ящика. offer@ только принимает — «Отправленных» у него нет. --}}
+    @php
+        $pills = $forced ? [] : ($mailbox?->reply_account_id ? array_diff_key(\App\Mail\Boxes::BOXES, ['sent' => 1]) : \App\Mail\Boxes::BOXES);
+        $boxUrl = fn (?string $slug) => request()->fullUrlWithQuery(['account' => $slug ?? '', 'page' => null, 'box' => $slug && $mailbox?->slug !== $slug && $box === 'sent' ? null : request()->query('box')]);
+    @endphp
+    @if ($crm && ! $forced && $accounts->count() > 1)
+        <nav class="segment mail-boxes mt-4" aria-label="Ящик">
+            <a href="{{ $boxUrl(null) }}" data-turbo-action="replace" @unless ($mailbox) aria-current="true" @endunless>Все ящики</a>
+            @foreach ($accounts as $account)
+                <a href="{{ $boxUrl($account->slug) }}" data-turbo-action="replace" @if ($mailbox?->is($account)) aria-current="true" @endif>{{ \Illuminate\Support\Str::before($account->email, '@') }}@</a>
+            @endforeach
+        </nav>
+    @endif
+    <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sort="$sort" :pills="$pills" :pill="$forced ? '' : $box" pill-param="box" pill-home="all" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
                   search="Найти письмо" search-target="#threads" :q="$q" :facets="$facets">
         {{-- «Проверить почту» — в ряду кнопок списка справа: ящики забираются тут же, тост — сколько пришло. В строке
              заголовка она на телефоне висела одна, а ряд кнопок справа пустовал. --}}

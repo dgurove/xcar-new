@@ -44,6 +44,7 @@ use App\Media\Console\TuneWatermarks;
 use App\Media\Console\UnmarkPhotos;
 use App\Offers\Console\AutoDraftsCommand;
 use App\Offers\Console\DealAgreementFixCommand;
+use App\Offers\Console\FillFromLettersCommand;
 use App\Offers\Console\MigtorgArchive;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
@@ -90,6 +91,7 @@ return Application::configure(basePath: dirname(__DIR__))
         CreateUser::class,
         TickOffers::class,
         AutoDraftsCommand::class,
+        FillFromLettersCommand::class,
         PruneEmptyDrafts::class,
         MigtorgSync::class,
         MigtorgArchive::class,

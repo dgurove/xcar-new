@@ -3943,3 +3943,10 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   @keyframes proposal-fold { to { height: 0; padding-block: 0; margin-block: 0; opacity: 0; } }
   @keyframes proposal-drop { to { opacity: 0; translate: 0 10px; scale: .98; } }
 }
+
+/* Ящики почты CRM (13.10.2026): сегмент «Все ящики | offer@ | deal@» над пилюлями — на телефоне во всю ширину, на ПК по
+   содержимому; у письма в ленте, где письма разных ящиков, — метка ящика серым перед датой. */
+@layer components {
+  .mail-boxes { @apply w-full sm:inline-grid sm:w-auto; }
+  .letter-box { color: var(--color-ink-dim); font-size: var(--text-xs); }
+}

@@ -3,8 +3,8 @@
      датой — тег значимого смысла (`Intent::marked`, у нашего письма тега нет) или «Ждёт ответа». На ПК одна строка, на телефоне две.
      repeat — то же письмо от того же адреса подряд: точка вместо кружка и без имени, как сообщения подряд в мессенджере.
      Нажатие — окно всей цепочки на этом письме. files — файлы вместе с «ч.2». Пересылка сотрудника с примечанием над ней —
-     «Андрей: …» перед словами вендора. --}}
-@props(['message', 'url', 'waits' => false, 'stage' => false, 'repeat' => false, 'files' => 0])
+     «Андрей: …» перед словами вендора. mailbox — в какой ящик пришло (`offer@`), когда в ленте письма разных ящиков. --}}
+@props(['message', 'url', 'waits' => false, 'stage' => false, 'repeat' => false, 'files' => 0, 'mailbox' => null])
 @php
     use App\Mail\Chains\NodeTitle;
     use App\Mail\Extraction\Intent;
@@ -30,7 +30,7 @@
             <span class="letter-title">@if ($note)<span class="text-ink">{{ NodeTitle::forwarder($m) }}: {{ preg_replace('/\s+/u', ' ', $note) }}</span> @endif{{ $words }}</span>
             @if ($files)<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files }}</span>@endif
             {{-- Подпись и дата — одним куском через пробел. --}}
-            <span class="letter-meta">@if ($unsent)<span class="letter-tag tag {{ $unsent === \App\Mail\SendState::Failed ? 'tag-danger' : 'tag-urgent' }}">{{ $unsent->label() }}</span> @elseif ($waits)<span class="letter-tag tag tag-urgent">Ждёт ответа</span> @elseif ($tag)<span class="letter-tag tag {{ $intent === Intent::Intake ? 'tag-accent' : '' }}">{{ $tag }}</span> @endif<span class="letter-when nums">{{ $when }}</span></span>
+            <span class="letter-meta">@if ($unsent)<span class="letter-tag tag {{ $unsent === \App\Mail\SendState::Failed ? 'tag-danger' : 'tag-urgent' }}">{{ $unsent->label() }}</span> @elseif ($waits)<span class="letter-tag tag tag-urgent">Ждёт ответа</span> @elseif ($tag)<span class="letter-tag tag {{ $intent === Intent::Intake ? 'tag-accent' : '' }}">{{ $tag }}</span> @endif @if ($mailbox)<span class="letter-box">{{ $mailbox }}</span> @endif<span class="letter-when nums">{{ $when }}</span></span>
         </button>
     </div>
 </div>

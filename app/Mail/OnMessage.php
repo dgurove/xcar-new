@@ -12,7 +12,7 @@ use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Reading\ReadLetter;
-use App\Offers\Actions\TakeContactFromLetter;
+use App\Offers\Actions\FillFromLetter;
 use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
 use App\Offers\Offer;
@@ -27,6 +27,8 @@ use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use Illuminate\Events\Dispatcher;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /** Письмо разобрано: привязать к офферу, иначе — вычитать кандидата; и сказать админке. */
 final class OnMessage
@@ -62,9 +64,13 @@ final class OnMessage
         if ($e->quiet) {
             return; // история ящика: в базу легло, людей не дёргаем
         }
-        // Письмо по заведённому предложению — с кем и где забирать ТС, если этого ещё не знали.
+        // Письмо по заведённому предложению дописывает пустое: контакт, у черновика — машину, цену, документы.
         if ($offer = $linked instanceof Offer ? $linked : $thread?->offer) {
-            app(TakeContactFromLetter::class)($offer, $message);
+            try {
+                app(FillFromLetter::class)($offer, $message);
+            } catch (Throwable $e) {
+                Log::warning('fill-from-letter: '.$e->getMessage(), ['offer' => $offer->id, 'message' => $message->id]);
+            }
             // Ответ страховой по идущей сделке на ящик, который пишет (deal@): менеджеру и шагу сделки.
             $deal = $offer->deal;
             if ($deal && $message->account->scope === Scope::Offers && $message->account->reply_account_id === null

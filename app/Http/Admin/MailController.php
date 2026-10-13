@@ -124,11 +124,15 @@ class MailController
             Facet::toggle('unread', 'Непрочитанные', fn ($t) => $t->where('unread_count', '>', 0)),
             Facet::toggle('files', 'С файлами', fn ($t) => $t->where('has_attachments', true)),
         )->countBy('count(distinct '.Boxes::group($this->scope).')');
-        ListPrefs::sync($request, $list, keep: $facets->keys(), view: false);
+        ListPrefs::sync($request, $list, keep: [...$facets->keys(), 'account'], view: false);
         $park = $this->scope === Scope::Park;
+        // Ящик (13.10.2026, владелец: «письма только с offer и только с deal»): выбран — и дела, и письма в их карточках
+        // только этого ящика. У парковки ящик один, в «Из писем» выборка вшита — переключателя нет.
+        $mailbox = ! $park && ! $forced && $accounts->count() > 1 ? $accounts->firstWhere('slug', (string) $request->query('account')) : null;
+        $boxAccounts = $mailbox ? collect([$mailbox]) : $accounts;
         $with = ['account', 'vendor', 'offer.brand', 'offer.model', 'offer.vendor', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
 
-        $all = Thread::query()->whereIn('account_id', $accounts->pluck('id'))->where('messages_count', '>', 0);
+        $all = Thread::query()->whereIn('account_id', $boxAccounts->pluck('id'))->where('messages_count', '>', 0);
         // Ветки пилюли: по ним выбираются дела. Письма дела потом берутся все — действие требуется от дела,
         // а не от одного письма, поэтому секция не должна разваливаться под фильтром.
         $pick = fn (string $box) => match ($box) {
@@ -192,13 +196,13 @@ class MailController
         // Машина или предложение — все их ветки одним запросом, цепочка — её письма, письмо без них — его ветка.
         $own = $park ? 'vehicle_id' : 'offer_id';
         $owners = $sections->whereIn('kind', ['v', 'o'])->pluck('id')->map(fn ($id) => (int) $id)->all();
-        $byOwner = $owners ? Thread::whereIn('account_id', $accounts->pluck('id'))->whereIn($own, $owners)
+        $byOwner = $owners ? Thread::whereIn('account_id', $boxAccounts->pluck('id'))->whereIn($own, $owners)
             ->with(['messages.attachments', 'messages.author'])->get()->groupBy($own) : collect();
         (new EloquentCollection($sections->pluck('candidate')->filter()->unique('id')->values()->all()))->load(['messages.attachments', 'messages.author']);
         (new EloquentCollection($sections->where('kind', 't')->flatMap(fn ($s) => $s['threads'])->all()))->load(['messages.attachments', 'messages.author']);
         $sections = $sections->map(fn ($s) => $s + ['letters' => match (true) {
             in_array($s['kind'], ['v', 'o'], true) => $byOwner->get((int) $s['id'], collect())->flatMap->messages,
-            (bool) $s['candidate'] => $s['candidate']->messages,
+            (bool) $s['candidate'] => $mailbox ? $s['candidate']->messages->where('account_id', $mailbox->id) : $s['candidate']->messages,
             default => $s['threads']->flatMap->messages,
         }]);
         $threads = $paginator;
@@ -216,6 +220,8 @@ class MailController
             'crm' => ! $park,
             'box' => $box,
             'forced' => $forced,
+            // Метка ящика у письма — когда на экране письма разных ящиков.
+            'mailboxMarks' => ! $mailbox && $accounts->count() > 1,
         ];
         if ($request->header('X-List')) {
             return response()->view('admin.mail.list', $data);
@@ -225,13 +231,13 @@ class MailController
         // а «Ждут ответа» — все ветки, и числа были несравнимы).
         $counts = $forced ? [] : [
             'attention' => (int) $facets->applyTo($pick('attention'))->selectRaw('count(distinct '.$group.') as n')->value('n'),
-            // В «Прочем» дело — само письмо: тождества у него нет, собирать нечего.
-            'other' => $facets->applyTo($pick('other'))->count(),
+            'other' => (int) $facets->applyTo($pick('other'))->selectRaw('count(distinct '.$group.') as n')->value('n'),
         ];
 
         return view('admin.mail.index', $data + [
             'sort' => $sort,
             'accounts' => $accounts,
+            'mailbox' => $mailbox,
             'counts' => array_filter($counts),
             // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
             'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window' : null,

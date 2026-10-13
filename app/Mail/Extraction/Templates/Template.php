@@ -296,7 +296,8 @@ abstract class Template
 
     protected function location(string $text): ?string
     {
-        if (! preg_match('/Местонахождение\s*:?\s*(.+)/ui', $text, $m)) {
+        // «Место расположения Иркутск» — так пишет Т-Страхование (13.10.2026).
+        if (! preg_match('/(?:Местонахождение|Место\s+(?:расположения|нахождения))\s*:?\s*(.+)/ui', $text, $m)) {
             return null;
         }
         $value = rtrim(trim(trim((string) preg_replace('/\s+/u', ' ', $m[1])), "*: \t\n\r\0\x0B"), ' .;,');
