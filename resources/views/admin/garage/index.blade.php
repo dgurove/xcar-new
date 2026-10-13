@@ -21,7 +21,7 @@
                     <th class="grow">Марка, модель</th>
                     <th class="hidden sm:table-cell">Вендор, № убытка</th>
                     <th class="num hidden xl:table-cell col-detail-hide">В гараже с</th>
-                    <th class="num hidden xl:table-cell col-detail-hide">Отдали за</th>
+                    <th class="num hidden sm:table-cell">Цена гаража</th>
                     <th class="num hidden sm:table-cell col-detail-hide">Расходы</th>
                     <th class="num hidden lg:table-cell col-detail-hide">Цена продажи</th>
                     <x-ui.th :sort="$sort" key="amount" class="num">Сумма</x-ui.th>

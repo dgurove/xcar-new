@@ -90,25 +90,42 @@ class Car extends Model
         return round($costs->when($payer, fn ($c) => $c->where('payer', $payer))->sum('amount'), 2);
     }
 
-    /**
-     * Во что машина нам встала: отдали за (закупочная). На сайте закупочной нет ни у кого (08.10.2026, владелец: «там должна
-     * быть заявленная»), там вместо неё — заявленная предложения.
-     */
-    public function base(bool $declared = false): ?int
+    /** Во что машина нам встала: отдали за (закупочная), пока платили мы; платил менеджер — строкой расхода `Cost::SUPPLIER`. */
+    public function base(): ?int
     {
-        return $this->cost === null || ! $declared ? $this->cost : ($this->offer->declaredPrice() ?? $this->cost);
+        return $this->cost;
     }
 
-    /** Вложено в машину: отдали за (на сайте — заявленная) плюс все расходы. */
-    public function invested(bool $declared = false): float
+    /**
+     * Цена гаража — закупочная, по которой машина ушла в гараж (13.10.2026, владелец: «должно быть видно» — менеджеру и
+     * админу на сайте и в CRM). Отдали мы — `cost`, иначе — сделки (платит менеджер, Совкомбанк). Только для показа:
+     * в расклад она входит через `base()` или строку оплаты поставщику.
+     */
+    public function price(): ?int
     {
-        return round((float) $this->base($declared) + $this->spent(), 2);
+        $price = $this->cost ?? $this->deal?->cost;
+
+        return $price ? (int) $price : null;
+    }
+
+    /** Расходы рядом с ценой гаража — без строки «Оплата поставщику»: это та же цена, второй раз её не пишем. */
+    public function extraSpent(?Payer $payer = null): float
+    {
+        $costs = $this->relationLoaded('costs') ? $this->costs : $this->costs()->get();
+
+        return round($costs->reject(fn ($c) => $c->isSupplier())->when($payer, fn ($c) => $c->where('payer', $payer))->sum('amount'), 2);
+    }
+
+    /** Вложено в машину: отдали за плюс все расходы. */
+    public function invested(): float
+    {
+        return round((float) $this->base() + $this->spent(), 2);
     }
 
     /** Прибыль: цена продажи минус вложенное; не продана — null. */
-    public function profit(bool $declared = false): ?float
+    public function profit(): ?float
     {
-        return $this->sold_price === null ? null : round($this->sold_price - $this->invested($declared), 2);
+        return $this->sold_price === null ? null : round($this->sold_price - $this->invested(), 2);
     }
 
     /** Сколько дней машина в гараже; проданная — по день продажи. */

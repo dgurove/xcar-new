@@ -1,17 +1,19 @@
-{{-- Деньги машины одной плашкой. Сверху главное число этапа: до продажи — сколько вложено (сотруднику) или
-     сколько потрачено (менеджеру: закупочной на сайте нет, «отдали за» и «вложено» он не видит), после продажи —
-     прибыль (нам) или цена (ему), со счётом — сколько осталось отдать или ждём от покупателя, затем выплата
-     менеджеру, после расчёта — цена продажи. Ниже строки, из которых оно сложилось. Вознаграждение менеджер
-     видит только со счётом, как у сделок. --}}
+{{-- Деньги машины одной плашкой. Сверху главное число этапа: до продажи — цена гаража (13.10.2026, владелец: её видят
+     все — менеджер, админ на сайте и в CRM; `Car::price`), после продажи — прибыль (нам) или цена (ему), со счётом —
+     сколько осталось отдать или ждём от покупателя, затем выплата менеджеру, после расчёта — цена продажи. Ниже строки,
+     из которых оно сложилось: расходы без оплаты поставщику (она и есть цена гаража), у сотрудника — «Вложено».
+     Вознаграждение менеджер видит только со счётом, как у сделок. --}}
 @php
     use App\Support\Money;
     $unpaid = $current && $current->remaining() > 0;
     $claimed = $unpaid ? $current->claimed() : 0;
     $buyerPays = $car->invoice_to === 'buyer';
-    // На сайте закупочной нет и у сотрудника: вместо «Отдали за» — заявленная (`Car::base`, `Settlement` с `declared`).
-    $baseLabel = \App\Support\Surface::current() === \App\Support\Surface::Site ? 'Заявленная' : 'Отдали за';
+    $price = $car->price();
+    $mine = $car->extraSpent(\App\Garage\Payer::Manager);
+    $ours = $car->extraSpent(\App\Garage\Payer::Xcar);
     [$label, $value, $tone] = match (true) {
-        ! $car->isSold() => $staff ? [$car->spent() > 0 || $car->cost === null ? 'Вложено в ТС' : $baseLabel, $s['invested'], ''] : ['Расходы', $s['manager_costs'] + $s['our_costs'], ''],
+        ! $car->isSold() && $price => ['Цена гаража', $price, ''],
+        ! $car->isSold() => [$staff ? 'Вложено в ТС' : 'Расходы', $mine + $ours, ''],
         $unpaid && $current->isOwed() => [$staff ? 'Должны менеджеру' : 'Вам к выплате', $current->remaining(), 'text-accent-text'],
         $unpaid && $buyerPays => ['Покупатель платит', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
         $unpaid => [$staff ? 'Менеджер должен нам' : 'Отдать нам', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
@@ -32,24 +34,27 @@
         <x-billing.pay-status compact :invoice="$current" :staff="$staff" :create="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'" :cancel="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'"/>
     @endif
 
+    {{-- После продажи — за сколько взяли и за сколько продали рядом. --}}
+    @if ($car->isSold() && $price)
+        <div class="{{ $row }}"><span>Цена гаража</span><span class="nums">{{ Money::rub($price) }}</span></div>
+    @endif
     @if ($car->isSold() && $label !== 'Продана за')
         <div class="{{ $row }}"><span>Продана за</span><span class="nums">{{ Money::rub($car->sold_price) }}</span></div>
     @endif
-    {{-- Расходов нет — «Вложено» и есть «отдали за»: строки повторили бы главное число. --}}
-    @if ($staff && $car->cost !== null && ! $car->isSold() && $car->spent() > 0)
-        <div class="{{ $row }}"><span>{{ $baseLabel }}</span><span class="nums">{{ Money::rub($s['base']) }}</span></div>
-    @endif
     @if (! $car->isSold())
-        {{-- Строки складываются в главное число: платили мы — отдельной строкой, и менеджеру тоже. У менеджера
-             главное число и есть расходы — без наших строка повторила бы его. --}}
-        @if ($staff ? $s['manager_costs'] > 0 : $s['our_costs'] > 0)
-            <div class="{{ $row }}"><span>{{ $staff ? 'Расходы менеджера' : 'Ваши расходы' }}</span><span class="nums">{{ Money::exact($s['manager_costs']) }}</span></div>
+        {{-- Под ценой — расходы: платил менеджер и платили мы отдельными строками. Без цены главное число и есть
+             расходы — строки повторили бы его, остаётся только разбивка у сотрудника. --}}
+        @if ($price || $ours > 0)
+            @if ($mine > 0)<div class="{{ $row }}"><span>{{ $staff ? 'Расходы менеджера' : 'Ваши расходы' }}</span><span class="nums">{{ Money::exact($mine) }}</span></div>@endif
+            @if ($ours > 0)<div class="{{ $row }}"><span>{{ $staff ? 'Наши расходы' : 'Платили мы' }}</span><span class="nums">{{ Money::exact($ours) }}</span></div>@endif
         @endif
-        @if ($s['our_costs'] > 0)<div class="{{ $row }}"><span>{{ $staff ? 'Наши расходы' : 'Платили мы' }}</span><span class="nums">{{ Money::exact($s['our_costs']) }}</span></div>@endif
+        @if ($staff && $price && $mine + $ours > 0)
+            <div class="{{ $row }}"><span>Вложено</span><span class="nums">{{ Money::exact($price + $mine + $ours) }}</span></div>
+        @endif
     @elseif ($staff)
         <div class="{{ $row }}"><span>Вложено</span><span class="nums">{{ Money::exact($s['invested']) }}</span></div>
     @else
-        <div class="{{ $row }}"><span>Ваши расходы</span><span class="nums">{{ Money::exact($s['manager_costs']) }}</span></div>
+        @if ($mine > 0)<div class="{{ $row }}"><span>Ваши расходы</span><span class="nums">{{ Money::exact($mine) }}</span></div>@endif
     @endif
     @if ($car->isSold() && $invoice && $car->manager)
         <div class="{{ $row }}"><span>{{ $staff ? 'Вознаграждение менеджеру' : 'Ваше вознаграждение' }}</span><span class="nums">{{ Money::rub($s['fee']) }}</span></div>

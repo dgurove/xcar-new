@@ -10,8 +10,8 @@ use App\Users\User;
  * Машина гаража одной строкой — для плитки, строки и таблицы на сайте и в CRM (10.10.2026: раньше это считали три
  * шаблона каждый по-своему). Этап цветным словом (ждёт машину — словом вывоза, ждут ответа менеджера — «ваш ход»),
  * когда (дни на этапе, у проданной — с какого числа, у рассчитанной — дата) и главное число этапа с подписью.
- * Деньги на сайте и в CRM разные: на сайте закупочной нет ни у кого (вложено — от заявленной), менеджеру — его
- * расходы; в CRM — от закупочной, у ждущей — за сколько отдали страховой.
+ * До продажи главное число везде — цена гаража (`Car::price`, 13.10.2026: менеджеру, админу на сайте и в CRM), после —
+ * итог продажи: к выплате, отдать нам, продана за.
  */
 final class CarLine
 {
@@ -79,8 +79,7 @@ final class CarLine
     private static function siteMoney(Car $car, $current, bool $staff): array
     {
         return match ($car->state) {
-            CarState::Waiting => [null, null],
-            CarState::Repair, CarState::Ready, CarState::Selling => [$staff ? $car->invested(declared: true) : $car->spent(), $staff ? 'вложено' : 'расходы'],
+            CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling => [$car->price(), 'цена гаража'],
             CarState::Sold => $current && $current->remaining() > 0
                 ? [$current->remaining(), $current->isOwed() ? ($staff ? 'отдаём' : 'к выплате') : ($car->invoice_to === 'buyer' ? 'платит покупатель' : ($staff ? 'отдаёт нам' : 'отдать нам'))]
                 : [$car->sold_price, $staff ? 'счёта нет' : 'продана за'],
@@ -91,13 +90,11 @@ final class CarLine
     private static function crmMoney(Car $car, $current): array
     {
         return match ($car->state) {
-            // Совкомбанк в гараж — без оплаты (`Car::settledByDeal`): платить поставщику некому, числа нет.
-            CarState::Waiting => $car->settledByDeal() ? [null, null] : [$car->cost ?? $car->deal?->cost, $car->cost === null ? 'платит менеджер' : 'отдали за'],
+            CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling => [$car->price(), 'цена гаража'],
             CarState::Sold => $current && $current->remaining() > 0
                 ? [$current->remaining(), $current->isOwed() ? 'отдаём' : ($car->invoice_to === 'buyer' ? 'платит покупатель' : 'отдаёт нам')]
                 : [$car->sold_price, $car->invoice ? 'продана за' : 'счёта нет'],
-            CarState::Settled => [$car->sold_price, 'продана за'],
-            default => [$car->invested(), 'вложено'],
+            default => [$car->sold_price, 'продана за'],
         };
     }
 }

@@ -63,15 +63,15 @@ final class GarageView
 
         return [
             'car' => $car, 'offer' => $offer, 'n' => $n, 'user' => $user, 'staff' => $staff,
-            's' => Settlement::of($car, declared: Surface::current() === Surface::Site), 'invoice' => $invoice, 'current' => $current, 'unpaid' => $unpaid,
+            's' => Settlement::of($car), 'invoice' => $invoice, 'current' => $current, 'unpaid' => $unpaid,
             'canAdd' => $canAdd, 'prep' => $prep, 'sale' => $sale, 'buttons' => $buttons, 'more' => $more, 'moreSale' => $moreSale, 'morePrep' => $morePrep,
             // Куда сотрудник может вернуть машину кнопкой в пути: пройденные этапы работы с ней.
             // «Готова» после закрытой сделки — та же продажа (`MoveCar`), туда не возвращают.
             'back' => $staff && $car->state->isWorking() && ! $frozen ? array_values(array_filter(CarState::cases(), fn (CarState $s) => $s->isWorking() && $s->order() < $car->state->order()
                 && ($s !== CarState::Ready || $car->papersPending()))) : [],
-            // Деньги плашкой — сотруднику всегда (вложено, прибыль), менеджеру — с продажи: до неё его расходы — итогом списка.
-            // Пока считать нечего (Совкомбанк без оплаты, расходов нет) — плашки нет: «Вложено 0 ₽» крупно ничего не говорит.
-            'money' => $car->isSold() || ($staff && ($car->base(declared: true) || $car->spent() > 0)),
+            // Деньги плашкой — всем, как только есть цена гаража (13.10.2026, владелец: «должно быть видно»): до продажи
+            // крупно она, после — итог продажи. Цены нет и считать нечего — плашки нет: «0 ₽» крупно ничего не говорит.
+            'money' => $car->isSold() || $car->price() || ($staff && $car->spent() > 0),
             'step' => $step,
             // Для пути: на каком шаге маршрута сделка и ждут ли ответа менеджера.
             'asks' => ! $staff && ($step['requirement'] ?? null),
