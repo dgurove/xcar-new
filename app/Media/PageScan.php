@@ -48,8 +48,11 @@ final class PageScan
     /** Доля площади листа, ниже которой вырезанное на фотографию не тянет. */
     private const MIN_AREA_SHARE = 0.10;
 
-    /** Сторона вырезанного снимка в пикселях. */
-    private const MIN_SIDE = 400;
+    /**
+     * Сторона вырезанного снимка в пикселях. Было 400 — 12.10.2026 Мигторг стал отдавать листы 543×768, горизонтальный
+     * снимок на них 503×378 и лист ложился целиком; от подписи и логотипа защищают доля листа, пропорции и детали.
+     */
+    private const MIN_SIDE = 200;
 
     /** Границы соотношения сторон: за ними это полоска, а не снимок. */
     private const MIN_RATIO = 0.3;
@@ -306,14 +309,64 @@ final class PageScan
         $photos = [];
 
         foreach ($bands as $band) {
-            $photo = $this->cutBand($trimmed, $probe, $band, $scale);
+            $columns = $this->inkProfile($probe, vertical: false, from: $band['from'], to: $band['to']);
 
-            if ($photo !== null) {
-                $photos[] = $photo;
+            foreach ($this->columns($columns) as $span) {
+                $photo = $this->cutBand($trimmed, $band, $span, $scale);
+
+                if ($photo !== null) {
+                    $photos[] = $photo;
+                }
             }
         }
 
         return $photos;
+    }
+
+    /**
+     * Снимки полосы по горизонтали.
+     *
+     * «Фототаблица» эксперта ставит по два снимка в ряд (12.10.2026, лист 1131×1600): между ними колонки чистой бумаги
+     * во всю высоту полосы. У одного снимка такой колонки не бывает — режем только по ней, и только когда каждая часть
+     * не уже доли полосы; иначе полоса — один снимок от крайнего содержимого до крайнего.
+     *
+     * @param  list<int>  $profile
+     * @return list<array{from: int, to: int}>
+     */
+    private function columns(array $profile): array
+    {
+        $span = $this->span($profile);
+
+        if ($span === null) {
+            return [];
+        }
+
+        $gap = max(3, (int) ceil(count($profile) * 0.01));
+        $minWidth = (int) ceil(count($profile) * self::MIN_BAND_SHARE);
+        $parts = [];
+        [$start, $blank] = [$span['from'], 0];
+
+        for ($i = $span['from']; $i <= $span['to']; $i++) {
+            if ($profile[$i] > 1) {
+                if ($blank >= $gap) {
+                    $parts[] = ['from' => $start, 'to' => $i - $blank - 1];
+                    $start = $i;
+                }
+                $blank = 0;
+
+                continue;
+            }
+            $blank++;
+        }
+        $parts[] = ['from' => $start, 'to' => $span['to']];
+
+        foreach ($parts as $part) {
+            if ($part['to'] - $part['from'] + 1 < $minWidth) {
+                return [$span];
+            }
+        }
+
+        return $parts;
     }
 
     /**
@@ -323,16 +376,10 @@ final class PageScan
      * масштаб и поджимаются внутрь: на краю остаётся рамка и ореол JPEG.
      *
      * @param  array{from: int, to: int}  $band
+     * @param  array{from: int, to: int}  $span
      */
-    private function cutBand(GdImage $source, GdImage $probe, array $band, float $scale): ?string
+    private function cutBand(GdImage $source, array $band, array $span, float $scale): ?string
     {
-        $columns = $this->inkProfile($probe, vertical: false, from: $band['from'], to: $band['to']);
-        $span = $this->span($columns);
-
-        if ($span === null) {
-            return null;
-        }
-
         $rect = [
             'x' => (int) round($span['from'] * $scale) + self::INSET,
             'y' => (int) round($band['from'] * $scale) + self::INSET,
