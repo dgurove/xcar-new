@@ -1,10 +1,10 @@
 {{-- Строка таблицы гаража на сайте (10.10.2026): название в два этажа — этап цветным словом, когда и чья (`CarLine`, у
      вывоза — слово вывоза и дни). На телефоне справа одно главное число этапа с подписью; от 640 вместо него — столбцы,
-     каждый своё: «Закупочная», расходы (без оплаты поставщику — она и есть цена), «Цена продажи» с тем, что по ней с
-     деньгами («отдать нам 359 500»); шире — «В гараже с», сотруднику ещё «Менеджер»; подробная показывает их и на телефоне. Нажатие — страница машины или вывоза
+     каждый своё: «Закупочная», расходы (без оплаты поставщику — она и есть цена), «Цена продажи» — строка в одну линию,
+     что с деньгами по продаже — на странице машины; шире — «В гараже с», сотруднику ещё «Менеджер»; подробная показывает их и на телефоне. Нажатие — страница машины или вывоза
      (`row-go`: карточки рядом у гаража нет). --}}
 @props(['offer', 'href', 'word', 'tone' => 'text-ink-muted', 'when' => null, 'value' => null, 'caption' => null, 'who' => null, 'car' => null, 'staff' => false])
-@php use App\Garage\CarLine; use App\Support\Money; $spent = $car?->extraSpent() ?? 0; $price = $car?->price(); $note = $car ? CarLine::for($car, auth()->user())->saleNote($car->sold_price) : null; @endphp
+@php use App\Support\Money; $spent = $car?->extraSpent() ?? 0; $price = $car?->price(); @endphp
 <tr id="garage-{{ $offer->number }}">
     <td class="grow">
         <a href="{{ $href }}" class="row-link"><span class="cell-title">{{ $offer->titleWithYear() }}</span></a>
@@ -14,6 +14,6 @@
     <td class="num nums cell-dim hidden lg:table-cell col-detail-hide">{{ $car?->taken_at?->translatedFormat('j M') }}</td>
     <td class="num nums hidden sm:table-cell">@if ($price){{ Money::exact($price) }}@endif</td>
     <td class="num nums hidden sm:table-cell">@if ($spent > 0){{ Money::exact($spent) }}@endif</td>
-    <td class="num nums hidden sm:table-cell">@if ($car?->sold_price){{ Money::exact($car->sold_price) }}@endif @if ($note)<span class="cell-sub">{{ $note }}</span>@endif</td>
+    <td class="num nums hidden sm:table-cell">@if ($car?->sold_price){{ Money::exact($car->sold_price) }}@endif</td>
     <td class="num nums sm:hidden">@if ($caption){{ Money::exact($value) }}<span class="cell-sub">{{ $caption }}</span>@endif</td>
 </tr>

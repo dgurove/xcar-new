@@ -60,19 +60,6 @@ final class CarLine
         );
     }
 
-    /**
-     * Что с деньгами по продаже — строкой под ценой продажи в таблицах, где у неё свой столбец: «отдаёт нам 359 500»,
-     * «счёта нет». До продажи и у закрытого расчёта — ничего: закупочная и «продана за» стоят своими столбцами.
-     */
-    public function saleNote(?float $soldPrice): ?string
-    {
-        if ($this->caption === null || in_array($this->caption, ['закупочная', 'продана за'], true)) {
-            return null;
-        }
-
-        return (float) $this->value === (float) $soldPrice ? $this->caption : $this->caption.' '.\App\Support\Money::nums($this->value);
-    }
-
     /** «3 дня»: число и слово не разрываются переносом. */
     public static function days(int $d): string
     {

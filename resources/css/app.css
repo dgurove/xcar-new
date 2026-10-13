@@ -1191,6 +1191,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (min-width: 640px) { .table tbody td { vertical-align: baseline; } }
   .table th:first-child, .table td:first-child { padding-left: .75rem; }
   .table th:last-child, .table td:last-child { padding-right: .75rem; }
+  /* Последний столбец только для телефона (`sm:hidden`, «Сумма» гаража) — на ПК край держит предпоследний. */
+  @media (min-width: 640px) { .table :is(th, td):has(+ .sm\:hidden:last-child) { padding-right: .75rem; } }
   .table .num { @apply text-right; width: 1%; padding-left: .625rem; }
   .table td.cell-dim { font-size: var(--text-sm); color: var(--color-ink-muted); }
   /* Между столбцами на ПК — ровный шаг 1rem, у чисел чуть шире: они прижаты вправо и иначе липнут к соседу. */
@@ -1617,6 +1619,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Столбец «Вендор, № убытка»: логотип с именем и номер в одну строку. Логотип перед названием ТС — только пока
      этого столбца нет (краткая таблица телефона). */
   .vendor-ref { display: inline-flex; align-items: baseline; gap: .5em; min-width: 0; max-width: 100%; }
+  /* Один логотип без номера — опорной линии текста нет, и коробка вставала выше строки: по середине. */
+  .vendor-ref:has(> .vendor-tip:only-child) { vertical-align: middle; }
   /* Логотип в кнопке подсказки — по центру строки номера: по базовой линии кнопка-flex садилась низом на линию букв, и
      логотип торчал вверх над номером (10.10.2026, владелец: «логотип какой-то поехавший»). */
   .vendor-ref > .vendor-tip, .ref-line > .vendor-tip, .vincode > svg, .place > svg, .status-cell::before { align-self: center; }
