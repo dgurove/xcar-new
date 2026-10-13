@@ -2,8 +2,8 @@
 
 namespace App\Offers\Actions;
 
-use App\Media\Jobs\StampPhotos;
 use App\Offers\Estimate;
+use App\Offers\EstimateLock;
 use App\Offers\EstimateState;
 use App\Offers\Events\EstimatesAsked;
 use App\Offers\Offer;
@@ -44,9 +44,8 @@ final class AskEstimates
                 'state' => EstimateState::Asked, 'due_at' => now()->addHours(Estimate::HOURS), 'base_price' => $base,
                 'show_declared' => $declared[$u->id] ?? true,
             ]))->values();
-            if ($created->isNotEmpty() && ! $offer->share_locked) {
-                $offer->forceFill(['share_locked' => true, 'share_locked_by_estimate' => true])->save();
-                StampPhotos::dispatch($offer);
+            if ($created->isNotEmpty()) {
+                EstimateLock::lock($offer);
             }
             if ($created->isNotEmpty()) {
                 $offer->log(OfferEventType::Estimate, $by, array_filter(['do' => 'asked', 'users' => $created->map(fn ($e) => $e->user_id)->all(), 'base' => $base,

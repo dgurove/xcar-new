@@ -3,6 +3,7 @@
 namespace App\Offers\Actions;
 
 use App\Offers\Estimate;
+use App\Offers\EstimateLock;
 use App\Offers\EstimateState;
 use App\Offers\Events\EstimateRejected;
 use App\Offers\OfferEventType;
@@ -20,6 +21,8 @@ final class RejectEstimate
         $amount = $estimate->amount;
         $estimate->update(['state' => EstimateState::Asked, 'rejected_amount' => $amount, 'rejected_at' => now(), 'amount' => null, 'estimated_at' => null]);
         $estimate->offer->log(OfferEventType::Estimate, $by, ['do' => 'rejected', 'user' => $estimate->user_id, 'amount' => $amount]);
+        // Оценивает снова — запрет шеринга и знак возвращаются.
+        EstimateLock::lock($estimate->offer);
         Nav::forgetStaffCounts();
         EstimateRejected::dispatch($estimate, $by);
 

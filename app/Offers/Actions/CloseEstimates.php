@@ -2,8 +2,8 @@
 
 namespace App\Offers\Actions;
 
-use App\Media\Jobs\StampPhotos;
 use App\Offers\Estimate;
+use App\Offers\EstimateLock;
 use App\Offers\EstimateState;
 use App\Offers\Events\EstimatesClosed;
 use App\Offers\Offer;
@@ -32,11 +32,7 @@ final class CloseEstimates
                 $offer->log(OfferEventType::Estimate, $by, ['do' => 'closed', 'users' => $open->pluck('user_id')->all()]);
             }
         }
-        $offer->refresh();
-        if ($offer->share_locked_by_estimate && ! $offer->estimates()->open()->exists()) {
-            $offer->forceFill(['share_locked' => false, 'share_locked_by_estimate' => false])->save();
-            StampPhotos::dispatch($offer);
-        }
+        EstimateLock::release($offer);
         Nav::forgetStaffCounts();
         if ($open->isNotEmpty()) {
             EstimatesClosed::dispatch($offer, $open->pluck('id')->all(), $open->pluck('user_id')->unique()->values()->all());
