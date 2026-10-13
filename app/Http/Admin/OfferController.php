@@ -885,7 +885,7 @@ class OfferController
 
     private function when(Request $request, string $default): string
     {
-        return in_array($when = (string) $request->input('when', $default), Slots::WHEN, true) ? $when : $default;
+        return Slots::when($request->input('when'), $request->input('day'), $default);
     }
 
     /** Тост публикации: номер — уже публичный, у поставленного в слот — когда выйдет. */

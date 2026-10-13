@@ -235,7 +235,7 @@
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
     @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
-    @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/>@endif
+    @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
     @php $deletable = ! $fromMail && $offer->isDeletableBy(auth()->user()); @endphp
     <x-ui.action-bar>
         @if ($fromMail)
@@ -266,6 +266,7 @@
                 <div class="flex flex-col gap-2">
                     @if ($publishItems)
                         <x-offer.publish-items :offer="$offer" button/>
+                        <x-ui.button type="button" block variant="secondary" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="publish-day:open"><x-ui.icon name="calendar" class="size-5"/> Другой день…</x-ui.button>
                         <x-ui.button type="button" block class="btn-fire" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="urgent:open"><x-ui.icon name="fire" fill class="size-5"/> Срочно…</x-ui.button>
                     @endif
                     @if ($resale)

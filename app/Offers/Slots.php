@@ -21,7 +21,34 @@ final class Slots
     /** «Срочно» (12.10.2026): сейчас, всем сразу, громко, со своим сроком приёма (`urgentUntil`). */
     public const URGENT = 'urgent';
 
+    /** «Другой день…» (13.10.2026, владелец: «сегодня, завтра и через несколько дней — там выбор числа»): слот 16:00
+     * выбранного дня. В форме — `when=day` и поле `day`, дальше — `day:2026-10-17` (`when()`). */
+    public const DAY = 'day';
+
     public const WHEN = [self::NOW, self::NEAREST, self::NEXT, self::URGENT];
+
+    /** Выбор из формы: `when` и для «Другой день» — поле `day`; непонятное — `$default`. */
+    public static function when(?string $when, ?string $day, string $default): string
+    {
+        if ($when === self::DAY) {
+            $when = 'day:'.$day;
+        }
+        if ($when && str_starts_with($when, 'day:')) {
+            try {
+                return 'day:'.Carbon::createFromFormat('!Y-m-d', substr($when, 4))->toDateString();
+            } catch (\Throwable) {
+                return $default;
+            }
+        }
+
+        return in_array($when, self::WHEN, true) ? $when : $default;
+    }
+
+    /** День по умолчанию в «Другой день»: следующий за «завтра». */
+    public static function dayDefault(): Carbon
+    {
+        return self::next()->addDay();
+    }
 
     /** Срок приёма срочного: из поля «Приём до», не раньше чем через 30 минут; пусто — через 3 часа, по 5 минут. */
     public static function urgentUntil(?string $input): Carbon
@@ -62,6 +89,13 @@ final class Slots
     /** Время выхода по выбору в CRM; «сейчас» — null. */
     public static function at(string $when, ?Carbon $from = null): ?Carbon
     {
+        // Выбранный день: слот 16:00 этого дня; прошёл — ближайший.
+        if (str_starts_with($when, 'day:')) {
+            $slot = Carbon::parse(substr($when, 4))->setTime(self::hour(), 0);
+
+            return $slot->greaterThan($from ?? now()) ? $slot : self::nearest($from);
+        }
+
         return match ($when) {
             self::NEAREST => self::nearest($from),
             self::NEXT => self::next($from),

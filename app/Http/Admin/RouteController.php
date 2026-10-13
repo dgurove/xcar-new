@@ -35,8 +35,8 @@ class RouteController
     {
         // «Опубликовать» маршрута — с выбором слота, как кнопка редактора: в слот — маршрут догонят часы
         // (`ChangeOfferState` в 16:00 сам найдёт выход в «Приём»), сейчас — шаг как обычно.
-        $when = (string) $request->input('when', Slots::NOW);
-        if ($when !== Slots::NOW && in_array($when, Slots::WHEN, true) && $exit->to?->offer_state === OfferState::Open
+        $when = Slots::when($request->input('when'), $request->input('day'), Slots::NOW);
+        if ($when !== Slots::NOW && $exit->to?->offer_state === OfferState::Open
             && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
             $offer = $schedule($offer, $when, $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
 

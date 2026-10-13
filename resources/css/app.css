@@ -490,7 +490,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .publish-choice:has(input[value="now"]:checked) [data-when="now"],
   .publish-choice:has(input[value="nearest"]:checked) [data-when="nearest"],
   .publish-choice:has(input[value="next"]:checked) [data-when="next"],
-  .publish-choice:has(input[value="urgent"]:checked) [data-when="urgent"] { display: inline; }
+  .publish-choice:has(input[value="urgent"]:checked) [data-when="urgent"],
+  .publish-choice:has(input[value="day"]:checked) [data-when="day"] { display: inline; }
+  .publish-choice .publish-day { display: none; }
+  .publish-choice:has(input[value="day"]:checked) .publish-day { display: block; }
   /* «Срочно» (12.10.2026): поле «Приём до» — только когда выбрано, кнопка — огнём. */
   .btn-fire { background: var(--color-fire); color: #fff; }
   .pill-fire { gap: .25rem; background: var(--color-fire-soft); color: #d93a0b; }

@@ -111,6 +111,7 @@
                                             <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$c['at'] ? 'clock' : 'send'" class="size-5 text-ink-muted"/>{{ $c['at'] ? str_replace(', ', ' в ', \App\Offers\Slots::label($c['at'])) : 'Сейчас' }}</button>
                                         </form>
                                     @endforeach
+                                    <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="publish-day:open"><x-ui.icon name="calendar" class="size-5 text-ink-muted"/>Другой день…</button>
                                     <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="urgent:open"><x-ui.icon name="fire" fill class="size-5 text-fire"/>Срочно…</button>
                                 </div>
                             @endif
@@ -229,7 +230,7 @@
             @endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
             @if ($resale)<x-offer.resale-sheet :offer="$offer"/>@endif
-            @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/>@endif
+            @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
             @if ($askMenu)<x-offer.estimate-ask :offer="$offer" :managers="$managers" :trigger="false"/>@endif
         </x-slot:actions>
         {{-- Письма — сразу под шапкой, над подтверждениями и полями (11.10.2026, владелец: «в окошке очень не хватает писем»;
