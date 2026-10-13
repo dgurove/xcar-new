@@ -613,7 +613,7 @@ class Offer extends Model implements HasMedia
                     $groups = $user->groupIds();
                     $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
                         // Срочное (12.10.2026) — всем покупателям менеджера, и «выбранным» тоже.
-                        ->when(! $user->buyerSeesAll(), fn ($m) => $m->where(fn ($p) => $p->where(fn ($u) => $u->whereNotNull('offers.urgent_at')->where('offers.bids_close_at', '>', now()))
+                        ->when(! $user->buyerSeesAll(), fn ($m) => $m->where(fn ($p) => $p->where(fn ($u) => $u->urgent())
                             ->orWhereHas('showings', fn ($s) => $s->where('manager_id', $user->manager_id)
                                 ->where(fn ($g) => $g->where('user_id', $user->id)->when($groups, fn ($g) => $g->orWhereIn('group_id', $groups))))))
                         ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->manager_id)->where('opens_at', '<=', now())));
@@ -824,7 +824,7 @@ class Offer extends Model implements HasMedia
     public function chatOpenFor(?User $user): bool
     {
         return $user && $user->canChat()
-            && (($this->chat_enabled && $this->state->isPublic() && $this->isVisibleTo($user)) || $this->worksWith($user));
+            && ($this->worksWith($user) || ($this->chat_enabled && $this->state->isPublic() && $this->isVisibleTo($user)));
     }
 
     /** Номер договора лизинга (ДЛ) — у предложений лизинговых вендоров в claim_ref; его видят и менеджеры. */

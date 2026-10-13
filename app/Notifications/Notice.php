@@ -153,6 +153,23 @@ abstract class Notice extends Notification implements ShouldQueue
         return null;
     }
 
+    /**
+     * Уведомление о машине — только тому, кому она видна в момент доставки: очередь шлёт позже, чем уведомление
+     * поставили, и за это время волну могли сдвинуть или машину снять (13.10.2026).
+     */
+    public function shouldSend(object $notifiable, string $channel): bool
+    {
+        $offer = $this->visibleOffer();
+
+        return ! $offer || ! $notifiable instanceof User || $offer->fresh()?->isVisibleTo($notifiable) === true;
+    }
+
+    /** Машина, которую должен видеть получатель; null — уведомление не о машине целиком. */
+    protected function visibleOffer(): ?\App\Offers\Offer
+    {
+        return null;
+    }
+
     /** Предмет сообщений о предложении: ушло от человека (снято, сдвинули волну) — `RetractOfferNotices` их удалит. */
     public static function offerSubject(int $offerId): string
     {

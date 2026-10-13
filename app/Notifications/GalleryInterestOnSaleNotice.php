@@ -57,4 +57,9 @@ final class GalleryInterestOnSaleNotice extends Notice
     {
         return self::offerSubject($this->offer->id);
     }
+
+    protected function visibleOffer(): ?Offer
+    {
+        return $this->offer;
+    }
 }

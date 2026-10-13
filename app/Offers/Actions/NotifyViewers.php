@@ -4,7 +4,6 @@ namespace App\Offers\Actions;
 
 use App\Live\Publisher;
 use App\Live\Topics;
-use App\Notifications\BuyerOffersNotice;
 use App\Notifications\BuyerWaitedNotice;
 use App\Notifications\GalleryInterestOnSaleNotice;
 use App\Notifications\OfferPublishedNotice;
@@ -31,6 +30,10 @@ use Illuminate\Support\Facades\Notification;
  * в продаже» на каждое. Покупателям менеджера (12.10.2026) — вместе с волной менеджера: видящим всё — «Новое
  * предложение» одним на пачку (или «В продаже, вы отмечали интерес»), а «выбранным», что ждали машину из галереи, —
  * менеджеру «ждал, откройте».
+ *
+ * Общих «Новое предложение» нет (13.10.2026, владелец: «их там сотни каждый день, с ума можно сойти»): пишем только о
+ * срочных — всем, и о «Открыты только Вам» — одному (`solo`: в волнах он один, как пачка в каталоге). Адресные —
+ * «ТС из закупки, где вы называли цену» и «вы отмечали интерес» — остаются; покупателям общей рассылки тоже нет.
  */
 final class NotifyViewers
 {
@@ -70,7 +73,9 @@ final class NotifyViewers
         $liked = self::galleryInterest($offer);
         [$ours, $managers] = $managers->partition(fn ($u) => in_array($u->id, $liked, true));
         Notification::send($ours, new GalleryInterestOnSaleNotice($offer));
-        Notification::send($managers, new OfferPublishedNotice($offer));
+        if (self::solo($offer->id)) {
+            Notification::send($managers, new OfferPublishedNotice($offer));
+        }
         $this->buyers([$offer->id => $due], collect([$offer->id => $offer]));
         if ($live) {
             $this->publish->card($offer->number, Topics::CATALOG);
@@ -116,8 +121,10 @@ final class NotifyViewers
             }
             $liked = array_intersect($ids, self::galleryInterest($offer));
             Notification::send($users->only($liked)->values(), new GalleryInterestOnSaleNotice($offer));
-            foreach (array_diff($ids, $liked) as $id) {
-                $fresh[$id][] = $offer;
+            if (self::solo($offer->id)) {
+                foreach (array_diff($ids, $liked) as $id) {
+                    $fresh[$id][] = $offer;
+                }
             }
             $this->publish->card($offer->number, Topics::CATALOG);
         }
@@ -130,8 +137,8 @@ final class NotifyViewers
     }
 
     /**
-     * Покупатели менеджеров, чья волна наступила. Видящий всё — одно уведомление на всё, что открылось ему за раз;
-     * ждал машину из галереи — своё. «Выбранный», что ждал, машину не видит — менеджеру «ждал, откройте».
+     * Покупатели менеджеров, чья волна наступила: срочное — всем, ждал машину из галереи — своё; общего «Новые
+     * предложения» нет (13.10.2026). «Выбранный», что ждал, машину не видит — менеджеру «ждал, откройте».
      *
      * @param  array<int, list<int>>  $opened  offer_id → кому открылось (менеджеры)
      * @param  Collection<int, Offer>  $offers
@@ -146,7 +153,6 @@ final class NotifyViewers
         if ($buyers->isEmpty()) {
             return;
         }
-        $fresh = [];
         foreach ($opened as $offerId => $ids) {
             $offer = $offers->get($offerId);
             if (! $offer) {
@@ -164,18 +170,18 @@ final class NotifyViewers
                     $waited = in_array($buyer->id, $liked, true);
                     if ($buyer->buyerSeesAll() && $waited) {
                         $buyer->notify(new GalleryInterestOnSaleNotice($offer, buyer: true));
-                    } elseif ($buyer->buyerSeesAll()) {
-                        $fresh[$buyer->id][] = $offer->id;
                     } elseif ($waited && ! $offer->isVisibleTo($buyer)) {
                         User::find($managerId)?->notify(new BuyerWaitedNotice($buyer, $offer));
                     }
                 }
             }
         }
-        $all = $buyers->flatten(1)->keyBy('id');
-        foreach ($fresh as $id => $list) {
-            $all->get($id)?->notify(new BuyerOffersNotice($list));
-        }
+    }
+
+    /** «Открыты только Вам»: в волнах показа предложения ровно один человек (`Offer::scopeOnlyFor`). */
+    private static function solo(int $offerId): bool
+    {
+        return OfferViewer::where('offer_id', $offerId)->count() === 1;
     }
 
     /** @return list<int> кто проявлял интерес к машине, пока она была в галерее */

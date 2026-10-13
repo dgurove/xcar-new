@@ -31,11 +31,13 @@ final class SyncViewers
             $open = array_map(fn () => 0, $open);
         }
 
-        DB::transaction(function () use ($offer, $base, $open) {
+        $opens = array_map(fn ($delay) => $base->copy()->addMinutes($delay), $open);
+
+        DB::transaction(function () use ($offer, $open, $opens) {
             // Выпавшим из волны — убрать и анонс (карточку бота, «Новое предложение»).
             $gone = OfferViewer::where('offer_id', $offer->id)->whereNotIn('user_id', array_keys($open) ?: [0])->delete() > 0;
             // Уведомлённым, чья волна теперь позже, — тоже: им писать, когда она наступит.
-            $later = array_keys(array_filter($open, fn ($delay) => $base->copy()->addMinutes($delay)->isFuture()));
+            $later = array_keys(array_filter($opens, fn ($at) => $at->isFuture()));
             if ($later) {
                 $gone = OfferViewer::where('offer_id', $offer->id)->whereIn('user_id', $later)->whereNotNull('notified_at')
                     ->update(['notified_at' => null]) > 0 || $gone;
@@ -45,7 +47,7 @@ final class SyncViewers
             }
             if ($open) {
                 DB::table('offer_viewers')->upsert(
-                    array_map(fn ($id, $delay) => ['offer_id' => $offer->id, 'user_id' => $id, 'opens_at' => $base->copy()->addMinutes($delay)], array_keys($open), $open),
+                    array_map(fn ($id, $at) => ['offer_id' => $offer->id, 'user_id' => $id, 'opens_at' => $at], array_keys($opens), $opens),
                     ['offer_id', 'user_id'], ['opens_at'],
                 );
             }

@@ -53,8 +53,11 @@ final class RetractOfferNotices implements ShouldQueue
         $notices = DatabaseNotification::whereIn('type', self::TYPES)->where('data->offer', $offer->number)->get(['id', 'notifiable_id']);
         $sent = ChatMessage::where('subject', Notice::offerSubject($offer->id))->where('direction', ChatMessage::OUT)->whereNull('deleted_at')->get();
         $chats = $sent->isEmpty() ? collect() : User::whereIn('telegram_chat_id', $sent->pluck('chat_id')->unique())->pluck('id', 'telegram_chat_id');
-        $ids = $seen->pluck('user_id')->merge($notices->pluck('notifiable_id'))->merge($chats->values())->unique();
-        if ($ids->isEmpty()) {
+        // Показанное ботом до 10.10.2026 — без номера сообщения: карточку не убрать, но строка «показано» уходит, иначе
+        // вернувшуюся в его волну машину бот ему больше не покажет.
+        $blind = DB::table('offer_bot_seen')->where('offer_id', $offer->id)->whereNull('message_id')->pluck('user_id');
+        $ids = $seen->pluck('user_id')->merge($notices->pluck('notifiable_id'))->merge($chats->values())->merge($blind)->unique();
+        if ($ids->isEmpty() && $sent->isEmpty()) {
             return;
         }
         $gone = User::whereIn('id', $ids)->get()->reject(fn (User $u) => $offer->isVisibleTo($u))->keyBy('id');
@@ -65,9 +68,12 @@ final class RetractOfferNotices implements ShouldQueue
                 DB::table('offer_bot_seen')->where('user_id', $card->user_id)->where('offer_id', $offer->id)->delete();
             }
         }
+        DB::table('offer_bot_seen')->where('offer_id', $offer->id)->whereNull('message_id')->whereIn('user_id', $gone->keys())->delete();
         // Основной бот: «Новое предложение», «Срочно» и прочие о машине — у тех, кому она больше не видна.
         foreach ($sent as $message) {
-            if (! $gone->has($chats->get($message->chat_id))) {
+            // Чат больше ничей (перепривязали Telegram) — сообщение о машине там некому видеть законно.
+            $owner = $chats->get($message->chat_id);
+            if ($owner && ! $gone->has($owner)) {
                 continue;
             }
             try {

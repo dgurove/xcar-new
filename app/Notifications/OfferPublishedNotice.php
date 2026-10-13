@@ -37,4 +37,9 @@ final class OfferPublishedNotice extends Notice
     {
         return self::offerSubject($this->offer->id);
     }
+
+    protected function visibleOffer(): ?Offer
+    {
+        return $this->offer;
+    }
 }

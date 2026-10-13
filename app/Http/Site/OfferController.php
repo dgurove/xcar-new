@@ -101,7 +101,7 @@ class OfferController
         abort_unless($user, 404);
         $chat = Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first();
         // Свой чат открыт и тогда, когда предложение ушло от человека; новый — только видящему (`chatOpenFor`).
-        abort_unless($user->canChat() && ($chat || $offer->chatOpenFor($user)), 404);
+        abort_unless($user->canChat() && (($chat && ($offer->chat_enabled || $offer->worksWith($user))) || $offer->chatOpenFor($user)), 404);
 
         // Последняя страница ленты, как в кабинете: старое подгружается прокруткой вверх, а не всей историей сразу.
         $messages = $chat?->messages()->with(['author', 'files'])->reorder('seq', 'desc')->limit(ChatController::PAGE)->get()->reverse()->values() ?? collect();
