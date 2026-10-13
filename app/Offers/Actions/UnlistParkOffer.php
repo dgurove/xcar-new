@@ -20,10 +20,7 @@ final class UnlistParkOffer
 {
     public function __invoke(Offer $offer, User $by): void
     {
-        abort_unless($offer->state === OfferState::Draft && $offer->published_at === null
-            && $offer->parkVehicle()->exists()
-            && ! $offer->deal()->exists()
-            && ! $offer->bids()->where('state', BidState::Active)->exists(), 404);
+        abort_unless(self::allowed($offer), 404);
 
         DB::transaction(function () use ($offer, $by) {
             // ТС отвязывается, всё её (и принесённое предложением) остаётся у неё.
@@ -32,5 +29,14 @@ final class UnlistParkOffer
             Candidate::where('offer_id', $offer->id)->update(['offer_id' => null]);
             $offer->delete();
         });
+    }
+
+    /** Можно ли так снять: кнопки «Снять с продажи» и «Отклонить» рисуются только тогда, иначе сервер ответил бы 404. */
+    public static function allowed(Offer $offer): bool
+    {
+        return $offer->state === OfferState::Draft && $offer->published_at === null
+            && $offer->parkVehicle()->exists()
+            && ! $offer->deal()->exists()
+            && ! $offer->bids()->where('state', BidState::Active)->exists();
     }
 }

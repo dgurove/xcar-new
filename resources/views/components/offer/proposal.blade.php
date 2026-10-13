@@ -9,10 +9,13 @@
         <p class="min-w-0 flex-1 text-ink">Это ТС было автоматически предложено из заявок на приём Park XCar</p>
     </div>
     <div class="proposal-acts">
-        <form method="post" action="/offers/{{ $offer->number }}/proposal" data-action="submit->proposal#decline">
-            @csrf @method('delete')
-            <button class="btn btn-s btn-quiet text-danger">Отклонить</button>
-        </form>
+        {{-- Публиковали, есть сделка или подтверждение — удалить нельзя (`UnlistParkOffer::allowed`): только «Принять». --}}
+        @if (\App\Offers\Actions\ResolveProposal::declinable($offer))
+            <form method="post" action="/offers/{{ $offer->number }}/proposal" data-action="submit->proposal#decline">
+                @csrf @method('delete')
+                <button class="btn btn-s btn-quiet text-danger">Отклонить</button>
+            </form>
+        @endif
         <form method="post" action="/offers/{{ $offer->number }}/proposal" data-action="submit->proposal#accept">
             @csrf
             <button class="btn btn-s btn-accent">Принять</button>

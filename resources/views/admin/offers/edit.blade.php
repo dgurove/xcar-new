@@ -105,7 +105,7 @@
                 {{-- Действия с предложением целиком — справа этой строки, а не капсулами среди меток. --}}
                 @if ($admin)
                     <span class="ml-auto flex items-center gap-1">
-                        @if ($offer->state === OfferState::Draft && $offer->published_at === null && $offer->parkVehicle && ! $offer->proposed())
+                        @if ($offer->parkVehicle && ! $offer->proposed() && \App\Offers\Actions\UnlistParkOffer::allowed($offer))
                             <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="btn btn-s btn-quiet">Снять с продажи</button></form>
                         @endif
                         @include('admin.offers.share-button')

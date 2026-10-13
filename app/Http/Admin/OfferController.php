@@ -18,6 +18,7 @@ use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\MergeOffers;
 use App\Offers\Actions\PurgeOffer;
+use App\Offers\Actions\ResolveProposal;
 use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Actions\SendToAuction;
@@ -33,7 +34,6 @@ use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
 use App\Offers\MigtorgDiff;
 use App\Offers\Offer;
-use App\Offers\OfferEventType;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
@@ -679,30 +679,24 @@ class OfferController
     }
 
     /** «Принять» на плашке «Предложено из заявок на приём»: черновик остаётся в своей вкладке, плашка уходит. */
-    public function acceptProposal(Request $request, Offer $offer)
+    public function acceptProposal(Request $request, Offer $offer, ResolveProposal $resolve)
     {
-        if ($offer->proposed()) {
-            $offer->forceFill(['proposed_at' => null])->save();
-            $offer->log(OfferEventType::Proposal, $request->user(), ['accepted' => true]);
-        }
+        $resolve->accept($offer, $request->user());
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Принято');
     }
 
     /**
-     * «Отклонить» на той же плашке: черновик удаляется, ТС остаётся на парковке со всеми файлами (`UnlistParkOffer`), сама
-     * больше не выставляется (`AutoSale` пропускает снятые). Из окошка — строка уходит, окно к следующей.
+     * «Отклонить» на той же плашке: черновик удаляется, ТС остаётся на парковке со всеми файлами (`ResolveProposal`). Из
+     * окошка ответ — список с той же карточкой: её больше нет, и пустой фрейм уносит строку, тикает пилюлями и ведёт окно
+     * к следующей (`Detail::response`, `x-ui.detail-streams`).
      */
-    public function declineProposal(Request $request, Offer $offer, UnlistParkOffer $unlist)
+    public function declineProposal(Request $request, Offer $offer, ResolveProposal $resolve)
     {
-        $number = $offer->number;
-        $unlist($offer, $request->user());
-        if ($request->header('Turbo-Frame') === Detail::FRAME) {
-            return response()->view('admin.offers.proposal-gone', ['number' => $number, 'counts' => self::counts($request->user())])
-                ->header('Content-Type', 'text/vnd.turbo-stream.html');
-        }
+        $resolve->decline($offer, $request->user());
 
-        return redirect('/?preset=unpriced')->with('toast', 'ТС осталась на парковке');
+        return redirect('/?preset=unpriced')->with('toast', 'ТС осталась на парковке')
+            ->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', self::counts($request->user()));
     }
 
     /** Продлить приём на ходу: от текущего срока, если он ещё не прошёл, иначе от сейчас. */

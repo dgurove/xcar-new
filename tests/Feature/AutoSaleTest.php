@@ -7,8 +7,10 @@ use App\Mail\Account;
 use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Thread;
+use App\Offers\Actions\ChangeOfferState;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Park\Actions\AutoSale;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -94,6 +96,36 @@ class AutoSaleTest extends TestCase
         $vehicle = Vehicle::where('ref', '785R/046/00065/26')->first();
         $this->assertNull($vehicle->offer_id, 'ТС осталась на парковке');
         $this->assertSame(0, app(AutoSale::class)->sweep(), 'отклонённая сама не выставляется');
+    }
+
+    public function test_existing_offer_is_linked_without_proposal_and_archived_is_left(): void
+    {
+        $live = Offer::create(['claim_ref' => '785R/046/00062/26', 'floor_price' => 500000]);
+        $offer = app(AutoSale::class)($this->vehicle());
+        $this->assertSame($live->id, $offer->id, 'одна машина — одно предложение');
+        $this->assertFalse($offer->fresh()->proposed(), 'чужой черновик плашку не получает');
+
+        $archived = Offer::create(['claim_ref' => '785R/046/00066/26', 'floor_price' => 500000]);
+        $archived->forceFill(['state' => OfferState::Archived])->save();
+        $this->assertNull(app(AutoSale::class)($this->vehicle(['ref' => '785R/046/00066/26', 'vin' => 'LS5A2ASE6PD930371'])));
+        $this->assertSame(OfferState::Archived, $archived->fresh()->state, 'из архива сама не возвращается');
+    }
+
+    public function test_decline_from_window_removes_row_and_publish_clears_proposal(): void
+    {
+        $admin = User::create(['name' => 'Админов Андрей', 'phone' => '79001234567', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $offer = app(AutoSale::class)($this->vehicle());
+        $list = 'http://crm.xcar.localhost/?preset=unpriced&peek='.$offer->number;
+        $this->actingAs($admin)->withHeaders(['Turbo-Frame' => 'detail', 'Referer' => $list])
+            ->delete('http://crm.xcar.localhost/offers/'.$offer->number.'/proposal')->assertRedirect();
+        $frame = $this->withHeaders(['Turbo-Frame' => 'detail'])->get($list)->assertOk()->getContent();
+        $this->assertStringContainsString('action="remove"', $frame);
+        $this->assertStringContainsString('action="advance"', $frame);
+
+        $other = app(AutoSale::class)($this->vehicle(['ref' => '785R/046/00067/26', 'vin' => 'LS5A2ASE6PD930372']));
+        $other->forceFill(['asking_price' => 900000])->save();
+        app(ChangeOfferState::class)($other->fresh(), OfferState::Archived, $admin);
+        $this->assertNull($other->fresh()->proposed_at);
     }
 
     public function test_claim_from_katya_table_goes_to_legacy(): void

@@ -95,10 +95,11 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             if ($offer) {
                 // Черновик завела почта — файлы всех веток доехали, теперь документы читаются сами (`AutoScan`).
                 AutoScan::filesArrived($offer);
-            } elseif ($vehicle) {
-                // Фото ТС доехали — вендор «Сразу в продажу» отправляет её в продажу, если документы уже прочитаны.
-                app(AutoSale::class)($vehicle->refresh());
             }
+        }
+        // Фото ТС доехали все (задача не упала) — вендор «Сразу в продажу» отправляет её в продажу, если документы прочитаны.
+        if ($vehicle && ! $offer) {
+            app(AutoSale::class)($vehicle);
         }
         if ($offer) {
             OfferStateChanged::dispatch($offer->fresh());

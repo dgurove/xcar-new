@@ -2,16 +2,19 @@
 
 namespace App\Park\Actions;
 
+use App\Cars\Identity;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Scan\AutoScan;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
+use App\Offers\OfferState;
 use App\Park\City;
 use App\Park\EventType;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Support\Nav;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -31,7 +34,20 @@ final class AutoSale
 
     public function __invoke(Vehicle $vehicle): ?Offer
     {
-        if (! $this->ready($vehicle)) {
+        // Итог чтения документов и конец задачи фото приходят из разных работников разом — продаёт кто-то один.
+        return Cache::lock('auto-sale:v:'.$vehicle->id, 60)->get(fn () => $this->sell($vehicle->fresh())) ?: null;
+    }
+
+    private function sell(?Vehicle $vehicle): ?Offer
+    {
+        if (! $vehicle || ! $this->ready($vehicle)) {
+            return null;
+        }
+        // Эта машина уже есть в CRM. Живое предложение — связать, как «В продажу», но без плашки: его заводили не мы.
+        // Архивное, отменённое, выданное и уже связанное с другой ТС — не трогать: из архива сама машина не возвращается.
+        $holder = Identity::offerFor($vehicle->ref_key, $vehicle->vin);
+        if ($holder && (in_array($holder->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)
+            || Vehicle::withoutGlobalScope(City::SCOPE)->where('offer_id', $holder->id)->exists())) {
             return null;
         }
         try {
@@ -41,11 +57,13 @@ final class AutoSale
 
             return null;
         }
-        // Решение за админом: плашка «Принять / Отклонить» в окошке и редакторе.
-        $offer->forceFill(['proposed_at' => now()])->save();
-        $offer->log(OfferEventType::Proposal);
+        if (! $holder) {
+            // Решение за админом: плашка «Принять / Отклонить» в окошке и редакторе.
+            $offer->forceFill(['proposed_at' => now()])->save();
+            $offer->log(OfferEventType::Proposal);
+            AutoScan::arrived($offer);
+        }
         Nav::forgetStaffCounts();
-        AutoScan::arrived($offer);
 
         return $offer;
     }

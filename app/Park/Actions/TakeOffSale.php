@@ -4,7 +4,6 @@ namespace App\Park\Actions;
 
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\UnlistParkOffer;
-use App\Offers\BidState;
 use App\Offers\OfferState;
 use App\Park\Vehicle;
 use App\Users\User;
@@ -29,8 +28,7 @@ final class TakeOffSale
         if (! self::allowed($offer->state, (bool) $offer->deal)) {
             throw ValidationException::withMessages(['sale' => 'Идёт сделка: снять с продажи можно, только отменив её в CRM']);
         }
-        $fresh = $offer->state === OfferState::Draft && $offer->published_at === null && ! $offer->bids()->where('state', BidState::Active)->exists();
-        $fresh ? ($this->unlist)($offer, $by) : ($this->change)($offer, OfferState::Archived, $by);
+        UnlistParkOffer::allowed($offer) ? ($this->unlist)($offer, $by) : ($this->change)($offer, OfferState::Archived, $by);
     }
 
     /** Можно ли убрать: нет сделки и у состояния есть переход в архив (у сделки и гаража его нет). */

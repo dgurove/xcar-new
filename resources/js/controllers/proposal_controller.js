@@ -26,6 +26,12 @@ export default class extends Controller {
             then?.();
             setTimeout(() => {
                 form.dataset.proposalGo = '1';
+                // Не дошло (нет связи, ошибка) — плашка возвращается, нажать можно снова.
+                form.addEventListener('turbo:submit-end', (e) => {
+                    if (e.detail.success) return;
+                    delete form.dataset.proposalGo;
+                    this.element.classList.remove('is-busy', 'is-closing', ...classes);
+                }, { once: true });
                 form.requestSubmit();
             }, after);
         }, wait);

@@ -143,7 +143,7 @@ final class AutoScan
         Cache::put(self::doneKey($key), true, 60);
         self::ping($subject);
         // Вендор «Сразу в продажу» — прочитанная ТС уходит в продажу, если и фото доехали.
-        $subject instanceof VehicleSubject && app(AutoSale::class)($subject->vehicle->refresh());
+        $subject instanceof VehicleSubject && app(AutoSale::class)($subject->vehicle);
     }
 
     /** Документы предмета ещё читаются сами (метка стоит). */
@@ -152,10 +152,13 @@ final class AutoScan
         return self::mark(($model instanceof Offer ? 'o:' : 'v:').$model->id) !== null;
     }
 
-    /** Черновик встал в CRM без чтения (`Park\Actions\AutoSale`): строка входит в список, как черновик из письма. */
+    /**
+     * Черновик встал в CRM без чтения (`Park\Actions\AutoSale`): минуту строка — `arrived`, и `arrive_controller` вводит её
+     * в список, как черновик из письма. Своё состояние, а не `done`: тот бывает и у давно стоящих строк.
+     */
     public static function arrived(Offer $offer): void
     {
-        Cache::put(self::doneKey('o:'.$offer->id), true, 60);
+        Cache::put(self::arrivedKey($offer->id), true, 60);
         app(Publisher::class)->refresh(Topics::STAFF, ['/']);
     }
 
@@ -276,12 +279,15 @@ final class AutoScan
         $passes = Cache::many($ids->map(fn ($id) => self::key($prefix.$id))->all());
         $running = Cache::many($ids->map(fn ($id) => "scan:run:{$prefix}{$id}")->all());
         $done = Cache::many($ids->map(fn ($id) => self::doneKey($prefix.$id))->all());
+        $arrived = $prefix === 'o:' ? Cache::many($ids->map(fn ($id) => self::arrivedKey($id))->all()) : [];
         $out = [];
         foreach ($ids as $id) {
             if ($pass = $passes[self::key($prefix.$id)] ?? null) {
                 $out[$id] = self::progress($models[$id], self::normalize($pass), (bool) ($running["scan:run:{$prefix}{$id}"] ?? false));
             } elseif ($done[self::doneKey($prefix.$id)] ?? null) {
                 $out[$id] = ['state' => 'done'];
+            } elseif ($arrived[self::arrivedKey($id)] ?? null) {
+                $out[$id] = ['state' => 'arrived'];
             }
         }
 
@@ -419,6 +425,11 @@ final class AutoScan
     private static function key(string $subjectKey): string
     {
         return "scan:auto:{$subjectKey}";
+    }
+
+    private static function arrivedKey(int $offerId): string
+    {
+        return "scan:auto:arrived:o:{$offerId}";
     }
 
     private static function doneKey(string $subjectKey): string

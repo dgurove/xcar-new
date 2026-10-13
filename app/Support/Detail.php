@@ -5,6 +5,7 @@ namespace App\Support;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -62,7 +63,15 @@ final class Detail
     /** Ответ фрейму (Turbo-Frame: detail) — только карточка, без списка и шелла. */
     public function response()
     {
-        return response($this->html() instanceof View ? $this->html()->render() : (string) $this->html());
+        if ($this->html() instanceof View) {
+            return response($this->html()->render());
+        }
+        // Карточки больше нет (удалили черновик из окошка): пустой фрейм с потоками — строка уходит, окно к следующей.
+        if (session('detail-gone')) {
+            return response(view('components.ui.detail', ['slot' => new HtmlString(Blade::render('<x-ui.detail-streams/>')), 'open' => false])->render());
+        }
+
+        return response((string) $this->html());
     }
 
     public static function empty(): HtmlString
@@ -108,5 +117,4 @@ final class Detail
 
         return self::to(array_diff_key($query, ['peek' => 1]));
     }
-
 }
