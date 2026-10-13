@@ -40,10 +40,12 @@ final class Cars
         // Чья сделка и чей гараж — админу CRM; модератору (черновики) люди сделок ни к чему.
         $who = $crm && auth()->user()?->canManageCrm();
         $state = match ($o->state) {
-            OfferState::Draft => $o->isGallery() ? 'в галерее' : 'черновик',
+            // На сайте черновик видят только в галерее и на оценке.
+            OfferState::Draft => $crm ? $o->crmTab() : ($o->isGallery() ? 'в галерее' : 'нужно оценить'),
             OfferState::Sold => 'в сделке'.(($name = $o->deal?->buyer?->shortName()) && $who ? ' у '.$name : ''),
             OfferState::Garage => 'в гараже'.(($name = $o->garageCar?->manager?->shortName()) && $who ? ' у '.$name : ''),
-            default => mb_strtolower($o->state->labelFor(auth()->user())),
+            // Где он в CRM — названием вкладки (13.10.2026), на сайте — как видит человек.
+            default => $crm ? $o->crmTab() : mb_strtolower($o->state->labelFor(auth()->user())),
         };
         $hit = $this->hit($key, fn () => new Hit($o->titleWithYear(), $link, ref: $crm ? $o->claim_ref : null, vendorId: $crm ? $o->vendor_id : null));
         // Предложение главнее ТС парковки: строка ведёт в редактор, а место парковки остаётся фразой.

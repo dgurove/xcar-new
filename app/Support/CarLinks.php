@@ -49,7 +49,7 @@ final class CarLinks
             return $links;
         }
         if ($from instanceof Vehicle) {
-            $links[] = ['title' => 'Продажа', 'state' => mb_strtolower($offer->state->label()).', № '.$offer->number, 'href' => Surface::Crm->url('/offers/'.$offer->number)];
+            $links[] = ['title' => 'Продажа', 'state' => $offer->crmTab().', № '.$offer->number, 'href' => Surface::Crm->url('/offers/'.$offer->number)];
         }
         if ($deal = $offer->deal) {
             $links[] = ['title' => 'Сделка', 'state' => $deal->buyer?->name ?? 'идёт', 'href' => Surface::Crm->url('/work/deals/'.$deal->id)];

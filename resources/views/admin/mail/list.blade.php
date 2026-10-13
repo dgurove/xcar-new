@@ -26,7 +26,7 @@
                     (bool) $v => ['title' => $v->titleWithYear(), 'href' => \App\Support\Surface::Park->url('/cars/'.$v->id), 'vendor' => $v->vendor, 'ref' => $v->ref,
                         'state' => $v->state->label(), 'urgent' => $v->state->tone() === 'urgent'],
                     (bool) $o => ['title' => $o->title().($o->published_at ? ' № '.$o->number : ''), 'href' => '/offers/'.$o->number, 'vendor' => $o->vendor, 'ref' => $o->claim_ref,
-                        'state' => $o->state->label(), 'urgent' => false],
+                        'state' => $o->crmTab(), 'urgent' => false],
                     $c && ! $fresh => ['title' => $c->title(), 'href' => $c->state === CandidateState::Promoted ? ($park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number) : null,
                         'vendor' => $c->vendor, 'ref' => $c->code, 'state' => $c->state->label(), 'urgent' => false],
                     ! $orphan && ! $c => ['title' => \App\Mail\Extraction\Patterns::cleanSubject($t->subject) ?: '(без темы)', 'href' => null, 'vendor' => $t->vendor, 'ref' => null, 'state' => null, 'urgent' => false],

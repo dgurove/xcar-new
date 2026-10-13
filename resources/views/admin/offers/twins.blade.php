@@ -6,7 +6,7 @@
         $line = 'box-nested box-urgent flex items-center gap-2 !px-3 !py-2';
         $inner = '<span class="min-w-0 flex-1 truncate">'.e($o->titleWithYear()).'</span>'
             .($o->state === \App\Offers\OfferState::Draft ? '' : '<span class="tag nums shrink-0">№ '.$o->number.'</span>')
-            .'<span class="tag shrink-0">'.e($o->state->label()).'</span>';
+            .'<span class="tag shrink-0">'.e($o->crmTab()).'</span>';
         $editable = $o->isEditableBy($user);
     @endphp
     <div class="{{ $line }}">

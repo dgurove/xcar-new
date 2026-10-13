@@ -54,9 +54,9 @@
             <x-offer.slot-menu :offer="$offer"/>
         @elseif ($admin && $offer->deal)
             {{-- В сделке пилюля состояния ведёт к дорожке «Сделка» ниже. --}}
-            <x-ui.pill :tone="$offer->state->tone()" href="#deal">{{ $offer->state->label() }}</x-ui.pill>
+            <x-ui.pill :tone="$offer->state->tone()" href="#deal">{{ $offer->crmTab() }}</x-ui.pill>
         @else
-            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->state->labelFor(auth()->user()) }}</x-ui.pill>
+            <x-ui.pill :tone="$offer->state->tone()">{{ $offer->crmTab() }}</x-ui.pill>
         @endif
         {{-- Срочное (12.10.2026) — капсулой огня со сроком приёма. --}}
         @if ($offer->isUrgent())

@@ -11,7 +11,7 @@
     $count = (int) ($offer->interests_count ?? $offer->interests()->count());
     $last = $offer->interest_at ?? ($count ? $offer->interests()->max('created_at') : null);
     $last = $last ? \Illuminate\Support\Carbon::parse($last) : null;
-    $gone = $offer->state === OfferState::Draft ? 'закрыта '.$offer->gallery_until?->translatedFormat('j M, H:i') : mb_strtolower($offer->state->label());
+    $gone = $offer->state === OfferState::Draft ? 'закрыта '.$offer->gallery_until?->translatedFormat('j M, H:i') : $offer->crmTab();
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="gallery-{{ $n }}" data-offer-number="{{ $n }}">
     <td class="grow">

@@ -45,7 +45,7 @@
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         {{-- Состояние — словом у названия, а не среди кодов (владелец 10.10.2026: «статус тут не к месту»); слова «черновик»
              нет, как и в строке: вкладка и так говорит, на каком он шаге. --}}
-        <x-slot:badge>@if ($offer->state !== OfferState::Draft)<x-ui.state :tone="$offer->state->tone()" class="title-state">{{ mb_strtolower($offer->state->labelFor(auth()->user())) }}</x-ui.state>@endif<x-ui.links :offer="$offer"/></x-slot:badge>
+        <x-slot:badge><x-ui.state :tone="$offer->state->tone()" class="title-state">{{ $offer->crmTab() }}</x-ui.state><x-ui.links :offer="$offer"/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         {{-- Под названием — что это за машина (состояние словом, коды чипами: №, убыток или ДЛ, VIN), ниже фразой — где она
              и сколько осталось (`line`): владелец 10.10.2026 «одно к машине относится, другое к фактам». --}}

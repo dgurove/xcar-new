@@ -54,7 +54,7 @@
         <x-ui.sheet :id="$id" title="Продажа">
             <div class="list">
                 <a href="{{ Surface::Crm->url('/offers/'.$offer->number) }}" class="row" data-turbo="false">
-                    <span class="min-w-0 flex-1">Предложение № {{ $offer->number }}<span class="row-sub">{{ mb_strtolower($offer->state->labelFor(auth()->user())) }}@if ($price), {{ $price }}@endif</span></span>
+                    <span class="min-w-0 flex-1">Предложение № {{ $offer->number }}<span class="row-sub">{{ $offer->crmTab() }}@if ($price), {{ $price }}@endif</span></span>
                     <x-ui.chevron/>
                 </a>
                 @if ($offer->deal)

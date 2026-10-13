@@ -900,6 +900,34 @@ class Offer extends Model implements HasMedia
         return $out;
     }
 
+    /**
+     * Где предложение в CRM — названием вкладки «Предложений» (13.10.2026, владелец: «черновик», «приём подтверждений» —
+     * непонятно, где это находится): «Без закупочной цены», «Оцененные», «Опубликованные», «Из таблицы Кати»… Повторяет
+     * `OfferController::scopeFor` для одного предложения; вне вкладок — «Сделки» и «Гараж» («Работа»). Модератору
+     * подтверждения не видны — открытое у него «Опубликованные».
+     */
+    public function crmTab(?User $user = null): string
+    {
+        $user ??= auth()->user();
+        $presets = \App\Http\Admin\OfferController::PRESETS;
+
+        return match ($this->state) {
+            OfferState::Draft, OfferState::Gallery => match (true) {
+                $this->state === OfferState::Draft && LegacyClaim::listed($this) !== null => $presets['legacy'],
+                $this->slot_at !== null => $presets['slots'],
+                $this->state === OfferState::Gallery => 'Галерея',
+                $this->asking_price > 0 => $presets['priced'],
+                $this->floor_price > 0 => $presets['unpriced'],
+                default => $presets['nofloor'],
+            },
+            OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : $this->bids()->where('state', BidState::Active)->exists())
+                ? $presets['bids'] : $presets['published'],
+            OfferState::Sold, OfferState::Delivered => 'Сделки',
+            OfferState::Garage => 'Гараж',
+            default => $presets['archive'],
+        };
+    }
+
     /** В слоте: черновик или галерея, которые часы выпустят в `slot_at` (`Offers\Slots`, `PublishDueSlots`). */
     public function isScheduled(): bool
     {
