@@ -1,7 +1,7 @@
-{{-- Строка таблицы сделок CRM, по образцу предложений: иконка типа ТС и название, под ним на телефоне логотип вендора с
-     номером убытка (копируется), номер предложения и чей ход с часами; от 640 они своими столбцами — вендор с убытком,
-     №, менеджер, этап (просрочен — оранжевым) с часами. Справа сумма, на телефоне под ней этап словом. Нажатие —
-     карточка сделки рядом (x-ui.row-link). --}}
+{{-- Строка таблицы сделок CRM — одной линией (13.10.2026, владелец: «таблица, а не эссе»): иконка типа ТС и название, на
+     телефоне под ним логотип вендора с номером убытка (копируется) и срок шага; от 640 они своими столбцами —
+     вендор с убытком, менеджер аватаром (имя и № — от 1280), этап (горит — оранжевым), срок коротким словом (`x-route.term`). Справа сумма, на
+     телефоне под ней этап словом. Кто ждёт и что с письмом — фразой в карточке сделки рядом (x-ui.row-link). --}}
 @props(['deal'])
 @php
     use App\Offers\DealState;
@@ -20,19 +20,16 @@
     <td class="grow">
         <x-ui.row-link :key="$deal->id"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}</span></x-ui.row-link>
         <span class="cell-sub" data-controller="fitline">
-            <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy/><span>№ {{ $offer->number }}</span></span>
+            <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy/>@if ($active && $position)<x-route.term :position="$position"/>@endif</span>
         </span>
-        @if ($active && $position)<x-route.clock :position="$position" side="staff" class="cell-sub sm:hidden"/>@endif
     </td>
     <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>
-    <td class="cell-dim nums hidden sm:table-cell">{{ $offer->number }}</td>
-    <td class="hidden sm:table-cell">@if ($deal->buyer)<span class="flex items-center gap-2"><x-ui.avatar :user="$deal->buyer" :size="22"/><span class="truncate">{{ $deal->buyer->name }}</span></span>@endif</td>
-    <td class="hidden sm:table-cell">
-        <span class="{{ $tone }}">{{ $word }}</span>
-        @if ($active && $position)<x-route.clock :position="$position" side="staff" class="cell-sub"/>@endif
-    </td>
+    <td class="cell-dim nums hidden xl:table-cell">{{ $offer->number }}</td>
+    <td class="hidden sm:table-cell">@if ($deal->buyer)<span class="flex items-center gap-2" title="{{ $deal->buyer->name }}"><x-ui.avatar :user="$deal->buyer" :size="22"/><span class="hidden truncate xl:inline">{{ $deal->buyer->name }}</span></span>@endif</td>
+    <td class="hidden sm:table-cell"><span class="block max-w-52 truncate {{ $tone }}">{{ $word }}</span></td>
+    <td class="hidden sm:table-cell">@if ($active && $position)<x-route.term :position="$position"/>@endif</td>
     <td class="num nums">
         {{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}
-        <span class="cell-sub ml-auto min-w-28 max-w-36 !whitespace-normal sm:hidden {{ $tone }}">{{ $word }}</span>
+        <span class="cell-sub ml-auto max-w-40 truncate sm:hidden {{ $tone }}">{{ $word }}</span>
     </td>
 </tr>
