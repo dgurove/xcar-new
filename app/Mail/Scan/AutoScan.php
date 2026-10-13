@@ -10,6 +10,7 @@ use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Jobs\ScanAttachments;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Park\Actions\AutoSale;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -141,6 +142,21 @@ final class AutoScan
         // Минута «только что» — строка проявляется и вспыхивает у того, кто смотрит (`arrive_controller`).
         Cache::put(self::doneKey($key), true, 60);
         self::ping($subject);
+        // Вендор «Сразу в продажу» — прочитанная ТС уходит в продажу, если и фото доехали.
+        $subject instanceof VehicleSubject && app(AutoSale::class)($subject->vehicle->refresh());
+    }
+
+    /** Документы предмета ещё читаются сами (метка стоит). */
+    public static function busy(Vehicle|Offer $model): bool
+    {
+        return self::mark(($model instanceof Offer ? 'o:' : 'v:').$model->id) !== null;
+    }
+
+    /** Черновик встал в CRM без чтения (`Park\Actions\AutoSale`): строка входит в список, как черновик из письма. */
+    public static function arrived(Offer $offer): void
+    {
+        Cache::put(self::doneKey('o:'.$offer->id), true, 60);
+        app(Publisher::class)->refresh(Topics::STAFF, ['/']);
     }
 
     /**

@@ -23,13 +23,13 @@ use Illuminate\Validation\ValidationException;
  * «В продажу» в деле ТС: черновик предложения этой машины. Своих файлов у него нет — фото и документы ТС он видит сам
  * (`Offers\SaleMedia`), тождество зеркалит связь (`Park\Sale`); город — город парковки, закупочная пустая. Письма CRM
  * о той же машине едут к нему; убирали из продажи — прежнее предложение возвращается из архива. Обратно — «Убрать из
- * продажи» (`TakeOffSale`).
+ * продажи» (`TakeOffSale`). Без человека (`by` null) — сама, `AutoSale`.
  */
 final class PutOnSale
 {
     public function __construct(private CreateOffer $create, private LinkOffer $link, private LinkThread $threads, private ChangeOfferState $change) {}
 
-    public function __invoke(Vehicle $vehicle, User $by): Offer
+    public function __invoke(Vehicle $vehicle, ?User $by): Offer
     {
         if ($vehicle->offer) {
             return $vehicle->offer;

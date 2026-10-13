@@ -42,7 +42,9 @@ export default class extends Controller {
         const id = this.element.id;
         const was = seen.get(id);
         const busy = BUSY.includes(this.stateValue);
-        if (!was && busy && performance.now() - morphedAt < ENTER_WINDOW) {
+        // Черновик, что ТС отправила в продажу сама (AutoSale), встаёт сразу прочитанным — входит и с done.
+        const fresh = busy || (this.stateValue === 'done' && this.subjectValue.startsWith('o:'));
+        if (!was && fresh && performance.now() - morphedAt < ENTER_WINDOW) {
             this.play('is-entering', 1800);
             this.countUp();
         }

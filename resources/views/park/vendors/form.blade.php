@@ -46,6 +46,7 @@
                 <div class="fields" data-late><x-ui.field name="buyer_rate_multiplier" label="Множитель, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')"/></div>
                 <x-ui.check name="release_without_payment" :checked="$vendor->release_without_payment">Выдавать без оплаты</x-ui.check>
                 <x-ui.check name="release_by_qr" :checked="$vendor->release_by_qr">Выдача по QR</x-ui.check>
+                <x-ui.check name="auto_sale" :checked="$vendor->auto_sale">Сразу в продажу</x-ui.check>
             </div>
             <div class="list-head">Заявки на приёмку</div>
             <div class="fields">

@@ -15,6 +15,7 @@ use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
+use App\Park\Actions\AutoSale;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -94,6 +95,9 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             if ($offer) {
                 // Черновик завела почта — файлы всех веток доехали, теперь документы читаются сами (`AutoScan`).
                 AutoScan::filesArrived($offer);
+            } elseif ($vehicle) {
+                // Фото ТС доехали — вендор «Сразу в продажу» отправляет её в продажу, если документы уже прочитаны.
+                app(AutoSale::class)($vehicle->refresh());
             }
         }
         if ($offer) {
