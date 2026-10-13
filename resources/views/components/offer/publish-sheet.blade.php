@@ -35,7 +35,7 @@
             @endif
         </div>
         <div class="publish-day fields">
-            <x-ui.field name="day" :id="$id.'-day'" label="День" type="date" :value="\App\Offers\Slots::dayDefault()->toDateString()" :min="\App\Offers\Slots::nearest()->toDateString()" :form="$form"/>
+            <x-ui.field name="day" :id="$id.'-day'" label="Когда" type="datetime-local" :default-time="sprintf('%02d:00', (int) config('xcar.slot_hour'))" :value="\App\Offers\Slots::dayDefault()->format('Y-m-d\TH:i')" :min="now()->format('Y-m-d\TH:i')" :form="$form"/>
         </div>
         @if ($offer && ! $move)
             <div class="urgent-until fields">
@@ -45,7 +45,7 @@
         {{-- Шторка закрывается сразу: ошибка поля (номер убытка, фото) должна быть видна, а не под шторкой. --}}
         <x-ui.button block :form="$form" :name="array_key_first($submit)" :value="$submit ? reset($submit) : null" data-action="sheet#close">
             @foreach ($choices as $c)<span data-when="{{ $c['when'] }}">{{ $c['at'] ? ($move ? 'Перенести на ' : 'Опубликовать ').\App\Offers\Slots::phrase($c['at']) : 'Опубликовать сейчас' }}</span>@endforeach
-            <span data-when="{{ \App\Offers\Slots::DAY }}">{{ $move ? 'Перенести' : 'Опубликовать' }} в {{ sprintf('%02d:00', (int) config('xcar.slot_hour')) }}</span>
+            <span data-when="{{ \App\Offers\Slots::DAY }}">{{ $move ? 'Перенести' : 'Опубликовать' }}</span>
             <span data-when="{{ \App\Offers\Slots::URGENT }}">Опубликовать срочно</span>
         </x-ui.button>
     @if ($action)</form>@else</div>@endif

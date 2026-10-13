@@ -21,8 +21,9 @@ final class Slots
     /** «Срочно» (12.10.2026): сейчас, всем сразу, громко, со своим сроком приёма (`urgentUntil`). */
     public const URGENT = 'urgent';
 
-    /** «Другой день…» (13.10.2026, владелец: «сегодня, завтра и через несколько дней — там выбор числа»): слот 16:00
-     * выбранного дня. В форме — `when=day` и поле `day`, дальше — `day:2026-10-17` (`when()`). */
+    /** «Другой день…» (13.10.2026, владелец: «сегодня, завтра и через несколько дней — там выбор числа», «по умолчанию 16:00,
+     * но можно и другое время — тогда это другой слот»): календарь с датой и временем. В форме — `when=day` и поле `day`
+     * («2026-10-17T16:00»), дальше — `day:2026-10-17T16:00` (`when()`). */
     public const DAY = 'day';
 
     public const WHEN = [self::NOW, self::NEAREST, self::NEXT, self::URGENT];
@@ -34,20 +35,30 @@ final class Slots
             $when = 'day:'.$day;
         }
         if ($when && str_starts_with($when, 'day:')) {
-            try {
-                return 'day:'.Carbon::createFromFormat('!Y-m-d', substr($when, 4))->toDateString();
-            } catch (\Throwable) {
-                return $default;
-            }
+            $at = self::dayAt(substr($when, 4));
+
+            return $at ? 'day:'.$at->format('Y-m-d\TH:i') : $default;
         }
 
         return in_array($when, self::WHEN, true) ? $when : $default;
     }
 
-    /** День по умолчанию в «Другой день»: следующий за «завтра». */
+    /** По умолчанию в «Другой день»: послезавтра, в час слота. */
     public static function dayDefault(): Carbon
     {
         return self::next()->addDay();
+    }
+
+    /** «2026-10-17T16:00» или «2026-10-17» (тогда час слота). */
+    private static function dayAt(string $value): ?Carbon
+    {
+        try {
+            return strlen($value) > 10
+                ? Carbon::createFromFormat('Y-m-d\TH:i', substr($value, 0, 16))->second(0)
+                : Carbon::createFromFormat('!Y-m-d', $value)->setTime(self::hour(), 0);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /** Срок приёма срочного: из поля «Приём до», не раньше чем через 30 минут; пусто — через 3 часа, по 5 минут. */
@@ -89,11 +100,11 @@ final class Slots
     /** Время выхода по выбору в CRM; «сейчас» — null. */
     public static function at(string $when, ?Carbon $from = null): ?Carbon
     {
-        // Выбранный день: слот 16:00 этого дня; прошёл — ближайший.
+        // Выбранные день и время; прошли — ближайший слот.
         if (str_starts_with($when, 'day:')) {
-            $slot = Carbon::parse(substr($when, 4))->setTime(self::hour(), 0);
+            $slot = self::dayAt(substr($when, 4));
 
-            return $slot->greaterThan($from ?? now()) ? $slot : self::nearest($from);
+            return $slot?->greaterThan($from ?? now()) ? $slot : self::nearest($from);
         }
 
         return match ($when) {
