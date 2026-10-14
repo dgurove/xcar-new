@@ -5,7 +5,6 @@ namespace App\Garage\Actions;
 use App\Garage\Car;
 use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
-use App\Garage\GaragePayer;
 use App\Offers\Deal;
 use App\Users\User;
 
@@ -18,10 +17,10 @@ final class ReserveCar
 {
     public function __invoke(Deal $deal, ?User $by = null): Car
     {
-        $cost = $deal->garage_payer === GaragePayer::Us ? $deal->cost : null;
         $legacy = Car::where('offer_id', $deal->offer_id)->whereNull('deal_id')->first();
         if ($legacy && ! $legacy->isSold()) {
-            $legacy->update(['deal_id' => $deal->id, 'manager_id' => $deal->buyer_id, 'cost' => $cost]);
+            // Закупочная — у сделки (`Car::base`), своя колонка у строки со сделкой пуста.
+            $legacy->update(['deal_id' => $deal->id, 'manager_id' => $deal->buyer_id, 'cost' => null]);
             GarageChanged::dispatch($legacy);
 
             return $legacy;
@@ -36,7 +35,6 @@ final class ReserveCar
             'taken_at' => now(),
             'stage_at' => now(),
             'history' => [[CarState::Waiting->value, now()->toIso8601String()]],
-            'cost' => $cost,
             'created_by' => $by?->id,
         ]);
         GarageChanged::dispatch($car);

@@ -87,7 +87,7 @@ class GarageByConfirmationTest extends TestCase
         $this->assertSame(DealState::Done, $deal->fresh()->state);
         $car = Car::where('offer_id', $offer->id)->firstOrFail();
         $this->assertSame(CarState::Waiting, $car->state);
-        $this->assertSame(900000, $car->cost);
+        $this->assertSame(900000, $car->base());
 
         // Машину везёт вывоз (у вендора его не было — заводится сам), «Забрал» менеджера — подготовка.
         app(EnsurePickup::class)($offer->fresh(), $admin, $manager, 'collect');

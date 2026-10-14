@@ -10,6 +10,10 @@
     $garage = $bid->isGarage();
     $diff = $offer->asking_price && ! $garage ? $bid->amount - $offer->asking_price : null;
     $low = $active && ! $garage && ($min = $offer->minBid()) && $bid->amount < $min;
+    // Не выше закупочной (14.10.2026, 3308 приняли в минус молча): красным в строке, «Принять» переспрашивает, и сервер
+    // без согласия такую не примет (`AcceptBid`, `loss`).
+    $under = ! $garage && $offer->floor_price && $bid->amount !== null ? $offer->floor_price - $bid->amount : null;
+    $loss = $under !== null && $under >= 0;
     $give = (bool) $offer->deal;
     $inGarage = $garage ? (int) ($parked[$bid->user_id] ?? 0) : 0;
 @endphp
@@ -19,7 +23,7 @@
         @if ($inGarage)<span class="nums text-sm text-ink-dim">в гараже {{ $inGarage }}</span>@endif
         @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
         @if ($best)<x-ui.state tone="soft">Лучшая</x-ui.state>@endif
-        @if ($low)<x-ui.state tone="urgent">ниже минимальной</x-ui.state>@endif
+        @if ($loss && $active)<x-ui.state tone="danger">{{ $under > 0 ? 'ниже закупочной на '.Money::nums($under) : 'равна закупочной' }}</x-ui.state>@elseif ($low)<x-ui.state tone="urgent">ниже минимальной</x-ui.state>@endif
         @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
     </div>
     {{-- Кто — человеком, телефон ссылкой и когда — текстом (10.10.2026: «что-то чипами, что-то текстом»). --}}
@@ -29,8 +33,9 @@
         <div class="mt-2 flex items-start gap-2">
             <div data-controller="sheet">
                 <x-ui.button type="button" size="sm" data-action="sheet#open">{{ $give ? 'Отдать' : 'Принять' }}</x-ui.button>
-                <x-ui.sheet id="accept-{{ $bid->id }}" :title="$give ? 'Отдать другому' : ($garage ? 'Отдать в гараж' : 'Принять подтверждение')" :open="$errors->hasAny(['commission', 'payer', 'share', 'owner_price']) && old('bid') == $bid->id">
+                <x-ui.sheet id="accept-{{ $bid->id }}" :title="$give ? 'Отдать другому' : ($garage ? 'Отдать в гараж' : 'Принять подтверждение')" :open="$errors->hasAny(['commission', 'payer', 'share', 'owner_price', 'bid']) && old('bid') == $bid->id">
                     <div class="mb-4 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$bid->user" full/><span class="tag">{{ $offer->titleWithYear() }}</span></div>
+                    @if ($errors->has('bid') && old('bid') == $bid->id)<x-ui.flash tone="danger" class="mb-4">{{ $errors->first('bid') }}</x-ui.flash>@endif
                     @if ($garage)
                         {{-- Вознаграждения тут нет: его назначают, когда менеджер продаст машину из гаража. У Совкомбанка
                              (менеджер платит ПРАЙМ по счёту) и без гаражной ветки маршрута (Т-Страхование) платит менеджер —
@@ -70,8 +75,10 @@
                             <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.button></div>
                         </form>
                     @else
-                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :scheme="\App\Offers\DealScheme::choiceFor($offer->vendor?->deal_format, \App\Offers\DealScheme::forOffer($offer))" :schemes="\App\Offers\DealScheme::casesFor($offer->vendor)" :owner-price="$offer->owner_price" :fee="! $bid->user->isSuperBuyer()" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null">
+                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :scheme="\App\Offers\DealScheme::choiceFor($offer->vendor?->deal_format, \App\Offers\DealScheme::forOffer($offer))" :schemes="\App\Offers\DealScheme::casesFor($offer->vendor)" :owner-price="$offer->owner_price" :fee="! $bid->user->isSuperBuyer()" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null"
+                            :confirm="$loss ? 'Принять за '.Money::rub($bid->amount).' при закупочной '.Money::rub($offer->floor_price).'? '.($under > 0 ? 'Сделка в минус '.Money::rub($under) : 'Наценки нет') : null">
                             <input type="hidden" name="bid" value="{{ $bid->id }}">
+                            @if ($loss)<input type="hidden" name="loss" value="1">@endif
                             {{-- ТС ещё у владельца — кто её забирает (04.10.2026): менеджер сделки по умолчанию; поручено
                                  другому — по умолчанию «Мы», то есть как назначено. --}}
                             {{-- Совкомбанк: машину забирает сам менеджер, его шаг «Заберите автомобиль» (10.10.2026) — выбора нет. --}}

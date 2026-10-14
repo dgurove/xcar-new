@@ -36,7 +36,7 @@ final class SetYard
             if ($accepted) {
                 $accepted->update(['payload' => array_filter(['yard_id' => $yard->id, 'spot' => $spot] + ($accepted->type === EventType::Accepted ? ['yard' => $yard->name] : ['to' => $yard->name]) + ($accepted->payload ?? []))]);
             }
-            $vehicle->log(EventType::Updated, $by, ['fields' => array_filter(['yard_id' => $yard->name, 'spot' => $spot])]);
+            $vehicle->log(EventType::Updated, $by, ['fields' => $spot ? ['yard_id', 'spot'] : ['yard_id'], 'changes' => array_filter(['yard_id' => [null, $yard->id], 'spot' => $spot ? [null, $spot] : null])]);
 
             return $vehicle;
         });

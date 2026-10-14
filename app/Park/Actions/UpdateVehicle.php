@@ -6,6 +6,7 @@ use App\Billing\Actions\IssueTransferObligation;
 use App\Cars\Vin\RememberVin;
 use App\Park\EventType;
 use App\Park\Vehicle;
+use App\Support\Changes;
 use App\Users\User;
 
 /**
@@ -23,14 +24,16 @@ final class UpdateVehicle
     public function __invoke(Vehicle $vehicle, array $data, ?User $by, array $sources = []): Vehicle
     {
         $vehicle->fill($data);
+        $diff = Changes::of($vehicle);
         $changed = array_diff(array_keys($vehicle->getDirty()), ['ref_key']);
         $vehicle->save();
         if (! $changed) {
             return $vehicle;
         }
+        // Было → стало (`Changes`), с 14.10.2026.
         $sources
-            ? $vehicle->log(EventType::FilledFromDocs, $by, ['fields' => array_values($changed), 'sources' => array_values(array_unique($sources))])
-            : $vehicle->log(EventType::Updated, $by, ['fields' => array_values($changed)]);
+            ? $vehicle->log(EventType::FilledFromDocs, $by, $diff + ['sources' => array_values(array_unique($sources))])
+            : $vehicle->log(EventType::Updated, $by, $diff);
         (new RememberVin)($vehicle);
         if (array_intersect($changed, ['vin', 'plate', 'year', 'color', 'value', 'brand_id', 'model_id'])) {
             FillFromDocs::forget($vehicle);

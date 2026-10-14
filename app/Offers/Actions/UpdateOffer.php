@@ -13,6 +13,7 @@ use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Sale;
+use App\Support\Changes;
 use App\Users\User;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\StartRoute;
@@ -22,10 +23,13 @@ use Illuminate\Support\Facades\DB;
 
 final class UpdateOffer
 {
-    public function __construct(private StartRoute $startRoute) {}
+    public function __construct(private StartRoute $startRoute, private UpdateDealCost $dealCost) {}
 
-    /** @param array $log к записи «Изменён» в историю — откуда правка (`source: migtorg`) */
-    public function __invoke(Offer $offer, array $data, ?User $by, array $log = []): Offer
+    /**
+     * @param  array  $log  к записи «Изменён» в историю — откуда правка (`source: migtorg`, `why: «По СМС …»`)
+     * @param  bool  $withDeal  новая закупочная — и в идущую сделку (`UpdateDealCost`); false — «И в сделке» сняли
+     */
+    public function __invoke(Offer $offer, array $data, ?User $by, array $log = [], bool $withDeal = true): Offer
     {
         $was = $offer->value;
         // Показ сделки кончился, а его продлили — список снова видит её: уведомление всем, а не только новым.
@@ -40,6 +44,13 @@ final class UpdateOffer
         if ($offer->isDirty('vendor_id') && ! array_key_exists('prices_include_vat', $data) && $offer->vendor_id) {
             $offer->prices_include_vat = Vendor::offersVat($offer->vendor_id);
         }
+        // Закупочная одна (14.10.2026): у предложения с идущей сделкой она меняется и в сделке; не встанет там — не
+        // встаёт нигде.
+        $deal = $withDeal && $offer->isDirty('floor_price') && $offer->floor_price ? $offer->costDeal() : null;
+        if ($deal && $deal->cost !== $offer->floor_price) {
+            UpdateDealCost::guard($deal);
+        }
+        $diff = Changes::of($offer);
         $changed = array_keys($offer->getDirty());
         $offer->save();
         if (array_intersect(['audience_rules', 'vendor_id'], $changed)) {
@@ -63,8 +74,11 @@ final class UpdateOffer
             app(NotifyDealAudience::class)->added($offer->refresh(), DealAudience::managerIds($offer));
         }
         if ($changed) {
-            // Ключ номера убытка — производная колонка, в истории это тот же «номер убытка».
-            $offer->log(OfferEventType::Updated, $by, ['fields' => array_values(array_diff($changed, ['claim_ref_key']))] + $log);
+            // Было → стало (`Changes`): ключ номера убытка — производная колонка, в истории это тот же «номер убытка».
+            $offer->log(OfferEventType::Updated, $by, $diff + $log);
+            if ($deal) {
+                ($this->dealCost)($deal->setRelation('offer', $offer), (int) $offer->floor_price, $by);
+            }
             (new RememberVin)($offer);
             // Машина одна: тождество связанной ТС парковки правится там же, предложение — её зеркало.
             Sale::toVehicle($offer, $changed, $by);

@@ -3,7 +3,7 @@
 namespace App\Park;
 
 use App\Mail\Extraction\Intent;
-use App\Support\FieldLabels;
+use App\Support\Changes;
 use App\Support\Money;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -55,12 +55,12 @@ class VehicleEvent extends Model
             EventType::Towed => 'Эвакуация'.(! empty($p['note']) ? ': '.$p['note'] : ''),
             EventType::Released => 'Выдана'.(! empty($p['to']) ? ' '.mb_strtolower($p['to']) : '').(! empty($p['pass']) ? ', по QR' : '').(! empty($p['without_qr']) ? ', без QR: '.$p['without_qr'] : '').(! empty($p['unpaid']) ? ', с долгом '.Money::rub($p['unpaid']) : ''),
             EventType::Note => (string) ($p['text'] ?? ''),
-            EventType::Updated => 'Изменена: '.FieldLabels::list($p['fields'] ?? []),
+            EventType::Updated => (! empty($p['why']) ? $p['why'].': ' : 'Изменена: ').Changes::text($p['fields'] ?? [], $p['changes'] ?? []),
             EventType::DatesChanged => implode(', ', array_filter([
                 isset($p['accepted']) ? 'Дата приёма: '.self::day($p['accepted'][0]).' → '.self::day($p['accepted'][1]) : null,
                 isset($p['released']) ? 'Дата выдачи: '.self::day($p['released'][0]).' → '.self::day($p['released'][1]) : null,
             ])),
-            EventType::FilledFromDocs => (! empty($p['sources']) ? 'Из документов '.implode(', ', array_map(fn ($s) => '«'.$s.'»', $p['sources'])) : 'Из документов').': '.FieldLabels::list($p['fields'] ?? []),
+            EventType::FilledFromDocs => (! empty($p['sources']) ? 'Из документов '.implode(', ', array_map(fn ($s) => '«'.$s.'»', $p['sources'])) : 'Из документов').': '.Changes::text($p['fields'] ?? [], $p['changes'] ?? []),
             EventType::DocSent => ($p['direction'] ?? 'out') === 'in' ? 'Получено от вендора: '.($p['doc'] ?? '') : 'Отправлено вендору: '.($p['doc'] ?? ''),
             EventType::DocBack => 'Снята отметка: '.($p['doc'] ?? ''),
             EventType::Scheduled => 'Эвакуация назначена'.(! empty($p['at']) ? ' на '.$p['at'] : '').(! empty($p['from']) ? ', '.$p['from'] : ''),

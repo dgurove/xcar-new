@@ -90,10 +90,18 @@ class Car extends Model
         return round($costs->when($payer, fn ($c) => $c->where('payer', $payer))->sum('amount'), 2);
     }
 
-    /** Во что машина нам встала: отдали за (закупочная), пока платили мы; платил менеджер — строкой расхода `Cost::SUPPLIER`. */
+    /**
+     * Во что машина нам встала: отдали за (закупочная), пока платили мы; платил менеджер — строкой расхода `Cost::SUPPLIER`.
+     * Закупочная одна — у сделки (14.10.2026: копия в строке гаража расходилась с ней после нового файла Carcade); своя
+     * колонка `cost` — только у отданных руками до 06.10.2026, без сделки.
+     */
     public function base(): ?int
     {
-        return $this->cost;
+        if (! $this->deal_id) {
+            return $this->cost;
+        }
+
+        return $this->deal?->garage_payer === GaragePayer::Us ? $this->deal->cost : null;
     }
 
     /**
@@ -103,7 +111,7 @@ class Car extends Model
      */
     public function price(): ?int
     {
-        $price = $this->cost ?? $this->deal?->cost;
+        $price = $this->deal_id ? $this->deal?->cost : $this->cost;
 
         return $price ? (int) $price : null;
     }

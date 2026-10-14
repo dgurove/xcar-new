@@ -73,7 +73,7 @@ class BidController
             // Отдаём другому, а забирать должен был прежний: отмена сделки поручение снимет, «Мы» — вывозим к нам.
             $wasPicker = $offer->deal && $offer->evacuator_id === $offer->deal->buyer_id && $offer->pickupDestination() === Destination::Keeper;
             $accept($bid, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout,
-                scheme: $scheme, ownerPrice: isset($data['owner_price']) ? (int) $data['owner_price'] : null);
+                scheme: $scheme, ownerPrice: isset($data['owner_price']) ? (int) $data['owner_price'] : null, loss: $request->boolean('loss'));
             if (! $choosable) {
                 return;
             }

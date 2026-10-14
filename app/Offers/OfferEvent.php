@@ -4,7 +4,7 @@ namespace App\Offers;
 
 use App\Garage\CarState;
 use App\Garage\GaragePayer;
-use App\Support\FieldLabels;
+use App\Support\Changes;
 use App\Support\Money;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -53,19 +53,7 @@ class OfferEvent extends Model
                 isset($p['mail']) => 'Заведён из письма',
                 default => 'Создан',
             },
-            // Правка задачи Мигторга: поля лота («ответ до» — тот же конец торгов, что «срок от вендора») или кадры.
-            OfferEventType::Updated => ($p['source'] ?? null) === 'migtorg'
-                ? 'С Мигторга: '.match (true) {
-                    isset($p['photos']) => $p['photos'].' фото',
-                    isset($p['fields']) => FieldLabels::list(array_values(array_diff($p['fields'], ['answer_by']))),
-                    default => 'подтвердили',
-                }
-            : (($p['source'] ?? null) === 'valuation'
-                ? 'Оценка из текста: '.implode(', ', array_filter([
-                    isset($p['value']) ? 'оценочная '.Money::rub((int) $p['value']) : null,
-                    isset($p['floor']) ? 'закупочная '.Money::rub((int) $p['floor']) : null,
-                ]))
-                : 'Изменён: '.FieldLabels::list($p['fields'] ?? [])),
+            OfferEventType::Updated => self::updatedText($p),
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
             OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
             OfferEventType::BidPlaced => ! empty($p['garage']) ? 'Подтверждение в гараж' : 'Подтверждение '.number_format($p['amount'] ?? 0, 0, '', ' ').' ₽',
@@ -99,6 +87,34 @@ class OfferEvent extends Model
             OfferEventType::Garage => self::garageText($p),
             OfferEventType::RequirementAnswered => 'Менеджер: «'.($p['exit'] ?? '').'»'.(! empty($p['fields']) ? ' — '.implode(', ', $p['fields']) : ''),
             default => $this->type->value,
+        };
+    }
+
+    /**
+     * Правка: «Изменён: закупочная цена 183 840 → 211 200 ₽» (`Changes`, с 14.10.2026; раньше — одни имена полей). Откуда
+     * правка — началом строки: Мигторг (поля лота, «ответ до» — тот же конец торгов, что «срок от вендора», или кадры),
+     * «Из текста», файл поставщика, своя причина (`why`) — у правок пробником и из других дверей без человека.
+     */
+    private static function updatedText(array $p): string
+    {
+        $fields = $p['fields'] ?? [];
+        $changes = $p['changes'] ?? [];
+        $what = Changes::text($fields, $changes);
+
+        return match (true) {
+            ($p['source'] ?? null) === 'migtorg' => 'С Мигторга: '.match (true) {
+                isset($p['photos']) => $p['photos'].' фото',
+                $fields !== [] => Changes::text(array_values(array_diff($fields, ['answer_by'])), $changes),
+                default => 'подтвердили',
+            },
+            ($p['source'] ?? null) === 'valuation' && ! $changes => 'Оценка из текста: '.implode(', ', array_filter([
+                isset($p['value']) ? 'оценочная '.Money::rub((int) $p['value']) : null,
+                isset($p['floor']) ? 'закупочная '.Money::rub((int) $p['floor']) : null,
+            ])),
+            ($p['source'] ?? null) === 'valuation' => 'Оценка из текста: '.$what,
+            ($p['source'] ?? null) === 'file' => 'По файлу'.(! empty($p['file']) ? ' «'.$p['file'].'»' : '').': '.$what,
+            ! empty($p['why']) => $p['why'].': '.$what,
+            default => 'Изменён: '.$what,
         };
     }
 

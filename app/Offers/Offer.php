@@ -371,7 +371,8 @@ class Offer extends Model implements HasMedia
 
     public function events(): HasMany
     {
-        return $this->hasMany(OfferEvent::class)->latest();
+        // Записи одной правки — одной секундой (предложение, потом сделка): порядок по номеру.
+        return $this->hasMany(OfferEvent::class)->latest()->latest('id');
     }
 
     public function deal(): HasOne
@@ -386,6 +387,17 @@ class Offer extends Model implements HasMedia
     public function lastDeal(): HasOne
     {
         return $this->hasOne(Deal::class)->ofMany(['id' => 'max'], fn ($q) => $q->whereIn('state', [DealState::Active, DealState::Done]));
+    }
+
+    /**
+     * Сделка, чья закупочная — закупочная предложения (`UpdateDealCost`, 14.10.2026): идущая, а у машины в гараже — её
+     * сделка, пока менеджер машину не продал (гаражная без маршрута закрывается сразу, а «Закупочная» в гараже — её).
+     */
+    public function costDeal(): ?Deal
+    {
+        $garage = $this->garageCar()->with('deal')->first();
+
+        return $this->deal()->first() ?? ($garage && ! $garage->isSold() ? $garage->deal : null);
     }
 
     /** Строка гаража: у кого машина «на подготовке» (менеджер продаёт сам). */

@@ -15,6 +15,7 @@ use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
+use App\Support\Money;
 use App\Users\User;
 use App\Workflow\Actions\EnterStage;
 use App\Workflow\Track;
@@ -42,14 +43,20 @@ final class AcceptBid
 {
     public function __construct(private ChangeOfferState $changeState, private CancelDeal $cancelDeal, private EnterStage $enterStage, private ReserveCar $reserve, private AgreeDeal $agree) {}
 
-    public function __invoke(Bid $bid, User $by, ?int $commission = null, CommissionMode $mode = CommissionMode::Payout, ?GaragePayer $payer = null, DealScheme $scheme = DealScheme::Prime, ?int $ownerPrice = null, ?int $share = null): Deal
+    /** @param  bool  $loss  согласие принять не выше закупочной (переспросили в шторке «Принять») */
+    public function __invoke(Bid $bid, User $by, ?int $commission = null, CommissionMode $mode = CommissionMode::Payout, ?GaragePayer $payer = null, DealScheme $scheme = DealScheme::Prime, ?int $ownerPrice = null, ?int $share = null, bool $loss = false): Deal
     {
-        return DB::transaction(function () use ($bid, $by, $commission, $mode, $payer, $scheme, $ownerPrice, $share) {
+        return DB::transaction(function () use ($bid, $by, $commission, $mode, $payer, $scheme, $ownerPrice, $share, $loss) {
             $bid = Bid::whereKey($bid->id)->lockForUpdate()->firstOrFail();
             if ($bid->state !== BidState::Active) {
                 throw ValidationException::withMessages(['bid' => 'Подтверждение уже '.mb_strtolower($bid->state->label())]);
             }
             $offer = $bid->offer;
+            // Не выше закупочной — только с согласия (14.10.2026: сделка 3308 ушла в минус молча). Закупочную могли поднять
+            // после того, как открыли шторку, — тогда переспрашиваем.
+            if (! $bid->isGarage() && ! $loss && $offer->floor_price && $bid->amount !== null && $bid->amount <= $offer->floor_price) {
+                throw ValidationException::withMessages(['bid' => 'Цена подтверждения '.Money::rub($bid->amount).' не выше закупочной '.Money::rub($offer->floor_price).': примите ещё раз']);
+            }
 
             // Отдаём другому: прежняя сделка отменяется, прежний победитель узнаёт об этом.
             $previous = $offer->deal()->with('bid')->first();

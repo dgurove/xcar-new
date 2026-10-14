@@ -19,6 +19,10 @@
     <x-ui.field name="floor_price" data-controller="digits" data-value-floor-target="floor" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
         <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
     </x-ui.field>
+    {{-- Идёт сделка — новая закупочная и в ней (`UpdateDealCost`, 14.10.2026); снять — только у предложения. --}}
+    @if ($offer->exists && $offer->costDeal())
+        <div class="col-span-2 flags pt-0"><input type="hidden" name="deal_cost" value="0" @if ($form) form="{{ $form }}" @endif><x-ui.check name="deal_cost" :checked="true" :form="$form">И в сделке</x-ui.check></div>
+    @endif
     @endunless
     {{-- Гаражной машине цены показа ни к чему: продаёт менеджер сам, своему покупателю (06.10.2026). --}}
     @unless ($garageOnly ?? false)

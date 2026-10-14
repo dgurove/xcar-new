@@ -76,8 +76,9 @@ final class Deliver
                 ? ($this->transfer)($vehicle, $by, $yard, null, now(), 'Логистика')
                 : ($this->move)($vehicle, $by, $yard);
         } elseif ($vehicle->state === VehicleState::Expected) {
+            $was = $vehicle->yard_id;
             $vehicle->update(['yard_id' => $yard->id]);
-            $vehicle->log(EventType::Updated, $by, ['fields' => ['yard_id' => $yard->name]]);
+            $vehicle->log(EventType::Updated, $by, ['fields' => ['yard_id'], 'changes' => ['yard_id' => [$was, $yard->id]]]);
         }
     }
 }
