@@ -20,7 +20,7 @@ class BuyerInterestController
         $me = $request->user();
         $preset = $request->query('preset', 'new');
         $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
-        $q = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id))->with(['user', ...User::withAvatar('user.media'), 'offer.brand', 'offer.model', 'offer.media'])
+        $q = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id))->with(['user', ...User::withAvatar('user.media'), 'offer', 'offer.media'])
             ->when($sort->key === 'buyer', fn ($i) => $i->orderBy(User::select('name')->whereColumn('users.id', 'interests.user_id'), $sort->dir()))
             ->orderBy('interests.created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('interests.id');
         if ($preset === 'new') {
@@ -44,7 +44,7 @@ class BuyerInterestController
 
         // Смахнули строку в списке — ответ той же строкой; с кнопки на странице — назад.
         if (str_contains((string) $request->header('Accept'), Stream::TYPE) && $request->boolean('row')) {
-            return Stream::view('cabinet.buyers.interest-row-stream', ['interest' => $interest->fresh(['user', 'offer.brand', 'offer.model', 'offer.media'])]);
+            return Stream::view('cabinet.buyers.interest-row-stream', ['interest' => $interest->fresh(['user', 'offer', 'offer.media'])]);
         }
 
         return back()->with('toast', $state->label());

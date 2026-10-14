@@ -99,7 +99,7 @@ final class OfferSubject implements Subject
 
     public function current(): array
     {
-        return ScanFields::ofOffer($this->offer->loadMissing(['brand', 'model', 'settlement']));
+        return ScanFields::ofOffer($this->offer->loadMissing(['settlement']));
     }
 
     /**

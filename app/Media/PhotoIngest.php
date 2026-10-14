@@ -5,6 +5,7 @@ namespace App\Media;
 use App\Media\Actions\UnmarkPhoto;
 use App\Offers\Migtorg;
 use App\Offers\Offer;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
@@ -12,13 +13,12 @@ use Illuminate\Support\Str;
 use RuntimeException;
 use Spatie\Image\Enums\Fit;
 use Spatie\Image\Image;
-use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
 /**
  * Приём фотографии — единственный путь кадра в медиатеку, у любой модели и любой двери (письмо, архив, телефон,
- * Мигторг, закупка, парковка). Шаги по порядку (06.10.2026: обрезка листа жила только в почте, и кадры Мигторга
+ * Мигторг, закупка, парковка). Дорожка машины (предложение, ТС, лот) кладёт кадр самой машине (`Cars\Car`). Шаги по порядку (06.10.2026: обрезка листа жила только в почте, и кадры Мигторга
  * ложились с белыми полями):
  * 1. оригинал Мигторга вместо кадра с их сайта со знаком;
  * 2. HEIC → JPEG;
@@ -38,13 +38,13 @@ final class PhotoIngest
     /** 48 МП с телефонов Samsung проходят; GD держит ~4 байта на пиксель, лимит памяти 512M. */
     public const MAX_SOURCE_PIXELS = 64_000_000;
 
-    public function fromUpload(HasMedia $model, string $collection, UploadedFile $file, array $properties = [], int $max = self::MAX_DIMENSION): Media
+    public function fromUpload(Model $model, string $collection, UploadedFile $file, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
         return $this->add($model, $collection, $file->getRealPath(), $file->getClientOriginalName(), $properties, $max);
     }
 
     /** Загрузка с телефона: кадр ужат до отправки, отпечаток исходника приходит полем sha. */
-    public function fromPhone(HasMedia $model, string $collection, Request $request, int $max = self::MAX_DIMENSION, array $properties = []): Media
+    public function fromPhone(Model $model, string $collection, Request $request, int $max = self::MAX_DIMENSION, array $properties = []): Media
     {
         $sha = $request->input('sha');
         $properties += is_string($sha) && preg_match('/^[a-f0-9]{64}$/', $sha) ? ['sha' => $sha] : [];
@@ -52,7 +52,7 @@ final class PhotoIngest
         return $this->fromUpload($model, $collection, $request->file('file'), $properties, $max);
     }
 
-    public function fromString(HasMedia $model, string $collection, string $contents, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
+    public function fromString(Model $model, string $collection, string $contents, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
         $temp = tempnam(sys_get_temp_dir(), 'kadr-');
         file_put_contents($temp, $contents);
@@ -61,7 +61,7 @@ final class PhotoIngest
     }
 
     /** Кадр (или все снимки с листа) в коллекцию; возвращает первый. */
-    public function add(HasMedia $model, string $collection, string $path, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
+    public function add(Model $model, string $collection, string $path, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
         $bands = [];
         try {
@@ -116,7 +116,7 @@ final class PhotoIngest
     }
 
     /** Один кадр: снятие чужого знака, сжатие, в медиатеку. Исходник не трогает — его убирает `add`. */
-    private function place(HasMedia $model, string $collection, string $path, string $name, array $properties, int $max): Media
+    private function place(Model $model, string $collection, string $path, string $name, array $properties, int $max): Media
     {
         $webp = null;
         $clean = null;
@@ -131,10 +131,11 @@ final class PhotoIngest
             // Кадр со знаком остаётся на закрытом диске: «Вернуть со знаком» в просмотрщике и выборка для уточнения знака.
             $marked = $clean ? $this->shrink($path, $max) : null;
 
+            // Дорожка машины (`Cars\OnCar`) кладёт кадр машине со своей меткой (`park` у парковки).
             $media = $model->addMedia($webp)
                 ->usingFileName($this->fileName($name))
                 ->usingName(pathinfo($name, PATHINFO_FILENAME))
-                ->withCustomProperties($properties)
+                ->withCustomProperties($properties + (method_exists($model, 'carMediaMark') ? $model->carMediaMark() : []))
                 ->toMediaCollection($collection);
             if ($marked) {
                 $backup = UnmarkPhoto::markedPath($media);

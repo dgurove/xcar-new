@@ -40,7 +40,7 @@ final class SyncPickupTransport
         }
         $keeper = $offer->pickupDestination() === Destination::Keeper ? $offer->keeper() : null;
         $t = Transport::create([
-            'offer_id' => $offer->id, 'scope' => Scope::Local, 'from_region_id' => Choices::regionOf($offer),
+            'car_id' => $offer->car_id, 'scope' => Scope::Local, 'from_region_id' => Choices::regionOf($offer),
             'from_address' => $offer->inspection_address,
             'receiver' => $keeper ? trim($keeper->name.($keeper->phone ? ', '.$keeper->phoneFormatted() : '')) : null,
             'state' => TransportState::New, 'created_by' => $by->id,

@@ -57,7 +57,7 @@ class AutoSaleTest extends TestCase
         $offer = app(AutoSale::class)($this->vehicle());
 
         $this->assertNotNull($offer);
-        $this->assertSame($offer->id, Vehicle::where('ref', '785R/046/00062/26')->value('offer_id'));
+        $this->assertSame($offer->id, Vehicle::whereCar('claim_ref', '785R/046/00062/26')->first()->offer?->id, 'одна машина: ТС и её продажа');
         $this->assertSame(Sale::floorFrom(900000), (int) $offer->fresh()->floor_price);
         $this->assertSame('Без продажной цены', $offer->fresh()->crmTab());
         $this->assertSame(0, app(AutoSale::class)->sweep(), 'второй раз не уходит');
@@ -93,17 +93,21 @@ class AutoSaleTest extends TestCase
         $other = app(AutoSale::class)($this->vehicle(['ref' => '785R/046/00065/26', 'vin' => 'LS5A2ASE6PD930370']));
         $this->actingAs($admin)->delete('http://crm.xcar.localhost/offers/'.$other->number.'/proposal')->assertRedirect();
         $this->assertNull(Offer::find($other->id));
-        $vehicle = Vehicle::where('ref', '785R/046/00065/26')->first();
-        $this->assertNull($vehicle->offer_id, 'ТС осталась на парковке');
+        $vehicle = Vehicle::whereCar('claim_ref', '785R/046/00065/26')->first();
+        $this->assertNotNull($vehicle, 'ТС осталась на парковке');
+        $this->assertNull($vehicle->offer);
         $this->assertSame(0, app(AutoSale::class)->sweep(), 'отклонённая сама не выставляется');
     }
 
     public function test_existing_offer_is_linked_without_proposal_and_archived_is_left(): void
     {
+        // Предложение этой машины уже есть — ТС с тем же номером встаёт на ту же машину: она уже в продаже, своей плашки нет.
         $live = Offer::create(['claim_ref' => '785R/046/00062/26', 'floor_price' => 500000]);
-        $offer = app(AutoSale::class)($this->vehicle());
-        $this->assertSame($live->id, $offer->id, 'одна машина — одно предложение');
-        $this->assertFalse($offer->fresh()->proposed(), 'чужой черновик плашку не получает');
+        $vehicle = $this->vehicle();
+        $this->assertSame($live->car_id, $vehicle->car_id, 'одна машина — одна запись');
+        $this->assertSame($live->id, $vehicle->offer?->id);
+        $this->assertNull(app(AutoSale::class)($vehicle));
+        $this->assertFalse($live->fresh()->proposed(), 'чужой черновик плашку не получает');
 
         $archived = Offer::create(['claim_ref' => '785R/046/00066/26', 'floor_price' => 500000]);
         $archived->forceFill(['state' => OfferState::Archived])->save();

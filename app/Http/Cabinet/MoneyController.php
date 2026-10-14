@@ -84,7 +84,7 @@ class MoneyController
         abort_unless($deal->buyer_id === $me->id, 404);
         // Счета сделки с заявками и ссылками — сразу: расклад (`DealMoney`) и состояние вознаграждения читают их по
         // нескольку раз за страницу, без загрузки каждый раз шли в базу.
-        $deal->load(['offer.brand', 'offer.model', 'offer.media', 'agentFee.payments.media', 'invoices.claims', 'invoices.payLinks']);
+        $deal->load(['offer', 'offer.media', 'agentFee.payments.media', 'invoices.claims', 'invoices.payLinks']);
         $invoices = $deal->issuedInvoices()->with(['party', 'charges', 'allPayments.media', 'claims', 'payLinks.attempts'])->get()->each->setRelation('deal', $deal);
 
         return view('cabinet.money.deal', [

@@ -50,8 +50,9 @@ final class UpdateOffer
         if ($deal && $deal->cost !== $offer->floor_price) {
             UpdateDealCost::guard($deal);
         }
-        $diff = Changes::of($offer);
-        $changed = array_keys($offer->getDirty());
+        // Правка пишет и предложение, и его машину (`Cars\Car`): история и «что поменялось» — по обеим.
+        $diff = Changes::ofLane($offer);
+        $changed = [...array_keys($offer->getDirty()), ...$offer->carDirty()];
         $offer->save();
         if (array_intersect(['audience_rules', 'vendor_id'], $changed)) {
             app(SyncViewers::class)($offer);
@@ -80,8 +81,6 @@ final class UpdateOffer
                 ($this->dealCost)($deal->setRelation('offer', $offer), (int) $offer->floor_price, $by);
             }
             (new RememberVin)($offer);
-            // Машина одна: тождество связанной ТС парковки правится там же, предложение — её зеркало.
-            Sale::toVehicle($offer, $changed, $by);
         }
         // Номер убытка или VIN вписали руками — письма о той же ТС, что уже пришли и ни к чему не привязаны, едут к ней.
         if (array_intersect(['claim_ref', 'vin'], $changed)) {
@@ -102,7 +101,7 @@ final class UpdateOffer
             if ($offer->share_locked_by_estimate) {
                 $offer->forceFill(['share_locked_by_estimate' => false])->saveQuietly();
             }
-            StampPhotos::dispatch($offer);
+            StampPhotos::dispatch($offer->carRecord());
         }
         // Цена продажи поставлена (своя админа, «Взять», «Из текста») — оценка менеджеров больше не нужна.
         if (in_array('asking_price', $changed, true) && $offer->asking_price) {

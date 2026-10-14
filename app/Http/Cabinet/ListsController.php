@@ -48,7 +48,7 @@ class ListsController
     {
         $user = $request->user();
         $sort = Sort::from($request->query('sort'), ['fresh' => ['Дата', 'desc']], '-fresh');
-        $interests = Interest::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $user->id)->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir())->paginate(30);
+        $interests = Interest::with(['offer', 'offer.media'])->where('user_id', $user->id)->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir())->paginate(30);
         // Что из отмеченного всё ещё открыто человеку: проданное и закрытое остаётся в списке с пометкой, но без перехода.
         $live = Offer::whereIn('id', $interests->pluck('offer_id'))->visibleTo($user)->pluck('id')->all();
 

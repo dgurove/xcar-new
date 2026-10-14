@@ -394,7 +394,7 @@ final class Handler
     private function prompt(Subscriber $sub, bool $remind): void
     {
         // Срочное, что ждёт его в ленте (12.10.2026): анонс приходит и тому, кто сейчас листает, и со звуком в тихие часы.
-        $urgent = $remind ? null : Feed::query($sub->user)->urgent()->with(['brand', 'model'])->orderBy('bids_close_at')->first();
+        $urgent = $remind ? null : Feed::query($sub->user)->urgent()->with([])->orderBy('bids_close_at')->first();
         // «Занят» — только пока он здесь: бросил ленту на середине и ушёл (10 минут тишины) — анонс приходит.
         if (! $urgent && in_array($sub->mode, [Subscriber::FEED, Subscriber::ASKING, Subscriber::INVITE], true) && $sub->updated_at?->gt(now()->subMinutes(10))) {
             return;

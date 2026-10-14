@@ -2,6 +2,7 @@
 
 namespace App\Storage\Console;
 
+use App\Cars\Car as CarRecord;
 use App\Mail\Attachment;
 use App\Mail\Blobs;
 use App\Mail\CandidateState;
@@ -160,14 +161,14 @@ final class Gc extends Command
 
         $this->step('конверсии у машин, закрытых больше '.self::COLD_MONTHS.' мес. назад', function () use ($cool) {
             $since = now()->subMonths(self::COLD_MONTHS);
-            $offers = Offer::whereIn('state', [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered])->where('updated_at', '<', $since)->pluck('id');
-            // Закрытые — открытые с давно прошедшим сроком: отдельного состояния «закрыта» нет.
-            $cars = Car::whereHas('purchase', fn ($q) => $q->where('updated_at', '<', $since)->where(fn ($w) => $w
+            $offers = Offer::whereIn('state', [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered])->where('updated_at', '<', $since)->pluck('car_id');
+            // Закрытые закупки — открытые с давно прошедшим сроком: отдельного состояния «закрыта» нет.
+            $lots = Car::whereHas('purchase', fn ($q) => $q->where('updated_at', '<', $since)->where(fn ($w) => $w
                 ->where('state', PurchaseState::Archived)
-                ->orWhere(fn ($o) => $o->where('state', PurchaseState::Open)->where('offers_close_at', '<', $since))))->pluck('id');
-            $media = Media::where('collection_name', 'photos')->where(fn ($q) => $q
-                ->where(fn ($q) => $q->where('model_type', Offer::class)->whereIn('model_id', $offers))
-                ->orWhere(fn ($q) => $q->where('model_type', Car::class)->whereIn('model_id', $cars)))
+                ->orWhere(fn ($o) => $o->where('state', PurchaseState::Open)->where('offers_close_at', '<', $since))))->pluck('car_id');
+            // Машина (`Cars\Car`) живая — на парковке или в продаже — её кадры не трогаем.
+            $cars = CarRecord::whereIn('id', $offers->merge($lots)->unique()->values())->where('active', false)->pluck('id');
+            $media = Media::where('collection_name', 'photos')->where('model_type', CarRecord::class)->whereIn('model_id', $cars)
                 ->whereRaw("generated_conversions::text <> '[]' and generated_conversions::text <> '{}'")->cursor();
             $stat = $cool($media, $this->dry);
 

@@ -41,7 +41,7 @@ class DealContractController
     /** Договор страницей или PDF — одна дверь для CRM и кабинета менеджера. */
     public static function document(Deal $deal, bool $pdf)
     {
-        $contract = DealContract::for($deal)->load(['seller', 'buyer.party', 'deal.offer.brand', 'deal.offer.model', 'deal.buyer']);
+        $contract = DealContract::for($deal)->load(['seller', 'buyer.party', 'deal.offer', 'deal.buyer']);
         if (! $pdf) {
             return view('deals.docs.dkp', ['contract' => $contract]);
         }

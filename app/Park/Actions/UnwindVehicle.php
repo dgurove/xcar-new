@@ -49,7 +49,9 @@ final class UnwindVehicle
                 // Фото ТС уходят вместе с ней: вложения писем закреплены, при новом «Завести» приедут снова.
                 $candidate->update(['state' => CandidateState::New, 'vehicle_id' => null]);
             }
-            // Заявки, события, осмотры — каскадом по FK; медиа — spatie при удалении модели.
+            // Файлы парковки (из её писем, снятые на ней) уходят с ТС; машина (`Cars\Car`) без других дорожек — тоже, со
+            // всем; продажа той же машины остаётся со своими файлами. Заявки, события, осмотры — каскадом по FK.
+            $vehicle->media()->where('custom_properties->park', true)->get()->each->delete();
             $vehicle->delete();
 
             return $candidate;

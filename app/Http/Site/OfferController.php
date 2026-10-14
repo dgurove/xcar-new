@@ -27,7 +27,7 @@ class OfferController
         abort_unless($offer->isVisibleTo($user), 404);
         ReadOffer::mark($user, $offer);
 
-        $offer->load(['brand', 'model', 'settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
+        $offer->load(['settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
             app(WarmPhotos::class)($offer); // холодный слой: конверсии досчитаются в очереди
         }
@@ -80,7 +80,7 @@ class OfferController
         $user = $request->user();
         abort_unless($offer->isVisibleTo($user), 404);
         ReadOffer::mark($user, $offer);
-        $offer->load(['brand', 'model', 'settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
+        $offer->load(['settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
         CatalogQuery::withOpenedAt($offer, $user);
         $canChat = $offer->chatOpenFor($user);
 

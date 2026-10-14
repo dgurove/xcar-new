@@ -25,7 +25,7 @@ final class Feed
 
     public static function next(User $user): ?Offer
     {
-        return self::query($user)->with(['brand', 'model', 'settlement'])
+        return self::query($user)->with(['settlement'])
             // Срочное с идущим приёмом — первым (12.10.2026).
             ->orderByRaw('(offers.urgent_at is not null and offers.bids_close_at > now()) desc')
             ->orderByDesc('published_at')->orderByDesc('recommended')->orderBy('id')->first();

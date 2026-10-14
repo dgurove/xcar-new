@@ -6,6 +6,7 @@ use App\Garage\Car;
 use App\Garage\CarLine;
 use App\Garage\CarState;
 use App\Offers\Offer;
+use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
 use App\Support\Detail;
 use App\Support\Facets\Common;
@@ -43,7 +44,7 @@ class GarageController
         $preset = array_key_exists($request->query('preset'), self::PRESETS) ? $request->query('preset') : 'work';
         $sort = Sort::from($request->query('sort'), self::SORTS, 'stage');
 
-        $q = Car::with(['offer.brand', 'offer.model', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal']);
+        $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal']);
         match ($preset) {
             'sold' => $q->where('state', CarState::Sold),
             'settled' => $q->where('state', CarState::Settled),
@@ -77,7 +78,7 @@ class GarageController
     /** Карточка строки: путь, деньги, расходы и действия сотрудника — как карточка «Гараж» редактора. */
     public function detail(Offer $offer)
     {
-        $offer->load(['brand', 'model', 'media', 'positions.stage.block']);
+        $offer->load(['media', 'positions.stage.block']);
         $view = OfferController::garageView($offer, request()->user());
         // «Отдали по ошибке» из этой же карточки: ответ вернулся сюда (DetailBack), а машины в гараже уже нет.
         if (! $view) {
@@ -85,6 +86,6 @@ class GarageController
         }
 
         // Письма по машине — как в карточке сделки и предложения (`OfferFiles::letters`): с почтой — тем, у кого она есть.
-        return view('admin.garage.detail', ['garageView' => $view] + (request()->user()->canCrmMail() ? \App\Offers\OfferFiles::letters($offer, request()->user()) : ['letters' => 0]));
+        return view('admin.garage.detail', ['garageView' => $view] + (request()->user()->canCrmMail() ? OfferFiles::letters($offer, request()->user()) : ['letters' => 0]));
     }
 }

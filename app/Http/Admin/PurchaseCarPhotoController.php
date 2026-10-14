@@ -60,7 +60,8 @@ class PurchaseCarPhotoController
 
     private function own(Car $car, Media $media): void
     {
-        abort_unless($media->model_id === $car->id && $media->model_type === $car::class, 404);
+        // Файл машины лота (`Cars\Car`).
+        abort_unless($media->model_type === \App\Cars\Car::class && $media->model_id === $car->car_id, 404);
     }
 
     private function gallery(Car $car)

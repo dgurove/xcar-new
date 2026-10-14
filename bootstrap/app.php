@@ -6,8 +6,7 @@ use App\Billing\Bank\Console\PerpetualSecret;
 use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
-use App\Cars\Console\MergeCarsCommand;
-use App\Cars\Console\MergeDuplicatesCommand;
+use App\Cars\Console\MergeCatalogCommand;
 use App\Garage\Console\GarageReformFixCommand;
 use App\Http\Middleware\ActWindowBack;
 use App\Http\Middleware\DemoReadOnly;
@@ -53,8 +52,6 @@ use App\Offers\Console\TickOffers;
 use App\Park\Console\AutoRequestsCommand;
 use App\Park\Console\FillFromDocsCommand;
 use App\Park\Console\FindValuesCommand;
-use App\Park\Console\GuessCategoriesCommand;
-use App\Park\Console\MirrorOffersCommand;
 use App\Park\Console\ParkDigestCommand;
 use App\Park\Console\ReleaseByLettersCommand;
 use App\Park\Console\SpbFactCommand;
@@ -104,7 +101,6 @@ return Application::configure(basePath: dirname(__DIR__))
         StoreByLettersCommand::class,
         SpbFactCommand::class,
         AutoRequestsCommand::class,
-        MirrorOffersCommand::class,
         ReleaseByLettersCommand::class,
         TickBilling::class,
         CloseMonthCommand::class,
@@ -132,13 +128,11 @@ return Application::configure(basePath: dirname(__DIR__))
         SyncBank::class,
         PerpetualSecret::class,
         SeedDemo::class,
-        MergeCarsCommand::class,
-        MergeDuplicatesCommand::class,
+        MergeCatalogCommand::class,
         GarageReformFixCommand::class,
         DealAgreementFixCommand::class,
         FillFromDocsCommand::class,
         FindValuesCommand::class,
-        GuessCategoriesCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');
@@ -156,13 +150,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
-        // Два сохранения одной машины в одну секунду: сторож (`Cars\Identity`) пропустил оба, второе упёрлось в индекс —
-        // ошибка поля, как у сторожа, а не 500.
+        // Два сохранения одной машины в одну секунду: сторож (`Cars\Identity`) пропустил оба, второе упёрлось в индекс
+        // машины (`cars`: номер убытка, VIN живой) или в «у машины одна продажа и одно хранение» — ошибка поля, как у
+        // сторожа, а не 500.
         $exceptions->map(UniqueConstraintViolationException::class, function (UniqueConstraintViolationException $e) {
             $field = match (true) {
-                str_contains($e->getMessage(), 'offers_claim_ref_key_unique') => 'claim_ref',
-                str_contains($e->getMessage(), 'park_vehicles_ref_key_unique') => 'ref',
-                str_contains($e->getMessage(), '_vin_live_unique') => 'vin',
+                str_contains($e->getMessage(), 'cars_claim_ref_key_unique') => 'claim_ref',
+                str_contains($e->getMessage(), 'cars_vin_active_unique') => 'vin',
+                str_contains($e->getMessage(), 'offers_car_id_unique'), str_contains($e->getMessage(), 'park_vehicles_car_id_unique') => 'claim_ref',
                 default => null,
             };
 

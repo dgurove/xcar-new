@@ -13,7 +13,7 @@
     $flag = $car->specs_state->needsAttention() ? $car->specs_state->label() : ($car->photos_state->needsAttention() ? $car->photos_state->label() : null);
     $note = $flag ? mb_strtolower($flag) : (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true) ? 'фото едут' : (! $car->is_published ? 'скрыта' : null));
 @endphp
-<tr data-detail-key="{{ $car->ref }}" data-search-row id="car-{{ $car->id }}" class="{{ $car->is_published ? '' : 'text-ink-muted' }}" @if (!$car->price_final && !$car->offer_id) data-todo @endif>
+<tr data-detail-key="{{ $car->ref }}" data-search-row id="car-{{ $car->id }}" class="{{ $car->is_published ? '' : 'text-ink-muted' }}" @if (!$car->price_final && !$car->offer) data-todo @endif>
     <td class="grow">
         <x-ui.row-link :key="$car->ref"><span class="cell-title"><x-ui.cat-icon :category="$car->kind->category()"/>{{ $car->titleWithYear() }}</span></x-ui.row-link>
         <span class="cell-sub">
@@ -25,7 +25,7 @@
     <td class="cell-dim num nums hidden sm:table-cell">{{ $car->price_listing ? Money::nums($car->price_listing) : '' }}</td>
     <td class="num nums hidden sm:table-cell">@if ($offers->isNotEmpty()){{ $offers->count() }} <span class="ml-1 text-sm text-ink-muted">до {{ Money::nums($best) }}</span>@endif</td>
     <td class="num nums">
-        @if ($car->offer_id)<span class="text-accent-text">№ {{ $car->offer?->number }}</span>@elseif ($car->price_final){{ Money::nums($car->price_final) }}@else<span class="text-accent-text">оценить</span>@endif
+        @if ($car->offer)<span class="text-accent-text">№ {{ $car->offer?->number }}</span>@elseif ($car->price_final){{ Money::nums($car->price_final) }}@else<span class="text-accent-text">оценить</span>@endif
         @if ($offers->isNotEmpty())<span class="cell-sub sm:hidden">{{ $offers->count() }} предл.</span>@endif
     </td>
 </tr>

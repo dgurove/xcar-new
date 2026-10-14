@@ -2,6 +2,7 @@
 
 namespace App\Mail\Scan;
 
+use App\Cars\Car;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Extraction\DocumentText;
@@ -387,7 +388,8 @@ final class AutoScan
     {
         $column = $model instanceof Offer ? 'offer_id' : 'vehicle_id';
         $letter = DB::table('mail_messages')->whereIn('thread_id', DB::table('mail_threads')->where($column, $model->id)->select('id'))->max('id');
-        $file = DB::table('media')->where('model_type', $model->getMorphClass())->where('model_id', $model->id)->max('id');
+        // Файлы — машины (`Cars\Car`): у ТС и её предложения они одни.
+        $file = DB::table('media')->where('model_type', Car::class)->where('model_id', $model->car_id)->max('id');
 
         return $letter.':'.$file;
     }

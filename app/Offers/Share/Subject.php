@@ -3,11 +3,10 @@
 namespace App\Offers\Share;
 
 use App\Offers\Offer;
+use App\Offers\OfferNumber;
 use App\Purchases\Car;
 use App\Users\User;
 use Carbon\CarbonInterface;
-use Illuminate\Database\Eloquent\Model;
-use Spatie\MediaLibrary\HasMedia;
 
 /**
  * Чем делимся: оффер или машина закупки. Всё, что нужно PDF и подписи, —
@@ -18,7 +17,7 @@ final class Subject
     public const LOCKED = 'Недоступно, пока администратор не согласует цену менеджера';
 
     private function __construct(
-        public readonly HasMedia&Model $model,
+        public readonly Offer|Car $model,
         public readonly string $label,
         public readonly ?CarbonInterface $date,
         public readonly string $title,
@@ -31,10 +30,10 @@ final class Subject
         // файла он тот же, что будет на сайте. Без цены — нет: кнопка рисуется в каждой карточке, мусорный черновик из
         // письма боевого номера не съедает, а временный в текст не идёт.
         if ($offer->asking_price) {
-            \App\Offers\OfferNumber::reserve($offer);
+            OfferNumber::reserve($offer);
         }
 
-        return new self($offer, \App\Offers\OfferNumber::isPublic($offer) ? (string) $offer->number : '', $offer->published_at ?? $offer->created_at, $offer->titleWithYear(), "/offers/{$offer->number}/pdf");
+        return new self($offer, OfferNumber::isPublic($offer) ? (string) $offer->number : '', $offer->published_at ?? $offer->created_at, $offer->titleWithYear(), "/offers/{$offer->number}/pdf");
     }
 
     public static function car(Car $car): self

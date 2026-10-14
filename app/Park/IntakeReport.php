@@ -7,6 +7,7 @@ use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
+use App\Vendors\ContactRole;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -35,14 +36,14 @@ final class IntakeReport
 
     public static function for(Vehicle $vehicle): ?self
     {
-        $vehicle->loadMissing(['vendor', 'brand', 'model', 'media', 'requests']);
+        $vehicle->loadMissing(['vendor', 'media', 'requests']);
         $parent = self::parent($vehicle);
         $account = $parent?->account?->sender() ?? Account::where('scope', Scope::Park)->sending()->orderBy('title')->first();
         if (! $account) {
             return null;
         }
         $to = $parent ? ($parent->isForwardedByStaff() ? (string) $parent->field('sender') : (string) $parent->replyToAddress()) : '';
-        $to = $to ?: (string) ($vehicle->vendor?->email(\App\Vendors\ContactRole::Storage, \App\Vendors\ContactRole::Claims) ?? '');
+        $to = $to ?: (string) ($vehicle->vendor?->email(ContactRole::Storage, ContactRole::Claims) ?? '');
         // Сначала снятое на парковке, потом приехавшее из писем: вендору нужны наши кадры, а не его же.
         $photos = $vehicle->photos()->filter(fn (Media $m) => PhotoStage::of($m) === PhotoStage::Intake)
             ->sortBy(fn (Media $m) => $m->getCustomProperty('source') === 'mail' ? 1 : 0)->values();

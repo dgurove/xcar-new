@@ -11,7 +11,7 @@
     $offer = $deal->offer;
     $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'deal.offer'])->get();
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
-    $credits = $deal->credits()->with(['party', 'offer.brand', 'offer.model', 'payLinks.attempts'])->get();
+    $credits = $deal->credits()->with(['party', 'offer', 'payLinks.attempts'])->get();
     $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
     $fee = $invoices->first(fn ($i) => $i->isAgentFee());
     $issued = $invoices->reject(fn ($i) => $i->isOwed());

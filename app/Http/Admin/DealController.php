@@ -60,7 +60,7 @@ class DealController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
         // Гаражные сделки живут во вкладке «Гараж» (13.10.2026, владелец), здесь их нет ни в списке, ни в лупе, ни в числах.
-        $q = Deal::query()->whereNull('garage_payer')->with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'buyer', 'openRequirement']);
+        $q = Deal::query()->whereNull('garage_payer')->with(['offer', 'offer.media', 'offer.positions.stage.block', 'buyer', 'openRequirement']);
         if ($searching) {
             // Лупа — по всем сделкам: номер предложения, VIN, марка, убыток, менеджер.
             $term = trim((string) $request->query('q'));
@@ -130,7 +130,7 @@ class DealController
     /** Сделка целиком — одна выборка на страницу и карточку. */
     private function data(Deal $deal): array
     {
-        $deal->load(['buyer', 'bid', 'requirements.media', 'requirements.stage.block', 'offer.brand', 'offer.model', 'offer.media', 'offer.settlement',
+        $deal->load(['buyer', 'bid', 'requirements.media', 'requirements.stage.block', 'offer', 'offer.media', 'offer.settlement',
             'offer.vendor.workflows', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.positions.stage.workflow', 'offer.events.user']);
         $offer = $deal->offer;
 

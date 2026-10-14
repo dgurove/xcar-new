@@ -22,7 +22,7 @@ class InvoiceController
 {
     public function create(Request $request)
     {
-        $offer = Offer::where('number', $request->query('offer'))->with(['deal.buyer.party', 'brand', 'model', 'vendor'])->firstOrFail();
+        $offer = Offer::where('number', $request->query('offer'))->with(['deal.buyer.party', 'vendor'])->firstOrFail();
         $deal = $offer->deal;
         abort_unless($deal && $deal->buyer, 404);
         $party = Party::forUser($deal->buyer);

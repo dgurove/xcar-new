@@ -12,7 +12,6 @@ use App\Mail\Thread;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferState;
-use App\Park\Sale;
 use App\Support\Nav;
 use App\Workflow\Requirement;
 use Illuminate\Notifications\DatabaseNotification;
@@ -61,14 +60,13 @@ final class PurgeOffer
             // Ответы менеджера на этапах — с файлами.
             Requirement::where('offer_id', $offer->id)->get()->each->delete();
 
-            // ТС парковки остаётся у парковки со всеми кадрами и документами — и с теми, что принесло предложение: это кадры
-            // машины (`Sale::end`, владелец 05.10.2026: «удаление предложения отменяет продажу, парковку не трогает»).
-            Sale::end($offer);
             Thread::where('offer_id', $offer->id)->update(['offer_id' => null]);
             Candidate::where('offer_id', $offer->id)->update(['offer_id' => null]);
 
             DatabaseNotification::whereIn('data->subject', $subjects)->delete();
-            // Свои кадры и документы — spatie при удалении (`Offer::deleteAllMedia`); остальное — каскадом базы.
+            // Машина (`Cars\Car`) с кадрами и документами уходит вместе с предложением, если больше ничьей дорожкой не была;
+            // ТС парковки или лот закупки её держат — остаётся у них (владелец 05.10.2026: «удаление предложения отменяет
+            // продажу, парковку не трогает»). Остальное — каскадом базы.
             $offer->delete();
         });
         Nav::forgetStaffCounts();

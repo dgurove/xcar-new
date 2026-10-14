@@ -23,8 +23,8 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use RuntimeException;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
 /**
@@ -215,7 +215,7 @@ final class ImportMigtorgLot implements ShouldQueue
                 try {
                     app(UpdateOffer::class)($offer, ['claim_ref' => $lot->claim_ref], $by);
                 } catch (IdentityTaken $e) {
-                    Cache::put("offer:twin:{$offer->id}", $e->holder->getKey(), 86400);
+                    $e->holder instanceof Offer && Cache::put("offer:twin:{$offer->id}", $e->holder->getKey(), 86400);
 
                     return;
                 }

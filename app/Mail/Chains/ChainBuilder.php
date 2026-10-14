@@ -300,12 +300,12 @@ final class ChainBuilder
             // Выданная или отменённая ТС не в счёт: второй заезд той же машины — новая заявка.
             $live = fn () => Vehicle::whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled]);
 
-            return ($code && $live()->where('ref_key', $code)->exists())
-                || ($vin && $live()->where('vin', $vin)->exists())
-                || ($plate && $live()->where('plate', $plate)->exists());
+            return ($code && $live()->whereCar('claim_ref_key', $code)->exists())
+                || ($vin && $live()->whereCar('vin', $vin)->exists())
+                || ($plate && $live()->whereCar('plate', $plate)->exists());
         }
 
-        return ($code && Offer::where('claim_ref_key', $code)->exists()) || ($vin && Offer::where('vin', $vin)->exists());
+        return ($code && Offer::whereCar('claim_ref_key', $code)->exists()) || ($vin && Offer::whereCar('vin', $vin)->exists());
     }
 
     /**

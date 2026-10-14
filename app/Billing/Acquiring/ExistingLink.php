@@ -51,7 +51,7 @@ final class ExistingLink
     {
         return PayLink::where('state', PayLinkState::Open)
             ->whereIn('invoice_id', Invoice::where('direction', 'issued')->where($invoices)->select('id'))
-            ->with(['invoice.party', 'invoice.offer.brand', 'invoice.offer.model', 'invoice.deal.offer.brand', 'invoice.deal.offer.model'])
+            ->with(['invoice.party', 'invoice.offer', 'invoice.deal.offer'])
             ->latest('id')->first();
     }
 }

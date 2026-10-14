@@ -70,7 +70,7 @@ class GalleryController
 
     public static function base(): Builder
     {
-        return Offer::query()->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,state,accepted_at,created_at', 'deal', 'garageCar'])
+        return Offer::query()->with(['settlement', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
             ->withCount('interests')->withMax('interests as interest_at', 'created_at');
     }
 

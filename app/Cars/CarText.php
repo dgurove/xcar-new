@@ -298,8 +298,8 @@ final class CarText
             return null;
         }
         $regex = '^(?:'.$pattern.')$';
-        $ids = Offer::whereNotNull('vendor_id')->whereNotNull('claim_ref')->whereRaw('claim_ref ~ ?', [$regex])->latest('id')->limit(200)->pluck('vendor_id')
-            ->merge(Vehicle::whereNotNull('vendor_id')->whereNotNull('ref')->whereRaw('ref ~ ?', [$regex])->latest('id')->limit(200)->pluck('vendor_id'));
+        $ids = Offer::whereNotNull('vendor_id')->whereCar(fn ($c) => $c->whereRaw('claim_ref ~ ?', [$regex]))->latest('id')->limit(200)->pluck('vendor_id')
+            ->merge(Vehicle::whereNotNull('vendor_id')->whereCar(fn ($c) => $c->whereRaw('claim_ref ~ ?', [$regex]))->latest('id')->limit(200)->pluck('vendor_id'));
 
         return $ids->countBy()->sortDesc()->keys()->first();
     }

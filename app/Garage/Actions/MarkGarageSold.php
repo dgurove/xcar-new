@@ -48,7 +48,7 @@ final class MarkGarageSold
         }
         GarageChanged::dispatch($car);
         if (! $staff) {
-            NotifyOwner::dispatch(new GarageSelling($car->load(['offer.brand', 'offer.model', 'manager', 'costs'])));
+            NotifyOwner::dispatch(new GarageSelling($car->load(['offer', 'manager', 'costs'])));
         }
 
         return $car;

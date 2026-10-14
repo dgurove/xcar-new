@@ -12,6 +12,7 @@ use App\Live\Topics;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Interest;
 use App\Offers\InterestState;
+use App\Offers\Jobs\RetractOfferNotices;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
@@ -99,7 +100,7 @@ class BuyerController
         // Видит всё открытое менеджеру — списка нет (это весь его каталог), только число.
         $seesAll = $user->buyerSeesAll();
         $seenCount = Offer::where('state', OfferState::Open)->visibleTo($user)->count();
-        $offers = $seesAll ? collect() : Offer::with(['brand', 'model', 'settlement', 'media', 'favorites'])->where('state', OfferState::Open)->visibleTo($user)->orderByDesc('published_at')->get();
+        $offers = $seesAll ? collect() : Offer::with(['settlement', 'media', 'favorites'])->where('state', OfferState::Open)->visibleTo($user)->orderByDesc('published_at')->get();
         // Через какую группу пришёл показ — чипом на карточке; прямой показ снимается здесь же.
         $via = Showing::where('manager_id', $me->id)->whereIn('offer_id', $offers->pluck('id'))->whereIn('group_id', $user->groups->pluck('id'))->with('group')->get()->groupBy('offer_id');
 
@@ -115,8 +116,8 @@ class BuyerController
             'seenCount' => $seenCount,
             'direct' => $direct,
             'via' => $via,
-            'interests' => $user->interests()->with('offer.brand', 'offer.model', 'offer.media')->latest()->get(),
-            'chats' => Chat::where('user_id', $user->id)->where('manager_id', $me->id)->with(['offer.brand', 'offer.model'])
+            'interests' => $user->interests()->with('offer', 'offer.media')->latest()->get(),
+            'chats' => Chat::where('user_id', $user->id)->where('manager_id', $me->id)->with(['offer'])
                 ->addSelect(['*', 'last_text' => Message::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
             'link' => session('password_link'),
         ]);
@@ -132,7 +133,7 @@ class BuyerController
         $data = $request->validate(['buyer_sees' => ['required', 'in:all,picked']]);
         $user->update(['buyer_sees' => $data['buyer_sees'], 'buyer_show_vin' => $request->boolean('buyer_show_vin')]);
         app(Publisher::class)->refresh(Topics::user($user->id), ['/offers', '/account']);
-        \App\Offers\Jobs\RetractOfferNotices::forUser($user);
+        RetractOfferNotices::forUser($user);
 
         return back()->with('toast', $data['buyer_sees'] === 'picked' ? 'Видит только выбранные' : 'Видит все предложения');
     }
@@ -145,7 +146,7 @@ class BuyerController
         $ids = collect($request->input('groups', []))->map(fn ($v) => (int) $v)->all();
         $allowed = BuyerGroup::whereIn('id', $ids)->where('manager_id', $me->id)->pluck('id')->all();
         $user->groups()->sync(collect($allowed)->mapWithKeys(fn ($id) => [$id => ['created_at' => now()]])->all());
-        \App\Offers\Jobs\RetractOfferNotices::forUser($user);
+        RetractOfferNotices::forUser($user);
 
         return back()->with('toast', 'Группы сохранены');
     }

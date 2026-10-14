@@ -2,28 +2,19 @@
 
 namespace App\Offers;
 
-use App\Cars\Body;
-use App\Cars\Brand;
-use App\Cars\CarModel;
 use App\Cars\Category;
-use App\Cars\DamageCause;
-use App\Cars\Drive;
-use App\Cars\Fuel;
-use App\Cars\Identity;
-use App\Cars\Papers;
+use App\Cars\OnCar;
 use App\Cars\Settlement;
-use App\Cars\Transmission;
-use App\Cars\Vin\Vin;
+use App\Garage\Car;
 use App\Garage\GaragePayer;
 use App\Http\Admin\OfferController;
 use App\Mail\Candidate;
-use App\Mail\Extraction\Code;
 use App\Mail\Thread;
-use App\Media\HasPhotos;
+use App\Park\PhotoStage;
 use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
-use App\Purchases\Car;
+use App\Purchases\Car as PurchaseCar;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Demo\HidesDemo;
@@ -45,10 +36,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Spatie\MediaLibrary\HasMedia;
 
 #[Fillable([
     'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'body', 'transmission', 'drive', 'fuel',
@@ -59,10 +48,10 @@ use Spatie\MediaLibrary\HasMedia;
     'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
     'garage_allowed', 'evacuator_id', 'evacuation_to', 'deal_show_until',
 ])]
-class Offer extends Model implements HasMedia
+class Offer extends Model
 {
-    use HasPhotos;
     use HidesDemo;
+    use OnCar;
 
     public const DEFAULT_SHARE = 0.6;
 
@@ -71,15 +60,15 @@ class Offer extends Model implements HasMedia
 
     public const HOT_HOURS = 12;
 
+    /** Машина (`Cars\Car`) — с каждым предложением: название, VIN, фото. */
+    protected $with = ['car'];
+
     protected static function booted(): void
     {
         // `opened_at` — вычисленное каталогом (`CatalogQuery::openedAtSql`), колонки нет: в запись не уходит.
         static::saving(fn (self $o) => $o->offsetUnset('opened_at'));
         // `viewed` — «Просмотрено» из каталога (`CatalogQuery::cards`), тоже без колонки.
         static::saving(fn (self $o) => $o->offsetUnset('viewed'));
-        // Тип ТС колонкой — для фильтра; марка сменилась — прежняя связь уже не та.
-        // Одна машина — одна запись: номер убытка или VIN другого предложения не встанет (`Identity`).
-        static::saving(fn (self $o) => Identity::guardOffer($o));
         static::saving(function (self $o) {
             // У продажи свой вендор: «АльфаСтрахование СПб» парковки здесь — «АльфаСтрахование».
             if ($o->isDirty('vendor_id')) {
@@ -87,28 +76,15 @@ class Offer extends Model implements HasMedia
             }
             // Вендор встал черновику — его метки по умолчанию (11.10.2026).
             VendorTags::apply($o);
-            if ($o->vehicle_category === null || $o->isDirty(['body', 'brand_id', 'model_id'])) {
-                foreach (['brand' => 'brand_id', 'model' => 'model_id'] as $rel => $col) {
-                    if ($o->isDirty($col)) {
-                        $o->unsetRelation($rel);
-                    }
-                }
-                $o->vehicle_category = $o->guessCategory()->value;
-            }
         });
-        // Машина одна: вписали номер убытка или VIN машины, что стоит на парковке, — предложение связывается с ней, и
-        // фото с документами становятся общими (`Park\Sale::adopt`), а не живут двумя машинами.
-        static::saved(fn (self $o) => $o->wasChanged(['claim_ref_key', 'vin']) || ($o->wasRecentlyCreated && ($o->claim_ref_key || $o->vin)) ? Sale::adopt($o) : null);
-        // Продажа кончилась (в архив, снят) — ТС парковки отвязывается, всё её остаётся у неё; вернули из архива — связь
-        // возвращается сама, если ТС та же и свободна (владелец 05.10.2026: «удаление предложения отменяет продажу, а
-        // парковку не трогает»).
+        // Продажа кончилась (в архив, снята) — в истории ТС парковки «Снята с продажи»; машина и её файлы — у машины,
+        // парковку это не трогает (владелец 05.10.2026: «удаление предложения отменяет продажу, а парковку не трогает»).
         static::saved(function (self $o) {
-            if (! $o->wasChanged('state')) {
-                return;
+            if ($o->wasChanged('state') && in_array($o->state, [OfferState::Archived, OfferState::Cancelled], true)) {
+                Sale::end($o);
             }
-            in_array($o->state, [OfferState::Archived, OfferState::Cancelled], true) ? Sale::end($o) : Sale::adopt($o);
         });
-        // Черновик удаляют (бросили, «Отменить», ночная уборка) — отвязать по-человечески, с записью в истории ТС.
+        // Черновик удаляют (бросили, «Отменить», ночная уборка) — так же, записью в истории ТС.
         static::deleting(fn (self $o) => Sale::end($o));
     }
 
@@ -120,21 +96,10 @@ class Offer extends Model implements HasMedia
             'car_place' => CarPlace::class,
             'insurer_deadline_at' => 'date',
             'answer_by' => 'datetime',
-            'flags' => 'array',
-            'docs_required' => 'array',
-            'body' => Body::class,
-            'transmission' => Transmission::class,
-            'drive' => Drive::class,
-            'fuel' => Fuel::class,
-            'damage_cause' => DamageCause::class,
-            'papers' => Papers::class,
-            'damage_zones' => 'array',
             'tags' => 'array',
             'tag_colors' => 'array',
             'show_vin' => 'bool',
             'show_address' => 'bool',
-            'is_runnable' => 'bool',
-            'has_keys' => 'bool',
             'prices_include_vat' => 'bool',
             'chat_enabled' => 'bool',
             'share_locked' => 'bool',
@@ -142,7 +107,6 @@ class Offer extends Model implements HasMedia
             'recommended' => 'bool',
             'garage_allowed' => 'bool',
             'audience_rules' => 'array',
-            'incident_date' => 'date',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
             'deal_show_until' => 'datetime',
@@ -154,7 +118,6 @@ class Offer extends Model implements HasMedia
             'auction_planned_at' => 'datetime',
             'proposed_at' => 'datetime',
             'floor_price' => 'int',
-            'value' => 'int',
             'publish_price' => 'int',
             'asking_price' => 'int',
             'min_bid_price' => 'int',
@@ -173,16 +136,23 @@ class Offer extends Model implements HasMedia
         return $field === null || $field === 'number' ? OfferNumber::find($value) : parent::resolveRouteBinding($value, $field);
     }
 
-    public function setClaimRefAttribute(?string $value): void
+    /** Тип ТС у предложения раньше был своей колонкой `vehicle_category` — теперь это тип машины. */
+    public static function carAliases(): array
     {
-        $value = trim((string) $value) ?: null;
-        $this->attributes['claim_ref'] = $value;
-        $this->attributes['claim_ref_key'] = Code::key($value);
+        return ['vehicle_category' => 'category'];
     }
 
-    public function setVinAttribute(?string $value): void
+    protected function carIsDemo(): bool
     {
-        $this->attributes['vin'] = Vin::normalize($value);
+        return (bool) $this->is_demo;
+    }
+
+    /** В продажу идут кадры от страховой и приёма (погрузка и выдача — дело парковки) и все документы. */
+    protected function carMediaScope(Builder $query): void
+    {
+        $query->where(fn (Builder $q) => $q->where('collection_name', '!=', 'photos')
+            ->orWhereNull('custom_properties->stage')
+            ->orWhereIn('custom_properties->stage', [PhotoStage::Vendor->value, PhotoStage::Intake->value]));
     }
 
     public function vendor(): BelongsTo
@@ -190,29 +160,10 @@ class Offer extends Model implements HasMedia
         return $this->belongsTo(Vendor::class);
     }
 
-    /** Машина на стоянке, если связана. */
+    /** ТС парковки той же машины. */
     public function parkVehicle(): HasOne
     {
-        return $this->hasOne(Vehicle::class, 'offer_id');
-    }
-
-    /** Кадры и документы предложения — свои и ТС парковки, новые ложатся к ТС (`SaleMedia`). */
-    public function media(): MorphMany
-    {
-        return new SaleMedia($this->newRelatedInstance($this->getMediaModel())->newQuery(), $this, 'model_type', 'model_id', $this->getKeyName());
-    }
-
-    /** Только свои файлы предложения: при удалении черновика файлы ТС остаются у ТС. */
-    public function ownMedia(): MorphMany
-    {
-        return $this->morphMany($this->getMediaModel(), 'model');
-    }
-
-    public function deleteAllMedia(): self
-    {
-        $this->ownMedia()->cursor()->each(fn ($media) => $media->delete());
-
-        return $this;
+        return $this->hasOne(Vehicle::class, 'car_id', 'car_id');
     }
 
     /** @return list<Flag> */
@@ -253,16 +204,6 @@ class Offer extends Model implements HasMedia
         $stage ??= $this->stage();
 
         return $stage?->template_id ? "/work/mail/new?offer={$this->number}&template={$stage->template_id}" : null;
-    }
-
-    public function brand(): BelongsTo
-    {
-        return $this->belongsTo(Brand::class);
-    }
-
-    public function model(): BelongsTo
-    {
-        return $this->belongsTo(CarModel::class, 'model_id');
     }
 
     public function settlement(): BelongsTo
@@ -403,7 +344,7 @@ class Offer extends Model implements HasMedia
     /** Строка гаража: у кого машина «на подготовке» (менеджер продаёт сам). */
     public function garageCar(): HasOne
     {
-        return $this->hasOne(\App\Garage\Car::class);
+        return $this->hasOne(Car::class);
     }
 
     /** Кто вывозит; пусто при живом вывозе — мы. */
@@ -459,7 +400,7 @@ class Offer extends Model implements HasMedia
     public function worksWith(User $user): bool
     {
         return $this->evacuator_id === $user->id
-            || \App\Garage\Car::where('offer_id', $this->id)->where('manager_id', $user->id)->exists()
+            || Car::where('offer_id', $this->id)->where('manager_id', $user->id)->exists()
             || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->whereIn('state', [DealState::Active, DealState::Done])->exists();
     }
 
@@ -558,9 +499,9 @@ class Offer extends Model implements HasMedia
     public function scopeEmptyDraft(Builder $q): Builder
     {
         return $q->where('state', OfferState::Draft)->whereNull('published_at')
-            ->whereNull('brand_id')->whereNull('model_id')->whereNull('vin')->whereNull('claim_ref')->whereNull('floor_price')
-            ->whereNull('asking_price')->whereNull('description')
-            ->whereDoesntHave('ownMedia')->whereDoesntHave('purchaseCar')->whereDoesntHave('parkVehicle')->whereDoesntHave('positions')
+            ->whereCar(fn ($c) => $c->whereNull('brand_id')->whereNull('model_id')->whereNull('vin')->whereNull('claim_ref'))
+            ->whereNull('floor_price')->whereNull('asking_price')->whereNull('description')
+            ->whereDoesntHave('media')->whereDoesntHave('purchaseCar')->whereDoesntHave('parkVehicle')->whereDoesntHave('positions')
             ->whereNotIn('id', Thread::whereNotNull('offer_id')->select('offer_id'))
             ->whereNotIn('id', Candidate::whereNotNull('offer_id')->select('offer_id'));
     }
@@ -758,25 +699,10 @@ class Offer extends Model implements HasMedia
         return $this->title().($this->year ? ", {$this->year}" : '');
     }
 
-    /**
-     * Тип ТС — иконка перед названием и фильтр «Тип ТС»: хранится колонкой `vehicle_category` (её считает `saving`),
-     * так что иконка и фильтр не расходятся.
-     */
+    /** Тип ТС — иконка перед названием и фильтр «Тип ТС»: тип машины (`Car` считает его сам по кузову и марке). */
     public function category(): Category
     {
-        return Category::tryFrom((string) $this->vehicle_category) ?? $this->guessCategory();
-    }
-
-    /**
-     * Тип ТС заново: по кузову, иначе как у этой ТС на парковке, иначе по марке и модели («Газель», «КАМАЗ»); не
-     * понять — легковой.
-     */
-    public function guessCategory(): Category
-    {
-        $park = $this->relationLoaded('parkVehicle') ? $this->parkVehicle?->category
-            : ($this->exists ? Vehicle::where('offer_id', $this->id)->first(['category'])?->category : null);
-
-        return $this->body?->category() ?? $park ?? Category::guess($this->title()) ?? Category::Passenger;
+        return $this->vehicle_category ?? Category::guess($this->title()) ?? Category::Passenger;
     }
 
     /** Строка фактов под названием: год, пробег, коробка, привод. */
@@ -795,7 +721,7 @@ class Offer extends Model implements HasMedia
     /** ТС закупки, из которой предложение сделано по контрпредложению: её цены нужны при оценке. */
     public function purchaseCar(): HasOne
     {
-        return $this->hasOne(Car::class, 'offer_id');
+        return $this->hasOne(PurchaseCar::class, 'car_id', 'car_id')->orderByDesc('id');
     }
 
     /**
@@ -1062,14 +988,14 @@ class Offer extends Model implements HasMedia
             // падала вся выдача — такие с прежними номерами не сравниваются.
             ->when($t->digits, fn ($w, $d) => $w->orWhereRaw('cast(offers.number as text) like ?', [Term::like($d)])
                 ->when(strlen($d) <= 18, fn ($a) => $a->orWhereIn('offers.id', DB::table('offer_number_aliases')->where('number', $d)->select('offer_id'))))
-            ->when($vin && $t->vin, fn ($w) => $w->orWhere(fn ($x) => $x->where('offers.vin', 'like', Term::like($t->vin))->when($vinOpen, $vinOpen)))
-            ->when($crm && $t->key, fn ($w) => $w->orWhere('offers.claim_ref_key', 'like', Term::like($t->key)))
-            ->when($crm && $t->phone, fn ($w) => $w->orWhereRaw(Term::digitsSql('offers.insured_phone').' like ?', [Term::like($t->phone)]))
+            ->when($vin && $t->vin, fn ($w) => $w->orWhere(fn ($x) => $x->whereCar('cars.vin', 'like', Term::like($t->vin))->when($vinOpen, $vinOpen)))
+            ->when($crm && $t->key, fn ($w) => $w->orWhere(fn ($x) => $x->whereCar('cars.claim_ref_key', 'like', Term::like($t->key))))
+            ->when($crm && $t->phone, fn ($w) => $w->orWhere(fn ($x) => $x->whereCar(fn ($c) => $c->whereRaw(Term::digitsSql('cars.insured_phone').' like ?', [Term::like($t->phone)]))))
             // Слова — через И: «kia rio», «рио 2021», «крета москва».
-            ->orWhere(fn ($all) => CarWords::apply($all, $t, 'offers', fn ($one, $word, $like) => $one
+            ->orWhere(fn ($all) => CarWords::apply($all, $t, fn ($one, $word, $like) => $one
                 ->orWhereHas('settlement', fn ($c) => $c->search($word, region: false))
                 ->orWhereRaw('cast(offers.number as text) like ?', [$like])
-                ->when($crm, fn ($o) => $o->orWhereRaw('lower(offers.claim_ref) like ?', [$like])), vin: $vin, vinOpen: $vinOpen)));
+                ->when($crm, fn ($o) => $o->orWhere(fn ($x) => $x->whereCar(fn ($c) => $c->whereRaw('lower(cars.claim_ref) like ?', [$like])))), vin: $vin, vinOpen: $vinOpen)));
     }
 
     /** Поиск в CRM: то же, что `search`, плюс номер убытка (ключом и куском) и телефон владельца — на витрине их нет. */

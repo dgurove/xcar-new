@@ -20,7 +20,7 @@ class ShowingController
     {
         $me = $request->user();
         $ids = collect($request->input('offers', []))->map(fn ($v) => (int) $v)->filter()->unique()->take(100)->all();
-        $offers = Offer::with(['brand', 'model', 'media'])->whereIn('id', $ids)->where('state', OfferState::Open)->visibleTo($me)->get();
+        $offers = Offer::with(['media'])->whereIn('id', $ids)->where('state', OfferState::Open)->visibleTo($me)->get();
         abort_if($offers->isEmpty(), 404);
         $single = $offers->count() === 1 ? $offers->first() : null;
         $current = $single ? Showing::where('offer_id', $single->id)->where('manager_id', $me->id)->get() : collect();
@@ -46,7 +46,7 @@ class ShowingController
         $buyer = $request->integer('user') ? $me->buyers()->findOrFail($request->integer('user')) : null;
         $group = $request->integer('group') ? $me->ownGroups()->findOrFail($request->integer('group')) : null;
         abort_unless($buyer || $group, 404);
-        $q = Offer::with(['brand', 'model', 'media'])->where('state', OfferState::Open)->visibleTo($me)->orderByDesc('published_at');
+        $q = Offer::with(['media'])->where('state', OfferState::Open)->visibleTo($me)->orderByDesc('published_at');
         if ($term = trim((string) $request->query('q'))) {
             $q->search($term);
         }

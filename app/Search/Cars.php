@@ -13,8 +13,8 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 
 /**
- * Группа «ТС» выдачи: машина целиком — попадания из предложений, ТС парковки, таблицы Кати, цепочек «Из писем», сделок и
- * гаража склеиваются в одну строку по номеру убытка, иначе по VIN, иначе по связи ТС с предложением. Где машина —
+ * Группа «ТС» выдачи: машина целиком — попадания из предложений, ТС парковки, сделок и гаража — одна строка на запись
+ * машины (`Cars\Car`); номер из таблицы Кати и цепочка «Из писем» встают к ней по номеру убытка или VIN. Где машина —
  * фразой кусками: «в сделке у Иванова», «Краснопутиловская, с 8 окт», «в таблице Кати, не заведена». Точное совпадение
  * номера или VIN — первым, живые раньше закрытых.
  */
@@ -23,7 +23,7 @@ final class Cars
     /** @var array<string, Hit> */
     private array $hits = [];
 
-    /** @var array<string, string> ключ ТС парковки и предложения → строка */
+    /** @var array<string, string> номер убытка и VIN известной машины → её строка */
     private array $alias = [];
 
     /** @var array<int, true> предложения, что уже стоят строкой своей сделки или гаража (сайт) */
@@ -36,7 +36,7 @@ final class Cars
         if (isset($this->own[$o->id])) {
             return;
         }
-        $key = $this->key($crm ? $o->claim_ref_key : null, $o->vin, 'o'.$o->id);
+        $key = $this->car($o->car_id, $crm ? $o->claim_ref_key : null, $o->vin);
         // Чья сделка и чей гараж — админу CRM; модератору (черновики) люди сделок ни к чему.
         $who = $crm && auth()->user()?->canManageCrm();
         $state = match ($o->state) {
@@ -55,14 +55,11 @@ final class Cars
         array_unshift($hit->line, $state);
         // На сайте номер убытка не ищется — и выше от него не встаёт (по рангу его можно было бы угадать).
         $hit->rank = min($hit->rank, $this->exact($crm ? $o->claim_ref_key : null, $o->vin, (string) $o->number) ? 0 : (in_array($o->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true) ? 2 : 1));
-        if ($o->parkVehicle) {
-            $this->alias['v'.$o->parkVehicle->id] = $key;
-        }
     }
 
     public function vehicle(Vehicle $v, string $link, bool $external = false): void
     {
-        $key = $this->alias['v'.$v->id] ?? $this->key($v->ref_key, $v->vin, 'v'.$v->id);
+        $key = $this->car($v->car_id, $v->ref_key, $v->vin);
         $where = match ($v->state) {
             VehicleState::Stored => trim(($v->yard?->name ?? 'на парковке').($v->accepted_at ? ', с '.$v->accepted_at->translatedFormat('j M') : '')),
             VehicleState::Expected => 'ждём на парковке',
@@ -100,7 +97,7 @@ final class Cars
     public function siteDeal(Deal $d): void
     {
         $this->own[$d->offer_id] = true;
-        $hit = $this->hit('o'.$d->offer_id, fn () => new Hit($d->offer->titleWithYear(), $d->href()));
+        $hit = $this->hit($this->car($d->offer->car_id), fn () => new Hit($d->offer->titleWithYear(), $d->href()));
         $hit->href = $d->href();
         $hit->line[] = 'ваша сделка';
         $hit->rank = 0;
@@ -109,7 +106,7 @@ final class Cars
     public function siteGarage(GarageCar $c): void
     {
         $this->own[$c->offer_id] = true;
-        $hit = $this->hit('o'.$c->offer_id, fn () => new Hit($c->offer->titleWithYear(), $c->url()));
+        $hit = $this->hit($this->car($c->offer->car_id), fn () => new Hit($c->offer->titleWithYear(), $c->url()));
         $hit->href = $c->url();
         $hit->line[] = 'в гараже, '.mb_strtolower($c->state->label());
         $hit->rank = 0;
@@ -134,22 +131,22 @@ final class Cars
         return $this->hits[$key] ??= $make();
     }
 
-    /** Ключ строки: номер убытка, иначе полный VIN, иначе своя запись. Уже заведённый ключ VIN склеивает с номером. */
-    private function key(?string $claim, ?string $vin, string $own): string
+    /** Строка машины; её номер убытка и VIN запоминаются — номер из таблицы Кати и цепочка писем встанут к ней. */
+    private function car(int $carId, ?string $claim = null, ?string $vin = null): string
     {
-        $vinKey = $vin && strlen($vin) === 17 ? 'vin:'.$vin : null;
-        if ($claim && isset($this->hits['claim:'.$claim])) {
-            return 'claim:'.$claim;
-        }
-        if ($vinKey && isset($this->alias[$vinKey])) {
-            return $this->alias[$vinKey];
-        }
-        $key = $claim ? 'claim:'.$claim : ($vinKey ?? $own);
-        if ($vinKey) {
-            $this->alias[$vinKey] = $key;
-        }
+        $key = 'car:'.$carId;
+        $claim && $this->alias['claim:'.$claim] = $key;
+        $vin && strlen($vin) === 17 && $this->alias['vin:'.$vin] = $key;
 
         return $key;
+    }
+
+    /** Ключ строки внешнего (таблица Кати, письма): известная машина по номеру или VIN, иначе своя строка. */
+    private function key(?string $claim, ?string $vin, string $own): string
+    {
+        return ($claim ? $this->alias['claim:'.$claim] ?? null : null)
+            ?? ($vin && strlen($vin) === 17 ? $this->alias['vin:'.$vin] ?? null : null)
+            ?? ($claim ? 'claim:'.$claim : $own);
     }
 
     private function exact(?string $claimKey, ?string $vin = null, ?string $number = null): bool

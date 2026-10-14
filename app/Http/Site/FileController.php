@@ -3,10 +3,10 @@
 namespace App\Http\Site;
 
 use App\Billing\Party;
+use App\Cars\Car;
 use App\Media\ForManagers;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
-use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Support\InternalRefs;
 use App\Support\OfficePreview;
@@ -69,12 +69,9 @@ final class FileController
         if ($user->isAdmin()) {
             return true;
         }
-        // Файл ТС парковки в продаже — и файл её предложения (`SaleMedia`).
-        $offer = match ($media->model_type) {
-            Offer::class => Offer::find($media->model_id),
-            Vehicle::class => Vehicle::find($media->model_id)?->offer,
-            default => null,
-        };
+        // Файл машины (`Cars\Car`) — её продажи и её хранения.
+        $car = $media->model_type === Car::class ? Car::find($media->model_id) : null;
+        $offer = $car?->offer;
         // Модератору — документы и фото только тех предложений, что ему можно открыть в CRM.
         if ($user->isModerator()) {
             return (bool) $offer?->isEditableBy($user);
@@ -83,11 +80,10 @@ final class FileController
         $works = fn () => $offer && $offer->worksWith($user) && ($media->collection_name !== 'papers' || ForManagers::is($media));
 
         return match ($media->model_type) {
-            Offer::class => $works(),
+            // На парковке — ТС, которую человек видит: у управляющего с городом область `Park\City` прячет чужие.
+            Car::class => $works() || ($user->canAccess(Section::Park) && Vehicle::where('car_id', $car?->id)->exists()),
             // Файл просьбы — тому, кого просили.
             Requirement::class => Requirement::whereKey($media->model_id)->where('user_id', $user->id)->exists(),
-            // На парковке — ТС, которую человек видит: у управляющего с городом область `Park\City` прячет чужие.
-            Vehicle::class => ($user->canAccess(Section::Park) && Vehicle::whereKey($media->model_id)->exists()) || $works(),
             // Скан паспорта — самому человеку и его менеджеру.
             Party::class => (bool) Party::find($media->model_id)?->managedBy($user),
             default => false,

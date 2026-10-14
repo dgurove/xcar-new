@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Cars\Car;
 use App\Cars\Vin\Vin;
 use App\Chats\Chat;
 use App\Garage\Actions\GiveToGarage;
@@ -32,6 +33,7 @@ use App\Offers\CatalogQuery;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
+use App\Offers\Margin;
 use App\Offers\MigtorgDiff;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
@@ -174,14 +176,14 @@ class OfferController
                     Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent'),
                     Facet::toggle('fresh', 'Новые', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.published_at', '>=', now()->subHours(Offer::NEW_HOURS)))->dot('fresh'),
                     Facet::toggle('ending', 'Горящие', fn ($o) => CatalogQuery::ending($o))->dot('hot'),
-                    Facet::toggle('loss', 'В минус', fn ($o) => \App\Offers\Margin::scope($o))->dot('loss'),
+                    Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss'),
                 ] : []),
                 Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true)),
             ],
             // Продажная у самой закупочной или ниже (`Offers\Margin`, 14.10.2026) — чип, пока такие есть.
             'priced', 'slots' => [
                 ...self::facets(),
-                ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => \App\Offers\Margin::scope($o))->dot('loss')] : []),
+                ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')] : []),
             ],
             default => self::facets(),
         })->always();
@@ -196,7 +198,7 @@ class OfferController
         $carcadeHidden = ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request, $preset);
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
-        $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['brand', 'model', 'settlement', 'parkVehicle:id,offer_id,category,state,accepted_at,created_at', 'deal', 'garageCar'])
+        $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['settlement', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
             ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
 
         if ($searching) {
@@ -463,7 +465,7 @@ class OfferController
     /** Чипы списка предложений — те же у галереи. */
     public static function facets(): array
     {
-        return [Common::vendor('offers.vendor_id')->none('Без вендора'), Common::city('offers.settlement_id'), Common::category('offers.vehicle_category')];
+        return [Common::vendor('offers.vendor_id')->none('Без вендора'), Common::city('offers.settlement_id'), Common::category(Car::sql('offers', 'category'))];
     }
 
     public function store(Request $request, CreateOffer $create)
@@ -491,7 +493,7 @@ class OfferController
         // Модератору — поля, фото, документы и история: подтверждений, интереса, сделки, маршрута, чатов и круга показа
         // он не видит, и грузить их незачем.
         $admin = $request->user()->canManageCrm();
-        $offer->load(['brand', 'model', 'settlement', 'media', 'events.user', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
+        $offer->load(['settlement', 'media', 'events.user', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
             'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow', 'deal.buyer', 'dealAudience', 'lastDeal.buyer', 'lastDeal.bid', 'evacuator'] : [])]);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
@@ -564,8 +566,9 @@ class OfferController
         $except = (int) $request->query('except') ?: null;
         // Кадр Мигторга назвал номер, а он уже у другого предложения (`ImportMigtorgLot::byPhoto`) — та же строка.
         $twin = $except ? Cache::get("offer:twin:{$except}") : null;
-        $offers = ! $vin && ! $claim && ! $twin ? collect() : Offer::with(['brand', 'model'])
-            ->where(fn ($w) => $w->when($vin, fn ($w) => $w->where('vin', $vin))->when($claim, fn ($w) => $w->orWhere('claim_ref_key', $claim))->when($twin, fn ($w) => $w->orWhereKey($twin)))
+        $offers = ! $vin && ! $claim && ! $twin ? collect() : Offer::with([])
+            ->where(fn ($w) => $w->when($vin || $claim, fn ($w) => $w->whereCar(fn ($c) => $c->when($vin, fn ($c) => $c->orWhere('vin', $vin))->when($claim, fn ($c) => $c->orWhere('claim_ref_key', $claim))))
+                ->when($twin, fn ($w) => $w->orWhereKey($twin)))
             ->when($except, fn ($q, $id) => $q->whereKeyNot($id))->latest('id')->limit(3)->get();
         $self = $except ? Offer::find($except) : null;
 
@@ -596,7 +599,7 @@ class OfferController
     public function detail(Request $request, Offer $offer, ?bool $gallery = null)
     {
         $admin = $request->user()->canManageCrm();
-        $offer->load(['brand', 'model', 'settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,offer_id,state,yard_id,accepted_at,created_at', 'parkVehicle.yard:id,name', 'vendor.workflows', 'positions.stage', 'evacuator', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media')] : [])])
+        $offer->load(['settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,car_id,state,yard_id,accepted_at,created_at', 'parkVehicle.yard:id,name', 'vendor.workflows', 'positions.stage', 'evacuator', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media')] : [])])
             ->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.detail', OfferFiles::letters($offer, $request->user()) + [

@@ -10,6 +10,7 @@ use App\Billing\Party;
 use App\Cars\Category;
 use App\Http\Park\VehicleInvoiceController;
 use App\Mail\Candidate;
+use App\Mail\Chains\NodeTitle;
 use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Thread;
@@ -58,7 +59,7 @@ final class CaseView
 
     public static function for(Vehicle $vehicle, User $user, ?int $requestId = null): array
     {
-        $vehicle->load(['brand', 'model', 'vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party'])->loadCount(['threads' => fn ($q) => $q->park()]);
+        $vehicle->load(['vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party'])->loadCount(['threads' => fn ($q) => $q->park()]);
         $open = ($requestId ? $vehicle->requests->first(fn (Request $r) => $r->id === $requestId && $r->isOpen()) : null) ?? self::current($vehicle);
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;
@@ -82,7 +83,7 @@ final class CaseView
             'verb' => $open?->verb(),
             'phases' => $vehicle->requests->filter(fn (Request $r) => $r->state === RequestState::Done)->sortBy(fn (Request $r) => ($r->done_at ?? $r->updated_at)->getTimestamp())->values(),
             'others' => $vehicle->requests->filter(fn (Request $r) => $r->isOpen() && $open && $r->isNot($open))->values(),
-            'letters' => \App\Mail\Chains\NodeTitle::count($messages),
+            'letters' => NodeTitle::count($messages),
             'steps' => Timeline::for($vehicle, $open, $messages->isNotEmpty() || $vehicle->requests->contains(fn (Request $r) => $r->thread_id), $vehicle->events, $asks, $pass),
             'asks' => $asks,
             'threads' => $threads,

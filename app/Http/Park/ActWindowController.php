@@ -34,7 +34,7 @@ class ActWindowController
             return view('park.act.done', ['letters' => preg_match('#^/(mail|cars)/#', $letters) ? $letters : null]);
         }
 
-        $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests']);
+        $vehicle->load(['vendor', 'yard', 'media', 'requests']);
         $user = $request->user();
         $common = ['vehicle' => $vehicle, 'advance' => $advance, 'self' => $url($step, array_filter(['pass' => $request->query('pass')])), 'canManage' => $user->canManagePark()];
 

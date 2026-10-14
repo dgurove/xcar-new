@@ -275,7 +275,7 @@ final class SpbFactCommand extends Command
     /** @return list<array{row: array, vehicle: ?Vehicle, threads: list<int>, ref: ?string, notes: list<string>}> */
     private function plan(array $rows): array
     {
-        $vehicles = Vehicle::withoutGlobalScopes()->with(['brand', 'model'])->get();
+        $vehicles = Vehicle::withoutGlobalScopes()->with([])->get();
         $byRef = $vehicles->whereNotNull('ref_key')->groupBy('ref_key');
         $claims = collect($rows)->groupBy(fn ($r) => Vehicle::keyFor((string) $r['claim']));
         $plans = [];
@@ -418,7 +418,7 @@ final class SpbFactCommand extends Command
     private function outsideTable(array $plans): void
     {
         $used = collect($plans)->pluck('vehicle')->filter()->pluck('id')->flip();
-        foreach (Vehicle::withoutGlobalScopes()->with(['brand', 'model'])->where('vendor_id', $this->vendor->id)->get() as $v) {
+        foreach (Vehicle::withoutGlobalScopes()->with([])->where('vendor_id', $this->vendor->id)->get() as $v) {
             if (! isset($used[$v->id])) {
                 $this->report['ТС вне таблицы'][] = [$v->id, $v->titleWithYear(), $v->ref, $v->vin, $v->plate, $v->state->label(), $v->created_at?->format('d.m.Y'), $v->accepted_at?->format('d.m.Y')];
             }
@@ -647,7 +647,7 @@ final class SpbFactCommand extends Command
             $ok = false;
             $this->report['Аудит'][] = [$what, ...$cells];
         };
-        $all = Vehicle::withoutGlobalScopes()->where('vendor_id', $this->vendor->id)->with(['brand', 'model'])->withCount(['threads' => fn ($t) => $t->withoutGlobalScopes()])->get();
+        $all = Vehicle::withoutGlobalScopes()->where('vendor_id', $this->vendor->id)->with([])->withCount(['threads' => fn ($t) => $t->withoutGlobalScopes()])->get();
         $find = fn (array $r) => $all->first(fn (Vehicle $v) => ($r['claim'] && $v->ref_key === Vehicle::keyFor($r['claim']) || ($r['vin'] && $v->vin === $r['vin']))
             && abs($v->accepted_at?->copy()->startOfDay()->diffInDays($r['arrival']) ?? 999) <= 1);
         $seen = [];

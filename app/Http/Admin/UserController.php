@@ -182,7 +182,7 @@ class UserController
         abort_unless($me->isAdmin(), 404);
         $user->load('manager');
         $chats = Chat::where('user_id', $user->id)->when($user->isManager(), fn ($q) => $q->orWhere('manager_id', $user->id))
-            ->withLast()->with(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager'])->orderByDesc('last_message_at')->limit(50)->get();
+            ->withLast()->with(['offer', 'offer.media', 'user', 'manager'])->orderByDesc('last_message_at')->limit(50)->get();
         // Пришли из шапки чата — «‹ Чат» вместо «‹ Пользователи».
         $chat = $request->integer('chat') ? Chat::find($request->integer('chat')) : null;
 
@@ -198,9 +198,9 @@ class UserController
             'moneyDeals' => $ledger?->rows() ?? collect(),
             'back' => $chat ? ['Чат', (Surface::current() === Surface::Crm ? '/work/chats/' : '/account/chats/').$chat->id] : null,
             'chats' => $chats,
-            'deals' => $user->hasDeals() ? Deal::where('buyer_id', $user->id)->with(['offer.brand', 'offer.model', 'offer.media', 'buyer'])->latest()->get() : collect(),
+            'deals' => $user->hasDeals() ? Deal::where('buyer_id', $user->id)->with(['offer', 'offer.media', 'buyer'])->latest()->get() : collect(),
             'buyersCount' => $user->isManager() ? $user->buyers()->count() : 0,
-            'interests' => $user->isBuyer() ? $user->interests()->with(['offer.brand', 'offer.model', 'offer.media'])->latest()->get() : collect(),
+            'interests' => $user->isBuyer() ? $user->interests()->with(['offer', 'offer.media'])->latest()->get() : collect(),
             'seen' => $user->isBuyer() ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : null,
             'managers' => $me->isAdmin() ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
             'link' => session('password_link'),

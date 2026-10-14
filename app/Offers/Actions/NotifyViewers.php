@@ -165,7 +165,7 @@ final class NotifyViewers
     /** ТС из закупки вышла в продажу — только отметка; уведомления «вы называли цену» нет (владелец 13.10.2026). */
     private function announcePurchase(Offer $offer): void
     {
-        PurchaseCar::where('offer_id', $offer->id)->whereNull('announced_at')->update(['announced_at' => now()]);
+        PurchaseCar::where('car_id', $offer->car_id)->whereNull('announced_at')->update(['announced_at' => now()]);
     }
 
     /** «Открыты только Вам»: в волнах показа предложения ровно один человек (`Offer::scopeOnlyFor`). */

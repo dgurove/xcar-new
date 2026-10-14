@@ -3,6 +3,8 @@
 namespace App\Logistics;
 
 use App\Billing\Invoice;
+use App\Cars\Car;
+use App\Cars\Category;
 use App\Cars\Region;
 use App\Media\HasPhotos;
 use App\Offers\Offer;
@@ -16,16 +18,19 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * Перевозка машины A → B (Logistics XCar, 10.10.2026). Машина — предложение CRM или ТС парковки. Внутри региона везёт
+ * Перевозка машины A → B (Logistics XCar, 10.10.2026). Машина — одна запись (`Cars\Car`, 14.10.2026): её продажа в CRM и
+ * хранение на парковке видны отсюда через неё. Внутри региона везёт
  * партнёр (менеджер с регионом) или наш водитель, между регионами логист назначает внешнего перевозчика или нашего
  * водителя. Точки и «кто принимает» — свободным текстом. Кадры «Забрал» и «Сдал» — у самой перевозки (`photos`,
  * свойство `at`), в продажу машины они не попадают.
  */
-#[Fillable(['offer_id', 'vehicle_id', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'from_address', 'to_address',
+#[Fillable(['car_id', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'from_address', 'to_address',
     'receiver', 'to_yard_id', 'cost', 'ship_on', 'arrive_on', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at', 'picked_at', 'delivered_at', 'cancelled_at'])]
 class Transport extends Model implements HasMedia
 {
@@ -47,15 +52,28 @@ class Transport extends Model implements HasMedia
         ];
     }
 
-    public function offer(): BelongsTo
+    /** Машина перевозки. */
+    public function car(): BelongsTo
     {
-        return $this->belongsTo(Offer::class);
+        return $this->belongsTo(Car::class);
+    }
+
+    /** Через что перевозку видно людям: продажа машины, иначе её хранение на парковке (название, кадры, ссылка). */
+    public function lane(): Offer|Vehicle|null
+    {
+        return $this->offer ?? $this->vehicle;
+    }
+
+    /** Продажа машины в CRM. */
+    public function offer(): HasOne
+    {
+        return $this->hasOne(Offer::class, 'car_id', 'car_id')->withoutGlobalScopes();
     }
 
     /** ТС парковки — любого города: логистике город управляющего (`Park\City`) не указ. */
-    public function vehicle(): BelongsTo
+    public function vehicle(): HasOne
     {
-        return $this->belongsTo(Vehicle::class)->withoutGlobalScope(City::SCOPE);
+        return $this->hasOne(Vehicle::class, 'car_id', 'car_id')->withoutGlobalScope(City::SCOPE);
     }
 
     public function fromRegion(): BelongsTo
@@ -88,14 +106,8 @@ class Transport extends Model implements HasMedia
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** Машина перевозки: предложение или ТС парковки. */
-    public function car(): Offer|Vehicle|null
-    {
-        return $this->offer ?? $this->vehicle;
-    }
-
     /** Дата строки списка: прибытие или отправка у межрегиона, иначе когда назначили, забрали, сдали (сортировка «Когда» — по ней же). */
-    public function shownAt(): ?\Illuminate\Support\Carbon
+    public function shownAt(): ?Carbon
     {
         return match ($this->state) {
             TransportState::Delivered => $this->delivered_at,
@@ -106,16 +118,14 @@ class Transport extends Model implements HasMedia
     }
 
     /** Тип ТС машины — иконкой перед названием, как в таблицах CRM. */
-    public function category(): ?\App\Cars\Category
+    public function category(): ?Category
     {
-        $car = $this->car();
-
-        return $car instanceof Offer ? $car->category() : $car?->category;
+        return $this->car?->category;
     }
 
     public function title(): string
     {
-        return $this->car()?->titleWithYear() ?? 'ТС';
+        return $this->lane()?->titleWithYear() ?? 'ТС';
     }
 
     /** Кто везёт словом: «Сахиб М.», «ТК Деловые линии»; пусто — ещё не назначили. */
@@ -195,8 +205,8 @@ class Transport extends Model implements HasMedia
     }
 
     /** Открытая перевозка машины — одна: вторую не заводим, пока эта не доставлена или не отменена. */
-    public static function openFor(Offer|Vehicle $car): ?self
+    public static function openFor(Offer|Vehicle|Car $car): ?self
     {
-        return self::open()->where($car instanceof Offer ? 'offer_id' : 'vehicle_id', $car->id)->latest('id')->first();
+        return self::open()->where('car_id', $car instanceof Car ? $car->id : $car->car_id)->latest('id')->first();
     }
 }

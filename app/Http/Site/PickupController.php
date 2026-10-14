@@ -76,7 +76,7 @@ class PickupController
     /** QR отсканировали обычной камерой телефона. */
     public function scanned(Request $request, string $code)
     {
-        $pass = Pass::byCode($code)?->load(['vehicle.yard.settlement', 'vehicle.brand', 'vehicle.model']);
+        $pass = Pass::byCode($code)?->load(['vehicle.yard.settlement', 'vehicle']);
         $user = $request->user();
         if ($pass && $user?->canAccess(Section::Park)) {
             return redirect()->away(Surface::Park->url('/cars/'.$pass->vehicle_id.'?pass='.$pass->code));
@@ -87,7 +87,7 @@ class PickupController
 
     private function vehicle(string $code): Vehicle
     {
-        $vehicle = Vehicle::where('pickup_code', strtoupper($code))->with(['yard.settlement', 'brand', 'model', 'vendor'])->first();
+        $vehicle = Vehicle::where('pickup_code', strtoupper($code))->with(['yard.settlement', 'vendor'])->first();
         // Ссылку заменили («Отключить и выдать новую») — говорим это, а не «не найдено».
         if (! $vehicle && VehicleEvent::where('type', EventType::PickupLinkRenewed)->where('payload->old', strtoupper($code))->exists()) {
             abort(response()->view('site.pickup.gone', [], 410));

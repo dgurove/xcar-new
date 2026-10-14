@@ -141,7 +141,7 @@ class Invoice extends Model implements HasMedia
     /** ТС реестра — по строкам, в порядке строк. @return \Illuminate\Support\Collection<int, Vehicle> */
     public function registryVehicles()
     {
-        $this->loadMissing('charges.vehicle.brand', 'charges.vehicle.model');
+        $this->loadMissing('charges.vehicle');
 
         return $this->charges->pluck('vehicle')->filter()->unique('id')->values();
     }

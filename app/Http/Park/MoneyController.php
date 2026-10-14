@@ -48,7 +48,7 @@ class MoneyController
         ListPrefs::sync($request, 'park-money', keep: $facets->keys());
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unpaid';
         $qs = trim((string) $request->query('q'));
-        $q = self::scoped(Invoice::with(['party', 'vehicle.brand', 'vehicle.model']))
+        $q = self::scoped(Invoice::with(['party', 'vehicle']))
             ->when($request->query('car'), fn ($w, $id) => $w->forVehicle((int) $id))
             ->search($qs);
         // Лупа — по всем счетам, мимо пилюли и чипа.
@@ -108,7 +108,7 @@ class MoneyController
     public function detail(Invoice $invoice)
     {
         self::guard($invoice);
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'charges', 'payments']);
+        $invoice->load(['party', 'vehicle', 'charges', 'payments']);
 
         return view('park.money.detail', ['invoice' => $invoice, 'sources' => PaymentSource::manual()]);
     }
@@ -116,7 +116,7 @@ class MoneyController
     public function show(Invoice $invoice)
     {
         self::guard($invoice);
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
+        $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
 
         return view('park.money.show', ['invoice' => $invoice, 'sources' => PaymentSource::manual(), 'file' => $invoice->getFirstMedia('file')]);
     }
@@ -185,7 +185,7 @@ class MoneyController
     public function print(Invoice $invoice)
     {
         self::guard($invoice);
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'charges', 'deal.offer']);
+        $invoice->load(['party', 'vehicle', 'charges', 'deal.offer']);
 
         return view('billing.docs.invoice', ['invoice' => $invoice, 'self' => $invoice->seller->party(), 'pdf' => false]);
     }
@@ -197,7 +197,7 @@ class MoneyController
         if ($media = $invoice->getFirstMedia('act')) {
             return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
         }
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges.vehicle.brand', 'charges.vehicle.model', 'charges.vehicle.yard']);
+        $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges.vehicle', 'charges.vehicle.yard']);
 
         return view($invoice->isRegistry() ? 'billing.docs.storage-registry' : 'billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
@@ -207,7 +207,7 @@ class MoneyController
     {
         self::guard($invoice);
         abort_unless($invoice->isRegistry(), 404);
-        $invoice->load(['party', 'charges.vehicle.brand', 'charges.vehicle.model', 'charges.vehicle.yard', 'charges.vehicle.vendor']);
+        $invoice->load(['party', 'charges.vehicle', 'charges.vehicle.yard', 'charges.vehicle.vendor']);
 
         return view('billing.docs.storage-acts', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
@@ -248,7 +248,7 @@ class MoneyController
         $items = Closing::items($month);
         // Уже выставленное за этот месяц — счета, чьё хранение кончается в нём.
         $issued = Invoice::where('direction', 'issued')->whereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Storage)->whereBetween('period_to', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()]))
-            ->where('state', '!=', InvoiceState::Void)->ofPark()->with(['party', 'vehicle.brand', 'vehicle.model'])->latest('id')->get();
+            ->where('state', '!=', InvoiceState::Void)->ofPark()->with(['party', 'vehicle'])->latest('id')->get();
 
         return view('park.money.closing', [
             'month' => $month, 'items' => $items->groupBy(fn ($i) => Closing::groupOf($i)),

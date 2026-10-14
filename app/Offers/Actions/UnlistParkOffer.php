@@ -7,13 +7,12 @@ use App\Mail\Thread;
 use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
-use App\Park\Sale;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Снять ТС парковки с продажи: черновик, который завели зря, — отвязываем ТС
- * (в её истории «Снята с продажи») и письма, сам черновик удаляем. Только черновик,
+ * Снять ТС парковки с продажи: черновик, который завели зря, удаляем, письма отвязываем; машина и её файлы остаются
+ * у ТС (в её истории «Снята с продажи»). Только черновик,
  * ни разу не выходивший наружу, без сделки и живых подтверждений.
  */
 final class UnlistParkOffer
@@ -22,9 +21,8 @@ final class UnlistParkOffer
     {
         abort_unless(self::allowed($offer), 404);
 
-        DB::transaction(function () use ($offer, $by) {
-            // ТС отвязывается, всё её (и принесённое предложением) остаётся у неё.
-            Sale::end($offer, $by);
+        DB::transaction(function () use ($offer) {
+            // Машина с файлами остаётся у ТС, в её истории «Снята с продажи» (`Offer::deleting` → `Sale::end`).
             Thread::where('offer_id', $offer->id)->update(['offer_id' => null]);
             Candidate::where('offer_id', $offer->id)->update(['offer_id' => null]);
             $offer->delete();

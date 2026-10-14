@@ -46,7 +46,7 @@
             <div class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                 {{-- Везёт логистика — её ход словом и кто везёт, ссылкой на перевозку в logistics.xcar.ru (10.10.2026). --}}
                 {{-- Последняя перевозка, и отменённая: логист отменил — админ видит «отменена» и назначает заново («Кто везёт»). --}}
-                @php $transport = $offer->evacuator ? null : \App\Logistics\Transport::where('offer_id', $offer->id)->latest('id')->first(); @endphp
+                @php $transport = $offer->evacuator ? null : \App\Logistics\Transport::where('car_id', $offer->car_id)->latest('id')->first(); @endphp
                 @if ($offer->evacuator)<x-ui.person :user="$offer->evacuator"/>
                 @elseif ($transport)<span><a href="{{ \App\Support\Surface::Logistics->url('/transports/'.$transport->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>, <span class="{{ $transport->state->tone() }}">{{ mb_strtolower($transport->state->label()) }}</span>{{ $transport->executorName() ? ', '.$transport->executorName() : '' }}</span>
                 @else<span>Вывозим мы</span>@endif

@@ -2,13 +2,9 @@
 
 namespace App\Purchases;
 
-use App\Cars\Brand;
-use App\Cars\CarModel;
-use App\Cars\Fuel;
+use App\Cars\OnCar;
 use App\Cars\Region;
 use App\Cars\Settlement;
-use App\Cars\Transmission;
-use App\Media\HasPhotos;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Surface;
@@ -18,30 +14,39 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Spatie\MediaLibrary\HasMedia;
 
 #[Fillable([
     'purchase_id', 'dl', 'ref', 'brand_id', 'model_id', 'brand_raw', 'model_raw', 'year', 'vin', 'mileage', 'transmission', 'fuel',
     'engine_volume', 'engine_power', 'color', 'steering', 'keys', 'settlement_id', 'address', 'city', 'condition', 'encumbrance',
     'fssp', 'vehicle_type', 'kind', 'stage', 'price_revalued', 'price_listing', 'price_final', 'site_url', 'cloud_url', 'cloud_leftovers',
     'specs_state', 'specs_error', 'specs_at', 'photos_state', 'photos_error', 'photos_at', 'photos_count', 'locked_fields',
-    'is_published', 'description', 'share_locked', 'offer_id', 'announced_at',
+    'is_published', 'description', 'share_locked', 'announced_at',
 ])]
-class Car extends Model implements HasMedia
+class Car extends Model
 {
-    use HasPhotos;
+    use OnCar;
 
     protected $table = 'purchase_cars';
+
+    /** Машина (`Cars\Car`): ДЛ, VIN, марка, характеристики и фото лота — у неё. */
+    protected $with = ['car'];
+
+    /** ДЛ лота — номер машины (`claim_ref`), как номер убытка у страховой. */
+    public static function carAliases(): array
+    {
+        return ['dl' => 'claim_ref'];
+    }
 
     protected function casts(): array
     {
         return [
-            'kind' => Kind::class, 'transmission' => Transmission::class, 'fuel' => Fuel::class,
+            'kind' => Kind::class,
             'specs_state' => ImportState::class, 'photos_state' => ImportState::class,
             'specs_at' => 'datetime', 'photos_at' => 'datetime', 'cloud_leftovers' => 'array', 'locked_fields' => 'array',
-            'is_published' => 'bool', 'share_locked' => 'bool', 'announced_at' => 'datetime', 'fssp' => 'bool', 'year' => 'int',
+            'is_published' => 'bool', 'share_locked' => 'bool', 'announced_at' => 'datetime', 'fssp' => 'bool',
         ];
     }
 
@@ -62,10 +67,10 @@ class Car extends Model implements HasMedia
         }
 
         return $q->where(fn ($w) => $w
-            ->when($crm, fn ($w) => $w->orWhereRaw('lower(purchase_cars.dl) like ?', [$t->contains()]))
+            ->when($crm, fn ($w) => $w->orWhereHas('car', fn ($c) => $c->whereRaw('lower(cars.claim_ref) like ?', [$t->contains()])))
             ->when(! $crm && $number, fn ($w) => $w->orWhere('purchase_cars.ref', $number))
-            ->when($t->vin, fn ($w, $vin) => $w->orWhere('purchase_cars.vin', 'like', Term::like($vin)))
-            ->orWhere(fn ($all) => CarWords::apply($all, $t, 'purchase_cars', fn ($one, $word, $like) => $one
+            ->when($t->vin, fn ($w, $vin) => $w->orWhereHas('car', fn ($c) => $c->where('cars.vin', 'like', Term::like($vin))))
+            ->orWhere(fn ($all) => CarWords::apply($all, $t, fn ($one, $word, $like) => $one
                 ->orWhereRaw('lower(purchase_cars.brand_raw) like ?', [$like])
                 ->orWhereRaw('lower(purchase_cars.model_raw) like ?', [$like]))));
     }
@@ -80,25 +85,18 @@ class Car extends Model implements HasMedia
         return $this->belongsTo(Purchase::class);
     }
 
-    public function brand(): BelongsTo
-    {
-        return $this->belongsTo(Brand::class);
-    }
-
-    public function model(): BelongsTo
-    {
-        return $this->belongsTo(CarModel::class, 'model_id');
-    }
-
     public function settlement(): BelongsTo
     {
         return $this->belongsTo(Settlement::class);
     }
 
-    /** Предложение, в которое ТС ушла по контрпредложению поставщика: из закупки она с этого момента исключена. */
-    public function offer(): BelongsTo
+    /**
+     * Предложение этой машины: ушла в предложения по контрпредложению поставщика (или о ней уже знали из писем) — из
+     * закупки она с этого момента исключена.
+     */
+    public function offer(): HasOne
     {
-        return $this->belongsTo(\App\Offers\Offer::class);
+        return $this->hasOne(\App\Offers\Offer::class, 'car_id', 'car_id')->withoutGlobalScopes();
     }
 
     public function offers(): HasMany

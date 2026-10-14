@@ -5,6 +5,7 @@ namespace App\Http\Garage;
 use App\Offers\Actions\PickUp;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
+use App\Offers\PickupState;
 use App\Workflow\Path;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class PickupController
             'position' => $position,
             'path' => Path::for($offer, Track::Service),
             // Шаг маршрута просит забрать, и уже можно: Каркаде ждёт согласия поставщика, Альфа — оплаты (`PickupState::awaits`).
-            'canPick' => \App\Offers\PickupState::awaits($offer),
+            'canPick' => PickupState::awaits($offer),
             'photos' => $offer->visiblePhotos(),
             'docs' => OfferFiles::forManagers($offer, $request->user()),
         ]);
@@ -51,6 +52,6 @@ class PickupController
     {
         abort_unless(Offer::pickupsOf($request->user())->whereKey($offer->id)->exists(), 404);
 
-        return $offer->load(['brand', 'model', 'media', 'settlement', 'evacuator', 'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow']);
+        return $offer->load(['media', 'settlement', 'evacuator', 'positions.stage.block', 'positions.stage.exits.to', 'positions.stage.workflow']);
     }
 }

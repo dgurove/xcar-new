@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Cars\Brand;
+use App\Cars\Car;
 use App\Cars\CarModel;
 use App\Http\Admin\GalleryController;
 use App\Offers\Actions\ChangeOfferState;
@@ -36,7 +37,7 @@ class GalleryAccessTest extends TestCase
         $vendor = Vendor::create(['name' => 'Т-Страхование тест', 'deal_format' => 'commission']);
         $offer = Offer::create(['vendor_id' => $vendor->id, 'brand_id' => $brand->id, 'model_id' => $model->id,
             'floor_price' => 500000, 'asking_price' => 600000]);
-        Media::create(['model_type' => Offer::class, 'model_id' => $offer->id, 'collection_name' => 'photos',
+        Media::create(['model_type' => Car::class, 'model_id' => $offer->car_id, 'collection_name' => 'photos',
             'name' => 'кадр', 'file_name' => 'kadr.jpg', 'mime_type' => 'image/jpeg', 'disk' => 'media', 'size' => 10,
             'manipulations' => [], 'custom_properties' => [], 'generated_conversions' => [], 'responsive_images' => []]);
         $offer->forceFill(['gallery_from' => now()->subHour(), 'gallery_until' => now()->addDays(2)])->save();

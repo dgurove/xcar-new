@@ -5,6 +5,7 @@ namespace App\Http\Park;
 use App\Billing\Accrual;
 use App\Billing\Cadence;
 use App\Billing\Ledger;
+use App\Cars\Car;
 use App\Cars\Vin\Vin;
 use App\Http\Admin\OfferPhotoController;
 use App\Live\Stream;
@@ -22,11 +23,9 @@ use App\Media\Actions\RotatePhoto;
 use App\Media\Hidden;
 use App\Media\PhotoBlocks;
 use App\Media\PhotoIngest;
-use App\Offers\OfferNumber;
+use App\Offers\Actions\UpdateOffer;
 use App\Park\Actions\CancelVehicle;
-use App\Park\Tasks;
 use App\Park\Actions\FillFromDocs;
-use App\Park\Actions\LinkOffer;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
@@ -51,6 +50,8 @@ use App\Park\OutMoney;
 use App\Park\PhotoStage;
 use App\Park\Request as ParkRequest;
 use App\Park\RequestType;
+use App\Park\Sale;
+use App\Park\Tasks;
 use App\Park\Vehicle;
 use App\Park\VehicleExport;
 use App\Park\VehicleFields;
@@ -64,6 +65,7 @@ use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Money;
 use App\Support\Phone;
 use App\Support\Sort;
 use Illuminate\Database\Eloquent\Builder;
@@ -180,7 +182,7 @@ class VehicleController
 
         return Vehicle::where('state', VehicleState::Stored)
             ->when($yards, fn ($q) => $q->where(fn ($w) => $w->whereIn('yard_id', $ids)->when(in_array('none', $yards, true), fn ($n) => $n->orWhereNull('yard_id'))))
-            ->with('vendor')->get(['id', 'vendor_id', 'yard_id', 'category', 'value', 'storage_rate'])
+            ->with('vendor')->get(['id', 'car_id', 'vendor_id', 'yard_id', 'storage_rate'])
             ->reject(fn (Vehicle $v) => Accrual::hasRate($v))->pluck('id')->all();
     }
 
@@ -190,7 +192,7 @@ class VehicleController
      */
     public function detail(Request $request, Vehicle $vehicle, ?ParkRequest $task = null)
     {
-        $vehicle->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests.yard', 'events.user', 'offer.deal'])->loadCount('threads');
+        $vehicle->load(['vendor', 'yard', 'media', 'requests.yard', 'events.user', 'offer.deal'])->loadCount('threads');
         // Задача сверху карточки (владелец 09.10.2026: «жмёшь заявку — „Связались“, а с кем связаться, непонятно»): открытая
         // заявка — та, что открыли в «Заявках», иначе приём, выдача; с ней письмо, по которому она заведена
         // (у выдачи — письмо о продаже).
@@ -224,7 +226,7 @@ class VehicleController
             // Висящие отчёты вендору — кнопкой подвала: о приёме — окно действия сразу на письме, о выдаче — окно писем.
             'reportDue' => ! $task && ActWindowController::reportDue($vehicle),
             'releaseReportUrl' => $vehicle->state === VehicleState::Released && ActWindowController::billable($vehicle)
-                && ! $vehicle->events->contains(fn ($e) => $e->type === \App\Park\EventType::ReportSent && ($e->payload['what'] ?? null) === 'Акт выдачи')
+                && ! $vehicle->events->contains(fn ($e) => $e->type === EventType::ReportSent && ($e->payload['what'] ?? null) === 'Акт выдачи')
                 ? $vehicle->reportUrl('release', "/cars/{$vehicle->id}") : null,
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
             'debt' => Ledger::vehicleDebt($vehicle),
@@ -371,10 +373,16 @@ class VehicleController
         return $this->gallery($vehicle, PhotoStage::of($photos->firstWhere('id', $ids[0]))->value);
     }
 
+    /** Файл машины этой ТС (`Cars\Car`): кадры и документы у ТС и её продажи одни. */
+    private function owns(Vehicle $vehicle, Media $media): bool
+    {
+        return $media->model_type === Car::class && $media->model_id === $vehicle->car_id;
+    }
+
     /** Глаз: показывать кадр в продаже или нет. В деле ТС видны все. */
     public function hideMedia(Vehicle $vehicle, Media $media)
     {
-        abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class && $media->collection_name === 'photos', 404);
+        abort_unless($this->owns($vehicle, $media) && $media->collection_name === 'photos', 404);
         Hidden::toggle($media);
 
         return $this->gallery($vehicle, PhotoStage::of($media)->value);
@@ -392,7 +400,7 @@ class VehicleController
 
     public function rotateMedia(Request $request, Vehicle $vehicle, Media $media, RotatePhoto $rotate)
     {
-        abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class, 404);
+        abort_unless($this->owns($vehicle, $media), 404);
         $rotate($media, RotatePhoto::turns($request));
 
         return $media->collection_name === 'photos' ? $this->gallery($vehicle, PhotoStage::of($media)->value) : $this->papers($vehicle);
@@ -400,7 +408,7 @@ class VehicleController
 
     public function destroyMedia(Vehicle $vehicle, Media $media)
     {
-        abort_unless($media->model_id === $vehicle->id && $media->model_type === $vehicle::class, 404);
+        abort_unless($this->owns($vehicle, $media), 404);
         // У документа стадии нет: его удаление обновляет «Документы», а карточки кадров не трогает — иначе
         // читающая карточка «Фото от страховой» вернулась бы с плиткой камеры.
         $photo = $media->collection_name === 'photos' ? PhotoStage::of($media) : null;
@@ -476,7 +484,7 @@ class VehicleController
      * «В продажу» шторкой (13.10.2026, владелец: «админу важно понимать, что закупочная считается корректно»): оценочная —
      * поправить можно, закупочная — по правилу от оценочной (`Sale::floorFrom`), равна оценочной или своя.
      */
-    public function sell(Request $request, Vehicle $vehicle, PutOnSale $sell, UpdateVehicle $updateVehicle, \App\Offers\Actions\UpdateOffer $updateOffer)
+    public function sell(Request $request, Vehicle $vehicle, PutOnSale $sell, UpdateVehicle $updateVehicle, UpdateOffer $updateOffer)
     {
         abort_unless($request->user()->isAdmin(), 403);
         $data = $request->validate([
@@ -488,7 +496,7 @@ class VehicleController
         $value = $rubles($data['value'] ?? null);
         $mode = $data['floor_mode'] ?? null;
         $floor = match ($mode) {
-            'rule' => $value ? \App\Park\Sale::floorFrom($value) : null,
+            'rule' => $value ? Sale::floorFrom($value) : null,
             'value' => $value,
             'own' => $rubles($data['floor'] ?? null),
             default => null,
@@ -505,7 +513,7 @@ class VehicleController
             $offer = $updateOffer($offer, ['floor_price' => $floor], $by);
         }
 
-        return back()->with('toast', $floor ? 'В продажу за '.\App\Support\Money::rub($floor).', черновик в CRM' : 'Черновик продажи в CRM');
+        return back()->with('toast', $floor ? 'В продажу за '.Money::rub($floor).', черновик в CRM' : 'Черновик продажи в CRM');
     }
 
     /** «Убрать из продажи»: черновик удаляется, опубликованное — в архив; ТС с файлами остаётся (`TakeOffSale`). */
@@ -515,24 +523,6 @@ class VehicleController
         $takeOff($vehicle, $request->user());
 
         return back()->with('toast', 'Снята с продажи');
-    }
-
-    /** Связать с предложением CRM: по номеру, руками; только админу (продажа). */
-    public function link(Request $request, Vehicle $vehicle, LinkOffer $link)
-    {
-        $data = $request->validate(['number' => ['nullable', 'integer']]);
-        if (empty($data['number'])) {
-            $vehicle->update(['offer_id' => null]);
-
-            return back()->with('toast', 'Связь снята');
-        }
-        $offer = OfferNumber::find($data['number']);
-        if (! $offer) {
-            return back()->withErrors(['number' => 'Предложения № '.$data['number'].' нет']);
-        }
-        $linked = $link($vehicle, $offer, $request->user());
-
-        return back()->with('toast', $linked ? 'Связана с № '.$offer->number : 'Это предложение уже связано с другой ТС');
     }
 
     public function move(Request $request, Vehicle $vehicle, Move $move)
@@ -614,7 +604,7 @@ class VehicleController
                 Tasks::facet(),
                 Common::vendor('park_vehicles.vendor_id'),
                 Common::yard('park_vehicles.yard_id'),
-                Common::category('park_vehicles.category', 'Без типа'),
+                Common::category(Car::sql('park_vehicles', 'category'), 'Без типа'),
                 Facet::column('month', 'Месяц', ['месяц', 'месяца', 'месяцев'], "to_char(park_vehicles.released_at, 'YYYY-MM')")->natural()
                     ->labels(fn (array $keys) => collect($keys)->filter(fn ($k) => preg_match('/^\d{4}-\d{2}$/', $k))->sortDesc()
                         ->mapWithKeys(fn ($k) => [$k => new Option($k, mb_convert_case(Carbon::createFromFormat('!Y-m', $k)->translatedFormat('F Y'), MB_CASE_TITLE))])->all()),
@@ -627,7 +617,7 @@ class VehicleController
             Tasks::facet(),
             Common::vendor('park_vehicles.vendor_id'),
             Common::yard('park_vehicles.yard_id'),
-            Common::category('park_vehicles.category', 'Без типа'),
+            Common::category(Car::sql('park_vehicles', 'category'), 'Без типа'),
             // «Без ставки» — пока такие ТС есть: у них не заполнены тип или стоимость, либо у вендора нет прайса.
             // Правят их в карточке строки. Число — в границах выбранных парковок, как и прочие числа.
             Facet::toggle('gap', 'Без ставки', function ($v) use ($request, &$noRate, &$facets) {
@@ -655,7 +645,7 @@ class VehicleController
         $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q !== '' ? null : ($preset === 'out' ? VehicleState::Released : VehicleState::Stored));
         // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
         $vehicles = Vehicle::withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
-            ->with(['brand', 'model', 'vendor', 'yard', 'offer.deal', 'requests',
+            ->with(['vendor', 'yard', 'offer.deal', 'requests',
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
             ->when($state, fn ($v, $s) => $v->where('state', $s))
             // Деньги выданной словом — в строке, карточке и выгрузке, тем же выражением, что чип «Деньги».
@@ -667,9 +657,10 @@ class VehicleController
         match ($sort->key) {
             'fresh' => $vehicles->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir()),
             'accepted' => $vehicles->orderByRaw("accepted_at {$dir} nulls last")->orderBy('id', $dir),
-            'name' => $vehicles->orderByRaw("(select b.name from brands b where b.id = park_vehicles.brand_id) {$dir} nulls last")
-                ->orderByRaw("(select m.name from car_models m where m.id = park_vehicles.model_id) {$dir} nulls last")->orderBy('year', $dir),
-            'vendor' => $vehicles->orderByRaw("(select vd.name from vendors vd where vd.id = park_vehicles.vendor_id) {$dir} nulls last")->orderBy('ref', $dir),
+            'name' => $vehicles->orderByRaw("(select b.name from cars c join brands b on b.id = c.brand_id where c.id = park_vehicles.car_id) {$dir} nulls last")
+                ->orderByRaw("(select m.name from cars c join car_models m on m.id = c.model_id where c.id = park_vehicles.car_id) {$dir} nulls last")
+                ->orderByRaw(Car::sql('park_vehicles', 'year')." {$dir}"),
+            'vendor' => $vehicles->orderByRaw("(select vd.name from vendors vd where vd.id = park_vehicles.vendor_id) {$dir} nulls last")->orderByRaw(Car::sql('park_vehicles', 'claim_ref')." {$dir}"),
             'yard' => $vehicles->orderByRaw("(select y.name from park_yards y where y.id = park_vehicles.yard_id) {$dir} nulls last")->orderByRaw('accepted_at asc nulls last'),
             'out' => $vehicles->orderByRaw('released_at '.$sort->dir().' nulls last')->orderBy('id', $sort->dir()),
             default => $vehicles->orderByRaw('accepted_at '.($sort->key === 'days' && ! $sort->desc ? 'desc' : 'asc').' nulls last')->latest(),
@@ -696,7 +687,7 @@ class VehicleController
     public function suggest(Request $request)
     {
         $q = trim((string) $request->query('q'));
-        $vehicles = Vehicle::with(['brand', 'model'])->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])
+        $vehicles = Vehicle::with([])->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])
             ->search($q)
             ->latest()->limit(20)->get();
 
@@ -712,10 +703,10 @@ class VehicleController
         $ref = mb_strlen((string) $request->query('ref')) >= 4 ? Vehicle::keyFor((string) $request->query('ref')) : '';
         $plate = mb_strlen((string) $request->query('plate')) >= 6 ? Patterns::plateKey($request->query('plate')) : null;
         $vin = Vin::full((string) $request->query('vin')) ?? '';
-        $vehicles = $ref === '' && $vin === '' && ! $plate ? collect() : Vehicle::with(['brand', 'model', 'yard', 'media'])
+        $vehicles = $ref === '' && $vin === '' && ! $plate ? collect() : Vehicle::with(['yard', 'media'])
             ->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])
             ->when($request->query('except'), fn ($q, $id) => $q->whereKeyNot((int) $id))
-            ->where(fn ($q) => $q->when($ref !== '', fn ($w) => $w->orWhere('ref_key', $ref))->when($vin !== '', fn ($w) => $w->orWhere('vin', $vin))->when($plate, fn ($w) => $w->orWhere('plate', $plate)))
+            ->whereCar(fn ($q) => $q->when($ref !== '', fn ($w) => $w->orWhere('claim_ref_key', $ref))->when($vin !== '', fn ($w) => $w->orWhere('vin', $vin))->when($plate, fn ($w) => $w->orWhere('plate', $plate)))
             ->latest()->limit(3)->get();
 
         return view('park.vehicles.twins', ['vehicles' => $vehicles, 'candidate' => (int) $request->query('candidate') ?: null]);

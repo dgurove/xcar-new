@@ -71,7 +71,7 @@ class MoneyController
     /** Менеджер счёта: покупатель сделки, у гаражной — держатель машины. */
     private const MANAGER = 'coalesce((select buyer_id from deals where deals.id = billing_invoices.deal_id), (select g.manager_id from garage_cars g where g.invoice_id = billing_invoices.id or g.payout_invoice_id = billing_invoices.id limit 1))';
 
-    private const WITH = ['party', 'charges', 'payments', 'offer.brand', 'offer.model', 'deal.offer.brand', 'deal.offer.model', 'deal.buyer', 'garageCar.manager', 'garageCar.offer.brand', 'garageCar.offer.model', 'garagePayoutCar.manager', 'garagePayoutCar.offer.brand', 'garagePayoutCar.offer.model'];
+    private const WITH = ['party', 'charges', 'payments', 'offer', 'deal.offer', 'deal.buyer', 'garageCar.manager', 'garageCar.offer', 'garagePayoutCar.manager', 'garagePayoutCar.offer'];
 
     public function index(Request $request)
     {
@@ -229,7 +229,7 @@ class MoneyController
 
     public function detail(Invoice $invoice)
     {
-        $invoice->load(['party', 'charges', 'payments', 'claims.media', 'deal.offer.brand', 'deal.offer.model', 'deal.offer.media', 'deal.buyer']);
+        $invoice->load(['party', 'charges', 'payments', 'claims.media', 'deal.offer', 'deal.offer.media', 'deal.buyer']);
 
         return view('admin.money.detail', ['invoice' => $invoice, 'sources' => self::sources()]);
     }
@@ -276,7 +276,7 @@ class MoneyController
         if ($q === '') {
             return response()->json([]);
         }
-        $offers = Offer::query()->with(['brand', 'model', 'deal.buyer'])->searchCrm($q)
+        $offers = Offer::query()->with(['deal.buyer'])->searchCrm($q)
             ->orderByRaw('exists (select 1 from deals d where d.offer_id = offers.id and d.state = ?) desc', [DealState::Active->value])
             ->latest('updated_at')->limit(max(1, min(20, (int) $request->query('limit', 20))))->get();
 
@@ -314,7 +314,7 @@ class MoneyController
 
     public function show(Invoice $invoice)
     {
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
+        $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
 
         return view('admin.money.invoice', ['invoice' => $invoice, 'sources' => self::sources(), 'file' => $invoice->getFirstMedia('file')]);
     }
@@ -391,14 +391,14 @@ class MoneyController
         if ($media = $invoice->getFirstMedia('act')) {
             return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
         }
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges']);
+        $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges']);
 
         return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
 
     public function print(Invoice $invoice)
     {
-        $invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'charges', 'payments', 'deal.offer']);
+        $invoice->load(['party', 'vehicle', 'charges', 'payments', 'deal.offer']);
 
         return view('billing.docs.invoice', ['invoice' => $invoice, 'self' => $invoice->seller->party(), 'pdf' => false]);
     }

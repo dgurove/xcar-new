@@ -19,7 +19,7 @@ final class SendToLogistics
 
     public function __invoke(Offer|Vehicle $car, array $data, User $by): Transport
     {
-        $t = Transport::openFor($car) ?? new Transport([$car instanceof Offer ? 'offer_id' : 'vehicle_id' => $car->id]);
+        $t = Transport::openFor($car) ?? new Transport(['car_id' => $car->car_id]);
         $fresh = ! $t->exists;
         $t = ($this->save)($t, $data, $by);
 

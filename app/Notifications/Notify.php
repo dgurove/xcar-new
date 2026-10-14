@@ -388,7 +388,7 @@ final class Notify
         $moderators = User::withRole(Role::Moderator)->get()->filter->canCrmMail();
         // Письмо само стало черновиком (`AutoOffer`) — о черновике, а не «завести из писем».
         if ($c?->state === CandidateState::Promoted && ($offer = $c->offer) && $offer->isAutoDraft()) {
-            Notification::send($moderators, new OfferDraftNotice($offer->load('vendor', 'brand', 'model')));
+            Notification::send($moderators, new OfferDraftNotice($offer->load('vendor')));
 
             return;
         }
@@ -407,14 +407,14 @@ final class Notify
     /** Продано: управляющим города ТС. */
     public function parkSold(VehicleSold $e): void
     {
-        $v = $e->vehicle->load(['brand', 'model', 'vendor']);
+        $v = $e->vehicle->load(['vendor']);
         Notification::send($this->parkManagers($v->city_id), ParkNotice::sold($v, $e->message));
     }
 
     /** Покупатель заполнил анкету: управляющим города — прочитать ответ страховой и подтвердить. */
     public function parkBuyerForm(BuyerFormSubmitted $e): void
     {
-        $v = $e->pass->vehicle->load(['brand', 'model']);
+        $v = $e->pass->vehicle->load([]);
         Notification::send($this->parkManagers($v->city_id), ParkNotice::buyerForm($v, $e->pass->name, $e->pass->pickup_on));
     }
 
@@ -428,7 +428,7 @@ final class Notify
         if (! $e->request || ! $e->by?->isParking() || $e->by->isParkAdmin()) {
             return;
         }
-        $v = $e->vehicle->load(['brand', 'model', 'vendor', 'yard']);
+        $v = $e->vehicle->load(['vendor', 'yard']);
         $released = $e instanceof VehicleReleased;
         Notification::send(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get(), ParkNotice::handled($v, $e->by, $released));
         NotifyOwner::dispatch(new ParkHandled($v, $e->by, $released), park: true);
@@ -436,7 +436,7 @@ final class Notify
 
     public function parkWithoutQr(ReleasedWithoutQr $e): void
     {
-        NotifyOwner::dispatch(new \App\Telegram\Messages\ReleasedWithoutQr($e->vehicle->load(['brand', 'model', 'vendor']), $e->by, $e->reason), park: true);
+        NotifyOwner::dispatch(new \App\Telegram\Messages\ReleasedWithoutQr($e->vehicle->load(['vendor']), $e->by, $e->reason), park: true);
     }
 
     public function parkIdle(VehicleIdle $e): void
@@ -447,7 +447,7 @@ final class Notify
     /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен»; CRM — админам, парковки — управляющим её города и админам. */
     public function invoiceOverdue(InvoiceOverdue $e): void
     {
-        $invoice = $e->invoice->load(['party', 'vehicle.brand', 'vehicle.model', 'deal.offer']);
+        $invoice = $e->invoice->load(['party', 'vehicle', 'deal.offer']);
         NotifyOwner::dispatch(new \App\Telegram\Messages\InvoiceOverdue($invoice), park: (bool) $invoice->park);
         if (! $invoice->park) {
             Notification::send($this->staff(), MoneyNotice::overdue($invoice));

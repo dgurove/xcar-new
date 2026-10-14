@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Cars\Car;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Sort;
@@ -91,7 +92,7 @@ final class CatalogQuery
         $q = Offer::query()
             // Карточкам нужны только фото и своя закладка: все медиа (с документами) и чужое избранное по
             // каждому предложению поднимались зря; таблице фото не нужны вовсе — их снимает контроллер (`without`).
-            ->with(['brand', 'model', 'settlement',
+            ->with(['settlement',
                 'media' => fn ($m) => $m->where('collection_name', 'photos'),
                 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)])
             ->select('offers.*')->selectRaw(self::openedAtSql($user).' as opened_at');
@@ -170,7 +171,7 @@ final class CatalogQuery
                     ->orderByRaw("offers.bids_close_at {$dir} nulls last")->orderByDesc('sort_weight')->orderByRaw("{$opened} desc nulls last"),
             'opened' => $q->orderByRaw("{$opened} {$dir} nulls last"),
             'price' => $q->orderByRaw("asking_price {$dir} nulls last"),
-            'year' => $q->orderByRaw("year {$dir} nulls last")->orderByDesc('published_at'),
+            'year' => $q->orderByRaw(Car::sql('offers', 'year')." {$dir} nulls last")->orderByDesc('published_at'),
             default => $q->orderByDesc('sort_weight')->orderByRaw(($gallery ? 'gallery_from' : 'published_at')." {$dir} nulls last"),
         };
 
@@ -194,7 +195,7 @@ final class CatalogQuery
     /** @return list<Facet> чипы каталога и галереи: город и тип ТС */
     public static function facets(): array
     {
-        return [Common::city('offers.settlement_id'), Common::category('offers.vehicle_category')];
+        return [Common::city('offers.settlement_id'), Common::category(Car::sql('offers', 'category'))];
     }
 
     /** Действующая сортировка: то, что в адресе, если она разрешена, иначе по умолчанию. */

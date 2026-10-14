@@ -12,11 +12,11 @@ use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Spatie\MediaLibrary\HasMedia;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
 
 /**
@@ -87,12 +87,12 @@ final class ShareReplyFiles implements ShouldQueue
      * Та же картинка уже легла скрытым кадром — разбор всей ветки (`ImportThreadFiles`) успел раньше: переносим её в
      * документы, видимые менеджеру, а не пропускаем как «уже есть» (иначе паспорт оставался кадром, который он не видит).
      */
-    private static function photoToDocument(HasMedia $model, string $sha, array $properties): void
+    private static function photoToDocument(Model $model, string $sha, array $properties): void
     {
         $model->media()->where('collection_name', 'photos')->where('custom_properties->sha', $sha)->get()
             ->each(function (Media $m) use ($model, $properties) {
                 // Файл кадра — на публичном диске, документы — на закрытом: переносом (копия в «papers» и удаление кадра).
-                $moved = $m->move($model, 'papers');
+                $moved = $m->move(method_exists($model, 'carRecord') ? $model->carRecord() : $model, 'papers');
                 $moved->forceFill(['custom_properties' => [...array_diff_key($moved->custom_properties, ['hidden' => true]), ...$properties]])->save();
             });
     }

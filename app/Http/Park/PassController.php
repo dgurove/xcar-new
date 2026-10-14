@@ -19,7 +19,7 @@ class PassController
     public function check(Request $request, Vehicle $vehicle)
     {
         $pass = Pass::byCode((string) $request->input('code'));
-        $pass?->load(['vehicle.yard', 'vehicle.brand', 'vehicle.model']);
+        $pass?->load(['vehicle.yard', 'vehicle']);
         $when = fn (Pass $p) => 'Заберёт '.$p->pickup_on->translatedFormat('j F').', сверьте с паспортом';
 
         return response()->json(match (true) {

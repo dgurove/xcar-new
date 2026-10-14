@@ -6,20 +6,15 @@ use App\Billing\Cadence;
 use App\Billing\Charge;
 use App\Billing\Invoice;
 use App\Billing\Party;
-use App\Cars\Brand;
-use App\Cars\CarModel;
-use App\Cars\Category;
 use App\Cars\DamageZone;
-use App\Cars\Identity;
-use App\Cars\Vin\Vin;
+use App\Cars\OnCar;
 use App\Cars\Vin\VinDecoder;
 use App\Mail\Extraction\Code;
-use App\Mail\Extraction\Patterns;
 use App\Mail\Template;
 use App\Mail\Thread;
-use App\Media\HasPhotos;
 use App\Offers\Flag;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Phone;
@@ -32,27 +27,24 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
-use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes', 'offer_id',
+#[Fillable(['ref', 'vin', 'brand_id', 'model_id', 'year', 'plate', 'color', 'category', 'oversize', 'vendor_id', 'state', 'yard_id', 'accepted_at', 'released_at', 'damage_zones', 'damage_note', 'notes',
     'contact_name', 'contact_phone', 'flags', 'docs_required', 'value', 'policy_no', 'city_id',
     'cancelled_at', 'cancel_reason', 'spot', 'mileage', 'fuel', 'idle_noticed_at',
     'owner_party_id', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'storage_rate', 'storage_rate_note', 'storage_billed_until', 'pts', 'sts',
     'sold_at', 'sold_message_id', 'buyer_free_until', 'pickup_name', 'pickup_phone', 'pickup_code', 'buyer_party_id', 'billing_cadence'])]
-class Vehicle extends Model implements HasMedia
+class Vehicle extends Model
 {
-    use HasPhotos;
+    use OnCar;
 
     protected $table = 'park_vehicles';
 
-    /** ТС стирают («Заведена по ошибке»), предложение остаётся — его файлы уходят к нему. Раньше spatie: тот стирает всё. */
-    protected static function booting(): void
-    {
-        static::deleting(fn (self $v) => $v->offer_id ? Sale::release($v) : null);
-    }
+    /** Машина (`Cars\Car`): номер убытка, VIN, госномер, марка, фото и документы — у неё. */
+    protected $with = ['car'];
 
     protected static function booted(): void
     {
@@ -63,59 +55,33 @@ class Vehicle extends Model implements HasMedia
                 $v->city_id = City::forVehicle($v);
             }
         });
-        // Тип ТС пуст, а марка есть — угадываем (12.10.2026: у 59 машин не было ставки только из-за пустого типа).
-        static::saving(function (self $v) {
-            if (! $v->category && $v->brand_id) {
-                $v->category = $v->guessCategory();
-            }
-        });
-        // Одна машина — одна запись: номер убытка или VIN другой ТС не встанет (`Identity`).
-        static::saving(fn (self $v) => Identity::guardVehicle($v));
         // ТС вендора на парковке — вендор становится её вендором (раздел «Вендоры» парковки).
         static::saved(fn (self $v) => $v->wasChanged('vendor_id') || $v->wasRecentlyCreated ? Vendor::markOnPark($v->vendor_id) : null);
-        // Машина одна (`Sale`): связали или отвязали предложение — файлы переходят, тождество ТС зеркалит предложение.
-        static::saved(function (self $v) {
-            if ($v->wasChanged('offer_id') || ($v->wasRecentlyCreated && $v->offer_id)) {
-                Sale::relinked($v, $v->wasRecentlyCreated ? null : $v->getOriginal('offer_id'));
-            }
-            if ($v->offer_id && ($v->wasRecentlyCreated || $v->wasChanged(['offer_id', 'value', ...array_keys(Sale::MAP)]))) {
-                Sale::toOffer($v);
-            }
-        });
-        // Тип ТС предложения берётся и с парковки — сменили категорию или связь, пересчитываем колонку предложения.
-        static::saved(function (self $v) {
-            if ($v->wasChanged(['category', 'offer_id']) || $v->wasRecentlyCreated) {
-                foreach (array_filter([$v->offer_id, $v->getOriginal('offer_id')]) as $id) {
-                    if ($offer = Offer::withoutGlobalScopes()->find($id)) {
-                        Offer::withoutGlobalScopes()->whereKey($id)->toBase()->update(['vehicle_category' => $offer->guessCategory()->value]);
-                    }
-                }
-            }
-        });
     }
 
     protected function casts(): array
     {
-        return ['state' => VehicleState::class, 'category' => Category::class, 'oversize' => 'bool', 'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',
-            'accepted_at' => 'datetime', 'released_at' => 'datetime', 'cancelled_at' => 'datetime', 'idle_noticed_at' => 'datetime', 'year' => 'int',
+        return ['state' => VehicleState::class,
+            'accepted_at' => 'datetime', 'released_at' => 'datetime', 'cancelled_at' => 'datetime', 'idle_noticed_at' => 'datetime',
             'contract_at' => 'date', 'storage_billed_until' => 'date', 'storage_rate' => 'float', 'sold_at' => 'date', 'buyer_free_until' => 'date', 'billing_cadence' => Cadence::class];
     }
 
-    public function setRefAttribute(?string $value): void
+    /** У парковки `fuel` — уровень топлива при приёме, а не вид топлива машины. */
+    protected static function carOwnFields(): array
     {
-        $value = trim((string) $value) ?: null;
-        $this->attributes['ref'] = $value;
-        $this->attributes['ref_key'] = $value ? self::keyFor($value) : null;
+        return ['fuel'];
     }
 
-    public function setVinAttribute(?string $value): void
+    /** Файлы парковки (сняли здесь, пришли письмом её ящика): CRM их прячет, но не удаляет (`Sale::parkOwned`). */
+    public function carMediaMark(): array
     {
-        $this->attributes['vin'] = Vin::normalize($value);
+        return ['park' => true];
     }
 
-    public function setPlateAttribute(?string $value): void
+    /** Имена парковки: номер убытка — `ref`, страхователь — контакт. */
+    public static function carAliases(): array
     {
-        $this->attributes['plate'] = Patterns::plateKey($value);
+        return ['ref' => 'claim_ref', 'ref_key' => 'claim_ref_key', 'contact_name' => 'insured_name', 'contact_phone' => 'insured_phone'];
     }
 
     public static function keyFor(string $ref): string
@@ -137,24 +103,16 @@ class Vehicle extends Model implements HasMedia
         $compact = Term::like(mb_strtoupper((string) preg_replace('/\s+/u', '', $t->raw)));
 
         return $q->where(fn ($w) => $w
-            ->when($t->key, fn ($w, $key) => $w->orWhere('park_vehicles.ref_key', 'like', Term::like($key)))
-            ->when($t->vin, fn ($w, $vin) => $w->orWhere('park_vehicles.vin', 'like', Term::like($vin)))
-            ->when($t->plate, fn ($w, $p) => $w->orWhereRaw(Term::latinSql('park_vehicles.plate').' like ?', [Term::like($p)]))
-            ->orWhereRaw("upper(replace(coalesce(park_vehicles.sts, ''), ' ', '')) like ?", [$compact])
-            ->orWhereRaw("upper(replace(coalesce(park_vehicles.pts, ''), ' ', '')) like ?", [$compact])
-            ->orWhere('park_vehicles.policy_no', 'ilike', Term::like($t->raw))
-            ->when($t->phone, fn ($w, $p) => $w->orWhereRaw(Term::digitsSql("concat_ws(' ', park_vehicles.contact_phone, park_vehicles.pickup_phone)").' like ?', [Term::like($p)]))
-            ->orWhere(fn ($all) => CarWords::apply($all, $t, 'park_vehicles')));
-    }
-
-    public function brand(): BelongsTo
-    {
-        return $this->belongsTo(Brand::class);
-    }
-
-    public function model(): BelongsTo
-    {
-        return $this->belongsTo(CarModel::class, 'model_id');
+            ->orWhereHas('car', fn ($c) => $c->where(fn ($c) => $c
+                ->when($t->key, fn ($c, $key) => $c->orWhere('cars.claim_ref_key', 'like', Term::like($key)))
+                ->when($t->vin, fn ($c, $vin) => $c->orWhere('cars.vin', 'like', Term::like($vin)))
+                ->when($t->plate, fn ($c, $p) => $c->orWhereRaw(Term::latinSql('cars.plate').' like ?', [Term::like($p)]))
+                ->orWhereRaw("upper(replace(coalesce(cars.sts, ''), ' ', '')) like ?", [$compact])
+                ->orWhereRaw("upper(replace(coalesce(cars.pts, ''), ' ', '')) like ?", [$compact])
+                ->orWhere('cars.policy_no', 'ilike', Term::like($t->raw))
+                ->when($t->phone, fn ($c, $p) => $c->orWhereRaw(Term::digitsSql('cars.insured_phone').' like ?', [Term::like($p)]))))
+            ->when($t->phone, fn ($w, $p) => $w->orWhereRaw(Term::digitsSql('park_vehicles.pickup_phone').' like ?', [Term::like($p)]))
+            ->orWhere(fn ($all) => CarWords::apply($all, $t)));
     }
 
     public function vendor(): BelongsTo
@@ -327,9 +285,14 @@ class Vehicle extends Model implements HasMedia
         return false;
     }
 
-    public function offer(): BelongsTo
+    /**
+     * Продажа машины, пока она идёт: архивная и снятая — не «в продаже» (владелец 05.10.2026: удаление предложения
+     * отменяет продажу, а парковку не трогает). Само предложение машины в любом состоянии — `car->offer`.
+     */
+    public function offer(): HasOne
     {
-        return $this->belongsTo(Offer::class);
+        return $this->hasOne(Offer::class, 'car_id', 'car_id')->withoutGlobalScopes()
+            ->whereNotIn('offers.state', [OfferState::Archived->value, OfferState::Cancelled->value]);
     }
 
     public function requests(): HasMany
@@ -345,7 +308,8 @@ class Vehicle extends Model implements HasMedia
 
     public function events(): HasMany
     {
-        return $this->hasMany(VehicleEvent::class, 'vehicle_id')->latest('created_at');
+        // Записи одной секунды (связали и сняли, приняли и отправили) — по порядку записи.
+        return $this->hasMany(VehicleEvent::class, 'vehicle_id')->latest('created_at')->latest('id');
     }
 
     /**
@@ -374,14 +338,6 @@ class Vehicle extends Model implements HasMedia
     public function saleLabel(): string
     {
         return implode(', ', array_filter([$this->titleWithYear(), $this->plate, $this->ref ? 'убыток '.$this->ref : null]));
-    }
-
-    /** Тип ТС заново: как у связанного предложения, иначе по марке и модели («Газель», «КАМАЗ»), не понять — легковой. */
-    public function guessCategory(): Category
-    {
-        $offer = $this->offer_id ? Offer::find($this->offer_id, ['id', 'vehicle_category']) : null;
-
-        return Category::tryFrom((string) $offer?->vehicle_category) ?? Category::guess($this->titleWithYear()) ?? Category::Passenger;
     }
 
     public function titleWithYear(): string

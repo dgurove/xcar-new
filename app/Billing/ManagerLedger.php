@@ -44,7 +44,7 @@ final class ManagerLedger
             $this->all = Deal::where('buyer_id', $this->manager->id)
                 ->where(fn ($q) => $q->where('state', DealState::Active)->orWhereHas('invoices'))
                 ->where(fn ($q) => $q->whereNull('garage_payer')->orWhereHas('invoices'))
-                ->with(['offer.brand', 'offer.model', 'offer.media', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
+                ->with(['offer', 'offer.media', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
             $this->all->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d, $this->staff)));
         }
         $deals = $this->all->filter(fn (Deal $d) => match ($preset) {
@@ -63,7 +63,7 @@ final class ManagerLedger
     {
         $this->cars ??= GarageCar::where('manager_id', $this->manager->id)
             ->where(fn ($q) => $q->whereNotNull('invoice_id')->orWhereNotNull('payout_invoice_id'))
-            ->with(['offer.brand', 'offer.model', 'offer.media', 'invoice.claims', 'payoutInvoice'])->latest('stage_at')->get()
+            ->with(['offer', 'offer.media', 'invoice.claims', 'payoutInvoice'])->latest('stage_at')->get()
             ->each(fn (GarageCar $c) => $c->setAttribute('money', DealMoney::garage($c, $this->manager, $this->staff)))
             ->filter(fn (GarageCar $c) => $c->money)->values();
 
@@ -78,7 +78,7 @@ final class ManagerLedger
     {
         $this->transports ??= $this->manager->party_id
             ? Transport::whereHas('invoice', fn ($i) => $i->where('party_id', $this->manager->party_id)->where('direction', 'owed')->where('kind', ChargeKind::Tow)->where('state', '!=', InvoiceState::Void))
-                ->with(['invoice', 'offer.brand', 'offer.model', 'offer.media', 'vehicle.brand', 'vehicle.model', 'vehicle.media'])->latest('id')->get()
+                ->with(['invoice', 'offer', 'offer.media', 'vehicle', 'vehicle.media'])->latest('id')->get()
                 ->each(fn (Transport $t) => $t->setAttribute('money', DealMoney::transport($t->invoice, $this->staff)))
             : collect();
 
@@ -146,7 +146,7 @@ final class ManagerLedger
         $rows = collect();
         $invoices = $this->invoices();
         // Гаражные счета и выплаты — без сделки: ведут на машину в гараже, а не в пустой расчёт сделки.
-        $cars = GarageCar::with(['offer.brand', 'offer.model'])->where(fn ($q) => $q->whereIn('invoice_id', $invoices->whereNull('deal_id')->pluck('id'))
+        $cars = GarageCar::with(['offer'])->where(fn ($q) => $q->whereIn('invoice_id', $invoices->whereNull('deal_id')->pluck('id'))
             ->orWhereIn('payout_invoice_id', $invoices->whereNull('deal_id')->pluck('id')))->get();
         foreach ($invoices as $i) {
             $car = $i->deal_id ? null : $cars->first(fn ($c) => $c->invoice_id === $i->id || $c->payout_invoice_id === $i->id);

@@ -29,7 +29,7 @@
         @foreach ($offers as $offer)
             <x-purchase.offer-chip :offer="$offer" :car="$car" :highlight="$highlight"/>
         @endforeach
-        @if ($car->offer_id)
+        @if ($car->offer)
             <a href="/offers/{{ $car->offer?->number }}" class="chip nums whitespace-nowrap bg-accent-soft text-accent-text">№ {{ $car->offer?->number }}</a>
         @elseif ($price)
             <a href="/purchases/{{ $n }}?{{ $car->price_final ? '' : 'preset=unfinal&' }}vid=table&peek={{ $car->ref }}" class="chip nums whitespace-nowrap {{ $car->price_final ? 'bg-accent-soft text-accent-text' : '' }}">{{ $car->price_final ? \App\Support\Money::rub($car->price_final) : 'оценить' }}</a>

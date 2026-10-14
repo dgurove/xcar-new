@@ -122,7 +122,7 @@ class Vendor extends Model implements HasMedia
 
     /**
      * Вендор предложения: у вендора парковки, который в CRM — другой (`crm_vendor_id`: «АльфаСтрахование СПб» →
-     * «АльфаСтрахование»), — тот. Ставит `Offer::saving` — из письма, с парковки (`Sale::toOffer`) или руками.
+     * «АльфаСтрахование»), — тот. Ставит `Offer::saving` — из письма, с парковки (`PutOnSale`) или руками.
      */
     public static function forCrm(?int $id): ?int
     {

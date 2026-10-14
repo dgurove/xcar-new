@@ -121,7 +121,7 @@ final class IssueInvoice
                 Vehicle::find($id)?->log(EventType::Invoiced, $by, ['label' => 'реестр '.$invoice->label(), 'amount' => round($amount, 2), 'party' => $party->name]);
             }
             if ($issued) {
-                $this->pdf->attach($invoice->fresh(['charges', 'party', 'vehicle.brand', 'vehicle.model']));
+                $this->pdf->attach($invoice->fresh(['charges', 'party', 'vehicle']));
             }
 
             return $invoice;

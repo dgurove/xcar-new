@@ -11,7 +11,7 @@ class ActController
 {
     public function show(Vehicle $vehicle, string $kind)
     {
-        $vehicle->load(['brand', 'model', 'vendor.party', 'ownerParty', 'yard.settlement', 'media', 'inspections']);
+        $vehicle->load(['vendor.party', 'ownerParty', 'yard.settlement', 'media', 'inspections']);
         if (in_array($kind, ['contract', 'handover'], true)) {
             return view('billing.docs.commission', ['vehicle' => $vehicle, 'kind' => $kind, 'self' => Seller::Park->party()]);
         }

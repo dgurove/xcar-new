@@ -59,7 +59,7 @@ class PurchaseController
     {
         abort_unless($purchase->state->isPublic() && $car->purchase_id === $purchase->id && $purchase->showsOnSite($car), 404);
         abort_if(in_array($car->kind->value, Restriction::hiddenFor($request->user()), true), 404);
-        $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
+        $car->load(['settlement', 'media', 'offers.user']);
 
         return view('site.purchases.detail', ['purchase' => $purchase, 'car' => $car, 'query' => http_build_query(array_filter($request->only(['preset', 'q', 'kind', 'sort', 'group', ListView::PARAM])))]);
     }
@@ -72,7 +72,7 @@ class PurchaseController
         }
         abort_unless($purchase->state->isPublic() && $car->purchase_id === $purchase->id && $purchase->showsOnSite($car), 404);
         abort_if(in_array($car->kind->value, Restriction::hiddenFor($request->user()), true), 404);
-        $car->load(['brand', 'model', 'settlement', 'media', 'offers']);
+        $car->load(['settlement', 'media', 'offers']);
         $filters = $request->only(['preset', 'q', 'kind', 'sort', 'group']);
         $group = $this->group($filters) ?? Group::of($car->kind);
         // Соседи по тому же отбору; сама машина из отбора не выпадает.
@@ -120,7 +120,7 @@ class PurchaseController
         $user = $request->user();
         // Менеджеру — только его цена; сотруднику карточка показывает лучшую цену с именем (bestOffer), ему — все.
         $offers = fn ($o) => $user->isAdmin() ? $o->with('user') : $o->where('user_id', $user->id);
-        $q = $this->visible($purchase, $request, $this->group($filters))->with(['brand', 'model', 'settlement', 'media', 'offers' => $offers]);
+        $q = $this->visible($purchase, $request, $this->group($filters))->with(['settlement', 'media', 'offers' => $offers]);
         // Лупа — по всей закупке, мимо пилюли и типа.
         $search = trim((string) ($filters['q'] ?? ''));
         if ($search === '') {

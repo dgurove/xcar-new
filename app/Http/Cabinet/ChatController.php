@@ -28,7 +28,7 @@ class ChatController
     {
         $user = $request->user();
         abort_unless($chat->canPost($user), 404);
-        $chat->load(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager']);
+        $chat->load(['offer', 'offer.media', 'user', 'manager']);
         // Первое непрочитанное — до отметки «прочитано»: лента откроется на нём.
         $firstUnread = $chat->myReadSeq($user) < $chat->messages_count ? $chat->myReadSeq($user) + 1 : 0;
         $read($chat, $user);
@@ -54,7 +54,7 @@ class ChatController
             return redirect(self::base($request).'/'.$chat->id);
         }
         abort_unless($offer->chatOpenFor($user), 404);
-        $offer->load(['brand', 'model', 'media']);
+        $offer->load(['media']);
 
         return view('cabinet.chats', [
             'chat' => null, 'offer' => $offer, 'messages' => collect(), 'user' => $user, 'firstUnread' => 0, 'more' => false,

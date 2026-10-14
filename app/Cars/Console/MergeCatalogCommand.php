@@ -2,7 +2,7 @@
 
 namespace App\Cars\Console;
 
-use App\Cars\Actions\MergeCars;
+use App\Cars\Actions\MergeCatalog;
 use Illuminate\Console\Command;
 
 /**
@@ -10,13 +10,13 @@ use Illuminate\Console\Command;
  * дубли не появятся — `Brand::resolve` и `CarModel::resolve` сначала спрашивают словарь `Names`. Без `--apply` —
  * только список.
  */
-class MergeCarsCommand extends Command
+class MergeCatalogCommand extends Command
 {
     protected $signature = 'cars:merge {--apply : слить, а не только показать}';
 
     protected $description = 'Слить дубли марок и моделей в записи справочника';
 
-    public function handle(MergeCars $merge): int
+    public function handle(MergeCatalog $merge): int
     {
         $apply = (bool) $this->option('apply');
         $n = 0;

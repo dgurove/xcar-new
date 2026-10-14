@@ -49,6 +49,26 @@ final class Changes
     }
 
     /**
+     * Правка дорожки машины (`Cars\OnCar`): её поля и поля машины — именами дорожки (у парковки номер убытка — `ref`,
+     * страхователь — `contact_name`).
+     *
+     * @return array{fields: list<string>, changes: array<string, array{0: mixed, 1: mixed}>}
+     */
+    public static function ofLane(Model $lane): array
+    {
+        $names = array_flip($lane::carAliases());
+        $own = self::of($lane);
+        $car = self::of($lane->carRecord());
+        $rename = fn (string $f) => $names[$f] ?? $f;
+
+        // Производное и под именем дорожки (тип ТС у продажи считает машина по кузову и марке) — не правка.
+        $fields = array_values(array_diff(array_unique([...$own['fields'], ...array_map($rename, $car['fields'])]), self::SKIP));
+        usort($fields, fn ($a, $b) => in_array($a, self::TEXT, true) <=> in_array($b, self::TEXT, true));
+
+        return ['fields' => $fields, 'changes' => array_diff_key($own['changes'] + collect($car['changes'])->mapWithKeys(fn ($v, $f) => [$rename($f) => $v])->all(), array_flip(self::SKIP))];
+    }
+
+    /**
      * Строка ленты: «закупочная цена 183 840 → 211 200 ₽, цена продажи 250 000 ₽, описание». Пустое было — только новое,
      * стёрли — «→ нет». Записи до 14.10.2026 без значений — одни имена полей.
      *

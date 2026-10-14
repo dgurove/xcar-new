@@ -28,8 +28,8 @@ final class MoneyLinks
 
     public const FROM_LABELS = ['deal' => 'Сделка', 'garage' => 'Гараж', 'manual' => 'Вручную'];
 
-    public const WITH = ['invoice.party', 'invoice.charges', 'invoice.offer.brand', 'invoice.offer.model', 'invoice.deal.offer.brand', 'invoice.deal.offer.model', 'invoice.deal.buyer',
-        'invoice.garageCar.offer.brand', 'invoice.garageCar.offer.model', 'invoice.garageCar.manager', 'invoice.creditDeal.offer', 'invoice.creditDeal.buyer', 'invoice.creator', 'attempts', 'creator', 'payerUser'];
+    public const WITH = ['invoice.party', 'invoice.charges', 'invoice.offer', 'invoice.deal.offer', 'invoice.deal.buyer',
+        'invoice.garageCar.offer', 'invoice.garageCar.manager', 'invoice.creditDeal.offer', 'invoice.creditDeal.buyer', 'invoice.creator', 'attempts', 'creator', 'payerUser'];
 
     public static function sorts(): array
     {

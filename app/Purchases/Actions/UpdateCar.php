@@ -12,11 +12,12 @@ final class UpdateCar
     public function __invoke(Car $car, array $data): Car
     {
         $car->fill($data);
-        $locked = array_unique([...($car->locked_fields ?? []), ...array_keys($car->getDirty())]);
+        // Поля машины (`Cars\Car`) правятся у неё, запираются у лота так же.
+        $locked = array_unique([...($car->locked_fields ?? []), ...array_keys($car->getDirty()), ...$car->carDirty()]);
         $car->locked_fields = array_values(array_diff($locked, ['locked_fields', 'is_published', 'description', 'share_locked']));
         $car->save();
         if ($car->wasChanged('share_locked')) {
-            StampPhotos::dispatch($car);
+            StampPhotos::dispatch($car->carRecord());
         }
         (new RememberVin)($car);
 

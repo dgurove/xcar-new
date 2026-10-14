@@ -41,12 +41,12 @@ class Purchase extends Model
     /** Машины, которые видит витрина: опубликованные и, если так решено в закупке, ещё без нашей цены. */
     public function carsOnSite(): HasMany
     {
-        return $this->cars()->whereNull('offer_id')->where('is_published', true)->when($this->hide_priced, fn ($q) => $q->whereNull('price_final'));
+        return $this->cars()->whereDoesntHave('offer')->where('is_published', true)->when($this->hide_priced, fn ($q) => $q->whereNull('price_final'));
     }
 
     public function showsOnSite(Car $car): bool
     {
-        return ! $car->offer_id && $car->is_published && ! ($this->hide_priced && $car->price_final !== null);
+        return ! $car->offer && $car->is_published && ! ($this->hide_priced && $car->price_final !== null);
     }
 
     /** Наружу — номер, группа и месяц: по названию с именем лизинговой компании покупатель уйдёт искать те же машины у неё. */

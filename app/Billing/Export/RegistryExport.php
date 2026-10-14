@@ -19,7 +19,7 @@ final class RegistryExport
 
     public static function write(Invoice $invoice, string $path): void
     {
-        $invoice->loadMissing(['charges.vehicle.brand', 'charges.vehicle.model', 'charges.vehicle.vendor']);
+        $invoice->loadMissing(['charges.vehicle', 'charges.vehicle.vendor']);
         $writer = new Writer;
         $writer->openToFile($path);
         $writer->getCurrentSheet()->setName('Отчёт-акт');

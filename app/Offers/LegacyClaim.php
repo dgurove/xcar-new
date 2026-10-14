@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Cars\Car;
 use App\Mail\Extraction\Code;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,20 +25,20 @@ class LegacyClaim extends Model
     /** Предложения с номером из списка. */
     public static function onList(Builder $q): Builder
     {
-        return $q->whereIn('offers.claim_ref_key', self::query()->select('claim_ref_key'));
+        return $q->whereIn('offers.car_id', Car::query()->whereIn('claim_ref_key', self::query()->select('claim_ref_key'))->select('id'));
     }
 
     /** Предложения без номера из списка — рабочие вкладки черновиков. */
     public static function offList(Builder $q): Builder
     {
-        return $q->where(fn ($o) => $o->whereNull('offers.claim_ref_key')->orWhereNotIn('offers.claim_ref_key', self::query()->select('claim_ref_key')));
+        return $q->whereNotIn('offers.car_id', Car::query()->whereIn('claim_ref_key', self::query()->select('claim_ref_key'))->select('id'));
     }
 
     /** Номера, которые ещё не заведены: живого предложения нет (архивное «Завести» поднимет в черновик). */
     public static function ghosts(): Builder
     {
-        return self::query()->whereNotExists(fn ($q) => $q->selectRaw('1')->from('offers')
-            ->whereColumn('offers.claim_ref_key', 'legacy_claims.claim_ref_key')->where('offers.is_demo', false)
+        return self::query()->whereNotExists(fn ($q) => $q->selectRaw('1')->from('offers')->join('cars', 'cars.id', '=', 'offers.car_id')
+            ->whereColumn('cars.claim_ref_key', 'legacy_claims.claim_ref_key')->where('offers.is_demo', false)
             ->whereNotIn('offers.state', [OfferState::Archived->value, OfferState::Cancelled->value]))
             ->orderBy('position');
     }
@@ -50,6 +51,6 @@ class LegacyClaim extends Model
     /** Предложение по номеру (без демо): живое первым. */
     public function offer(): ?Offer
     {
-        return Offer::where('claim_ref_key', $this->claim_ref_key)->where('is_demo', false)->first();
+        return Offer::whereCar('claim_ref_key', $this->claim_ref_key)->where('is_demo', false)->first();
     }
 }

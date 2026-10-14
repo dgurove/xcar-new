@@ -23,8 +23,8 @@ use App\Workflow\Track;
 use Illuminate\Events\Dispatcher;
 
 /**
- * ТС с парковки в продаже (`PutOnSale`, `Sale::adopt`) — одна машина: где она, знает парковка, «где машина» у
- * предложения — производное. Маршрут вывоза CRM парковка не двигает и не снимает (08.10.2026: вывоз CRM на парковку не
+ * ТС с парковки в продаже — одна машина (`Cars\Car`): где она, знает парковка, «где машина» у предложения —
+ * производное. Маршрут вывоза CRM парковка не двигает и не снимает (08.10.2026: вывоз CRM на парковку не
  * везёт). Без связанного предложения слушатель молчит.
  */
 final class SyncOffer
@@ -95,7 +95,7 @@ final class SyncOffer
 
     private function offer(Vehicle $vehicle): ?Offer
     {
-        return $vehicle->offer_id ? Offer::with('positions.stage.workflow')->find($vehicle->offer_id) : null;
+        return $vehicle->offer()->with('positions.stage.workflow')->first();
     }
 
     private function system(): User

@@ -18,7 +18,7 @@ final class EstimateLock
             return;
         }
         $offer->forceFill(['share_locked' => true, 'share_locked_by_estimate' => true])->save();
-        StampPhotos::dispatch($offer);
+        StampPhotos::dispatch($offer->carRecord());
     }
 
     public static function release(Offer $offer): void
@@ -28,6 +28,6 @@ final class EstimateLock
             return;
         }
         $offer->forceFill(['share_locked' => false, 'share_locked_by_estimate' => false])->save();
-        StampPhotos::dispatch($offer);
+        StampPhotos::dispatch($offer->carRecord());
     }
 }

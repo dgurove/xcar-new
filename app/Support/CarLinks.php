@@ -9,7 +9,7 @@ use App\Users\User;
 
 /**
  * Где ещё эта машина — меню значка связи `x-ui.links` (только админу): дело на парковке, предложение в CRM, сделка,
- * гараж, закупка Carcade. Машина одна (`Park\Sale`), а экранов у неё несколько; меню ведёт на каждый, кроме того, где
+ * гараж, закупка Carcade. Машина одна (`Cars\Car`), а экранов у неё несколько; меню ведёт на каждый, кроме того, где
  * человек сейчас. Ссылки — с хостом: парковка, CRM и сайт — разные хосты.
  */
 final class CarLinks
@@ -26,7 +26,7 @@ final class CarLinks
             return false;
         }
         if ($from instanceof Vehicle) {
-            return (bool) $from->offer_id;
+            return $from->relationLoaded('offer') ? (bool) $from->offer : $from->offer()->exists();
         }
         $has = fn (string $rel) => $from->relationLoaded($rel) ? (bool) $from->getRelation($rel) : $from->{$rel}()->exists();
 

@@ -13,6 +13,7 @@ use App\Http\Admin\OfferPhotoController;
 use App\Mail\Scope;
 use App\Mail\Template;
 use App\Park\City;
+use App\Park\ReportDoc;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
@@ -113,17 +114,17 @@ class VendorController
         } elseif ($pill === 'money') {
             // Контрагент на чтение не создаётся: без счетов долг — только не выставленное хранение по ТС вендора.
             $party = Party::forVendor($vendor, false);
-            $stored = Vehicle::where('vendor_id', $vendor->id)->where('state', VehicleState::Stored)->with(['brand', 'model', 'yard'])->orderBy('accepted_at')->get();
+            $stored = Vehicle::where('vendor_id', $vendor->id)->where('state', VehicleState::Stored)->with(['yard'])->orderBy('accepted_at')->get();
             $data += [
                 'party' => $party->id ? $party : null,
                 'debt' => $party->id ? Ledger::debtOf($party) : ['owed_to_us' => 0, 'we_owe' => 0, 'overdue' => 0],
                 'unbilled' => $stored->mapWithKeys(fn (Vehicle $v) => [$v->id => round(collect(Accrual::storage($v))->where('payer', 'vendor')->sum('amount') + (float) $v->charges()->whereNull('invoice_id')->whereNull('voided_at')->when($party->id, fn ($q) => $q->where('party_id', $party->id))->sum('amount'), 2)]),
                 'stored' => $stored,
-                'invoices' => $party->id ? Invoice::ofPark()->where('party_id', $party->id)->with(['vehicle.brand', 'vehicle.model'])->latest('issued_at')->latest('id')->get() : collect(),
+                'invoices' => $party->id ? Invoice::ofPark()->where('party_id', $party->id)->with(['vehicle'])->latest('issued_at')->latest('id')->get() : collect(),
             ];
         } elseif ($pill === 'overview') {
             $data += [
-                'vehicles' => Vehicle::where('vendor_id', $vendor->id)->where('state', VehicleState::Stored)->with(['brand', 'model', 'yard'])->orderBy('accepted_at')->get(),
+                'vehicles' => Vehicle::where('vendor_id', $vendor->id)->where('state', VehicleState::Stored)->with(['yard'])->orderBy('accepted_at')->get(),
                 'contract' => $vendor->getFirstMedia('contract'),
             ];
         }
@@ -186,7 +187,7 @@ class VendorController
             'intake_docs.*' => [Rule::enum(DocRequirement::class)],
             'intake_note' => ['nullable', 'string', 'max:2000'],
             'intake_report_docs' => ['nullable', 'array'],
-            'intake_report_docs.*' => [Rule::enum(\App\Park\ReportDoc::class)],
+            'intake_report_docs.*' => [Rule::enum(ReportDoc::class)],
             'notes' => ['nullable', 'string', 'max:2000'],
         ] + SetLogo::RULES);
         $senders = Vendor::parseSenders($data['park_senders'] ?? null);

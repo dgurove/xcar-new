@@ -23,4 +23,10 @@ final class IdentityTaken extends ValidationException
 
         return $e;
     }
+
+    /** То же под именем поля формы дорожки: у парковки номер убытка — `ref`, у лота закупки — `dl`. */
+    public function as(string $field): self
+    {
+        return $field === $this->field ? $this : self::of($this->holder, $field, $this->errors()[$this->field][0] ?? '');
+    }
 }

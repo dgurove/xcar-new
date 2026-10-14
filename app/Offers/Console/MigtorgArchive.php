@@ -89,7 +89,7 @@ class MigtorgArchive extends Command
         }
         DB::table('migtorg_scan')->where('id', $scan->id)->update($state + ['updated_at' => now()]);
 
-        $started = $keys ? Offer::whereIn('state', ImportMigtorgLot::STATES)->whereIn('claim_ref_key', array_unique($keys))->get()
+        $started = $keys ? Offer::whereIn('state', ImportMigtorgLot::STATES)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', array_unique($keys)))->get()
             ->filter(fn (Offer $offer) => ImportMigtorgLot::auto($offer))->count() : 0;
         $this->line("Открыто {$opened}, курсор {$state['cursor_id']}, с номером {$state['found']}, задач {$started}".(isset($state['done_at']) ? ', архив пройден' : ''));
 

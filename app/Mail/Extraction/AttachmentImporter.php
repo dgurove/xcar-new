@@ -2,14 +2,14 @@
 
 namespace App\Mail\Extraction;
 
-use App\Media\DocumentScan;
 use App\Mail\Attachment;
 use App\Mail\Message;
+use App\Media\DocumentScan;
 use App\Media\PdfPhotos;
 use App\Media\PhotoIngest;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Spatie\MediaLibrary\HasMedia;
 use Throwable;
 
 /**
@@ -28,7 +28,7 @@ final class AttachmentImporter
      * @param  array  $documentProperties  свойства документов (ответ страховой по сделке: `managers`, `letter`)
      * @return array{photos: int, documents: int} сколько добавлено
      */
-    public function import(HasMedia $model, Collection $attachments, string $photosCollection, string $documentsCollection, array|callable $photoProperties = [], ?callable $progress = null, array $documentProperties = []): array
+    public function import(Model $model, Collection $attachments, string $photosCollection, string $documentsCollection, array|callable $photoProperties = [], ?callable $progress = null, array $documentProperties = []): array
     {
         $added = ['photos' => 0, 'documents' => 0];
         if ($attachments->isEmpty()) {
@@ -100,7 +100,7 @@ final class AttachmentImporter
      *
      * @return int сколько добавлено
      */
-    public function importDocuments(HasMedia $model, Collection $attachments, string $collection): int
+    public function importDocuments(Model $model, Collection $attachments, string $collection): int
     {
         $added = 0;
         foreach ($this->classifier->classify($attachments)['documents'] as $document) {
@@ -159,7 +159,7 @@ final class AttachmentImporter
      *
      * @return array{photos: int, documents: int}|null
      */
-    public function importArchive(HasMedia $model, string $path, string $photosCollection, string $documentsCollection, ?callable $progress = null, array $documentProperties = [], ?string $source = null,
+    public function importArchive(Model $model, string $path, string $photosCollection, string $documentsCollection, ?callable $progress = null, array $documentProperties = [], ?string $source = null,
         array $photoProperties = [], bool $imagesAsDocuments = false): ?array
     {
         $extracted = $this->archives->extractPath($path);
@@ -181,7 +181,7 @@ final class AttachmentImporter
         return $added;
     }
 
-    private function addPhoto(HasMedia $model, string $collection, string $contents, string $name, array $properties): bool
+    private function addPhoto(Model $model, string $collection, string $contents, string $name, array $properties): bool
     {
         if ($model->hasFile(hash('sha256', $contents))) {
             return false;
@@ -207,12 +207,12 @@ final class AttachmentImporter
     }
 
     /** Один файл документом (скачан по ссылке из письма, не архив). */
-    public function importDocument(HasMedia $model, string $collection, string $name, string $contents, ?string $source = null, array $properties = []): bool
+    public function importDocument(Model $model, string $collection, string $name, string $contents, ?string $source = null, array $properties = []): bool
     {
         return $this->addDocumentFile($model, $collection, $name, $contents, $source, $properties);
     }
 
-    private function addDocument(HasMedia $model, string $collection, Attachment $document, array $properties = []): bool
+    private function addDocument(Model $model, string $collection, Attachment $document, array $properties = []): bool
     {
         // Пустая коллекция — документы этому получателю не нужны (кандидат: только кадры).
         if ($collection === '') {
@@ -227,7 +227,7 @@ final class AttachmentImporter
      * `source: null` — файл не из письма (архив, загруженный руками). Файл уже лежит, а свойства есть (ответ страховой
      * открывает его менеджеру) — свойства ложатся на тот, что лежит: кто первым положил файл, не важно.
      */
-    private function addDocumentFile(HasMedia $model, string $collection, string $name, string $contents, ?string $source = 'mail', array $properties = []): bool
+    private function addDocumentFile(Model $model, string $collection, string $name, string $contents, ?string $source = 'mail', array $properties = []): bool
     {
         if ($collection === '') {
             return false;

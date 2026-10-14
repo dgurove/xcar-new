@@ -15,6 +15,7 @@ use App\Garage\GaragePayer;
 use App\Support\Demo\HidesDemo;
 use App\Support\Surface;
 use App\Users\User;
+use App\Vendors\DealFormat;
 use App\Workflow\Requirement;
 use App\Workflow\Track;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -131,7 +132,7 @@ class Deal extends Model
     public function pickupHold(): ?string
     {
         $vendor = $this->offer?->vendor;
-        if ($vendor?->deal_format === \App\Vendors\DealFormat::Wholesale && $this->agreed_at === null) {
+        if ($vendor?->deal_format === DealFormat::Wholesale && $this->agreed_at === null) {
             return 'ждём поставщика';
         }
         if ($this->prepaid_at !== null || ! $vendor?->pay_before_pickup) {
@@ -164,7 +165,7 @@ class Deal extends Model
         return self::where('state', DealState::Active)
             ->whereHas('offer', fn (Builder $o) => $o->where('vendor_id', $vendorId)->whereHas('positions', fn (Builder $p) => $p->where('track', 'sale')
                 ->whereHas('stage.exits', fn (Builder $e) => $e->where('label', 'ilike', $label))))
-            ->with(['offer.brand', 'offer.model', 'offer.settlement', 'buyer'])->orderBy('id')->get();
+            ->with(['offer', 'offer.settlement', 'buyer'])->orderBy('id')->get();
     }
 
     /** Схема оплаты (`DealScheme`); у старых строк — ПРАЙМ по счёту. */

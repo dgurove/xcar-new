@@ -82,14 +82,14 @@ final class LinkThread
         }
         $codes = array_unique([...$this->keyed($message, 'code'), ...array_map(fn ($c) => (string) Code::key($c), $this->matcher->findAll($this->whole($message)))]);
         foreach ($codes as $code) {
-            if ($offer = Offer::where('claim_ref_key', $code)->first()) {
+            if ($offer = Offer::whereCar('claim_ref_key', $code)->first()) {
                 $this($thread, $offer);
 
                 return $offer;
             }
         }
         if ($vin = $this->vin($message)) {
-            if ($offer = Offer::where('vin', $vin)->latest()->first()) {
+            if ($offer = Offer::whereCar('vin', $vin)->latest()->first()) {
                 $this($thread, $offer);
 
                 return $offer;
@@ -110,10 +110,10 @@ final class LinkThread
         $live = fn () => Vehicle::withoutGlobalScope(City::SCOPE)->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->latest();
         $vehicle = null;
         if ($code = $fields['code']['value'] ?? null) {
-            $vehicle = $live()->where('ref_key', Vehicle::keyFor($code))->first();
+            $vehicle = $live()->whereCar('claim_ref_key', Vehicle::keyFor($code))->first();
         }
-        $vehicle ??= ($vin = $this->vin($message)) ? $live()->where('vin', $vin)->first() : null;
-        $vehicle ??= ($plate = $fields['plate']['value'] ?? null) ? $live()->where('plate', mb_strtoupper($plate))->first() : null;
+        $vehicle ??= ($vin = $this->vin($message)) ? $live()->whereCar('vin', $vin)->first() : null;
+        $vehicle ??= ($plate = Patterns::plateKey($fields['plate']['value'] ?? null)) ? $live()->whereCar('plate', $plate)->first() : null;
         if ($vehicle) {
             $this($thread, $vehicle);
         }

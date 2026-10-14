@@ -8,10 +8,9 @@ use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
-use App\Offers\OfferNumber;
 use App\Offers\OfferState;
-use App\Park\City;
 use App\Park\EventType;
+use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Users\User;
@@ -20,14 +19,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * «В продажу» в деле ТС: черновик предложения этой машины. Своих файлов у него нет — фото и документы ТС он видит сам
- * (`Offers\SaleMedia`), тождество зеркалит связь (`Park\Sale`); город — город парковки, закупочная пустая. Письма CRM
- * о той же машине едут к нему; убирали из продажи — прежнее предложение возвращается из архива. Обратно — «Убрать из
- * продажи» (`TakeOffSale`). Без человека (`by` null) — сама, `AutoSale`.
+ * «В продажу» в деле ТС: черновик продажи этой машины (`Cars\Car`): тождество, фото и документы у них общие. Город —
+ * город парковки (без неё — город ТС), вендор — парковки (у продажи он свой: `Vendor::forCrm`), закупочная — по правилу
+ * от оценочной (`Sale::floorFrom`), пока её не вписали. Продажа этой машины уже была (снимали, архив) — она и
+ * возвращается в черновики, второй не заводится. Письма CRM о той же машине едут к ней. Обратно — «Убрать из продажи»
+ * (`TakeOffSale`). Без человека (`by` null) — сама, `AutoSale`.
  */
 final class PutOnSale
 {
-    public function __construct(private CreateOffer $create, private LinkOffer $link, private LinkThread $threads, private ChangeOfferState $change) {}
+    public function __construct(private CreateOffer $create, private LinkThread $threads, private ChangeOfferState $change) {}
 
     public function __invoke(Vehicle $vehicle, ?User $by): Offer
     {
@@ -36,21 +36,12 @@ final class PutOnSale
         }
 
         return DB::transaction(function () use ($vehicle, $by) {
-            // Предложение этой машины уже завели в CRM (номер убытка или VIN, `Identity`) — связать с ним, второго нет.
-            if ($holder = Identity::offerFor($vehicle->ref_key, $vehicle->vin)) {
-                if (Vehicle::withoutGlobalScope(City::SCOPE)->where('offer_id', $holder->id)->exists() || in_array($holder->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
-                    throw ValidationException::withMessages(['vehicle' => 'Это ТС уже в продаже: '.Identity::offerName($holder)]);
+            $car = $vehicle->carRecord();
+            if ($prev = $car->offer()->first()) {
+                if (in_array($prev->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
+                    throw ValidationException::withMessages(['vehicle' => 'Эта машина уже продана: '.Identity::offerName($prev)]);
                 }
-                $holder->state === OfferState::Archived && ($this->change)($holder, OfferState::Draft, $by);
-                ($this->link)($vehicle, $holder->refresh(), $by);
-
-                return $holder->refresh();
-            }
-            // Убирали из продажи, а предложение лежит в архиве — возвращаем его в черновики (номер, цены, история те же),
-            // а не заводим второе.
-            if ($prev = $this->archived($vehicle)) {
-                ($this->change)($prev, OfferState::Draft, $by);
-                $vehicle->refresh()->offer_id || ($this->link)($vehicle, $prev->refresh(), $by);
+                $prev->state === OfferState::Archived && ($this->change)($prev, OfferState::Draft, $by);
 
                 return $prev->refresh();
             }
@@ -58,21 +49,14 @@ final class PutOnSale
                 // Без парковки — город ТС (`city_id` — населённый пункт, `Park\City`).
                 'settlement_id' => $vehicle->yard?->settlement_id ?? $vehicle->city_id,
                 'car_place' => $vehicle->state === VehicleState::Stored ? CarPlace::Ours : null,
+                'vendor_id' => $vehicle->vendor_id,
                 'prices_include_vat' => $vehicle->vendor_id ? Vendor::offersVat($vehicle->vendor_id) : null,
-            ], fn ($v) => $v !== null), ['park' => $vehicle->id]);
-            ($this->link)($vehicle, $offer, $by);
+                'floor_price' => $car->value ? Sale::floorFrom((int) $car->value) : null,
+            ], fn ($v) => $v !== null), ['park' => $vehicle->id], car: $car);
+            $vehicle->log(EventType::Linked, $by, ['number' => $offer->number]);
             $this->threads->forOffer($offer->refresh());
 
             return $offer;
         });
-    }
-
-    /** Прежнее предложение этой ТС — по последней отвязке в её истории, если оно в архиве и ни с кем не связано. */
-    private function archived(Vehicle $vehicle): ?Offer
-    {
-        $number = $vehicle->events()->where('type', EventType::Unlinked)->reorder()->latest('id')->first()?->payload['number'] ?? null;
-        $offer = $number ? OfferNumber::find($number) : null;
-
-        return $offer && $offer->state === OfferState::Archived && ! Vehicle::withoutGlobalScope(City::SCOPE)->where('offer_id', $offer->id)->exists() ? $offer : null;
     }
 }

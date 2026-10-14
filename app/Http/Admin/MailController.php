@@ -130,7 +130,7 @@ class MailController
         // только этого ящика. У парковки ящик один, в «Из писем» выборка вшита — переключателя нет.
         $mailbox = ! $park && ! $forced && $accounts->count() > 1 ? $accounts->firstWhere('slug', (string) $request->query('account')) : null;
         $boxAccounts = $mailbox ? collect([$mailbox]) : $accounts;
-        $with = ['account', 'vendor', 'offer.brand', 'offer.model', 'offer.vendor', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
+        $with = ['account', 'vendor', 'offer', 'offer.vendor', 'vehicle', 'vehicle.yard', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
 
         $all = Thread::query()->whereIn('account_id', $boxAccounts->pluck('id'))->where('messages_count', '>', 0);
         // Ветки пилюли: по ним выбираются дела. Письма дела потом берутся все — действие требуется от дела,
@@ -422,7 +422,7 @@ class MailController
     public function window(Request $request, Thread $thread, MarkThreadRead $markRead)
     {
         $this->guard($thread);
-        $thread->load(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        $thread->load(['account', 'offer', 'vehicle', 'messages.attachments', 'messages.addresses', 'messages.author']);
         if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $markRead($thread);
         }
@@ -453,7 +453,7 @@ class MailController
     public function show(Request $request, Thread $thread, MarkThreadRead $markRead, BodyRenderer $renderer)
     {
         $this->guard($thread);
-        $thread->load(['account', 'offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        $thread->load(['account', 'offer', 'vehicle', 'messages.attachments', 'messages.addresses', 'messages.author']);
         // Касание строки — ещё не чтение: префетч Turbo идёт с Sec-Purpose: prefetch.
         if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $markRead($thread);
@@ -885,7 +885,7 @@ class MailController
     /** Подстановки шаблона из оффера. */
     public static function placeholders(Offer $offer): array
     {
-        $offer->loadMissing(['brand', 'model', 'vendor', 'deal.buyer']);
+        $offer->loadMissing(['vendor', 'deal.buyer']);
 
         return [
             'number' => $offer->number,
@@ -922,7 +922,7 @@ class MailController
 
     public static function vehiclePlaceholders(Vehicle $vehicle): array
     {
-        $vehicle->loadMissing(['brand', 'model', 'vendor', 'yard', 'inspections']);
+        $vehicle->loadMissing(['vendor', 'yard', 'inspections']);
 
         return [
             'ref' => $vehicle->ref ?? '',
@@ -999,7 +999,7 @@ class MailController
         $user = auth()->user();
 
         return $this->scope === Scope::Park
-            ? $thread->offer_id && $user?->canCrmMail() && Vehicle::where('offer_id', $thread->offer_id)->exists()
-            : $thread->vehicle_id && $user?->canManagePark() && Vehicle::whereKey($thread->vehicle_id)->whereNotNull('offer_id')->exists();
+            ? $thread->offer_id && $user?->canCrmMail() && Vehicle::whereIn('car_id', Offer::whereKey($thread->offer_id)->select('car_id'))->exists()
+            : $thread->vehicle_id && $user?->canManagePark() && Vehicle::whereKey($thread->vehicle_id)->whereHas('offer')->exists();
     }
 }

@@ -57,7 +57,7 @@ class OfferPhotoController
             } elseif (! (($uuid = Migtorg::mediaOf($name)) && $offer->media()->where('collection_name', 'photos')->where('custom_properties->migtorg', $uuid)->exists())) {
                 // Добавленное руками сначала скрыто (владелец, 04.10.2026): что показать, решают глазом или «Показать все».
                 // Кадр с сайта Мигторга (уже взятый лотом — пропущен выше) сам называет лот: номер, поля и остальные кадры.
-                // Блок, куда добавили (от страховой, при приёме), — стадия кадра у ТС парковки (`SaleMedia::save`).
+                // Блок, куда добавили (от страховой, при приёме), — стадия кадра машины, если она на парковке.
                 $stage = $offer->parkVehicle ? PhotoStage::tryFrom((string) $request->input('stage')) : null;
                 $media = $ingest->fromPhone($offer, 'photos', $request, properties: array_filter(['stage' => $stage?->value]) + ['hidden' => true]);
                 ($uuid = $media->getCustomProperty('migtorg')) && ImportMigtorgLot::byPhoto($offer, $uuid, $request->user());
@@ -256,7 +256,7 @@ class OfferPhotoController
 
     private function own(Offer $offer, Media $media): void
     {
-        // Свой кадр или кадр ТС парковки, что идёт в продажу (`SaleMedia`).
+        // Кадр машины, что виден продаже (`Offer::carMediaScope`).
         abort_unless($offer->media()->whereKey($media->id)->exists(), 404);
     }
 

@@ -23,7 +23,7 @@ class VehicleInvoiceController
 {
     public function create(Request $request, Vehicle $vehicle)
     {
-        $vehicle->load(['vendor.party', 'ownerParty', 'offer.deal.buyer', 'brand', 'model']);
+        $vehicle->load(['vendor.party', 'ownerParty', 'offer.deal.buyer']);
         $segments = Accrual::storage($vehicle)->filter(fn ($s) => $s['amount'] > 0)->values();
         $payers = $segments->pluck('payer')->unique()->values();
         $payer = $request->query('payer', $payers->first() ?? 'vendor');

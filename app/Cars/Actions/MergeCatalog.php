@@ -8,15 +8,15 @@ use App\Cars\Names;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Слить дубли справочника машин. Марка: «Lada», заведённая вручную, — это запись справочника vaz «Lada (ВАЗ)»
- * (`Names::ALT`): машины, предложения, закупки и память VIN переходят на запись справочника, модели — к её
+ * Слить дубли справочника марок и моделей. Марка: «Lada», заведённая вручную, — это запись справочника vaz «Lada (ВАЗ)»
+ * (`Names::ALT`): машины (`Cars\Car`) и память VIN переходят на запись справочника, модели — к её
  * моделям (тот же slug) или переезжают, дубль удаляется. Модель: вписанная по-русски («Ср-В», «Акркана»), которую
  * справочник узнаёт как другую модель той же марки (`Names::knownModel`), сливается в неё.
  */
-final class MergeCars
+final class MergeCatalog
 {
-    /** Таблицы со ссылками на марку и модель. */
-    private const TABLES = ['park_vehicles', 'offers', 'purchase_cars', 'vin_facts'];
+    /** Таблицы со ссылками на марку и модель: машины (`Cars\Car`) и память VIN. */
+    private const TABLES = ['cars', 'vin_facts'];
 
     /** Пары марок «дубль → запись справочника», у которых в базе есть обе. @return list<array{Brand, Brand}> */
     public function brandPairs(): array
@@ -43,7 +43,7 @@ final class MergeCars
     public function modelPairs(): array
     {
         $pairs = [];
-        $typed = DB::table('park_vehicles')->whereNotNull('model_id')->distinct()->pluck('model_id');
+        $typed = DB::table('cars')->whereIn('id', DB::table('park_vehicles')->select('car_id'))->whereNotNull('model_id')->distinct()->pluck('model_id');
         foreach (CarModel::with('brand')->whereIn('id', $typed)->get() as $model) {
             if (! $model->brand || ! preg_match('/\p{Cyrillic}/u', $model->name)) {
                 continue;

@@ -157,7 +157,7 @@ class Car extends Model
     /** Машина, по которой выставлен этот счёт или выплата: уведомления о гаражном счёте ведут к ней, а не в сделки. */
     public static function ofInvoice(Invoice $invoice): ?self
     {
-        return $invoice->deal_id ? null : self::with(['offer.brand', 'offer.model', 'manager'])
+        return $invoice->deal_id ? null : self::with(['offer', 'manager'])
             ->where(fn ($q) => $q->where('invoice_id', $invoice->id)->orWhere('payout_invoice_id', $invoice->id))->first();
     }
 

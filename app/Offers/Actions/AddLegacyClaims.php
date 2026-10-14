@@ -35,7 +35,7 @@ class AddLegacyClaims
 
         DB::transaction(function () use ($refs, $by, $result) {
             $listed = LegacyClaim::whereIn('claim_ref_key', array_keys($refs))->pluck('claim_ref_key')->flip();
-            $offers = Offer::with(['brand', 'model', 'deal.buyer'])->where('is_demo', false)->whereIn('claim_ref_key', array_keys($refs))->get()->keyBy('claim_ref_key');
+            $offers = Offer::with(['deal.buyer'])->where('is_demo', false)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', array_keys($refs)))->get()->keyBy('claim_ref_key');
             $position = (int) LegacyClaim::max('position');
             foreach ($refs as $key => $ref) {
                 $offer = $offers->get($key);

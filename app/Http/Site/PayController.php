@@ -13,9 +13,9 @@ use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -113,6 +113,6 @@ class PayController
     private function link(string $code): PayLink
     {
         // Демо-ссылка открывается и без входа: её счёт (`PayLink::invoice`) и предложение область `demo` не прячет.
-        return PayLink::where('code', $code)->with(['invoice.offer' => fn ($q) => $q->withoutGlobalScope('demo')->with('brand', 'model'), 'creator', 'payerUser'])->firstOrFail();
+        return PayLink::where('code', $code)->with(['invoice.offer' => fn ($q) => $q->withoutGlobalScope('demo'), 'creator', 'payerUser'])->firstOrFail();
     }
 }

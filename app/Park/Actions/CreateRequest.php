@@ -61,7 +61,6 @@ final class CreateRequest
                 // Завела почта, а не человек (`AutoRequest`) — в истории «Заведена из письма».
                 $vehicle->log(EventType::Created, $by, ! empty($data['by_mail']) ? ['by_mail' => true] : []);
                 (new RememberVin)($vehicle);
-                (new LinkOffer)($vehicle, null, $by);
             }
 
             return Request::create([

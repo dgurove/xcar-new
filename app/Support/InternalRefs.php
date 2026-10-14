@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Cars\Car;
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\CodeMatcher;
 use App\Offers\Offer;
@@ -45,8 +46,7 @@ final class InternalRefs
     public static function refsOf(?object $model): array
     {
         return match (true) {
-            $model instanceof Offer => [$model->claim_ref],
-            $model instanceof Vehicle => [$model->ref, $model->offer?->claim_ref],
+            $model instanceof Car, $model instanceof Offer, $model instanceof Vehicle => [$model->claim_ref],
             default => [],
         };
     }

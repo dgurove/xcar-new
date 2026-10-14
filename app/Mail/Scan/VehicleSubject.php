@@ -93,7 +93,7 @@ final class VehicleSubject implements Subject
 
     public function current(): array
     {
-        return ScanFields::ofVehicle($this->vehicle->loadMissing(['brand', 'model']));
+        return ScanFields::ofVehicle($this->vehicle->loadMissing([]));
     }
 
     /**

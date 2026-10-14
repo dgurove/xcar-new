@@ -69,9 +69,9 @@ final class PromoteCandidate
         $vin = Vin::full((string) $candidate->value('vin'));
         $plate = Patterns::plateKey($candidate->value('plate'));
 
-        return ($candidate->code ? $live()->where('ref_key', Vehicle::keyFor($candidate->code))->first() : null)
-            ?? ($vin ? $live()->where('vin', $vin)->first() : null)
-            ?? ($plate ? $live()->where('plate', $plate)->first() : null);
+        return ($candidate->code ? $live()->whereCar('claim_ref_key', Vehicle::keyFor($candidate->code))->first() : null)
+            ?? ($vin ? $live()->whereCar('vin', $vin)->first() : null)
+            ?? ($plate ? $live()->whereCar('plate', $plate)->first() : null);
     }
 
     /**

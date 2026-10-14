@@ -5,11 +5,13 @@ use App\Http\Cabinet\InviteController;
 use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
 use App\Http\Park\ActController;
+use App\Http\Park\ActWindowController;
 use App\Http\Park\LogisticsController;
 use App\Http\Park\MailController;
 use App\Http\Park\MoneyController;
 use App\Http\Park\PartyController;
 use App\Http\Park\PassController;
+use App\Http\Park\ReportController;
 use App\Http\Park\RequestController;
 use App\Http\Park\TariffController;
 use App\Http\Park\UserController;
@@ -71,11 +73,11 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/note', [VehicleController::class, 'note']);
     // Отчёт о приёме вендору: письмо из формы и «Уже отправили» (12.10.2026).
     // Окно действия (x-park.act-window): шаги приёма, выдачи и письма вендору; приём и выдача без заявки заводят её сами.
-    Route::get('/cars/{vehicle}/window/{step}', [\App\Http\Park\ActWindowController::class, 'show'])->where('step', 'intake|release|report|done');
+    Route::get('/cars/{vehicle}/window/{step}', [ActWindowController::class, 'show'])->where('step', 'intake|release|report|done');
     Route::post('/cars/{vehicle}/intake', [RequestController::class, 'intakeCar']);
     Route::post('/cars/{vehicle}/release', [RequestController::class, 'releaseCar']);
-    Route::post('/cars/{vehicle}/report', [\App\Http\Park\ReportController::class, 'store']);
-    Route::post('/cars/{vehicle}/report-sent', [\App\Http\Park\ReportController::class, 'sent'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/report', [ReportController::class, 'store']);
+    Route::post('/cars/{vehicle}/report-sent', [ReportController::class, 'sent'])->middleware('park.manage');
     // «✨ Распознать» в деле ТС — то же окно, что у цепочки «Из писем» (ScanController, Scan\VehicleSubject).
     Route::get('/cars/{vehicle}/scan', [ScanController::class, 'vehicleShow'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/scan', [ScanController::class, 'vehicleScan'])->middleware('park.manage');
@@ -85,7 +87,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/letters/{message}/done', [VehicleController::class, 'letterDone']);
     Route::post('/cars/{vehicle}/docs', [VehicleController::class, 'doc']);
     Route::post('/cars/{vehicle}/docs/{doc}', [VehicleController::class, 'doc']);
-    Route::post('/cars/{vehicle}/offer', [VehicleController::class, 'link'])->middleware('ability:isAdmin');
     Route::post('/cars/{vehicle}/sell', [VehicleController::class, 'sell'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/unsell', [VehicleController::class, 'unsell'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/cancel', [VehicleController::class, 'cancel'])->middleware('park.manage');

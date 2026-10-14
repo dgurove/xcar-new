@@ -6,7 +6,7 @@
     use App\Logistics\TransportState;
     use App\Support\Money;
     use App\Support\Surface;
-    $car = $t->car();
+    $car = $t->lane();
     $all = $me->seesAllTransports();
     $acts = $t->isExecutedBy($me) || $all;
     $editable = $all && in_array($t->state, [TransportState::New, TransportState::Assigned], true);

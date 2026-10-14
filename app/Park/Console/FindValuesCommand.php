@@ -31,8 +31,8 @@ class FindValuesCommand extends Command
         if ($this->option('report')) {
             return $this->report();
         }
-        $vehicles = Vehicle::withoutGlobalScope(City::SCOPE)->whereNull('value')
-            ->whereIn('state', [VehicleState::Expected, VehicleState::Stored])->with(['brand', 'model', 'vendor'])->orderBy('id')->get();
+        $vehicles = Vehicle::withoutGlobalScope(City::SCOPE)->whereCar(fn ($c) => $c->whereNull('value'))
+            ->whereIn('state', [VehicleState::Expected, VehicleState::Stored])->with(['vendor'])->orderBy('id')->get();
         $queued = 0;
         foreach ($vehicles as $v) {
             $files = (new VehicleSubject($v))->files();
@@ -56,7 +56,7 @@ class FindValuesCommand extends Command
     private function report(): int
     {
         $vehicles = Vehicle::withoutGlobalScope(City::SCOPE)->whereIn('state', [VehicleState::Expected, VehicleState::Stored])
-            ->with(['brand', 'model', 'vendor', 'events' => fn ($e) => $e->where('type', EventType::FilledFromDocs)->whereDate('created_at', today())])->orderBy('id')->get();
+            ->with(['vendor', 'events' => fn ($e) => $e->where('type', EventType::FilledFromDocs)->whereDate('created_at', today())])->orderBy('id')->get();
         $found = $vehicles->filter(fn ($v) => $v->value && $v->events->contains(fn ($e) => in_array('value', $e->payload['fields'] ?? [], true)));
         foreach ($found as $v) {
             $event = $v->events->first(fn ($e) => in_array('value', $e->payload['fields'] ?? [], true));

@@ -17,7 +17,7 @@ final class Importer
     public function preview(Purchase $purchase, string $path): array
     {
         $rows = $this->reader->read($path);
-        $known = $purchase->cars()->pluck('dl')->all();
+        $known = $purchase->cars()->get()->pluck('dl')->all();
         $stats = ['всего строк' => count($rows), 'новых' => 0, 'уже заведены' => 0, 'не прочитались' => 0, 'со ссылкой на сайт' => 0, 'со ссылкой на облако' => 0];
         foreach ($rows as $row) {
             if ($row['dl'] === null || $row['problems']) {

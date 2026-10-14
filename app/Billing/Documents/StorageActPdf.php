@@ -19,11 +19,11 @@ final class StorageActPdf
     {
         // Реестр за месяц — альбомный лист: машина строкой (ТС, госномер, VIN, убыток, парковка, период, сутки, ставка, сумма).
         if ($invoice->isRegistry()) {
-            $invoice->loadMissing(['party', 'charges.vehicle.brand', 'charges.vehicle.model', 'charges.vehicle.yard']);
+            $invoice->loadMissing(['party', 'charges.vehicle', 'charges.vehicle.yard']);
 
             return Pdf::render('billing.docs.storage-registry', ['invoice' => $invoice, 'self' => $invoice->seller->party()], 'landscape');
         }
-        $invoice->loadMissing(['party', 'vehicle.brand', 'vehicle.model', 'vehicle.yard', 'charges']);
+        $invoice->loadMissing(['party', 'vehicle', 'vehicle.yard', 'charges']);
 
         return Pdf::render('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }

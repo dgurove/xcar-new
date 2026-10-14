@@ -57,7 +57,7 @@ final class SettleCost
         if ($party && ! $same && ! $old) {
             $invoice = ($this->issue)($party, $by, 'owed', ChargeKind::Tow, WorkDays::add(now(), self::DAYS),
                 lines: [['title' => 'Перевозка, '.$t->title().($t->regions() ? ', '.$t->regions() : ''), 'qty' => 1, 'unit' => 'pc', 'price' => $cost, 'kind' => ChargeKind::Tow->value]],
-                vehicle: $t->vehicle, offerId: $t->offer_id);
+                vehicle: $t->vehicle, offerId: $t->offer?->id);
             $t->update(['invoice_id' => $invoice->id]);
         }
 

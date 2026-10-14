@@ -219,15 +219,16 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
     }
 
     /**
-     * Куда ветка кладёт файлы: машина одна. Ветка ящика парковки — в ТС со стадией кадра; ветка предложения — в
-     * предложение, а `SaleMedia` кладёт файл к его ТС («от страховой»), если она есть. Ветка с ТС и чужим предложением
-     * — к предложению. @return array{0: Offer|Vehicle|null, 1: ?Vehicle, 2: ?Offer, 3: ?Vehicle}
+     * Куда ветка кладёт файлы: машина одна (`Cars\Car`), файлы — её. Ветка ящика парковки — через ТС, со стадией кадра и
+     * меткой парковки; ветка предложения — через предложение. Ветка с ТС и чужим предложением — через предложение.
+     *
+     * @return array{0: Offer|Vehicle|null, 1: ?Vehicle, 2: ?Offer, 3: ?Vehicle}
      */
     public static function target(?Thread $thread): array
     {
         $vehicle = $thread?->vehicle;
         $offer = $thread?->offer ?? $vehicle?->offer;
-        if ($vehicle && $thread->offer_id && $thread->offer_id !== $vehicle->offer_id) {
+        if ($vehicle && $thread->offer_id && $thread->offer_id !== $vehicle->offer?->id) {
             $vehicle = null;
         }
         $model = $vehicle ?? $offer;

@@ -98,7 +98,7 @@ class Thread extends Model
      * Письма одной машины. На парковке — только ветки ТС из ящика парковки (08.10.2026, владелец: «в park.xcar должно
      * попадать только то, что на storage@»): письма CRM (offer@, deal@) туда не идут, даже у связанной с предложением ТС.
      * В CRM (владелец 06.10.2026: «в CRM по парковке») — ветки предложения и, тому, у кого есть «Почта» парковки, ветки
-     * его ТС на парковке (пара через `park_vehicles.offer_id`); отвечают на них её ящиком, как и раньше.
+     * ТС той же машины на парковке (`Cars\Car`); отвечают на них её ящиком, как и раньше.
      */
     public function scopeOfCar($query, Offer|Vehicle $car, ?User $user)
     {
@@ -109,7 +109,7 @@ class Thread extends Model
         $park = $user?->canManagePark();
 
         return $query->where(fn ($w) => $w->where(fn ($o) => $offers($o->where('offer_id', $car->id)))
-            ->when($park, fn ($w) => $w->orWhere(fn ($p) => $p->whereIn('vehicle_id', Vehicle::where('offer_id', $car->id)->select('id'))->park())));
+            ->when($park, fn ($w) => $w->orWhere(fn ($p) => $p->whereIn('vehicle_id', Vehicle::where('car_id', $car->car_id)->select('id'))->park())));
     }
 
     /** Ветки с любым из номеров (`keys` пересекаются с `$keys`). */

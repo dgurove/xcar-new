@@ -26,7 +26,7 @@ class YardController
         ListPrefs::sync($request, 'park-yards');
         $closed = $request->query('closed') === 'all' || $request->boolean('closed');
         $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
-        $yards = Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand'])->orderByDesc('is_active')
+        $yards = Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,car_id,yard_id,spot,accepted_at', 'storedVehicles'])->orderByDesc('is_active')
             ->when($sort->key === 'free', fn ($y) => $y->orderByRaw("(coalesce(capacity, 0) - (select count(*) from park_vehicles v where v.yard_id = park_yards.id and v.state = 'stored')) {$sort->dir()}"))
             ->orderBy(match ($sort->key) {
                 'created' => 'created_at', 'stored' => 'stored_vehicles_count', default => 'name'
@@ -42,7 +42,7 @@ class YardController
     /** Карточка строки таблицы: карта мест и форма. */
     public function detail(Yard $yard)
     {
-        $yard->loadCount('storedVehicles')->load(['settlement', 'storedVehicles:id,yard_id,spot,ref,accepted_at,brand_id', 'storedVehicles.brand']);
+        $yard->loadCount('storedVehicles')->load(['settlement', 'storedVehicles:id,car_id,yard_id,spot,accepted_at', 'storedVehicles']);
 
         return view('park.yards.detail', ['yard' => $yard]);
     }

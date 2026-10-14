@@ -58,7 +58,7 @@ final class Export
         }
         $keepPriced = in_array('priced', $parts, true);
         $keepUnpriced = in_array('unpriced', $parts, true);
-        $moved = $purchase->cars()->whereNotNull('offer_id')->pluck('dl')->map(fn ($d) => mb_strtolower(trim($d)))->all();
+        $moved = $purchase->cars()->whereHas('offer')->get()->pluck('dl')->map(fn ($d) => mb_strtolower(trim($d)))->all();
         $highest = $sheet->getHighestDataRow();
         for ($r = $highest; $r > $headerRow; $r--) {
             $dl = mb_strtolower(trim((string) $sheet->getCell([$dlCol, $r])->getValue()));
@@ -118,7 +118,7 @@ final class Export
         $sheet->setTitle('Цены');
         $sheet->fromArray(['ДЛ', 'Наша цена'], null, 'A1');
         $sheet->getStyle('A1:B1')->getFont()->setBold(true);
-        $rows = $purchase->cars()->whereNull('offer_id')->whereNotNull('price_final')->orderBy('dl')->get(['dl', 'price_final'])->map(fn (Car $c) => [$c->dl, $c->price_final])->all();
+        $rows = $purchase->cars()->whereDoesntHave('offer')->whereNotNull('price_final')->get()->sortBy(fn (Car $c) => mb_strtolower((string) $c->dl))->values()->map(fn (Car $c) => [$c->dl, $c->price_final])->all();
         if ($rows) {
             $sheet->fromArray($rows, null, 'A2');
             $sheet->getStyle('B2:B'.(count($rows) + 1))->getNumberFormat()->setFormatCode('#,##0');
@@ -178,7 +178,7 @@ final class Export
     public function tables(Purchase $purchase, array $parts): array
     {
         $s = new OffersSummary($purchase);
-        $s->cars->load(['brand', 'model', 'settlement']);
+        $s->cars->load(['settlement']);
         $car = fn (Car $c) => [$c->dl, $c->brand?->name ?? $c->brand_raw, $c->model?->name ?? $c->model_raw, $c->year, $c->kind->label(), $c->settlement?->name ?? $c->city, $c->price_listing ?? '', $c->price_final ?? ''];
         $managers = in_array('managers', $parts, true);
         $matrix = fn (Car $c) => $managers ? [

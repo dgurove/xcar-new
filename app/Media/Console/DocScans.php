@@ -2,6 +2,7 @@
 
 namespace App\Media\Console;
 
+use App\Cars\Car;
 use App\Mail\Attachment;
 use App\Mail\Scan\AutoScan;
 use App\Media\DocumentScan;
@@ -30,14 +31,14 @@ class DocScans extends Command
     public function handle(): int
     {
         $apply = (bool) $this->option('apply');
-        $vehicles = Vehicle::withoutGlobalScope(City::SCOPE)->whereIn('state', [VehicleState::Expected, VehicleState::Stored])->pluck('id');
-        $offers = Offer::withoutGlobalScopes()->whereIn('state', [OfferState::Draft, OfferState::Open, OfferState::Sold, OfferState::Garage])->pluck('id');
+        $live = Vehicle::withoutGlobalScope(City::SCOPE)->whereIn('state', [VehicleState::Expected, VehicleState::Stored]);
+        $vehicles = (clone $live)->pluck('id');
+        // Машины с живой ТС или продажей — их фото (`Cars\Car`).
+        $cars = (clone $live)->pluck('car_id')->merge(Offer::withoutGlobalScopes()->whereIn('state', [OfferState::Draft, OfferState::Open, OfferState::Sold, OfferState::Garage])->pluck('car_id'))->unique()->values();
         $touched = [];
         $moved = 0;
 
-        $photos = Media::where('collection_name', 'photos')->where(fn ($q) => $q
-            ->where(fn ($v) => $v->where('model_type', Vehicle::class)->whereIn('model_id', $vehicles))
-            ->orWhere(fn ($o) => $o->where('model_type', Offer::class)->whereIn('model_id', $offers)));
+        $photos = Media::where('collection_name', 'photos')->where('model_type', Car::class)->whereIn('model_id', $cars);
         foreach ($photos->lazyById(200) as $media) {
             $path = $media->getCustomProperty('watermarked', false) ? Watermark::cleanPath($media) : $media->getPath();
             if (! is_file($path) || ! DocumentScan::is((string) file_get_contents($path))) {
@@ -51,10 +52,10 @@ class DocScans extends Command
             try {
                 $model = $media->model;
                 $model->addMedia($path)->preservingOriginal()->usingName($media->name)->usingFileName($media->file_name)
-                    ->withCustomProperties(array_filter(['sha' => $media->getCustomProperty('sha'), 'source' => $media->getCustomProperty('source'), 'offer' => $media->getCustomProperty('offer')]))
+                    ->withCustomProperties(array_filter(['sha' => $media->getCustomProperty('sha'), 'source' => $media->getCustomProperty('source'), 'park' => $media->getCustomProperty('park')]))
                     ->toMediaCollection('papers');
                 $media->delete();
-                $media->model_type === Vehicle::class && $touched[$media->model_id] = true;
+                ($vehicle = Vehicle::withoutGlobalScope(City::SCOPE)->where('car_id', $media->model_id)->value('id')) && $touched[$vehicle] = true;
             } catch (Throwable $e) {
                 $this->warn("Кадр {$media->id}: {$e->getMessage()}");
             }

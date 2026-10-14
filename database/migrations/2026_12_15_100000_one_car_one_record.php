@@ -1,11 +1,9 @@
 <?php
 
-use App\Cars\Duplicates;
 use App\Cars\Vin\Vin;
 use App\Mail\Extraction\Code;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Одна машина — одна запись (05.10.2026, владелец: «VIN или номер убытка не могут существовать в двух разных
@@ -34,7 +32,8 @@ return new class extends Migration
             }
         }
 
-        Duplicates::mergeAll(fn ($line) => Log::info('dups:merge '.$line));
+        // Двойники 05.10.2026 объединял `Cars\Duplicates` (на проде — 9 пар предложений). С 14.10.2026 машина — одна запись
+        // (`cars`), объединение — `Cars\Actions\JoinCars`; на чистой базе двойников нет.
 
         DB::statement('create unique index offers_claim_ref_key_unique on offers (claim_ref_key) where claim_ref_key is not null and is_demo = false');
         DB::statement("create unique index offers_vin_live_unique on offers (vin) where length(vin) = 17 and is_demo = false and state not in ('delivered', 'cancelled', 'archived')");

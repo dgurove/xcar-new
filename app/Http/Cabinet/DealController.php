@@ -6,17 +6,17 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Live\Stream;
 use App\Media\PhotoIngest;
+use App\Offers\Actions\PickUp;
 use App\Offers\Bid;
 use App\Offers\BidState;
-use App\Offers\Actions\PickUp;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Handover;
-use App\Offers\OfferState;
 use App\Offers\InsurerReplies;
+use App\Offers\OfferState;
 use App\Support\ListPrefs;
-use App\Users\User;
 use App\Support\Sort;
+use App\Users\User;
 use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -93,13 +93,13 @@ class DealController
     /** Сделки экрана: без гаражных, с тем, что нужно строке. */
     private static function deals(User $me)
     {
-        return Deal::with(['offer.brand', 'offer.model', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
+        return Deal::with(['offer', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
             ->when(! $me->hasDeals(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer');
     }
 
     private static function bids(User $me)
     {
-        return Bid::with(['offer.brand', 'offer.model', 'offer.media'])->where('user_id', $me->id)->latest();
+        return Bid::with(['offer', 'offer.media'])->where('user_id', $me->id)->latest();
     }
 
     /** Ждут решения: предложение открыто, сделки по нему нет — выбор впереди. */
@@ -147,7 +147,7 @@ class DealController
     /** Сделка с текущим шагом, путём и счетами — для её страницы и карточки машины в гараже. */
     public static function stepData(Deal $deal): array
     {
-        $deal->load(['offer.brand', 'offer.model', 'offer.media', 'offer.settlement', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'openRequirement.media', 'requirements']);
+        $deal->load(['offer', 'offer.media', 'offer.settlement', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'openRequirement.media', 'requirements']);
         $position = $deal->offer->position(Track::Sale);
         // Журнал с начала сделки, с учётом откатов — тот же, что путь в CRM.
         $steps = Path::journal($deal->offer, Track::Sale, $deal->created_at);

@@ -2,7 +2,6 @@
 
 namespace App\Park\Actions;
 
-use App\Cars\Identity;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Scan\AutoScan;
 use App\Offers\Offer;
@@ -22,7 +21,7 @@ use Throwable;
  * «Сразу в продажу» (13.10.2026, начальник): ТС вендора с `vendors.auto_sale` (АльфаСтрахование Москва и СПб), что
  * почта завела заявкой на приём, уходит в продажу сама, как кнопкой «В продажу» (`PutOnSale`), — когда документы
  * прочитаны (`AutoScan::finished`), фото доехали (`ImportThreadFiles`) и оценочная известна. Закупочную черновику
- * ставит правило от оценочной (`Sale::toOffer`), продажной нет — он встаёт в «Без продажной цены» со значком связи.
+ * ставит правило от оценочной (`PutOnSale`, `Sale::floorFrom`), продажной нет — он встаёт в «Без продажной цены».
  * Не сработало при письме (выкладка убила задачу, оценочная прочлась вторым проходом) — подбирают часы парковки (`sweep`).
  */
 final class AutoSale
@@ -43,11 +42,10 @@ final class AutoSale
         if (! $vehicle || ! $this->ready($vehicle)) {
             return null;
         }
-        // Эта машина уже есть в CRM. Живое предложение — связать, как «В продажу», но без плашки: его заводили не мы.
-        // Архивное, отменённое, выданное и уже связанное с другой ТС — не трогать: из архива сама машина не возвращается.
-        $holder = Identity::offerFor($vehicle->ref_key, $vehicle->vin);
-        if ($holder && (in_array($holder->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)
-            || Vehicle::withoutGlobalScope(City::SCOPE)->where('offer_id', $holder->id)->exists())) {
+        // У машины уже есть продажа в CRM (её заводили не мы) — плашки нет. Архивную, отменённую и выданную не трогаем:
+        // из архива сама машина не возвращается (их и не берёт `candidates`).
+        $holder = $vehicle->carRecord()->offer;
+        if ($holder && in_array($holder->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
             return null;
         }
         try {
@@ -84,7 +82,7 @@ final class AutoSale
     private function candidates()
     {
         return Vehicle::withoutGlobalScope(City::SCOPE)
-            ->whereNull('offer_id')->whereNull('sold_at')->where('value', '>', 0)->whereNotNull('brand_id')
+            ->whereDoesntHave('car.offer')->whereNull('sold_at')->whereCar(fn ($c) => $c->where('value', '>', 0)->whereNotNull('brand_id'))
             // Только пока в «Заявках на приём»: принятую раньше чтения админ выставляет кнопкой, как прежде.
             ->where('state', VehicleState::Expected)
             ->whereHas('vendor', fn ($q) => $q->where('auto_sale', true))

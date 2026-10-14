@@ -41,7 +41,7 @@ final class FillFromDocs
     /** ТС на парковке и в пути с ветками писем. @return Collection<int, Vehicle> */
     public function vehicles(array $ids = []): Collection
     {
-        return Vehicle::with(['brand', 'model', 'vendor', 'threads.messages.attachments'])
+        return Vehicle::with(['vendor', 'threads.messages.attachments'])
             ->whereIn('state', [VehicleState::Stored, VehicleState::Expected])
             ->when($ids, fn ($q) => $q->whereIn('id', $ids))
             ->whereHas('threads')->orderBy('id')->get();
@@ -101,7 +101,7 @@ final class FillFromDocs
 
         $out = Cache::remember("park:docdiff:{$vehicle->id}:{$vehicle->updated_at?->timestamp}:{$letters}:{$version}", 86400, function () use ($vehicle) {
             $out = [];
-            foreach ($this->plan($vehicle->loadMissing(['brand', 'model', 'threads.messages.attachments']))['disputed'] as $d) {
+            foreach ($this->plan($vehicle->loadMissing(['threads.messages.attachments']))['disputed'] as $d) {
                 if (isset($d['current'], $d['value']) && ! isset($out[$d['field']])) {
                     $out[$d['field']] = ['value' => $d['value'], 'sources' => $d['sources']];
                 }
@@ -340,7 +340,7 @@ final class FillFromDocs
     /** VIN уже стоит у другой ТС: второй раз его не пишем — письма и предложения ищут машину по VIN. */
     public function vinTaken(Vehicle $vehicle, string $vin): ?Vehicle
     {
-        return Vehicle::withoutGlobalScope(City::SCOPE)->where('vin', strtoupper($vin))->where('id', '!=', $vehicle->id)->whereNull('cancelled_at')->first();
+        return Vehicle::withoutGlobalScope(City::SCOPE)->whereCar('vin', strtoupper($vin))->where('car_id', '!=', $vehicle->car_id)->whereNull('cancelled_at')->first();
     }
 
     private function clean(string $field, mixed $value): ?string

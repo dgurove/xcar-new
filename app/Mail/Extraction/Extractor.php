@@ -2,13 +2,13 @@
 
 namespace App\Mail\Extraction;
 
+use App\Cars\Car;
 use App\Cars\Names;
 use App\Cars\Settlement;
 use App\Mail\Extraction\Templates\Generic;
 use App\Mail\Extraction\Templates\Template;
 use App\Mail\Scope;
 use App\Offers\LegacyClaim;
-use App\Offers\Offer;
 use App\Support\Phone;
 use App\Vendors\Vendor;
 
@@ -67,7 +67,7 @@ final class Extractor
         }
         $like = $m[1].'/%';
         $codes = LegacyClaim::where('claim_ref', 'like', $like)->pluck('claim_ref')
-            ->merge(Offer::where('claim_ref', 'like', $like)->pluck('claim_ref'))
+            ->merge(Car::where('claim_ref', 'like', $like)->where('is_demo', false)->pluck('claim_ref'))
             ->map(fn ($c) => Code::normalize($c))->unique()->values();
         if ($codes->count() === 1) {
             $fields['code'] = ['value' => $codes[0], 'source' => 'subject'];

@@ -40,10 +40,10 @@ final class MatchValuations
             $amounts[$r['key']][$r['amount']] = true;
         }
         // Оценочная есть только у вендоров, чья закупочная от неё (Альфа): Совкомбанк с тем же номером не трогаем.
-        $offers = $rows ? Offer::query()->inCrm($user)->whereIn('claim_ref_key', array_keys($amounts))
+        $offers = $rows ? Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', array_keys($amounts)))
             ->whereIn('vendor_id', Vendor::where('rate_by_value', true)->select('id'))
             ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])
-            ->with(['brand', 'model', 'vendor', 'settlement'])->get()->groupBy('claim_ref_key') : collect();
+            ->with(['vendor', 'settlement'])->get()->groupBy('claim_ref_key') : collect();
 
         $out = [];
         $seen = [];

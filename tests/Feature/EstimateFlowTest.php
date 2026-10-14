@@ -3,21 +3,28 @@
 namespace Tests\Feature;
 
 use App\Cars\Brand;
+use App\Cars\Car;
 use App\Cars\CarModel;
 use App\Media\Jobs\StampPhotos;
 use App\Offers\Actions\AskEstimates;
+use App\Offers\Actions\CloseEstimates;
+use App\Offers\Actions\DeclineEstimate;
 use App\Offers\Actions\GiveEstimate;
 use App\Offers\Actions\RejectEstimate;
+use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Actions\TakeEstimate;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Estimate;
 use App\Offers\EstimateState;
 use App\Offers\Offer;
+use App\Offers\PriceView;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Validation\ValidationException;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Tests\TestCase;
 
 /**
@@ -55,7 +62,7 @@ class EstimateFlowTest extends TestCase
         $offer->refresh();
         $this->assertFalse(Estimate::openFor($offer, $ivan)->showsDeclared());
         $this->assertNull($offer->declaredFor($ivan));
-        $this->assertNull(\App\Offers\PriceView::for($offer, $ivan)->from);
+        $this->assertNull(PriceView::for($offer, $ivan)->from);
         $this->assertSame(500000, $offer->declaredFor($petr));
         $this->assertSame(500000, $offer->declaredFor($admin));
     }
@@ -110,14 +117,14 @@ class EstimateFlowTest extends TestCase
             try {
                 app(GiveEstimate::class)(Estimate::openFor($offer->fresh(), $who), 400000, $who);
                 $this->fail('ниже заявленной прошла');
-            } catch (\Illuminate\Validation\ValidationException $e) {
+            } catch (ValidationException $e) {
                 $this->assertStringStartsWith($text, $e->errors()['amount'][0]);
                 $this->assertStringNotContainsString('500', $who === $petr ? $e->errors()['amount'][0] : '');
             }
         }
 
-        app(\App\Offers\Actions\DeclineEstimate::class)(Estimate::openFor($offer->fresh(), $ivan), 450000, 'Дорого', $ivan);
-        app(\App\Offers\Actions\DeclineEstimate::class)(Estimate::openFor($offer->fresh(), $petr), 420000, null, $petr);
+        app(DeclineEstimate::class)(Estimate::openFor($offer->fresh(), $ivan), 450000, 'Дорого', $ivan);
+        app(DeclineEstimate::class)(Estimate::openFor($offer->fresh(), $petr), 420000, null, $petr);
         $offer->refresh();
         $this->assertSame(450000, Estimate::where('user_id', $ivan->id)->first()->wish_price);
         $this->assertSame(2, $offer->declinedEstimates()->count());
@@ -174,17 +181,17 @@ class EstimateFlowTest extends TestCase
         // «Оставить свою» — цена прежняя, просьбы закрыты.
         app(AskEstimates::class)($offer->fresh(), [$ivan], $admin);
         app(GiveEstimate::class)(Estimate::openFor($offer, $ivan), 1100000, $ivan);
-        app(\App\Offers\Actions\CloseEstimates::class)($offer->fresh(), $admin, keep: true);
+        app(CloseEstimates::class)($offer->fresh(), $admin, keep: true);
         $this->assertSame(1150000, $offer->fresh()->asking_price);
         $this->assertSame(0, $offer->estimates()->open()->count());
 
         // Отправили в продажу слотом, пока ждём, — просьбы снимаются сами.
-        \Spatie\MediaLibrary\MediaCollections\Models\Media::create(['model_type' => Offer::class, 'model_id' => $offer->id, 'collection_name' => 'photos',
+        Media::create(['model_type' => Car::class, 'model_id' => $offer->car_id, 'collection_name' => 'photos',
             'name' => 'кадр', 'file_name' => 'kadr.jpg', 'mime_type' => 'image/jpeg', 'disk' => 'media', 'size' => 10,
             'manipulations' => [], 'custom_properties' => [], 'generated_conversions' => [], 'responsive_images' => []]);
         app(AskEstimates::class)($offer->fresh(), [$petr], $admin);
         $this->assertSame(1, $offer->estimates()->open()->count());
-        app(\App\Offers\Actions\ScheduleOffer::class)->__invoke($offer->fresh(), 'next', $admin);
+        app(ScheduleOffer::class)->__invoke($offer->fresh(), 'next', $admin);
         $this->assertSame(0, $offer->estimates()->open()->count());
     }
 }

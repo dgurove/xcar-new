@@ -14,6 +14,7 @@ use App\Mail\CandidateState;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Park\Vehicle;
@@ -56,15 +57,15 @@ final class Search
         $admin = $user->canManageCrm();
         $cars = new Cars($t);
         $offers = Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft())->searchCrm($t)
-            ->with(['brand', 'model', 'deal.buyer', 'garageCar.manager', 'parkVehicle.yard'])->latest('updated_at')->limit(12)->get()
+            ->with(['deal.buyer', 'garageCar.manager', 'parkVehicle.yard'])->latest('updated_at')->limit(12)->get()
             ->each(fn (Offer $o) => $cars->offer($o, link: "/offers/{$o->number}", crm: true));
         if (Surface::Park->opensFor($user)) {
-            Vehicle::search($t)->with(['brand', 'model', 'yard'])->latest('updated_at')->limit(12)->get()
+            Vehicle::search($t)->with(['yard'])->latest('updated_at')->limit(12)->get()
                 ->each(fn (Vehicle $v) => $cars->vehicle($v, link: Surface::Park->url("/cars/{$v->id}"), external: true));
         }
         if ($admin && $t->claim) {
             $claims = LegacyClaim::where('claim_ref_key', 'like', Term::like($t->claim))->orderBy('position')->limit(8)->get();
-            $owned = Offer::where('is_demo', false)->whereIn('claim_ref_key', $claims->pluck('claim_ref_key'))->get(['id', 'state', 'claim_ref_key'])->keyBy('claim_ref_key');
+            $owned = Offer::where('is_demo', false)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $claims->pluck('claim_ref_key')))->get()->keyBy('claim_ref_key');
             $claims->each(fn (LegacyClaim $c) => $cars->legacy($c, $owned->get($c->claim_ref_key)));
         }
         if ($user->canCrmMail()) {
@@ -82,7 +83,7 @@ final class Search
     private static function park(User $user, Term $t): array
     {
         $cars = new Cars($t);
-        $vehicles = Vehicle::search($t)->with(['brand', 'model', 'yard'])->latest('updated_at')->limit(12)->get()
+        $vehicles = Vehicle::search($t)->with(['yard'])->latest('updated_at')->limit(12)->get()
             ->each(fn (Vehicle $v) => $cars->vehicle($v, link: "/cars/{$v->id}"));
         self::candidates(Scope::Park, $t)->each(fn (Candidate $c) => $cars->candidate($c, '/requests/from-mail?q='.urlencode($t->raw)));
         $manage = $user->canManagePark() && ! $user->isParkHelper();
@@ -100,7 +101,7 @@ final class Search
     /** Логистика: перевозки, которые человек видит, — по машине и адресам. */
     private static function logistics(User $user, Term $t): array
     {
-        $rows = Transport::visibleTo($user)->search($t)->with(['offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'fromRegion', 'toRegion', 'executorUser'])
+        $rows = Transport::visibleTo($user)->search($t)->with(['offer', 'vehicle', 'fromRegion', 'toRegion', 'executorUser'])
             ->latest('id')->limit(self::ROWS)->get()
             ->map(fn (Transport $x) => new Hit($x->title(), '/transports?preset=all&peek='.$x->id, array_values(array_filter([$x->state->label(), $x->regions(), $x->executorName()]))))->all();
 
@@ -113,15 +114,15 @@ final class Search
         // Свои сделки и гараж — выше витрины: это машины менеджера, о них и спрашивают.
         if ($user->hasDeals()) {
             // Отменённые — нет: такая сделка машину уже не открывает.
-            Deal::of($user)->whereIn('state', [\App\Offers\DealState::Active, \App\Offers\DealState::Done])->whereHas('offer', fn ($o) => $o->search($t))->with(['offer.brand', 'offer.model'])->latest('id')->limit(6)->get()
+            Deal::of($user)->whereIn('state', [DealState::Active, DealState::Done])->whereHas('offer', fn ($o) => $o->search($t))->with(['offer'])->latest('id')->limit(6)->get()
                 ->each(fn (Deal $d) => $cars->siteDeal($d));
         }
         if ($user->canGarage()) {
-            GarageCar::of($user)->whereHas('offer', fn ($o) => $o->search($t))->with(['offer.brand', 'offer.model'])->latest('id')->limit(6)->get()
+            GarageCar::of($user)->whereHas('offer', fn ($o) => $o->search($t))->with(['offer'])->latest('id')->limit(6)->get()
                 ->each(fn (GarageCar $c) => $cars->siteGarage($c));
         }
         $offers = Offer::query()->where(fn ($w) => $w->siteList($user)->orWhere(fn ($g) => $g->inGallery()))->search($t)
-            ->with(['brand', 'model'])->latest('published_at')->limit(12)->get()
+            ->with([])->latest('published_at')->limit(12)->get()
             ->each(fn (Offer $o) => $cars->offer($o, link: "/offers/{$o->number}", crm: false));
 
         return [

@@ -30,7 +30,7 @@ class ChatController
     public function show(Request $request, Chat $chat, MarkChatRead $read)
     {
         $user = $request->user();
-        $chat->load(['offer.brand', 'offer.model', 'offer.media', 'user', 'manager']);
+        $chat->load(['offer', 'offer.media', 'user', 'manager']);
         $firstUnread = ! $chat->isBuyerChat() && $chat->read_seq_staff < $chat->messages_count ? $chat->read_seq_staff + 1 : 0;
         $read($chat, $user);
         Presence::touch($chat, $user);

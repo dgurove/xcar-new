@@ -16,7 +16,7 @@ final class PlaceOffer
 {
     public function __invoke(Car $car, User $by, int $amount, ?string $comment = null): Offer
     {
-        if (! $car->purchase->acceptsOffers() || $car->offer_id) {
+        if (! $car->purchase->acceptsOffers() || $car->offer) {
             throw ValidationException::withMessages(['amount' => 'Приём цен закрыт']);
         }
         if ($amount < 1000) {

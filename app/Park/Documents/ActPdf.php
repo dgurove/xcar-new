@@ -12,7 +12,7 @@ final class ActPdf
 {
     public function render(Vehicle $vehicle, bool $intake = true): string
     {
-        $vehicle->loadMissing(['brand', 'model', 'vendor', 'yard.settlement', 'media', 'inspections']);
+        $vehicle->loadMissing(['vendor', 'yard.settlement', 'media', 'inspections']);
 
         return Pdf::render('park.act', [
             'vehicle' => $vehicle, 'intake' => $intake, 'self' => Seller::ofVendor($vehicle->vendor)->party(),

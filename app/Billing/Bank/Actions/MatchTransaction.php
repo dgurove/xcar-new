@@ -143,7 +143,7 @@ final class MatchTransaction
     {
         [$numbers] = self::numbers((string) $tx->purpose);
 
-        return Invoice::ofSeller(self::SELLER)->where('direction', 'issued')->where('state', InvoiceState::Issued)->with(['party', 'deal.offer.brand', 'deal.offer.model', 'vehicle.brand', 'vehicle.model'])
+        return Invoice::ofSeller(self::SELLER)->where('direction', 'issued')->where('state', InvoiceState::Issued)->with(['party', 'deal.offer', 'vehicle'])
             ->latest('issued_at')->limit(200)->get()
             ->filter(fn (Invoice $i) => $i->remaining() + 0.005 >= $tx->amount)
             ->sortByDesc(fn (Invoice $i) => ($tx->counterparty_inn && $i->party->inn === $tx->counterparty_inn ? 4 : 0)

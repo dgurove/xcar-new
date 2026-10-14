@@ -35,7 +35,7 @@ final class Closing
         $begin = Carbon::instance($month)->startOfMonth()->startOfDay();
         $vehicles = Vehicle::whereIn('state', [VehicleState::Stored, VehicleState::Released])->whereNotNull('accepted_at')
             ->where(fn ($q) => $q->whereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at')->orWhere(fn ($w) => $w->whereNull('released_at')->where('storage_billed_until', '<', $end)))
-            ->with(['brand', 'model', 'vendor', 'yard', 'ownerParty', 'buyerParty', 'offer.deal.buyer',
+            ->with(['vendor', 'yard', 'ownerParty', 'buyerParty', 'offer.deal.buyer',
                 // Лента площадок — заранее: ставка считается по площадке того дня, иначе запрос на каждую ТС.
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])->orderBy('accepted_at')->get();
         $items = collect();

@@ -32,7 +32,8 @@ class TickPark extends Command
         $threshold = Idle::warn();
         $idle = Vehicle::where('state', VehicleState::Stored)->whereNull('idle_noticed_at')
             ->where('accepted_at', '<', $now->copy()->subDays($threshold))
-            ->where(fn ($q) => $q->whereNull('offer_id')->orWhereHas('offer', fn ($o) => $o->whereIn('state', ['draft', 'archived'])->whereNull('slot_at')))->get();
+            // Не в продаже: у машины нет предложения, или оно черновик без слота, или в архиве.
+            ->whereDoesntHave('car.offer', fn ($o) => $o->where(fn ($w) => $w->whereNotIn('state', ['draft', 'archived'])->orWhereNotNull('slot_at')))->get();
         foreach ($idle as $v) {
             $v->forceFill(['idle_noticed_at' => $now])->save();
             VehicleIdle::dispatch($v, (int) $v->accepted_at->diffInDays($now));

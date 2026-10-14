@@ -42,7 +42,7 @@ class TransportController
         $preset = array_key_exists((string) $request->query('preset'), $pills) ? $request->query('preset') : $home;
 
         $transports = Transport::visibleTo($user)
-            ->with(['offer.brand', 'offer.model', 'vehicle.brand', 'vehicle.model', 'executorUser', 'fromRegion', 'toRegion'])
+            ->with(['offer', 'vehicle', 'executorUser', 'fromRegion', 'toRegion'])
             ->when($preset === 'waiting', fn ($q) => $q->where('state', TransportState::New))
             ->when($preset === 'work', fn ($q) => $q->whereIn('state', [TransportState::Assigned, TransportState::Moving]))
             ->when($preset === 'done', fn ($q) => $q->where('state', TransportState::Delivered))
@@ -78,7 +78,7 @@ class TransportController
         if (($me = request()->user()) && ! request()->prefetch()) {
             app(ReadNotices::class)([$me->id], ['/transports/'.$transport->id], Surface::Logistics);
         }
-        $transport->load(['offer.brand', 'offer.model', 'offer.media', 'vehicle.brand', 'vehicle.model', 'vehicle.media', 'executorUser', 'fromRegion', 'toRegion', 'toYard', 'media', 'invoice']);
+        $transport->load(['offer', 'offer.media', 'vehicle', 'vehicle.media', 'executorUser', 'fromRegion', 'toRegion', 'toYard', 'media', 'invoice']);
 
         return view('logistics.transports.detail', ['t' => $transport, 'me' => request()->user()]);
     }

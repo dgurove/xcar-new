@@ -14,7 +14,7 @@ final class MailPass
 
     public function __invoke(Pass $pass): bool
     {
-        $pass->loadMissing(['vehicle.yard.settlement', 'vehicle.brand', 'vehicle.model']);
+        $pass->loadMissing(['vehicle.yard.settlement', 'vehicle']);
         $qr = $this->outbox->put('qr-'.$pass->code.'.png', PassQr::png($pass));
         $logo = $this->outbox->put('xcar.png', (string) file_get_contents(public_path('images/xcar-mail.png')));
         $cid = ['qr' => 'qr-'.strtolower($pass->code).'@xcar.ru', 'logo' => 'logo@xcar.ru'];

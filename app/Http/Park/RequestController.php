@@ -60,7 +60,7 @@ class RequestController
         $facets = Facets::for($request, 'park-requests',
             Common::vendor($vehicle('vendor_id')),
             Common::yard('coalesce(park_requests.yard_id, '.$vehicle('yard_id').')'),
-            Common::category($vehicle('category'), 'Без типа'),
+            Common::category('(select c.category from park_vehicles v join cars c on c.id = v.car_id where v.id = park_requests.vehicle_id)', 'Без типа'),
         );
         ListPrefs::sync($request, 'park-requests', keep: $facets->keys());
         // По умолчанию — приём (11.10.2026, владелец: «по умолчанию в заявках — заявки на приём, а не все»); «Все» — ?preset=all.
@@ -69,7 +69,7 @@ class RequestController
         // Счётчики пилюль — с выбранными чипами; лупа — по всем открытым заявкам, мимо пилюли и чипов.
         $filters = fn ($q) => $facets->applyTo($q)
             ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->search($qs)));
-        $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle.brand', 'vehicle.model', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'letter', 'creator']));
+        $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'letter', 'creator']));
         $q->whereIn('state', RequestState::open());
         if ($qs !== '') {
             $filters($q);
@@ -127,7 +127,7 @@ class RequestController
         if ($candidate) {
             // Такую ТС уже завели (редкость: письма о заведённой цепочку не начинают) — в форме она показывается целиком.
             // «Это она» у строки дубля (twins) — `?car=`: письма идут к выбранной ТС.
-            $vehicle = ($vehicle ?? $promote->existing($candidate))?->loadCount('threads')->load(['brand', 'model', 'vendor', 'yard', 'media', 'requests']);
+            $vehicle = ($vehicle ?? $promote->existing($candidate))?->loadCount('threads')->load(['vendor', 'yard', 'media', 'requests']);
             // Письма этой цепочки к ТС ещё не привязаны, но они вот, на экране: пилюля «Писем нет» тут соврала бы.
             $vehicle?->setAttribute('threads_count', $vehicle->threads_count + $candidate->threads()->count());
             [$brand, $model] = $candidate->cars();

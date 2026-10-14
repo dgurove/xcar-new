@@ -89,7 +89,7 @@ class MigtorgSync extends Command
         $gone = DB::table('migtorg_lots')->whereNull('gone_at')->where('seen_at', '<', $now)->update(['gone_at' => $now]);
 
         $keys = DB::table('migtorg_lots')->whereNotNull('claim_ref_key')->whereNull('offer_id')->distinct()->pluck('claim_ref_key');
-        $started = Offer::whereIn('state', ImportMigtorgLot::STATES)->whereIn('claim_ref_key', $keys)->get()
+        $started = Offer::whereIn('state', ImportMigtorgLot::STATES)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $keys))->get()
             ->filter(fn (Offer $offer) => ImportMigtorgLot::auto($offer))->count();
         $this->line('Лотов: '.count($rows).", ушли: {$gone}, взяты предложениями: {$started}");
 

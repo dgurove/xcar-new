@@ -114,7 +114,7 @@ class VendorController
         } else {
             $vendor->load('mailAccount');
             $data += [
-                'offers' => Offer::where('vendor_id', $vendor->id)->whereNotIn('state', [OfferState::Archived])->with(['brand', 'model', 'parkVehicle:id,offer_id,state,accepted_at,created_at', 'deal', 'garageCar'])->latest()->limit(12)->get(),
+                'offers' => Offer::where('vendor_id', $vendor->id)->whereNotIn('state', [OfferState::Archived])->with(['parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])->latest()->limit(12)->get(),
                 'offersTotal' => Offer::where('vendor_id', $vendor->id)->count(),
             ];
         }

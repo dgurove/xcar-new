@@ -61,7 +61,6 @@ final class RegisterFromLetters
             $day = ($acceptedAt ?? now())->toDateString();
             $vehicle->log(EventType::Accepted, $by, array_filter(['yard' => $yard?->name, 'yard_id' => $yard?->id, 'spot' => $spot, 'day' => $day]) + $mark);
             (new RememberVin)($vehicle);
-            (new LinkOffer)($vehicle, null, $by);
             ($this->openDocs)($vehicle);
             // Наш ответ с актом уже ушёл вендору — бумаги «отправлено» тем письмом.
             $reply = ($stored['message_id'] ?? null) ? Message::find($stored['message_id']) : null;

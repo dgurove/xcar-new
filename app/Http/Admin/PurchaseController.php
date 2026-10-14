@@ -54,7 +54,7 @@ class PurchaseController
         $sort = Sort::from($request->query('sort'), self::LIST_SORTS, '-number');
 
         return view('admin.purchases.index', [
-            'purchases' => Purchase::withCount(['cars' => fn ($c) => $c->whereNull('offer_id')])
+            'purchases' => Purchase::withCount(['cars' => fn ($c) => $c->whereDoesntHave('offer')])
                 ->orderBy($sort->key === 'cars' ? 'cars_count' : 'number', $sort->dir())->orderByDesc('number')->get(),
             'restricted' => Restriction::count(),
             'sort' => $sort,
@@ -110,12 +110,12 @@ class PurchaseController
             [$preset, $kind] = ['all', null];
         }
         $users = $q !== '' ? [] : Common::ints($facets->selected('user'));
-        $pending = $purchase->cars()->whereNull('offer_id')->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
+        $pending = $purchase->cars()->whereDoesntHave('offer')->where(fn ($w) => $w->whereIn('specs_state', ['pending', 'running'])->orWhereIn('photos_state', ['pending', 'running']))->count();
 
         // Числа — один проход по лёгкой выборке всей закупки, без поиска; перекрёстные: у каждого
         // фильтра число считается при двух других применённых, так они сходятся между собой.
         // ТС, ушедшие в предложения по контрпредложению, из закупки исключены — видны только в «В предложениях».
-        $all = $purchase->cars()->with('offers:id,car_id,user_id,state')->get(['id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state', 'offer_id']);
+        $all = $purchase->cars()->with(['offers:id,car_id,user_id,state', 'offer:id,car_id'])->get(['id', 'car_id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state']);
         $managers = User::withRole(Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
         $match = [
             'all' => fn ($c) => true,
@@ -127,7 +127,7 @@ class PurchaseController
             'nophoto' => fn ($c) => $c->photos_count === 0,
             'hidden' => fn ($c) => ! $c->is_published,
         ];
-        $match = array_map(fn ($f) => fn ($c) => ! $c->offer_id && $f($c), $match) + ['moved' => fn ($c) => (bool) $c->offer_id];
+        $match = array_map(fn ($f) => fn ($c) => ! $c->offer && $f($c), $match) + ['moved' => fn ($c) => (bool) $c->offer];
         $byKind = fn ($c) => ! $kind || $c->kind === $kind;
         $byUser = fn ($c) => ! $users || $c->activeOfferList()->whereIn('user_id', $users)->isNotEmpty();
         $counts = array_map(fn ($f) => $all->filter($byKind)->filter($byUser)->filter($f)->count(), $match);
@@ -135,8 +135,8 @@ class PurchaseController
         $kinds = $all->groupBy(fn ($c) => $c->kind->value)->map(fn ($g) => $g->filter($match[$preset])->filter($byUser)->count())->all();
         $offered = $managers->mapWithKeys(fn ($u) => [(string) $u->id => $all->filter($byKind)->filter($match[$preset])->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $u->id))->count()]);
 
-        $cars = $purchase->cars()->with(['brand', 'model', 'settlement', 'media', 'offers.user', 'offer:id,number,state'])
-            ->when($preset === 'moved', fn ($c) => $c->whereNotNull('offer_id'), fn ($c) => $c->whereNull('offer_id'))
+        $cars = $purchase->cars()->with(['settlement', 'media', 'offers.user', 'offer:id,car_id,number,state'])
+            ->when($preset === 'moved', fn ($c) => $c->whereHas('offer'), fn ($c) => $c->whereDoesntHave('offer'))
             ->search($q, crm: true)
             ->when($kind, fn ($c) => $c->where('kind', $kind));
         match ($preset) {
@@ -151,11 +151,13 @@ class PurchaseController
         };
         $facets->apply($cars);
         $dir = $sort->dir();
+        // ДЛ лота — номер его машины (`Cars\Car::claim_ref`).
+        $dl = \App\Cars\Car::sql('purchase_cars', 'claim_ref');
         match ($sort->key) {
-            'best' => $cars->withMax(['offers as top_offer' => $live], 'amount')->orderByRaw("top_offer {$dir} nulls last")->orderBy('dl'),
-            'final' => $cars->orderByRaw("price_final {$dir} nulls last")->orderBy('dl'),
+            'best' => $cars->withMax(['offers as top_offer' => $live], 'amount')->orderByRaw("top_offer {$dir} nulls last")->orderByRaw($dl),
+            'final' => $cars->orderByRaw("price_final {$dir} nulls last")->orderByRaw($dl),
             'fresh' => $cars->orderBy('id', $dir),
-            default => $cars->orderBy('dl', $dir),
+            default => $cars->orderByRaw("{$dl} {$dir}"),
         };
 
         $cars = ListView::paginate($request, $cars);
@@ -260,13 +262,13 @@ class PurchaseController
     {
         $path = $this->counterPath($purchase, (string) $request->query('path', ''));
         $rows = $reader->read(Storage::disk('private')->path($path));
-        $cars = $purchase->cars()->with(['brand', 'model', 'media', 'offer:id,number'])->get()->keyBy(fn (Car $c) => mb_strtolower(trim($c->dl)));
+        $cars = $purchase->cars()->with(['media', 'offer:id,car_id,number'])->get()->keyBy(fn (Car $c) => mb_strtolower(trim($c->dl)));
         $groups = ['move' => [], 'moved' => [], 'unpriced' => [], 'missing' => []];
         foreach ($rows as $row) {
             $car = $cars[mb_strtolower(trim($row['dl']))] ?? null;
             $groups[match (true) {
                 ! $car => 'missing',
-                (bool) $car->offer_id => 'moved',
+                (bool) $car->offer => 'moved',
                 ! $row['price'] => 'unpriced',
                 default => 'move',
             }][] = $row + ['car' => $car];
@@ -355,7 +357,7 @@ class PurchaseController
     public function car(Purchase $purchase, Car $car)
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
-        $car->load(['brand', 'model', 'settlement', 'media', 'offers.user']);
+        $car->load(['settlement', 'media', 'offers.user']);
 
         return view('admin.purchases.car', ['purchase' => $purchase, 'car' => $car]);
     }
@@ -364,7 +366,7 @@ class PurchaseController
     public function detail(Purchase $purchase, Car $car)
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
-        $car->load(['brand', 'model', 'settlement', 'media', 'offers.user', 'offer:id,number']);
+        $car->load(['settlement', 'media', 'offers.user', 'offer:id,car_id,number']);
 
         return view('admin.purchases.detail', ['purchase' => $purchase, 'car' => $car]);
     }
