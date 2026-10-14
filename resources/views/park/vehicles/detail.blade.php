@@ -132,13 +132,14 @@
             <input name="text" class="field-input field-s min-w-0 flex-1" placeholder="Заметка" required>
             <button class="btn btn-s btn-quiet shrink-0">Записать</button>
         </form>
-        @if ($vehicle->events->isNotEmpty())
+        @php $history = \App\Cars\LaneHistory::merge($vehicle->events, \App\Cars\LaneHistory::forVehicle($vehicle))->take(5); @endphp
+        @if ($history->isNotEmpty())
             <div class="mt-3 flex flex-col gap-1.5 text-sm">
-                @foreach ($vehicle->events->take(5) as $event)
+                @foreach ($history as $event)
                     <div class="flex gap-3">
                         <span class="shrink-0 text-ink-dim nums">{{ $event->created_at->translatedFormat('j M H:i') }}</span>
                         <span class="min-w-0">{{ $event->text() }}</span>
-                        @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}</span>@endif
+                        @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}@if ($event instanceof \App\Cars\LaneEdit), {{ $event->where }}@endif</span>@endif
                     </div>
                 @endforeach
             </div>

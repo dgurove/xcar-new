@@ -187,16 +187,19 @@
                  (владелец 07.10.2026: дата своей строкой и чип с именем справа — строка ради одной даты и ужатый текст). --}}
             <div class="flex flex-col gap-3 text-sm">
                 {{-- Связь с продажей — дело админа CRM: управляющему «связана с предложением» ничего не говорит. --}}
-                @foreach ($vehicle->events->reject(fn ($e) => ! auth()->user()->isAdmin() && in_array($e->type, [EventType::Linked, EventType::Unlinked], true)) as $event)
+                {{-- Правки машины в CRM — той же лентой (`Cars\LaneHistory`): машина у дела и продажи одна. --}}
+                @foreach (\App\Cars\LaneHistory::merge($vehicle->events->reject(fn ($e) => ! auth()->user()->isAdmin() && in_array($e->type, [EventType::Linked, EventType::Unlinked], true)), \App\Cars\LaneHistory::forVehicle($vehicle)) as $event)
+                    @php $note = ! $event instanceof \App\Cars\LaneEdit && $event->type === EventType::Note; @endphp
                     <div>
-                        @if ($event->type === EventType::Note)
+                        @if ($note)
                             <div class="history-note whitespace-pre-line">{{ $event->text() }}</div>
                         @else
                             <div class="leading-snug">{{ $event->text() }}</div>
                         @endif
                         <div class="mt-0.5 flex items-center gap-2 text-xs text-ink-dim">
                             <span class="nums">{{ $event->created_at->translatedFormat('j M, H:i') }}</span>
-                            @if ($event->user)<span>{{ $event->user->shortName() }}</span>@elseif ($event->type === EventType::Note)<span>Система</span>@endif
+                            @if ($event->user)<span>{{ $event->user->shortName() }}</span>@elseif ($note)<span>Система</span>@endif
+                            @if ($event instanceof \App\Cars\LaneEdit)<span>{{ $event->where }}</span>@endif
                         </div>
                     </div>
                 @endforeach
