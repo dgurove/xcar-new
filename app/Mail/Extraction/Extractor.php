@@ -38,6 +38,10 @@ final class Extractor
         $topic = Patterns::cleanSubject(QuotationStripper::forwardedSubject($body) ?? $subject);
 
         $this->car($fields, $topic);
+        // Город из тела («Авто в Череповце») — только когда тема его не дала: тема у Совкомбанка точнее.
+        if (! isset($fields['city']) && ($city = Template::city($text))) {
+            $fields['city'] = ['value' => $city, 'source' => 'body'];
+        }
         $this->bareCode($fields, $topic);
         $this->body($fields, $text);
         foreach ($this->documents($attachments) as $field => $value) {
@@ -155,13 +159,27 @@ final class Extractor
         return Settlement::named($name)['name'] ?? null;
     }
 
-    /** Совкомбанк в теле пишет цену голой строкой «1 259 990 руб.» и «Готовы к передаче – 8-903-333-18-94 Екатерина». */
+    /**
+     * Цена без подписи шаблона: сумма с «руб / р. / ₽» в своих словах письма — голой строкой («1 259 990 руб.», так пишет
+     * Совкомбанк) или внутри фразы. Берётся, только если разная сумма одна; пробег, «забрать за» (это `owner_price`)
+     * и даты не в счёт.
+     */
     private function body(array &$fields, string $text): void
     {
-        if (! isset($fields['floor_price']) && preg_match_all('/^[\s>*_]*(\d{1,3}(?:[ \x{00A0}]\d{3})+|\d{5,8})\s*(?:руб\.?|р\.|₽)[\s*_]*$/um', $text, $m)) {
-            $prices = array_unique(array_filter(array_map(fn ($v) => CarWords::digits($v), $m[1]), fn ($v) => (int) $v <= Template::MAX_PRICE));
+        $plain = Template::plain($text);
+        if (! isset($fields['floor_price']) && preg_match_all('/(?<![\d.,])'.Template::MONEY.'\s*(?:руб|р\.|₽)/u', $plain, $m, PREG_OFFSET_CAPTURE)) {
+            $prices = [];
+            foreach ($m[1] as [$digits, $at]) {
+                $before = mb_strtolower(mb_strcut($plain, max(0, $at - 60), min(60, $at)));   // смещение в байтах — режем по буквам
+                if (preg_match('/(пробег\w*|забрать\s+за|км)\s*[:–—-]?\s*$/u', $before)) {
+                    continue;
+                }
+                if ($value = Template::money($digits)) {
+                    $prices[$value] = true;
+                }
+            }
             if (count($prices) === 1) {
-                $fields['floor_price'] = ['value' => reset($prices), 'source' => 'body'];
+                $fields['floor_price'] = ['value' => array_key_first($prices), 'source' => 'body'];
             }
         }
         if (preg_match('/готов\w*\s+к\s+передаче\s*[–—:\-]?\s*('.Patterns::PHONE.')\s*([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){0,2})?/u', $text, $m)) {

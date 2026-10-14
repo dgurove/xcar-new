@@ -31,6 +31,7 @@ use App\Http\Middleware\TouchSeen;
 use App\Live\SubscriberCookie;
 use App\Mail\Console\ArchiveStaleCandidates;
 use App\Mail\Console\BackfillMail;
+use App\Mail\Console\PriceMisses;
 use App\Mail\Console\ReadMail;
 use App\Mail\Console\RebuildChains;
 use App\Mail\Console\ReconcileMail;
@@ -109,6 +110,7 @@ return Application::configure(basePath: dirname(__DIR__))
         WatchMail::class,
         ReconcileMail::class,
         ReadMail::class,
+        PriceMisses::class,
         RebuildChains::class,
         BackfillMail::class,
         ArchiveStaleCandidates::class,

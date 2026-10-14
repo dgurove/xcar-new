@@ -29,6 +29,7 @@ class Generic extends Template
         $this->put($fields, 'floor_price', $this->price($body), 'body');
         $this->put($fields, 'owner_price', $this->ownerPrice($body), 'body');
         $this->put($fields, 'location', $this->location($body), 'body');
+        $this->put($fields, 'mileage', $this->mileage($body), 'body');
 
         return $fields;
     }

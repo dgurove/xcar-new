@@ -4,6 +4,7 @@ namespace App\Mail\Extraction\Templates;
 
 use App\Cars\Category;
 use App\Cars\Names;
+use App\Cars\Settlement;
 use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Extraction\Patterns;
@@ -86,14 +87,20 @@ abstract class Template
         $text = (string) preg_replace_callback('/\b(\d{1,2}\.\d{2})\.([01]\d|2[0-3])\.([0-5]\d)\b(?!\.\d)/u', fn ($m) => $m[1].' '.$m[2].':'.$m[3], $text);   // «03.09.18.00» — дата и время через точку
         $anchor = '(?:срок\s+торгов|торги|ответ|решени\w*|сообщить|предложени\w*\s+(?:принимаются|ждём|ждем))';
         $date = '(\d{1,2})\.(\d{2})(?:\.(\d{2,4}))?';
-        $time = '(?:\s*(?:г\.?|года)?\s*[,;]?\s*(?:до|в|к)?\s*(\d{1,2})[:.](\d{2}))?';
+        // Время — «до 16:00», «16.00» или словами: «до 08.10 – 18 часов» (Т-Страхование, 14.10.2026).
+        $time = '(?:\s*(?:г\.?|года)?\s*[,;]?\s*(?:до|в|к)?\s*(?:(\d{1,2})[:.](\d{2})|[–—-]?\s*(\d{1,2})\s*(?:час|ч(?![а-яё]))))?';
         if (! preg_match('/'.$anchor.'[^\d\n]{0,40}?(?:до|к)\s*'.$date.$time.'/iu', $text, $m)) {
             return null;
         }
         $base = $on ? Carbon::instance(\DateTime::createFromInterface($on)) : now();
         $year = isset($m[3]) && $m[3] !== '' ? (int) (strlen($m[3]) === 2 ? '20'.$m[3] : $m[3]) : (int) $base->format('Y');
         try {
-            $at = Carbon::create($year, (int) $m[2], (int) $m[1], (int) ($m[4] ?? 23), (int) ($m[5] ?? 59), 0, 'Europe/Moscow');
+            [$hour, $minute] = match (true) {
+                ($m[4] ?? '') !== '' => [(int) $m[4], (int) $m[5]],
+                ($m[6] ?? '') !== '' => [(int) $m[6], 0],
+                default => [23, 59],
+            };
+            $at = Carbon::create($year, (int) $m[2], (int) $m[1], $hour, $minute, 0, 'Europe/Moscow');
         } catch (\Throwable) {
             return null;
         }
@@ -256,24 +263,50 @@ abstract class Template
         }
     }
 
+    /**
+     * Текст тела для правил: без разметки письма («*Цена за* *ЛОТ*» — звёздочки между словами рвали `\s+`), неразрывные
+     * и тонкие пробелы — обычными, пробелы и табы схлопнуты; переводы строк остаются.
+     */
+    public static function plain(string $text): string
+    {
+        $text = (string) preg_replace('/^(?:[ \t]*>)+[ \t]?/mu', '', $text);   // знаки цитаты в начале строк
+        $text = (string) preg_replace('/[*_]+/u', '', $text);
+        $text = (string) preg_replace('/[\x{00A0}\x{2007}\x{202F}\t ]+/u', ' ', $text);
+
+        return trim((string) preg_replace('/ *\n */u', "\n", $text));
+    }
+
+    /** Сумма «685 713», «933333», «5 211 000,00»: разряды через пробел или слитно, копейки отрезаются. */
+    public const MONEY = '(\d{1,3}(?: \d{3})+|\d{4,9})(?:[,.]\d{1,2}(?!\d))?';
+
+    /** Дешевле — не цена ТС, а обрывок («ч.1», номер дома). */
+    public const MIN_PRICE = 10_000;
+
+    public static function money(string $digits): ?int
+    {
+        $value = (int) preg_replace('/\D/u', '', $digits);
+
+        return $value >= self::MIN_PRICE && $value <= self::MAX_PRICE ? $value : null;
+    }
+
     protected function price(string $text): ?int
     {
+        $text = self::plain($text);
         if ($text === '') {
             return null;
         }
-        $n = '[\d\x{00A0}\x{2007}\x{202F}\s]';
+        $money = self::MONEY;
         foreach ([
-            // Т-Страхование: «Цена за Лот* по победному ОП 779 000, предлагаем забрать за 750 000» — закупочная 779 000.
-            '/Цена\s+за\s+(?:Оффер|Лот)\D{0,40}?(\d'.$n.'*)/ui',
-            '/оценены\D{0,20}?('.$n.'{4,})\D{0,6}(?:руб|р\.)/ui',
-            '/Максимальное\s+предложение\D{0,20}?('.$n.'{4,})\D{0,6}(?:руб|р\.)/ui',
+            // Цена лота одной подписью (14.10.2026, Т-Страхование пишет по-разному): «Цена за Лот* по победному ОП 779 000,
+            // предлагаем забрать за 750 000» — закупочная 779 000; «Сумма за лот 685 713 руб.»; «Стоимость лота 933333»;
+            // «Цена за ЛОТ 5 211 000,00р.». Подпись сама говорит, что это цена, — валюта после неё необязательна.
+            '/(?:цена|сумма|стоимость)\s+(?:за\s+)?(?:лот|оффер)\w*\D{0,40}?'.$money.'/ui',
+            '/оценены\D{0,20}?'.$money.'\D{0,6}(?:руб|р\.)/ui',
+            '/Максимальное\s+предложение\D{0,20}?'.$money.'\D{0,6}(?:руб|р\.)/ui',
         ] as $pattern) {
-            if (preg_match($pattern, $text, $m)) {
-                $digits = preg_replace('/\D/u', '', $m[1]) ?? '';
-                // «оценены 477 000 100 руб.» Совкомбанка — опечатка; сумму дороже сотни миллионов не берём.
-                if ($digits !== '' && (int) $digits > 0 && (int) $digits <= self::MAX_PRICE) {
-                    return (int) $digits;
-                }
+            // «оценены 477 000 100 руб.» Совкомбанка — опечатка; сумму дороже сотни миллионов не берём (`money`).
+            if (preg_match($pattern, $text, $m) && ($value = self::money($m[1]))) {
+                return $value;
             }
         }
 
@@ -286,23 +319,94 @@ abstract class Template
      */
     protected function ownerPrice(string $text): ?int
     {
-        if (! preg_match('/забрать\s+за\s+(\d[\d\x{00A0}\x{2007}\x{202F} ]{3,})/ui', $text, $m)) {
+        if (! preg_match('/забрать\s+за\s+'.self::MONEY.'/ui', self::plain($text), $m)) {
             return null;
         }
-        $digits = (int) preg_replace('/\D/u', '', $m[1]);
 
-        return $digits > 0 ? $digits : null;
+        return self::money($m[1]);
     }
 
     protected function location(string $text): ?string
     {
         // «Место расположения Иркутск» — так пишет Т-Страхование (13.10.2026).
-        if (! preg_match('/(?:Местонахождение|Место\s+(?:расположения|нахождения))\s*:?\s*(.+)/ui', $text, $m)) {
+        if (! preg_match('/(?:Местонахождение|Место\s+(?:расположения|нахождения))\s*:?\s*(.+)/ui', self::plain($text), $m)) {
             return null;
         }
         $value = rtrim(trim(trim((string) preg_replace('/\s+/u', ' ', $m[1])), "*: \t\n\r\0\x0B"), ' .;,');
 
         return $value !== '' ? mb_substr($value, 0, 255) : null;
+    }
+
+    /**
+     * Город из фразы тела: «Авто в Череповце», «ТС находится в Нижнем Новгороде», «Местонахождение ТС – Москва»
+     * (14.10.2026, Т-Страхование). Предложный падеж сводится к справочнику перебором окончаний (`nominative`).
+     */
+    public static function city(string $text): ?string
+    {
+        $text = self::plain($text);
+        $lead = '(?<![а-яёА-ЯЁA-Za-z])(?i:авто(?:мобиль)?|ТС|машина|находится|расположен\w*|местонахождени\w*(?:\s+ТС)?|место\s+(?:расположения|нахождения)(?:\s+ТС)?)';   // подпись — без регистра, имя места — с заглавной
+        $place = '([А-ЯЁ][а-яё]+(?:[ -][А-ЯЁ][а-яё]+)?)';
+        if (! preg_match_all('/'.$lead.'\s*[:–—-]?\s*(?:в|во|на)?\s+(?:г\.?\s*|городе\s+)?'.$place.'/u', $text, $all, PREG_SET_ORDER)) {
+            return null;
+        }
+        foreach ($all as $m) {
+            foreach (self::nominative($m[1]) as $name) {
+                if ($city = Settlement::named($name)['name'] ?? null) {
+                    return $city;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Варианты имени в именительном: «Череповце» → Череповец, «Краснодаре» → Краснодар, «Москве» → Москва, «Казани» →
+     * Казань, «Нижнем Новгороде» → Нижний Новгород. Как есть — первым: несклоняемые («Сочи», «Пермь»).
+     *
+     * @return list<string>
+     */
+    public static function nominative(string $phrase): array
+    {
+        $variants = static function (string $w): array {
+            $out = [$w];
+            if (preg_match('/^(.+?)(ом|ем)$/u', $w, $m)) {
+                array_push($out, $m[1].'ий', $m[1].'ый');
+            }
+            if (preg_match('/^(.+)([еиу])$/u', $w, $m)) {
+                $base = $m[1];
+                array_push($out, $base, $base.'а', $base.'ь', $base.'я');
+                if (preg_match('/^(.+)([цк])$/u', $base, $b)) {
+                    array_push($out, $b[1].'е'.$b[2], $b[1].'о'.$b[2]);
+                }
+            }
+
+            return array_values(array_unique($out));
+        };
+        $words = preg_split('/([ -])/u', $phrase, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$phrase];
+        if (count($words) === 1) {
+            return $variants($phrase);
+        }
+        $out = [];
+        foreach ($variants($words[0]) as $first) {
+            foreach ($variants($words[2]) as $second) {
+                $out[] = $first.$words[1].$second;
+            }
+        }
+
+        return array_values(array_unique([$phrase, ...$out]));
+    }
+
+    /** «Пробег 60 000», «пробег: 120000 км». */
+    protected function mileage(string $text): ?int
+    {
+        // «пробег 115\n> 254 км» — число цитаты бывает разорвано переносом строки, разряды — через любой пробел.
+        if (! preg_match('/пробег\w*\s*[:–—-]?\s*(\d{1,3}(?:\s\d{3})+|\d{1,7})(?!\d)/ui', self::plain($text), $m)) {
+            return null;
+        }
+        $km = (int) preg_replace('/\D/u', '', $m[1]);
+
+        return $km > 0 && $km < 3_000_000 ? $km : null;
     }
 
     protected function brandAndModel(string $text): array
