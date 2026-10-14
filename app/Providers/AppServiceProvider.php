@@ -21,6 +21,7 @@ use App\Billing\Listeners\PayoutWhenPaid;
 use App\Billing\Listeners\ReturnOnReject;
 use App\Billing\Listeners\RevokeAgentFee;
 use App\Billing\Listeners\StartSelectionDue;
+use App\Cars\Events\CarChanged;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Listeners\AttachGuestEnquiry;
 use App\Chats\Listeners\MailGuestReply;
@@ -30,6 +31,7 @@ use App\Garage\Listeners\PayoutWhenBuyerPaid;
 use App\Garage\Listeners\ReopenWhenVoided;
 use App\Garage\Listeners\StartPrepOnArrival;
 use App\Live\PublishLiveUpdates;
+use App\Live\RefreshCar;
 use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Listeners\RefreshLogistics;
 use App\Mail\Events\MessageSent;
@@ -63,6 +65,7 @@ use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laragear\WebAuthn\Assertion\Validator\AssertionValidator;
 use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -119,6 +122,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(ChatMessagePosted::class, MailGuestReply::class);
         Event::subscribe(Passkeys::class);
         Event::listen(MediaHasBeenAddedEvent::class, StampOnAdd::class);
+        // Машина поменялась (поля из любой двери, файлы) — её экраны перечитываются на всех хостах.
+        Event::listen(CarChanged::class, RefreshCar::class);
+        Event::listen(MediaHasBeenAddedEvent::class, fn (MediaHasBeenAddedEvent $e) => RefreshCar::media($e->media, added: true));
+        Event::listen('eloquent.saved: '.Media::class, fn (Media $m) => RefreshCar::media($m));
+        Event::listen('eloquent.deleted: '.Media::class, fn (Media $m) => RefreshCar::media($m, gone: true));
         Auth::provider('xcar-webauthn', fn (Application $app, array $config) => new WebAuthnProvider(
             $app->make('hash'),
             $config['model'],

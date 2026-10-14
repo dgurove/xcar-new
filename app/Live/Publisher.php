@@ -2,8 +2,10 @@
 
 namespace App\Live;
 
+use App\Live\Jobs\PublishRefresh;
 use App\Support\Nav;
 use App\Support\Surface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -15,6 +17,9 @@ use Throwable;
  */
 final class Publisher
 {
+    /** Окно `refreshSoon`, секунды. */
+    public const SOON = 2;
+
     public function __invoke(array|string $topics, string $type, array $data = []): void
     {
         // Событие для сотрудников — счётчики Nav::staffCounts пересчитываются (и без хаба тоже).
@@ -56,15 +61,37 @@ final class Publisher
         $this($topics, 'notices-read', ['subjects' => array_values($subjects)]);
     }
 
+    /**
+     * Перечитать открытые страницы. Запрос Turbo, из которого это пришло (`X-Turbo-Request-Id`), едет с событием: у автора
+     * правки Turbo его узнаёт и страницу второй раз не перечитывает — ответ на его форму уже свежий.
+     */
     public function refresh(array|string $topics, array $paths): void
     {
-        $this($topics, 'refresh', ['paths' => $paths]);
+        $request = request()->header('X-Turbo-Request-Id');
+        $this($topics, 'refresh', ['paths' => $paths] + (is_string($request) && $request !== '' ? ['request' => $request] : []));
     }
 
-    /** Карточка в ленте: по умолчанию всем в каталоге; покупателям — в их личные темы, каталог они не слушают. */
-    public function card(int $number, array|string $topics = Topics::CATALOG): void
+    /**
+     * То же для того, что правят пачкой (машина: «✨», импорт, команда по сотне ТС): первое — сразу, всё, что пришло за
+     * окно `SOON`, — одним перечитыванием в конце (`PublishRefresh`), а не морф открытой CRM на каждую машину.
+     */
+    public function refreshSoon(array|string $topics, array $paths): void
     {
-        $this($topics, 'card', ['number' => $number]);
+        $key = md5(implode(',', (array) $topics).'|'.implode(',', $paths));
+        if (Cache::add("live:soon:{$key}", 1, self::SOON)) {
+            $this->refresh($topics, $paths);
+        } elseif (Cache::add("live:tail:{$key}", 1, 60)) {
+            PublishRefresh::dispatch((array) $topics, $paths, $key)->delay(self::SOON);
+        }
+    }
+
+    /**
+     * Карточка в ленте: по умолчанию всем в каталоге; покупателям — в их личные темы, каталог они не слушают. `only` —
+     * только перерисовать, если она на экране (правка машины): новой плиткой она не въезжает.
+     */
+    public function card(int $number, array|string $topics = Topics::CATALOG, bool $only = false): void
+    {
+        $this($topics, 'card', ['number' => $number] + ($only ? ['only' => true] : []));
     }
 
     public function badges(array|string $topics): void

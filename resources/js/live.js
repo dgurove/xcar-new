@@ -7,8 +7,9 @@ import * as Turbo from '@hotwired/turbo';
 // lastEventID. Cookie подписчика истекла (401 — источник закрыт навсегда) —
 // любой GET её переиздаёт, дальше открываем заново с нарастающей паузой.
 // По каналу приходит только событие; за содержимым идём на сервер:
-//   card    {number} — плитка оффера в каталоге: заменить или добавить
-//   refresh {paths}  — если открыта одна из страниц, перечитать её (morph)
+//   card    {number, only} — плитка оффера в каталоге: заменить или добавить; only (правка машины) — только заменить
+//   refresh {paths, request} — если открыта одна из страниц, перечитать её (morph); request — запрос Turbo, из
+//           которого пришла правка: у её автора Turbo его помнит и второй раз страницу не перечитывает
 //   notice  {id, subject, important, surface, html} — карточка уведомления (banner_controller, window.notify)
 //   notices-read {subjects} — объекты открыли: их карточки закрываются
 //   toast   {message, href} — прежний вид, пока в очереди события старой выкладки
@@ -116,10 +117,10 @@ function chat(detail) {
     else window.toast?.(`${detail.from}: ${detail.text}`, detail.href ? { href: detail.href } : undefined);
 }
 
-async function card({ number }) {
+async function card({ number, only }) {
     const present = !!document.getElementById(`offer-${number}`);
     const list = document.getElementById('catalog');
-    if (!present && !list) return;
+    if (!present && (!list || only)) return;
     const r = await fetch(`/offers/${number}/card?present=${present ? 1 : 0}&list=${list?.dataset.list || ''}`, { headers: { Accept: 'text/vnd.turbo-stream.html' } });
     if (!r.ok) return;
     const html = await r.text();
@@ -157,16 +158,17 @@ function pending() {
     pill.textContent = `Показать новые ${pill.dataset.count}`;
 }
 
-function refresh({ paths }) {
-    if (paths?.includes(location.pathname)) refreshPage();
+function refresh({ paths, request }) {
+    if (paths?.includes(location.pathname)) refreshPage(request);
 }
 
 // Перечитать открытую страницу морфом — если это не помешает человеку: печатает, ищет, открыта модальная шторка — нет.
 // Блок в потоке (sheet--inflow) открыт всегда — мешает только модальная шторка. Зовёт и строка заявки по ходу чтения (arrive_controller).
-export function refreshPage() {
+export function refreshPage(request) {
     if (document.querySelector('form[data-dirty], [data-searching]') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
     if (document.querySelector('dialog:modal')) return;
-    Turbo.renderStreamMessage('<turbo-stream action="refresh"></turbo-stream>');
+    const id = typeof request === 'string' && /^[\w-]+$/.test(request) ? ` request-id="${request}"` : '';
+    Turbo.renderStreamMessage(`<turbo-stream action="refresh"${id}></turbo-stream>`);
 }
 
 export async function badges() {

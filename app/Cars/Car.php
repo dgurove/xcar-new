@@ -2,6 +2,7 @@
 
 namespace App\Cars;
 
+use App\Cars\Events\CarChanged;
 use App\Cars\Vin\Vin;
 use App\Logistics\Transport;
 use App\Mail\Extraction\Code;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
 
 /**
@@ -81,6 +83,12 @@ class Car extends Model implements HasMedia
             if ($car->wasChanged(['vin', 'plate', 'year', 'color', 'value', 'brand_id', 'model_id'])
                 && ($vehicle = Vehicle::withoutGlobalScope(City::SCOPE)->where('car_id', $car->id)->first())) {
                 FillFromDocs::forget($vehicle);
+            }
+            // Экраны всех дорожек перечитываются (`Live\RefreshCar`) — после коммита: раньше записи перечитывать нечего,
+            // откат — и правки не было. Новая машина — нет: у новой дорожки свои события.
+            $fields = array_values(array_diff(array_keys($car->getChanges()), ['updated_at', 'created_at', 'active']));
+            if ($fields && ! $car->wasRecentlyCreated) {
+                DB::afterCommit(fn () => CarChanged::dispatch($car->id, $fields));
             }
         });
     }
