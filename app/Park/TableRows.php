@@ -27,7 +27,11 @@ final class TableRows
         $common = Accrual::mark('park_tariffs').'|'.self::templates().'|'.(int) (auth()->user()?->isAdmin() ?? false);
         $docs = FillFromDocs::flags($vehicles);
         $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.row:'.md5(implode('|', [
-            $common, $v->id, $v->updated_at?->getTimestamp(), $v->threads_count, $v->waiting_count ?? 0,
+            // Машина (`Cars\Car`: марка, VIN, номер — их правят и из CRM) и её продажа со сделкой (значок связи) — свои
+            // записи: их правка ТС не трогает.
+            $common, $v->id, $v->updated_at?->getTimestamp(), $v->carRecord()->updated_at?->getTimestamp(),
+            $v->offer ? $v->offer->id.':'.$v->offer->updated_at?->getTimestamp().':'.$v->offer->deal?->id : '',
+            $v->threads_count, $v->waiting_count ?? 0,
             $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','), today()->toDateString(),
             $v->vendor?->name, $v->vendor?->logoUrl(), $v->yard?->name,
             json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place, $docs[$v->id], $out, $v->getAttribute('money_state'), $v->getAttribute('task_keys')]),

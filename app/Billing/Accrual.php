@@ -279,7 +279,7 @@ final class Accrual
             return [];
         }
         $common = today()->toDateString().'|'.self::mark('park_tariffs').'|'.self::mark('vendors');
-        $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.total:'.md5($common.'|'.$v->id.'|'.$v->updated_at?->getTimestamp()
+        $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.total:'.md5($common.'|'.$v->id.'|'.$v->updated_at?->getTimestamp().'|'.$v->carRecord()->updated_at?->getTimestamp()
             .'|'.$v->events->map(fn ($e) => $e->id.':'.md5(json_encode($e->payload)))->implode(',').'|'.$v->offer?->deal?->updated_at?->getTimestamp())])->all();
         $cached = Cache::many(array_values($keys));
         $out = $fresh = [];

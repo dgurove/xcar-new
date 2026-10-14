@@ -99,7 +99,7 @@ final class FillFromDocs
 
         $version = Cache::get("park:docdiff:v:{$vehicle->id}", 0);
 
-        $out = Cache::remember("park:docdiff:{$vehicle->id}:{$vehicle->updated_at?->timestamp}:{$letters}:{$version}", 86400, function () use ($vehicle) {
+        $out = Cache::remember("park:docdiff:{$vehicle->id}:{$vehicle->updated_at?->timestamp}:{$vehicle->carRecord()->updated_at?->timestamp}:{$letters}:{$version}", 86400, function () use ($vehicle) {
             $out = [];
             foreach ($this->plan($vehicle->loadMissing(['threads.messages.attachments']))['disputed'] as $d) {
                 if (isset($d['current'], $d['value']) && ! isset($out[$d['field']])) {

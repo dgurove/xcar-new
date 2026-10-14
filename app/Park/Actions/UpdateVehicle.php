@@ -16,8 +16,8 @@ use App\Users\User;
  * (или пересчитывает неоплаченное). Поля машины (номер убытка, VIN, марка…) пишутся в машину (`Cars\Car`): их видит и
  * предложение той же машины; номер или VIN другой известной машины — та же машина (`JoinCars::settle`).
  * С `$sources` — поля взяты из документов и писем («✨», `park:fill-from-docs`): в истории дела «Заполнено по
- * документам» с их именами; без пользователя — это сделала система. Правка полей, которые сверяются с документами,
- * снимает метку «в документе иначе» до пересчёта (`FillFromDocs::forget`).
+ * документам» с их именами; без пользователя — это сделала система. Метку «в документе иначе» снимает запись машины
+ * (`Car::saved`), из какой бы двери её ни правили.
  */
 final class UpdateVehicle
 {
@@ -38,9 +38,6 @@ final class UpdateVehicle
             ? $vehicle->log(EventType::FilledFromDocs, $by, $diff + ['sources' => array_values(array_unique($sources))])
             : $vehicle->log(EventType::Updated, $by, $diff);
         (new RememberVin)($vehicle);
-        if (array_intersect($changed, ['vin', 'plate', 'year', 'color', 'value', 'brand_id', 'model_id'])) {
-            FillFromDocs::forget($vehicle);
-        }
         if ($by && $vehicle->accepted_at && array_intersect($changed, ['contract_kind', 'assigned_price', 'contract_no'])) {
             ($this->transfer)($vehicle, $by);
         }

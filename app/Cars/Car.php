@@ -8,6 +8,7 @@ use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Patterns;
 use App\Media\HasPhotos;
 use App\Offers\Offer;
+use App\Park\Actions\FillFromDocs;
 use App\Park\City;
 use App\Park\Vehicle;
 use App\Purchases\Car as PurchaseCar;
@@ -73,6 +74,14 @@ class Car extends Model implements HasMedia
                 $car->unsetRelation('brand')->unsetRelation('model');
             }
             Identity::guardCar($car);
+        });
+        // Поля, которые сверяет «в документе иначе» у ТС парковки, поменяли из любой двери (CRM, «✨», письмо) — метка
+        // пересчитается при следующем показе дела.
+        static::saved(function (self $car) {
+            if ($car->wasChanged(['vin', 'plate', 'year', 'color', 'value', 'brand_id', 'model_id'])
+                && ($vehicle = Vehicle::withoutGlobalScope(City::SCOPE)->where('car_id', $car->id)->first())) {
+                FillFromDocs::forget($vehicle);
+            }
         });
     }
 
