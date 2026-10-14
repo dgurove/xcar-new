@@ -55,8 +55,8 @@
                 @foreach ($group as $vehicle){!! $rows[$vehicle->id] !!}@endforeach
             @endforeach
         </x-ui.table>
-    @elseif ($view === ListView::GRID && ($grouped || $byMonth))
-        {{-- Плитками пачка парковки (или месяца выбытия) — лентой вбок (x-ui.shelf, 11.10.2026). --}}
+    @elseif ($view === ListView::SHELF && ($grouped || $byMonth))
+        {{-- «Лентами» пачка парковки (или месяца выбытия) — лентой вбок (x-ui.shelf, 11.10.2026); «Плитками» — одна сетка ниже. --}}
         <div data-controller="ticker">
             @foreach ($groups as $key => $group)
                 <x-ui.shelf :title="$groupName($key, $group)" :count="$group->count()">

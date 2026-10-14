@@ -1,5 +1,6 @@
 {{-- Вид списка: круглая кнопка с иконкой текущего вида, по нажатию — меню
-     «Плитками · Строками · Таблицей · Подробной таблицей» (x-ui.menu). Подробная на телефоне — все столбцы ПК, на ПК —
+     «Лентами · Плитками · Строками · Таблицей · Подробной таблицей» (x-ui.menu). «Лентами» — только у списков с пачками
+     (`:views="ListView::SHELVED"`, 15.10.2026), «Плитками» — та же карточка обычной сеткой. Подробная на телефоне — все столбцы ПК, на ПК —
      все столбцы и рядом с открытой карточкой (краткая тогда прячет `col-detail-hide`).
      Пока вид не выбран, его решает ширина экрана: две кнопки, видна одна. views — какие виды есть. --}}
 @props(['views' => \App\Support\ListView::ALL, 'current' => false])
@@ -9,7 +10,7 @@
     $current = $current === false ? ListView::fromRequest(request()) : $current;
     $path = '/'.ltrim(request()->path(), '/');
     $url = fn (string $v) => $path.'?'.http_build_query(array_merge(request()->query(), [ListView::PARAM => $v]));
-    $all = ['grid' => ['Плитками', 'grid-2'], 'list' => ['Строками', 'list'], 'table' => ['Таблицей', 'table'], 'wide' => ['Подробной таблицей', 'columns']];
+    $all = ['shelf' => ['Лентами', 'shelves'], 'grid' => ['Плитками', 'grid-2'], 'list' => ['Строками', 'list'], 'table' => ['Таблицей', 'table'], 'wide' => ['Подробной таблицей', 'columns']];
     // Подробная без краткой не бывает: это та же таблица.
     $views = in_array(ListView::TABLE, $views, true) ? $views : array_diff($views, [ListView::WIDE]);
     $items = array_intersect_key($all, array_flip($views));

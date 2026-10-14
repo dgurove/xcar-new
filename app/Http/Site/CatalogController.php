@@ -61,7 +61,7 @@ class CatalogController
             $query->notOnlyFor($user);
         }
         $count = $query->count();
-        if (ListView::isTable(ListView::pick($request, $count))) {
+        if (ListView::isTable(ListView::pick($request, $count, shelves: true))) {
             // Строке таблицы кадры не нужны.
             $query->without('media');
         }
@@ -100,10 +100,12 @@ class CatalogController
             };
         }
 
-        // Пачки по сроку («До 17:00 сегодня») — только по сроку и тому, кто срок видит; плитками они — ленты вбок, весь
-        // список одной страницей: пачку, порванную страницей, в ленте не долистать (11.10.2026).
+        // Пачки по сроку («До 17:00 сегодня») — только по сроку и тому, кто срок видит; лентами они — ленты вбок, весь
+        // список одной страницей: пачку, порванную страницей, в ленте не долистать (11.10.2026). Вид по умолчанию — ленты
+        // («Срочно», «Нужно оценить» и «Открыты только Вам» лентами и без пачек по сроку); «Плитками» — одна сетка со
+        // страницами, без подписей пачек (15.10.2026, начальник).
         $groups = CatalogQuery::grouped($user, $gallery);
-        $shelves = $groups && ListView::pick($request, $count) === ListView::GRID;
+        $shelves = $groups && ListView::pick($request, $count, shelves: true) === ListView::SHELF;
         $offers = ListView::paginate($request, $query, $count, whole: $shelves);
         // «Нужно оценить» (11.10.2026): черновики, отданные этому менеджеру на оценку, — первой пачкой на первой странице
         // каталога, без пилюли и поиска. Сначала неоценённые, ближний срок выше; оценённые — ждут решения админа.
@@ -112,7 +114,7 @@ class CatalogController
                 ->sortBy(fn (Offer $o) => [$o->openEstimates->first()?->isGiven() ? 1 : 0, $o->openEstimates->first()?->due_at?->timestamp])->values()
             : collect();
         Showing::remember($user, $offers->pluck('id')->all());
-        $view = ListView::pick($request, $offers->total());
+        $view = ListView::pick($request, $offers->total(), shelves: true);
 
         return view('site.catalog', [
             'detail' => $detail,

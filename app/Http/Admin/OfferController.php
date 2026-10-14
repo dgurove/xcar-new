@@ -218,11 +218,12 @@ class OfferController
         $count = $q->count();
         // Вид — на любой вкладке (начальник 04.10.2026: «вернуть кнопку видов»); по умолчанию в CRM таблица, поиск — таблицей.
         // «Из таблицы Кати» — только таблица: призрачные строки есть только у неё.
-        $view = $searching || $preset === 'legacy' ? ListView::TABLE : ListView::pick($request, $count);
-        // Пачки («Публикация» по слоту, «Опубликованные» и «Есть подтверждения» у админа) плитками — ленты вбок, весь список
-        // одной страницей (11.10.2026): пачку, порванную страницей, в ленте не долистать.
-        $packed = $view === ListView::GRID && ! $searching
-            && ($preset === 'slots' || (in_array($preset, ['published', 'bids'], true) && $request->user()->isAdmin()));
+        // Пачки («Публикация» по слоту, «Опубликованные» и «Есть подтверждения» у админа) — вид «Лентами»: ленты вбок, весь
+        // список одной страницей (11.10.2026): пачку, порванную страницей, в ленте не долистать. «Плитками» — одна сетка со
+        // страницами (15.10.2026).
+        $packable = ! $searching && ($preset === 'slots' || (in_array($preset, ['published', 'bids'], true) && $request->user()->isAdmin()));
+        $view = $searching || $preset === 'legacy' ? ListView::TABLE : ListView::pick($request, $count, shelves: $packable);
+        $packed = $view === ListView::SHELF;
         $offers = ListView::isTable($view) ? $q->paginate(max($count, 1), total: $count)->withQueryString() : ListView::paginate($request, $q, $count, whole: $packed);
         // Кадры нужны плиткам и строкам; в таблице их нет — кроме «Оцененных»: там по ним видно, готово ли к продаже.
         if (! ListView::isTable($view) || ($preset === 'priced' && ! $searching)) {
@@ -245,6 +246,7 @@ class OfferController
             'offers' => $offers,
             'detail' => $detail,
             'view' => $view,
+            'packable' => $packable,
             'step' => $step,
             'searching' => $searching,
             'presets' => $presets,

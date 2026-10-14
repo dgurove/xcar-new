@@ -1,15 +1,15 @@
 {{-- «Работа → Гараж»: у кого что стоит и во что обошлось — группами по менеджеру (взятые под себя — последними), в четырёх
-     видах, как остальные списки CRM: таблица (по умолчанию), подробная, плитки и строки (`x-garage.card`). Нажатие — карточка
+     видах, как остальные списки CRM: таблица (по умолчанию), подробная, ленты, плитки и строки (`x-garage.card`). Нажатие — карточка
      рядом: путь машины, деньги, расходы и действия; «Открыть страницу» — редактор предложения с карточкой «Гараж». --}}
 @php
     use App\Support\ListView;
-    $view = ListView::pick(request(), $total);
+    $view = ListView::pick(request(), $total, shelves: true);
     $user = auth()->user();
 @endphp
 <x-ui.shell title="Гараж" :heading="false" :detail="$detail">
     <x-admin.work-titles current="garage" :count="$total"/>
     <x-ui.toolbar class="mt-5" :sort="$sort" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets">
-        <x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra>
+        <x-slot:extra><x-ui.view-switch :current="$view" :views="ListView::SHELVED"/></x-slot:extra>
     </x-ui.toolbar>
 
     @if ($groups->isEmpty())
@@ -32,12 +32,21 @@
                 @foreach ($cars as $car)<x-admin.garage-row :car="$car"/>@endforeach
             @endforeach
         </x-ui.table>
+    @elseif ($view === ListView::GRID)
+        {{-- «Плитками» (15.10.2026, начальник): одна сетка без подписей менеджеров. --}}
+        <div class="cards cards--grid mt-4" data-controller="ticker">
+            @foreach ($groups->flatten() as $car)
+                @php $line = \App\Garage\CarLine::for($car, $user, crm: true); @endphp
+                <x-garage.card :offer="$car->offer" :href="\App\Support\Detail::url($car->offer->number)" detail vendor
+                               :word="$line->word" :tone="$line->tone" :when="$line->when" :value="$line->value" :caption="$line->caption"/>
+            @endforeach
+        </div>
     @else
         <div class="mt-4 flex flex-col">
             @foreach ($groups as $cars)
                 @php $who = $cars->first()->manager?->name ?? 'Взяли под себя'; @endphp
-                {{-- Плитками пачка менеджера — лентой вбок (x-ui.shelf, 11.10.2026), строками — как была. --}}
-                @if ($view === ListView::GRID)
+                {{-- «Лентами» пачка менеджера — лентой вбок (x-ui.shelf, 11.10.2026), строками — как была. --}}
+                @if ($view === ListView::SHELF)
                     <x-ui.shelf :title="$who" :count="$cars->count()" data-controller="ticker">
                         @foreach ($cars as $car)
                             @php $line = \App\Garage\CarLine::for($car, $user, crm: true); @endphp

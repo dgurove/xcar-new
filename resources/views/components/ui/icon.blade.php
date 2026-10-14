@@ -67,6 +67,8 @@ $paths = [
     'arrow-up' => 'M12 19V5M5 12l7-7 7 7',
     'list' => 'M4 6h16M4 12h16M4 18h16',
     'grid-2' => 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+    // Ленты (15.10.2026): ряд плиток уходит за край — вид «Лентами».
+    'shelves' => 'M3 4h18M3 20h18M3 8h6v8H3zM11 8h6v8h-6zM19 8h2v8h-2',
     'table' => 'M4 5h16v14H4zM4 9.5h16M4 14.5h16',
     'expand' => 'M9 4H4v5M15 20h5v-5M20 9V4h-5M4 15v5h5',
     'chevron-down' => 'm6 9 6 6 6-6',

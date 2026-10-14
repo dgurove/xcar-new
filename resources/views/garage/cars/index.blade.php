@@ -1,4 +1,4 @@
-{{-- Машины гаража в четырёх видах, как остальные списки сайта (10.10.2026): строки, плитки (`x-garage.card`), таблица и
+{{-- Машины гаража в пяти видах, как остальные списки сайта (10.10.2026): строки, ленты и плитки (`x-garage.card`), таблица и
      подробная (`x-garage.table-row`). Группы во всех видах: «Вывоз» — ТС, что менеджеру поручили забрать или что стоят у
      него (не его гараж: продаёт не обязательно он; машина, которая уже в гараже, второй раз здесь не стоит), «В гараже» —
      сначала то, где ход менеджера, дальше по пути, внутри дольше стоящие первыми; «Рассчитались» — ниже. Строка — кадр,
@@ -22,7 +22,7 @@
     }, SORT_REGULAR, $sort->desc)->values();
     $count = $open->count() + $pickups->count();
     // Гараж по умолчанию — строками (11.10.2026, владелец), не плитками, как остальные списки сайта.
-    $view = ListView::fromRequest(request()) ?? ListView::LIST;
+    $view = ListView::fromRequest(request(), shelves: true) ?? ListView::LIST;
     // Строка вывоза — те же поля, что у машины: слово вывоза цветом и дни.
     $pickupRow = function ($offer) use ($user) {
         [$word, $tone] = \App\Offers\PickupState::of($offer, $user);
@@ -45,8 +45,8 @@
 <x-ui.shell title="Гараж" :count="$count ?: null">
     {{-- На телефоне сортировка и вид — справа от заголовка, а не своим рядом под ним (09.10.2026); на ПК — над списком. --}}
     @if ($groups)
-        <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="garage-head"><x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra></x-ui.toolbar></x-slot:actions>
-        <x-ui.toolbar :sort="$sort" name="garage" class="mb-4 max-md:hidden"><x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra></x-ui.toolbar>
+        <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="garage-head"><x-slot:extra><x-ui.view-switch :current="$view" :views="ListView::SHELVED"/></x-slot:extra></x-ui.toolbar></x-slot:actions>
+        <x-ui.toolbar :sort="$sort" name="garage" class="mb-4 max-md:hidden"><x-slot:extra><x-ui.view-switch :current="$view" :views="ListView::SHELVED"/></x-slot:extra></x-ui.toolbar>
     @endif
     @if (! $groups)
         <x-ui.empty class="mt-2">В гараже пусто</x-ui.empty>
@@ -70,31 +70,32 @@
                 @endforeach
             </x-ui.table>
         </div>
+    @elseif ($view === ListView::GRID)
+        {{-- «Плитками» (15.10.2026, начальник): одна сетка без подписей групп и лент вбок. --}}
+        <div class="cards cards--grid" data-controller="ticker">
+            @foreach (collect($groups)->flatten(1) as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach
+        </div>
+    @elseif ($view === ListView::SHELF)
+        {{-- «Лентами»: группа — лентой вбок (x-ui.shelf, 11.10.2026). --}}
+        <div class="flex flex-col" data-controller="ticker">
+            @foreach ($groups as $head => $rows)
+                {{-- Одна группа без подписи (только машины гаража) — сеткой: одна бесконечная строка вбок хуже. --}}
+                @if ($head)
+                    <x-ui.shelf :title="$head" :count="$rows->count()">@foreach ($rows as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach</x-ui.shelf>
+                @else
+                    <div class="cards cards--grid mb-6">@foreach ($rows as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach</div>
+                @endif
+            @endforeach
+        </div>
     @else
-        {{-- Строки — сгруппированный список `.list`, плитки — `x-garage.card`; без выбора вид решает ширина: на телефоне
-             строки, от 640 плитки (оба куска в разметке, кадры ленивые — скрытый их не грузит). --}}
-        @foreach (array_filter(['list' => $view === ListView::LIST || ! $view, 'grid' => $view === ListView::GRID || ! $view]) as $kind => $_)
-            <div @class(['flex flex-col', 'sm:hidden' => ! $view && $kind === 'list', 'max-sm:hidden' => ! $view && $kind === 'grid']) @if ($kind === 'grid') data-controller="ticker" @endif>
-                @foreach ($groups as $head => $rows)
-                    {{-- Плитками пачка — лентой вбок (x-ui.shelf, 11.10.2026); без пачек — сеткой. --}}
-                    @if ($kind === 'grid' && $head)
-                        <x-ui.shelf :title="$head" :count="$rows->count()">
-                            @foreach ($rows as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach
-                        </x-ui.shelf>
-                        @continue
-                    @endif
-                    @if ($head)<h2 class="list-head">{{ $head }}<span class="nums text-base font-normal text-ink-muted">{{ $rows->count() }}</span></h2>@endif
-                    @if ($kind === 'list')
-                        <div class="list mb-4">
-                            @foreach ($rows as $row)<x-garage.row :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach
-                        </div>
-                    @else
-                        <div class="cards cards--grid mb-6">
-                            @foreach ($rows as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach
-                        </div>
-                    @endif
-                @endforeach
-            </div>
-        @endforeach
+        {{-- Строки — сгруппированный список `.list`. --}}
+        <div class="flex flex-col">
+            @foreach ($groups as $head => $rows)
+                @if ($head)<h2 class="list-head">{{ $head }}<span class="nums text-base font-normal text-ink-muted">{{ $rows->count() }}</span></h2>@endif
+                <div class="list mb-4">
+                    @foreach ($rows as $row)<x-garage.row :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach
+                </div>
+            @endforeach
+        </div>
     @endif
 </x-ui.shell>

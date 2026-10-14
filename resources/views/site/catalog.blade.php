@@ -23,7 +23,7 @@
             <x-ui.toolbar class="md:mt-5" :sort="$sorting" :pills="$views" :dots="$gallery ? [] : ['urgent' => 'urgent', 'fresh' => 'fresh', 'ending' => 'hot']" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && ! \App\Support\ListView::isTable($view))<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
-                    <x-ui.view-switch :current="$view"/>
+                    <x-ui.view-switch :current="$view" :views="\App\Support\ListView::SHELVED"/>
                 </x-slot:extra>
             </x-ui.toolbar>
 
@@ -36,6 +36,25 @@
                     $toEstimate = $estimates->reject(fn ($o) => $o->openEstimates->first()?->isGiven());
                     $estimated = $estimates->filter(fn ($o) => $o->openEstimates->first()?->isGiven());
                 @endphp
+                @if ($view === \App\Support\ListView::GRID)
+                    {{-- «Плитками» (15.10.2026, начальник): одна сетка без подписей пачек и лент вбок, со страницами. На первой
+                         странице — срочные, «Нужно оценить» и «Открыты только Вам» первыми, «Ждут решения» — в конце: их узнают по
+                         метке на плитке. Обёртки `contents` держат id прежних лент. --}}
+                    @if ($offers->isEmpty() && $urgent->isEmpty() && $exclusive->isEmpty() && $estimates->isEmpty())
+                        @include('site.catalog-empty')
+                    @else
+                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && in_array($sort, ['-published', '-opened'], true) ? 'true' : 'false' }}" class="cards cards--grid" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                        @if ($urgent->isNotEmpty())<div id="catalog-urgent" class="contents">@foreach ($urgent as $offer)<x-offer.card :offer="$offer" :context="$context"/>@endforeach</div>@endif
+                        @if ($toEstimate->isNotEmpty())<div id="catalog-estimates" class="contents">@foreach ($toEstimate as $offer)<x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>@endforeach</div>@endif
+                        @if ($exclusive->isNotEmpty())<div id="catalog-only" class="contents">@foreach ($exclusive as $offer)<x-offer.card :offer="$offer" :context="$context" only/>@endforeach</div>@endif
+                        @foreach ($offers as $offer)
+                            <x-offer.card :offer="$offer" :context="$context"/>
+                        @endforeach
+                        @if ($estimated->isNotEmpty())<div id="catalog-estimated" class="contents">@foreach ($estimated as $offer)<x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>@endforeach</div>@endif
+                    </div>
+                    <div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
+                    @endif
+                @else
                 {{-- «Срочно» (12.10.2026, владелец): самой первой лентой, с огоньком и сроком приёма цветом огня. Строками и
                      таблицей — первыми строками с заголовком. --}}
                 @if ($urgent->isNotEmpty())
@@ -109,17 +128,8 @@
                 @if ($offers->isEmpty())
                     {{-- Всё ушло в ленты сверху («Срочно», «Открыты только Вам») — «пусто» не пишем. --}}
                     @if ($urgent->isNotEmpty() || $exclusive->isNotEmpty())
-                    @elseif ($buyer && ! $narrowed && ! $gallery)
-                        {{-- Покупателю пусто: одна фраза и контакт менеджера строкой. Видит всё (12.10.2026) — значит, у менеджера
-                             сейчас ничего нет; видит выбранные — менеджер ещё не открыл. Галерея от менеджера не зависит. --}}
-                        <x-ui.empty id="catalog-empty" class="pb-0">{{ $user->buyerSeesAll() ? 'Предложений в продаже сейчас нет' : ($manager ? $manager->shortName().' пока ничего вам не открыл' : 'Вам пока ничего не открыли') }}</x-ui.empty>
-                        @if ($manager)<div class="list mx-auto mt-4 max-w-sm"><x-ui.person-row :user="$manager" :size="44" class="row"/></div>@endif
                     @else
-                    {{-- «Сбросить» снимает чипы пустыми значениями, иначе ListPrefs вернёт запомненный город; пилюля и поиск — тоже.
-                         Без предзагрузки: курсор над ссылкой стирал бы память фильтра. --}}
-                    <x-ui.empty :href="$facets->resetUrl(['view' => null, 'q' => null])" :link="$narrowed ? 'Сбросить фильтры' : null" id="catalog-empty" data-turbo-prefetch="false">
-                        @if ($narrowed) По этим условиям ничего нет @elseif ($gallery) Пока пусто @else Предложений пока нет @endif
-                    </x-ui.empty>
+                        @include('site.catalog-empty')
                     @endif
                     @include('site.catalog-estimated')
                 @else
@@ -156,6 +166,7 @@
                     @endif
                     @include('site.catalog-estimated')
                     @unless ($shelves)<div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>@endunless
+                @endif
                 @endif
             </div>
         </div>

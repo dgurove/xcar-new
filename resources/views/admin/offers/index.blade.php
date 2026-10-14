@@ -19,7 +19,8 @@
     // Группы: «Публикация» — по слоту, «Опубликованные» и «Есть подтверждения» у админа — по тому, что делать. Остальное
     // одной группой.
     $groups = match (true) {
-        $searching => collect(['' => $offers->getCollection()]),
+        // «Плитками» (15.10.2026, начальник) — одна сетка без подписей пачек.
+        $searching, $view === \App\Support\ListView::GRID => collect(['' => $offers->getCollection()]),
         // «Из таблицы Кати»: заведённые черновики, под ними незаведённые номера ($ghosts) своей группой.
         $preset === 'legacy' => collect(['legacy' => $offers->getCollection()])->filter(fn ($list) => $list->isNotEmpty()),
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
@@ -35,7 +36,7 @@
 @endphp
 <x-ui.shell title="Предложения" :count="$step || $preset === 'legacy' ? null : $offers->total()" :phone-heading="false" :detail="$detail">
     <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['nofloor' => 'nofloor_given', 'unpriced' => 'unpriced_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
-        <x-slot:extra>@unless ($searching || $preset === 'legacy')<x-ui.view-switch :current="$view"/>@endunless</x-slot:extra>
+        <x-slot:extra>@unless ($searching || $preset === 'legacy')<x-ui.view-switch :current="$view" :views="$packable ? \App\Support\ListView::SHELVED : \App\Support\ListView::ALL"/>@endunless</x-slot:extra>
         <x-slot:actions>
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями, оно даёт
@@ -94,9 +95,9 @@
                     @endif
                 </x-ui.table>
             @else
-                @php $shelves = $view === \App\Support\ListView::GRID && $groups->keys()->first() !== ''; @endphp
+                @php $shelves = $view === \App\Support\ListView::SHELF && $groups->keys()->first() !== ''; @endphp
                 @if ($shelves)
-                    {{-- Пачки плитками — ленты вбок (11.10.2026), галка пачки — в заголовке ленты. --}}
+                    {{-- «Лентами» — пачка на ленту вбок (11.10.2026), галка пачки — в заголовке ленты. --}}
                     <div id="offers" data-controller="ticker">
                         @foreach ($groups as $key => $list)
                             <x-ui.shelf :title="$groupTitle($key, $list) ?? ''" :count="$list->count()">
