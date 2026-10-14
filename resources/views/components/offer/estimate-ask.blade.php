@@ -13,7 +13,10 @@
 <div data-controller="sheet" class="contents" data-action="estimate-ask-{{ $n }}:open@window->sheet#open">
     @if ($trigger)<button type="button" class="row w-full text-left text-accent-text" data-action="sheet#open"><x-ui.row-icon name="plus" tone="accent" size="s"/><span class="min-w-0 flex-1">{{ $label }}</span></button>@endif
     <x-ui.sheet id="estimate-ask-{{ $n }}" :title="$offer->asking_price ? 'Спросить менеджеров' : 'Отдать на оценку'">
-        <form method="post" action="/offers/{{ $n }}/estimates" class="flex flex-col gap-4" data-controller="select">
+        {{-- Ни закупочной, ни заявленной (14.10.2026, владелец): отдать можно, но шторка переспрашивает; менеджер видит
+             черновик как при «Скрыть» — без заявленной и без порога. --}}
+        <form method="post" action="/offers/{{ $n }}/estimates" class="flex flex-col gap-4" data-controller="select"
+            @if (! $declared) data-turbo-confirm="Вы уверены, что хотите отправить на оценку без закупочной цены?" data-turbo-confirm-label="Отдать" @endif>
             @csrf
             @if ($managers->count() > 8)<input type="search" class="field-input field-s" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif
             <div class="list">

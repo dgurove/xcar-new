@@ -435,9 +435,9 @@ class OfferController
             if ($key === 'legacy') {
                 $counts['legacy_drafts'] = $q->count();
             }
-            // Лаймовый бейдж у «Без продажной цены» и «Оцененных» — сколько ответов менеджеров ждут решения: оценки и свои цены
+            // Лаймовый бейдж у «Без закупочной», «Без продажной цены» и «Оцененных» — сколько ответов менеджеров ждут решения: оценки и свои цены
             // вместо цены админа («Согласен» решения не ждёт), 11.10.2026.
-            if (in_array($key, ['unpriced', 'priced'], true) && $user->canManageCrm()) {
+            if (in_array($key, ['nofloor', 'unpriced', 'priced'], true) && $user->canManageCrm()) {
                 $counts[$key.'_given'] = (clone $q)->whereHas('estimates', fn ($e) => $e->needsDecision())->count();
             }
         }

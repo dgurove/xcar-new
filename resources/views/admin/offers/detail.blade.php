@@ -92,7 +92,8 @@
                     $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                     $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
                 @endphp
-                @php $askMenu = ($correct || ($rate && ! $floorFirst)) && $offer->openEstimates->isEmpty() && $offer->declinedEstimates->isEmpty(); @endphp
+                {{-- Без закупочной тоже (14.10.2026, владелец): шторка спросит «Вы уверены…», менеджер оценивает без заявленной. --}}
+                @php $askMenu = ($correct || $rate) && $offer->openEstimates->isEmpty() && $offer->declinedEstimates->isEmpty(); @endphp
                 @php $auctionMenu = $admin && $offer->auctionActions() !== []; @endphp
                 @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu || $auctionMenu)
                     <div class="contents" data-controller="menu">
@@ -208,11 +209,12 @@
                                 data-controller="digits" data-action="input->digits#format" value="" data-detail-focus>
                             <button type="submit" form="detail-edit-{{ $n }}" name="then" value="advance" class="btn btn-s btn-accent shrink-0">Оценить</button>
                         </div>
+                        @endif
                         {{-- Оценка менеджером (11.10.2026): кто оценил — «Взять» / «Отклонить», кто думает — срок, «+ Отдать ещё»; группа —
-                             только когда уже отдали, первый раз — пунктом «Действий» (владелец: «отдать на оценку в действия»). --}}
+                             только когда уже отдали, первый раз — пунктом «Действий» (владелец: «отдать на оценку в действия»).
+                             И под закупочной: оценку дают и без неё (14.10.2026). --}}
                         @if ($rate && ($offer->openEstimates->isNotEmpty() || $offer->declinedEstimates->isNotEmpty()))
                             @include('admin.offers.estimates')
-                        @endif
                         @endif
                         @if ($offer->purchaseCar)
                             @include('admin.offers.purchase-prices', ['car' => $offer->purchaseCar])
