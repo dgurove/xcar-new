@@ -71,7 +71,7 @@
         @if ($busy && ! $offer->brand_id)
         <x-ui.row-link :key="$n"><span class="cell-title"><span class="skeleton arrive-bar w-40 max-w-full"></span></span></x-ui.row-link>
         @else
-        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name arrive-late">@if ($mark && $mark !== 'urgent')<span class="card-tone card-tone--{{ $mark }}" aria-label="{{ $mark === 'hot' ? 'Горящее' : 'Новое' }}"></span>@endif{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-ui.links :offer="$offer"/>@if ($noVin)<span class="ml-1.5 text-sm text-danger">Нет VIN</span>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name arrive-late">@if ($mark && $mark !== 'urgent')<span class="card-tone card-tone--{{ $mark }}" aria-label="{{ match ($mark) { 'hot' => 'Горящее', 'loss' => 'В минус', default => 'Новое' } }}"></span>@endif{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-ui.links :offer="$offer"/>@if ($noVin)<span class="ml-1.5 text-sm text-danger">Нет VIN</span>@endif</span></x-ui.row-link>
         @endif
         {{-- Телефон: строка переносится, а не режется «…» (владелец 04.10.2026: «поля не должны исчезать»); город, даты и
              прочие столбцы — в «Подробной таблице». --}}
@@ -116,7 +116,7 @@
     {{-- Закупочная на месте цены («Без закупочной цены») — кто завёл и когда стоит при ней, как при цене. --}}
     @if ($has('floor') && $floorSide)<td class="num nums">@if ($when)<span class="num-meta sm:hidden">{{ $when->translatedFormat($when->isToday() ? 'H:i' : ($when->isCurrentYear() ? 'j M' : 'j M Y')) }}@if ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="16" title="{{ $offer->moderator->name }}"/>@endif</span>@endif @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
     @elseif ($has('floor'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">@if ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>@endif
-    @if ($has('price'))<td class="num nums arrive-late">
+    @if ($has('price'))<td class="num nums arrive-late {{ $admin && ($offer->marginMark()['tone'] ?? null) === 'loss' ? 'text-danger' : '' }}">
         {{-- Краткая таблица (телефон, карточка рядом): кто завёл и когда — вплотную слева от цены (10.10.2026, начальник: с
              телефона непонятно, что когда создано и кем; слева всегда номер убытка, под ценой — подтверждения). Сегодня —
              время, иначе дата, за ней аватар. Столбец «Создано» в краткой таблице спрятан. --}}
@@ -133,6 +133,8 @@
         @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
         {{-- Телефон: подтверждения — под ценой, а не в конце второй строки: там их съедало «…» за номерами (владелец
              04.10.2026: «самое важное, никогда нельзя скрывать»). Есть подтверждения — они вместо закупочной. --}}
+        {{-- В минус или почти без наценки (`Offers\Margin`, 14.10.2026) — под ценой, только в CRM админу. --}}
+        @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin" class="cell-sub !ml-0 block"/>@endif
         @if ($count)<span class="cell-sub sm:hidden nums {{ $gallery ? '!text-accent-text' : '!text-urgent' }}">{{ $countWord }}</span>
         @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span class="cell-sub sm:hidden" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>@endif

@@ -25,6 +25,7 @@
     </div>
     <div class="shrink-0 text-right">
         <div class="nums">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</div>
+        <x-offer.margin :m="$deal->marginMark()" class="!ml-0 block"/>
         <div class="max-w-40 truncate text-sm sm:max-w-64 {{ $tone }} @if ($deal->state === \App\Offers\DealState::Active && $position) max-sm:hidden @endif">{{ $word }}</div>
     </div>
 </a>

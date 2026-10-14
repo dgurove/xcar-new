@@ -387,6 +387,12 @@ class Deal extends Model
         return $this->hasOne(GarageCar::class);
     }
 
+    /** Наценка над закупочной для CRM (`Margin`): у идущей сделки с ценой подтверждения. */
+    public function marginMark(): ?array
+    {
+        return $this->state === DealState::Active && ! $this->isGarage() ? Margin::of($this->amount, $this->cost) : null;
+    }
+
     /** Гаражная сделка: менеджер забирает машину себе на подготовку, цены у неё нет. */
     public function isGarage(): bool
     {

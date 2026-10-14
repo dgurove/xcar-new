@@ -58,6 +58,7 @@
         @else
             <x-ui.pill :tone="$offer->state->tone()">{{ $offer->crmTab() }}</x-ui.pill>
         @endif
+        <x-offer.margin :m="$offer->marginMark()" class="!ml-0"/>
         {{-- Срочное (12.10.2026) — капсулой огня со сроком приёма. --}}
         @if ($offer->isUrgent())
             <span class="pill pill-fire"><x-ui.icon name="fire" fill class="size-4"/>Срочно, до {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>

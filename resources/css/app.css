@@ -3005,13 +3005,14 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .card-tone--fresh { background: var(--color-fresh); }
   .card-tone--urgent { background: var(--color-fire); }
   .card-tone--hot { background: var(--color-urgent); }
-  .card-tone--only { background: var(--color-danger); }
+  .card-tone--only, .card-tone--loss { background: var(--color-danger); }
   /* Выбранная пилюля «Новые» / «Горящие» (каталог, переключатели CRM) — своим цветом, а не лаймом (владелец 12.10.2026);
      точка на ней — цветом надписи. */
   .pill[aria-current="true"] .card-tone { background: currentColor; }
   .pill[data-tone="fresh"][aria-current="true"] { background: var(--color-fresh); color: #fff; }
   .pill[data-tone="hot"][aria-current="true"] { background: var(--color-urgent); color: #fff; }
   .pill[data-tone="urgent"][aria-current="true"] { background: var(--color-fire); color: #fff; }
+  .pill[data-tone="loss"][aria-current="true"] { background: var(--color-danger); color: #fff; }
   @media (hover: hover) {
     a.pill[data-tone="fresh"][aria-current="true"]:hover { background: color-mix(in srgb, var(--color-fresh) 85%, #000); }
     a.pill[data-tone="hot"][aria-current="true"]:hover { background: color-mix(in srgb, var(--color-urgent) 85%, #000); }
@@ -3020,11 +3021,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .pill[data-tone="fresh"][aria-current="true"] .badge { color: var(--color-fresh); }
   .pill[data-tone="hot"][aria-current="true"] .badge { color: var(--color-urgent); }
   .pill[data-tone="urgent"][aria-current="true"] .badge { color: var(--color-fire); }
-  .card--fresh::before, .card--hot::before, .card--only::before, .card--urgent::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
+  .pill[data-tone="loss"][aria-current="true"] .badge { color: var(--color-danger); }
+  .card--fresh::before, .card--hot::before, .card--only::before, .card--loss::before, .card--urgent::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
   .card--fresh::before { background: var(--color-fresh); }
   .card--urgent::before { background: var(--color-fire); }
   .card--hot::before { background: var(--color-urgent); }
-  .card--only::before { background: var(--color-danger); }
+  .card--only::before, .card--loss::before { background: var(--color-danger); }
   /* Без контейнерных единиц (iOS до 16) полоса плитки встала бы на кадр — там в плитке точка у названия. */
   @supports not (top: 1cqi) {
     .cards--grid { --tone-stripe: none !important; --tone-dot: inline-block !important; }

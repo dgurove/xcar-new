@@ -16,6 +16,6 @@
 <dl class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 leading-snug">
     @foreach ($rows as $label => $value)
         <dt class="text-ink-dim">{{ $label }}@if ($label === 'Закупочная' && $offer->prices_include_vat) <span class="text-sm">с НДС</span>@endif</dt>
-        <dd @class(['nums text-right', 'font-semibold' => $label === 'Цена продажи'])>{{ $value }}</dd>
+        <dd @class(['nums text-right', 'font-semibold' => $label === 'Цена продажи', 'text-danger' => $label === 'Цена продажи' && ($offer->marginMark()['tone'] ?? null) === 'loss'])>{{ $value }}</dd>
     @endforeach
 </dl>

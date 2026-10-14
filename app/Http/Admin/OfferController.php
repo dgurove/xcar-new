@@ -174,8 +174,14 @@ class OfferController
                     Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent'),
                     Facet::toggle('fresh', 'Новые', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.published_at', '>=', now()->subHours(Offer::NEW_HOURS)))->dot('fresh'),
                     Facet::toggle('ending', 'Горящие', fn ($o) => CatalogQuery::ending($o))->dot('hot'),
+                    Facet::toggle('loss', 'В минус', fn ($o) => \App\Offers\Margin::scope($o))->dot('loss'),
                 ] : []),
                 Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true)),
+            ],
+            // Продажная у самой закупочной или ниже (`Offers\Margin`, 14.10.2026) — чип, пока такие есть.
+            'priced', 'slots' => [
+                ...self::facets(),
+                ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => \App\Offers\Margin::scope($o))->dot('loss')] : []),
             ],
             default => self::facets(),
         })->always();

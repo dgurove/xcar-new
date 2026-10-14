@@ -78,12 +78,13 @@
             @elseif (! $draft || filled(request('q')))<span class="{{ $tone }}">{{ $offer->crmTab() }}</span>@endif
             @if ($count)<span class="{{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count }} {{ $gallery ? \App\Support\Plural::of($count, ['интерес', 'интереса', 'интересов']) : 'подтв.' }}</span>@endif
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
+            @if ($admin && ! $busy)<x-offer.margin :m="$offer->marginMark()" class="!ml-0"/>@endif
             @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
         </span>
     </div>
     <div class="card-aside">
         @if ($offer->settlement)<x-ui.place class="card-city text-sm text-ink-dim">{{ $offer->settlement->title() }}</x-ui.place>@endif
-        <span class="card-price arrive-late">
+        <span class="card-price arrive-late {{ $admin && ($offer->marginMark()['tone'] ?? null) === 'loss' ? 'text-danger' : '' }}">
             @if ($unpriced && $rate && $offer->relationLoaded('openEstimates') && $offer->openEstimates->contains->isGiven())
                 {{-- Менеджер оценил (11.10.2026): закупочная → его оценка, как «закупочная → продажи» у оценённого. --}}
                 @if ($offer->floor_price)<span class="nums text-ink-muted">{{ Money::nums($offer->floor_price) }}&nbsp;→&nbsp;</span>@endif<x-offer.rate-chip :offer="$offer"/>

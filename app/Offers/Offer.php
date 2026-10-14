@@ -1150,6 +1150,13 @@ class Offer extends Model implements HasMedia
         return $this->urgent_at !== null && $this->state === OfferState::Open && $this->bidsOpen();
     }
 
+    /** Наценка над закупочной для CRM (`Margin`): у черновика, галереи и открытого. */
+    public function marginMark(): ?array
+    {
+        return in_array($this->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true)
+            ? Margin::of($this->asking_price, $this->floor_price) : null;
+    }
+
     /** Срочные с идущим приёмом — запросом (лента «Срочно», пилюля, чип CRM). */
     public function scopeUrgent(Builder $q): Builder
     {
@@ -1158,11 +1165,13 @@ class Offer extends Model implements HasMedia
 
     /**
      * Метка строки CRM (12.10.2026, владелец: «в CRM тоже помечать голубым и рыжим»): у открытого — горящее важнее
-     * нового (опубликовано за сутки); `hot` | `fresh` | null.
+     * нового (опубликовано за сутки); `hot` | `fresh` | null. Продажная не выше закупочной — `loss` красным важнее всего,
+     * и у черновика (14.10.2026).
      */
     public function crmTone(): ?string
     {
         return match (true) {
+            ($this->marginMark()['tone'] ?? null) === 'loss' => 'loss',
             $this->state !== OfferState::Open => null,
             $this->isUrgent() => 'urgent',
             $this->isEndingSoon() => 'hot',
