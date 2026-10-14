@@ -74,12 +74,14 @@ use App\Users\Console\SeedDemo;
 use App\Users\Console\TelegramAvatars;
 use App\Workflow\Console\RefillVendors;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -166,4 +168,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return $field ? ValidationException::withMessages([$field => ($field === 'vin' ? 'VIN' : 'Номер убытка').' уже у другой записи, обновите страницу']) : $e;
         });
+        // Адрес с номером вне int или не числом (`/purchases/1/2610051284` — номер предложения вместо машины закупки, старые
+        // ссылки, боты): привязка модели роняла запрос 500 на SQL. На чтении это просто «нет такой страницы».
+        // Подмена до отчёта и вида: 404 в лог не пишется, лишнего шума нет.
+        $exceptions->map(QueryException::class, fn (QueryException $e) => request()->isMethodSafe() && in_array($e->getCode(), ['22003', '22P02'], true)
+            ? new NotFoundHttpException(previous: $e) : $e);
     })->create();

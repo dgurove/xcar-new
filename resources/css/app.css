@@ -3929,6 +3929,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .proposal.is-accepting .proposal-mark { background: var(--color-accent); color: #fff; transition: background .25s; }
   .proposal.is-busy .proposal-acts { pointer-events: none; }
   .tag-await { gap: .25rem; --tag-bg: var(--color-surface-3); --tag-text: var(--color-ink-muted); }
+  @media (max-width: 639.98px) { :is(.cell-title, .surface-crm .cards) .tag-await { padding-inline: .3rem; } :is(.cell-title, .surface-crm .cards) .tag-await-text { display: none; } }
   @media (prefers-reduced-motion: no-preference) {
     .proposal { animation: proposal-in .5s cubic-bezier(.2, .8, .2, 1) both; }
     .proposal .proposal-spark { animation: spark-glow 2.4s ease-in-out infinite; }

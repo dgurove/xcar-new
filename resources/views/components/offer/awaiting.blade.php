@@ -1,3 +1,4 @@
 {{-- Метка «Ждём приём» (13.10.2026): ТС этого предложения ещё в «Заявках на приём» парковки (`Offer::awaitingPark`). Только
-     в CRM, сразу после названия, как «На аукцион»; проверяет вызывающий. --}}
-<span {{ $attributes->merge(['class' => 'tag tag-await ml-1.5 shrink-0']) }}><x-ui.icon name="clock" class="size-3.5"/>Ждём приём</span>
+     в CRM, сразу после названия, как «На аукцион»; проверяет вызывающий. В строке таблицы и плитке на телефоне — одни часы
+     (14.10.2026: словами метка съедала название до «Kia…»). --}}
+<span {{ $attributes->merge(['class' => 'tag tag-await ml-1.5 shrink-0']) }} title="Ждём приём" aria-label="Ждём приём"><x-ui.icon name="clock" class="size-3.5"/><span class="tag-await-text">Ждём приём</span></span>
