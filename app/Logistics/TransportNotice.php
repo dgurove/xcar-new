@@ -55,7 +55,7 @@ final class TransportNotice extends Notice
 
     public function offerNumber(): ?int
     {
-        return $this->transport->offer?->number;
+        return $this->transport->saleOffer()?->number;
     }
 
     public function category(): string

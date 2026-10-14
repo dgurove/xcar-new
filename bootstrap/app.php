@@ -60,6 +60,7 @@ use App\Park\Console\TickPark;
 use App\Push\Console\MakeKeys;
 use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
+use App\Support\Surface;
 use App\Telegram\Console\Poll;
 use App\Telegram\Console\SetProfile;
 use App\Telegram\Offers\Console\Lane as OffersBotLane;
@@ -154,14 +155,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // машины (`cars`: номер убытка, VIN живой) или в «у машины одна продажа и одно хранение» — ошибка поля, как у
         // сторожа, а не 500.
         $exceptions->map(UniqueConstraintViolationException::class, function (UniqueConstraintViolationException $e) {
-            $field = match (true) {
-                str_contains($e->getMessage(), 'cars_claim_ref_key_unique') => 'claim_ref',
-                str_contains($e->getMessage(), 'cars_vin_active_unique') => 'vin',
-                str_contains($e->getMessage(), 'offers_car_id_unique'), str_contains($e->getMessage(), 'park_vehicles_car_id_unique') => 'claim_ref',
-                default => null,
+            // Поле — как в форме этой поверхности: у парковки номер убытка — `ref`.
+            $ref = Surface::current() === Surface::Park ? 'ref' : 'claim_ref';
+            [$field, $message] = match (true) {
+                str_contains($e->getMessage(), 'cars_claim_ref_key_unique') => [$ref, 'Номер убытка уже у другой машины, обновите страницу'],
+                str_contains($e->getMessage(), 'cars_vin_active_unique') => ['vin', 'VIN уже у другой машины, обновите страницу'],
+                str_contains($e->getMessage(), 'offers_car_id_unique'), str_contains($e->getMessage(), 'park_vehicles_car_id_unique') => [$ref, 'Эту машину только что завели, обновите страницу'],
+                default => [null, null],
             };
 
-            return $field ? ValidationException::withMessages([$field => ($field === 'vin' ? 'VIN' : 'Номер убытка').' уже у другой записи, обновите страницу']) : $e;
+            return $field ? ValidationException::withMessages([$field => $message]) : $e;
         });
         // Адрес с номером вне int или не числом (`/purchases/1/2610051284` — номер предложения вместо машины закупки, старые
         // ссылки, боты): привязка модели роняла запрос 500 на SQL. На чтении это просто «нет такой страницы».

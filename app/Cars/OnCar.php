@@ -332,20 +332,27 @@ trait OnCar
         return [];
     }
 
-    /** Новый файл — к машине, с меткой дорожки. Свои свойства (`withCustomProperties`) — вместе с `carMediaMark()`. */
+    /** Новый файл — к машине, с меткой дорожки: её не снимут и свои свойства вызова (`CarFileAdder`). */
     public function addMedia(string|UploadedFile $file): FileAdder
     {
-        return $this->carRecord()->addMedia($file)->withCustomProperties($this->carMediaMark());
+        /** @var CarFileAdder $adder */
+        $adder = app(CarFileAdder::class);
+
+        return $adder->setSubject($this->carRecord())->setFile($file)->markedAs($this->carMediaMark());
     }
 
     public function addMediaFromRequest(string $key): FileAdder
     {
-        return $this->carRecord()->addMediaFromRequest($key)->withCustomProperties($this->carMediaMark());
+        return $this->addMedia(request()->file($key));
     }
 
+    /** Текст файлом (PDF акта, вложение письма) — как у spatie, но с меткой дорожки. */
     public function addMediaFromString(string $text): FileAdder
     {
-        return $this->carRecord()->addMediaFromString($text)->withCustomProperties($this->carMediaMark());
+        $tmp = tempnam(sys_get_temp_dir(), 'media-library');
+        file_put_contents($tmp, $text);
+
+        return $this->addMedia($tmp)->usingFileName('text.txt');
     }
 
     public function clearMediaCollection(string $collection = 'default'): void

@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Cars\Brand;
 use App\Cars\Car;
 use App\Cars\IdentityTaken;
+use App\Logistics\Transport;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\DeleteDraft;
 use App\Offers\Actions\MergeOffers;
 use App\Offers\Actions\UpdateOffer;
+use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Actions\PutOnSale;
@@ -23,6 +26,7 @@ use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Tests\TestCase;
 
@@ -190,6 +194,10 @@ class OneCarTest extends TestCase
 
         app(UpdateVehicle::class)($vehicle->fresh(), ['value' => 600000], $this->admin);
         $this->assertSame(Sale::floorFrom(600000), $offer->fresh()->floor_price);
+
+        Deal::create(['offer_id' => $offer->id, 'state' => DealState::Active, 'cost' => Sale::floorFrom(600000)]);
+        app(UpdateVehicle::class)($vehicle->fresh(), ['value' => 900000], $this->admin);
+        $this->assertSame(Sale::floorFrom(600000), $offer->fresh()->floor_price, 'в сделке закупочную правят в CRM, не оценочной парковки');
     }
 
     public function test_purchase_lot_goes_to_offers_on_its_own_car(): void
@@ -223,5 +231,35 @@ class OneCarTest extends TestCase
         app(DeleteDraft::class)($lonely, $this->admin);
         $this->assertNull(Car::find($car));
         $this->assertSame(0, Media::where('model_id', $car)->where('model_type', Car::class)->count());
+    }
+
+    public function test_park_document_keeps_park_mark_with_own_properties(): void
+    {
+        Storage::fake('private');
+        $vehicle = Vehicle::create(['ref' => 'AUT-26-100012', 'state' => VehicleState::Stored]);
+        $tmp = tempnam(sys_get_temp_dir(), 'doc');
+        file_put_contents($tmp, '%PDF-1.4 акт');
+
+        $media = $vehicle->addMedia($tmp)->usingFileName('akt.pdf')->withCustomProperties(['sha' => 'akt', 'source' => 'mail'])->toMediaCollection('papers');
+        $this->assertSame(Car::class, $media->model_type);
+        $this->assertTrue($media->getCustomProperty('park'), 'свои свойства вызова метку парковки не стирают');
+        $this->assertSame('mail', $media->getCustomProperty('source'));
+        $this->assertTrue(Sale::parkOwned($media));
+    }
+
+    public function test_park_transfer_is_not_a_sale_pickup_even_when_car_is_on_sale(): void
+    {
+        $vehicle = Vehicle::create(['ref' => 'AUT-26-100013', 'state' => VehicleState::Stored]);
+        $offer = app(PutOnSale::class)($vehicle, $this->admin);
+        $transfer = Transport::create(['car_id' => $vehicle->car_id, 'origin' => 'park', 'scope' => 'intercity']);
+        $pickup = Transport::create(['car_id' => $offer->car_id, 'origin' => 'sale', 'scope' => 'local']);
+
+        $this->assertNull($transfer->saleOffer(), 'перевод парковки шаги вывоза продажи не двигает');
+        $this->assertTrue($transfer->lane()->is($vehicle));
+        $this->assertTrue($pickup->saleOffer()->is($offer));
+        $this->assertTrue($pickup->lane()->is($offer));
+        $this->assertNull($pickup->parkVehicle(), 'вывоз продажи — не оплаты парковки');
+        $this->assertTrue(Transport::openFor($vehicle)->is($transfer));
+        $this->assertTrue(Transport::openFor($offer)->is($pickup));
     }
 }

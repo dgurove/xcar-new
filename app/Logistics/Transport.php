@@ -30,7 +30,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * водителя. Точки и «кто принимает» — свободным текстом. Кадры «Забрал» и «Сдал» — у самой перевозки (`photos`,
  * свойство `at`), в продажу машины они не попадают.
  */
-#[Fillable(['car_id', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'from_address', 'to_address',
+#[Fillable(['car_id', 'origin', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'from_address', 'to_address',
     'receiver', 'to_yard_id', 'cost', 'ship_on', 'arrive_on', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at', 'picked_at', 'delivered_at', 'cancelled_at'])]
 class Transport extends Model implements HasMedia
 {
@@ -58,10 +58,28 @@ class Transport extends Model implements HasMedia
         return $this->belongsTo(Car::class);
     }
 
-    /** Через что перевозку видно людям: продажа машины, иначе её хранение на парковке (название, кадры, ссылка). */
+    /** Перевозку заказала продажа (вывоз CRM), а не парковка (перевод между парковками). */
+    public function forSale(): bool
+    {
+        return $this->origin !== 'park';
+    }
+
+    /** Продажа, что заказала перевозку: её шаги вывоза, «забирать рано», расход гаража. У перевода парковки — нет. */
+    public function saleOffer(): ?Offer
+    {
+        return $this->forSale() ? $this->offer : null;
+    }
+
+    /** ТС парковки, что заказала перевод: её парковка в точке B и оплаты парковки. У вывоза продажи — нет. */
+    public function parkVehicle(): ?Vehicle
+    {
+        return $this->forSale() ? null : $this->vehicle;
+    }
+
+    /** Через что перевозку видно людям: та дорожка, что её заказала, иначе другая (название, кадры, ссылка). */
     public function lane(): Offer|Vehicle|null
     {
-        return $this->offer ?? $this->vehicle;
+        return $this->forSale() ? ($this->offer ?? $this->vehicle) : ($this->vehicle ?? $this->offer);
     }
 
     /** Продажа машины в CRM. */
@@ -163,11 +181,11 @@ class Transport extends Model implements HasMedia
      */
     public function pickupBlocker(User $by): ?string
     {
-        if ($by->isAdmin() || ! $this->offer || $this->state !== TransportState::Assigned) {
+        if ($by->isAdmin() || ! $this->saleOffer() || $this->state !== TransportState::Assigned) {
             return null;
         }
 
-        return PickupState::blocker($this->offer);
+        return PickupState::blocker($this->saleOffer());
     }
 
     /** Ведёт ли человек эту перевозку как исполнитель. */
@@ -204,9 +222,14 @@ class Transport extends Model implements HasMedia
             ->orWhere('from_address', 'ilike', $like)->orWhere('to_address', 'ilike', $like)->orWhere('carrier', 'ilike', $like));
     }
 
-    /** Открытая перевозка машины — одна: вторую не заводим, пока эта не доставлена или не отменена. */
+    /**
+     * Открытая перевозка дорожки — одна: вторую не заводим, пока эта не доставлена или не отменена. Вывоз продажи и перевод
+     * парковки у одной машины — разные перевозки: отмена сделки или поручение вывоза менеджеру перевод парковки не трогают.
+     */
     public static function openFor(Offer|Vehicle|Car $car): ?self
     {
-        return self::open()->where('car_id', $car instanceof Car ? $car->id : $car->car_id)->latest('id')->first();
+        return self::open()->where('car_id', $car instanceof Car ? $car->id : $car->car_id)
+            ->when(! $car instanceof Car, fn ($q) => $q->where('origin', $car instanceof Offer ? 'sale' : 'park'))
+            ->latest('id')->first();
     }
 }

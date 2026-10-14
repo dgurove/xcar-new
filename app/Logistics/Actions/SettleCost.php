@@ -57,7 +57,7 @@ final class SettleCost
         if ($party && ! $same && ! $old) {
             $invoice = ($this->issue)($party, $by, 'owed', ChargeKind::Tow, WorkDays::add(now(), self::DAYS),
                 lines: [['title' => 'Перевозка, '.$t->title().($t->regions() ? ', '.$t->regions() : ''), 'qty' => 1, 'unit' => 'pc', 'price' => $cost, 'kind' => ChargeKind::Tow->value]],
-                vehicle: $t->vehicle, offerId: $t->offer?->id);
+                vehicle: $t->parkVehicle(), offerId: $t->saleOffer()?->id);
             $t->update(['invoice_id' => $invoice->id]);
         }
 
@@ -80,7 +80,7 @@ final class SettleCost
      */
     private function garageCost(Transport $t, User $by, float $cost): void
     {
-        $car = $t->offer?->garageCar;
+        $car = $t->saleOffer()?->garageCar;
         $row = $t->garage_cost_id ? Cost::find($t->garage_cost_id) : null;
         if (! $car || $car->isFrozen()) {
             return;

@@ -61,8 +61,10 @@ class Car extends Model implements HasMedia
     protected static function booted(): void
     {
         static::saving(function (self $car) {
-            // Тип ТС — от кузова, иначе по марке и модели («Газель», «КАМАЗ»); вписанный руками не трогаем.
-            if (! $car->isDirty('category') && ($car->isDirty('body') && $car->body?->category())) {
+            // Тип ТС — от кузова, иначе по марке и модели («Газель», «КАМАЗ»); вписанный руками не трогаем. У машины на
+            // парковке тип — её ставка хранения: его ставит парковка, кузов из CRM его не меняет.
+            $parked = fn () => $car->exists && Vehicle::withoutGlobalScope(City::SCOPE)->where('car_id', $car->id)->exists();
+            if (! $car->isDirty('category') && $car->isDirty('body') && $car->body?->category() && ! ($car->category && $parked())) {
                 $car->category = $car->body->category();
             } elseif (! $car->category && ($car->brand_id || $car->body)) {
                 $car->category = $car->body?->category() ?? Category::guess($car->title()) ?? Category::Passenger;

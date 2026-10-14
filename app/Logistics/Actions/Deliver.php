@@ -47,7 +47,7 @@ final class Deliver
 
         DB::transaction(function () use ($t, $by) {
             $t->update(['state' => TransportState::Delivered, 'picked_at' => $t->picked_at ?? now(), 'delivered_at' => now()]);
-            if ($offer = $t->offer) {
+            if ($offer = $t->saleOffer()) {
                 $exit = $offer->position(Track::Service)?->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->first();
                 $exit
                     ? ($this->take)($offer, $exit, Actor::Keeper, $by)
@@ -66,7 +66,7 @@ final class Deliver
      */
     private function toYard(Transport $t, User $by): void
     {
-        $vehicle = $t->vehicle;
+        $vehicle = $t->parkVehicle();
         $yard = $t->toYard;
         if (! $vehicle || ! $yard || $vehicle->yard_id === $yard->id) {
             return;

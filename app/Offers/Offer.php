@@ -84,8 +84,9 @@ class Offer extends Model
                 Sale::end($o);
             }
         });
-        // Черновик удаляют (бросили, «Отменить», ночная уборка) — так же, записью в истории ТС.
-        static::deleting(fn (self $o) => Sale::end($o));
+        // Черновик удаляют (бросили, «Отменить», ночная уборка) — так же, записью в истории ТС; у архивного и снятого она
+        // уже есть.
+        static::deleting(fn (self $o) => in_array($o->state, [OfferState::Archived, OfferState::Cancelled], true) ? null : Sale::end($o));
     }
 
     protected function casts(): array
@@ -336,9 +337,13 @@ class Offer extends Model
      */
     public function costDeal(): ?Deal
     {
-        $garage = $this->garageCar()->with('deal')->first();
+        $deal = $this->relationLoaded('deal') ? $this->deal : $this->deal()->first();
+        if ($deal) {
+            return $deal;
+        }
+        $garage = $this->relationLoaded('garageCar') ? $this->garageCar : $this->garageCar()->first();
 
-        return $this->deal()->first() ?? ($garage && ! $garage->isSold() ? $garage->deal : null);
+        return $garage && ! $garage->isSold() ? $garage->deal : null;
     }
 
     /** Строка гаража: у кого машина «на подготовке» (менеджер продаёт сам). */

@@ -12,8 +12,9 @@
     $editable = $all && in_array($t->state, [TransportState::New, TransportState::Assigned], true);
     $sheet = 'assign-transport-'.$t->id;
     $carLink = match (true) {
-        $t->offer && $me->isStaff() => Surface::Crm->url('/offers/'.$t->offer->number),
+        $car instanceof \App\Offers\Offer && $me->isStaff() => Surface::Crm->url('/offers/'.$car->number),
         $t->vehicle && Surface::Park->opensFor($me) => Surface::Park->url('/cars/'.$t->vehicle->id),
+        $t->offer && $me->isStaff() => Surface::Crm->url('/offers/'.$t->offer->number),
         default => null,
     };
     $facts = array_filter([
@@ -37,7 +38,7 @@
         </x-slot:line>
         <x-slot:actions>
             @if ($editable && $t->executor)<button type="button" class="pill" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">Изменить</button>@endif
-            @if ($carLink)<a href="{{ $carLink }}" class="pill" data-turbo="false">{{ $t->offer ? 'Предложение в CRM' : 'Дело на парковке' }}</a>@endif
+            @if ($carLink)<a href="{{ $carLink }}" class="pill" data-turbo="false">{{ str_contains($carLink, '/offers/') ? 'Предложение в CRM' : 'Дело на парковке' }}</a>@endif
         </x-slot:actions>
         @error('transport')<x-ui.flash tone="danger" class="mt-3">{{ $message }}</x-ui.flash>@enderror
 

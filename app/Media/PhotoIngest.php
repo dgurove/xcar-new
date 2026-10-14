@@ -131,11 +131,11 @@ final class PhotoIngest
             // Кадр со знаком остаётся на закрытом диске: «Вернуть со знаком» в просмотрщике и выборка для уточнения знака.
             $marked = $clean ? $this->shrink($path, $max) : null;
 
-            // Дорожка машины (`Cars\OnCar`) кладёт кадр машине со своей меткой (`park` у парковки).
+            // Дорожка машины (`Cars\OnCar`) кладёт кадр машине со своей меткой (`park` у парковки, `CarFileAdder`).
             $media = $model->addMedia($webp)
                 ->usingFileName($this->fileName($name))
                 ->usingName(pathinfo($name, PATHINFO_FILENAME))
-                ->withCustomProperties($properties + (method_exists($model, 'carMediaMark') ? $model->carMediaMark() : []))
+                ->withCustomProperties($properties)
                 ->toMediaCollection($collection);
             if ($marked) {
                 $backup = UnmarkPhoto::markedPath($media);
