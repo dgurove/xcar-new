@@ -34,6 +34,10 @@ final class OfferEstimateController
                 }
                 $declared[$id] = $answers[$id] === '1';
             }
+        } else {
+            // Заявленной нет вовсе (14.10.2026) — оценка «вслепую» и остаётся такой: вписали закупочную, пока менеджер думает, —
+            // заявленная ему не покажется (как при «Скрыть»).
+            $declared = array_fill_keys($ids, false);
         }
         $created = $ask($offer, User::withRole(Role::Manager)->whereIn('id', $ids)->get(), $request->user(), $declared);
 
