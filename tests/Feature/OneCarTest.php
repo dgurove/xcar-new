@@ -6,6 +6,9 @@ use App\Cars\Brand;
 use App\Cars\Car;
 use App\Cars\IdentityTaken;
 use App\Logistics\Transport;
+use App\Mail\Account;
+use App\Mail\Extraction\Code;
+use App\Mail\Thread;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\DeleteDraft;
 use App\Offers\Actions\MergeOffers;
@@ -261,5 +264,17 @@ class OneCarTest extends TestCase
         $this->assertNull($pickup->parkVehicle(), 'вывоз продажи — не оплаты парковки');
         $this->assertTrue(Transport::openFor($vehicle)->is($transfer));
         $this->assertTrue(Transport::openFor($offer)->is($pickup));
+    }
+
+    public function test_claim_typed_on_park_reaches_the_sale_side(): void
+    {
+        $vehicle = Vehicle::create(['ref' => 'AUT-26-100014', 'state' => VehicleState::Stored]);
+        $offer = app(PutOnSale::class)($vehicle, $this->admin);
+        $account = Account::create(['slug' => 'offer', 'title' => 'Предложения', 'email' => 'offer@xcar.test', 'scope' => 'offers',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $thread = Thread::create(['account_id' => $account->id, 'subject' => 'AUT-26-100015', 'keys' => ['code:'.Code::key('AUT-26-100015')]]);
+        app(UpdateVehicle::class)($vehicle->fresh(), ['ref' => 'AUT-26-100015'], $this->admin);
+        $this->assertSame('AUT-26-100015', $offer->fresh()->claim_ref);
+        $this->assertSame($offer->id, $thread->fresh()->offer_id, 'письмо CRM с новым номером — у продажи той же машины');
     }
 }

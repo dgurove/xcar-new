@@ -82,16 +82,7 @@ final class UpdateOffer
             }
             (new RememberVin)($offer);
         }
-        // Номер убытка или VIN вписали руками — письма о той же ТС, что уже пришли и ни к чему не привязаны, едут к ней.
-        if (array_intersect(['claim_ref', 'vin'], $changed)) {
-            app(LinkThread::class)->forOffer($offer);
-        }
-        // Номер убытка нашёлся среди лотов Мигторга — поля и фото оттуда сразу, не дожидаясь синхронизации.
-        if (in_array('claim_ref', $changed, true)) {
-            // Лоты прежнего номера больше не этого предложения — свободны для своего.
-            DB::table('migtorg_lots')->where('offer_id', $offer->id)->where(fn ($q) => $q->whereNull('claim_ref_key')->orWhere('claim_ref_key', '!=', (string) $offer->claim_ref_key))->update(['offer_id' => null]);
-            ImportMigtorgLot::auto($offer);
-        }
+        self::identityChanged($offer, $changed);
         // Гараж запретили — ждущие «В гараж» отклоняются (решение владельца 03.10.2026), принять их уже нельзя.
         if (in_array('garage_allowed', $changed, true) && ! $offer->garage_allowed) {
             $offer->bids()->where('state', BidState::Active)->where('kind', BidKind::Garage)->get()->each(fn (Bid $bid) => app(DeclineBid::class)($bid, $by));
@@ -117,5 +108,22 @@ final class UpdateOffer
         }
 
         return $offer;
+    }
+
+    /**
+     * Номер убытка или VIN машины поменяли — из CRM или с парковки (`UpdateVehicle`: поле у машины одно): письма о той же
+     * ТС, что уже пришли и ни к чему не привязаны, едут к продаже; номер нашёлся среди лотов Мигторга — поля и фото оттуда
+     * сразу, не дожидаясь синхронизации.
+     */
+    public static function identityChanged(Offer $offer, array $changed): void
+    {
+        if (array_intersect(['claim_ref', 'vin'], $changed)) {
+            app(LinkThread::class)->forOffer($offer);
+        }
+        if (in_array('claim_ref', $changed, true)) {
+            // Лоты прежнего номера больше не этого предложения — свободны для своего.
+            DB::table('migtorg_lots')->where('offer_id', $offer->id)->where(fn ($q) => $q->whereNull('claim_ref_key')->orWhere('claim_ref_key', '!=', (string) $offer->claim_ref_key))->update(['offer_id' => null]);
+            ImportMigtorgLot::auto($offer);
+        }
     }
 }

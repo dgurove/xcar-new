@@ -33,6 +33,10 @@ final class UpdateVehicle
         if (! $changed) {
             return $vehicle;
         }
+        // Номер и VIN — у машины: у её продажи письма и лот Мигторга по новому номеру, как при правке из CRM.
+        if ($offer = $vehicle->offer) {
+            UpdateOffer::identityChanged($offer, array_keys($vehicle->carRecord()->getChanges()));
+        }
         // Было → стало (`Changes`), с 14.10.2026.
         $sources
             ? $vehicle->log(EventType::FilledFromDocs, $by, $diff + ['sources' => array_values(array_unique($sources))])
