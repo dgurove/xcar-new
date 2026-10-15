@@ -2626,6 +2626,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     }
     .action-bar-inner { width: auto; max-width: none; padding: 0; gap: .75rem; }
     .action-bar .btn { flex: 0 0 auto; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
+    /* Плашки под парящими кнопками нет — прозрачная («Отменить», «Не заявка» черновика из писем) просвечивала текстом
+       страницы (15.10.2026): здесь она плотная, как тихая. */
+    .action-bar .btn-ghost { background: var(--color-surface-3); }
+    @media (hover: hover) { .action-bar .btn-ghost:hover { background: var(--color-line); } }
     .dark .action-bar .btn { box-shadow: 0 8px 24px rgb(0 0 0 / .5); }
     body:has(.action-bar) .main-app, body.surface-site:has(.action-bar) #main { padding-bottom: 6rem; }
   }
