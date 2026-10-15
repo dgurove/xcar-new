@@ -101,7 +101,8 @@ class Car extends Model
             return $this->cost;
         }
 
-        return $this->deal?->garage_payer === GaragePayer::Us ? $this->deal->cost : null;
+        // Платим поставщику мы — по нашей закупке у него (`supplierCost`, 15.10.2026), менеджеру она не видна.
+        return $this->deal?->garage_payer === GaragePayer::Us ? $this->deal->supplierCost() : null;
     }
 
     /**
@@ -111,7 +112,7 @@ class Car extends Model
      */
     public function price(): ?int
     {
-        $price = $this->deal_id ? $this->deal?->cost : $this->cost;
+        $price = $this->deal_id ? $this->deal?->supplierCost() : $this->cost;
 
         return $price ? (int) $price : null;
     }

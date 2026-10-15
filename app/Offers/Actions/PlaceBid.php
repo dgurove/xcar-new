@@ -68,7 +68,10 @@ final class PlaceBid
         $staff = ! $manager->is($by);
         // Прежнее живое — заменено, а не отозвано: менеджер видел у старой цены «Отозвано» и не понимал, что случилось.
         $offer->bids()->where('user_id', $manager->id)->where('state', BidState::Active)->update(['state' => BidState::Replaced]);
-        $bid = $offer->bids()->create(['user_id' => $manager->id, 'placed_by' => $staff ? $by->id : null, 'kind' => $kind, 'amount' => $amount, 'comment' => $comment, 'state' => BidState::Active]);
+        // Закупочная, которую менеджер подтверждает (15.10.2026): с ней он и придёт в сделку — новая от поставщика его не
+        // касается. Правили закупочную после выхода в продажу — прежняя (`shown_floor`).
+        $bid = $offer->bids()->create(['user_id' => $manager->id, 'placed_by' => $staff ? $by->id : null, 'kind' => $kind, 'amount' => $amount, 'comment' => $comment, 'state' => BidState::Active,
+            'cost' => $offer->shown_floor ?? $offer->floor_price]);
         $offer->log(OfferEventType::BidPlaced, $by, ['bid_id' => $bid->id, 'amount' => $amount, ...($kind === BidKind::Garage ? ['garage' => true] : []),
             ...($staff ? ['by_staff' => true, 'manager' => $manager->name] : [])]);
         BidPlaced::dispatch($bid, $by, $staff);

@@ -7,12 +7,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['offer_id', 'user_id', 'placed_by', 'kind', 'amount', 'comment', 'state', 'decided_at', 'decided_by'])]
+#[Fillable(['offer_id', 'user_id', 'placed_by', 'kind', 'amount', 'comment', 'state', 'decided_at', 'decided_by', 'cost'])]
 class Bid extends Model
 {
     protected function casts(): array
     {
-        return ['state' => BidState::class, 'kind' => BidKind::class, 'amount' => 'int', 'decided_at' => 'datetime'];
+        return ['state' => BidState::class, 'kind' => BidKind::class, 'amount' => 'int', 'cost' => 'int', 'decided_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo

@@ -12,6 +12,7 @@ use App\Offers\DealAudience;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
+use App\Offers\OfferState;
 use App\Park\Sale;
 use App\Support\Changes;
 use App\Users\User;
@@ -27,9 +28,9 @@ final class UpdateOffer
 
     /**
      * @param  array  $log  к записи «Изменён» в историю — откуда правка (`source: migtorg`, `why: «По СМС …»`)
-     * @param  bool  $withDeal  новая закупочная — и в идущую сделку (`UpdateDealCost`); false — «И в сделке» сняли
+     * @param  bool  $reprice  переоценка админом («Вернуть в продажу»): новая закупочная — и для новых подтверждений
      */
-    public function __invoke(Offer $offer, array $data, ?User $by, array $log = [], bool $withDeal = true): Offer
+    public function __invoke(Offer $offer, array $data, ?User $by, array $log = [], bool $reprice = false): Offer
     {
         $was = $offer->value;
         // Показ сделки кончился, а его продлили — список снова видит её: уведомление всем, а не только новым.
@@ -44,11 +45,19 @@ final class UpdateOffer
         if ($offer->isDirty('vendor_id') && ! array_key_exists('prices_include_vat', $data) && $offer->vendor_id) {
             $offer->prices_include_vat = Vendor::offersVat($offer->vendor_id);
         }
-        // Закупочная одна (14.10.2026): у предложения с идущей сделкой она меняется и в сделке; не встанет там — не
-        // встаёт нигде.
-        $deal = $withDeal && $offer->isDirty('floor_price') && $offer->floor_price ? $offer->costDeal() : null;
-        if ($deal && $deal->cost !== $offer->floor_price) {
-            UpdateDealCost::guard($deal);
+        // Новая закупочная у предложения с идущей сделкой — только закупочная поставщика (`UpdateDealCost`): цена
+        // менеджера в сделке закреплена с его подтверждения (15.10.2026).
+        $deal = $offer->isDirty('floor_price') && $offer->floor_price ? $offer->costDeal() : null;
+        // Вышло в продажу — новая закупочная менеджерам не видна никак (15.10.2026): подтверждения закрепляют прежнюю
+        // (`shown_floor`, `PlaceBid::record`), заявленная, порог и скидки стоят прежними (пустая заявленная считалась бы от
+        // новой закупочной вверх до тысячи). Переоценка админом — новая цена для всех.
+        if ($reprice) {
+            $offer->shown_floor = null;
+        } elseif ($offer->isDirty('floor_price') && $offer->getOriginal('floor_price') && $offer->getOriginal('state') !== OfferState::Draft) {
+            $offer->shown_floor ??= (int) $offer->getOriginal('floor_price');
+            if ($offer->publish_price === null && ! $offer->isDirty('publish_price')) {
+                $offer->publish_price = Offer::declaredFrom((int) $offer->getOriginal('floor_price'));
+            }
         }
         // Правка пишет и предложение, и его машину (`Cars\Car`): история и «что поменялось» — по обеим.
         $diff = Changes::ofLane($offer);

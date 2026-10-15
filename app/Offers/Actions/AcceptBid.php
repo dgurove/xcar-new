@@ -54,8 +54,9 @@ final class AcceptBid
             $offer = $bid->offer;
             // Не выше закупочной — только с согласия (14.10.2026: сделка 3308 ушла в минус молча). Закупочную могли поднять
             // после того, как открыли шторку, — тогда переспрашиваем.
-            if (! $bid->isGarage() && ! $loss && $offer->floor_price && $bid->amount !== null && $bid->amount <= $offer->floor_price) {
-                throw ValidationException::withMessages(['bid' => 'Цена подтверждения '.Money::rub($bid->amount).' не выше закупочной '.Money::rub($offer->floor_price).': примите ещё раз']);
+            $floor = $bid->cost ?? $offer->shown_floor ?? $offer->floor_price;
+            if (! $bid->isGarage() && ! $loss && $floor && $bid->amount !== null && $bid->amount <= $floor) {
+                throw ValidationException::withMessages(['bid' => 'Цена подтверждения '.Money::rub($bid->amount).' не выше закупочной '.Money::rub($floor).': примите ещё раз']);
             }
 
             // Отдаём другому: прежняя сделка отменяется, прежний победитель узнаёт об этом.
@@ -84,8 +85,12 @@ final class AcceptBid
             if ($scheme->paysSelection()) {
                 $mode = CommissionMode::Withheld;
             }
+            // Закупочная менеджера — какой она была, когда он подтверждал (`bids.cost`), и закреплена навсегда (15.10.2026:
+            // «страховая скинула — наша заслуга»); нынешняя, если другая, — закупочная поставщика, только админу.
+            $cost = $bid->cost ?? $offer->shown_floor ?? $offer->floor_price;
             $deal = Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid->id, 'buyer_id' => $bid->user_id, 'amount' => $bid->amount, 'state' => DealState::Active,
-                'cost' => $offer->floor_price, 'owner_price' => $scheme->paysSelection() && ! $bid->isGarage() ? ($ownerPrice ?? $offer->owner_price ?? $offer->floor_price) : null,
+                'cost' => $cost, 'supplier_cost' => $offer->floor_price && $offer->floor_price !== $cost ? $offer->floor_price : null,
+                'owner_price' => $scheme->paysSelection() && ! $bid->isGarage() ? ($ownerPrice ?? $offer->owner_price ?? $cost) : null,
                 'share' => $share, 'commission' => $commission, 'commission_mode' => $mode, 'scheme' => $scheme, 'garage_payer' => $payer]);
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid->id, 'amount' => $bid->amount, 'commission' => $deal->commission, 'mode' => $mode->value, 'garage' => $payer?->value,
                 'scheme' => $scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $share], fn ($v) => $v !== null));

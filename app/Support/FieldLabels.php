@@ -27,7 +27,7 @@ use Illuminate\Support\Carbon;
 final class FieldLabels
 {
     /** Деньги в рублях: «183 840 → 211 200 ₽». */
-    private const MONEY = ['floor_price', 'owner_price', 'deal_owner_price', 'value', 'publish_price', 'asking_price', 'min_bid_price', 'assigned_price', 'cost', 'amount', 'commission', 'share'];
+    private const MONEY = ['floor_price', 'owner_price', 'deal_owner_price', 'value', 'publish_price', 'asking_price', 'min_bid_price', 'assigned_price', 'cost', 'supplier_cost', 'amount', 'commission', 'share'];
 
     /** Поле → перечисление с `label()`. */
     private const ENUMS = ['body' => Body::class, 'transmission' => Transmission::class, 'drive' => Drive::class, 'fuel' => Fuel::class,
@@ -51,7 +51,7 @@ final class FieldLabels
         'contact_name' => 'контакт', 'contact_phone' => 'телефон', 'contact_email' => 'почта ответственного', 'insurer_deadline_at' => 'срок от вендора',
         'category' => 'категория', 'oversize' => 'негабарит', 'value' => 'оценочная стоимость', 'policy_no' => '№ полиса', 'contract_kind' => 'основание', 'contract_no' => 'номер договора', 'contract_at' => 'дата договора',
         'assigned_price' => 'назначенная цена', 'pts' => 'ПТС', 'sts' => 'СТС', 'owner_party_id' => 'комитент', 'storage_rate' => 'своя ставка', 'storage_rate_note' => 'почему своя', 'billing_cadence' => 'счёт за хранение', 'sold_at' => 'продано', 'pickup_name' => 'кто заберёт', 'pickup_phone' => 'телефон покупателя',
-        'cost' => 'закупочная в сделке', 'deal_owner_price' => 'собственнику в сделке', 'amount' => 'цена подтверждения', 'commission' => 'вознаграждение', 'share' => 'наша доля',
+        'cost' => 'закупочная в сделке', 'supplier_cost' => 'закупочная поставщика', 'deal_owner_price' => 'собственнику в сделке', 'amount' => 'цена подтверждения', 'commission' => 'вознаграждение', 'share' => 'наша доля',
         'notes' => 'заметки', 'yard_id' => 'парковка', 'spot' => 'место', 'docs_required' => 'документы вендору', 'state' => 'состояние', 'offer_id' => 'предложение',
     ];
 

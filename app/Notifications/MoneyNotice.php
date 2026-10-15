@@ -142,7 +142,7 @@ final class MoneyNotice extends Notice
     public static function rosReceived(Invoice $i): self
     {
         $deal = $i->deal;
-        $sum = Money::rub((int) ($deal?->cost ?? $i->total));
+        $sum = Money::rub((int) ($deal?->supplierCost() ?? $i->total));
         $notice = (new self('Переведите '.$sum.' '.($deal?->offer?->vendor?->name ?? 'поставщику').' с Р.О.С.', 'Оплачен счёт Р.О.С. '.$i->label().', '.($deal?->offer?->titleWithYear() ?? $i->party->name),
             Surface::Crm->url('/work/deals/'.$i->deal_id), $deal?->offer?->number, true))->about($i);
         $notice->loud = true;

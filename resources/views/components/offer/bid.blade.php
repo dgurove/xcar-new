@@ -12,7 +12,9 @@
     $low = $active && ! $garage && ($min = $offer->minBid()) && $bid->amount < $min;
     // Не выше закупочной (14.10.2026, 3308 приняли в минус молча): красным в строке, «Принять» переспрашивает, и сервер
     // без согласия такую не примет (`AcceptBid`, `loss`).
-    $under = ! $garage && $offer->floor_price && $bid->amount !== null ? $offer->floor_price - $bid->amount : null;
+    // Закупочная, с которой менеджер подтверждал (`bids.cost`, 15.10.2026), — она закрепится в сделке.
+    $floor = $bid->cost ?? $offer->shown_floor ?? $offer->floor_price;
+    $under = ! $garage && $floor && $bid->amount !== null ? $floor - $bid->amount : null;
     $loss = $under !== null && $under >= 0;
     $give = (bool) $offer->deal;
     $inGarage = $garage ? (int) ($parked[$bid->user_id] ?? 0) : 0;
@@ -75,8 +77,8 @@
                             <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.button></div>
                         </form>
                     @else
-                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$offer->floor_price" :scheme="\App\Offers\DealScheme::choiceFor($offer->vendor?->deal_format, \App\Offers\DealScheme::forOffer($offer))" :schemes="\App\Offers\DealScheme::casesFor($offer->vendor)" :owner-price="$offer->owner_price" :fee="! $bid->user->isSuperBuyer()" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null"
-                            :confirm="$loss ? 'Принять за '.Money::rub($bid->amount).' при закупочной '.Money::rub($offer->floor_price).'? '.($under > 0 ? 'Сделка в минус '.Money::rub($under) : 'Наценки нет') : null">
+                        <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$floor" :supplier-cost="$offer->floor_price" :scheme="\App\Offers\DealScheme::choiceFor($offer->vendor?->deal_format, \App\Offers\DealScheme::forOffer($offer))" :schemes="\App\Offers\DealScheme::casesFor($offer->vendor)" :owner-price="$offer->owner_price" :fee="! $bid->user->isSuperBuyer()" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null"
+                            :confirm="$loss ? 'Принять за '.Money::rub($bid->amount).' при закупочной '.Money::rub($floor).'? '.($under > 0 ? 'Сделка в минус '.Money::rub($under) : 'Наценки нет') : null">
                             <input type="hidden" name="bid" value="{{ $bid->id }}">
                             @if ($loss)<input type="hidden" name="loss" value="1">@endif
                             {{-- ТС ещё у владельца — кто её забирает (04.10.2026): менеджер сделки по умолчанию; поручено

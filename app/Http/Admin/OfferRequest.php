@@ -129,12 +129,6 @@ class OfferRequest extends FormRequest
         return ['brand_id' => 'марка', 'model_id' => 'модель', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена'];
     }
 
-    /** Новая закупочная — и в идущую сделку: галка «И в сделке» под закупочной (нет её в форме — да). */
-    public function withDeal(): bool
-    {
-        return ! $this->has('deal_cost') || $this->boolean('deal_cost');
-    }
-
     /**
      * Данные для UpdateOffer. Полный редактор присылает всю форму: не пришла галка — снята, не пришёл список — пуст.
      * Карточка строки присылает только тронутые поля и их имена в `_fields[]` (save_bar_controller): остальное не трогаем,

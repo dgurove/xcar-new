@@ -64,7 +64,7 @@ final class ReturnToSale
             if ($audience !== null) {
                 $data['audience_rules'] = AudienceRules::normalize($audience) ?: null;
             }
-            ($this->update)($offer, $data, $by);
+            ($this->update)($offer, $data, $by, reprice: true);
 
             // Приём — выбранный срок, иначе заново, как у публикации (через 3 дня в 17:00, `ChangeOfferState`).
             Offer::whereKey($offer->id)->update(['bids_close_at' => $closeAt?->isFuture() ? $closeAt : null]);

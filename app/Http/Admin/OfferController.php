@@ -624,7 +624,7 @@ class OfferController
     {
         $unpriced = $offer->state === OfferState::Draft && ! $offer->asking_price;
         $hadFloor = (bool) $offer->floor_price;
-        $update($offer, $request->payload(), $request->user(), withDeal: $request->withDeal());
+        $update($offer, $request->payload(), $request->user());
         session()->forget(["mail-draft.{$offer->id}", "legacy-draft.{$offer->id}"]);
         // Нажали знак Мигторга в поле номера убытка: несохранённые правки формы (вендор, цены) легли вместе с номером.
         if ($request->input('then') === 'migtorg') {

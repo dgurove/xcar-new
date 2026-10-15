@@ -5,9 +5,11 @@
      последних — сколько собственнику или страховой (меньше закупочной — взаимозачёт), нам — подбор (цена минус эта сумма
      минус вознаграждение), режим — удерживает сам.
      07.10.2026: суммы строками (.fields), кнопка .sheet-foot (форма всегда в шторке). `fee` false — без вознаграждения
-     (супер-покупатель покупает у нас сам, 10.10.2026): поле и режим спрятаны, «Нам остаётся» — вся разница. --}}
+     (супер-покупатель покупает у нас сам, 10.10.2026): поле и режим спрятаны, «Нам остаётся» — вся разница.
+     15.10.2026: `cost` — закупочная, с которой менеджер подтверждал (закрепляется в сделке); `supplierCost` — нынешняя,
+     если другая, строкой только для админа; у идущей сделки сумма собственнику не правится (`ownerLocked`). --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null])
 @php
     use App\Offers\CommissionMode;
     use App\Offers\DealScheme;
@@ -39,6 +41,7 @@
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
         <dt class="text-sm text-ink-dim">Цена подтверждения</dt><dd class="nums text-right font-medium">{{ Money::rub($amount) }}</dd>
         <dt class="text-sm text-ink-dim">Закупочная</dt><dd class="nums text-right">{{ $cost === null ? 'не указана' : Money::rub($cost) }}</dd>
+        @if ($supplierCost !== null && $supplierCost !== $cost)<dt class="text-sm text-ink-dim">Закупочная поставщика</dt><dd class="nums text-right">{{ Money::rub($supplierCost) }}</dd>@endif
         @if ($margin !== null)<dt class="text-sm text-ink-dim" data-commission-target="oursOnly" @if ($dkp) hidden @endif>Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}" data-commission-target="oursOnly" @if ($dkp) hidden @endif>{{ Money::rub($margin) }}</dd>@endif
     </dl>
     <div class="fields">
@@ -46,7 +49,7 @@
             <div class="field @error('owner_price') field-invalid @enderror" data-commission-target="dkpOnly" @unless ($dkp) hidden @endunless>
                 <label for="{{ $id }}-owner" class="field-label"><span data-commission-target="payee">{{ $payee }}</span>, ₽</label>
                 <input type="hidden" name="owner_price" data-commission-target="ownerAmount" value="{{ $owner }}">
-                <input id="{{ $id }}-owner" type="text" class="field-input nums text-lg" data-commission-target="ownerDisplay" data-action="input->commission#input" value="{{ $owner ? Money::nums((int) $owner) : '' }}" autocomplete="off">
+                <input id="{{ $id }}-owner" type="text" class="field-input nums text-lg" data-commission-target="ownerDisplay" data-action="input->commission#input" value="{{ $owner ? Money::nums((int) $owner) : '' }}" autocomplete="off" @if ($ownerLocked) readonly @endif>
                 <p class="col-span-full pb-2 text-right text-sm text-ink-muted empty:hidden" data-commission-target="offset"></p>
                 @error('owner_price')<p class="field-error">{{ $message }}</p>@enderror
             </div>

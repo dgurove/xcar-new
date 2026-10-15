@@ -40,7 +40,7 @@
                         </form>
                     @else
                         <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()" :mode="$deal->commission_mode"
-                            :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" :schemes="\App\Offers\DealScheme::casesFor($deal->offer->vendor)" :owner-price="$deal->owner_price" submit="Сохранить"/>
+                            :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" :schemes="\App\Offers\DealScheme::casesFor($deal->offer->vendor)" :owner-price="$deal->owner_price" :owner-locked="true" :supplier-cost="$deal->supplier_cost" submit="Сохранить"/>
                     @endif
                 </x-ui.sheet>
             </div>
@@ -58,7 +58,9 @@
         } else {
             $rows[] = ['Цена подтверждения', Money::rub($deal->amount), $dd.' font-medium', true];
         }
-        $rows[] = ['Закупочная', $deal->cost === null ? 'не указана' : Money::rub($deal->cost), $dd, false];
+        // Закупочная — закреплённая с подтверждения менеджера (её он видит); поставщик скинул после — своей строкой, нам.
+        $rows[] = [$deal->supplier_cost !== null ? 'Закупочная у менеджера' : 'Закупочная', $deal->cost === null ? 'не указана' : Money::rub($deal->cost), $dd, false];
+        if ($deal->supplier_cost !== null) $rows[] = ['Закупочная поставщика', Money::rub($deal->supplier_cost), $dd, false];
         if ($deal->isGarageManager()) {
             $rows[] = ['Наша доля', $deal->share ? Money::rub($deal->share) : 'не вписана', $dd, false];
         } elseif ($deal->paysSelection()) {
@@ -70,7 +72,8 @@
             $rows[] = ['Разница', Money::rub($deal->margin()), $dd.($deal->margin() < 0 ? ' text-danger' : ''), false];
         }
         if (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['Вознаграждение', $deal->commission ? Money::rub($deal->commission) : 'нет', $dd, false];
-        if ($deal->ours() !== null) $rows[] = ['Нам', Money::rub($deal->ours()), $dd.' text-lg font-semibold'.($deal->ours() < 0 ? ' text-danger' : ''), true];
+        $ours = $deal->ours() === null ? null : $deal->ours() + $deal->supplierGain();
+        if ($ours !== null) $rows[] = ['Нам', Money::rub($ours), $dd.' text-lg font-semibold'.($ours < 0 ? ' text-danger' : ''), true];
         $rest = $compact ? array_filter($rows, fn ($r) => ! $r[3]) : [];
         $shown = $compact ? array_filter($rows, fn ($r) => $r[3]) : $rows;
     @endphp

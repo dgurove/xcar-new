@@ -7,12 +7,13 @@ use Illuminate\Support\Carbon;
 
 /**
  * Как менялись цены предложения (14.10.2026): из записей «Изменён» с было → стало (`Support\Changes`). «Цены» редактора
- * показывают прежнюю сумму зачёркнутой и по нажатию — все правки этой цены: когда, кто, откуда. Закупочная в сделке
- * (`cost`) — рядом с закупочной: её меняет та же правка (`UpdateDealCost`).
+ * показывают прежнюю сумму зачёркнутой и по нажатию — все правки этой цены: когда, кто, откуда. Закупочная поставщика
+ * в сделке (`supplier_cost`, 15.10.2026; до того — `cost`) — рядом с закупочной: её пишет та же правка (`UpdateDealCost`).
+ * Только админу.
  */
 final class PriceHistory
 {
-    public const FIELDS = ['value', 'floor_price', 'publish_price', 'asking_price', 'min_bid_price', 'cost'];
+    public const FIELDS = ['value', 'floor_price', 'publish_price', 'asking_price', 'min_bid_price', 'cost', 'supplier_cost'];
 
     /** @var array<string, list<array{at: Carbon, was: ?int, now: ?int, user: ?User, why: ?string}>> */
     private array $rows = [];
@@ -41,8 +42,9 @@ final class PriceHistory
     public function rows(string $field): array
     {
         $rows = $this->rows[$field] ?? [];
-        if ($field === 'floor_price' && isset($this->rows['cost'])) {
-            $rows = collect($rows)->concat(array_map(fn ($r) => $r + ['deal' => true], $this->rows['cost']))
+        $deal = [...($this->rows['cost'] ?? []), ...($this->rows['supplier_cost'] ?? [])];
+        if ($field === 'floor_price' && $deal) {
+            $rows = collect($rows)->concat(array_map(fn ($r) => $r + ['deal' => true], $deal))
                 ->sortByDesc(fn ($r) => $r['at']->getTimestamp())->values()->all();
         }
 

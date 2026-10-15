@@ -195,7 +195,8 @@ final class Search
             return ['title' => 'Письма', 'rows' => []];
         }
         // Полнотекст по письмам — самый тяжёлый запрос выдачи: один раз, четвёртая строка только говорит, что есть ещё.
-        $threads = Thread::whereIn('account_id', Account::where('scope', $scope)->pluck('id'))->where('messages_count', '>', 0)->search($t)
+        $threads = Thread::whereIn('account_id', Account::where('scope', $scope)->pluck('id'))->where('messages_count', '>', 0)
+            ->when($scope === Scope::Offers && auth()->user(), fn ($q) => $q->crmMailFor(auth()->user()))->search($t)
             ->latest('last_message_at')->limit(4)->get();
         $rows = $threads->take(3)
             ->map(fn (Thread $th) => new Hit($th->subject ?: 'Без темы', $base.'?window='.$th->id, [$th->last_message_at?->translatedFormat('j M')]))->all();

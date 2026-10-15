@@ -32,7 +32,7 @@ final class SupplierRequest
     public function rows(): array
     {
         return $this->deals->values()->map(fn (Deal $d, int $i) => [$i + 1, $d->offer->leaseRef() ?? $d->offer->claim_ref, $d->offer->brand?->name, $d->offer->model?->name,
-            $d->offer->year, $d->offer->vin, $d->offer->settlement?->name, $d->cost])->all();
+            $d->offer->year, $d->offer->vin, $d->offer->settlement?->name, $d->supplierCost()])->all();
     }
 
     /** Файл заявки: один лист, шапка жирным, цены разрядами. */

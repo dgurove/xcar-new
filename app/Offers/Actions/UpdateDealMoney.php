@@ -36,7 +36,8 @@ final class UpdateDealMoney
             $deal->update($garage
                 ? ['scheme' => $scheme, 'share' => $deal->isGarageManager() ? $share : null]
                 : ['commission' => $commission, 'commission_mode' => $selection ? CommissionMode::Withheld : $mode, 'scheme' => $scheme,
-                    'owner_price' => $selection ? ($ownerPrice ?? $deal->owner_price ?? $deal->cost) : null]);
+                    // Сумма собственнику закреплена с принятия, как и закупочная (15.10.2026, владелец: «никогда»).
+                    'owner_price' => $selection ? ($deal->owner_price ?? $deal->cost) : null]);
             $deal->offer->log(OfferEventType::Note, $by, ['text' => match (true) {
                 $garage => 'Наша доля: '.($deal->share ? Money::rub($deal->share) : 'нет'),
                 $selection => $scheme->payeeLabel().' '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),

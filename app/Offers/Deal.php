@@ -27,19 +27,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
- * Сделка: чьё подтверждение принято и почём. Деньги — `cost` (закупочная в момент
- * принятия, снимок), `commission` (агентское вознаграждение менеджеру) и режим:
+ * Сделка: чьё подтверждение принято и почём. Деньги — `cost` (закупочная, какой её видел менеджер, когда подтверждал,
+ * — закреплена навсегда, 15.10.2026: по ней счета, ДКП и всё, что видит менеджер; новую от поставщика пишет
+ * `supplier_cost`, только админу — `supplierCost()`), `commission` (агентское вознаграждение менеджеру) и режим:
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at', 'prepaid_at'])]
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at', 'prepaid_at'])]
 class Deal extends Model
 {
     use HidesDemo;
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime'];
+        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -388,10 +389,22 @@ class Deal extends Model
         return $this->hasOne(GarageCar::class);
     }
 
-    /** Наценка над закупочной для CRM (`Margin`): у идущей сделки с ценой подтверждения. */
+    /** Наценка над закупочной поставщика для CRM (`Margin`): у идущей сделки с ценой подтверждения. */
     public function marginMark(): ?array
     {
-        return $this->state === DealState::Active && ! $this->isGarage() ? Margin::of($this->amount, $this->cost) : null;
+        return $this->state === DealState::Active && ! $this->isGarage() ? Margin::of($this->amount, $this->supplierCost()) : null;
+    }
+
+    /** Наша закупка у поставщика — только админу (маржа, оплата поставщику); новой не было — закреплённая `cost`. */
+    public function supplierCost(): ?int
+    {
+        return $this->supplier_cost ?? $this->cost;
+    }
+
+    /** Сколько скинул поставщик после подтверждения менеджера: остаётся нам (только админу). */
+    public function supplierGain(): int
+    {
+        return $this->supplier_cost !== null && $this->cost !== null ? $this->cost - $this->supplier_cost : 0;
     }
 
     /** Гаражная сделка: менеджер забирает машину себе на подготовку, цены у неё нет. */

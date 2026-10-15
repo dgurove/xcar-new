@@ -119,6 +119,7 @@ class Offer extends Model
             'auction_planned_at' => 'datetime',
             'proposed_at' => 'datetime',
             'floor_price' => 'int',
+            'shown_floor' => 'int',
             'publish_price' => 'int',
             'asking_price' => 'int',
             'min_bid_price' => 'int',
@@ -629,9 +630,13 @@ class Offer extends Model
             // Черновик, что завела почта сама (`AutoOffer`), — тем, кому открыта почта CRM: раньше его заводили они
             // «Завести». Именно заведённый почтой (`autoDrafted`), а не любой без автора: у удалённого человека автор
             // тоже пуст.
+            // Было в сделке или в гараже — модератору закрыто совсем (15.10.2026, владелец: новая закупочная «не должна
+            // показываться никому — ни модераторам»): её история, цены, деньги сделки и письма deal@.
             return $q->where(fn ($w) => $w->whereIn('moderator_id', $user->teamIds())
                 ->when($user->canCrmMail(), fn ($m) => $m->orWhere(fn ($n) => $n->autoDrafted())))
-                ->whereDoesntHave('purchaseCar');
+                ->whereDoesntHave('purchaseCar')
+                ->whereNotExists(fn ($e) => $e->from('deals')->whereColumn('deals.offer_id', 'offers.id'))
+                ->whereNotExists(fn ($e) => $e->from('garage_cars')->whereColumn('garage_cars.offer_id', 'offers.id'));
         }
 
         return $q->whereRaw('false');

@@ -254,18 +254,20 @@ class Invoice extends Model implements HasMedia
 
     /**
      * Что видит менеджер: счета его контрагенту и счета по его сделкам (плательщик —
-     * его покупатель). Одна дверь для списка, страницы, PDF и заявки об оплате.
+     * его покупатель). Одна дверь для списка, страницы, PDF и заявки об оплате. Счёт вендору (вознаграждение от
+     * поставщика) — никогда: в нём его название, реквизиты и деньги со страховой (15.10.2026).
      */
     public function scopeVisibleToManager($q, User $user)
     {
-        return $q->where(fn ($w) => $w
+        return $q->where(fn ($k) => $k->whereNull('billing_invoices.kind')->orWhere('billing_invoices.kind', '!=', ChargeKind::Reward->value))->where(fn ($w) => $w
             ->when($user->party_id, fn ($x) => $x->where('party_id', $user->party_id), fn ($x) => $x->whereRaw('false'))
             ->orWhereHas('deal', fn ($d) => $d->where('buyer_id', $user->id)));
     }
 
     public function isVisibleToManager(User $user): bool
     {
-        return ($user->party_id && $this->party_id === $user->party_id) || ($this->deal_id && $this->deal?->buyer_id === $user->id);
+        return $this->kind !== ChargeKind::Reward
+            && (($user->party_id && $this->party_id === $user->party_id) || ($this->deal_id && $this->deal?->buyer_id === $user->id));
     }
 
     public function isOwed(): bool

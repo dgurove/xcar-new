@@ -108,7 +108,9 @@ class MailController
 
     private function screen(Request $request, ?string $forced = null)
     {
-        $accounts = Account::where('scope', $this->scope)->orderBy('title')->get();
+        $accounts = Account::where('scope', $this->scope)->orderBy('title')
+            // Не админу в CRM — только ящики, что принимают (`Thread::crmMailFor`): deal@ ему не виден.
+            ->when($this->scope === Scope::Offers && ! $request->user()->isAdmin(), fn ($a) => $a->whereNotNull('reply_account_id'))->get();
         // Открывается «Все» — почта прежде всего почта; «Требуют внимания» стоит первой пилюлей рядом.
         $box = $forced ?? (array_key_exists($request->query('box', ''), Boxes::BOXES) ? $request->query('box') : 'all');
         // Везде по умолчанию — свежие сверху (04.10.2026, владелец: «странная, логики нет»); «дольше ждут» — по возрастанию.
@@ -132,7 +134,8 @@ class MailController
         $boxAccounts = $mailbox ? collect([$mailbox]) : $accounts;
         $with = ['account', 'vendor', 'offer', 'offer.vendor', 'vehicle', 'vehicle.yard', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
 
-        $all = Thread::query()->whereIn('account_id', $boxAccounts->pluck('id'))->where('messages_count', '>', 0);
+        $all = Thread::query()->whereIn('account_id', $boxAccounts->pluck('id'))->where('messages_count', '>', 0)
+            ->when($this->scope === Scope::Offers, fn ($t) => $t->crmMailFor($request->user()));
         // Ветки пилюли: по ним выбираются дела. Письма дела потом берутся все — действие требуется от дела,
         // а не от одного письма, поэтому секция не должна разваливаться под фильтром.
         $pick = fn (string $box) => match ($box) {
@@ -894,7 +897,8 @@ class MailController
             'claim_ref' => $offer->claim_ref ?? '',
             // Закупочная с наценкой к оценочной — «Прошу согласовать реализацию за 756 000 ₽ (+10%)» (08.10.2026).
             'floor' => Sale::floorLabel($offer->floor_price, $offer->value),
-            'price' => $offer->deal?->base() ? number_format($offer->deal->base(), 0, '', ' ').' ₽' : ($offer->asking_price ? number_format($offer->asking_price, 0, '', ' ').' ₽' : ''),
+            // Письмо поставщику — наша закупка у него (`supplierCost`), а не закреплённая цена менеджера.
+            'price' => ($p = $offer->deal ? ($offer->deal->amount ?? $offer->deal->supplierCost()) : null) ? number_format($p, 0, '', ' ').' ₽' : ($offer->asking_price ? number_format($offer->asking_price, 0, '', ' ').' ₽' : ''),
             'manager' => $offer->deal?->buyer?->name ?? '',
             'insurer' => $offer->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),
@@ -980,6 +984,15 @@ class MailController
     private function guard(Thread $thread): void
     {
         abort_unless($thread->account->scope === $this->scope || $this->across($thread), 404);
+        self::guardSales($thread);
+    }
+
+    /** Ветка продаж, закрытая не админу (`Thread::crmMailFor`): deal@ и предложения, что были в сделке, — 404. */
+    private static function guardSales(?Thread $thread): void
+    {
+        $user = auth()->user();
+        abort_if($thread && $user && ! $user->isAdmin() && $thread->account?->scope === Scope::Offers
+            && ! Thread::whereKey($thread->id)->crmMailFor($user)->exists(), 404);
     }
 
     /**
@@ -989,6 +1002,7 @@ class MailController
     private function guardMessage(Message $message): void
     {
         abort_unless($message->account?->scope === $this->scope || ($message->thread && $this->across($message->thread)), 404);
+        self::guardSales($message->thread);
         // Управляющий с городом: письмо ветки другого города — 404 (ветки сужает область `Park\City`, письма — нет).
         abort_if($message->thread_id && City::viewing() && ! Thread::whereKey($message->thread_id)->exists(), 404);
     }

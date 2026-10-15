@@ -16,7 +16,7 @@ final class RosTransferDue extends Message
     {
         $deal = $this->invoice->deal;
 
-        return 'Переведите '.Money::rub((int) ($deal?->cost ?? $this->invoice->total)).' '.($deal?->offer?->vendor?->name ?? 'поставщику').' с Р.О.С.';
+        return 'Переведите '.Money::rub((int) ($deal?->supplierCost() ?? $this->invoice->total)).' '.($deal?->offer?->vendor?->name ?? 'поставщику').' с Р.О.С.';
     }
 
     protected function lines(): array

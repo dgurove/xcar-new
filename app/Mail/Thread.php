@@ -102,7 +102,7 @@ class Thread extends Model
      */
     public function scopeOfCar($query, Offer|Vehicle $car, ?User $user)
     {
-        $offers = fn ($q) => $q->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'));
+        $offers = fn ($q) => $q->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'))->when($user && ! $user->isAdmin(), fn ($s) => $s->crmMailFor($user));
         if ($car instanceof Vehicle) {
             return $query->where('vehicle_id', $car->id)->park();
         }
@@ -110,6 +110,23 @@ class Thread extends Model
 
         return $query->where(fn ($w) => $w->where(fn ($o) => $offers($o->where('offer_id', $car->id)))
             ->when($park, fn ($w) => $w->orWhere(fn ($p) => $p->whereIn('vehicle_id', Vehicle::where('car_id', $car->car_id)->select('id'))->park())));
+    }
+
+    /**
+     * Почта продаж не админу (модератору с галкой «Почта», 15.10.2026, владелец: новая закупочная «не должна показываться
+     * никому — ни модераторам»): только ящики, что принимают (offer@, отвечают с другого), и не ветки предложений, что были
+     * в сделке или гараже, — ответы страховой по сделке и их цены идут на deal@.
+     */
+    public function scopeCrmMailFor(Builder $query, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->whereIn('mail_threads.account_id', Account::where('scope', Scope::Offers)->whereNotNull('reply_account_id')->select('id'))
+            ->where(fn ($w) => $w->whereNull('mail_threads.offer_id')->orWhere(fn ($o) => $o
+                ->whereNotExists(fn ($e) => $e->from('deals')->whereColumn('deals.offer_id', 'mail_threads.offer_id'))
+                ->whereNotExists(fn ($e) => $e->from('garage_cars')->whereColumn('garage_cars.offer_id', 'mail_threads.offer_id'))));
     }
 
     /** Ветки с любым из номеров (`keys` пересекаются с `$keys`). */

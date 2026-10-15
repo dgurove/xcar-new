@@ -161,7 +161,8 @@ class MoneyController
     /** PDF счёта — плательщику или менеджеру сделки. */
     public function pdf(Request $request, Invoice $invoice)
     {
-        abort_unless($invoice->isVisibleToManager($request->user()), 404);
+        // Аннулированный — нет: в перевыставленном счёте могли быть прежние суммы.
+        abort_unless($invoice->isVisibleToManager($request->user()) && $invoice->state !== \App\Billing\InvoiceState::Void, 404);
         $media = $invoice->getFirstMedia('file');
         abort_unless($media, 404);
 
