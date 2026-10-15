@@ -12,12 +12,12 @@ final class PublishRefresh implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public array $topics, public array $paths, public string $key) {}
+    public function __construct(public array $topics, public array $paths, public string $key, public ?string $request = null) {}
 
     public function handle(Publisher $publish): void
     {
         // Метку снимаем до публикации: правка, пришедшая после, поставит новый хвост, а не потеряется.
         Cache::forget("live:tail:{$this->key}");
-        $publish->refresh($this->topics, $this->paths);
+        $publish->refresh($this->topics, $this->paths, $this->request);
     }
 }

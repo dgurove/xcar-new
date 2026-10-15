@@ -4,7 +4,9 @@
      тело карточки. Формы внутри отвечают в фрейм. Адрес
      страницы (?peek=) меняет detail_controller, не Turbo: data-turbo-action у фрейма делал из каждой загрузки визит всей
      страницы (снимок, turbo:load у шапки, кадров, таб-бара) — интерфейс моргал на каждом нажатии строки. --}}
+{{-- data-peek — чья карточка (16.10.2026): живой морф страницы, прочитанной ещё со старым ?peek, не подменяет карточку
+     строки, на которую уже перешли (`detail_controller` onMorphElement), иначе «Оценить» уходило в прошлую машину. --}}
 {{-- Закрытый фрейм несёт только потоки (карточки больше нет — `Detail::response`): Turbo берёт из ответа лишь сам фрейм, а
      сыгранный поток себя убирает, и фрейм снова :empty. --}}
 @props(['open' => true])
-<turbo-frame id="detail" class="split-detail" target="_top" data-detail-target="frame">@if ($open)<div class="detail-card" role="region" aria-label="Карточка">{{ $slot }}</div>@else{{ $slot }}@endif</turbo-frame>
+<turbo-frame id="detail" class="split-detail" target="_top" data-detail-target="frame">@if ($open)<div class="detail-card" role="region" aria-label="Карточка" data-peek="{{ is_string($peek = request()->query('peek')) ? $peek : '' }}">{{ $slot }}</div>@else{{ $slot }}@endif</turbo-frame>

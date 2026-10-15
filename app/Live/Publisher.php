@@ -65,9 +65,9 @@ final class Publisher
      * Перечитать открытые страницы. Запрос Turbo, из которого это пришло (`X-Turbo-Request-Id`), едет с событием: у автора
      * правки Turbo его узнаёт и страницу второй раз не перечитывает — ответ на его форму уже свежий.
      */
-    public function refresh(array|string $topics, array $paths): void
+    public function refresh(array|string $topics, array $paths, ?string $request = null): void
     {
-        $request = request()->header('X-Turbo-Request-Id');
+        $request ??= request()->header('X-Turbo-Request-Id');
         $this($topics, 'refresh', ['paths' => $paths] + (is_string($request) && $request !== '' ? ['request' => $request] : []));
     }
 
@@ -81,7 +81,10 @@ final class Publisher
         if (Cache::add("live:soon:{$key}", 1, self::SOON)) {
             $this->refresh($topics, $paths);
         } elseif (Cache::add("live:tail:{$key}", 1, 60)) {
-            PublishRefresh::dispatch((array) $topics, $paths, $key)->delay(self::SOON);
+            // Хвост несёт запрос автора: у него Turbo второй раз страницу не перечитывает (16.10.2026 — лишний морф под
+            // открытой карточкой ловил гонку с переходом к следующей строке).
+            $request = request()->header('X-Turbo-Request-Id');
+            PublishRefresh::dispatch((array) $topics, $paths, $key, is_string($request) ? $request : null)->delay(self::SOON);
         }
     }
 

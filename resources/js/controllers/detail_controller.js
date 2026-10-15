@@ -97,6 +97,19 @@ export default class extends Controller {
                 || (e.target === this.element && name === 'data-open')) e.preventDefault();
         };
         document.addEventListener('turbo:before-morph-attribute', this.onMorphAttribute);
+        // Живой морф страницы не подменяет карточку (16.10.2026, начальник: «Оценить» уходило в прошлую машину). Turbo
+        // перечитывает страницу по адресу на начало запроса и с ним же возвращает адрес: ответ, прочитанный ещё со старым
+        // ?peek, приходил, когда лист уже на следующей строке (advance, ↓, нажатие), — морф вставлял карточку прежней
+        // строки, выделение и адрес уезжали за ней, и «Оценить» сохраняло не ту машину. Какая строка открыта — знает
+        // `src` фрейма (его морф не трогает, `chosen`), чья карточка в ответе — `data-peek` у .detail-card (x-ui.detail):
+        // чужая или лист ещё грузит свою — фрейм не трогаем, список вокруг обновляется; после морфа адрес — снова на
+        // открытой строке (`onMark`). Своя той же строки морфится как раньше.
+        this.onMorphElement = (e) => {
+            if (e.target !== this.frameTarget) return;
+            const incoming = e.detail.newElement?.querySelector?.('.detail-card')?.dataset.peek ?? '';
+            if (this.frameTarget.hasAttribute('busy') || this.frameTarget.hasAttribute('aria-busy') || incoming !== (this.chosen ?? '')) e.preventDefault();
+        };
+        document.addEventListener('turbo:before-morph-element', this.onMorphElement);
         // Уход со страницы с несохранённым в карточке (таб-бар, «Открыть страницу», ссылка) — тот же вопрос, что у листа.
         // Ссылку после «Не сохранять» нажимаем заново — Turbo берёт её действие (replace), фрейм и прочее как было;
         // визит из скрипта повторяется тем же адресом.
@@ -151,7 +164,7 @@ export default class extends Controller {
         // Морф, загрузка страницы и свежая строка приносят строки без выделения (его знает только адрес) — вернуть. Свежую
         // строку ловит наблюдатель: поток из карточки, пришедшей со страницей, рисуется раньше, чем подключится контроллер,
         // и turbo:before-stream-render сюда не доходит — после перезагрузки строка стояла невыделенной.
-        this.onMark = () => this.mark();
+        this.onMark = () => { this.keepAddress(); this.mark(); };
         ['turbo:load', 'turbo:morph'].forEach((n) => document.addEventListener(n, this.onMark));
         // После морфа раскладка — по тому, что в фрейме на самом деле: карточку убрали с сервера (предложение удалили) —
         // data-open снимается, иначе список оставался бледным с отступом под листом, которого нет.
@@ -169,6 +182,7 @@ export default class extends Controller {
         this.frameTarget.removeEventListener('turbo:frame-render', this.onRendered);
         this.frameTarget.removeEventListener('turbo:fetch-request-error', this.onFail);
         document.removeEventListener('turbo:before-morph-attribute', this.onMorphAttribute);
+        document.removeEventListener('turbo:before-morph-element', this.onMorphElement);
         document.removeEventListener('turbo:before-visit', this.onVisit);
         document.removeEventListener('turbo:click', this.onLink);
         removeEventListener('popstate', this.onPop);
@@ -496,6 +510,22 @@ export default class extends Controller {
         row?.scrollIntoView({ block: 'nearest', behavior: reduce.matches ? 'auto' : 'smooth' });
     }
 
+    // Открытая строка — по адресу карточки во фрейме (`src` ставит show(), морф его не трогает); без него — по адресу
+    // страницы (карточка пришла с ней). Закрыт лист — никакой.
+    get chosen() {
+        if (!this.open) return null;
+        const src = this.frameTarget.getAttribute('src');
+        return new URL(src || location.href, location.href).searchParams.get('peek');
+    }
+
+    // Морф по живому обновлению, прочитанный со старым ?peek, вернул бы адрес на прежнюю строку — возвращаем открытую.
+    keepAddress() {
+        const key = this.chosen;
+        if (!key || new URL(location.href).searchParams.get('peek') === key) return;
+        const url = new URL(location.href);
+        url.searchParams.set('peek', key);
+        this.address(url);
+    }
     // Выделение — по ?peek= в адресе (перезагрузка, морф, свежая строка из потока).
     mark() {
         const key = new URL(location.href).searchParams.get('peek');
