@@ -1,10 +1,11 @@
 @props(['title' => null, 'cache' => 'no-preview', 'description' => null, 'index' => false])
 @php
     $surface = \App\Support\Surface::current();
-    // Тема: cookie на общий домен — одна на три приложения и известна серверу, поэтому
+    // Тема: cookie на общий домен — одна на четыре приложения и известна серверу, поэтому
     // <html class="dark"> и цвет полосы приходят готовыми, без мигания и без подмены мета Turbo.
     $theme = in_array(request()->cookie('theme'), ['dark', 'light'], true) ? request()->cookie('theme') : null;
-    // Цвет строки состояния = цвет шапки (--color-bar в app.css); клиент берёт его из data-* меты (resources/js/theme.js).
+    // Цвет строки состояния до первой отрисовки = --color-bar в app.css (дальше его ставит resources/js/theme.js);
+    // расхождение ловит scripts/blade-lint.php.
     $bar = ['light' => '#ffffff', 'dark' => '#161616'];
     // Замок менеджера: состояние и конец окна — свежие на каждой странице (узел замка постоянный и сам их не обновит).
     // Окно замка — только на хосте, открытом человеку: на чужом его встречает стена, а /lock там закрыт.
@@ -19,7 +20,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     {{-- Интерфейс только русский: переводчик браузера ломал обрывки («12 д 5 ч», госномера) — 07.10.2026. --}}
     <meta name="google" content="notranslate">
-    <meta name="theme-color" content="{{ $bar[$theme ?? 'light'] }}" data-light="{{ $bar['light'] }}" data-dark="{{ $bar['dark'] }}">
+    <meta name="theme-color" content="{{ $bar[$theme ?? 'light'] }}">
     <meta name="view-transition" content="same-origin">
     {{-- Без превью из кэша: иначе advance на виденный адрес рисует снимок, а через миг молча
          подменяет свежим — скачок после анимации. Ответ обычно уже в руках (префетч). --}}
@@ -65,8 +66,7 @@
     <script>
         if (matchMedia('(prefers-color-scheme: dark)').matches) {
             document.documentElement.classList.add('dark');
-            const meta = document.querySelector('meta[name="theme-color"]');
-            meta.content = meta.dataset.dark;
+            document.querySelector('meta[name="theme-color"]').content = @json($bar['dark']);
         }
     </script>
     @endif

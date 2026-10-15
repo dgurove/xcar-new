@@ -32,6 +32,17 @@ foreach ($files as $file) {
 }
 @rmdir($dir);
 
+// Цвет строки состояния до первой отрисовки ($bar в x-ui.layout) — тот же, что у шапки (--color-bar в app.css):
+// разойдутся — строка под часами и шапка станут разного цвета, и нигде не будет ошибки.
+$css = file_get_contents(__DIR__.'/../resources/css/app.css');
+$layout = file_get_contents(__DIR__.'/../resources/views/components/ui/layout.blade.php');
+preg_match('/@theme\s*\{[^}]*?--color-bar:\s*(#[0-9a-f]+)/i', $css, $light);
+preg_match('/\n\.dark\s*\{[^}]*?--color-bar:\s*(#[0-9a-f]+)/i', $css, $dark);
+preg_match("/\\\$bar = \\['light' => '(#[0-9a-f]+)', 'dark' => '(#[0-9a-f]+)'\\]/i", $layout, $bar);
+if (! $light || ! $dark || ! $bar || strcasecmp($light[1], $bar[1]) || strcasecmp($dark[1], $bar[2])) {
+    $bad[] = 'components/ui/layout.blade.php: $bar не совпадает с --color-bar в app.css';
+}
+
 if ($bad) {
     fwrite(STDERR, "Шаблоны не собираются:\n  ".implode("\n  ", $bad)."\n");
     exit(1);

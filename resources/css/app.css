@@ -155,9 +155,10 @@
 }
 
 :root { color-scheme: light; }
-/* Низ шапки — от него стоит всё, что липнет под ней. Строка состояния глухая, и верхний вырез env() отдаёт нулём; он
-   здесь ради установок, где строка ещё прозрачная. */
-:root { --header-edge: calc(var(--spacing-header) + env(safe-area-inset-top)); }
+/* Верхний вырез и низ шапки — одним местом. Строка состояния глухая, и вырез обычно ноль; он нужен установкам, где
+   строка ещё прозрачная. Вырез считается на корне и наследуется: в верхнем слое (<dialog>: шторки, просмотр фото)
+   установленного приложения iOS сам env() отдаёт 0, и кнопки уходили под часы. */
+:root { --safe-top: env(safe-area-inset-top); --header-edge: calc(var(--spacing-header) + var(--safe-top)); }
 @media (min-width: 768px) { :root { --spacing-header: 80px; } } /* py-2 + два ряда по 30 px + 4 px между */
 
 /* Тёмная тема — ступени тёмной iOS: фон чёрный, группа светлее фона (#1c1c1e), внутри группы и в шторке —
@@ -1355,7 +1356,7 @@
   @media (min-width: 640px) { :is(.table-box.is-scroll, .table-wrap.is-wide .table-box) .table :is(thead th, tr.table-group > th) { top: 0; } }
 
   /* Страницы покупателя (x-pickup.layout): колонка до 28rem на фоне страницы, знак сверху. */
-  .pickup-main { @apply mx-auto flex min-h-dvh w-full max-w-md flex-col px-4; padding-top: calc(env(safe-area-inset-top) + 1.25rem); padding-bottom: calc(env(safe-area-inset-bottom) + 2rem); }
+  .pickup-main { @apply mx-auto flex min-h-dvh w-full max-w-md flex-col px-4; padding-top: calc(var(--safe-top) + 1.25rem); padding-bottom: calc(env(safe-area-inset-bottom) + 2rem); }
   .pickup-logo { @apply mb-6 self-center; }
 
   /* Пропуск: QR на плашке, состояние полосой сверху; факты и действия — плашками .list строками .row. */
@@ -1411,7 +1412,7 @@
   .qr-scanner-guide > svg { position: absolute; inset: 0; margin: auto; width: 35%; height: 35%; color: #fff; opacity: 0; scale: .6; transition: opacity .2s, scale .25s var(--ease-out); }
   .qr-scanner.is-found .qr-scanner-guide { scale: .92; background-color: rgb(151 191 13 / .55); }
   .qr-scanner.is-found .qr-scanner-guide > svg { opacity: 1; scale: 1; }
-  .qr-scanner-top { position: absolute; inset: 0 0 auto 0; display: grid; grid-template-columns: 2.75rem 1fr 2.75rem; align-items: center; gap: .75rem; padding: calc(env(safe-area-inset-top) + .75rem) 1rem .75rem; }
+  .qr-scanner-top { position: absolute; inset: 0 0 auto 0; display: grid; grid-template-columns: 2.75rem 1fr 2.75rem; align-items: center; gap: .75rem; padding: calc(var(--safe-top) + .75rem) 1rem .75rem; }
   .qr-scanner-title { text-align: center; font-size: var(--text-lg); font-weight: 500; }
   .qr-scanner-btn { display: inline-flex; width: 2.75rem; height: 2.75rem; align-items: center; justify-content: center; border-radius: 999px; background: rgb(255 255 255 / .16); color: #fff; backdrop-filter: blur(12px); }
   .qr-scanner-btn svg { width: 1.375rem; height: 1.375rem; }
@@ -1780,7 +1781,7 @@
      Строка предмета над шагом; документы — листом 4:3 с первой страницей и именем, фото — квадратами; отмеченное —
      круг с галкой, неотмеченное притушено (обводок нет — правило кита). Чтение — полоса и кольцо в строке. Поля —
      группы `.list`: значение строкой 15, под ним поле и источник; «было → в документе» — стрелкой в строке. */
-  .scan { display: flex; flex-direction: column; min-height: calc(100dvh - 6.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  .scan { display: flex; flex-direction: column; min-height: calc(100dvh - 6.5rem - var(--safe-top) - env(safe-area-inset-bottom)); }
   .scan > form { display: flex; flex-direction: column; flex: 1; }
   .scan .scan-foot { margin-top: auto; }
   @media (min-width: 640px) { .scan { min-height: min(32rem, calc(100dvh - 12rem)); } }
@@ -1969,7 +1970,7 @@
   .sheet.is-closing::backdrop { animation: fade var(--dur-fast) reverse both; }
   /* Окно чтения на телефоне — экран целиком: без ручки и скруглений, «‹» слева, крестик спрятан. */
   @media (max-width: 639.98px) {
-    .sheet-tall { height: 100dvh; max-height: none; border-radius: 0; padding-top: calc(.75rem + env(safe-area-inset-top)); }
+    .sheet-tall { height: 100dvh; max-height: none; border-radius: 0; padding-top: calc(.75rem + var(--safe-top)); }
     .sheet-tall::before { display: none; }
     .sheet-tall .sheet-x { display: none; }
   }
@@ -2302,7 +2303,7 @@
   [data-controller~="timer"] { white-space: nowrap; }
   .reply-more > summary::-webkit-details-marker { display: none; }
   .toasts { @apply pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4;
-    top: calc(.75rem + env(safe-area-inset-top)); }
+    top: calc(.75rem + var(--safe-top)); }
   .toast { @apply pointer-events-auto rounded-(--radius-l) bg-chrome px-4 py-3 text-sm text-white shadow-(--shadow-drop); animation: toast-in var(--dur-slow) var(--ease-spring) both; touch-action: pan-x; }
   .toast-pass { pointer-events: none; }
   .toast.is-leaving { animation: toast-out var(--dur-fast) var(--ease-in) both; }
@@ -2320,7 +2321,7 @@
      кнопками действий. --depth ставит контроллер: 0 — новая; --top-h — её высота, прежние
      на телефоне той же высоты, чтобы выглядывать снизу. */
   .banners { @apply pointer-events-none fixed z-[55] grid;
-    inset-inline: .5rem; top: calc(env(safe-area-inset-top) + .5rem); }
+    inset-inline: .5rem; top: calc(var(--safe-top) + .5rem); }
   .banner { @apply pointer-events-auto relative rounded-(--radius-xl); grid-area: 1 / 1; align-self: start;
     background: var(--color-surface); box-shadow: var(--shadow-drop); touch-action: none;
     translate: 0 calc(var(--depth, 0) * 9px); scale: calc(1 - var(--depth, 0) * .05); transform-origin: 50% 0;
@@ -2380,11 +2381,10 @@
   .impersonation-room { @apply h-16 shrink-0; }
   body:has(.action-bar) .impersonation { bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 5.25rem); }
   @media (max-width: 767px) {
-    html.kb-open .impersonation { bottom: calc(max(env(safe-area-inset-bottom), 0px) + .75rem); }
     html.kb-open .impersonation { display: none; }
   }
   @media (max-width: 1023px) {
-    body:has(.chat-page) .impersonation { bottom: auto; top: calc(env(safe-area-inset-top) + 7rem); }
+    body:has(.chat-page) .impersonation { bottom: auto; top: calc(var(--safe-top) + 7rem); }
     body:has(.chat-page) .impersonation-room { display: none; }
   }
   @media (min-width: 768px) {
@@ -2402,7 +2402,7 @@
 
   /* Шапка — как navigation bar: волосяная линия и заголовок экрана по центру
      появляются, когда содержимое ушло под неё (.is-scrolled / .is-past-title). */
-  .header { @apply sticky top-0 z-40 text-ink; padding-top: env(safe-area-inset-top); }
+  .header { @apply sticky top-0 z-40 text-ink; padding-top: var(--safe-top); }
   .header > div { position: relative; }
   .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: 1px; background: rgb(60 60 67 / .29); opacity: 0; transition: opacity var(--dur-fast); }
   .dark .header::after { background: rgb(84 84 88 / .6); }
@@ -3400,7 +3400,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 dialog.lightbox { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; touch-action: none; }
 dialog.lightbox::backdrop { background: transparent; }
 .pswp.pswp { --pswp-bg: #121212; --pswp-placeholder-bg: rgb(255 255 255 / .06); --pswp-icon-color: #fff; }
-.pswp .pswp__top-bar { height: auto; align-items: center; gap: 6px; padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
+.pswp .pswp__top-bar { height: auto; align-items: center; gap: 6px; padding: max(10px, var(--safe-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
 .pswp .pswp__top-bar .pswp__button, .pswp .pswp__button.pswp__button--arrow {
   display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 0; border-radius: 999px;
   color: #fff; opacity: 1; background: rgb(255 255 255 / .12); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
@@ -3421,7 +3421,7 @@ dialog.lightbox .lb-pill {
 }
 dialog.lightbox.lb-ui .lb-pill { opacity: 1; pointer-events: auto; }
 dialog.lightbox .lb-pill--bottom { left: 50%; translate: -50% 0; bottom: max(16px, env(safe-area-inset-bottom)); }
-dialog.lightbox .lb-pill--top { right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); }
+dialog.lightbox .lb-pill--top { right: max(10px, env(safe-area-inset-right)); top: max(10px, var(--safe-top)); }
 dialog.lightbox .lb-pill .pswp__button {
   display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 0; padding: 0; border: 0;
   border-radius: 999px; background: transparent; color: #fff; opacity: 1; cursor: pointer;
@@ -3431,7 +3431,7 @@ dialog.lightbox .lb-pill .pswp__button svg { width: 22px; height: 22px; pointer-
 dialog.lightbox:not(.lb-zoomable) .lb-pill .pswp__button--zoom-tool { opacity: .35; pointer-events: none; }
 @media (hover: hover) { dialog.lightbox .lb-pill .pswp__button:hover { background: rgb(255 255 255 / .16); } }
 /* Счётчик — третьей плашкой слева сверху, вровень с правой; у одного кадра его нет. */
-dialog.lightbox .lb-pill--left { left: max(10px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); padding: 4px 16px; }
+dialog.lightbox .lb-pill--left { left: max(10px, env(safe-area-inset-left)); top: max(10px, var(--safe-top)); padding: 4px 16px; }
 dialog.lightbox .lb-pill--left .pswp__counter { margin: 0; height: 44px; font-size: var(--text-sm); line-height: 44px; color: #fff; text-shadow: none; opacity: 1; }
 dialog.lightbox.lb-one .lb-pill--left { display: none; }
 /* Лента миниатюр (lightbox.js `strip`): внизу во всю ширину, кадры одной ширины 4:3, текущий — лаймовой рамкой по
@@ -3701,12 +3701,12 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
     body:has(.chat-page) #main > .container-site > .has-back { display: none !important; }
     /* Отступы контейнера — утилиты (слой выше): здесь их снимает !important. */
     body:has(.chat-page) #main > .container-site { max-width: none; padding: 0 !important; }
-    body:has(.chat-page) .turbo-progress-bar { top: env(safe-area-inset-top); }
+    body:has(.chat-page) .turbo-progress-bar { top: var(--safe-top); }
     /* Отступ сетки (mt-6 утилитой) и запас под таб-бар экрану чата не нужны: поле ввода — на нижнем краю, страница не листается. */
     body:has(.chat-page) .chat-split { margin-top: 0 !important; }
     body:has(.chat-page) .main-app { padding-bottom: 0 !important; }
     .chat-page { height: calc(100dvh - var(--kb, 0px)); }
-    .chat-head { padding-top: calc(.375rem + env(safe-area-inset-top)); }
+    .chat-head { padding-top: calc(.375rem + var(--safe-top)); }
     .chat-back { display: inline-flex; }
     .chat-screen .chat-bar { padding-bottom: max(env(safe-area-inset-bottom), .5rem); }
     html.kb-open .chat-screen .chat-bar { padding-bottom: .5rem; }

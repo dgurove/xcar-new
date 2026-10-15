@@ -17,7 +17,7 @@
   html.kb-open .lock-pill { display: none; }
 
   dialog.lock {
-    margin: max(12vh, calc(env(safe-area-inset-top) + 1.5rem)) auto auto;
+    margin: max(12vh, calc(var(--safe-top) + 1.5rem)) auto auto;
     width: calc(100% - 2rem); max-width: 24rem; max-height: calc(100dvh - 3rem);
     padding: 1.5rem 1.25rem 1rem; border: 0; border-radius: var(--radius-xl);
     background: var(--color-surface); color: var(--color-ink); overflow-y: auto; overscroll-behavior: contain;

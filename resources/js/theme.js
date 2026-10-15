@@ -1,9 +1,9 @@
-// Тема и цвет строки состояния — одним местом. Цвет полосы знает только мета theme-color (data-light / data-dark,
-// их ставит layout); строка под часами того же цвета, что шапка (--color-bar).
+// Тема и цвет строки состояния — одним местом. Строка под часами того же цвета, что шапка: мета theme-color берёт
+// --color-bar из app.css (сервер ставит тот же цвет до первой отрисовки — $bar в x-ui.layout, сверка в blade-lint).
 export function paintBar() {
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (!meta) return;
-    meta.content = document.documentElement.classList.contains('dark') ? meta.dataset.dark : meta.dataset.light;
+    const color = getComputedStyle(document.documentElement).getPropertyValue('--color-bar').trim();
+    if (meta && color) meta.content = color;
 }
 
 // Выбор руками — cookie на общий домен: одна тема на витрину, CRM, парковку и логистику, и сервер рисует её сразу.

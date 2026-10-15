@@ -714,13 +714,17 @@ function timerDone() {
 // Пока тема не выбрана руками (cookie нет) — следуем за системой, в том числе на лету; после переходов Turbo сверяем
 // цвет строки состояния с классом на <html>.
 function systemTheme() {
+    // Выбор, сделанный до cookie, жил в localStorage: переносим его в cookie один раз.
+    let saved = null;
+    try { saved = localStorage.getItem('theme'); localStorage.removeItem('theme'); } catch {}
     // Экран мог прийти из кэша воркера с прежней темой — cookie важнее.
     const chosen = chosenTheme();
     if (chosen) setTheme(chosen === 'dark', false);
+    else if (saved === 'dark' || saved === 'light') setTheme(saved === 'dark');
     else paintBar();
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => { if (!chosenTheme()) setTheme(e.matches, false); });
+    // Turbo подменяет мету ответом сервера — без cookie там светлая; render идёт и у визита, и у морфа.
     document.addEventListener('turbo:render', paintBar);
-    document.addEventListener('turbo:load', paintBar);
 }
 
 // Шапка знает, что под ней: is-scrolled — страница сдвинута (линия), is-past-title —
