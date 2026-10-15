@@ -13,14 +13,9 @@ document.addEventListener('turbo:load', () => {
     requestAnimationFrame(() => scrollTo(0, y));
 });
 
-// Только поля с клавиатурой. Дата, время и выбор из списка открывают свою шторку: таб-бар, уехавший в этот момент, сдвигал
-// раскладку, и Safari на iPhone терял календарь — «Приём подтверждений до» не открывался, а открывался по следующему
-// нажатию где угодно («Кому показывать»), 05.10.2026.
-const isField = (el) => el instanceof HTMLElement && el.matches('input:not(.date-input):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not([type=week]):not([type=color]):not([type=range]):not([type=button]):not([type=submit]):not([type=reset]), textarea, [contenteditable="true"], trix-editor');
-
 // Бар постоянный (data-turbo-permanent): Turbo переносит живой узел, а бар новой страницы выбрасывает. Из него
 // берём числа, бейджи и текущий таб — морфом детей, чтобы не трогать сам fixed-узел: пересозданный бар iOS
-// заново раскладывала по viewport, а is-hidden (фокус в поле) иначе пришлось бы переносить руками.
+// заново раскладывала по viewport.
 document.addEventListener('turbo:before-render', (event) => {
     const bar = document.getElementById('tabbar');
     const next = event.detail.newBody.querySelector('#tabbar');
@@ -28,12 +23,8 @@ document.addEventListener('turbo:before-render', (event) => {
     bar.dataset.tabbarShownValue = next.dataset.tabbarShownValue;
     Turbo.morphChildren(bar, next);
 });
-// Поле, ради которого бар уходил, пропало вместе со старой страницей без focusout — бар возвращается.
-document.addEventListener('turbo:load', () => {
-    if (!isField(document.activeElement)) document.getElementById('tabbar')?.classList.remove('is-hidden');
-});
 
-// Таб-бар ведёт себя как нативный: при фокусе в поле уходит под клавиатуру,
+// Таб-бар ведёт себя как нативный (под клавиатурой его прячет html.kb-open, app.css):
 // табы переключаются заменой без записи в историю (data-turbo-action="replace"),
 // активный пункт загорается под пальцем, не дожидаясь ответа; тап по уже
 // активному табу — наверх, а из глубины раздела — к его корню. У каждого таба
@@ -43,18 +34,6 @@ export default class extends Controller {
     // Таб страницы, что на экране, — от сервера. aria-current загорается под пальцем раньше ответа: пока медленная
     // страница едет, текущим по нему был бы уже новый таб, и в его память лёг бы чужой адрес («Наличие» → Заявки).
     static values = { shown: String };
-
-    connect() {
-        this.onFocusIn = (e) => { if (this.isField(e.target)) this.element.classList.add('is-hidden'); };
-        this.onFocusOut = (e) => { if (this.isField(e.target)) this.element.classList.remove('is-hidden'); };
-        document.addEventListener('focusin', this.onFocusIn);
-        document.addEventListener('focusout', this.onFocusOut);
-    }
-
-    disconnect() {
-        document.removeEventListener('focusin', this.onFocusIn);
-        document.removeEventListener('focusout', this.onFocusOut);
-    }
 
     tap(event) {
         const link = event.currentTarget;
@@ -96,9 +75,5 @@ export default class extends Controller {
 
     forget(tab) {
         try { sessionStorage.removeItem(KEY + new URL(tab.href).pathname); } catch {}
-    }
-
-    isField(el) {
-        return isField(el);
     }
 }

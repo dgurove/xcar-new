@@ -111,35 +111,78 @@ export default class extends Controller {
         else this.show();
     }
 
-    // Список — в top layer (popover): поверх открытой шторки и любых overflow, под полем;
-    // под клавиатурой места нет — переворачивается над полем.
+    // Телефон (15.10.2026, владелец: «менеджера невозможно выбрать — список за клавиатурой, листаешь — едет всё окно»):
+    // подсказки — строками прямо под полем, в потоке формы, как у «ТС» ссылки (car_field_controller). Они листаются
+    // вместе со своим листом, а поле встаёт к его верху — строки ложатся над клавиатурой. Лист на это время постоянной
+    // высоты (.sheet-picking), иначе он рос бы вверх с каждой строкой и уносил поле из-под пальца.
+    // ПК — список в top layer (popover): поверх открытой шторки и любых overflow, под полем; места нет — над полем.
+    inline() {
+        return matchMedia('(hover: none) and (max-width: 1023.98px)').matches;
+    }
+
     show() {
         const list = this.listTarget;
+        if (this.inline() || !list.showPopover) {
+            // Закрытый popover браузер не рисует вовсе (display: none) — в потоке формы список без него.
+            if (list.hasAttribute('popover')) { if (list.matches(':popover-open')) list.hidePopover(); list.removeAttribute('popover'); }
+            list.classList.add('is-inline');
+            list.hidden = false;
+            this.sheet = this.element.closest('dialog.sheet');
+            this.sheet?.classList.add('sheet-picking');
+            requestAnimationFrame(() => this.lift());
+            return;
+        }
         list.hidden = false;
-        if (!list.showPopover) return;
+        if (!list.hasAttribute('popover')) list.setAttribute('popover', 'manual');
         this.place();
         if (!list.matches(':popover-open')) list.showPopover();
         this.onMove ??= () => this.place();
         addEventListener('scroll', this.onMove, { capture: true, passive: true });
         visualViewport?.addEventListener('resize', this.onMove);
+        visualViewport?.addEventListener('scroll', this.onMove);
     }
 
+    // Поле — к верху своей прокрутки (лист, карточка строки), под липкую шапку листа: прокруткой листа, не страницы.
+    lift() {
+        const field = this.element;
+        let box = field.parentElement;
+        for (; box && box !== document.body; box = box.parentElement) {
+            if (box.scrollHeight > box.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(box).overflowY)) break;
+        }
+        if (!box || box === document.body) return;
+        const bar = box.querySelector(':scope > .sheet-bar');
+        const top = (bar ? bar.getBoundingClientRect().bottom : box.getBoundingClientRect().top) + 8;
+        box.scrollTop += field.getBoundingClientRect().top - top;
+    }
+
+    // Координаты fixed-слоя — от всего экрана (layout viewport), видимая часть над клавиатурой — от offsetTop до
+    // offsetTop + height: клавиатура iOS экран не ужимает. Прежняя формула мешала одно с другим, и список вставал
+    // на высоту клавиатуры ниже — под неё.
     place() {
         const list = this.listTarget, r = this.inputTarget.getBoundingClientRect();
-        const below = (visualViewport?.height ?? innerHeight) - r.bottom - 8;
-        const max = Math.max(120, Math.min(260, below >= 160 ? below : r.top - 8));
+        const vv = visualViewport;
+        const top = vv?.offsetTop ?? 0, bottom = top + (vv?.height ?? innerHeight);
+        const below = bottom - r.bottom - 8;
+        const max = Math.max(120, Math.min(260, below >= 160 ? below : r.top - top - 8));
         list.style.left = `${r.left}px`;
         list.style.width = `${r.width}px`;
         list.style.maxHeight = `${max}px`;
         if (below >= 160) { list.style.top = `${r.bottom + 4}px`; list.style.bottom = ''; }
-        else { list.style.top = ''; list.style.bottom = `${(visualViewport?.height ?? innerHeight) - r.top + 4}px`; }
+        else { list.style.top = ''; list.style.bottom = `${innerHeight - r.top + 4}px`; }
     }
 
     close() {
         const list = this.listTarget;
         list.hidden = true;
+        list.classList.remove('is-inline');
+        this.sheet?.classList.remove('sheet-picking');
+        this.sheet = null;
         if (list.matches?.(':popover-open')) list.hidePopover();
-        if (this.onMove) { removeEventListener('scroll', this.onMove, { capture: true }); visualViewport?.removeEventListener('resize', this.onMove); }
+        if (this.onMove) {
+            removeEventListener('scroll', this.onMove, { capture: true });
+            visualViewport?.removeEventListener('resize', this.onMove);
+            visualViewport?.removeEventListener('scroll', this.onMove);
+        }
     }
 
     // Марка сменилась — модель сбрасывается.

@@ -56,11 +56,54 @@ document.addEventListener('turbo:visit', () => { inHistory = null; });
 // документов под ней не закрывается (docs_controller); у визита запись уже снята.
 export const sheetInHistory = () => inHistory !== null;
 
+// Открыта модальная шторка — класс sheet-open на <html> (страница под ней не листается, app.css; фон держит
+// holdBackground). Класс, а не html:has(dialog.sheet:modal): тот WebKit пересчитывал на каждую правку DOM.
+const syncOpen = () => document.documentElement.classList.toggle('sheet-open', !!document.querySelector('dialog.sheet:modal'));
+document.addEventListener('close', syncOpen, true);
+document.addEventListener('turbo:render', syncOpen);
+
+// Фон под шторкой не тянется (15.10.2026, владелец: «пытаешься листать — сдвигается всё окно»). Пока стоит клавиатура,
+// iOS отдаёт жест по тому, что не листается (короткий список, лист без прокрутки), всему экрану — едет видимая часть,
+// с ней --kb и лист. Ведёт палец то, что под ним может прокрутиться в эту сторону; нечему — жест отменяется. Поле ввода
+// (каретка, выделение) не трогаем. Лист карточки строки с клавиатурой — так же.
+function scrollsToward(el, box, dx, dy) {
+    const vertical = Math.abs(dy) >= Math.abs(dx);
+    for (let n = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        if (vertical && n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(cs.overflowY)) {
+            if (dy > 0 ? n.scrollTop > 0 : n.scrollTop + n.clientHeight < n.scrollHeight - 1) return true;
+        }
+        if (!vertical && n.scrollWidth > n.clientWidth + 1 && /(auto|scroll)/.test(cs.overflowX)) {
+            const left = Math.abs(n.scrollLeft);
+            if (dx > 0 ? left > 0 : left + n.clientWidth < n.scrollWidth - 1) return true;
+        }
+        if (n === box) break;
+    }
+    return false;
+}
+(function holdBackground() {
+    let x0 = 0, y0 = 0;
+    addEventListener('touchstart', (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; }, { capture: true, passive: true });
+    addEventListener('touchmove', (e) => {
+        if (e.defaultPrevented || e.touches.length !== 1) return;
+        const root = document.documentElement;
+        const target = e.target instanceof Element ? e.target : null;
+        const box = root.classList.contains('sheet-open') ? [...document.querySelectorAll('dialog.sheet:modal')].pop()
+            : root.classList.contains('kb-open') ? target?.closest('.split-detail') : null;
+        if (!box || target?.closest('input, textarea, [contenteditable="true"]')) return;
+        const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+        x0 = t.clientX; y0 = t.clientY;
+        if (box.contains(target) && scrollsToward(target, box, dx, dy)) return;
+        e.preventDefault();
+    }, { passive: false });
+})();
+
 export function openSheet(d, { history: withHistory = true } = {}) {
     if (d.open) d.close();
     d.classList.remove('is-closing');
     d.style.translate = '';
     d.showModal();
+    syncOpen();
     d.openedAt = performance.now();
     // showModal ставит фокус на первую кнопку («×»), и та рисует кольцо — у открытых пальцем или мышью снимаем.
     if ((byPointer || matchMedia('(hover: none)').matches) && document.activeElement?.matches('button, a')) document.activeElement.blur();

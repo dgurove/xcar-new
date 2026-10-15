@@ -162,13 +162,41 @@ function refresh({ paths, request }) {
     if (paths?.includes(location.pathname)) refreshPage(request);
 }
 
-// Перечитать открытую страницу морфом — если это не помешает человеку: печатает, ищет, открыта модальная шторка — нет.
-// Блок в потоке (sheet--inflow) открыт всегда — мешает только модальная шторка. Зовёт и строка заявки по ходу чтения (arrive_controller).
+// Перечитать открытую страницу морфом — но не под рукой человека (15.10.2026, владелец: «постоянно всё лагает»): пока
+// палец на экране или страница едет (и 600 мс после), печатают, ищут, открыта модальная шторка или страница скрыта —
+// перечитывание ждёт и потом идёт одно на все пришедшие (раньше такое молча пропадало, а под пальцем морф всей
+// страницы дёргал прокрутку). Блок в потоке (sheet--inflow) открыт всегда — мешает только модальная шторка. Зовёт и
+// строка заявки по ходу чтения (arrive_controller).
+let waiting = null;   // { request } — что ждёт; request пуст, если правок несколько
+let waitTimer = null;
+let movedAt = 0;
+let fingers = 0;
+addEventListener('touchstart', (e) => { fingers = e.touches.length; movedAt = performance.now(); }, { capture: true, passive: true });
+addEventListener('touchend', (e) => { fingers = e.touches.length; movedAt = performance.now(); }, { capture: true, passive: true });
+addEventListener('touchcancel', () => { fingers = 0; }, { capture: true, passive: true });
+addEventListener('scroll', () => { movedAt = performance.now(); }, { capture: true, passive: true });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flush(); });
+// Новая страница пришла целиком — ждущее перечитывание ей не нужно.
+document.addEventListener('turbo:load', () => { waiting = null; clearTimeout(waitTimer); });
+
+const busy = () => document.visibilityState !== 'visible'
+    || fingers > 0 || performance.now() - movedAt < 600
+    || document.querySelector('form[data-dirty], [data-searching], dialog:modal')
+    || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+
 export function refreshPage(request) {
-    if (document.querySelector('form[data-dirty], [data-searching]') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
-    if (document.querySelector('dialog:modal')) return;
-    const id = typeof request === 'string' && /^[\w-]+$/.test(request) ? ` request-id="${request}"` : '';
-    Turbo.renderStreamMessage(`<turbo-stream action="refresh"${id}></turbo-stream>`);
+    const id = typeof request === 'string' && /^[\w-]+$/.test(request) ? request : null;
+    waiting = waiting ? { request: null } : { request: id };
+    flush();
+}
+
+function flush() {
+    clearTimeout(waitTimer);
+    if (!waiting) return;
+    if (busy()) { if (document.visibilityState === 'visible') waitTimer = setTimeout(flush, 700); return; }
+    const { request } = waiting;
+    waiting = null;
+    Turbo.renderStreamMessage(`<turbo-stream action="refresh"${request ? ` request-id="${request}"` : ''}></turbo-stream>`);
 }
 
 export async function badges() {

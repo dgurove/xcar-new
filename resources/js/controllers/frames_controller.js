@@ -4,10 +4,17 @@ import { Controller } from '@hotwired/stimulus';
 // инерцией, точки следуют за прокруткой. Стрелки и общий тик cards:tick листают
 // программно; касание ленты останавливает автолистание на всей странице.
 // Морф сохраняет узел ленты вместе с её scrollLeft — кадр не сбрасывается.
+// Какие плитки на экране — один наблюдатель на все (раньше каждая плитка на каждый такт мерила себя getBoundingClientRect).
+const onScreen = new WeakSet();
+const seen = new IntersectionObserver((entries) => {
+    for (const e of entries) e.isIntersecting ? onScreen.add(e.target) : onScreen.delete(e.target);
+});
+
 export default class extends Controller {
     static targets = ['strip', 'frame', 'dot'];
 
     connect() {
+        seen.observe(this.element);
         this.i = 0;
         this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
         this.onScroll = () => {
@@ -23,6 +30,8 @@ export default class extends Controller {
     }
 
     disconnect() {
+        seen.unobserve(this.element);
+        onScreen.delete(this.element);
         this.stripTarget.removeEventListener('scroll', this.onScroll);
         clearTimeout(this.programmaticTimer);
     }
@@ -54,8 +63,7 @@ export default class extends Controller {
         // Вид «строки»: кадр — миниатюра, точек нет — не листаем и не качаем остальные кадры.
         if (this.hasDotTarget && !this.dotTargets[0].offsetParent) return;
         // И по горизонтали: плитка за краем ленты пачки (x-ui.shelf) не крутит кадры и не качает их.
-        const r = this.element.getBoundingClientRect();
-        if (r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth) this.show(this.i + 1);
+        if (onScreen.has(this.element)) this.show(this.i + 1);
     }
 
     manual(event) {

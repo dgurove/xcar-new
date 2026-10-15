@@ -1,7 +1,8 @@
 {{-- «+ За менеджера» (05.10.2026, владелец: менеджер без интернета): админ вносит подтверждение сам — менеджер поиском,
      для покупателя ценой или в гараж, комментарий. Встаёт в список с «внёс …», принимают обычным «Принять»
      (`PlaceBidFor`, в обход приёма и порога). В подсказке поля цены — минимальная, от которой отталкиваться.
-     07.10.2026: «для покупателя / в гараж» сверху, цена первой строкой, поля строками (.fields), кнопка .sheet-foot. --}}
+     07.10.2026: «для покупателя / в гараж» сверху, поля строками (.fields), кнопка .sheet-foot. 15.10.2026: менеджер первой
+     строкой — «за кого» первый вопрос, и подсказки на телефоне встают вверху листа, а не у клавиатуры. --}}
 @props(['offer'])
 @php
     $id = 'bid-for-'.$offer->number;
@@ -20,11 +21,11 @@
                 </div>
             @endif
             <div class="fields">
+                <x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Имя или телефон" :value="old('manager_id')"/>
                 <div class="contents" data-reveal-target="pane" data-reveal-key="buyer" @if (old('kind') === 'garage') hidden @endif>
                     <x-ui.field name="amount" label="Цена, ₽" inputmode="decimal" autocomplete="off" :value="old('amount')"
                         :placeholder="$min ? 'Минимальная '.\App\Support\Money::nums($min) : null" data-controller="digits" data-action="input->digits#format" id="{{ $id }}-amount"/>
                 </div>
-                <x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Имя или телефон" :value="old('manager_id')"/>
                 <x-ui.field name="comment" label="Комментарий" :value="old('comment')" placeholder="Звонил, без интернета" id="{{ $id }}-comment"/>
             </div>
             <div class="sheet-foot"><x-ui.button type="submit" block>Внести подтверждение</x-ui.button></div>

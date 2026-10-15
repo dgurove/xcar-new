@@ -159,7 +159,7 @@ longPressMenu();
 heroTransition();
 timerDone();
 transitionsWhenAnimated();
-viewportProbe();
+noZoom();
 
 // View Transitions роняют промис, когда вкладка скрыта или переход перебит
 // следующим: страница при этом в порядке, в консоли этому не место.
@@ -190,6 +190,22 @@ function pressFeedback() {
         closeSheet(dialog).then(() => Turbo.visit(event.detail.url, { action: link?.dataset.turboAction || 'advance' }));
     });
     for (const name of ['turbo:before-render', 'turbo:load', 'turbo:fetch-request-error', 'turbo:before-cache']) document.addEventListener(name, clear);
+    // Нажатие на плитку или строку-ссылку — класс is-pressed под пальцем, вместо .card:has(a:active): тот WebKit
+    // пересчитывал у всех плиток на каждое касание. Палец поехал (прокрутка) — нажатия нет.
+    let pressed = null;
+    const release = () => { pressed?.classList.remove('is-pressed'); pressed = null; };
+    document.addEventListener('pointerdown', (event) => {
+        release();
+        const link = event.target.closest?.('a[href]');
+        const host = link?.closest('.card, .row');
+        if (!host) return;
+        if (host.matches('.card') ? (link.parentElement === host || link.closest('.card-media, .card-title')) : link.parentElement === host) {
+            pressed = host;
+            host.classList.add('is-pressed');
+        }
+    }, { passive: true });
+    for (const name of ['pointerup', 'pointercancel']) document.addEventListener(name, release, { passive: true });
+    addEventListener('scroll', release, { capture: true, passive: true });
     document.addEventListener('turbo:submit-start', (event) => {
         event.detail.formSubmission.submitter?.setAttribute('aria-busy', 'true');
     });
@@ -466,8 +482,13 @@ function keyboardInset() {
     // Ожидаемая высота клавиатуры — до её появления, по ориентации.
     const slot = () => `kb:${innerWidth > innerHeight ? 'l' : 'p'}`;
     const guess = () => { try { const v = Number(localStorage.getItem(slot())); if (v > 100) return v; } catch {} return Math.round(innerHeight * .45); };
-    let predicted = 0, until = 0;
+    let predicted = 0, until = 0, last = '';
     const apply = (kb, h, top) => {
+        // Переменные корня наследует весь документ — пишем, только когда что-то поменялось: scroll visualViewport идёт
+        // каждый кадр, и каждая запись пересчитывала стили всей страницы.
+        const key = `${kb}|${h}|${top}`;
+        if (key === last) return;
+        last = key;
         const style = root.style;
         style.setProperty('--kb', `${kb}px`);
         // Видимая часть над клавиатурой: iOS ещё и сдвигает экран к полю (offsetTop) — шторка в неё влезает целиком,
@@ -625,59 +646,13 @@ function transitionsWhenAnimated() {
     });
 }
 
-// Временный замер для таб-бара на iPhone (убрать после проверки): ?vp=1 включает плашку, ?vp=0 — выключает.
-// Пишет высоты viewport и низ таб-бара, а за последний переход — разброс низа бара и число view transitions.
-function viewportProbe() {
-    const flag = new URLSearchParams(location.search).get('vp');
-    try { if (flag === '1') localStorage.setItem('vp', '1'); if (flag === '0') localStorage.removeItem('vp'); } catch {}
-    let on = false;
-    try { on = localStorage.getItem('vp') === '1'; } catch {}
-    if (!on) return;
-    const probe = (css) => {
-        const el = document.createElement('div');
-        el.style.cssText = `position:fixed;top:0;left:0;width:0;visibility:hidden;pointer-events:none;${css}`;
-        document.documentElement.append(el);
-        return el;
-    };
-    const lvh = probe('height:100lvh'), dvh = probe('height:100dvh'), svh = probe('height:100svh');
-    const safe = probe('padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)');
-    const box = document.createElement('pre');
-    box.style.cssText = 'position:fixed;z-index:9999;left:4px;top:calc(env(safe-area-inset-top) + 4px);margin:0;padding:4px 6px;'
-        + 'font:10px/1.3 ui-monospace,monospace;color:#fff;background:rgb(0 0 0 / .75);border-radius:6px;pointer-events:none;white-space:pre';
-    document.documentElement.append(box);
-    let vt = 0;
-    const start = document.startViewTransition?.bind(document);
-    if (start) document.startViewTransition = (...args) => { vt++; return start(...args); };
-    let span = null, until = 0, tap = 'tap —';
-    const r = (n) => Math.round(n * 10) / 10;
-    // Куда пришло касание и что под пальцем по раскладке: разные — нажатия сдвинуты (кнопки «не работают» на iOS 26).
-    const name = (el) => el ? `${el.tagName.toLowerCase()}${el.classList[0] ? '.' + el.classList[0] : ''} «${(el.textContent || '').trim().slice(0, 14)}»` : '—';
-    document.addEventListener('touchend', (e) => {
-        const t = e.changedTouches[0];
-        const under = document.elementFromPoint(t.clientX, t.clientY);
-        tap = `tap ${r(t.clientY)} sY ${r(scrollY)} vv+${r(window.visualViewport?.offsetTop ?? 0)}\n→ ${name(e.target)}\n▢ ${name(under)}${under === e.target ? '' : ' ≠'}`;
-        watch(300);
-    }, { capture: true, passive: true });
-    const frame = () => {
-        const bar = document.getElementById('tabbar')?.getBoundingClientRect().bottom ?? NaN;
-        if (span) { span.min = Math.min(span.min, bar); span.max = Math.max(span.max, bar); }
-        const vv = window.visualViewport, cs = getComputedStyle(safe);
-        box.textContent = [
-            `${matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'} ${navigator.userAgent.match(/OS (\d+[_\d]*)/)?.[1] ?? ''}`,
-            `screen ${screen.height}  inner ${innerHeight}  client ${document.documentElement.clientHeight}`,
-            `vv ${r(vv?.height ?? 0)} +${r(vv?.offsetTop ?? 0)}  lvh ${lvh.offsetHeight} dvh ${dvh.offsetHeight} svh ${svh.offsetHeight}`,
-            `safe ${cs.paddingTop} / ${cs.paddingBottom}  bar.bottom ${r(bar)}`,
-            span ? `переход: bar ${r(span.min)}…${r(span.max)}  vt ${span.vt}→${vt}` : `vt ${vt}`,
-            tap,
-        ].join('\n');
-        if (performance.now() < until) requestAnimationFrame(frame);
-    };
-    const watch = (ms) => { until = Math.max(until, performance.now() + ms); requestAnimationFrame(frame); };
-    document.addEventListener('turbo:visit', () => { span = { min: Infinity, max: -Infinity, vt }; watch(10000); });
-    document.addEventListener('turbo:load', () => { until = performance.now() + 600; watch(0); });
-    addEventListener('scroll', () => watch(100), { passive: true });
-    window.visualViewport?.addEventListener('resize', () => watch(300));
-    watch(600);
+// Зума в интерфейсе нет (15.10.2026, владелец: «в приложениях не бывает зума»): viewport его запрещает, а touch-action —
+// щипок и двойное касание (app.css), но вкладка Safari viewport-запрет не слушает. Жест WebKit отменяется у всей страницы;
+// просмотр фото (PhotoSwipe) и документа (docs/zoom.js) масштабируют своё по касаниям, жест им не нужен. Ключ прежней
+// плашки замера ?vp=1 стирается: она висела у тех, кто её однажды включил.
+function noZoom() {
+    for (const type of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+    try { localStorage.removeItem('vp'); } catch {}
 }
 
 // Таймер дошёл до нуля: всё, что помечено data-closes-with-timer, гаснет сразу

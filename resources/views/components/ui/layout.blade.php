@@ -11,10 +11,10 @@
     $lock ??= \App\Users\Access\Lock::lite(auth()->user()) && \App\Users\Access\Lock::token(request()) ? 'single' : null;
 @endphp
 <!doctype html>
-<html lang="ru" translate="no" class="h-full{{ $theme === 'dark' ? ' dark' : '' }}">
+<html lang="ru" translate="no" class="{{ $theme === 'dark' ? 'dark' : '' }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     {{-- Интерфейс только русский: переводчик браузера ломал обрывки («12 д 5 ч», госномера) — 07.10.2026. --}}
     <meta name="google" content="notranslate">
     <meta name="theme-color" content="{{ $theme === 'dark' ? '#161616' : '#ffffff' }}">
@@ -32,7 +32,9 @@
     @endif
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    {{-- Непрозрачная строка состояния (15.10.2026): с black-translucent iOS 26–27 отдавал приложению viewport короче экрана
+         на вырез, и таб-бар прыгал. iOS читает мету только при добавлении на экран «Домой» — установленным раньше переустановить. --}}
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="{{ $surface->short() }}">
     {{-- Иначе iOS делает из цены «1 250 000» телефонную ссылку; номера телефонов — сами tel:. --}}
     <meta name="format-detection" content="telephone=no">

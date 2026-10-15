@@ -7,6 +7,13 @@ let users = 0;
 let interval = null;
 let stopped = false;
 
+// Пока страницу листают или палец на экране (и секунду после), такт пропускается: плавная прокрутка ленты кадров и
+// подгрузка следующего кадра посреди жеста давали рывки (15.10.2026).
+let movedAt = 0;
+addEventListener('scroll', () => { movedAt = performance.now(); }, { passive: true });
+addEventListener('touchstart', () => { movedAt = performance.now(); }, { capture: true, passive: true });
+addEventListener('touchend', () => { movedAt = performance.now(); }, { capture: true, passive: true });
+
 const onStop = () => { stopped = true; clearInterval(interval); interval = null; };
 window.addEventListener('cards:stop', onStop);
 // Новая страница — такт снова живой (Turbo не перезагружает модуль).
@@ -19,7 +26,7 @@ export default class extends Controller {
         this.counted = true;
         if (!interval && !stopped) {
             interval = setInterval(() => {
-                if (!document.hidden) window.dispatchEvent(new CustomEvent('cards:tick'));
+                if (!document.hidden && performance.now() - movedAt > 1000) window.dispatchEvent(new CustomEvent('cards:tick'));
             }, 5000);
         }
     }
