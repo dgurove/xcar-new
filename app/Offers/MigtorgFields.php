@@ -63,7 +63,10 @@ final class MigtorgFields
         // В списке мощности нет; карточка со входом может отдать — имя поля не знаем заранее.
         $put('engine_power', ($lot['engine_power'] ?? $lot['power'] ?? $lot['horse_power'] ?? 0) ?: null);
         $put('body', (self::BODY[mb_strtolower(trim((string) ($lot['carcass']['title'] ?? '')))] ?? null)?->value);
-        $put('city', trim((string) ($lot['city']['title'] ?? '')));
+        // Город — с регионом: сёла и одинаковые имена без него не найти (`Settlement::resolve`).
+        if ($city = trim((string) ($lot['city']['title'] ?? ''))) {
+            $f['city'] = ['value' => $city, 'region' => trim((string) ($lot['city']['region']['title'] ?? '')) ?: null];
+        }
         $keys = $lot['keys_count'] ?? null;
         $put('has_keys', $keys === null ? null : (int) $keys > 0);
         $put('papers', ($lot['pts'] ?? null) === 'present' ? Papers::Pts->value : null);

@@ -46,7 +46,7 @@ final class FormValues
     {
         return match ($field) {
             'car' => self::car($value),
-            'city' => ($place = Settlement::named((string) $value)) ? ['id' => $place['id'], 'text' => $place['title'] ?? $place['name']] : null,
+            'city' => ($place = Settlement::resolve((string) $value)) ? ['id' => $place['id'], 'text' => $place['title'] ?? $place['name']] : null,
             'vin' => ['value' => $v = strtoupper((string) $value), 'text' => $v],
             'color' => ['value' => $v = Colors::normalize((string) $value) ?? $text, 'text' => $v],
             'engine_volume' => ['value' => Liters::format((int) $value), 'text' => $text],

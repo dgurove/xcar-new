@@ -5,13 +5,13 @@ namespace App\Offers;
 use App\Cars\Body;
 use App\Cars\Brand;
 use App\Cars\CarModel;
-use App\Cars\Identity;
-use App\Cars\Vin\Vin;
 use App\Cars\Colors;
 use App\Cars\Drive;
 use App\Cars\Fuel;
+use App\Cars\Identity;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
+use App\Cars\Vin\Vin;
 use App\Offers\Actions\UpdateOffer;
 use App\Support\Liters;
 use App\Users\User;
@@ -51,7 +51,7 @@ final class MigtorgDiff
             'vin' => ($vin = Vin::full((string) $v('vin'))) && ! Identity::offerByVin($vin, $offer->id) ? ['vin' => $vin] : [],
             'color' => ['color' => Colors::normalize((string) $v('color')) ?? (string) $v('color')],
             'transmission', 'drive', 'fuel', 'body' => [$name => (string) $v($name)],
-            'settlement_id' => ($id = Settlement::named((string) $v('city'))['id'] ?? null) ? ['settlement_id' => $id] : [],
+            'settlement_id' => ($id = Settlement::resolve((string) $v('city'), $lot['city']['region'] ?? null)['id'] ?? null) ? ['settlement_id' => $id] : [],
             default => [],
         };
         if (! $data) {
@@ -128,7 +128,7 @@ final class MigtorgDiff
             }
         }
         if ($offer->settlement_id && ($city = $v('city'))) {
-            $put('settlement_id', (Settlement::named($city)['id'] ?? null) !== $offer->settlement_id, $city);
+            $put('settlement_id', (Settlement::resolve($city, $lot['city']['region'] ?? null)['id'] ?? null) !== $offer->settlement_id, $city);
         }
 
         return $out;
