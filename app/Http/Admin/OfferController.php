@@ -80,6 +80,9 @@ class OfferController
     /** Опубликованное: «Опубликованные» и «Есть подтверждения» — одни правила групп, сортировки и чипов. */
     private const OPEN = ['published', 'bids'];
 
+    /** Вкладки, где порядок — когда предложение в них попало (`offers.tab_at`) и столбец даты — оно же. */
+    public const BY_TAB = ['nofloor', 'unpriced', 'priced', 'archive', 'auction'];
+
     /** Вкладки человека: подтверждения, «Из таблицы Кати» и «На аукцион» видит только админ. */
     public static function presets(User $user): array
     {
@@ -119,6 +122,7 @@ class OfferController
      * только поля её столбцов (`sorts`): подтверждений нет там, где их быть не может.
      */
     public const SORTS = [
+        'tab' => ['Во вкладке', 'desc'],
         'created' => ['Дата заведения', 'desc'],
         'published' => ['Дата публикации', 'desc'],
         'closing' => ['Закрытие приёма', 'asc'],
@@ -135,10 +139,18 @@ class OfferController
         $options = array_filter(self::SORTS, fn ($_, $key) => match ($key) {
             'number' => true,
             'closing' => in_array($preset, self::OPEN, true),
+            'tab' => in_array($preset, self::BY_TAB, true),
+            // Дата заведения — в окошке сортировки всегда, и там, где столбец даты — «Во вкладке».
+            'created' => true,
             default => $cols === null || in_array($key, $cols, true),
         }, ARRAY_FILTER_USE_BOTH);
-        // Умолчания вкладок прежние: черновики по заведению, новые сверху; опубликованные у админа — по закрытию приёма.
-        $default = in_array($preset, self::OPEN, true) ? ($admin ? 'closing' : '-published') : '-created';
+        // Шаги работы — по тому, когда предложение сюда пришло, новые сверху (15.10.2026, владелец: оценил закупочную — и ищи
+        // машину внизу «Без продажной»); опубликованные у админа — по закрытию приёма; остальное — по заведению.
+        $default = match (true) {
+            in_array($preset, self::OPEN, true) => $admin ? 'closing' : '-published',
+            in_array($preset, self::BY_TAB, true) => '-tab',
+            default => '-created',
+        };
 
         return Sort::from($request->query('sort'), $options, $default);
     }
@@ -351,6 +363,7 @@ class OfferController
         }
         $bids = "(select count(*) from bids where bids.offer_id = offers.id and bids.state = '".BidState::Active->value."')";
         match ($sort->key) {
+            'tab' => $q->orderByRaw("offers.tab_at {$dir} nulls last"),
             'published' => $q->orderByRaw("published_at {$dir} nulls last"),
             'closing' => $q->orderByRaw("bids_close_at {$dir} nulls last"),
             'number' => $q->orderBy('offers.number', $dir),
@@ -399,7 +412,7 @@ class OfferController
         }
         $admin = $user->canManageCrm();
 
-        return match ($preset ?? 'unpriced') {
+        $cols = match ($preset ?? 'unpriced') {
             // Закупочную заполняют — цены продажи здесь не бывает.
             'nofloor' => ['vendor', 'city', 'floor', 'created'],
             // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
@@ -414,6 +427,9 @@ class OfferController
             'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
+
+        // Шаги работы: дата — когда пришло во вкладку (`tab_at`), в её порядке (15.10.2026).
+        return in_array($preset ?? 'unpriced', self::BY_TAB, true) ? array_map(fn ($c) => $c === 'created' ? 'tab' : $c, $cols) : $cols;
     }
 
     /**

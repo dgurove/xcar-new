@@ -55,7 +55,12 @@
     // Чего не хватает для продажи — у оценённого черновика: галочки у такого нет.
     $missing = $checkable && $draft && ! $slot ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
     $has = fn (string $k) => $cols === null || in_array($k, $cols, true);
-    $when = $cols !== null && $has('published') ? $offer->published_at : ($has('created') ? $offer->created_at : null);
+    $when = match (true) {
+        $cols !== null && $has('published') => $offer->published_at,
+        $cols !== null && $has('tab') => $offer->tab_at,
+        $has('created') => $offer->created_at,
+        default => null,
+    };
     // VIN на Мигторге не дают — его запрашивают у страховой (05.10.2026): красным у названия, пока продажа жива.
     $noVin = blank($offer->vin) && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     // Черновик завела почта (`AutoOffer`), файлы и документы догружаются (`AutoScan::states`): что уже знаем из письма —
@@ -139,7 +144,7 @@
         @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span class="cell-sub sm:hidden" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>@endif
     {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет. --}}
-    @if ($has('created') || ($cols !== null && $has('published')))<td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">
+    @if ($has('created') || ($cols !== null && ($has('published') || $has('tab'))))<td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">
         {{-- Кто завёл черновик — аватаром перед датой. --}}
         @if ($draft && $offer->moderator)<span class="inline-flex items-center gap-2 align-middle"><x-ui.avatar :user="$offer->moderator" :size="20" title="{{ $offer->moderator->name }}"/>@endif{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}@if ($draft && $offer->moderator)</span>@endif
     </td>@endif

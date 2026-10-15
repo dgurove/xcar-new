@@ -30,5 +30,6 @@
     @elseif ($has('floor'))<x-ui.th :sort="$sort" key="floor" class="num col-detail-hide hidden sm:table-cell">Закупочная</x-ui.th>@endif
     @if ($has('price'))<x-ui.th :sort="$sort" key="price" class="num">Цена</x-ui.th>@endif
     @if ($cols !== null && $has('published'))<x-ui.th :sort="$sort" key="published" class="num col-detail-hide hidden sm:table-cell">Вышло</x-ui.th>
+    @elseif ($cols !== null && $has('tab'))<x-ui.th :sort="$sort" key="tab" class="num col-detail-hide hidden sm:table-cell">Во вкладке</x-ui.th>
     @elseif ($has('created'))<x-ui.th :sort="$sort" :key="$gallery ? 'fresh' : 'created'" class="num col-detail-hide hidden sm:table-cell">Создано</x-ui.th>@endif
 </tr>

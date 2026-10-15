@@ -76,6 +76,12 @@ class Offer extends Model
             }
             // Вендор встал черновику — его метки по умолчанию (11.10.2026).
             VendorTags::apply($o);
+            // Шаг работы сменился — предложение пришло в новую вкладку CRM: там оно первым (`tab_at`, 15.10.2026).
+            $now = $o->getAttributes();
+            $was = $o->getRawOriginal();
+            if (! $o->exists || self::tabKeyOf($now) !== self::tabKeyOf($was)) {
+                $o->tab_at = now();
+            }
         });
         // Продажа кончилась (в архив, снята) — в истории ТС парковки «Снята с продажи»; машина и её файлы — у машины,
         // парковку это не трогает (владелец 05.10.2026: «удаление предложения отменяет продажу, а парковку не трогает»).
@@ -97,6 +103,7 @@ class Offer extends Model
             'car_place' => CarPlace::class,
             'insurer_deadline_at' => 'date',
             'answer_by' => 'datetime',
+            'tab_at' => 'datetime',
             'tags' => 'array',
             'tag_colors' => 'array',
             'show_vin' => 'bool',
@@ -895,6 +902,28 @@ class Offer extends Model
      * `OfferController::scopeFor` для одного предложения; вне вкладок — «Сделки» и «Гараж» («Работа»). Модератору
      * подтверждения не видны — открытое у него «Опубликованные».
      */
+    /**
+     * Шаг работы по полям предложения — то, от чего зависит его вкладка CRM (`crmTab`): состояние, у черновика — аукцион,
+     * слот, галерея-состояние, продажная, закупочная. Таблица Кати и подтверждения — не поля предложения, их тут нет.
+     */
+    public static function tabKeyOf(array $a): string
+    {
+        $state = $a['state'] ?? null;
+        $state = $state instanceof OfferState ? $state->value : (string) $state;
+        if (! in_array($state, [OfferState::Draft->value, OfferState::Gallery->value], true)) {
+            return $state;
+        }
+
+        return match (true) {
+            ($a['auction_at'] ?? null) !== null && $state === OfferState::Draft->value => 'auction',
+            ($a['slot_at'] ?? null) !== null => 'slots',
+            $state === OfferState::Gallery->value => 'gallery',
+            (int) ($a['asking_price'] ?? 0) > 0 => 'priced',
+            (int) ($a['floor_price'] ?? 0) > 0 => 'unpriced',
+            default => 'nofloor',
+        };
+    }
+
     public function crmTab(?User $user = null): string
     {
         $user ??= auth()->user();
