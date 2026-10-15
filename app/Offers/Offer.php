@@ -125,6 +125,7 @@ class Offer extends Model
             'auction_at' => 'datetime',
             'auction_planned_at' => 'datetime',
             'proposed_at' => 'datetime',
+            'requested_at' => 'datetime',
             'floor_price' => 'int',
             'shown_floor' => 'int',
             'publish_price' => 'int',

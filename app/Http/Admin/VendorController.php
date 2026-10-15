@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Mail\Account;
 use App\Mail\Scope;
+use App\Offers\Actions\MarkRequested;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\AudienceRules;
 use App\Offers\Offer;
@@ -15,6 +16,7 @@ use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Plural;
 use App\Support\Sort;
 use App\Support\Surface;
 use App\Users\Section;
@@ -42,10 +44,14 @@ class VendorController
 {
     public const PILLS = ['overview' => 'Обзор', 'offers' => 'Предложения', 'contacts' => 'Контакты', 'routes' => 'Маршруты'];
 
+    private const BIDS_SQL = 'exists (select 1 from bids where bids.offer_id = offers.id)';
+
+    private const INTEREST_SQL = 'exists (select 1 from interests where interests.offer_id = offers.id)';
+
     /** Предложения вендора: по заведению, новые сверху; откликами и ценами — выбором и заголовком. */
     public const OFFER_SORTS = [
         'created' => ['Заведено', 'desc'], 'bids' => ['Подтверждения', 'desc'], 'interest' => ['Интерес', 'desc'],
-        'floor' => ['Закупочная', 'desc'], 'price' => ['Цена продажи', 'desc'],
+        'floor' => ['Закупочная', 'desc'], 'price' => ['Цена продажи', 'desc'], 'requested' => ['Запрос', 'desc'],
     ];
 
     /** Справочник — по имени (владелец 06.10.2026), работающие первыми; дата и число предложений — выбором. */
@@ -132,7 +138,8 @@ class VendorController
                 'facets' => $facets,
                 'sort' => $sort,
                 'searching' => $facets->searching(),
-                'refs' => (clone $q)->get()->pluck('claim_ref')->filter()->unique()->values(),
+                // «Отправить N номеров»: ещё не отправленные из всего списка (все страницы) с номером убытка.
+                'pending' => (clone $q)->whereNull('offers.requested_at')->get()->filter(fn (Offer $o) => filled($o->claim_ref))->values(),
             ];
         } else {
             $vendor->load('mailAccount');
@@ -153,6 +160,33 @@ class VendorController
     }
 
     /**
+     * «Отправить N номеров»: метка «запрос отправлен», номера отправившему в Telegram (в буфер их кладёт браузер в момент
+     * нажатия). Берутся только предложения этого вендора, ещё не отправленные.
+     */
+    public function request(Request $request, Vendor $vendor, MarkRequested $mark)
+    {
+        $ids = array_map('intval', (array) $request->input('offers', []));
+        $refs = $mark($vendor, Offer::where('vendor_id', $vendor->id)->whereIn('id', $ids)->get(), $request->user());
+        $n = count($refs);
+        $toast = match (true) {
+            $n === 0 => 'Эти номера уже отправлены',
+            ! $request->user()->telegram_chat_id => 'Отмечено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']).', Telegram не привязан',
+            default => 'Отправлено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']),
+        };
+
+        return back()->with('toast', $toast);
+    }
+
+    /** Снять метку запроса: номер снова в «К запросу». */
+    public function unrequest(Request $request, Vendor $vendor, Offer $offer, MarkRequested $mark)
+    {
+        abort_unless($offer->vendor_id === $vendor->id, 404);
+        $mark->clear($offer, $request->user());
+
+        return back()->with('toast', 'Метка запроса снята');
+    }
+
+    /**
      * Все предложения вендора за всё время, архив тоже (15.10.2026, владелец: «выгрузить номера убытка Т-Страхования, по
      * которым проявляли интерес или есть хоть одно подтверждение» — короткий список «Обзора» был бесполезен). Чипы:
      * «Отклик» — было ли подтверждение (любое, и отклонённое) или интерес; «Где сейчас» — состояние; «Заведено» — месяц.
@@ -161,8 +195,15 @@ class VendorController
      */
     private function offersQuery(Request $request, Vendor $vendor): array
     {
-        $facets = Facets::for($request, 'crm-vendor-offers', self::replyFacet(),
+        // «К запросу» (15.10.2026): есть отклик, ещё продаётся (без сделки, гаража, выдачи и архива), номер не отправляли.
+        $todo = '('.self::BIDS_SQL.' or '.self::INTEREST_SQL.") and offers.state in ('draft', 'gallery', 'open') and offers.requested_at is null";
+        $facets = Facets::for($request, 'crm-vendor-offers',
+            Facet::toggle('todo', 'К запросу', fn (Builder $q) => $q->whereRaw($todo))
+                ->counted(fn () => Offer::where('offers.vendor_id', $vendor->id)->whereRaw($todo)->count()),
+            self::replyFacet(),
             Facet::column('state', 'Где сейчас', ['состояние', 'состояния', 'состояний'], 'offers.state')->enum(OfferState::class)->natural(),
+            Facet::column('requested', 'Запрос', [], "case when offers.requested_at is null then 'no' else 'yes' end")->natural()
+                ->labels(fn (array $keys) => collect(['yes' => 'Отправлен', 'no' => 'Не отправлен'])->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all()),
             Facet::column('month', 'Заведено', ['месяц', 'месяца', 'месяцев'], "to_char(offers.created_at, 'YYYY-MM')")->natural()
                 ->labels(fn (array $keys) => collect($keys)->sortDesc()->mapWithKeys(fn ($k) => [$k => new Option($k, Carbon::parse($k.'-01')->isoFormat('MMMM YYYY'))])->all()),
         );
@@ -180,6 +221,7 @@ class VendorController
             'interest' => $q->orderBy('interests_count', $dir),
             'floor' => $q->orderByRaw("offers.floor_price {$dir} nulls last"),
             'price' => $q->orderByRaw("offers.asking_price {$dir} nulls last"),
+            'requested' => $q->orderByRaw("offers.requested_at {$dir} nulls last"),
             default => $q->orderBy('offers.created_at', $dir),
         };
 
@@ -192,8 +234,7 @@ class VendorController
      */
     private static function replyFacet(): Facet
     {
-        $bids = 'exists (select 1 from bids where bids.offer_id = offers.id)';
-        $interest = 'exists (select 1 from interests where interests.offer_id = offers.id)';
+        [$bids, $interest] = [self::BIDS_SQL, self::INTEREST_SQL];
         $sql = ['bids' => $bids, 'interest' => $interest, 'quiet' => "not {$bids} and not {$interest}"];
         $labels = ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'quiet' => 'Без отклика'];
 

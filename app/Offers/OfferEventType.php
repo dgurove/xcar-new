@@ -28,4 +28,5 @@ enum OfferEventType: string
     case Estimate = 'estimate';
     case Auction = 'auction';
     case Proposal = 'proposal';
+    case Requested = 'requested';
 }
