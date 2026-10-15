@@ -10,6 +10,8 @@ import * as Turbo from '@hotwired/turbo';
 //   card    {number, only} — плитка оффера в каталоге: заменить или добавить; only (правка машины) — только заменить
 //   refresh {paths, request} — если открыта одна из страниц, перечитать её (morph); request — запрос Turbo, из
 //           которого пришла правка: у её автора Turbo его помнит и второй раз страницу не перечитывает
+//   rows    {paths: {путь: [ключи]}, request} — в открытом списке перечитать только эти строки (data-detail-key):
+//           тот же адрес с заголовком X-Live-Rows (`Live\Rows`), строки, числа пилюль и таб-бара — из ответа (patch)
 //   notice  {id, subject, important, surface, html} — карточка уведомления (banner_controller, window.notify)
 //   notices-read {subjects} — объекты открыли: их карточки закрываются
 //   toast   {message, href} — прежний вид, пока в очереди события старой выкладки
@@ -80,6 +82,7 @@ function open() {
     const on = (name, handler) => source.addEventListener(name, (e) => { lastEventId = e.lastEventId || lastEventId; handler(JSON.parse(e.data || '{}')); });
     on('card', card);
     on('refresh', refresh);
+    on('rows', rows);
     on('toast', ({ message, href }) => window.toast?.(message, href ? { href } : undefined));
     on('notice', (detail) => window.notify?.(detail));
     on('notices-read', ({ subjects }) => window.noticesRead?.(subjects));
@@ -162,12 +165,19 @@ function refresh({ paths, request }) {
     if (paths?.includes(location.pathname)) refreshPage(request);
 }
 
-// Перечитать открытую страницу морфом — но не под рукой человека (15.10.2026, владелец: «постоянно всё лагает»): пока
+// Правка своей формой: автор свою строку уже получил ответом (потоки карточки) — как refresh, второй раз не тянем.
+function rows({ paths, request }) {
+    const keys = paths?.[location.pathname];
+    if (!keys?.length || (request && Turbo.session.recentRequests?.has(request))) return;
+    refreshRows(keys);
+}
+
+// Перечитать открытую страницу морфом (или только строки — refreshRows) — но не под рукой человека (15.10.2026, владелец: «постоянно всё лагает»): пока
 // палец на экране или страница едет (и 600 мс после), печатают, ищут, открыта модальная шторка или страница скрыта —
 // перечитывание ждёт и потом идёт одно на все пришедшие (раньше такое молча пропадало, а под пальцем морф всей
 // страницы дёргал прокрутку). Блок в потоке (sheet--inflow) открыт всегда — мешает только модальная шторка. Зовёт и
 // строка заявки по ходу чтения (arrive_controller).
-let waiting = null;   // { request } — что ждёт; request пуст, если правок несколько
+let waiting = null;   // { request } — страница целиком (request пуст, если правок несколько); { keys } — только строки
 let waitTimer = null;
 let movedAt = 0;
 let fingers = 0;
@@ -190,13 +200,109 @@ export function refreshPage(request) {
     flush();
 }
 
+// Строки списка по ключу: ждут того же, что и страница, копятся в одну пачку; ждёт страница целиком — она их и покроет.
+export function refreshRows(keys) {
+    if (waiting && !waiting.keys) return;
+    waiting ??= { keys: new Set() };
+    keys.forEach((k) => waiting.keys.add(String(k)));
+    flush();
+}
+
 function flush() {
     clearTimeout(waitTimer);
     if (!waiting) return;
     if (busy()) { if (document.visibilityState === 'visible') waitTimer = setTimeout(flush, 700); return; }
-    const { request } = waiting;
+    const { request, keys } = waiting;
     waiting = null;
+    if (keys && keys.size <= ROWS_MAX) { patching = patching.then(() => patch([...keys])).catch(() => {}); return; }
     Turbo.renderStreamMessage(`<turbo-stream action="refresh"${request ? ` request-id="${request}"` : ''}></turbo-stream>`);
+}
+
+// Строки перечитываются по одной пачке за раз: ответ прежней не ляжет поверх свежей.
+const ROWS_MAX = 40;
+let patching = Promise.resolve();
+const ROW_OUT = 'turbo-frame#detail, dialog';
+const rowsOf = (root, key) => [...root.querySelectorAll(`[data-detail-key="${CSS.escape(key)}"]`)].filter((el) => !el.closest(ROW_OUT));
+
+// Тот же адрес с заголовком X-Live-Rows: сервер рисует страницу только с этими строками (числа пилюль и итог — настоящие).
+// Строка есть и тут, и в ответе — морф одной строки; в ответе её нет — ушла из списка: убрать (и число у её группы);
+// в ответе есть, а на экране нет (вошла в список) или раскладка не сошлась — страница целиком, как раньше. Открытая
+// карточка той же строки — морфом фрейма из ответа (сторожа detail_controller те же: события Turbo морфа).
+async function patch(keys) {
+    const href = location.href;
+    const url = new URL(href);
+    const card = document.querySelector('turbo-frame#detail .detail-card')?.dataset.peek;
+    const withCard = !!card && keys.includes(card);
+    if (!withCard) url.searchParams.delete('peek');
+    let doc;
+    try {
+        const r = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'text/html', 'X-Live-Rows': keys.join(',') } });
+        if (!r.ok || r.redirected) return;
+        doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+    } catch { return; }
+    // Пока шёл ответ, ушли на другую страницу или открыли другую строку — он устарел; взялись за экран — подождём.
+    if (location.href !== href) return;
+    if (busy()) { refreshRows(keys); return; }
+    const plan = [];
+    for (const key of keys) {
+        const olds = rowsOf(document, key), next = rowsOf(doc, key);
+        if (next.length ? olds.length !== next.length : olds.some((el) => !el.matches('tr'))) { refreshPage(); return; }
+        plan.push([olds, next]);
+    }
+    let gone = 0;
+    for (const [olds, next] of plan) {
+        if (next.length) olds.forEach((el, i) => morphRow(el, next[i]));
+        else { olds.forEach(dropRow); gone += olds.length; }
+    }
+    if (gone && !document.querySelector('[data-detail-key]:not(turbo-frame#detail *)')) { refreshPage(); return; }
+    syncCounts(doc, gone);
+    const frame = document.querySelector('turbo-frame#detail'), fresh = withCard && doc.querySelector('turbo-frame#detail');
+    if (frame && fresh) Turbo.morphElements(frame, fresh);
+    document.dispatchEvent(new CustomEvent('live:rows', { detail: { keys } }));
+}
+
+// Выделение строки знает только адрес (detail_controller), сервер его не рисует — морф его не снимает.
+function morphRow(el, next) {
+    const selected = el.getAttribute('aria-selected');
+    Turbo.morphElements(el, next);
+    if (selected) el.setAttribute('aria-selected', selected);
+}
+
+// Строка таблицы ушла: число у заголовка её группы на одну меньше, пустая группа уходит вместе с заголовком.
+function dropRow(el) {
+    let head = el.previousElementSibling;
+    while (head && !head.matches('.table-group')) head = head.previousElementSibling;
+    const next = el.nextElementSibling;
+    el.remove();
+    const count = head?.querySelector('.nums');
+    if (!count || !/^\d+$/.test(count.textContent.trim())) return;
+    const left = Number(count.textContent) - 1;
+    if (left > 0) count.textContent = String(left);
+    else if (!next || next.matches('.table-group')) head.remove();
+}
+
+// Числа из ответа: пилюли вкладок (вспыхивает выросшая — StreamActions.count), бейджи и капсулы таб-бара. Итог в
+// заголовке экрана ответ знает только суженным — уходящие строки вычитаются здесь.
+function syncCounts(doc, gone) {
+    const streams = [];
+    for (const el of doc.querySelectorAll('[data-pill-count]')) {
+        const key = el.dataset.pillCount, n = Number(el.textContent.replace(/\D/g, '')) || 0;
+        const targets = `[data-pill-count="${CSS.escape(key)}"]`;
+        if ([...document.querySelectorAll(targets)].some((own) => (Number(own.textContent.replace(/\D/g, '')) || 0) !== n)) {
+            streams.push(`<turbo-stream action="count" count="${n}" targets='${targets}'></turbo-stream>`);
+        }
+    }
+    if (streams.length) Turbo.renderStreamMessage(streams.join(''));
+    for (const attr of ['data-total', 'data-badge']) {
+        for (const el of doc.querySelectorAll(`[${attr}]`)) {
+            const own = document.querySelector(`[${attr}="${CSS.escape(el.getAttribute(attr))}"]`);
+            if (own && own.innerHTML !== el.innerHTML) own.innerHTML = el.innerHTML;
+        }
+    }
+    if (gone) document.querySelectorAll('[data-shell-count]').forEach((el) => {
+        const n = Number(el.textContent.replace(/\D/g, ''));
+        if (n) el.textContent = String(Math.max(0, n - gone));
+    });
 }
 
 export async function badges() {

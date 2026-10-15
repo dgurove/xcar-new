@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Live\Rows;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
@@ -79,6 +80,7 @@ class DealController
             default => $q->orderByRaw("(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) {$dir} nulls last"),
         };
         $q->orderByDesc('deals.id');
+        Rows::only($q, 'deals.id');
 
         return view('admin.deals.index', [
             // Таблица — вся на одной странице; строками — постранично.

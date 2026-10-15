@@ -8,6 +8,7 @@ use App\Billing\Ledger;
 use App\Cars\Car;
 use App\Cars\Vin\Vin;
 use App\Http\Admin\OfferPhotoController;
+use App\Live\Rows;
 use App\Live\Stream;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
@@ -123,6 +124,7 @@ class VehicleController
         $grouped = ! $flat && count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1;
         $byMonth = $out && $q === '' && $sort->key === 'out';
         // «Лентами» (группы — ленты вбок) — весь список одной страницей; «Плитками» — одна сетка со страницами (15.10.2026).
+        Rows::only($vehicles, 'park_vehicles.id');
         $page = ListView::paginate($request, $vehicles, whole: ListView::fromRequest($request, $grouped || $byMonth) === ListView::SHELF);
         // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
         $totals = Accrual::cachedTotals($page->getCollection());

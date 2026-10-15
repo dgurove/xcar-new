@@ -1,6 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { confirmSheet } from '../confirm';
-import { refreshPage } from '../live';
+import { refreshPage, refreshRows } from '../live';
 
 // Список и карточка строки рядом (x-ui.shell :detail). Строка — ссылка (a[data-detail-link]) в фрейм detail; открывает и
 // закрывает контроллер, адрес (?peek=) меняет он же, не Turbo: data-turbo-action у фрейма делал из каждой загрузки визит
@@ -231,11 +231,13 @@ export default class extends Controller {
             : { label: 'Не сохранять', cancel: 'Остаться', danger: true });
         if (!answer) return false;
         if (answer === 'ok' && bar) {
+            // Сохранили строку, с которой уходим, — перечитывается она, а не весь список.
+            const key = this.current?.dataset.detailKey;
             const done = await bar.quiet();
             if (done === 'offline') window.toast?.('Нет связи', { kind: 'danger' });
             if (done !== 'ok') return false;
             forget();
-            setTimeout(refreshPage, 400);
+            setTimeout(() => (key ? refreshRows([key]) : refreshPage()), 400);
         } else this.released = true;
         await this.unguard();
         return true;

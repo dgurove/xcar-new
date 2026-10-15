@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Live\Rows;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Support\Detail;
@@ -56,6 +57,7 @@ class GalleryController
             default => $q->orderBy('gallery_from', $dir),
         };
         $q->orderByDesc('offers.id');
+        Rows::only($q, 'offers.number');
 
         return view('admin.gallery.index', [
             'offers' => ListView::paginate($request, $q, $total),

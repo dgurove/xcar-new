@@ -6,10 +6,12 @@ use App\Cars\Car;
 use App\Cars\Events\CarChanged;
 use App\Logistics\Listeners\RefreshLogistics;
 use App\Logistics\Transport;
+use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Park\City;
+use App\Park\Request as ParkRequest;
 use App\Park\Vehicle;
 use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -18,7 +20,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * Машина поменялась — перечитываются все экраны, где она видна: продажа в CRM (список, редактор, галерея, «Сделки»,
  * «Гараж»), на сайте (плитка на экране, страница, гараж и сделка менеджера), хранение на парковке («Заявки», «Наличие»,
  * дело ТС), перевозка в логистике. Одна машина у всех дорожек (`Cars\Car`, 14.10.2026), поэтому правка на парковке —
- * это правка и в CRM, и наоборот. Пачкой (OCR, импорт кадров, команда) экраны не дёргаются на каждую машину —
+ * это правка и в CRM, и наоборот. Списки (CRM, «Работа», «Заявки», «Наличие») — строкой этой машины (`Publisher::rows`),
+ * страница машины — целиком. Пачкой (OCR, импорт кадров, команда) экраны не дёргаются на каждую машину —
  * `Publisher::refreshSoon`.
  */
 final class RefreshCar
@@ -34,7 +37,10 @@ final class RefreshCar
         }
         if ($vehicle) {
             $this->publish->refreshSoon(Topics::PARK, ["/cars/{$vehicle->id}"]);
-            $this->publish->refreshSoon(Topics::PARK, ['/', '/requests', '/cars']);
+            // Списки — строкой ТС, а не морфом всего «Наличия»; в «Заявках» ключ строки — заявка, закрытые тоже: ушедшая
+            // с экрана уходит.
+            $requests = ParkRequest::withoutGlobalScope(City::SCOPE)->where('vehicle_id', $vehicle->id)->pluck('id')->all();
+            $this->publish->rowsSoon(Topics::PARK, ['/requests' => $requests, '/cars' => [$vehicle->id]]);
         }
         Transport::open()->where('car_id', $e->carId)->get()->each(fn (Transport $t) => $this->publish->refreshSoon(RefreshLogistics::topics($t), ['/transports', "/transports/{$t->id}"]));
     }
@@ -43,7 +49,8 @@ final class RefreshCar
     {
         $n = $offer->number;
         $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$n}"]);
-        $this->publish->refreshSoon(Topics::STAFF, ['/', '/gallery', '/work/deals', '/work/garage']);
+        // Списки CRM — строкой машины (`Rows`): в «Сделках» ключ — сделка, у машины их бывает несколько.
+        $this->publish->rowsSoon(Topics::STAFF, ['/' => [$n], '/gallery' => [$n], '/work/deals' => self::deals($offer), '/work/garage' => $offer->garageCar ? [$n] : []]);
         // На сайте — где её видят: в продаже, в галерее, в сделке (белый список); плитка — только та, что на экране.
         if (in_array($offer->state, [OfferState::Open, OfferState::Sold], true) || $offer->isGallery()) {
             $seers = [Topics::CATALOG, ...Showing::seersOf($offer)->map(fn ($id) => Topics::user($id))->all()];
@@ -60,6 +67,12 @@ final class RefreshCar
         if ($offer->evacuator_id && $offer->evacuator_id !== $manager) {
             $this->publish->refreshSoon(Topics::user($offer->evacuator_id), ['/garage', "/garage/pickups/{$n}"]);
         }
+    }
+
+    /** @return list<int> сделки машины — строки «Работы → Сделки» */
+    public static function deals(Offer $offer): array
+    {
+        return Deal::where('offer_id', $offer->id)->pluck('id')->all();
     }
 
     /**

@@ -1,5 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
-import { refreshPage } from '../live.js';
+import { refreshPage, refreshRows } from '../live.js';
 
 // Заявка, которую завела почта (AutoRequest), входит в список живьём (владелец 07.10.2026): силуэт → идёт
 // распознавание документов → полная строка. Состояние рисует сервер (AutoScan::states) атрибутом
@@ -8,7 +8,7 @@ import { refreshPage } from '../live.js';
 // - строка, которую вставил морф (пришло письмо, пока список открыт), входит; при обычной загрузке страницы — нет;
 // - ghost/reading → done/пусто — строка проявляется и вспыхивает, но не раньше, чем силуэт простоял SILHOUETTE мс
 //   (письмо без документов иначе мигнуло бы);
-// - по ходу чтения (событие scan своей ТС) страница перечитывается морфом — с тем же сторожем, что live.js.
+// - по ходу чтения (событие scan своей ТС) перечитывается сама строка (refreshRows) — с тем же сторожем, что live.js.
 // Морф переставляет строки, вынимая их и вставляя заново (контроллер отключается и подключается), поэтому прошлое
 // строки помнится здесь, по id, а не в контроллере: переставленная не входит второй раз и не теряет проявление.
 // С 12.10.2026 так же черновик предложения из письма (AutoOffer, предмет o:): files — едут фото, «Забираем фото, 3 из
@@ -22,9 +22,15 @@ const BUSY = ['ghost', 'files', 'reading'];
 
 // Событие scan приходит за каждым файлом каждой строки: одно перечитывание на всех, а не по таймеру на строку.
 let scanTimer = null;
-function refreshSoon() {
+const scanned = new Set();
+function refreshSoon(key) {
+    scanned.add(key || '*');
     clearTimeout(scanTimer);
-    scanTimer = setTimeout(refreshPage, 600);
+    scanTimer = setTimeout(() => {
+        const keys = [...scanned];
+        scanned.clear();
+        keys.includes('*') ? refreshPage() : refreshRows(keys);
+    }, 600);
 }
 
 let morphedAt = -Infinity;
@@ -51,7 +57,7 @@ export default class extends Controller {
         seen.set(id, { state: this.stateValue, since: was?.since ?? performance.now() });
         if (was && BUSY.includes(was.state) && !busy) this.reveal(was.since);
         this.onScan = (e) => {
-            if (e.detail?.subject === this.subjectValue && BUSY.includes(this.stateValue)) refreshSoon();
+            if (e.detail?.subject === this.subjectValue && BUSY.includes(this.stateValue)) refreshSoon(this.element.dataset.detailKey);
         };
         document.addEventListener('live:scan', this.onScan);
     }

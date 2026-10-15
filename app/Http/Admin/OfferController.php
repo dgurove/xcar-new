@@ -9,6 +9,7 @@ use App\Garage\Actions\GiveToGarage;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
 use App\Garage\GarageView;
+use App\Live\Rows;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Jobs\ImportThreadFiles;
@@ -236,6 +237,8 @@ class OfferController
         $packable = ! $searching && ($preset === 'slots' || (in_array($preset, ['published', 'bids'], true) && $request->user()->isAdmin()));
         $view = $searching || $preset === 'legacy' ? ListView::TABLE : ListView::pick($request, $count, shelves: $packable);
         $packed = $view === ListView::SHELF;
+        // Живое обновление строкой (`Live\Rows`) — после итога и чисел вкладок: они в ответе настоящие.
+        Rows::only($q, 'offers.number');
         $offers = ListView::isTable($view) ? $q->paginate(max($count, 1), total: $count)->withQueryString() : ListView::paginate($request, $q, $count, whole: $packed);
         // Кадры нужны плиткам и строкам; в таблице их нет — кроме «Оцененных»: там по ним видно, готово ли к продаже.
         if (! ListView::isTable($view) || ($preset === 'priced' && ! $searching)) {

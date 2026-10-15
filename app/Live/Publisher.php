@@ -3,6 +3,7 @@
 namespace App\Live;
 
 use App\Live\Jobs\PublishRefresh;
+use App\Live\Jobs\PublishRows;
 use App\Support\Nav;
 use App\Support\Surface;
 use Illuminate\Support\Facades\Cache;
@@ -23,7 +24,7 @@ final class Publisher
     public function __invoke(array|string $topics, string $type, array $data = []): void
     {
         // Событие для сотрудников — счётчики Nav::staffCounts пересчитываются (и без хаба тоже).
-        if (in_array($type, ['badges', 'refresh'], true) && array_intersect([Topics::STAFF, Topics::PARK], (array) $topics)) {
+        if (in_array($type, ['badges', 'refresh', 'rows'], true) && array_intersect([Topics::STAFF, Topics::PARK], (array) $topics)) {
             Nav::forgetStaffCounts();
         }
         $hub = (string) config('xcar.mercure.hub');
@@ -85,6 +86,54 @@ final class Publisher
             // открытой карточкой ловил гонку с переходом к следующей строке).
             $request = request()->header('X-Turbo-Request-Id');
             PublishRefresh::dispatch((array) $topics, $paths, $key, is_string($request) ? $request : null)->delay(self::SOON);
+        }
+    }
+
+    /**
+     * Перечитать в открытых списках только эти строки (`Rows`, ключ — `data-detail-key`): `['/' => [номер], '/work/deals'
+     * => [id сделки]]`. Строка ушла из списка — уходит с экрана, пришла новая — клиент перечитывает страницу целиком.
+     * Пустые списки ключей отбрасываются; запрос автора — как у `refresh`.
+     *
+     * @param  array<string, list<int|string>>  $rows
+     */
+    public function rows(array|string $topics, array $rows, ?string $request = null): void
+    {
+        $rows = array_filter(array_map(fn ($keys) => array_values(array_unique(array_map('strval', $keys))), $rows));
+        if (! $rows) {
+            return;
+        }
+        $request ??= request()->header('X-Turbo-Request-Id');
+        $this($topics, 'rows', ['paths' => $rows] + (is_string($request) && $request !== '' ? ['request' => $request] : []));
+    }
+
+    /**
+     * `rows` для того, что правят пачкой, — как `refreshSoon`: первое сразу, ключи, пришедшие за окно `SOON`, копятся и
+     * уходят одним событием в конце (`PublishRows`).
+     *
+     * @param  array<string, list<int|string>>  $rows
+     */
+    public function rowsSoon(array|string $topics, array $rows): void
+    {
+        $rows = array_filter($rows);
+        if (! $rows) {
+            return;
+        }
+        $key = md5('rows|'.implode(',', (array) $topics).'|'.implode(',', array_keys($rows)));
+        if (Cache::add("live:soon:{$key}", 1, self::SOON)) {
+            $this->rows($topics, $rows);
+
+            return;
+        }
+        Cache::lock("live:rows:lock:{$key}", 5)->block(2, function () use ($key, $rows) {
+            $kept = Cache::get("live:rows:{$key}", []);
+            foreach ($rows as $path => $keys) {
+                $kept[$path] = array_values(array_unique([...($kept[$path] ?? []), ...array_map('strval', $keys)]));
+            }
+            Cache::put("live:rows:{$key}", $kept, 60);
+        });
+        if (Cache::add("live:tail:{$key}", 1, 60)) {
+            $request = request()->header('X-Turbo-Request-Id');
+            PublishRows::dispatch((array) $topics, $key, is_string($request) ? $request : null)->delay(self::SOON);
         }
     }
 

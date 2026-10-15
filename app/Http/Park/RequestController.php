@@ -3,6 +3,7 @@
 namespace App\Http\Park;
 
 use App\Cars\Category;
+use App\Live\Rows;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Candidate;
 use App\Mail\CandidateStage;
@@ -90,7 +91,8 @@ class RequestController
         // Выбранная остаётся и с нулём, иначе активная пилюля исчезала бы из ряда вместе со списком.
         $presets = collect(['all' => 'Все'] + collect(RequestType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all())
             ->filter(fn ($label, $key) => $key === 'all' || $key === $type || ! empty($counts[$key]))->all();
-        $paginator = ListView::paginate($request, $q);
+        // Живое обновление строкой (`Live\Rows`) — после чисел пилюль.
+        $paginator = ListView::paginate($request, Rows::only($q, 'park_requests.id'));
         $data = [
             'requests' => $paginator,
             'sort' => $sort,

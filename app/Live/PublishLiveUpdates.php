@@ -73,7 +73,9 @@ final class PublishLiveUpdates
         $buyers = Showing::seersOf($e->offer)->map(fn ($id) => Topics::user($id))->all();
         $this->publish->card($n, [Topics::CATALOG, ...$buyers]);
         $this->publish->refresh([Topics::CATALOG, ...$buyers], ["/offers/{$n}"]);
-        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/', '/work/deals']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
+        // Списки CRM — строкой: ушла из вкладки — уходит с экрана, во вкладку пришла — там перечитывается страница.
+        $this->publish->rows(Topics::STAFF, ['/' => [$n], '/gallery' => [$n], '/work/deals' => RefreshCar::deals($e->offer)]);
     }
 
     /** Покупателю открыли предложения: его лента и сводка перечитываются, у менеджера — карточки с числом «видят». */
@@ -98,7 +100,8 @@ final class PublishLiveUpdates
     public function bid(BidPlaced $e): void
     {
         $n = $e->bid->offer->number;
-        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
+        $this->publish->rows(Topics::STAFF, ['/' => [$n]]);
         $this->publish->refresh(Topics::CATALOG, ["/offers/{$n}"]);
     }
 
@@ -106,8 +109,10 @@ final class PublishLiveUpdates
     {
         $n = $e->bid->offer->number;
         $this->publish->refresh(Topics::user($e->bid->user_id), ['/deals', "/offers/{$n}"]);
-        // Отклонили последнее — машина возвращается из «Есть подтверждения» в «Опубликованные»: список перечитывается.
-        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/']);
+        // Отклонили последнее — машина возвращается из «Есть подтверждения» в «Опубликованные»: строка уходит, а там
+        // перечитывается страница.
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
+        $this->publish->rows(Topics::STAFF, ['/' => [$n], '/work/deals' => RefreshCar::deals($e->bid->offer)]);
     }
 
     /**
@@ -126,7 +131,8 @@ final class PublishLiveUpdates
             $this->publish->refresh(Topics::user($id), ['/offers', "/offers/{$n}"]);
             $this->publish->badges(Topics::user($id));
         }
-        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
+        $this->publish->rows(Topics::STAFF, ['/' => [$n]]);
     }
 
     public function interest(InterestRegistered $e): void
@@ -143,7 +149,8 @@ final class PublishLiveUpdates
     public function stage(StageEntered $e): void
     {
         $n = $e->offer->number;
-        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}", '/work/deals', '/work/garage']);
+        $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
+        $this->publish->rows(Topics::STAFF, ['/work/deals' => RefreshCar::deals($e->offer), '/work/garage' => [$n]]);
         // Вывоз, порученный менеджеру: его «Гараж» и страница вывоза.
         if ($e->track === Track::Service && $e->offer->evacuator_id) {
             $this->publish->refresh(Topics::user($e->offer->evacuator_id), ['/garage', "/garage/pickups/{$n}"]);
@@ -222,8 +229,10 @@ final class PublishLiveUpdates
     /** Гараж: машину и список машин перечитывают сотрудники и её менеджер. */
     public function garage(GarageChanged $e): void
     {
-        $paths = ['/garage', '/garage/cars/'.$e->car->offer->number];
-        $this->publish->refresh(Topics::STAFF, [...$paths, '/work/garage', '/offers/'.$e->car->offer->number]);
+        $n = $e->car->offer->number;
+        $paths = ['/garage', "/garage/cars/{$n}"];
+        $this->publish->refresh(Topics::STAFF, [...$paths, "/offers/{$n}"]);
+        $this->publish->rows(Topics::STAFF, ['/work/garage' => [$n]]);
         if ($e->car->manager_id) {
             $this->publish->refresh(Topics::user($e->car->manager_id), $paths);
         }
@@ -233,8 +242,13 @@ final class PublishLiveUpdates
     public function payment(PaymentRecorded|PaymentClaimed $e): void
     {
         $invoice = $e instanceof PaymentClaimed ? $e->payment->invoice : $e->invoice;
-        $this->publish->refresh(Topics::STAFF, ['/work/money', '/settings/bank/statement', '/work/deals', '/work/garage']);
+        $this->publish->refresh(Topics::STAFF, ['/work/money', '/settings/bank/statement']);
         $garage = $invoice->deal_id ? null : GarageCar::ofInvoice($invoice);
+        $this->publish->rows(Topics::STAFF, ['/work/deals' => $invoice->deal_id ? [$invoice->deal_id] : [], '/work/garage' => match (true) {
+            (bool) $garage => [$garage->offer->number],
+            (bool) $invoice->deal?->isGarage() => [$invoice->deal->offer->number],
+            default => [],
+        }]);
         $manager = $invoice->deal?->buyer_id ?? $garage?->manager_id;
         if ($manager) {
             $this->publish->refresh(Topics::user($manager), ['/account/money', $garage ? '/garage/cars/'.$garage->offer->number : '/account/money/deals/'.$invoice->deal_id]);

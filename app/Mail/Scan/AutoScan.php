@@ -12,6 +12,7 @@ use App\Mail\Jobs\ScanAttachments;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Actions\AutoSale;
+use App\Park\City;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -346,9 +347,15 @@ final class AutoScan
 
     private static function ping(VehicleSubject|OfferSubject $subject): void
     {
-        $subject instanceof VehicleSubject
-            ? app(Publisher::class)->refresh(Topics::PARK, ['/requests', "/cars/{$subject->vehicle->id}"])
-            : app(Publisher::class)->refresh(Topics::STAFF, ['/', "/offers/{$subject->offer->number}"]);
+        $publish = app(Publisher::class);
+        if ($subject instanceof VehicleSubject) {
+            $publish->refresh(Topics::PARK, ["/cars/{$subject->vehicle->id}"]);
+            // Список — строкой заявки этой ТС (`Live\Rows`), а не морфом всех заявок.
+            $publish->rows(Topics::PARK, ['/requests' => Request::withoutGlobalScope(City::SCOPE)->where('vehicle_id', $subject->vehicle->id)->pluck('id')->all()]);
+        } else {
+            $publish->refresh(Topics::STAFF, ["/offers/{$subject->offer->number}"]);
+            $publish->rows(Topics::STAFF, ['/' => [$subject->offer->number]]);
+        }
     }
 
     /** Пинг списку CRM о ходе фото — не чаще раза в `NUDGE_SECONDS`: у сотни строк в пути. */

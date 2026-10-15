@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Garage\Car;
 use App\Garage\CarLine;
 use App\Garage\CarState;
+use App\Live\Rows;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
@@ -52,6 +53,9 @@ class GarageController
             default => $q->whereIn('state', [CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling]),
         };
         $cars = $facets->apply($q)->orderBy('stage_at')->get();
+        $total = $cars->count();
+        // Живое обновление строкой (`Live\Rows`): машин в гараже десятки — сужаем уже выбранное.
+        $cars = Rows::filter($cars, fn (Car $c) => $c->offer?->number);
 
         // Группы — менеджеры по имени, взятые под себя — последними; внутри — выбранная сортировка.
         $user = $request->user();
@@ -68,7 +72,7 @@ class GarageController
         return view('admin.garage.index', [
             'detail' => $detail,
             'groups' => $groups,
-            'total' => $cars->count(),
+            'total' => $total,
             'preset' => $preset,
             'facets' => $facets,
             'sort' => $sort,

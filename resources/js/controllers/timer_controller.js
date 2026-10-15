@@ -50,9 +50,10 @@ export default class extends Controller {
     }
 
     // Пишем, только когда отсчёт поменялся, — сверяем со своим последним текстом, а не с DOM: чужая подмена текста
-    // (переводчик) не должна запускать перезапись каждую секунду.
+    // (переводчик) не должна запускать перезапись каждую секунду. Пустой — стёр живой морф строки (сервер первым кадром
+    // пишет пусто): пишем снова, иначе «просрочено» стояло без срока до следующей перемены.
     write(text) {
-        if (!this.visible || this.text === text) return;
+        if (!this.visible || (this.text === text && this.element.textContent !== '')) return;
         this.text = text;
         this.element.textContent = text;
     }
