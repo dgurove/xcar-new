@@ -168,28 +168,39 @@
    --header-edge — низ шапки (к нему липнет липкое);
    --bottom-edge — низ свободной части: к нему садятся плашка действий, «Сохранить» страницы, лист документов поднимает его;
    --bottom-room — сколько закрыто снизу: запас страницы и прокрутки к полю (от клавиатуры не зависит — страница не прыгает);
-   --home-gap — щель у самого низа листа: под клавиатурой полосы «Домой» нет. */
+   --home-gap — щель у самого низа листа: под клавиатурой полосы «Домой» нет;
+   --action — 1, когда на экране плашка действий (правило ниже — единственное место, где это решается);
+   --hairline — толщина волосяной линии полос: на ретине половина пикселя. */
 :root {
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
   --header-edge: calc(var(--spacing-header) + var(--safe-top));
+  --action: 0;
   --bottom-edge: calc(var(--spacing-tabbar) + var(--safe-bottom));
-  --bottom-room: calc(var(--spacing-tabbar) + var(--safe-bottom));
+  --bottom-room: calc(var(--spacing-tabbar) + var(--safe-bottom) + var(--action) * var(--spacing-action));
   --home-gap: var(--safe-bottom);
+  --hairline: 1px;
 }
-/* Плашка действий с видимой кнопкой (скрытая — `hidden` или «Сохранить изменения», ждущая правки, — места не берёт). */
-:root:has(.action-bar:not([hidden]) > .action-bar-inner > :not([hidden])) { --bottom-room: calc(var(--spacing-tabbar) + var(--safe-bottom) + var(--spacing-action)); }
+@media (min-resolution: 2dppx) { :root { --hairline: .5px; } }
+/* Плашка действий на экране — та, у которой есть видимая кнопка (как в `.action-bar:not(:has(…))` у самой плашки):
+   скрытая (`hidden`, «Сохранить изменения», ждущая правки, служебные скрытые поля формы) и плашка внутри карточки строки
+   (у листа свой подвал) места у страницы не берут. */
+:root:has(.action-bar:not([hidden], .split-detail .action-bar) > .action-bar-inner > :not([hidden], [type="hidden"], template)) { --action: 1; }
 /* От планшета таб-бара нет, кнопки действий парят справа внизу. */
 @media (min-width: 768px) {
-  :root { --spacing-header: 80px; --bottom-edge: 0px; --bottom-room: 0px; } /* шапка: py-2 + два ряда по 30 px + 4 px между */
-  :root:has(.action-bar:not([hidden]) > .action-bar-inner > :not([hidden])) { --bottom-room: 6rem; }
+  :root { --spacing-header: 80px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * 6rem); } /* шапка: py-2 + два ряда по 30 px + 4 px между */
 }
-/* Клавиатура (app.js keyboardInset): таб-бар под ней, нижнее садится на неё. */
-html.kb-open { --bottom-edge: var(--kb, 0px); --home-gap: 0px; }
+/* Плашка, спрятанная от ПК (`lg:hidden` — у страницы предложения справа своя колонка), места не берёт. */
+@media (min-width: 1024px) {
+  :root:not(:has(.action-bar:not([hidden], .lg\:hidden, .split-detail .action-bar) > .action-bar-inner > :not([hidden], [type="hidden"], template))) { --action: 0; }
+}
+/* Клавиатура (app.js keyboardInset): таб-бар под ней, нижнее садится на неё. Только телефон: на iPad парящие кнопки
+   остаются на месте — до настоящей высоты клавиатуры app.js ставит догадку (45 % экрана), и кнопки прыгали бы. */
+html.kb-open { --home-gap: 0px; }
+@media (max-width: 767.98px) { html.kb-open { --bottom-edge: var(--kb, 0px); } }
 @media (max-width: 1023.98px) {
   /* Лист документов снизу: плашка действий — на нём, страница докручивается выше него. */
-  html.docs-open { --bottom-edge: calc(var(--kb, 0px) + var(--docs-h)); --bottom-room: calc(var(--docs-h) + 1rem); }
-  html.docs-open:has(.action-bar:not([hidden]) > .action-bar-inner > :not([hidden])) { --bottom-room: calc(var(--docs-h) + var(--spacing-action) + 1rem); }
+  html.docs-open { --bottom-edge: calc(var(--kb, 0px) + var(--docs-h)); --bottom-room: calc(var(--docs-h) + 1rem + var(--action) * var(--spacing-action)); }
   /* Экран чата — поле ввода на нижнем краю, таб-бара нет, страница не листается. */
   :root:has(.chat-page) { --bottom-room: 0px; }
 }
@@ -2425,16 +2436,14 @@ html.kb-open { --bottom-edge: var(--kb, 0px); --home-gap: 0px; }
 @layer components {
   /* Хром — одна глухая полоса на шапку, таб-бар и плашку действий (правило 2). */
   .header, .tabbar, .action-bar { background: var(--color-bar); }
-  @media (min-resolution: 2dppx) { .tabbar, .action-bar { border-top-width: .5px; } }
-  /* Плашка, в которой видимых кнопок нет («Сохранить изменения» ждёт правки), не рисуется. */
-  .action-bar:not(:has(.action-bar-inner > :not([hidden]))) { display: none; }
+  /* Плашка, в которой видимых кнопок нет («Сохранить изменения» ждёт правки), не рисуется (то же условие — у --action). */
+  .action-bar:not(:has(> .action-bar-inner > :not([hidden], [type="hidden"], template))) { display: none; }
 
   /* Шапка — как navigation bar: волосяная линия и заголовок экрана по центру
      появляются, когда содержимое ушло под неё (.is-scrolled / .is-past-title). */
   .header { @apply sticky top-0 z-40 text-ink; padding-top: var(--safe-top); }
   .header > div { position: relative; }
-  .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: 1px; background: var(--color-hairline); opacity: 0; transition: opacity var(--dur-fast); }
-  @media (min-resolution: 2dppx) { .header::after { height: .5px; } }
+  .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: var(--hairline); background: var(--color-hairline); opacity: 0; transition: opacity var(--dur-fast); }
   .header.is-scrolled::after { opacity: 1; }
   .header-title {
     position: absolute; left: 50%; top: 50%; translate: -50% calc(-50% + 6px); max-width: 45%; pointer-events: none;
@@ -2569,7 +2578,7 @@ html.kb-open { --bottom-edge: var(--kb, 0px); --home-gap: 0px; }
     padding-inline: max(.5rem, env(safe-area-inset-left)) max(.5rem, env(safe-area-inset-right));
     height: calc(var(--spacing-tabbar) + var(--safe-bottom));
     padding-bottom: var(--safe-bottom);
-    border-top: 1px solid var(--color-hairline);
+    border-top: var(--hairline) solid var(--color-hairline);
   }
   @media (min-width: 768px) { .tabbar { display: none; } }
   /* Клавиатура стоит — бара нет, без движения: на iOS он и так под ней. Прятать по фокусу с анимацией было нельзя —
@@ -2619,23 +2628,23 @@ html.kb-open { --bottom-edge: var(--kb, 0px); --home-gap: 0px; }
   .action-bar {
     position: fixed; inset-inline: 0; z-index: 30;
     bottom: var(--bottom-edge);
-    border-top: 1px solid var(--color-hairline);
+    border-top: var(--hairline) solid var(--color-hairline);
   }
-  .action-bar-inner { @apply flex items-center gap-3; height: var(--spacing-action); width: 100%; max-width: var(--container-site); margin-inline: auto; padding-inline: 1rem; }
+  /* Высота — не меньше --spacing-action (кнопка 3.5rem и по .75rem), край не входит; выше — растёт, а не вылезает на таб-бар. */
+  .action-bar-inner { @apply flex items-center gap-3 py-3; min-height: var(--spacing-action); width: 100%; max-width: var(--container-site); margin-inline: auto; padding-inline: 1rem; }
   /* От планшета — парящие кнопки в правом нижнем углу, по правому краю контейнера; плашки нет. */
   @media (min-width: 768px) {
     .action-bar {
       inset-inline: auto; bottom: calc(var(--bottom-edge) + 1.5rem); right: max(1.5rem, calc((100% - var(--container-site)) / 2 + 1.5rem));
       background: none; border-top: 0;
     }
-    .action-bar-inner { width: auto; height: auto; max-width: none; padding: 0; gap: .75rem; }
+    .action-bar-inner { width: auto; min-height: 0; max-width: none; padding: 0; gap: .75rem; }
     .action-bar .btn { flex: 0 0 auto; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
     /* Плашки под парящими кнопками нет — прозрачная («Отменить», «Не заявка» черновика из писем) просвечивала текстом
        страницы (15.10.2026): здесь она плотная, как тихая. */
     .action-bar .btn-ghost { background: var(--color-surface-3); }
     @media (hover: hover) { .action-bar .btn-ghost:hover { background: var(--color-line); } }
     .dark .action-bar .btn { box-shadow: 0 8px 24px rgb(0 0 0 / .5); }
-    body.surface-site #main { padding-bottom: var(--bottom-room); }
   }
   @media (min-width: 1280px) { .action-bar { right: max(2rem, calc((100% - var(--container-site)) / 2 + 2rem)); } }
   /* Карточка строки открыта справа (от 1024) — парящие кнопки списка («Удалить навсегда», «Отправить в продажу») встают

@@ -610,8 +610,9 @@ export default class extends Controller {
         if (!this.shown || !field.isConnected || document.activeElement !== field) return;
         const r = field.getBoundingClientRect();
         let bottom = this.element.getBoundingClientRect().top;
-        const bar = document.querySelector('.action-bar');
-        if (bar && bar.offsetParent !== null) bottom = Math.min(bottom, bar.getBoundingClientRect().top);
+        // Видимая плашка — по коробкам: у fixed-узла offsetParent всегда null, и плашку раньше не видело никогда.
+        const bar = [...document.querySelectorAll('.action-bar')].find((b) => b.getClientRects().length);
+        if (bar) bottom = Math.min(bottom, bar.getBoundingClientRect().top);
         const top = Math.max(document.querySelector('.header')?.getBoundingClientRect().bottom ?? 0, 0);
         if (r.bottom > bottom - 12) scrollBy(0, r.bottom - bottom + 24);
         else if (r.top < top + 8) scrollBy(0, r.top - top - 24);
