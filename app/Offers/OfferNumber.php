@@ -24,6 +24,15 @@ final class OfferNumber
         return $offer->number >= 1_000_000_000;
     }
 
+    /**
+     * Номер наружу при шеринге — имя PDF и фото, строка на PDF, текст, ссылка (15.10.2026, владелец: «при шеринге не должен
+     * номер черновика указываться»). У черновика нет: и боевой, выданный заранее (`reserve`), — номер ещё не на сайте.
+     */
+    public static function shared(Offer $offer): ?int
+    {
+        return self::isPublic($offer) && $offer->state !== OfferState::Draft ? (int) $offer->number : null;
+    }
+
     /** Выдать публичный номер, если его ещё не было; прежний — в псевдонимы. Вызывать под замком строки. */
     public static function issue(Offer $offer): void
     {

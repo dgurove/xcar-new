@@ -35,7 +35,12 @@
     // Машина уже у менеджера — «У вас» одним словом над чужой задачей (оплата, договор) ни о чём: получения больше нет.
     $showHandover = $handover?->shows() && ! $handover->withBuyer;
     // Поля шага, что показаны в получении (контакт, адрес, дата), второй раз в шаге не пишем.
-    $payload = collect($position?->fields() ?? [])->except($handover?->open ? $handover->keys : []);
+    // Наши служебные поля про деньги поставщику (дата и номер платёжки, перевод с Р.О.С., сумма сделки страховой) —
+    // не менеджеру; в остальных — без названия вендора (15.10.2026).
+    $labels = collect($position?->stage->staff_fields ?? [])->pluck('label', 'key');
+    $payload = collect($position?->fields() ?? [])->except($handover?->open ? $handover->keys : [])
+        ->reject(fn ($v, $k) => preg_match('/платёж|оплат|сумм|перевод|цен/iu', (string) ($labels[$k] ?? $k)))
+        ->map(fn ($v) => is_string($v) ? \App\Support\VendorNames::strip($v) : $v)->filter(fn ($v) => filled($v));
     // Ответы — перепиской, по порядку писем: сначала контакт, потом документы. Много — ранние под «Ещё».
     $replies = ($replies ?? collect())->reverse()->values();
     $early = $replies->count() > 3 ? $replies->slice(0, $replies->count() - 2) : collect();

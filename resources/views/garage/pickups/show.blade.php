@@ -14,7 +14,9 @@
     $blockName = fn ($block) => $block->stages->contains(fn ($s) => $s->car_place === \App\Offers\CarPlace::Keeper)
         ? ($mine ? 'Стоит у вас' : $block->name) : $block->name;
     // Куда и когда ехать: наши поля шага, а без них — страхователь и адрес осмотра из предложения.
-    $fields = collect($stage?->staff_fields ?? [])->mapWithKeys(fn ($f) => [$f['label'] => $position->payload[$f['key']] ?? null])->filter();
+    // Без денег поставщику и без названия вендора (15.10.2026): поля вписывают сотрудники из писем страховой.
+    $fields = collect($stage?->staff_fields ?? [])->reject(fn ($f) => preg_match('/платёж|оплат|сумм|перевод|цен/iu', $f['label']))
+        ->mapWithKeys(fn ($f) => [$f['label'] => \App\Support\VendorNames::strip((string) ($position->payload[$f['key']] ?? ''))])->filter();
     if ($canPick && ! $fields->has('Адрес') && $offer->inspection_address) $fields['Адрес'] = $offer->inspection_address;
     // Машина едет в гараж — сотруднику её закупочная первой строкой, как на странице машины (вывозчику-менеджеру — нет: машина не его).
     $garagePrice = $user->isAdmin() ? $offer->garageCar?->price() : null;

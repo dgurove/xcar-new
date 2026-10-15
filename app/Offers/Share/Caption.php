@@ -36,7 +36,7 @@ final class Caption
         $rows = [
             // Номер с датой — первой строкой с решёткой (`#2610041229`); черновику его выдаёт `Subject::offer` при шеринге.
             // На xcar по умолчанию снят, ДЛ там нет совсем: номер убытка и ДЛ — внутренние (владелец 10.10.2026).
-            ['number', 'Номер', OfferNumber::isPublic($offer) ? '#'.$offer->number : null, $crm],
+            ['number', 'Номер', OfferNumber::shared($offer) ? '#'.$offer->number : null, $crm],
             ['dl', 'ДЛ', $crm && $offer->leaseRef() ? 'ДЛ '.$offer->leaseRef() : null, true],
             ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
             // VIN — сразу под машиной (владелец 05.10.2026: «вин повыше»), без слова «VIN».
@@ -88,7 +88,7 @@ final class Caption
     /** Адрес предложения на сайте — для текста и «Скопировать ссылку». */
     public static function link(Offer $offer): ?string
     {
-        return OfferNumber::isPublic($offer) ? Surface::Site->url("/offers/{$offer->number}") : null;
+        return OfferNumber::shared($offer) ? Surface::Site->url("/offers/{$offer->number}") : null;
     }
 
     private static function rows(array $rows): array

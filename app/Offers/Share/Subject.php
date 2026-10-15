@@ -33,7 +33,7 @@ final class Subject
             OfferNumber::reserve($offer);
         }
 
-        return new self($offer, OfferNumber::isPublic($offer) ? (string) $offer->number : '', $offer->published_at ?? $offer->created_at, $offer->titleWithYear(), "/offers/{$offer->number}/pdf");
+        return new self($offer, (string) OfferNumber::shared($offer), $offer->published_at ?? $offer->created_at, $offer->titleWithYear(), "/offers/{$offer->number}/pdf");
     }
 
     public static function car(Car $car): self
