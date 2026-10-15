@@ -30,7 +30,10 @@ class ListsController
         // покупателю, снятое с продажи — менеджеру. Карточке — то же, что в каталоге (`CatalogQuery::cards`): только фото,
         // своя закладка, «новое», «Ваша цена» и интерес одним запросом, а не по запросу на карточку.
         $user = $request->user();
-        $offers = CatalogQuery::cards($user)->visibleTo($user)
+        // Своё живое подтверждение держит машину и здесь, как страницу (`isVisibleTo`): приняли другого — у ждущего
+        // резервом она не пропадает (15.10.2026).
+        $offers = CatalogQuery::cards($user)->where(fn ($v) => $v->visibleTo($user)
+            ->orWhereHas('bids', fn ($b) => $b->where('user_id', $user->id)->where('state', \App\Offers\BidState::Active)))
             ->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id));
         // Добавлено — когда отметил человек, а не когда заведено предложение (было `latest()` по предложению).
         match ($sort->key) {

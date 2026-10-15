@@ -39,7 +39,7 @@
             @if ($estimate)@unless ($estimate->isGiven())<span class="cell-timer sm:hidden"><x-ui.icon name="timer" class="size-3.5"/><x-offer.estimate-left :estimate="$estimate" word=""/></span>@endunless
             @elseif ($gallery)<x-offer.gallery-left :offer="$offer" word="" class="sm:hidden"/>
             @elseif ($left !== null && $left > 0)<span class="cell-timer sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink-muted' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
-            @elseif ($offer->state === \App\Offers\OfferState::Sold)<span class="sm:hidden text-urgent">идёт сделка</span>
+            @elseif ($offer->state === \App\Offers\OfferState::Sold && $offer->seesDeal($user))<span class="sm:hidden text-urgent">идёт сделка</span>
             @elseif ($bids && !$offer->bidsOpen())<span class="sm:hidden">приём закрыт</span>@endif
             @if ($city)<span class="sm:hidden">{{ $city }}</span>@endif
             {{-- Открывал — «просмотрено» (`ReadOffer`); показывает `data-viewed` строки, его же ставит клик (`app.js`). --}}
@@ -52,7 +52,7 @@
         @if ($estimate)@unless ($estimate->isGiven())<span class="cell-timer"><x-ui.icon name="timer" class="size-3.5"/><x-offer.estimate-left :estimate="$estimate" word=""/></span>@endunless
         @elseif ($gallery)<x-offer.gallery-left :offer="$offer"/>
         @elseif ($left !== null && $left > 0)<span class="cell-timer {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink-muted' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span></span>
-        @elseif ($offer->state === \App\Offers\OfferState::Sold)<span class="text-urgent">Идёт сделка</span>
+        @elseif ($offer->state === \App\Offers\OfferState::Sold && $offer->seesDeal($user))<span class="text-urgent">Идёт сделка</span>
         @elseif ($bids && !$offer->bidsOpen())<span class="text-ink-dim">Приём закрыт</span>@endif
     </td>
     @endif

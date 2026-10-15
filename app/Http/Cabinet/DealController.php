@@ -64,21 +64,20 @@ class DealController
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id')->paginate(30);
 
         // Админ подтверждения решает в CRM — строки «Мои подтверждения» у него нет.
-        $bids = $me->hasDeals() ? self::waiting($me)->count() + self::reserve($me)->count() : 0;
+        $bids = $me->hasDeals() ? self::waiting($me)->count() : 0;
         $archived = self::deals($me)->where('state', '!=', DealState::Active)->count();
 
         return view('cabinet.deals.index', ['deals' => $deals, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
     }
 
     /**
-     * Мои подтверждения (11.10.2026, владелец): «Ждут решения» — по предложению ещё никого не выбрали; «В резерве» — отдали
-     * другому менеджеру, его сделка идёт. Отклонённых и отданных другому, чья продажа состоялась, тут нет вовсе.
+     * Мои подтверждения (11.10.2026, владелец): «Ждут решения» — всё живое. Отданное другому — тоже здесь, тем же видом
+     * (15.10.2026, владелец: второй не должен знать, что машину отдали, он резерв на случай, если первый сорвётся).
+     * Отклонённых и отданных другому, чья продажа состоялась, тут нет вовсе.
      */
     private function bidsScreen(Request $request)
     {
-        $me = $request->user();
-
-        return view('cabinet.deals.bids', ['waiting' => self::waiting($me)->get(), 'reserve' => self::reserve($me)->get()]);
+        return view('cabinet.deals.bids', ['waiting' => self::waiting($request->user())->get()]);
     }
 
     /** Архив: закончившиеся и отменённые сделки. Подтверждений здесь нет — они не сделки. */
@@ -103,18 +102,15 @@ class DealController
         return Bid::with(['offer', 'offer.media'])->where('user_id', $me->id)->latest();
     }
 
-    /** Ждут решения: предложение открыто, сделки по нему нет — выбор впереди. */
+    /**
+     * Ждут решения: предложение открыто без сделки — выбор впереди; или идёт чужая сделка — подтверждение в резерве, но
+     * менеджеру это не говорится (15.10.2026).
+     */
     private static function waiting(User $me)
     {
-        return self::bids($me)->where('state', BidState::Active)
-            ->whereHas('offer', fn ($o) => $o->where('state', OfferState::Open)->whereDoesntHave('deal'));
-    }
-
-    /** В резерве: отдали другому, его сделка идёт — сорвётся, выберем из резерва. */
-    private static function reserve(User $me)
-    {
-        return self::bids($me)->where('state', BidState::Active)
-            ->whereHas('offer.deal', fn ($d) => $d->where('buyer_id', '!=', $me->id));
+        return self::bids($me)->where('state', BidState::Active)->where(fn ($w) => $w
+            ->whereHas('offer', fn ($o) => $o->where('state', OfferState::Open)->whereDoesntHave('deal'))
+            ->orWhereHas('offer.deal', fn ($d) => $d->where(fn ($b) => $b->whereNull('buyer_id')->orWhere('buyer_id', '!=', $me->id))));
     }
 
     public function show(Request $request, Deal $deal)

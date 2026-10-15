@@ -616,12 +616,18 @@ class Offer extends Model
     }
 
     /**
-     * Витрина предложений: в продаже или сделка, открытая этому менеджеру.
+     * Витрина предложений: в продаже, сделка, открытая этому менеджеру, или чужая сделка, где он ждёт резервом.
      * Одна дверь каталога и числа таба «Предложения» — расходятся они не должны.
      */
     public function scopeSiteList(Builder $q, ?User $user): Builder
     {
-        return $q->visibleTo($user)->where(fn ($w) => $w->onSale()->orWhere(fn ($d) => $d->dealOpenTo($user)));
+        return $q->where(fn ($all) => $all->where(fn ($v) => $v->visibleTo($user)->where(fn ($w) => $w->onSale()->orWhere(fn ($d) => $d->dealOpenTo($user))))
+            // Подтвердил, а приняли другого раньше срока приёма (15.10.2026, владелец: резерв не знает о чужой сделке) — машина
+            // стоит у него, как у всех, до конца срока, а не пропадает из списка. Его живое подтверждение и так открывает
+            // страницу (`isVisibleTo`).
+            ->when($user, fn ($r) => $r->orWhere(fn ($b) => $b->where('offers.state', OfferState::Sold)->whereHas('deal')
+                ->where('offers.bids_close_at', '>', now())
+                ->whereHas('bids', fn ($x) => $x->where('user_id', $user->id)->where('state', BidState::Active)))));
     }
 
     /**

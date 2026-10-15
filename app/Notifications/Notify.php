@@ -27,7 +27,6 @@ use App\Offers\Actions\NotifyViewers;
 use App\Offers\Deal;
 use App\Offers\Estimate;
 use App\Offers\Events\BidAccepted;
-use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
 use App\Offers\Events\EstimateGiven;
 use App\Offers\Events\EstimateRejected;
@@ -86,7 +85,6 @@ final class Notify
             OfferPublished::class => 'offerPublished',
             BidPlaced::class => 'bidPlaced',
             BidAccepted::class => 'bidAccepted',
-            BidDeclined::class => 'bidDeclined',
             EstimatesAsked::class => 'estimatesAsked',
             EstimateGiven::class => 'estimateGiven',
             EstimateRejected::class => 'estimateRejected',
@@ -178,10 +176,6 @@ final class Notify
         }
     }
 
-    public function bidDeclined(BidDeclined $e): void
-    {
-        $e->bid->user->notify(new BidDeclinedNotice($e->bid->load('offer')));
-    }
 
     /** Оценка менеджером (11.10.2026): просьба — менеджеру, оценка — админам, решение — снова менеджеру. */
     public function estimatesAsked(EstimatesAsked $e): void
