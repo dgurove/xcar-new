@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
+import * as overlays from '../overlays';
 
 // Ключ памяти табов; «tab:» — прежний, в нём могли остаться чужие адреса, его не читаем.
 const KEY = 'tabs:';
@@ -45,7 +46,7 @@ export default class extends Controller {
             if (saved) {
                 event.preventDefault();
                 restoreScroll = saved.y;
-                Turbo.visit(saved.url, { action: 'replace' });
+                overlays.clear().then((ok) => ok && Turbo.visit(saved.url, { action: 'replace' }));
             }
             return;
         }
@@ -56,7 +57,7 @@ export default class extends Controller {
             if (scrollY > 0) scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
             return;
         }
-        Turbo.visit(link.href, { action: 'replace' });
+        overlays.clear().then((ok) => ok && Turbo.visit(link.href, { action: 'replace' }));
     }
 
     remember(href) {

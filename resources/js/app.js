@@ -13,6 +13,9 @@ import './flip';
 import { longPressMenu } from './longpress';
 import { setTheme, paintBar, chosenTheme } from './theme';
 import { keyboardInset, focusField } from './keyboard';
+import { onHide, onResume, RESUME } from './lib/resume';
+import { scrollBehavior } from './lib/motion';
+import { csrf } from './lib/http';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
 Turbo.StreamActions.toast = function () {
@@ -254,7 +257,7 @@ function inPageAnchors() {
         const target = link && link.hash.length > 1 && document.getElementById(decodeURIComponent(link.hash.slice(1)));
         if (!target) return;
         event.preventDefault();
-        target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+        target.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
     });
 }
 
@@ -289,11 +292,7 @@ function freshness() {
         if (action === 'restore' && stale && quiet()) refresh();
         action = null;
     });
-    let hiddenAt = 0;
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
-        if (hiddenAt && Date.now() - hiddenAt > 60_000 && quiet()) refresh();
-    });
+    onResume((away) => { if (away > 60_000 && quiet()) refresh(); }, RESUME.page);
 }
 
 // Ошибка валидации приводит к полю: после морфа с preserve-scroll человек стоит у
@@ -448,7 +447,7 @@ function enterNext() {
 function relaunchScroll() {
     const key = () => 'scroll:' + location.href;
     const save = () => { try { localStorage.setItem(key(), JSON.stringify({ y: scrollY, at: Date.now() })); } catch {} };
-    document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && save());
+    onHide(save);
     window.addEventListener('pagehide', save);
     const nav = performance.getEntriesByType('navigation')[0];
     if (!['navigate', 'reload'].includes(nav?.type)) return;
@@ -653,7 +652,7 @@ function offerRead() {
         if (!new RegExp(`(/offers/${n}|[?&]peek=${n})([?#&]|$)`).test(href)) return;
         card.setAttribute('data-viewed', '');
         const body = new FormData();
-        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+        body.append('_token', csrf());
         navigator.sendBeacon(`/offers/${n}/read`, body);
     }, true);
 }
@@ -665,7 +664,7 @@ function noticeSeen() {
         const link = event.target.closest('a[data-notice]');
         if (!link) return;
         const body = new FormData();
-        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+        body.append('_token', csrf());
         navigator.sendBeacon(`/account/notifications/${link.dataset.notice}/opened`, body);
         // Прочитано сразу: точка гаснет (в ленте — прозрачной, чтобы текст не съехал), заголовок — обычным.
         link.querySelectorAll('.rounded-full.bg-accent').forEach((dot) => dot.classList.replace('bg-accent', 'bg-transparent'));

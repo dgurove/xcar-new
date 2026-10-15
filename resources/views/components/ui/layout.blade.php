@@ -70,10 +70,6 @@
         }
     </script>
     @endif
-    {{-- «Назад» при открытом просмотре фото — его (lightbox.js), под ним — шторки документов (docs_controller). У window
-         popstate идёт по порядку подписки, а модули подписываются позже Turbo: без этого Turbo, шторка и карточка строки
-         приняли бы его за свой. --}}
-    <script>addEventListener('popstate', (e) => { window.lightboxPop?.(e); if (!e.cancelBubble) window.docsPop?.(e); });</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value]) }}>

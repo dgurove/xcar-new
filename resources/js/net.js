@@ -1,4 +1,5 @@
 import * as Turbo from '@hotwired/turbo';
+import { onResume, RESUME } from './lib/resume';
 
 // Сеть и сессия без белых страниц.
 // 419 (токен истёк: приложение лежало в фоне, вход в соседнем приложении сменил
@@ -61,13 +62,9 @@ export function netGuards() {
         if (event.reason instanceof TypeError && /load failed|failed to fetch|networkerror/i.test(event.reason.message)) event.preventDefault();
     });
 
-    // Вернулись из фона после долгой паузы — обновить токен до того, как нажмут «Сохранить».
-    let hiddenAt = 0;
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
-        // Страница сама обновилась при возврате (app.js freshness) — токен придёт с ней, второй запрос не нужен.
-        if (hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000) setTimeout(() => Date.now() - (window.xcarRefreshedAt || 0) > 5000 && refreshCsrf(), 0);
-    });
+    // Вернулись из фона после долгой паузы — обновить токен до того, как нажмут «Сохранить». Страница сама обновилась
+    // при возврате (app.js freshness, идёт раньше) — токен придёт с ней, второй запрос не нужен.
+    onResume((away) => { if (away > 20 * 60 * 1000 && Date.now() - (window.xcarRefreshedAt || 0) > 5000) refreshCsrf(); }, RESUME.token);
 }
 
 // Свежий токен со своей же страницы: meta и все _token в формах.

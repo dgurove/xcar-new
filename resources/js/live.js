@@ -1,4 +1,5 @@
 import * as Turbo from '@hotwired/turbo';
+import { onResume, RESUME } from './lib/resume';
 
 // Живые обновления — один EventSource на весь сеанс, а не на каждую страницу:
 // Turbo меняет тело, а соединение живёт в модуле; темы перечитываются на
@@ -42,12 +43,10 @@ export function live() {
     document.addEventListener('turbo:visit', (e) => { restoring = e.detail.action === 'restore'; });
     document.addEventListener('turbo:load', () => { if (restoring) badges(); restoring = false; });
     // Бейджи при возврате — только после паузы дольше 30 с: переключились на секунду в другое приложение — не повод.
-    let hiddenAt = 0;
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState !== 'visible') { hiddenAt = Date.now(); return; }
+    onResume((away) => {
         if (source?.readyState === EventSource.CLOSED) reopen(0);
-        else if (source && Date.now() - hiddenAt > 30_000) badges();
-    });
+        else if (source && away > 30_000) badges();
+    }, RESUME.live);
     window.addEventListener('online', () => source?.readyState === EventSource.CLOSED && reopen(0));
     // Человек что-то печатает — refresh от хаба страницу под руками не дёргает.
     // GET-форма (лупа, фильтр) — не правка: её флаг держал бы живые обновления списка до ухода со страницы.
@@ -188,7 +187,7 @@ addEventListener('touchcancel', () => { fingers = 0; }, { capture: true, passive
 addEventListener('scroll', () => { movedAt = performance.now(); }, { capture: true, passive: true });
 // Вернулись из фона — чуть позже: долгий фон и так перечитывает страницу визитом (app.js freshness), он идёт первым, а
 // ждущее, пришедшее до него, снимет его turbo:load.
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { clearTimeout(waitTimer); waitTimer = setTimeout(flush, 120); } });
+onResume(() => { clearTimeout(waitTimer); waitTimer = setTimeout(flush, 120); }, RESUME.queue);
 // Новая страница пришла целиком — ждущее до начала её визита ей не нужно; пришедшее, пока она ехала, — нужно: ответ
 // собран раньше правки.
 let visitAt = 0;

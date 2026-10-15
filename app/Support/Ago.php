@@ -5,8 +5,9 @@ namespace App\Support;
 use Illuminate\Support\Carbon;
 
 /**
- * Сколько прошло — одним словом для таблиц: «сейчас», «5 мин», «3 ч», «2 дн»,
+ * Сколько прошло — одним словом для таблиц: «сейчас», «5 мин», «3 ч», «2 д»,
  * «3 нед», «2 мес», «1 г». Точная дата — в title у <time>. Сколько осталось до срока — left().
+ * Когда — коротко, одним правилом на приложение — stamp(): «12:30» сегодня, «9 окт» в этом году, «9 окт 2025» раньше.
  */
 final class Ago
 {
@@ -18,7 +19,7 @@ final class Ago
             $s < 60 => 'сейчас',
             $s < 3600 => intdiv($s, 60).' мин',
             $s < 86400 => intdiv($s, 3600).' ч',
-            $s < 86400 * 7 => intdiv($s, 86400).' дн',
+            $s < 86400 * 7 => intdiv($s, 86400).' д',
             $s < 86400 * 30 => intdiv($s, 86400 * 7).' нед',
             $s < 86400 * 365 => max(1, intdiv($s, 86400 * 30)).' мес',
             default => intdiv($s, 86400 * 365).' г',
@@ -42,6 +43,21 @@ final class Ago
         };
 
         return $word === '' ? $text : "{$word} {$text}";
+    }
+
+    /**
+     * Короткая дата строки, ленты и чата (16.10.2026: около двадцати мест писали её сами, и старый год выходил то
+     * «09.10.25», то «9 окт 2025»): сегодня — время, в этом году — день и месяц, раньше — с годом. С временем —
+     * «9 окт, 12:30» (сегодня — только время).
+     */
+    public static function stamp(?\DateTimeInterface $at, bool $time = false): string
+    {
+        if (! $at) return '';
+        $at = Carbon::instance($at);
+        if ($at->isToday()) return $at->format('H:i');
+        $day = $at->isCurrentYear() ? 'j M' : 'j M Y';
+
+        return $at->translatedFormat($time ? "{$day}, H:i" : $day);
     }
 
     public static function time(Carbon $at, string $class = ''): string

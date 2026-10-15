@@ -1,7 +1,9 @@
 import { Controller } from '@hotwired/stimulus';
-import { reduce, sheetInHistory } from '../sheet';
+import { reduce } from '../sheet';
+import * as overlays from '../overlays';
 import { keyboard } from '../keyboard';
 import { known, shareFile, warm } from '../docs/share';
+import { fling } from '../lib/fling';
 
 // Шторка документов (x-ui.docs, одна на страницу в x-ui.shell): скан заявки, СТС, Excel, письмо, фото, акт —
 // внутри интерфейса, а не в Quick Look, из которого установленное приложение на iPhone не выпускает.
@@ -30,7 +32,6 @@ const SNAPS = [.3, .55, .88];
 const wide = matchMedia('(min-width: 1024px)');
 const coarse = matchMedia('(pointer: coarse)');
 const KINDS = { pdf: 'PDF', image: 'Фото', sheet: 'Excel', word: 'Word', text: 'Текст', html: 'Документ', video: 'Видео', letter: 'Письмо' };
-let seq = 0;
 const store = {
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} },
@@ -43,16 +44,14 @@ export default class extends Controller {
     connect() {
         this.items = [];
         this.token = 0;
-        this.dead = new Set();
         this.onClick = (e) => this.intercept(e);
         this.onFocus = (e) => this.focused(e);
         this.onSubmit = () => this.rememberOpen();
         // Уход со страницы (визит) закрывает шторку до снимка Turbo; снимок без визита — это «Назад» со шторки над
         // ней (запись страницы без ключа Turbo), шторка остаётся.
-        this.onVisit = () => { this.leaving = true; if (this.entry) this.dead.add(this.entry); this.entry = null; };
+        this.onVisit = () => { this.leaving = true; };
         this.onLoad = () => { this.leaving = false; };
         this.onCache = () => { if (this.leaving) this.close(true); };
-        this.onPop = (e) => this.popped(e);
         this.onHostClose = () => { if (this.shown && this.host) this.close(true); };
         // «Подставить» в окне «Распознать» перечитывает страницу на месте (docs:keep перед этим) — тот же документ снова.
         this.onKeep = () => { this.kept = this.shown && !this.host && this.items[this.index] ? this.items[this.index].key : null; };
@@ -77,9 +76,6 @@ export default class extends Controller {
         document.addEventListener('turbo:before-cache', this.onCache);
         document.addEventListener('turbo:morph', this.onMorph);
         window.addEventListener('docs:keep', this.onKeep);
-        // Раньше Turbo и sheet.js, после просмотра фото: зовёт обработчик из <head> (x-ui.layout) — у window popstate
-        // идёт по порядку подписки, а контроллер подключается позже Turbo.
-        window.docsPop = this.onPop;
         addEventListener('resize', this.onViewport);
         wide.addEventListener('change', this.onWide);
         const start = () => this.restore();
@@ -96,7 +92,6 @@ export default class extends Controller {
         document.removeEventListener('turbo:before-cache', this.onCache);
         document.removeEventListener('turbo:morph', this.onMorph);
         window.removeEventListener('docs:keep', this.onKeep);
-        if (window.docsPop === this.onPop) window.docsPop = null;
         removeEventListener('resize', this.onViewport);
         wide.removeEventListener('change', this.onWide);
         this.host?.removeEventListener('close', this.onHostClose);
@@ -381,8 +376,7 @@ export default class extends Controller {
     close(instant = false, unwind = true) {
         if (!this.shown || this.element.classList.contains('is-closing')) return;
         this.token++;
-        if (unwind) this.forget();
-        else if (this.entry) { this.dead.add(this.entry); this.entry = null; }
+        if (unwind) overlays.shut('docs');
         // Ждём конца анимации или 400 мс — что раньше; второе снимается. Иначе оставшийся слушатель animationend
         // ловил конец анимации следующего открытия и тут же закрывал шторку: второй документ из «···» не открывался.
         let timer;
@@ -409,7 +403,7 @@ export default class extends Controller {
         html.classList.remove('docs-open');
         this.host?.removeEventListener('close', this.onHostClose);
         this.host = null;
-        if (this.entry) { this.dead.add(this.entry); this.entry = null; }
+        if (overlays.isOpen('docs')) overlays.shut('docs');
         clearTimeout(this.countTimer);
         this.view?.destroy();
         this.view = null;
@@ -435,51 +429,10 @@ export default class extends Controller {
         if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) this.close();
     }
 
-    // ——— «Назад» на телефоне: своя запись в истории поверх страницы (или окна, над которым шторка)
+    // ——— «Назад» на телефоне: своя запись в истории поверх страницы (или окна, над которым шторка) — overlays.js
 
     remember() {
-        if (this.entry || wide.matches) return;
-        this.entry = `docs-${Date.now()}-${++seq}`;
-        history.pushState({ ...(history.state || {}), docs: this.entry }, '');
-    }
-
-    // Закрыли кнопкой, Esc или жестом: своя запись сверху — шаг назад молча.
-    forget() {
-        const entry = this.entry;
-        if (!entry) return;
-        this.entry = null;
-        this.dead.add(entry);
-        if (history.state?.docs === entry) { this.skip = true; history.back(); }
-    }
-
-    popped(e) {
-        if (this.skip) { this.skip = false; e.stopImmediatePropagation(); return; }
-        const at = e.state?.docs;
-        if (this.entry && at === this.entry) {
-            // Вернулись на запись шторки со шторки или фото над ней — это их «Назад». Turbo и sheet.js перепишут
-            // запись — пометить снова, чтобы «Назад» потом сняло шторку.
-            setTimeout(() => { if (this.entry === at && history.state?.docs !== at) history.replaceState({ ...(history.state || {}), docs: at }, ''); });
-            return;
-        }
-        if (this.entry) {
-            // «Назад» снял запись открытой шторки: закрыть её, дальше событие не идёт (Turbo не перерисует страницу).
-            e.stopImmediatePropagation();
-            const host = this.host;
-            this.dead.add(this.entry);
-            this.entry = null;
-            this.close(false, false);
-            // Окно под шторкой само уходит (его закрыли, оно снимает свою запись) — пропустить и её, к sheet.js.
-            if (host && (!host.open || host.classList.contains('is-closing'))) history.back();
-            return;
-        }
-        // Запись уже закрытой шторки этой страницы («Вперёд» или «Назад» с окна над ней) — шагнуть мимо. Окно над
-        // ней снимает sheet.js — сначала он, потом шаг.
-        if (at && this.dead.has(at)) {
-            const pass = () => { this.skip = true; history.back(); };
-            if (sheetInHistory()) { setTimeout(pass); return; }
-            e.stopImmediatePropagation();
-            pass();
-        }
+        if (!wide.matches) overlays.open('docs', { close: () => this.close(false, false) });
     }
 
     // ——— высота на телефоне
@@ -531,7 +484,8 @@ export default class extends Controller {
 
     dragStart(e) {
         if (wide.matches || this.drag || (e.pointerType === 'mouse' && (e.button !== 0 || e.target.closest('button, a')))) return;
-        this.drag = { y: e.clientY, h: this.height, moved: false, id: e.pointerId, pts: [[e.timeStamp, e.clientY]] };
+        this.drag = { y: e.clientY, h: this.height, moved: false, id: e.pointerId, fling: fling() };
+        this.drag.fling.add(e.timeStamp, e.clientY);
         addEventListener('pointermove', this.onMove);
         addEventListener('pointerup', this.onUp);
         addEventListener('pointercancel', this.onUp);
@@ -546,8 +500,7 @@ export default class extends Controller {
             d.moved = true;
             this.element.classList.add('is-dragging');
         }
-        d.pts.push([e.timeStamp, e.clientY]);
-        if (d.pts.length > 6) d.pts.shift();
+        d.fling.add(e.timeStamp, e.clientY);
         const max = this.maxHeight();
         const h = d.h - dy;
         this.setHeight(h > max ? max + Math.pow(h - max, .6) : h);
@@ -566,8 +519,7 @@ export default class extends Controller {
         const swallow = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
         this.element.addEventListener('click', swallow, { capture: true, once: true });
         setTimeout(() => this.element.removeEventListener('click', swallow, { capture: true }), 50);
-        const [t0, y0] = d.pts[0], [t1, y1] = d.pts.at(-1);
-        const v = (y1 - y0) / Math.max(1, t1 - t0);
+        const v = d.fling.speed();
         const snaps = this.snaps();
         // Взмах добавляет не больше 150 px; с клавиатурой лист низкий и порог закрытия крошечный — жест вниз только
         // убирает клавиатуру, лист остаётся (07.10.2026, окна «норовят закрыться»).

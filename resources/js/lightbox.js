@@ -8,6 +8,7 @@
 // PhotoIngest). Кадр, чья пропорция не сошлась с полным файлом, перерисовывается по нему.
 // На телефоне кадр — сжатая версия (mid, w960): оригинал вдвое-втрое тяжелее и на экране не отличим;
 // он подгружается, только когда кадр увеличили, и отдаётся «Скачать».
+import * as overlays from './overlays';
 
 const LONG = 1600;
 const phone = () => matchMedia('(max-width: 1023.98px)').matches;
@@ -50,42 +51,16 @@ function scale(w, h) {
 
 const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
 
-// ---- история: своя запись поверх страницы (или шторки, или карточки строки)
-// Свой popstate Turbo, шторкам и карточке строки не отдаём: у window обработчики идут в порядке подписки, и
-// первым подписан window.lightboxPop из <head> (x-ui.layout) — раньше любого модуля. Ключ turbo у записи
-// под просмотром всё равно снимается, как у шторки (sheet.js): на случай, если «Назад» дойдёт до Turbo.
+// ---- история: своя запись поверх страницы, шторки или карточки строки (overlays.js) — «Назад» закрывает просмотр.
 
 let current = null; // открытый просмотр
-let inHistory = false;
-let closingByBack = false;
-let under;          // снятый ключ turbo записи под просмотром
-
-window.lightboxPop = (event) => {
-    if (event.state?.lightbox && !current) { event.stopImmediatePropagation(); history.back(); return; } // «Вперёд» на мёртвую запись
-    if (!inHistory || event.state?.lightbox) return;
-    event.stopImmediatePropagation();
-    inHistory = false;
-    if (under !== undefined) history.replaceState({ ...(history.state || {}), turbo: under }, '');
-    under = undefined;
-    if (closingByBack) { closingByBack = false; return; }
-    current?.close();
-};
+let byBack = false; // закрыт «Назад»: запись уже снята
 document.addEventListener('turbo:before-cache', () => current?.destroy());
-document.addEventListener('turbo:visit', () => { inHistory = false; under = undefined; });
 
-function remember() {
-    if (inHistory) return;
-    const { turbo, ...rest } = history.state || {};
-    under = turbo;
-    history.replaceState(rest, '');
-    history.pushState({ ...rest, lightbox: true }, '');
-    inHistory = true;
-}
-
+const remember = () => overlays.open('lightbox', { close: () => { byBack = true; current?.close(); } });
 function unwind() {
-    if (!inHistory || !history.state?.lightbox) return;
-    closingByBack = true;
-    history.back();
+    if (byBack) { byBack = false; return; }
+    overlays.shut('lightbox');
 }
 
 /**

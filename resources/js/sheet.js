@@ -3,59 +3,18 @@
 // вниз и close() по её концу; свайп вниз — только намеренный (attachDrag), набранное
 // без вопроса не теряется (dismiss), фон — по затемнению, а не по отступам листа (backdrop).
 // 07.10.2026 владелец: окна «постоянно норовят закрыться», сумму в «Ссылке на оплату» не ввести.
-// Открытая шторка — запись в истории: свайп от края и «Назад» закрывают её, а
-// не страницу. Чтобы Turbo не делал restore-визит на этот popstate, у записи
-// страницы на время шторки снимается ключ turbo (пустое состояние Turbo лишь
-// переписывает, не перерисовывая); закрытие крестиком само снимает запись
-// через history.back().
+// Открытая шторка — запись в истории (overlays.js): свайп от края и «Назад» закрывают её, а не страницу; закрытие
+// крестиком снимает запись само.
 import { confirmSheet } from './confirm';
 import { focusField } from './keyboard';
+import * as overlays from './overlays';
+import { fling } from './lib/fling';
 
 export const reduce = matchMedia('(prefers-reduced-motion: reduce)');
-let inHistory = null; // id шторки, чья запись сверху истории
-let settle = null;    // ждёт popstate после history.back() из closeSheet
-let pageTurbo;        // снятый у записи страницы ключ turbo — вернуть после шторки
-
-window.addEventListener('popstate', (event) => {
-    const under = event.state?.sheet;
-    // Шторка поверх шторки («Распознать» над окном писем): запись нижней снова сверху — это возврат к ней, не «вперёд».
-    const lower = under && under !== inHistory && document.getElementById(under)?.open;
-    const forward = under && under !== inHistory && !lower;
-    if (!inHistory && !forward) return;
-    if (forward) { history.back(); return; }
-    const d = document.getElementById(inHistory);
-    // «Назад» (свайп от края, кнопка Android) при набранном в листе: запись вернуть, лист оставить и спросить.
-    // Turbo на этом popstate уже дал записи страницы свой ключ (пустое состояние) — снять и не нести в запись шторки:
-    // иначе шаг назад после «Закрыть» придёт на запись с ключом, и Turbo восстановит снимок с открытыми шторками.
-    if (!settle && !lower && d?.open && dirty(d)) {
-        const { turbo, ...rest } = history.state || {};
-        history.replaceState(rest, '');
-        history.pushState({ ...rest, sheet: d.id }, '');
-        dismiss(d);
-        return;
-    }
-    inHistory = lower ? under : null;
-    // Шаг назад сделал сам closeSheet — лист уже уезжает, второй вызов оборвал бы анимацию.
-    if (d?.open && !settle) closeSheet(d, 0, true);
-    // Под шторкой — запись другой шторки: она остаётся своей (Turbo на пустой записи ставит свой
-    // ключ — тогда её не снять «Назад»). Страница снова сверху — ключ turbo на месте, «‹ Раздел» пойдёт шагом по истории.
-    if (lower) history.replaceState(event.state, '');
-    else if (pageTurbo !== undefined) history.replaceState({ ...(history.state || {}), turbo: pageTurbo }, '');
-    settle?.();
-    settle = null;
-});
 // Чем открыли последнее: пальцем или мышью — кольцо фокуса на «×» после showModal снимаем, клавиатуре оставляем.
 let byPointer = false;
 addEventListener('pointerdown', () => { byPointer = true; }, { capture: true, passive: true });
 addEventListener('keydown', () => { byPointer = false; }, { capture: true, passive: true });
-
-// Визит уводит со страницы (или заменяет запись) — верхняя запись больше не шторка.
-document.addEventListener('turbo:visit', () => { inHistory = null; });
-
-// Запись шторки ещё в истории. Снимок страницы (turbo:before-cache) в этот момент — не уход со страницы: шторку сняли
-// «Назад» или крестиком, запись под ней без ключа Turbo, и Turbo на этом popstate снимает снимок раньше нас. Шторка
-// документов под ней не закрывается (docs_controller); у визита запись уже снята.
-export const sheetInHistory = () => inHistory !== null;
 
 // Открыта модальная шторка — класс sheet-open на <html> (страница под ней не листается, app.css; фон держит
 // holdBackground). Класс, а не html:has(dialog.sheet:modal): тот WebKit пересчитывал на каждую правку DOM.
@@ -125,9 +84,11 @@ function scrollsToward(found, dx, dy) {
 // Набранное в форме шторки переживает выгрузку приложения из фона и выкладку (16.10.2026): каждая форма шторки с
 // записью получает черновик (draft_controller) — ключом адрес страницы, шторка и адрес формы. «Не сохранять» и отправка
 // его стирают: ошибки проверки сервер возвращает в поля сам (old()).
-function adoptDrafts(d) {
+function prepareForms(d) {
     for (const form of d.querySelectorAll('form')) {
-        if (form.method.toLowerCase() === 'get' || form.hasAttribute('data-sheet-clean') || form.matches('[data-controller~="draft"]')) continue;
+        if (form.method.toLowerCase() === 'get' || form.hasAttribute('data-sheet-clean')) continue;
+        for (const el of form.querySelectorAll('input[type=hidden]:not([name="_token"]):not([name="_method"])')) el.dataset.sheetWas = el.value;
+        if (form.matches('[data-controller~="draft"]')) continue;
         form.dataset.draftKeyValue ??= `sheet:${location.pathname}:${d.id}:${new URL(form.action || location.href, location.href).pathname}`;
         form.dataset.draftSentValue = 'clear';
         form.dataset.controller = `${form.dataset.controller ?? ''} draft`.trim();
@@ -143,7 +104,7 @@ export function openSheet(d, { history: withHistory = true } = {}) {
     const auto = d.querySelector('[autofocus]');
     auto?.removeAttribute('autofocus');
     d.showModal();
-    adoptDrafts(d);
+    prepareForms(d);
     if (auto) { auto.setAttribute('autofocus', ''); focusField(auto); }
     syncOpen();
     d.openedAt = performance.now();
@@ -155,14 +116,8 @@ export function openSheet(d, { history: withHistory = true } = {}) {
         // Esc и CloseWatcher Android — тем же уходом и со снятием записи в истории; набранное — с вопросом.
         d.addEventListener('cancel', (e) => { e.preventDefault(); dismiss(d); });
     }
-    if (withHistory && d.id && inHistory !== d.id) {
-        const { turbo, ...rest } = history.state || {};
-        // Ключ страницы снимает только первая шторка: у второй под ней запись шторки, ключа там нет.
-        if (!inHistory) pageTurbo = turbo;
-        history.replaceState(rest, '');
-        history.pushState({ ...rest, sheet: d.id }, '');
-        inHistory = d.id;
-    }
+    // «Назад» закрывает шторку, а не страницу (overlays.js); набранное — с вопросом.
+    if (withHistory && d.id) overlays.open(`sheet:${d.id}`, { close: () => closeSheet(d, 0, true), guard: () => dirty(d) && leave(d) });
 }
 
 // Возвращает обещание: история приведена в порядок (запись шторки снята).
@@ -187,8 +142,7 @@ export function closeSheet(d, from = 0, viaHistory = false) {
 }
 
 function unwind(d, viaHistory) {
-    if (viaHistory || inHistory !== d.id || history.state?.sheet !== d.id) return Promise.resolve();
-    return new Promise((resolve) => { settle = resolve; history.back(); });
+    return viaHistory ? Promise.resolve() : overlays.shut(`sheet:${d.id}`);
 }
 
 // Поле, которое держит клавиатуру: на iOS её видно по html.kb-open (app.js), на Android viewport ужимается сам — там по фокусу.
@@ -223,13 +177,24 @@ export function dirty(d) {
     return false;
 }
 
-// Закрыть по просьбе человека («×», Esc, «Назад», свайп): набранное в листе не теряется молча — спросить.
+// «Не сохранять?» — да: формы листа возвращаются к тому, что пришло с сервера (иначе открытый снова лист спрашивал бы
+// опять), черновики стираются.
+async function leave(d) {
+    if (!(await confirmSheet('Не сохранять?', { label: 'Закрыть', cancel: 'Остаться', danger: true }))) return false;
+    d.querySelectorAll('form').forEach((form) => {
+        if (form.method.toLowerCase() === 'get' || form.hasAttribute('data-sheet-clean')) return;
+        form.reset();
+        // Скрытое поле (id из подсказки комбобокса) сброс не возвращает — значение с открытия листа.
+        for (const el of form.querySelectorAll('input[type=hidden][data-sheet-was]')) el.value = el.dataset.sheetWas;
+        form.dispatchEvent(new CustomEvent('draft:clear'));
+    });
+    return true;
+}
+
+// Закрыть по просьбе человека («×», Esc, свайп): набранное в листе не теряется молча — спросить.
 export async function dismiss(d, from = 0) {
     if (!d.open) return;
-    if (dirty(d)) {
-        if (!(await confirmSheet('Не сохранять?', { label: 'Закрыть', cancel: 'Остаться', danger: true }))) return;
-        d.querySelectorAll('form').forEach((form) => form.dispatchEvent(new CustomEvent('draft:clear')));
-    }
+    if (dirty(d) && !(await leave(d))) return;
     closeSheet(d, from);
 }
 
@@ -278,13 +243,13 @@ function scrolls(t, d) {
 function attachDrag(d) {
     if (d.dataset.drag) return;
     d.dataset.drag = '1';
-    let x0 = 0, y0 = 0, base = 0, dy = 0, state = 'idle', pts = [];
+    let x0 = 0, y0 = 0, base = 0, dy = 0, state = 'idle', track = fling();
 
     d.addEventListener('touchstart', (e) => {
         state = 'idle';
         if (!d.matches(':modal') || reduce.matches || e.touches.length !== 1) return;
         if (performance.now() - (d.openedAt ?? 0) < OPEN_GRACE || !grip(d, e)) return;
-        x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dy = 0; pts = []; state = 'armed';
+        x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dy = 0; track = fling(); state = 'armed';
     }, { passive: true });
 
     d.addEventListener('touchmove', (e) => {
@@ -302,16 +267,14 @@ function attachDrag(d) {
         // Вниз — за пальцем, вверх — с сопротивлением.
         dy = Math.max(0, y);
         d.style.translate = `0 ${y >= 0 ? y : -Math.pow(-y, .6)}px`;
-        pts.push([e.timeStamp, t.clientY]);
-        while (pts.length > 2 && e.timeStamp - pts[0][0] > 80) pts.shift();
+        track.add(e.timeStamp, t.clientY);
         e.preventDefault();
     }, { passive: false });
 
     const end = (e) => {
         if (state !== 'drag') { state = 'idle'; return; }
         state = 'idle';
-        const [t0, p0] = pts[0] ?? [e.timeStamp, 0], [t1, p1] = pts[pts.length - 1] ?? [e.timeStamp, 0];
-        const speed = (p1 - p0) / Math.max(16, t1 - t0);
+        const speed = track.speed();
         const far = dy > Math.max(140, d.clientHeight * .4), flung = speed > 1.1 && dy >= 60;
         if ((far || flung) && !dirty(d)) { closeSheet(d, dy); return; }
         d.style.transition = 'translate var(--dur-slow) var(--ease-spring)';

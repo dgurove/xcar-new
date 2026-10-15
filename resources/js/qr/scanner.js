@@ -12,6 +12,7 @@
 import { decodeQrFrame, decodeQrNative, decodeQrPhoto, loadQrDetector } from './decoder';
 import { createQrScanBudget, fitAnalysisSize } from './budget';
 import { haptic } from './haptics';
+import * as overlays from '../overlays';
 
 const CAPTURE_WIDTH = 2560;
 const CAPTURE_HEIGHT = 1440;
@@ -123,18 +124,8 @@ export class QrScanner {
         if (this.root) return;
         this.build();
         this.lockPage(true);
-        // «Назад» закрывает сканер, а не уходит со страницы — как у шторки (sheet.js): у записи страницы на время
-        // снимается ключ turbo, иначе Turbo сделал бы restore-визит и форма выдачи потеряла бы введённое.
-        const { turbo, ...rest } = history.state || {};
-        this.pageTurbo = turbo;
-        history.replaceState(rest, '');
-        history.pushState({ ...rest, qrScanner: true }, '');
-        this.onPop = () => {
-            if (this.pageTurbo !== undefined) history.replaceState({ ...(history.state || {}), turbo: this.pageTurbo }, '');
-            window.removeEventListener('popstate', this.onPop);
-            this.close(true);
-        };
-        window.addEventListener('popstate', this.onPop);
+        // «Назад» закрывает сканер, а не уходит со страницы (overlays.js): форма выдачи под ним не теряет введённое.
+        overlays.open('qr-scanner', { close: () => this.close(true) });
         this.onKey = (e) => { if (e.key === 'Escape') this.close(); };
         window.addEventListener('keydown', this.onKey);
         this.onVisibility = () => { if (document.visibilityState === 'visible') this.acquireWakeLock(); };
@@ -155,9 +146,8 @@ export class QrScanner {
         this.root.remove();
         this.root = null;
         this.lockPage(false);
-        // Закрыли крестиком или кодом — снимаем свою запись; ключ turbo вернёт обработчик popstate.
-        if (!fromHistory && history.state?.qrScanner) history.back();
-        else window.removeEventListener('popstate', this.onPop);
+        // Закрыли крестиком или кодом — снимаем свою запись.
+        if (!fromHistory) overlays.shut('qr-scanner');
         this.onClose();
     }
 

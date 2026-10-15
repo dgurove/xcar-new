@@ -1,7 +1,9 @@
 import { Controller } from '@hotwired/stimulus';
 import { focusField } from '../keyboard';
+import * as overlays from '../overlays';
 import { confirmSheet } from '../confirm';
 import { refreshPage, refreshRows } from '../live';
+import { fling } from '../lib/fling';
 
 // Список и карточка строки рядом (x-ui.shell :detail). Строка — ссылка (a[data-detail-link]) в фрейм detail; открывает и
 // закрывает контроллер, адрес (?peek=) меняет он же, не Turbo: data-turbo-action у фрейма делал из каждой загрузки визит
@@ -114,35 +116,29 @@ export default class extends Controller {
         // Уход со страницы с несохранённым в карточке (таб-бар, «Открыть страницу», ссылка) — тот же вопрос, что у листа.
         // Ссылку после «Не сохранять» нажимаем заново — Turbo берёт её действие (replace), фрейм и прочее как было;
         // визит из скрипта повторяется тем же адресом.
+        // Карточка открыта — её запись «Назад» снимается до перехода, иначе она осталась бы под новой страницей лишним шагом.
         this.onLink = async (e) => {
-            if (!this.dirty && !this.guarded) return;
+            if (this.passing || (!this.dirty && !overlays.isOpen('detail'))) return;
             const link = e.target;
             // Отмена turbo:click отменяет только визит Turbo — сам щелчок браузер довёл бы до обычного перехода.
             e.preventDefault();
             e.detail.originalEvent?.preventDefault();
             // Остались — нажатое (is-pending, app.js pressFeedback) снимается: экран никуда не едет.
             if (!(await this.leave())) { link.closest('.is-pending')?.classList.remove('is-pending'); return; }
+            await overlays.shut('detail');
+            this.passing = true;
             link.click();
+            this.passing = false;
         };
         document.addEventListener('turbo:click', this.onLink);
         this.onVisit = async (e) => {
-            if (!this.dirty && !this.guarded) return;
+            if (this.passing || !this.dirty) return;
             e.preventDefault();
-            if (await this.leave()) window.Turbo?.visit(e.detail.url);
+            if (!(await this.leave())) return;
+            await overlays.shut('detail');
+            window.Turbo?.visit(e.detail.url);
         };
         document.addEventListener('turbo:before-visit', this.onVisit);
-        // «Назад» и свайп от края с несохранённым: пока в карточке есть правки, сверху истории — своя запись (как у
-        // шторок, sheet.js); «Назад» снимает её, а мы спрашиваем и, если уходят, делаем шаг назад сами. Без неё
-        // restore-визит Turbo не отменить, и правки пропадали молча.
-        this.onPop = (e) => this.popped(e);
-        addEventListener('popstate', this.onPop);
-        // После обработчиков правки (save_bar показывает кнопку на document — позже фрейма).
-        this.onEdit = () => setTimeout(() => { if (this.dirty) this.guard(); });
-        this.frameTarget.addEventListener('input', this.onEdit);
-        this.frameTarget.addEventListener('change', this.onEdit);
-        // Правили, пока сверху была шторка («Метки», «Кому показывать»), — запись ставится, когда шторка снята.
-        this.onSheetClose = () => setTimeout(() => { if (this.dirty) this.guard(); }, 400);
-        this.frameTarget.addEventListener('close', this.onSheetClose, true);
         // Нажали поле, пока лист ехал (keyboard.js ставит его во весь экран сам): прежнее движение отменяется —
         // иначе его запасной таймер доехал бы своё и опустил лист на полэкрана или закрыл его под кареткой.
         this.onHold = () => {
@@ -150,16 +146,6 @@ export default class extends Controller {
             this.motion = null;
         };
         this.frameTarget.addEventListener('detail:hold', this.onHold);
-        // Ушла форма, ответ которой встанет в карточку (сохранили, «Оценить», «+15 мин»), — своя запись «Назад» снимается
-        // сразу, до ответа. Иначе шаг назад шёл тогда же, когда ответ перелистывал на следующую строку и менял адрес, и
-        // карточка оставалась в странном состоянии (08.10.2026). Вернулась с ошибкой — restore() поставит запись снова.
-        // Форма в другой фрейм или на всю страницу карточку не перерисует — запись остаётся, «Назад» по-прежнему спросит.
-        this.onSubmitStart = (e) => {
-            const form = e.target, submitter = e.detail.formSubmission?.submitter;
-            const into = submitter?.dataset.turboFrame || form.dataset?.turboFrame || form.closest?.('turbo-frame')?.id;
-            if (this.guarded && into === 'detail') this.unguard();
-        };
-        document.addEventListener('turbo:submit-start', this.onSubmitStart);
         document.addEventListener('detail:advance', this.onAdvance);
         document.addEventListener('turbo:before-stream-render', this.onStream);
         // Морф, загрузка страницы и свежая строка приносят строки без выделения (его знает только адрес) — вернуть. Свежую
@@ -186,14 +172,9 @@ export default class extends Controller {
         document.removeEventListener('turbo:before-morph-element', this.onMorphElement);
         document.removeEventListener('turbo:before-visit', this.onVisit);
         document.removeEventListener('turbo:click', this.onLink);
-        removeEventListener('popstate', this.onPop);
-        this.frameTarget.removeEventListener('input', this.onEdit);
-        this.frameTarget.removeEventListener('change', this.onEdit);
-        this.frameTarget.removeEventListener('close', this.onSheetClose, true);
         this.frameTarget.removeEventListener('detail:hold', this.onHold);
         this.frameTarget.removeEventListener('turbo:before-fetch-request', this.onFetch);
         this.unprefetch?.();
-        document.removeEventListener('turbo:submit-start', this.onSubmitStart);
         document.removeEventListener('detail:advance', this.onAdvance);
         document.removeEventListener('turbo:before-stream-render', this.onStream);
         ['turbo:load', 'turbo:morph'].forEach((n) => document.removeEventListener(n, this.onMark));
@@ -225,7 +206,7 @@ export default class extends Controller {
     // Сохранили — список перечитывается (строка могла уйти во вкладку дальше, числа пилюль). true — можно уходить; запись
     // «Назад» к этому времени снята.
     async leave() {
-        if (!this.dirty) { await this.unguard(); return true; }
+        if (!this.dirty) return true;
         const bar = this.actionDirty ? null : this.saveBar;
         const answer = await confirmSheet(bar ? 'Сохранить изменения?' : 'Не сохранять?', bar
             ? { label: 'Сохранить', alt: { label: 'Не сохранять', danger: true }, cancel: 'Остаться', danger: false }
@@ -240,7 +221,6 @@ export default class extends Controller {
             forget();
             setTimeout(() => (key ? refreshRows([key]) : refreshPage()), 400);
         } else this.released = true;
-        await this.unguard();
         return true;
     }
 
@@ -249,71 +229,6 @@ export default class extends Controller {
         const bar = [...this.frameTarget.querySelectorAll('.save-bar')].find((b) => !b.hidden);
         const form = bar && (bar.dataset.saveBar ? document.getElementById(bar.dataset.saveBar) : bar.closest('form'));
         return form ? this.application.getControllerForElementAndIdentifier(form, 'save-bar') : null;
-    }
-
-    // Своя запись истории над страницей, пока есть несохранённое. Ключ turbo у записи страницы на это время снят: Turbo
-    // не делает restore-визит, когда «Назад» снимает нашу запись (так же sheet.js).
-    guard() {
-        if (this.guarded || history.state?.sheet) return;
-        const { turbo, ...rest } = history.state || {};
-        this.guardTurbo = turbo;
-        history.replaceState(rest, '');
-        history.pushState({ ...rest, detailGuard: true }, '');
-        this.guarded = true;
-    }
-
-    // Снять свою запись (сохранили, ушли с карточки): шаг назад на страницу и вернуть ей ключ turbo. Не дождались
-    // popstate за 300 мс (WebKit бывает не присылает его на запись без жеста) — уходим всё равно: иначе «Не сохранять»
-    // не делало ничего, и выйти из карточки было нельзя.
-    unguard() {
-        if (!this.guarded) return Promise.resolve();
-        this.guarded = false;
-        if (!history.state?.detailGuard) { this.retake(); return Promise.resolve(); }
-        return new Promise((resolve) => {
-            const done = () => { clearTimeout(timer); if (this.unwinding === done) this.unwinding = null; resolve(); };
-            // Шаг назад всё-таки придёт позже — popped() поправит адрес под то, что на экране (late).
-            const timer = setTimeout(() => { this.retake(); this.late = Date.now(); done(); }, 300);
-            this.unwinding = done;
-            history.back();
-        });
-    }
-
-    retake() {
-        if (this.guardTurbo !== undefined) history.replaceState({ ...(history.state || {}), turbo: this.guardTurbo }, '');
-        this.guardTurbo = undefined;
-    }
-
-    async popped(e) {
-        if (this.unwinding) {
-            const done = this.unwinding;
-            this.unwinding = null;
-            this.retake();
-            done();
-            return;
-        }
-        // Опоздавший шаг назад от unguard (WebKit прислал popstate позже 300 мс): история уже на записи страницы со старым
-        // ?peek= и без ключа turbo — адрес и ключ — под то, что на экране сейчас.
-        if (this.late && Date.now() - this.late < 3000 && !this.guarded && !e.state?.detailGuard && !e.state?.sheet) {
-            this.late = 0;
-            const url = new URL(location.href);
-            if (this.open && this.current) url.searchParams.set('peek', this.current.dataset.detailKey);
-            else url.searchParams.delete('peek');
-            this.address(url);
-            return;
-        }
-        // Вернулись на нашу запись (шторку над карточкой закрыли «Назад») — это не уход.
-        if (!this.guarded || e.state?.detailGuard || e.state?.sheet) return;
-        // «Назад» снял нашу запись: остаёмся и спрашиваем; уходят — вернуть ключ и шагнуть назад по-настоящему.
-        this.guarded = false;
-        if (this.dirty) {
-            // Ключ, что Turbo только что дал записи страницы, — снять (как sheet.js): с ним снятие записи потом — restore-визит.
-            const { turbo, ...rest } = history.state || {};
-            history.replaceState(rest, '');
-            history.pushState({ ...rest, detailGuard: true }, '');
-            this.guarded = true;
-            if (!(await this.leave())) return;
-        } else this.retake();
-        history.back();
     }
 
     // Карточка встала: та же — прокрутка на прежнем месте; вернулась с ошибкой — первое поле с ошибкой посреди листа
@@ -329,8 +244,6 @@ export default class extends Controller {
                 body.scrollTop += r.top - b.top - Math.max(0, (b.height - r.height) / 2);
             }
         }
-        // Свежая карточка без правок — запись «Назад» больше не нужна; вернулась с ошибкой — правки на месте.
-        if (this.dirty) this.guard(); else this.unguard();
     }
 
     // Карточка не пришла (нет сети): заготовка не мигает вечно — слова и «Повторить» на месте полос.
@@ -458,6 +371,9 @@ export default class extends Controller {
             this.frameTarget.replaceChildren(this.blank(row));
             this.settle(false);
             this.waitOpening();
+            // Лист открыт — своя запись «Назад» (overlays.js): «Назад» и свайп от края закрывают карточку, а не список;
+            // набранное — с вопросом.
+            overlays.open('detail', { close: () => this.close(undefined, true), guard: () => this.dirty && this.leave() });
         }
         this.frameTarget.src = url.pathname + url.search;
     }
@@ -567,6 +483,8 @@ export default class extends Controller {
         // Лист открывается на полэкрана; при смене строки остаётся, каким был.
         if (!open || !was) this.frameTarget.removeAttribute('data-full');
         if (!open) this.still();
+        // Карточка ушла сама (строка ушла из вкладки, поток убрал фрейм) — её запись «Назад» тоже.
+        if (!open && overlays.isOpen('detail')) overlays.shut('detail');
         this.rendering = false;
     }
 
@@ -630,7 +548,8 @@ export default class extends Controller {
         // С клавиатурой лист не тянут: жест убирает её, как у шторок.
         if (document.documentElement.classList.contains('kb-open')) { document.activeElement?.blur(); return; }
         const y0 = event.clientY, wasFull = frame.hasAttribute('data-full'), half = this.half;
-        let h, off0, off, pts = [], moving = false;
+        let h, off0, off, moving = false;
+        const track = fling();
         // Палец лёг на полосу покоящегося листа — лист сразу во весь экран со сдвигом на то же место: раскладка и слой
         // готовы до первого кадра жеста, а не в нём. Не поехал — обратно в покой (still в up). Лист в движении (снап,
         // выезд) не трогаем, пока палец не поехал: нажатие не должно его останавливать.
@@ -650,16 +569,14 @@ export default class extends Controller {
             if (!moving) { if (Math.abs(e.clientY - y0) < 8) return; start(); }
             off = Math.min(h, Math.max(0, off0 + e.clientY - y0));
             frame.style.transform = `translateY(${off}px)`;
-            pts.push([e.timeStamp, e.clientY]);
-            while (pts.length > 2 && e.timeStamp - pts[0][0] > 80) pts.shift();
+            track.add(e.timeStamp, e.clientY);
         };
         const up = () => {
             removeEventListener('pointermove', move);
             removeEventListener('pointerup', up);
             removeEventListener('pointercancel', up);
             if (!moving) { if (ready) this.still(); return; }
-            const [t0, p0] = pts[0] ?? [0, 0], [t1, p1] = pts[pts.length - 1] ?? [0, 0];
-            const speed = pts.length > 1 ? (p1 - p0) / Math.max(16, t1 - t0) : 0;
+            const speed = track.speed();
             // Куда метили — по видимой высоте листа: весь h, полэкрана h - half.
             const aim = h - off - Math.max(-120, Math.min(120, speed * 120)), mid = h - half;
             let to = aim > (mid + h) / 2 ? 'full' : aim > mid / 2 ? 'half' : 'gone';
@@ -679,8 +596,8 @@ export default class extends Controller {
 
     // «Закрыть», жест вниз, Esc, нажатие по открытой строке. На телефоне лист сначала уезжает вниз, потом фрейм пустеет;
     // запроса нет — пустой фрейм и так известен, а ждать ответа сервера и было «закрывается рывком».
-    async close(ms) {
-        if (!this.open) return;
+    async close(ms, viaHistory = false) {
+        if (!this.open) { if (!viaHistory) overlays.shut('detail'); return; }
         if (!(await this.leave())) {
             // Отпустили бросок вниз и остались — лист возвращается на место.
             if (this.frameTarget.hasAttribute('data-moving')) this.glide(`${this.frameTarget.hasAttribute('data-full') ? 0 : this.half}px`, () => this.still());
@@ -688,6 +605,7 @@ export default class extends Controller {
         }
         this.opening = null;
         this.shut = true;
+        if (!viaHistory) overlays.shut('detail');
         const empty = () => {
             const frame = this.frameTarget, url = new URL(location.href);
             frame.removeAttribute('src');
