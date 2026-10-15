@@ -347,7 +347,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::post('/vendors', [VendorController::class, 'store']);
             Route::get('/vendors/{vendor}', [VendorController::class, 'show']);
             Route::get('/vendors/{vendor}/offers/export', [VendorController::class, 'export']);
-            Route::post('/vendors/{vendor}/offers/request', [VendorController::class, 'request']);
+            Route::post('/vendors/{vendor}/requests', [VendorController::class, 'request']);
+            Route::post('/vendors/{vendor}/requests/{claimRequest}/telegram', [VendorController::class, 'resend']);
             Route::delete('/vendors/{vendor}/offers/{offer}/request', [VendorController::class, 'unrequest']);
             Route::put('/vendors/{vendor}', [VendorController::class, 'update']);
             Route::post('/vendors/{vendor}/contacts', [VendorContactController::class, 'store']);

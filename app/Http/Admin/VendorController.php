@@ -4,7 +4,7 @@ namespace App\Http\Admin;
 
 use App\Mail\Account;
 use App\Mail\Scope;
-use App\Offers\Actions\MarkRequested;
+use App\Offers\Actions\SendClaimRequest;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\AudienceRules;
 use App\Offers\Offer;
@@ -21,6 +21,7 @@ use App\Support\Sort;
 use App\Support\Surface;
 use App\Users\Section;
 use App\Vendors\Actions\SetLogo;
+use App\Vendors\ClaimRequest;
 use App\Vendors\DealFormat;
 use App\Vendors\Kind;
 use App\Vendors\Parser;
@@ -42,7 +43,7 @@ use Illuminate\Validation\Rule;
  */
 class VendorController
 {
-    public const PILLS = ['overview' => 'Обзор', 'offers' => 'Предложения', 'contacts' => 'Контакты', 'routes' => 'Маршруты'];
+    public const PILLS = ['overview' => 'Обзор', 'offers' => 'Предложения', 'requests' => 'Запросы', 'contacts' => 'Контакты', 'routes' => 'Маршруты'];
 
     private const BIDS_SQL = 'exists (select 1 from bids where bids.offer_id = offers.id)';
 
@@ -107,10 +108,15 @@ class VendorController
             return redirect()->away(Surface::Park->url("/vendors/{$vendor->id}?pill={$request->query('pill')}"), 301);
         }
         $pill = array_key_exists($request->query('pill', ''), self::PILLS) ? $request->query('pill') : 'overview';
+        // «Запросы» — у вендора, у которого был отклик или запрос; бейдж — сколько номеров ждут отправки.
+        $pending = ClaimRequest::pendingFor($vendor)->count();
+        $requests = $pending > 0 || $pill === 'requests' || ClaimRequest::where('vendor_id', $vendor->id)->exists()
+            || Offer::where('offers.vendor_id', $vendor->id)->whereRaw(ClaimRequest::REPLY_SQL)->exists();
         $data = [
             'vendor' => $vendor,
             'pill' => $pill,
-            'pills' => self::PILLS,
+            'pills' => $requests ? self::PILLS : array_diff_key(self::PILLS, ['requests' => 1]),
+            'pendingCount' => $pending,
             'base' => "/settings/vendors/{$vendor->id}",
             // Ссылка на парковочную карточку — только тем, кого туда пустят.
             'park' => $request->user()->canAccess(Section::Park) ? Surface::Park->url("/vendors/{$vendor->id}") : null,
@@ -138,8 +144,18 @@ class VendorController
                 'facets' => $facets,
                 'sort' => $sort,
                 'searching' => $facets->searching(),
-                // «Отправить N номеров»: ещё не отправленные из всего списка (все страницы) с номером убытка.
-                'pending' => (clone $q)->whereNull('offers.requested_at')->get()->filter(fn (Offer $o) => filled($o->claim_ref))->values(),
+            ];
+        } elseif ($pill === 'requests') {
+            $history = ClaimRequest::where('vendor_id', $vendor->id)->with('user')->latest()->latest('id')->limit(60)->get();
+            $refs = $history->pluck('refs')->flatten()->unique()->values()->all();
+            $data += [
+                'pending' => ClaimRequest::pendingFor($vendor)->with('bids:id,offer_id,state')->withCount(['bids', 'interests'])
+                    ->orderByDesc('offers.created_at')->orderByDesc('offers.id')->get(),
+                'history' => $history,
+                // Машины номеров истории — где они сейчас и вернули ли номер в «К запросу».
+                'sent' => $refs ? Offer::where('offers.vendor_id', $vendor->id)->whereHas('car', fn ($c) => $c->whereIn('claim_ref', $refs))
+                    ->with('bids:id,offer_id,state')->get()->keyBy('claim_ref') : collect(),
+                'open' => $request->integer('open'),
             ];
         } else {
             $vendor->load('mailAccount');
@@ -160,30 +176,37 @@ class VendorController
     }
 
     /**
-     * «Отправить N номеров»: метка «запрос отправлен», номера отправившему в Telegram (в буфер их кладёт браузер в момент
-     * нажатия). Берутся только предложения этого вендора, ещё не отправленные.
+     * «Отправить N номеров» в «Запросах»: запрос со снимком номеров, у предложений — ссылка на него, номера отправившему в
+     * Telegram (в буфер их кладёт браузер в момент нажатия). Берутся только отмеченные из «К запросу» этого вендора.
      */
-    public function request(Request $request, Vendor $vendor, MarkRequested $mark)
+    public function request(Request $request, Vendor $vendor, SendClaimRequest $send)
     {
-        $ids = array_map('intval', (array) $request->input('offers', []));
-        $refs = $mark($vendor, Offer::where('vendor_id', $vendor->id)->whereIn('id', $ids)->get(), $request->user());
-        $n = count($refs);
+        $sent = $send($vendor, (array) $request->input('offers', []), $request->user());
+        $n = $sent ? count($sent->refs) : 0;
         $toast = match (true) {
             $n === 0 => 'Эти номера уже отправлены',
-            ! $request->user()->telegram_chat_id => 'Отмечено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']).', Telegram не привязан',
-            default => 'Отправлено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']),
+            ! $request->user()->telegram_chat_id => 'Отправлено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']).', Telegram не привязан',
+            default => 'Отправлено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']).', они в буфере и в Telegram',
         };
 
-        return back()->with('toast', $toast);
+        return redirect("/settings/vendors/{$vendor->id}?pill=requests")->with('toast', $toast);
     }
 
-    /** Снять метку запроса: номер снова в «К запросу». */
-    public function unrequest(Request $request, Vendor $vendor, Offer $offer, MarkRequested $mark)
+    /** Прислать номера прошлого запроса в Telegram ещё раз. */
+    public function resend(Request $request, Vendor $vendor, ClaimRequest $claimRequest, SendClaimRequest $send)
+    {
+        abort_unless($claimRequest->vendor_id === $vendor->id, 404);
+
+        return back()->with('toast', $send->telegram($claimRequest, $request->user()) ? 'Номера в Telegram' : 'Telegram не привязан');
+    }
+
+    /** Вернуть номер в «К запросу». */
+    public function unrequest(Request $request, Vendor $vendor, Offer $offer, SendClaimRequest $send)
     {
         abort_unless($offer->vendor_id === $vendor->id, 404);
-        $mark->clear($offer, $request->user());
+        $send->giveBack($offer, $request->user());
 
-        return back()->with('toast', 'Метка запроса снята');
+        return back()->with('toast', 'Номер снова в «К запросу»');
     }
 
     /**
@@ -195,22 +218,20 @@ class VendorController
      */
     private function offersQuery(Request $request, Vendor $vendor): array
     {
-        // «К запросу» (15.10.2026): есть отклик, ещё продаётся (без сделки, гаража, выдачи и архива), номер не отправляли.
-        $todo = '('.self::BIDS_SQL.' or '.self::INTEREST_SQL.") and offers.state in ('draft', 'gallery', 'open') and offers.requested_at is null";
-        $facets = Facets::for($request, 'crm-vendor-offers',
-            Facet::toggle('todo', 'К запросу', fn (Builder $q) => $q->whereRaw($todo))
-                ->counted(fn () => Offer::where('offers.vendor_id', $vendor->id)->whereRaw($todo)->count()),
-            self::replyFacet(),
+        $facets = Facets::for($request, 'crm-vendor-offers', self::replyFacet(),
             Facet::column('state', 'Где сейчас', ['состояние', 'состояния', 'состояний'], 'offers.state')->enum(OfferState::class)->natural(),
-            Facet::column('requested', 'Запрос', [], "case when offers.requested_at is null then 'no' else 'yes' end")->natural()
+            Facet::column('requested', 'Запрос', [], "case when offers.claim_request_id is null then 'no' else 'yes' end")->natural()
                 ->labels(fn (array $keys) => collect(['yes' => 'Отправлен', 'no' => 'Не отправлен'])->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all()),
+            // Вендор сам прислал письмом (16.10.2026) — такие не запрашивают.
+            Facet::column('letter', 'Письмо', [], 'case when '.ClaimRequest::LETTER_SQL." then 'yes' else 'no' end")->natural()
+                ->labels(fn (array $keys) => collect(['yes' => 'Прислали письмом', 'no' => 'Без письма'])->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all()),
             Facet::column('month', 'Заведено', ['месяц', 'месяца', 'месяцев'], "to_char(offers.created_at, 'YYYY-MM')")->natural()
                 ->labels(fn (array $keys) => collect($keys)->sortDesc()->mapWithKeys(fn ($k) => [$k => new Option($k, Carbon::parse($k.'-01')->isoFormat('MMMM YYYY'))])->all()),
         );
         ListPrefs::sync($request, 'crm-vendor-offers', keep: $facets->keys());
         $sort = Sort::from($request->query('sort'), self::OFFER_SORTS, '-created');
-        $q = Offer::where('offers.vendor_id', $vendor->id)->with('bids:id,offer_id,state')
-            ->withCount(['bids', 'interests'])->withMax('bids as best_bid', 'amount');
+        $q = Offer::where('offers.vendor_id', $vendor->id)->with(['bids:id,offer_id,state', 'claimRequest:id,created_at'])
+            ->withCount(['bids', 'interests'])->withMax('bids as best_bid', 'amount')->selectRaw(ClaimRequest::LETTER_SQL.' as by_letter');
         if ($facets->searching()) {
             $q->searchCrm(trim((string) $request->query('q')));
         }
@@ -221,7 +242,7 @@ class VendorController
             'interest' => $q->orderBy('interests_count', $dir),
             'floor' => $q->orderByRaw("offers.floor_price {$dir} nulls last"),
             'price' => $q->orderByRaw("offers.asking_price {$dir} nulls last"),
-            'requested' => $q->orderByRaw("offers.requested_at {$dir} nulls last"),
+            'requested' => $q->orderByRaw("(select created_at from claim_requests where claim_requests.id = offers.claim_request_id) {$dir} nulls last"),
             default => $q->orderBy('offers.created_at', $dir),
         };
 

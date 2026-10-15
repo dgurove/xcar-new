@@ -22,6 +22,7 @@ use App\Support\InternalRefs;
 use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
+use App\Vendors\ClaimRequest;
 use App\Vendors\DealFormat;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
@@ -125,7 +126,6 @@ class Offer extends Model
             'auction_at' => 'datetime',
             'auction_planned_at' => 'datetime',
             'proposed_at' => 'datetime',
-            'requested_at' => 'datetime',
             'floor_price' => 'int',
             'shown_floor' => 'int',
             'publish_price' => 'int',
@@ -324,6 +324,12 @@ class Offer extends Model
     {
         // Записи одной правки — одной секундой (предложение, потом сделка): порядок по номеру.
         return $this->hasMany(OfferEvent::class)->latest()->latest('id');
+    }
+
+    /** Запрос номеров вендору, в котором номер ушёл (`Vendors\ClaimRequest`). */
+    public function claimRequest(): BelongsTo
+    {
+        return $this->belongsTo(ClaimRequest::class);
     }
 
     public function deal(): HasOne

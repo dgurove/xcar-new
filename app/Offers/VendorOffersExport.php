@@ -28,7 +28,7 @@ final class VendorOffersExport
                 $o->claim_ref, $o->state === OfferState::Draft ? null : $o->number, trim(($o->brand?->name ?? '').' '.($o->model?->name ?? '')) ?: null,
                 $o->year, $o->vin, $o->crmTab(), (int) $o->bids_count ?: null, $o->best_bid ? (int) $o->best_bid : null,
                 (int) $o->interests_count ?: null, $o->floor_price, $o->asking_price,
-                $o->created_at?->format('d.m.Y'), $o->published_at?->format('d.m.Y'), $o->requested_at?->format('d.m.Y'),
+                $o->created_at?->format('d.m.Y'), $o->published_at?->format('d.m.Y'), $o->claimRequest?->created_at?->format('d.m.Y'),
             ])));
         }
         $writer->close();
