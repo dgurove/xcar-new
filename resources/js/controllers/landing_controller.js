@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 
 // Лендинг: пока листаешь, первый экран уходит (--lift), а лист с содержимым подходит к шапке (--dock 0…1):
-// скругление листа тает, шапка набирает его цвет. У края шапки лист и шапка — одна поверхность.
+// скругление листа тает у её края.
 export default class extends Controller {
     static targets = ['sheet'];
 
@@ -17,7 +17,6 @@ export default class extends Controller {
         cancelAnimationFrame(this.frame);
         removeEventListener('scroll', this.onScroll);
         removeEventListener('resize', this.onScroll);
-        this.header?.style.removeProperty('--dock');
     }
 
     paint() {
@@ -28,6 +27,5 @@ export default class extends Controller {
         const lift = Math.min(1, Math.max(0, scrollY / (innerHeight * 0.7)));
         this.element.style.setProperty('--dock', dock.toFixed(3));
         this.element.style.setProperty('--lift', lift.toFixed(3));
-        this.header?.style.setProperty('--dock', dock.toFixed(3));
     }
 }

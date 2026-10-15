@@ -417,19 +417,6 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
     // Esc закрывает просмотр сам (keydown PhotoSwipe), окну закрываться нечего.
     view.host = Object.assign(document.createElement('dialog'), { className: 'lightbox' });
     view.host.addEventListener('cancel', (e) => e.preventDefault());
-    // Отступ под строку состояния меряется на странице: в верхнем слое (dialog) установленного приложения на iPhone
-    // env(safe-area-inset-top) отдавал 0, и кнопки уезжали под часы.
-    const ruler = Object.assign(document.createElement('div'), { style: 'position:fixed;top:0;height:0;padding-top:env(safe-area-inset-top);visibility:hidden' });
-    document.body.append(ruler);
-    // Шапка страницы стоит с тем же отступом и точно его получила — берём большее из двух замеров.
-    const header = document.querySelector('.header');
-    // Старая установка с прозрачной строкой (html.legacy-bar): iOS 26 то и дело отдаёт и env(), и высоту окна короче на
-    // строку состояния — тогда её высота и есть недостача окна до экрана (кнопки уезжали под часы, 07.10.2026).
-    const legacy = document.documentElement.classList.contains('legacy-bar') && innerHeight >= innerWidth;
-    const short = legacy ? Math.max(0, screen.height - innerHeight) : 0;
-    const safe = Math.max(parseFloat(getComputedStyle(ruler).paddingTop) || 0, header ? parseFloat(getComputedStyle(header).paddingTop) || 0 : 0, short < 80 ? short : 0);
-    view.host.style.setProperty('--safe-top', `${safe}px`);
-    ruler.remove();
     document.body.append(view.host);
     view.host.showModal();
     document.body.classList.add('viewer-open');

@@ -1,15 +1,11 @@
 import { Controller } from '@hotwired/stimulus';
+import { setTheme } from '../theme';
 
 // Тема расходится кругом от кнопки (View Transitions), где их нет — щелчком.
 export default class extends Controller {
     toggle(event) {
         const dark = !document.documentElement.classList.contains('dark');
-        const apply = () => {
-            document.documentElement.classList.toggle('dark', dark);
-            try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch {}
-            document.cookie = `theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax${location.protocol === 'https:' ? '; Secure' : ''}${cookieDomain()}`;
-            document.querySelector('meta[name="theme-color"]').content = dark ? '#161616' : '#ffffff';
-        };
+        const apply = () => setTheme(dark);
         if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return apply();
         // Круг идёт из самой кнопки, а не из точки события: тап, клавиатура и .click() — одинаково.
         const r0 = this.element.getBoundingClientRect();
@@ -32,8 +28,3 @@ export default class extends Controller {
     }
 }
 
-// Одна тема на витрину, CRM и стоянку: cookie на общий домен (.xcar.ru / .xcar.localhost).
-function cookieDomain() {
-    const parts = location.hostname.split('.');
-    return parts.length > 2 ? `; domain=.${parts.slice(-2).join('.')}` : '';
-}

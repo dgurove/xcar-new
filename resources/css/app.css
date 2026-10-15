@@ -6,11 +6,10 @@
    1. Лайм — глагол, а не поверхность: действие, активный пункт, текущий шаг.
       На лайме текст всегда белый.
    2. Тёмное — только хром: первый экран и, в тёмной теме, полосы шапки и
-      таб-бара. Третьего фона нет. Хром — стекло: шапка, таб-бар и плашка
-      действий — одна полоса `--bar-alpha` с размытием, капсулы — тон поверх;
-      глухих полос и теней у них нет. На телефоне размытия нет (15.10.2026,
-      владелец: размывать три полосы каждый кадр прокрутки — тормоза) — почти
-      непрозрачная полоса того же цвета.
+      таб-бара. Третьего фона нет. Хром — глухая полоса `--color-bar`: шапка,
+      таб-бар, плашка действий и строка состояния над шапкой (theme-color) одного
+      цвета, без стекла и размытия на любом экране (16.10.2026); капсулы — тон
+      поверх, теней у полос нет.
    3. У карточек тени нет. Тень только у висящего над страницей: шторка,
       меню, сообщение.
    4. Обводок нет. Белое на сером различается заливкой.
@@ -84,13 +83,8 @@
 
   --color-chrome: #121212;
   --color-chrome-light: #1d1d1b;
+  /* Полосы хрома и строка состояния; тот же цвет — у меты theme-color (layout.blade.php). */
   --color-bar: #ffffff;
-  /* Стекло хрома: сколько цвета полосы остаётся над содержимым и чем содержимое
-     размывается. Белее белого не бывает, поэтому светлая полоса не глушится, а
-     осветляет подложку (brightness): серый фон и карточки под ней белеют, фото и
-     заголовки просвечивают светлыми пятнами. */
-  --bar-alpha: 78%;
-  --bar-filter: saturate(180%) blur(20px) brightness(1.12);
 
   --color-ground: #f7f7f7;
   --color-surface: #ffffff;
@@ -135,8 +129,6 @@
   --container-site: 1320px;
   --spacing-header: 56px;
   --spacing-tabbar: 54px;
-  --spacing-safe-b: env(safe-area-inset-bottom);
-  --spacing-safe-t: env(safe-area-inset-top);
 
   /* Движение: одна физика на кит. Вход быстрый, выход мягкий; пружина — только
      для возврата после жеста (шторка, тост), не для переходов экранов. */
@@ -163,6 +155,9 @@
 }
 
 :root { color-scheme: light; }
+/* Низ шапки — от него стоит всё, что липнет под ней. Строка состояния глухая, и верхний вырез env() отдаёт нулём; он
+   здесь ради установок, где строка ещё прозрачная. */
+:root { --header-edge: calc(var(--spacing-header) + env(safe-area-inset-top)); }
 @media (min-width: 768px) { :root { --spacing-header: 80px; } } /* py-2 + два ряда по 30 px + 4 px между */
 
 /* Тёмная тема — ступени тёмной iOS: фон чёрный, группа светлее фона (#1c1c1e), внутри группы и в шторке —
@@ -171,8 +166,6 @@
 .dark {
   color-scheme: dark;
   --color-bar: #161616;
-  --bar-alpha: 78%;
-  --bar-filter: saturate(180%) blur(20px);
   --color-ground: #000000;
   --color-surface: #1c1c1e;
   --color-surface-2: #2c2c2e;
@@ -196,24 +189,10 @@
                  0 16px 24px 0 rgb(0 0 0 / .6);
 }
 
-/* Телефон: стекло хрома без размытия — полоса почти глухая (правило 2). */
-@media (hover: none) and (max-width: 1023.98px) {
-  :root, .dark { --bar-alpha: 95%; --bar-filter: none; }
-}
-
 @layer base {
   /* Треугольник у <summary>: `list-none` его прячет везде, кроме Safari — там нужен свой псевдоэлемент (07.10.2026: на iPhone
      у «Расклада» и «Ещё N» стоял чёрный ▶ рядом с нашей стрелкой). */
   summary.list-none::-webkit-details-marker { display: none; }
-  /* Строка состояния в приложении с экрана «Домой» непрозрачная (status-bar-style default, 15.10.2026): с прозрачной
-     iOS 26–27 то и дело отдавал viewport короче экрана на вырез (WebKit 301108), и fixed-низ прыгал. Мету iOS читает
-     только при установке: у установленных раньше строка прозрачная, пока не переустановят, — им (html.legacy-bar,
-     app.js legacyBar) прежние поправки: --under (на сколько viewport короче экрана; 0 у всех остальных и с клавиатурой)
-     и корень высотой в экран. Убрать, когда переустановят все. */
-  @media (display-mode: standalone) {
-    html.legacy-bar { --under: calc(100lvh - 100dvh); height: 100vh; }
-    html.legacy-bar.kb-open { --under: 0px; }
-  }
   html {
     /* Холст под резиновым оверскроллом iOS — цвет полосы, не страницы. */
     background-color: var(--color-bar);
@@ -221,7 +200,7 @@
        открывался холст. На body одного правила мало — WebKit слушает html. Внутренние
        прокрутки (шторки, карточка строки, лента чата) со своим contain. */
     overscroll-behavior: none;
-    scroll-padding-top: calc(var(--spacing-header) + env(safe-area-inset-top) + 1rem);
+    scroll-padding-top: calc(var(--header-edge) + 1rem);
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
   }
@@ -303,10 +282,8 @@
 
 }
 
-/* Полоса Turbo: вне слоёв, иначе проигрывает стилю самого Turbo (синяя 3px под чёлкой).
-   Лайм, 2px, под шапкой; на первом экране, где шапка прозрачная, — под статус-баром. */
-.turbo-progress-bar { background: var(--color-accent); height: 2px; top: calc(env(safe-area-inset-top) + var(--spacing-header)); z-index: 41; }
-body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
+/* Полоса Turbo: вне слоёв, иначе проигрывает стилю самого Turbo (синяя 3px под чёлкой). Лайм, 2px, под шапкой. */
+.turbo-progress-bar { background: var(--color-accent); height: 2px; top: var(--header-edge); z-index: 41; }
 
 /* Последняя минута таймера — цветом срочности, без подписи. */
 [data-controller~="timer"].is-last { color: var(--color-urgent); }
@@ -1211,7 +1188,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .table td.cell-dim { font-size: var(--text-sm); color: var(--color-ink-muted); }
   /* Между столбцами на ПК — ровный шаг 1rem, у чисел чуть шире: они прижаты вправо и иначе липнут к соседу. */
   @media (min-width: 640px) { .table :is(th, td):not(:first-child) { padding-left: 1rem; } .table .num { padding-left: 1.25rem; } }
-  .table thead th { @apply sticky z-10 bg-surface; top: calc(var(--spacing-header) + env(safe-area-inset-top)); height: 2rem; padding-block: 0; font-size: var(--text-xs); font-weight: 400; color: var(--color-ink-dim); }
+  .table thead th { @apply sticky z-10 bg-surface; top: var(--header-edge); height: 2rem; padding-block: 0; font-size: var(--text-xs); font-weight: 400; color: var(--color-ink-dim); }
   @media (max-width: 639.98px) { .table thead { display: none; } }
   .table thead a { display: inline-block; padding-block: .5rem; }
   .table thead a[aria-current] { color: var(--color-ink); }
@@ -1231,12 +1208,12 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .table tbody tr:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
   .table tbody tr.table-group, .table tbody tr.table-group:hover { height: auto; cursor: default; background: var(--color-surface); }
   .table tr.table-group > th {
-    position: sticky; z-index: 9; top: calc(var(--spacing-header) + env(safe-area-inset-top));
+    position: sticky; z-index: 9; top: var(--header-edge);
     padding-top: .75rem; padding-bottom: .25rem; background: var(--color-surface);
     font-size: var(--text-lg); font-weight: 500; color: var(--color-ink);
   }
   .table tbody tr.table-group:first-child > th { padding-top: .75rem; }
-  @media (min-width: 640px) { .table tr.table-group > th { top: calc(var(--spacing-header) + env(safe-area-inset-top) + 2rem); } }
+  @media (min-width: 640px) { .table tr.table-group > th { top: calc(var(--header-edge) + 2rem); } }
   .table tr.table-group .nums { margin-left: .25rem; font-weight: 400; color: var(--color-ink-dim); }
   /* Галочки строк («Оцененные», «Публикация», pick_controller): узкий первый столбец, круг как у .row-check; та же
      галочка у группы (слот целиком) и строкой «Выбрать все» над таблицей. Соседний столбец к ней не отступает. */
@@ -1363,7 +1340,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
       & .cell-extra { display: flex; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; align-items: center; gap: .25rem .375rem; font-size: var(--text-sm); }
       & .alerts-inline { display: none; }
       & .table-box { overflow-x: clip; }
-      & .table tr.table-group > th { top: calc(var(--spacing-header) + env(safe-area-inset-top)); }
+      & .table tr.table-group > th { top: var(--header-edge); }
     }
   }
 
@@ -1974,7 +1951,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     @apply m-0 w-full max-w-none rounded-t-(--radius-xl) bg-surface p-5 text-ink shadow-(--shadow-drop);
     margin-top: auto;
     max-height: calc(100dvh - 2rem - var(--kb, 0px));
-    margin-bottom: calc(var(--kb, 0px) - var(--under, 0px));
+    margin-bottom: var(--kb, 0px);
     /* Нижний отступ — переменной: его же перекрывает липкая кнопка (.sheet-foot); с клавиатурой и на ПК полосы «Домой» нет. */
     --sheet-pad-b: calc(1.25rem + env(safe-area-inset-bottom));
     padding-bottom: var(--sheet-pad-b);
@@ -1992,7 +1969,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .sheet.is-closing::backdrop { animation: fade var(--dur-fast) reverse both; }
   /* Окно чтения на телефоне — экран целиком: без ручки и скруглений, «‹» слева, крестик спрятан. */
   @media (max-width: 639.98px) {
-    .sheet-tall { height: calc(100dvh + var(--under, 0px)); max-height: none; border-radius: 0; padding-top: calc(.75rem + env(safe-area-inset-top)); }
+    .sheet-tall { height: 100dvh; max-height: none; border-radius: 0; padding-top: calc(.75rem + env(safe-area-inset-top)); }
     .sheet-tall::before { display: none; }
     .sheet-tall .sheet-x { display: none; }
   }
@@ -2131,7 +2108,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* «Сохранить изменения» в карточке строки: липнет к низу карточки, пока есть несохранённое (save_bar_controller). */
   .save-bar { @apply sticky bottom-0 z-10 -mx-4 bg-surface px-4 pb-3 pt-3; animation: sheet-up var(--dur) var(--ease-out) both; }
   /* На странице — над таб-баром (телефон) или у низа экрана, пока форма на экране; фона нет, только кнопка. */
-  .save-bar--page { @apply mx-0 bg-transparent px-0 pb-0; bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem - var(--under, 0px)); }
+  .save-bar--page { @apply mx-0 bg-transparent px-0 pb-0; bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem); }
   /* С клавиатурой «Сохранить изменения» страницы садится на неё (таб-бара под ней нет), а не прячется под ней. */
   @media (max-width: 767.98px) { html.kb-open .save-bar--page { bottom: calc(var(--kb, 0px) + .75rem); } }
   /* Подвал карточки строки (слот foot у x-ui.row-card): кнопка всегда на экране, не уходит вместе с концом формы. На ПК
@@ -2186,8 +2163,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     .split-detail {
       @apply block rounded-(--radius-xl) bg-surface;
       position: sticky; flex: none; width: 26rem;
-      top: calc(var(--spacing-header) + env(safe-area-inset-top) + 2rem);
-      height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 3rem);
+      top: calc(var(--header-edge) + 2rem);
+      height: calc(100dvh - var(--header-edge) - 3rem);
       overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; contain: layout paint;
       animation: dialog-in var(--dur) var(--ease-out);
     }
@@ -2207,9 +2184,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
        «как 2 FPS»): ширина та же, текст не перекладывается. Тянут за полосу (detail_controller#grab), листается тело. */
     .split-detail {
       @apply block;
-      --sheet-half: calc(50dvh + var(--under, 0px) / 2 - var(--spacing-header) - env(safe-area-inset-top));
-      position: fixed; inset-inline: 0; bottom: calc(0px - var(--under, 0px)); z-index: 45; margin-inline: auto; max-width: 36rem;
-      top: calc(var(--spacing-header) + env(safe-area-inset-top) + var(--sheet-half)); overflow: hidden;
+      --sheet-half: calc(50dvh - var(--header-edge));
+      position: fixed; inset-inline: 0; bottom: 0; z-index: 45; margin-inline: auto; max-width: 36rem;
+      top: calc(var(--header-edge) + var(--sheet-half)); overflow: hidden;
       /* Тень — у самого листа: у карточки внутри её обрезал overflow листа, и тени не было вовсе (07.10.2026). Белый
          лист над белой таблицей — край линией и короткой тенью, глубина длинной. */
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -2218,9 +2195,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
          верх листа (кадры, кнопки на них, полоса) — у админа в предложениях, 04.10.2026. touch-action — только у полосы. */
       animation: split-up 280ms var(--ease-sheet) backwards;
     }
-    .split-detail[data-full], .split-detail[data-moving] { top: calc(var(--spacing-header) + env(safe-area-inset-top)); }
+    .split-detail[data-full], .split-detail[data-moving] { top: var(--header-edge); }
     .split-detail[data-moving] { will-change: transform; }
-    html.kb-open .split-detail { top: calc(var(--spacing-header) + env(safe-area-inset-top)); bottom: var(--kb, 0px); transform: none; }
+    html.kb-open .split-detail { top: var(--header-edge); bottom: var(--kb, 0px); transform: none; }
     @keyframes split-up { from { transform: translateY(100%); } }
     .detail-card {
       height: 100%; overflow: hidden;
@@ -2340,7 +2317,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 
   /* Уведомления карточками, как в iOS и macOS (x-ui.banner, banner_controller). Телефон — сверху во всю ширину, новая
      поверх, две прежние выглядывают из-под неё; от 768 — стопка справа снизу, новая ближе к углу, над парящими
-     кнопками действий. Стекло — то же, что у шапки. --depth ставит контроллер: 0 — новая; --top-h — её высота, прежние
+     кнопками действий. --depth ставит контроллер: 0 — новая; --top-h — её высота, прежние
      на телефоне той же высоты, чтобы выглядывать снизу. */
   .banners { @apply pointer-events-none fixed z-[55] grid;
     inset-inline: .5rem; top: calc(env(safe-area-inset-top) + .5rem); }
@@ -2350,10 +2327,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
     z-index: calc(10 - var(--depth, 0));
     transition: translate var(--dur) var(--ease-spring), scale var(--dur) var(--ease-spring), opacity var(--dur-fast) linear;
     animation: banner-in-top var(--dur-slow) var(--ease-spring) backwards; }
-  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-    .banner { background: color-mix(in srgb, var(--color-bar) max(82%, var(--bar-alpha)), transparent); -webkit-backdrop-filter: var(--bar-filter); backdrop-filter: var(--bar-filter); }
-  }
-  @media (prefers-reduced-transparency: reduce) { .banner { background: var(--color-surface); -webkit-backdrop-filter: none; backdrop-filter: none; } }
   .dark .banner { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .16), var(--shadow-drop); }
   .banner:not([data-depth="0"]) { height: var(--top-h, auto); overflow: hidden; }
   .banner:not([data-depth="0"]) > * { opacity: 0; }
@@ -2399,15 +2372,15 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      угол, кнопки действий парят справа. Запас под ней — .impersonation-room в конце страницы. */
   .impersonation { @apply fixed z-50 flex items-center gap-2 rounded-full bg-chrome py-1 pr-1 pl-1.5 text-sm text-white shadow-(--shadow-drop);
     left: 50%; translate: -50% 0; max-width: calc(100% - 2rem);
-    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem - var(--under, 0px)); }
+    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + .75rem); }
   .impersonation-name { @apply min-w-0 truncate; }
   .impersonation-exit { @apply shrink-0 rounded-full bg-white/15 px-3 py-1 font-medium transition-colors hover:bg-white/25; }
   .dark .impersonation { @apply bg-white text-chrome; }
   .dark .impersonation-exit { @apply bg-chrome/10 hover:bg-chrome/20; }
   .impersonation-room { @apply h-16 shrink-0; }
-  body:has(.action-bar) .impersonation { bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 5.25rem - var(--under, 0px)); }
+  body:has(.action-bar) .impersonation { bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 5.25rem); }
   @media (max-width: 767px) {
-    html.kb-open .impersonation { bottom: calc(max(env(safe-area-inset-bottom), 0px) + .75rem - var(--under, 0px)); }
+    html.kb-open .impersonation { bottom: calc(max(env(safe-area-inset-bottom), 0px) + .75rem); }
     html.kb-open .impersonation { display: none; }
   }
   @media (max-width: 1023px) {
@@ -2422,20 +2395,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* ------------------------------------------------------------- шапка */
 
 @layer components {
-  /* Стекло хрома — одно на шапку, таб-бар и плашку действий: полоса `--bar-alpha`
-     над размытым содержимым, над первым экраном — над фото. Без размытия — глухая полоса. */
+  /* Хром — одна глухая полоса на шапку, таб-бар и плашку действий (правило 2). */
+  .header, .tabbar, .action-bar { background: var(--color-bar); }
   /* Плашка, в которой видимых кнопок нет («Сохранить изменения» ждёт правки), не рисуется. */
   .action-bar:not(:has(.action-bar-inner > :not([hidden]))) { display: none; }
-  .header, .tabbar, .action-bar { background: var(--color-bar); }
-  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-    .header, .tabbar, .action-bar {
-      background: color-mix(in srgb, var(--color-bar) var(--bar-alpha), transparent);
-      -webkit-backdrop-filter: var(--bar-filter); backdrop-filter: var(--bar-filter);
-    }
-  }
-  @media (prefers-reduced-transparency: reduce) {
-    .header, .tabbar, .action-bar { background: var(--color-bar); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  }
 
   /* Шапка — как navigation bar: волосяная линия и заголовок экрана по центру
      появляются, когда содержимое ушло под неё (.is-scrolled / .is-past-title). */
@@ -2444,7 +2407,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: 1px; background: rgb(60 60 67 / .29); opacity: 0; transition: opacity var(--dur-fast); }
   .dark .header::after { background: rgb(84 84 88 / .6); }
   @media (min-resolution: 2dppx) { .header::after { height: .5px; } }
-  .header.is-scrolled:not(.header--over)::after { opacity: 1; }
+  .header.is-scrolled::after { opacity: 1; }
   .header-title {
     position: absolute; left: 50%; top: 50%; translate: -50% calc(-50% + 6px); max-width: 45%; pointer-events: none;
     overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--text-lg); font-weight: 500; line-height: 1.2;
@@ -2454,10 +2417,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Центр телефона занят логотипом на всех хостах — он уступает место заголовку. */
   @media (max-width: 1023.98px) { .header.is-past-title .header-brand { opacity: 0; } }
   .header-brand { transition: opacity var(--dur-fast); }
-  .header--over { @apply fixed inset-x-0; }
 
-  /* Капсула — тон поверх стекла шапки (своё размытие ей не нужно: вложенный
-     backdrop-filter сквозь родителя не видит), поэтому полупрозрачная в обеих темах. */
+  /* Капсула — тон поверх полосы шапки, полупрозрачная в обеих темах. */
   .header-btn {
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium text-ink transition-colors;
     background: rgb(29 29 27 / .09);
@@ -2570,9 +2531,9 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
 /* ------------------------------------------------------------- таб-бар */
 
 @layer components {
-  /* Прикреплён к низу, 49px + safe-area, стекло (блок у шапки), волосяная линия сверху. */
+  /* Прикреплён к низу, 54px + safe-area, полоса хрома (блок у шапки), волосяная линия сверху. */
   .tabbar {
-    position: fixed; inset-inline: 0; bottom: calc(0px - var(--under, 0px)); z-index: 40;
+    position: fixed; inset-inline: 0; bottom: 0; z-index: 40;
     display: flex; align-items: stretch;
     /* Ширина таба — по подписи плюс равная всем доля свободного места: тогда «Предложения» отстоит от
        левого края ровно на столько же, на сколько «Кабинет» от правого, а между словами — один шаг.
@@ -2632,10 +2593,10 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (max-width: 1023px) { body:has(.action-bar) .footer { padding-bottom: calc(8rem + var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px)); } }
   html:has(.action-bar) { scroll-padding-bottom: 6rem; }
 
-  /* На телефоне — стеклянная плашка над таб-баром с кнопкой во всю ширину, край — волосяная линия. */
+  /* На телефоне — плашка над таб-баром с кнопкой во всю ширину, край — волосяная линия. */
   .action-bar {
     position: fixed; inset-inline: 0; z-index: 30;
-    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) - var(--under, 0px));
+    bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px));
     border-top: 1px solid rgb(60 60 67 / .29);
   }
   .dark .action-bar { border-top-color: rgb(84 84 88 / .6); }
@@ -2649,7 +2610,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (min-width: 768px) {
     .action-bar, .dark .action-bar {
       inset-inline: auto; bottom: 1.5rem; right: max(1.5rem, calc((100% - var(--container-site)) / 2 + 1.5rem));
-      background: none; border-top: 0; -webkit-backdrop-filter: none; backdrop-filter: none;
+      background: none; border-top: 0;
     }
     .action-bar-inner { width: auto; max-width: none; padding: 0; gap: .75rem; }
     .action-bar .btn { flex: 0 0 auto; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
@@ -2681,7 +2642,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
      из модального окна (окно писем) — <dialog> модально в верхнем слое над ним (.docs-modal), страница не сдвигается. */
   .docs {
     @apply fixed z-[45] flex flex-col bg-surface text-ink shadow-(--shadow-drop);
-    inset-inline: 0; top: auto; bottom: calc(var(--kb, 0px) - var(--under, 0px)); height: var(--docs-h, 55dvh);
+    inset-inline: 0; top: auto; bottom: var(--kb, 0px); height: var(--docs-h, 55dvh);
     width: auto; max-width: none; max-height: none; margin: 0; border: 0; padding: 0; overflow: visible;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
@@ -2805,7 +2766,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   }
   @media (min-width: 1024px) {
     .docs {
-      inset: calc(var(--spacing-header) + env(safe-area-inset-top)) 0 0 auto; width: var(--docs-w, 44vw); height: auto;
+      inset: var(--header-edge) 0 0 auto; width: var(--docs-w, 44vw); height: auto;
       border-radius: var(--radius-xl) 0 0 0; padding-bottom: 0; animation: docs-in var(--dur) var(--ease-out) both;
     }
     .docs.is-closing { animation: docs-in var(--dur-fast) var(--ease-in) reverse both; }
@@ -2837,8 +2798,8 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   .landing-shade { background: linear-gradient(to top, rgb(247 247 247 / .92) 0%, rgb(247 247 247 / .45) 38%, rgb(247 247 247 / 0) 70%), linear-gradient(to right, rgb(255 255 255 / .55), rgb(255 255 255 / 0) 60%); }
   /* Низ тени — цвет фона тёмной темы (--color-ground), чтобы лист с содержимым продолжал фото без шва. */
   .dark .landing-shade { background: linear-gradient(to top, rgb(0 0 0 / .95) 0%, rgb(0 0 0 / .5) 38%, rgb(0 0 0 / 0) 70%), linear-gradient(to right, rgb(0 0 0 / .6), rgb(0 0 0 / 0) 60%); }
-  .landing-hero { position: relative; z-index: 1; display: flex; align-items: flex-end; min-height: 100svh;
-    padding-top: var(--spacing-header); padding-bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 12vh); }
+  .landing-hero { position: relative; z-index: 1; display: flex; align-items: flex-end; min-height: calc(100svh - var(--header-edge));
+    padding-bottom: calc(var(--spacing-tabbar) + max(env(safe-area-inset-bottom), 0px) + 12vh); }
   @media (min-width: 768px) { .landing-hero { padding-bottom: 16vh; } }
   .landing-hero-body { display: flex; width: 100%; max-width: 44rem; flex-direction: column; align-items: flex-start;
     opacity: calc(1 - var(--lift, 0) * 1.4); transform: translateY(calc(var(--lift, 0) * -40px)); }
@@ -2854,9 +2815,6 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   @media (hover: hover) { .landing-quiet:hover { background: rgb(255 255 255 / .9); } .dark .landing-quiet:hover { background: rgb(255 255 255 / .2); } }
   .landing-sheet { position: relative; z-index: 2; background: var(--color-ground);
     border-radius: calc(var(--radius-xl) * 1.5 * (1 - var(--dock, 0))) calc(var(--radius-xl) * 1.5 * (1 - var(--dock, 0))) 0 0; }
-  /* Шапка над лендингом: прозрачная над фото, у листа — его цвет; стекло появляется, только когда под ней содержимое. */
-  body:has(.landing) .header--over { background: color-mix(in srgb, var(--color-ground) calc(var(--dock, 0) * 100%), transparent);
-    -webkit-backdrop-filter: none; backdrop-filter: none; }
   /* Заголовка экрана в шапке у лендинга нет — логотип остаётся на месте. */
   body:has(.landing) .header.is-past-title .header-brand { opacity: 1; }
   body:has(.landing) .footer { position: relative; z-index: 2; background: var(--color-ground); }
@@ -3066,7 +3024,7 @@ body:has(.header--over) .turbo-progress-bar { top: env(safe-area-inset-top); }
   /* Пачка по сроку («До 17:00 сегодня 12») — заголовком во всю ширину ленты, как группа таблицы: крупно, липнет под
      шапкой, следующая наезжает на прежнюю (владелец 11.10.2026: мелкая серая подпись между большими плитками терялась). */
   .cards-group {
-    grid-column: 1 / -1; position: sticky; z-index: 5; top: calc(var(--spacing-header) + env(safe-area-inset-top));
+    grid-column: 1 / -1; position: sticky; z-index: 5; top: var(--header-edge);
     display: flex; align-items: baseline; gap: .375rem; margin: .5rem -.25rem 0; padding: .5rem .25rem;
     background: var(--color-ground); font-size: var(--text-lg); font-weight: 500; color: var(--color-ink);
   }
@@ -3442,7 +3400,7 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
 dialog.lightbox { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; overflow: hidden; touch-action: none; }
 dialog.lightbox::backdrop { background: transparent; }
 .pswp.pswp { --pswp-bg: #121212; --pswp-placeholder-bg: rgb(255 255 255 / .06); --pswp-icon-color: #fff; }
-.pswp .pswp__top-bar { height: auto; align-items: center; gap: 6px; padding: max(10px, var(--safe-top, 0px), env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
+.pswp .pswp__top-bar { height: auto; align-items: center; gap: 6px; padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); }
 .pswp .pswp__top-bar .pswp__button, .pswp .pswp__button.pswp__button--arrow {
   display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 0; border-radius: 999px;
   color: #fff; opacity: 1; background: rgb(255 255 255 / .12); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
@@ -3455,8 +3413,7 @@ dialog.lightbox::backdrop { background: transparent; }
 /* Плашки кнопок (lightbox.js `pills`): сверху справа — «Скачать», корзина, знак, закрыть; снизу по центру под пальцем —
    глаз, поворот, зум. Обе — прямо в окне просмотра поверх PhotoSwipe, не внутри его полос: у корня и полос PhotoSwipe
    will-change: opacity, это граница фона для backdrop-filter — внутри неё размывать нечего, плашка выходила просто
-   полупрозрачной. Снаружи матовое стекло размывает кадр. Отступ сверху — высота строки состояния, измеренная на
-   странице (`--safe-top`): в верхнем слое (dialog) установленного приложения env() отдаёт 0. */
+   полупрозрачной. Снаружи матовое стекло размывает кадр. */
 dialog.lightbox .lb-pill {
   position: fixed; z-index: 100001; display: flex; gap: 8px; padding: 4px; border-radius: 999px;
   background: rgb(255 255 255 / .14); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4);
@@ -3464,7 +3421,7 @@ dialog.lightbox .lb-pill {
 }
 dialog.lightbox.lb-ui .lb-pill { opacity: 1; pointer-events: auto; }
 dialog.lightbox .lb-pill--bottom { left: 50%; translate: -50% 0; bottom: max(16px, env(safe-area-inset-bottom)); }
-dialog.lightbox .lb-pill--top { right: max(10px, env(safe-area-inset-right)); top: max(10px, var(--safe-top, 0px), env(safe-area-inset-top)); }
+dialog.lightbox .lb-pill--top { right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); }
 dialog.lightbox .lb-pill .pswp__button {
   display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: 0; padding: 0; border: 0;
   border-radius: 999px; background: transparent; color: #fff; opacity: 1; cursor: pointer;
@@ -3474,7 +3431,7 @@ dialog.lightbox .lb-pill .pswp__button svg { width: 22px; height: 22px; pointer-
 dialog.lightbox:not(.lb-zoomable) .lb-pill .pswp__button--zoom-tool { opacity: .35; pointer-events: none; }
 @media (hover: hover) { dialog.lightbox .lb-pill .pswp__button:hover { background: rgb(255 255 255 / .16); } }
 /* Счётчик — третьей плашкой слева сверху, вровень с правой; у одного кадра его нет. */
-dialog.lightbox .lb-pill--left { left: max(10px, env(safe-area-inset-left)); top: max(10px, var(--safe-top, 0px), env(safe-area-inset-top)); padding: 4px 16px; }
+dialog.lightbox .lb-pill--left { left: max(10px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); padding: 4px 16px; }
 dialog.lightbox .lb-pill--left .pswp__counter { margin: 0; height: 44px; font-size: var(--text-sm); line-height: 44px; color: #fff; text-shadow: none; opacity: 1; }
 dialog.lightbox.lb-one .lb-pill--left { display: none; }
 /* Лента миниатюр (lightbox.js `strip`): внизу во всю ширину, кадры одной ширины 4:3, текущий — лаймовой рамкой по
@@ -3748,7 +3705,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
     /* Отступ сетки (mt-6 утилитой) и запас под таб-бар экрану чата не нужны: поле ввода — на нижнем краю, страница не листается. */
     body:has(.chat-page) .chat-split { margin-top: 0 !important; }
     body:has(.chat-page) .main-app { padding-bottom: 0 !important; }
-    .chat-page { height: calc(100dvh + var(--under, 0px) - var(--kb, 0px)); }
+    .chat-page { height: calc(100dvh - var(--kb, 0px)); }
     .chat-head { padding-top: calc(.375rem + env(safe-area-inset-top)); }
     .chat-back { display: inline-flex; }
     .chat-screen .chat-bar { padding-bottom: max(env(safe-area-inset-bottom), .5rem); }
@@ -3790,9 +3747,9 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .chat-split.has-current .chat-rows { display: none; }
   .chat-split.has-current .chat-pane { display: flex; flex-direction: column; }
   @media (min-width: 1024px) {
-    .chat-split { display: grid; grid-template-columns: 22rem minmax(0, 1fr); overflow: hidden; border-radius: var(--radius-l); background: var(--color-surface); height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 5.5rem); }
+    .chat-split { display: grid; grid-template-columns: 22rem minmax(0, 1fr); overflow: hidden; border-radius: var(--radius-l); background: var(--color-surface); height: calc(100dvh - var(--header-edge) - 5.5rem); }
     /* Над сеткой CRM — только строка разделов «Работы» (пилюль нет): низ сетки на том же отступе от низа окна, что у бота и кабинета. */
-    .chat-split-crm { height: calc(100dvh - var(--spacing-header) - env(safe-area-inset-top) - 9.125rem); min-height: 28rem; }
+    .chat-split-crm { height: calc(100dvh - var(--header-edge) - 9.125rem); min-height: 28rem; }
     /* «‹ Чаты» над двумя колонками не нужна: список и так слева. */
     a:has(+ .chat-split.has-current) { display: none !important; }
     .chat-split .chat-rows, .chat-split.has-current .chat-rows { display: flex; gap: 0; overflow-y: auto; border-right: 1px solid var(--color-line); scrollbar-width: thin; }

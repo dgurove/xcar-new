@@ -145,7 +145,7 @@ function pending() {
         pill.id = 'live-pending';
         pill.type = 'button';
         pill.className = 'btn btn-s btn-accent fixed left-1/2 z-40 -translate-x-1/2 shadow-(--shadow-drop)';
-        pill.style.top = 'calc(var(--spacing-header) + env(safe-area-inset-top) + .75rem)';
+        pill.style.top = 'calc(var(--header-edge) + .75rem)';
         pill.dataset.count = '0';
         pill.dataset.turboTemporary = '';
         // Новыми сверху — морф на месте с фильтрами, новое сверху. По сроку новое встаёт в свою пачку, а не наверх: ведём

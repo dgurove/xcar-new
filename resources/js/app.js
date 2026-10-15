@@ -11,6 +11,7 @@ import { netGuards } from './net';
 import { live } from './live';
 import './flip';
 import { longPressMenu } from './longpress';
+import { setTheme, paintBar, chosenTheme } from './theme';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
 Turbo.StreamActions.toast = function () {
@@ -710,21 +711,16 @@ function timerDone() {
     });
 }
 
-// Пока тема не выбрана руками (cookie нет) — следуем за системой, в том числе на лету;
-// после переходов Turbo сверяем мету цвета полосы с классом на <html>.
+// Пока тема не выбрана руками (cookie нет) — следуем за системой, в том числе на лету; после переходов Turbo сверяем
+// цвет строки состояния с классом на <html>.
 function systemTheme() {
-    const meta = () => document.querySelector('meta[name="theme-color"]');
-    const paint = () => { const dark = document.documentElement.classList.contains('dark'); if (meta()) meta().content = dark ? '#161616' : '#ffffff'; };
     // Экран мог прийти из кэша воркера с прежней темой — cookie важнее.
-    const chosen = document.cookie.match(/(?:^|; )theme=(dark|light)/)?.[1];
-    if (chosen) { document.documentElement.classList.toggle('dark', chosen === 'dark'); paint(); }
-    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        if (document.cookie.includes('theme=')) return;
-        document.documentElement.classList.toggle('dark', e.matches);
-        paint();
-    });
-    document.addEventListener('turbo:render', paint);
-    document.addEventListener('turbo:load', paint);
+    const chosen = chosenTheme();
+    if (chosen) setTheme(chosen === 'dark', false);
+    else paintBar();
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => { if (!chosenTheme()) setTheme(e.matches, false); });
+    document.addEventListener('turbo:render', paintBar);
+    document.addEventListener('turbo:load', paintBar);
 }
 
 // Шапка знает, что под ней: is-scrolled — страница сдвинута (линия), is-past-title —

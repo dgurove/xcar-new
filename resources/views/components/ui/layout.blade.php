@@ -4,6 +4,8 @@
     // Тема: cookie на общий домен — одна на три приложения и известна серверу, поэтому
     // <html class="dark"> и цвет полосы приходят готовыми, без мигания и без подмены мета Turbo.
     $theme = in_array(request()->cookie('theme'), ['dark', 'light'], true) ? request()->cookie('theme') : null;
+    // Цвет строки состояния = цвет шапки (--color-bar в app.css); клиент берёт его из data-* меты (resources/js/theme.js).
+    $bar = ['light' => '#ffffff', 'dark' => '#161616'];
     // Замок менеджера: состояние и конец окна — свежие на каждой странице (узел замка постоянный и сам их не обновит).
     // Окно замка — только на хосте, открытом человеку: на чужом его встречает стена, а /lock там закрыт.
     $lock = $surface->opensFor(auth()->user()) ? \App\Users\Access\Lock::state() : null;
@@ -17,7 +19,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     {{-- Интерфейс только русский: переводчик браузера ломал обрывки («12 д 5 ч», госномера) — 07.10.2026. --}}
     <meta name="google" content="notranslate">
-    <meta name="theme-color" content="{{ $theme === 'dark' ? '#161616' : '#ffffff' }}">
+    <meta name="theme-color" content="{{ $bar[$theme ?? 'light'] }}" data-light="{{ $bar['light'] }}" data-dark="{{ $bar['dark'] }}">
     <meta name="view-transition" content="same-origin">
     {{-- Без превью из кэша: иначе advance на виденный адрес рисует снимок, а через миг молча
          подменяет свежим — скачок после анимации. Ответ обычно уже в руках (префетч). --}}
@@ -32,8 +34,8 @@
     @endif
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    {{-- Непрозрачная строка состояния (15.10.2026): с black-translucent iOS 26–27 отдавал приложению viewport короче экрана
-         на вырез, и таб-бар прыгал. iOS читает мету только при добавлении на экран «Домой» — установленным раньше переустановить. --}}
+    {{-- Строка состояния глухая, цвета шапки (theme-color): с black-translucent iOS 26–27 давал приложению viewport короче
+         экрана, и таб-бар прыгал. iOS читает мету только при добавлении на экран «Домой». --}}
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="{{ $surface->short() }}">
     {{-- Иначе iOS делает из цены «1 250 000» телефонную ссылку; номера телефонов — сами tel:. --}}
@@ -61,30 +63,17 @@
     @if (!$theme)
     {{-- Cookie ещё нет: тема по системе до первой отрисовки, иначе тёмная страница мигает белым. --}}
     <script>
-        (() => {
-            let saved = null;
-            try { saved = localStorage.getItem('theme'); } catch {}
-            const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-            if (dark) document.documentElement.classList.add('dark');
-            document.querySelector('meta[name="theme-color"]').content = dark ? '#161616' : '#ffffff';
-        })();
+        if (matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+            const meta = document.querySelector('meta[name="theme-color"]');
+            meta.content = meta.dataset.dark;
+        }
     </script>
     @endif
     {{-- «Назад» при открытом просмотре фото — его (lightbox.js), под ним — шторки документов (docs_controller). У window
          popstate идёт по порядку подписки, а модули подписываются позже Turbo: без этого Turbo, шторка и карточка строки
          приняли бы его за свой. --}}
     <script>addEventListener('popstate', (e) => { window.lightboxPop?.(e); if (!e.cancelBubble) window.docsPop?.(e); });</script>
-    {{-- Установлено с экрана «Домой» до 15.10.2026: строка состояния у них ещё прозрачная (контент под часами — отступ сверху
-         не ноль) — прежние поправки бага короткого viewport (app.css html.legacy-bar), пока не переустановят. --}}
-    <script>
-        if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
-            const probe = document.createElement('div');
-            probe.style.cssText = 'position:fixed;top:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
-            document.documentElement.append(probe);
-            if (parseFloat(getComputedStyle(probe).paddingTop) > 0) document.documentElement.classList.add('legacy-bar');
-            probe.remove();
-        }
-    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value]) }}>

@@ -1,5 +1,5 @@
 {{-- Лендинг `/`: фото парковки стоит на месте, первый экран — что это и два действия, содержимое наезжает листом
-     со скруглёнными углами. У шапки лист теряет скругление, и шапка берёт его цвет: одна поверхность (landing_controller). --}}
+     со скруглёнными углами. У шапки лист теряет скругление (landing_controller). --}}
 @props(['title', 'lead', 'primary', 'secondary' => null])
 <div class="landing" data-controller="landing">
     <div class="landing-bg" aria-hidden="true">

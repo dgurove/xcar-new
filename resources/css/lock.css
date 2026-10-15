@@ -1,4 +1,4 @@
-/* Замок менеджера (x-lock.panel, 07.10.2026): пилюля отсчёта справа сверху — под шапкой, тем же стеклом, что хром; в
+/* Замок менеджера (x-lock.panel, 07.10.2026): пилюля отсчёта справа сверху — под шапкой, цветом полосы хрома; в
    последнюю минуту лаймовая (нажатие — «продлить», глагол). Окно подтверждения — модальный <dialog> в верхнем слое,
    выше любых шторок; на телефоне стоит в верхней трети, чтобы клавиатура с кодом его не закрывала. Под заморозкой
    страницы под ним нет, затемнение глухое. */
@@ -6,18 +6,12 @@
 @layer components {
   .lock-pill {
     position: fixed; z-index: 45;
-    top: calc(var(--spacing-header) + env(safe-area-inset-top) + .5rem);
+    top: calc(var(--header-edge) + .5rem);
     right: max(.75rem, env(safe-area-inset-right));
     padding: .375rem .75rem; border-radius: 999px;
     font-size: var(--text-sm); font-weight: 500; line-height: 1.25; color: var(--color-ink);
     background: var(--color-bar);
     transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
-  }
-  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
-    .lock-pill:not(.is-ending) {
-      background: color-mix(in srgb, var(--color-bar) var(--bar-alpha), transparent);
-      -webkit-backdrop-filter: var(--bar-filter); backdrop-filter: var(--bar-filter);
-    }
   }
   .lock-pill.is-ending { background: var(--color-accent); color: #fff; }
   html.kb-open .lock-pill { display: none; }

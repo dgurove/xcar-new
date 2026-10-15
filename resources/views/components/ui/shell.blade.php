@@ -27,7 +27,7 @@
     $back = $back === false ? null : ($back ?? \App\Support\Nav::backFor($path, auth()->user()));
 @endphp
 <x-ui.layout :title="$title" :cache="$cache" :description="$description" :index="$index" class="min-h-dvh flex flex-col">
-    <x-ui.header :over-hero="$overHero" :back="$phoneBack" :heading="$overHero ? null : ($heading ?? $title)"/>
+    <x-ui.header :back="$phoneBack" :heading="$overHero ? null : ($heading ?? $title)"/>
 
     {{-- Запас под таб-бар и плашку действий: везде, где нет подвала (у него свой запас) — CRM, стоянка, приложение
          и вошедший на сайте в браузере (подвал только у гостя). --}}
