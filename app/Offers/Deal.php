@@ -401,10 +401,13 @@ class Deal extends Model
         return $this->supplier_cost ?? $this->cost;
     }
 
-    /** Сколько скинул поставщик после подтверждения менеджера: остаётся нам (только админу). */
+    /**
+     * Сколько скинул поставщик после подтверждения менеджера: остаётся нам (только админу). У ДКП и «страховой напрямую»
+     * собственнику платит покупатель сам — скидка через нас не идёт, её нет.
+     */
     public function supplierGain(): int
     {
-        return $this->supplier_cost !== null && $this->cost !== null ? $this->cost - $this->supplier_cost : 0;
+        return $this->supplier_cost !== null && $this->cost !== null && ! $this->paysSelection() ? $this->cost - $this->supplier_cost : 0;
     }
 
     /** Гаражная сделка: менеджер забирает машину себе на подготовку, цены у неё нет. */

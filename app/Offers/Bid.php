@@ -41,4 +41,10 @@ class Bid extends Model
     {
         return $this->kind === BidKind::Garage;
     }
+
+    /** Закупочная, с которой менеджер подтверждал, — она закрепится в сделке (15.10.2026); старым — как у продажи сейчас. */
+    public function frozenCost(): ?int
+    {
+        return $this->cost ?? $this->offer->bidFloor();
+    }
 }

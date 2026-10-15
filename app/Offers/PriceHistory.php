@@ -42,7 +42,8 @@ final class PriceHistory
     public function rows(string $field): array
     {
         $rows = $this->rows[$field] ?? [];
-        $deal = [...($this->rows['cost'] ?? []), ...($this->rows['supplier_cost'] ?? [])];
+        // Строки сделки — только админу: модератору закупочная поставщика не видна (15.10.2026).
+        $deal = auth()->user()?->canManageCrm() ? [...($this->rows['cost'] ?? []), ...($this->rows['supplier_cost'] ?? [])] : [];
         if ($field === 'floor_price' && $deal) {
             $rows = collect($rows)->concat(array_map(fn ($r) => $r + ['deal' => true], $deal))
                 ->sortByDesc(fn ($r) => $r['at']->getTimestamp())->values()->all();

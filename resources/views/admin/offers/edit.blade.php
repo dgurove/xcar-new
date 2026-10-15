@@ -188,7 +188,11 @@
             @endif
 
             {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. --}}
-            @php $events = \App\Cars\LaneHistory::merge($offer->events->take(30), \App\Cars\LaneHistory::forOffer($offer)->take(30))->take(30); @endphp
+            @php
+                // Модератору — без подтверждений, денег и цен продажи (`OfferEvent::adminOnly`, 15.10.2026).
+                $own = auth()->user()->canManageCrm() ? $offer->events : $offer->events->reject(fn ($e) => $e->adminOnly());
+                $events = \App\Cars\LaneHistory::merge($own->take(30), \App\Cars\LaneHistory::forOffer($offer)->take(30))->take(30);
+            @endphp
             <x-ui.card title="История" class="order-6">
                 <div class="flex flex-col gap-3 text-sm">
                     @foreach ($events->take(4) as $e)@include('admin.offers.event', ['event' => $e])@endforeach

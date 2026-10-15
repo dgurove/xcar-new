@@ -829,6 +829,15 @@ class Offer extends Model
         return $this->declaredPrice();
     }
 
+    /**
+     * Закупочная, с которой подтверждают (15.10.2026): после выхода в продажу правили закупочную — прежняя (`shown_floor`),
+     * новая — только закупочная поставщика у админа. Её снимает подтверждение (`bids.cost`), «Отдать в гараж» — сделка.
+     */
+    public function bidFloor(): ?int
+    {
+        return $this->shown_floor ?? $this->floor_price;
+    }
+
     public static function declaredFrom(?int $floor): ?int
     {
         return $floor ? (int) (ceil($floor / 1000) * 1000) : null;

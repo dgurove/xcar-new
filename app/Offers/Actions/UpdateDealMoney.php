@@ -12,14 +12,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Поправить деньги сделки: схему оплаты, сумму собственнику или страховой, вознаграждение, режим, гаражной — нашу долю.
+ * Поправить деньги сделки: схему оплаты, вознаграждение, режим, гаражной — нашу долю. Закупочная и сумма собственнику
+ * закреплены с принятия и здесь не правятся (15.10.2026).
  * Пока за наши счета не платили (`Deal::moneyEditable`): счета, что ставятся сами, перевыставит `SyncDealInvoices`.
  */
 final class UpdateDealMoney
 {
     public function __construct(private SyncDealInvoices $invoices) {}
 
-    public function __invoke(Deal $deal, User $by, ?int $commission, CommissionMode $mode, ?DealScheme $scheme = null, ?int $ownerPrice = null, ?int $share = null): void
+    public function __invoke(Deal $deal, User $by, ?int $commission, CommissionMode $mode, ?DealScheme $scheme = null, ?int $share = null): void
     {
         if (! $deal->moneyEditable()) {
             throw ValidationException::withMessages(['commission' => 'По счёту сделки уже платили, сначала отмените оплату']);
@@ -32,7 +33,7 @@ final class UpdateDealMoney
         $wasSelection = $deal->paysSelection();
         // Гаражная Совкомбанка (`namesBuyer`) — деньги как у обычной ПРАЙМ: вознаграждение назначаем мы, когда менеджер продал.
         $garage = $deal->isGarage() && ! $deal->namesBuyer();
-        DB::transaction(function () use ($deal, $by, $commission, $mode, $scheme, $selection, $wasSelection, $ownerPrice, $share, $garage) {
+        DB::transaction(function () use ($deal, $by, $commission, $mode, $scheme, $selection, $wasSelection, $share, $garage) {
             $deal->update($garage
                 ? ['scheme' => $scheme, 'share' => $deal->isGarageManager() ? $share : null]
                 : ['commission' => $commission, 'commission_mode' => $selection ? CommissionMode::Withheld : $mode, 'scheme' => $scheme,

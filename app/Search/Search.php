@@ -76,7 +76,7 @@ final class Search
             'cars' => ['title' => 'ТС', 'rows' => $cars->top(self::CARS)] + self::more($offers->isNotEmpty(), 'Все предложения', '/?q='.urlencode($t->raw)),
             'people' => ['title' => 'Люди', 'rows' => $admin ? self::people(User::query(), $t, fn (User $u) => "/settings/users/{$u->id}") : []],
             'money' => ['title' => 'Деньги', 'rows' => $admin ? self::money(Invoice::crmMoney(), $t, crm: true) : []],
-            'mail' => self::mail($user->canCrmMail() ? Scope::Offers : null, $t, '/work/mail'),
+            'mail' => self::mail($user->canCrmMail() ? Scope::Offers : null, $t, '/work/mail', $user),
         ];
     }
 
@@ -94,7 +94,7 @@ final class Search
             // Вендоры — тому, кому их раздел открыт (`park.manage`): помощнику строка вела бы в 403.
             'vendors' => ['title' => 'Вендоры', 'rows' => $user->canManagePark() ? Vendor::onPark()->search($t)->orderBy('name')->limit(self::ROWS)->get()
                 ->map(fn (Vendor $v) => new Hit($v->name, "/vendors/{$v->id}", array_filter([$v->inn ? 'ИНН '.$v->inn : null])))->all() : []],
-            'mail' => self::mail($manage ? Scope::Park : null, $t, '/mail'),
+            'mail' => self::mail($manage ? Scope::Park : null, $t, '/mail', $user),
         ];
     }
 
@@ -189,14 +189,14 @@ final class Search
     }
 
     /** Письма — числом и тремя последними темами; «Все» — почта с тем же запросом. */
-    private static function mail(?Scope $scope, Term $t, string $base): array
+    private static function mail(?Scope $scope, Term $t, string $base, User $user): array
     {
         if (! $scope) {
             return ['title' => 'Письма', 'rows' => []];
         }
         // Полнотекст по письмам — самый тяжёлый запрос выдачи: один раз, четвёртая строка только говорит, что есть ещё.
         $threads = Thread::whereIn('account_id', Account::where('scope', $scope)->pluck('id'))->where('messages_count', '>', 0)
-            ->when($scope === Scope::Offers && auth()->user(), fn ($q) => $q->crmMailFor(auth()->user()))->search($t)
+            ->when($scope === Scope::Offers, fn ($q) => $q->crmMailFor($user))->search($t)
             ->latest('last_message_at')->limit(4)->get();
         $rows = $threads->take(3)
             ->map(fn (Thread $th) => new Hit($th->subject ?: 'Без темы', $base.'?window='.$th->id, [$th->last_message_at?->translatedFormat('j M')]))->all();

@@ -112,7 +112,9 @@ class Car extends Model
      */
     public function price(): ?int
     {
-        $price = $this->deal_id ? $this->deal?->supplierCost() : $this->cost;
+        // Платим поставщику мы — наша закупка у него; платит менеджер — закреплённая цена сделки, та же, что в строке
+        // «Оплата поставщику» (15.10.2026).
+        $price = ! $this->deal_id ? $this->cost : ($this->deal?->isGarageUs() ? $this->deal->supplierCost() : $this->deal?->cost);
 
         return $price ? (int) $price : null;
     }

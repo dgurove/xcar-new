@@ -99,6 +99,14 @@ final class ChangeOfferState
                 // не вернётся, когда черновик снова снимут с продажи.
                 $offer->proposed_at = null;
             }
+            // Вернулось в черновики — будет новая оценка: прежняя закупочная продажи (`shown_floor`) и заявленная, что
+            // `UpdateOffer` закрепил от неё сам, больше не держат новые подтверждения (15.10.2026).
+            if ($next === OfferState::Draft && $offer->shown_floor !== null) {
+                if ($offer->publish_price === Offer::declaredFrom($offer->shown_floor)) {
+                    $offer->publish_price = null;
+                }
+                $offer->shown_floor = null;
+            }
             $offer->state = $next;
             // Черновик ушёл дальше (в продажу, сделку, гараж) — окно галереи закрывается сейчас, как «Убрать из
             // галереи» (`ShowInGallery::hide`): из галереи ушло, интерес остался — в «Откликах» CRM и рядом с

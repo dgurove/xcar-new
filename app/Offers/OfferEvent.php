@@ -41,6 +41,18 @@ class OfferEvent extends Model
         return ($this->payload['lot'] ?? null) ?: once(fn () => DB::table('migtorg_lots')->where('offer_id', $this->offer_id)->orderByDesc('id')->value('id'));
     }
 
+    /**
+     * Запись только для админа (15.10.2026): подтверждения и их цены (модератору подтверждения не видны), сделка, гараж,
+     * оценки, ответы и письма поставщику, правки цен продажи и денег сделки — модератор их в «Истории» не видит.
+     */
+    public function adminOnly(): bool
+    {
+        return in_array($this->type, [OfferEventType::BidPlaced, OfferEventType::BidWithdrawn, OfferEventType::BidAccepted, OfferEventType::BidDeclined,
+            OfferEventType::Garage, OfferEventType::Estimate, OfferEventType::InsurerReplied, OfferEventType::SupplierLetter], true)
+            || ($this->type === OfferEventType::Updated && array_intersect(array_keys($this->payload['changes'] ?? []) ?: ($this->payload['fields'] ?? []),
+                ['asking_price', 'min_bid_price', 'cost', 'supplier_cost', 'deal_owner_price', 'amount', 'commission', 'share']));
+    }
+
     /** Строка истории на карточке. */
     public function text(): string
     {

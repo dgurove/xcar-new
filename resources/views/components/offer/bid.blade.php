@@ -13,7 +13,7 @@
     // Не выше закупочной (14.10.2026, 3308 приняли в минус молча): красным в строке, «Принять» переспрашивает, и сервер
     // без согласия такую не примет (`AcceptBid`, `loss`).
     // Закупочная, с которой менеджер подтверждал (`bids.cost`, 15.10.2026), — она закрепится в сделке.
-    $floor = $bid->cost ?? $offer->shown_floor ?? $offer->floor_price;
+    $floor = $bid->frozenCost();
     $under = ! $garage && $floor && $bid->amount !== null ? $floor - $bid->amount : null;
     $loss = $under !== null && $under >= 0;
     $give = (bool) $offer->deal;

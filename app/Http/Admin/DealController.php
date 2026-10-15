@@ -148,9 +148,9 @@ class DealController
     /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */
     public function money(Request $request, Deal $deal, UpdateDealMoney $update)
     {
-        $request->merge(['owner_price' => preg_replace('/\D+/', '', (string) $request->input('owner_price')) ?: null, 'share' => preg_replace('/\D+/', '', (string) $request->input('share')) ?: null]);
+        $request->merge(['share' => preg_replace('/\D+/', '', (string) $request->input('share')) ?: null]);
         $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['nullable', Rule::enum(CommissionMode::class)],
-            'scheme' => ['nullable', Rule::enum(DealScheme::class)], 'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.(int) ($deal->amount ?? PHP_INT_MAX)],
+            'scheme' => ['nullable', Rule::enum(DealScheme::class)],
             'share' => ['nullable', 'integer', 'min:1']]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
         $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
@@ -160,7 +160,7 @@ class DealController
             $scheme = DealScheme::Prime;
         }
         $update($deal, $request->user(), $commission, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
-            $scheme, isset($data['owner_price']) ? (int) $data['owner_price'] : null, isset($data['share']) ? (int) $data['share'] : null);
+            $scheme, isset($data['share']) ? (int) $data['share'] : null);
 
         return back()->with('toast', 'Сохранено');
     }

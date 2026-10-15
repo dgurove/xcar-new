@@ -42,7 +42,7 @@ class InvoiceController
                 'sale' => $deal->base(),
                 // Подбор: по ДКП — цена минус то, что отдают собственнику (взаимозачёт наш), иначе разница с закупочной.
                 'selection' => max(0, (int) ($deal->paysSelection() ? $deal->selectionBase() : ($deal->isGarageManager() ? $deal->share : $deal->margin()))),
-                'reward' => $this->reward((int) $deal->base(), $deal->cost, $vendor?->reward_kind, $vendor?->reward_value),
+                'reward' => $this->reward((int) $deal->base(), $deal->supplierCost(), $vendor?->reward_kind, $vendor?->reward_value),
                 'other' => $deal->base(),
             ],
             'partyKinds' => PartyKind::options(),
