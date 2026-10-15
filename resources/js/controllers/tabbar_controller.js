@@ -30,7 +30,6 @@ document.addEventListener('turbo:before-render', (event) => {
 // активному табу — наверх, а из глубины раздела — к его корню. У каждого таба
 // своя память (sessionStorage): экран и прокрутка, на которых его оставили.
 export default class extends Controller {
-    static targets = ['bar'];
     // Таб страницы, что на экране, — от сервера. aria-current загорается под пальцем раньше ответа: пока медленная
     // страница едет, текущим по нему был бы уже новый таб, и в его память лёг бы чужой адрес («Наличие» → Заявки).
     static values = { shown: String };

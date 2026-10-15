@@ -13,7 +13,7 @@
     // Активен самый точный пункт: «Деньги» в /account/money — «Кабинет», «Покупатели» в /buyers — «Сделки».
     $current = collect($tabs)->filter(fn ($t) => \App\Support\Nav::isCurrent($t, $path))->sortByDesc(fn ($t) => \App\Support\Nav::matchLength($t, $path))->first()['href'] ?? null;
 @endphp
-<nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-target="bar" data-tabbar-shown-value="{{ $current }}" data-turbo-permanent>
+<nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-shown-value="{{ $current }}" data-turbo-permanent>
     @foreach ($tabs as $tab)
         @if ($tab['logout'] ?? false)
             <form method="post" action="/logout" class="contents">@csrf<button type="submit" class="tab"><span class="tab-mark"><span class="tab-dot"></span></span><span>{{ $tab['label'] }}</span></button></form>
