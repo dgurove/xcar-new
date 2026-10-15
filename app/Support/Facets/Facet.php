@@ -51,6 +51,9 @@ final class Facet
     /** Переключатель с числом («Без ставки 4»): нуль — переключателя нет, пока он не включён. */
     public ?Closure $tally = null;
 
+    /** Своя подпись выбранного чипа по ключам (пусто — общая: «Кроме …», «2 вендора»). */
+    public ?Closure $caption = null;
+
     /** @var array<string, list<string>> подпись группы → ключи (шторка «Какие ТС» закупки) */
     public array $groups = [];
 
@@ -130,6 +133,14 @@ final class Facet
     {
         $this->single = true;
         $this->default = $default;
+
+        return $this;
+    }
+
+    /** @param Closure(list<string>): ?string $fn  «Подтверждения или интерес» вместо «Кроме без отклика» */
+    public function caption(Closure $fn): self
+    {
+        $this->caption = $fn;
 
         return $this;
     }

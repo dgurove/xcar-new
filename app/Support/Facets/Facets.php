@@ -272,7 +272,9 @@ final class Facets
             // Почти всё отмечено — человек исключал: «Кроме Каркаде», а не «4 вендора».
             $left = array_values(array_filter($options, fn (Option $o) => ! $o->selected));
             $outNames = collect($options)->only($out ?? [])->map(fn (Option $o) => $o->label)->values();
+            $own = $f->caption && $picked ? ($f->caption)(array_map(fn (Option $o) => $o->key, $picked)) : null;
             $label = match (true) {
+                $own !== null => $own,
                 $out !== null && $outNames->isNotEmpty() && $outNames->count() <= 2 => 'Кроме '.$outNames->implode(', '),
                 count($picked) === 1 => $picked[0]->label,
                 ! $f->single && count($picked) >= 2 && $left && count($left) <= 2 && count($left) < count($picked) => 'Кроме '.implode(', ', array_map(fn (Option $o) => $o->label, $left)),

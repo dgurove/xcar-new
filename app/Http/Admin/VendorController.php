@@ -132,6 +132,7 @@ class VendorController
                 'facets' => $facets,
                 'sort' => $sort,
                 'searching' => $facets->searching(),
+                'refs' => (clone $q)->get()->pluck('claim_ref')->filter()->unique()->values(),
             ];
         } else {
             $vendor->load('mailAccount');
@@ -186,21 +187,22 @@ class VendorController
     }
 
     /**
-     * «Отклик» — один выбор: есть отклик (подтверждение или интерес), есть подтверждения, есть интерес, без отклика.
-     * Подтверждение — любое, хоть раз поданное (и отклонённое, и отозванное), интерес — любой.
+     * «Отклик» — галками: подтверждения, интерес, без отклика; отмеченное — через «или». Подтверждение — любое, хоть раз
+     * поданное (и отклонённое, и отозванное), интерес — любой.
      */
     private static function replyFacet(): Facet
     {
         $bids = 'exists (select 1 from bids where bids.offer_id = offers.id)';
         $interest = 'exists (select 1 from interests where interests.offer_id = offers.id)';
-        $sql = ['all' => 'true', 'any' => "({$bids} or {$interest})", 'bids' => $bids, 'interest' => $interest, 'quiet' => "not {$bids} and not {$interest}"];
-        $labels = ['all' => 'Все', 'any' => 'Есть отклик', 'bids' => 'Есть подтверждения', 'interest' => 'Есть интерес', 'quiet' => 'Без отклика'];
+        $sql = ['bids' => $bids, 'interest' => $interest, 'quiet' => "not {$bids} and not {$interest}"];
+        $labels = ['bids' => 'Подтверждения', 'interest' => 'Интерес', 'quiet' => 'Без отклика'];
 
-        return Facet::custom('reply', 'Отклик', [],
-            fn (Builder $q, array $keys) => isset($sql[$keys[0]]) ? $q->whereRaw($sql[$keys[0]]) : null,
+        return Facet::custom('response', 'Отклик', ['отклик', 'отклика', 'откликов'],
+            fn (Builder $q, array $keys) => $q->where(fn ($w) => collect($keys)->filter(fn ($k) => isset($sql[$k]))->each(fn ($k) => $w->orWhereRaw("({$sql[$k]})"))),
             fn (Builder $q) => array_map('intval', (array) DB::table('offers')->whereIn('id', Facet::bare($q->toBase())->select('offers.id'))
                 ->selectRaw(collect($sql)->map(fn ($s, $k) => "count(*) filter (where {$s}) as \"{$k}\"")->implode(', '))->first()),
-        )->single('all')->natural()->labels(fn (array $keys) => collect($labels)->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all());
+        )->natural()->labels(fn (array $keys) => collect($labels)->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all())
+            ->caption(fn (array $keys) => $keys === ['bids', 'interest'] ? 'Подтверждения или интерес' : null);
     }
 
     public function update(Request $request, Vendor $vendor, SetLogo $setLogo, SyncViewers $sync)

@@ -1,8 +1,12 @@
-{{-- «Предложения» вендора в CRM (15.10.2026): все его предложения за всё время, архив тоже. Чипы «Отклик» (есть отклик, подтверждения,
-     интерес, без отклика), «Где сейчас», «Заведено»; лупа, сортировка заголовками; «Скачать» — то, что на экране, файлом
+{{-- «Предложения» вендора в CRM (15.10.2026): все его предложения за всё время, архив тоже. Чипы «Отклик» (галки: подтверждения,
+     интерес, без отклика — через «или»), «Где сейчас», «Заведено»; лупа, сортировка заголовками; «Скачать» — то, что на экране, файлом
      (`VendorOffersExport`). Строка ведёт в редактор предложения. --}}
 <x-ui.toolbar :sort="$sort" name="vendor-offers" :facets="$facets" search="Номер, марка, VIN, убыток">
     <x-slot:actions>
+        {{-- Номера убытка всего списка по чипам и поиску (все страницы) — столбиком в буфер: вставить в письмо или таблицу. --}}
+        @if ($refs->isNotEmpty())
+            <button type="button" class="btn btn-s btn-quiet toolbar-wide shrink-0 rounded-full" data-controller="copy" data-copy-text-value="{{ $refs->implode(PHP_EOL) }}" data-copy-done-value="Номера убытка в буфере" data-action="copy#copy"><x-ui.icon name="copy" class="size-4"/>Скопировать {{ $refs->count() }} {{ \App\Support\Plural::of($refs->count(), ['номер', 'номера', 'номеров']) }}</button>
+        @endif
         <a href="{{ $base }}/offers/export?{{ http_build_query(request()->except(['pill', 'page'])) }}" class="btn btn-s btn-quiet btn-round shrink-0" download data-turbo="false" aria-label="Скачать таблицей" title="Скачать таблицей"><x-ui.icon name="download" class="size-5"/></a>
     </x-slot:actions>
 </x-ui.toolbar>
