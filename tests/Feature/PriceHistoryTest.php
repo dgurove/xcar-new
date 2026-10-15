@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Billing\Actions\RecordPayment;
 use App\Billing\ChargeKind;
 use App\Billing\InvoiceState;
-use App\Billing\PaymentSource;
 use App\Garage\GaragePayer;
 use App\Offers\Actions\AcceptBid;
+use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\UpdateOffer;
+use App\Offers\BidKind;
 use App\Offers\CommissionMode;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -30,9 +30,10 @@ use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
- * Закупочная одна и с историей (14.10.2026, после файла Carcade): правка пишет было → стало, идущая сделка получает
- * новую закупочную той же правкой, оплаченная — не меняется, а принять подтверждение не выше закупочной можно только
- * с согласия. Ошибка здесь молчалива: сделка в минус или счёт на старую цену.
+ * Закупочная одна и с историей (14.10.2026, после файла Carcade): правка пишет было → стало; цена менеджера закреплена с
+ * его подтверждения (15.10.2026) — новая закупочная у сделки только поставщика, у опубликованного менеджеры видят
+ * прежнюю; принять подтверждение не выше закупочной можно только с согласия. Ошибка здесь молчалива: сделка в минус,
+ * менеджер видит скидку поставщика или счёт перевыставлен на другую цену.
  */
 class PriceHistoryTest extends TestCase
 {
@@ -71,23 +72,24 @@ class PriceHistoryTest extends TestCase
         $this->assertSame('По СМС Марины', $history->rows('floor_price')[0]['why']);
     }
 
-    public function test_new_floor_goes_into_the_live_deal_unless_told_otherwise(): void
+    public function test_new_floor_after_acceptance_is_only_the_suppliers(): void
     {
         $offer = $this->offer(250000);
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 300000), $this->admin, 10000, CommissionMode::Payout, scheme: DealScheme::Prime);
         $this->assertSame(250000, $deal->cost);
 
+        // Цена менеджера закреплена с подтверждения (15.10.2026): новая закупочная — только поставщика, у админа.
         app(UpdateOffer::class)($offer->fresh(), ['floor_price' => 260000], $this->admin);
-        $this->assertSame(260000, $deal->fresh()->cost);
-        $this->assertTrue($offer->events()->where('type', OfferEventType::Updated)->get()->contains(fn ($e) => ($e->payload['changes']['cost'] ?? null) === [250000, 260000]));
+        $this->assertSame(250000, $deal->fresh()->cost);
+        $this->assertSame(260000, $deal->fresh()->supplierCost());
+        $this->assertTrue($offer->events()->where('type', OfferEventType::Updated)->get()->contains(fn ($e) => ($e->payload['changes']['supplier_cost'] ?? null) === [null, 260000]));
 
-        // «И в сделке» сняли — сделка держит свою.
-        app(UpdateOffer::class)($offer->fresh(), ['floor_price' => 270000], $this->admin, withDeal: false);
-        $this->assertSame(270000, $offer->fresh()->floor_price);
-        $this->assertSame(260000, $deal->fresh()->cost);
+        // Вернули прежнюю — своей закупочной поставщика у сделки больше нет.
+        app(UpdateOffer::class)($offer->fresh(), ['floor_price' => 250000], $this->admin);
+        $this->assertNull($deal->fresh()->supplier_cost);
     }
 
-    public function test_paid_deal_keeps_its_cost_and_offer_stays_untouched(): void
+    public function test_dkp_deal_keeps_owner_price_and_invoice_after_new_floor(): void
     {
         $offer = $this->offer(250000);
         // ДКП без маршрута: согласовано сразу, подбор менеджеру 300 − 250 − 10 = 40 000 по ссылке.
@@ -96,22 +98,29 @@ class PriceHistoryTest extends TestCase
         $invoice = $deal->fresh()->issuedInvoices()->where('kind', ChargeKind::Selection)->sole();
         $this->assertSame(40000.0, (float) $invoice->total);
 
-        // До оплаты закупочная едет в сделку, собственнику — следом, подбор перевыставлен.
+        // Ни собственнику, ни подбору новая закупочная не указ: договор и счёт менеджера прежние.
         app(UpdateOffer::class)($offer->fresh(), ['floor_price' => 260000], $this->admin);
-        $this->assertSame(260000, $deal->fresh()->cost);
-        $this->assertSame(260000, $deal->fresh()->owner_price);
-        $invoice = $deal->fresh()->issuedInvoices()->where('kind', ChargeKind::Selection)->where('state', '!=', InvoiceState::Void)->sole();
-        $this->assertSame(30000.0, (float) $invoice->total);
-
-        app(RecordPayment::class)($invoice, $this->admin, 30000, now(), PaymentSource::Bank);
-        try {
-            app(UpdateOffer::class)($offer->fresh(), ['floor_price' => 270000], $this->admin);
-            $this->fail('оплаченная сделка поменялась');
-        } catch (ValidationException $e) {
-            $this->assertArrayHasKey('floor_price', $e->errors());
-        }
+        $this->assertSame(250000, $deal->fresh()->cost);
+        $this->assertSame(250000, $deal->fresh()->owner_price);
+        $this->assertSame($invoice->id, $deal->fresh()->issuedInvoices()->where('kind', ChargeKind::Selection)->where('state', '!=', InvoiceState::Void)->sole()->id);
         $this->assertSame(260000, $offer->fresh()->floor_price);
-        $this->assertSame(260000, $deal->fresh()->cost);
+    }
+
+    public function test_published_offer_keeps_declared_without_writing_it(): void
+    {
+        $offer = $this->offer(183840);
+        app(UpdateOffer::class)($offer, ['floor_price' => 211200], $this->admin);
+
+        // Менеджеры видят прежнюю закупочную и заявленную от неё; заявленную за админа никто не вписывал.
+        $offer = $offer->fresh();
+        $this->assertNull($offer->publish_price);
+        $this->assertSame(183840, $offer->bidFloor());
+        $this->assertSame(184000, $offer->declaredPrice());
+        $this->assertSame(183840, app(PlaceBid::class)($offer, $this->manager, 300000)->cost);
+
+        // Вернулось в черновики — будет новая оценка от новой закупочной.
+        app(ChangeOfferState::class)($offer, OfferState::Draft, $this->admin);
+        $this->assertSame(212000, $offer->fresh()->declaredPrice());
     }
 
     public function test_bid_at_or_below_floor_needs_consent(): void
@@ -133,7 +142,7 @@ class PriceHistoryTest extends TestCase
     {
         $offer = $this->offer(250000);
         $offer->update(['garage_allowed' => true]);
-        $bid = app(PlaceBid::class)($offer->fresh(), $this->manager, null, null, \App\Offers\BidKind::Garage);
+        $bid = app(PlaceBid::class)($offer->fresh(), $this->manager, null, null, BidKind::Garage);
         $deal = app(AcceptBid::class)($bid, $this->admin, payer: GaragePayer::Us, scheme: DealScheme::Prime);
         $car = $offer->fresh()->garageCar;
         $this->assertNull($car->cost);

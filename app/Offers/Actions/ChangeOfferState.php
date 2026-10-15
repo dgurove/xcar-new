@@ -99,12 +99,9 @@ final class ChangeOfferState
                 // не вернётся, когда черновик снова снимут с продажи.
                 $offer->proposed_at = null;
             }
-            // Вернулось в черновики — будет новая оценка: прежняя закупочная продажи (`shown_floor`) и заявленная, что
-            // `UpdateOffer` закрепил от неё сам, больше не держат новые подтверждения (15.10.2026).
-            if ($next === OfferState::Draft && $offer->shown_floor !== null) {
-                if ($offer->publish_price === Offer::declaredFrom($offer->shown_floor)) {
-                    $offer->publish_price = null;
-                }
+            // Вернулось в черновики — будет новая оценка: прежняя закупочная продажи (`shown_floor`) новые подтверждения и
+            // заявленную больше не держит (15.10.2026).
+            if ($next === OfferState::Draft) {
                 $offer->shown_floor = null;
             }
             $offer->state = $next;

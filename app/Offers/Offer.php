@@ -820,7 +820,9 @@ class Offer extends Model
      */
     public function declaredPrice(): ?int
     {
-        return $this->publish_price ?? self::declaredFrom($this->floor_price);
+        // Пустая — от закупочной, что видят менеджеры (`bidFloor`): правка закупочной после выхода в продажу заявленную
+        // не двигает, и вписывать её за админа не нужно (15.10.2026).
+        return $this->publish_price ?? self::declaredFrom($this->bidFloor());
     }
 
     /**

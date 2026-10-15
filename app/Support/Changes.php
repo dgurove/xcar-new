@@ -19,7 +19,7 @@ final class Changes
     public const TEXT = ['description', 'notes', 'damage_note', 'audience_rules', 'tag_colors', 'storage_rate_note'];
 
     /** Производное от других полей и служебное. */
-    private const SKIP = ['claim_ref_key', 'ref_key', 'plate_key', 'vehicle_category', 'city_id', 'updated_at', 'created_at'];
+    private const SKIP = ['claim_ref_key', 'ref_key', 'plate_key', 'vehicle_category', 'city_id', 'shown_floor', 'tab_at', 'updated_at', 'created_at'];
 
     /**
      * Грязные поля моделей (одна правка может писать и предложение, и машину) — до `save()`.

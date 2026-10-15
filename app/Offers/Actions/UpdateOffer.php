@@ -49,15 +49,12 @@ final class UpdateOffer
         // менеджера в сделке закреплена с его подтверждения (15.10.2026).
         $deal = $offer->isDirty('floor_price') && $offer->floor_price ? $offer->costDeal() : null;
         // Вышло в продажу — новая закупочная менеджерам не видна никак (15.10.2026): подтверждения закрепляют прежнюю
-        // (`shown_floor`, `PlaceBid::record`), заявленная, порог и скидки стоят прежними (пустая заявленная считалась бы от
-        // новой закупочной вверх до тысячи). Переоценка админом — новая цена для всех.
+        // (`shown_floor`, `Offer::bidFloor`), от неё же заявленная, порог и скидки (`declaredPrice`). Переоценка админом —
+        // новая цена для всех.
         if ($reprice) {
             $offer->shown_floor = null;
         } elseif ($offer->isDirty('floor_price') && $offer->getOriginal('floor_price') && $offer->getOriginal('state') !== OfferState::Draft) {
             $offer->shown_floor ??= (int) $offer->getOriginal('floor_price');
-            if ($offer->publish_price === null && ! $offer->isDirty('publish_price')) {
-                $offer->publish_price = Offer::declaredFrom((int) $offer->getOriginal('floor_price'));
-            }
         }
         // Правка пишет и предложение, и его машину (`Cars\Car`): история и «что поменялось» — по обеим.
         $diff = Changes::ofLane($offer);
