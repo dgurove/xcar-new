@@ -14,6 +14,7 @@ use App\Offers\DealState;
 use App\Offers\Handover;
 use App\Offers\InsurerReplies;
 use App\Offers\OfferState;
+use App\Offers\ReplyText;
 use App\Support\ListPrefs;
 use App\Support\Sort;
 use App\Users\User;
@@ -163,10 +164,9 @@ class DealController
             'requirement' => $deal->openRequirement,
             'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager, $deal) : collect(),
             'handover' => Handover::for($deal),
-            // Ответы страховой по сделке — текстом до подписи (05.10.2026), новые сверху.
-            'replies' => InsurerReplies::for($deal),
-            // Документы, что пришли с ответом (вложения, облако по ссылке, `ShareReplyFiles`), — под этим ответом.
-            'replyFiles' => $deal->offer->papers()->filter(fn ($m) => $m->getCustomProperty('letter'))->groupBy(fn ($m) => $m->getCustomProperty('letter')),
+            // Ответы страховой по сделке — урезанные (`ReplyText`, 15.10.2026: без подписи, вендора, сумм), новые сверху;
+            // файлов писем менеджеру нет. Пустой после урезания ответ не показывается.
+            'replies' => InsurerReplies::for($deal)->filter(fn ($m) => ReplyText::for($m, $deal->offer) !== null)->values(),
             'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->with('claims')->orderBy('id')->get(),
         ];
     }

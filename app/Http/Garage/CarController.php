@@ -47,7 +47,8 @@ class CarController
             'cars' => $cars,
             'pickups' => $pickups->values(),
             'picking' => $picking->pluck('id')->all(),
-            'sort' => Sort::from($request->query('sort'), self::SORTS, 'stage'),
+            // Закупочной у менеджера нет (15.10.2026) — и сортировки по ней.
+            'sort' => Sort::from($request->query('sort'), $request->user()->isAdmin() ? self::SORTS : array_diff_key(self::SORTS, ['price' => 1]), 'stage'),
         ]);
     }
 

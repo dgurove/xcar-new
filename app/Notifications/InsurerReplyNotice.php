@@ -7,22 +7,23 @@ use App\Telegram\Text;
 use App\Workflow\Requirement;
 
 /**
- * Менеджеру сделки: страховая ответила (05.10.2026) — текст её письма до подписи, как есть, без разбора на поля. Сдвинуло
- * письмо шаг — тут же его новый ход («Подтвердите, что берёте в работу»): отдельного «Ваш ход» по этому шагу нет.
+ * Менеджеру сделки: страховая ответила (05.10.2026). Текста письма нет (15.10.2026, владелец: в нём закупочная, вендор и
+ * подпись сотрудника страховой) — урезанный ответ на странице сделки. Сдвинуло письмо шаг — тут же его новый ход
+ * («Подтвердите, что берёте в работу»): отдельного «Ваш ход» по этому шагу нет.
  */
 final class InsurerReplyNotice extends Notice
 {
-    public function __construct(private Deal $deal, private string $reply, private ?Requirement $turn = null) {}
+    public function __construct(private Deal $deal, private bool $contact = false, private ?Requirement $turn = null) {}
 
     public function title(): string
     {
         // Прислали телефон — это контакты владельца, а не просто «ответила» (10.10.2026).
-        return (\App\Mail\Extraction\Patterns::phones($this->reply) ? 'Контакты владельца: ' : 'Страховая ответила: ').$this->deal->offer->titleWithYear();
+        return ($this->contact ? 'Контакты владельца: ' : 'Страховая ответила: ').$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
-        return implode("\n", array_filter([$this->reply, $this->turn ? 'Ваш ход: '.$this->turn->title : null])) ?: null;
+        return $this->turn ? 'Ваш ход: '.$this->turn->title : null;
     }
 
     public function href(): string
@@ -47,6 +48,6 @@ final class InsurerReplyNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, $this->reply, $this->turn ? 'Ваш ход: '.$this->turn->title : null), 'button' => 'Открыть сделку'];
+        return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, $this->turn ? 'Ваш ход: '.$this->turn->title : null), 'button' => 'Открыть сделку'];
     }
 }

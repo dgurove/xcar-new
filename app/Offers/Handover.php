@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Mail\Extraction\Patterns;
 use App\Park\VehicleState;
 use App\Support\Phone;
+use App\Support\VendorNames;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
@@ -126,7 +127,8 @@ final class Handover
             $fields['address'] ??= $offer->inspection_address ?: null;
         }
         $phone = Phone::normalize($fields['phone'] ?? null);
-        $address = $withBuyer ? null : ($fields['address'] ?? null);
+        // Имя и адрес бывают кусками письма страховой: её название менеджеру не показываем (15.10.2026).
+        $address = $withBuyer ? null : (VendorNames::strip($fields['address'] ?? null) ?: null);
         if ($address && ! $mapUrl) {
             // Адрес из письма часто без города: город предложения впереди, иначе карта ищет улицу по всей стране.
             $city = $offer->settlement?->name;
@@ -145,7 +147,7 @@ final class Handover
             buyerPicks: $picks,
             where: $where,
             withBuyer: $withBuyer,
-            name: $withBuyer ? null : ($fields['name'] ?? null),
+            name: $withBuyer ? null : (VendorNames::strip($fields['name'] ?? null) ?: null),
             phone: $withBuyer ? null : $phone,
             address: $address,
             mapUrl: $address ? $mapUrl : null,

@@ -53,7 +53,7 @@
             @if ($car->description)
                 <section class="mb-8">
                     <h2 class="list-head">Описание</h2>
-                    <p class="whitespace-pre-line text-ink-muted">{{ $car->description }}</p>
+                    <p class="whitespace-pre-line text-ink-muted">{{ \App\Support\VendorNames::strip($car->description) }}</p>
                 </section>
             @endif
             <section>

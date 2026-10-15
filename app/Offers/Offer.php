@@ -754,12 +754,12 @@ class Offer extends Model
 
     /**
      * Описание для xcar: без ссылок (письмо вендора кладёт «Фото: <ссылка на его облако>») и без номеров убытка и ДЛ
-     * (`InternalRefs`, 13.10.2026). Пусто после чистки — null.
+     * (`InternalRefs`, 13.10.2026), без названия вендора (`VendorNames`, 15.10.2026). Пусто после чистки — null.
      */
     public function publicDescription(): ?string
     {
         $text = (string) preg_replace(['~^\s*Фото:\s*\S+\s*$~miu', '~https?://\S+~iu'], '', (string) $this->description);
-        $text = trim(InternalRefs::hide($text, [$this->claim_ref]));
+        $text = trim((string) \App\Support\VendorNames::strip(InternalRefs::hide($text, [$this->claim_ref])));
 
         return $text !== '' ? $text : null;
     }

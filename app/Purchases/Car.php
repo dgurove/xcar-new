@@ -144,7 +144,7 @@ class Car extends Model
             'Коробка' => $this->transmission?->label(), 'Топливо' => $this->fuel?->label(), 'Объём' => $this->engine_volume ? number_format($this->engine_volume / 1000, 1, ',', '').' л' : null,
             'Мощность' => $this->engine_power ? $this->engine_power.' л. с.' : null, 'Цвет' => $this->color, 'Руль' => $this->steering, 'Ключи' => $this->keys,
             // ДЛ — только в CRM (номеров убытка и ДЛ на xcar.ru нет нигде, 10.10.2026); на сайте номер — в шапке («№ 12»).
-            'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => Surface::inCrm() ? $this->dl : null, 'Где' => $this->settlement?->title() ?? $this->city ?? $this->address, 'Обременения' => $this->encumbrance,
+            'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => Surface::inCrm() ? $this->dl : null, 'Где' => $this->settlement?->title() ?? $this->city ?? $this->address, 'Обременения' => Surface::inCrm() ? $this->encumbrance : \App\Support\VendorNames::strip($this->encumbrance),
         ], fn ($v) => $v !== null && $v !== '');
     }
 

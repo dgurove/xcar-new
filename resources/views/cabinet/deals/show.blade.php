@@ -9,9 +9,7 @@
     $inMoney = $deal->isGarage() ? [] : collect([\App\Billing\ChargeKind::Selection, \App\Billing\ChargeKind::Sale])
         ->map(fn ($kind) => $liveInvoices->first(fn ($i) => $i->kind === $kind)?->id)->filter()->all();
     $pastInvoices = $liveInvoices->reject(fn ($i) => $i->state === \App\Billing\InvoiceState::Issued || in_array($i->id, $inMoney, true));
-    // Файлы из ответов страховой стоят в задаче под своим письмом — в «Документах» второй раз их нет.
-    $replyIds = ($replies ?? collect())->pluck('id')->all();
-    $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user())->reject(fn ($m) => in_array($m->getCustomProperty('letter'), $replyIds));
+    $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user());
     $photos = $offer->visiblePhotos();
     // Шаг договора (просьба приложить документ, у сделки есть ДКП): покупатель и сам ДКП — пунктами задачи, а не блоком
     // ниже неё (05.10.2026, владелец: «просит приложить договор, а он где-то ниже формируется»).

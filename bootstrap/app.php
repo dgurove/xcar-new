@@ -48,6 +48,7 @@ use App\Offers\Console\FillFromLettersCommand;
 use App\Offers\Console\MigtorgArchive;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
+use App\Offers\Console\ScrubReplyNoticesCommand;
 use App\Offers\Console\TickOffers;
 use App\Park\Console\AutoRequestsCommand;
 use App\Park\Console\FillFromDocsCommand;
@@ -92,6 +93,7 @@ return Application::configure(basePath: dirname(__DIR__))
         CreateUser::class,
         TickOffers::class,
         AutoDraftsCommand::class,
+        ScrubReplyNoticesCommand::class,
         FillFromLettersCommand::class,
         PruneEmptyDrafts::class,
         MigtorgSync::class,

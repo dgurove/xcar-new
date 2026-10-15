@@ -1,16 +1,20 @@
 {{-- Расходы машины строками, итог — в заголовке; строку правят в её шторке. Сотруднику список виден всегда, «+ Расход»
      — в заголовке (06.10.2026, владелец: «добавлять, убирать, корректировать»); менеджеру — когда есть что показать.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot; «Убрать» ниже отдельной формой, отступ шире подложки кнопки. --}}
-@if ($car->costs->isNotEmpty() || ($staff && $canAdd))
+@php
+    // «Оплата поставщику» — это закупочная: менеджеру её нет ни строкой, ни в итоге (15.10.2026, владелец).
+    $costs = $staff ? $car->costs : $car->costs->reject(fn ($c) => $c->isSupplier());
+@endphp
+@if ($costs->isNotEmpty() || ($staff && $canAdd))
     <section>
-        <h2 class="list-head lg:pt-0">Расходы@if ($car->costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($car->spent()) }}</span>@endif
+        <h2 class="list-head lg:pt-0">Расходы@if ($costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($staff ? $car->spent() : $car->extraSpent()) }}</span>@endif
             @if ($staff && $canAdd)
                 <button type="button" class="btn btn-s btn-quiet ml-auto self-center" data-controller="emit" data-action="emit#send" data-emit-event-param="cost-new:open"><x-ui.icon name="plus" class="size-4"/>Расход</button>
             @endif
         </h2>
-        @if ($car->costs->isNotEmpty())
+        @if ($costs->isNotEmpty())
             <div class="list">
-                @foreach ($car->costs as $cost)
+                @foreach ($costs as $cost)
                     @php $mine = $cost->editableBy($user); @endphp
                     {{-- Своя шторка у каждой строки: у контроллера шторки ровно один диалог. --}}
                     <div @if ($mine) data-controller="sheet" @endif>

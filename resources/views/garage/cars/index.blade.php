@@ -58,14 +58,14 @@
                         <th class="grow">Марка, модель</th>
                         @if ($staff)<th class="hidden md:table-cell">Менеджер</th>@endif
                         <th class="num hidden lg:table-cell col-detail-hide">В гараже с</th>
-                        <x-ui.th :sort="$sort" key="price" class="num hidden sm:table-cell">Закупочная</x-ui.th>
+                        @if ($staff)<x-ui.th :sort="$sort" key="price" class="num hidden sm:table-cell">Закупочная</x-ui.th>@endif
                         <th class="num hidden sm:table-cell">Расходы</th>
                         <th class="num hidden sm:table-cell">Цена продажи</th>
                         <th class="num sm:hidden">Сумма</th>
                     </tr>
                 </x-slot:head>
                 @foreach ($groups as $head => $rows)
-                    @if ($head)<tr class="table-group"><th colspan="{{ $staff ? 7 : 6 }}"><span class="table-group-name">{{ $head }} <span class="nums">{{ $rows->count() }}</span></span></th></tr>@endif
+                    @if ($head)<tr class="table-group"><th colspan="{{ $staff ? 7 : 5 }}"><span class="table-group-name">{{ $head }} <span class="nums">{{ $rows->count() }}</span></span></th></tr>@endif
                     @foreach ($rows as $row)<x-garage.table-row :staff="$staff" :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null" :car="$row['car'] ?? null"/>@endforeach
                 @endforeach
             </x-ui.table>
