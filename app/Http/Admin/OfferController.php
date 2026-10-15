@@ -766,7 +766,7 @@ class OfferController
      */
     public function rate(Request $request, Offer $offer, UpdateOffer $update)
     {
-        $raw = (int) preg_replace('/\D+/', '', (string) ($request->validate(['asking_price' => ['nullable', 'string', 'max:20']])['asking_price'] ?? ''));
+        $raw = (int) Money::rubles($request->validate(['asking_price' => ['nullable', 'string', 'max:20']])['asking_price'] ?? null);
         if (! $raw || $offer->state !== OfferState::Draft) {
             return back()->with('detail-advance', true);
         }
@@ -792,7 +792,7 @@ class OfferController
     public function floor(Request $request, Offer $offer, UpdateOffer $update)
     {
         $data = $request->validate(['floor_price' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'string', 'max:20']]);
-        $money = fn (?string $v) => (int) preg_replace('/\D+/', '', (string) $v) ?: null;
+        $money = fn (?string $v) => Money::rubles($v) ?: null;
         $floor = $money($data['floor_price'] ?? null);
         $value = $money($data['value'] ?? null);
         if (! $floor || $offer->state !== OfferState::Draft) {
@@ -921,7 +921,7 @@ class OfferController
         $data = $request->validate(['floor_price' => ['nullable', 'string', 'max:20'], 'publish_price' => ['nullable', 'string', 'max:20'],
             'asking_price' => ['required', 'string', 'max:20'], 'bids_close_at' => ['nullable', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json']],
             ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас']);
-        $money = fn (?string $v) => (int) preg_replace('/\D+/', '', (string) $v) ?: null;
+        $money = fn (?string $v) => Money::rubles($v) ?: null;
         $prices = array_map($money, array_intersect_key($data, array_flip(['floor_price', 'publish_price', 'asking_price'])) + ['floor_price' => null, 'publish_price' => null]);
         $audience = $request->has('audience_rules') ? (json_decode((string) $request->input('audience_rules'), true) ?: []) : null;
         $offer = $return($offer, $request->user(), $prices, filled($data['bids_close_at'] ?? null) ? Carbon::parse($data['bids_close_at']) : null, $audience);

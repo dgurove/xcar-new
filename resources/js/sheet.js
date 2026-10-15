@@ -9,6 +9,7 @@
 // переписывает, не перерисовывая); закрытие крестиком само снимает запись
 // через history.back().
 import { confirmSheet } from './confirm';
+import { focusField } from './keyboard';
 
 export const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 let inHistory = null; // id шторки, чья запись сверху истории
@@ -97,7 +98,11 @@ function scrollsToward(found, dx, dy) {
         box = null;
         if (root.classList.contains('sheet-open') && !document.querySelector('dialog.sheet:modal')) syncOpen();
         const target = e.target instanceof Element ? e.target : null;
-        if (!target || e.touches.length !== 1 || target.closest('input, textarea, [contenteditable="true"]')) return;
+        if (!target || e.touches.length !== 1) return;
+        // Поле в фокусе — его касание ставит каретку и тянет выделение, многострочное листается само; остальное поле —
+        // такой же лист: в форме поля почти везде, и палец с поля раньше тащил всё окно.
+        const field = target.closest('input, textarea, [contenteditable="true"]');
+        if (field && (field === document.activeElement || field.scrollHeight > field.clientHeight + 1)) return;
         // Касание в своём слое поверх шторки (dialog.docs, dialog.lightbox) — не наше.
         const layer = target.closest('dialog');
         if (layer && !layer.matches('.sheet')) return;
@@ -117,11 +122,29 @@ function scrollsToward(found, dx, dy) {
     }, { passive: false });
 })();
 
+// Набранное в форме шторки переживает выгрузку приложения из фона и выкладку (16.10.2026): каждая форма шторки с
+// записью получает черновик (draft_controller) — ключом адрес страницы, шторка и адрес формы. «Не сохранять» и отправка
+// его стирают: ошибки проверки сервер возвращает в поля сам (old()).
+function adoptDrafts(d) {
+    for (const form of d.querySelectorAll('form')) {
+        if (form.method.toLowerCase() === 'get' || form.hasAttribute('data-sheet-clean') || form.matches('[data-controller~="draft"]')) continue;
+        form.dataset.draftKeyValue ??= `sheet:${location.pathname}:${d.id}:${new URL(form.action || location.href, location.href).pathname}`;
+        form.dataset.draftSentValue = 'clear';
+        form.dataset.controller = `${form.dataset.controller ?? ''} draft`.trim();
+    }
+}
+
 export function openSheet(d, { history: withHistory = true } = {}) {
     if (d.open) d.close();
     d.classList.remove('is-closing');
     d.style.translate = '';
+    // Своё поле с autofocus фокусирует keyboard.js с ожиданием клавиатуры: showModal сфокусировал бы его сам, без неё,
+    // и лист сперва встал бы без клавиатуры, а потом прыгнул.
+    const auto = d.querySelector('[autofocus]');
+    auto?.removeAttribute('autofocus');
     d.showModal();
+    adoptDrafts(d);
+    if (auto) { auto.setAttribute('autofocus', ''); focusField(auto); }
     syncOpen();
     d.openedAt = performance.now();
     // showModal ставит фокус на первую кнопку («×»), и та рисует кольцо — у открытых пальцем или мышью снимаем.
@@ -203,7 +226,10 @@ export function dirty(d) {
 // Закрыть по просьбе человека («×», Esc, «Назад», свайп): набранное в листе не теряется молча — спросить.
 export async function dismiss(d, from = 0) {
     if (!d.open) return;
-    if (dirty(d) && !(await confirmSheet('Не сохранять?', { label: 'Закрыть', cancel: 'Остаться', danger: true }))) return;
+    if (dirty(d)) {
+        if (!(await confirmSheet('Не сохранять?', { label: 'Закрыть', cancel: 'Остаться', danger: true }))) return;
+        d.querySelectorAll('form').forEach((form) => form.dispatchEvent(new CustomEvent('draft:clear')));
+    }
     closeSheet(d, from);
 }
 

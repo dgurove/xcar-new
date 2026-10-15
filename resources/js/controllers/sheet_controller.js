@@ -61,7 +61,6 @@ export default class extends Controller {
         if (this.media?.matches) return;
         if ('sheetAnchor' in this.dialogTarget.dataset && POP.matches && 'showPopover' in this.dialogTarget) { this.pop(event); return; }
         openSheet(this.dialogTarget);
-        this.dialogTarget.querySelector('[autofocus]')?.focus();
     }
 
     // «×» и «‹» шапки — просьба человека: набранное в форме листа без вопроса не теряется (dismiss). Остальные

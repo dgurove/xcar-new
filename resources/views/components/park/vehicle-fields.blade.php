@@ -25,10 +25,10 @@
     <x-ui.field name="contact_phone" id="v-contact_phone" label="Телефон" type="tel" :value="$v('contact_phone')"/>
     {{-- Оценочная стоимость — у всех вендоров (12.10.2026, владелец: найти её у всех машин; до того — только у тех, чья
          ставка от неё). --}}
-    <x-ui.field name="value" label="Оценочная стоимость, ₽" :value="$v('value')" autocomplete="off" data-controller="digits" data-action="input->digits#format"/>
+    <x-ui.field digits name="value" label="Оценочная стоимость, ₽" :value="$v('value')"/>
     {{-- Своя ставка — у принятой (12.10.2026): та же, что шторкой «Ставка» у места; пусто — по тарифу, он подсказкой. --}}
     @if ($vehicle?->accepted_at)
-        <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут" inputmode="decimal" autocomplete="off" data-controller="digits" data-action="input->digits#format"
+        <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут"
             :value="old('storage_rate', $vehicle->storage_rate !== null ? \App\Support\Money::nums((int) round($vehicle->storage_rate)) : null)" :placeholder="\App\Park\VehicleRate::hint($vehicle)"/>
     @endif
 </div>

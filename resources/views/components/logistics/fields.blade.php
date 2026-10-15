@@ -37,7 +37,7 @@
             </div>
             <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="partner" @if ($executor !== 'partner') hidden @endif>
                 <x-ui.field name="executor_id" id="{{ $prefix }}-partner" label="Партнёр" :options="$partners" placeholder="Выберите" :value="old('executor_id', $t?->executor === Executor::Partner ? $t->executor_id : null)"/>
-                <x-ui.field name="cost" id="{{ $prefix }}-partner-cost" label="Стоимость эвакуации, ₽" inputmode="decimal" :value="$cost"/>
+                <x-ui.field name="cost" id="{{ $prefix }}-partner-cost" label="Стоимость эвакуации, ₽" :value="$cost"/>
             </div>
             <div data-reveal-target="pane" data-reveal-key="driver" @if ($scope !== 'local' || $executor !== 'driver') hidden @endif>
                 <x-ui.field name="executor_id" id="{{ $prefix }}-local-driver" label="Водитель" :options="$drivers" placeholder="Выберите" :value="old('executor_id', $t?->executor === Executor::Driver ? $t->executor_id : null)"/>
@@ -62,7 +62,7 @@
             <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="carrier" @if ($executor !== 'carrier') hidden @endif>
                 <x-ui.field name="carrier" id="{{ $prefix }}-carrier" label="Перевозчик" :value="old('carrier', $t?->carrier)" list="{{ $prefix }}-carriers" autocomplete="off"/>
                 <datalist id="{{ $prefix }}-carriers">@foreach ($carriers as $c)<option value="{{ $c }}"></option>@endforeach</datalist>
-                <x-ui.field name="cost" id="{{ $prefix }}-carrier-cost" label="Стоимость, ₽" inputmode="decimal" :value="$cost"/>
+                <x-ui.field name="cost" id="{{ $prefix }}-carrier-cost" label="Стоимость, ₽" :value="$cost"/>
             </div>
             @error('executor')<p class="field-error">{{ $message }}</p>@enderror
             <div class="grid grid-cols-2 gap-3">

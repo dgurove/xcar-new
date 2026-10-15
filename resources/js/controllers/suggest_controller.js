@@ -1,7 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
+import { focusField } from '../keyboard';
 
-// Фокус в поле листа — через keyboardInset (window.focusField): иначе iOS сдвигал лист к полю, и каретка рисовалась мимо.
-const focus = (el) => el && (window.focusField ? window.focusField(el) : el.focus());
+// Фокус в поле листа — через keyboard.js: иначе iOS сдвигал лист к полю, и каретка рисовалась мимо.
+const focus = (el) => el && focusField(el);
 
 // Подсказки к полю: чип вписывает слово и переводит к сумме — печатать не обязательно.
 export default class extends Controller {

@@ -26,7 +26,7 @@
     <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id" :required="$required"/>
     <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#cb-brand_id [name=brand_id]" :value="$offer->model_id" :text="$offer->model?->name" :required="$required"/>
     <x-ui.field name="year" label="Год" :value="$offer->year"/>
-    <x-ui.field name="mileage" data-controller="digits" data-action="input->digits#format" label="Пробег, км" :value="$offer->mileage"/>
+    <x-ui.field digits name="mileage" label="Пробег, км" :value="$offer->mileage"/>
     <x-ui.field name="color" label="Цвет" :value="$offer->color"/>
     <x-ui.field name="body" label="Кузов" :options="Body::options()" placeholder="—" :value="$offer->body?->value"/>
     <x-ui.field name="transmission" label="Коробка" :options="Transmission::options()" placeholder="—" :value="$offer->transmission?->value"/>

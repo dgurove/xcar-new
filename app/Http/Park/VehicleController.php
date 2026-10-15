@@ -495,7 +495,7 @@ class VehicleController
             'floor_mode' => ['nullable', 'in:rule,value,own'],
             'floor' => ['nullable', 'string', 'max:20'],
         ]);
-        $rubles = fn (?string $v) => ($n = (int) preg_replace('/\D+/', '', explode(',', (string) $v)[0])) > 0 ? $n : null;
+        $rubles = fn (?string $v) => Money::rubles($v) ?: null;
         $value = $rubles($data['value'] ?? null);
         $mode = $data['floor_mode'] ?? null;
         $floor = match ($mode) {

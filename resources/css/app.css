@@ -194,13 +194,13 @@
 @media (min-width: 1024px) {
   :root:not(:has(.action-bar:not([hidden], .lg\:hidden, .split-detail .action-bar) > .action-bar-inner > :not([hidden], [type="hidden"], template))) { --action: 0; }
 }
-/* Клавиатура (app.js keyboardInset): таб-бар под ней, нижнее садится на неё. Только телефон: на iPad парящие кнопки
-   остаются на месте — до настоящей высоты клавиатуры app.js ставит догадку (45 % экрана), и кнопки прыгали бы. */
+/* Клавиатура (keyboard.js): под ней полосы «Домой» нет. Таб-бар, плашка действий и «Сохранить» страницы на телефоне
+   под клавиатурой не рисуются (16.10.2026, владелец: как в приложениях iOS) — им не нужно гоняться за ней, пока iOS
+   двигает экран к полю; подвал шторки и карточки строки — часть листа и стоит на клавиатуре вместе с ним. */
 html.kb-open { --home-gap: 0px; }
-@media (max-width: 767.98px) { html.kb-open { --bottom-edge: var(--kb, 0px); } }
 @media (max-width: 1023.98px) {
   /* Лист документов снизу: плашка действий — на нём, страница докручивается выше него. */
-  html.docs-open { --bottom-edge: calc(var(--kb, 0px) + var(--docs-h)); --bottom-room: calc(var(--docs-h) + 1rem + var(--action) * var(--spacing-action)); }
+  html.docs-open { --bottom-edge: var(--docs-h); --bottom-room: calc(var(--docs-h) + 1rem + var(--action) * var(--spacing-action)); }
   /* Экран чата — поле ввода на нижнем краю, таб-бара нет, страница не листается. */
   :root:has(.chat-page) { --bottom-room: 0px; }
 }
@@ -374,7 +374,7 @@ html.kb-open { --home-gap: 0px; }
   .btn-round  { @apply rounded-full px-0; width: 2.75rem; height: 2.75rem; }
   @media (min-width: 640px) { .btn-round { width: 2.25rem; height: 2.25rem; } }
   /* «Назад» и «Вперёд» полосы страниц: на телефоне одним шевроном, круглые. */
-  @media (max-width: 639px) { .pager-step { width: 2.75rem; padding: 0; } }
+  @media (max-width: 639.98px) { .pager-step { width: 2.75rem; padding: 0; } }
   .btn-round.btn-lg { width: 3.5rem; height: 3.5rem; }
   /* Кнопка карточки — как «Загрузить» в App Store: капсула 32 px по ширине надписи, бледный лайм с лаймовым текстом —
      глагол («Подтвердить», «Предложить»). Тихая — переход или своё («Открыть», своя цена), сделанное — серым словом. */
@@ -787,7 +787,7 @@ html.kb-open { --home-gap: 0px; }
      (max-md:basis-full в разметке — утилиты сильнее слоя), крупнее — они стоят на месте h1;
      кнопки ниже одной строкой: сортировка словом (basis 0 — не переносится, растёт до своего
      текста и урезается, когда кнопок много) с auto-margin отжимает остальные кнопки к краю. */
-  @media (max-width: 767px) {
+  @media (max-width: 767.98px) {
     .toolbar { flex-wrap: wrap; }
     .toolbar-pills .pill { padding-inline: 1rem; }
     /* В кабинете разделы уже названы своей лентой пилюль — пилюли тулбара остаются обычными. */
@@ -795,11 +795,11 @@ html.kb-open { --home-gap: 0px; }
   }
   /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. Только до 640:
      от 640 подпись уже видна (sm:inline), и в круге 2,75rem она вылезала на соседнюю кнопку. */
-  @media (max-width: 639px) { .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; } }
+  @media (max-width: 639.98px) { .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; } }
   /* Сортировка вынесена в строку заголовка (x-slot:actions шелла) — в тулбаре на телефоне её нет («Оплаты» менеджера). */
-  @media (max-width: 767px) { .toolbar--sort-head > .toolbar-tools { display: none; } }
+  @media (max-width: 767.98px) { .toolbar--sort-head > .toolbar-tools { display: none; } }
   /* Так же у кнопок в строке заголовка («Написать» почты, «+ Закупка»): кружок своей высоты. */
-  @media (max-width: 639px) { .btn-s:has(> .hidden.sm\:inline):not(.toolbar .btn) { aspect-ratio: 1; padding: 0; } }
+  @media (max-width: 639.98px) { .btn-s:has(> .hidden.sm\:inline):not(.toolbar .btn) { aspect-ratio: 1; padding: 0; } }
 
   /* Поиск в тулбаре: не фильтр, а поле — стоит слева, растёт до своей доли строки, крестик
      появляется с первым знаком. Ищет по ходу набора (live_search_controller), адрес не меняет. */
@@ -812,7 +812,7 @@ html.kb-open { --home-gap: 0px; }
   .toolbar-search-x { @apply -mr-1.5 flex size-6 shrink-0 items-center justify-center rounded-full text-ink-dim transition-colors hover:text-ink; }
   @media (pointer: coarse) { .toolbar-search-x { width: 2.75rem; height: 2.75rem; margin-right: -.875rem; } }
   .toolbar-search.is-busy { box-shadow: inset 0 0 0 1px var(--color-line); }
-  @media (max-width: 767px) {
+  @media (max-width: 767.98px) {
     .toolbar-search { min-height: 2.75rem; max-width: none; }
     .toolbar-search input { font-size: 16px; }
   }
@@ -835,7 +835,7 @@ html.kb-open { --home-gap: 0px; }
   .toolbar-chips::-webkit-scrollbar { display: none; }
   /* Телефон (09.10.2026, владелец: «шапка — треть экрана»): чипы не своей строкой, а в ряду кнопок — после сортировки и
      лупы, до действий справа; листаются вбок до правого края. Тулбар в два ряда: пилюли, под ними кнопки с чипами. */
-  @media (max-width: 767px) {
+  @media (max-width: 767.98px) {
     .toolbar-chips { order: 1; flex: 1 1 0; margin-right: -1rem; padding-right: 1rem; scroll-padding-inline: 0 1rem; }
     .toolbar > .toolbar-actions { order: 2; margin-left: auto; }
     /* Пилюли — по своей ширине: короткие («Новые / Все», «Открытые / Все») делят строку с кнопками, длинные занимают её
@@ -1577,7 +1577,7 @@ html.kb-open { --home-gap: 0px; }
   .date-pop { @apply rounded-(--radius-l) bg-surface text-ink shadow-(--shadow-drop); position: fixed; inset: auto; margin: 0; border: 0; padding: .5rem; width: 16.5rem; font-size: var(--text-sm); }
   .date-pop:popover-open { animation: dialog-in var(--dur) var(--ease-out); }
   .date-pop::backdrop { background: transparent; }
-  @media (max-width: 639px) {
+  @media (max-width: 639.98px) {
     .date-pop { inset: auto 0 0 0; width: 100%; max-width: none; border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding: .75rem 1rem max(.75rem, var(--home-gap)); font-size: var(--text-base); overflow-y: auto; overscroll-behavior: contain; }
     .date-pop::backdrop { background: rgb(0 0 0 / .3); }
     .date-pop calendar-month::part(button) { width: 2.5rem; height: 2.5rem; }
@@ -1997,7 +1997,9 @@ html.kb-open { --home-gap: 0px; }
   .sheet {
     @apply m-0 w-full max-w-none rounded-t-(--radius-xl) bg-surface p-5 text-ink shadow-(--shadow-drop);
     margin-top: auto;
-    max-height: calc(100dvh - 2rem - var(--kb, 0px));
+    /* Высота — видимая часть (keyboard.js --vv-h, без клавиатуры — всё окно) минус зазор сверху; низ — на клавиатуре. */
+    --sheet-gap: 2rem;
+    max-height: calc(var(--vv-h, 100dvh) - var(--sheet-gap));
     margin-bottom: var(--kb, 0px);
     /* Нижний отступ — переменной: его же перекрывает липкая кнопка (.sheet-foot); с клавиатурой и на ПК полосы «Домой» нет
        (--home-gap 0). */
@@ -2055,31 +2057,33 @@ html.kb-open { --home-gap: 0px; }
   /* Шторка постоянной высоты (форма с подсказкой под полем — «Создать ссылку», «ТС» ссылки): лист прижат к низу и рос
      бы вверх с каждой строкой подсказки, унося поле из-под пальца (09.10.2026, владелец: «всё смещается»). Высота —
      вся доступная, подсказки занимают место внутри, кнопка внизу. */
-  .sheet-steady[open] { display: flex; flex-direction: column; }
-  @media (max-width: 639.98px) { .sheet-steady { height: calc(100dvh - 2rem - var(--kb, 0px)); } }
-  @media (min-width: 640px) { .sheet-steady { height: min(40rem, calc(100dvh - 4rem)); } }
   /* Шторка с полем поиска над списком, что сужается при наборе (поиск в шапке, чип фильтра с «Найти»), — на телефоне
-     постоянной высоты: иначе лист прыгал на каждую букву, а поле уезжало из-под пальца (15.10.2026). */
-  @media (max-width: 639.98px) { .sheet-steady-phone:modal { height: calc(100dvh - 2rem - var(--kb, 0px)); } }
-  /* Пока под полем строки подсказок (combobox на телефоне) — лист во всю доступную высоту, на время выбора. */
+     постоянной высоты (`sheet-steady-phone`): иначе лист прыгал на каждую букву, а поле уезжало из-под пальца
+     (15.10.2026). Пока под полем строки подсказок (combobox на телефоне, `sheet-picking`) — так же, на время выбора.
+     Высота одна — вся видимая часть. */
+  .sheet-steady[open] { display: flex; flex-direction: column; }
   @media (max-width: 639.98px) {
-    .sheet-picking:not(.sheet-tall):modal { height: calc(100dvh - 2rem - var(--kb, 0px)); }
-    html.kb-open .sheet-picking:not(.sheet-tall):modal { height: calc(var(--vv-h, 100dvh) - .75rem); }
+    :is(.sheet-steady, .sheet-steady-phone, .sheet-picking:not(.sheet-tall)):modal { height: calc(var(--vv-h, 100dvh) - var(--sheet-gap)); }
   }
+  @media (min-width: 640px) { .sheet-steady { height: min(40rem, calc(100dvh - 4rem)); } }
   .sheet-close { @apply flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   /* Пальцу — 44 px (у окна писем «‹» единственный способ закрыть, под часами). */
   @media (pointer: coarse) { .sheet-close { width: 2.75rem; height: 2.75rem; } }
-  /* Клавиатура на телефоне (07.10.2026): лист целиком в видимой части над ней (--vv-h из app.js). Раньше высота
+  /* Клавиатура на телефоне (07.10.2026): лист целиком в видимой части над ней (--vv-h из keyboard.js). Раньше высота
      считалась от всего экрана минус клавиатура, а iOS ещё и сдвигал экран к полю — верх листа (сумма) уходил за край. */
   @media (max-width: 639.98px) {
-    html.kb-open .sheet:modal { max-height: calc(var(--vv-h, 100dvh) - .75rem); }
+    html.kb-open .sheet:modal { --sheet-gap: .75rem; }
     html.kb-open .sheet-tall:modal { height: var(--vv-h, 100dvh); max-height: none; }
+  }
+  /* Повёрнутый телефон — шторка окном посередине (ширина от 640), но клавиатура закрывает пол-экрана: окно встаёт над ней. */
+  @media (min-width: 640px) and (max-height: 500px) and (pointer: coarse) {
+    html.kb-open .sheet:modal { margin-bottom: var(--kb, 0px); --sheet-gap: .75rem; }
   }
   /* Шапка листа (x-ui.sheet: заголовок и «×») липнет к верху при прокрутке, за неё тянут вниз (sheet.js); кнопка
      формы (.sheet-foot) — к низу, видна над клавиатурой, как «Сохранить» у save-bar. */
   .sheet:modal > .sheet-bar { position: sticky; top: -1.25rem; z-index: 3; margin: -1.25rem -1.25rem 1rem; padding: 1.25rem 1.25rem 0; background: var(--color-surface); }
   .sheet:modal::before { position: relative; z-index: 4; }
-  /* Поле в фокусе (app.js reveal) не встаёт под липкую шапку и кнопку. */
+  /* Поле в фокусе (keyboard.js reveal) не встаёт под липкую шапку и кнопку. */
   .sheet:modal { scroll-padding-block: 4.5rem; }
   .sheet:modal:has(.sheet-foot) { scroll-padding-bottom: 6rem; }
   .sheet-foot {
@@ -2419,10 +2423,10 @@ html.kb-open { --home-gap: 0px; }
   .dark .impersonation { @apply bg-white text-chrome; }
   .dark .impersonation-exit { @apply bg-chrome/10 hover:bg-chrome/20; }
   .impersonation-room { @apply h-16 shrink-0; }
-  @media (max-width: 767px) {
+  @media (max-width: 767.98px) {
     html.kb-open .impersonation { display: none; }
   }
-  @media (max-width: 1023px) {
+  @media (max-width: 1023.98px) {
     body:has(.chat-page) .impersonation { bottom: auto; top: calc(var(--safe-top) + 7rem); }
     body:has(.chat-page) .impersonation-room { display: none; }
   }
@@ -2584,6 +2588,10 @@ html.kb-open { --home-gap: 0px; }
   /* Клавиатура стоит — бара нет, без движения: на iOS он и так под ней. Прятать по фокусу с анимацией было нельзя —
      бар ездил на каждое поле и уход из него, пока клавиатура ещё выезжала (15.10.2026, «тулбар постоянно смещается»). */
   html.kb-open .tabbar { visibility: hidden; }
+  /* Плашка действий и «Сохранить» страницы — так же (телефон и повёрнутый телефон). */
+  @media (max-width: 767.98px), (pointer: coarse) and (max-height: 500px) {
+    html.kb-open :is(.action-bar, .save-bar--page) { visibility: hidden; }
+  }
   /* Узкие экраны (SE): пять подписей впритык — чуть мельче и без разрядки, иначе крайние режутся. */
   @media (max-width: 359px) { .tabbar { padding-inline: .25rem; } .tabbar .tab { font-size: 10px; letter-spacing: 0; padding-inline: 0; } }
 
@@ -3711,7 +3719,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
 
   /* Телефон: экран чата — экран приложения. Шапки сайта, таб-бара, подвала и пилюль нет,
      бар собеседника стоит на safe-area, бар поля садится на клавиатуру (--kb). */
-  @media (max-width: 1023px) {
+  @media (max-width: 1023.98px) {
     body:has(.chat-page) .header, body:has(.chat-page) .tabbar, body:has(.chat-page) .footer,
     body:has(.chat-page) nav:has(> .cabinet-pills), body:has(.chat-page) .chat-crm-top { display: none; }
     /* Ряд h1 кабинета: имя собеседника и так в баре чата. flex у него утилитой — снимается только !important. */

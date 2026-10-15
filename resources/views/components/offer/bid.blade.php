@@ -58,7 +58,7 @@
                             {{-- У Совкомбанка доли нет: машина уходит без оплаты, нашу часть даёт продажа (`Deal::namesBuyer`). --}}
                             @unless ($offer->vendor?->isCommission())
                             <div class="fields" data-reveal-target="pane" data-reveal-key="manager" @if ($branch && old('payer', 'us') !== 'manager') hidden @endif>
-                                <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')" data-controller="digits" data-action="input->digits#format"/>
+                                <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')"/>
                             </div>
                             @endunless
                             {{-- Везут к нему в гараж: сам или мы (05.10.2026); выбрано, кто уже вывозит. Вывоз у гаражной

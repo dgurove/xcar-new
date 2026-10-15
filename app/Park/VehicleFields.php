@@ -5,6 +5,7 @@ namespace App\Park;
 use App\Cars\Category;
 use App\Cars\Colors;
 use App\Cars\Vin\Vin;
+use App\Support\Money;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -48,8 +49,7 @@ final class VehicleFields
             $request->merge(['vin' => Vin::normalize((string) $request->input('vin'))]);
         }
         if ($request->has('value')) {
-            $digits = preg_replace('/\D+/', '', (string) $request->input('value'));
-            $request->merge(['value' => $digits === '' ? null : $digits]);
+            $request->merge(['value' => Money::rubles((string) $request->input('value'))]);
         }
         // Своя ставка набирается разрядами и с запятой («1 200», «120,5»).
         if ($request->has('storage_rate')) {

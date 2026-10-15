@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { focusField } from '../keyboard';
 import { confirmSheet } from '../confirm';
 import { refreshPage, refreshRows } from '../live';
 
@@ -142,7 +143,7 @@ export default class extends Controller {
         // Правили, пока сверху была шторка («Метки», «Кому показывать»), — запись ставится, когда шторка снята.
         this.onSheetClose = () => setTimeout(() => { if (this.dirty) this.guard(); }, 400);
         this.frameTarget.addEventListener('close', this.onSheetClose, true);
-        // Нажали поле, пока лист ехал (app.js keyboardInset ставит его во весь экран сам): прежнее движение отменяется —
+        // Нажали поле, пока лист ехал (keyboard.js ставит его во весь экран сам): прежнее движение отменяется —
         // иначе его запасной таймер доехал бы своё и опустил лист на полэкрана или закрыл его под кареткой.
         this.onHold = () => {
             if (this.motion?.closing) this.shut = false;
@@ -549,8 +550,10 @@ export default class extends Controller {
         const el = this.wantFocus && this.frameTarget.querySelector('[data-detail-focus]');
         if (el) {
             this.wantFocus = false;
-            el.focus({ preventScroll: true });
-            el.select?.();
+            // Карточка пришла без нажатия — клавиатуры не будет: на телефоне поле только в видимую часть листа, без
+            // фокуса (поле в фокусе без клавиатуры потом не ловит своё нажатие, и iOS сдвигал лист).
+            if (matchMedia('(hover: none)').matches) focusField(el, { keyboard: false });
+            else { el.focus({ preventScroll: true }); el.select?.(); }
         }
     }
 

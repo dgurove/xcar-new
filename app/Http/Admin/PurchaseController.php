@@ -27,6 +27,7 @@ use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Liters;
+use App\Support\Money;
 use App\Support\OfficePreview;
 use App\Support\Sort;
 use App\Users\Role;
@@ -382,7 +383,7 @@ class PurchaseController
         ]);
         $data['engine_volume'] = Liters::parse($data['engine_volume'] ?? null, $car->engine_volume);
         foreach (['mileage', 'engine_power', 'price_revalued', 'price_listing', 'price_final'] as $n) {
-            $data[$n] = isset($data[$n]) && $data[$n] !== '' ? (int) preg_replace('/\D+/', '', $data[$n]) : null;
+            $data[$n] = Money::rubles($data[$n] ?? null);
         }
         $data['transmission'] = $data['transmission'] ?: null;
         $data['fuel'] = $data['fuel'] ?: null;
@@ -399,7 +400,7 @@ class PurchaseController
         abort_unless($car->purchase_id === $purchase->id, 404);
         $raw = $request->validate(['price_final' => ['nullable', 'string', 'max:20']])['price_final'] ?? '';
         if ($raw !== '') {
-            $car->update(['price_final' => (int) preg_replace('/\D+/', '', $raw) ?: null]);
+            $car->update(['price_final' => Money::rubles($raw) ?: null]);
         }
 
         return redirect("/purchases/{$purchase->number}?preset=unfinal")->with('detail-advance', true);

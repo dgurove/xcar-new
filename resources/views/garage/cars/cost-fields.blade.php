@@ -2,7 +2,7 @@
      07.10.2026: сумма первой (у нового расхода — с клавиатурой сразу), поля строками (.fields), подсказки одной строкой вбок. --}}
 <div class="contents" data-controller="suggest">
     <div class="fields">
-        <x-ui.field name="amount" label="Сколько, ₽" :value="$cost?->amount ? \App\Support\Money::nums($cost->amount, fmod((float) $cost->amount, 1) ? 2 : 0) : null" placeholder="15 000" data-controller="digits" data-digits-decimals-value="2" data-action="input->digits#format" :autofocus="! $cost"/>
+        <x-ui.field name="amount" label="Сколько, ₽" :value="$cost?->amount ? \App\Support\Money::nums($cost->amount, fmod((float) $cost->amount, 1) ? 2 : 0) : null" placeholder="15 000" data-digits-decimals-value="2" :autofocus="! $cost"/>
     </div>
     @unless ($cost)
         <div class="sheet-chips">

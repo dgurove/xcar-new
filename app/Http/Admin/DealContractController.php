@@ -6,6 +6,7 @@ use App\Billing\PartyRules;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\Deal;
 use App\Offers\DealContract;
+use App\Support\Money;
 use App\Support\Pdf;
 use Illuminate\Http\Request;
 
@@ -18,7 +19,7 @@ class DealContractController
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         abort_unless($deal->hasContract(), 404);
-        $request->merge(['vehicle' => array_merge((array) $request->input('vehicle'), ['price' => preg_replace('/\D+/', '', (string) $request->input('vehicle.price')) ?: null])]);
+        $request->merge(['vehicle' => array_merge((array) $request->input('vehicle'), ['price' => Money::rubles($request->input('vehicle.price')) ?: null])]);
         // Продавец вносится только у ДКП (собственник по сканам); у ПРАЙМ продавец — ПРАЙМ.
         $data = $request->validate(($deal->isDkp() ? PartyRules::passport('seller') : []) + [
             'vehicle' => ['required', 'array'], 'vehicle.price' => ['nullable', 'integer', 'min:1'], 'vehicle.city' => ['nullable', 'string', 'max:80'],

@@ -18,7 +18,7 @@
     </div>
     <div class="fields">
         {{-- Разрядами и с копейками, как в «Оплатить»: «15 000,50», а не «15000.5». --}}
-        <x-ui.field name="amount" label="Сумма" :value="Money::nums($invoice->remaining(), fmod($invoice->remaining(), 1) ? 2 : 0)" required data-controller="digits" data-digits-decimals-value="2" data-action="input->digits#format"/>
+        <x-ui.field name="amount" label="Сумма" :value="Money::nums($invoice->remaining(), fmod($invoice->remaining(), 1) ? 2 : 0)" required data-digits-decimals-value="2"/>
         <x-ui.field name="paid_at" label="Дата" type="date" :value="now()->toDateString()"/>
         <x-ui.field name="ref" label="№ платёжки"/>
         <x-ui.file-field name="slip" label="Платёжка" accept=".pdf,.jpg,.jpeg,.png,.heic"/>

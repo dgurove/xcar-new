@@ -16,8 +16,7 @@
         @csrf
         <div class="text-sm text-ink-muted">{{ $vehicle->saleLabel() }}</div>
         <div class="fields">
-            <x-ui.field name="value" label="Оценочная, ₽" inputmode="decimal" autocomplete="off" :value="old('value', $value ? Money::nums($value) : '')"
-                data-controller="digits" data-action="input->digits#format" data-sale-floor-target="value" :id="$id.'-value'"/>
+            <x-ui.field digits name="value" label="Оценочная, ₽" :value="old('value', $value ? Money::nums($value) : '')" data-sale-floor-target="value" :id="$id.'-value'"/>
         </div>
         <div class="flex flex-col gap-1.5">
             <span class="field-label">Закупочная</span>
@@ -37,8 +36,7 @@
             </div>
         </div>
         <div class="fields" data-reveal-target="pane" data-reveal-key="own" @if ($mode !== 'own') hidden @endif>
-            <x-ui.field name="floor" label="Закупочная, ₽" inputmode="decimal" autocomplete="off" :value="old('floor', $mode === 'own' && $floor ? Money::nums($floor) : '')"
-                data-controller="digits" data-action="input->digits#format" data-sale-floor-target="own" :id="$id.'-floor'"/>
+            <x-ui.field digits name="floor" label="Закупочная, ₽" :value="old('floor', $mode === 'own' && $floor ? Money::nums($floor) : '')" data-sale-floor-target="own" :id="$id.'-floor'"/>
         </div>
         <div class="sheet-foot"><x-ui.button block data-sale-floor-target="button">Выставить в продажу</x-ui.button></div>
     </form>

@@ -33,9 +33,9 @@
                     <div>
                         <h3 class="list-head">Цены</h3>
                         <div class="fields">
-                            <x-ui.field name="floor_price" :id="'resale-floor-'.$n" label="Закупочная, ₽" :value="old('floor_price', $offer->floor_price ? Money::nums($offer->floor_price) : null)" data-controller="digits" data-action="input->digits#format" inputmode="decimal"/>
-                            <x-ui.field name="publish_price" :id="'resale-publish-'.$n" label="Заявленная, ₽" :value="old('publish_price', $offer->publish_price ? Money::nums($offer->publish_price) : null)" :placeholder="$offer->floor_price ? Money::nums(\App\Offers\Offer::declaredFrom($offer->floor_price)) : null" data-controller="digits" data-action="input->digits#format" inputmode="decimal"/>
-                            <x-ui.field name="asking_price" :id="'resale-asking-'.$n" label="Цена продажи, ₽" :value="old('asking_price', $offer->asking_price ? Money::nums($offer->asking_price) : null)" required data-controller="digits" data-action="input->digits#format" inputmode="decimal"/>
+                            <x-ui.field name="floor_price" :id="'resale-floor-'.$n" label="Закупочная, ₽" :value="old('floor_price', $offer->floor_price ? Money::nums($offer->floor_price) : null)"/>
+                            <x-ui.field name="publish_price" :id="'resale-publish-'.$n" label="Заявленная, ₽" :value="old('publish_price', $offer->publish_price ? Money::nums($offer->publish_price) : null)" :placeholder="$offer->floor_price ? Money::nums(\App\Offers\Offer::declaredFrom($offer->floor_price)) : null"/>
+                            <x-ui.field name="asking_price" :id="'resale-asking-'.$n" label="Цена продажи, ₽" :value="old('asking_price', $offer->asking_price ? Money::nums($offer->asking_price) : null)" required/>
                         </div>
                     </div>
                     <div>

@@ -10,7 +10,7 @@
          имена: в деле рядом стоит редактор полей ТС с той же «Категорией». --}}
     @if (auth()->user()->canManagePark())
         <x-ui.field name="intake_category" label="Тип ТС" :options="collect(\App\Cars\Category::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all()" placeholder="—" :value="old('intake_category', $vehicle->category?->value)"/>
-        <x-ui.field name="intake_rate" label="Своя ставка, ₽/сут" inputmode="decimal" autocomplete="off" data-controller="digits" data-action="input->digits#format"
+        <x-ui.field name="intake_rate" label="Своя ставка, ₽/сут"
             :value="old('intake_rate', $vehicle->storage_rate !== null ? \App\Support\Money::nums((int) round($vehicle->storage_rate)) : null)" :placeholder="\App\Park\VehicleRate::hint($vehicle)"/>
     @endif
     <div class="field">

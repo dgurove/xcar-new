@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { reduce, sheetInHistory } from '../sheet';
+import { keyboard } from '../keyboard';
 import { known, shareFile, warm } from '../docs/share';
 
 // Шторка документов (x-ui.docs, одна на страницу в x-ui.shell): скан заявки, СТС, Excel, письмо, фото, акт —
@@ -65,9 +66,9 @@ export default class extends Controller {
         this.onWide = () => this.relayout();
         this.onMove = (e) => this.dragMove(e);
         this.onUp = (e) => this.dragEnd(e);
-        this.kb = html.classList.contains('kb-open');
-        this.kbWatch = new MutationObserver(() => this.keyboard());
-        this.kbWatch.observe(html, { attributes: true, attributeFilter: ['class'] });
+        this.kb = keyboard().open;
+        this.onKeyboard = (e) => this.keyboard(e.detail);
+        document.addEventListener('keyboard:change', this.onKeyboard);
         document.addEventListener('click', this.onClick);
         document.addEventListener('focusin', this.onFocus);
         document.addEventListener('turbo:submit-start', this.onSubmit);
@@ -79,7 +80,6 @@ export default class extends Controller {
         // Раньше Turbo и sheet.js, после просмотра фото: зовёт обработчик из <head> (x-ui.layout) — у window popstate
         // идёт по порядку подписки, а контроллер подключается позже Turbo.
         window.docsPop = this.onPop;
-        window.visualViewport?.addEventListener('resize', this.onViewport);
         addEventListener('resize', this.onViewport);
         wide.addEventListener('change', this.onWide);
         const start = () => this.restore();
@@ -87,7 +87,7 @@ export default class extends Controller {
     }
 
     disconnect() {
-        this.kbWatch.disconnect();
+        document.removeEventListener('keyboard:change', this.onKeyboard);
         document.removeEventListener('click', this.onClick);
         document.removeEventListener('focusin', this.onFocus);
         document.removeEventListener('turbo:submit-start', this.onSubmit);
@@ -97,7 +97,6 @@ export default class extends Controller {
         document.removeEventListener('turbo:morph', this.onMorph);
         window.removeEventListener('docs:keep', this.onKeep);
         if (window.docsPop === this.onPop) window.docsPop = null;
-        window.visualViewport?.removeEventListener('resize', this.onViewport);
         removeEventListener('resize', this.onViewport);
         wide.removeEventListener('change', this.onWide);
         this.host?.removeEventListener('close', this.onHostClose);
@@ -485,7 +484,7 @@ export default class extends Controller {
 
     // ——— высота на телефоне
 
-    get vh() { return window.visualViewport?.height ?? innerHeight; }
+    get vh() { return keyboard().height; }
 
     // Выше шапки лист не уходит: её кнопки нужны и при открытом документе.
     maxHeight() {
@@ -510,13 +509,16 @@ export default class extends Controller {
         html.style.setProperty('--docs-h', `${this.height}px`);
     }
 
+    // Встал — промис: поле поднимают над листом, когда он уже на месте.
     settle(h) {
         const el = this.element;
-        if (reduce.matches) { this.setHeight(h); return; }
+        if (reduce.matches || Math.round(h) === this.height) { this.setHeight(h); return Promise.resolve(); }
         el.classList.add('is-settling');
         this.setHeight(h);
         clearTimeout(this.settling);
-        this.settling = setTimeout(() => el.classList.remove('is-settling'), 350);
+        return new Promise((done) => {
+            this.settling = setTimeout(() => { el.classList.remove('is-settling'); done(); }, 350);
+        });
     }
 
     // Экран повернули, клавиатура поменяла высоту — лист не выше доступного.
@@ -577,41 +579,48 @@ export default class extends Controller {
         if (!this.kb) store.set('docs:h', (h / this.vh).toFixed(3));
     }
 
-    // Клавиатура: лист ужимается, чтобы над ним было видно поле; ушла — прежняя высота.
-    keyboard() {
-        const open = html.classList.contains('kb-open');
+    // Клавиатура (keyboard.js): лист ужимается, чтобы над ним было видно поле; ушла — прежняя высота. Поле поднимается
+    // над листом один раз — когда лист встал (раньше — двумя таймерами 360 и 380 мс поверх сдвига iOS).
+    keyboard({ open }) {
+        this.fit();
         if (open === this.kb) return;
         this.kb = open;
         if (!this.shown || this.host || wide.matches) return;
+        let done = Promise.resolve();
         if (open) {
             this.beforeKb = this.height;
             const cap = Math.round(this.vh * .42);
-            if (this.height > cap) this.settle(cap);
+            if (this.height > cap) done = this.settle(cap);
         } else if (this.beforeKb) {
             this.settle(Math.min(this.beforeKb, this.maxHeight()));
             this.beforeKb = 0;
         }
         const field = document.activeElement;
-        if (open && field?.matches('input, textarea, select')) setTimeout(() => this.keepVisible(field), 360);
+        if (open && field?.matches('input, textarea, select')) done.then(() => this.keepVisible(field));
     }
 
     focused(e) {
         const field = e.target;
         if (!this.shown || this.host || wide.matches || !field.matches?.('input, textarea, select') || this.element.contains(field)) return;
-        // Лист во весь экран, а человек взялся за поле — опускаем до середины, иначе поле некуда поднять.
-        const mid = this.snaps()[1];
-        if (this.height > mid && !this.kb) this.settle(mid);
-        clearTimeout(this.focusing);
-        this.focusing = setTimeout(() => this.keepVisible(field), 380);
+        // Клавиатуры ещё нет — поле поднимет keyboard(), когда она встанет. Лист во весь экран, а человек взялся за поле
+        // — опускаем до середины, иначе поле некуда поднять.
+        if (!this.kb) {
+            const mid = this.snaps()[1];
+            if (this.height > mid) this.settle(mid);
+            return;
+        }
+        // Переход «Далее» между полями с открытой клавиатурой.
+        requestAnimationFrame(() => this.keepVisible(field));
     }
 
-    // Поле с фокусом — над листом и плашкой действий, под шапкой.
+    // Поле с фокусом — над листом и видимой плашкой действий (под клавиатурой её нет), под шапкой.
     keepVisible(field) {
         if (!this.shown || !field.isConnected || document.activeElement !== field) return;
         const r = field.getBoundingClientRect();
         let bottom = this.element.getBoundingClientRect().top;
-        // Видимая плашка — по коробкам: у fixed-узла offsetParent всегда null, и плашку раньше не видело никогда.
-        const bar = [...document.querySelectorAll('.action-bar')].find((b) => b.getClientRects().length);
+        // Видимая плашка — по коробкам и видимости: у fixed-узла offsetParent всегда null, а спрятанная клавиатурой
+        // коробку сохраняет.
+        const bar = [...document.querySelectorAll('.action-bar')].find((b) => b.getClientRects().length && getComputedStyle(b).visibility !== 'hidden');
         if (bar) bottom = Math.min(bottom, bar.getBoundingClientRect().top);
         const top = Math.max(document.querySelector('.header')?.getBoundingClientRect().bottom ?? 0, 0);
         if (r.bottom > bottom - 12) scrollBy(0, r.bottom - bottom + 24);

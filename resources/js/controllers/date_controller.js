@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { keyboard } from '../keyboard';
 import 'cally';
 
 // Выбор даты и времени вместо системного поля (владелец 10.10.2026: «вписывать год и время вручную — дрочево, системный
@@ -88,22 +89,20 @@ export default class extends Controller {
         if (this.element.closest('summary')) event.preventDefault();
     }
 
-    // Телефон: клавиатура поля времени не закрывает лист — низ листа встаёт на неё (visualViewport), пока лист открыт.
+    // Телефон: клавиатура поля времени не закрывает лист — низ листа встаёт на неё (keyboard.js), пока лист открыт.
     lift() {
-        const vv = window.visualViewport;
-        if (!vv || document.documentElement.clientWidth >= 640) return;
+        if (document.documentElement.clientWidth >= 640) return;
         // Высота — не больше видимой части: на маленьком iPhone календарь со временем выше места над клавиатурой, и шапка
         // месяца уходила за верх экрана. iOS после клавиатуры ещё и сдвигает экран (scroll, а не resize).
         const place = () => {
-            this.popTarget.style.bottom = `${Math.max(0, innerHeight - vv.height - vv.offsetTop)}px`;
-            this.popTarget.style.maxHeight = `${Math.round(vv.height) - 8}px`;
+            const { bottom, height } = keyboard();
+            this.popTarget.style.bottom = `${Math.max(0, innerHeight - bottom)}px`;
+            this.popTarget.style.maxHeight = `${Math.round(height) - 8}px`;
         };
         place();
-        vv.addEventListener('resize', place);
-        vv.addEventListener('scroll', place);
+        document.addEventListener('keyboard:change', place);
         this.popTarget.addEventListener('toggle', () => {
-            vv.removeEventListener('resize', place);
-            vv.removeEventListener('scroll', place);
+            document.removeEventListener('keyboard:change', place);
             this.popTarget.style.bottom = '';
             this.popTarget.style.maxHeight = '';
         }, { once: true });

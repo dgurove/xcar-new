@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { focusField } from '../keyboard';
 
 // Лист оценки менеджера (11.10.2026) — одна из панелей на виду: «отправлена» (done), выбор корректировки «Согласен /
 // Предложить свою» (choose), поле суммы (form) или отказ с желаемой стоимостью (decline). Переключение — без перезагрузки; у поля сумма сразу выделена.
@@ -13,7 +14,7 @@ export default class extends Controller {
         if (title && open?.dataset.title) title.textContent = open.dataset.title;
         const field = pane === 'form' ? (this.hasInputTarget && this.inputTarget) : pane === 'decline' ? (this.hasWishTarget && this.wishTarget) : null;
         if (field) {
-            field.focus();
+            focusField(field);
             field.select();
         }
     }

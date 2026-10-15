@@ -3,7 +3,7 @@
 <form method="post" action="{{ $yard ? '/yards/'.$yard->id : '/yards' }}" class="flex flex-col gap-3">
     @csrf @if ($yard) @method('put') @endif
     <div class="fields">
-        <x-ui.field name="name" label="Название" :value="$yard?->name" required :autofocus="! $yard"/>
+        <x-ui.field name="name" label="Название" :value="$yard?->name" required/>
         <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" create="/reference/settlements" :value="$yard?->settlement_id" :text="$yard?->settlement?->title()"/>
         <x-ui.field name="address" label="Адрес" :value="$yard?->address"/>
         <x-ui.field name="capacity" label="Мест" :value="$yard?->capacity"/>

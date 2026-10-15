@@ -1,7 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
+import { focusField } from '../keyboard';
 
-// Фокус в поле листа — через keyboardInset (window.focusField): иначе iOS сдвигал лист к полю, и каретка рисовалась мимо.
-const focus = (el) => el && (window.focusField ? window.focusField(el) : el.focus());
+// Фокус в поле листа — через keyboard.js: иначе iOS сдвигал лист к полю, и каретка рисовалась мимо.
+const focus = (el) => el && focusField(el);
 
 // Показывает спрятанный блок (форму привязки ветки из меню «···», исходное письмо в ленте), ставит курсор
 // в первое поле, кнопку-trigger прячет. Ленивый turbo-frame в блоке грузится сам, как только его видно.

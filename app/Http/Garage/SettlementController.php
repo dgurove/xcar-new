@@ -33,7 +33,7 @@ class SettlementController
     public function sold(Request $request, Offer $offer, MarkGarageSold $sold)
     {
         $car = $this->car($request, $offer);
-        $request->merge(['sold_price' => preg_replace('/\D+/', '', (string) $request->input('sold_price'))]);
+        $request->merge(['sold_price' => Money::rubles($request->input('sold_price'))]);
         $data = $request->validate([
             'sold_price' => ['required', 'integer', 'min:1'],
             'sold_at' => ['nullable', 'date', 'before_or_equal:today'],

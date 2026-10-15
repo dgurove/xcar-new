@@ -9,7 +9,8 @@ import { Controller } from '@hotwired/stimulus';
 const TTL = 24 * 3600 * 1000;
 
 export default class extends Controller {
-    static values = { key: String };
+    // sent: 'clear' — стирать уже на отправке (форма шторки: её могут отправить и не через Turbo).
+    static values = { key: String, sent: String };
 
     connect() {
         const user = document.querySelector('meta[name="user-id"]')?.content ?? '';
@@ -25,6 +26,7 @@ export default class extends Controller {
         this.element.addEventListener('change', this.onInput);
         this.element.addEventListener('trix-change', this.onInput);
         this.element.addEventListener('turbo:submit-end', this.onEnd);
+        if (this.sentValue === 'clear') this.element.addEventListener('submit', () => { clearTimeout(this.timer); this.clear(); });
         this.element.addEventListener('draft:clear', () => this.clear());
         document.addEventListener('input', this.onOuter);
         document.addEventListener('change', this.onOuter);

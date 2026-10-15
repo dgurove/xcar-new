@@ -1,7 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
+import { focusField } from '../keyboard';
 
-// Фокус в поле листа — через keyboardInset (window.focusField): иначе iOS сдвигал лист к полю, и каретка рисовалась мимо.
-const focus = (el) => el && (window.focusField ? window.focusField(el) : el.focus());
+// Фокус в поле листа — через keyboard.js: иначе iOS сдвигал лист к полю, и каретка рисовалась мимо.
+const focus = (el) => el && focusField(el);
 
 // Своя метка у предложения: «+» открывает поле и цвета, Enter или «Добавить» — отмеченный чип этого цвета перед «+».
 // Такая метка уже есть — её просто отмечаем. Цвета своих меток — JSON в скрытом tag_colors; change с чипа и с

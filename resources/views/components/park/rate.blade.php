@@ -20,10 +20,10 @@
             @csrf
             <div class="fields">
                 <x-ui.field name="category" :id="$id.'-category'" label="Тип ТС" :options="collect(\App\Cars\Category::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all()" placeholder="—" :value="$vehicle->category?->value"/>
-                <x-ui.field name="storage_rate" :id="$id.'-rate'" label="Своя ставка, ₽/сут" inputmode="decimal" data-controller="digits" data-action="input->digits#format"
+                <x-ui.field name="storage_rate" :id="$id.'-rate'" label="Своя ставка, ₽/сут"
                     :value="$vehicle->storage_rate !== null ? \App\Support\Money::nums((int) round($vehicle->storage_rate)) : null" :placeholder="\App\Park\VehicleRate::hint($vehicle)"/>
                 <x-ui.field name="storage_rate_note" :id="$id.'-note'" label="Почему своя" :value="$vehicle->storage_rate_note" maxlength="120"/>
-                <x-ui.field name="value" :id="$id.'-value'" label="Оценочная, ₽" inputmode="decimal" data-controller="digits" data-action="input->digits#format" :value="$vehicle->value ? \App\Support\Money::nums($vehicle->value) : null"/>
+                <x-ui.field digits name="value" :id="$id.'-value'" label="Оценочная, ₽" :value="$vehicle->value ? \App\Support\Money::nums($vehicle->value) : null"/>
             </div>
             <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
         </form>

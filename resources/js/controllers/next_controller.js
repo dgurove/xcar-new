@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { focusField } from '../keyboard';
 
 // «Далее» на клавиатуре телефона: у полей формы enterkeyhint «next», у последнего — «done»; Enter переводит на
 // следующее поле по порядку формы (и полям с form= снаружи), а не отправляет её — на айфоне так форму уводили
@@ -39,7 +40,7 @@ export default class extends Controller {
         if (i < 0) return;
         e.preventDefault();
         const next = list[i + 1];
-        if (next) next.focus();
+        if (next) focusField(next);
         else e.target.blur();
     }
 }

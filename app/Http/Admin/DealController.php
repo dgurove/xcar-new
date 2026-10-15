@@ -16,6 +16,7 @@ use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Money;
 use App\Support\Sort;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
@@ -150,7 +151,7 @@ class DealController
     /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */
     public function money(Request $request, Deal $deal, UpdateDealMoney $update)
     {
-        $request->merge(['share' => preg_replace('/\D+/', '', (string) $request->input('share')) ?: null]);
+        $request->merge(['share' => Money::rubles($request->input('share')) ?: null]);
         $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['nullable', Rule::enum(CommissionMode::class)],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)],
             'share' => ['nullable', 'integer', 'min:1']]);

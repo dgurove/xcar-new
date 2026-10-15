@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { focusField } from '../keyboard';
 
 // Поиск в шапке — один на три хоста (10.10.2026): со второго знака через 150 мс фрейм `global-search` берёт выдачу
 // `/search?q=` (устаревший ответ отбрасывает сам фрейм — новый src отменяет прежний запрос). На ПК выдача — выпадающим
@@ -85,13 +86,13 @@ export default class extends Controller {
 
     clear() {
         this.inputTarget.value = '';
-        this.inputTarget.focus();
+        focusField(this.inputTarget);
         this.input();
     }
 
     pick(event) {
         this.inputTarget.value = event.params.q;
-        this.inputTarget.focus();
+        focusField(this.inputTarget);
         this.input();
     }
 

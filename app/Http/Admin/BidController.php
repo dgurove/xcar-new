@@ -14,6 +14,7 @@ use App\Offers\CommissionMode;
 use App\Offers\DealScheme;
 use App\Offers\Destination;
 use App\Offers\Offer;
+use App\Support\Money;
 use App\Users\User;
 use App\Workflow\Position;
 use App\Workflow\Stage;
@@ -35,7 +36,7 @@ class BidController
         $stage = $this->stageId($bid);
         $default = DealScheme::forOffer($bid->offer);
         if ($bid->isGarage()) {
-            $request->merge(['share' => preg_replace('/\D+/', '', (string) $request->input('share')) ?: null]);
+            $request->merge(['share' => Money::rubles($request->input('share')) ?: null]);
             $data = $request->validate(['payer' => ['nullable', Rule::enum(GaragePayer::class)], 'pickup' => ['nullable', Rule::in(['manager', 'us'])],
                 'share' => ['nullable', 'integer', 'min:1']]);
             DB::transaction(function () use ($bid, $data, $request, $accept, $default) {
@@ -47,7 +48,7 @@ class BidController
 
             return $this->accepted($request, $bid, $switch ? null : $stage, ($switch ? 'Отдали ' : 'В гараж: ').$bid->user->shortName());
         }
-        $request->merge(['owner_price' => preg_replace('/\D+/', '', (string) $request->input('owner_price')) ?: null]);
+        $request->merge(['owner_price' => Money::rubles($request->input('owner_price')) ?: null]);
         $data = $request->validate([
             'commission' => ['nullable', 'integer', 'min:0', 'max:'.$bid->amount],
             'mode' => ['nullable', Rule::enum(CommissionMode::class)],
@@ -123,7 +124,7 @@ class BidController
             'comment' => ['nullable', 'string', 'max:300'],
         ]);
         $manager = User::findOrFail($data['manager_id']);
-        $amount = (int) preg_replace('/\D+/', '', (string) ($data['amount'] ?? '')) ?: null;
+        $amount = Money::rubles($data['amount'] ?? null) ?: null;
         $place($offer, $manager, $request->user(), $amount, BidKind::tryFrom($data['kind'] ?? '') ?? BidKind::Buyer, trim((string) ($data['comment'] ?? '')) ?: null);
 
         return back()->with('toast', 'Подтверждение '.$manager->shortName().' внесено');

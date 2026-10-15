@@ -14,6 +14,7 @@ use App\Purchases\Restriction;
 use App\Support\Detail;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Money;
 use App\Support\Sort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -91,7 +92,7 @@ class PurchaseController
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
         $data = $request->validate(['amount' => ['required', 'string'], 'comment' => ['nullable', 'string', 'max:500']]);
-        $place($car, $request->user(), (int) preg_replace('/\D+/', '', $data['amount']), $data['comment'] ?? null);
+        $place($car, $request->user(), (int) Money::rubles($data['amount']), $data['comment'] ?? null);
         $back = "/purchases/{$purchase->number}/{$car->ref}".($request->query() ? '?'.http_build_query($request->query()) : '');
 
         return redirect($back)->with('toast', 'Цена записана');

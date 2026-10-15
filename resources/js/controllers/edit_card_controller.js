@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { focusField } from '../keyboard';
 
 // «Изменить / Готово», как в Контактах iOS (владелец 06.10.2026): у опубликованной машины карточки «Транспортное
 // средство» и «Цены» показывают данные текстом в той же сетке, что поля; «Изменить» — поля на месте, «Готово» — снова
@@ -32,7 +33,7 @@ export default class extends Controller {
         this.apply(this.editingValue, true);
         if (this.editingValue) {
             this.snapshot = this.serialize();
-            this.editTarget.querySelector('input:not([type=hidden]):not([disabled]), select, textarea, [role=combobox]')?.focus({ preventScroll: true });
+            focusField(this.editTarget.querySelector('input:not([type=hidden]):not([disabled]), select, textarea, [role=combobox]'));
         }
     }
 

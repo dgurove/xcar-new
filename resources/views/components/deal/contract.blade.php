@@ -48,7 +48,7 @@
             @foreach (DealContract::VEHICLE as $key => $label)
                 <x-ui.field :name="'vehicle['.$key.']'" :label="$label" :value="$contract->{$key} ?? ($key === 'body_no' ? $deal->offer->vin : null)" :span="$key === 'pts_issued' ? 'sm:col-span-2' : null"/>
             @endforeach
-            <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null" data-controller="digits" data-action="input->digits#format"/>
+            <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null"/>
             <x-ui.field name="vehicle[city]" label="Город договора" :value="$contract->city"/>
         </div>
         <x-ui.save-bar page/>

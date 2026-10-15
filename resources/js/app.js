@@ -12,6 +12,7 @@ import { live } from './live';
 import './flip';
 import { longPressMenu } from './longpress';
 import { setTheme, paintBar, chosenTheme } from './theme';
+import { keyboardInset, focusField } from './keyboard';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
 Turbo.StreamActions.toast = function () {
@@ -295,13 +296,6 @@ function freshness() {
     });
 }
 
-// Фокус в поле: в листе на телефоне — keyboardInset (window.focusField), иначе обычный с прокруткой к полю.
-const focusField = (el, options) => {
-    if (window.focusField) { window.focusField(el, options); return; }
-    el.focus({ preventScroll: true });
-    el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-};
-
 // Ошибка валидации приводит к полю: после морфа с preserve-scroll человек стоит у
 // «Сохранить», а красное поле — вне экрана.
 function focusInvalid() {
@@ -444,7 +438,7 @@ function enterNext() {
         const next = fields.slice(fields.indexOf(el) + 1).find((f) => f.matches('input, select, textarea') && !SKIP.includes(f.type) && !f.disabled && f.getClientRects().length);
         if (!next || next.value !== '') return;
         event.preventDefault();
-        next.focus();
+        focusField(next);
     });
 }
 
@@ -467,179 +461,6 @@ function relaunchScroll() {
             if (Date.now() - at > 24 * 3600 * 1000) localStorage.removeItem(k);
         }
     } catch {}
-}
-
-// Клавиатура iOS не уменьшает layout viewport: 100dvh и fixed-низ остаются под ней.
-// Высота перекрытия — в --kb на <html>, класс kb-open; полоса действий и шторка
-// садятся на клавиатуру (app.css). Android с interactive-widget=resizes-content
-// ужимает viewport сам — там поправка выходит нулевой.
-// Поле в листе (карточка строки на телефоне, шторка) iOS не должен сдвигать к нему экран (07.10.2026, владелец: лист
-// уезжает, каретка «на строку ниже»): при сдвиге WebKit переставляет fixed-слои уже после того, как посчитал каретку.
-// Поэтому нажатие по полю в листе фокусирует его само: лист заранее встаёт на клавиатуру (её высота — прошлый замер,
-// впервые 45 % экрана), поле подтягивается своей прокруткой в видимую часть, и iOS двигать уже нечего. Пришла настоящая
-// высота — меняется только низ листа, поле стоит.
-function keyboardInset() {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    // Календарь и список — не клавиатура: их шторка viewport не ужимает, и сдвигать под неё ничего не надо.
-    const TYPED = 'input:not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not(.date-input):not([type=checkbox]):not([type=radio]):not([type=file]), textarea, [contenteditable="true"], trix-editor';
-    const field = () => document.activeElement?.matches(TYPED);
-    const root = document.documentElement;
-    const ios = /iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    // Ожидаемая высота клавиатуры — до её появления, по ориентации.
-    const slot = () => `kb:${innerWidth > innerHeight ? 'l' : 'p'}`;
-    const guess = () => { try { const v = Number(localStorage.getItem(slot())); if (v > 100) return v; } catch {} return Math.round(innerHeight * .45); };
-    let predicted = 0, until = 0, last = '';
-    // Android (interactive-widget=resizes-content) ужимает viewport сам: --kb там 0, а клавиатуру видно по тому, что окно
-    // стало ниже обычного для этой ориентации, пока в поле фокус. Без класса kb-open таб-бар вставал над клавиатурой.
-    const tallest = {};
-    const resized = () => {
-        if (!field()) { tallest[slot()] = Math.max(tallest[slot()] ?? 0, innerHeight); return false; }
-        return !ios && (tallest[slot()] ?? innerHeight) - innerHeight > 150;
-    };
-    const apply = (kb, h, top) => {
-        const open = kb > 100 || resized();
-        // Переменные корня наследует весь документ — пишем, только когда что-то поменялось: scroll visualViewport идёт
-        // каждый кадр, и каждая запись пересчитывала стили всей страницы.
-        const key = `${kb}|${h}|${top}|${open}`;
-        if (key === last) return;
-        last = key;
-        const style = root.style;
-        style.setProperty('--kb', `${kb}px`);
-        // Видимая часть над клавиатурой: iOS ещё и сдвигает экран к полю (offsetTop) — шторка в неё влезает целиком,
-        // иначе её верх (сумма) уезжал за экран, а палец вниз «к сумме» закрывал лист (07.10.2026).
-        style.setProperty('--vv-h', `${h}px`);
-        style.setProperty('--vv-top', `${top}px`);
-        root.classList.toggle('kb-open', open);
-    };
-    const update = () => {
-        // Без поля в фокусе клавиатуры нет — разница высот от резины или зума не считается за неё.
-        const kb = vv.scale > 1.01 || !field() ? 0 : Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
-        if (kb > 100) {
-            predicted = 0;
-            try { localStorage.setItem(slot(), String(kb)); } catch {}
-        }
-        // Клавиатура ещё выезжает — держим ожидаемую высоту, иначе лист съездил бы вниз и обратно.
-        if (kb <= 100 && predicted && field() && performance.now() < until) { apply(predicted, innerHeight - predicted, 0); return; }
-        apply(kb, Math.round(vv.height), Math.round(vv.offsetTop));
-    };
-    // Лист, где поле держит клавиатуру: карточка строки на телефоне и шторка.
-    const host = (el) => el?.closest?.('dialog.sheet:modal') ?? (matchMedia('(max-width: 1023.98px)').matches ? el?.closest?.('.split-detail') : null);
-    // Поле — в видимой части над клавиатурой (низ — bottom), в верхней трети: прокруткой своего листа, не страницы.
-    const reveal = (el, bottom) => {
-        const sheet = host(el);
-        if (!sheet) return;
-        let box = el.parentElement;
-        for (; box && box !== sheet.parentElement; box = box.parentElement) {
-            if (box.scrollHeight > box.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(box).overflowY)) break;
-        }
-        if (!box || box === sheet.parentElement) return;
-        const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
-        const top = Math.max(b.top, 0), end = Math.min(b.bottom, bottom);
-        if (r.top >= top + 8 && r.bottom <= end - 16) return;
-        box.scrollTop += r.top - (top + (end - top) / 3);
-    };
-    // Фокус в поле листа программно (кнопка «+ метка», «Ещё ступень», ошибка проверки формы): тем же путём, что нажатие
-    // по полю, — лист заранее на ожидаемой клавиатуре, поле — прокруткой своего листа, iOS экран не двигает. Без
-    // клавиатуры (страница только что пришла с ошибкой) — только прокрутка листа к полю, без фокуса: поле в фокусе без
-    // клавиатуры нажатие уже не перехватывает, и iOS сдвигал лист сам.
-    window.focusField = (el, { keyboard = true } = {}) => {
-        if (!el) return;
-        const sheet = host(el);
-        if (!sheet || !matchMedia('(hover: none)').matches) {
-            el.focus({ preventScroll: true });
-            el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-            return;
-        }
-        if (!keyboard || !ios || !el.matches(TYPED)) { reveal(el, innerHeight - (ios && keyboard && el.matches(TYPED) ? guess() : 0)); if (keyboard) el.focus({ preventScroll: true }); return; }
-        predicted = guess();
-        until = performance.now() + 900;
-        apply(predicted, innerHeight - predicted, 0);
-        reveal(el, innerHeight - predicted);
-        el.focus({ preventScroll: true });
-        setTimeout(() => { if (predicted) { predicted = 0; update(); } }, 900);
-    };
-    // Прокрутка к узлу внутри листа — прокруткой самого листа: scrollIntoView листал и страницу под шторкой.
-    window.revealInSheet = (el) => reveal(el, innerHeight);
-    if (ios) {
-        // Нажатие по полю листа: палец не ехал (не прокрутка) и не держали (не выделение). Своё поле в фокусе —
-        // браузеру: там нажатие ставит каретку.
-        let touch = null;
-        document.addEventListener('touchstart', (e) => {
-            const t = e.touches[0];
-            touch = e.touches.length === 1 ? { x: t.clientX, y: t.clientY, at: e.timeStamp } : null;
-        }, { capture: true, passive: true });
-        document.addEventListener('touchend', (e) => {
-            const from = touch;
-            touch = null;
-            const el = e.target instanceof Element ? e.target.closest('input, textarea') : null;
-            if (!from || !el || el === document.activeElement || !el.matches(TYPED) || el.disabled || el.readOnly) return;
-            const sheet = host(el), t = e.changedTouches[0];
-            if (!sheet || Math.hypot(t.clientX - from.x, t.clientY - from.y) > 10 || e.timeStamp - from.at > 500) return;
-            e.preventDefault();
-            // Карточка строки — сразу во весь экран, без анимации: лист, который едет, пока в нём каретка, рисует её мимо.
-            if (sheet.matches('.split-detail')) {
-                sheet.dispatchEvent(new CustomEvent('detail:hold'));
-                sheet.getAnimations().forEach((a) => a.cancel());
-                sheet.removeAttribute('data-moving');
-                sheet.style.transition = '';
-                sheet.style.transform = '';
-                sheet.setAttribute('data-full', '');
-            }
-            predicted = guess();
-            until = performance.now() + 900;
-            apply(predicted, innerHeight - predicted, 0);
-            reveal(el, innerHeight - predicted);
-            el.focus({ preventScroll: true });
-            try { el.setSelectionRange(el.value.length, el.value.length); } catch {}
-            // Нажатие отменено — щелчок, которого ждут поля (комбобокс, копирование), отдаём сами.
-            el.click();
-            // Клавиатура так и не вышла (внешняя клавиатура) — ожидание снимается.
-            setTimeout(() => { if (predicted) { predicted = 0; update(); } }, 900);
-        }, { capture: true, passive: false });
-        // «Далее» на клавиатуре: следующее поле в видимую часть до того, как iOS решит сдвигать экран (focusin идёт
-        // раньше, чем WebKit сообщает о фокусе).
-        document.addEventListener('focusin', (e) => {
-            if (root.classList.contains('kb-open') && e.target.matches?.(TYPED)) reveal(e.target, innerHeight - parseFloat(root.style.getPropertyValue('--kb') || 0));
-        });
-    }
-    // Клавиатура встала — поле в фокусе в видимой части своего листа (прокрутка внутри него, не страницы).
-    const shown = () => {
-        const el = document.activeElement;
-        if (el && field()) reveal(el, vv.offsetTop + vv.height);
-    };
-    // iOS: поле с клавиатурой пропало из DOM, не потеряв фокус (ответ формы подменил карточка строки, морф
-    // страницы), — клавиатура уходит, а viewport остаётся ужатым: таб-бар висит посреди экрана, строки под ним
-    // не рисуются. Снимаем фокус до подмены — клавиатура закрывается штатно; и после закрытия клавиатуры
-    // тянем прокрутку на месте — WebKit по ней пересчитывает viewport.
-    const blurInside = (target) => {
-        const el = document.activeElement;
-        if (el && el !== document.body && target?.contains(el) && field()) el.blur();
-    };
-    document.addEventListener('turbo:submit-start', (e) => blurInside(e.target));
-    document.addEventListener('turbo:before-frame-render', (e) => blurInside(e.target));
-    // Морф поле сохраняет вместе с фокусом (чат, поиск) — только полная подмена страницы.
-    document.addEventListener('turbo:before-render', (e) => { if (e.detail.renderMethod !== 'morph') blurInside(document.body); });
-    // Прокрутка «на месте» (scrollTo в ту же точку) для WebKit — не прокрутка, он ничего не пересчитывает. iOS 26 после
-    // клавиатуры оставлял нажатия по fixed-листу со сдвигом: кнопки внизу карточки («Сохранить изменения», «Скрыть все»)
-    // рисуются на месте, а нажатие попадает мимо (08.10.2026, начальник: «часто перестают работать»). Настоящий сдвиг на
-    // 1 px и обратно заставляет его пересчитать viewport и места слоёв.
-    const nudge = () => {
-        const x = scrollX, y = scrollY;
-        if (document.documentElement.scrollHeight - innerHeight >= 1) scrollTo(x, y > 0 ? y - 1 : y + 1);
-        requestAnimationFrame(() => { scrollTo(x, y); update(); });
-    };
-    let open = false;
-    const settle = () => {
-        const was = open;
-        update();
-        open = root.classList.contains('kb-open');
-        if (was && !open) setTimeout(nudge, 80);
-    };
-    vv.addEventListener('resize', () => { settle(); requestAnimationFrame(shown); });
-    vv.addEventListener('scroll', update);
-    document.addEventListener('focusout', () => requestAnimationFrame(settle));
-    update();
 }
 
 // Фото карточки перетекает в главный кадр галереи и обратно: одно имя

@@ -72,7 +72,7 @@
             <span class="mt-1 flex items-baseline justify-center gap-1.5">
                 <input id="estimate-amount" type="text" name="amount" required inputmode="decimal" enterkeyhint="send" autocomplete="off" placeholder="0" data-check-text="Укажите цену"
                     class="pay-amount estimate-amount nums" data-controller="digits" data-action="input->digits#format" data-estimate-edit-target="input"
-                    value="{{ old('amount', $given && ! $estimate->agreed() ? $money($estimate->amount) : '') }}" @if ($open === 'form') autofocus @endif>
+                    value="{{ old('amount', $given && ! $estimate->agreed() ? $money($estimate->amount) : '') }}" @if ($open === 'form' && ! $given) autofocus @endif>
                 <span class="text-2xl font-medium text-ink-muted">₽</span>
             </span>
             @error('amount')<span class="mt-2 text-sm text-danger">{{ $message }}</span>@enderror

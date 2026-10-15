@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { focusField } from '../keyboard';
 
 // Поле с нижней границей длины (причина выдачи без QR): внутри поля счётчик «12 / 20», кнопка неактивна, пока
 // текста мало. Дошёл до границы — счётчик гаснет, кнопка оживает. Сервер проверяет то же самое.
@@ -14,7 +15,7 @@ export default class extends Controller {
         if (this.enough()) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        this.inputTarget.focus();
+        focusField(this.inputTarget);
     }
 
     check() {

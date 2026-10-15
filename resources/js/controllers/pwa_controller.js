@@ -41,16 +41,24 @@ export default class extends Controller {
             document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && registration.update().catch(() => {}));
             // Тап по уведомлению (Android): воркер просит окно перейти — обычный визит.
             navigator.serviceWorker.addEventListener('message', (e) => e.data?.navigate && Turbo.visit(e.data.navigate));
-            // Вышла новая версия, а окно открыто — воркер просит перезагрузиться (sw.js, activate).
-            // Не чаще раза в полминуты: две версии воркера подряд (выкладки одна за другой) не должны гонять окно по кругу.
+            // Вышла новая версия, а окно открыто — воркер просит обновиться (sw.js, activate). Человек что-то делает
+            // (открыта шторка, набрано в форме, поле в фокусе) — не под пальцем: следующий переход пойдёт полной
+            // загрузкой. Не чаще раза в полминуты: две версии воркера подряд не должны гонять окно по кругу.
             navigator.serviceWorker.addEventListener('message', (e) => {
                 if (!e.data?.reload) return;
                 let last = 0;
                 try { last = Number(sessionStorage.getItem('sw-reload-at')) || 0; } catch {}
                 if (Date.now() - last < 30_000) return;
-                try { sessionStorage.setItem('sw-reload-at', String(Date.now())); } catch {}
-                why('sw:reload');
-                location.reload();
+                const busy = document.querySelector('dialog:modal, form[data-dirty]') || document.activeElement?.matches?.('input, textarea, select, [contenteditable="true"]');
+                const reload = (url) => {
+                    try { sessionStorage.setItem('sw-reload-at', String(Date.now())); } catch {}
+                    why('sw:reload');
+                    if (url) location.href = url; else location.reload();
+                };
+                if (!busy) { reload(); return; }
+                if (window.swPending) return;
+                window.swPending = true;
+                document.addEventListener('turbo:before-visit', (v) => { v.preventDefault(); reload(v.detail.url); }, { once: true });
             });
         } catch {}
     }

@@ -35,7 +35,7 @@
                         {{-- Гаражная «платит менеджер»: наша доля — счёт со ссылкой встаёт сам (`SyncDealInvoices`). --}}
                         <form method="post" action="/work/deals/{{ $deal->id }}/money" class="flex flex-col gap-4">
                             @csrf @method('put')
-                            <x-ui.field name="share" label="Наша доля, ₽" :value="$deal->share ? Money::nums($deal->share) : null" data-controller="digits" data-action="input->digits#format"/>
+                            <x-ui.field name="share" label="Наша доля, ₽" :value="$deal->share ? Money::nums($deal->share) : null"/>
                             <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
                         </form>
                     @else

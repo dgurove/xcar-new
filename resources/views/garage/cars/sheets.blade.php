@@ -28,7 +28,7 @@
         <x-ui.sheet id="selling" title="Продаю" :open="$errors->has('sold_price')">
             <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-4">
                 @csrf
-                <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')" inputmode="numeric" data-controller="digits" data-action="input->digits#format" required autofocus/>
+                <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')" required autofocus/>
                 <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>Продаю</x-ui.button></div>
             </form>
         </x-ui.sheet>
@@ -135,7 +135,7 @@
             <form method="post" action="/garage/cars/{{ $n }}/payments" class="flex flex-col gap-3">
                 @csrf
                 <div class="fields">
-                    <x-ui.field name="amount" label="Сколько, ₽" :value="$sum($current->remaining())" data-controller="digits" data-digits-decimals-value="2" data-action="input->digits#format"/>
+                    <x-ui.field name="amount" label="Сколько, ₽" :value="$sum($current->remaining())" data-digits-decimals-value="2"/>
                     <x-ui.field name="paid_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
                 </div>
                 <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>Записать</x-ui.button></div>

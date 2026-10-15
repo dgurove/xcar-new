@@ -8,6 +8,7 @@ use App\Offers\Actions\WithdrawBid;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\Offer;
+use App\Support\Money;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class BidController
             'comment' => ['nullable', 'string', 'max:500'],
             'manager_id' => [$staff ? 'required' : 'nullable', 'integer'],
         ], ['manager_id.required' => 'Выберите менеджера']);
-        $amount = (int) preg_replace('/\D+/', '', (string) ($data['amount'] ?? '')) ?: null;
+        $amount = Money::rubles($data['amount'] ?? null) ?: null;
 
         if (! $staff) {
             $place($offer, $me, $amount, $data['comment'] ?? null, $kind);

@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { keyboard } from '../keyboard';
 
 // Поле с поиском по справочнику и созданием записи на месте.
 // data-combobox-url-value — откуда брать подсказки (?q=), data-combobox-create-value —
@@ -59,7 +60,11 @@ export default class extends Controller {
         if (q && !exact && this.createValue) {
             this.listTarget.append(this.option(`Добавить «${q}»`, null, () => this.createNew(q), true));
         }
-        if (this.listTarget.childElementCount === 0) this.close(); else this.show();
+        if (this.listTarget.childElementCount) { this.show(); return; }
+        // Совпадений нет, а поле ещё в руках (телефон, лист) — прячем только строки: лист остаётся во всю высоту, иначе он
+        // схлопывался на каждой букве без совпадений и снова рос на следующей.
+        if (this.picking && this.element.contains(document.activeElement)) { this.listTarget.hidden = true; return; }
+        this.close();
     }
 
     option(label, hint, onPick, isCreate = false) {
@@ -133,6 +138,10 @@ export default class extends Controller {
             if (list.hasAttribute('popover')) { if (list.matches(':popover-open')) list.hidePopover(); list.removeAttribute('popover'); }
             list.classList.add('is-inline');
             list.hidden = false;
+            // Поле к верху листа — один раз, когда подсказки открылись, а не на каждую отрисовку: иначе лист дёргался
+            // под пальцем с каждой буквой.
+            if (this.picking) return;
+            this.picking = true;
             this.sheet = this.element.closest('dialog.sheet');
             this.sheet?.classList.add('sheet-picking');
             requestAnimationFrame(() => this.lift());
@@ -144,8 +153,8 @@ export default class extends Controller {
         if (!list.matches(':popover-open')) list.showPopover();
         this.onMove ??= () => this.place();
         addEventListener('scroll', this.onMove, { capture: true, passive: true });
-        visualViewport?.addEventListener('resize', this.onMove);
-        visualViewport?.addEventListener('scroll', this.onMove);
+        document.addEventListener('keyboard:change', this.onMove);
+        addEventListener('resize', this.onMove);
     }
 
     // Поле — к верху своей прокрутки (лист, карточка строки), под липкую шапку листа: прокруткой листа, не страницы.
@@ -161,13 +170,11 @@ export default class extends Controller {
         box.scrollTop += field.getBoundingClientRect().top - top;
     }
 
-    // Координаты fixed-слоя — от всего экрана (layout viewport), видимая часть над клавиатурой — от offsetTop до
-    // offsetTop + height: клавиатура iOS экран не ужимает. Прежняя формула мешала одно с другим, и список вставал
-    // на высоту клавиатуры ниже — под неё.
+    // Координаты fixed-слоя — от всего экрана (layout viewport), видимая часть над клавиатурой — её низ из keyboard.js:
+    // клавиатура iOS экран не ужимает.
     place() {
         const list = this.listTarget, r = this.inputTarget.getBoundingClientRect();
-        const vv = visualViewport;
-        const top = vv?.offsetTop ?? 0, bottom = top + (vv?.height ?? innerHeight);
+        const { bottom, height } = keyboard(), top = bottom - height;
         const below = bottom - r.bottom - 8;
         const max = Math.max(120, Math.min(260, below >= 160 ? below : r.top - top - 8));
         list.style.left = `${r.left}px`;
@@ -183,11 +190,12 @@ export default class extends Controller {
         list.classList.remove('is-inline');
         this.sheet?.classList.remove('sheet-picking');
         this.sheet = null;
+        this.picking = false;
         if (list.matches?.(':popover-open')) list.hidePopover();
         if (this.onMove) {
             removeEventListener('scroll', this.onMove, { capture: true });
-            visualViewport?.removeEventListener('resize', this.onMove);
-            visualViewport?.removeEventListener('scroll', this.onMove);
+            document.removeEventListener('keyboard:change', this.onMove);
+            removeEventListener('resize', this.onMove);
         }
     }
 

@@ -24,6 +24,20 @@ final class Money
         return $value === null || $value === '' ? '' : self::nums($value, $decimals).self::NBSP.'₽';
     }
 
+    /**
+     * Целые рубли из набранного — одна дверь для всех форм (16.10.2026: шестнадцать мест разбирали сумму сами, и
+     * «150 000,50» после NormalizeNumbers («150000.50») становилось 15 000 050). Копейки отбрасываются: запятая или точка
+     * не перед тройкой цифр — дробная часть («1.150.000» — разряды точками). Цифр нет — null.
+     */
+    public static function rubles(int|float|string|null $value): ?int
+    {
+        if ($value === null || $value === '') return null;
+        if (! is_string($value)) return (int) $value;
+        $digits = preg_replace('/\D+/', '', preg_split('/,|\.(?!\d{3}(?:\D|$))/', $value)[0]);
+
+        return $digits === '' ? null : (int) $digits;
+    }
+
     /** «15 000,50», «15000.5», «15 000 ₽» — одно число: люди пишут суммы как привыкли. */
     public static function parse(?string $value): string
     {
