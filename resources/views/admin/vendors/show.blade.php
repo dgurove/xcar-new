@@ -1,5 +1,5 @@
 {{-- Карточка вендора в CRM — продажа предложений. Имя с чипами фактов и «Изменить» круглой кнопкой одной строкой,
-     пилюли Обзор, Контакты, Маршруты лентой. Шторка «Продажа»: имя и тип (общие с парковкой), условия сделки, почта
+     пилюли Обзор, Предложения (15.10.2026), Контакты, Маршруты лентой. Шторка «Продажа»: имя и тип (общие с парковкой), условия сделки, почта
      продажи. Реквизиты, хранение, прайс, деньги, заявки на приёмку — на парковке, ссылкой в обзоре.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @php use App\Vendors\{DealFormat, Kind, Parser, RewardKind}; @endphp
@@ -66,7 +66,7 @@
     </div>
     <x-ui.pills class="mb-5 mt-5">
         @foreach ($pills as $key => $label)
-            <x-ui.pill :href="$base.($key === 'overview' ? '' : '?pill='.$key)" :current="$pill === $key" data-turbo-action="replace">{{ $label }}</x-ui.pill>
+            <x-ui.pill :href="$base.($key === 'overview' ? '' : '?pill='.$key)" :current="$pill === $key" data-turbo-action="replace">{{ $label }}@if ($key === 'offers' && $offersTotal) <span class="nums opacity-70">{{ $offersTotal }}</span>@endif</x-ui.pill>
         @endforeach
     </x-ui.pills>
     @include('admin.vendors.'.$pill)

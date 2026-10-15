@@ -9,7 +9,12 @@ use App\Offers\AudienceRules;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Tag;
+use App\Offers\VendorOffersExport;
+use App\Support\Facets\Facet;
+use App\Support\Facets\Facets;
+use App\Support\Facets\Option;
 use App\Support\ListPrefs;
+use App\Support\ListView;
 use App\Support\Sort;
 use App\Support\Surface;
 use App\Users\Section;
@@ -21,7 +26,10 @@ use App\Vendors\RewardKind;
 use App\Vendors\Vendor;
 use App\Workflow\Position;
 use App\Workflow\Track;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -32,7 +40,13 @@ use Illuminate\Validation\Rule;
  */
 class VendorController
 {
-    public const PILLS = ['overview' => 'Обзор', 'contacts' => 'Контакты', 'routes' => 'Маршруты'];
+    public const PILLS = ['overview' => 'Обзор', 'offers' => 'Предложения', 'contacts' => 'Контакты', 'routes' => 'Маршруты'];
+
+    /** Предложения вендора: по заведению, новые сверху; откликами и ценами — выбором и заголовком. */
+    public const OFFER_SORTS = [
+        'created' => ['Заведено', 'desc'], 'bids' => ['Подтверждения', 'desc'], 'interest' => ['Интерес', 'desc'],
+        'floor' => ['Закупочная', 'desc'], 'price' => ['Цена продажи', 'desc'],
+    ];
 
     /** Справочник — по имени (владелец 06.10.2026), работающие первыми; дата и число предложений — выбором. */
     public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'offers' => ['Предложения', 'desc']];
@@ -111,15 +125,82 @@ class VendorController
                 'occupied' => Position::whereIn('stage_id', $workflow->stages()->pluck('workflow_stages.id'))
                     ->selectRaw('stage_id, count(*) as n')->groupBy('stage_id')->pluck('n', 'stage_id'),
             ];
+        } elseif ($pill === 'offers') {
+            [$q, $facets, $sort] = $this->offersQuery($request, $vendor);
+            $data += [
+                'offers' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+                'facets' => $facets,
+                'sort' => $sort,
+                'searching' => $facets->searching(),
+            ];
         } else {
             $vendor->load('mailAccount');
-            $data += [
-                'offers' => Offer::where('vendor_id', $vendor->id)->whereNotIn('state', [OfferState::Archived])->with(['parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])->latest()->limit(12)->get(),
-                'offersTotal' => Offer::where('vendor_id', $vendor->id)->count(),
-            ];
         }
+        $data['offersTotal'] = Offer::where('vendor_id', $vendor->id)->count();
 
         return view('admin.vendors.show', $data);
+    }
+
+    /** «Скачать» в «Предложениях» вендора: то, что на экране, с теми же чипами и поиском, файлом. */
+    public function export(Request $request, Vendor $vendor)
+    {
+        [$q] = $this->offersQuery($request, $vendor);
+        $offers = $q->get();
+
+        return response()->streamDownload(fn () => VendorOffersExport::write($offers, 'php://output'), $vendor->name.' предложения '.now()->format('d.m.Y').'.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
+    /**
+     * Все предложения вендора за всё время, архив тоже (15.10.2026, владелец: «выгрузить номера убытка Т-Страхования, по
+     * которым проявляли интерес или есть хоть одно подтверждение» — короткий список «Обзора» был бесполезен). Чипы:
+     * «Отклик» — было ли подтверждение (любое, и отклонённое) или интерес; «Где сейчас» — состояние; «Заведено» — месяц.
+     *
+     * @return array{0: Builder, 1: Facets, 2: Sort}
+     */
+    private function offersQuery(Request $request, Vendor $vendor): array
+    {
+        $facets = Facets::for($request, 'crm-vendor-offers', self::replyFacet(),
+            Facet::column('state', 'Где сейчас', ['состояние', 'состояния', 'состояний'], 'offers.state')->enum(OfferState::class)->natural(),
+            Facet::column('month', 'Заведено', ['месяц', 'месяца', 'месяцев'], "to_char(offers.created_at, 'YYYY-MM')")->natural()
+                ->labels(fn (array $keys) => collect($keys)->sortDesc()->mapWithKeys(fn ($k) => [$k => new Option($k, Carbon::parse($k.'-01')->isoFormat('MMMM YYYY'))])->all()),
+        );
+        ListPrefs::sync($request, 'crm-vendor-offers', keep: $facets->keys());
+        $sort = Sort::from($request->query('sort'), self::OFFER_SORTS, '-created');
+        $q = Offer::where('offers.vendor_id', $vendor->id)->with('bids:id,offer_id,state')
+            ->withCount(['bids', 'interests'])->withMax('bids as best_bid', 'amount');
+        if ($facets->searching()) {
+            $q->searchCrm(trim((string) $request->query('q')));
+        }
+        $facets->apply($q);
+        $dir = $sort->dir();
+        match ($sort->key) {
+            'bids' => $q->orderBy('bids_count', $dir),
+            'interest' => $q->orderBy('interests_count', $dir),
+            'floor' => $q->orderByRaw("offers.floor_price {$dir} nulls last"),
+            'price' => $q->orderByRaw("offers.asking_price {$dir} nulls last"),
+            default => $q->orderBy('offers.created_at', $dir),
+        };
+
+        return [$q->orderByDesc('offers.id'), $facets, $sort];
+    }
+
+    /**
+     * «Отклик» — один выбор: есть отклик (подтверждение или интерес), есть подтверждения, есть интерес, без отклика.
+     * Подтверждение — любое, хоть раз поданное (и отклонённое, и отозванное), интерес — любой.
+     */
+    private static function replyFacet(): Facet
+    {
+        $bids = 'exists (select 1 from bids where bids.offer_id = offers.id)';
+        $interest = 'exists (select 1 from interests where interests.offer_id = offers.id)';
+        $sql = ['all' => 'true', 'any' => "({$bids} or {$interest})", 'bids' => $bids, 'interest' => $interest, 'quiet' => "not {$bids} and not {$interest}"];
+        $labels = ['all' => 'Все', 'any' => 'Есть отклик', 'bids' => 'Есть подтверждения', 'interest' => 'Есть интерес', 'quiet' => 'Без отклика'];
+
+        return Facet::custom('reply', 'Отклик', [],
+            fn (Builder $q, array $keys) => isset($sql[$keys[0]]) ? $q->whereRaw($sql[$keys[0]]) : null,
+            fn (Builder $q) => array_map('intval', (array) DB::table('offers')->whereIn('id', Facet::bare($q->toBase())->select('offers.id'))
+                ->selectRaw(collect($sql)->map(fn ($s, $k) => "count(*) filter (where {$s}) as \"{$k}\"")->implode(', '))->first()),
+        )->single('all')->natural()->labels(fn (array $keys) => collect($labels)->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all());
     }
 
     public function update(Request $request, Vendor $vendor, SetLogo $setLogo, SyncViewers $sync)

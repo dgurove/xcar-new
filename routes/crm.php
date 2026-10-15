@@ -346,6 +346,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/vendors', [VendorController::class, 'index']);
             Route::post('/vendors', [VendorController::class, 'store']);
             Route::get('/vendors/{vendor}', [VendorController::class, 'show']);
+            Route::get('/vendors/{vendor}/offers/export', [VendorController::class, 'export']);
             Route::put('/vendors/{vendor}', [VendorController::class, 'update']);
             Route::post('/vendors/{vendor}/contacts', [VendorContactController::class, 'store']);
             Route::put('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'update']);

@@ -1,5 +1,5 @@
-{{-- Обзор вендора в CRM: условия продажи и почта продажи строками, предложения в работе, переход к карточке на
-     парковке — тем, у кого она есть. --}}
+{{-- Обзор вендора в CRM: условия продажи и почта продажи строками, переход к карточке на
+     парковке — тем, у кого она есть. Предложения — своей пилюлей (15.10.2026). --}}
 @php use App\Support\Money; use App\Vendors\RewardKind; @endphp
 <div class="flex flex-col gap-2">
     <div class="list">
@@ -19,17 +19,5 @@
             @if ($vendor->mailAccount)<div class="row justify-between"><span class="shrink-0 text-ink-muted">Отвечаем с</span><span class="min-w-0 truncate">{{ $vendor->mailAccount->email }}</span></div>@endif
             @if ($vendor->senders)<div class="row justify-between"><span class="shrink-0 text-ink-muted">Предложения от</span><span class="min-w-0 text-right">{{ implode(', ', $vendor->senders) }}</span></div>@endif
         </div>
-    @endif
-    @if ($offers->isNotEmpty())
-        <div class="list-head">Предложения <span class="nums">{{ $offersTotal }}</span></div>
-        <div class="list">
-            @foreach ($offers as $o)
-                <a href="/offers/{{ $o->number }}" class="row justify-between">
-                    <span class="min-w-0"><span class="block truncate">{{ $o->titleWithYear() }}</span><span class="block truncate text-sm text-ink-muted">№ {{ $o->number }}, {{ $o->crmTab() }}@if ($o->answer_by), до {{ $o->answer_by->translatedFormat('j M H:i') }}@endif</span></span>
-                    @if ($o->floor_price)<span class="nums shrink-0 font-semibold">{{ Money::rub($o->floor_price) }}</span>@endif
-                </a>
-            @endforeach
-        </div>
-        @if ($offersTotal > $offers->count())<a href="/offers?vendor={{ $vendor->id }}" class="btn btn-ghost btn-s self-start">Все предложения</a>@endif
     @endif
 </div>
