@@ -92,7 +92,7 @@ class Settlement extends Model
     /**
      * Место по имени из источника, что знает и регион (лот Мигторга: «Кугульта», «Ставропольский край»): с регионом —
      * любое место региона, сёла тоже (15.10.2026: Кугульта — село, и без региона её не было; сёл с этим именем два).
-     * Имя с типом («г Челябинск», «с. Кугульта») — через адрес. Село без региона не угадываем.
+     * Имя с типом («г Челябинск», «с. Кугульта») — без типа. Село без региона и типа не угадываем.
      *
      * @return array{id: int, name: string, title: string}|null
      */
@@ -103,8 +103,33 @@ class Settlement extends Model
             return null;
         }
         $area = $region ? Region::inText($region) : null;
+        if ($place = self::named($name, $area)) {
+            return $place;
+        }
+        // Имя с типом — без типа; не через адрес «регион, имя»: в справочнике есть и сами регионы, и неизвестное село
+        // находилось бы «Ставропольским краем».
+        if (preg_match(self::TYPED, ' '.$name, $m)) {
+            return self::named($m[1], $area, villages: true);
+        }
 
-        return self::named($name, $area) ?? self::inAddress(trim(($area ? $region.', ' : '').$name));
+        return null;
+    }
+
+    /**
+     * Свободное место — текст как есть (тип `своб`, ранг 9): справочник его не знает, а пусто хуже (владелец, 15.10.2026).
+     * Регион — из «, 26» в конце имени (поле «Город», `ReferenceController::createSettlement`) или словами (лот Мигторга).
+     *
+     * @return array{id: int, name: string, title: string}
+     */
+    public static function free(string $name, ?string $region = null): array
+    {
+        $name = trim((string) preg_replace('/\s+/u', ' ', $name), ' ,');
+        $plate = preg_match('/[\s,]+(\d{1,3})$/u', $name, $m) ? str_pad($m[1], 2, '0', STR_PAD_LEFT) : null;
+        $name = $plate ? trim((string) preg_replace('/[\s,]+\d{1,3}$/u', '', $name)) : $name;
+        $area = $plate ? Region::where('plate', $plate)->first() : ($region ? Region::inText($region) : null);
+        $place = self::firstOrCreate(['name' => $name, 'type' => 'своб', 'region_code' => $area?->plate], ['region_id' => $area?->id, 'rank' => 9]);
+
+        return ['id' => $place->id, 'name' => $place->name, 'title' => $place->title()];
     }
 
     /**

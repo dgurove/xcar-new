@@ -8,7 +8,6 @@ use App\Cars\CarModel;
 use App\Cars\CarText;
 use App\Cars\Drive;
 use App\Cars\Fuel;
-use App\Cars\Region;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Cars\Vin\VinAutofill;
@@ -93,16 +92,9 @@ class ReferenceController
      */
     public function createSettlement(Request $request)
     {
-        $name = trim((string) preg_replace('/\s+/u', ' ', $request->validate(['name' => ['required', 'string', 'max:120']])['name']), ' ,');
-        $plate = preg_match('/[\s,]+(\d{1,3})$/u', $name, $m) ? str_pad($m[1], 2, '0', STR_PAD_LEFT) : null;
-        $name = $plate ? trim((string) preg_replace('/[\s,]+\d{1,3}$/u', '', $name)) : $name;
-        $region = $plate ? Region::where('plate', $plate)->first() : null;
-        $place = Settlement::firstOrCreate(
-            ['name' => $name, 'type' => 'своб', 'region_code' => $region?->plate],
-            ['region_id' => $region?->id, 'rank' => 9],
-        );
+        $place = Settlement::free($request->validate(['name' => ['required', 'string', 'max:120']])['name']);
 
-        return response()->json(['id' => $place->id, 'label' => $place->title()]);
+        return response()->json(['id' => $place['id'], 'label' => $place['title']]);
     }
 
     /** Менеджеры по имени или телефону — «Подтверждение за менеджера». */

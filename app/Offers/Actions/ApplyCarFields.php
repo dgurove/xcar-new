@@ -48,7 +48,7 @@ final class ApplyCarFields
                 'mileage', 'engine_volume', 'engine_power' => $data[$field] = (int) $value,
                 'transmission', 'drive', 'fuel', 'body', 'papers' => $data[$field] = (string) $value,
                 'has_keys' => $data['has_keys'] = (bool) $value,
-                'city' => ($id = Settlement::resolve((string) $value, $item['region'] ?? null)['id'] ?? null) ? $data['settlement_id'] = $id : null,
+                'city' => ($id = (Settlement::resolve((string) $value, $item['region'] ?? null) ?? (! empty($item['create']) && trim((string) $value) !== '' ? Settlement::free((string) $value, $item['region'] ?? null) : null))['id'] ?? null) ? $data['settlement_id'] = $id : null,
                 'deadline' => [$data['insurer_deadline_at'], $data['answer_by']] = [Carbon::parse($value)->toDateString(), Carbon::parse($value)],
                 default => null,
             };

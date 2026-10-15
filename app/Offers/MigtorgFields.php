@@ -65,7 +65,8 @@ final class MigtorgFields
         $put('body', (self::BODY[mb_strtolower(trim((string) ($lot['carcass']['title'] ?? '')))] ?? null)?->value);
         // Город — с регионом: сёла и одинаковые имена без него не найти (`Settlement::resolve`).
         if ($city = trim((string) ($lot['city']['title'] ?? ''))) {
-            $f['city'] = ['value' => $city, 'region' => trim((string) ($lot['city']['region']['title'] ?? '')) ?: null];
+            // Справочник его не знает — текстом как есть (`create`, как у марки): у лота город — своё поле, не догадка.
+            $f['city'] = ['value' => $city, 'region' => trim((string) ($lot['city']['region']['title'] ?? '')) ?: null, 'create' => true];
         }
         $keys = $lot['keys_count'] ?? null;
         $put('has_keys', $keys === null ? null : (int) $keys > 0);
