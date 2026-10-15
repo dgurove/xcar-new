@@ -60,40 +60,59 @@ export const sheetInHistory = () => inHistory !== null;
 // holdBackground). Класс, а не html:has(dialog.sheet:modal): тот WebKit пересчитывал на каждую правку DOM.
 const syncOpen = () => document.documentElement.classList.toggle('sheet-open', !!document.querySelector('dialog.sheet:modal'));
 document.addEventListener('close', syncOpen, true);
-document.addEventListener('turbo:render', syncOpen);
+// Открытая шторка ушла из DOM без close (подмена фрейма, поток replace) — класс иначе остался бы, и страница на телефоне
+// не листалась бы до следующего визита.
+for (const name of ['turbo:render', 'turbo:frame-render', 'turbo:load']) document.addEventListener(name, syncOpen);
+document.addEventListener('turbo:before-stream-render', () => requestAnimationFrame(syncOpen));
 
 // Фон под шторкой не тянется (15.10.2026, владелец: «пытаешься листать — сдвигается всё окно»). Пока стоит клавиатура,
 // iOS отдаёт жест по тому, что не листается (короткий список, лист без прокрутки), всему экрану — едет видимая часть,
 // с ней --kb и лист. Ведёт палец то, что под ним может прокрутиться в эту сторону; нечему — жест отменяется. Поле ввода
-// (каретка, выделение) не трогаем. Лист карточки строки с клавиатурой — так же.
-function scrollsToward(el, box, dx, dy) {
-    const vertical = Math.abs(dy) >= Math.abs(dx);
+// (каретка, выделение) не трогаем. Лист карточки строки с клавиатурой — так же. Слои поверх шторки (документ, просмотр
+// фото, подтверждение не-шторкой) — свои: их касания не трогаем.
+// Что под пальцем может листаться, ищется раз на касание (стили предков), на каждом шаге жеста — только положение прокрутки.
+function scrollers(el, box) {
+    const found = [];
     for (let n = el; n; n = n.parentElement) {
         const cs = getComputedStyle(n);
-        if (vertical && n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(cs.overflowY)) {
-            if (dy > 0 ? n.scrollTop > 0 : n.scrollTop + n.clientHeight < n.scrollHeight - 1) return true;
-        }
-        if (!vertical && n.scrollWidth > n.clientWidth + 1 && /(auto|scroll)/.test(cs.overflowX)) {
-            const left = Math.abs(n.scrollLeft);
-            if (dx > 0 ? left > 0 : left + n.clientWidth < n.scrollWidth - 1) return true;
-        }
+        const y = n.scrollHeight > n.clientHeight + 1 && /(auto|scroll)/.test(cs.overflowY);
+        const x = n.scrollWidth > n.clientWidth + 1 && /(auto|scroll)/.test(cs.overflowX);
+        if (x || y) found.push({ n, x, y });
         if (n === box) break;
     }
-    return false;
+    return found;
+}
+function scrollsToward(found, dx, dy) {
+    const vertical = Math.abs(dy) >= Math.abs(dx);
+    return found.some(({ n, x, y }) => {
+        if (vertical) return y && (dy > 0 ? n.scrollTop > 0 : n.scrollTop + n.clientHeight < n.scrollHeight - 1);
+        const left = Math.abs(n.scrollLeft);
+        return x && (dx > 0 ? left > 0 : left + n.clientWidth < n.scrollWidth - 1);
+    });
 }
 (function holdBackground() {
-    let x0 = 0, y0 = 0;
-    addEventListener('touchstart', (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; }, { capture: true, passive: true });
-    addEventListener('touchmove', (e) => {
-        if (e.defaultPrevented || e.touches.length !== 1) return;
+    let x0 = 0, y0 = 0, box = null, found = [];
+    addEventListener('touchstart', (e) => {
         const root = document.documentElement;
+        box = null;
+        if (root.classList.contains('sheet-open') && !document.querySelector('dialog.sheet:modal')) syncOpen();
         const target = e.target instanceof Element ? e.target : null;
-        const box = root.classList.contains('sheet-open') ? [...document.querySelectorAll('dialog.sheet:modal')].pop()
-            : root.classList.contains('kb-open') ? target?.closest('.split-detail') : null;
-        if (!box || target?.closest('input, textarea, [contenteditable="true"]')) return;
+        if (!target || e.touches.length !== 1 || target.closest('input, textarea, [contenteditable="true"]')) return;
+        // Касание в своём слое поверх шторки (dialog.docs, dialog.lightbox) — не наше.
+        const layer = target.closest('dialog');
+        if (layer && !layer.matches('.sheet')) return;
+        box = root.classList.contains('sheet-open') ? target.closest('dialog.sheet:modal')
+            : root.classList.contains('kb-open') ? target.closest('.split-detail') : null;
+        if (!box) return;
+        const t = e.touches[0];
+        x0 = t.clientX; y0 = t.clientY;
+        found = scrollers(target, box);
+    }, { capture: true, passive: true });
+    addEventListener('touchmove', (e) => {
+        if (!box || e.defaultPrevented || e.touches.length !== 1) return;
         const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
         x0 = t.clientX; y0 = t.clientY;
-        if (box.contains(target) && scrollsToward(target, box, dx, dy)) return;
+        if (scrollsToward(found, dx, dy)) return;
         e.preventDefault();
     }, { passive: false });
 })();

@@ -19,7 +19,7 @@
                 <form method="post" action="/settings/vendors" class="flex flex-col gap-4">
                     @csrf
                     <div class="fields">
-                        <x-ui.field name="name" label="Название" required autofocus/>
+                        <x-ui.field name="name" label="Название" required/>
                         <x-ui.field name="kind" label="Тип" :options="Kind::options()" value="insurer"/>
                     </div>
                     <div class="sheet-foot"><x-ui.button block>Создать</x-ui.button></div>

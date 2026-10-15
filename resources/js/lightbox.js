@@ -423,7 +423,11 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
     document.body.append(ruler);
     // Шапка страницы стоит с тем же отступом и точно его получила — берём большее из двух замеров.
     const header = document.querySelector('.header');
-    const safe = Math.max(parseFloat(getComputedStyle(ruler).paddingTop) || 0, header ? parseFloat(getComputedStyle(header).paddingTop) || 0 : 0);
+    // Старая установка с прозрачной строкой (html.legacy-bar): iOS 26 то и дело отдаёт и env(), и высоту окна короче на
+    // строку состояния — тогда её высота и есть недостача окна до экрана (кнопки уезжали под часы, 07.10.2026).
+    const legacy = document.documentElement.classList.contains('legacy-bar') && innerHeight >= innerWidth;
+    const short = legacy ? Math.max(0, screen.height - innerHeight) : 0;
+    const safe = Math.max(parseFloat(getComputedStyle(ruler).paddingTop) || 0, header ? parseFloat(getComputedStyle(header).paddingTop) || 0 : 0, short < 80 ? short : 0);
     view.host.style.setProperty('--safe-top', `${safe}px`);
     ruler.remove();
     document.body.append(view.host);

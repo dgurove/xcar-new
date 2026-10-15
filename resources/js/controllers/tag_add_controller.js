@@ -1,5 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
 
+// Фокус в поле листа — через keyboardInset (window.focusField): иначе iOS сдвигал лист к полю, и каретка рисовалась мимо.
+const focus = (el) => el && (window.focusField ? window.focusField(el) : el.focus());
+
 // Своя метка у предложения: «+» открывает поле и цвета, Enter или «Добавить» — отмеченный чип этого цвета перед «+».
 // Такая метка уже есть — её просто отмечаем. Цвета своих меток — JSON в скрытом tag_colors; change с чипа и с
 // tag_colors подхватывает автосохранение карточки, полный редактор шлёт их формой. «Цвет» — режим перекраски: нажатие
@@ -15,13 +18,13 @@ export default class extends Controller {
     open() {
         this.buttonTarget.hidden = true;
         this.draftTarget.hidden = false;
-        this.inputTarget.focus();
+        focus(this.inputTarget);
     }
 
     pick({ currentTarget }) {
         this.color = currentTarget.dataset.color;
         this.dotTargets.forEach((d) => d.setAttribute('aria-pressed', String(d === currentTarget)));
-        this.inputTarget.focus();
+        focus(this.inputTarget);
     }
 
     add() {

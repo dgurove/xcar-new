@@ -310,9 +310,10 @@ export default class extends Controller {
         const scope = this.element.closest('.photo-blocks') ?? grid;
         if (button.classList.contains('photo-star--main')) {
             const on = scope.classList.toggle('is-choosing');
-            if (on) setTimeout(() => document.addEventListener('click', this.stopChoosing ??= (e) => {
+            // pointerdown, а не click: iOS не шлёт click от касания по пустому месту страницы — выбор не снимался.
+            if (on) setTimeout(() => document.addEventListener('pointerdown', this.stopChoosing ??= (e) => {
                 if (!e.target.closest?.('.photo-star')) scope.classList.remove('is-choosing');
-                document.removeEventListener('click', this.stopChoosing);
+                document.removeEventListener('pointerdown', this.stopChoosing);
             }), 0);
             return;
         }

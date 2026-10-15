@@ -21,7 +21,7 @@
                 </div>
             @endif
             <div class="fields">
-                <x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Имя или телефон" :value="old('manager_id')"/>
+                <x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Имя или телефон" :value="old('manager_id')" :id="$id.'-manager'"/>
                 <div class="contents" data-reveal-target="pane" data-reveal-key="buyer" @if (old('kind') === 'garage') hidden @endif>
                     <x-ui.field name="amount" label="Цена, ₽" inputmode="decimal" autocomplete="off" :value="old('amount')"
                         :placeholder="$min ? 'Минимальная '.\App\Support\Money::nums($min) : null" data-controller="digits" data-action="input->digits#format" id="{{ $id }}-amount"/>

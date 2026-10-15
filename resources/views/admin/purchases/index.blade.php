@@ -9,7 +9,7 @@
             <form method="post" action="/purchases" class="flex flex-col gap-4">
                 @csrf
                 <div class="fields">
-                    <x-ui.field name="title" label="Название для нас" placeholder="Carcade, сентябрь" autofocus/>
+                    <x-ui.field name="title" label="Название для нас" placeholder="Carcade, сентябрь"/>
                     <x-ui.field name="supplier" label="Поставщик" placeholder="Carcade"/>
                     <x-ui.field name="offers_close_at" label="Цены до" type="datetime-local" default-time="17:30"/>
                 </div>

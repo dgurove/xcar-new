@@ -1,5 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
 
+// Фокус в поле листа — через keyboardInset (window.focusField): иначе iOS сдвигал лист к полю, и каретка рисовалась мимо.
+const focus = (el) => el && (window.focusField ? window.focusField(el) : el.focus());
+
 // Повторяющиеся строки формы: исходы этапа, поля. Шаблон строки лежит в
 // <template>, индекс подставляется вместо __i__.
 export default class extends Controller {
@@ -9,7 +12,7 @@ export default class extends Controller {
         const index = Date.now();
         const html = this.templateTarget.innerHTML.replaceAll('__i__', index);
         this.listTarget.insertAdjacentHTML('beforeend', html);
-        this.listTarget.lastElementChild.querySelector('input, select, textarea')?.focus();
+        focus(this.listTarget.lastElementChild.querySelector('input, select, textarea'));
     }
 
     remove(event) {

@@ -74,6 +74,17 @@
          popstate идёт по порядку подписки, а модули подписываются позже Turbo: без этого Turbo, шторка и карточка строки
          приняли бы его за свой. --}}
     <script>addEventListener('popstate', (e) => { window.lightboxPop?.(e); if (!e.cancelBubble) window.docsPop?.(e); });</script>
+    {{-- Установлено с экрана «Домой» до 15.10.2026: строка состояния у них ещё прозрачная (контент под часами — отступ сверху
+         не ноль) — прежние поправки бага короткого viewport (app.css html.legacy-bar), пока не переустановят. --}}
+    <script>
+        if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+            const probe = document.createElement('div');
+            probe.style.cssText = 'position:fixed;top:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
+            document.documentElement.append(probe);
+            if (parseFloat(getComputedStyle(probe).paddingTop) > 0) document.documentElement.classList.add('legacy-bar');
+            probe.remove();
+        }
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value]) }}>

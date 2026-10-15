@@ -8,7 +8,7 @@
 @if ($phone)
     <div class="contents" data-controller="sheet">
         <button type="button" class="header-btn header-sq" data-action="sheet#open" aria-label="Поиск"><x-ui.icon name="search" class="size-[18px]"/></button>
-        <x-ui.sheet id="search-sheet" title="Поиск">
+        <x-ui.sheet id="search-sheet" title="Поиск" class="sheet-steady-phone">
             <div data-controller="global-search" data-action="click->global-search#picked">
                 <x-search.field :hint="$hint" autofocus/>
                 <div class="pills mt-3" data-global-search-target="recent" hidden></div>

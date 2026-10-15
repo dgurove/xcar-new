@@ -14,7 +14,7 @@
             </div>
             <div class="fields">
                 <div class="contents" data-reveal-target="pane" data-reveal-key="manager" @if (old('who') === 'me') hidden @endif>
-                    <x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Имя или телефон" :value="old('manager_id')"/>
+                    <x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Имя или телефон" :value="old('manager_id')" :id="$id.'-manager'"/>
                 </div>
                 <x-ui.field name="comment" label="Комментарий" :value="old('comment')" placeholder="Сказал по телефону" id="{{ $id }}-comment"/>
             </div>

@@ -14,7 +14,7 @@
                 <form method="post" action="/settings/tags" class="flex flex-col gap-4">
                     @csrf
                     <div class="fields">
-                        <x-ui.field name="name" label="Название" required maxlength="40" autofocus/>
+                        <x-ui.field name="name" label="Название" required maxlength="40"/>
                         <x-ui.field name="color" label="Цвет" :options="\App\Offers\Tag::COLORS" value="grey"/>
                     </div>
                     @include('admin.tags.vendors', ['picked' => []])

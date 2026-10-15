@@ -44,7 +44,7 @@ export default class extends Controller {
         const url = new URL(this.urlValue, location.origin);
         url.searchParams.set('q', q);
         if (this.dependsValue) {
-            const dep = document.querySelector(this.dependsValue)?.value;
+            const dep = this.near(this.dependsValue)?.value;
             if (!dep) { this.render([], q); return; }
             url.searchParams.set(this.paramValue, dep);
         }
@@ -86,7 +86,7 @@ export default class extends Controller {
         this.hiddenTarget.dispatchEvent(new Event('change', { bubbles: true }));
         // Выбор целиком (подсказки ответа — плательщик ТС и прочее) — тем, кто рядом слушает.
         this.element.dispatchEvent(new CustomEvent('combobox:chosen', { detail: item, bubbles: true }));
-        if (this.resetsValue) document.querySelector(this.resetsValue)?.dispatchEvent(new CustomEvent('combobox:reset'));
+        if (this.resetsValue) this.near(this.resetsValue)?.dispatchEvent(new CustomEvent('combobox:reset'));
     }
 
     async createNew(name) {
@@ -97,13 +97,19 @@ export default class extends Controller {
 
     async create(name) {
         const body = { name };
-        if (this.dependsValue) body[this.paramValue] = document.querySelector(this.dependsValue)?.value;
+        if (this.dependsValue) body[this.paramValue] = this.near(this.dependsValue)?.value;
         const r = await fetch(this.createValue, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
             body: JSON.stringify(body),
         });
         if (r.ok) this.choose(await r.json());
+    }
+
+    // Соседнее поле (марка у модели) — сначала в своей форме: на странице их бывает две (окно приёма парковки над
+    // карточкой ТС), и document.querySelector брал марку чужой формы.
+    near(selector) {
+        return this.element.closest('form')?.querySelector(selector) ?? document.querySelector(selector);
     }
 
     open() {

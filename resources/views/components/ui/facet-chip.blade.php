@@ -20,7 +20,7 @@
     @else
         <button type="button" class="pill !pr-2.5" data-action="sheet#open" aria-controls="{{ $id }}" @if ($on) aria-current="true" @endif>{{ $chip->label }}<x-ui.icon name="chevron-down" class="size-4"/></button>
     @endif
-    <x-ui.sheet :id="$id" :title="$f->title" anchor>
+    <x-ui.sheet :id="$id" :title="$f->title" anchor :class="! $f->single && count($chip->options) > 8 ? 'sheet-steady-phone' : ''">
         <form method="get" action="{{ $facets->action() }}" data-turbo-action="replace" data-turbo-prefetch="false" data-controller="facets" data-action="change->facets#tick" @if ($f->single) data-facets-single-value="true" @endif>
             @foreach ($facets->carry($key) as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
             @unless ($f->single)<input type="hidden" name="{{ $key }}" value="{{ $chip->value ?? implode(',', $chip->selected) }}" data-facets-target="value">@endunless

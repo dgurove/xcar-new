@@ -294,14 +294,21 @@ function freshness() {
     });
 }
 
+// Фокус в поле: в листе на телефоне — keyboardInset (window.focusField), иначе обычный с прокруткой к полю.
+const focusField = (el, options) => {
+    if (window.focusField) { window.focusField(el, options); return; }
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+};
+
 // Ошибка валидации приводит к полю: после морфа с preserve-scroll человек стоит у
 // «Сохранить», а красное поле — вне экрана.
 function focusInvalid() {
     document.addEventListener('turbo:load', () => {
         const bad = document.querySelector('.field-invalid .field-input');
         if (!bad) return;
-        bad.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-        bad.focus({ preventScroll: true });
+        // В шторке на телефоне — без фокуса: клавиатуры без нажатия нет, а поле в фокусе потом уже не ловит своё нажатие.
+        focusField(bad, { keyboard: false });
     });
 }
 
@@ -400,8 +407,7 @@ function formCheck() {
         el.setAttribute('aria-invalid', 'true');
         undo.push(() => el.removeAttribute('aria-invalid'));
         shown.set(el, () => undo.forEach((fn) => fn()));
-        el.focus({ preventScroll: true });
-        el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        focusField(el);
     };
 
     // Раньше Turbo и обработчиков формы: неверная форма не отправляется вовсе, как с проверкой браузера.
@@ -483,10 +489,18 @@ function keyboardInset() {
     const slot = () => `kb:${innerWidth > innerHeight ? 'l' : 'p'}`;
     const guess = () => { try { const v = Number(localStorage.getItem(slot())); if (v > 100) return v; } catch {} return Math.round(innerHeight * .45); };
     let predicted = 0, until = 0, last = '';
+    // Android (interactive-widget=resizes-content) ужимает viewport сам: --kb там 0, а клавиатуру видно по тому, что окно
+    // стало ниже обычного для этой ориентации, пока в поле фокус. Без класса kb-open таб-бар вставал над клавиатурой.
+    const tallest = {};
+    const resized = () => {
+        if (!field()) { tallest[slot()] = Math.max(tallest[slot()] ?? 0, innerHeight); return false; }
+        return !ios && (tallest[slot()] ?? innerHeight) - innerHeight > 150;
+    };
     const apply = (kb, h, top) => {
+        const open = kb > 100 || resized();
         // Переменные корня наследует весь документ — пишем, только когда что-то поменялось: scroll visualViewport идёт
         // каждый кадр, и каждая запись пересчитывала стили всей страницы.
-        const key = `${kb}|${h}|${top}`;
+        const key = `${kb}|${h}|${top}|${open}`;
         if (key === last) return;
         last = key;
         const style = root.style;
@@ -495,7 +509,7 @@ function keyboardInset() {
         // иначе её верх (сумма) уезжал за экран, а палец вниз «к сумме» закрывал лист (07.10.2026).
         style.setProperty('--vv-h', `${h}px`);
         style.setProperty('--vv-top', `${top}px`);
-        root.classList.toggle('kb-open', kb > 100);
+        root.classList.toggle('kb-open', open);
     };
     const update = () => {
         // Без поля в фокусе клавиатуры нет — разница высот от резины или зума не считается за неё.
@@ -524,6 +538,28 @@ function keyboardInset() {
         if (r.top >= top + 8 && r.bottom <= end - 16) return;
         box.scrollTop += r.top - (top + (end - top) / 3);
     };
+    // Фокус в поле листа программно (кнопка «+ метка», «Ещё ступень», ошибка проверки формы): тем же путём, что нажатие
+    // по полю, — лист заранее на ожидаемой клавиатуре, поле — прокруткой своего листа, iOS экран не двигает. Без
+    // клавиатуры (страница только что пришла с ошибкой) — только прокрутка листа к полю, без фокуса: поле в фокусе без
+    // клавиатуры нажатие уже не перехватывает, и iOS сдвигал лист сам.
+    window.focusField = (el, { keyboard = true } = {}) => {
+        if (!el) return;
+        const sheet = host(el);
+        if (!sheet || !matchMedia('(hover: none)').matches) {
+            el.focus({ preventScroll: true });
+            el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+            return;
+        }
+        if (!keyboard || !ios || !el.matches(TYPED)) { reveal(el, innerHeight - (ios && keyboard && el.matches(TYPED) ? guess() : 0)); if (keyboard) el.focus({ preventScroll: true }); return; }
+        predicted = guess();
+        until = performance.now() + 900;
+        apply(predicted, innerHeight - predicted, 0);
+        reveal(el, innerHeight - predicted);
+        el.focus({ preventScroll: true });
+        setTimeout(() => { if (predicted) { predicted = 0; update(); } }, 900);
+    };
+    // Прокрутка к узлу внутри листа — прокруткой самого листа: scrollIntoView листал и страницу под шторкой.
+    window.revealInSheet = (el) => reveal(el, innerHeight);
     if (ios) {
         // Нажатие по полю листа: палец не ехал (не прокрутка) и не держали (не выделение). Своё поле в фокусе —
         // браузеру: там нажатие ставит каретку.

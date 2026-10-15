@@ -50,7 +50,8 @@ export function live() {
     });
     window.addEventListener('online', () => source?.readyState === EventSource.CLOSED && reopen(0));
     // Человек что-то печатает — refresh от хаба страницу под руками не дёргает.
-    document.addEventListener('input', (e) => e.target.form && (e.target.form.dataset.dirty = '1'));
+    // GET-форма (лупа, фильтр) — не правка: её флаг держал бы живые обновления списка до ухода со страницы.
+    document.addEventListener('input', (e) => { const form = e.target.form; if (form && form.method.toLowerCase() !== 'get') form.dataset.dirty = '1'; });
     document.addEventListener('live:retopic', (e) => {
         topics = e.detail?.topics || '';
         clearTimeout(timer);
@@ -185,11 +186,22 @@ addEventListener('touchstart', (e) => { fingers = e.touches.length; movedAt = pe
 addEventListener('touchend', (e) => { fingers = e.touches.length; movedAt = performance.now(); }, { capture: true, passive: true });
 addEventListener('touchcancel', () => { fingers = 0; }, { capture: true, passive: true });
 addEventListener('scroll', () => { movedAt = performance.now(); }, { capture: true, passive: true });
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') flush(); });
-// Новая страница пришла целиком — ждущее перечитывание ей не нужно.
-document.addEventListener('turbo:load', () => { waiting = null; clearTimeout(waitTimer); });
+// Вернулись из фона — чуть позже: долгий фон и так перечитывает страницу визитом (app.js freshness), он идёт первым, а
+// ждущее, пришедшее до него, снимет его turbo:load.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { clearTimeout(waitTimer); waitTimer = setTimeout(flush, 120); } });
+// Новая страница пришла целиком — ждущее до начала её визита ей не нужно; пришедшее, пока она ехала, — нужно: ответ
+// собран раньше правки.
+let visitAt = 0;
+document.addEventListener('turbo:visit', () => { visitAt = performance.now(); });
+document.addEventListener('turbo:load', () => {
+    if (waiting && waiting.at > visitAt) { flush(); return; }
+    waiting = null;
+    clearTimeout(waitTimer);
+});
 
 const busy = () => document.visibilityState !== 'visible'
+    // Идёт визит Turbo (aria-busy на <html>) — его ответ придёт и сам решит, нужно ли ждущее.
+    || (document.documentElement.hasAttribute('aria-busy') && performance.now() - visitAt < 10_000)
     || fingers > 0 || performance.now() - movedAt < 600
     || document.querySelector('form[data-dirty], [data-searching], dialog:modal')
     || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
@@ -197,13 +209,15 @@ const busy = () => document.visibilityState !== 'visible'
 export function refreshPage(request) {
     const id = typeof request === 'string' && /^[\w-]+$/.test(request) ? request : null;
     waiting = waiting ? { request: null } : { request: id };
+    waiting.at = performance.now();
     flush();
 }
 
 // Строки списка по ключу: ждут того же, что и страница, копятся в одну пачку; ждёт страница целиком — она их и покроет.
 export function refreshRows(keys) {
-    if (waiting && !waiting.keys) return;
+    if (waiting && !waiting.keys) { waiting.at = performance.now(); return; }
     waiting ??= { keys: new Set() };
+    waiting.at = performance.now();
     keys.forEach((k) => waiting.keys.add(String(k)));
     flush();
 }

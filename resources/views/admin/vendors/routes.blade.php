@@ -106,7 +106,7 @@
             <form method="post" action="/settings/workflows/{{ $w->id }}/blocks" class="flex flex-col gap-4">
                 @csrf
                 <div class="fields">
-                    <x-ui.field name="name" label="Имя для менеджера" required autofocus/>
+                    <x-ui.field name="name" label="Имя для менеджера" required/>
                     <x-ui.field name="text" label="Текст уведомления" type="textarea"/>
                 </div>
                 <div class="sheet-foot"><x-ui.button block>Добавить</x-ui.button></div>

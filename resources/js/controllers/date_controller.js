@@ -92,10 +92,21 @@ export default class extends Controller {
     lift() {
         const vv = window.visualViewport;
         if (!vv || document.documentElement.clientWidth >= 640) return;
-        const place = () => { this.popTarget.style.bottom = `${Math.max(0, innerHeight - vv.height - vv.offsetTop)}px`; };
+        // Высота — не больше видимой части: на маленьком iPhone календарь со временем выше места над клавиатурой, и шапка
+        // месяца уходила за верх экрана. iOS после клавиатуры ещё и сдвигает экран (scroll, а не resize).
+        const place = () => {
+            this.popTarget.style.bottom = `${Math.max(0, innerHeight - vv.height - vv.offsetTop)}px`;
+            this.popTarget.style.maxHeight = `${Math.round(vv.height) - 8}px`;
+        };
         place();
         vv.addEventListener('resize', place);
-        this.popTarget.addEventListener('toggle', () => { vv.removeEventListener('resize', place); this.popTarget.style.bottom = ''; }, { once: true });
+        vv.addEventListener('scroll', place);
+        this.popTarget.addEventListener('toggle', () => {
+            vv.removeEventListener('resize', place);
+            vv.removeEventListener('scroll', place);
+            this.popTarget.style.bottom = '';
+            this.popTarget.style.maxHeight = '';
+        }, { once: true });
     }
 
     // День в календаре: без времени — сразу в поле и закрыть; со временем — день с временем из поля, закрывает «Готово».

@@ -24,8 +24,11 @@ export default class extends Controller {
     leave(el) {
         if (!el.isConnected || el.classList.contains('is-leaving')) return;
         el.classList.add('is-leaving');
-        el.addEventListener('animationend', () => el.remove(), { once: true });
-        setTimeout(() => el.remove(), 400);
+        const box = el.parentElement;
+        // Пустой ящик тостов внутри шторки уходит вместе с последним тостом.
+        const remove = () => { el.remove(); if (box && box !== this.element && !box.childElementCount) box.remove(); };
+        el.addEventListener('animationend', remove, { once: true });
+        setTimeout(remove, 400);
     }
 
     flash() {
@@ -51,6 +54,21 @@ export default class extends Controller {
         } } };
     }
 
+    // Открыта модальная шторка — тост внутри неё: она в верхнем слое (showModal), и тост из #toasts лёг бы под её
+    // затемнение — не видно и не нажать («Нет связи / Повторить», «Отметьте фото» в «Поделиться»). Верхняя — та, где
+    // фокус, иначе последняя.
+    host() {
+        const open = [...document.querySelectorAll('dialog:modal')];
+        const top = open.find((d) => d.contains(document.activeElement)) ?? open.pop();
+        if (!top) return this.element;
+        let box = top.querySelector(':scope > .toasts');
+        if (!box) {
+            box = Object.assign(document.createElement('div'), { className: 'toasts' });
+            top.append(box);
+        }
+        return box;
+    }
+
     show(text, options = '') {
         const kind = typeof options === 'string' ? options : options?.kind || '';
         const href = typeof options === 'object' ? options?.href : null;
@@ -69,7 +87,7 @@ export default class extends Controller {
             button.addEventListener('click', () => { this.leave(el); action.run(); });
             el.append(button);
         }
-        this.element.append(el);
+        this.host().append(el);
         // Уходит вверх сам, при удержании ждёт, смахивается вверх.
         const ttl = href || action ? 8000 : 4000;
         let timer = setTimeout(() => this.leave(el), ttl);
