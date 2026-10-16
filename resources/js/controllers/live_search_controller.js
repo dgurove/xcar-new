@@ -1,4 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
+import { debounce } from '../lib/debounce';
+import { request } from '../lib/http';
 
 // Поиск лупой в тулбаре списка (03.10.2026). Лупа ставит тулбару data-searching: ряд кнопок и чипов уходит, на его
 // месте поле с «Отмена», как в iOS. Два слоя, чтобы отклик был мгновенным:
@@ -12,11 +14,12 @@ export default class extends Controller {
 
     connect() {
         this.seq = 0;
+        this.later = debounce((q) => this.load(q), this.waitValue);
         this.sync();
     }
 
     disconnect() {
-        clearTimeout(this.timer);
+        this.later.cancel();
         this.pending?.abort();
     }
 
@@ -29,7 +32,7 @@ export default class extends Controller {
     }
 
     cancel() {
-        clearTimeout(this.timer);
+        this.later.cancel();
         this.pending?.abort();
         this.seq++;
         const loaded = this.inputTarget.value.trim() !== '' || this.loaded;
@@ -60,9 +63,9 @@ export default class extends Controller {
         const q = this.query();
         this.sync();
         this.narrow(q);
-        clearTimeout(this.timer);
+        this.later.cancel();
         if (q.length && q.length < this.minValue) return;
-        this.timer = setTimeout(() => this.load(q), this.waitValue);
+        this.later(q);
     }
 
     clear() {
@@ -107,16 +110,19 @@ export default class extends Controller {
         url.searchParams.delete('peek');
         if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
         this.pending?.abort();
-        this.pending = new AbortController();
+        const pending = (this.pending = new AbortController());
         const seq = ++this.seq;
         this.element.classList.add('is-busy');
         try {
-            const html = await fetch(url, { headers: { 'X-List': '1' }, signal: this.pending.signal }).then((r) => r.text());
+            // Ошибка сервера в список не встаёт: тост от request, на экране остаётся то, что сузил набор.
+            const r = await request(url, { accept: 'text/html', headers: { 'X-List': '1' }, signal: pending.signal });
+            if (!r) return;
+            const html = await r.text();
             if (seq !== this.seq) return;
             list.innerHTML = this.extract(html);
             this.loaded = true;
-        } catch (e) {
-            if (e.name !== 'AbortError') this.narrow('');
+        } catch {
+            // Ответ оборвался посреди чтения — так же: остаётся сужение по набору.
         } finally {
             if (seq === this.seq) this.element.classList.remove('is-busy');
         }

@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { focusField } from '../keyboard';
+import { reducedMotion } from '../lib/motion';
 
 // «Изменить / Готово», как в Контактах iOS (владелец 06.10.2026): у опубликованной машины карточки «Транспортное
 // средство» и «Цены» показывают данные текстом в той же сетке, что поля; «Изменить» — поля на месте, «Готово» — снова
@@ -39,7 +40,7 @@ export default class extends Controller {
 
     apply(editing, animate) {
         const card = this.element;
-        const motion = animate && !matchMedia('(prefers-reduced-motion: reduce)').matches && card.animate;
+        const motion = animate && !reducedMotion() && card.animate;
         const from = motion ? card.getBoundingClientRect().height : 0;
         this.viewTarget.hidden = editing;
         this.editTarget.hidden = !editing;

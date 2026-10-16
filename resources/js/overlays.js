@@ -43,10 +43,13 @@ addEventListener('popstate', (event) => {
         event.stopImmediatePropagation();
         const top = stack[stack.length - 1];
         // Один шаг назад со слоя, где набрано (guard вернул вопрос — промис): запись вернуть, слой оставить и спросить.
+        // Вопрос уже задан (второй «Назад», пока он на экране) — запись вернуть, второй раз не спрашивать.
+        if (top.asking) { history.pushState(mark(stack.length, top.id), ''); return; }
         const ask = top.guard && stack.length === here + 1 && top.guard();
         if (ask) {
             history.pushState(mark(stack.length, top.id), '');
-            ask.then((ok) => { if (ok) shut(top.id).then(() => top.close()); });
+            top.asking = true;
+            ask.then((ok) => { top.asking = false; if (ok) shut(top.id).then(() => top.close()); });
             return;
         }
         for (const o of stack.splice(here).reverse()) o.close();
@@ -78,8 +81,14 @@ function go(delta) {
 }
 
 // Визит — новая страница: записи прежних слоёв остаются в истории под ней, но уже не наши (их ключ Turbo восстановит ту
-// страницу, если до них дойдут «Назад»).
-document.addEventListener('turbo:visit', () => { stack.length = 0; page++; });
+// страницу, если до них дойдут «Назад»). Перечитывание той же страницы (живое обновление морфом, возврат из фона,
+// фильтр) — визит replace на тот же адрес: слои остаются на экране, и их записи — наши.
+document.addEventListener('turbo:visit', (e) => {
+    const same = e.detail.action === 'replace' && new URL(e.detail.url, location.href).pathname === location.pathname;
+    if (same) return;
+    stack.length = 0;
+    page++;
+});
 
 export function open(id, { close, guard } = {}) {
     if (stack.some((o) => o.id === id)) return;

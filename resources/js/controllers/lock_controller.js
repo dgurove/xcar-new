@@ -2,6 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { serverNow } from './timer_controller';
 import { proof } from '../device-key';
+import { post, request } from '../lib/http';
 
 // Замок менеджера (07.10.2026, x-lock.panel, Access\Lock). Состояние и конец окна приносит каждая страница (meta lock).
 //   open   — пилюля справа сверху считает до конца окна; нажатие — продлить заранее (renew): окно поверх, экран цел.
@@ -285,11 +286,10 @@ export default class extends Controller {
     // Где браузер на самом деле: окно продлили в другой вкладке, нажали кнопку в боте, привязали Telegram. true — открыто.
     async refresh() {
         if (this.verifying || this.sending) return false;
-        let r;
-        try { r = await fetch('/lock/state', { headers: { Accept: 'application/json' }, credentials: 'same-origin' }); } catch { return false; }
+        const r = await request('/lock/state', { quiet: true, statuses: [401] });
+        if (!r) return false;
         if (r.status === 401) { location.href = '/login'; return false; }
-        if (!r.ok) return false;
-        const { state, until, code } = await r.json();
+        const { state, until, code } = await r.json().catch(() => ({}));
         if (!state) return false;
         if (state === 'open') {
             this.until = until * 1000;
@@ -365,20 +365,15 @@ export default class extends Controller {
         this.noteTarget.classList.toggle('is-danger', danger);
     }
 
+    // Ответы замка разбираются здесь же словами под полем (вход заново, отказ, частим, Telegram молчит), поэтому без тоста;
+    // null — нет связи.
     async post(url, data) {
         const body = new FormData();
         Object.entries(data).forEach(([k, v]) => body.append(k, v));
-        try {
-            const r = await fetch(url, {
-                method: 'POST', body, credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-            });
-            const date = Date.parse(r.headers.get('Date') || '');
-            if (date) window.clockOffset = date - Date.now();
-            return r;
-        } catch {
-            return null;
-        }
+        const r = await post(url, body, { quiet: true, statuses: [401, 409, 410, 422, 423, 429, 503] });
+        const date = Date.parse(r?.headers.get('Date') || '');
+        if (date) window.clockOffset = date - Date.now();
+        return r;
     }
 }
 

@@ -2,6 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { filler } from '../fill.js';
 import { liveOpen } from '../live.js';
+import { getJson, post } from '../lib/http';
 
 // Читалка «Завести» (x-mail.reader-body, Scan\Reader) — блок «Документы» разбора письма парковки и редактора
 // предложения. Документы читаются сами по порядку (autoValue: открыли из «Завести»), поля формы formValue
@@ -61,32 +62,30 @@ export default class extends Controller {
     // Искра — человек сам попросил прочитать: когда дочитается и в форме ничего не поменяется, скажем об этом.
     read(event) {
         const ids = Array.isArray(event) ? event : [];
-        if (!ids.length && event) this.asked = true;
-        return this.send('read', ids);
+        const asked = !ids.length && !!event;
+        if (asked) this.asked = true;
+        // Сам открыл или добавил документ — сбой в фоне без тоста; нажал искру или «Дочитать» — тостом.
+        return this.send('read', ids, !asked);
     }
 
     stop() {
         return this.send('stop');
     }
 
-    async send(action, ids = []) {
+    async send(action, ids = [], quiet = false) {
         const body = new FormData();
-        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
         ids.forEach((id) => body.append('ids[]', id));
-        try {
-            const r = await fetch(`${this.urlValue}/${action}`, { method: 'POST', body, headers: { Accept: 'application/json' } });
-            if (r.ok) this.apply(await r.json());
-        } catch {}
+        const r = await post(`${this.urlValue}/${action}`, body, { quiet });
+        const data = await r?.json().catch(() => null);
+        if (data) this.apply(data);
     }
 
     // Запросы не наслаиваются: пришло событие, пока ждём ответ, — ещё один после него.
     async refresh() {
         if (this.loading) { this.again = true; return; }
         this.loading = true;
-        try {
-            const r = await fetch(`${this.urlValue}/live`, { headers: { Accept: 'application/json' } });
-            if (r.ok) this.apply(await r.json());
-        } catch {}
+        const data = await getJson(`${this.urlValue}/live`, { quiet: true });
+        if (data) this.apply(data);
         this.loading = false;
         if (this.again) { this.again = false; this.refresh(); }
     }
@@ -201,11 +200,8 @@ export default class extends Controller {
         if (!row) return;
         this.dropped.add(this.key(row.field, row.o));
         this.compare();
-        const body = new FormData();
-        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
-        body.append('field', row.field);
-        body.append('text', row.o.text);
-        fetch(`${this.urlValue}/reject`, { method: 'POST', body, headers: { Accept: 'application/json' } }).catch(() => {});
+        // Вариант уже убран с экрана; не дошло до сервера — он вернётся при следующем чтении, тост не нужен.
+        post(`${this.urlValue}/reject`, { field: row.field, text: row.o.text }, { quiet: true });
     }
 
     key(field, option) {

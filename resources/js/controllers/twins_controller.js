@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { csrf, request } from '../lib/http';
 
 // Такая ТС уже есть: пока человек вводит номер убытка, VIN или госномер, сервер ищет живые ТС (предложения) с тем
 // же номером, и они встают строками под полями — до «Завести», а не ошибкой после. Пусто — ничего не видно.
@@ -33,7 +34,7 @@ export default class extends Controller {
         const form = Object.assign(document.createElement('form'), { method: 'post', action: url, hidden: true });
         form.dataset.turboConfirm = confirm;
         form.dataset.saveSkip = '';
-        form.append(Object.assign(document.createElement('input'), { type: 'hidden', name: '_token', value: document.querySelector('meta[name=csrf-token]')?.content }));
+        form.append(Object.assign(document.createElement('input'), { type: 'hidden', name: '_token', value: csrf() }));
         document.body.append(form);
         form.requestSubmit();
     }
@@ -52,9 +53,8 @@ export default class extends Controller {
         this.last = url.href;
         this.abort?.abort();
         this.abort = new AbortController();
-        try {
-            const res = await fetch(url, { signal: this.abort.signal, headers: { Accept: 'text/html' } });
-            if (res.ok) this.boxTarget.innerHTML = await res.text();
-        } catch {}
+        // Подсказка в фоне: не ответил — строк нет, тоста тоже.
+        const res = await request(url, { signal: this.abort.signal, accept: 'text/html', quiet: true });
+        if (res) this.boxTarget.innerHTML = await res.text();
     }
 }

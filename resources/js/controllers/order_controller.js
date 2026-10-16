@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { loadSortable } from '../lib/sortable';
+import { post } from '../lib/http';
 
 // Список, который переставляют за ручку: после перестановки порядок id уходит на сервер.
 export default class extends Controller {
@@ -15,11 +16,7 @@ export default class extends Controller {
 
     async save() {
         const order = [...this.element.querySelectorAll('[data-id]')].map((el) => el.dataset.id);
-        const r = await fetch(this.urlValue, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-            body: JSON.stringify({ order }),
-        });
-        if (!r.ok) window.toast?.('Порядок не сохранился', 'danger');
+        // Обрыв тоже «не сохранился»: раньше он пропадал молча
+        if (!(await post(this.urlValue, { order }, { quiet: true }))) window.toast?.('Порядок не сохранился', 'danger');
     }
 }

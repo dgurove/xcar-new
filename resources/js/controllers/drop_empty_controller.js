@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { csrf } from '../lib/http';
 
 // Пустой черновик «+ Новый»: ушли из редактора, ничего не набрав, — черновика нет (`POST /offers/{n}/drop-empty`,
 // sendBeacon — запрос доходит и при уходе со страницы). Уход ловится и переходом Turbo, и уходом страницы (назад
@@ -35,7 +36,7 @@ export default class extends Controller {
         try { if (url && new URL(url, location.href).pathname === location.pathname) return; } catch {}
         this.sent = true;
         const body = new FormData();
-        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+        body.append('_token', csrf());
         navigator.sendBeacon(this.urlValue, body);
     }
 }

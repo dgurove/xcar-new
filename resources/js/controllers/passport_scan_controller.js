@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { filler } from '../fill.js';
+import { getJson } from '../lib/http';
 
 // Скан паспорта (x-billing.passport-scan): страница уходит на сервер, читает задача `ReadPassport`, плитка опрашивает
 // `live` раз в 2 с, пока читается, и ставит прочитанное в пустые поля формы — с подсветкой, набранное руками не трогает.
@@ -28,14 +29,10 @@ export default class extends Controller {
         tile.classList.add('spark-busy', 'scan-tile--on');
         this.preview(tile, URL.createObjectURL(file), file.type);
         this.filled.delete(tile.dataset.page);
-        try {
-            const r = await fetch(`${this.urlValue}/${tile.dataset.page}`, {
-                method: 'POST', body,
-                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '', Accept: 'application/json' },
-            });
-            if (!r.ok) throw new Error(String(r.status));
-            this.apply(await r.json());
-        } catch {
+        // Сбой называет свой тост ниже, поэтому запрос — без своего.
+        const data = await getJson(`${this.urlValue}/${tile.dataset.page}`, { method: 'POST', body, quiet: true });
+        if (data) this.apply(data);
+        else {
             tile.dataset.state = 'failed';
             tile.classList.remove('spark-busy');
             window.toast?.('Скан не загрузился');
@@ -46,10 +43,8 @@ export default class extends Controller {
     poll() {
         clearTimeout(this.timer);
         this.timer = setTimeout(async () => {
-            try {
-                const r = await fetch(`${this.urlValue}/live`, { headers: { Accept: 'application/json' } });
-                if (r.ok) this.apply(await r.json());
-            } catch {}
+            const data = await getJson(`${this.urlValue}/live`, { quiet: true });
+            if (data) this.apply(data);
         }, 2000);
     }
 

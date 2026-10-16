@@ -1,6 +1,9 @@
 import { Controller } from '@hotwired/stimulus';
 import { openSheet, closeSheet, backdrop } from '../sheet';
 import { fileName } from '../docs/share';
+import { copyText } from '../lib/clipboard';
+import { debounce } from '../lib/debounce';
+import { csrf, request } from '../lib/http';
 
 // Поделиться оффером или машиной закупки. Текст и файл уходят порознь: вместе
 // мессенджеры теряют файл. Текст кладётся в буфер до первого await — share()
@@ -33,10 +36,15 @@ export default class extends Controller {
     static values = { url: String, photoUrl: String, vat: String, name: String, locked: String };
 
     connect() {
+        this.later = debounce(() => this.prepare(), 500);
         this.compose();
         this.ready(!this.hasPhotoTarget);
         this.photosReady(false);
         this.countPhotos();
+    }
+
+    disconnect() {
+        this.later.cancel();
     }
 
     countPhotos() {
@@ -107,8 +115,7 @@ export default class extends Controller {
     photosChanged() {
         this.countPhotos();
         if (this.hasAllTarget) this.allTarget.textContent = this.photoTargets.every((p) => p.checked) ? 'Снять все' : 'Выбрать все';
-        clearTimeout(this.timer);
-        this.timer = setTimeout(() => this.prepare(), 500);
+        this.later();
     }
 
     selectedPhotos() {
@@ -149,8 +156,8 @@ export default class extends Controller {
         const worker = async () => {
             while (next < photos.length && seq === this.seq) {
                 const i = next++;
-                const r = await fetch(`${this.photoUrlValue.replace('{id}', photos[i])}?watermark=${this.watermark()}`, { credentials: 'same-origin' });
-                if (!r.ok) throw Object.assign(new Error(`http ${r.status}`), { name: `http ${r.status}` });
+                const r = await request(`${this.photoUrlValue.replace('{id}', photos[i])}?watermark=${this.watermark()}`, { accept: 'image/*', quiet: true });
+                if (!r) throw Object.assign(new Error('photo not loaded'), { name: 'photo' });
                 const blob = await r.blob();
                 files[i] = new File([blob], fileName(r, `${this.nameValue.replace(/\.pdf$/, '')} ${i + 1}`), { type: 'image/jpeg' });
             }
@@ -174,8 +181,14 @@ export default class extends Controller {
         photos.forEach((id) => form.append('photos[]', id));
         form.append('watermark', this.watermark());
         try {
-            const r = await fetch(this.urlValue, { method: 'POST', body: form, headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, Accept: 'application/pdf' } });
+            // 422 — отказ словами сервера; обрыв и прочие сбои request называет тостом сам, здесь — строка и маяк.
+            const r = await request(this.urlValue, { method: 'POST', body: form, accept: 'application/pdf', statuses: [422] });
             if (seq !== this.seq) return;
+            if (!r) {
+                this.status('PDF не собрался');
+                this.beacon('prepare', { name: 'request', message: '' });
+                return;
+            }
             if (!r.ok) {
                 const d = await r.json().catch(() => ({}));
                 this.fail('prepare', { name: `http ${r.status}`, message: d.message || '' }, d.message || 'PDF не собрался');
@@ -202,23 +215,20 @@ export default class extends Controller {
         if (this.pdf) this.download([this.pdf]);
     }
 
-    writeCaption() {
+    writeCaption(done = null) {
         // Переносы на iPhone — U+2028: подпись к файлу в WhatsApp там режет \n, а этот разделитель пропускает. На Android
         // у U+2028 нет начертания (квадратик), а подпись многострочная — там и на компьютере обычный \n.
         const text = IOS ? this.caption().replace(/\n/g, '\u2028') : this.caption();
-        if (!text) return false;
-        try { navigator.clipboard.writeText(text); return true; } catch { return false; }
+        // Запись в буфер начинается сразу, в том же нажатии, что и лист «Поделиться» после неё (iOS).
+        return copyText(text, done);
     }
 
     copy() {
-        if (this.writeCaption()) window.toast?.('Текст в буфере');
+        this.writeCaption('Текст в буфере');
     }
 
     copyLink(event) {
-        try {
-            navigator.clipboard.writeText(event.currentTarget.dataset.link);
-            window.toast?.('Ссылка в буфере');
-        } catch { window.toast?.('Не получилось', 'danger'); }
+        copyText(event.currentTarget.dataset.link, 'Ссылка в буфере');
     }
 
     async send() {
@@ -237,7 +247,7 @@ export default class extends Controller {
     markBroken() { try { sessionStorage.setItem(BROKEN, '1'); } catch {} }
 
     async share() {
-        this.writeCaption();
+        const copied = this.writeCaption();
         if (this.pdf) {
             const files = [this.pdf];
             const facts = { files: files.length, bytes: files.reduce((s, f) => s + f.size, 0), canshare: !!navigator.canShare?.({ files }), hasshare: typeof navigator.share };
@@ -269,7 +279,7 @@ export default class extends Controller {
             try { await navigator.share({ text: this.caption() }); this.close(); } catch {}
             return;
         }
-        window.toast?.('Текст в буфере');
+        if (await copied) window.toast?.('Текст в буфере');
     }
 
     async sendPhotos() {
@@ -329,7 +339,7 @@ export default class extends Controller {
     beacon(stage, e, facts = {}) {
         // _token в теле: заголовков у sendBeacon нет, без него 419.
         navigator.sendBeacon?.('/share/error', new Blob([JSON.stringify({
-            _token: document.querySelector('meta[name=csrf-token]')?.content, stage, name: e.name || '?', message: String(e.message ?? '').slice(0, 300),
+            _token: csrf(), stage, name: e.name || '?', message: String(e.message ?? '').slice(0, 300),
             standalone: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true, ...facts,
         })], { type: 'application/json' }));
     }

@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { csrf, request } from '../lib/http';
 
 // Мигторг в поле номера убытка (x-offer.migtorg-field): вписали номер — сразу кружок, через полсекунды сервер отвечает
 // значком по этому номеру (`/offers/{n}/migtorg?ref=`): лот нашёлся — горит знак Мигторга. Нажали знак — «Это она»:
@@ -40,12 +41,10 @@ export default class extends Controller {
         if (ref === '') { this.waiting(false); this.element.querySelectorAll(':scope > :not([data-migtorg-target])').forEach((el) => el.remove()); return; }
         this.abort?.abort();
         this.abort = new AbortController();
-        try {
-            const res = await fetch(`${this.urlValue}?ref=${encodeURIComponent(ref)}`, { signal: this.abort.signal, headers: { Accept: 'text/html' } });
-            if (res.ok) this.element.outerHTML = await res.text();
-        } catch {
-            this.waiting(false);
-        }
+        // Значок в фоне: не ответил (или ответ устарел) — кружок гаснет, тоста нет.
+        const res = await request(`${this.urlValue}?ref=${encodeURIComponent(ref)}`, { signal: this.abort.signal, accept: 'text/html', quiet: true });
+        if (res) this.element.outerHTML = await res.text();
+        else this.waiting(false);
     }
 
     // Знак нажали: своя форма рядом (поле — внутри формы предложения, вложить форму нельзя); в карточке строки —
@@ -71,7 +70,7 @@ export default class extends Controller {
         form.action = this.takeValue;
         form.hidden = true;
         const add = (name, value) => { const i = document.createElement('input'); i.type = 'hidden'; i.name = name; i.value = value; form.append(i); };
-        add('_token', document.querySelector('meta[name="csrf-token"]')?.content ?? '');
+        add('_token', csrf());
         add('act', 'take');
         add('ref', this.field?.value.trim() ?? '');
         const frame = this.element.closest('turbo-frame');

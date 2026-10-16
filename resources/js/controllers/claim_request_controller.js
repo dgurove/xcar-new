@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { copyText } from '../lib/clipboard';
 
 // «Запросы» вендора (16.10.2026): галки «К запросу» — число на кнопке «Отправить 16 номеров» и плашка, пока отмечено
 // хоть одно; нажатие кладёт отмеченные номера столбиком в буфер (в момент нажатия — потом браузер не даст) и
@@ -23,6 +24,7 @@ export default class extends Controller {
 
     copy() {
         const text = this.picked.map((b) => b.dataset.ref).join('\n');
-        navigator.clipboard?.writeText(text).catch(() => window.toast?.('Не получилось скопировать, номера придут в Telegram', 'danger'));
+        // Тоста об успехе нет: следом уходит форма, номера придут и в Telegram.
+        copyText(text, null);
     }
 }

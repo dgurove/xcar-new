@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { filler, wait } from '../fill.js';
+import { getJson } from '../lib/http';
 
 // Текст про машину кучей (x-ui.paste): вставили — сервер раскладывает его по полям (`CarText`), поля формы заполняются
 // по очереди и вспыхивают. Вставленное перезаписывает то, что в полях: человек сам принёс этот текст. Набранное
@@ -27,15 +28,8 @@ export default class extends Controller {
         box.classList.add('is-scanning');
         const started = Date.now();
 
-        let data = null;
-        try {
-            const r = await fetch(this.urlValue, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-                body: JSON.stringify({ text }),
-            });
-            if (r.ok) data = await r.json();
-        } catch {}
+        // Сбой называет свой тост ниже, поэтому запрос — без своего.
+        const data = await getJson(this.urlValue, { method: 'POST', json: { text }, quiet: true });
         await wait(Math.max(0, 500 - (Date.now() - started)));
         box.classList.remove('is-scanning');
         this.buttonTarget.classList.remove('is-busy');

@@ -183,9 +183,17 @@ async function leave(d) {
     if (!(await confirmSheet('Не сохранять?', { label: 'Закрыть', cancel: 'Остаться', danger: true }))) return false;
     d.querySelectorAll('form').forEach((form) => {
         if (form.method.toLowerCase() === 'get' || form.hasAttribute('data-sheet-clean')) return;
+        const was = new Map([...form.elements].map((el) => [el, el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value]));
         form.reset();
         // Скрытое поле (id из подсказки комбобокса) сброс не возвращает — значение с открытия листа.
         for (const el of form.querySelectorAll('input[type=hidden][data-sheet-was]')) el.value = el.dataset.sheetWas;
+        // Что сброс вернул — тем, кто рисует по полю (чипы меток, раскрытые панели, итоги): иначе они остались бы на
+        // брошенном.
+        for (const [el, value] of was) {
+            if ((el.type === 'checkbox' || el.type === 'radio' ? el.checked : el.value) === value) continue;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         form.dispatchEvent(new CustomEvent('draft:clear'));
     });
     return true;

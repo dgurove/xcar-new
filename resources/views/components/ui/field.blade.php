@@ -20,10 +20,11 @@
     // Сумма — разрядами при наборе (имя суммы или `digits` у поля с другим именем: оценочная, пробег), целыми рублями:
     // сервер копейки отбрасывает; ставка за сутки — с копейками. Своё число знаков — data-digits-decimals-value у поля.
     $rate = str_ends_with($base, '_rate') && $base !== 'buyer_rate_multiplier';
-    $money = $digits || $rate || $ends('price', 'amount', 'sum', 'cost', 'fee', 'commission', 'share');
+    // `share` — только «Наша доля, ₽»: min_bid_share — доля от цены («0,6»), не рубли.
+    $money = $digits || $rate || $base === 'share' || $ends('price', 'amount', 'sum', 'cost', 'fee', 'commission');
     $keys = match (true) {
         $money => ['inputmode' => 'decimal', 'autocomplete' => 'off'],
-        $ends('year', 'mileage', 'km', 'power', 'volume', 'qty', 'capacity', 'days', 'hours', 'port', 'multiplier') => ['inputmode' => 'decimal', 'autocomplete' => 'off'],
+        $ends('year', 'mileage', 'km', 'power', 'volume', 'qty', 'capacity', 'days', 'hours', 'port', 'multiplier', 'share') => ['inputmode' => 'decimal', 'autocomplete' => 'off'],
         $ends('inn', 'kpp', 'ogrn', 'bik', 'bic', 'account', 'corr') => ['inputmode' => 'decimal', 'autocomplete' => 'off', 'autocorrect' => 'off', 'spellcheck' => 'false'],
         $ends('vin', 'plate', 'claim_ref', 'ref', 'policy_no', 'sts', 'pts', 'dl', 'passport', 'passport_code', 'external_no', 'contract_no', 'agreement_number') => ['autocapitalize' => 'characters', 'autocorrect' => 'off', 'spellcheck' => 'false', 'autocomplete' => 'off'],
         $ends('phone', 'tel') => ['type' => 'tel', 'inputmode' => 'tel', 'autocomplete' => 'tel'],

@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { nums, rubles } from '../lib/money';
 
 // Оценочная → закупочная прямо в форме, по тому же правилу, что сервер (`Park\Sale::floorFrom`): до 500 000 — плюс
 // 50 000, до 2 000 000 — плюс 10 %, дальше плюс 200 000, вверх до тысячи. Закупочная пересчитывается, только пока она
@@ -8,21 +9,18 @@ export const floorFrom = (value) => {
     return Math.ceil(Math.round(price * 100) / 100 / 1000) * 1000;
 };
 
-const digits = (s) => Number(String(s ?? '').replace(/\D/g, '')) || 0;
-const nums = (n) => n.toLocaleString('ru-RU').replace(/\s/g, ' ');
-
 export default class extends Controller {
     static targets = ['value', 'floor'];
 
     // Оценочной в форме может не быть (не Альфа, или она сверху карточки) — тогда считать нечего.
     connect() {
-        this.was = this.hasValueTarget ? digits(this.valueTarget.value) : 0;
+        this.was = this.hasValueTarget ? (rubles(this.valueTarget.value) ?? 0) : 0;
     }
 
     sync() {
         if (!this.hasValueTarget || !this.hasFloorTarget) return;
-        const value = digits(this.valueTarget.value);
-        const floor = digits(this.floorTarget.value);
+        const value = rubles(this.valueTarget.value) ?? 0;
+        const floor = rubles(this.floorTarget.value) ?? 0;
         const auto = !floor || (this.was && floor === floorFrom(this.was));
         this.was = value;
         if (!value || !auto) return;

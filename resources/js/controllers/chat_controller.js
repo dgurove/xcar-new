@@ -1,6 +1,9 @@
 import { Controller } from '@hotwired/stimulus';
 import { openLightbox } from '../lightbox';
 import { badges, liveOpen } from '../live';
+import { copyText } from '../lib/clipboard';
+import { post, request } from '../lib/http';
+import { scrollBehavior } from '../lib/motion';
 
 // Чат по офферу. Лента дополняется фрагментами «всё после N», где N —
 // последний номер на экране: догон после обрыва идемпотентен; старое
@@ -80,26 +83,23 @@ export default class extends Controller {
         return document.visibilityState === 'visible' && (this.element.checkVisibility?.() ?? true);
     }
 
-    headers() {
-        return { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' };
-    }
-
     // Прочитали новое (или открыли) — значки перечитываются после отметки: посчитанные хабом раньше неё показали бы +1.
     async fetch(opened = false) {
         if (!this.urlValue || this.fetching) return;
         this.fetching = true;
         const read = this.visible();
+        // Дочитка в фоне (возврат на вкладку, событие хаба, раз в 20 с) — без тоста.
         try {
-            const r = await fetch(`${this.urlValue}?after=${this.lastValue}&read=${read ? 1 : 0}`, { headers: this.headers() });
-            if (r.ok && this.append(await r.text()) + opened > 0 && read) badges();
+            const r = await request(`${this.urlValue}?after=${this.lastValue}&read=${read ? 1 : 0}`, { accept: 'text/html', quiet: true });
+            if (r && this.append(await r.text()) + opened > 0 && read) badges();
         } catch {} finally { this.fetching = false; }
     }
 
     async refetch(seq) {
-        const r = await fetch(`${this.urlValue}/${seq}`, { headers: this.headers() });
+        const r = await request(`${this.urlValue}/${seq}`, { accept: 'text/html', quiet: true, statuses: [404] });
         // Сообщения больше нет (стёртый автоответ) — пузырь уходит.
-        if (r.status === 404) this.listTarget.querySelector(`.msg[data-seq="${seq}"]`)?.remove();
-        if (!r.ok) return;
+        if (r?.status === 404) this.listTarget.querySelector(`.msg[data-seq="${seq}"]`)?.remove();
+        if (!r?.ok) return;
         const box = document.createElement('div');
         box.innerHTML = await r.text();
         const fresh = box.querySelector('.msg');
@@ -174,8 +174,9 @@ export default class extends Controller {
         this.loadingOlder = true;
         const sentinel = this.moreTarget, before = Number(sentinel.dataset.seq);
         try {
-            const r = await fetch(`${this.urlValue}?before=${before}`, { headers: this.headers() });
-            if (!r.ok) return;
+            // Подгрузка при прокрутке вверх: не вышло — попробуется на следующей, без тоста.
+            const r = await request(`${this.urlValue}?before=${before}`, { accept: 'text/html', quiet: true });
+            if (!r) return;
             const box = document.createElement('div');
             box.innerHTML = await r.text();
             const list = this.listTarget, keep = list.scrollHeight - list.scrollTop;
@@ -225,7 +226,7 @@ export default class extends Controller {
     jump(event) {
         const el = this.listTarget.querySelector(`.msg[data-seq="${event.currentTarget.dataset.seq}"]`);
         if (!el) return;
-        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        el.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
         el.classList.add('is-flash');
         setTimeout(() => el.classList.remove('is-flash'), 1200);
     }
@@ -298,12 +299,9 @@ export default class extends Controller {
         this.setMode('reply', this.active);
     }
 
-    async copy() {
+    copy() {
         this.closeMenu();
-        try {
-            await navigator.clipboard.writeText(this.active?.querySelector('.msg-bubble')?.dataset.text || '');
-            window.toast?.('Текст в буфере');
-        } catch { window.toast?.('Не получилось скопировать', 'danger'); }
+        copyText(this.active?.querySelector('.msg-bubble')?.dataset.text || '', 'Текст в буфере');
     }
 
     startEdit() {
@@ -327,9 +325,9 @@ export default class extends Controller {
         this.closeMenu();
         const seq = this.active?.dataset.seq;
         if (!seq) return;
-        const r = await fetch(`${this.urlValue}/${seq}`, { method: 'DELETE', headers: this.headers() });
-        if (r.ok) this.swap(seq, await r.text());
-        else window.toast?.('Не удалилось', 'danger');
+        // Нет связи или сбой — тост от request, пузырь остаётся как был.
+        const r = await request(`${this.urlValue}/${seq}`, { method: 'DELETE', accept: 'text/html' });
+        if (r) this.swap(seq, await r.text());
     }
 
     swap(seq, html) {
@@ -388,7 +386,7 @@ export default class extends Controller {
         this.grow();
         if (!this.urlValue || !this.inputTarget.value || this.typingSent > Date.now() - 3000) return;
         this.typingSent = Date.now();
-        fetch(`${this.urlValue.replace(/\/messages$/, '')}/typing`, { method: 'POST', headers: this.headers() }).catch(() => {});
+        post(`${this.urlValue.replace(/\/messages$/, '')}/typing`, undefined, { accept: 'text/html', quiet: true });
     }
 
     // ------------------------------------------------------------ файлы
@@ -504,7 +502,9 @@ export default class extends Controller {
         const form = new FormData();
         form.append('text', text);
         form.append('_method', 'PATCH');
-        const r = await fetch(`${this.urlValue}/${seq}`, { method: 'POST', body: form, headers: this.headers() });
+        // 422 — отказ словами сервера; нет связи и прочее — тост от post. Пузырь в любом случае остаётся как был.
+        const r = await post(`${this.urlValue}/${seq}`, form, { accept: 'text/html', statuses: [422] });
+        if (!r) return;
         if (r.ok) this.swap(seq, await r.text());
         else window.toast?.((await r.json().catch(() => ({}))).message || 'Не сохранилось', 'danger');
     }
@@ -519,7 +519,9 @@ export default class extends Controller {
         files.forEach((f) => form.append('files[]', f));
         try {
             // Чата ещё нет — первое сообщение уходит на open, ответ приносит адрес ленты.
-            const r = await fetch(this.urlValue || this.openValue, { method: 'POST', body: form, headers: this.headers() });
+            // Неотправленное видно самим пузырём (повтор нажатием и с возвратом сети), поэтому без тоста.
+            const r = await post(this.urlValue || this.openValue, form, { accept: 'text/html', quiet: true, statuses: [401, 419, 422] });
+            if (!r) throw new Error('Не отправилось');
             if (!r.ok) {
                 const d = await r.json().catch(() => ({}));
                 throw new Error(d.message || (r.status === 401 || r.status === 419 ? 'Войдите заново' : 'Не отправилось'));

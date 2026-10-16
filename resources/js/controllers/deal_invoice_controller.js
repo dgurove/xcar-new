@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { nums, rub } from '../lib/money';
 
 // Счёт по сделке: вид подставляет базу (цена, разница, вознаграждение вендора),
 // строки счёта показаны заранее — «Транспортное средство» база минус вознаграждение
@@ -9,14 +10,13 @@ export default class extends Controller {
     static values = { bases: Object, fee: Number, withheld: Boolean, vendorParty: Number };
 
     connect() {
-        this.rubles = new Intl.NumberFormat('ru-RU');
         this.party();
         this.lines();
     }
 
     kind() {
         const kind = this.kindTarget.value;
-        if (this.basesValue[kind] !== undefined) this.amountTarget.value = this.basesValue[kind] ? new Intl.NumberFormat('ru-RU').format(this.basesValue[kind]) : '';
+        if (this.basesValue[kind] !== undefined) this.amountTarget.value = this.basesValue[kind] ? nums(this.basesValue[kind]) : '';
         if (kind === 'reward' && this.vendorPartyValue) this.partyTarget.value = String(this.vendorPartyValue);
         this.party();
         this.lines();
@@ -40,7 +40,8 @@ export default class extends Controller {
         this.firstTarget.classList.toggle('text-danger', base - fee < 0);
     }
 
+    // Копейки — только если они есть (сумма из поля с точкой).
     money(value) {
-        return this.rubles.format(value) + ' ₽';
+        return rub(value, Number.isInteger(value) ? 0 : 2);
     }
 }

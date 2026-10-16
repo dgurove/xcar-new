@@ -1,5 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import { refreshPage, refreshRows } from '../live.js';
+import { nums } from '../lib/money';
+import { reducedMotion } from '../lib/motion';
 
 // Заявка, которую завела почта (AutoRequest), входит в список живьём (владелец 07.10.2026): силуэт → идёт
 // распознавание документов → полная строка. Состояние рисует сервер (AutoScan::states) атрибутом
@@ -93,13 +95,12 @@ export default class extends Controller {
         for (const el of this.element.querySelectorAll('[data-arrive-count]')) {
             const text = el.textContent;
             const to = Number(text.replace(/\D/g, '')) || 0;
-            const space = text.match(/\d(\D)\d/)?.[1] ?? '\u00a0';
-            if (!to || matchMedia('(prefers-reduced-motion: reduce)').matches) continue;
+            if (!to || reducedMotion()) continue;
             const start = performance.now();
             const frame = (now) => {
                 const t = Math.min(1, (now - start) / 1100);
                 const value = Math.round(to * (1 - (1 - t) ** 3));
-                el.textContent = t < 1 ? String(value).replace(/\B(?=(\d{3})+(?!\d))/g, space) : text;
+                el.textContent = t < 1 ? nums(value) : text;
                 if (t < 1) requestAnimationFrame(frame);
             };
             el.classList.add('arrive-counting');

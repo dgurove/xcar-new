@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { nums, rub, rubles } from '../lib/money';
 
 // Деньги при вознаграждении менеджеру: поле с разделителями (на сервер — число) и суммы,
 // пересчитанные на месте. ours — «нам остаётся» (разница минус вознаграждение), due —
@@ -15,7 +16,7 @@ export default class extends Controller {
 
     money(v) {
         const kopecks = Math.round(Math.abs(v) * 100) % 100 !== 0;
-        return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: kopecks ? 2 : 0, maximumFractionDigits: 2 }).format(v) + ' ₽';
+        return rub(v, kopecks ? 2 : 0);
     }
 
     // «За ТС платят»: ПРАЙМ — разница и режим; ДКП и страховой — сколько им, нам — подбор (05.10.2026).
@@ -34,15 +35,15 @@ export default class extends Controller {
     }
 
     input() {
-        const digits = this.displayTarget.value.replace(/\D/g, '');
-        const value = digits ? Number(digits) : 0;
-        this.displayTarget.value = digits ? new Intl.NumberFormat('ru-RU').format(value) : '';
-        this.amountTarget.value = digits ? value : '';
+        const typed = rubles(this.displayTarget.value);
+        const value = typed ?? 0;
+        this.displayTarget.value = typed === null ? '' : nums(value);
+        this.amountTarget.value = typed === null ? '' : value;
         if (this.hasOwnerDisplayTarget) {
-            const ownerDigits = this.ownerDisplayTarget.value.replace(/\D/g, '');
-            const owner = ownerDigits ? Number(ownerDigits) : 0;
-            this.ownerDisplayTarget.value = ownerDigits ? new Intl.NumberFormat('ru-RU').format(owner) : '';
-            this.ownerAmountTarget.value = ownerDigits ? owner : '';
+            const ownerTyped = rubles(this.ownerDisplayTarget.value);
+            const owner = ownerTyped ?? 0;
+            this.ownerDisplayTarget.value = ownerTyped === null ? '' : nums(owner);
+            this.ownerAmountTarget.value = ownerTyped === null ? '' : owner;
             const offset = this.hasCostValue ? this.costValue - owner : 0;
             if (this.hasOffsetTarget) this.offsetTarget.textContent = owner && offset > 0 ? 'Взаимозачёт ' + this.money(offset) : '';
             if (this.dkp && this.hasOursTarget) {

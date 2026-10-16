@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { proof } from '../device-key';
+import { post } from '../lib/http';
 
 // Вход кодом из Telegram (страница входа, 07.10.2026): логин из поля формы выше → «Получить код» → бот присылает шесть
 // цифр с кнопкой «Войти». Цифры уходят сами на шестой; нажали «Войти» в боте — страница узнаёт событием хаба (live:lock)
@@ -33,11 +34,12 @@ export default class extends Controller {
         if (this.requestTarget.disabled) return;
         this.note('Отправляем код');
         this.requestTarget.disabled = true;
-        const r = await this.post('/login/code', { login: login.value.trim() });
+        // Причину пишем под полем сами: 422 — не тот логин, 429 — частим, нет ответа — связь.
+        const r = await this.post('/login/code', { login: login.value.trim() }, { quiet: true, statuses: [422, 429] });
         const data = r ? await r.json().catch(() => ({})) : {};
         if (!r?.ok) {
             this.requestTarget.disabled = false;
-            this.note(data.error || (data.errors ? 'Введите логин, телефон или почту' : 'Нет связи'), true);
+            this.note(data.error || (data.errors ? 'Введите логин, телефон или почту' : r?.status === 429 ? 'Слишком много попыток' : 'Нет связи'), true);
             return;
         }
         this.nonce = data.nonce;
@@ -75,7 +77,9 @@ export default class extends Controller {
         this.verifying = true;
         let signed;
         try { signed = await proof(this.nonce); } catch { this.verifying = false; this.note('Браузер не дал ключ устройства, обновите его', true); return; }
-        const r = await this.post('/login/code/verify', { ...signed, ...(code ? { code } : {}) });
+        // 410 и 422 — отказ словами сервера. Проверка без кода (вернулись на вкладку) — в фоне, без тоста; набранный код
+        // без ответа — тостом, иначе цифры просто висели бы.
+        const r = await this.post('/login/code/verify', { ...signed, ...(code ? { code } : {}) }, { quiet: !code, statuses: [410, 422] });
         this.verifying = false;
         if (!r || r.status === 202) return;
         const data = await r.json().catch(() => ({}));
@@ -99,13 +103,9 @@ export default class extends Controller {
         this.noteTarget.classList.toggle('is-danger', danger);
     }
 
-    async post(url, data) {
+    post(url, data, options) {
         const body = new FormData();
         Object.entries(data).forEach(([k, v]) => body.append(k, v));
-        try {
-            return await fetch(url, { method: 'POST', body, credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' } });
-        } catch {
-            return null;
-        }
+        return post(url, body, options);
     }
 }

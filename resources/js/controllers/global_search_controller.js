@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { focusField } from '../keyboard';
+import { debounce } from '../lib/debounce';
 
 // Поиск в шапке — один на три хоста (10.10.2026): со второго знака через 150 мс фрейм `global-search` берёт выдачу
 // `/search?q=` (устаревший ответ отбрасывает сам фрейм — новый src отменяет прежний запрос). На ПК выдача — выпадающим
@@ -12,6 +13,7 @@ export default class extends Controller {
 
     connect() {
         this.index = -1;
+        this.later = debounce((q) => { this.frameTarget.src = `${this.urlValue}?q=${encodeURIComponent(q)}`; }, 150);
         this.onKey = (e) => this.hotkey(e);
         this.onOutside = (e) => { if (this.hasPopTarget && !this.element.contains(e.target)) this.close(); };
         // Выдача по какому запросу на экране: Enter не должен открыть строку прежнего запроса, пока новый ещё в пути.
@@ -26,11 +28,11 @@ export default class extends Controller {
         document.removeEventListener('keydown', this.onKey);
         document.removeEventListener('pointerdown', this.onOutside);
         this.frameTarget.removeEventListener('turbo:frame-load', this.onLoad);
-        clearTimeout(this.timer);
+        this.later.cancel();
     }
 
     input() {
-        clearTimeout(this.timer);
+        this.later.cancel();
         const q = this.inputTarget.value.trim();
         if (this.hasClearTarget) this.clearTarget.hidden = !this.inputTarget.value;
         if (q.length < 2) {
@@ -43,7 +45,7 @@ export default class extends Controller {
         }
         if (this.hasRecentTarget) this.recentTarget.hidden = true;
         this.open();
-        this.timer = setTimeout(() => { this.frameTarget.src = `${this.urlValue}?q=${encodeURIComponent(q)}`; }, 150);
+        this.later(q);
     }
 
     focus() {

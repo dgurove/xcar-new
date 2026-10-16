@@ -1,6 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { confirmSheet } from '../confirm';
+import { post } from '../lib/http';
 
 // Поле не совпадает с лотом Мигторга (Offers\MigtorgDiff): у подписи поля — «!», нажатие раскрывает под полем, как на
 // Мигторге, и две кнопки: «Взять» — значение Мигторга в поле (страница перечитывается), «Отклонить» — Мигторг неправ,
@@ -52,11 +53,10 @@ export default class extends Controller {
     }
 
     async send(name, act) {
-        const body = new FormData();
-        body.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
-        const r = await fetch(`${this.urlValue}/migtorg/${encodeURIComponent(name)}/${act}`, { method: 'POST', body, headers: { Accept: 'application/json' } }).catch(() => null);
-        if (!r?.ok) return window.toast?.('Не вышло, обновите страницу');
-        const { ok, fields } = await r.json();
+        const r = await post(`${this.urlValue}/migtorg/${encodeURIComponent(name)}/${act}`, undefined, { quiet: true });
+        const data = await r?.json().catch(() => null);
+        if (!data) return window.toast?.('Не вышло, обновите страницу');
+        const { ok, fields } = data;
         if (!ok) window.toast?.('Уже не так, обновите страницу');
         if (act === 'take' && ok) return Turbo.visit(location.href, { action: 'replace' });
         this.fieldsValue = fields;

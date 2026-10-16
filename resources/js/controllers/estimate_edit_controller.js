@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { focusField } from '../keyboard';
+import { nums, rubles } from '../lib/money';
 
 // Лист оценки менеджера (11.10.2026) — одна из панелей на виду: «отправлена» (done), выбор корректировки «Согласен /
 // Предложить свою» (choose), поле суммы (form) или отказ с желаемой стоимостью (decline). Переключение — без перезагрузки; у поля сумма сразу выделена.
@@ -22,8 +23,8 @@ export default class extends Controller {
     // Разница желаемой к ориентиру (заявленная или цена XCar) по ходу набора: «−100 000», пусто — ничего.
     diff() {
         if (!this.hasDiffTarget || !this.hasWishTarget) return;
-        const wish = Number(this.wishTarget.value.replace(/[,.]\d{1,2}\s*$/, '').replace(/\D+/g, ''));
+        const wish = rubles(this.wishTarget.value) ?? 0;
         const delta = wish - Number(this.diffTarget.dataset.mark);
-        this.diffTarget.textContent = wish && delta ? `${delta > 0 ? '+' : '−'}${Math.abs(delta).toLocaleString('ru-RU')}` : '';
+        this.diffTarget.textContent = wish && delta ? `${delta > 0 ? '+' : '−'}${nums(Math.abs(delta))}` : '';
     }
 }

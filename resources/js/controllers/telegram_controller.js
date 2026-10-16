@@ -2,6 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { openSheet, closeSheet } from '../sheet';
 import { proof } from '../device-key';
+import { request } from '../lib/http';
 
 // Telegram у аккаунта. Два режима:
 //   link  — шторка подключения (x-telegram.connect): предложение → ожидание → готово. Открывают её событие
@@ -140,8 +141,8 @@ export default class extends Controller {
     // Вернулись из Telegram, а события хаба не было (или хаба нет): спросить самим.
     async back() {
         if (this.modeValue === 'login') { this.check(); return; }
-        const r = await this.request(this.stateUrlValue, 'GET');
-        if (r?.ok && (await r.json()).linked) this.done();
+        const r = await this.send(this.stateUrlValue, 'GET');
+        if (r?.ok && (await r.json().catch(() => ({}))).linked) this.done();
     }
 
     done() {
@@ -185,17 +186,12 @@ export default class extends Controller {
     post(url, data) {
         const body = new FormData();
         Object.entries(data).forEach(([k, v]) => body.append(k, v));
-        return this.request(url, 'POST', body);
+        return this.send(url, 'POST', body);
     }
 
-    async request(url, method, body) {
-        try {
-            return await fetch(url, {
-                method, body,
-                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-            });
-        } catch {
-            return null;
-        }
+    // Всё здесь в фоне (отметка показа, вопрос «привязан ли», вход по возврату из Telegram) — без тоста; 410 и 422 входа
+    // check разбирает сам.
+    send(url, method, body) {
+        return request(url, { method, body, quiet: true, statuses: [410, 422] });
     }
 }

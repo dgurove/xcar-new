@@ -1,6 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { confirmSheet } from '../confirm';
+import { csrf, request } from '../lib/http';
 import { loadSortable } from '../lib/sortable';
 import { openLightbox } from '../lightbox';
 import { openSheet, closeSheet, outside } from '../sheet';
@@ -128,13 +129,15 @@ export default class extends Controller {
         try {
             const body = `hidden=${hide ? 1 : 0}` + (this.stageValue ? `&stage=${encodeURIComponent(this.stageValue)}` : '');
             const r = await this.post(`${this.urlValue}/visibility`, body, 'application/x-www-form-urlencoded', stop.signal);
-            if (!r.ok) { paint(!hide); this.syncAll(); window.toast?.('Не получилось', 'danger'); return; }
+            if (!r) {
+                // Обрыв и ошибку сервера post назвал тостом сам; 20 с без ответа — отмена, её называем здесь.
+                paint(!hide);
+                this.syncAll();
+                if (stop.signal.aborted) window.toast?.('Нет связи', 'danger');
+                return;
+            }
             // Карточку только для просмотра ответ не перерисовывает: он вернул бы ей плитку «добавить».
             if (!this.readonlyValue) this.apply(await r.text());
-        } catch {
-            paint(!hide);
-            this.syncAll();
-            window.toast?.('Нет связи', 'danger');
         } finally {
             clearTimeout(timer);
             this.busy = false;
@@ -274,7 +277,7 @@ export default class extends Controller {
             // Стадия карточки: кадр ложится туда, откуда его добавили. Слоты приёма шлют свою через extra.
             if (this.stageValue) form.append('stage', this.stageValue);
             for (const [k, v] of Object.entries(this.extra || {})) if (v) form.append(k, v);
-            form.append('_token', this.token);
+            form.append('_token', csrf());
             xhr.open('POST', this.urlValue);
             xhr.setRequestHeader('Accept', 'text/vnd.turbo-stream.html');
             if (this.rowId) xhr.setRequestHeader('X-Photos-Target', this.rowId);
@@ -297,7 +300,7 @@ export default class extends Controller {
     async reorder(main = false) {
         const order = this.cells().map((el) => el.dataset.id);
         const r = await this.post(this.urlValue + '/order', JSON.stringify({ order, main }), 'application/json');
-        if (r.ok) this.apply(await r.text());
+        if (r) this.apply(await r.text());
     }
 
     // Звезда главного: у главного — открыть выбор (контурные звёзды на остальных, во всех блоках машины), у контурной —
@@ -344,7 +347,7 @@ export default class extends Controller {
     async run(id, act) {
         const url = `${this.urlValue}/${id}${act === 'delete' ? '' : '/' + act}`;
         const r = await this.post(url, act === 'delete' ? '_method=delete' : '', 'application/x-www-form-urlencoded');
-        if (!r.ok) { window.toast?.('Не получилось', 'danger'); return false; }
+        if (!r) return false;
         this.apply(await r.text());
         return true;
     }
@@ -396,12 +399,11 @@ export default class extends Controller {
         const f = this.flight(id);
         f.ops++;
         f.chain = f.chain.then(async () => {
-            let r = null;
-            try { r = await send(); } catch {}
+            // Сбой post назвал тостом сам — здесь только вернуть экран.
+            const r = await send();
             f.ops--;
-            if (!r?.ok) {
+            if (!r) {
                 undo?.();
-                window.toast?.('Не получилось', 'danger');
                 return;
             }
             const html = await r.text();
@@ -429,12 +431,14 @@ export default class extends Controller {
         shown?.lb.spin(id, turns);
     }
 
+    // Ответ — стрим ряда или null (сбой уже назван тостом).
     post(url, body, type, signal) {
-        return fetch(url, {
+        return request(url, {
             method: 'POST',
-            signal,
-            headers: { 'Content-Type': type, Accept: 'text/vnd.turbo-stream.html', 'X-CSRF-TOKEN': this.token, 'X-Requested-With': 'XMLHttpRequest', ...(this.rowId ? { 'X-Photos-Target': this.rowId } : {}) },
             body,
+            signal,
+            accept: 'text/vnd.turbo-stream.html',
+            headers: { 'Content-Type': type, ...(this.rowId ? { 'X-Photos-Target': this.rowId } : {}) },
         });
     }
 
@@ -567,8 +571,8 @@ export default class extends Controller {
 
     async markSheet(it) {
         const owner = it.owner;
-        const r = await fetch(`${owner.urlValue}/${it.id}/mark`, { headers: { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' } });
-        if (!r.ok) { window.toast?.('Не получилось', 'danger'); return; }
+        const r = await request(`${owner.urlValue}/${it.id}/mark`, { accept: 'text/html' });
+        if (!r) return;
         document.getElementById('mark-sheet')?.remove();
         const d = document.createElement('dialog');
         d.id = 'mark-sheet';
@@ -586,10 +590,14 @@ export default class extends Controller {
             d.querySelectorAll('[data-mark-show]').forEach((x) => x.setAttribute('aria-current', String(x === b)));
         }));
 
-        const post = (id, body) => fetch(`${owner.urlValue}/${id}/mark`, {
+        // 422 — отказ словами сервера, его показывает send; quiet — для «Со всех фото», там итог одним тостом.
+        const post = (id, body, quiet = false) => request(`${owner.urlValue}/${id}/mark`, {
             method: 'POST',
-            headers: { Accept: 'text/vnd.turbo-stream.html', 'X-CSRF-TOKEN': owner.token, 'X-Requested-With': 'XMLHttpRequest', ...(owner.rowId ? { 'X-Photos-Target': owner.rowId } : {}) },
             body,
+            quiet,
+            statuses: [422],
+            accept: 'text/vnd.turbo-stream.html',
+            headers: owner.rowId ? { 'X-Photos-Target': owner.rowId } : {},
         });
         const form = (fields) => { const f = new FormData(); Object.entries(fields).forEach(([k, v]) => f.append(k, v)); return f; };
         const finish = (ids) => {
@@ -605,6 +613,7 @@ export default class extends Controller {
         };
         const send = (body) => busy(async () => {
             const res = await post(it.id, body);
+            if (!res) return;
             if (!res.ok) {
                 const message = (await res.json().catch(() => null))?.message;
                 window.toast?.(message || 'Не получилось', 'danger');
@@ -621,8 +630,8 @@ export default class extends Controller {
             let done = 0, last = null;
             for (const [k, id] of ids.entries()) {
                 label.textContent = `Снимаем ${k + 1} из ${ids.length}`;
-                const res = await post(id, form({ act: 'mark', mark: b.dataset.mark }));
-                if (res.ok) { done++; last = await res.text(); }
+                const res = await post(id, form({ act: 'mark', mark: b.dataset.mark }), true);
+                if (res?.ok) { done++; last = await res.text(); }
             }
             if (last) owner.apply(last);
             window.toast?.(done === ids.length ? `Снято со всех ${ids.length}` : `Снято ${done} из ${ids.length}`, done ? undefined : 'danger');
@@ -682,11 +691,12 @@ export default class extends Controller {
             const label = go.textContent;
             go.textContent = 'Собираем знак';
             try {
-                const res = await fetch(`${owner.urlValue}/${it.id}/learn`, {
+                const res = await request(`${owner.urlValue}/${it.id}/learn`, {
                     method: 'POST',
-                    headers: { Accept: 'application/json', 'X-CSRF-TOKEN': owner.token, 'X-Requested-With': 'XMLHttpRequest' },
+                    statuses: [422],
                     body: form({ title: title.value.trim(), x0: rect[0], y0: rect[1], x1: rect[2], y1: rect[3] }),
                 });
+                if (!res) return;
                 const answer = await res.json().catch(() => ({}));
                 if (!res.ok) { window.toast?.(answer.message || 'Не получилось', 'danger'); return; }
                 window.toast?.(answer.message);
@@ -708,8 +718,6 @@ export default class extends Controller {
     }
 
     hideProgress() { if (this.hasProgressTarget) this.progressTarget.hidden = true; }
-
-    get token() { return document.querySelector('meta[name=csrf-token]').content; }
 }
 
 const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');

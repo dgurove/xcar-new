@@ -2,6 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 import { QrScanner } from '../qr/scanner';
 import { haptic } from '../qr/haptics';
 import { confirmSheet } from '../confirm';
+import { post } from '../lib/http';
 
 // Выдача по QR в деле ТС: «Сканировать QR» открывает сканер, прочитанный код проверяет сервер (`/cars/{id}/pass-check`),
 // ответ рисуется карточкой на месте кнопки: иконка в круге, заголовок, человек, пояснение, справа «сканировать снова».
@@ -37,24 +38,12 @@ export default class extends Controller {
     async check(text, confirm = false) {
         this.scanTarget.hidden = true;
         this.render('wait', 'Проверяю код…');
-        let data;
-        try {
-            const token = document.querySelector('meta[name="csrf-token"]')?.content;
-            const response = await fetch(this.checkUrlValue, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token ?? '' },
-                body: JSON.stringify({ code: text, confirm }),
-            });
-            if (!response.ok) {
-                this.scanTarget.hidden = false;
-                this.render('danger', response.status === 419 ? 'Сессия устарела, обновите страницу' : 'Ошибка сервера, попробуйте ещё раз');
-                haptic('error');
-                return;
-            }
-            data = await response.json();
-        } catch {
+        // Устаревший токен post обновляет сам; обрыв и ошибку сервера он называет тостом, карточка — что делать дальше.
+        const response = await post(this.checkUrlValue, { code: text, confirm });
+        const data = await response?.json().catch(() => null);
+        if (!data) {
             this.scanTarget.hidden = false;
-            this.render('danger', 'Нет связи, попробуйте ещё раз');
+            this.render('danger', 'Код не проверен, попробуйте ещё раз');
             haptic('error');
             return;
         }

@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { copyText } from '../lib/clipboard';
 
 // Ссылка наружу: «Скопировать» кладёт в буфер, «Отправить» — системный лист
 // (только там, где он есть; иначе кнопка прячется). Если рядом поле с сообщением,
@@ -36,15 +37,8 @@ export default class extends Controller {
         return message ? `${message}\n${this.textValue}` : this.textValue;
     }
 
-    async copy() {
-        const text = this.payload();
-        if (!text) return;
-        try {
-            await navigator.clipboard.writeText(text);
-            window.toast?.(this.doneValue || (this.hasMessageTarget ? 'Текст и ссылка в буфере' : 'Ссылка в буфере'));
-        } catch {
-            window.toast?.('Не получилось скопировать — выделите и скопируйте руками', 'danger');
-        }
+    copy() {
+        return copyText(this.payload(), this.doneValue || (this.hasMessageTarget ? 'Текст и ссылка в буфере' : 'Ссылка в буфере'));
     }
 
     async share() {

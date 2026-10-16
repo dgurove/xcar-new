@@ -1,5 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import { keyboard } from '../keyboard';
+import { debounce } from '../lib/debounce';
+import { getJson, post } from '../lib/http';
 
 // Поле с поиском по справочнику и созданием записи на месте.
 // data-combobox-url-value — откуда брать подсказки (?q=), data-combobox-create-value —
@@ -10,6 +12,7 @@ export default class extends Controller {
     static values = { url: String, create: String, depends: String, resets: String, param: { type: String, default: 'brand' } };
 
     connect() {
+        this.later = debounce(() => this.load(), 150);
         this.onDocumentClick = (e) => { if (!this.element.contains(e.target)) this.close(); };
         document.addEventListener('click', this.onDocumentClick);
         // Фокус ушёл из поля («Готово» или «Далее» на клавиатуре iPhone) — список закрывается: иначе он оставался поверх
@@ -28,16 +31,15 @@ export default class extends Controller {
         this.close();
         document.removeEventListener('click', this.onDocumentClick);
         this.element.removeEventListener('focusout', this.onFocusOut);
-        clearTimeout(this.timer);
+        this.later.cancel();
         clearTimeout(this.blurTimer);
     }
 
     search() {
-        clearTimeout(this.timer);
         const had = this.hiddenTarget.value !== '';
         this.hiddenTarget.value = '';
         if (had) this.hiddenTarget.dispatchEvent(new Event('change', { bubbles: true }));
-        this.timer = setTimeout(() => this.load(), 150);
+        this.later();
     }
 
     async load() {
@@ -49,7 +51,9 @@ export default class extends Controller {
             if (!dep) { this.render([], q); return; }
             url.searchParams.set(this.paramValue, dep);
         }
-        const items = await fetch(url, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+        // Подсказки на каждую букву — без тоста; справочник не ответил — списка нет.
+        const items = await getJson(url, { quiet: true });
+        if (!Array.isArray(items)) { this.close(); return; }
         this.render(items, q);
     }
 
@@ -103,12 +107,9 @@ export default class extends Controller {
     async create(name) {
         const body = { name };
         if (this.dependsValue) body[this.paramValue] = this.near(this.dependsValue)?.value;
-        const r = await fetch(this.createValue, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-            body: JSON.stringify(body),
-        });
-        if (r.ok) this.choose(await r.json());
+        const r = await post(this.createValue, body);
+        const item = await r?.json().catch(() => null);
+        if (item) this.choose(item);
     }
 
     // Соседнее поле (марка у модели) — сначала в своей форме: на странице их бывает две (окно приёма парковки над

@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { post, request } from '../lib/http';
 
 // Уведомления на телефон: разрешение, подписка, отправка ключей на сервер.
 export default class extends Controller {
@@ -25,23 +26,36 @@ export default class extends Controller {
         event.target.checked ? this.enable() : this.disable();
     }
 
+    // Не вышло на любом шаге (подписка браузера, ключи на сервер) — тумблер возвращается как был: подписки, о которой
+    // сервер не знает, не остаётся.
     async enable() {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') { this.render(); return; }
-        const reg = await navigator.serviceWorker.ready;
-        const key = document.querySelector('meta[name="vapid-key"]')?.content;
-        this.sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.key(key) });
-        await fetch('/push/subscription', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify(this.sub.toJSON()) });
-        window.toast?.('Уведомления включены');
-        this.render();
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') return;
+            const reg = await navigator.serviceWorker.ready;
+            const key = document.querySelector('meta[name="vapid-key"]')?.content;
+            const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.key(key) });
+            if (!(await post('/push/subscription', sub.toJSON()))) { await sub.unsubscribe().catch(() => {}); return; }
+            this.sub = sub;
+            window.toast?.('Уведомления включены');
+        } catch {
+            window.toast?.('Не получилось включить уведомления', 'danger');
+        } finally {
+            this.render();
+        }
     }
 
+    // Сначала сервер: не ответил — подписка остаётся, тумблер включён.
     async disable() {
-        const endpoint = this.sub?.endpoint;
-        await this.sub?.unsubscribe();
-        this.sub = null;
-        await fetch('/push/subscription', { method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify({ endpoint }) });
-        this.render();
+        try {
+            if (!(await request('/push/subscription', { method: 'DELETE', json: { endpoint: this.sub?.endpoint } }))) return;
+            await this.sub?.unsubscribe();
+            this.sub = null;
+        } catch {
+            window.toast?.('Не получилось выключить уведомления', 'danger');
+        } finally {
+            this.render();
+        }
     }
 
     key(base64) {

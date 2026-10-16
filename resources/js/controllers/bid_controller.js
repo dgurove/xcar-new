@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { nums, rub } from '../lib/money';
 
 // Форма подтверждения: видимое поле с разделителями, на сервер — число; кнопка
 // полной цены и скидок — готовой суммой с сервера (`Offer::bidDiscounts`: доля разницы заявленной и продажной, только
@@ -11,7 +12,6 @@ export default class extends Controller {
     static values = { asking: Number, garage: Boolean, staff: Boolean };
 
     connect() {
-        this.rubles = new Intl.NumberFormat('ru-RU');
         this.update();
     }
 
@@ -31,7 +31,7 @@ export default class extends Controller {
 
     input() {
         const [rubs, kop] = this.split(this.displayTarget.value);
-        const whole = rubs ? this.rubles.format(Number(rubs)) : '';
+        const whole = rubs ? nums(Number(rubs)) : '';
         this.displayTarget.value = kop === null ? whole : `${whole || '0'},${kop}`;
         this.update();
     }
@@ -48,13 +48,13 @@ export default class extends Controller {
     trim() {
         const [rubs, kop] = this.split(this.displayTarget.value);
         if (kop === null) return;
-        this.displayTarget.value = Number(rubs) ? this.rubles.format(Number(rubs)) : '';
+        this.displayTarget.value = Number(rubs) ? nums(Number(rubs)) : '';
         this.update();
     }
 
     // Кнопка цены или скидки — как ввод руками: change снимает ошибку «Укажите цену» (formCheck в app.js).
     write(value) {
-        this.displayTarget.value = value ? this.rubles.format(value) : '';
+        this.displayTarget.value = value ? nums(value) : '';
         this.update();
         this.displayTarget.dispatchEvent(new Event('change', { bubbles: true }));
     }
@@ -67,7 +67,7 @@ export default class extends Controller {
         if (this.hasBuyerTarget) this.buyerTarget.disabled = !value || noManager;
         if (this.hasGarageTarget) this.garageTarget.disabled = noManager;
         if (this.hasSumTarget) {
-            this.sumTarget.textContent = value ? ` за ${this.rubles.format(value)}\u00a0₽` : '';
+            this.sumTarget.textContent = value ? ` за ${rub(value)}` : '';
             this.sumTarget.hidden = !value;
         }
     }

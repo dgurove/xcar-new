@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { request } from '../lib/http';
 
 // Бесконечная лента: страниц нет, следующая порция подгружается, когда до конца списка остаётся экран.
 // Адрес следующей порции сервер кладёт в data-endless-next у хвоста — в нём уже и пилюля, и фильтры, и
@@ -35,10 +36,13 @@ export default class extends Controller {
         if (!tail || this.busy) return;
         this.busy = true;
         tail.setAttribute('data-endless-busy', '');
+        // Не ответил или ответил ошибкой — в список ничего не встаёт (страница ошибки посреди ленты), хвост ждёт следующего
+        // появления на экране. Молча: без сети хвост попадается на глаза при каждой прокрутке, а «нет сети» видно и так.
         try {
-            const html = await fetch(tail.dataset.endlessNext, { headers: { 'X-List': '1' } }).then((r) => r.text());
+            const r = await request(tail.dataset.endlessNext, { accept: 'text/html', headers: { 'X-List': '1' }, quiet: true });
+            if (!r) throw new Error('not loaded');
             const box = document.createElement('div');
-            box.innerHTML = html;
+            box.innerHTML = await r.text();
             tail.replaceWith(...box.childNodes);
         } catch {
             tail.removeAttribute('data-endless-busy');

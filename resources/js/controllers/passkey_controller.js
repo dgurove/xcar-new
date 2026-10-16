@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { csrf, request } from '../lib/http';
 
 const lib = () => import('@simplewebauthn/browser');
 
@@ -88,27 +89,19 @@ export default class extends Controller {
         let text = fallback;
         if (name === 'SecurityError') text = 'Ключ не работает на этом адресе';
         else if (e.status && e.body?.message) text = e.body.message;
-        window.toast?.(text, 'danger');
+        if (!e.shown) window.toast?.(text, 'danger');
         // Без _token в теле маяк ловит 419 — заголовков у sendBeacon нет.
         navigator.sendBeacon?.('/passkey/error', new Blob([JSON.stringify({
-            _token: document.querySelector('meta[name=csrf-token]')?.content, stage: `${stage}/${step}`, name, code: e.code ?? (e.status ? `http ${e.status}` : null),
+            _token: csrf(), stage: `${stage}/${step}`, name, code: e.code ?? (e.status ? `http ${e.status}` : null),
             message: String(e.message ?? '').slice(0, 300),
             standalone: matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
         })], { type: 'application/json' }));
     }
 
+    // 422 — отказ словами сервера («Ключ не подошёл»); обрыв и прочие сбои request уже назвал тостом, fail только пишет след.
     async post(url, body) {
-        const res = await fetch(url, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '',
-            },
-            body: JSON.stringify(body ?? {}),
-        });
+        const res = await request(url, { method: 'POST', json: body ?? {}, statuses: [422] });
+        if (!res) throw Object.assign(new Error('request failed'), { shown: true });
         const json = res.status === 204 ? {} : await res.json().catch(() => ({}));
         if (!res.ok) throw Object.assign(new Error(json.message || `HTTP ${res.status}`), { status: res.status, body: json });
         return json;

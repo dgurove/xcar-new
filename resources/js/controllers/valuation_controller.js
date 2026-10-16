@@ -1,12 +1,13 @@
 import { Controller } from '@hotwired/stimulus';
+import { getJson } from '../lib/http';
+import { nums, rub } from '../lib/money';
+import { reducedMotion as calm } from '../lib/motion';
 
 // «Оценить → Из текста» (x-offer.valuation-sheet): вставленное сообщение уходит на разбор сразу, а этапы идут один за
 // другим и показывают, что сделано: лишние строки текста схлопываются, номера и суммы подсвечиваются, находятся
 // предложения, ненайденные отходят, оценочные и закупочные бегут счётчиком, в конце рисуется галка. Итог — группы
 // строк с галками и «Всё верно, сохранить (N)». Без анимаций (prefers-reduced-motion) — то же самое сразу.
-const calm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sleep = (ms) => new Promise((r) => setTimeout(r, calm() ? 0 : ms));
-const nums = (n) => Math.round(n).toLocaleString('ru-RU').replace(/\s/g, ' ');
 const plural = (n, one, few, many) => {
     const m10 = n % 10;
     const m100 = n % 100;
@@ -38,18 +39,9 @@ export default class extends Controller {
 
         this.mark('clean', 'run');
         const started = performance.now();
-        let data;
-        try {
-            const res = await fetch(this.urlValue, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
-                body: JSON.stringify({ text }),
-            });
-            if (!res.ok) throw new Error(String(res.status));
-            data = await res.json();
-        } catch {
-            return this.fail('Не получилось разобрать, попробуйте ещё раз');
-        }
+        // Сбой пишется в самом окне разбора, поэтому запрос — без тоста.
+        const data = await getJson(this.urlValue, { method: 'POST', json: { text }, quiet: true });
+        if (!data) return this.fail('Не получилось разобрать, попробуйте ещё раз');
         await sleep(Math.max(0, 300 - (performance.now() - started)));
 
         const { counts } = data;
@@ -143,7 +135,7 @@ export default class extends Controller {
     }
 
     // Число бежит от нуля до своего значения во всех строках разом.
-    async countUp(rows, selector, key, rub) {
+    async countUp(rows, selector, key, money) {
         const cells = rows.map((r) => [r.querySelector(selector), Number(r.dataset[key])]).filter(([el, n]) => el && n);
         if (calm()) return;
         const duration = 700;
@@ -153,7 +145,7 @@ export default class extends Controller {
                 const t = Math.min(1, (now - start) / duration);
                 const k = 1 - (1 - t) ** 3;
                 // Закупочная бежит тысячами — как её и округляют.
-                cells.forEach(([el, n]) => { el.textContent = rub ? `${nums(t < 1 ? Math.ceil((n * k) / 1000) * 1000 : n)}\u00A0₽` : nums(n * k); });
+                cells.forEach(([el, n]) => { el.textContent = money ? rub(t < 1 ? Math.ceil((n * k) / 1000) * 1000 : n) : nums(n * k); });
                 t < 1 ? requestAnimationFrame(frame) : done();
             };
             requestAnimationFrame(frame);

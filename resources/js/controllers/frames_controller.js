@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { scrollBehavior } from '../lib/motion';
 
 // Кадры в карточке списка — лента со snap: кадр едет за пальцем и доезжает с
 // инерцией, точки следуют за прокруткой. Стрелки и общий тик cards:tick листают
@@ -16,7 +17,6 @@ export default class extends Controller {
     connect() {
         seen.observe(this.element);
         this.i = 0;
-        this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
         this.onScroll = () => {
             // Лента поехала не от show() — человек листает сам: автолистание на странице гаснет.
             if (!this.programmatic) this.stopAll();
@@ -44,7 +44,7 @@ export default class extends Controller {
         this.programmatic = true;
         clearTimeout(this.programmaticTimer);
         this.programmaticTimer = setTimeout(() => { this.programmatic = false; }, 700);
-        this.stripTarget.scrollTo({ left: this.i * this.stripTarget.clientWidth, behavior: this.reduce.matches ? 'auto' : 'smooth' });
+        this.stripTarget.scrollTo({ left: this.i * this.stripTarget.clientWidth, behavior: scrollBehavior() });
         this.dots();
     }
 

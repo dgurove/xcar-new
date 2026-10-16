@@ -1,4 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
+import { debounce } from '../lib/debounce';
+import { getJson } from '../lib/http';
 
 // Шторка чипа фильтра (x-ui.facet-chip): галки собираются в одно скрытое поле через запятую, число на «Показать N»
 // переспрашивается тем же адресом с заголовком X-Count (контроллер списка отвечает {count} до страниц и подгрузок).
@@ -12,10 +14,11 @@ export default class extends Controller {
 
     connect() {
         this.seq = 0;
+        this.later = debounce(() => this.count(), this.waitValue);
     }
 
     disconnect() {
-        clearTimeout(this.timer);
+        this.later.cancel();
         this.pending?.abort();
     }
 
@@ -47,7 +50,7 @@ export default class extends Controller {
         const off = boxes.filter((b) => !b.checked);
         this.valueTarget.value = off.length === 0 ? '' : off.length < checked.length ? `!${off.map((b) => b.value).join(',')}` : checked.map((b) => b.value).join(',');
         this.label();
-        clearTimeout(this.timer);
+        this.later.cancel();
         this.pending?.abort();
         this.seq++;
         if (checked.length === 0) {
@@ -57,7 +60,7 @@ export default class extends Controller {
             return;
         }
         this.submitTarget.setAttribute('aria-busy', 'true');
-        this.timer = setTimeout(() => this.count(), this.waitValue);
+        this.later();
     }
 
     label() {
@@ -73,14 +76,10 @@ export default class extends Controller {
         this.pending?.abort();
         this.pending = new AbortController();
         const seq = ++this.seq;
-        try {
-            const res = await fetch(url, { headers: { 'X-Count': '1', Accept: 'application/json' }, signal: this.pending.signal });
-            const { count } = await res.json();
-            if (seq !== this.seq) return;
-            this.render(count);
-        } catch (e) {
-            if (e.name !== 'AbortError' && seq === this.seq) this.render(null);
-        }
+        // Число — подсказка: не пришло — кнопка просто «Показать», без тоста. Оборванный новым набором ответ — мимо (seq).
+        const data = await getJson(url, { headers: { 'X-Count': '1' }, signal: this.pending.signal, quiet: true });
+        if (seq !== this.seq) return;
+        this.render(data?.count ?? null);
     }
 
     render(n) {

@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { loadSortable } from '../lib/sortable';
+import { post } from '../lib/http';
 
 // Редактор маршрута: блоки переставляются за ручку, этапы — между блоками.
 // После каждой перестановки порядок целиком уходит на сервер.
@@ -28,11 +29,7 @@ export default class extends Controller {
             id: b.dataset.blockId,
             stages: [...b.querySelectorAll('[data-stage-id]')].map((s) => s.dataset.stageId),
         }));
-        const r = await fetch(this.urlValue, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-            body: JSON.stringify({ blocks }),
-        });
-        if (!r.ok) window.toast?.('Порядок не сохранился', 'danger');
+        // Обрыв тоже «не сохранился»: раньше он пропадал молча
+        if (!(await post(this.urlValue, { blocks }, { quiet: true }))) window.toast?.('Порядок не сохранился', 'danger');
     }
 }

@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { focusField } from '../keyboard';
+import { post } from '../lib/http';
 
 // Фокус в поле листа — через keyboard.js: иначе iOS сдвигал лист к полю, и каретка рисовалась мимо.
 const focus = (el) => el && focusField(el);
@@ -90,12 +91,7 @@ export default class extends Controller {
         const style = currentTarget.getAttribute('style') ?? '';
         const name = label.querySelector('input')?.value;
         if (label.dataset.tagId) {
-            const res = await fetch(`/settings/tags/${label.dataset.tagId}/color`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '' },
-                body: JSON.stringify({ color }),
-            });
-            if (!res.ok) { window.toast?.('Не получилось перекрасить'); return; }
+            if (!(await post(`/settings/tags/${label.dataset.tagId}/color`, { color }, { quiet: true }))) { window.toast?.('Не получилось перекрасить'); return; }
             window.toast?.(`«${name}» теперь ${currentTarget.getAttribute('aria-label').toLowerCase()}`);
         } else {
             const colors = JSON.parse(this.colorsTarget.value || '{}');

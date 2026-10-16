@@ -533,8 +533,9 @@ export default class extends Controller {
 
     // Клавиатура (keyboard.js): лист ужимается, чтобы над ним было видно поле; ушла — прежняя высота. Поле поднимается
     // над листом один раз — когда лист встал (раньше — двумя таймерами 360 и 380 мс поверх сдвига iOS).
-    keyboard({ open }) {
-        this.fit();
+    keyboard({ open, height }) {
+        // Высота листа — по видимой части; событие идёт и на каждый сдвиг экрана с клавиатурой, а высота от него не меняется.
+        if (height !== this.fitFor) { this.fitFor = height; this.fit(); }
         if (open === this.kb) return;
         this.kb = open;
         if (!this.shown || this.host || wide.matches) return;

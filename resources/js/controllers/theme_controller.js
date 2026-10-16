@@ -1,12 +1,13 @@
 import { Controller } from '@hotwired/stimulus';
 import { setTheme } from '../theme';
+import { reducedMotion } from '../lib/motion';
 
 // Тема расходится кругом от кнопки (View Transitions), где их нет — щелчком.
 export default class extends Controller {
     toggle(event) {
         const dark = !document.documentElement.classList.contains('dark');
         const apply = () => setTheme(dark);
-        if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return apply();
+        if (!document.startViewTransition || reducedMotion()) return apply();
         // Круг идёт из самой кнопки, а не из точки события: тап, клавиатура и .click() — одинаково.
         const r0 = this.element.getBoundingClientRect();
         // Центр — в процентах от окна: при масштабе страницы в Chrome пиксели clip-path у

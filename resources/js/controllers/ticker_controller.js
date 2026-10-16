@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { reducedMotion } from '../lib/motion';
 
 // Общий такт для кадров всех карточек: раз в пять секунд, пока вкладка видна.
 // cards:stop гасит его до перезагрузки страницы. Такт один на страницу, сколько бы контейнеров плиток ни было
@@ -21,7 +22,7 @@ document.addEventListener('turbo:load', () => { stopped = false; });
 
 export default class extends Controller {
     connect() {
-        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (reducedMotion()) return;
         users++;
         this.counted = true;
         if (!interval && !stopped) {
