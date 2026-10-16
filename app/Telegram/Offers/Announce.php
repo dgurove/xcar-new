@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Offers;
 
+use App\Offers\Actions\NotifyNewOffers;
 use App\Offers\AudienceRules;
 use App\Offers\Offer;
 use App\Offers\Slots;
@@ -18,8 +19,9 @@ use Illuminate\Support\Facades\DB;
  * - 13:00–16:00 — «В 16:00 (МСК) будет опубликовано N предложений. Не пропустите», раз в день, если N > 0: в слоте на
  *   сегодня и этому менеджеру показывают сразу (волна 0).
  * - Вышло слотом и стало видно менеджеру (сам слот или его поздняя волна) — «Опубликовано N предложений, показать их?».
- * - «Опубликовать сейчас» (владелец 04.10.2026) — сразу, на ближайшем такте часов: «Появились новые предложения», те же
- *   «показать» и «напомнить». Опубликованное за эти ~20 секунд уходит одним сообщением.
+ * - «Опубликовать сейчас» (владелец 04.10.2026) — «Появились новые предложения», те же «показать» и «напомнить».
+ * - Слот и новые — когда у менеджера 5 минут не открывалось нового, но не позже 30 минут от первого (16.10.2026, как
+ *   `NotifyNewOffers`); срочное — сразу, как было.
  * - «Напомнить через 1 ч».
  * Анонс в чате один: новый удаляет прежний (`prompt_message_id`), N — всё непросмотренное в ленте (`Feed::left`).
  *
@@ -43,16 +45,20 @@ final class Announce
                 $items[] = ['timer' => 'morning', 'chat_id' => (int) $chat];
             }
         }
-        $fresh = DB::select("select distinct s.chat_id from offer_bot_chats s
+        // Как уведомление в приложении (`NotifyNewOffers`): пачкой, когда у него 5 минут не открывалось нового, и не позже
+        // 30 минут от первого; срочное — сразу. Отметка — `notified_at`: выход из галереи со старым `opens_at` тоже анонс.
+        $fresh = DB::select("select s.chat_id from offer_bot_chats s
             join users u on u.id = s.user_id and jsonb_exists(u.roles, ?)
             join offer_viewers v on v.user_id = s.user_id
             join offers o on o.id = v.offer_id
             where s.blocked_at is null and s.muted_at is null
               and o.state = 'open' and o.is_demo = false
               and (o.bids_close_at is null or o.bids_close_at > ?)
-              and v.opens_at <= ? and (s.announced_at is null or v.opens_at > s.announced_at)
+              and v.notified_at <= ? and (s.announced_at is null or v.notified_at > s.announced_at)
               and not exists (select 1 from offer_bot_seen x where x.user_id = s.user_id and x.offer_id = o.id)
-", [Role::Manager->value, $now, $now]);
+            group by s.chat_id
+            having bool_or(o.urgent_at is not null) or max(v.notified_at) <= ? or min(v.notified_at) <= ?
+", [Role::Manager->value, $now, $now, $now->copy()->subMinutes(NotifyNewOffers::QUIET), $now->copy()->subMinutes(NotifyNewOffers::LIMIT)]);
         foreach ($fresh as $row) {
             $items[] = ['timer' => 'announce', 'chat_id' => (int) $row->chat_id];
         }
@@ -72,8 +78,8 @@ final class Announce
     {
         $since = $sub->announced_at;
         $offers = Feed::query($sub->user)
-            ->whereHas('viewers', fn ($v) => $v->where('user_id', $sub->user_id)->where('opens_at', '<=', now())
-                ->when($since, fn ($w) => $w->where('opens_at', '>', $since)))
+            ->whereHas('viewers', fn ($v) => $v->where('user_id', $sub->user_id)->where('notified_at', '<=', now())
+                ->when($since, fn ($w) => $w->where('notified_at', '>', $since)))
             ->pluck('offers.slot_at');
 
         return [$offers->count(), $offers->filter()->count()];

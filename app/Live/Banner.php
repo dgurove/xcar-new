@@ -12,17 +12,17 @@ use Illuminate\Support\Str;
 /**
  * Карточка уведомления для живого канала: готовая разметка `x-ui.banner` и то, что нужно клиенту, чтобы решить, где и
  * как её показать (banner_controller). surface — приложение, где она живёт: `park` — только на парковке, `crm` — только
- * в CRM, пусто — везде, кроме парковки.
+ * в CRM, пусто — везде, кроме парковки. sound — звенит, но уходит сама (важная звенит всегда и висит до нажатия).
  *
- * @phpstan-type Payload array{id: string, subject: ?string, important: bool, surface: ?string, hrefs: array<string, string>, html: string}
+ * @phpstan-type Payload array{id: string, subject: ?string, important: bool, sound: bool, surface: ?string, hrefs: array<string, string>, html: string}
  */
 final class Banner
 {
     /** @return Payload */
-    public static function of(Notice $notice, string $id, ?User $reader = null): array
+    public static function of(Notice $notice, string $id, ?User $reader = null, bool $sound = false): array
     {
         return self::make($id, $notice->titleFor($reader), $notice->textFor($reader), $notice->href(), $notice->actor(), $notice->icon(),
-            $notice->important(), $notice->subject(), $notice->surface());
+            $notice->important(), $notice->subject(), $notice->surface(), $sound);
     }
 
     /** Событие без уведомления в ленте (письмо в ящик, файлы из письма): тихо, уходит само. @return Payload */
@@ -41,7 +41,7 @@ final class Banner
     }
 
     /** @return Payload */
-    private static function make(string $id, string $title, ?string $text, ?string $href, ?User $user, string $icon, bool $important, ?string $subject, ?Surface $surface): array
+    private static function make(string $id, string $title, ?string $text, ?string $href, ?User $user, string $icon, bool $important, ?string $subject, ?Surface $surface, bool $sound = false): array
     {
         $html = Blade::render('<x-ui.banner :id="$id" :title="$title" :text="$text" :href="$href" :user="$user" :icon="$icon" :important="$important" :subject="$subject"/>',
             compact('id', 'title', 'text', 'href', 'user', 'icon', 'important', 'subject'));
@@ -52,6 +52,6 @@ final class Banner
             array_map(fn (Surface $s) => NoticeLink::for(['href' => $href, 'subject' => $subject], $s), Surface::cases()),
         );
 
-        return ['id' => $id, 'subject' => $subject, 'important' => $important, 'surface' => $surface?->value, 'hrefs' => $hrefs, 'html' => trim($html)];
+        return ['id' => $id, 'subject' => $subject, 'important' => $important, 'sound' => $sound, 'surface' => $surface?->value, 'hrefs' => $hrefs, 'html' => trim($html)];
     }
 }

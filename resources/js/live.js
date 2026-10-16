@@ -13,7 +13,7 @@ import { onResume, RESUME } from './lib/resume';
 //           которого пришла правка: у её автора Turbo его помнит и второй раз страницу не перечитывает
 //   rows    {paths: {путь: [ключи]}, request} — в открытом списке перечитать только эти строки (data-detail-key):
 //           тот же адрес с заголовком X-Live-Rows (`Live\Rows`), строки, числа пилюль и таб-бара — из ответа (patch)
-//   notice  {id, subject, important, surface, html} — карточка уведомления (banner_controller, window.notify)
+//   notice  {id, subject, important, sound, surface, html} — карточка уведомления (banner_controller, window.notify)
 //   notices-read {subjects} — объекты открыли: их карточки закрываются
 //   toast   {message, href} — прежний вид, пока в очереди события старой выкладки
 //   badges           — счётчики таб-бара
