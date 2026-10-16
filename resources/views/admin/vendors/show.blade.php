@@ -16,7 +16,7 @@
             </div>
             <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
         </div>
-        <x-ui.sheet id="vendor-form" title="Продажа" wide tall :open="$errors->hasAny(['name', 'logo', 'deal_format', 'reward_value', 'answer_hours', 'binding_days', 'senders', 'mail_account_id'])">
+        <x-ui.sheet id="vendor-form" title="Продажа" wide tall>
             <form method="post" action="{{ $base }}" enctype="multipart/form-data" class="flex flex-col gap-3">
                 @csrf @method('put')
                 <x-vendor.logo-field :vendor="$vendor"><x-ui.field name="name" label="Название" :value="$vendor->name" required/></x-vendor.logo-field>

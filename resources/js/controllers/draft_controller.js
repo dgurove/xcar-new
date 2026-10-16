@@ -9,7 +9,8 @@ import { Controller } from '@hotwired/stimulus';
 const TTL = 24 * 3600 * 1000;
 
 export default class extends Controller {
-    // sent: 'clear' — стирать уже на отправке (форма шторки: её могут отправить и не через Turbo).
+    // sent: 'clear' — форма шторки: её могут отправить и не через Turbo. Через Turbo черновик стирается только успешным
+    // ответом (500 и обрыв набранное не уносят), мимо Turbo — на отправке: ответа страница уже не увидит.
     static values = { key: String, sent: String };
 
     connect() {
@@ -26,7 +27,11 @@ export default class extends Controller {
         this.element.addEventListener('change', this.onInput);
         this.element.addEventListener('trix-change', this.onInput);
         this.element.addEventListener('turbo:submit-end', this.onEnd);
-        if (this.sentValue === 'clear') this.element.addEventListener('submit', () => { clearTimeout(this.timer); this.clear(); });
+        if (this.sentValue === 'clear') this.element.addEventListener('submit', (e) => {
+            if (e.defaultPrevented) return;
+            clearTimeout(this.timer);
+            if (this.viaTurbo(e.submitter)) this.save(); else this.clear();
+        });
         this.element.addEventListener('draft:clear', () => this.clear());
         document.addEventListener('input', this.onOuter);
         document.addEventListener('change', this.onOuter);
@@ -40,6 +45,12 @@ export default class extends Controller {
         document.removeEventListener('change', this.onOuter);
         document.removeEventListener('visibilitychange', this.onHide);
         document.removeEventListener('turbo:before-cache', this.onCache);
+    }
+
+    viaTurbo(submitter) {
+        const off = (el) => el?.closest?.('[data-turbo]')?.dataset.turbo === 'false';
+        return window.Turbo?.session?.drive !== false && !off(this.element) && submitter?.dataset.turbo !== 'false'
+            && (submitter?.getAttribute('formtarget') ?? this.element.target ?? '') === '';
     }
 
     fields() {

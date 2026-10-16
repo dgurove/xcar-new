@@ -43,6 +43,10 @@ preg_match("/\\\$bar = \\['light' => '(#[0-9a-f]+)', 'dark' => '(#[0-9a-f]+)'\\]
 if (! $light || ! $dark || ! $bar || strcasecmp($light[1], $bar[1]) || strcasecmp($dark[1], $bar[2])) {
     $bad[] = 'components/ui/layout.blade.php: $bar не совпадает с --color-bar в app.css';
 }
+preg_match("/'theme_color' => '(#[0-9a-f]+)'/i", file_get_contents(__DIR__.'/../app/Http/Pwa/PwaController.php'), $manifest);
+if (! $manifest || ! $light || strcasecmp($manifest[1], $light[1])) {
+    $bad[] = 'app/Http/Pwa/PwaController.php: theme_color манифеста не совпадает с --color-bar в app.css';
+}
 
 // Одна дверь на дело (16.10.2026: сумма разбиралась в шестнадцати местах, историю писали пять модулей, клавиатуру
 // слушали четыре) — новая копия мимо двери ловится здесь, а не через месяц у человека на телефоне.
@@ -51,6 +55,7 @@ $doors = [
     ['app/Http', '/\.php$/', "/preg_replace\('\/\\\\D\+\/'/", [], 'сумма из формы — App\\Support\\Money::rubles'],
     ['resources/js', '/\.js$/', '/history\.pushState/', ['resources/js/overlays.js'], 'запись истории — resources/js/overlays.js'],
     ['resources/js', '/\.js$/', '/visualViewport\??\.addEventListener/', ['resources/js/keyboard.js'], 'клавиатура — keyboard.js и событие keyboard:change'],
+    ['resources/views', '/\.blade\.php$/', '/<x-ui\.sheet.* :open="\$errors->(has|hasAny|any)\((\[[^\]]*\]|\'[^\']*\')?\)"/', [], 'шторка с ошибками открывается сама — _sheet в sheet.js'],
 ];
 foreach ($doors as [$where, $type, $pattern, $allowed, $door]) {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$where", FilesystemIterator::SKIP_DOTS));

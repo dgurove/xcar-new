@@ -58,7 +58,7 @@
                     <x-ui.row-icon name="plus" tone="accent"/>
                     <span class="min-w-0 flex-1 font-medium">Новая ссылка</span>
                 </button>
-                <x-ui.sheet id="invite-new" title="Новая ссылка" :open="$errors->any()">
+                <x-ui.sheet id="invite-new" title="Новая ссылка">
                     <form method="post" action="/users/invites" class="flex flex-col gap-3">
                         @csrf
                         <div class="fields">

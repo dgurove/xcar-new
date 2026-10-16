@@ -9,7 +9,7 @@
             <a href="/offers/{{ $thread->offer->number }}" class="text-sm text-accent-text">{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></a>
         @endif
         <button type="button" class="btn btn-s btn-quiet ml-auto" data-action="sheet#open">{{ ($park ? $thread->vehicle : $thread->offer) ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
-        <x-ui.sheet id="link" :title="$park ? 'Транспортное средство' : 'Предложение'" :open="$errors->has('number') || $errors->has('vehicle_id')">
+        <x-ui.sheet id="link" :title="$park ? 'Транспортное средство' : 'Предложение'">
             <form method="post" action="{{ $base }}/{{ $thread->id }}/link" class="flex flex-col gap-3">
                 @csrf
                 @if ($park)

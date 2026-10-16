@@ -7,7 +7,7 @@
             <x-slot:actions>
                 <div data-controller="sheet" class="contents">
                     <button type="button" class="btn btn-accent btn-round" data-action="sheet#open" aria-label="Новый вендор"><x-ui.icon name="plus" class="size-5"/></button>
-                    <x-ui.sheet id="vendor-new" title="Новый вендор" :open="$errors->has('name')">
+                    <x-ui.sheet id="vendor-new" title="Новый вендор">
                         <form method="post" action="/vendors" class="flex flex-col gap-4">
                             @csrf
                             <div class="fields">

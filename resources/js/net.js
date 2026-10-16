@@ -6,10 +6,45 @@ import { onResume, RESUME } from './lib/resume';
 // сессию) — форма не рисует «Страница устарела»: токен тихо обновляется со
 // свежей страницы, и отправка повторяется сама. 429 — тост с временем ожидания.
 // Обрыв связи — Turbo не перезагружает окно на /offline: тост «Нет связи» с
-// «Повторить», при возврате сети повтор уходит сам.
+// «Повторить»; при возврате сети сам повторяется только переход — форму (её запрос мог
+// дойти, потерялся лишь ответ) отправляет заново только человек. Ответа нет 30 с — тот же обрыв.
+// 500 на отправке формы — тост, форма и шторка с набранным на месте (не голая страница ошибки).
+const TIMEOUT = 30_000;
+
+// Остановленный переход Turbo не снимает с <html> aria-busy и полосу загрузки — они висели до следующего перехода,
+// и экран выглядел вечно грузящимся.
+function stopVisit() {
+    Turbo.navigator.stop();
+    document.documentElement.removeAttribute('aria-busy');
+    Turbo.session.adapter?.hideVisitProgressBar?.();
+}
+
 export function netGuards() {
     const submitters = new WeakMap();
     document.addEventListener('turbo:submit-start', (e) => submitters.set(e.target, e.detail.formSubmission.submitter));
+
+    // Своё ожидание у каждого запроса Turbo. Отмену Turbo глотает молча (WebKit и таймаут отдаёт как AbortError), поэтому
+    // через 30 с проверяем сами: запрос ещё идёт (aria-busy у страницы, формы, фрейма) и он последний у своей цели —
+    // отменяем и шлём turbo:fetch-request-error, как при обрыве: дальше ветка ниже и карточка строки (detail_controller).
+    // Форма с выбранными файлами — без срока: фото по слабой сети честно грузятся дольше. Предзагрузку не трогаем.
+    const latest = new WeakMap();
+    document.addEventListener('turbo:before-fetch-request', (event) => {
+        const { fetchOptions, url } = event.detail;
+        if (!AbortSignal.any || !fetchOptions.signal) return;
+        if (fetchOptions.body instanceof FormData && [...fetchOptions.body.values()].some((v) => v instanceof File && v.size)) return;
+        const target = event.target === document ? document.documentElement : event.target;
+        const token = {};
+        const stop = new AbortController();
+        latest.set(target, token);
+        fetchOptions.signal = AbortSignal.any([fetchOptions.signal, stop.signal]);
+        setTimeout(() => {
+            if (latest.get(target) !== token || !target.hasAttribute?.('aria-busy')) return;
+            stop.abort();
+            target.dispatchEvent(new CustomEvent('turbo:fetch-request-error', {
+                bubbles: true, cancelable: true, detail: { request: { url }, error: new DOMException('Нет ответа', 'TimeoutError') },
+            }));
+        }, TIMEOUT);
+    });
 
     document.addEventListener('turbo:before-fetch-response', async (event) => {
         const { fetchResponse } = event.detail;
@@ -22,9 +57,15 @@ export function netGuards() {
             setTimeout(() => delete form.dataset.retried, 5000);
             return;
         }
+        if (form && fetchResponse.statusCode >= 500) {
+            event.preventDefault();
+            window.toast?.('Не получилось', 'danger');
+            return;
+        }
         if (fetchResponse.statusCode === 429) {
             event.preventDefault();
-            if (!form) Turbo.navigator.stop();
+            if (!form) stopVisit();
+            document.dispatchEvent(new Event('press:clear'));
             const wait = Number(fetchResponse.header('Retry-After') || 0);
             window.toast?.(wait ? `Слишком много попыток — через ${wait} с` : 'Слишком много попыток', 'danger');
         }
@@ -35,14 +76,15 @@ export function netGuards() {
         event.preventDefault();
         const { request } = event.detail;
         const form = event.target instanceof HTMLFormElement ? event.target : null;
-        if (!form) Turbo.navigator.stop();
+        if (!form) stopVisit();
         // Карточка строки сама пишет «Нет связи» с «Повторить» на месте заготовки (detail_controller#failed); повтор
         // визитом открыл бы весь список заново.
         if (!form && event.target?.matches?.('turbo-frame#detail')) return;
         // Мелкие действия (закладка, прочитано) — в очередь: уйдут сами, когда появится сеть.
         if (form?.hasAttribute('data-queue')) { enqueue(form); window.toast?.('Нет связи — отправим, когда появится'); return; }
-        retry = form ? () => form.requestSubmit(submitters.get(form) ?? undefined) : () => Turbo.visit(request.url.href);
-        window.toast?.('Нет связи', { kind: 'danger', action: { label: 'Повторить', run: retry } });
+        const again = form ? () => form.requestSubmit(submitters.get(form) ?? undefined) : () => Turbo.visit(request.url.href);
+        retry = form ? null : again;
+        window.toast?.('Нет связи', { kind: 'danger', action: { label: 'Повторить', run: again } });
     });
     window.addEventListener('online', () => { document.documentElement.removeAttribute('data-net'); const r = retry; retry = null; r?.(); flush(); });
     document.addEventListener('turbo:load', () => navigator.onLine !== false && flush());
@@ -83,9 +125,11 @@ export async function refreshCsrf() {
 
 // Очередь действий без сети: форма с data-queue (закладка, прочитано) запоминается
 // в localStorage и отправляется при возврате сети или на следующей загрузке; ответ-стрим
-// применяется, если строка ещё на экране. 4xx — выбросить, обрыв — оставить.
-const QUEUE = 'net:queue';
+// применяется, если строка ещё на экране. Ответ сервера (любой) — выбросить, обрыв — оставить.
+// Очередь своя у каждого пользователя: вошёл другой на том же телефоне — чужое от его имени не уходит.
+const queueKey = () => `net:queue:${document.querySelector('meta[name="user-id"]')?.content ?? ''}`;
 function enqueue(form) {
+    const QUEUE = queueKey();
     const body = [...new FormData(form)].filter(([k, v]) => k !== '_token' && !(v instanceof File));
     try {
         const list = JSON.parse(localStorage.getItem(QUEUE) || '[]');
@@ -97,11 +141,13 @@ function enqueue(form) {
 let flushing = false;
 export async function flush() {
     if (flushing) return;
+    const QUEUE = queueKey();
     let list;
     try { list = JSON.parse(localStorage.getItem(QUEUE) || '[]'); } catch { return; }
     if (!list.length) return;
     flushing = true;
     const keep = [];
+    let sent = 0;
     for (const item of list) {
         if (Date.now() - item.at > 24 * 3600 * 1000) continue;
         const body = new FormData();
@@ -110,12 +156,14 @@ export async function flush() {
         try {
             const r = await fetch(item.url, { method: item.method, body, credentials: 'same-origin', headers: { Accept: 'text/vnd.turbo-stream.html, text/html' } });
             if (r.status === 419) { await refreshCsrf(); keep.push(item); continue; }
-            if (r.ok && (r.headers.get('Content-Type') || '').includes('turbo-stream')) Turbo.renderStreamMessage(await r.text());
+            if (!r.ok) continue;
+            sent++;
+            if ((r.headers.get('Content-Type') || '').includes('turbo-stream')) Turbo.renderStreamMessage(await r.text());
         } catch {
             keep.push(item);
         }
     }
     try { localStorage.setItem(QUEUE, JSON.stringify(keep)); } catch {}
     flushing = false;
-    if (keep.length < list.length) window.toast?.('Отправлено');
+    if (sent) window.toast?.('Отправлено');
 }

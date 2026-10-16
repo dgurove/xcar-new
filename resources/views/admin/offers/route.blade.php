@@ -68,7 +68,7 @@
 @endif
 @if ($sheet)
     <div data-controller="sheet" data-action="pickup-{{ $offer->number }}:open@window->sheet#open" class="contents">
-        <x-ui.sheet id="pickup-{{ $offer->number }}" title="Вывоз" :open="$errors->hasAny(['mode', 'evacuator_id', 'evacuation_to', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'cost'])">
+        <x-ui.sheet id="pickup-{{ $offer->number }}" title="Вывоз">
             <x-offer.pickup-form :offer="$offer" :managers="$pickupManagers" prefix="pickup-{{ $offer->number }}"/>
         </x-ui.sheet>
     </div>

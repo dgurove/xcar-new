@@ -3,6 +3,7 @@ import { openLightbox } from '../lightbox';
 import { badges, liveOpen } from '../live';
 import { copyText } from '../lib/clipboard';
 import { post, request } from '../lib/http';
+import { shrink } from '../lib/image';
 import { scrollBehavior } from '../lib/motion';
 
 // Чат по офферу. Лента дополняется фрагментами «всё после N», где N —
@@ -30,7 +31,15 @@ export default class extends Controller {
         // (Chats\Presence живёт 45 с): иначе через минуту сообщения в открытый чат шли бы в ленту уведомлений и пушем.
         this.timer = setInterval(() => { if (!document.hidden && (!liveOpen() || this.visible())) this.fetch(); }, 20000);
         this.watchTop();
+        // Фото в ленте приходят позже текста и раздвигают её: стояли внизу — остаёмся внизу (у WebKit нет привязки
+        // прокрутки, overflow-anchor), иначе последнее сообщение уезжало под поле ввода.
+        this.pinned = true;
+        this.onListScroll = () => { this.pinned = this.atBottom(); };
+        this.onMediaLoad = (e) => { if (e.target.tagName === 'IMG' && this.pinned) this.listTarget.scrollTop = this.listTarget.scrollHeight; };
+        this.listTarget.addEventListener('scroll', this.onListScroll, { passive: true });
+        this.listTarget.addEventListener('load', this.onMediaLoad, true);
         this.scroll(this.listTarget.querySelector('#chat-new'));
+        this.pinned = this.atBottom();
         this.status = document.querySelector('[data-chat-status]');
         // Шторка чата на ПК грузится лениво: chat:open уходил раньше, чем контроллер подключился, и чат не читался.
         if (this.visible()) this.fetch(true);
@@ -42,6 +51,8 @@ export default class extends Controller {
         window.removeEventListener('online', this.onOnline);
         clearInterval(this.timer);
         clearTimeout(this.typingTimer);
+        this.listTarget.removeEventListener('scroll', this.onListScroll);
+        this.listTarget.removeEventListener('load', this.onMediaLoad, true);
         this.topWatcher?.disconnect();
         this.viewer?.destroy();
         this.viewer = null;
@@ -516,7 +527,7 @@ export default class extends Controller {
         form.append('text', text);
         form.append('after', this.lastValue);
         if (replyTo) form.append('reply_to', replyTo);
-        files.forEach((f) => form.append('files[]', f));
+        (await Promise.all(files.map((f) => shrink(f)))).forEach((f) => form.append('files[]', f));
         try {
             // Чата ещё нет — первое сообщение уходит на open, ответ приносит адрес ленты.
             // Неотправленное видно самим пузырём (повтор нажатием и с возвратом сети), поэтому без тоста.

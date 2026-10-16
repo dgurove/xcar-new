@@ -3,7 +3,7 @@
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @php use App\Vendors\Kind; use App\Billing\Cadence; @endphp
 <div data-controller="sheet" data-action="vendor-form:open@window->sheet#open" class="contents">
-    <x-ui.sheet id="vendor-form" title="Вендор" wide tall :open="$errors->hasAny(['name', 'logo', 'inn', 'kpp', 'bank_account', 'bank_corr', 'bank_bic', 'park_senders', 'agreement_until', 'buyer_rate_multiplier'])">
+    <x-ui.sheet id="vendor-form" title="Вендор" wide tall>
         <form method="post" action="{{ $base }}" enctype="multipart/form-data" class="flex flex-col gap-3">
             @csrf @method('put')
             <x-vendor.logo-field :vendor="$vendor"><x-ui.field name="name" label="Название" :value="$vendor->name" required/></x-vendor.logo-field>

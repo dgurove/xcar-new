@@ -10,6 +10,10 @@ class PushController
     public function store(Request $request)
     {
         $data = $request->validate(['endpoint' => ['required', 'string', 'max:500'], 'keys.p256dh' => ['required', 'string'], 'keys.auth' => ['required', 'string']]);
+        // Сверка при запуске приложения (push-sync.js): человек выключил уведомления на другом устройстве — не включаем.
+        if ($request->boolean('sync') && ($request->user()->notification_settings['push'] ?? null) === false) {
+            return response()->json(['ok' => false]);
+        }
         Subscription::updateOrCreate(['endpoint' => $data['endpoint']], [
             'user_id' => $request->user()->id, 'p256dh' => $data['keys']['p256dh'], 'auth' => $data['keys']['auth'],
             'agent' => mb_substr((string) $request->userAgent(), 0, 255), 'host' => $request->getHost(), 'failed_at' => null,

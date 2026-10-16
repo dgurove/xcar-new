@@ -228,6 +228,8 @@ function flush() {
     const { request, keys } = waiting;
     waiting = null;
     if (keys && keys.size <= ROWS_MAX) { patching = patching.then(() => patch([...keys])).catch(() => {}); return; }
+    // Догруженная лента целиком не перечитывается: ответ — одна первая порция (endless_controller).
+    if (document.querySelector('[data-controller~="endless"][data-extended]')) return;
     Turbo.renderStreamMessage(`<turbo-stream action="refresh"${request ? ` request-id="${request}"` : ''}></turbo-stream>`);
 }
 

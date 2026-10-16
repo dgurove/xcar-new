@@ -24,7 +24,7 @@
             @endif
             @if ($images->isNotEmpty())
                 <div class="msg-photos {{ $images->count() > 1 ? 'is-grid' : '' }}">
-                    @foreach ($images as $f)<a href="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" data-action="chat#view:prevent"><img src="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" data-thumb="/chats/{{ $m->chat_id }}/files/{{ $f->id }}?thumb=1" alt="" loading="lazy"></a>@endforeach
+                    @foreach ($images as $f)<a href="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" data-action="chat#view:prevent"><img src="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" data-thumb="/chats/{{ $m->chat_id }}/files/{{ $f->id }}?thumb=1" alt="" loading="lazy" decoding="async"></a>@endforeach
                 </div>
             @endif
             @foreach ($docs as $f)

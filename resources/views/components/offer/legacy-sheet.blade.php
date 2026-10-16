@@ -2,7 +2,7 @@
      Сервер раскладывает: черновики — во вкладку, незаведённые — призрачными строками, в сделке — списком над таблицей. --}}
 <div class="contents" data-controller="sheet">
     <button type="button" class="btn btn-s btn-quiet toolbar-wide shrink-0 rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/>Добавить номера</button>
-    <x-ui.sheet id="legacy-add" title="Номера убытка" :open="$errors->has('claims')">
+    <x-ui.sheet id="legacy-add" title="Номера убытка">
         <form method="post" action="/offers/legacy" class="flex flex-col gap-4">
             @csrf
             <div class="fields">

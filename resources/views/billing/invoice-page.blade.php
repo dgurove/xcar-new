@@ -24,7 +24,7 @@
         </div>
         </div>
         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
-        <x-ui.sheet id="invoice-actions" :title="$i->label()" :open="$errors->has('due_at')">
+        <x-ui.sheet id="invoice-actions" :title="$i->label()">
             <div class="flex flex-col gap-2">
                 @if ($mailUrl ?? null)<x-ui.button :href="$mailUrl" block><x-ui.icon name="send" class="size-4"/> {{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</x-ui.button>@endif
                 {{-- Документы — в шторке документов поверх окна; акт хранения — PDF, если выставлен закрытием месяца, иначе страница. --}}
@@ -145,7 +145,7 @@
     @if ($i->state === InvoiceState::Issued && $canManage)
         <div data-controller="sheet">
             <x-ui.action-bar><x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">{{ $i->isOwed() ? ($fee ? 'Выплачено' : 'Перечислено') : 'Оплачен' }}</x-ui.button></x-ui.action-bar>
-            <x-ui.sheet id="pay" :title="$i->isOwed() ? ($fee ? 'Выплата' : 'Перечисление') : 'Оплата'" :open="$errors->has('amount')"><x-billing.pay-form :invoice="$i" :action="$base.'/payments'" :sources="$sources" sheet/></x-ui.sheet>
+            <x-ui.sheet id="pay" :title="$i->isOwed() ? ($fee ? 'Выплата' : 'Перечисление') : 'Оплата'"><x-billing.pay-form :invoice="$i" :action="$base.'/payments'" :sources="$sources" sheet/></x-ui.sheet>
         </div>
     @endif
 </x-ui.shell>

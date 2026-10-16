@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { post, request } from '../lib/http';
+import { markPush, vapidKey } from '../push-sync';
 
 // Уведомления на телефон: разрешение, подписка, отправка ключей на сервер.
 export default class extends Controller {
@@ -34,9 +35,10 @@ export default class extends Controller {
             if (permission !== 'granted') return;
             const reg = await navigator.serviceWorker.ready;
             const key = document.querySelector('meta[name="vapid-key"]')?.content;
-            const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.key(key) });
+            const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey(key) });
             if (!(await post('/push/subscription', sub.toJSON()))) { await sub.unsubscribe().catch(() => {}); return; }
             this.sub = sub;
+            markPush(true);
             window.toast?.('Уведомления включены');
         } catch {
             window.toast?.('Не получилось включить уведомления', 'danger');
@@ -51,16 +53,11 @@ export default class extends Controller {
             if (!(await request('/push/subscription', { method: 'DELETE', json: { endpoint: this.sub?.endpoint } }))) return;
             await this.sub?.unsubscribe();
             this.sub = null;
+            markPush(false);
         } catch {
             window.toast?.('Не получилось выключить уведомления', 'danger');
         } finally {
             this.render();
         }
-    }
-
-    key(base64) {
-        const padding = '='.repeat((4 - (base64.length % 4)) % 4);
-        const raw = atob((base64 + padding).replace(/-/g, '+').replace(/_/g, '/'));
-        return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
     }
 }

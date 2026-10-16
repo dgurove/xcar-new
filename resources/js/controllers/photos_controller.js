@@ -2,6 +2,8 @@ import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { confirmSheet } from '../confirm';
 import { csrf, request } from '../lib/http';
+import { shrink } from '../lib/image';
+import { refreshCsrf } from '../net';
 import { loadSortable } from '../lib/sortable';
 import { openLightbox } from '../lightbox';
 import { openSheet, closeSheet, outside } from '../sheet';
@@ -157,8 +159,17 @@ export default class extends Controller {
     // Экран не гаснет, пока идёт очередь; неудавшийся кадр — повтор тапом.
     // Кадры идут по три сразу: ответы приходят вразнобой, и ряд из ответа, где кадров меньше уже показанного, устарел —
     // его пропускаем (последний сохранённый кадр приносит полный ряд). Документы и архивы зоны any — полосой следом.
+    // Кадры, выбранные, пока идёт прошлая пачка, встают в очередь (раньше молча пропадали).
     async uploadFiles(files) {
-        if (this.uploading || !files.length) return;
+        if (!files.length) return;
+        if (this.uploading) { (this.later ??= []).push(...files); return; }
+        try { await this.run(files); } finally { this.uploading = false; }
+        const later = this.later;
+        this.later = null;
+        if (later?.length) await this.uploadFiles(later);
+    }
+
+    async run(files) {
         if (!this.hasGridTarget || this.collectionValue !== 'photos') return this.uploadWithBar(files);
         const other = this.anyValue ? files.filter((f) => !isImage(f)) : [];
         files = this.anyValue ? files.filter(isImage) : files;
@@ -184,8 +195,7 @@ export default class extends Controller {
                 }
             }
         };
-        await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker));
-        wake?.release?.().catch(() => {});
+        try { await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker)); } finally { wake?.release?.().catch(() => {}); }
         this.uploading = false;
         window.dispatchEvent(new CustomEvent('photos:uploaded'));
         if (other.length) await this.uploadWithBar(other);
@@ -240,23 +250,7 @@ export default class extends Controller {
 
     async prepare(file) {
         const sha = await this.sha(file);
-        if (!file.type.startsWith('image/') || this.collectionValue !== 'photos') return { file, sha };
-        try {
-            const bitmap = await createImageBitmap(file);
-            const max = Math.max(bitmap.width, bitmap.height);
-            if (max <= 1600 && file.size < 600_000) { bitmap.close(); return { file, sha }; }
-            const scale = Math.min(1, 1600 / max);
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.round(bitmap.width * scale);
-            canvas.height = Math.round(bitmap.height * scale);
-            canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-            bitmap.close();
-            const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', .85));
-            if (!blob) return { file, sha };
-            return { file: new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }), sha };
-        } catch {
-            return { file, sha }; // HEIC на Android и прочее, что телефон не декодирует — как есть
-        }
+        return { file: this.collectionValue === 'photos' ? await shrink(file) : file, sha };
     }
 
     async sha(file) {
@@ -266,8 +260,19 @@ export default class extends Controller {
         } catch { return ''; }
     }
 
-    // onSent — файл ушёл целиком, дальше сервер пережимает кадр и снимает чужой знак (секунда-две на кадр)
-    send({ file, sha }, onProgress, onSent) {
+    // onSent — файл ушёл целиком, дальше сервер пережимает кадр и снимает чужой знак (секунда-две на кадр).
+    // XHR, а не fetch: нужен прогресс отправки. Токен устарел (419) — обновить и отправить ещё раз; 30 с без движения
+    // отправки или минута без ответа после неё — «Нет связи», кадр можно повторить тапом (раньше ждал вечно).
+    async send(job, onProgress, onSent) {
+        try {
+            return await this.xhr(job, onProgress, onSent);
+        } catch (e) {
+            if (e.status !== 419 || !(await refreshCsrf())) throw e;
+            return this.xhr(job, onProgress, onSent);
+        }
+    }
+
+    xhr({ file, sha }, onProgress, onSent) {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             const form = new FormData();
@@ -281,17 +286,19 @@ export default class extends Controller {
             xhr.open('POST', this.urlValue);
             xhr.setRequestHeader('Accept', 'text/vnd.turbo-stream.html');
             if (this.rowId) xhr.setRequestHeader('X-Photos-Target', this.rowId);
-            xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
-            xhr.upload.onload = () => onSent?.();
+            let stall;
+            const watch = (ms) => { clearTimeout(stall); stall = setTimeout(() => xhr.abort(), ms); };
+            xhr.upload.onprogress = (e) => { watch(30_000); if (e.lengthComputable) onProgress(e.loaded / e.total); };
+            xhr.upload.onload = () => { watch(60_000); onSent?.(); };
             xhr.onload = () => {
-                if (xhr.status < 300) resolve(xhr.responseText);
-                else {
-                    let message = 'Файл не загрузился';
-                    try { message = JSON.parse(xhr.responseText).message || message; } catch {}
-                    reject(new Error(message));
-                }
+                clearTimeout(stall);
+                if (xhr.status < 300) return resolve(xhr.responseText);
+                let message = 'Файл не загрузился';
+                try { message = JSON.parse(xhr.responseText).message || message; } catch {}
+                reject(Object.assign(new Error(message), { status: xhr.status }));
             };
-            xhr.onerror = () => reject(new Error('Нет связи'));
+            xhr.onerror = xhr.onabort = () => { clearTimeout(stall); reject(new Error('Нет связи')); };
+            watch(30_000);
             xhr.send(form);
         });
     }

@@ -19,7 +19,7 @@
         : 'Сделка отменится, подтверждение менеджера останется среди подтверждений, неоплаченные счета сделки аннулируются';
 @endphp
 <div data-controller="sheet" data-action="resale:open@window->sheet#open" class="contents">
-    <x-ui.sheet id="resale-{{ $n }}" :title="$isDeal ? 'Отменить сделку' : 'Вернуть в продажу'" tall :open="$errors->hasAny(['asking_price', 'floor_price', 'publish_price', 'bids_close_at'])">
+    <x-ui.sheet id="resale-{{ $n }}" :title="$isDeal ? 'Отменить сделку' : 'Вернуть в продажу'" tall>
         <div class="flex flex-col gap-4" @if ($isDeal) data-controller="reveal" @endif>
             @if ($isDeal)
                 <x-ui.segment name="_cancel_way" :options="['sale' => 'В продажу', 'draft' => 'В черновики']" value="sale" pick/>

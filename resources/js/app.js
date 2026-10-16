@@ -15,6 +15,8 @@ import { setTheme, paintBar, chosenTheme } from './theme';
 import { keyboardInset, focusField } from './keyboard';
 import { onHide, onResume, RESUME } from './lib/resume';
 import { scrollBehavior } from './lib/motion';
+import { pullToRefresh } from './lib/pull';
+import { keepPush } from './push-sync';
 import { csrf } from './lib/http';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
@@ -147,6 +149,8 @@ netGuards();
 live();
 imageFade();
 freshness();
+keepSideScroll();
+keepPush();
 focusInvalid();
 formCheck();
 enterNext();
@@ -181,7 +185,7 @@ window.addEventListener('unhandledrejection', (event) => {
 function pressFeedback() {
     const clear = () => document.querySelectorAll('.is-pending').forEach((el) => el.classList.remove('is-pending'));
     document.addEventListener('turbo:click', (event) => {
-        event.target.closest('.card, .row, .stat, .pill, .btn, .tab, .header-btn')?.classList.add('is-pending');
+        event.target.closest('.card, .row, .chat-row, .search-link, .stat, .pill, .btn, .tab, .header-btn')?.classList.add('is-pending');
         const dialog = event.target.closest('dialog[open]');
         if (!dialog?.matches(':modal')) return;
         const link = event.target.closest('a[href]');
@@ -194,7 +198,8 @@ function pressFeedback() {
         event.detail.originalEvent.preventDefault();
         closeSheet(dialog).then(() => Turbo.visit(event.detail.url, { action: link?.dataset.turboAction || 'advance' }));
     });
-    for (const name of ['turbo:before-render', 'turbo:load', 'turbo:fetch-request-error', 'turbo:before-cache']) document.addEventListener(name, clear);
+    // press:clear — запрос остановлен без отрисовки (429 в net.js): нажатое иначе так и висело бы бледным.
+    for (const name of ['turbo:before-render', 'turbo:load', 'turbo:fetch-request-error', 'turbo:before-cache', 'press:clear']) document.addEventListener(name, clear);
     // Нажатие на плитку или строку-ссылку — класс is-pressed под пальцем, вместо .card:has(a:active): тот WebKit
     // пересчитывал у всех плиток на каждое касание. Палец поехал (прокрутка) — нажатия нет.
     let pressed = null;
@@ -211,9 +216,20 @@ function pressFeedback() {
     }, { passive: true });
     for (const name of ['pointerup', 'pointercancel']) document.addEventListener(name, release, { passive: true });
     addEventListener('scroll', release, { capture: true, passive: true });
+    // Форма, что уже отправляется, второй раз не уходит: двойной тап, Enter, отправка из скрипта (меню, autosubmit,
+    // дата, «Сохранить изменения») — Turbo на повторе отменил бы первый запрос, а тот к серверу уже мог дойти.
+    // GET (фильтр, поиск) — как прежде, новый заменяет старый. Минута без ответа — замок снимается сам.
     document.addEventListener('turbo:submit-start', (event) => {
         event.detail.formSubmission.submitter?.setAttribute('aria-busy', 'true');
+        if (event.detail.formSubmission.method.toLowerCase() !== 'get') event.target.dataset.sending = String(Date.now());
     });
+    document.addEventListener('turbo:submit-end', (event) => { delete event.target.dataset.sending; });
+    window.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!form?.dataset?.sending || Date.now() - Number(form.dataset.sending) > 60_000) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }, { capture: true });
     // GET-форма (фильтры, поиск) из открытой шторки: запись шторки снимается из истории
     // до отправки, иначе «назад» после фильтра вернёт адрес без содержимого.
     document.addEventListener('submit', (event) => {
@@ -277,33 +293,77 @@ function imageFade() {
 // морф на месте с сохранением прокрутки, заодно свежие csrf-token и темы live.
 // 2 мин, а не 10 с: карточки и так живут по Mercure, а открыть ТС, почитать и вернуться — не повод
 // перерисовывать весь список заново («Назад» должен быть мгновенным).
-// Только на списках и не под руками: открытая шторка или правка формы — не трогаем.
+// Только на списках и не под руками: открытая шторка или правка формы — не трогаем. Догруженная лента — тоже (ответ
+// принёс бы одну первую порцию). Другой экран, оставленный надолго (больше 10 мин, на ночь), — тоже перечитывается.
+// Ими же «потянуть вниз» (lib/pull.js): тянуть можно везде, где не под руками.
+// «Назад» возвращает и прокрутку вбок: снимок Turbo копирует разметку, а scrollLeft лент плиток, широких таблиц, пилюль
+// и кадров плитки в копию не переходит — полки сайта вставали к началу. Порядок лент на странице — ключ.
+function keepSideScroll() {
+    const SIDE = '.cards-shelf, .table-box, .pills, .card-strip';
+    const saved = new Map();
+    let restore = false;
+    // Адрес снимка — свой: на «Назад» location уже новый, когда Turbo снимает уходящую страницу.
+    let shown = location.href;
+    document.addEventListener('turbo:before-cache', () => {
+        const at = [...document.querySelectorAll(SIDE)].map((el) => el.scrollLeft);
+        if (at.some(Boolean)) saved.set(shown, at); else saved.delete(shown);
+    });
+    document.addEventListener('turbo:visit', (e) => { restore = e.detail.action === 'restore'; });
+    document.addEventListener('turbo:load', () => {
+        shown = location.href;
+        const at = restore ? saved.get(location.href) : null;
+        restore = false;
+        if (!at) return;
+        document.querySelectorAll(SIDE).forEach((el, i) => { if (at[i]) el.scrollTo({ left: at[i], behavior: 'instant' }); });
+    });
+}
+
 function freshness() {
     const cachedAt = new Map();
     let action = null;
-    const quiet = () => document.querySelector('.cards, [data-list], [data-fresh-on-back]') && !document.querySelector('form[data-dirty], dialog:modal');
+    const calm = () => !document.querySelector('form[data-dirty], dialog:modal, [data-controller~="endless"][data-extended]')
+        && !document.activeElement?.matches('input, textarea, select, [contenteditable]');
+    const quiet = () => document.querySelector('.cards, [data-list], [data-fresh-on-back]') && calm();
     // Метка — чтобы net.js не перечитывал токен отдельным запросом: его принесёт этот же ответ.
     const refresh = () => { window.xcarRefreshedAt = Date.now(); Turbo.visit(location.href, { action: 'replace' }); };
-    document.addEventListener('turbo:before-cache', () => cachedAt.set(location.href, Date.now()));
+    // Адрес снимка — свой: на «Назад» location уже прежний, когда Turbo снимает уходящую страницу, и время ложилось
+    // не той странице (возвращённый список всегда казался свежим).
+    let shown = location.href;
+    document.addEventListener('turbo:before-cache', () => cachedAt.set(shown, Date.now()));
     document.addEventListener('turbo:visit', (event) => { action = event.detail.action; });
     document.addEventListener('turbo:load', () => {
+        shown = location.href;
         // Лента уведомлений и список чатов — сразу: точки «не прочитано» в снимке остались от времени до прочтения.
         const stale = document.querySelector('[data-fresh-on-back]') || Date.now() - (cachedAt.get(location.href) ?? Date.now()) > 120_000;
         if (action === 'restore' && stale && quiet()) refresh();
         action = null;
     });
-    onResume((away) => { if (away > 60_000 && quiet()) refresh(); }, RESUME.page);
+    onResume((away) => { if ((away > 60_000 && quiet()) || (away > 600_000 && calm())) refresh(); }, RESUME.page);
+    pullToRefresh(refresh, () => !document.querySelector('form[data-dirty], dialog:modal')
+        && !document.activeElement?.matches('input, textarea, select, [contenteditable]'));
 }
 
 // Ошибка валидации приводит к полю: после морфа с preserve-scroll человек стоит у
 // «Сохранить», а красное поле — вне экрана.
+// Ошибка сервера бывает у x-ui.field (.field-invalid), у строки анкеты (.form-row.is-invalid) и голой подписью
+// .field-error под своим полем — поле тогда ближайшее перед ней. Фрейм (кроме карточки строки — у неё своё) — так же.
+const typed = 'input:not([type=hidden]), select, textarea';
+function firstInvalid(root) {
+    const bad = root.querySelector('.field-invalid .field-input, .form-row.is-invalid input, .form-row.is-invalid select');
+    if (bad) return bad;
+    const note = root.querySelector('.field-error');
+    for (let el = note?.previousElementSibling; el; el = el.previousElementSibling) {
+        const field = el.matches(typed) ? el : el.querySelector(typed);
+        if (field) return field;
+    }
+    return null;
+}
+
 function focusInvalid() {
-    document.addEventListener('turbo:load', () => {
-        const bad = document.querySelector('.field-invalid .field-input');
-        if (!bad) return;
-        // В шторке на телефоне — без фокуса: клавиатуры без нажатия нет, а поле в фокусе потом уже не ловит своё нажатие.
-        focusField(bad, { keyboard: false });
-    });
+    // В шторке на телефоне — без фокуса: клавиатуры без нажатия нет, а поле в фокусе потом уже не ловит своё нажатие.
+    const show = (root) => { const bad = firstInvalid(root); if (bad) focusField(bad, { keyboard: false }); };
+    document.addEventListener('turbo:load', () => show(document));
+    document.addEventListener('turbo:frame-load', (e) => { if (e.target.id !== 'detail') show(e.target); });
 }
 
 // Своя проверка форм вместо пузыря Safari «Заполните это поле»: формам noValidate (при загрузке, новым из потоков и

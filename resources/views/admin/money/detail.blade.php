@@ -29,7 +29,7 @@
                 @if ($issued)
                     <div data-controller="sheet" class="contents">
                         <button type="button" class="act" data-action="sheet#open"><span class="btn btn-accent btn-round"><x-ui.icon name="{{ $i->isOwed() ? 'send' : 'check' }}"/></span>{{ $i->isOwed() ? 'Выплатить' : 'Деньги пришли' }}</button>
-                        <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : 'Оплата по счёту '.$i->label()" :open="$errors->hasAny(['source', 'paid_at', 'slip'])">
+                        <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : 'Оплата по счёту '.$i->label()">
                             <x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources" sheet/>
                         </x-ui.sheet>
                     </div>

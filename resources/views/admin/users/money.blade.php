@@ -19,7 +19,7 @@
         </div>
         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Изменить реквизиты"><x-ui.icon name="edit" class="size-5"/></button>
     </div>
-    <x-ui.sheet id="party" title="Реквизиты" wide tall :open="$errors->has('name') || $errors->has('inn')">
+    <x-ui.sheet id="party" title="Реквизиты" wide tall>
         <form method="post" action="{{ $base }}/{{ $user->id }}/party" class="flex flex-col gap-4">
             @csrf @method('put')
             <x-billing.party-fields :party="$party->exists ? $party : null" vat/>

@@ -11,7 +11,7 @@
     $floor = $vehicle->offer?->floor_price ? (int) $vehicle->offer->floor_price : null;
     $mode = old('floor_mode', Sale::floorMode($floor, $value));
 @endphp
-<x-ui.sheet :id="$id" title="В продажу" :open="$errors->hasAny(['value', 'floor'])">
+<x-ui.sheet :id="$id" title="В продажу">
     <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="flex flex-col gap-4" data-turbo-frame="_top" data-controller="sale-floor reveal" data-action="input->sale-floor#update change->sale-floor#update">
         @csrf
         <div class="text-sm text-ink-muted">{{ $vehicle->saleLabel() }}</div>

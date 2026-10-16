@@ -9,9 +9,9 @@
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState;
     $offer = $deal->offer;
-    $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'deal.offer'])->get();
+    $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser', 'deal.offer'])->get();
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
-    $credits = $deal->credits()->with(['party', 'offer', 'payLinks.attempts'])->get();
+    $credits = $deal->credits()->with(['party', 'offer', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser'])->get();
     $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
     $fee = $invoices->first(fn ($i) => $i->isAgentFee());
     $issued = $invoices->reject(fn ($i) => $i->isOwed());
@@ -30,7 +30,7 @@
         <x-slot:actions>
             <div data-controller="sheet" class="contents">
                 <button type="button" class="edit-card-toggle" data-action="sheet#open">{{ match (true) { $deal->isGarageManager() && ! $deal->share => 'Вписать долю', $deal->namesBuyer() && $deal->commission === null => 'Назначить вознаграждение', default => 'Изменить' } }}</button>
-                <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки" :open="$errors->hasAny(['commission', 'owner_price', 'share'])">
+                <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки">
                     @if ($deal->isGarageManager())
                         {{-- Гаражная «платит менеджер»: наша доля — счёт со ссылкой встаёт сам (`SyncDealInvoices`). --}}
                         <form method="post" action="/work/deals/{{ $deal->id }}/money" class="flex flex-col gap-4">

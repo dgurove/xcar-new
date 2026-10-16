@@ -25,7 +25,7 @@
 @if (! $staff && $car->state === \App\Garage\CarState::Selling)
     {{-- «Продаю»: только цена — её не отклоняем, вознаграждение и счёт дальше наши. --}}
     <div {!! $wrap('selling') !!}>
-        <x-ui.sheet id="selling" title="Продаю" :open="$errors->has('sold_price')">
+        <x-ui.sheet id="selling" title="Продаю">
             <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-4">
                 @csrf
                 <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')" required autofocus/>
@@ -37,7 +37,7 @@
 
 @if ($staff && $car->state === \App\Garage\CarState::Selling)
     <div {!! $wrap('sold') !!}>
-        <x-ui.sheet id="sold" title="Продана" :open="$errors->has('sold_price')">
+        <x-ui.sheet id="sold" title="Продана">
             <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-3">
                 @csrf
                 <div class="fields">
@@ -56,7 +56,7 @@
     {{-- Вознаграждение вводится здесь же: суммы ниже пересчитываются на месте. Отдаёт — цена минус расходы менеджера
          минус вознаграждение; ушло в минус — отдаём мы, документ станет обязательством перед ним. --}}
     <div {!! $wrap('settle') !!}>
-        <x-ui.sheet id="settle" :title="$car->manager ? 'Выставить счёт' : 'Закрыть расчёт'" :open="$errors->hasAny(['commission', 'party_id', 'party_name'])">
+        <x-ui.sheet id="settle" :title="$car->manager ? 'Выставить счёт' : 'Закрыть расчёт'">
             <form method="post" action="/garage/cars/{{ $n }}/settle" class="flex flex-col gap-3" @if ($car->manager) data-controller="commission reveal" data-commission-margin-value="{{ $s['profit'] }}" data-commission-base-value="{{ $car->sold_price - $s['manager_costs'] }}" data-commission-spent-value="{{ $s['manager_costs'] }}" @endif>
                 @csrf
                 <div class="list">
@@ -109,7 +109,7 @@
 @if ($staff && $car->awaitsPayout())
     {{-- Покупатель заплатил, а выплаты нет: аннулировали или оплата пришла сама. Вознаграждение можно поправить. --}}
     <div {!! $wrap('payout') !!}>
-        <x-ui.sheet id="payout" title="Выплата менеджеру" :open="$errors->has('car')">
+        <x-ui.sheet id="payout" title="Выплата менеджеру">
             <form method="post" action="/garage/cars/{{ $n }}/payout" class="flex flex-col gap-3" data-controller="commission" data-commission-spent-value="{{ $s['manager_costs'] }}">
                 @csrf
                 <div class="fields">
@@ -131,7 +131,7 @@
 
 @if ($staff && $unpaid)
     <div {!! $wrap('paid') !!}>
-        <x-ui.sheet id="paid" :title="$current->isOwed() ? 'Выплатили менеджеру' : 'Деньги пришли'" :open="$errors->has('amount')">
+        <x-ui.sheet id="paid" :title="$current->isOwed() ? 'Выплатили менеджеру' : 'Деньги пришли'">
             <form method="post" action="/garage/cars/{{ $n }}/payments" class="flex flex-col gap-3">
                 @csrf
                 <div class="fields">

@@ -161,6 +161,22 @@
 }
 
 :root { color-scheme: light; }
+/* Слои — одной шкалой снизу вверх (16.10.2026: было двадцать сырых чисел, три слоя на 45 и два на 40). Липкое внутри
+   прокрутки (шапка таблицы, полоса карточки) — своими z-10, оно слоёв экрана не касается; шторки — <dialog> в верхнем
+   слое браузера, над всеми. */
+:root {
+  --z-action: 30;     /* плашка действий над таб-баром */
+  --z-pull: 39;       /* кружок «потянуть — обновить», выезжает из-под шапки */
+  --z-chrome: 40;     /* шапка и таб-бар */
+  --z-progress: 41;   /* полоса загрузки под шапкой */
+  --z-panel: 45;      /* карточка строки на телефоне, лист документов, пилюля замка */
+  --z-panel-over: 46; /* плашка действий над листом документов */
+  --z-toast: 50;      /* тосты, «Вы вошли как» */
+  --z-banner: 55;     /* карточки уведомлений */
+  --z-pop: 60;        /* выдача поиска в шапке на ПК */
+  --z-scanner: 90;    /* сканер QR во весь экран */
+  --z-viewer: 100001; /* кнопки и лента просмотра фото поверх PhotoSwipe (100000) */
+}
 /* Края экрана — одним местом (16.10.2026). Элементы читают токены, а клавиатура, лист документов и экран чата меняют
    токены, а не элементы. Вырезы считаются на корне и наследуются: в верхнем слое (<dialog>: шторки, документы,
    просмотр фото) установленного приложения iOS сам env() отдаёт 0 — кнопки уходили под часы и на полосу «Домой».
@@ -290,8 +306,9 @@ html.kb-open { --home-gap: 0px; }
      а её текст живёт по шкале (строка списка целиком бывает кнопкой). */
   input, select, textarea { font: inherit; font-size: 16px; }
   /* На сенсорном экране поле — 16 px всегда, и в повёрнутом iPhone (ширина ПК), где плотные формы CRM и парковки
-     мельче: иначе страница приближается к полю. */
-  @media (hover: none) {
+     мельче: иначе страница приближается к полю. По главному указателю (pointer), а не по наведению: iPad с трекпадом
+     наводит (hover: hover), но палец у него главный — и зумит так же. !important — поверх утилит text-sm в разметке. */
+  @media (pointer: coarse) {
     :is(input:not([type=checkbox], [type=radio], [type=range]), select, textarea, trix-editor) { font-size: 16px !important; }
   }
   button { font: inherit; }
@@ -330,7 +347,7 @@ html.kb-open { --home-gap: 0px; }
 }
 
 /* Полоса Turbo: вне слоёв, иначе проигрывает стилю самого Turbo (синяя 3px под чёлкой). Лайм, 2px, под шапкой. */
-.turbo-progress-bar { background: var(--color-accent); height: 2px; top: var(--header-edge); z-index: 41; }
+.turbo-progress-bar { background: var(--color-accent); height: 2px; top: var(--header-edge); z-index: var(--z-progress); }
 
 /* Последняя минута таймера — цветом срочности, без подписи. */
 [data-controller~="timer"].is-last { color: var(--color-urgent); }
@@ -411,7 +428,8 @@ html.kb-open { --home-gap: 0px; }
      уезжало за экран («Приём подтверждений до»). Без родного вида оно как остальные поля, текст слева. */
   input.field-input:is([type="date"], [type="datetime-local"], [type="time"], [type="month"]) { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; }
   input.field-input::-webkit-date-and-time-value { text-align: left; margin: 0; }
-  .field-input:focus-visible { outline-offset: 0; }
+  /* Поле в фокусе — тоном, как строка формы в .fields (обводок в ките нет): у одиночного поля фокус не был виден ничем. */
+  .field-input:focus:not(.fields *) { background: color-mix(in oklab, var(--color-accent) 8%, var(--color-surface-3)); }
   .field-error { @apply text-sm text-danger; }
   /* Голое поле без x-ui.field (вход, цена) помечает своя проверка формы (formCheck в app.js) — aria-invalid. */
   .field-invalid .field-input, .field-input[aria-invalid="true"] { @apply ring-2 ring-danger/60; }
@@ -776,6 +794,8 @@ html.kb-open { --home-gap: 0px; }
   .urgent-fire { display: inline-flex; flex-shrink: 0; margin-left: .3em; vertical-align: -.12em; color: var(--color-fire); }
   .tag-urgent-fire { --tag-bg: var(--color-fire-soft); --tag-text: #d93a0b; --tag-bg-d: #3a1508; --tag-text-d: #ff8a5c; }
   .text-fire { color: var(--color-fire); }
+  /* Жёлтое «внимание» без срочности: «Без цены», «С НДС», «отключён». */
+  .tag-amber { --tag-bg: #fef3c7; --tag-text: #92400e; --tag-bg-d: #3f2606; --tag-text-d: #fcd34d; }
   .tag-recommended { --tag-bg: #e3f1fb; --tag-text: #1878b8; --tag-bg-d: #0f2537; --tag-text-d: #6cc0ff; }
 
   /* Пилюля: пресет, раздел, состояние. Активная — лайм с белым. */
@@ -1442,7 +1462,7 @@ html.kb-open { --home-gap: 0px; }
      затемнением вокруг (код всё равно ищется по всему кадру — окно только подсказка глазу), сверху «закрыть» и
      заголовок, подсказка стеклянной пилюлей под окном, снизу по центру фонарик и смена камеры с подписями.
      Нашёл — окно вспыхивает лаймом с галкой и сжимается, потом сканер закрывается. */
-  .qr-scanner { position: fixed; inset: 0; z-index: 90; background: #000; color: #fff; touch-action: none; overscroll-behavior: contain; --qr-win: min(70vw, 300px); }
+  .qr-scanner { position: fixed; inset: 0; z-index: var(--z-scanner); background: #000; color: #fff; touch-action: none; overscroll-behavior: contain; --qr-win: min(70vw, 300px); }
   .qr-scanner-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
   .qr-scanner-guide { position: absolute; left: 50%; top: 46%; width: var(--qr-win); aspect-ratio: 1; translate: -50% -50%; border-radius: 28px; box-shadow: 0 0 0 100vmax rgb(0 0 0 / .5); pointer-events: none; transition: scale .25s var(--ease-out), background-color .2s; }
   .qr-scanner-guide > i { position: absolute; width: 44px; height: 44px; border: 4px solid var(--color-accent); transition: inset .25s var(--ease-out), border-color .2s; }
@@ -2230,7 +2250,7 @@ html.kb-open { --home-gap: 0px; }
     .split-detail {
       @apply block;
       --sheet-half: calc(50dvh - var(--header-edge));
-      position: fixed; inset-inline: 0; bottom: 0; z-index: 45; margin-inline: auto; max-width: 36rem;
+      position: fixed; inset-inline: 0; bottom: 0; z-index: var(--z-panel); margin-inline: auto; max-width: 36rem;
       top: calc(var(--header-edge) + var(--sheet-half)); overflow: hidden;
       /* Тень — у самого листа: у карточки внутри её обрезал overflow листа, и тени не было вовсе (07.10.2026). Белый
          лист над белой таблицей — край линией и короткой тенью, глубина длинной. */
@@ -2343,7 +2363,7 @@ html.kb-open { --home-gap: 0px; }
   /* Таймер — одно целое: «2 д 6 ч» не рвётся на «2 д» и «6 ч» при переносе строки. */
   [data-controller~="timer"] { white-space: nowrap; }
   .reply-more > summary::-webkit-details-marker { display: none; }
-  .toasts { @apply pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4;
+  .toasts { @apply pointer-events-none fixed inset-x-0 z-(--z-toast) flex flex-col items-center gap-2 px-4;
     top: calc(.75rem + var(--safe-top)); }
   .toast { @apply pointer-events-auto rounded-(--radius-l) bg-chrome px-4 py-3 text-sm text-white shadow-(--shadow-drop); animation: toast-in var(--dur-slow) var(--ease-spring) both; touch-action: pan-x; }
   .toast-pass { pointer-events: none; }
@@ -2361,7 +2381,7 @@ html.kb-open { --home-gap: 0px; }
      поверх, две прежние выглядывают из-под неё; от 768 — стопка справа снизу, новая ближе к углу, над парящими
      кнопками действий. --depth ставит контроллер: 0 — новая; --top-h — её высота, прежние
      на телефоне той же высоты, чтобы выглядывать снизу. */
-  .banners { @apply pointer-events-none fixed z-[55] grid;
+  .banners { @apply pointer-events-none fixed z-(--z-banner) grid;
     inset-inline: .5rem; top: calc(var(--safe-top) + .5rem); }
   .banner { @apply pointer-events-auto relative rounded-(--radius-xl); grid-area: 1 / 1; align-self: start;
     background: var(--color-surface); box-shadow: var(--shadow-drop); touch-action: none;
@@ -2412,7 +2432,7 @@ html.kb-open { --home-gap: 0px; }
   /* Админ в чужом кабинете: плашка на каждом экране. Телефон — над таб-баром (и над полосой кнопок, если она
      есть), в чате — под баром собеседника: внизу там поле ввода; с клавиатурой прячется. ПК — левый нижний
      угол, кнопки действий парят справа. Запас под ней — .impersonation-room в конце страницы. */
-  .impersonation { @apply fixed z-50 flex items-center gap-2 rounded-full bg-chrome py-1 pr-1 pl-1.5 text-sm text-white shadow-(--shadow-drop);
+  .impersonation { @apply fixed z-(--z-toast) flex items-center gap-2 rounded-full bg-chrome py-1 pr-1 pl-1.5 text-sm text-white shadow-(--shadow-drop);
     left: 50%; translate: -50% 0; max-width: calc(100% - 2rem);
     bottom: calc(var(--bottom-room) + .75rem); }
   .impersonation-name { @apply min-w-0 truncate; }
@@ -2442,7 +2462,7 @@ html.kb-open { --home-gap: 0px; }
 
   /* Шапка — как navigation bar: волосяная линия и заголовок экрана по центру
      появляются, когда содержимое ушло под неё (.is-scrolled / .is-past-title). */
-  .header { @apply sticky top-0 z-40 text-ink; padding-top: var(--safe-top); }
+  .header { @apply sticky top-0 z-(--z-chrome) text-ink; padding-top: var(--safe-top); }
   .header > div { position: relative; }
   .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: var(--hairline); background: var(--color-hairline); opacity: 0; transition: opacity var(--dur-fast); }
   .header.is-scrolled::after { opacity: 1; }
@@ -2527,7 +2547,7 @@ html.kb-open { --home-gap: 0px; }
      Группа — мелкая подпись с «Все ›» справа; строка — два этажа, как строка таблицы CRM: название 15, под ним 13
      тусклым; значков нет. В листе строки идут прямо по его фону (плашка в плашке — нет), на странице и в шторке — плашкой
      через волосяную линию. Совпадение с запросом — лаймовой подложкой (`Term::mark`), выбранная стрелками строка — лаймом. */
-  .search-pop { @apply rounded-(--radius-l) bg-surface text-ink shadow-(--shadow-drop); position: absolute; top: calc(100% + .5rem); inset-inline-start: 0; z-index: 60; width: min(34rem, calc(100vw - 2rem)); max-height: min(70dvh, 40rem); overflow-y: auto; overscroll-behavior: contain; padding: .375rem; }
+  .search-pop { @apply rounded-(--radius-l) bg-surface text-ink shadow-(--shadow-drop); position: absolute; top: calc(100% + .5rem); inset-inline-start: 0; z-index: var(--z-pop); width: min(34rem, calc(100vw - 2rem)); max-height: min(70dvh, 40rem); overflow-y: auto; overscroll-behavior: contain; padding: .375rem; }
   .search-pop[hidden] { display: none; }
   .search-pop > .pills { padding: .375rem; }
   .search-field { max-width: none; }
@@ -2571,7 +2591,7 @@ html.kb-open { --home-gap: 0px; }
   /* Прикреплён к низу, 54px + полоса «Домой», полоса хрома (блок у шапки), волосяная линия сверху. Высота — не
      --bottom-edge: тот под клавиатурой становится её высотой. */
   .tabbar {
-    position: fixed; inset-inline: 0; bottom: 0; z-index: 40;
+    position: fixed; inset-inline: 0; bottom: 0; z-index: var(--z-chrome);
     display: flex; align-items: stretch;
     /* Ширина таба — по подписи плюс равная всем доля свободного места: тогда «Предложения» отстоит от
        левого края ровно на столько же, на сколько «Кабинет» от правого, а между словами — один шаг.
@@ -2631,7 +2651,7 @@ html.kb-open { --home-gap: 0px; }
   /* На телефоне — плашка над таб-баром (с клавиатурой — на ней, с листом документов — на листе: --bottom-edge) с кнопкой
      во всю ширину, высота ровно --spacing-action — столько же берёт запас страницы; край — волосяная линия. */
   .action-bar {
-    position: fixed; inset-inline: 0; z-index: 30;
+    position: fixed; inset-inline: 0; z-index: var(--z-action);
     bottom: var(--bottom-edge);
     border-top: var(--hairline) solid var(--color-hairline);
   }
@@ -2671,7 +2691,7 @@ html.kb-open { --home-gap: 0px; }
      справа шириной --docs-w под шапкой, страница сдвигается влево, ширину тянут за левый край. Не модальная;
      из модального окна (окно писем) — <dialog> модально в верхнем слое над ним (.docs-modal), страница не сдвигается. */
   .docs {
-    @apply fixed z-[45] flex flex-col bg-surface text-ink shadow-(--shadow-drop);
+    @apply fixed z-(--z-panel) flex flex-col bg-surface text-ink shadow-(--shadow-drop);
     inset-inline: 0; top: auto; bottom: var(--kb, 0px); height: var(--docs-h, 55dvh);
     width: auto; max-width: none; max-height: none; margin: 0; border: 0; padding: 0; overflow: visible;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -2783,7 +2803,7 @@ html.kb-open { --home-gap: 0px; }
   @media (max-width: 1023.98px) {
     /* Плашка действий — на листе (--bottom-edge), «Сохранить» видно и с открытым документом; запас страницы — его
        высота (--bottom-room). */
-    html.docs-open .action-bar { z-index: 46; }
+    html.docs-open .action-bar { z-index: var(--z-panel-over); }
     html:has(.docs.is-settling) .action-bar { transition: bottom var(--dur) var(--ease-out); }
   }
   @media (min-width: 1024px) {
@@ -3437,7 +3457,7 @@ dialog.lightbox::backdrop { background: transparent; }
    will-change: opacity, это граница фона для backdrop-filter — внутри неё размывать нечего, плашка выходила просто
    полупрозрачной. Снаружи матовое стекло размывает кадр. */
 dialog.lightbox .lb-pill {
-  position: fixed; z-index: 100001; display: flex; gap: 8px; padding: 4px; border-radius: 999px;
+  position: fixed; z-index: var(--z-viewer); display: flex; gap: 8px; padding: 4px; border-radius: 999px;
   background: rgb(255 255 255 / .14); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4);
   opacity: 0; pointer-events: none; transition: opacity var(--dur-fast) ease-out;
 }
@@ -3467,7 +3487,7 @@ dialog.lightbox {
 }
 @media (min-width: 1024px) { dialog.lightbox { --lb-thumb-w: 64px; --lb-thumb-h: 48px; } }
 dialog.lightbox .lb-strip {
-  position: fixed; z-index: 100001; left: 0; right: 0; bottom: var(--lb-strip-bottom); display: flex; gap: 4px;
+  position: fixed; z-index: var(--z-viewer); left: 0; right: 0; bottom: var(--lb-strip-bottom); display: flex; gap: 4px;
   padding: var(--lb-strip-pad) 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
   -webkit-mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
   mask-image: linear-gradient(to right, transparent, #000 2rem, #000 calc(100% - 2rem), transparent);
@@ -3879,17 +3899,37 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
    «Открыть / Копировать / Поделиться»; картинки и ссылки не поднимаются призраком.
    Текст объекта, цены, VIN, чат остаются выделяемыми — это не хром. */
 @layer components {
-  .header, .tabbar, .action-bar, .card, .row, .stat, .pills, .pill, .crumbs, .toolbar, .toast, .banner,
+  .header, .tabbar, .action-bar, .card, .row, .chat-row, .stat, .pills, .pill, .crumbs, .toolbar, .toast, .banner,
   .sheet > div:first-child, .sheet::before, .photo-strip, .photo-row, [data-gallery-target="strip"], main h1, .btn, .header-btn {
     -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
   }
   /* Ссылки строк таблиц, групп строк, меню и подсказок: долгое нажатие открывало лист Safari с превью ссылки
      (15.10.2026) — выделение текста (номера, VIN) у них остаётся. */
-  .table tbody tr, .list, .segment, .menu, .combobox-list, .car-field-hints, .search-link { -webkit-touch-callout: none; }
+  .table tbody tr, .list, .segment, .menu, .combobox-list, .car-field-hints, .search-link, .chat-row { -webkit-touch-callout: none; }
   img, a { -webkit-user-drag: none; }
   .card input, .card textarea, .row input, .sheet input, .sheet textarea, .field-input, .phase-body { -webkit-user-select: text; user-select: text; }
   /* Номера — данные, не хром: выделяются и копируются. */
   .tag.nums, .chip.nums, .fact.nums, .vincode { -webkit-user-select: text; user-select: text; }
+}
+
+/* ------------------------------------------------------------- потянуть вниз */
+
+/* Кружок «потянуть — обновить» (lib/pull.js) под шапкой: едет за пальцем, стрелка разворачивается, когда дотянули,
+   крутится, пока идёт обновление. Под шапкой по слоям — выезжает из-под неё. */
+@layer components {
+  .pull {
+    position: fixed; left: 50%; top: var(--header-edge); z-index: var(--z-pull); width: 36px; height: 36px; margin-left: -18px;
+    display: grid; place-items: center; border-radius: 50%; background: var(--color-surface-3); color: var(--color-ink);
+    translate: 0 calc(var(--pull, 0px) - 40px); opacity: var(--pull-p, 0); pointer-events: none;
+  }
+  .pull svg { width: 18px; height: 18px; transition: rotate var(--dur-fast); }
+  .pull.is-ready svg { rotate: 180deg; }
+  .pull.is-loading svg { display: none; }
+  .pull.is-loading::after {
+    content: ''; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--color-ink-muted);
+    border-top-color: transparent; animation: spin .8s linear infinite;
+  }
+  .pull.is-leaving { opacity: 0; transition: opacity .2s; }
 }
 
 /* ------------------------------------------------------------- нажатие */
@@ -3919,6 +3959,17 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .card { transition: scale var(--dur) var(--ease-out); }
   .card.is-pressed, .card.is-pending { scale: .985; transition: scale 0s 60ms; }
   .tab.is-pending { opacity: .6; }
+
+  /* Строки без своего правила — тоном, как .row (16.10.2026: чат, строка таблицы с карточкой, выдача поиска, сегмент
+     под пальцем не отвечали ничем). */
+  .chat-row:active, .chat-row.is-pending, .table tbody tr[data-detail-key]:active, .table tbody tr[data-controller~="row-go"]:active,
+  .search-link:active, .search-link.is-pending, .segment label:active, .segment a:active { background: var(--color-hover); transition: background-color 0s 60ms; }
+  /* Всё остальное нажимаемое — приглушением: новый класс с действием отвечает сам, его не нужно вписывать сюда.
+     У кнопок, пилюль, строк и плиток — свои правила выше; ссылка плитки нажимает плитку. */
+  :where(a[href], button, [role="button"], summary):not(:where(.btn, .pill, .header-btn, .sheet-close, .combobox-option,
+    .card-star, a.row, button.row, a.stat, .tab, .menu-item, .chat-row, .search-link, .card a, .tabbar *, .segment *, :disabled)):active {
+    opacity: .6; transition: opacity 0s 60ms;
+  }
 
   .btn[aria-busy="true"] { position: relative; color: transparent; opacity: 1; --spin: var(--color-accent); }
   .btn-accent[aria-busy="true"], .btn-glass[aria-busy="true"] { --spin: #fff; }

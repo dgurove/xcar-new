@@ -15,7 +15,7 @@
                 <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-4"/></span>
                 <span class="min-w-0 flex-1 text-accent-text">Новый вендор</span>
             </x-ui.sheet-row>
-            <x-ui.sheet id="vendor-new" title="Новый вендор" :open="$errors->has('name')">
+            <x-ui.sheet id="vendor-new" title="Новый вендор">
                 <form method="post" action="/settings/vendors" class="flex flex-col gap-4">
                     @csrf
                     <div class="fields">

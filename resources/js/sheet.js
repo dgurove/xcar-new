@@ -81,6 +81,18 @@ function scrollsToward(found, dx, dy) {
     }, { passive: false });
 })();
 
+// Отправка из шторки несёт _sheet — id шторки: вернулись ошибки проверки — x-ui.sheet открывается сам по old('_sheet'),
+// какое бы поле ни было неверным (раньше шторки перечисляли «свои» поля руками: ошибка в забытом — шторка закрыта,
+// сохранение молча не прошло). Через событие formdata (его шлёт и Turbo, и обычная отправка), а не скрытым полем: морф
+// страницы снял бы поле, которого нет в разметке.
+document.addEventListener('formdata', (e) => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement) || form.method.toLowerCase() === 'get') return;
+    // Форма бывает вне шторки, а поля и кнопка — в ней (form=): тогда шторка — та, где её поля.
+    const d = form.closest('dialog.sheet[id]') ?? [...form.elements].find((el) => el.closest('dialog.sheet[id][open]'))?.closest('dialog.sheet[id]');
+    if (d && !e.formData.has('_sheet')) e.formData.set('_sheet', d.id);
+});
+
 // Набранное в форме шторки переживает выгрузку приложения из фона и выкладку (16.10.2026): каждая форма шторки с
 // записью получает черновик (draft_controller) — ключом адрес страницы, шторка и адрес формы. «Не сохранять» и отправка
 // его стирают: ошибки проверки сервер возвращает в поля сам (old()).

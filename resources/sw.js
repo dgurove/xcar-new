@@ -190,6 +190,13 @@ self.addEventListener('message', (event) => {
     if (event.data?.forgetPages) later(event, caches.delete(PAGES));
 });
 
+// Подписку сменили без нас (истекла, ключи обновились) — подписаться заново теми же настройками; на сервер новую
+// отнесёт страница при запуске (push-sync.js): у service worker нет токена формы.
+self.addEventListener('pushsubscriptionchange', (event) => {
+    const options = event.oldSubscription?.options;
+    if (options) event.waitUntil(self.registration.pushManager.subscribe(options).catch(() => {}));
+});
+
 self.addEventListener('push', (event) => {
     let data = {};
     try { data = event.data?.json() ?? {}; } catch { data = { notification: { title: event.data?.text() || 'XCar' } }; }

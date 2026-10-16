@@ -45,8 +45,10 @@ class PwaController
             'display' => 'standalone',
             'display_override' => ['standalone'],
             'orientation' => 'portrait',
-            'background_color' => '#000000',
-            'theme_color' => '#000000',
+            // Цвет светлой полосы (--color-bar, $bar в x-ui.layout; сверяет blade-lint): чёрный давал на Android чёрный
+            // экран запуска и белую вспышку следом.
+            'background_color' => '#ffffff',
+            'theme_color' => '#ffffff',
             'lang' => 'ru',
             'categories' => ['business'],
             'launch_handler' => ['client_mode' => 'navigate-existing'],

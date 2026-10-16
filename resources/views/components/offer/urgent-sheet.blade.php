@@ -4,7 +4,7 @@
 @props(['offer'])
 @php $n = $offer->number; @endphp
 <div data-controller="sheet" data-action="urgent:open@window->sheet#open" class="contents">
-    <x-ui.sheet id="urgent-{{ $n }}" title="Срочно" :open="$errors->has('urgent_until')">
+    <x-ui.sheet id="urgent-{{ $n }}" title="Срочно">
         <form method="post" action="/offers/{{ $n }}/state" class="flex flex-col gap-4">
             @csrf
             <input type="hidden" name="state" value="open">

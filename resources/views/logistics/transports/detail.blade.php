@@ -95,7 +95,7 @@
     </x-ui.row-card>
     @if ($editable)
         <div data-controller="sheet" data-action="{{ $sheet }}:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="{{ $sheet }}" title="Перевозка" :open="$errors->hasAny(['scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'cost', 'arrive_on'])">
+            <x-ui.sheet id="{{ $sheet }}" title="Перевозка">
                 <form method="post" action="/transports/{{ $t->id }}" class="flex flex-col gap-4">
                     @csrf @method('put')
                     <x-logistics.fields :transport="$t" :car="$car" prefix="assign-{{ $t->id }}" logist/>

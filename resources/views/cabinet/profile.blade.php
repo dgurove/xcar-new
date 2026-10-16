@@ -30,7 +30,7 @@
         </div>
         @error('avatar')<p class="field-error">{{ $message }}</p>@enderror
         <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="edit" class="size-4"/> Изменить</button>
-        <x-ui.sheet id="profile-edit" title="Профиль" :open="$errors->hasAny(['first_name', 'last_name', 'email'])">
+        <x-ui.sheet id="profile-edit" title="Профиль">
             <form method="post" action="/account" class="flex flex-col gap-3 text-left">
                 @csrf @method('put')
                 <div class="fields">
@@ -89,7 +89,7 @@
                     <span class="min-w-0 flex-1">Сменить пароль</span>
                     <x-ui.chevron/>
                 </x-ui.sheet-row>
-                <x-ui.sheet id="password" title="Новый пароль" :open="$errors->has('current') || $errors->has('password')">
+                <x-ui.sheet id="password" title="Новый пароль">
                     <form method="post" action="/account/password" class="flex flex-col gap-3">
                         @csrf
                         <div class="fields">
@@ -115,7 +115,7 @@
                             <span class="row-sub">
                                 @if ($vault = \App\Users\Passkeys::vault($key))<span class="tag">{{ $vault }}</span>@endif
                                 @if ($key->disabled_at)
-                                    <span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">отключён</span>
+                                    <span class="tag tag-amber">отключён</span>
                                 @elseif ($key->last_used_at)
                                     <span class="tag nums">вход {{ \Illuminate\Support\Carbon::parse($key->last_used_at)->translatedFormat('j M') }}</span>
                                 @else

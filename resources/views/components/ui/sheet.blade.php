@@ -1,6 +1,6 @@
 {{-- Шторка на <dialog>: снизу на телефоне, окно по центру от 640. Открывается
      кнопкой data-action="sheet#open" в том же data-controller="sheet" или
-     сервером через open, если есть ошибки формы. wide — 42rem, tall — окно чтения
+     сервером через open (ошибки своей формы открывают сами, см. ниже). wide — 42rem, tall — окно чтения
      (письма): на телефоне во весь экран с «‹» слева, от 640 — 48rem по центру, в высоту
      по содержимому до края экрана, прокрутка внутри; inflow — от 1024 стоит в потоке карточкой;
      bare — без строки заголовка с крестиком: закрывают свайпом, фоном и своей кнопкой (подключение Telegram);
@@ -8,6 +8,8 @@
      anchor — на ПК с мышью (от 1024, pointer: fine) не шторка с затемнением, а поповер у нажатой кнопки (чипы фильтра):
      страница видна, клик мимо и Esc закрывают; на телефоне — шторка как обычно (sheet_controller). --}}
 @props(['id', 'title' => null, 'open' => false, 'wide' => false, 'tall' => false, 'inflow' => false, 'bare' => false, 'tools' => null, 'anchor' => false])
+{{-- Ошибки проверки формы этой шторки (sheet.js кладёт в форму _sheet = id) — открыта сама, полей не перечислять. --}}
+@php $open = $open || (($errors ?? null)?->any() && old('_sheet') === $id); @endphp
 <dialog id="{{ $id }}" {{ $attributes->class(['sheet', 'sheet-wide' => $wide, 'sheet-tall' => $tall, 'sheet--inflow' => $inflow]) }} data-sheet-target="dialog" data-action="click->sheet#backdrop" @if ($anchor) data-sheet-anchor @endif @if ($open) data-sheet-open-value="true" @endif>
     @if (! $bare && ($title || !$inflow))
     <div class="sheet-bar mb-4 flex items-center justify-between gap-3{{ $tall ? ' sheet-head' : '' }}">

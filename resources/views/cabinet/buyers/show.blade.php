@@ -146,7 +146,7 @@
                         <x-ui.chevron/>
                     </x-ui.sheet-row>
                 </div>
-                <x-ui.sheet id="passport" title="Паспорт" :open="$errors->has('buyer.*')">
+                <x-ui.sheet id="passport" title="Паспорт">
                     <x-billing.passport-scan :party="$party" form="buyer-passport-form"/>
                     <form method="post" action="/buyers/{{ $buyer->id }}/passport" class="flex flex-col gap-3" id="buyer-passport-form">
                         @csrf @method('put')

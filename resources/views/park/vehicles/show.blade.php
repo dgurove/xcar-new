@@ -162,7 +162,7 @@
                 <button type="button" class="btn btn-quiet btn-s" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/>Начислить</button>
                 @if ($vehicle->accepted_at || $pendingCharges->isNotEmpty())<a href="/cars/{{ $vehicle->id }}/invoices/new" class="btn btn-quiet btn-s">Выставить счёт</a>@endif
             </div>
-            <x-ui.sheet id="charge" title="Начислить" :open="$errors->has('price')">
+            <x-ui.sheet id="charge" title="Начислить">
                 <form method="post" action="/cars/{{ $vehicle->id }}/charges" class="flex flex-col gap-3" data-controller="price" data-price-prices-value="{{ json_encode((object) $chargePrices) }}">
                     @csrf
                     <div class="fields">
@@ -212,7 +212,7 @@
     {{-- Шторки: даты приёма и выдачи, договор, продано, действия «⋯», отмена заявки. --}}
     @if ($canManage)
         <div data-controller="sheet" data-action="contract:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="contract" title="Условия" tall :open="$errors->hasAny(['contract_kind', 'assigned_price'])">
+            <x-ui.sheet id="contract" title="Условия" tall>
                 <form method="post" action="/cars/{{ $vehicle->id }}" class="flex flex-col gap-3">
                     @csrf @method('put')
                     <div class="fields">
@@ -285,7 +285,7 @@
     </div>
     @if ($canManage && ! $transport && in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
         <div data-controller="sheet" data-action="logistics:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="vehicle-logistics" title="В логистику" :open="$errors->hasAny(['scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'cost', 'arrive_on'])">
+            <x-ui.sheet id="vehicle-logistics" title="В логистику">
                 <form method="post" action="/cars/{{ $vehicle->id }}/logistics" class="flex flex-col gap-4">
                     @csrf
                     <x-logistics.fields :car="$vehicle" prefix="vehicle-{{ $vehicle->id }}-t" :yards="\App\Park\Yard::withoutGlobalScopes()->where('is_active', true)->orderBy('name')->get()"/>

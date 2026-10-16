@@ -4,7 +4,7 @@
 @php use App\Park\{RequestType, VehicleState}; $state = $vehicle->state; $ev = ($window ?? false) ? 'act-' : ''; @endphp
     @if ($canManage && ($state === VehicleState::Stored || $vehicle->sold_at))
         <div data-controller="sheet" data-action="{{ $ev }}sold:open@window->sheet#open" class="contents">
-            <x-ui.sheet :id="$ev.'sold'" title="Покупатель" :open="$errors->hasAny(['sold_at', 'pickup_name', 'pickup_phone'])">
+            <x-ui.sheet :id="$ev.'sold'" title="Покупатель">
                 {{-- Страховая продала ТС: дата письма, кому выдать; дальше дни за счёт вендора и покупатель по множителю. --}}
                 <form method="post" action="/cars/{{ $vehicle->id }}/sold" class="flex flex-col gap-3">
                     @csrf
@@ -27,7 +27,7 @@
 
     @if (($window ?? false) && $canManage && $vehicle->sold_at && $state === VehicleState::Stored && $req?->type === RequestType::Release)
         <div data-controller="sheet" data-action="{{ $ev }}refusal:open@window->sheet#open" class="contents">
-            <x-ui.sheet :id="$ev.'refusal'" title="Покупатель отказался" :open="$errors->has('reason')">
+            <x-ui.sheet :id="$ev.'refusal'" title="Покупатель отказался">
                 {{-- Приехал, посмотрел и не взял: продажа снимается, ТС снова просто стоит, дальше письмо вендору. --}}
                 <form method="post" action="/requests/{{ $req->id }}/refuse" class="flex flex-col gap-3">
                     @csrf
@@ -40,7 +40,7 @@
 
     @if (($window ?? false) && $canManage && ($byQr ?? false) && $state === VehicleState::Stored && (! $req || $req->type === RequestType::Release))
         <div data-controller="sheet" data-action="{{ $ev }}without-qr:open@window->sheet#open" class="contents">
-            <x-ui.sheet :id="$ev.'without-qr'" title="Выдать без QR-кода?" :open="$errors->has('without_qr_reason')">
+            <x-ui.sheet :id="$ev.'without-qr'" title="Выдать без QR-кода?">
                 {{-- Крайний случай: причина от 20 знаков уходит в историю ТС, в акт и владельцу в Telegram. Поле связано с
                      формой выдачи (form="{{ $formId }}"): дата и остальное берутся оттуда. Счётчик — внутри поля,
                      кнопка оживает на 20 знаках. --}}

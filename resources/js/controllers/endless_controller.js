@@ -44,6 +44,9 @@ export default class extends Controller {
             const box = document.createElement('div');
             box.innerHTML = await r.text();
             tail.replaceWith(...box.childNodes);
+            // Лента длиннее первой порции: перечитывание страницы (возврат, живое обновление) принесло бы одну первую —
+            // догруженное пропало бы, прокрутка прыгнула (app.js freshness, live.js).
+            this.element.dataset.extended = '';
         } catch {
             tail.removeAttribute('data-endless-busy');
         } finally {
