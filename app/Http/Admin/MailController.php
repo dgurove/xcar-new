@@ -898,7 +898,7 @@ class MailController
             // Закупочная с наценкой к оценочной — «Прошу согласовать реализацию за 756 000 ₽ (+10%)» (08.10.2026).
             'floor' => Sale::floorLabel($offer->floor_price, $offer->value),
             // Письмо поставщику — наша закупка у него (`supplierCost`), а не закреплённая цена менеджера.
-            'price' => ($p = $offer->deal ? ($offer->deal->amount ?? $offer->deal->supplierCost()) : null) ? number_format($p, 0, '', ' ').' ₽' : ($offer->asking_price ? number_format($offer->asking_price, 0, '', ' ').' ₽' : ''),
+            'price' => ($p = $offer->deal ? ($offer->deal->amount ?? $offer->deal->supplierCost()) : null) ? Money::plain($p) : ($offer->asking_price ? Money::plain($offer->asking_price) : ''),
             'manager' => $offer->deal?->buyer?->name ?? '',
             'insurer' => $offer->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),

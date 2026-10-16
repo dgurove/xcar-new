@@ -103,16 +103,16 @@ final class FieldLabels
         if (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/', $value)) {
             $at = Carbon::parse($value);
 
-            return $at->translatedFormat(($at->isCurrentYear() ? 'j M' : 'j M Y').(strlen($value) > 10 ? ', H:i' : ''));
+            return Ago::day($at, strlen($value) > 10);
         }
         if ($field === 'min_bid_share') {
             return str_replace('.', ',', (string) $value);
         }
         if (is_numeric($value)) {
             return match ($field) {
-                'mileage' => Money::nums((int) $value).' км',
-                'engine_volume' => number_format($value / 1000, 1, ',', '').' л',
-                'engine_power' => $value.' л. с.',
+                'mileage' => Units::km($value) ?? (string) $value,
+                'engine_volume' => Units::liters($value) ?? (string) $value,
+                'engine_power' => Units::hp($value) ?? (string) $value,
                 default => (string) $value,
             };
         }

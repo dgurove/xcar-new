@@ -18,7 +18,7 @@
             @foreach ($chats as $c)
                 <a href="/account/chats/{{ $c->id }}" class="row" data-turbo-action="replace">
                     <div class="min-w-0 flex-1">
-                        <div class="flex items-baseline gap-2"><span class="truncate {{ $c->unread_for_user ? 'font-medium' : '' }}">{{ $c->offer?->titleWithYear() ?? \App\Chats\Chat::PLATFORM }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $c->last_message_at?->translatedFormat($c->last_message_at->isToday() ? 'H:i' : 'j M') }}</span></div>
+                        <div class="flex items-baseline gap-2"><span class="truncate {{ $c->unread_for_user ? 'font-medium' : '' }}">{{ $c->offer?->titleWithYear() ?? \App\Chats\Chat::PLATFORM }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($c->last_message_at) }}</span></div>
                         <div class="truncate text-sm {{ $c->unread_for_user ? '' : 'text-ink-muted' }}">{{ $c->lastPreview($me) }}</div>
                     </div>
                     @if ($c->unread_for_user)<span class="badge">{{ $c->unread_for_user }}</span>@endif

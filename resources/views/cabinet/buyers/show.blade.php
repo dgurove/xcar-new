@@ -53,21 +53,18 @@
                  ниже и «Открыть предложения» внизу). --}}
             <section data-controller="sheet">
                 <div data-controller="sheet" class="list">
-                    <button type="button" class="row w-full text-left" data-action="sheet#open">
+                    <x-ui.sheet-row>
                         <x-ui.row-icon name="eye"/>
                         <span class="min-w-0 flex-1">
                             <span class="block font-medium">{{ $seesAll ? 'Видит все ваши предложения' : 'Видит выбранные' }}</span>
                             <span class="row-sub"><span class="nums">{{ $seenCount }} {{ \App\Support\Plural::of($seenCount, ['предложение', 'предложения', 'предложений']) }}</span>@if ($seesAll && $buyer->buyer_show_vin)<span>с VIN</span>@endif</span>
                         </span>
                         <x-ui.chevron/>
-                    </button>
+                    </x-ui.sheet-row>
                     <x-ui.sheet id="buyer-sees" title="Что видит {{ $buyer->shortName() }}">
                         <form method="post" action="/buyers/{{ $buyer->id }}/sees" class="flex flex-col gap-4" data-controller="reveal">
                             @csrf @method('put')
-                            <div class="segment">
-                                <label><input type="radio" name="buyer_sees" value="all" @checked($seesAll) data-action="reveal#pick"><span>Все предложения</span></label>
-                                <label><input type="radio" name="buyer_sees" value="picked" @checked(! $seesAll) data-action="reveal#pick"><span>Выбранные</span></label>
-                            </div>
+                            <x-ui.segment name="buyer_sees" :options="['all' => 'Все предложения', 'picked' => 'Выбранные']" :value="$seesAll ? 'all' : 'picked'" pick/>
                             <div data-reveal-target="pane" data-reveal-key="all" @unless ($seesAll) hidden @endunless>
                                 <div class="list">
                                     <label class="row row-check">
@@ -76,7 +73,7 @@
                                     </label>
                                 </div>
                             </div>
-                            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                            <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                         </form>
                     </x-ui.sheet>
                 </div>
@@ -122,7 +119,7 @@
                         @foreach ($chats as $chat)
                             <a href="/deals/chats/{{ $chat->id }}" class="row">
                                 <div class="min-w-0 flex-1">
-                                    <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->offer?->titleWithYear() ?? 'Обращение' }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span></div>
+                                    <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->offer?->titleWithYear() ?? 'Обращение' }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($chat->last_message_at) }}</span></div>
                                     <div class="truncate text-sm {{ $chat->unread_for_staff ? '' : 'text-ink-muted' }}">{{ $chat->last_text ? \Illuminate\Support\Str::limit($chat->last_text, 90) : 'Файл' }}</div>
                                 </div>
                                 @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
@@ -140,21 +137,21 @@
             @endphp
             <section class="mt-6" data-controller="sheet">
                 <div class="list">
-                    <button type="button" class="row w-full text-left" data-action="sheet#open">
+                    <x-ui.sheet-row>
                         <x-ui.row-icon name="file"/>
                         <span class="min-w-0 flex-1">
                             <span class="block font-medium">Паспорт</span>
                             <span @class(['row-sub', 'text-open' => $ready])>{{ $status }}</span>
                         </span>
                         <x-ui.chevron/>
-                    </button>
+                    </x-ui.sheet-row>
                 </div>
                 <x-ui.sheet id="passport" title="Паспорт" :open="$errors->has('buyer.*')">
                     <x-billing.passport-scan :party="$party" form="buyer-passport-form"/>
                     <form method="post" action="/buyers/{{ $buyer->id }}/passport" class="flex flex-col gap-3" id="buyer-passport-form">
                         @csrf @method('put')
                         <x-billing.passport-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" prefix="buyer" rows/>
-                        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                        <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                     </form>
                 </x-ui.sheet>
             </section>

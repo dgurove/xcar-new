@@ -76,5 +76,5 @@
     </div>
     @error('mode')<p class="field-error">{{ $message }}</p>@enderror
     @if ($note ?? null)<p class="text-sm text-ink-muted">{{ $note }}</p>@endif
-    <div class="sheet-foot"><x-ui.button block>{{ $submit }}</x-ui.button></div>
+    <x-ui.sheet-foot>{{ $submit }}</x-ui.sheet-foot>
 </form>

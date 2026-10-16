@@ -64,7 +64,7 @@
                                     <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-4">
                                         @csrf
                                         <x-ui.field name="reason" :id="'reason-'.$p->id" label="Что не так"/>
-                                        <div class="sheet-foot"><x-ui.button block variant="secondary">Отметить</x-ui.button></div>
+                                        <x-ui.sheet-foot variant="secondary">Отметить</x-ui.sheet-foot>
                                     </form>
                                 </x-ui.sheet>
                             </span>

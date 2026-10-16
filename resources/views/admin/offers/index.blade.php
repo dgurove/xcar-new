@@ -66,7 +66,7 @@
                 <div class="list mb-6">
                     @foreach ($items as $item)
                         <a href="/offers/{{ $item['number'] }}" class="row" data-turbo-frame="_top">
-                            <span class="min-w-0 flex-1"><span class="block truncate">{{ $item['title'] }}</span><span class="row-sub"><x-vendor.ref :vendor="$item['vendor_id'] ? \App\Vendors\Vendor::badges()->get($item['vendor_id']) : null" :ref="$item['claim_ref']"/>@if ($item['manager'])<span>{{ $item['manager'] }}</span>@endif</span></span>
+                            <span class="min-w-0 flex-1"><span class="block truncate">{{ $item['title'] }}</span><span class="row-sub"><x-vendor.ref :vendor-id="$item['vendor_id']" :ref="$item['claim_ref']"/>@if ($item['manager'])<span>{{ $item['manager'] }}</span>@endif</span></span>
                             <x-ui.chevron/>
                         </a>
                     @endforeach

@@ -6,7 +6,6 @@
 @php
     use App\Offers\OfferState;
     $n = $offer->number;
-    $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $live = $offer->isGallery();
     $count = (int) ($offer->interests_count ?? $offer->interests()->count());
     $last = $offer->interest_at ?? ($count ? $offer->interests()->max('created_at') : null);
@@ -17,11 +16,11 @@
     <td class="grow">
         <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->titleWithYear() }}</span><x-ui.links :offer="$offer"/></span></x-ui.row-link>
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">
-            <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>
+            <span class="fit-core sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/></span>
             @if ($offer->gallery_from)<span class="nums sm:hidden">с {{ $offer->gallery_from->translatedFormat('j M, H:i') }}</span>@endif
         </span>
     </td>
-    <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>
+    <td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
     <td class="col-detail-hide hidden sm:table-cell">@if ($offer->settlement)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $offer->settlement->name }}</x-ui.place>@endif</td>
     <td class="num nums col-detail-hide hidden whitespace-nowrap sm:table-cell">{{ $offer->gallery_from?->translatedFormat('j M, H:i') }}</td>
     <td class="fill hidden whitespace-nowrap sm:table-cell">

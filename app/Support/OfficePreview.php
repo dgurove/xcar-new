@@ -111,7 +111,7 @@ final class OfficePreview
     {
         return match (true) {
             $v instanceof DateTimeInterface => $v->format($v->format('His') === '000000' ? 'd.m.Y' : 'd.m.Y H:i'),
-            is_float($v) => rtrim(rtrim(number_format($v, 2, ',', ''), '0'), ','),
+            is_float($v) => Qty::format($v, ','),
             is_int($v) => (string) $v,
             is_bool($v) => $v ? 'да' : 'нет',
             is_scalar($v) => trim((string) $v),

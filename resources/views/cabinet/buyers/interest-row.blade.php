@@ -32,7 +32,7 @@
             @if ($interest->comment)<span class="mt-1.5 block text-sm">{{ $interest->comment }}</span>@endif
         </span>
         <span class="flex shrink-0 flex-col items-end gap-2">
-            <span class="nums text-sm text-ink-dim">{{ $interest->created_at->translatedFormat($interest->created_at->isToday() ? 'H:i' : 'j M') }}</span>
+            <span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::stamp($interest->created_at) }}</span>
             {{-- Слово-действие в хвосте — и на телефоне: смахивание одно не находят (как с долгим нажатием, владелец 04.10.2026). --}}
             <button type="submit" form="interest-{{ $interest->id }}-form" class="relative z-10 text-sm font-medium {{ $new ? 'text-accent-text' : 'text-ink-muted' }} hover:underline">{{ $verb[1] }}</button>
         </span>

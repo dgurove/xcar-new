@@ -119,13 +119,13 @@
          она под ценой. --}}
     @if ($cols !== null && $has('value'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->value && \App\Vendors\Vendor::ratesByValue($offer->vendor_id) ? \App\Support\Money::nums($offer->value) : '' }}</td>@endif
     {{-- Закупочная на месте цены («Без закупочной цены») — кто завёл и когда стоит при ней, как при цене. --}}
-    @if ($has('floor') && $floorSide)<td class="num nums">@if ($when)<span class="num-meta sm:hidden">{{ $when->translatedFormat($when->isToday() ? 'H:i' : ($when->isCurrentYear() ? 'j M' : 'j M Y')) }}@if ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="16" title="{{ $offer->moderator->name }}"/>@endif</span>@endif @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
+    @if ($has('floor') && $floorSide)<td class="num nums">@if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="16" title="{{ $offer->moderator->name }}"/>@endif</span>@endif @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
     @elseif ($has('floor'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">@if ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>@endif
     @if ($has('price'))<td class="num nums arrive-late {{ $admin && ($offer->marginMark()['tone'] ?? null) === 'loss' ? 'text-danger' : '' }}">
         {{-- Краткая таблица (телефон, карточка рядом): кто завёл и когда — вплотную слева от цены (10.10.2026, начальник: с
              телефона непонятно, что когда создано и кем; слева всегда номер убытка, под ценой — подтверждения). Сегодня —
              время, иначе дата, за ней аватар. Столбец «Создано» в краткой таблице спрятан. --}}
-        @if ($when)<span class="num-meta sm:hidden">{{ $when->translatedFormat($when->isToday() ? 'H:i' : ($when->isCurrentYear() ? 'j M' : 'j M Y')) }}@if ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="16" title="{{ $offer->moderator->name }}"/>@endif</span>@endif
+        @if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($offer->moderator)<x-ui.avatar :user="$offer->moderator" :size="16" title="{{ $offer->moderator->name }}"/>@endif</span>@endif
         @if ($busy && $rate)<span class="skeleton arrive-bar w-16"></span>
         @elseif ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)

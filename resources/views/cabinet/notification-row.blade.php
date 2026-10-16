@@ -7,7 +7,7 @@
         <span class="min-w-0 flex-1">
             <span class="flex items-baseline gap-3">
                 <span class="min-w-0 flex-1 {{ $item->read_at ? '' : 'font-medium' }}">{{ \App\Notifications\Notice::glue($item->data['title']) }}</span>
-                <span class="nums shrink-0 text-sm text-ink-dim">{{ $item->created_at->translatedFormat($item->created_at->isToday() ? 'H:i' : 'j M, H:i') }}</span>
+                <span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($item->created_at, time: true) }}</span>
             </span>
             @if (!empty($item->data['text']))<span class="mt-0.5 block whitespace-pre-line text-sm text-ink-muted">{{ $item->data['text'] }}</span>@endif
         </span>

@@ -29,7 +29,7 @@
         @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
     </div>
     {{-- Кто — человеком, телефон ссылкой и когда — текстом (10.10.2026: «что-то чипами, что-то текстом»). --}}
-    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->isSuperBuyer())<span class="text-ink-dim">супер-покупатель</span>@endif @if ($bid->user->phone)<a href="tel:+{{ $bid->user->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $bid->user->phoneFormatted() }}</a>@endif<span class="nums text-ink-dim">{{ $bid->created_at->translatedFormat('j M, H:i') }}</span>@if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
+    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->isSuperBuyer())<span class="text-ink-dim">супер-покупатель</span>@endif @if ($bid->user->phone)<x-ui.phone :user="$bid->user"/>@endif<span class="nums text-ink-dim">{{ $bid->created_at->translatedFormat('j M, H:i') }}</span>@if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
     @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
     @if ($active)
         <div class="mt-2 flex items-start gap-2">
@@ -74,7 +74,7 @@
                                 </div>
                             @endif
                             @if ($give)<p class="text-sm text-ink-muted">Сделка с {{ $offer->deal->buyer?->shortName() }} отменится</p>@endif
-                            <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.button></div>
+                            <x-ui.sheet-foot type="submit" variant="primary">{{ $give ? 'Отдать' : 'В гараж' }}</x-ui.sheet-foot>
                         </form>
                     @else
                         <x-offer.money-form :action="'/confirmations/'.$bid->id.'/accept'" :amount="$bid->amount" :cost="$floor" :supplier-cost="$offer->floor_price" :scheme="\App\Offers\DealScheme::choiceFor($offer->vendor?->deal_format, \App\Offers\DealScheme::forOffer($offer))" :schemes="\App\Offers\DealScheme::casesFor($offer->vendor)" :owner-price="$offer->owner_price" :fee="! $bid->user->isSuperBuyer()" :submit="$give ? 'Отдать' : 'Принять'" :note="$give ? 'Сделка с '.$offer->deal->buyer?->shortName().' отменится' : null"

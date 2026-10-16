@@ -17,7 +17,7 @@
     <div class="min-w-0 flex-1">
         <div class="truncate">{{ $offer->titleWithYear() }}</div>
         <div class="row-sub">
-            <x-vendor.ref :vendor="$offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null" :ref="$offer->claim_ref" copy/>
+            <x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" copy/>
             <span class="nums">№ {{ $offer->number }}</span>
             @if ($person && $deal->buyer)<span>{{ $deal->buyer->name }}</span>@endif
         </div>

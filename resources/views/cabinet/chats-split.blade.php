@@ -27,7 +27,7 @@
             @if ($current)
                 <x-chat.screen :back="$base" :chat="$chat" :offer="$offer" :messages="$messages" :user="$me" :name="$name" :other="$other" :open="$current === 'support' ? '/chats/support' : null" :first-unread="$firstUnread" :more="$more" :link="$link" :sheet="! $mine" :status="$status" :chats="$others"/>
             @else
-                <div class="chat-none"><x-ui.icon name="chat" class="size-10 text-ink-dim"/>Выберите чат</div>
+                <x-chat.empty/>
             @endif
         </turbo-frame>
     </div>

@@ -342,10 +342,8 @@ class Vehicle extends Model
 
     public function titleWithYear(): string
     {
-        $name = trim(($this->brand?->name ?? '').' '.($this->model?->name ?? ''));
-
         // Без марки — номер убытка или госномер: «, 2019» само по себе ничего не говорит.
-        return $name ? $name.($this->year ? ", {$this->year}" : '') : ($this->ref ?: ($this->plate ?: 'ТС'));
+        return $this->carRecord()->titleWithYear() ?: ($this->ref ?: ($this->plate ?: 'ТС'));
     }
 
     /**

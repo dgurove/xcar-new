@@ -54,7 +54,7 @@
                                 <x-ui.field name="name" label="Имя для менеджера" :value="$block->name" required/>
                                 <x-ui.field name="text" label="Текст уведомления" type="textarea" :value="$block->text"/>
                             </div>
-                            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                            <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                         </form>
                         @if ($block->stages->isEmpty())
                             <form method="post" action="/settings/workflows/blocks/{{ $block->id }}" class="mt-3">@csrf @method('delete')<x-ui.button variant="danger" block>Удалить блок</x-ui.button></form>
@@ -109,7 +109,7 @@
                     <x-ui.field name="name" label="Имя для менеджера" required/>
                     <x-ui.field name="text" label="Текст уведомления" type="textarea"/>
                 </div>
-                <div class="sheet-foot"><x-ui.button block>Добавить</x-ui.button></div>
+                <x-ui.sheet-foot>Добавить</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>

@@ -39,15 +39,15 @@
                 </a>
             @endforeach
             <div data-controller="sheet" class="contents">
-                <button type="button" class="row w-full text-left" data-action="sheet#open">
+                <x-ui.sheet-row>
                     <x-ui.row-icon name="plus" tone="accent"/>
                     <span class="min-w-0 flex-1 font-medium">Новая группа</span>
-                </button>
+                </x-ui.sheet-row>
                 <x-ui.sheet id="group-new" title="Новая группа" :open="$errors->has('name')">
                     <form method="post" action="/buyers/groups" class="flex flex-col gap-4">
                         @csrf
                         <x-ui.field name="name" label="Название" required maxlength="60" placeholder="Дилеры, Казань, VIP…"/>
-                        <div class="sheet-foot"><x-ui.button block>Создать</x-ui.button></div>
+                        <x-ui.sheet-foot>Создать</x-ui.sheet-foot>
                     </form>
                 </x-ui.sheet>
             </div>

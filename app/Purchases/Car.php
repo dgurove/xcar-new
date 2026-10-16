@@ -8,6 +8,7 @@ use App\Cars\Settlement;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Surface;
+use App\Support\Units;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -116,22 +117,22 @@ class Car extends Model
 
     public function title(): string
     {
-        return trim(($this->brand?->name ?? $this->brand_raw ?? '').' '.($this->model?->name ?? $this->model_raw ?? '')) ?: 'ТС';
+        return $this->carRecord()->title($this->brand_raw, $this->model_raw) ?: 'ТС';
     }
 
     public function titleWithYear(): string
     {
-        return $this->title().($this->year ? ", {$this->year}" : '');
+        return $this->carRecord()->withYear($this->title());
     }
 
     public function facts(): array
     {
         return array_values(array_filter([
-            $this->mileage !== null ? number_format($this->mileage, 0, '', ' ').' км' : null,
+            Units::km($this->mileage),
             $this->transmission?->label(),
             $this->fuel?->label(),
-            $this->engine_volume ? number_format($this->engine_volume / 1000, 1, ',', '').' л' : null,
-            $this->engine_power ? $this->engine_power.' л. с.' : null,
+            Units::liters($this->engine_volume),
+            Units::hp($this->engine_power),
             $this->color,
         ]));
     }
@@ -140,9 +141,9 @@ class Car extends Model
     public function factsList(): array
     {
         return array_filter([
-            'Тип' => $this->kind->label(), 'Год' => $this->year, 'Пробег' => $this->mileage !== null ? number_format($this->mileage, 0, '', ' ').' км' : null,
-            'Коробка' => $this->transmission?->label(), 'Топливо' => $this->fuel?->label(), 'Объём' => $this->engine_volume ? number_format($this->engine_volume / 1000, 1, ',', '').' л' : null,
-            'Мощность' => $this->engine_power ? $this->engine_power.' л. с.' : null, 'Цвет' => $this->color, 'Руль' => $this->steering, 'Ключи' => $this->keys,
+            'Тип' => $this->kind->label(), 'Год' => $this->year, 'Пробег' => Units::km($this->mileage),
+            'Коробка' => $this->transmission?->label(), 'Топливо' => $this->fuel?->label(), 'Объём' => Units::liters($this->engine_volume),
+            'Мощность' => Units::hp($this->engine_power), 'Цвет' => $this->color, 'Руль' => $this->steering, 'Ключи' => $this->keys,
             // ДЛ — только в CRM (номеров убытка и ДЛ на xcar.ru нет нигде, 10.10.2026); на сайте номер — в шапке («№ 12»).
             'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => Surface::inCrm() ? $this->dl : null, 'Где' => $this->settlement?->title() ?? $this->city ?? $this->address, 'Обременения' => Surface::inCrm() ? $this->encumbrance : \App\Support\VendorNames::strip($this->encumbrance),
         ], fn ($v) => $v !== null && $v !== '');

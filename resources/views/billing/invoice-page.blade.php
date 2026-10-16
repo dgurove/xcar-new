@@ -18,7 +18,7 @@
         @if ($i->external_no)<span class="tag nums gap-1">№<x-ui.copy-code :value="$i->external_no"/></span>@endif
         <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted">
             <span>{{ $i->kind->label() }}</span>
-            <span class="nums">от {{ $i->issued_at->translatedFormat($i->issued_at->isCurrentYear() ? 'j M' : 'j M Y') }}</span>
+            <span class="nums">от {{ \App\Support\Ago::day($i->issued_at) }}</span>
             <span>{{ $i->vatRate() ? 'НДС '.$i->vatRate().' %' : 'без НДС' }}</span>
             @if ($i->sent_at)<span class="nums">отправлен {{ $i->sent_at->translatedFormat('j M') }}</span>@endif
         </div>
@@ -44,7 +44,7 @@
                             <x-ui.field name="external_no" :label="$i->isOwed() ? 'Чужой номер' : 'Чужой номер'" :value="$i->external_no"/>
                             <x-ui.field name="notes" label="Заметка в счёт" type="textarea" :value="$i->notes"/>
                         </div>
-                        <div class="sheet-foot"><x-ui.button variant="secondary" block>Сохранить</x-ui.button></div>
+                        <x-ui.sheet-foot variant="secondary">Сохранить</x-ui.sheet-foot>
                     </form>
                 @endif
             </div>
@@ -59,7 +59,7 @@
                         <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="flex items-baseline gap-3 py-2" data-turbo="false"><span class="min-w-0 flex-1 truncate">{{ $v->titleWithYear() }}@if ($v->ref) <span class="text-sm text-ink-muted">{{ $v->ref }}</span>@endif</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->charges->where('vehicle_id', $v->id)->sum('amount')) }}</span></a>
                     @endforeach
                     @foreach ($i->isRegistry() ? [] : $i->charges as $c)
-                        <div class="flex items-baseline gap-3 py-2"><span class="min-w-0 flex-1">{{ $c->title }}</span><span class="nums text-sm text-ink-muted">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.') }} {{ $c->unitLabel() }} × {{ Money::nums($c->price) }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($c->amount) }}</span></div>
+                        <div class="flex items-baseline gap-3 py-2"><span class="min-w-0 flex-1">{{ $c->title }}</span><span class="nums text-sm text-ink-muted">{{ \App\Support\Qty::format($c->qty) }} {{ $c->unitLabel() }} × {{ Money::nums($c->price) }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($c->amount) }}</span></div>
                     @endforeach
                     @if ($i->vat_on_top)<div class="flex items-baseline gap-3 py-2"><span class="flex-1">{{ $i->vatLabel() }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->vatAmount()) }}</span></div>@endif
                     <div class="flex items-baseline gap-3 py-2"><span class="flex-1">Итого</span><span class="nums text-lg font-semibold">{{ Money::rub($i->total) }}</span></div>
@@ -82,7 +82,7 @@
                                     <div data-controller="sheet" class="contents">
                                         <x-ui.button type="button" size="sm" variant="ghost" data-action="sheet#open">Не поступила</x-ui.button>
                                         <x-ui.sheet id="reject-{{ $p->id }}" title="Оплата не поступила">
-                                            <form method="post" action="{{ $claims }}/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><div class="sheet-foot"><x-ui.button variant="secondary" block>Не поступила</x-ui.button></div></form>
+                                            <form method="post" action="{{ $claims }}/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><x-ui.sheet-foot variant="secondary">Не поступила</x-ui.sheet-foot></form>
                                         </x-ui.sheet>
                                     </div>
                                 @endif

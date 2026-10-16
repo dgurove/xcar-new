@@ -11,6 +11,6 @@
         @if ($yard)<x-ui.field name="notes" label="Заметки" type="textarea" :value="$yard->notes"/>@endif
     </div>
     @if ($yard)<x-ui.check name="is_active" :checked="$yard->is_active">Работает</x-ui.check>@endif
-    <div class="sheet-foot"><x-ui.button block>{{ $yard ? 'Сохранить' : 'Добавить' }}</x-ui.button></div>
+    <x-ui.sheet-foot>{{ $yard ? 'Сохранить' : 'Добавить' }}</x-ui.sheet-foot>
 </form>
 @if ($yard && ! $yard->stored_vehicles_count)<form method="post" action="/yards/{{ $yard->id }}" class="mt-2" data-turbo-confirm="Убрать парковку «{{ $yard->name }}»?">@csrf @method('delete')<x-ui.button variant="ghost" block>Убрать</x-ui.button></form>@endif

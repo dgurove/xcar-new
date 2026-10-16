@@ -66,7 +66,7 @@
                 $delta = $mark ? $e->wish_price - $mark : 0;
             @endphp
             <div class="contents" data-controller="sheet">
-                <button type="button" class="row w-full text-left" data-action="sheet#open">
+                <x-ui.sheet-row>
                     <x-ui.avatar :user="$e->user" :size="32"/>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $e->user->shortName() }}</span>
@@ -77,7 +77,7 @@
                         <span class="text-sm text-ink-muted">хочет</span>
                     </span>
                     <x-ui.chevron/>
-                </button>
+                </x-ui.sheet-row>
                 <x-ui.sheet id="estimate-declined-{{ $e->id }}" title="Отказ от оценки">
                     <div class="money-hero">
                         <span class="mb-2 block"><x-ui.avatar :user="$e->user" :size="64"/></span>

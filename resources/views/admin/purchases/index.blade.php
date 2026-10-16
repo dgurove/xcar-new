@@ -13,7 +13,7 @@
                     <x-ui.field name="supplier" label="Поставщик" placeholder="Carcade"/>
                     <x-ui.field name="offers_close_at" label="Цены до" type="datetime-local" default-time="17:30"/>
                 </div>
-                <div class="sheet-foot"><x-ui.button block>Создать</x-ui.button></div>
+                <x-ui.sheet-foot>Создать</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>

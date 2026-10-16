@@ -28,7 +28,7 @@ final class InvoiceOverdue extends Message
     {
         $i = $this->invoice;
 
-        $rest = 'Остаток '.Money::rub($i->remaining()).' из '.Money::rub($i->total).', срок '.$i->due_at->translatedFormat('j M').', '.$i->overdueDays().' дн назад';
+        $rest = 'Остаток '.Money::rub($i->remaining()).' из '.Money::rub($i->total).', срок '.$i->due_at->translatedFormat('j M').', '.$i->overdueLabel();
         if ($offer = $this->offer()) {
             return Text::lines($offer, $rest, $i->label().', '.$i->party->name);
         }
@@ -36,7 +36,7 @@ final class InvoiceOverdue extends Message
         return [
             $i->party->name,
             'Остаток '.Money::rub($i->remaining()).' из '.Money::rub($i->total),
-            'Срок '.$i->due_at->translatedFormat('j M').', '.$i->overdueDays().' дн назад',
+            'Срок '.$i->due_at->translatedFormat('j M').', '.$i->overdueLabel(),
             $i->vehicle?->titleWithYear(),
         ];
     }

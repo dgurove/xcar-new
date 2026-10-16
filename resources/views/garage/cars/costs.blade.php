@@ -31,7 +31,7 @@
                                 <form method="post" action="/garage/costs/{{ $cost->id }}" class="flex flex-col gap-3">
                                     @csrf @method('put')
                                     @include('garage.cars.cost-fields', ['cost' => $cost])
-                                    <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>Сохранить</x-ui.button></div>
+                                    <x-ui.sheet-foot type="submit" variant="primary">Сохранить</x-ui.sheet-foot>
                                 </form>
                                 <form method="post" action="/garage/costs/{{ $cost->id }}" class="mt-2" data-turbo-confirm="Убрать расход?">
                                     @csrf @method('delete')

@@ -10,7 +10,7 @@
                 <x-ui.field name="spot" label="Место" :value="$vehicle->spot" list="move-spots-{{ $vehicle->id }}" autocapitalize="characters"/>
                 <datalist id="move-spots-{{ $vehicle->id }}" data-spots-target="list"></datalist>
             </div>
-            <div class="sheet-foot"><x-ui.button block>Переставить</x-ui.button></div>
+            <x-ui.sheet-foot>Переставить</x-ui.sheet-foot>
         </form>
     </x-ui.sheet>
 </div>

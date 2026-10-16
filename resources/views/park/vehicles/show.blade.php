@@ -172,7 +172,7 @@
                         <x-ui.field name="price" label="Цена, ₽" required data-price-target="price"/>
                         <x-ui.field name="title" label="Название в счёте"/>
                     </div>
-                    <div class="sheet-foot"><x-ui.button block>Начислить</x-ui.button></div>
+                    <x-ui.sheet-foot>Начислить</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>
         </x-ui.card>
@@ -223,7 +223,7 @@
                         <x-ui.field name="owner_party_id" label="Комитент" :options="$owners" placeholder="—" :value="$vehicle->owner_party_id"/>
                         <x-ui.field name="billing_cadence" label="Счёт за хранение" :options="\App\Billing\Cadence::options()" :placeholder="'Как у вендора'.($vehicle->vendor ? ': '.mb_strtolower($vehicle->vendor->billing_cadence->label()) : '')" :value="$vehicle->billing_cadence?->value"/>
                     </div>
-                    <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                    <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>
         </div>
@@ -242,7 +242,7 @@
                         <div class="row justify-between"><span class="min-w-0"><span class="block truncate">{{ $pass->name }}</span><span class="block text-sm text-ink-muted">анкета {{ $pass->submitted_at?->translatedFormat('j M, H:i') }}</span></span></div>
                     </div>
                     <x-ui.field name="reason" label="Что ответила страховая" type="textarea" required/>
-                    <div class="sheet-foot"><x-ui.button block variant="danger">Погасить пропуск</x-ui.button></div>
+                    <x-ui.sheet-foot variant="danger">Погасить пропуск</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>
         </div>
@@ -289,7 +289,7 @@
                 <form method="post" action="/cars/{{ $vehicle->id }}/logistics" class="flex flex-col gap-4">
                     @csrf
                     <x-logistics.fields :car="$vehicle" prefix="vehicle-{{ $vehicle->id }}-t" :yards="\App\Park\Yard::withoutGlobalScopes()->where('is_active', true)->orderBy('name')->get()"/>
-                    <div class="sheet-foot"><x-ui.button block>Отправить</x-ui.button></div>
+                    <x-ui.sheet-foot>Отправить</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>
         </div>

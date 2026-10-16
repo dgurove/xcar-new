@@ -6,10 +6,10 @@
 <x-ui.cabinet title="Метки">
     <div class="list">
         <div data-controller="sheet" class="contents">
-            <button type="button" class="row w-full text-left" data-action="sheet#open">
+            <x-ui.sheet-row>
                 <x-ui.row-icon name="plus" tone="accent"/>
                 <span class="min-w-0 flex-1 font-medium">Новая метка</span>
-            </button>
+            </x-ui.sheet-row>
             <x-ui.sheet id="tag-new" title="Новая метка" tall>
                 <form method="post" action="/settings/tags" class="flex flex-col gap-4">
                     @csrf
@@ -18,7 +18,7 @@
                         <x-ui.field name="color" label="Цвет" :options="\App\Offers\Tag::COLORS" value="grey"/>
                     </div>
                     @include('admin.tags.vendors', ['picked' => []])
-                    <div class="sheet-foot"><x-ui.button block>Добавить</x-ui.button></div>
+                    <x-ui.sheet-foot>Добавить</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>
         </div>
@@ -40,7 +40,7 @@
                             <x-ui.field name="color" label="Цвет" :options="\App\Offers\Tag::COLORS" :value="$tag->color"/>
                         </div>
                         @include('admin.tags.vendors', ['picked' => $tag->vendors->pluck('id')->all()])
-                        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                        <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                     </form>
                     <form method="post" action="/settings/tags/{{ $tag->id }}" class="mt-2" data-turbo-confirm="Удалить метку «{{ $tag->name }}»?{{ ($used[$tag->name] ?? 0) ? ' Она снимется с '.$used[$tag->name].' предложений.' : '' }}">
                         @csrf @method('delete')

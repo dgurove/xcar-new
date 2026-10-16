@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Purchases\Offer;
+use App\Support\Money;
 
 final class PurchaseOfferChosenNotice extends Notice
 {
@@ -10,7 +11,7 @@ final class PurchaseOfferChosenNotice extends Notice
 
     public function title(): string
     {
-        return 'Ваша цена '.number_format($this->offer->amount, 0, '', ' ').' ₽ за '.$this->offer->car->titleWithYear().' выбрана';
+        return 'Ваша цена '.Money::plain($this->offer->amount).' за '.$this->offer->car->titleWithYear().' выбрана';
     }
 
     public function text(): ?string

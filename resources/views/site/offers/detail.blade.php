@@ -16,8 +16,6 @@
     $canBid = $bids && $offer->bidsOpen() && $price->visible;
     $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
-    $asking = (int) $offer->asking_price;
-    $discounts = $offer->bidDiscounts(auth()->user());
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)" :action="false">
@@ -48,33 +46,7 @@
         </x-slot:aside>
         <x-slot:actions>
             @if ($canBid)
-                @php
-                    // Админ подтверждает за менеджера — как в `x-offer.bid-form`.
-                    $staff = $user->isAdmin() && ! $user->isManager();
-                    $garage = $staff ? (bool) $offer->garage_allowed : $offer->garageAllowedFor($user);
-                @endphp
-                <form method="post" action="/offers/{{ $n }}/confirm" class="flex w-full flex-col gap-2" data-telegram-moment="bid" data-controller="bid" data-bid-asking-value="{{ $asking }}" data-bid-garage-value="{{ $garage ? 'true' : 'false' }}" data-bid-staff-value="{{ $staff ? 'true' : 'false' }}" data-action="submit->bid#guard change->bid#update">
-                    @csrf
-                    <div class="flex gap-2">
-                        <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $myBid?->amount) }}">
-                        <input type="text" @unless ($garage) required @endunless inputmode="decimal" autocomplete="off" enterkeyhint="go" data-check-text="Укажите цену" class="field-input field-s nums min-w-0 flex-1" placeholder="Цена, ₽" aria-label="Цена, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $myBid?->amount ? \App\Support\Money::nums($myBid->amount) : '') }}" data-detail-focus>
-                        <button type="submit" class="btn btn-s btn-accent shrink-0" data-bid-target="submit">{{ $myBid ? 'Изменить' : 'Подтвердить' }}</button>
-                    </div>
-                    @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
-                    @error('manager_id')<p class="text-sm text-danger">{{ $message }}</p>@enderror
-                    <div class="flex flex-wrap items-center gap-1.5">
-                        @if ($asking)
-                            <button type="button" class="pill pill-plain nums" data-action="bid#set" data-bid-amount-param="{{ $asking }}">{{ \App\Support\Money::nums($asking) }}</button>
-                            @foreach ($discounts as $percent => $price)<button type="button" class="pill pill-plain nums" data-action="bid#set" data-bid-amount-param="{{ $price }}">−{{ $percent }}%</button>@endforeach
-                        @endif
-                        <input name="comment" class="field-input field-s min-w-0 flex-1 sm:text-sm" placeholder="Комментарий" value="{{ old('comment', $myBid?->comment) }}">
-                    </div>
-                    @if ($garage || $staff)<x-offer.bid-choice :offer="$offer" :garage="$garage" :staff="$staff"/>@endif
-                </form>
-                @if ($myBid)
-                    <span class="text-sm text-ink-muted">@if ($myBid->isGarage())<span class="font-semibold text-ink">В гараж</span>@else Ваша цена <span class="nums font-semibold text-ink">{{ \App\Support\Money::rub($myBid->amount) }}</span>@endif, {{ mb_strtolower($myBid->state->label()) }}</span>
-                    <form method="post" action="/confirmations/{{ $myBid->id }}/withdraw" class="contents">@csrf<button type="submit" class="pill pill-plain">Отозвать</button></form>
-                @endif
+                <x-offer.bid-form :offer="$offer" :my-bid="$myBid" compact/>
             @elseif ($myBid)
                 <x-offer.my-bid :offer="$offer" :bid="$myBid" class="w-full"/>
             @elseif ($wantsInterest)

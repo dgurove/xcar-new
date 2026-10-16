@@ -310,6 +310,15 @@ class Invoice extends Model implements HasMedia
         return $this->due_at ? (int) $this->due_at->startOfDay()->diffInDays(now()->startOfDay()) : 0;
     }
 
+    /**
+     * Просрочка словами — одна на приложение (16.10.2026: семь мест писали её сами, то «просрочен на 3 дн», то
+     * «просрочен 3 дн»): «просрочен на 3 д», как часы шагов, в начале фразы — с большой буквы.
+     */
+    public function overdueLabel(bool $capital = false): string
+    {
+        return ($capital ? 'Просрочен' : 'просрочен').' на '.$this->overdueDays().' д';
+    }
+
     public function isPartial(): bool
     {
         return $this->state === InvoiceState::Issued && $this->paidMoney() > 0 && $this->remaining() > 0;

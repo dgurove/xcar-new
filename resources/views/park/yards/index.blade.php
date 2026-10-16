@@ -36,14 +36,14 @@
         <div class="list mt-6">
             @foreach ($yards as $yard)
                 <div data-controller="sheet">
-                    <button type="button" class="row w-full text-left" data-action="sheet#open">
+                    <x-ui.sheet-row>
                         <div class="min-w-0 flex-1">
                             <div class="truncate">{{ $yard->name }}</div>
                             <div class="row-sub">@unless ($yard->is_active)<span class="text-ink">закрыта</span>@endunless<span>{{ trim(($yard->settlement?->title() ?? '').', '.($yard->address ?? ''), ', ') }}</span>@if ($yard->capacity)<span class="nums {{ $free($yard) === 0 ? 'text-danger' : '' }}">{{ $free($yard) }} свободно</span>@endif</div>
                         </div>
                         <span class="nums shrink-0 text-ink-dim">{{ $yard->stored_vehicles_count }}</span>
                         <x-ui.chevron/>
-                    </button>
+                    </x-ui.sheet-row>
                     <x-ui.sheet id="yard-{{ $yard->id }}" :title="$yard->name" wide>
                         @if ($yard->rows)<div class="mb-4"><x-park.yard-map :yard="$yard" :occupied="$yard->storedVehicles->whereNotNull('spot')->keyBy('spot')"/></div>@endif
                         @if ($admin)@include('park.yards.form', ['yard' => $yard])@endif

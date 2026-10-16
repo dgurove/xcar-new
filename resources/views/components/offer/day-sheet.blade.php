@@ -13,7 +13,7 @@
                 <x-ui.field name="day" :id="'publish-day-field-'.$n" label="Когда" type="datetime-local" required :default-time="$hour"
                     :value="\App\Offers\Slots::dayDefault()->format('Y-m-d\TH:i')" :min="now()->format('Y-m-d\TH:i')"/>
             </div>
-            <div class="sheet-foot"><x-ui.button block><x-ui.icon name="calendar" class="size-5"/> Опубликовать</x-ui.button></div>
+            <x-ui.sheet-foot><x-ui.icon name="calendar" class="size-5"/> Опубликовать</x-ui.sheet-foot>
         </form>
     </x-ui.sheet>
 </div>

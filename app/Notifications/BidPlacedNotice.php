@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Bid;
+use App\Support\Money;
 use App\Support\Surface;
 use App\Users\User;
 
@@ -16,7 +17,7 @@ final class BidPlacedNotice extends Notice
             return 'В гараж: № '.$this->bid->offer->number;
         }
 
-        return 'Подтверждение '.number_format($this->bid->amount, 0, '', ' ').' ₽ по № '.$this->bid->offer->number;
+        return 'Подтверждение '.Money::plain($this->bid->amount).' по № '.$this->bid->offer->number;
     }
 
     public function text(): ?string

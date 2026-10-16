@@ -78,7 +78,7 @@
                             <td rowspan="{{ $span }}">{{ $v?->ref }}</td>
                             <td rowspan="{{ $span }}">{{ $v?->policy_no }}</td>
                             <td rowspan="{{ $span }}">{{ $v?->plate }}</td>
-                            <td rowspan="{{ $span }}">{{ trim(($v?->brand?->name ?? '').' '.($v?->model?->name ?? '')) }}</td>
+                            <td rowspan="{{ $span }}">{{ $v?->carRecord()->title() }}</td>
                             @if ($yards)<td rowspan="{{ $span }}">{{ $v?->yard?->name }}</td>@endif
                         @endif
                         @if ($c->kind === ChargeKind::Storage)
@@ -87,7 +87,7 @@
                             @php $whole = $v?->accepted_at && $v?->released_at && $c->period_from?->isSameDay($v->accepted_at) && $c->period_to?->isSameDay($v->released_at); @endphp
                             <td>{{ $service }}@unless ($whole) за {{ $c->period_from?->format('d.m.Y') }} – {{ $c->period_to?->format('d.m.Y') }}@endunless</td><td class="n">{{ (int) $c->qty }}</td>
                         @else
-                            <td>{{ $c->title }}</td><td class="n">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.') }} {{ $c->unitLabel() }}</td>
+                            <td>{{ $c->title }}</td><td class="n">{{ \App\Support\Qty::format($c->qty) }} {{ $c->unitLabel() }}</td>
                         @endif
                         <td class="n">{{ Money::nums($c->price, 2) }}</td><td class="n">{{ Money::nums($c->amount, 2) }}</td>
                     </tr>

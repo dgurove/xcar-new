@@ -32,7 +32,7 @@
                 <form method="post" action="/requests/{{ $req->id }}/refuse" class="flex flex-col gap-3">
                     @csrf
                     <x-ui.field name="reason" label="Почему отказался" type="textarea" required/>
-                    <div class="sheet-foot"><x-ui.button block>Записать отказ</x-ui.button></div>
+                    <x-ui.sheet-foot>Записать отказ</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>
         </div>

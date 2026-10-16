@@ -27,7 +27,7 @@
             @if ($chat)
                 <x-telegram.dialog :chat="$chat" :messages="$messages" :more="$more" :back="'/settings/telegram'.$qs"/>
             @else
-                <div class="chat-none"><x-ui.icon name="chat" class="size-10 text-ink-dim"/>Выберите чат</div>
+                <x-chat.empty/>
             @endif
         </turbo-frame>
     </div>

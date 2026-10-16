@@ -35,7 +35,7 @@
     {{-- 13.10.2026: шторкой с оценочной и закупочной (`x-park.sell-sheet`), а не подтверждением без цифр. --}}
     <span @class(['list mt-3' => $row, 'contents' => ! $row]) data-controller="sheet">
         @if ($row)
-            <button type="button" class="row w-full text-left" data-action="sheet#open"><x-ui.row-icon name="bag" tone="soft" size="s"/><span class="min-w-0 flex-1 text-accent-text">Выставить в продажу</span><x-ui.chevron/></button>
+            <x-ui.sheet-row><x-ui.row-icon name="bag" tone="soft" size="s"/><span class="min-w-0 flex-1 text-accent-text">Выставить в продажу</span><x-ui.chevron/></x-ui.sheet-row>
         @else
             <button type="button" class="pill pill-soft gap-1.5" data-action="sheet#open"><x-ui.icon name="bag" class="size-4"/>В продажу</button>
         @endif
@@ -44,12 +44,12 @@
 @else
     <span @class(['list mt-3' => $row, 'contents' => ! $row]) data-controller="sheet">
         @if ($row)
-            <button type="button" class="row w-full text-left" data-action="sheet#open">
+            <x-ui.sheet-row>
                 <x-ui.row-icon name="bag" :tone="$tone === 'plain' ? 'muted' : $tone" size="s"/>
                 <span class="min-w-0 flex-1">Продажа</span>
                 <span class="shrink-0 text-right"><span @class(['block', 'text-open' => $tone === 'open', 'text-urgent' => $tone === 'urgent', 'text-ink-muted' => $tone === 'plain'])>{{ mb_strtolower($word) }}</span>@if ($price)<span class="block nums text-sm text-ink-muted">{{ $price }}</span>@endif</span>
                 <x-ui.chevron/>
-            </button>
+            </x-ui.sheet-row>
         @else
             <button type="button" class="pill pill-{{ $tone }} gap-1" data-action="sheet#open">{{ $word }}<x-ui.icon name="chevron-down" class="size-3.5"/></button>
         @endif

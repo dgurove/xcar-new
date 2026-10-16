@@ -119,7 +119,7 @@ class Estimate extends Model
     /** Когда отказался: «17:48» сегодня, иначе «9 окт, 17:48». */
     public function declinedWhen(): string
     {
-        return $this->declined_at?->translatedFormat($this->declined_at->isToday() ? 'H:i' : 'j M, H:i') ?? '';
+        return Ago::stamp($this->declined_at, true);
     }
 
     public function givenAgo(): string

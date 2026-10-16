@@ -22,7 +22,7 @@
         <x-ui.row-link :key="$offer->number"><span class="cell-title">{{ $offer->titleWithYear() }}</span></x-ui.row-link>
         <span class="cell-sub"><span><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span>@if ($hasRef)<span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>@endif</span>
     </td>
-    <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>
+    <td class="hidden sm:table-cell"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" cell/></td>
     <td class="num nums cell-dim hidden xl:table-cell col-detail-hide">{{ $car->taken_at?->translatedFormat('j M') }}</td>
     <td class="num nums hidden sm:table-cell">@if ($price){{ Money::nums($price) }}@endif</td>
     <td class="num nums hidden sm:table-cell">@if ($spent > 0){{ Money::nums($spent) }}@endif</td>

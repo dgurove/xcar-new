@@ -4,7 +4,7 @@
     <div class="list">
         @foreach ($marks as $name => $mark)
             <div class="contents" data-controller="sheet">
-                <button type="button" class="row w-full text-left" data-action="sheet#open">
+                <x-ui.sheet-row>
                     <span @class(["row-photo row-photo-s flex items-center justify-center p-1", "bg-chrome" => $mark["learned"]])><img src="/settings/watermarks/{{ $name }}/image" alt="" class="!size-auto max-h-full max-w-full object-contain"></span>
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $mark['title'] }}</span>
@@ -14,13 +14,13 @@
                         </span>
                     </span>
                     <x-ui.chevron/>
-                </button>
+                </x-ui.sheet-row>
                 <x-ui.sheet id="mark-{{ $name }}" :title="$mark['title']">
                     <form method="post" action="/settings/watermarks/{{ $name }}" class="flex flex-col gap-4">
                         @csrf @method('put')
                         <x-ui.field name="title" label="Площадка" :value="$mark['title']" required maxlength="40"/>
                         <div class="flags"><x-ui.check name="on" :checked="! $mark['off']">Снимать</x-ui.check></div>
-                        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                        <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                     </form>
                     @if ($mark['learned'])
                         <form method="post" action="/settings/watermarks/{{ $name }}" class="mt-2" data-turbo-confirm="Удалить знак «{{ $mark['title'] }}»?">

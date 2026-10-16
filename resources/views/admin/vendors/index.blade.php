@@ -11,10 +11,10 @@
     </div>
     <div class="list">
         <div data-controller="sheet">
-            <button type="button" class="row w-full text-left" data-action="sheet#open">
+            <x-ui.sheet-row>
                 <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-white"><x-ui.icon name="plus" class="size-4"/></span>
                 <span class="min-w-0 flex-1 text-accent-text">Новый вендор</span>
-            </button>
+            </x-ui.sheet-row>
             <x-ui.sheet id="vendor-new" title="Новый вендор" :open="$errors->has('name')">
                 <form method="post" action="/settings/vendors" class="flex flex-col gap-4">
                     @csrf
@@ -22,7 +22,7 @@
                         <x-ui.field name="name" label="Название" required/>
                         <x-ui.field name="kind" label="Тип" :options="Kind::options()" value="insurer"/>
                     </div>
-                    <div class="sheet-foot"><x-ui.button block>Создать</x-ui.button></div>
+                    <x-ui.sheet-foot>Создать</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>
         </div>

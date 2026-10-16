@@ -12,7 +12,7 @@
 @endphp
 <div class="chat-page">
     <div class="chat-head" @if ($sheet) data-controller="sheet" @endif>
-        <a href="{{ $back }}" class="chat-back header-btn" aria-label="Назад" data-controller="back" data-action="back#go" data-turbo-action="replace"><x-ui.icon name="chevron-left" class="size-5"/></a>
+        <x-chat.back :href="$back"/>
         @if ($link)<a href="{{ $link }}" class="chat-who" data-turbo-action="advance">@elseif ($sheet)<button type="button" class="chat-who" data-action="sheet#open">@else<div class="chat-who">@endif
             <x-chat.avatar :user="$other" :size="36" :online="$seen === 'в сети'"/>
             <div class="min-w-0 flex-1">

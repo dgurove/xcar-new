@@ -177,7 +177,7 @@
                         <a href="/work/chats/{{ $chat->id }}" class="flex items-center gap-3 py-2">
                             <x-ui.avatar :user="$chat->user" :size="36"/>
                             <div class="min-w-0 flex-1">
-                                <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ $chat->last_message_at?->translatedFormat($chat->last_message_at->isToday() ? 'H:i' : 'j M') }}</span></div>
+                                <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($chat->last_message_at) }}</span></div>
                                 <div class="truncate text-sm text-ink-muted">{{ $chat->lastPreview(auth()->user()) }}</div>
                             </div>
                             @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif

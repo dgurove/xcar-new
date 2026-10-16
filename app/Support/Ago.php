@@ -60,6 +60,18 @@ final class Ago
         return $at->translatedFormat($time ? "{$day}, H:i" : $day);
     }
 
+    /**
+     * День без «сегодня — время» (дата счёта, период, дата из журнала): «9 окт», в другом году — «9 окт 2025»; с временем
+     * — «9 окт, 14:05».
+     */
+    public static function day(?\DateTimeInterface $at, bool $time = false): string
+    {
+        if (! $at) return '';
+        $at = Carbon::instance($at);
+
+        return $at->translatedFormat(($at->isCurrentYear() ? 'j M' : 'j M Y').($time ? ', H:i' : ''));
+    }
+
     public static function time(Carbon $at, string $class = ''): string
     {
         return '<time datetime="'.$at->toIso8601String().'" title="'.e($at->translatedFormat('j M, H:i')).'" class="nums '.$class.'">'.self::short($at).'</time>';

@@ -22,7 +22,7 @@
             @csrf
             <label class="flex flex-col items-center gap-1">
                 <span class="flex items-baseline justify-center gap-2">
-                    <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Сумма, ₽" placeholder="0" value="{{ old('amount') }}" data-controller="digits" data-action="input->digits#format" autofocus>
+                    <x-billing.amount :value="old('amount')" autofocus/>
                     <span class="text-xl text-ink-muted">₽</span>
                 </span>
                 @error('amount')<span class="text-sm text-danger">{{ $message }}</span>@enderror

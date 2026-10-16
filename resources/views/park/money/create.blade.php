@@ -39,7 +39,7 @@
                 <div class="flex flex-col gap-2">
                     @foreach ($pending as $c)
                         <label class="row row-check !py-2">
-                            <span class="min-w-0 flex-1"><span class="block">{{ $c->title }}</span><span class="row-sub nums">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.') }} {{ $c->unitLabel() }} × {{ Money::rub($c->price) }}</span></span>
+                            <span class="min-w-0 flex-1"><span class="block">{{ $c->title }}</span><span class="row-sub nums">{{ \App\Support\Qty::format($c->qty) }} {{ $c->unitLabel() }} × {{ Money::rub($c->price) }}</span></span>
                             <span class="nums font-semibold">{{ Money::rub($c->amount) }}</span>
                             <span class="check"><input type="checkbox" name="charges[]" value="{{ $c->id }}" checked></span>
                         </label>

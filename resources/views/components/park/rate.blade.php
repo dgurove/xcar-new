@@ -25,7 +25,7 @@
                 <x-ui.field name="storage_rate_note" :id="$id.'-note'" label="Почему своя" :value="$vehicle->storage_rate_note" maxlength="120"/>
                 <x-ui.field digits name="value" :id="$id.'-value'" label="Оценочная, ₽" :value="$vehicle->value ? \App\Support\Money::nums($vehicle->value) : null"/>
             </div>
-            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+            <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
         </form>
     </x-ui.sheet>
 </span>

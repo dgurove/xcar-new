@@ -3,12 +3,12 @@
 @php $user = auth()->user(); @endphp
 @if ($user->telegram_chat_id)
     <div data-controller="sheet" class="contents">
-        <button type="button" class="row w-full text-left" data-action="sheet#open">
+        <x-ui.sheet-row>
             <span class="row-icon row-icon-s tg-tile"><x-telegram.logo plain class="size-[18px]"/></span>
             <span class="min-w-0 flex-1">Telegram</span>
             <span class="truncate text-ink-muted">{{ $user->telegram_username ? '@'.$user->telegram_username : 'подключён' }}</span>
             <x-ui.chevron/>
-        </button>
+        </x-ui.sheet-row>
         <x-ui.sheet id="telegram-account" title="Telegram">
             <div class="flex flex-col gap-5">
                 <div class="flex flex-col items-center gap-1 text-center">

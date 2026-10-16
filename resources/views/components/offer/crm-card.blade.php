@@ -44,26 +44,7 @@
 <article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group {{ $mark ? 'card--'.$mark : '' }} {{ $arrive ? 'arrive arrive--offer' : '' }} {{ $busy ? 'arrive--busy arrive--'.$arriving : '' }}" @if (auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user())) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif>
     <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1" {!! $peek !!}></a>
     @if ($checkable && ! $missing)<label class="card-check card-check--on" aria-label="Выбрать"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"><span><x-ui.icon name="check" class="size-4"/></span></label>@endif
-    @if ($photos->isNotEmpty())
-        <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
-            <a href="{{ $href }}" {!! $peek !!} class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
-                @foreach ($photos as $frame)
-                    <x-offer.photo :media="$frame" :sizes="\App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()))" data-frames-target="frame"/>
-                @endforeach
-            </a>
-            @if ($photos->count() > 1)
-                <div class="card-frames">
-                    <div class="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1">
-                        @foreach ($photos as $i => $frame)<span class="card-dot{{ $i === 0 ? ' card-dot--on' : '' }}" data-frames-target="dot"></span>@endforeach
-                    </div>
-                    <button type="button" class="card-arrow left-2 hidden sm:flex" data-action="frames#prev" aria-label="Предыдущее фото"><x-ui.icon name="chevron-left" class="size-[18px]"/></button>
-                    <button type="button" class="card-arrow right-2 hidden sm:flex" data-action="frames#manual" aria-label="Следующее фото"><x-ui.icon name="chevron-right" class="size-[18px]"/></button>
-                </div>
-            @endif
-        </div>
-    @else
-        <a href="{{ $href }}" {!! $peek !!} class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
-    @endif
+    <x-ui.card-media :photos="$photos" :href="$href" :link="$peek"/>
     <div class="card-body">
         <div class="card-title">
             <a href="{{ $href }}" {!! $peek !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-ui.links :offer="$offer"/>@if (! $busy && blank($offer->vin) && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery, \App\Offers\OfferState::Open], true))<span class="shrink-0 text-sm text-danger">Нет VIN</span>@endif</a>

@@ -14,7 +14,7 @@
                                 <x-ui.field name="name" label="Название" required/>
                                 <x-ui.field name="kind" label="Тип" :options="Kind::options()" value="insurer"/>
                             </div>
-                            <div class="sheet-foot"><x-ui.button block>Добавить</x-ui.button></div>
+                            <x-ui.sheet-foot>Добавить</x-ui.sheet-foot>
                         </form>
                     </x-ui.sheet>
                 </div>

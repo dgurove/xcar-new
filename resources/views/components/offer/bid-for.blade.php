@@ -15,10 +15,7 @@
         <form method="post" action="/offers/{{ $offer->number }}/confirmations" class="flex flex-col gap-3" data-controller="reveal">
             @csrf<input type="hidden" name="bid_for" value="{{ $offer->id }}">
             @if ($garage)
-                <div class="segment">
-                    <label><input type="radio" name="kind" value="buyer" @checked(old('kind', 'buyer') === 'buyer') data-action="reveal#pick"><span>Для покупателя</span></label>
-                    <label><input type="radio" name="kind" value="garage" @checked(old('kind') === 'garage') data-action="reveal#pick"><span>В гараж</span></label>
-                </div>
+                <x-ui.segment name="kind" :options="['buyer' => 'Для покупателя', 'garage' => 'В гараж']" :value="old('kind', 'buyer')" pick/>
             @endif
             <div class="fields">
                 <x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Имя или телефон" :value="old('manager_id')" :id="$id.'-manager'"/>
@@ -28,7 +25,7 @@
                 </div>
                 <x-ui.field name="comment" label="Комментарий" :value="old('comment')" placeholder="Звонил, без интернета" id="{{ $id }}-comment"/>
             </div>
-            <div class="sheet-foot"><x-ui.button type="submit" block>Внести подтверждение</x-ui.button></div>
+            <x-ui.sheet-foot type="submit">Внести подтверждение</x-ui.sheet-foot>
         </form>
     </x-ui.sheet>
 </div>

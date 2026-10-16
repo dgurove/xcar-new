@@ -7,7 +7,7 @@
 @php
     use App\Http\Admin\MoneyLinks as L; use App\Support\Money; use App\Billing\Acquiring\PayLinkState;
     $items = $links instanceof \Illuminate\Support\Collection ? $links : collect($links->items());
-    $when = fn ($t) => $t->translatedFormat($t->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i');
+    $when = fn ($t) => \App\Support\Ago::stamp($t, true);
     $sortable = $titled ? null : $sort;
     $days = ! $titled && ($sort?->key ?? 'created') === 'created' ? $items->groupBy(fn ($l) => L::day($l->created_at)) : collect(['' => $items]);
 @endphp

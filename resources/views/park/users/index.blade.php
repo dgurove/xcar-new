@@ -25,7 +25,7 @@
                     @if ($self)
                         <div class="row">@include('park.users.who')</div>
                     @else
-                        <button type="button" class="row w-full text-left" data-action="sheet#open">@include('park.users.who')<x-ui.chevron/></button>
+                        <x-ui.sheet-row>@include('park.users.who')<x-ui.chevron/></x-ui.sheet-row>
                     @endif
                     @unless ($self)
                         <x-ui.sheet id="user-{{ $user->id }}" :title="$user->name">
@@ -40,7 +40,7 @@
                                     </div>
                                 </div>
                                 <x-park.city-field :city="$user->park_city_id"/>
-                                <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                                <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                             </form>
                             <form method="post" action="/users/{{ $user->id }}/revoke" class="mt-2" data-turbo-confirm="Закрыть {{ $user->shortName() }} доступ к парковке?">
                                 @csrf
@@ -65,7 +65,7 @@
                             <x-ui.field name="expires_at" label="Действует до" type="datetime-local" :value="now()->addDays(3)->format('Y-m-d\TH:i')" :min="now()->format('Y-m-d\TH:i')"/>
                         </div>
                         <x-park.access-fields/>
-                        <div class="sheet-foot"><x-ui.button block>Создать ссылку</x-ui.button></div>
+                        <x-ui.sheet-foot>Создать ссылку</x-ui.sheet-foot>
                     </form>
                 </x-ui.sheet>
             </div>

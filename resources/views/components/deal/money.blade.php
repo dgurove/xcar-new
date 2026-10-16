@@ -36,7 +36,7 @@
                         <form method="post" action="/work/deals/{{ $deal->id }}/money" class="flex flex-col gap-4">
                             @csrf @method('put')
                             <x-ui.field name="share" label="Наша доля, ₽" :value="$deal->share ? Money::nums($deal->share) : null"/>
-                            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                            <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                         </form>
                     @else
                         <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()" :mode="$deal->commission_mode"

@@ -89,7 +89,7 @@
                 @endif
             @endunless
             @if ($inspection)
-                @if ($inspection->mileage !== null)<tr><th>Пробег</th><td>{{ number_format($inspection->mileage, 0, '', ' ') }} км</td></tr>@endif
+                @if ($inspection->mileage !== null)<tr><th>Пробег</th><td>{{ \App\Support\Units::km($inspection->mileage) }}</td></tr>@endif
                 @if ($inspection->fuel !== null)<tr><th>Топливо</th><td>{{ $inspection->fuelLabel() }}</td></tr>@endif
                 @if ($inspection->keys_count !== null)<tr><th>Ключи</th><td>{{ $inspection->keys_count }}</td></tr>@endif
                 <tr><th>Документы</th><td>{{ $inspection->docs ? implode(', ', array_map(fn ($d) => \App\Park\Inspection::DOCS[$d] ?? $d, $inspection->docs)) : 'не переданы' }}</td></tr>

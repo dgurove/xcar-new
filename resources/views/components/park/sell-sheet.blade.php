@@ -38,6 +38,6 @@
         <div class="fields" data-reveal-target="pane" data-reveal-key="own" @if ($mode !== 'own') hidden @endif>
             <x-ui.field digits name="floor" label="Закупочная, ₽" :value="old('floor', $mode === 'own' && $floor ? Money::nums($floor) : '')" data-sale-floor-target="own" :id="$id.'-floor'"/>
         </div>
-        <div class="sheet-foot"><x-ui.button block data-sale-floor-target="button">Выставить в продажу</x-ui.button></div>
+        <x-ui.sheet-foot data-sale-floor-target="button">Выставить в продажу</x-ui.sheet-foot>
     </form>
 </x-ui.sheet>

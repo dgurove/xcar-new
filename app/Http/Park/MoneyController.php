@@ -3,9 +3,6 @@
 namespace App\Http\Park;
 
 use App\Billing\Actions\IssueInvoice;
-use App\Billing\Actions\RecordPayment;
-use App\Billing\Actions\VoidInvoice;
-use App\Billing\Actions\VoidPayment;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
 use App\Billing\Documents\StorageActPdf;
@@ -14,8 +11,8 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Ledger;
 use App\Billing\Party;
-use App\Billing\Payment;
 use App\Billing\PaymentSource;
+use App\Http\Billing\InvoiceActions;
 use App\Search\Term;
 use App\Support\Detail;
 use App\Support\Facets\Common;
@@ -23,18 +20,18 @@ use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
-use App\Support\Nav;
 use App\Support\Plural;
 use App\Support\Sort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
-use Illuminate\Validation\Rule;
 
 /** Деньги стоянки: счета с пресетами, карточка строки, карточка счёта, долги по контрагентам, месяц. */
 class MoneyController
 {
+    use InvoiceActions;
+
     /** «Отправить» — выставленные страховой стороне, письма с которыми ещё не уходили (`Invoice::toSend`): очередь управляющего. */
     public const PRESETS = ['unpaid' => 'Не оплачены', 'send' => 'Отправить', 'overdue' => 'Просрочены', 'owed' => 'Мы должны', 'paid' => 'Оплачены', 'all' => 'Все'];
 
@@ -100,112 +97,35 @@ class MoneyController
         return $q->ofPark();
     }
 
-    private static function guard(Invoice $invoice): void
+    /** Счета ИП, а не ПРАЙМ: чужие — 404. */
+    protected function guardInvoice(Invoice $invoice): void
     {
         abort_unless($invoice->park, 404);
     }
 
+    protected function invoiceView(): string
+    {
+        return 'park.money.show';
+    }
+
+    /** Долг парковки вендору — «перечисление». */
+    protected function invoiceToasts(): array
+    {
+        return ['owedPaid' => 'Перечислено', 'owedRecorded' => 'Перечисление записано', 'unpaid' => 'Оплата отменена', 'voided' => 'Счёт аннулирован'];
+    }
+
     public function detail(Invoice $invoice)
     {
-        self::guard($invoice);
+        $this->guardInvoice($invoice);
         $invoice->load(['party', 'vehicle', 'charges', 'payments']);
 
         return view('park.money.detail', ['invoice' => $invoice, 'sources' => PaymentSource::manual()]);
     }
 
-    public function show(Invoice $invoice)
-    {
-        self::guard($invoice);
-        $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
-
-        return view('park.money.show', ['invoice' => $invoice, 'sources' => PaymentSource::manual(), 'file' => $invoice->getFirstMedia('file')]);
-    }
-
-    public function pay(Request $request, Invoice $invoice, RecordPayment $record)
-    {
-        self::guard($invoice);
-        $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01'], 'paid_at' => ['nullable', 'date'], 'source' => ['required', Rule::enum(PaymentSource::class)], 'ref' => ['nullable', 'string', 'max:60'], 'note' => ['nullable', 'string', 'max:255'], 'slip' => ['nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic']]);
-        $payment = $record($invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, PaymentSource::from($data['source']), $data['ref'] ?? null, $data['note'] ?? null);
-        if ($request->hasFile('slip')) {
-            $payment->addMediaFromRequest('slip')->toMediaCollection('slip');
-        }
-
-        $paid = $invoice->fresh()->state === InvoiceState::Paid;
-
-        return back()->with('toast', $invoice->isOwed() ? ($paid ? 'Перечислено' : 'Перечисление записано') : ($paid ? 'Оплачен' : 'Оплата записана'));
-    }
-
-    /** Скан платёжки — с закрытого диска, только своим. */
-    public function slip(Invoice $invoice, Payment $payment)
-    {
-        self::guard($invoice);
-        abort_unless($payment->invoice_id === $invoice->id && ($media = $payment->slip()), 404);
-
-        return response()->file($media->getPath(), ['Content-Type' => $media->mime_type, 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
-    }
-
-    /** Срок, чужой номер и заметка правятся у выставленного счёта; суммы и строки — нет. */
-    public function update(Request $request, Invoice $invoice)
-    {
-        self::guard($invoice);
-        abort_unless($invoice->state === InvoiceState::Issued, 404);
-        $data = $request->validate(['due_at' => ['required', 'date'], 'external_no' => ['nullable', 'string', 'max:60'], 'notes' => ['nullable', 'string', 'max:1000']]);
-        $invoice->update(['due_at' => Carbon::parse($data['due_at'])->toDateString(), 'external_no' => $data['external_no'] ?: null, 'notes' => $data['notes'] ?: null, 'overdue_at' => Carbon::parse($data['due_at'])->isFuture() ? null : $invoice->overdue_at]);
-        Nav::forgetStaffCounts();
-
-        return back()->with('toast', 'Сохранено');
-    }
-
-    public function unpay(Request $request, Invoice $invoice, Payment $payment, VoidPayment $void)
-    {
-        self::guard($invoice);
-        abort_unless($payment->invoice_id === $invoice->id, 404);
-        $void($payment, $request->user(), $request->input('reason'));
-
-        return back()->with('toast', 'Оплата отменена');
-    }
-
-    public function void(Request $request, Invoice $invoice, VoidInvoice $void)
-    {
-        self::guard($invoice);
-        $void($invoice, $request->user(), $request->input('reason'));
-
-        return back()->with('toast', 'Счёт аннулирован');
-    }
-
-    public function file(Invoice $invoice)
-    {
-        self::guard($invoice);
-        $media = $invoice->getFirstMedia('file');
-        abort_unless($media, 404);
-
-        return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
-    }
-
-    public function print(Invoice $invoice)
-    {
-        self::guard($invoice);
-        $invoice->load(['party', 'vehicle', 'charges', 'deal.offer']);
-
-        return view('billing.docs.invoice', ['invoice' => $invoice, 'self' => $invoice->seller->party(), 'pdf' => false]);
-    }
-
-    /** Акт хранения: PDF, если выставлен закрытием месяца, иначе страница на печать. */
-    public function act(Invoice $invoice)
-    {
-        self::guard($invoice);
-        if ($media = $invoice->getFirstMedia('act')) {
-            return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
-        }
-        $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges.vehicle', 'charges.vehicle.yard']);
-
-        return view($invoice->isRegistry() ? 'billing.docs.storage-registry' : 'billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
-    }
-
     /** Акты хранения по каждой ТС реестра одним документом — лист на машину. */
     public function acts(Invoice $invoice)
     {
-        self::guard($invoice);
+        $this->guardInvoice($invoice);
         abort_unless($invoice->isRegistry(), 404);
         $invoice->load(['party', 'charges.vehicle', 'charges.vehicle.yard', 'charges.vehicle.vendor']);
 
@@ -215,7 +135,7 @@ class MoneyController
     /** Отчёт-акт реестра файлом Excel — той же формой, что PDF: вендор правит его и присылает назад. */
     public function registryXlsx(Invoice $invoice)
     {
-        self::guard($invoice);
+        $this->guardInvoice($invoice);
         abort_unless($invoice->isRegistry(), 404);
 
         return response()->streamDownload(fn () => RegistryExport::write($invoice, 'php://output'), 'Отчёт-акт '.$invoice->label().'.xlsx',

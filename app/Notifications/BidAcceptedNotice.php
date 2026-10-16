@@ -16,7 +16,7 @@ final class BidAcceptedNotice extends Notice
             return 'ТС ваша, в гараж: № '.$this->deal->offer->number;
         }
 
-        return 'Ваше подтверждение '.number_format($this->deal->amount, 0, '', ' ').' ₽ принято: № '.$this->deal->offer->number;
+        return 'Ваше подтверждение '.Money::plain($this->deal->amount).' принято: № '.$this->deal->offer->number;
     }
 
     public function text(): ?string

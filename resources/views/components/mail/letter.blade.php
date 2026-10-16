@@ -11,7 +11,7 @@
     $m = $message;
     $ours = $m->isOurs();
     $who = NodeTitle::who($m);
-    $when = $m->date_at?->translatedFormat($m->date_at->isToday() ? 'H:i' : ($m->date_at->isCurrentYear() ? 'j M' : 'j M Y'));
+    $when = \App\Support\Ago::stamp($m->date_at);
     $files = $m->files();
     [$pictures, $documents] = $files->partition(fn ($f) => $f->isImage() && $f->mime !== 'image/svg+xml');
     $text = trim($m->ownText());

@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Offer;
+use App\Support\Money;
 
 /**
  * Менеджеру: предложение в сделке открыли ему — видно в предложениях с меткой
@@ -19,7 +20,7 @@ final class DealOpenedNotice extends Notice
 
     public function text(): ?string
     {
-        $price = $this->offer->asking_price ? number_format($this->offer->asking_price, 0, '', ' ').' ₽, ' : '';
+        $price = $this->offer->asking_price ? Money::plain($this->offer->asking_price).', ' : '';
 
         return $price.'идёт сделка, подтверждение встанет резервом';
     }

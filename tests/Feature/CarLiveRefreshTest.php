@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Cars\Brand;
-use App\Live\Jobs\PublishRefresh;
+use App\Live\Jobs\PublishRows;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -70,13 +70,20 @@ class CarLiveRefreshTest extends TestCase
             ->flatMap(fn ($p) => $p['data']['paths'])->all();
     }
 
+    /** Списки перечитываются строкой (`Publisher::rows`, 16.10.2026): адрес списка → ключи строк. */
+    private function rows(string $topic): array
+    {
+        return collect($this->published())->filter(fn ($p) => $p['type'] === 'rows' && in_array($topic, $p['topics'], true))
+            ->map(fn ($p) => $p['data']['paths'])->all();
+    }
+
     public function test_park_edit_refreshes_crm(): void
     {
         app(UpdateVehicle::class)($this->vehicle->fresh(), ['color' => 'Синий'], $this->admin);
 
         $staff = $this->refreshes('staff');
         $this->assertContains('/offers/'.$this->offer->number, $staff, 'редактор предложения той же машины');
-        $this->assertContains('/', $staff, 'список предложений CRM');
+        $this->assertContains([(string) $this->offer->number], collect($this->rows('staff'))->pluck('/')->filter()->all(), 'строка списка предложений CRM');
         $this->assertContains('/cars/'.$this->vehicle->id, $this->refreshes('park'), 'и само дело ТС у других на парковке');
     }
 
@@ -85,7 +92,7 @@ class CarLiveRefreshTest extends TestCase
         app(UpdateOffer::class)($this->offer->fresh(), ['year' => 2021], $this->admin);
 
         $this->assertContains('/cars/'.$this->vehicle->id, $this->refreshes('park'));
-        $this->assertContains('/cars', $this->refreshes('park'), '«Наличие»');
+        $this->assertContains([(string) $this->vehicle->id], collect($this->rows('park'))->pluck('/cars')->filter()->all(), 'строка «Наличия»');
     }
 
     public function test_batch_of_edits_refreshes_lists_once_and_schedules_one_tail(): void
@@ -95,9 +102,8 @@ class CarLiveRefreshTest extends TestCase
         $update($this->vehicle->fresh(), ['color' => 'Красный'], $this->admin);
         $update($this->vehicle->fresh(), ['color' => 'Белый'], $this->admin);
 
-        $this->assertSame(1, collect($this->refreshes('staff'))->filter(fn ($p) => $p === '/')->count(), 'список — один раз сразу');
-        Queue::assertPushed(PublishRefresh::class, fn (PublishRefresh $job) => $job->paths === ['/', '/gallery', '/work/deals', '/work/garage']);
-        $this->assertSame(1, collect(Queue::pushed(PublishRefresh::class))->filter(fn ($job) => $job->paths === ['/', '/gallery', '/work/deals', '/work/garage'])->count(), 'остальное — одним хвостом');
+        $this->assertSame(1, collect($this->rows('staff'))->filter(fn ($paths) => isset($paths['/']))->count(), 'строка списка — один раз сразу');
+        $this->assertSame(1, collect(Queue::pushed(PublishRows::class))->filter(fn (PublishRows $job) => $job->topics === ['staff'])->count(), 'остальное — одним хвостом');
     }
 
     public function test_rolled_back_edit_publishes_nothing(): void

@@ -8,7 +8,7 @@
             <div class="fields">
                 <x-ui.field name="claims" label="Номера" type="textarea" rows="8" placeholder="812865/2026" autocomplete="off" spellcheck="false" required/>
             </div>
-            <div class="sheet-foot"><x-ui.button block>Добавить</x-ui.button></div>
+            <x-ui.sheet-foot>Добавить</x-ui.sheet-foot>
         </form>
     </x-ui.sheet>
 </div>

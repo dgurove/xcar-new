@@ -20,6 +20,7 @@ use App\Search\Term;
 use App\Support\Demo\HidesDemo;
 use App\Support\InternalRefs;
 use App\Support\Surface;
+use App\Support\Units;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\ClaimRequest;
@@ -721,12 +722,12 @@ class Offer extends Model
 
     public function title(): string
     {
-        return trim(($this->brand?->name ?? '').' '.($this->model?->name ?? '')) ?: 'ТС';
+        return $this->carRecord()->title() ?: 'ТС';
     }
 
     public function titleWithYear(): string
     {
-        return $this->title().($this->year ? ", {$this->year}" : '');
+        return $this->carRecord()->withYear($this->title());
     }
 
     /** Тип ТС — иконка перед названием и фильтр «Тип ТС»: тип машины (`Car` считает его сам по кузову и марке). */
@@ -740,11 +741,11 @@ class Offer extends Model
     {
         return array_values(array_filter([
             $this->year ? $this->year.' г.' : null,
-            $this->mileage !== null ? number_format($this->mileage, 0, '', ' ').' км' : null,
+            Units::km($this->mileage),
             $this->transmission?->label(),
             $this->drive?->label(),
             $this->fuel?->label(),
-            $this->engine_volume ? number_format($this->engine_volume / 1000, 1, ',', '').' л' : null,
+            Units::liters($this->engine_volume),
         ]));
     }
 

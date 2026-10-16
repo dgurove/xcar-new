@@ -38,5 +38,5 @@
             <x-ui.check name="email">Покупатель указывает почту</x-ui.check>
         </div>
     </div>
-    <div class="sheet-foot"><x-ui.button block>Создать ссылку</x-ui.button></div>
+    <x-ui.sheet-foot>Создать ссылку</x-ui.sheet-foot>
 </form>

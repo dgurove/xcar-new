@@ -13,9 +13,9 @@
                     {{-- Одноразовая: кто сделал (админ видит ссылки всех админов — по ней ясно, чей новичок),
                          когда, «→ кто пришёл» или до когда действует. Одноразовость — пилюлей справа. --}}
                     @if ($invite->creator)<x-ui.person :user="$invite->creator" full/>@endif
-                    <span class="tag nums">{{ $invite->created_at->translatedFormat('j M H:i') }}</span>
+                    <span class="tag nums">{{ $invite->created_at->translatedFormat('j M, H:i') }}</span>
                     @if ($came->isNotEmpty())<x-ui.person :user="$came->first()" full prefix="→"/>
-                    @elseif ($invite->expires_at)<span class="tag nums">до {{ $invite->expires_at->translatedFormat('j M H:i') }}</span>@endif
+                    @elseif ($invite->expires_at)<span class="tag nums">до {{ $invite->expires_at->translatedFormat('j M, H:i') }}</span>@endif
                 @else
                     @if ($admin && $invite->label)<span class="tag">{{ $invite->kind() }}</span>@endif
                     @if ($admin && $invite->manager)<x-ui.person :user="$invite->manager"/>@endif
@@ -41,9 +41,9 @@
             <span>{{ $invite->kind() }}</span>
             @if ($invite->manager)<span>от {{ $invite->manager->shortName() }}</span>@endif
             @if ($invite->group)<span>в группу «{{ $invite->group->name }}»</span>@endif
-            @if (! $invite->forBuyer())<span class="text-urgent">одноразовая</span>@if ($invite->expires_at)<span class="nums">до {{ $invite->expires_at->translatedFormat('j M H:i') }}</span>@endif
+            @if (! $invite->forBuyer())<span class="text-urgent">одноразовая</span>@if ($invite->expires_at)<span class="nums">до {{ $invite->expires_at->translatedFormat('j M, H:i') }}</span>@endif
             @else<span class="text-ink-muted">{{ $invite->contactFields() === [] ? 'только имя и логин' : 'спрашиваем: '.collect($invite->contactFields())->map(fn ($f) => mb_strtolower(\App\Users\Invite::FIELDS[$f]))->implode(', ') }}</span>@endif
-            <span class="nums text-ink-muted">{{ $invite->created_at->translatedFormat(! $invite->forBuyer() ? 'j M H:i' : 'j M') }}@if ($invite->creator && (! $invite->forBuyer() || $invite->creator->isNot($me))) {{ $invite->creator->shortName() }}@endif</span>
+            <span class="nums text-ink-muted">{{ $invite->created_at->translatedFormat(! $invite->forBuyer() ? 'j M, H:i' : 'j M') }}@if ($invite->creator && (! $invite->forBuyer() || $invite->creator->isNot($me))) {{ $invite->creator->shortName() }}@endif</span>
         </div>
 
         @if ($invite->isActive())
@@ -52,7 +52,7 @@
         @elseif ($invite->isUsedUp())
             <p class="mt-5 text-ink-muted">Ссылка сработала</p>
         @elseif ($invite->isExpired())
-            <p class="mt-5 text-ink-muted">Срок вышел {{ $invite->expires_at->translatedFormat('j M H:i') }}</p>
+            <p class="mt-5 text-ink-muted">Срок вышел {{ $invite->expires_at->translatedFormat('j M, H:i') }}</p>
         @else
             <p class="mt-5 text-ink-muted">Ссылка выключена</p>
         @endif

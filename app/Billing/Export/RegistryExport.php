@@ -32,7 +32,7 @@ final class RegistryExport
                 $storage = $c->kind === ChargeKind::Storage;
                 $service = $storage ? ($v?->vendor?->storageServiceTitle() ?? 'Хранение ТС') : $c->title;
                 $writer->addRow(Row::fromValues([$n, (string) $v?->vin, (string) $v?->accepted_at?->format('d.m.Y'), (string) $v?->released_at?->format('d.m.Y'),
-                    (string) $v?->ref, (string) $v?->policy_no, (string) $v?->plate, trim(($v?->brand?->name ?? '').' '.($v?->model?->name ?? '')),
+                    (string) $v?->ref, (string) $v?->policy_no, (string) $v?->plate, (string) $v?->carRecord()->title(),
                     $service, $storage ? (int) $c->qty : (float) $c->qty, (float) $c->price, (float) $c->amount]));
             }
         }

@@ -33,6 +33,12 @@ final class Docs
         };
     }
 
+    /** Размер файла под именем в ленте чата: «1.2 МБ», «340 КБ», меньше килобайта — «1 КБ». */
+    public static function size(int $bytes): string
+    {
+        return $bytes >= 1048576 ? round($bytes / 1048576, 1).' МБ' : max(1, (int) round($bytes / 1024)).' КБ';
+    }
+
     /** Имя для сравнения: медиатека меняет пробелы и знаки на дефисы, «Акт пп.pdf» и «Акт-пп.pdf» — один файл. */
     public static function norm(string $name): string
     {

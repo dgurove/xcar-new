@@ -30,40 +30,18 @@
                 </a>
             @elseif ($user)
                 <x-search.box phone/>
-                @if ($site)
-                    <a href="/account/favorites" class="header-btn header-sq relative" aria-label="Избранное">
-                        <x-ui.icon name="bookmark" class="size-[18px]"/><x-ui.badge href="/account/favorites" :badges="$badges"/>
-                    </a>
-                @elseif ($crmChats)
-                    <a href="/work/chats" class="header-btn header-sq relative" aria-label="Чаты">
-                        <x-ui.icon name="chat" class="size-[18px]"/><x-ui.badge href="/work/chats" :badges="$badges"/>
-                    </a>
-                @endif
+                @if ($site || $crmChats)<x-ui.header-btn :name="$site ? 'favorites' : 'chats'" :badges="$badges"/>@endif
             @endif
         </div>
         <a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10 max-w-[9.75rem] object-contain"/></a>
         <div class="flex items-center gap-1 justify-self-end">
             <span class="net" aria-live="polite"></span>
             @if ($user)
-                <div class="contents header-sq-wrap" data-controller="sheet notifications">
-                    <button type="button" class="header-btn header-sq relative" data-action="sheet#open notifications#refresh" aria-label="Уведомления">
-                        <x-ui.icon name="bell" class="size-[18px]"/><x-ui.badge href="/account/notifications" :badges="$badges"/>
-                    </button>
-                    <x-ui.sheet id="notifications-sheet" title="Уведомления">
-                        <turbo-frame id="notifications-latest" src="/account/notifications/latest" loading="lazy" data-notifications-target="frame" class="block min-h-32">
-                            <x-ui.skeleton :rows="3"/>
-                        </turbo-frame>
-                        <div class="mt-4 flex gap-2">
-                            <a href="/account/notifications" class="btn btn-s btn-quiet flex-1">Все уведомления</a>
-                        </div>
-                    </x-ui.sheet>
-                </div>
+                <x-ui.header-btn name="notifications" :badges="$badges"/>
             @else
                 <a href="/login" class="header-btn header-sq" aria-label="Войти"><x-ui.icon name="login" class="size-[18px]"/></a>
             @endif
-            <button type="button" class="header-btn header-sq" data-controller="theme" data-action="theme#toggle" aria-label="Тема">
-                <x-ui.icon name="sun" class="on-light size-[18px]"/><x-ui.icon name="moon" class="on-dark size-[18px]"/>
-            </button>
+            <x-ui.header-btn name="theme"/>
         </div>
         {{-- Заголовок экрана собирается в шапку, когда h1 ушёл под неё (app.js → .is-past-title). --}}
         @if ($heading)<span class="header-title" aria-hidden="true">{{ $heading }}</span>@endif
@@ -96,9 +74,7 @@
             @else
                 <a href="/login" class="header-btn header-btn-cta header-h ml-auto px-5 text-sm">Войти</a>
             @endif
-            <button type="button" class="header-btn header-btn-square header-h w-[1.875rem]" data-controller="theme" data-action="theme#toggle" aria-label="Тема">
-                <x-ui.icon name="sun" class="on-light size-4"/><x-ui.icon name="moon" class="on-dark size-4"/>
-            </button>
+            <x-ui.header-btn name="theme" wide/>
         </div>
         <div class="header-row">
             @foreach ($capsules as $item)
@@ -107,26 +83,8 @@
                 </a>
             @endforeach
             @if ($user)
-                <div class="contents header-sq-wrap" data-controller="sheet notifications">
-                    <button type="button" class="header-btn header-btn-square header-h relative w-[1.875rem]" data-action="sheet#open notifications#refresh" aria-label="Уведомления">
-                        <x-ui.icon name="bell" class="size-4"/><x-ui.badge href="/account/notifications" :badges="$badges"/>
-                    </button>
-                    <x-ui.sheet id="notifications-sheet-wide" title="Уведомления">
-                        <turbo-frame id="notifications-latest-wide" src="/account/notifications/latest" loading="lazy" data-notifications-target="frame" class="block min-h-32"></turbo-frame>
-                        <div class="mt-4 flex gap-2">
-                            <a href="/account/notifications" class="btn btn-s btn-quiet flex-1">Все уведомления</a>
-                        </div>
-                    </x-ui.sheet>
-                </div>
-                @if ($site)
-                    <a href="/account/favorites" class="header-btn header-btn-square header-h relative w-[1.875rem]" aria-label="Избранное">
-                        <x-ui.icon name="bookmark" class="size-4"/><x-ui.badge href="/account/favorites" :badges="$badges"/>
-                    </a>
-                @elseif ($crmChats)
-                    <a href="/work/chats" class="header-btn header-btn-square header-h relative w-[1.875rem]" aria-label="Чаты">
-                        <x-ui.icon name="chat" class="size-4"/><x-ui.badge href="/work/chats" :badges="$badges"/>
-                    </a>
-                @endif
+                <x-ui.header-btn name="notifications" wide :badges="$badges"/>
+                @if ($site || $crmChats)<x-ui.header-btn :name="$site ? 'favorites' : 'chats'" wide :badges="$badges"/>@endif
             @endif
         </div>
     </div>

@@ -3,7 +3,7 @@
 @php $n = 'rows['.$i.']'; @endphp
 <div class="flex flex-wrap items-end gap-3" data-row>
     <input type="hidden" name="{{ $n }}[id]" value="{{ $t?->id }}">
-    <x-ui.field :name="$n.'[price]'" label="Цена" :value="$t?->price !== null ? rtrim(rtrim(number_format($t->price, 2, '.', ''), '0'), '.') : null" class="w-24"/>
+    <x-ui.field :name="$n.'[price]'" label="Цена" :value="$t?->price !== null ? \App\Support\Qty::format($t->price) : null" class="w-24"/>
     <x-ui.field :name="$n.'[from_value]'" label="От стоимости" :value="$t?->from_value" class="w-36" data-tariff-form-target="value"/>
     <x-ui.field :name="$n.'[from_day]'" label="С суток" :value="$t?->from_day ?? 1" class="w-24" data-tariff-form-target="tier"/>
     <x-ui.field :name="$n.'[km_included]'" label="Км в фиксе" :value="$t?->km_included" class="w-28" data-tariff-form-target="km"/>

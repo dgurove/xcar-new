@@ -18,7 +18,7 @@
     $span = count($cols);
     $c = fn (int $n) => $cols[$n][1];
     $group = fn (string $name, int $count) => '<tr class="table-group"><th colspan="'.$span.'"><span class="table-group-name">'.e($name).' <span class="nums">'.$count.'</span></span></th></tr>';
-    $when = fn ($i) => $i->created_at->translatedFormat($i->created_at->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i');
+    $when = fn ($i) => \App\Support\Ago::stamp($i->created_at, true);
 @endphp
 @if (! ($titled && $empty))
 <section class="mt-4" data-search-group>

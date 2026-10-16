@@ -16,7 +16,7 @@
             <form method="post" action="/garage/cars/{{ $n }}/costs" class="flex flex-col gap-3">
                 @csrf
                 @include('garage.cars.cost-fields', ['cost' => null])
-                <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>Записать</x-ui.button></div>
+                <x-ui.sheet-foot type="submit" variant="primary">Записать</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>
@@ -29,7 +29,7 @@
             <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-4">
                 @csrf
                 <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')" required autofocus/>
-                <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>Продаю</x-ui.button></div>
+                <x-ui.sheet-foot type="submit" variant="primary">Продаю</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>
@@ -46,7 +46,7 @@
                     <x-ui.field name="buyer_name" label="Покупатель" :value="old('buyer_name')" placeholder="Кому продал"/>
                     <x-ui.field name="buyer_phone" label="Телефон" :value="old('buyer_phone')"/>
                 </div>
-                <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>Продана</x-ui.button></div>
+                <x-ui.sheet-foot type="submit" variant="primary">Продана</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>
@@ -100,7 +100,7 @@
                         </div>
                     </div>
                 @endif
-                <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>{{ $car->manager ? 'Выставить' : 'Закрыть расчёт' }}</x-ui.button></div>
+                <x-ui.sheet-foot type="submit" variant="primary">{{ $car->manager ? 'Выставить' : 'Закрыть расчёт' }}</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>
@@ -123,7 +123,7 @@
                     <div class="row justify-between"><span>Его расходы</span><span class="nums">{{ Money::exact($s['manager_costs']) }}</span></div>
                     <div class="row justify-between"><span>Выплатим</span><span class="nums font-semibold" data-commission-target="payout">{{ Money::exact($s['payout']) }}</span></div>
                 </div>
-                <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>Выплата менеджеру</x-ui.button></div>
+                <x-ui.sheet-foot type="submit" variant="primary">Выплата менеджеру</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>
@@ -138,7 +138,7 @@
                     <x-ui.field name="amount" label="Сколько, ₽" :value="$sum($current->remaining())" data-digits-decimals-value="2"/>
                     <x-ui.field name="paid_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
                 </div>
-                <div class="sheet-foot"><x-ui.button type="submit" variant="primary" block>Записать</x-ui.button></div>
+                <x-ui.sheet-foot type="submit" variant="primary">Записать</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>

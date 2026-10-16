@@ -17,8 +17,8 @@
             @foreach (array_slice($rows, 0, 15) as $r)<tr><td class="py-1 pr-3">{{ $r['dl'] }}</td><td class="py-1 pr-3">{{ $r['brand'] }} {{ $r['model'] }}</td><td class="py-1 pr-3">{{ $r['year'] }}</td><td class="py-1 pr-3">{{ $r['price_listing'] ? \App\Support\Money::nums($r['price_listing']) : '' }}</td><td class="py-1 truncate max-w-48"><x-ui.place>{{ $r['address'] }}</x-ui.place></td></tr>@endforeach
         </tbody></table></div>
     </x-ui.card>
-    <form method="post" action="/purchases/{{ $purchase->number }}/import" class="action-bar">
-        <div class="action-bar-inner">@csrf<input type="hidden" name="path" value="{{ $path }}">
-        <x-ui.button class="min-w-0 flex-1">{{ match (true) { $stats['новых'] > 0 => 'Завести '.$stats['новых'].' ТС', $stats['уже заведены'] > 0 => 'Обновить '.$stats['уже заведены'].' ТС', default => 'Завести ТС и забрать данные' } }}</x-ui.button></div>
-    </form>
+    <x-ui.action-bar tag="form" method="post" :action="'/purchases/'.$purchase->number.'/import'">
+        @csrf<input type="hidden" name="path" value="{{ $path }}">
+        <x-ui.button class="min-w-0 flex-1">{{ match (true) { $stats['новых'] > 0 => 'Завести '.$stats['новых'].' ТС', $stats['уже заведены'] > 0 => 'Обновить '.$stats['уже заведены'].' ТС', default => 'Завести ТС и забрать данные' } }}</x-ui.button>
+    </x-ui.action-bar>
 </x-ui.shell>

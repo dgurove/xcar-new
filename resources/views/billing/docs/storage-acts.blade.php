@@ -57,7 +57,7 @@
                 @foreach ($rows as $c)
                     <tr>
                         <td>{{ $c->kind === ChargeKind::Storage ? $c->period_from?->format('d.m.Y').' – '.$c->period_to?->format('d.m.Y') : $c->title }}</td>
-                        <td class="n">{{ $c->kind === ChargeKind::Storage ? (int) $c->qty : rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.').' '.$c->unitLabel() }}</td>
+                        <td class="n">{{ $c->kind === ChargeKind::Storage ? (int) $c->qty : \App\Support\Qty::format($c->qty).' '.$c->unitLabel() }}</td>
                         <td class="n">{{ Money::nums($c->price, 2) }}</td><td class="n">{{ Money::nums($c->amount, 2) }}</td>
                     </tr>
                 @endforeach

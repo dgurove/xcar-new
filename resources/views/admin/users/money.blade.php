@@ -23,7 +23,7 @@
         <form method="post" action="{{ $base }}/{{ $user->id }}/party" class="flex flex-col gap-4">
             @csrf @method('put')
             <x-billing.party-fields :party="$party->exists ? $party : null" vat/>
-            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+            <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
         </form>
     </x-ui.sheet>
 </div>

@@ -3,7 +3,8 @@
 /**
  * Сторож шаблонов перед выкладкой (11.10.2026): компилирует каждый resources/views/**.blade.php и проверяет `php -l`.
  * `view:cache` при сборке образа синтаксис компилята не проверяет — «</x-slot:badge>@endif» вплотную собирался в
- * нерабочий PHP, и карточка сделки CRM падала у всех сутки. Выход 1 и список файлов — если хоть один не собрался.
+ * нерабочий PHP, и карточка сделки CRM падала у всех сутки. Заодно — цвет полосы и копии мимо общих дверей (ниже).
+ * Выход 1 и список мест — если хоть что-то не так.
  *
  *   php scripts/blade-lint.php
  */
@@ -43,8 +44,27 @@ if (! $light || ! $dark || ! $bar || strcasecmp($light[1], $bar[1]) || strcasecm
     $bad[] = 'components/ui/layout.blade.php: $bar не совпадает с --color-bar в app.css';
 }
 
+// Одна дверь на дело (16.10.2026: сумма разбиралась в шестнадцати местах, историю писали пять модулей, клавиатуру
+// слушали четыре) — новая копия мимо двери ловится здесь, а не через месяц у человека на телефоне.
+$root = realpath(__DIR__.'/..');
+$doors = [
+    ['app/Http', '/\.php$/', "/preg_replace\('\/\\\\D\+\/'/", [], 'сумма из формы — App\\Support\\Money::rubles'],
+    ['resources/js', '/\.js$/', '/history\.pushState/', ['resources/js/overlays.js'], 'запись истории — resources/js/overlays.js'],
+    ['resources/js', '/\.js$/', '/visualViewport\??\.addEventListener/', ['resources/js/keyboard.js'], 'клавиатура — keyboard.js и событие keyboard:change'],
+];
+foreach ($doors as [$where, $type, $pattern, $allowed, $door]) {
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$where", FilesystemIterator::SKIP_DOTS));
+    foreach ($it as $file) {
+        $rel = str_replace("$root/", '', $file->getPathname());
+        if (! preg_match($type, $rel) || in_array($rel, $allowed, true)) continue;
+        foreach (file($file->getPathname()) as $n => $line) {
+            if (preg_match($pattern, $line)) $bad[] = "$rel:".($n + 1).": мимо двери ($door)";
+        }
+    }
+}
+
 if ($bad) {
-    fwrite(STDERR, "Шаблоны не собираются:\n  ".implode("\n  ", $bad)."\n");
+    fwrite(STDERR, "Сторож выкладки не пропускает:\n  ".implode("\n  ", $bad)."\n");
     exit(1);
 }
 echo "Шаблоны собираются\n";

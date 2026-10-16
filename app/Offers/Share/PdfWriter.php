@@ -2,6 +2,7 @@
 
 namespace App\Offers\Share;
 
+use App\Support\Qty;
 use RuntimeException;
 
 /**
@@ -296,6 +297,6 @@ final class PdfWriter
     /** PDF не понимает экспоненциальную запись и запятую как разделитель. */
     private function number(float $value): string
     {
-        return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
+        return Qty::format($value);
     }
 }

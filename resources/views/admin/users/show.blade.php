@@ -17,7 +17,7 @@
                     @foreach ($user->userGroups as $g)<span class="tag">{{ $g->name }}</span>@endforeach
                     <div class="detail-line basis-full !mt-0.5 text-sm lg:justify-center">
                         @if ($user->login)<span class="nums">{{ $user->login }}</span>@endif
-                        @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $user->phoneFormatted() }}</a>@endif
+                        @if ($user->phone)<x-ui.phone :user="$user"/>@endif
                         @if ($user->email)<a href="mailto:{{ $user->email }}" class="text-accent-text">{{ $user->email }}</a>@endif
                         @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="text-accent-text">{{ '@'.$user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span>Telegram</span>@endif
                     </div>
@@ -98,7 +98,7 @@
                                     </span>
                                     @if ($interest->comment)<span class="mt-1.5 block text-sm">{{ $interest->comment }}</span>@endif
                                 </span>
-                                <span class="nums shrink-0 text-sm text-ink-dim">{{ $interest->created_at->translatedFormat($interest->created_at->isToday() ? 'H:i' : 'j M') }}</span>
+                                <span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($interest->created_at) }}</span>
                             </a>
                         @endforeach
                     </div>

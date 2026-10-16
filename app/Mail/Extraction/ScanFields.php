@@ -14,6 +14,7 @@ use App\Mail\Scan\Files;
 use App\Mail\Scan\ScanFile;
 use App\Offers\Offer;
 use App\Park\Vehicle;
+use App\Support\Units;
 
 /**
  * Поля шага «что подставить» в «✨ Распознать»: что уже знает цепочка или ТС и что нашлось в каждом прочитанном
@@ -236,12 +237,12 @@ final class ScanFields
             // Марка без «(ВАЗ)»: в карточке и в документе она должна читаться одинаково.
             'car' => trim((preg_replace('/\s*\(.*?\)/u', '', (string) $value['brand']) ?: $value['brand']).' '.($value['model'] ?? '')),
             'value' => number_format((int) $value, 0, ',', ' ').' ₽',
-            'mileage' => number_format((int) $value, 0, ',', ' ').' км',
+            'mileage' => Units::km($value) ?? (string) $value,
             'transmission' => Transmission::tryFrom((string) $value)?->label() ?? (string) $value,
             'drive' => Drive::tryFrom((string) $value)?->label() ?? (string) $value,
             'fuel' => Fuel::tryFrom((string) $value)?->label() ?? (string) $value,
-            'engine_volume' => number_format((int) $value / 1000, 1, ',', '').' л',
-            'engine_power' => (int) $value.' л. с.',
+            'engine_volume' => Units::liters($value) ?? (string) $value,
+            'engine_power' => Units::hp($value) ?? (string) $value,
             'color' => Colors::normalize((string) $value) ?? mb_convert_case(mb_strtolower((string) $value), MB_CASE_TITLE),
             default => (string) $value,
         };

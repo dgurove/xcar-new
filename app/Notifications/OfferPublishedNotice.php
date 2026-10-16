@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Offer;
+use App\Support\Money;
 
 final class OfferPublishedNotice extends Notice
 {
@@ -15,7 +16,7 @@ final class OfferPublishedNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->offer->asking_price ? number_format($this->offer->asking_price, 0, '', ' ').' ₽, приём подтверждений до '.$this->offer->bids_close_at?->translatedFormat('j M, H:i') : null;
+        return $this->offer->asking_price ? Money::plain($this->offer->asking_price).', приём подтверждений до '.$this->offer->bids_close_at?->translatedFormat('j M, H:i') : null;
     }
 
     public function href(): string

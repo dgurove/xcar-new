@@ -13,7 +13,7 @@ use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Cars\Vin\Vin;
 use App\Offers\Actions\UpdateOffer;
-use App\Support\Liters;
+use App\Support\Units;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
@@ -110,11 +110,11 @@ final class MigtorgDiff
         }
         foreach (['year', 'mileage', 'engine_power'] as $field) {
             if ($offer->{$field} && $v($field)) {
-                $put($field, (int) $offer->{$field} !== (int) $v($field), $field === 'mileage' ? number_format((int) $v($field), 0, ',', ' ').' км' : (string) $v($field));
+                $put($field, (int) $offer->{$field} !== (int) $v($field), $field === 'mileage' ? Units::km($v($field)) : (string) $v($field));
             }
         }
         if ($offer->engine_volume && $v('engine_volume')) {
-            $put('engine_volume', (int) $offer->engine_volume !== (int) $v('engine_volume'), Liters::format((int) $v('engine_volume')).' л');
+            $put('engine_volume', (int) $offer->engine_volume !== (int) $v('engine_volume'), Units::liters($v('engine_volume')));
         }
         if ($offer->vin && $v('vin')) {
             $put('vin', strtoupper($offer->vin) !== $v('vin'), $v('vin'));

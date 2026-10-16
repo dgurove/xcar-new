@@ -1039,19 +1039,14 @@ html.kb-open { --home-gap: 0px; }
   @media (prefers-reduced-motion: no-preference) { .migtorg-ring { animation: spin .9s linear infinite; } .migtorg-ring.is-idle { animation-duration: 2.4s; } }
   /* Состояние («оплачен», «просрочен», «идёт сделка») — цветным словом, как в приложении, а не капсулой: капсула
      остаётся у того, что нажимается (a, button). Так же теги-предупреждения («ниже минимальной»). */
-  span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain),
+  span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain):not(.offer-head *),
   span.tag:is(.tag-urgent, .tag-danger) { background: none !important; padding-inline: 0 !important; min-height: 0; font-weight: 500; }
-  span.pill.pill-plain { font-weight: 400; }
+  span.pill.pill-plain:not(.offer-head *) { font-weight: 400; }
   span.pill.pill-accent { background: none; padding-inline: 0; min-height: 0; color: var(--color-accent-text); }
-  /* Шапка редактора предложения: состояние стоит в одном ряду с метками и сроком — капсулой того же роста, иначе
-     слово рядом с пилюлями выглядит другим размером. */
-  .offer-head span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain) { padding-inline: .875rem !important; min-height: 1.875rem; font-weight: 400; }
-  .offer-head span.pill-open { background: var(--color-open-soft) !important; }
-  .offer-head span.pill-urgent { background: var(--color-urgent-soft) !important; }
-  .offer-head span.pill-closed { background: var(--color-closed-soft) !important; }
-  .offer-head span.pill-danger { background: var(--color-danger-soft) !important; }
-  .offer-head span.pill-soft { background: var(--color-accent-soft) !important; }
-  .offer-head span.pill-plain { background: var(--color-surface) !important; }
+  /* Шапка редактора предложения: состояние стоит в одном ряду с метками и сроком — капсулой того же роста (обычная
+     пилюля, правило выше её здесь не трогает), иначе слово рядом с пилюлями выглядит другим размером. */
+  .offer-head span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain) { font-weight: 400; }
+  .offer-head span.pill-plain { background: var(--color-surface); }
   /* x-ui.state — то же словом без капсулы, одним классом вместо «!min-h-0 !py-1 text-xs» у каждой пилюли. */
   .state { @apply inline-flex items-center whitespace-nowrap text-xs font-medium; }
   .state-fresh { color: var(--color-fresh); }

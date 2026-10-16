@@ -8,8 +8,7 @@
         @if ($gaps)
             <input type="hidden" name="vehicle_form" value="1">
             <div class="grid grid-cols-2 gap-3">
-                <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="old('brand_id', $vehicle->brand_id)" :text="$vehicle->brand?->name" resets="#cb-model_id" required/>
-                <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#cb-brand_id [name=brand_id]" :value="old('model_id', $vehicle->model_id)" :text="$vehicle->model?->name" required/>
+                <x-cars.brand-model :brand-id="old('brand_id', $vehicle->brand_id)" :brand-text="$vehicle->brand?->name" :model-id="old('model_id', $vehicle->model_id)" :model-text="$vehicle->model?->name" required/>
             </div>
         @endif
         @include('park.vehicles.steps.intake', ['footSubmit' => true])

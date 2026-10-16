@@ -84,11 +84,11 @@
         <div class="list-head">Вход</div>
         <div class="list">
             <div data-controller="sheet" class="contents">
-                <button type="button" class="row w-full text-left" data-action="sheet#open">
+                <x-ui.sheet-row>
                     <x-ui.row-icon name="key" size="s"/>
                     <span class="min-w-0 flex-1">Сменить пароль</span>
                     <x-ui.chevron/>
-                </button>
+                </x-ui.sheet-row>
                 <x-ui.sheet id="password" title="Новый пароль" :open="$errors->has('current') || $errors->has('password')">
                     <form method="post" action="/account/password" class="flex flex-col gap-3">
                         @csrf
@@ -97,7 +97,7 @@
                             <x-ui.field name="password" label="Новый" type="password" autocomplete="new-password" required/>
                             <x-ui.field name="password_confirmation" label="Ещё раз" type="password" autocomplete="new-password" required/>
                         </div>
-                        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                        <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                     </form>
                 </x-ui.sheet>
             </div>

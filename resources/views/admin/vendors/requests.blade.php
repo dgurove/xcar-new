@@ -45,7 +45,7 @@
                 <div class="contents" data-controller="sheet">
                     <div class="row">
                         <button type="button" class="flex min-w-0 flex-1 flex-col text-left" data-action="sheet#open">
-                            <span>{{ $r->created_at->translatedFormat($r->created_at->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}</span>
+                            <span>{{ \App\Support\Ago::stamp($r->created_at, true) }}</span>
                             <span class="row-sub"><span class="nums">{{ $n }} {{ Plural::of($n, $words) }}</span>@if ($r->user)<span>{{ $r->user->shortName() }}</span>@endif</span>
                         </button>
                         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-controller="copy" data-copy-text-value="{{ $r->text() }}" data-copy-done-value="{{ $n }} {{ Plural::of($n, $words) }} в буфере" data-action="copy#copy" aria-label="Скопировать номера" title="Скопировать номера"><x-ui.icon name="copy" class="size-5"/></button>

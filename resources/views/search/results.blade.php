@@ -19,7 +19,7 @@
                                 <span class="search-title">{{ $t->mark($hit->title) }}</span>
                                 @if (($hit->ref && $hit->ref !== $hit->title) || $hit->line)
                                     <span class="search-line">
-                                        @if ($hit->ref && $hit->ref !== $hit->title)<span class="search-ref"><x-vendor.ref :vendor="$hit->vendorId ? \App\Vendors\Vendor::badges()->get($hit->vendorId) : null" :ref="$t->mark($hit->ref)"/></span>@endif
+                                        @if ($hit->ref && $hit->ref !== $hit->title)<span class="search-ref"><x-vendor.ref :vendor-id="$hit->vendorId" :ref="$t->mark($hit->ref)"/></span>@endif
                                         @foreach ($hit->line as $part)<span>{{ $part }}</span>@endforeach
                                     </span>
                                 @endif

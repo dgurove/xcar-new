@@ -14,16 +14,15 @@
         (bool) $position => [$position->stage->block?->name ?? $position->stage->name, $position->isOverdue() || in_array($position->letterStatus(), ['unsent', 'replied'], true) ? 'text-urgent' : ''],
         default => [$offer->crmTab(), 'text-ink-muted'],
     };
-    $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
 @endphp
 <tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
     <td class="grow">
         <x-ui.row-link :key="$deal->id"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}</span></x-ui.row-link>
         <span class="cell-sub" data-controller="fitline">
-            <span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy/>@if ($active && $position)<x-route.term :position="$position"/>@endif</span>
+            <span class="fit-core sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" copy/>@if ($active && $position)<x-route.term :position="$position"/>@endif</span>
         </span>
     </td>
-    <td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</span></td>
+    <td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
     <td class="cell-dim nums hidden xl:table-cell">{{ $offer->number }}</td>
     <td class="hidden sm:table-cell">@if ($deal->buyer)<span class="flex items-center gap-2" title="{{ $deal->buyer->name }}"><x-ui.avatar :user="$deal->buyer" :size="22"/><span class="hidden truncate xl:inline">{{ $deal->buyer->name }}</span></span>@endif</td>
     <td class="hidden sm:table-cell"><span class="block max-w-52 truncate {{ $tone }}">{{ $word }}</span></td>

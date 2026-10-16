@@ -10,10 +10,7 @@ use App\Billing\Acquiring\PayLink;
 use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Actions\ConfirmPayment;
 use App\Billing\Actions\IssueServiceInvoice;
-use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\RejectPayment;
-use App\Billing\Actions\VoidInvoice;
-use App\Billing\Actions\VoidPayment;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -22,6 +19,7 @@ use App\Billing\Party;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
+use App\Http\Billing\InvoiceActions;
 use App\Offers\DealCredit;
 use App\Offers\DealState;
 use App\Offers\Offer;
@@ -31,12 +29,10 @@ use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\Money;
-use App\Support\Nav;
 use App\Support\Sort;
 use App\Users\User;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
@@ -52,6 +48,8 @@ use Illuminate\Validation\Rule;
  */
 class MoneyController
 {
+    use InvoiceActions;
+
     public const TABS = ['links' => 'По ссылкам', 'owed' => 'Нам должны', 'payouts' => 'Мы должны'];
 
     /** «Мы должны»: вознаграждения менеджерам и перевозки партнёрам и перевозчикам (логистика, 10.10.2026). */
@@ -209,6 +207,17 @@ class MoneyController
         return PaymentSource::manual();
     }
 
+    protected function invoiceView(): string
+    {
+        return 'admin.money.invoice';
+    }
+
+    /** «Мы должны» в CRM — вознаграждение менеджеру: «выплата». */
+    protected function invoiceToasts(): array
+    {
+        return ['owedPaid' => 'Выплачено', 'owedRecorded' => 'Выплата записана', 'unpaid' => 'Отменено', 'voided' => 'Аннулирован'];
+    }
+
     /** Число у «Оплат»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки в счёте нет (07.10.2026). */
     public static function todo(): int
     {
@@ -312,25 +321,6 @@ class MoneyController
         return redirect('/work/money');
     }
 
-    public function show(Invoice $invoice)
-    {
-        $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
-
-        return view('admin.money.invoice', ['invoice' => $invoice, 'sources' => self::sources(), 'file' => $invoice->getFirstMedia('file')]);
-    }
-
-    public function pay(Request $request, Invoice $invoice, RecordPayment $record)
-    {
-        $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01'], 'paid_at' => ['nullable', 'date'], 'source' => ['required', Rule::enum(PaymentSource::class)], 'ref' => ['nullable', 'string', 'max:60'], 'note' => ['nullable', 'string', 'max:255'], 'slip' => ['nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic']]);
-        $payment = $record($invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, PaymentSource::from($data['source']), $data['ref'] ?? null, $data['note'] ?? null);
-        if ($request->hasFile('slip')) {
-            $payment->addMediaFromRequest('slip')->toMediaCollection('slip');
-        }
-        $paid = $invoice->fresh()->state === InvoiceState::Paid;
-
-        return back()->with('toast', $invoice->isOwed() ? ($paid ? 'Выплачено' : 'Выплата записана') : ($paid ? 'Оплачен' : 'Оплата записана'));
-    }
-
     public function confirm(Request $request, Payment $payment, ConfirmPayment $confirm)
     {
         $confirm($payment, $request->user());
@@ -343,63 +333,5 @@ class MoneyController
         $reject($payment, $request->user(), $request->validate(['reason' => ['nullable', 'string', 'max:255']])['reason'] ?? null);
 
         return back()->with('toast', 'Отмечено: не поступила');
-    }
-
-    public function slip(Invoice $invoice, Payment $payment)
-    {
-        abort_unless($payment->invoice_id === $invoice->id && ($media = $payment->slip()), 404);
-
-        return response()->file($media->getPath(), ['Content-Type' => $media->mime_type, 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
-    }
-
-    public function update(Request $request, Invoice $invoice)
-    {
-        abort_unless($invoice->state === InvoiceState::Issued, 404);
-        $data = $request->validate(['due_at' => ['required', 'date'], 'external_no' => ['nullable', 'string', 'max:60'], 'notes' => ['nullable', 'string', 'max:1000']]);
-        $invoice->update(['due_at' => Carbon::parse($data['due_at'])->toDateString(), 'external_no' => $data['external_no'] ?: null, 'notes' => $data['notes'] ?: null, 'overdue_at' => Carbon::parse($data['due_at'])->isFuture() ? null : $invoice->overdue_at]);
-        Nav::forgetStaffCounts();
-
-        return back()->with('toast', 'Сохранено');
-    }
-
-    public function unpay(Request $request, Invoice $invoice, Payment $payment, VoidPayment $void)
-    {
-        abort_unless($payment->invoice_id === $invoice->id, 404);
-        $void($payment, $request->user(), $request->input('reason'));
-
-        return back()->with('toast', 'Отменено');
-    }
-
-    public function void(Request $request, Invoice $invoice, VoidInvoice $void)
-    {
-        $void($invoice, $request->user(), $request->input('reason'));
-
-        return back()->with('toast', 'Аннулирован');
-    }
-
-    public function file(Invoice $invoice)
-    {
-        $media = $invoice->getFirstMedia('file');
-        abort_unless($media, 404);
-
-        return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
-    }
-
-    /** Акт хранения, как у парковки: PDF, если выставлен закрытием месяца, иначе страница на печать. */
-    public function act(Invoice $invoice)
-    {
-        if ($media = $invoice->getFirstMedia('act')) {
-            return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
-        }
-        $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges']);
-
-        return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
-    }
-
-    public function print(Invoice $invoice)
-    {
-        $invoice->load(['party', 'vehicle', 'charges', 'payments', 'deal.offer']);
-
-        return view('billing.docs.invoice', ['invoice' => $invoice, 'self' => $invoice->seller->party(), 'pdf' => false]);
     }
 }

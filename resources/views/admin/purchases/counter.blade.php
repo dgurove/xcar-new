@@ -52,9 +52,9 @@
     @endforeach
 
     @if ($move)
-        <form method="post" action="/purchases/{{ $n }}/counter/move" class="action-bar">
-            <div class="action-bar-inner">@csrf<input type="hidden" name="path" value="{{ $path }}">
-            <x-ui.button class="min-w-0 flex-1" :disabled="! $purchase->vendor">Создать {{ count($move) }} {{ Plural::of(count($move), ['черновик', 'черновика', 'черновиков']) }}</x-ui.button></div>
-        </form>
+        <x-ui.action-bar tag="form" method="post" :action="'/purchases/'.$n.'/counter/move'">
+            @csrf<input type="hidden" name="path" value="{{ $path }}">
+            <x-ui.button class="min-w-0 flex-1" :disabled="! $purchase->vendor">Создать {{ count($move) }} {{ Plural::of(count($move), ['черновик', 'черновика', 'черновиков']) }}</x-ui.button>
+        </x-ui.action-bar>
     @endif
 </x-ui.shell>

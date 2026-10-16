@@ -80,7 +80,7 @@ final class DealMoney
                 return new self(($staff ? 'Сообщил об оплате' : 'Оплата ждёт подтверждения').$also, $left, 'muted', 'pay', $caption, ...$money);
             }
             if ($late > 0) {
-                return new self('Просрочен на '.$first->overdueDays().' дн'.$also, $left, 'urgent', 'pay', $caption, ...$money);
+                return new self($first->overdueLabel(true).$also, $left, 'urgent', 'pay', $caption, ...$money);
             }
             $byBuyer = $deal->isPrime() && $deal->buyer && $first->party_id !== $deal->buyer->party_id;
             $phrase = match (true) {
@@ -146,7 +146,7 @@ final class DealMoney
 
             return match (true) {
                 $invoice->claimed() > 0 => new self($staff ? 'Сообщил об оплате' : 'Оплата ждёт подтверждения', $left, 'muted', 'pay', $caption, ...$money),
-                $invoice->isOverdue() => new self('Просрочен на '.$invoice->overdueDays().' дн', $left, 'urgent', 'pay', $caption, ...$money),
+                $invoice->isOverdue() => new self($invoice->overdueLabel(true), $left, 'urgent', 'pay', $caption, ...$money),
                 default => new self(($staff ? 'Оплатит до ' : 'Оплатите до ').$date($invoice->due_at), $left, $invoice->light() === 'urgent' ? 'urgent' : 'plain', 'pay', $caption, ...$money),
             };
         }
@@ -209,7 +209,7 @@ final class DealMoney
                 [$line, $tone] = $link->stateLine();
                 $steps[] = $step('Оплата', 'current', null, 'По ссылке: '.$line, $tone === 'danger' ? 'danger' : 'urgent');
             } elseif ($unpaid->isOverdue()) {
-                $steps[] = $step('Оплата', 'current', null, 'Просрочена на '.$unpaid->overdueDays().' дн', 'danger');
+                $steps[] = $step('Оплата', 'current', null, $unpaid->overdueLabel(true), 'danger');
             } else {
                 // Подбор по ДКП выставлен без срока: срок встаёт с шага оплаты (`StartSelectionDue`).
                 $when = $unpaid->due_at ? 'до '.$unpaid->due_at->translatedFormat('j M') : 'после договора с покупателем';

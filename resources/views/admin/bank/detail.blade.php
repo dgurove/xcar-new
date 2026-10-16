@@ -25,7 +25,7 @@
                 <x-money.line :icon="$payouts->isEmpty() ? 'clock' : 'check'" :title="$tx->note" :tone="$payouts->isEmpty() ? 'urgent' : 'open'"/>
                 @foreach ($payouts as $a)
                     <x-money.line :icon="\App\Billing\Acquiring\PayMethod::icon($a->method)" :title="'Счёт '.$a->link->invoice->label().', '.$a->link->invoice->party->name"
-                        :sub="$a->created_at->translatedFormat('j M H:i').', комиссия '.Money::exact($a->fee() ?? 0)" :amount="$a->amount" :href="'/work/money/invoices/'.$a->link->invoice_id" data-turbo-frame="_top"/>
+                        :sub="$a->created_at->translatedFormat('j M, H:i').', комиссия '.Money::exact($a->fee() ?? 0)" :amount="$a->amount" :href="'/work/money/invoices/'.$a->link->invoice_id" data-turbo-frame="_top"/>
                 @endforeach
             </div>
         @endif

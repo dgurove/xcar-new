@@ -32,17 +32,7 @@
                 @if ($mine?->state === \App\Purchases\OfferState::Chosen)
                     <span class="flash flash-accent w-full text-sm">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана, с Вами свяжутся</span>
                 @elseif ($purchase->acceptsOffers())
-                    <form method="post" action="/purchases/{{ $purchase->number }}/{{ $car->ref }}/price{{ $suffix }}" class="flex w-full flex-col gap-2" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">
-                        @csrf
-                        <div class="flex gap-2">
-                            <input type="hidden" name="amount" data-bid-target="amount" value="{{ old('amount', $mine?->amount) }}">
-                            <input type="text" required inputmode="decimal" autocomplete="off" enterkeyhint="go" data-check-text="Укажите цену" class="field-input field-s nums min-w-0 flex-1" placeholder="Предложение, ₽" aria-label="Предложение, ₽" data-bid-target="display" data-action="input->bid#input" value="{{ old('amount', $mine?->amount ? \App\Support\Money::nums($mine->amount) : '') }}" data-detail-focus>
-                            <button type="submit" class="btn btn-s btn-accent shrink-0" data-bid-target="submit">{{ $mine ? 'Изменить' : 'Предложить' }}</button>
-                        </div>
-                        @error('amount')<p class="text-sm text-danger">{{ $message }}</p>@enderror
-                        <input name="comment" class="field-input field-s sm:text-sm" placeholder="Комментарий" value="{{ old('comment', $mine?->comment) }}">
-                    </form>
-                    @if ($mine)<form method="post" action="/purchases/prices/{{ $mine->id }}/withdraw" class="contents">@csrf<button type="submit" class="pill pill-plain">Отозвать цену</button></form>@endif
+                    <x-offer.bid-form :my-bid="$mine" :action="'/purchases/'.$purchase->number.'/'.$car->ref.'/price'.$suffix" :withdraw="$mine ? '/purchases/prices/'.$mine->id.'/withdraw' : null" compact/>
                 @else
                     <span class="text-sm text-ink-muted">Приём цен закрыт</span>
                 @endif

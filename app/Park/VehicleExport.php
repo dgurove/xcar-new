@@ -37,7 +37,7 @@ final class VehicleExport
         $money = OutMoney::of($v);
 
         return [
-            trim(($v->brand?->name ?? '').' '.($v->model?->name ?? '')) ?: null, $v->vin, $v->year, $v->color, $v->sts, $v->pts, $v->plate,
+            $v->carRecord()->title() ?: null, $v->vin, $v->year, $v->color, $v->sts, $v->pts, $v->plate,
             $v->accepted_at?->format('d.m.Y'),
             $v->released_at?->format('d.m.Y') ?? ($v->state === VehicleState::Stored ? 'стоит' : $v->state->label()),
             $v->vendor?->name, $v->ref, $v->policy_no, $v->value, $v->yard?->name,

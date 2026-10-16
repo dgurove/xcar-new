@@ -44,18 +44,18 @@
                 </a>
             @else
                 <div data-controller="sheet" class="contents">
-                    <button type="button" class="row w-full text-left" data-action="sheet#open">
+                    <x-ui.sheet-row>
                         <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
                             <span class="row-sub text-urgent">{{ $noScan ? 'нужен скан паспорта' : 'нужны данные для договора' }}</span></span>
                         <x-ui.chevron/>
-                    </button>
+                    </x-ui.sheet-row>
                     <x-ui.sheet id="deal-buyer-data" title="Данные для договора" :open="$dataErrors" tall>
                         @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
                         @if ($buyerParty->isPerson())<x-billing.passport-scan :party="$buyerParty" form="deal-buyer-data-form"/>@endif
                         <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="deal-buyer-data-form">
                             @csrf @method('put')
                             <x-billing.buyer-fields :party="$buyerParty" key="buyer-now"/>
-                            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                            <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                         </form>
                     </x-ui.sheet>
                 </div>
@@ -80,10 +80,10 @@
         @endif
         @if ($editable && ! ($garage && $buyer) && ! $me->isSuperBuyer())
             <div data-controller="sheet" data-action="buyer:open@window->sheet#open" class="contents">
-                <button type="button" class="row w-full text-left" data-action="sheet#open">
+                <x-ui.sheet-row>
                     <span @class(['min-w-0 flex-1', 'font-medium text-accent-text' => ! $buyer])>{{ $buyer ? 'Другой покупатель' : 'Выбрать покупателя' }}</span>
                     <x-ui.chevron/>
-                </button>
+                </x-ui.sheet-row>
                 <x-ui.sheet id="deal-buyer" title="Покупатель" :open="$newErrors || $errors->has('buyer_id')">
                     <div class="flex flex-col gap-4">
                         <form method="post" action="/deals/{{ $deal->id }}/contract" data-controller="autosubmit">
@@ -110,7 +110,7 @@
                                 <input type="hidden" name="buyer_id" value="new">
                                 <div class="fields"><x-ui.field name="new_buyer[phone]" label="Телефон" type="tel"/></div>
                                 <x-billing.buyer-fields key="new-buyer"/>
-                                <div class="sheet-foot"><x-ui.button block>Добавить покупателя</x-ui.button></div>
+                                <x-ui.sheet-foot>Добавить покупателя</x-ui.sheet-foot>
                             </form>
                         </details>
                     </div>

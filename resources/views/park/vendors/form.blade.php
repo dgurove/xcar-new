@@ -43,7 +43,7 @@
                 {{-- Ставка по оценочной стоимости (договор Альфы): включено — в деле ТС поле «Оценочная стоимость». --}}
                 <x-ui.check name="rate_by_value" :checked="$vendor->rate_by_value">Ставка от оценочной стоимости</x-ui.check>
                 <x-ui.check name="buyer_pays_late" :checked="$vendor->buyer_pays_late">Опоздавший покупатель платит</x-ui.check>
-                <div class="fields" data-late><x-ui.field name="buyer_rate_multiplier" label="Множитель, × прайс" :value="rtrim(rtrim(number_format($vendor->buyer_rate_multiplier, 2, '.', ''), '0'), '.')"/></div>
+                <div class="fields" data-late><x-ui.field name="buyer_rate_multiplier" label="Множитель, × прайс" :value="\App\Support\Qty::format($vendor->buyer_rate_multiplier)"/></div>
                 <x-ui.check name="release_without_payment" :checked="$vendor->release_without_payment">Выдавать без оплаты</x-ui.check>
                 <x-ui.check name="release_by_qr" :checked="$vendor->release_by_qr">Выдача по QR</x-ui.check>
                 <x-ui.check name="auto_sale" :checked="$vendor->auto_sale">Сразу в продажу</x-ui.check>
@@ -71,7 +71,7 @@
                 <x-ui.field name="intake_note" label="Что ещё просит" type="textarea" :value="$vendor->intake_note"/>
                 <x-ui.field name="notes" label="Заметки" type="textarea" :value="$vendor->notes"/>
             </div>
-            <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+            <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
         </form>
         @if (! $vendor->offers()->exists() && ! $vendor->vehicles()->exists())
             <form method="post" action="{{ $base }}" class="mt-3" data-turbo-confirm="Удалить вендора?">@csrf @method('delete')<x-ui.button variant="danger" block>Удалить</x-ui.button></form>

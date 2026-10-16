@@ -45,8 +45,7 @@
 
         <div class="flex flex-col items-center gap-2">
             <label class="flex w-full items-baseline justify-center gap-2">
-                <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Сумма, ₽" placeholder="0"
-                    value="{{ old('amount', $one ? $fmt($online && $way === 'link' ? PayLink::defaultAmount($first) : $left) : '') }}" data-controller="digits" data-action="input->digits#format" data-pay-amount-target="input">
+                <x-billing.amount :value="old('amount', $one ? $fmt($online && $way === 'link' ? PayLink::defaultAmount($first) : $left) : '')" data-pay-amount-target="input"/>
                 <span class="text-2xl text-ink-muted">₽</span>
             </label>
             @if ($one && $max > 0 && $left > $max)
@@ -70,7 +69,7 @@
                         <x-ui.copy-link :url="$current->url()" :title="'Оплата по счёту '.$first->label()" :message="$current->message()" :rows="5"/>
                     </div>
                 @else
-                    <div class="sheet-foot"><x-ui.button block>Получить ссылку</x-ui.button></div>
+                    <x-ui.sheet-foot>Получить ссылку</x-ui.sheet-foot>
                 @endif
             </div>
         @endif
@@ -90,14 +89,14 @@
                 <x-ui.field name="ref" id="{{ $id }}-ref" label="№ платёжки"/>
                 <x-ui.file-field name="slip" label="Платёжка" accept=".pdf,.jpg,.jpeg,.png,.heic,image/*"/>
             </div>
-            <div class="sheet-foot"><x-ui.button block>Я оплатил</x-ui.button></div>
+            <x-ui.sheet-foot>Я оплатил</x-ui.sheet-foot>
         </div>
 
         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="cash" @if ($way !== 'cash') hidden @endif>
             <div class="fields">
                 <x-ui.field name="paid_at" id="{{ $id }}-date-cash" label="Когда отдали" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
             </div>
-            <div class="sheet-foot"><x-ui.button block>Отдал наличными</x-ui.button></div>
+            <x-ui.sheet-foot>Отдал наличными</x-ui.sheet-foot>
         </div>
     </form>
 </x-ui.sheet>

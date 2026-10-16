@@ -76,7 +76,7 @@
             </div>
             <x-ui.check name="mail" :checked="$user->wantsMail()">Письма о событиях</x-ui.check>
         @endif
-        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+        <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
     </form>
     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
         <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="mt-3">

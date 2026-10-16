@@ -6,7 +6,9 @@ use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\PriceView;
 use App\Purchases\Car;
+use App\Support\Money;
 use App\Support\Surface;
+use App\Support\Units;
 use App\Users\User;
 
 /**
@@ -27,7 +29,7 @@ final class Caption
     /** @return list<array{key: string, label: string, value: string, on: bool, group: ?string}> */
     public static function fields(Offer $offer, ?User $user): array
     {
-        $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
+        $money = fn ($v) => $v ? Money::plain($v, sign: false) : null;
         $staff = self::staff($user);
         $crm = Surface::inCrm();
         $price = PriceView::for($offer, $user);
@@ -46,8 +48,8 @@ final class Caption
             ['specs', 'КПП, привод, кузов', implode(', ', array_filter([$offer->transmission?->label(), $offer->drive?->label(), $offer->body?->label()])) ?: null, true, 'tech'],
             // Топливо — своей галкой, по умолчанию включена (владелец 05.10.2026: «это важно»).
             ['fuel', 'Топливо', $offer->fuel?->label(), true, 'tech'],
-            ['engine', 'Двигатель', $offer->engine_volume ? number_format($offer->engine_volume / 1000, 1, ',', '').' л'.($offer->engine_power ? ', '.$offer->engine_power.' л. с.' : '') : null, true, 'tech'],
-            ['mileage', 'Пробег', $offer->mileage !== null ? number_format($offer->mileage, 0, '', ' ').' км' : null, true, 'tech'],
+            ['engine', 'Двигатель', $offer->engine_volume ? implode(', ', array_filter([Units::liters($offer->engine_volume), Units::hp($offer->engine_power)])) : null, true, 'tech'],
+            ['mileage', 'Пробег', Units::km($offer->mileage, plain: true), true, 'tech'],
             ['tags', 'Метки', $offer->tags ? implode(', ', $offer->tags) : null, true],
             // Строкой с глаголом, а не голой датой (владелец 04.10.2026): в тексте без подписей «07.10.2026 17:00» ни о чём не говорит.
             ['until', 'Приём подтверждений до', $offer->bids_close_at ? 'Подтвердить до '.$offer->bids_close_at->translatedFormat('d.m.Y H:i') : null, false],
@@ -65,7 +67,7 @@ final class Caption
     /** Машина закупки: ДЛ (на xcar — номер машины в закупке) и наша цена вместо номера и цены оффера, срок — приём цен по закупке. */
     public static function car(Car $car, ?User $user): array
     {
-        $money = fn ($v) => $v ? number_format($v, 0, '', ' ') : null;
+        $money = fn ($v) => $v ? Money::plain($v, sign: false) : null;
         $prices = $user?->canSeePrices() ?? false;
         $crm = Surface::inCrm();
         $rows = [
@@ -74,8 +76,8 @@ final class Caption
             ['model', 'Марка, модель, год', $car->titleWithYear(), true],
             ['vin', 'VIN', $car->vin ?: null, true],
             ['specs', 'КПП, топливо', implode(', ', array_filter([$car->transmission?->label(), $car->fuel?->label()])) ?: null, true, 'tech'],
-            ['engine', 'Двигатель', $car->engine_volume ? number_format($car->engine_volume / 1000, 1, ',', '').' л'.($car->engine_power ? ', '.$car->engine_power.' л. с.' : '') : null, true, 'tech'],
-            ['mileage', 'Пробег', $car->mileage !== null ? number_format($car->mileage, 0, '', ' ').' км' : null, false, 'tech'],
+            ['engine', 'Двигатель', $car->engine_volume ? implode(', ', array_filter([Units::liters($car->engine_volume), Units::hp($car->engine_power)])) : null, true, 'tech'],
+            ['mileage', 'Пробег', Units::km($car->mileage, plain: true), false, 'tech'],
             ['encumbrance', 'Обременения', $car->encumbrance, false],
             ['until', 'Приём цен до', $car->purchase?->offers_close_at?->translatedFormat('d.m.Y H:i'), false],
             ['price', 'Наша цена', $prices ? $money($car->price_listing) : null, true],

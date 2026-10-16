@@ -6,13 +6,12 @@
      в полосе. История — на странице сделки. Формы отвечают в карточку (DetailBack), строка таблицы — свежей из row. --}}
 @php
     use App\Offers\DealState;
-    $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="'/work/deals/'.$deal->id" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()">
         <x-slot:marks>
             {{-- Коды чипами. --}}
-            @if ($vendor || $offer->claim_ref)<x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy class="tag nums"/>@endif
+            <x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" copy class="tag nums"/>
             <span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $offer->number" done="Номер в буфере"/></span>
         </x-slot:marks>
         {{-- Покупатель с телефоном ссылкой — фразой; состояние (закрыта, отменена) — у названия. --}}
@@ -21,7 +20,7 @@
             <x-slot:badge><x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="title-state">{{ mb_strtolower($deal->state->label()) }}</x-ui.state></x-slot:badge>
         @endif
         @if ($deal->buyer?->phone)
-            <x-slot:line><span>{{ $deal->buyer->name }}</span><a href="tel:+{{ $deal->buyer->phone }}" class="nums whitespace-nowrap text-accent-text">{{ $deal->buyer->phoneFormatted() }}</a></x-slot:line>
+            <x-slot:line><span>{{ $deal->buyer->name }}</span><x-ui.phone :user="$deal->buyer"/></x-slot:line>
         @endif
         <x-slot:aside><span class="nums text-lg font-semibold">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span></x-slot:aside>
         {{-- Ряд кнопок одним видом с окошком предложения (12.10.2026): «Чат» пилюлей вместо большой карточки, документы. --}}

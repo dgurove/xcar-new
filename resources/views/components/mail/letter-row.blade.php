@@ -12,7 +12,7 @@
     $ours = $m->isOurs() && ! $m->isForwardedByStaff();
     $intent = Intent::tryFrom((string) $m->intent);
     $tag = $ours ? null : $intent?->marked();
-    $when = $m->date_at?->translatedFormat($m->date_at->isToday() ? 'H:i' : ($m->date_at->isCurrentYear() ? 'j M' : 'j M Y'));
+    $when = \App\Support\Ago::stamp($m->date_at);
     $kind = trim(($stage ? 'stage ' : ($waits ? 'ask ' : '')).($ours ? 'ours ' : '').($repeat ? 'repeat ' : '').(! $m->is_seen && ! $m->isOurs() ? 'unread' : ''));
     $words = NodeTitle::words($m, 200) ?: ($files ? 'Вложения' : 'Без своих слов');
     // Примечание того, кто переслал, — первым и ярче: ради него и пересылали («Ростовские, 1190 отдали»).

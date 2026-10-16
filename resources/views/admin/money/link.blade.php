@@ -36,7 +36,7 @@
     };
     $open = fn (string $name) => 'data-controller="emit" data-action="emit#send" data-emit-event-param="link-'.$id.'-'.$name.':open"';
     // Время без часов (оплату отметили датой) — только день, а не «00:00».
-    $at = fn ($t) => $t->translatedFormat(match (true) { $t->format('H:i:s') === '00:00:00' => 'j M', $t->isToday() => 'H:i', default => 'j M, H:i' });
+    $at = fn ($t) => $t->format('H:i:s') === '00:00:00' ? $t->translatedFormat('j M') : \App\Support\Ago::stamp($t, true);
     // История: создал, попытки плательщика, оплачено или отменена — по времени.
     $history = collect([['created' => $link->created_at, 'text' => match (true) { (bool) $by => 'Создал '.$by->shortName(), $link->origin() === 'deal' => 'Создана сделкой', $link->origin() === 'garage' => 'Создана гаражом', default => 'Создана вручную' }, 'tone' => null]]);
     foreach ($link->attempts as $a) {
@@ -155,12 +155,11 @@
                     <form method="post" action="/work/money/invoices/{{ $i->id }}/links" class="flex flex-col gap-4" @if ($manual) data-turbo-frame="_top" @endif>
                         @csrf
                         <label class="flex items-baseline justify-center gap-2">
-                            <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Сумма, ₽" placeholder="0"
-                                value="{{ Money::nums($link->amount, fmod($link->amount, 1) ? 2 : 0) }}" data-controller="digits" data-action="input->digits#format">
+                            <x-billing.amount :value="Money::nums($link->amount, fmod($link->amount, 1) ? 2 : 0)"/>
                             <span class="text-2xl text-ink-muted">₽</span>
                         </label>
                         @error('amount')<div class="text-center text-sm text-danger">{{ $message }}</div>@enderror
-                        <div class="sheet-foot"><x-ui.button block>Новая ссылка на эту сумму</x-ui.button></div>
+                        <x-ui.sheet-foot>Новая ссылка на эту сумму</x-ui.sheet-foot>
                     </form>
                 </x-ui.sheet>
             </div>
@@ -176,7 +175,7 @@
                         <x-billing.car-field group :offer-id="$i->offer_id" :text="$i->offer ? trim($i->offer->title().' '.$i->offer->year) : $i->car_title" :preview="'/work/money/links/'.$id.'/attach'">
                             <p class="px-1 text-sm text-accent-text" data-car-field-target="note" hidden></p>
                             @if ($car)<div class="list"><button class="row row-danger" name="clear" value="1">Отвязать</button></div>@endif
-                            <div class="sheet-foot mt-auto"><x-ui.button block data-car-field-target="submit">Сохранить</x-ui.button></div>
+                            <x-ui.sheet-foot foot="mt-auto" data-car-field-target="submit">Сохранить</x-ui.sheet-foot>
                         </x-billing.car-field>
                     </form>
                 </x-ui.sheet>

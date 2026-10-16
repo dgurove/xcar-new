@@ -35,7 +35,7 @@
                                     <span class="block truncate"><a href="/cars/{{ $v->id }}" class="hover:underline">{{ $v->titleWithYear() }}</a></span>
                                     <span class="row-sub">
                                         {{-- Год — у даты не этого года: «26 дек 2023 – 30 сен» вместо «26 дек – 30 сен», что читалось тремя месяцами. --}}
-                                        <span class="nums">{{ $r['from']->translatedFormat($r['from']->isCurrentYear() ? 'j M' : 'j M Y') }} – {{ $r['to']->translatedFormat($r['to']->isCurrentYear() ? 'j M' : 'j M Y') }}, {{ $r['days'] }} сут</span>
+                                        <span class="nums">{{ \App\Support\Ago::day($r['from']) }} – {{ \App\Support\Ago::day($r['to']) }}, {{ $r['days'] }} сут</span>
                                         <span>{{ $r['reason'] }}</span>
                                         @if ($r['cadence'] === Cadence::Release)<span>по выбытию</span>@endif
                                         @if ($r['payer'] === 'buyer')<span class="text-ink">покупатель</span>@elseif ($r['payer'] === 'owner')<span class="text-ink">страхователь</span>@endif

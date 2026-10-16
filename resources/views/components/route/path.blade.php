@@ -173,7 +173,7 @@
                                 <div data-controller="sheet" class="contents">
                                     <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Не поступила</x-ui.button>
                                     <x-ui.sheet id="reject-{{ $p->id }}" title="Оплата не поступила">
-                                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><div class="sheet-foot"><x-ui.button variant="secondary" block>Не поступила</x-ui.button></div></form>
+                                        <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><x-ui.sheet-foot variant="secondary">Не поступила</x-ui.sheet-foot></form>
                                     </x-ui.sheet>
                                 </div>
                                 @if ($slip = $p->slip())<x-ui.doc :doc="\App\Support\Docs::media($slip)" class="btn btn-s btn-ghost"><x-ui.icon name="file" class="size-4"/>Платёжка</x-ui.doc>@endif
@@ -221,7 +221,7 @@
                                                         <x-route.field :field="$field" :name="'fields['.$field['key'].']'" :value="$prefill[$field['key']] ?? null"/>
                                                     @endforeach
                                                 </div>
-                                                <div class="sheet-foot"><x-ui.button block>{{ $label($exit) }}</x-ui.button></div>
+                                                <x-ui.sheet-foot>{{ $label($exit) }}</x-ui.sheet-foot>
                                             </form>
                                         </x-ui.sheet>
                                     </div>

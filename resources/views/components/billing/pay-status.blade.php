@@ -86,8 +86,7 @@
                     <form method="post" action="{{ $create }}" class="flex flex-col gap-3 p-4" @if ($staff && $i->isService()) data-turbo-frame="_top" @endif>
                         @csrf
                         <label class="flex items-baseline justify-center gap-2">
-                            <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Сумма, ₽" placeholder="0"
-                                value="{{ Money::nums($link->amount, fmod($link->amount, 1) ? 2 : 0) }}" data-controller="digits" data-action="input->digits#format">
+                            <x-billing.amount :value="Money::nums($link->amount, fmod($link->amount, 1) ? 2 : 0)"/>
                             <span class="text-2xl text-ink-muted">₽</span>
                         </label>
                         @error('amount')<div class="text-center text-sm text-danger">{{ $message }}</div>@enderror

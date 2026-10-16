@@ -22,10 +22,7 @@
     <x-ui.sheet id="resale-{{ $n }}" :title="$isDeal ? 'Отменить сделку' : 'Вернуть в продажу'" tall :open="$errors->hasAny(['asking_price', 'floor_price', 'publish_price', 'bids_close_at'])">
         <div class="flex flex-col gap-4" @if ($isDeal) data-controller="reveal" @endif>
             @if ($isDeal)
-                <div class="segment">
-                    <label><input type="radio" name="_cancel_way" value="sale" checked data-action="reveal#pick"><span>В продажу</span></label>
-                    <label><input type="radio" name="_cancel_way" value="draft" data-action="reveal#pick"><span>В черновики</span></label>
-                </div>
+                <x-ui.segment name="_cancel_way" :options="['sale' => 'В продажу', 'draft' => 'В черновики']" value="sale" pick/>
             @endif
             <div data-reveal-target="pane" data-reveal-key="sale">
                 <form method="post" action="/offers/{{ $n }}/resale" class="flex flex-col gap-4" @unless ($auction) data-turbo-confirm="{{ $isDeal ? 'Отменить сделку и вернуть в продажу?' : 'Вернуть в продажу?' }}" data-turbo-confirm-text="{{ $confirm }}" data-turbo-confirm-label="Вернуть" @endunless>
@@ -45,14 +42,14 @@
                             <x-offer.audience-field :offer="$offer" key="resale"/>
                         </div>
                     </div>
-                    <div class="sheet-foot"><x-ui.button block>Вернуть в продажу</x-ui.button></div>
+                    <x-ui.sheet-foot>Вернуть в продажу</x-ui.sheet-foot>
                 </form>
             </div>
             @if ($isDeal)
                 <div data-reveal-target="pane" data-reveal-key="draft" hidden>
                     <form method="post" action="/offers/{{ $n }}/state" data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="ТС уйдёт в черновики, подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" data-turbo-confirm-label="Отменить">
                         @csrf<input type="hidden" name="state" value="draft">
-                        <div class="sheet-foot"><x-ui.button block variant="danger">Отменить сделку, в черновики</x-ui.button></div>
+                        <x-ui.sheet-foot variant="danger">Отменить сделку, в черновики</x-ui.sheet-foot>
                     </form>
                 </div>
             @endif

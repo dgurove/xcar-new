@@ -54,7 +54,7 @@
                 <tr><td>{{ $c->period_from?->format('d.m.Y') }} – {{ $c->period_to?->format('d.m.Y') }}</td><td class="n">{{ (int) $c->qty }}</td><td class="n">{{ Money::nums($c->price, 2) }}</td><td class="n">{{ Money::nums($c->amount, 2) }}</td></tr>
             @endforeach
             @foreach ($i->charges->where('kind', '!=', \App\Billing\ChargeKind::Storage) as $c)
-                <tr><td>{{ $c->title }}</td><td class="n">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ''), '0'), '.') }} {{ $c->unitLabel() }}</td><td class="n">{{ Money::nums($c->price, 2) }}</td><td class="n">{{ Money::nums($c->amount, 2) }}</td></tr>
+                <tr><td>{{ $c->title }}</td><td class="n">{{ \App\Support\Qty::format($c->qty) }} {{ $c->unitLabel() }}</td><td class="n">{{ Money::nums($c->price, 2) }}</td><td class="n">{{ Money::nums($c->amount, 2) }}</td></tr>
             @endforeach
             <tr><td colspan="3"><b>Итого</b></td><td class="n"><b>{{ Money::nums($i->total, 2) }} ₽</b></td></tr>
         </table>

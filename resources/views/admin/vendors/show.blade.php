@@ -60,7 +60,7 @@
                     <x-ui.field name="senders" label="Предложения приходят от: домены и адреса, по одному в строке" type="textarea" :value="implode(PHP_EOL, $vendor->senders ?? [])" placeholder="alfastrah.ru"/>
                     <x-ui.field name="parser" label="Разбор предложений" :options="Parser::options()" :value="$vendor->parser->value"/>
                 </div>
-                <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+                <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>

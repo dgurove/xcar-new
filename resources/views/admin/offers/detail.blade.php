@@ -179,11 +179,7 @@
                      ошибки (не выбран менеджер) открыт снова гараж. --}}
                 <div class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3" @if ($ways) data-controller="reveal" @endif>
                     @if ($ways)
-                        <div class="segment">
-                            <label><input type="radio" name="_way" value="rate" @checked($way === 'rate') data-action="reveal#pick"><span>{{ $floorFirst ? 'Закупочная' : 'Оценить' }}</span></label>
-                            @if ($garage)<label><input type="radio" name="_way" value="garage" @checked($way === 'garage') data-action="reveal#pick"><span>В гараж</span></label>@endif
-                            @if ($pickup)<label><input type="radio" name="_way" value="pickup" @checked($way === 'pickup') data-action="reveal#pick"><span>Вывоз</span></label>@endif
-                        </div>
+                        <x-ui.segment name="_way" :options="array_filter(['rate' => $floorFirst ? 'Закупочная' : 'Оценить', 'garage' => $garage ? 'В гараж' : null, 'pickup' => $pickup ? 'Вывоз' : null])" :value="$way" pick/>
                     @endif
                     <div data-reveal-target="pane" data-reveal-key="rate">
                         @if ($floorFirst)

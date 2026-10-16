@@ -3,8 +3,7 @@
 namespace App\Offers;
 
 use App\Cars\DamageZone;
-use App\Support\Liters;
-use App\Support\Money;
+use App\Support\Units;
 
 /**
  * «Характеристики» ТС словами — одна дверь на витрину, страницу ТС в гараже, вывоз и сделку менеджера.
@@ -20,10 +19,10 @@ final class OfferFacts
     {
         return array_filter([
             'Год' => $offer->year,
-            'Пробег' => $offer->mileage !== null ? Money::nums($offer->mileage).' км' : null,
+            'Пробег' => Units::km($offer->mileage),
             'Кузов' => $offer->body?->label(), 'КПП' => $offer->transmission?->label(), 'Привод' => $offer->drive?->label(),
-            'Топливо' => $offer->fuel?->label(), 'Объём' => $offer->engine_volume ? Liters::format($offer->engine_volume).' л' : null,
-            'Мощность' => $offer->engine_power ? $offer->engine_power.' л. с.' : null, 'Цвет' => $offer->color,
+            'Топливо' => $offer->fuel?->label(), 'Объём' => Units::liters($offer->engine_volume),
+            'Мощность' => Units::hp($offer->engine_power), 'Цвет' => $offer->color,
             'VIN' => $fullVin ? $offer->vin : $offer->vinFor(auth()->user()), 'Причина' => $offer->damage_cause?->label(),
             'Повреждения' => $offer->damage_zones ? implode(', ', array_map(fn ($z) => DamageZone::labelOf($z), $offer->damage_zones)) : null,
             'На ходу' => $offer->is_runnable === null ? null : ($offer->is_runnable ? 'Да' : 'Нет'),

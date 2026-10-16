@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Mail\Extraction\Intent;
+use App\Support\Ago;
 use App\Support\Changes;
 use App\Support\Money;
 use App\Users\User;
@@ -34,7 +35,7 @@ class VehicleEvent extends Model
         $d = $date ? Carbon::parse($date) : null;
 
         // Со временем (правка даты календарём, 10.10.2026) — и время: «15 апр, 14:05».
-        return $d ? $d->translatedFormat(($d->isCurrentYear() ? 'j M' : 'j M Y').(strlen((string) $date) > 10 ? ', H:i' : '')) : '—';
+        return $d ? Ago::day($d, strlen((string) $date) > 10) : '—';
     }
 
     public function text(): string

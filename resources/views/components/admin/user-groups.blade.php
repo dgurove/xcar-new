@@ -14,7 +14,7 @@
 <div class="list">
     @foreach ([null, ...$groups] as $group)
         <div data-controller="sheet" class="contents">
-            <button type="button" class="row w-full text-left" data-action="sheet#open">
+            <x-ui.sheet-row>
                 @if ($group)
                     @php $names = [...($group->with_super ? [\App\Offers\AudienceRules::SUPER_NAME] : []), ...$group->members->map->shortName()]; @endphp
                     <span class="min-w-0 flex-1"><span class="block font-medium">{{ $group->name }}</span>
@@ -24,7 +24,7 @@
                     <x-ui.row-icon name="plus" tone="accent"/>
                     <span class="min-w-0 flex-1 font-medium">Новая группа</span>
                 @endif
-            </button>
+            </x-ui.sheet-row>
             <x-ui.sheet :id="'group-'.($group?->id ?? 'new-'.$kind)" :title="$group?->name ?? 'Новая группа'">
                 <form method="post" action="/settings/users/groups{{ $group ? '/'.$group->id : '' }}" class="flex flex-col gap-3">
                     @csrf @if ($group) @method('put') @else <input type="hidden" name="kind" value="{{ $kind }}"> @endif
@@ -43,7 +43,7 @@
                             @endforeach
                         </div>
                     </div>
-                    <div class="sheet-foot"><x-ui.button block>{{ $group ? 'Сохранить' : 'Добавить' }}</x-ui.button></div>
+                    <x-ui.sheet-foot>{{ $group ? 'Сохранить' : 'Добавить' }}</x-ui.sheet-foot>
                 </form>
                 @if ($group)
                     <form method="post" action="/settings/users/groups/{{ $group->id }}" class="mt-2" data-turbo-confirm="Удалить группу «{{ $group->name }}»?">

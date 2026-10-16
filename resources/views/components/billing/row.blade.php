@@ -8,7 +8,7 @@
     [$word, $tone] = match (true) {
         $i->state === InvoiceState::Void => ['аннулирован', 'text-ink-dim'],
         $i->state === InvoiceState::Paid => ['оплачен', 'text-accent-text'],
-        $i->isOverdue() => ['просрочен '.$i->overdueDays().' дн', 'text-danger'],
+        $i->isOverdue() => [$i->overdueLabel(), 'text-danger'],
         $i->isPartial() => ['частично', 'text-urgent'],
         default => [$i->due_at ? 'до '.$i->due_at->translatedFormat('j M') : 'после договора', $i->light() === 'urgent' ? 'text-urgent' : 'text-ink-muted'],
     };

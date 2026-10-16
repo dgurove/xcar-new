@@ -23,8 +23,7 @@
         <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$offer->show_vin"/></x-slot:after-label>
     </x-ui.vin>
     <div class="col-span-full flex flex-col gap-2 empty:hidden" data-twins-target="box"></div>
-    <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="$offer->brand_id" :text="$offer->brand?->name" resets="#cb-model_id" :required="$required"/>
-    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#cb-brand_id [name=brand_id]" :value="$offer->model_id" :text="$offer->model?->name" :required="$required"/>
+    <x-cars.brand-model :brand-id="$offer->brand_id" :brand-text="$offer->brand?->name" :model-id="$offer->model_id" :model-text="$offer->model?->name" :required="$required"/>
     <x-ui.field name="year" label="Год" :value="$offer->year"/>
     <x-ui.field digits name="mileage" label="Пробег, км" :value="$offer->mileage"/>
     <x-ui.field name="color" label="Цвет" :value="$offer->color"/>

@@ -180,16 +180,28 @@ class Car extends Model implements HasMedia
 
     // ------------------------------------------------------------ подписи
 
-    public function title(): string
+    /**
+     * Марка и модель — одна дверь для всех дорожек (16.10.2026: продажа, закупка, парковка и машина собирали имя каждая
+     * сама). Своя запасная подпись — у дорожки: «ТС» у продажи и закупки, номер убытка или госномер у парковки. brand и
+     * model — что подставить, когда марки или модели нет в справочнике (у лота закупки — как пришло в файле).
+     */
+    public function title(?string $brand = null, ?string $model = null): string
     {
-        return trim(($this->brand?->name ?? '').' '.($this->model?->name ?? ''));
+        return trim(($this->brand?->name ?? $brand ?? '').' '.($this->model?->name ?? $model ?? ''));
     }
 
+    /** Имя с годом: «Kia Rio, 2019»; без марки — пусто, запасное дорожка ставит сама. */
     public function titleWithYear(): string
     {
         $name = $this->title();
 
-        return $name !== '' ? $name.($this->year ? ", {$this->year}" : '') : '';
+        return $name !== '' ? $this->withYear($name) : '';
+    }
+
+    /** Год через запятую к имени: «Kia Rio, 2019», «ТС, 2019». */
+    public function withYear(string $name): string
+    {
+        return $name.($this->year ? ", {$this->year}" : '');
     }
 
     /** Подпись для «уже у …»: продажа номером, иначе ТС парковки, иначе лот закупки. */

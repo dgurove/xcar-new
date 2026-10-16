@@ -22,6 +22,6 @@
                 </div>
             @endforeach
         </div>
-        <div class="sheet-foot"><x-ui.button block>Сохранить</x-ui.button></div>
+        <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
     </form>
 </x-ui.sheet>

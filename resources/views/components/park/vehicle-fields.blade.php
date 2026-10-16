@@ -15,8 +15,7 @@
     <x-ui.field name="sts" label="СТС" :value="$v('sts')" autocomplete="off" copy/>
     <x-ui.field name="pts" label="(Э)ПТС" :value="$v('pts')" autocomplete="off" copy/>
     <div class="col-span-full flex flex-col gap-2 empty:hidden" data-twins-target="box"></div>
-    <x-ui.combobox name="brand_id" label="Марка" url="/reference/brands" create="/reference/brands" :value="old('brand_id', $brand?->id)" :text="$brand?->name" resets="#cb-model_id" required/>
-    <x-ui.combobox name="model_id" label="Модель" url="/reference/models" create="/reference/models" depends="#cb-brand_id [name=brand_id]" :value="old('model_id', $model?->id)" :text="$model?->name" required/>
+    <x-cars.brand-model :brand-id="old('brand_id', $brand?->id)" :brand-text="$brand?->name" :model-id="old('model_id', $model?->id)" :model-text="$model?->name" required/>
     <x-ui.field name="year" label="Год" :value="$v('year')"/>
     <x-ui.field name="color" label="Цвет" :value="$v('color')"/>
     <x-ui.field name="category" label="Категория" :options="$categories" placeholder="—" :value="$vehicle?->category?->value ?? $v('category')"/>

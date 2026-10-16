@@ -67,7 +67,7 @@
         <thead><tr><th style="width:24px">№</th><th>Наименование</th><th class="n">Кол-во</th><th class="n">Ед.</th><th class="n">Цена</th><th class="n">Сумма</th></tr></thead>
         <tbody>
         @foreach ($lines as $i => $c)
-            <tr><td>{{ $i + 1 }}</td><td>{{ $c->title }}</td><td class="n">{{ rtrim(rtrim(number_format($c->qty, 2, '.', ' '), '0'), '.') }}</td><td class="n">{{ $c->unitLabel() }}</td><td class="n">{{ Money::nums($c->price, 2) }}</td><td class="n">{{ Money::nums($c->amount, 2) }}</td></tr>
+            <tr><td>{{ $i + 1 }}</td><td>{{ $c->title }}</td><td class="n">{{ \App\Support\Qty::format($c->qty, '.', ' ') }}</td><td class="n">{{ $c->unitLabel() }}</td><td class="n">{{ Money::nums($c->price, 2) }}</td><td class="n">{{ Money::nums($c->amount, 2) }}</td></tr>
         @endforeach
         </tbody>
     </table>
