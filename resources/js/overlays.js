@@ -15,8 +15,10 @@
 
 const stack = []; // { id, close, guard }
 let page = 0;     // страница, которой принадлежат записи слоёв: Turbo-визит начинает новую
-let swallow = 0;  // столько popstate от своих history.go() пропустить молча
-let settled = []; // ждут, когда свой шаг назад дошёл
+let mine = [];    // свои шаги history.go(), чьи popstate ещё не пришли: их пропускаем молча
+let settled = []; // ждут, когда свои шаги дошли
+let seq = 0;
+const flush = () => { if (mine.length) return; const done = settled; settled = []; done.forEach((fn) => fn()); };
 
 const mark = (depth, id) => ({ ...(history.state || {}), overlay: { page, depth, id } });
 const own = (state) => (state?.overlay?.page === page ? state.overlay.depth : 0);
@@ -30,10 +32,10 @@ history.replaceState = (state, title, url) => {
 };
 
 addEventListener('popstate', (event) => {
-    if (swallow) {
-        swallow--;
+    if (mine.length) {
+        mine.shift();
         event.stopImmediatePropagation();
-        if (!swallow) { const done = settled; settled = []; done.forEach((fn) => fn()); }
+        flush();
         return;
     }
     const here = own(event.state);
@@ -65,15 +67,13 @@ addEventListener('popstate', (event) => {
 // Свой шаг по истории: его popstate пропускается молча. WebKit бывает не присылает popstate на запись, поставленную без
 // жеста, — через полсекунды ожидание снимается само (опоздавший шаг погасит проверка записи этой страницы выше).
 function go(delta) {
-    swallow++;
+    const step = ++seq;
+    mine.push(step);
     history.go(delta);
-    const at = swallow;
     setTimeout(() => {
-        if (swallow < at) return;
-        swallow = 0;
-        const done = settled;
-        settled = [];
-        done.forEach((fn) => fn());
+        if (!mine.includes(step)) return;
+        mine = mine.filter((s) => s !== step);
+        flush();
     }, 500);
 }
 

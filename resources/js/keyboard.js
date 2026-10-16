@@ -38,7 +38,12 @@ const kind = (el) => {
 };
 const read = (key) => { try { const v = Number(localStorage.getItem(key)); return v > 100 ? v : 0; } catch { return 0; } };
 const guess = (el) => read(`kb:${orient()}:${kind(el)}`) || read(`kb:${orient()}`) || Math.round(innerHeight * .45);
+let remembered = '';
 const remember = (el, kb) => {
+    // Пишем, только когда замер новый: visualViewport шлёт scroll каждый кадр, а запись в хранилище не бесплатна.
+    const key = `${orient()}:${kind(el)}:${kb}`;
+    if (key === remembered) return;
+    remembered = key;
     try {
         localStorage.setItem(`kb:${orient()}:${kind(el)}`, String(kb));
         localStorage.setItem(`kb:${orient()}`, String(kb));
