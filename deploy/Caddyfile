@@ -94,6 +94,22 @@
 		file_server
 	}
 
+	# Готовые PDF и фото «Поделиться» отдаёт Caddy, а не PHP (17.10.2026: 3–4 МБ телефону по слабой сети качались дольше
+	# 30 с, воркер падал «Maximum execution time»). PHP отвечает пустым телом с `X-Accel-Redirect: /offers/142/….pdf` —
+	# путь внутри кэша share (`ShareController::send`), заголовки ответа остаются его. Снаружи этот каталог не открыт:
+	# подмена срабатывает только по заголовку ответа приложения. `X-Share-Sendfile` говорит приложению, что Caddy здесь.
+	request_header X-Share-Sendfile 1
+	intercept {
+		@share header X-Accel-Redirect *
+		handle_response @share {
+			root * /app/storage/app/cache/share
+			rewrite * {resp.header.X-Accel-Redirect}
+			method * GET
+			header -X-Accel-Redirect
+			file_server
+		}
+	}
+
 	php_server {
 		index frankenphp-worker.php
 		try_files {path} frankenphp-worker.php

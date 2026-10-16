@@ -11,6 +11,7 @@ use App\Purchases\Restriction;
 use App\Support\Surface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * PDF и фото для «Поделиться»: PDF одним обработчиком по GET (открыть во встроенном
@@ -74,7 +75,7 @@ class ShareController
         abort_if($index === false, 404);
         $path = $pdf->jpeg($subject, $photos[$index], $this->watermark($request));
 
-        return response()->file($path, ['Content-Type' => 'image/jpeg', 'Content-Disposition' => "inline; filename*=UTF-8''".rawurlencode($subject->photoName($index + 1)), 'Cache-Control' => 'private, max-age=3600']);
+        return $this->send($request, $path, ['Content-Type' => 'image/jpeg', 'Content-Disposition' => "inline; filename*=UTF-8''".rawurlencode($subject->photoName($index + 1)), 'Cache-Control' => 'private, max-age=3600']);
     }
 
     // Галка «Водяной знак на фото» — у всех, по умолчанию выключена везде.
@@ -95,7 +96,24 @@ class ShareController
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->file($path, ['Content-Type' => 'application/pdf', 'Content-Disposition' => "inline; filename*=UTF-8''".rawurlencode($subject->fileName()), 'Cache-Control' => 'private, max-age=3600']);
+        return $this->send($request, $path, ['Content-Type' => 'application/pdf', 'Content-Disposition' => "inline; filename*=UTF-8''".rawurlencode($subject->fileName()), 'Cache-Control' => 'private, max-age=3600']);
+    }
+
+    /**
+     * Готовый файл отдаёт Caddy (`X-Accel-Redirect`, `intercept` в `deploy/Caddyfile`), а не PHP (17.10.2026): PDF в
+     * 3–4 МБ телефону по слабой сети качался дольше 30 с — воркер был занят всё это время и падал «Maximum execution
+     * time» на середине. Заголовок `X-Share-Sendfile` ставит сам Caddy; без него (локально) — как раньше.
+     *
+     * @param  array<string, string>  $headers
+     */
+    private function send(Request $request, string $path, array $headers)
+    {
+        $root = rtrim(Storage::disk(SharePdf::DISK)->path('share'), '/').'/';
+        if (! $request->headers->has('X-Share-Sendfile') || ! str_starts_with($path, $root)) {
+            return response()->file($path, $headers);
+        }
+
+        return response('', 200, $headers + ['X-Accel-Redirect' => '/'.implode('/', array_map('rawurlencode', explode('/', substr($path, strlen($root)))))]);
     }
 
     /** Сбой на телефоне — единственный след того, почему файл не ушёл. */
