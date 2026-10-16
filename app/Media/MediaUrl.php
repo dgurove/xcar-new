@@ -5,8 +5,10 @@ namespace App\Media;
 use Spatie\MediaLibrary\Conversions\Conversion;
 use Spatie\MediaLibrary\Conversions\ConversionCollection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Spatie\MediaLibrary\Support\UrlGenerator\UrlGenerator;
 use Spatie\MediaLibrary\Support\UrlGenerator\UrlGeneratorFactory;
 use Throwable;
+use WeakMap;
 
 final class MediaUrl
 {
@@ -19,6 +21,19 @@ final class MediaUrl
     /** @var array<string, Conversion> конверсия по модели, коллекции и имени — одна на процесс */
     private static array $conversions = [];
 
+    /**
+     * Адреса кадра, пока жив сам объект: плитка спрашивает w640 для `src` и его же в `srcset`, страница — тот же кадр
+     * в ленте и просмотре. Ключ — объект (WeakMap): ушла модель — ушли и адреса, память воркера Octane не растёт.
+     *
+     * @var WeakMap<Media, array<string, string>>|null
+     */
+    private static ?WeakMap $memo = null;
+
+    /** Генератор адресов последнего кадра: srcset спрашивает его конверсии подряд. Не в WeakMap — он держит сам кадр. */
+    private static ?Media $genOf = null;
+
+    private static ?UrlGenerator $gen = null;
+
     /** sizes для srcset: если на телефоне кадр во всю ширину (последнее значение в vw) — с потолком для 3x. */
     public static function sizes(string $sizes): string
     {
@@ -30,7 +45,17 @@ final class MediaUrl
     /** Адрес конверсии, пока она не готова — оригинал. С меткой версии для кэша. */
     public static function for(Media $media, ?string $conversion = null): string
     {
-        return self::url($media, $conversion).'?v='.($media->updated_at?->timestamp ?? 0);
+        self::$memo ??= new WeakMap;
+        $urls = self::$memo[$media] ?? [];
+        // Версия — в ключе: повернули кадр в этом же запросе — адрес новый.
+        $v = $media->updated_at?->timestamp ?? 0;
+        $key = ($conversion ?? '').'@'.$v;
+        if (! isset($urls[$key])) {
+            $urls[$key] = self::url($media, $conversion).'?v='.$v;
+            self::$memo[$media] = $urls;
+        }
+
+        return $urls[$key];
     }
 
     /** Конверсии вниз и оригинал как самый широкий кандидат. */
@@ -48,9 +73,16 @@ final class MediaUrl
             return $media->getUrl();
         }
         try {
-            return $media->hasGeneratedConversion($conversion)
-                ? UrlGeneratorFactory::createForMedia($media)->setConversion(self::conversion($media, $conversion))->getUrl()
-                : $media->getUrl();
+            if (! $media->hasGeneratedConversion($conversion)) {
+                return $media->getUrl();
+            }
+            // Генератор (контейнер, генератор путей) — раз на кадр.
+            if (self::$genOf !== $media) {
+                self::$gen = UrlGeneratorFactory::createForMedia($media);
+                self::$genOf = $media;
+            }
+
+            return self::$gen->setConversion(self::conversion($media, $conversion))->getUrl();
         } catch (Throwable) {
             return $media->getUrl();
         }

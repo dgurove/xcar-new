@@ -7,10 +7,11 @@ import { onResume, RESUME } from './lib/resume';
 // свежей страницы, и отправка повторяется сама. 429 — тост с временем ожидания.
 // Обрыв связи — Turbo не перезагружает окно на /offline: тост «Нет связи» с
 // «Повторить»; при возврате сети сам повторяется только переход — форму (её запрос мог
-// дойти, потерялся лишь ответ) отправляет заново только человек. Ответа нет 35 с — тот же обрыв: сервер сам обрывает
-// запрос на 30 с (`octane.max_execution_time`), ждём чуть дольше, чтобы не резать то, что он ещё доделает.
+// дойти, потерялся лишь ответ) отправляет заново только человек. Ответа нет 50 с — тот же обрыв: сервер ждёт свободного
+// воркера не дольше 15 с и работает не дольше 30 (`deploy/Caddyfile`, `octane.max_execution_time`) — раньше не режем то,
+// что он ещё доделает.
 // 500 на отправке формы — тост, форма и шторка с набранным на месте (не голая страница ошибки).
-const TIMEOUT = 35_000;
+const TIMEOUT = 50_000;
 
 // Остановленный переход Turbo не снимает с <html> aria-busy и полосу загрузки — они висели до следующего перехода,
 // и экран выглядел вечно грузящимся.
@@ -25,7 +26,7 @@ export function netGuards() {
     document.addEventListener('turbo:submit-start', (e) => submitters.set(e.target, e.detail.formSubmission.submitter));
 
     // Своё ожидание у каждого запроса Turbo. Отмену Turbo глотает молча (WebKit и таймаут отдаёт как AbortError), поэтому
-    // через 35 с проверяем сами: запрос ещё идёт (aria-busy у страницы, формы, фрейма) и он последний у своей цели —
+    // через 50 с проверяем сами: запрос ещё идёт (aria-busy у страницы, формы, фрейма) и он последний у своей цели —
     // отменяем и шлём turbo:fetch-request-error, как при обрыве: дальше ветка ниже и карточка строки (detail_controller).
     // Форма с выбранными файлами — без срока: фото по слабой сети честно грузятся дольше. Предзагрузку не трогаем.
     const latest = new WeakMap();
@@ -54,7 +55,7 @@ export function netGuards() {
             event.preventDefault();
             form.dataset.retried = '1';
             if (await refreshCsrf()) form.requestSubmit(submitters.get(form) ?? undefined);
-            else window.toast?.('Сессия обновилась — отправьте ещё раз', 'danger');
+            else window.toast?.('Сессия обновилась, отправьте ещё раз', 'danger');
             setTimeout(() => delete form.dataset.retried, 5000);
             return;
         }
@@ -63,12 +64,21 @@ export function netGuards() {
             window.toast?.('Не получилось', 'danger');
             return;
         }
+        // Переход, на который ответил не Laravel, а Caddy: 504 — свободного воркера не дождались (`max_wait_time`), 502 —
+        // приложение перезапускается. Тела у такого ответа нет, Turbo нарисовал бы пустой экран — остаёмся на месте.
+        if (!form && [502, 504].includes(fetchResponse.statusCode)) {
+            event.preventDefault();
+            stopVisit();
+            const url = fetchResponse.response?.url || fetchResponse.location?.href;
+            window.toast?.('Сервер занят', { kind: 'danger', action: url ? { label: 'Повторить', run: () => Turbo.visit(url) } : undefined });
+            return;
+        }
         if (fetchResponse.statusCode === 429) {
             event.preventDefault();
             if (!form) stopVisit();
             document.dispatchEvent(new Event('press:clear'));
             const wait = Number(fetchResponse.header('Retry-After') || 0);
-            window.toast?.(wait ? `Слишком много попыток — через ${wait} с` : 'Слишком много попыток', 'danger');
+            window.toast?.(wait ? `Слишком много попыток, через ${wait} с` : 'Слишком много попыток', 'danger');
         }
     });
 
@@ -82,7 +92,7 @@ export function netGuards() {
         // визитом открыл бы весь список заново.
         if (!form && event.target?.matches?.('turbo-frame#detail')) return;
         // Мелкие действия (закладка, прочитано) — в очередь: уйдут сами, когда появится сеть.
-        if (form?.hasAttribute('data-queue')) { enqueue(form); window.toast?.('Нет связи — отправим, когда появится'); return; }
+        if (form?.hasAttribute('data-queue')) { enqueue(form); window.toast?.('Нет связи, отправим, когда появится'); return; }
         const again = form ? () => form.requestSubmit(submitters.get(form) ?? undefined) : () => Turbo.visit(request.url.href);
         retry = form ? null : again;
         window.toast?.('Нет связи', { kind: 'danger', action: { label: 'Повторить', run: again } });

@@ -504,7 +504,7 @@ class MailController
             // Адресат — ответственный по убытку, иначе контакт вендора по реализации (контакты CRM); его копии — в cc.
             $offer->loadMissing('vendor.contacts');
             $values = self::placeholders($offer) + [
-                'to' => $offer->contact_email ?? $offer->vendor?->email(ContactRole::Sales) ?? '',
+                'to' => $offer->contact_email ?? $offer->vendor?->saleAddressee() ?? '',
                 'cc' => implode(', ', $offer->vendor?->ccEmails(sale: true) ?? []),
             ];
             if (! $request->query('account') && $offer->vendor?->mail_account_id) {
@@ -542,7 +542,7 @@ class MailController
         if ($supplierRequest) {
             abort_if($supplierRequest->deals->isEmpty(), 404);
             $template ??= Template::supplierRequest();
-            $values = ['count' => (string) $supplierRequest->deals->count(), 'to' => $requestVendor->saleTo() ?? $requestVendor->email(ContactRole::Sales) ?? '',
+            $values = ['count' => (string) $supplierRequest->deals->count(), 'to' => $requestVendor->saleAddressee() ?? '',
                 'cc' => implode(', ', $requestVendor->ccEmails(sale: true))];
             if (! $request->query('account') && $requestVendor->mail_account_id) {
                 $account = $accounts->firstWhere('id', $requestVendor->mailAccount?->sender()->id ?? $requestVendor->mail_account_id) ?? $account;

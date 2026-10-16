@@ -99,4 +99,20 @@ class SupplierLetterStepTest extends TestCase
         $this->assertSame('replied', $position->letterStatus());
         $this->assertSame(WaitsFor::Us, $position->waitsFor());
     }
+
+    /** Кому письмо по продаже без письма вендора: «Реализация» не из копии, а нет её — общий ящик из копии (16.10.2026). */
+    public function test_sale_addressee(): void
+    {
+        $alfa = Vendor::create(['name' => 'Альфа тест']);
+        $alfa->contacts()->create(['name' => 'Третьи лица', 'role' => 'sales', 'email' => 'third@alfa.test', 'always_cc' => true]);
+        $alfa->contacts()->create(['name' => 'Реализация', 'role' => 'sales', 'email' => 'implementation@alfa.test', 'is_default' => true]);
+        $this->assertSame('implementation@alfa.test', $alfa->fresh()->saleAddressee());
+
+        $t = Vendor::create(['name' => 'Т тест']);
+        $t->contacts()->create(['name' => 'Убытки', 'role' => 'claims', 'email' => 'claims@t.test']);
+        $this->assertNull($t->fresh()->saleAddressee());
+        $t->contacts()->create(['name' => 'Реализация', 'role' => 'sales', 'email' => 'total@t.test', 'always_cc' => true]);
+        $this->assertSame('total@t.test', $t->fresh()->saleAddressee());
+        $this->assertNull($t->fresh()->saleTo());
+    }
 }

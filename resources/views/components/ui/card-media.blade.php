@@ -9,7 +9,7 @@
     <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
         <a href="{{ $href }}"{!! $extra !!} class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
             @foreach ($photos as $i => $frame)
-                <x-offer.photo :media="$frame" :sizes="$sizes" :eager="$eager && $i === 0" data-frames-target="frame"/>
+                <x-offer.photo :media="$frame" :sizes="$sizes" :eager="$eager && $i === 0" :single="$i > 0" data-frames-target="frame"/>
             @endforeach
         </a>
         @if ($photos->count() > 1)

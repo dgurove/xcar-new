@@ -200,7 +200,7 @@ class OfferController
             ],
             default => self::facets(),
         })->always();
-        ListPrefs::sync($request, 'crm-offers', rememberTable: true, keep: $facets->keys());
+        ListPrefs::sync($request, 'crm-offers', keep: $facets->keys());
         $cols = self::columns($preset, $request->user());
         $sort = self::sortFor($request, $preset, $cols, $admin);
         // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.

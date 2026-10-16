@@ -24,7 +24,7 @@ final class ListPrefs
      * (у почты сортировка своя у каждой пилюли и не помнится). $sort = false — сортировка не помнится (каталог сайта:
      * запомненная «сначала новые» прятала пачки по сроку, 11.10.2026).
      */
-    public static function sync(Request $request, string $list, bool $rememberTable = false, array $keep = [], bool $view = true, bool $sort = true): void
+    public static function sync(Request $request, string $list, array $keep = [], bool $view = true, bool $sort = true): void
     {
         $keys = [...($view ? self::KEYS : []), ...$keep];
         // Вид на сайте помнится — тот, что человек выбрал сам (16.10.2026, менеджер: «ставлю плитки, захожу — опять
@@ -33,13 +33,10 @@ final class ListPrefs
         // таблица, другой вид — на этот раз.
         $site = Surface::current() === Surface::Site;
         $keys = array_values(array_diff($keys, [...($site ? [] : [ListView::PARAM]), ...($sort ? [] : ['sort'])]));
-        // Таблица на сайте — тоже выбор, помнится. rememberTable — у списков CRM, где таблица и есть вид по умолчанию
-        // (предложения): выбор «плитками» и обратно помнится.
-        $table = fn ($v, $k) => ! $rememberTable && ! $site && $k === ListView::PARAM && ListView::isTable($v);
         // Память списка целиком: ключи чипов другого вида (покупатели и сотрудники в «Пользователях») не теряются.
         $raw = self::all($request)[$list] ?? [];
-        $saved = array_filter($raw, fn ($v, $k) => in_array($k, $keys, true) && ! $table($v, $k), ARRAY_FILTER_USE_BOTH);
-        $given = array_filter($request->only($keys), fn ($v, $k) => is_string($v) && $v !== '' && ! $table($v, $k), ARRAY_FILTER_USE_BOTH);
+        $saved = array_intersect_key($raw, array_flip($keys));
+        $given = array_filter($request->only($keys), fn ($v) => is_string($v) && $v !== '');
         $cleared = array_values(array_filter($keep, fn ($k) => $request->query->has($k) && blank($request->query($k))));
         // Пришли по адресу с параметрами — это выбор, запоминаем. Админ за человека его память не трогает, а «сколько
         // будет» из шторки чипа (X-Count) — ещё не выбор.

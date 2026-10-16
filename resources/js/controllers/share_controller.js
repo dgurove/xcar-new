@@ -264,7 +264,7 @@ export default class extends Controller {
                 if (e.name === 'AbortError') return;
                 if (e.name === 'ShareTimeout') {
                     this.beacon('share-hang', e, facts);
-                    this.status('Лист открывается долго — нажмите ещё раз');
+                    this.status('Лист открывается долго, нажмите ещё раз');
                     return;
                 }
                 this.markBroken();

@@ -131,7 +131,7 @@ class CatalogController
             'groupSizes' => $groups ? \App\Offers\CloseGroups::sizes($query, $gallery) : [],
             'views' => $views,
             'view' => $view,
-            'context' => ListContext::forList($gallery, $filters + ['sort' => $sort], $view),
+            'context' => ListContext::forList($gallery, $filters + ['sort' => $sort]),
             'facets' => $facets,
             'gallery' => $gallery,
             'prices' => $prices,

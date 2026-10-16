@@ -14,23 +14,29 @@ problems=()
 resolve=()
 for addr in ${ADDRESSES//,/ }; do resolve+=(--resolve "${addr#*://}:443:127.0.0.1"); done
 code() { curl -sS -L --max-redirs 3 -m 10 "${resolve[@]}" -o /dev/null -w '%{http_code}' "https://$1$2" 2>/dev/null || echo 000; }
-first=1
-for addr in ${ADDRESSES//,/ }; do
-    host="${addr#*://}"
-    for path in /up /login /manifest.webmanifest; do
-        c="$(code "$host" "$path")"
-        [ "$c" = 200 ] || problems+=("$host$path → $c")
+# Страницы и контейнеры — дважды: выкладка пересоздаёт контейнеры секунд двадцать, а под нагрузкой одна страница может
+# не уложиться в 10 с. Тревога — только если и через 45 с не так (16.10.2026: «всё 000000» прилетало посреди выкладки).
+probe() {
+    problems=()
+    local first=1 host c state
+    for addr in ${ADDRESSES//,/ }; do
+        host="${addr#*://}"
+        for path in /up /login /manifest.webmanifest; do
+            c="$(code "$host" "$path")"
+            [ "$c" = 200 ] || problems+=("$host$path → $c")
+        done
+        if [ $first = 1 ]; then
+            c="$(code "$host" /)"; [ "$c" = 200 ] || problems+=("$host/ → $c")
+        fi
+        first=0
     done
-    if [ $first = 1 ]; then
-        c="$(code "$host" /)"; [ "$c" = 200 ] || problems+=("$host/ → $c")
-    fi
-    first=0
-done
-
-for name in app queue queue-scan queue-long queue-mail queue-files scheduler mail-watch offers-bot postgres; do
-    state="$(docker inspect -f '{{.State.Status}}' "xcar-$name-1" 2>/dev/null || echo missing)"
-    [ "$state" = running ] || problems+=("контейнер $name: $state")
-done
+    for name in app queue queue-scan queue-long queue-mail queue-files scheduler mail-watch offers-bot postgres; do
+        state="$(docker inspect -f '{{.State.Status}}' "xcar-$name-1" 2>/dev/null || echo missing)"
+        [ "$state" = running ] || problems+=("контейнер $name: $state")
+    done
+}
+probe
+if [ ${#problems[@]} -gt 0 ]; then sleep 45; probe; fi
 
 use="$(df --output=pcent / | tail -1 | tr -dc 0-9)"
 [ "${use:-0}" -lt 80 ] || problems+=("корневой диск занят на ${use}%")

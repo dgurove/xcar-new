@@ -340,6 +340,16 @@ class Vendor extends Model implements HasMedia
         return ($to->firstWhere('is_default', true) ?? $to->first())?->email;
     }
 
+    /**
+     * Кому письмо по продаже, когда отвечать некому (писем по сделке нет): `saleTo`, а нет его — общий ящик из копии
+     * «Реализации». У Т-Страхования адресат — каждый раз свой сотрудник, письмо идёт ему ответом, а без его письма —
+     * в total@, что стоит в копии всех их писем (16.10.2026).
+     */
+    public function saleAddressee(): ?string
+    {
+        return $this->saleTo() ?? $this->sideContacts(true)->first(fn (Contact $c) => $c->email)?->email;
+    }
+
     /** @return list<string> адреса, которые вендор всегда держит в копии, — среди контактов своей стороны */
     public function ccEmails(bool $sale = false): array
     {

@@ -64,7 +64,7 @@ export default class extends Controller {
             window.Turbo.visit(location.href, { action: 'replace' });
         } catch (e) {
             if (e.code === 'ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED') {
-                window.toast?.('Ключ этого устройства уже добавлен — им можно входить');
+                window.toast?.('Ключ этого устройства уже добавлен, им можно входить');
                 return;
             }
             this.fail('register', step, e, 'Не удалось создать ключ');

@@ -7,17 +7,19 @@ use App\Offers\Offer;
 use Illuminate\Http\Request;
 
 /**
- * Откуда пришли на страницу оффера: список (каталог или галерея), фильтры,
- * сортировка, вид. Едет в адресе параметром `list` и теми же ключами, что у
- * каталога, — стрелки листают ровно тот список, который человек видел.
+ * Откуда пришли на страницу оффера: список (каталог или галерея), фильтры и
+ * сортировка. Едет в адресе параметром `list` и теми же ключами, что у
+ * каталога, — стрелки листают ровно тот список, который человек видел. Вида в нём
+ * нет: на сайте вид помнит `ListPrefs`, а вид из ссылки «Назад» запомнился бы как
+ * выбор, даже если человек ничего не выбирал (16.10.2026).
  */
 final class ListContext
 {
-    public function __construct(public readonly string $list, public readonly array $filters, public readonly ?string $view) {}
+    public function __construct(public readonly string $list, public readonly array $filters) {}
 
-    public static function forList(bool $gallery, array $filters, ?string $view): self
+    public static function forList(bool $gallery, array $filters): self
     {
-        return new self($gallery ? 'gallery' : 'catalog', array_filter($filters, fn ($v) => $v !== null && $v !== ''), $view);
+        return new self($gallery ? 'gallery' : 'catalog', array_filter($filters, fn ($v) => $v !== null && $v !== ''));
     }
 
     public static function fromRequest(Request $request): ?self
@@ -27,7 +29,7 @@ final class ListContext
             return null;
         }
 
-        return new self($list, array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== ''), ListView::fromRequest($request));
+        return new self($list, array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== ''));
     }
 
     public function isGallery(): bool
@@ -37,7 +39,7 @@ final class ListContext
 
     public function query(): array
     {
-        return array_filter(['list' => $this->list, ...$this->filters, ListView::PARAM => $this->view], fn ($v) => $v !== null && $v !== '');
+        return array_filter(['list' => $this->list, ...$this->filters], fn ($v) => $v !== null && $v !== '');
     }
 
     public function offerUrl(Offer|int $offer): string

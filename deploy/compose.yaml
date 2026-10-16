@@ -24,6 +24,9 @@ x-app: &app
     dockerfile: deploy/Dockerfile
     target: app
   restart: unless-stopped
+  # init — PID 1 собирает завершившихся потомков: фоновые задачи расписания (`runInBackground`) отрываются от
+  # schedule:work и оставались зомби — 536 штук на 16.10.2026 за четыре часа, до упора в лимит процессов.
+  init: true
   env_file:
     - .env.app
   environment: &app-env
