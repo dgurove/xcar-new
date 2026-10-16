@@ -41,7 +41,8 @@
                     $seeAll = \App\Offers\Showing::seeAllCount($user);
                     $pickable = \App\Offers\Showing::pickable($user);
                 @endphp
-                <section class="box order-3 lg:order-2" data-controller="sheet" data-action="show:open@window->sheet#open">
+                {{-- Шторка «Открыть покупателям» есть, только когда есть кого выбрать: без неё контроллер шторки падал без своего диалога. --}}
+                <section class="box order-3 lg:order-2" @if ($pickable) data-controller="sheet" data-action="show:open@window->sheet#open" @endif>
                     <h2 class="box-title">Покупатели</h2>
                     @if ($seeAll || $showings->isNotEmpty() || $pickable)
                         @if ($seeAll)
