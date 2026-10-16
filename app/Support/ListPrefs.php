@@ -27,13 +27,15 @@ final class ListPrefs
     public static function sync(Request $request, string $list, bool $rememberTable = false, array $keep = [], bool $view = true, bool $sort = true): void
     {
         $keys = [...($view ? self::KEYS : []), ...$keep];
-        // Вид не помнится нигде: в CRM (владелец 04.10.2026) и на парковке (09.10.2026) по умолчанию таблица, на сайте
-        // (11.10.2026, владелец: «по умолчанию почему-то строки, сделай плитки») — плитки; другой вид — на этот раз.
-        $keys = array_values(array_diff($keys, [ListView::PARAM, ...($sort ? [] : ['sort'])]));
-        // Таблица не запоминается: сама она включается только у длинного списка (ListView::pick),
-        // а запомненная включалась бы и на трёх строках; вид в адресе — на этот раз.
-        // rememberTable — у списков, где таблица и есть вид по умолчанию (почта): выбор «строками» и обратно помнится.
-        $table = fn ($v, $k) => ! $rememberTable && $k === ListView::PARAM && ListView::isTable($v);
+        // Вид на сайте помнится — тот, что человек выбрал сам (16.10.2026, менеджер: «ставлю плитки, захожу — опять
+        // ленты»); не выбирал — умолчание `ListView::pick`. Старые запомненные виды, из-за которых 11.10 у людей застревали
+        // строки, стёрты миграцией. В CRM (владелец 04.10.2026) и на парковке (09.10.2026) вид не помнится: по умолчанию
+        // таблица, другой вид — на этот раз.
+        $site = Surface::current() === Surface::Site;
+        $keys = array_values(array_diff($keys, [...($site ? [] : [ListView::PARAM]), ...($sort ? [] : ['sort'])]));
+        // Таблица на сайте — тоже выбор, помнится. rememberTable — у списков CRM, где таблица и есть вид по умолчанию
+        // (предложения): выбор «плитками» и обратно помнится.
+        $table = fn ($v, $k) => ! $rememberTable && ! $site && $k === ListView::PARAM && ListView::isTable($v);
         // Память списка целиком: ключи чипов другого вида (покупатели и сотрудники в «Пользователях») не теряются.
         $raw = self::all($request)[$list] ?? [];
         $saved = array_filter($raw, fn ($v, $k) => in_array($k, $keys, true) && ! $table($v, $k), ARRAY_FILTER_USE_BOTH);

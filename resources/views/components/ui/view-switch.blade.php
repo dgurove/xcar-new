@@ -2,7 +2,8 @@
      «Лентами · Плитками · Строками · Таблицей · Подробной таблицей» (x-ui.menu). «Лентами» — только у списков с пачками
      (`:views="ListView::SHELVED"`, 15.10.2026), «Плитками» — та же карточка обычной сеткой. Подробная на телефоне — все столбцы ПК, на ПК —
      все столбцы и рядом с открытой карточкой (краткая тогда прячет `col-detail-hide`).
-     Пока вид не выбран, его решает ширина экрана: две кнопки, видна одна. views — какие виды есть. --}}
+     Пока вид не выбран, его решает ширина экрана: две кнопки, видна одна. views — какие виды есть. Без предзагрузки:
+     на сайте вид помнится (`ListPrefs`), а предзагрузку при наведении он принял бы за выбор. --}}
 @props(['views' => \App\Support\ListView::ALL, 'current' => false])
 @php
     use App\Support\ListView;
@@ -33,7 +34,7 @@
     @endforeach
     <div id="{{ $id }}" class="menu" popover data-menu-target="list" role="menu">
         @foreach ($items as $view => [$label, $icon])
-            <a href="{{ $url($view) }}" @class(['menu-item', 'sm:hidden' => $view === ListView::WIDE && $phoneOnly]) role="menuitem" data-turbo-action="replace" data-action="menu#close" @if ($view === $current || (!$current && array_key_first($shown) === $view && count($shown) === 1)) aria-current="true" @endif><x-ui.icon :name="$icon" class="size-5"/>{{ $label }}</a>
+            <a href="{{ $url($view) }}" @class(['menu-item', 'sm:hidden' => $view === ListView::WIDE && $phoneOnly]) role="menuitem" data-turbo-action="replace" data-turbo-prefetch="false" data-action="menu#close" @if ($view === $current || (!$current && array_key_first($shown) === $view && count($shown) === 1)) aria-current="true" @endif><x-ui.icon :name="$icon" class="size-5"/>{{ $label }}</a>
         @endforeach
     </div>
 </div>
