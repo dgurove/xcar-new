@@ -6,7 +6,6 @@ use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
-use App\Mail\Threads;
 use App\Offers\Offer;
 use App\Vendors\Vendor;
 
@@ -17,7 +16,7 @@ use App\Vendors\Vendor;
  */
 final class LearnSenders
 {
-    public function __construct(private Threads $threads) {}
+    public function __construct(private BindSender $bind) {}
 
     public function __invoke(Offer $offer): int
     {
@@ -37,11 +36,8 @@ final class LearnSenders
                 $learned[$sender] = true;
             }
         }
-        if ($learned) {
-            $vendor->forceFill(['senders' => array_values(array_unique([...($vendor->senders ?? []), ...array_keys($learned)]))])->save();
-            foreach ($threads as $thread) {
-                $this->threads->refresh($thread);
-            }
+        foreach (array_keys($learned) as $sender) {
+            ($this->bind)($vendor, $sender, Scope::Offers);
         }
 
         return count($learned);

@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { isClosing } from '../sheet';
 
 // Всплывающие сообщения. Узел #toasts постоянный (data-turbo-permanent), серверный
 // flash приходит соседним <template id="flash"> и читается после каждого рендера —
@@ -42,6 +43,8 @@ export default class extends Controller {
     // шага (form[data-step-back]), но без подтверждения — человек только что нажал сам.
     options(flash, scope) {
         const kind = flash.dataset.kind || '';
+        // data-href — тост ведёт туда нажатием («Вендор «ТИТ» заведён» → его настройки).
+        if (flash.dataset.href) return { kind, href: flash.dataset.href };
         if (!('undo' in flash.dataset)) return kind;
         return { kind, action: { label: 'Отменить', run: () => {
             const form = scope.querySelector('form[data-step-back]');
@@ -58,7 +61,8 @@ export default class extends Controller {
     // затемнение — не видно и не нажать («Нет связи / Повторить», «Отметьте фото» в «Поделиться»). Верхняя — та, где
     // фокус, иначе последняя.
     host() {
-        const open = [...document.querySelectorAll('dialog:modal')];
+        // Закрывающаяся шторка (ответ её же формы) тост не принимает: он уехал бы вместе с ней.
+        const open = [...document.querySelectorAll('dialog:modal')].filter((d) => !isClosing(d));
         const top = open.find((d) => d.contains(document.activeElement)) ?? open.pop();
         if (!top) return this.element;
         let box = top.querySelector(':scope > .toasts');

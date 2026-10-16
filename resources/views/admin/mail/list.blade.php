@@ -40,6 +40,8 @@
                     default => $base.'/'.$m->thread_id.'/window?at='.$m->id,
                 };
                 $letters = $section['letters']->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
+                // Вендор письма не узнан — «Выбрать вендора» на месте логотипа (у дела машины вендор — её, не письма).
+                $pick = $head && ! $head['vendor'] && ! $v && ! $o ? \App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $base, $t, $letters, $c) : null;
                 // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
                 $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
                 $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
@@ -69,8 +71,9 @@
                             @else
                                 <div class="chain-head-title">{{ $head['title'] }}</div>
                             @endif
-                            @if ($head['vendor'] || $head['ref'] || $head['state'])
+                            @if ($head['vendor'] || $head['ref'] || $head['state'] || $pick)
                                 <div class="chain-head-sub">
+                                    <x-mail.vendor-pick :pick="$pick"/>
                                     <x-vendor.ref :vendor="$head['vendor']" :ref="$head['ref']"/>
                                     @if ($head['state'])<span class="{{ $head['urgent'] ? 'text-urgent' : '' }}">{{ $head['state'] }}</span>@endif
                                 </div>

@@ -1683,6 +1683,8 @@ html.kb-open { --home-gap: 0px; }
   .vendor-ref > .vendor-tip, .ref-line > .vendor-tip, .vincode > svg, .place > svg, .status-cell::before { align-self: center; }
   /* Имя вендора подсказкой у логотипа: наведение на ПК, нажатие на телефоне (кнопка — карточка строки не открывается).
      Справа от логотипа поверх номера, а не сверху: ячейка таблицы режет всё, что выходит за её высоту. */
+  /* «Выбрать вендора» — на месте логотипа, когда вендор письма не узнан: чип с глаголом лаймом, без обводки (правило кита). */
+  .vendor-pick { align-self: center; color: var(--color-accent-text); white-space: nowrap; }
   .vendor-tip { position: relative; display: inline-flex; line-height: 1; cursor: default; -webkit-tap-highlight-color: transparent; }
   .vendor-tip::after {
     content: attr(data-tip); position: absolute; left: calc(100% + .375rem); top: 50%; z-index: 5; translate: 0 -50%;

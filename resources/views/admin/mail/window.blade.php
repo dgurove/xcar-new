@@ -1,6 +1,7 @@
 {{-- Окно ветки: тема, участники, ТС или предложение, лента писем (x-mail.chain) с одним «Ответить» внизу.
      Привязка, архив, «Не прочитано» и в CRM ссылка на страницу ветки — в меню «···». Страницы ветки на стоянке нет. --}}
-@php $park = $base === '/mail'; $who = collect($thread->counterparts())->map(fn ($p) => $p['name'] ?: $p['email'])->take(3); $linked = $park ? $thread->vehicle : $thread->offer; $thread->loadMissing('candidate'); $menu = 'thread-menu-'.$thread->id; @endphp
+@php $park = $base === '/mail'; $who = collect($thread->counterparts())->map(fn ($p) => $p['name'] ?: $p['email'])->take(3); $linked = $park ? $thread->vehicle : $thread->offer; $thread->loadMissing('candidate'); $menu = 'thread-menu-'.$thread->id;
+    $pick = \App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $base, $thread, $thread->messages, $thread->candidate); @endphp
 <turbo-frame id="letters-frame" target="_top">
     {{-- Ответ действия из окна: тост здесь, страница под окном его не нарисует; letters-close — письмо после «Принять»,
          окно закрывается. --}}
@@ -14,6 +15,9 @@
                     <button type="button" class="btn btn-s btn-quiet btn-round -my-1 -mr-2 shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
                     <div id="{{ $menu }}" class="menu" popover data-menu-target="list" role="menu">
                         <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close unhide#show">{{ $linked ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
+                        {{-- Вендор письма — выбрать или сменить: письма с этого адреса теперь его (x-mail.vendor-sheet). --}}
+                        @if ($pick)<button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="menu#close emit#send"
+                            data-emit-event-param="vendor-pick:open" data-emit-url-param="{{ $pick['url'] }}" data-emit-sender-param="{{ $pick['sender'] }}" data-emit-name-param="{{ $pick['name'] }}" data-emit-domain-param="{{ $pick['domain'] }}">{{ $thread->vendor ? 'Сменить вендора' : 'Выбрать вендора' }}</button>@endif
                         <form method="post" action="{{ $base }}/{{ $thread->id }}/archive" data-turbo-frame="letters-frame" class="contents">@csrf<button class="menu-item w-full" role="menuitem">{{ $thread->archived_at ? 'Вернуть из архива' : 'В архив' }}</button></form>
                         <form method="post" action="{{ $base }}/{{ $thread->id }}/unread" data-turbo-frame="_top" class="contents">@csrf<button class="menu-item w-full" role="menuitem">Не прочитано</button></form>
                         @unless ($park)<a href="{{ $base }}/{{ $thread->id }}" class="menu-item" role="menuitem">Страница ветки</a>@endunless

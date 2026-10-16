@@ -21,6 +21,7 @@
     @elseif ($intent === null || $intent === Intent::Intake)<x-ui.state>{{ $c->requestTag() }}</x-ui.state>
     @elseif ($intent->short())<span class="tag {{ $intent->tone() }}">{{ $intent->short() }}</span>@endif
     @if (! $v('brand') && ! $v('vin'))<x-ui.state tone="urgent">Марки и VIN в письме нет</x-ui.state>@elseif (! $v('vin'))<x-ui.state tone="urgent">VIN в письме нет</x-ui.state>@endif
+    @if (! $c->vendor)<x-mail.vendor-pick :pick="\App\Mail\VendorPick::of(auth()->user(), $c->scope, $c->scope === \App\Mail\Scope::Park ? '/mail' : '/work/mail', $c->thread, $c->relationLoaded('messages') ? $c->messages : [], $c)"/>@endif
     @if ($c->code)<x-vendor.ref :vendor="$c->vendor" :ref="$c->code" copy class="tag nums"/>@elseif ($c->vendor)<x-vendor.name :vendor="$c->vendor" class="tag"/>@elseif ($v('vendor'))<span class="tag">{{ $v('vendor') }}</span>@endif
     @if ($v('plate'))<x-ui.copy-code class="tag" :value="$v('plate')" done="Госномер в буфере" title="Скопировать госномер"/>@endif
     <x-ui.vin-code :vin="$v('vin')" class="tag"/>

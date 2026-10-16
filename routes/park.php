@@ -201,6 +201,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/mail/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['v', 'c', 't'])->whereNumber('id')->middleware('park.manage');
     Route::post('/mail/{thread}/candidate', [MailController::class, 'candidate']);
     Route::post('/mail/{thread}/link', [MailController::class, 'link']);
+    Route::post('/mail/{thread}/vendor', [MailController::class, 'vendor']);
 });
 
 // На хосте стоянки ничего, кроме стоянки и входа.

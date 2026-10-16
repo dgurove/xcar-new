@@ -133,9 +133,15 @@ export function openSheet(d, { history: withHistory = true } = {}) {
 }
 
 // Возвращает обещание: история приведена в порядок (запись шторки снята).
+// Шторки в анимации закрытия — в памяти, а не только классом: ответ формы шторки морфом снимает .is-closing до конца
+// анимации, и тост ответа ложился в уходящую шторку (toast_controller#host).
+const closing = new WeakSet();
+export const isClosing = (d) => closing.has(d);
+
 export function closeSheet(d, from = 0, viaHistory = false) {
     if (!d.open) return Promise.resolve();
     if (reduce.matches || !d.matches(':modal') || d.classList.contains('is-closing')) { d.close(); return unwind(d, viaHistory); }
+    closing.add(d);
     d.style.setProperty('--from', `${from}px`);
     d.style.translate = '';
     d.style.transition = '';
@@ -144,6 +150,7 @@ export function closeSheet(d, from = 0, viaHistory = false) {
     const finish = () => {
         if (done) return;
         done = true;
+        closing.delete(d);
         d.classList.remove('is-closing');
         d.style.removeProperty('--from');
         d.close();

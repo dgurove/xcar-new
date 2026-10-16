@@ -35,6 +35,7 @@
         <div class="-mt-3 mb-5 sm:-mt-4">
             <x-mail.letter-tags :candidate="$candidate" :letter="$letter" :waits="$waits"/>
         </div>
+        @if (\App\Mail\VendorPick::allowed(auth()->user(), \App\Mail\Scope::Park))<x-mail.vendor-sheet park/>@endif
     @endif
     @if ($errors->any())<p class="field-error mb-4">{{ $errors->first() }}</p>@endif
     {{-- Форма первой: на телефоне поля сразу, документы письма — чипами над ними, открываются шторкой

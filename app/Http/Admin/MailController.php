@@ -63,7 +63,9 @@ use App\Support\Nav;
 use App\Support\OfficePreview;
 use App\Support\Sort;
 use App\Users\User;
+use App\Vendors\Actions\BindSender;
 use App\Vendors\ContactRole;
+use App\Vendors\Kind;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
@@ -836,6 +838,45 @@ class MailController
         $link($thread, $offer);
 
         return $back()->with('toast', "Привязано к № {$offer->number}");
+    }
+
+    /**
+     * «Выбрать вендора» у письма, где вендор не узнан (16.10.2026, владелец): выбрать из своих или завести нового — и письма
+     * с этого адреса (или всего домена, если он не общий почтовый) теперь его (`BindSender`). Вендоров правит админ CRM,
+     * на парковке — администратор парковки.
+     */
+    public function vendor(Request $request, Thread $thread, BindSender $bind)
+    {
+        $this->guard($thread);
+        $park = $this->scope === Scope::Park;
+        abort_unless($park ? $request->user()->isParkAdmin() : $request->user()->canManageCrm(), 403);
+        $data = $request->validate([
+            'mode' => ['required', 'in:pick,new'],
+            'vendor_id' => ['required_if:mode,pick', 'nullable', 'integer'],
+            'name' => ['required_if:mode,new', 'nullable', 'string', 'max:80'],
+            'kind' => ['nullable', Rule::enum(Kind::class)],
+            'sender' => ['required', 'email', 'max:255'],
+            'domain' => ['nullable', 'boolean'],
+        ], ['vendor_id.required_if' => 'Выберите вендора', 'name.required_if' => 'Название вендора']);
+        $sides = fn () => $park ? Vendor::onPark() : Vendor::query()->whereNull('crm_vendor_id');
+        if ($data['mode'] === 'pick') {
+            $vendor = $sides()->find($data['vendor_id']);
+            if (! $vendor) {
+                return back()->withErrors(['vendor_id' => 'Выберите вендора'])->withInput();
+            }
+        } else {
+            $vendor = Vendor::findOrCreateByName($data['name'], ['kind' => $data['kind'] ?? null, 'on_park' => $park ?: null]);
+            if ($park && ! $vendor->on_park) {
+                $vendor->forceFill(['on_park' => true])->save();
+            }
+        }
+        $read = $bind($vendor, $data['sender'], $this->scope, (bool) ($data['domain'] ?? false));
+        $back = $request->header('Turbo-Frame') === 'letters-frame' ? redirect("{$this->base}/{$thread->id}/window") : back();
+        $toast = $vendor->wasRecentlyCreated ? "Вендор «{$vendor->name}» заведён"
+            : ($bind->movedFrom ? "Адрес перенесён от «{$bind->movedFrom}» к «{$vendor->name}»" : "Письма с адреса — «{$vendor->name}»");
+
+        return $back->with('toast', $toast.($read > 1 ? ", писем: {$read}" : ''))
+            ->with('toast-href', $vendor->wasRecentlyCreated ? ($park ? "/vendors/{$vendor->id}" : "/settings/vendors/{$vendor->id}") : null);
     }
 
     public function reparse(Message $message)

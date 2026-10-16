@@ -138,6 +138,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['o', 'c', 't'])->whereNumber('id');
         Route::post('/{thread}/candidate', [MailController::class, 'candidate']);
         Route::post('/{thread}/link', [MailController::class, 'link']);
+        Route::post('/{thread}/vendor', [MailController::class, 'vendor']);
     });
     // Кабинет CRM = «Настройки»: корень — профиль (общий экран с сайтом), /account сюда же.
     Route::get('/settings', [ProfileController::class, 'profile']);

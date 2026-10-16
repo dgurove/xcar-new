@@ -1,5 +1,5 @@
 {{-- Шапка незаведённой цепочки — в карточке «Из писем» и в окне цепочки: ТС по имени, под ней серой строкой логотип
-     вендора с номером убытка (`x-vendor.ref`) и этап словом; справа «Не заявка» и «Завести» с искрой: редактор
+     вендора с номером убытка (`x-vendor.ref`; вендор не узнан — «Выбрать вендора», `x-mail.vendor-pick`) и этап словом; справа «Не заявка» и «Завести» с искрой: редактор
      открывается сразу, документы в нём читаются сами (x-mail.reader-body). В списке «Не заявка» —
      только на компьютере (на телефоне цепочку отклоняет свайп), в окне — всегда; window — формы уводят из окна. --}}
 @props(['candidate', 'queue', 'park' => true, 'window' => false])
@@ -13,6 +13,7 @@
     <div class="min-w-0 flex-1">
         <div class="chain-head-title {{ $c->hasCar() ? '' : 'text-ink-muted' }}">{{ $c->title() }}</div>
         <div class="chain-head-sub">
+            @if (! $c->vendor)<x-mail.vendor-pick :pick="\App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $park ? '/mail' : '/work/mail', $c->thread, $c->relationLoaded('messages') ? $c->messages : [], $c)"/>@endif
             <x-vendor.ref :vendor="$c->vendor" :ref="$c->code"/>
             <span class="{{ $c->stage === CandidateStage::Sold ? 'text-urgent' : '' }}">{{ $stage }}</span>
         </div>

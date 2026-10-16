@@ -14,3 +14,6 @@
         <turbo-frame id="letters-frame" target="_top" data-window-target="frame" @if ($url) src="{{ $url }}" @endif><x-ui.skeleton :rows="3"/></turbo-frame>
     </x-ui.sheet>
 </div>
+{{-- Шторка «Вендор письма» — там же, где окно писем: одна на страницу, её открывает «Выбрать вендора» (x-mail.vendor-pick). --}}
+@php $vendorScope = \App\Support\Surface::current() === \App\Support\Surface::Park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers; @endphp
+@if (\App\Mail\VendorPick::allowed(auth()->user(), $vendorScope))<x-mail.vendor-sheet :park="$vendorScope === \App\Mail\Scope::Park"/>@endif
