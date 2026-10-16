@@ -2,7 +2,10 @@
 
 namespace App\Media;
 
+use Spatie\MediaLibrary\Conversions\Conversion;
+use Spatie\MediaLibrary\Conversions\ConversionCollection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Spatie\MediaLibrary\Support\UrlGenerator\UrlGeneratorFactory;
 use Throwable;
 
 final class MediaUrl
@@ -12,6 +15,9 @@ final class MediaUrl
      * он выбирает w960 — на экране не отличить, а весит вдвое-втрое меньше и не забивает память телефона.
      */
     private const PHONE_DENSE = '(max-width: 639.98px) and (min-resolution: 2.5dppx) 320px';
+
+    /** @var array<string, Conversion> конверсия по модели, коллекции и имени — одна на процесс */
+    private static array $conversions = [];
 
     /** sizes для srcset: если на телефоне кадр во всю ширину (последнее значение в vw) — с потолком для 3x. */
     public static function sizes(string $sizes): string
@@ -42,9 +48,22 @@ final class MediaUrl
             return $media->getUrl();
         }
         try {
-            return $media->hasGeneratedConversion($conversion) ? $media->getUrl($conversion) : $media->getUrl();
+            return $media->hasGeneratedConversion($conversion)
+                ? UrlGeneratorFactory::createForMedia($media)->setConversion(self::conversion($media, $conversion))->getUrl()
+                : $media->getUrl();
         } catch (Throwable) {
             return $media->getUrl();
         }
+    }
+
+    /**
+     * `getUrl($conversion)` на каждый адрес заново заводит модель и все её конверсии (~1,2 мс): каталог в 212 плиток по
+     * шесть кадров и четыре адреса на кадр собирался 7 с из 8 и под нагрузкой упирался в 30 с (16.10.2026). Конверсии
+     * зависят только от модели и коллекции (`registerMediaConversions`) — собираем их раз.
+     */
+    private static function conversion(Media $media, string $name): Conversion
+    {
+        return self::$conversions[$media->model_type.'|'.$media->collection_name.'|'.$name]
+            ??= ConversionCollection::createForMedia($media)->getByName($name);
     }
 }

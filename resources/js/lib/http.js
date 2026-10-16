@@ -7,7 +7,8 @@
 // - обрыв — тост «Нет связи», 429 — «Слишком много попыток», другой не-2xx — «Не получилось»; quiet — без тоста;
 // - statuses — коды, которые вызывающий разбирает сам (422 с ошибками полей): ответ отдаётся как есть;
 // - отменённый (signal, устаревший ответ поиска) — null без тоста;
-// - ответа нет timeout мс (20 с; у загрузки файлов — 120 с) — как обрыв, «Нет связи».
+// - ответа нет timeout мс (35 с — дольше серверных 30, иначе PDF и снятие знака под нагрузкой обрывались на полпути,
+//   16.10.2026; у загрузки файлов — 120 с) — как обрыв, «Нет связи».
 import { refreshCsrf } from '../net';
 
 const withFiles = (body) => body instanceof FormData && [...body.values()].some((v) => v instanceof File && v.size);
@@ -15,7 +16,7 @@ const withFiles = (body) => body instanceof FormData && [...body.values()].some(
 export const csrf = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
 export async function request(url, { method = 'GET', body, json, headers = {}, accept = 'application/json', signal, quiet = false, statuses = [], timeout } = {}) {
-    const wait = timeout ?? (withFiles(body) ? 120_000 : 20_000);
+    const wait = timeout ?? (withFiles(body) ? 120_000 : 35_000);
     const send = () => {
         const h = { Accept: accept, 'X-Requested-With': 'XMLHttpRequest', ...headers };
         if (method.toUpperCase() !== 'GET') h['X-CSRF-TOKEN'] = csrf();

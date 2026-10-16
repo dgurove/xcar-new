@@ -36,9 +36,10 @@ final class CodeMatcher
     /** @return list<string> в порядке появления в тексте */
     public function findAll(?string $text): array
     {
-        // « / » и « - » с пробелами по обе стороны — разделители темы («vin … / Haval F7 / 24-82 MT …», «…/25 - LEXUS»), не часть номера:
-        // иначе после нормализации он прилипает к номеру и тот не читается.
-        $normalized = Code::normalize($text === null ? null : preg_replace('/\s+[\/\-–—]\s+/u', ' | ', $text));
+        // « / », « - » и сдвоенные « // », « \\ » с пробелами по обе стороны — разделители темы («vin … / Haval F7 / 24-82 MT …»,
+        // «…/25 - LEXUS», Т-Страхование «AUT-26-878170 // 2024 Belgee»), не часть номера: иначе после нормализации он
+        // прилипает к номеру и тот не читается (16.10.2026: письмо Т по идущей сделке завело вторую сделку на ту же машину).
+        $normalized = Code::normalize($text === null ? null : preg_replace('/\s+(?:[\/\\\\]+|[\-–—])\s+/u', ' | ', $text));
         if ($normalized === null || $normalized === '') {
             return [];
         }

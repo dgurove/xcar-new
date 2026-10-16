@@ -553,6 +553,9 @@ class MailController
         if ($saleTo ?? null) {
             $defaults['to'] = $saleTo;
         }
+        // Адрес из копии вендора, ставший адресатом (общий total@ Т-Страхования, когда писем по сделке нет), в копии не повторяем.
+        $to = array_map(fn ($a) => mb_strtolower(trim($a)), explode(',', (string) ($defaults['to'] ?? '')));
+        $defaults['cc'] = implode(', ', array_filter(array_map('trim', explode(',', (string) ($defaults['cc'] ?? ''))), fn ($a) => $a !== '' && ! in_array(mb_strtolower($a), $to, true)));
         if ($parent && ! $offer) {
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
         }

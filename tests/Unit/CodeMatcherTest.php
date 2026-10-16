@@ -30,4 +30,14 @@ class CodeMatcherTest extends TestCase
             $this->assertSame($codes, array_map(fn ($c) => Code::normalize($c), $matcher->findAll($subject)), $subject);
         }
     }
+
+    /** Т-Страхование отделяет номер от машины чем придётся (16.10.2026: « // » номер не давал). */
+    public function test_tinsurance_separators(): void
+    {
+        $matcher = new CodeMatcher;
+        foreach (['Fwd: AUT-26-878170 // 2024 Belgee X50 (Р226КЕ977 / Y4K8622Z6RB920776)', 'Fwd: AUT-26-878170\\ 2024 Belgee',
+            'Fwd: AUT-26-878170 \\\\ 2024 Belgee', 'Fwd: AUT-26-878170  || 2024 Belgee', 'Fwd: AUT-26-878170 | 2024 | Belgee'] as $subject) {
+            $this->assertSame(['AUT-26-878170'], $matcher->findAll($subject), $subject);
+        }
+    }
 }
