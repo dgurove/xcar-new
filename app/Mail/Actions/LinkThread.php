@@ -11,6 +11,7 @@ use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -93,6 +94,16 @@ final class LinkThread
                 $this($thread, $offer);
 
                 return $offer;
+            }
+        }
+        // Госномер — только у живого предложения и только когда оно одно: письма новых страховых бывают без номера
+        // убытка и VIN («Годные остатки Tenet T4 Х871СВ763», 16.10.2026), а машина уже заведена.
+        if ($plate = Patterns::plateKey($this->keyed($message, 'plate')[0] ?? null)) {
+            $live = Offer::whereCar('plate', $plate)->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled])->limit(2)->get();
+            if ($live->count() === 1) {
+                $this($thread, $live->first());
+
+                return $live->first();
             }
         }
 

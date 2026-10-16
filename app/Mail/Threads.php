@@ -62,7 +62,7 @@ final class Threads
 
     private function recount(Thread $thread): void
     {
-        $messages = Message::where('thread_id', $thread->id)->get(['id', 'subject', 'is_seen', 'has_attachments', 'date_at', 'direction', 'intent', 'from_email']);
+        $messages = Message::where('thread_id', $thread->id)->get(['id', 'subject', 'is_seen', 'has_attachments', 'date_at', 'direction', 'intent', 'from_email', 'parsed']);
         if ($messages->isEmpty()) {
             $thread->delete();
 
@@ -86,8 +86,8 @@ final class Threads
             // Число файлов ветки — колонкой: подзапрос на строку списка стоил секунду на экран.
             'attachments_count' => DB::table('mail_attachments')->whereIn('message_id', $messages->pluck('id'))->where('is_inline', false)->count(),
             'participants' => $participants,
-            // Вендор ветки — по первому чужому адресу: фильтр «Вендор», бейдж в строке, правило «Прочее».
-            'vendor_id' => self::vendorOf($thread, $participants)?->id,
+            // Вендор ветки — по настоящему отправителю: фильтр «Вендор», бейдж в строке, правило «Прочее».
+            'vendor_id' => self::vendorOf($thread, $participants, $sorted)?->id,
             // Номера ветки — объединение номеров её писем из индекса (`ReadLetter`), письма заново не читаются.
             'keys' => DB::table('mail_message_keys')->whereIn('message_id', $messages->pluck('id'))->distinct()->orderBy('key')->pluck('key')->all(),
         ])->save();
@@ -96,7 +96,7 @@ final class Threads
     /** Дата письма, которое ждёт нашего ответа, или null: считается один раз здесь и живёт в `needs_reply_at`. */
     private static function waiting(Thread $thread, ?Message $last): ?Carbon
     {
-        if (! $last || $last->direction !== Direction::In || $last->isOurs()) {
+        if (! $last || $last->direction !== Direction::In || ($last->isOurs() && ! $last->isForwardedByStaff())) {
             return null;
         }
         if (! (Intent::tryFrom((string) $last->intent)?->needsReply() ?? false)) {
@@ -108,9 +108,27 @@ final class Threads
         return $thread->answered_at?->gte($last->date_at) ? null : $last->date_at;
     }
 
-    /** Вендор по первому адресу, который не наш ящик и не сотрудник. */
-    public static function vendorOf(Thread $thread, array $participants): ?Vendor
+    /**
+     * Вендор ветки: сначала тот, кого разбор узнал в письмах (последнее входящее с вендором — в пересылке сотрудника он в
+     * «От:» цитаты), иначе по первому адресу, который не наш ящик и не сотрудник. Без первого шага всё, что Андрей
+     * пересылает со своего mail.ru, оставалось без вендора: 64 из 64 веток offer@ (16.10.2026).
+     *
+     * @param  iterable<Message>  $messages
+     */
+    public static function vendorOf(Thread $thread, array $participants, iterable $messages = []): ?Vendor
     {
+        foreach (collect($messages)->reverse() as $m) {
+            if ($m->direction !== Direction::In) {
+                continue;
+            }
+            if (($id = $m->field('vendor_id')) && ($vendor = Vendor::find($id))) {
+                return $vendor;
+            }
+            // Адрес отправителя пересылки узнали позже разбора (`LearnSenders`, вендора поставили руками).
+            if ($m->isForwardedByStaff() && $thread->account && ($vendor = Vendor::forSender($m->field('sender'), $thread->account->scope))) {
+                return $vendor;
+            }
+        }
         $own = [mb_strtolower((string) $thread->account?->email), ...Message::ownEmails()];
         $email = collect($participants)->pluck('email')->first(fn ($e) => $e && ! in_array(mb_strtolower((string) $e), $own, true));
 

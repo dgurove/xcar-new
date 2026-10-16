@@ -14,6 +14,7 @@ use App\Cars\Vin\VinAutofill;
 use App\Support\Liters;
 use App\Users\Role;
 use App\Users\User;
+use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 
 /** Подсказки комбобоксов и создание записей справочника на лету. */
@@ -121,6 +122,26 @@ class ReferenceController
         $brand = Brand::resolve($request->validate(['name' => ['required', 'string', 'max:120']])['name']);
 
         return response()->json(['id' => $brand->id, 'label' => $brand->name]);
+    }
+
+    /** Поле «Вендор» предложения: вендоры CRM (не парковые двойники), действующие, по началу и куску имени. */
+    public function vendors(Request $request)
+    {
+        $vendors = Vendor::query()->whereNull('crm_vendor_id')->where('is_active', true)->search((string) $request->query('q', ''))
+            ->orderBy('name')->limit(20)->get(['id', 'name']);
+
+        return response()->json($vendors->map(fn ($v) => ['id' => $v->id, 'label' => $v->name]));
+    }
+
+    /**
+     * «Добавить «ТИТ»» в поле вендора (16.10.2026: письмо новой страховой, а завести её можно было только в настройках).
+     * Тот же вендор под другим регистром — тот же (`Vendor::findOrCreateByName`).
+     */
+    public function createVendor(Request $request)
+    {
+        $vendor = Vendor::findOrCreateByName($request->validate(['name' => ['required', 'string', 'max:80']])['name']);
+
+        return response()->json(['id' => $vendor->id, 'label' => $vendor->name]);
     }
 
     public function createModel(Request $request)

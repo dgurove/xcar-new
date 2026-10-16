@@ -22,6 +22,7 @@ use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Actions\AutoOffer;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Park\Actions\AutoRequest;
 use App\Park\City;
 use App\Park\Events\CandidateArrived;
@@ -149,7 +150,7 @@ final class ChainBuilder
             $this->freeze->thaw($messages->whereNotNull('frozen_at')->pluck('id')->all());
             $messages = $candidate->messages()->with(['account', 'attachments'])->get();
         }
-        $live = $messages->reject(fn (Message $m) => in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true));
+        $live = $messages->reject(fn (Message $m) => $m->intent === Intent::Billing->value || Intent::silent($m->intent));
         // Пересылка сотрудником письма вендора — поля вендора (страховая, цена, адрес), а не только марка и номер.
         $theirs = $live->filter(fn (Message $m) => ! $m->isOurs() || $m->isForwardedByStaff());
         $ours = $live->filter(fn (Message $m) => $m->isOurs() && ! $m->isForwardedByStaff());
@@ -277,17 +278,35 @@ final class ChainBuilder
         if ($message->direction !== Direction::In || ! $message->keys()) {
             return false;
         }
-        if ($park && in_array($message->intent, [Intent::Auto->value, Intent::Billing->value], true)) {
+        if ($park && ($message->intent === Intent::Billing->value || Intent::silent($message->intent))) {
             return false;
         }
         if ($park && ! isset($fields['vendor_id']) && $message->intent === Intent::Other->value) {
             return false;
         }
-        if ($park ? ! ParkExtractor::looksLikeRequest($fields) : ! Extractor::looksLikeOffer($fields)) {
+        if ($park ? ! ParkExtractor::looksLikeRequest($fields) : ! (Extractor::looksLikeOffer($fields) || $this->carFromOutside($message, $fields))) {
             return false;
         }
 
         return ! $this->known($park, $fields);
+    }
+
+    /**
+     * CRM: письмо извне о машине без номера убытка и цены — новая страховая просит «ваше предложение по стоимости годных
+     * остатков» (ТИТ, Tenet T4, 16.10.2026): госномер, VIN или марка есть, это не ответ в переписке и не служебное. Без
+     * этого такое письмо не становилось делом вовсе. Вендора `AutoOffer` не знает — дело ждёт человека в «Из писем».
+     */
+    private function carFromOutside(Message $message, array $fields): bool
+    {
+        if (! $message->isFromVendor() || Intent::silent($message->intent)) {
+            return false;
+        }
+        if (! isset($fields['vin']) && ! isset($fields['plate']) && ! isset($fields['brand'])) {
+            return false;
+        }
+        $message->loadMissing('attachments');
+
+        return AutoOffer::notAnOffer((string) $message->subject, (string) $message->text_body, $message->attachments->pluck('filename')->all()) === null;
     }
 
     /** ТС или предложение с таким номером, VIN или госномером уже есть — ветку к ним привяжет LinkThread. */
@@ -305,7 +324,9 @@ final class ChainBuilder
                 || ($plate && $live()->whereCar('plate', $plate)->exists());
         }
 
-        return ($code && Offer::whereCar('claim_ref_key', $code)->exists()) || ($vin && Offer::whereCar('vin', $vin)->exists());
+        // Госномер — только у живого предложения: архивное с тем же номером — давняя история, письмо о новом деле.
+        return ($code && Offer::whereCar('claim_ref_key', $code)->exists()) || ($vin && Offer::whereCar('vin', $vin)->exists())
+            || ($plate && Offer::whereCar('plate', $plate)->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled])->exists());
     }
 
     /**

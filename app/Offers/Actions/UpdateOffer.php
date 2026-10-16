@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Cars\Vin\RememberVin;
 use App\Mail\Actions\LinkThread;
+use App\Vendors\Actions\LearnSenders;
 use App\Media\Jobs\StampPhotos;
 use App\Offers\Bid;
 use App\Offers\BidKind;
@@ -63,6 +64,10 @@ final class UpdateOffer
         if (array_intersect(['audience_rules', 'vendor_id'], $changed)) {
             app(SyncViewers::class)($offer);
             app(NotifyViewers::class)($offer, live: true);
+        }
+        // Вендора поставили руками письму, отправителя которого разбор не знал, — запомнить его адрес у вендора.
+        if (in_array('vendor_id', $changed, true) && $offer->vendor_id) {
+            app(LearnSenders::class)($offer);
         }
         // Белый список «Кому показывать в сделке»: вновь добавленным — уведомление, как о новом.
         $reopened = $showWasOver && in_array('deal_show_until', $changed, true) && ! $offer->dealShowOver();

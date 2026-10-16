@@ -123,16 +123,24 @@ class Message extends Model
     }
 
     /**
-     * Письмо вендора, пересланное сотрудником со своего ящика: пришло к нам, отправитель — наш человек, а разбор
-     * нашёл в пересылке вендора (`sender` из «От:» цитаты, не сам сотрудник). Для полей цепочки это письмо вендора:
-     * страховая, закупочная, пробег, адрес — его, иначе дело заводилось без вендора (Howo 780961/2026, 29.09.2026).
+     * Письмо извне, пересланное сотрудником со своего ящика: пришло к нам, отправитель — наш человек, а в «От:» цитаты
+     * чужой адрес (`sender`, не сотрудник и не наш ящик). Для полей цепочки это письмо вендора: страховая, закупочная,
+     * пробег, адрес — его (Howo 780961/2026, 29.09.2026). Вендор знать не обязательно (16.10.2026: новая страховая «ТИТ»
+     * писала с mail.ru, и её письмо считалось нашим — ни «ждёт ответа», ни ответа ей, ни цепочки).
      */
     public function isForwardedByStaff(): bool
     {
         $sender = mb_strtolower((string) $this->field('sender'));
+        $from = mb_strtolower((string) $this->from_email);
 
-        return $this->direction === Direction::In && $this->field('vendor_id') !== null && $sender !== ''
-            && $sender !== mb_strtolower((string) $this->from_email) && in_array(mb_strtolower((string) $this->from_email), self::ownEmails(), true);
+        return $this->direction === Direction::In && $sender !== '' && $sender !== $from && in_array($from, self::ownEmails(), true)
+            && ! in_array($sender, self::ownEmails(), true) && ! in_array($sender, self::ownMailboxes(), true);
+    }
+
+    /** @return list<string> адреса наших ящиков (offer@, deal@, storage@) */
+    public static function ownMailboxes(): array
+    {
+        return Cache::remember('mail:own-mailboxes', 300, fn () => Account::query()->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->filter()->values()->all());
     }
 
     /** Пересылка сотрудника: кто написал на самом деле — имя из «От:» цитаты («Лапшин Александр Юрьевич»), иначе адрес. */

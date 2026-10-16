@@ -10,7 +10,7 @@ namespace App\Mail;
 final class Boxes
 {
     /** Пилюли почты. `register` сюда не входит: это вшитая выборка «Из писем», снять её нечем. */
-    public const BOXES = ['attention' => 'Требуют внимания', 'all' => 'Все', 'other' => 'Прочее', 'sent' => 'Отправленные', 'archive' => 'Архив'];
+    public const BOXES = ['attention' => 'Требуют внимания', 'all' => 'Все', 'sent' => 'Отправленные', 'archive' => 'Архив'];
 
     /** По последнему письму: по возрастанию — бывшее «Дольше ждут». */
     public const SORTS = ['fresh' => ['Последнее письмо', 'desc']];
@@ -22,18 +22,15 @@ final class Boxes
 
     /**
      * «Прочее» — не про машину: без ТС, цепочки и предложения, и при этом либо не вендор, либо автоответ,
-     * либо бухгалтерия (акты, счета, сверка — это переписка бухгалтерий, а не дело по машине).
+     * либо бухгалтерия (акты, счета, сверка — это переписка бухгалтерий, а не дело по машине). Пилюлей оно не прячется
+     * (16.10.2026, владелец: письмо новой страховой лежало в «Прочем», и его никто не видел): стоит во «Все», убрать —
+     * чипом «Без прочего» (`notNoise`) на этот раз.
      */
-    public static function noise($query): void
-    {
-        $query->whereNull('vehicle_id')->whereNull('candidate_id')->whereNull('offer_id')
-            ->where(fn ($w) => $w->whereNull('vendor_id')->orWhereRaw(self::LAST_INTENT." in ('auto', 'billing')"));
-    }
-
     public static function notNoise($query): void
     {
+        // Ждёт ответа (вопрос, «Не доставлено») — не прочее, даже без машины и вендора.
         $query->where(fn ($w) => $w->whereNotNull('vehicle_id')->orWhereNotNull('candidate_id')->orWhereNotNull('offer_id')
-            ->orWhere(fn ($v) => $v->whereNotNull('vendor_id')->whereRaw('coalesce('.self::LAST_INTENT.", '') not in ('auto', 'billing')")));
+            ->orWhereNotNull('needs_reply_at')->orWhere(fn ($v) => $v->whereNotNull('vendor_id')->whereRaw('coalesce('.self::LAST_INTENT.", '') not in ('auto', 'billing')")));
     }
 
     /**
@@ -73,12 +70,11 @@ final class Boxes
             ->selectRaw('count(distinct '.self::group($scope).') as n')->value('n');
     }
 
-    /** Сколько дел в пилюле «Все» — итог таба «Почта»: без архива и «Прочего», делами, как в заголовке экрана. */
+    /** Сколько дел в пилюле «Все» — итог таба «Почта»: без архива, делами, как в заголовке экрана. */
     public static function allCount(Scope $scope): int
     {
         return (int) Thread::whereIn('account_id', Account::where('scope', $scope)->select('id'))
             ->where('messages_count', '>', 0)->whereNull('archived_at')
-            ->where(fn ($w) => self::notNoise($w))
             ->selectRaw('count(distinct '.self::group($scope).') as n')->value('n');
     }
 }

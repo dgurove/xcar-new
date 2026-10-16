@@ -230,7 +230,7 @@ final class FillFromDocs
             }
         };
         $all = $vehicle->threads->flatMap(fn ($t) => $t->messages)
-            ->reject(fn (Message $m) => in_array($m->intent, [Intent::Billing->value, Intent::Auto->value], true));
+            ->reject(fn (Message $m) => $m->intent === Intent::Billing->value || Intent::silent($m->intent));
         // Слова письма — только входящих: в нашем ответе они пересказ; файлы — всех писем, наши пересылки документов тоже.
         $messages = $all->filter(fn (Message $m) => $m->direction === Direction::In);
         foreach ($messages as $message) {

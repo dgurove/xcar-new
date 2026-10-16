@@ -85,6 +85,9 @@ class MailController
 {
     public const GROUPS_PER_PAGE = 30;
 
+    /** Переключатели почты, что действуют на этот раз и не запоминаются (`ListPrefs`). */
+    private const ONCE = ['unread', 'files', 'quiet'];
+
     /** `$queue` — адрес «Из писем»: оттуда же идут «Завести» и «Не заявка» у цепочки. */
     public function __construct(
         private Scope $scope = Scope::Offers,
@@ -125,8 +128,12 @@ class MailController
                 ->mapWithKeys(fn (Intent $i) => [$i->value => new Option($i->value, $i->title())])->all()),
             Facet::toggle('unread', 'Непрочитанные', fn ($t) => $t->where('unread_count', '>', 0)),
             Facet::toggle('files', 'С файлами', fn ($t) => $t->where('has_attachments', true)),
+            // «Прочее» (автоответы, бухгалтерия, письма без машины не от вендора) стоит во «Все»: убрать — этим чипом.
+            Facet::toggle('quiet', 'Без прочего', fn ($t) => $t->where(fn ($w) => Boxes::notNoise($w))),
         )->countBy('count(distinct '.Boxes::group($this->scope).')');
-        ListPrefs::sync($request, $list, keep: [...$facets->keys(), 'account'], view: false);
+        // Помнятся вендор, смысл и ящик. Переключатели — на этот раз: забытый «Непрочитанные» прятал у модератора все
+        // прочитанные письма неделями (16.10.2026).
+        ListPrefs::sync($request, $list, keep: [...array_diff($facets->keys(), self::ONCE), 'account'], view: false);
         $park = $this->scope === Scope::Park;
         // Ящик (13.10.2026, владелец: «письма только с offer и только с deal»): выбран — и дела, и письма в их карточках
         // только этого ящика. У парковки ящик один, в «Из писем» выборка вшита — переключателя нет.
@@ -143,8 +150,7 @@ class MailController
             'archive' => (clone $all)->whereNotNull('archived_at'),
             'attention' => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::attention($w, $this->scope)),
             'register' => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::register($w, $this->scope)),
-            'other' => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::noise($w)),
-            default => (clone $all)->whereNull('archived_at')->where(fn ($w) => Boxes::notNoise($w)),
+            default => (clone $all)->whereNull('archived_at'),
         };
         // Поиск — не фильтр и идёт мимо пилюли и чипов, по всем письмам (архив тоже); «Из писем» — внутри своей
         // вшитой выборки: экран про одно дело. Адрес он не меняет.
@@ -234,7 +240,6 @@ class MailController
         // а «Ждут ответа» — все ветки, и числа были несравнимы).
         $counts = $forced ? [] : [
             'attention' => (int) $facets->applyTo($pick('attention'))->selectRaw('count(distinct '.$group.') as n')->value('n'),
-            'other' => (int) $facets->applyTo($pick('other'))->selectRaw('count(distinct '.$group.') as n')->value('n'),
         ];
 
         return view('admin.mail.index', $data + [
@@ -245,18 +250,6 @@ class MailController
             // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
             'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window' : null,
         ]);
-    }
-
-    /** «Всё в архив» у «Прочего»: автоответы и рассылки уходят из входящих разом. */
-    public function archiveOther(ArchiveThread $archive)
-    {
-        $accounts = Account::where('scope', $this->scope)->pluck('id');
-        $threads = Thread::whereIn('account_id', $accounts)->whereNull('archived_at')->whereRaw(Boxes::LAST_DIRECTION." = 'in'")->where(fn ($w) => Boxes::noise($w))->get();
-        foreach ($threads as $thread) {
-            $archive($thread);
-        }
-
-        return redirect($this->base)->with('toast', 'В архиве: '.$threads->count());
     }
 
     /** «Заявка ›» (CRM: «Предложение ›») у нераспознанного письма: кандидат из ветки как есть, дальше обычная дверь заведения. */

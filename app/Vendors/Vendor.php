@@ -181,10 +181,10 @@ class Vendor extends Model implements HasMedia
         return self::whereRaw('lower(trim(name)) = ?', [mb_strtolower(trim($name))])->orderBy('id')->first();
     }
 
-    /** Найти по имени или завести; заведён сейчас — `wasRecentlyCreated`. */
+    /** Найти по имени или завести; заведён сейчас — `wasRecentlyCreated`. Пустые атрибуты — умолчания базы (тип «страховая»). */
     public static function findOrCreateByName(string $name, array $attributes = []): self
     {
-        return self::named($name) ?? self::create(['name' => trim($name)] + $attributes);
+        return self::named($name) ?? self::create(['name' => trim($name)] + array_filter($attributes, fn ($v) => $v !== null));
     }
 
     /** Общие поля обеих сторон — имя, тип, «работаем»: одни правила в шторках CRM и парковки. */

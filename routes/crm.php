@@ -134,7 +134,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/{thread}/reply/{message}', [MailController::class, 'reply']);
         Route::post('/{thread}/unread', [MailController::class, 'unread']);
         Route::post('/{thread}/answered', [MailController::class, 'answered']);
-        Route::post('/archive-other', [MailController::class, 'archiveOther']);
         Route::post('/{thread}/archive', [MailController::class, 'archive']);
         Route::post('/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['o', 'c', 't'])->whereNumber('id');
         Route::post('/{thread}/candidate', [MailController::class, 'candidate']);
@@ -154,6 +153,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::post('/reference/brands', [ReferenceController::class, 'createBrand']);
     Route::post('/reference/settlements', [ReferenceController::class, 'createSettlement']);
     Route::post('/reference/models', [ReferenceController::class, 'createModel']);
+    Route::get('/reference/vendors', [ReferenceController::class, 'vendors']);
+    Route::post('/reference/vendors', [ReferenceController::class, 'createVendor'])->middleware('ability:canManageCrm');
 
     Route::middleware('ability:canManageCrm')->group(function () {
         Route::get('/work/invoices/new', [InvoiceController::class, 'create']);

@@ -35,7 +35,7 @@ final class InsurerReplies
     /** Ответ страховой, а не автоответ и не наше. */
     public static function counts(Message $message): bool
     {
-        return $message->isFromVendor() && $message->intent !== Intent::Auto->value && $message->replyText() !== '';
+        return $message->isFromVendor() && ! Intent::silent($message->intent) && $message->replyText() !== '';
     }
 
     /** В ответе есть файлы: вложения или ссылка на облако (`CloudShare`). */

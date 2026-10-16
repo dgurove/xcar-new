@@ -24,6 +24,8 @@ enum Intent: string
     case Question = 'question';
     case Hold = 'hold';
     case Auto = 'auto';
+    /** Наше письмо не дошло: ответ почтового сервера (16.10.2026 — отбитое Яндексом как спам лежало в «Прочем»). */
+    case Bounce = 'bounce';
     case Other = 'other';
 
     /**
@@ -38,6 +40,34 @@ enum Intent: string
     private const OFFER_SENDERS = '/^(?:security|noreply|no-reply|no_reply|notify|notifications?|mailer-daemon|postmaster|robot)@/i';
 
     private const OFFER_SUBJECTS = '/вход с нового устройства|пытаются войти|восстановлени\w* пароля|подтвердите (?:адрес|почту)|автоответ|out of office|undeliver|не доставлено/iu';
+
+    private const BOUNCE_SENDERS = '/^(?:mailer-daemon|postmaster|mail-?daemon)@/i';
+
+    // Русская тема — только с начала и про сообщение: «ТС не доставлено на стоянку» у парковки — заявка, не недоставка.
+    private const BOUNCE_SUBJECTS = '/^\s*(?:ваше\s+)?(?:сообщение|письмо)\s+не\s+(?:может\s+быть\s+)?доставлено|undeliver|delivery\s+status\s+notification|delivery\s+(?:has\s+)?failed|mail\s+delivery\s+(?:failed|subsystem)|mail\s+failure|returned\s+mail|delivery\s+failure/iu';
+
+    /** Ответ почтового сервера о недоставке нашего письма: «Ваше сообщение не доставлено», mailer-daemon@. */
+    public static function isBounce(?string $subject, ?string $fromEmail): bool
+    {
+        return preg_match(self::BOUNCE_SENDERS, (string) $fromEmail) === 1 || preg_match(self::BOUNCE_SUBJECTS, (string) $subject) === 1;
+    }
+
+    /** До кого не дошло: первый адрес после «не может быть доставлено» / «could not be delivered», иначе первый в тексте. */
+    public static function bounceRecipient(?string $body): ?string
+    {
+        $text = (string) $body;
+        if (preg_match('/(?:не\s+мо(?:жет|гло)\s+быть\s+доставлен|не\s+доставлен|could\s+not\s+be\s+delivered|delivery\s+to\s+the\s+following|failed\s+recipients?|undeliverable\s+to)(.{0,600})/isu', $text, $m)) {
+            $text = $m[1];
+        }
+
+        return preg_match('/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/u', $text, $e) ? mb_strtolower($e[0]) : null;
+    }
+
+    /** Служебное: смысла о машине нет (автоответ, недоставка). */
+    public static function silent(?string $value): bool
+    {
+        return in_array($value, [self::Auto->value, self::Bounce->value], true);
+    }
 
     /** Служебное письмо ящика предложений (offer@): не предложение, полей не даёт. */
     public static function isService(?string $subject, ?string $fromEmail): bool
@@ -161,6 +191,9 @@ enum Intent: string
 
     public static function ofMessage(Message $message): self
     {
+        if (self::isBounce($message->subject, $message->from_email)) {
+            return self::Bounce;
+        }
         if (preg_match(self::PARK_SENDERS, (string) $message->from_email)) {
             return self::Auto;
         }
@@ -206,6 +239,7 @@ enum Intent: string
             self::CancelRelease => 'ТС не вывезено, будет новый водитель',
             self::Hold => 'Вендор просит не выдавать ТС',
             self::Auto => 'Автоответ',
+            self::Bounce => 'Письмо не доставлено',
             self::Question => 'Вендор спрашивает',
             self::Sold => 'Данное ТС реализовано',
             self::Accepted => 'Вендор пишет, что ТС принята',
@@ -231,6 +265,7 @@ enum Intent: string
             self::Hold => 'Не выдавать',
             self::Question => 'Вопрос',
             self::Auto => 'Автоответ',
+            self::Bounce => 'Не доставлено',
             self::Other => null,
         };
     }
@@ -249,6 +284,7 @@ enum Intent: string
     {
         return match (true) {
             $this === self::Intake => 'tag-accent',
+            $this === self::Bounce => 'tag-danger',
             // Оранжевое — только то, что ждёт нашего ответа; «Продано» ответа не ждёт, это факт.
             $this->needsReply() => 'tag-urgent',
             in_array($this, [self::Billing, self::Auto], true) => 'tag-dim',
@@ -259,7 +295,7 @@ enum Intent: string
     /** Ждёт нашего ответа в деле ТС. */
     public function needsReply(): bool
     {
-        return in_array($this, [self::Inspect, self::Docs, self::CancelRelease, self::Hold, self::Question], true);
+        return in_array($this, [self::Inspect, self::Docs, self::CancelRelease, self::Hold, self::Question, self::Bounce], true);
     }
 
     /** Тело без цитат, пересланных заголовков и подписи. */

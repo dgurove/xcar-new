@@ -4,17 +4,19 @@
      VIN или номером убытка — строкой под полями сразу при вводе (twins_controller). --}}
 @php
     use App\Cars\{Body, Transmission, Drive, Fuel};
-    $vendors = once(fn () => \App\Vendors\Vendor::where('is_active', true)->whereNull('crm_vendor_id')->orWhere('id', $offer->vendor_id)->orderBy('name')->pluck('name', 'id'));
     // Вендоры с ценами «с НДС» — сменили вендора, и галка у закупочной встаёт по нему (vendor_vat_controller).
     $vatVendors = once(fn () => \App\Vendors\Vendor::where('offers_include_vat', true)->pluck('id')->all());
     // Без них черновик не сохраняется (`OfferRequest::rules`); у опубликованного — уже есть.
     $required = $offer->state === \App\Offers\OfferState::Draft;
 @endphp
 <div class="{{ $grid }}" data-controller="twins" data-twins-url-value="/offers/twins" data-twins-except-value="{{ $offer->id }}" data-action="input->twins#changed">
-    {{-- У опубликованного вендор ведёт маршрут и волны показа: модератор меняет его только в черновике. --}}
-    <x-ui.field name="vendor_id" label="Вендор" :options="$vendors" placeholder="—" :value="$offer->vendor_id" :required="$required"
-        data-controller="vendor-vat" data-vendor-vat-ids-value="{{ json_encode($vatVendors) }}" data-action="change->vendor-vat#sync"
-        :disabled="! auth()->user()->canManageCrm() && $offer->state !== \App\Offers\OfferState::Draft"/>
+    {{-- У опубликованного вендор ведёт маршрут и волны показа: модератор меняет его только в черновике. Поиском, и админу
+         «Добавить «ТИТ»» — письмо новой страховой заводится тут же, без похода в настройки (16.10.2026). --}}
+    <div class="contents" data-controller="vendor-vat" data-vendor-vat-ids-value="{{ json_encode($vatVendors) }}" data-action="change->vendor-vat#sync">
+        <x-ui.combobox name="vendor_id" label="Вендор" url="/reference/vendors" :create="auth()->user()->canManageCrm() ? '/reference/vendors' : null"
+            :value="$offer->vendor_id" :text="$offer->vendor?->name" :required="$required"
+            :disabled="! auth()->user()->canManageCrm() && $offer->state !== \App\Offers\OfferState::Draft"/>
+    </div>
     <x-ui.field name="claim_ref" :label="$offer->leaseRef() ? 'Номер ДЛ' : 'Номер убытка'" :value="$offer->claim_ref" :required="$required" autocapitalize="characters" autocorrect="off" spellcheck="false">
         {{-- Справа в поле — Мигторг: ищет по вписанному номеру, нашёл — знак, нажали — данные и фото заполняются. --}}
         <x-slot:suffix>@if ($offer->exists)<x-offer.migtorg-field :offer="$offer"/>@endif</x-slot:suffix>

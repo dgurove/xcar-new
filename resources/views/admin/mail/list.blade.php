@@ -8,7 +8,7 @@
 @php use App\Mail\CandidateState; @endphp
 @if ($threads->isEmpty())
     <x-ui.empty class="py-6">{{ $q !== '' || $filtered ? 'Ничего не нашлось' : match ($box) {
-        'attention' => 'Дел нет', 'register' => 'Заводить нечего', 'other' => 'Прочего нет', 'sent' => 'Отправленных нет', 'archive' => 'Архив пуст', default => 'Писем нет' } }}</x-ui.empty>
+        'attention' => 'Дел нет', 'register' => 'Заводить нечего', 'sent' => 'Отправленных нет', 'archive' => 'Архив пуст', default => 'Писем нет' } }}</x-ui.empty>
 @else
     <div class="flex flex-col gap-2">
         @foreach ($sections as $section)

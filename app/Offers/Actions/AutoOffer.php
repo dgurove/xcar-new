@@ -115,7 +115,8 @@ final class AutoOffer
      */
     public static function notAnOffer(string $subject, string $body, array $files): ?string
     {
-        $reply = '/^\s*(?:re|ответ|отв)\s*:/iu';
+        // «Fwd: RE: …» — Андрей переслал ответ в переписке: тоже ответ.
+        $reply = '/^\s*(?:(?:fwd?|пересл\w*)\s*(?:\[\d+\])?\s*:\s*)*(?:re|ответ|отв)\s*(?:\[\d+\])?\s*:/iu';
         $inner = QuotationStripper::forwardedBody($body);
         $innerSubject = $inner !== null && preg_match('/^\s*(?:Тема|Subject)\s*:\s*(.+)$/umi', $inner, $m) ? $m[1] : '';
         if (preg_match($reply, $subject) || preg_match($reply, $innerSubject)) {

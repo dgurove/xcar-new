@@ -76,6 +76,13 @@ final class NodeTitle
     /** Первые свои слова письма одной строкой. */
     public static function words(Message $m, int $limit = 90): string
     {
+        // Недоставка: вместо текста сервера — кому не дошло.
+        if ($m->intent === \App\Mail\Extraction\Intent::Bounce->value) {
+            $to = \App\Mail\Extraction\Intent::bounceRecipient($m->ownText() ?: $m->text_body);
+
+            return $to ? 'Не дошло до '.$to : 'Письмо не дошло';
+        }
+
         return Str::limit(trim((string) preg_replace('/\s+/u', ' ', $m->ownText())), $limit, '…');
     }
 

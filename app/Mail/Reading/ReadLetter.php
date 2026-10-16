@@ -36,7 +36,12 @@ final class ReadLetter
             ? $this->park->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments)
             : $this->offers->extract($message->subject, $body, $message->from_email, $message->date_at, $message->attachments);
         // У писем с предложениями смысла нет, кроме служебного: «Вход с нового устройства» не даёт ни полей, ни номеров.
-        $intent = $isPark ? Intent::ofMessage($message) : (Intent::isService($message->subject, $message->from_email) ? Intent::Auto : null);
+        $intent = match (true) {
+            $isPark => Intent::ofMessage($message),
+            Intent::isBounce($message->subject, $message->from_email) => Intent::Bounce,
+            Intent::isService($message->subject, $message->from_email) => Intent::Auto,
+            default => null,
+        };
         $own = QuotationStripper::ownText($body);
 
         return [
@@ -71,7 +76,7 @@ final class ReadLetter
      */
     private function keys(Message $message, array $fields, ?Intent $intent): array
     {
-        if (in_array($intent, [Intent::Billing, Intent::Auto], true)) {
+        if (in_array($intent, [Intent::Billing, Intent::Auto, Intent::Bounce], true)) {
             return [];
         }
         $keys = Candidate::identities($fields, null);
