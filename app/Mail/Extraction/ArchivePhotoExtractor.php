@@ -4,6 +4,7 @@ namespace App\Mail\Extraction;
 
 use App\Mail\Attachment;
 use Archive7z\Archive7z;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 use ZipArchive;
 
@@ -345,8 +346,11 @@ final class ArchivePhotoExtractor
     {
         $archive = new Archive7z($tempFile);
 
-        // битый архив — не архив, но и не ошибка: промоут не должен падать
+        // битый архив — не архив, но и не ошибка: промоут не должен падать. В лог — иначе rar без кодека молча
+        // оставлял заявку без фото и документов (17.10.2026)
         if (! $archive->isValid()) {
+            Log::warning('архив не читается', ['path' => $tempFile]);
+
             return null;
         }
 

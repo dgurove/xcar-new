@@ -11,6 +11,7 @@ use App\Cars\Fuel;
 use App\Cars\Papers;
 use App\Cars\Transmission;
 use App\Cars\Vin\Vin;
+use App\Mail\Extraction\Code;
 use App\Offers\AudienceRules;
 use App\Offers\DealAudience;
 use App\Offers\Flag;
@@ -119,7 +120,13 @@ class OfferRequest extends FormRequest
             'holder' => ['nullable', 'string', 'max:80'],
             'contact_name' => ['nullable', 'string', 'max:80'],
             'contact_email' => ['nullable', 'email', 'max:120'],
-            'claim_ref' => [$need(in_array($vendor?->kind, [Kind::Insurer, Kind::Leasing], true)), 'string', 'max:60'],
+            // «б/н» — только у вендора, у которого так бывает (`claim_ref_optional`, ТИТ 17.10.2026).
+            'claim_ref' => [$need(in_array($vendor?->kind, [Kind::Insurer, Kind::Leasing], true)), 'string', 'max:60', function ($attr, $value, $fail) {
+                $owner = Vendor::find($this->input('vendor_id', $this->route('offer')?->vendor_id));
+                if (Code::isNone($value) && ! $owner?->claim_ref_optional) {
+                    $fail('У '.($owner?->name ?? 'вендора').' номер обязателен');
+                }
+            }],
             'insurer_deadline_at' => ['nullable', 'date'],
         ];
     }

@@ -15,10 +15,12 @@ FROM dunglas/frankenphp:${FRANKENPHP_VERSION}-php${PHP_VERSION}-bookworm AS base
 WORKDIR /app
 
 RUN install-php-extensions bcmath exif gd intl pcntl pdo_pgsql zip
-# p7zip — архивы фотографий от страховых приходят и в .7z. heic2jpg — HEIC с айфонов
+# p7zip — архивы фотографий от страховых приходят и в .7z; p7zip-rar (non-free) — кодек RAR: без него 7z видит
+# список файлов rar, но каждый — «Unsupported Method» (17.10.2026, «Фото торги.rar» ТИТ не распаковался). heic2jpg — HEIC с айфонов
 # из облака Carcade: libheif из Debian 12 их не читает, декодер — pillow-heif со своим libheif.
 # poppler-utils — pdftotext: текст оценки с торгов и акта во вложении письма (`AttachmentText`).
-RUN apt-get update && apt-get install -y --no-install-recommends p7zip-full poppler-utils python3 python3-pip && rm -rf /var/lib/apt/lists/* \
+RUN sed -i 's/^Components: main$/Components: main non-free/' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update && apt-get install -y --no-install-recommends p7zip-full p7zip-rar poppler-utils python3 python3-pip && rm -rf /var/lib/apt/lists/* \
     && pip3 install --no-cache-dir --break-system-packages pillow==12.3.0 pillow-heif==1.7.0
 COPY deploy/bin/heic2jpg /usr/local/bin/heic2jpg
 # ocr — «✨ Распознать» в «Из писем» (`DocumentText`): PaddleOCR PP-OCRv5 через RapidOCR на onnxruntime и модель

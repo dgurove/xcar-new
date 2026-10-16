@@ -1046,6 +1046,8 @@ html.kb-open { --home-gap: 0px; }
   @keyframes valuation-draw { to { stroke-dashoffset: 0; } }
   @media (prefers-reduced-motion: reduce) { .valuation-tick, .valuation-ok circle, .valuation-ok path { animation: none !important; stroke-dashoffset: 0; } }
   .migtorg-field-btn { @apply flex size-9 items-center justify-center rounded-full transition-colors; background: color-mix(in oklab, #D6514A 18%, transparent); }
+  /* «б/н» в пустом номере убытка у вендора без номеров (ТИТ): вписывает значение, лайм — глагол. */
+  .claim-none { @apply flex h-9 shrink-0 items-center rounded-full bg-accent-soft px-3 text-sm; color: var(--color-accent-text); }
   .migtorg-field-btn:hover { background: color-mix(in oklab, #D6514A 30%, transparent); }
   /* «Удалить черновик» в плашке модератора уступает место «Сохранить изменения»: втроём не влезают на телефоне. */
   .action-bar:has([data-save-bar-button]:not([hidden])) .draft-delete { display: none !important; }

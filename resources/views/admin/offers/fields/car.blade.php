@@ -19,7 +19,8 @@
     </div>
     <x-ui.field name="claim_ref" :label="$offer->leaseRef() ? 'Номер ДЛ' : 'Номер убытка'" :value="$offer->claim_ref" :required="$required" autocapitalize="characters" autocorrect="off" spellcheck="false">
         {{-- Справа в поле — Мигторг: ищет по вписанному номеру, нашёл — знак, нажали — данные и фото заполняются. --}}
-        <x-slot:suffix>@if ($offer->exists)<x-offer.migtorg-field :offer="$offer"/>@endif</x-slot:suffix>
+        {{-- У вендора, у которого бывает без номера (ТИТ), — «б/н» кнопкой в пустом поле. --}}
+        <x-slot:suffix>@if ($offer->vendor?->claim_ref_optional && ! $offer->claim_ref)<button type="button" class="claim-none" data-controller="put" data-action="put#set" data-put-value-param="б/н">б/н</button>@elseif ($offer->exists)<x-offer.migtorg-field :offer="$offer"/>@endif</x-slot:suffix>
     </x-ui.field>
     <x-ui.vin :value="$offer->vin" span="col-span-2 lg:col-span-1">
         <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$offer->show_vin"/></x-slot:after-label>

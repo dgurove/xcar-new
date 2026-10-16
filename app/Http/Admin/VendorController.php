@@ -282,6 +282,8 @@ class VendorController
             'silence_means_buy' => ['boolean'],
             'offers_include_vat' => ['boolean'],
             'to_gallery' => ['boolean'],
+            'letters_to_telegram' => ['boolean'],
+            'claim_ref_optional' => ['boolean'],
             'audience_rules' => ['nullable', 'json'],
             // Ящик продажи — только из ящиков CRM: парковочный отсюда не выбрать.
             'mail_account_id' => ['nullable', Rule::exists('mail_accounts', 'id')->where('scope', Scope::Offers->value)->whereNull('reply_account_id')],
@@ -301,6 +303,8 @@ class VendorController
             'silence_means_buy' => $request->boolean('silence_means_buy'),
             'offers_include_vat' => $request->boolean('offers_include_vat'),
             'to_gallery' => $request->boolean('to_gallery'),
+            'letters_to_telegram' => $request->boolean('letters_to_telegram'),
+            'claim_ref_optional' => $request->boolean('claim_ref_optional'),
         ]));
 
         // Метки по умолчанию из шторки «Продажа» (11.10.2026): та же связь, что «Ставится вендорам» у метки.

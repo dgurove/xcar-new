@@ -8,9 +8,21 @@ final class Code
     /** Кириллица того же начертания — латиницей: одна карта на номера убытка и поиск (`Search\Term`). */
     public const HOMOGLYPHS = ['У' => 'Y', 'А' => 'A', 'В' => 'B', 'Е' => 'E', 'К' => 'K', 'М' => 'M', 'Н' => 'H', 'О' => 'O', 'Р' => 'P', 'С' => 'C', 'Т' => 'T', 'Х' => 'X'];
 
+    /** Номера нет (17.10.2026, ТИТ): так пишут в поле, у вендора с `claim_ref_optional`. Ключа у него нет — машину не держит. */
+    public const NONE = 'б/н';
+
+    /** «б/н», «б\н», «бн», «б.н», «без номера» — номера нет. */
+    public static function isNone(?string $code): bool
+    {
+        return (bool) preg_match('/^\s*(б\s*[\/\\\\.-]?\s*н\.?|без\s+номера)\s*$/iu', (string) $code);
+    }
+
     /** Ключ для поиска: нормализованный код без разделителей в нижнем регистре — один и тот же у оффера, машины и письма. */
     public static function key(?string $code): ?string
     {
+        if (self::isNone($code)) {
+            return null;
+        }
         $normalized = self::normalize($code);
 
         return $normalized ? mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $normalized)) : null;

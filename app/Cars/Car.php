@@ -96,6 +96,7 @@ class Car extends Model implements HasMedia
     public function setClaimRefAttribute(?string $value): void
     {
         $value = trim((string) $value) ?: null;
+        $value = Code::isNone($value) ? Code::NONE : $value;
         $this->attributes['claim_ref'] = $value;
         $this->attributes['claim_ref_key'] = Code::key($value);
     }
