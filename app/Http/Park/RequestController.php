@@ -124,7 +124,7 @@ class RequestController
         // Руками заводится только приём новой ТС.
         $type = RequestType::Intake;
         $vehicle = $request->query('car') ? Vehicle::find($request->query('car')) : null;
-        $candidate = $request->query('candidate') ? Candidate::where('scope', MailScope::Park)->where('state', '!=', CandidateState::Promoted)->with(['messages.attachments', 'messages.addresses', 'messages.author'])->find($request->query('candidate')) : null;
+        $candidate = $request->query('candidate') ? Candidate::where('scope', MailScope::Park)->where('state', '!=', CandidateState::Promoted)->with(['messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author'])->find($request->query('candidate')) : null;
         $prefill = [];
         if ($candidate) {
             // Такую ТС уже завели (редкость: письма о заведённой цепочку не начинают) — в форме она показывается целиком.

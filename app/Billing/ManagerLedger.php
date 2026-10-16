@@ -44,7 +44,7 @@ final class ManagerLedger
             $this->all = Deal::where('buyer_id', $this->manager->id)
                 ->where(fn ($q) => $q->where('state', DealState::Active)->orWhereHas('invoices'))
                 ->where(fn ($q) => $q->whereNull('garage_payer')->orWhereHas('invoices'))
-                ->with(['offer', 'offer.media', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
+                ->with(['offer', 'offer.media', 'offer.vendor', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
             $this->all->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d, $this->staff)));
         }
         $deals = $this->all->filter(fn (Deal $d) => match ($preset) {

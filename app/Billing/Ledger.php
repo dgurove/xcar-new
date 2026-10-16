@@ -32,7 +32,7 @@ final class Ledger
     {
         $open = Invoice::ofPark()->with('party')->where('state', InvoiceState::Issued)->get()->groupBy('party_id');
         $unbilled = [];
-        $vehicles = Vehicle::with(['vendor.party', 'offer.deal.buyer', 'ownerParty'])->whereIn('state', [VehicleState::Stored, VehicleState::Released])->whereNotNull('accepted_at')
+        $vehicles = Vehicle::with(['vendor.party', 'vendor.contacts', 'offer.deal.buyer', 'ownerParty', 'buyerParty'])->whereIn('state', [VehicleState::Stored, VehicleState::Released])->whereNotNull('accepted_at')
             ->where(fn ($q) => $q->whereNull('released_at')->orWhereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at'))->get();
         foreach ($vehicles as $v) {
             foreach (Accrual::storage($v) as $s) {

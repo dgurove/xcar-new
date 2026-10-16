@@ -244,7 +244,7 @@ class VehicleController
     /** Окно писем ТС (фрейм letters-frame): письма всех веток одной лентой, этапы — из цепочки кандидата этой ТС. */
     public function letters(Request $request, Vehicle $vehicle, MarkThreadRead $markRead)
     {
-        $threads = Thread::ofCar($vehicle, $request->user())->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
+        $threads = Thread::ofCar($vehicle, $request->user())->with(['messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author'])->get();
         // Открыли со строки почты (?at=) — письма прочитаны, как у окна ветки.
         if ($request->query('at') && ! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $threads->each(fn (Thread $t) => $markRead($t));

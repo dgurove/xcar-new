@@ -227,9 +227,10 @@ class Offer extends Model
         return $this->belongsTo(User::class, 'moderator_id');
     }
 
+    /** Подтверждение знает своё предложение без запроса (`chaperone`): строка спрашивает закупочную и цену предложения. */
     public function bids(): HasMany
     {
-        return $this->hasMany(Bid::class)->latest();
+        return $this->hasMany(Bid::class)->latest()->chaperone('offer');
     }
 
     public function activeBids(): HasMany

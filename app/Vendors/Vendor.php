@@ -18,6 +18,7 @@ use App\Park\Yard;
 use App\Search\Term;
 use App\Workflow\Track;
 use App\Workflow\Workflow;
+use Closure;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\Rule;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -168,6 +170,36 @@ class Vendor extends Model implements HasMedia
     public function scopeOnPark($query)
     {
         return $query->where('on_park', true)->when(City::viewing(), fn ($q, $city) => $q->ofParkCity($city));
+    }
+
+    /**
+     * Вендор по имени — без регистра и пробелов по краям: «Альфа» и «альфа » — один вендор. Одна дверь заведения из CRM
+     * и с парковки (`findOrCreateByName`) и проверки имени при правке (`rules`).
+     */
+    public static function named(string $name): ?self
+    {
+        return self::whereRaw('lower(trim(name)) = ?', [mb_strtolower(trim($name))])->orderBy('id')->first();
+    }
+
+    /** Найти по имени или завести; заведён сейчас — `wasRecentlyCreated`. */
+    public static function findOrCreateByName(string $name, array $attributes = []): self
+    {
+        return self::named($name) ?? self::create(['name' => trim($name)] + $attributes);
+    }
+
+    /** Общие поля обеих сторон — имя, тип, «работаем»: одни правила в шторках CRM и парковки. */
+    public static function rules(?self $vendor = null): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:80', function (string $attribute, mixed $value, Closure $fail) use ($vendor) {
+                $other = is_string($value) ? self::named($value) : null;
+                if ($other && ! $other->is($vendor)) {
+                    $fail('Такой вендор уже есть');
+                }
+            }],
+            'kind' => ['required', Rule::enum(Kind::class)],
+            'is_active' => ['boolean'],
+        ];
     }
 
     /** С вендором начала работать парковка (пришла ТС, завели прайс) — он появляется в её «Вендорах». */

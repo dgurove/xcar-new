@@ -121,7 +121,7 @@ class PurchaseController
         $user = $request->user();
         // Менеджеру — только его цена; сотруднику карточка показывает лучшую цену с именем (bestOffer), ему — все.
         $offers = fn ($o) => $user->isAdmin() ? $o->with('user') : $o->where('user_id', $user->id);
-        $q = $this->visible($purchase, $request, $this->group($filters))->with(['settlement', 'media', 'offers' => $offers]);
+        $q = $this->visible($purchase, $request, $this->group($filters))->with(['settlement', 'media', 'offer', 'offers' => $offers]);
         // Лупа — по всей закупке, мимо пилюли и типа.
         $search = trim((string) ($filters['q'] ?? ''));
         if ($search === '') {

@@ -9,6 +9,7 @@ use App\Billing\Acquiring\Actions\StartCheckout;
 use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayLink;
 use App\Notifications\MoneyNotice;
+use App\Park\City;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -113,6 +114,8 @@ class PayController
     private function link(string $code): PayLink
     {
         // Демо-ссылка открывается и без входа: её счёт (`PayLink::invoice`) и предложение область `demo` не прячет.
-        return PayLink::where('code', $code)->with(['invoice.offer' => fn ($q) => $q->withoutGlobalScope('demo'), 'creator', 'payerUser'])->firstOrFail();
+        // Город парковки — тоже: управляющий Питера, открывший чужую ссылку, получал счёт null и 500.
+        return PayLink::where('code', $code)->with(['invoice' => fn ($q) => $q->withoutGlobalScope(City::SCOPE),
+            'invoice.offer' => fn ($q) => $q->withoutGlobalScope('demo'), 'creator', 'payerUser'])->firstOrFail();
     }
 }

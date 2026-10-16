@@ -42,7 +42,7 @@ class TransportController
         $preset = array_key_exists((string) $request->query('preset'), $pills) ? $request->query('preset') : $home;
 
         $transports = Transport::visibleTo($user)
-            ->with(['offer', 'vehicle', 'executorUser', 'fromRegion', 'toRegion'])
+            ->with(['car', 'offer', 'vehicle', 'executorUser', 'fromRegion', 'toRegion'])
             ->when($preset === 'waiting', fn ($q) => $q->where('state', TransportState::New))
             ->when($preset === 'work', fn ($q) => $q->whereIn('state', [TransportState::Assigned, TransportState::Moving]))
             ->when($preset === 'done', fn ($q) => $q->where('state', TransportState::Delivered))

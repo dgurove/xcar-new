@@ -94,10 +94,14 @@ class VendorController
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:80', 'unique:vendors,name'],
+            'name' => ['required', 'string', 'max:80'],
             'kind' => ['nullable', Rule::enum(Kind::class)],
         ]);
-        $vendor = Vendor::create($data);
+        // Тот же вендор под другим регистром — не второй: в CRM вендор один на обе стороны (`Vendor::named`).
+        $vendor = Vendor::findOrCreateByName($data['name'], ['kind' => $data['kind'] ?? null]);
+        if (! $vendor->wasRecentlyCreated) {
+            return back()->withInput()->withErrors(['name' => 'Такой вендор уже есть']);
+        }
 
         return redirect("/settings/vendors/{$vendor->id}");
     }
@@ -269,10 +273,7 @@ class VendorController
 
     public function update(Request $request, Vendor $vendor, SetLogo $setLogo, SyncViewers $sync)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:80', 'unique:vendors,name,'.$vendor->id],
-            'kind' => ['required', Rule::enum(Kind::class)],
-            'is_active' => ['boolean'],
+        $data = $request->validate(Vendor::rules($vendor) + [
             'deal_format' => ['required', Rule::enum(DealFormat::class)],
             'reward_kind' => ['nullable', Rule::enum(RewardKind::class)],
             'reward_value' => ['nullable', 'integer', 'min:0'],

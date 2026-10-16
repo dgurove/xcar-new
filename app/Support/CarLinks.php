@@ -57,7 +57,9 @@ final class CarLinks
         if ($car = GarageCar::where('offer_id', $offer->id)->latest('id')->first()) {
             $links[] = ['title' => 'Гараж', 'state' => mb_strtolower($car->state->label()), 'href' => $car->crmUrl()];
         }
-        if ($purchase = $offer->purchaseCar?->load('purchase')) {
+        // Связь — загружена или нет, как в `shows`: строки списков её не грузят, меню собирается на строку.
+        $purchase = $offer->relationLoaded('purchaseCar') ? $offer->purchaseCar?->loadMissing('purchase') : $offer->purchaseCar()->with('purchase')->first();
+        if ($purchase) {
             $links[] = ['title' => 'Закупка', 'state' => '№ '.$purchase->purchase->number.', ДЛ '.$purchase->dl,
                 'href' => Surface::Crm->url('/purchases/'.$purchase->purchase->number.'/'.$purchase->ref)];
         }

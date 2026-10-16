@@ -31,13 +31,13 @@ class CarController
     public function index(Request $request)
     {
         $cars = Car::of($request->user())
-            ->with(['offer', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.openRequirement'])
+            ->with(['offer', 'offer.media', 'offer.vendor', 'offer.evacuator', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.openRequirement'])
             ->orderBy('stage_at')
             ->get();
 
         // Вывозы, порученные менеджеру, — своей группой сверху: ТС у него физически, но продаёт не обязательно он.
         $pickups = Offer::pickupsOf($request->user())
-            ->with(['media', 'evacuator', 'positions.stage.exits', 'positions.stage.block'])
+            ->with(['media', 'vendor', 'evacuator', 'deal', 'positions.stage.exits', 'positions.stage.block'])
             ->get()->sortBy(fn (Offer $o) => [PickupState::awaits($o) ? 0 : 1, $o->position(Track::Service)?->block_entered_at?->timestamp ?? 0]);
         // Машина, что уже стоит в гараже («ждёт ТС, забирает …»), второй раз в «Вывозе» не показывается; её строка ведёт
         // на страницу вывоза — там «Забрал» (и «Забрал за менеджера» сотруднику), своему менеджеру она сама уводит в гараж.

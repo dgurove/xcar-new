@@ -64,6 +64,7 @@ use App\Storage\Console\Report;
 use App\Support\Surface;
 use App\Telegram\Console\Poll;
 use App\Telegram\Console\SetProfile;
+use App\Telegram\Messages\ServerError;
 use App\Telegram\Offers\Console\Lane as OffersBotLane;
 use App\Telegram\Offers\Console\Poke as OffersBotPoke;
 use App\Telegram\Offers\Console\Profile as OffersBotProfile;
@@ -153,6 +154,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+        // Необработанное на запросе (страница 500) — владельцу в Telegram, одинаковое не чаще раза в 10 минут.
+        $exceptions->reportable(fn (Throwable $e) => ServerError::report($e));
         // Два сохранения одной машины в одну секунду: сторож (`Cars\Identity`) пропустил оба, второе упёрлось в индекс
         // машины (`cars`: номер убытка, VIN живой) или в «у машины одна продажа и одно хранение» — ошибка поля, как у
         // сторожа, а не 500.

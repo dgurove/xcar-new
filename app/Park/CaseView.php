@@ -60,6 +60,8 @@ final class CaseView
     public static function for(Vehicle $vehicle, User $user, ?int $requestId = null): array
     {
         $vehicle->load(['vendor.contacts', 'yard', 'media', 'requests.yard', 'requests.doneBy', 'events.user', 'inspections.user', 'docs.media', 'docs.thread', 'offer', 'invoices.party'])->loadCount(['threads' => fn ($q) => $q->park()]);
+        // Заявки — этой же ТС: «Выдать» спрашивает её состояние, без связи — запрос на каждую заявку.
+        $vehicle->requests->each->setRelation('vehicle', $vehicle);
         $open = ($requestId ? $vehicle->requests->first(fn (Request $r) => $r->id === $requestId && $r->isOpen()) : null) ?? self::current($vehicle);
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
         $release = $open?->type === RequestType::Release;

@@ -49,13 +49,13 @@
                 <span class="mark mark-accent">Новый</span><span class="mark mark-urgent">Заканчивается</span><span class="mark mark-glass">Приём закрыт</span><span class="mark mark-glass nums">2 д 21 ч</span>
             </div>
             <div class="mt-4 flex flex-wrap items-center gap-2">
-                <span class="tag">2023</span><span class="tag">Автоматическая</span><span class="tag" style="--tag-bg:#fef3c7;--tag-text:#92400e;--tag-bg-d:#3f2606;--tag-text-d:#fcd34d">С НДС</span><span class="tag" style="--tag-bg:#f0f7d8;--tag-text:#669709;--tag-bg-d:#1a2605;--tag-text-d:#a6cf3a">Срочно</span>
+                <span class="tag">2023</span><span class="tag">Автоматическая</span><span class="tag tag-amber">С НДС</span><span class="tag" style="--tag-bg:#f0f7d8;--tag-text:#669709;--tag-bg-d:#1a2605;--tag-text-d:#a6cf3a">Срочно</span>
                 <span class="chip">Чип</span><span class="chip nums font-normal">12 дн</span><span class="badge">3</span><span class="badge">99+</span>
             </div>
         </x-ui.card>
 
         <x-ui.card title="Карточки списка">
-            @php $offers = \App\Offers\Offer::with(['media'])->where('state', \App\Offers\OfferState::Open)->limit(3)->get(); @endphp
+            @php $offers = \App\Offers\Offer::with(['media', 'settlement', 'favorites'])->where('state', \App\Offers\OfferState::Open)->limit(3)->get(); @endphp
             <p class="mb-3 text-sm text-ink-muted">Плитки</p>
             <div class="cards cards--grid" data-controller="ticker">@foreach ($offers as $o)<x-offer.card :offer="$o"/>@endforeach</div>
             <p class="mb-3 mt-6 text-sm text-ink-muted">Строки</p>

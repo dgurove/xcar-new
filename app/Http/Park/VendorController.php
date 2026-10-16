@@ -75,15 +75,13 @@ class VendorController
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'kind' => ['required', Rule::enum(Kind::class)]]);
         // Вендор уже есть в CRM (пишет нам о продаже) — парковка начинает работать с ним же, второй не заводится.
-        if ($vendor = Vendor::whereRaw('lower(name) = ?', [mb_strtolower(trim($data['name']))])->first()) {
+        $vendor = Vendor::findOrCreateByName($data['name'], ['kind' => $data['kind'], 'on_park' => true]);
+        if (! $vendor->wasRecentlyCreated) {
             if ($vendor->on_park) {
                 return back()->withInput()->withErrors(['name' => 'Такой вендор уже есть']);
             }
             $vendor->update(['on_park' => true]);
-
-            return redirect("/vendors/{$vendor->id}")->with('toast', 'Добавлен');
         }
-        $vendor = Vendor::create($data + ['on_park' => true]);
 
         return redirect("/vendors/{$vendor->id}")->with('toast', 'Добавлен');
     }
@@ -153,10 +151,7 @@ class VendorController
 
     public function update(Request $request, Vendor $vendor, SetLogo $setLogo)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:80', 'unique:vendors,name,'.$vendor->id],
-            'kind' => ['required', Rule::enum(Kind::class)],
-            'is_active' => ['boolean'],
+        $data = $request->validate(Vendor::rules($vendor) + [
             'legal_name' => ['nullable', 'string', 'max:200'],
             'inn' => ['nullable', 'digits_between:10,12'],
             'kpp' => ['nullable', 'digits:9'],

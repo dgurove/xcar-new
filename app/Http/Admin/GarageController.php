@@ -45,7 +45,7 @@ class GarageController
         $preset = array_key_exists($request->query('preset'), self::PRESETS) ? $request->query('preset') : 'work';
         $sort = Sort::from($request->query('sort'), self::SORTS, 'stage');
 
-        $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal']);
+        $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.evacuator', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal']);
         match ($preset) {
             'sold' => $q->where('state', CarState::Sold),
             'settled' => $q->where('state', CarState::Settled),

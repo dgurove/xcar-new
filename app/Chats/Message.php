@@ -54,7 +54,7 @@ class Message extends Model
         if ($messages->isEmpty()) {
             return;
         }
-        $quoted = static::with('files')
+        $quoted = static::with(['files', 'author'])
             ->where(fn ($q) => $messages->groupBy('chat_id')->each(fn ($group, $chat) => $q->orWhere(fn ($w) => $w->where('chat_id', $chat)->whereIn('seq', $group->pluck('reply_to')->unique()->values()))))
             ->get()->keyBy(fn (self $m) => $m->chat_id.':'.$m->seq);
         $messages->each(fn (self $m) => $m->setRelation('repliedTo', $quoted->get($m->chat_id.':'.$m->reply_to)));

@@ -132,7 +132,7 @@ class MailController
         // только этого ящика. У парковки ящик один, в «Из писем» выборка вшита — переключателя нет.
         $mailbox = ! $park && ! $forced && $accounts->count() > 1 ? $accounts->firstWhere('slug', (string) $request->query('account')) : null;
         $boxAccounts = $mailbox ? collect([$mailbox]) : $accounts;
-        $with = ['account', 'vendor', 'offer', 'offer.vendor', 'vehicle', 'vehicle.yard', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
+        $with = ['account', 'vendor', 'offer', 'offer.vendor', 'vehicle', 'vehicle.yard', 'vehicle.vendor', 'candidate.vendor', 'latestMessage.author', 'latestIncoming'];
 
         $all = Thread::query()->whereIn('account_id', $boxAccounts->pluck('id'))->where('messages_count', '>', 0)
             ->when($this->scope === Scope::Offers, fn ($t) => $t->crmMailFor($request->user()));
@@ -379,7 +379,7 @@ class MailController
     public function offerLetters(Request $request, Offer $offer, MarkThreadRead $markRead)
     {
         abort_if($this->scope !== Scope::Offers, 404);
-        $threads = Thread::ofCar($offer, $request->user())->with(['messages.attachments', 'messages.addresses', 'messages.author'])->get();
+        $threads = Thread::ofCar($offer, $request->user())->with(['messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author'])->get();
         // Открыли со строки списка (?at=) — письма прочитаны, как у окна ветки.
         if ($request->query('at') && ! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $threads->each(fn (Thread $t) => $markRead($t));
@@ -425,7 +425,7 @@ class MailController
     public function window(Request $request, Thread $thread, MarkThreadRead $markRead)
     {
         $this->guard($thread);
-        $thread->load(['account', 'offer', 'vehicle', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        $thread->load(['account', 'offer', 'vehicle', 'messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author']);
         if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $markRead($thread);
         }
@@ -437,7 +437,7 @@ class MailController
     public function candidateLetters(Request $request, Candidate $candidate, MarkThreadRead $markRead)
     {
         abort_unless($candidate->scope === $this->scope, 404);
-        $candidate->load(['vendor', 'messages.account', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        $candidate->load(['vendor', 'messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author']);
         if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             foreach ($candidate->threads() as $thread) {
                 $markRead($thread);
@@ -456,7 +456,7 @@ class MailController
     public function show(Request $request, Thread $thread, MarkThreadRead $markRead, BodyRenderer $renderer)
     {
         $this->guard($thread);
-        $thread->load(['account', 'offer', 'vehicle', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        $thread->load(['account', 'offer', 'vehicle', 'messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author']);
         // Касание строки — ещё не чтение: префетч Turbo идёт с Sec-Purpose: prefetch.
         if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $markRead($thread);
