@@ -119,6 +119,24 @@ class Car extends Model
         return $price ? (int) $price : null;
     }
 
+    /**
+     * Закупочная менеджеру (16.10.2026, владелец: «при подтверждении закрепляется закупочная на тот момент — её и
+     * показывать»): закреплённая сделкой (`deals.cost` из `bids.cost`), кто бы ни платил поставщику; новая закупка у
+     * поставщика (`supplier_cost`) — только сотруднику, через `price()`. Отданная руками без сделки — своя `cost`.
+     */
+    public function managerPrice(): ?int
+    {
+        $price = $this->deal_id ? $this->deal?->cost : $this->cost;
+
+        return $price ? (int) $price : null;
+    }
+
+    /** Закупочная тому, кто смотрит: сотруднику — `price()`, менеджеру — закреплённая `managerPrice()`. */
+    public function priceFor(bool $staff): ?int
+    {
+        return $staff ? $this->price() : $this->managerPrice();
+    }
+
     /** Расходы рядом с закупочной — без строки «Оплата поставщику»: это та же цена, второй раз её не пишем. */
     public function extraSpent(?Payer $payer = null): float
     {

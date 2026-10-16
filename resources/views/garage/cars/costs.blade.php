@@ -2,12 +2,12 @@
      — в заголовке (06.10.2026, владелец: «добавлять, убирать, корректировать»); менеджеру — когда есть что показать.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot; «Убрать» ниже отдельной формой, отступ шире подложки кнопки. --}}
 @php
-    // «Оплата поставщику» — это закупочная: менеджеру её нет ни строкой, ни в итоге (15.10.2026, владелец).
-    $costs = $staff ? $car->costs : $car->costs->reject(fn ($c) => $c->isSupplier());
+    // «Оплата поставщику» — закреплённая закупочная (`CloseGarageDeal` из `deal->cost`): видна и менеджеру (16.10.2026).
+    $costs = $car->costs;
 @endphp
 @if ($costs->isNotEmpty() || ($staff && $canAdd))
     <section>
-        <h2 class="list-head lg:pt-0">Расходы@if ($costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($staff ? $car->spent() : $car->extraSpent()) }}</span>@endif
+        <h2 class="list-head lg:pt-0">Расходы@if ($costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($car->spent()) }}</span>@endif
             @if ($staff && $canAdd)
                 <button type="button" class="btn btn-s btn-quiet ml-auto self-center" data-controller="emit" data-action="emit#send" data-emit-event-param="cost-new:open"><x-ui.icon name="plus" class="size-4"/>Расход</button>
             @endif

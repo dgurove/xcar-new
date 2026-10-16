@@ -69,9 +69,9 @@ final class GarageView
             // «Готова» после закрытой сделки — та же продажа (`MoveCar`), туда не возвращают.
             'back' => $staff && $car->state->isWorking() && ! $frozen ? array_values(array_filter(CarState::cases(), fn (CarState $s) => $s->isWorking() && $s->order() < $car->state->order()
                 && ($s !== CarState::Ready || $car->papersPending()))) : [],
-            // Деньги плашкой: сотруднику — как только есть закупочная, до продажи крупно она; менеджеру закупочной нет
-            // (15.10.2026, владелец) — до продажи его расходы. Считать нечего — плашки нет: «0 ₽» крупно ничего не говорит.
-            'money' => $car->isSold() || ($staff ? $car->price() || $car->spent() > 0 : $car->extraSpent() > 0),
+            // Деньги плашкой — как только есть закупочная, до продажи крупно она: сотруднику нынешняя, менеджеру закреплённая
+            // при подтверждении (16.10.2026). Считать нечего — плашки нет: «0 ₽» крупно ничего не говорит.
+            'money' => $car->isSold() || $car->priceFor($staff) || ($staff ? $car->spent() > 0 : $car->extraSpent() > 0),
             'step' => $step,
             // Для пути: на каком шаге маршрута сделка и ждут ли ответа менеджера.
             'asks' => ! $staff && ($step['requirement'] ?? null),

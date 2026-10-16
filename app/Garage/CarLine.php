@@ -79,9 +79,8 @@ final class CarLine
     private static function siteMoney(Car $car, $current, bool $staff): array
     {
         return match ($car->state) {
-            // Закупочная — только сотруднику (15.10.2026, владелец); менеджеру до продажи — его расходы.
-            CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling => $staff ? [$car->price(), 'закупочная']
-                : (($spent = $car->extraSpent()) > 0 ? [$spent, 'расходы'] : [null, null]),
+            // До продажи — закупочная: сотруднику нынешняя, менеджеру закреплённая при подтверждении (16.10.2026).
+            CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling => [$car->priceFor($staff), 'закупочная'],
             CarState::Sold => $current && $current->remaining() > 0
                 ? [$current->remaining(), $current->isOwed() ? ($staff ? 'отдаём' : 'к выплате') : ($car->invoice_to === 'buyer' ? 'платит покупатель' : ($staff ? 'отдаёт нам' : 'отдать нам'))]
                 : [$car->sold_price, $staff ? 'счёта нет' : 'продана за'],

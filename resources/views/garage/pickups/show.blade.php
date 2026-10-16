@@ -18,8 +18,9 @@
     $fields = collect($stage?->staff_fields ?? [])->reject(fn ($f) => preg_match('/платёж|оплат|сумм|перевод|цен/iu', $f['label']))
         ->mapWithKeys(fn ($f) => [$f['label'] => \App\Support\VendorNames::strip((string) ($position->payload[$f['key']] ?? ''))])->filter();
     if ($canPick && ! $fields->has('Адрес') && $offer->inspection_address) $fields['Адрес'] = $offer->inspection_address;
-    // Машина едет в гараж — сотруднику её закупочная первой строкой, как на странице машины (вывозчику-менеджеру — нет: машина не его).
-    $garagePrice = $user->isAdmin() ? $offer->garageCar?->price() : null;
+    // Машина едет в гараж — её закупочная первой строкой, как на странице машины: сотруднику нынешняя, держателю гаража —
+    // закреплённая при подтверждении (16.10.2026); вывозчику-менеджеру чужой машины — нет.
+    $garagePrice = $user->isAdmin() ? $offer->garageCar?->price() : ($offer->garageCar?->manager_id === $user->id ? $offer->garageCar->managerPrice() : null);
     if ($canPick && ! $fields->has('Контакт') && ($offer->insured_name || $offer->insured_phone)) $fields['Контакт'] = trim($offer->insured_name.' '.$offer->insured_phone);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Гараж', '/garage']">
