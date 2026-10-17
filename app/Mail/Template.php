@@ -89,6 +89,15 @@ class Template extends Model
             $map['{{ '.$key.' }}'] = $map['{{'.$key.'}}'] = (string) $value;
         }
 
-        return ['subject' => strtr((string) $this->subject, $map), 'body' => strtr((string) $this->body, $map)];
+        return ['subject' => strtr(self::dropEmpty((string) $this->subject, $values), $map), 'body' => strtr(self::dropEmpty((string) $this->body, $values), $map)];
+    }
+
+    /**
+     * Пустой VIN уходит со своей подписью (17.10.2026, прогон): «…Ford Kuga, VIN (ПРОГОН-Т-2) за…» — у машины без VIN
+     * в письме поставщику оставалось голое «VIN». Шаблон правят админы, поэтому чистим при подстановке.
+     */
+    private static function dropEmpty(string $text, array $values): string
+    {
+        return filled($values['vin'] ?? null) ? $text : (string) preg_replace('/,?[ \t]*VIN:?[ \t]*\{\{ ?vin ?\}\}/u', '', $text);
     }
 }

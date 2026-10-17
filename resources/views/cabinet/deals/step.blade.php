@@ -140,6 +140,7 @@
                                     @include('cabinet.deals.contract', ['part' => 'doc', 'embedded' => true])
                                 @endif
                                 @if ($key === $here)@include('cabinet.deals.answer')@endif
+                                @if ($key === 'pickup')@include('cabinet.deals.pickup-request', ['inline' => true])@endif
                             </div>
                         </li>
                     @endforeach
@@ -182,15 +183,8 @@
                 @endif
             @endif
             @endif
-            {{-- Забирает сам — «Автомобиль забрал» кнопкой шага; логистов — только если попросит (17.10.2026, владелец). Везёт
-                 логистика — кто и когда словом, довезут — шаг пройдёт сам. --}}
-            @if ($handover?->carrier)
-                <p class="mt-4 text-sm text-ink-muted">{{ $handover->carrier }}</p>
-            @elseif ($handover?->canRequest)
-                <form method="post" action="/deals/{{ $deal->id }}/pickup" class="mt-3 text-center" data-turbo-confirm="Попросить логистов забрать ТС?" data-turbo-confirm-label="Попросить">
-                    @csrf<button class="retreat-link">Нужен вывоз</button>
-                </form>
-            @endif
+            {{-- В чек-листе договора с получением строка стоит под «Заберите автомобиль». --}}
+            @unless (($contractStep ?? false) && ($pickupSteps ?? null))@include('cabinet.deals.pickup-request')@endunless
         </div>
     @elseif ($deal->state === DealState::Active)
         <x-ui.empty>Сделка ещё не началась</x-ui.empty>

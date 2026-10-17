@@ -49,7 +49,7 @@
         <x-slot:line>
             @if ($city)<span>{{ $city }}</span>@endif
             {{-- У логиста, исполнителя ещё нет — «у логиста», а не «вывозит»; самому логисту его имя не пишем. --}}
-            @if ($t->executorUser && ! $t->isExecutedBy($me))<span>вывозит {{ $t->executorName() }}</span>@elseif ($t->coordinator && $t->coordinator_id !== $me->id)<span>у логиста {{ $t->coordinator->shortName() }}</span>@endif
+            @if ($t->executorUser && ! $t->isExecutedBy($me))<span>вывозит {{ $t->executorName() }}</span>@elseif (! $t->executorUser && $t->coordinator && $t->coordinator_id !== $me->id)<span>у логиста {{ $t->coordinator->shortName() }}</span>@endif
             @if (! $pickup)<span>перевозка</span>@endif
         </x-slot:line>
         @if ($carLink)
@@ -138,7 +138,9 @@
             <p class="mt-3 text-sm text-ink-muted">{{ implode(', ', array_filter([$t->distance_km ? $t->distance_km.' км' : null, $t->cost ? Money::rub((int) $t->cost) : null])) }}</p>
         @endif
 
-        @if ($pickup && ($photosEdit || $t->photos('pickup')->isNotEmpty()))
+        {{-- Пока можно жать «Забрал», фото приёма снимают в его шторке (17.10.2026, прогон: «сначала добавьте фото в карточке»
+             гонял из шторки обратно); здесь — только снятые. Блок один: поток загрузки меняет его по id. --}}
+        @if ($pickup && ! ($step === 'pickup' && ! $blocked) && ($photosEdit || $t->photos('pickup')->isNotEmpty()))
             <x-logistics.photos :t="$t" at="pickup" :edit="$photosEdit && ! $t->state->picked()"/>
         @endif
         @if ($t->pickup_note)<p class="mt-3 whitespace-pre-line text-sm">{{ $t->pickup_note }}</p>@endif
@@ -231,13 +233,23 @@
                             ]);
                             $point = old('destination', $t->destination?->value ?? array_key_first($points));
                         @endphp
-                        <div class="field">
-                            <span class="field-label">Сколько ключей</span>
+                        <x-logistics.photos :t="$t" at="pickup" edit class="!mt-0"/>
+                        <div>
+                            <h3 class="list-head">Сколько ключей</h3>
                             <x-ui.segment name="keys" :options="[0 => 'Нет', 1 => '1', 2 => '2', 3 => '3+']" :value="$keysNow"/>
                         </div>
-                        <div class="field">
-                            <span class="field-label">Куда везёте</span>
-                            <x-ui.segment name="destination" :options="$points" :value="$point" pick/>
+                        {{-- Куда — строками с галкой, как в Настройках: сегментом из четырёх «Менеджеру Иван П.» и «Другой адрес»
+                             ломались в две строки на телефоне. --}}
+                        <div>
+                            <h3 class="list-head">Куда везёте</h3>
+                            <div class="list">
+                                @foreach ($points as $value => $label)
+                                    <label class="row row-check">
+                                        <span class="min-w-0 flex-1">{{ $label }}</span>
+                                        <span class="check"><input type="radio" name="destination" value="{{ $value }}" @checked((string) $point === (string) $value) data-action="reveal#pick"></span>
+                                    </label>
+                                @endforeach
+                            </div>
                         </div>
                         <div class="fields" data-reveal-target="pane" data-reveal-key="yard" @if ($point !== 'yard') hidden @endif>
                             <x-ui.field name="to_yard_id" :id="'pickup-yard-'.$id" label="Парковка" :options="Choices::yards()" placeholder="Выберите" :value="old('to_yard_id', $t->to_yard_id)"/>
@@ -246,7 +258,7 @@
                             <x-ui.field name="to_address" :id="'pickup-address-'.$id" label="Адрес" type="textarea" :value="old('to_address', $t->to_address)"/>
                         </div>
                         <div class="fields"><x-ui.field name="pickup_note" :id="'pickup-note-'.$id" label="Комментарий" type="textarea" :value="old('pickup_note', $t->pickup_note)"/></div>
-                        @if ($t->photos('pickup')->isEmpty())<p class="text-sm text-urgent">Сначала добавьте фото приёма в карточке</p>@endif
+                        @error('photos')<p class="field-error">{{ $message }}</p>@enderror
                     @endif
                     <x-ui.sheet-foot>Забрал</x-ui.sheet-foot>
                 </form>

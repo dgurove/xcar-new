@@ -67,7 +67,11 @@ final class AdvanceOnPayment
         if ($slip) {
             $deal->openRequirement()->where('stage_id', $position->stage_id)->first()?->update(['done_at' => now(), 'answer' => ['exit' => $slip->label, 'fields' => []]]);
             ($this->take)($offer, $slip, Actor::Manager, $by);
-            $offer->log(OfferEventType::RequirementAnswered, $by, ['exit' => $slip->label, 'fields' => []]);
+            // «Менеджер: «Платёжное поручение приложено»» — только когда это он: деньги отметил сотрудник, пришли по ссылке
+            // или выписке — менеджер ничего не отвечал (17.10.2026, прогон), в истории остаётся строка этапа.
+            if ($by && $by->id === $deal->buyer_id) {
+                $offer->log(OfferEventType::RequirementAnswered, $by, ['exit' => $slip->label, 'fields' => []]);
+            }
             $position = $offer->fresh()->position(Track::Sale);
         }
         // Оплата до вывоза (Альфа, `pay_before_pickup`): «Оплата получена» на этапе, что ждёт поставщика, — это его
