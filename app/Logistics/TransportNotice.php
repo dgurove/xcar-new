@@ -12,11 +12,13 @@ use App\Users\User;
  * Уведомление логистики — в logistics.xcar.ru (`category` logistics). Вывоз Совкомбанка — наша обязанность, поэтому
  * громко (17.10.2026, владелец: «уделить ОЧЕНЬ много внимания»): админам — новый вывоз без исполнителя и что дата прошла,
  * исполнителю и логисту — поручение, модератору — отправить документы, исполнителю — трек СДЭК; ход (созвонились,
- * вывезена, привёз) — админам в ленту, «Вывезена» ещё и в Telegram с ключами.
+ * вывезена, привёз) — админам в ленту, «Вывезена» ещё и в Telegram с ключами. Зависшее (`logistics:tick`, 19.01.2027):
+ * админам раз в день сводкой — сколько ждут исполнителя и созвона; исполнителю или логисту — «созвонитесь» / «назначьте»;
+ * третье «Не дозвонился» подряд — админам сразу.
  */
 final class TransportNotice extends Notice
 {
-    private function __construct(private Transport $transport, private string $title, private ?string $text, private bool $critical, private bool $telegram) {}
+    private function __construct(private ?Transport $transport, private string $title, private ?string $text, private bool $critical, private bool $telegram) {}
 
     /** Новый вывоз — админам: выбрать, кто вывозит. */
     public static function requested(Transport $t): self
@@ -64,6 +66,34 @@ final class TransportNotice extends Notice
         return new self($t, 'Не вывезли в срок: '.$t->title(), $t->executorName(), true, true);
     }
 
+    /**
+     * Сводка админам раз в день: сутки без исполнителя и сутки без созвона. Одна строка в ленте (предмет — адрес списка),
+     * новая заменяет вчерашнюю.
+     */
+    public static function stale(int $waiting, int $silent): self
+    {
+        $parts = array_filter([
+            $waiting ? 'без исполнителя '.$waiting : null,
+            $silent ? 'без созвона '.$silent : null,
+        ]);
+
+        return new self(null, 'Вывоз ждёт: '.implode(', ', $parts), 'дольше суток', true, true);
+    }
+
+    /** Сутки без шага — исполнителю «созвонитесь», логисту «назначьте исполнителя». */
+    public static function callDue(Transport $t): self
+    {
+        return $t->state === TransportState::Logist
+            ? new self($t, 'Назначьте исполнителя: '.$t->title(), self::where($t), true, true)
+            : new self($t, 'Созвонитесь с владельцем: '.$t->title(), implode(', ', array_filter([$t->ownerName(), $t->ownerPhone()])), true, true);
+    }
+
+    /** Третий раз подряд не дозвонились — админам: решать, что дальше. */
+    public static function unreachable(Transport $t): self
+    {
+        return new self($t, 'Не дозвонились 3 раза: '.$t->title(), implode(', ', array_filter([$t->executorName(), $t->ownerPhone()])), true, true);
+    }
+
     /** Город и адрес, откуда забирать. */
     private static function where(Transport $t): ?string
     {
@@ -82,12 +112,12 @@ final class TransportNotice extends Notice
 
     public function href(): string
     {
-        return Surface::Logistics->url('/transports/'.$this->transport->id);
+        return Surface::Logistics->url($this->transport ? '/transports/'.$this->transport->id : '/transports?preset=new');
     }
 
     public function offerNumber(): ?int
     {
-        return $this->transport->saleOffer()?->number;
+        return $this->transport?->saleOffer()?->number;
     }
 
     public function category(): string

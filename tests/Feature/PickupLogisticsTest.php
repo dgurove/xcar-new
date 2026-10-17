@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Billing\Invoice;
+use App\Cars\Region;
+use App\Cars\Settlement;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Call;
 use App\Logistics\Actions\Docs;
@@ -10,6 +12,7 @@ use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\PickUp;
 use App\Logistics\Executor;
 use App\Logistics\Transport;
+use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\UpdateOffer;
@@ -25,6 +28,7 @@ use App\Workflow\Preset;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -123,6 +127,105 @@ class PickupLogisticsTest extends TestCase
         // Долг — логисту, не исполнителю.
         $this->assertSame($logist->party?->id ?? $logist->fresh()->party_id, $t->invoice->party_id);
         $this->assertSame(15000, (int) $t->invoice->total);
+    }
+
+    /**
+     * Назначение пачкой (19.01.2027): регион задачи встаёт по городу предложения и идёт за его правкой, чип «Регион»
+     * сужает «Без исполнителя», «Назначить (N)» отдаёт отмеченные логисту, повторная отмена закрытой не роняет пачку.
+     */
+    public function test_bulk_assign_by_region_and_cancel(): void
+    {
+        Notification::fake();
+        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $logist = User::create(['name' => 'Татьяна', 'phone' => '79000000004', 'roles' => [Role::Logist], 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'pickup_on_arrival' => true]);
+        $samara = Region::forceCreate(['oktmo' => '99036', 'plate' => '63', 'name' => 'Тестовая Самарская область', 'short' => 'Самарская', 'match' => 'тестовая самарск']);
+        $perm = Region::forceCreate(['oktmo' => '99057', 'plate' => '59', 'name' => 'Тестовый Пермский край', 'short' => 'Пермский', 'match' => 'тестовый пермск']);
+        $city = Settlement::create(['name' => 'Тестсамара', 'type' => 'г', 'region_code' => '63', 'region_id' => $samara->id]);
+        $pickup = function (string $ref, array $fields) use ($admin, $vendor) {
+            $offer = app(UpdateOffer::class)(Offer::create(['claim_ref' => $ref, 'floor_price' => 500000] + $fields), ['vendor_id' => $vendor->id], $admin);
+
+            return Transport::openFor($offer);
+        };
+        $a = $pickup('500001/2026', ['settlement_id' => $city->id]);
+        $b = $pickup('500002/2026', ['settlement_id' => $city->id]);
+        $c = $pickup('500003/2026', []);
+        $this->assertSame($samara->id, $a->region_id);
+        $this->assertNull($c->region_id);
+        app(UpdateOffer::class)($c->offer, ['inspection_address' => 'Тестовый Пермский край, д. Ванюки'], $admin);
+        $this->assertSame($perm->id, $c->fresh()->region_id, 'регион идёт за адресом предложения');
+
+        $host = 'http://'.config('xcar.logistics_host');
+        $this->actingAs($admin)->get($host.'/transports?preset=new&region='.$samara->id)->assertOk()
+            ->assertSee('data-detail-key="'.$a->id.'"', false)->assertDontSee('data-detail-key="'.$c->id.'"', false)
+            ->assertSee('Выбрать все');
+
+        $this->actingAs($admin)->put($host.'/transports/executor', ['executor' => 'logist', 'who' => ['logist' => $logist->id], 'transports' => [$a->id, $b->id]])
+            ->assertSessionHasNoErrors()->assertSessionHas('toast', 'Назначено 2');
+        $this->assertSame(TransportState::Logist, $a->fresh()->state);
+        $this->assertSame($logist->id, $b->fresh()->coordinator_id);
+        $this->assertSame(TransportState::New, $c->fresh()->state);
+
+        $this->actingAs($admin)->post($host.'/transports/cancel', ['transports' => [$c->id], 'reason' => 'Дубль'])->assertSessionHas('toast', 'Вывоз отменён');
+        $this->assertSame(TransportState::Cancelled, $c->fresh()->state);
+        $this->actingAs($admin)->post($host.'/transports/cancel', ['transports' => [$c->id, $a->id]])->assertSessionHas('toast', fn ($t) => str_starts_with($t, 'Отменено 1, '));
+        // Менеджера пачкой не назначают.
+        $this->actingAs($admin)->put($host.'/transports/executor', ['executor' => 'manager', 'transports' => [$b->id]])->assertSessionHasErrors('executor');
+        $this->actingAs($logist)->put($host.'/transports/executor', ['executor' => 'logist', 'who' => ['logist' => $logist->id], 'transports' => [$b->id]])->assertNotFound();
+    }
+
+    /** Напоминания: сутки у логиста — ему один раз; третье «Не дозвонился» — админам; сводка админам — раз в день. */
+    public function test_stuck_tasks_remind_once(): void
+    {
+        Notification::fake();
+        $this->travelTo(now('Europe/Moscow')->setTime(11, 0));
+        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $logist = User::create(['name' => 'Татьяна', 'phone' => '79000000004', 'roles' => [Role::Logist], 'approved_at' => now()]);
+        $driver = User::create(['name' => 'Иван', 'phone' => '79000000007', 'roles' => [Role::Driver], 'has_seal' => true, 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'pickup_on_arrival' => true]);
+        $open = fn (string $ref) => Transport::openFor(app(UpdateOffer::class)(Offer::create(['claim_ref' => $ref, 'floor_price' => 500000]), ['vendor_id' => $vendor->id], $admin));
+        $open('600001/2026');
+        $atLogist = $open('600002/2026');
+        $called = $open('600003/2026');
+        app(AssignExecutor::class)($atLogist, Executor::Logist, $logist, $admin);
+        app(AssignExecutor::class)($called, Executor::Staff, $driver, $admin);
+
+        $this->travel(25)->hours();
+        Artisan::call('logistics:tick');
+        Artisan::call('logistics:tick');
+        Notification::assertSentToTimes($logist, TransportNotice::class, 2); // поручение и одно «Назначьте»
+        Notification::assertSentTo($driver, TransportNotice::class, fn (TransportNotice $n) => str_starts_with($n->title(), 'Созвонитесь'));
+        Notification::assertSentTo($admin, TransportNotice::class, fn (TransportNotice $n) => $n->title() === 'Вывоз ждёт: без исполнителя 1, без созвона 2');
+        Notification::assertSentToTimes($admin, TransportNotice::class, 4); // три «новый вывоз» и одна сводка
+
+        foreach (range(1, 3) as $i) {
+            app(Call::class)->missed($called->fresh(), $driver);
+        }
+        Notification::assertSentTo($admin, TransportNotice::class, fn (TransportNotice $n) => str_starts_with($n->title(), 'Не дозвонились 3 раза'));
+    }
+
+    /** «Оплаты» логиста: видит свой долг и пишет реквизиты; чужие и исполнитель — нет. */
+    public function test_logist_sees_own_debt_and_fills_requisites(): void
+    {
+        Notification::fake();
+        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $logist = User::create(['name' => 'Татьяна', 'phone' => '79000000004', 'roles' => [Role::Logist], 'approved_at' => now()]);
+        $other = User::create(['name' => 'Другой Логист', 'phone' => '79000000008', 'roles' => [Role::Logist], 'approved_at' => now()]);
+        $own = User::create(['name' => 'Пётр Исполнитель', 'phone' => '79000000005', 'roles' => [Role::Contractor], 'logist_id' => $logist->id, 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'pickup_on_arrival' => true]);
+        $t = Transport::openFor(app(UpdateOffer::class)(Offer::create(['claim_ref' => '700001/2026', 'floor_price' => 500000]), ['vendor_id' => $vendor->id], $admin));
+        app(AssignExecutor::class)($t, Executor::Logist, $logist, $admin);
+        app(LogistAssign::class)($t->fresh(), ['executor_id' => $own->id, 'cost' => '17 500', 'distance_km' => 140], $logist);
+
+        $host = 'http://'.config('xcar.logistics_host');
+        $logist->refresh(); // контрагента завёл `SettleCost` на другом экземпляре
+        $this->actingAs($logist)->get($host.'/money')->assertOk()->assertSee('Ждут выплаты')->assertSee('140 км')->assertSee('не указаны');
+        $this->actingAs($other)->get($host.'/money')->assertOk()->assertDontSee('140 км');
+        $this->actingAs($own)->get($host.'/money')->assertNotFound();
+        $this->actingAs($logist)->put($host.'/money/'.$logist->id.'/party', ['kind' => 'person', 'name' => 'Татьяна Логист', 'card' => '2200 0000 0000 0000'])->assertSessionHasNoErrors();
+        $this->assertSame('2200000000000000', $logist->fresh()->party->card);
+        $this->actingAs($logist)->put($host.'/money/'.$other->id.'/party', ['kind' => 'person', 'name' => 'Чужая'])->assertNotFound();
+        $this->actingAs($admin)->get($host.'/money')->assertOk()->assertSee('Другой Логист')->assertSee('140 км');
     }
 
     private function addPhoto(Transport $t): void

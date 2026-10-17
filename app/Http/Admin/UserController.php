@@ -213,7 +213,7 @@ class UserController
         abort_unless($request->user()->isAdmin() && $user->hasDeals(), 404);
         $data = $request->validate(PartyRules::rules());
         // НДС ПРАЙМ в его счетах — в сумме (разница цен), «НДС сверху» — если так договорились.
-        Party::forUser($user)->update($data + ['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null, 'vat_on_top' => $request->boolean('vat_on_top')]);
+        Party::forUser($user)->update(['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null, 'vat_on_top' => $request->boolean('vat_on_top')] + $data);
 
         return back()->with('toast', 'Реквизиты сохранены');
     }

@@ -3,6 +3,7 @@
 use App\Http\Cabinet\InviteController;
 use App\Http\Logistics\ContractorController;
 use App\Http\Logistics\DocumentController;
+use App\Http\Logistics\MoneyController;
 use App\Http\Logistics\TransportController;
 use App\Http\SearchController;
 use Illuminate\Support\Facades\Route;
@@ -16,6 +17,8 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     Route::get('/search', SearchController::class);
     Route::get('/transports', [TransportController::class, 'index']);
     Route::get('/transports/{transport}', [TransportController::class, 'show'])->whereNumber('transport');
+    Route::put('/transports/executor', [TransportController::class, 'executorMany']);
+    Route::post('/transports/cancel', [TransportController::class, 'cancelMany']);
     Route::put('/transports/{transport}/executor', [TransportController::class, 'executor']);
     Route::post('/transports/{transport}/cdek', [TransportController::class, 'cdek']);
     Route::put('/transports/{transport}/logist', [TransportController::class, 'logist']);
@@ -39,6 +42,8 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
         Route::post('/contractors/invites/{invite}/on', [InviteController::class, 'enable']);
         Route::put('/contractors/{user}', [ContractorController::class, 'update'])->whereNumber('user');
         Route::post('/contractors/{user}/revoke', [ContractorController::class, 'revoke'])->whereNumber('user');
+        Route::get('/money', [MoneyController::class, 'index']);
+        Route::put('/money/{user}/party', [MoneyController::class, 'party'])->whereNumber('user');
     });
 });
 

@@ -52,8 +52,14 @@ export default class extends Controller {
         for (const pane of this.paneTargets.filter((p) => this.owns(p))) {
             const on = pane.dataset.revealKey === key;
             pane.hidden = !on;
-            // Поля вложенной панели, которую её reveal держит скрытой, так и остаются выключенными.
-            for (const field of pane.querySelectorAll('input, select, textarea')) field.disabled = !on || !!field.closest('[hidden]');
+            // Поля скрытой панели — своей, вложенной или внешнего reveal — так и остаются выключенными. Прочее скрытое
+            // снаружи не в счёт: шторка в плашке, что прячется до первой галочки (логистика: «Назначить (N)»), иначе
+            // выключала поля навсегда, и выбранный логист не уходил в запрос.
+            for (const field of pane.querySelectorAll('input, select, textarea')) {
+                const hid = field.closest('[hidden]');
+                field.disabled = !on || !!field.closest('[data-reveal-target~="pane"][hidden]')
+                    || (!!hid && hid !== this.element && this.element.contains(hid));
+            }
         }
         if (label && this.labelSelectorValue) {
             const button = document.querySelector(this.labelSelectorValue);

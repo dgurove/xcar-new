@@ -2,7 +2,6 @@
 
 namespace App\Logistics;
 
-use App\Cars\Region;
 use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Park\City;
@@ -54,15 +53,10 @@ final class Choices
         return $deal?->buyer && ($deal->buyer->isManager() || $deal->buyer->isSuperBuyer()) ? $deal->buyer : null;
     }
 
-    /** Регион машины подписью окна: «Самарская область», «Москва». */
+    /** Регион машины подписью окна: «Самарская область», «Москва» (колонка задачи, `Transport::regionFor`). */
     public static function regionOf(Transport $t): ?string
     {
-        $lane = $t->lane();
-        if ($lane instanceof Offer) {
-            return ($lane->settlement?->region ?? Region::inText($lane->inspection_address ?? $t->from_address))?->name;
-        }
-
-        return $lane?->city_id ? City::name($lane->city_id) : null;
+        return $t->region?->name;
     }
 
     /** Парковки — точкой «Куда везёт». @return array<int, string> */

@@ -4,9 +4,13 @@ namespace App\Logistics\Actions;
 
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Transport;
+use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
+use App\Users\Role;
 use App\Users\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -46,12 +50,15 @@ final class Call
         return $t;
     }
 
-    /** «Не дозвонился». */
+    /** «Не дозвонился»; третий раз до созвона — админам: решать, что дальше (другой исполнитель, вендору). */
     public function missed(Transport $t, User $by): Transport
     {
         $this->guard($t, $by);
         $t->update(['call_attempts' => [...($t->call_attempts ?? []), ['at' => now()->toIso8601String(), 'by' => $by->id]]]);
         TransportMoved::dispatch($t, $by, 'missed');
+        if ($t->agreed_at === null && $t->missedCalls() === 3) {
+            DB::afterCommit(fn () => Notification::send(User::withRole(Role::Admin)->get()->reject(fn (User $u) => $u->is($by)), TransportNotice::unreachable($t)));
+        }
 
         return $t;
     }

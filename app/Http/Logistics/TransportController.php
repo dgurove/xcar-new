@@ -2,6 +2,7 @@
 
 namespace App\Http\Logistics;
 
+use App\Cars\Region;
 use App\Live\Stream;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Call;
@@ -17,11 +18,17 @@ use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Notifications\ReadNotices;
 use App\Support\Detail;
+use App\Support\Facets\Common;
+use App\Support\Facets\Facet;
+use App\Support\Facets\Facets;
+use App\Support\Facets\Option;
+use App\Support\ListPrefs;
 use App\Support\Sort;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -51,9 +58,11 @@ class TransportController
         if ($detail->framed()) {
             return $detail->response();
         }
+        $facets = self::facets($request);
+        ListPrefs::sync($request, 'transports', keep: [...$facets->keys(), 'sort'], view: false);
         $pills = self::pills($user);
         $counts = collect($pills)->keys()->reject(fn ($k) => in_array($k, ['done', 'all'], true))
-            ->mapWithKeys(fn ($k) => [$k => Transport::visibleTo($user)->step($k)->count()])->filter()->all();
+            ->mapWithKeys(fn ($k) => [$k => $facets->applyTo(Transport::visibleTo($user)->step($k))->count()])->filter()->all();
         // Админу — сначала то, что ждёт его выбора; логисту — его; исполнителю — в работе.
         $home = match (true) {
             isset($pills['new']) && ($counts['new'] ?? 0) > 0 => 'new',
@@ -63,8 +72,8 @@ class TransportController
         $preset = array_key_exists((string) $request->query('preset'), $pills) ? $request->query('preset') : $home;
         $q = is_string($q = $request->query('q')) ? $q : '';
 
-        $transports = Transport::visibleTo($user)->step($q !== '' ? 'all' : $preset)
-            ->with(['car', 'offer', 'offer.settlement', 'vehicle', 'executorUser', 'coordinator', 'toYard'])
+        $transports = $facets->apply(Transport::visibleTo($user)->step($q !== '' ? 'all' : $preset))
+            ->with(['region', 'car', 'offer', 'offer.settlement', 'vehicle', 'executorUser', 'coordinator', 'toYard'])
             ->search($q)
             ->latest('id')->limit(300)->get();
         $sort = Sort::from($request->query('sort'), self::SORTS, in_array($preset, ['done', 'all'], true) ? '-when' : 'when');
@@ -77,7 +86,71 @@ class TransportController
 
         return view('logistics.transports.index', [
             'detail' => $detail, 'transports' => $transports, 'preset' => $preset, 'pills' => $pills, 'counts' => $counts, 'home' => $home, 'sort' => $sort,
+            'facets' => $facets,
+            // Галочки — админу на «Без исполнителя»: назначить и отменить пачкой (118 задач по одной не назначить).
+            'pick' => $user->isAdmin() && $preset === 'new' && $q === '',
         ]);
+    }
+
+    /**
+     * Чипы: регион машины (Татьяне — регионы: «Самарская → Выбрать все → Назначить») и кто вывозит (исполнитель, у логиста
+     * без исполнителя — логист). Исполнитель — только тем, кто видит чужие задачи.
+     */
+    private static function facets(Request $request): Facets
+    {
+        $user = $request->user();
+
+        return Facets::for($request, 'transports', ...array_filter([
+            Facet::column('region', 'Регион', ['регион', 'региона', 'регионов'], 'transports.region_id')
+                ->numeric()->none('Без региона')
+                ->labels(fn (array $ids) => Region::whereIn('id', Common::ints($ids))->orderBy('name')->get(['id', 'name'])
+                    ->mapWithKeys(fn (Region $r) => [(string) $r->id => new Option((string) $r->id, $r->name)])->all()),
+            $user->isAdmin() || $user->isLogist()
+                ? Common::manager('coalesce(transports.executor_id, transports.coordinator_id)', 'who', 'Кто вывозит')->none('Без исполнителя')
+                : null,
+        ]));
+    }
+
+    /** «Назначить (N)» — админ пачкой: логист или наш сотрудник; менеджер — только по одной (у каждой сделки свой). */
+    public function executorMany(Request $request, AssignExecutor $assign)
+    {
+        abort_unless($request->user()->isAdmin(), 404);
+        $request->validate(['executor' => ['required', Rule::in([Executor::Logist->value, Executor::Staff->value])]], ['executor.required' => 'Кто вывозит']);
+        [$kind, $who] = AssignExecutor::fromRequest($request);
+
+        return $this->many($request, fn (Transport $t) => $assign($t, $kind, $who, $request->user()), 'Назначено', 'Вывозит '.$who->shortName());
+    }
+
+    /** «Отменить (N)» — админ пачкой, с причиной. */
+    public function cancelMany(Request $request, Cancel $cancel)
+    {
+        abort_unless($request->user()->isAdmin(), 404);
+        $reason = $request->validate(['reason' => ['nullable', 'string', 'max:500']])['reason'] ?? null;
+
+        return $this->many($request, fn (Transport $t) => $cancel($t, $request->user(), $reason), 'Отменено', 'Вывоз отменён');
+    }
+
+    /** Действие на каждую отмеченную задачу: что не прошло (уже забрали, закрыта), остальное не роняет — тост считает. */
+    private function many(Request $request, \Closure $act, string $done, string $one)
+    {
+        $ids = $request->validate(['transports' => ['required', 'array', 'max:500'], 'transports.*' => ['integer']], ['transports.required' => 'Отметьте задачи'])['transports'];
+        $ok = 0;
+        $failed = [];
+        foreach (Transport::whereKey($ids)->get() as $t) {
+            try {
+                $act($t);
+                $ok++;
+            } catch (ValidationException $e) {
+                $failed[] = $t->title().': '.mb_strtolower(collect($e->errors())->flatten()->first());
+            }
+        }
+        $toast = match (true) {
+            $ok === 1 && ! $failed => $one,
+            count($failed) === 1 => implode(', ', array_filter([$ok ? $done.' '.$ok : null, $failed[0]])),
+            default => implode(', ', array_filter([$ok ? $done.' '.$ok : null, $failed ? 'не вышло '.count($failed) : null])),
+        };
+
+        return back()->with('toast', $toast);
     }
 
     /** @return array<string, string> */

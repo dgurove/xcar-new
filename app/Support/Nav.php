@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Billing\ChargeKind;
 use App\Billing\Closing;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -69,7 +70,7 @@ final class Nav
         }
 
         // Логистика (17.10.2026): вывозы (что видно — `Transport::visibleTo`), документы СДЭКом — модератору и админу,
-        // исполнители — логисту и админу. Модератору без поручений — только «Документы».
+        // исполнители и «Оплаты» (долг логисту, 19.01.2027) — логисту и админу. Модератору без поручений — только «Документы».
         if ($surface === Surface::Logistics) {
             if (! $user) {
                 return [];
@@ -80,6 +81,7 @@ final class Nav
                 $tasks ? self::item('Вывоз', '/transports') : null,
                 $user->sendsLogisticsDocs() ? self::item('Документы', '/documents') : null,
                 $user->isAdmin() || $user->isLogist() ? self::item('Исполнители', '/contractors') : null,
+                $user->isAdmin() || $user->isLogist() ? self::item('Оплаты', '/money') : null,
             ]));
         }
 
@@ -477,6 +479,13 @@ final class Nav
                     '/transports' => Transport::visibleTo($user)->open()->count(),
                     '/documents' => $user->sendsLogisticsDocs() ? Transport::awaitingDocs()->count() : 0,
                     '/contractors' => $user->isAdmin() || $user->isLogist() ? User::contractorsFor($user)->count() : 0,
+                    // Ждут выплаты логисту: свои — логисту, все — админу.
+                    '/money' => $user->isAdmin() || $user->isLogist()
+                        ? Invoice::where('direction', 'owed')->where('kind', ChargeKind::Tow->value)->where('state', InvoiceState::Issued)
+                            ->when($user->isAdmin(),
+                                fn ($q) => $q->whereIn('party_id', User::withRole(Role::Logist)->whereNotNull('party_id')->select('party_id')),
+                                fn ($q) => $q->where('party_id', $user->party_id ?? 0))->count()
+                        : 0,
                 ], 'fresh' => []];
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {

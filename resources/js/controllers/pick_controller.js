@@ -3,7 +3,8 @@ import { Controller } from '@hotwired/stimulus';
 // Галочки строк «Оцененных» и «Публикации»: «Выбрать все» (только видимые — с учётом чипов), галочка группы
 // (слот целиком), число на кнопках и плашка действий снизу, пока выбрано хоть одно. Не готовые к продаже строки
 // галочки не имеют вовсе — выбрать их нельзя. Живое обновление списка (морф Turbo) выбор не сбрасывает: галочки —
-// data-turbo-permanent, а плашка и числа пересчитываются после морфа.
+// data-turbo-permanent, а плашка и числа пересчитываются после морфа. Форма в шторке без галочек своей формы
+// (логистика: «Назначить», «Отменить») берёт выбранные событием formdata — `data-action="formdata->pick#carry"`.
 export default class extends Controller {
     static targets = ['box', 'all', 'group', 'bar', 'count'];
 
@@ -30,6 +31,10 @@ export default class extends Controller {
         const on = event.target.checked, group = event.target.dataset.group;
         this.live.filter((b) => b.dataset.group === group).forEach((b) => { b.checked = on; });
         this.sync();
+    }
+
+    carry(event) {
+        this.live.filter((b) => b.checked).forEach((b) => event.formData.append(b.name, b.value));
     }
 
     sync() {

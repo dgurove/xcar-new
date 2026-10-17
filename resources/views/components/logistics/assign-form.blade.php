@@ -7,7 +7,8 @@
 @php
     use App\Logistics\Choices;
     use App\Logistics\Executor;
-    $manager = Choices::managerOf($transport ?? $offer);
+    // Пачкой (без задачи и предложения) — менеджера нет: у каждой сделки свой.
+    $manager = ($transport ?? $offer) ? Choices::managerOf($transport ?? $offer) : null;
     $logists = Choices::logists();
     $staff = Choices::staff();
     $kind = old('executor', $transport?->executor?->value ?? ($manager ? Executor::Manager->value : (count($logists) ? Executor::Logist->value : Executor::Staff->value)));

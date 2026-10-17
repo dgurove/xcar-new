@@ -151,7 +151,7 @@ class MoneyController
     {
         $data = $request->validate(PartyRules::rules());
         $party = Party::forUser($request->user());
-        $party->update($data + ['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null]);
+        $party->update(['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null] + $data);
         // «Я сам» с паспортом и сканом — счёт и договор его сделок встают сами.
         PassportScanController::resyncFor($request->user(), $request->user(), app(SyncDealInvoices::class));
 

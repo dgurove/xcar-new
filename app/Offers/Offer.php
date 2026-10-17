@@ -96,6 +96,9 @@ class Offer extends Model
             if ($o->wasChanged('state') && in_array($o->state, [OfferState::Archived, OfferState::Cancelled], true)) {
                 Sale::end($o);
             }
+            if ($o->car_id && $o->wasChanged(['settlement_id', 'inspection_address'])) {
+                Transport::syncRegion($o);
+            }
         });
         // Черновик удаляют (бросили, «Отменить», ночная уборка) — так же, записью в истории ТС; у архивного и снятого она
         // уже есть.

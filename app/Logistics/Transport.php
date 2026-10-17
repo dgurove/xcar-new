@@ -5,6 +5,8 @@ namespace App\Logistics;
 use App\Billing\Invoice;
 use App\Cars\Car;
 use App\Cars\Category;
+use App\Cars\Region;
+use App\Cars\Settlement;
 use App\Offers\Offer;
 use App\Park\City;
 use App\Park\Vehicle;
@@ -37,9 +39,24 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 #[Fillable(['car_id', 'origin', 'kind', 'executor', 'executor_id', 'coordinator_id', 'from_address', 'pickup_at',
     'pickup_place', 'call_note', 'call_attempts', 'docs_by_cdek', 'docs_track', 'docs_sent_at', 'docs_sent_by', 'docs_received_at', 'to_address',
     'destination', 'to_yard_id', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
-    'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at'])]
+    'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at', 'region_id', 'nudged_at'])]
 class Transport extends Model
 {
+    /** Шаг сменился — напоминание по нему снова возможно (`logistics:tick`). */
+    private const STEP = ['state', 'executor_id', 'coordinator_id', 'agreed_at'];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $t) {
+            if (! $t->exists || $t->isDirty(['car_id', 'origin', 'from_address'])) {
+                $t->region_id = $t->regionFor();
+            }
+            if ($t->exists && $t->isDirty(self::STEP) && ! $t->isDirty('nudged_at')) {
+                $t->nudged_at = null;
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
@@ -59,6 +76,7 @@ class Transport extends Model
             'picked_at' => 'datetime',
             'delivered_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'nudged_at' => 'datetime',
         ];
     }
 
@@ -133,6 +151,34 @@ class Transport extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /** Регион машины — чип «Регион» списка и подпись окна «Кто вывозит» (`regionFor` ставит при сохранении). */
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+
+    /**
+     * Регион по машине: у продажи — регион её города, иначе названный в адресе осмотра или вывоза; у ТС парковки — регион
+     * её города. Правило по региону не решает, кто вывозит (решает админ), — только сужает список.
+     */
+    public function regionFor(): ?int
+    {
+        $lane = $this->lane();
+        if ($lane instanceof Offer) {
+            return $lane->settlement?->region_id ?? Region::inText($lane->inspection_address ?? $this->from_address)?->id;
+        }
+        $city = $lane?->city_id ? Settlement::whereKey($lane->city_id)->value('region_id') : null;
+
+        return $city ?? Region::inText($this->from_address)?->id;
+    }
+
+    /** Город или адрес продажи поменялся — регион её задач вслед (`Offer::saved`). */
+    public static function syncRegion(Offer $offer): void
+    {
+        self::where('car_id', $offer->car_id)->where('origin', '!=', 'park')->get()
+            ->each(fn (self $t) => $t->setRelation('offer', $offer)->forceFill(['region_id' => $t->regionFor()])->saveQuietly());
     }
 
     public function author(): BelongsTo
