@@ -49,7 +49,8 @@ build() {
     compose_in "$(release_dir)" build app
     # Кэш, которого эта сборка не коснулась двое суток, — после сборки, не до:
     # снимок контекста выкладки нужен ей самой (обжигались 08.09). --max-used-space в Docker 29 ничего не снимает.
-    remote "docker builder prune -f --filter until=48h >/dev/null 2>&1 || true"
+    # Кэш колёс pip (`id=xcar-pip`) не трогаем: без него слой OCR качается с PyPI полчаса.
+    remote "docker builder prune -f --filter until=48h --filter type!=exec.cachemount >/dev/null 2>&1 || true"
 }
 
 migrate() {

@@ -20,16 +20,19 @@ RUN install-php-extensions bcmath exif gd intl pcntl pdo_pgsql zip
 # из облака Carcade: libheif из Debian 12 их не читает, декодер — pillow-heif со своим libheif.
 # poppler-utils — pdftotext: текст оценки с торгов и акта во вложении письма (`AttachmentText`).
 RUN sed -i 's/^Components: main$/Components: main non-free/' /etc/apt/sources.list.d/debian.sources \
-    && apt-get update && apt-get install -y --no-install-recommends p7zip-full p7zip-rar poppler-utils python3 python3-pip && rm -rf /var/lib/apt/lists/* \
-    && pip3 install --no-cache-dir --break-system-packages pillow==12.3.0 pillow-heif==1.7.0
+    && apt-get update && apt-get install -y --no-install-recommends p7zip-full p7zip-rar poppler-utils python3 python3-pip && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,id=xcar-pip,target=/root/.cache/pip pip3 install --break-system-packages pillow==12.3.0 pillow-heif==1.7.0
 COPY deploy/bin/heic2jpg /usr/local/bin/heic2jpg
 # ocr — «✨ Распознать» в «Из писем» (`DocumentText`): PaddleOCR PP-OCRv5 через RapidOCR на onnxruntime и модель
 # поворота страницы. rapidocr тянет полный opencv с libGL — ставим без зависимостей, opencv без экрана; 4.10, а не 5.0:
 # в 5.0 ускоритель KleidiCV на ARM ронял resize (SIGSEGV на маке, 01.10.2026) — версия та же, что у разработчика. Модели
 # качаются при первом вызове: прогоняем его на сборке, в работе сеть не нужна. Отдельным слоем от pillow.
-RUN pip3 install --no-cache-dir --break-system-packages onnxruntime==1.30.0 opencv-python-headless==4.10.0.84 numpy==2.4.6 \
+# Колёса pip — в кэше сборки (`--mount=type=cache`, 17.10.2026): сборщик выкидывал этот слой (gc в daemon.json прода был
+# 3 ГБ, поднят до 15), и сервер качал ~150 МБ с PyPI на 20 КБ/с — выкладка шла 40 минут. Слой пересобирается — колёса с диска.
+RUN --mount=type=cache,id=xcar-pip,target=/root/.cache/pip \
+    pip3 install --break-system-packages onnxruntime==1.30.0 opencv-python-headless==4.10.0.84 numpy==2.4.6 \
         pyclipper==1.4.0 shapely==2.1.2 omegaconf==2.3.1 colorlog==6.12.0 PyYAML==6.0.3 requests==2.34.2 six==1.17.0 tqdm==4.70.1 \
-    && pip3 install --no-cache-dir --break-system-packages --no-deps rapidocr==3.9.2 rapid-orientation==0.0.11
+    && pip3 install --break-system-packages --no-deps rapidocr==3.9.2 rapid-orientation==0.0.11
 COPY deploy/bin/ocr /usr/local/bin/ocr
 # Телеметрия onnxruntime (Microsoft OneCollector) выключена для всего образа, не только в скрипте.
 ENV ORT_DISABLE_TELEMETRY=1
