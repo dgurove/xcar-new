@@ -209,7 +209,7 @@ class TransportController
     public function executor(Request $request, Transport $transport, AssignExecutor $assign)
     {
         abort_unless($request->user()->isAdmin(), 404);
-        $request->validate(['executor' => ['required', Rule::enum(Executor::class)]], ['executor.required' => 'Кто вывозит']);
+        $request->validate(['executor' => ['required', Rule::in([Executor::Logist->value, Executor::Staff->value])]], ['executor.required' => 'Кто вывозит']);
         [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
         $assign($transport, $kind, $who, $request->user(), $cdek);
 

@@ -1,5 +1,6 @@
 {{-- «Кто вывозит» (17.10.2026, владелец: «админ должен это нажать»): логист — регионы (исполнителя, расстояние и цену он
-     ставит сам), менеджер, которому подтвердили сделку (только он), наши люди ПРАЙМ. Одна форма в CRM (карточка «Вывоз»,
+     ставит сам) или наши люди ПРАЙМ. Менеджера здесь нет (владелец: «почему мы вообще его выбираем, если забирает
+     логистика»): что забирает он сам, решает «Принять» — «Забирает менеджер», и это уже не логистика. Одна форма в CRM (карточка «Вывоз»,
      окошко строки) и в логистике (карточка задачи). Кто именно — своё поле у каждого вида (`who[logist|manager|staff]`, сервер
      берёт поле выбранного вида: без JS скрытые панели не перебивают выбор). «Документы СДЭКом» — так же своей галкой у вида
      (`cdek[вид]`; владелец 17.10.2026: «нужно выбирать, а не всем»): у логиста (регионы) отмечена, у менеджера и наших — нет;
@@ -8,15 +9,12 @@
 @php
     use App\Logistics\Choices;
     use App\Logistics\Executor;
-    // Пачкой (без задачи и предложения) — менеджера нет: у каждой сделки свой.
-    $manager = ($transport ?? $offer) ? Choices::managerOf($transport ?? $offer) : null;
     $logists = Choices::logists();
     $staff = Choices::staff();
-    $kind = old('executor', $transport?->executor?->value ?? ($manager ? Executor::Manager->value : (count($logists) ? Executor::Logist->value : Executor::Staff->value)));
+    $kind = old('executor', $transport?->executor && $transport->executor !== Executor::Manager ? $transport->executor->value : (count($logists) ? Executor::Logist->value : Executor::Staff->value));
     $current = $transport?->executor === Executor::Logist ? $transport->coordinator_id : $transport?->executor_id;
     $options = array_filter([
         Executor::Logist->value => count($logists) ? 'Логист' : null,
-        Executor::Manager->value => $manager ? $manager->shortName() : null,
         Executor::Staff->value => count($staff) ? 'Наши' : null,
     ]);
     $pickup = ! $transport || $transport->isPickup();
@@ -34,11 +32,6 @@
             </div>
             @if ($pickup)<input type="hidden" name="cdek[logist]" value="0"><x-ui.check name="cdek[logist]" :checked="$cdekOn('logist')">Документы СДЭКом</x-ui.check>@endif
         </div>
-        @if ($manager)
-            <div class="contents" data-reveal-target="pane" data-reveal-key="manager" @if ($kind !== 'manager') hidden @endif>
-                <input type="hidden" name="who[manager]" value="{{ $manager->id }}">
-            </div>
-        @endif
         <div class="contents" data-reveal-target="pane" data-reveal-key="staff" @if ($kind !== 'staff') hidden @endif>
             <div class="fields">
                 <x-ui.field name="who[staff]" id="{{ $prefix }}-staff" label="Кто едет" :options="$staff" placeholder="Выберите" :value="$kind === 'staff' ? $current : null"/>
@@ -51,6 +44,6 @@
     @error('executor')<p class="field-error">{{ $message }}</p>@enderror
     @error('executor_id')<p class="field-error">{{ $message }}</p>@enderror
     @if ($options)
-        <x-ui.button type="submit" variant="primary" block>{{ $transport?->executor ? 'Сохранить' : 'Назначить' }}</x-ui.button>
+        <x-ui.button type="submit" variant="primary" block>{{ $transport?->executor && $transport->executor !== Executor::Manager ? 'Сохранить' : 'Назначить' }}</x-ui.button>
     @endif
 </form>

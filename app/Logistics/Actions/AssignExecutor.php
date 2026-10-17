@@ -101,7 +101,8 @@ final class AssignExecutor
     public static function fromRequest(Request $request): ?array
     {
         $kind = Executor::tryFrom((string) $request->input('executor'));
-        if (! $kind) {
+        // Менеджера формой не назначают: «забирает сам» решает «Принять», и это уже не логистика (17.10.2026).
+        if (! $kind || $kind === Executor::Manager) {
             return null;
         }
         $id = $request->input('who.'.$kind->value) ?? $request->input('executor_id');
