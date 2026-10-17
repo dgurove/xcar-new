@@ -3,6 +3,7 @@
 namespace App\Http\Logistics;
 
 use App\Http\Cabinet\InviteController;
+use App\Logistics\Transport;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueInvite;
 use App\Users\Invite;
@@ -23,7 +24,10 @@ class ContractorController
     {
         $me = $request->user();
         $pill = array_key_exists($request->query('preset', ''), self::PILLS) ? $request->query('preset') : 'people';
-        $people = User::contractorsFor($me)->whereNull('rejected_at')->with('logist')->orderBy('name')->get();
+        // Сколько у исполнителя открытых вывозов — логисту видно, кто свободен (18.10.2026).
+        $people = User::contractorsFor($me)->whereNull('rejected_at')->with('logist')->orderBy('name')
+            ->select('users.*')->addSelect(['busy' => Transport::open()->selectRaw('count(*)')->whereColumn('transports.executor_id', 'users.id')])
+            ->get();
         $invites = Invite::ofLogist($me)->with(['creator', 'buyers'])->latest()->get();
 
         return view('logistics.contractors.index', [

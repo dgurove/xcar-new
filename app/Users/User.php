@@ -493,8 +493,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /**
-     * logistics.xcar.ru: админ — всё; логист — свои вывозы и исполнители; наши люди и исполнители логиста — свои задачи;
-     * модератор — «Документы» (СДЭК, 17.10.2026: оформляет Лиза); менеджер — только когда ему поручили вывоз чужой сделки
+     * logistics.xcar.ru: админ и модераторы — всё (`leadsLogistics`, 18.10.2026); логист — свои вывозы и исполнители; наши
+     * люди и исполнители логиста — свои задачи; менеджер — только когда ему поручили вывоз чужой сделки
      * (`Executor::Partner`). Свою он забирает сам — в своей сделке, логистики ему для этого не нужно.
      */
     public function canLogistics(): bool
@@ -508,10 +508,19 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->isManager() && once(fn () => Transport::where('executor', Executor::Partner->value)->where('executor_id', $this->id)->exists());
     }
 
-    /** Все задачи и назначение — админу. */
-    public function seesAllTransports(): bool
+    /**
+     * Ведёт логистику: видит все задачи вывоза, продажу и менеджера, назначает и отменяет (в том числе пачкой) — админ и
+     * модераторы (18.10.2026, владелец: таблицей пользуются Катя и Лиза). Выплаты логистам — по-прежнему только админ (CRM).
+     */
+    public function leadsLogistics(): bool
     {
-        return $this->isAdmin();
+        return $this->isAdmin() || $this->isModerator();
+    }
+
+    /** Кто ведёт логистику — кому сводки и «новый вывоз» (`leadsLogistics`). */
+    public function scopeLogisticsLeads($query)
+    {
+        return $query->withRole(Role::Admin, Role::Moderator)->whereNull('rejected_at');
     }
 
     /** Исполнители логиста — сам логист и админ. */

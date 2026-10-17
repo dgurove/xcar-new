@@ -1,11 +1,11 @@
-{{-- Исполнители логиста (17.10.2026): «Исполнители» — люди строкой (город, пункт СДЭК — куда шлют документы), нажатие —
+{{-- Исполнители логиста (17.10.2026): «Исполнители» — люди строкой (город, пункт СДЭК — куда шлют документы, сколько вывозов
+     в работе — кто свободен), нажатие —
      шторка правки и «Закрыть доступ»; админу — все, с логистом. «Ссылки» — первой строкой новая (одноразовая на неделю,
      подпись — кому), дальше общий `invites.row`. --}}
 @php
     use App\Http\Cabinet\InviteController;
     $me = auth()->user();
     $base = InviteController::base();
-    $admin = false;
     [$live, $past] = $invites->partition(fn ($i) => $i->isActive());
 @endphp
 <x-ui.shell title="Исполнители" :phone-heading="false">
@@ -27,6 +27,7 @@
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate">{{ $user->name }}</span>
                                 <span class="row-sub">{{ implode(', ', array_filter([$user->logistics_city, $user->cdek_point ? 'СДЭК: '.$user->cdek_point : 'пункта СДЭК нет', $me->isAdmin() ? $user->logist?->shortName() : null])) }}</span>
+                                @if ($user->busy)<span class="row-sub text-accent-text">в работе {{ $user->busy }}</span>@endif
                             </span>
                             <x-ui.chevron/>
                         </x-ui.sheet-row>

@@ -25,8 +25,8 @@ final class Cancel
 
     public function __invoke(Transport $t, ?User $by, ?string $reason = null, bool $system = false, bool $batch = false): Transport
     {
-        if (! $system && ! $by?->isAdmin()) {
-            throw ValidationException::withMessages(['transport' => 'Отменяет админ']);
+        if (! $system && ! $by?->leadsLogistics()) {
+            throw ValidationException::withMessages(['transport' => 'Отменяют админ и модераторы']);
         }
         if (! $t->isOpen()) {
             throw ValidationException::withMessages(['transport' => 'Вывоз '.mb_strtolower($t->state->label())]);

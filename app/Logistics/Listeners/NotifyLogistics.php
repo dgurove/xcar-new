@@ -32,7 +32,7 @@ final class NotifyLogistics
     /** Новый вывоз без исполнителя — админам. */
     public function requested(TransportRequested $e): void
     {
-        DB::afterCommit(fn () => Notification::send(User::withRole(Role::Admin)->get(), TransportNotice::requested($e->transport)));
+        DB::afterCommit(fn () => Notification::send(User::logisticsLeads()->get(), TransportNotice::requested($e->transport)));
     }
 
     /**
@@ -87,7 +87,7 @@ final class NotifyLogistics
         if (! in_array($e->step, ['agreed', 'picked', 'delivered', 'cancelled'], true)) {
             return;
         }
-        $to = User::withRole(Role::Admin)->get()->push($t->coordinator)->filter()
+        $to = User::logisticsLeads()->get()->push($t->coordinator)->filter()
             ->unique('id')->reject(fn (User $u) => $u->is($e->by));
         Notification::send($to, TransportNotice::moved($t, $e->step));
     }

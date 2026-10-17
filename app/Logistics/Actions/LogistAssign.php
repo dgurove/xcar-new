@@ -32,7 +32,7 @@ final class LogistAssign
 
     public function __invoke(Transport $t, array $data, User $by): Transport
     {
-        if ($t->executor !== Executor::Logist || ! ($t->isCoordinatedBy($by) || $by->isAdmin())) {
+        if ($t->executor !== Executor::Logist || ! ($t->isCoordinatedBy($by) || $by->leadsLogistics())) {
             throw ValidationException::withMessages(['executor_id' => 'Задача не у вас']);
         }
         if (! $t->isOpen() || $t->state->picked()) {

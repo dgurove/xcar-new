@@ -29,8 +29,8 @@ final class AssignExecutor
 
     public function __invoke(Transport $t, Executor $kind, ?User $who, User $by, ?bool $cdek = null, bool $batch = false): Transport
     {
-        if (! $by->isAdmin()) {
-            throw ValidationException::withMessages(['executor' => 'Исполнителя выбирает админ']);
+        if (! $by->leadsLogistics()) {
+            throw ValidationException::withMessages(['executor' => 'Исполнителя выбирают админ и модераторы']);
         }
         if (! $t->isOpen() || $t->state->picked()) {
             throw ValidationException::withMessages(['executor' => 'ТС уже забрали: можно только «Привёз» или отмена']);
@@ -136,10 +136,10 @@ final class AssignExecutor
         return $t;
     }
 
-    /** Админ переключает «Документы СДЭКом» у задачи (и у логиста до его исполнителя). */
+    /** Ведущий логистику переключает «Документы СДЭКом» у задачи (и у логиста до его исполнителя). */
     public function cdek(Transport $t, bool $cdek, User $by): Transport
     {
-        if (! $by->isAdmin() || ! ($t->executor_id || $t->coordinator_id) || ! $t->isPickup() || $t->state->picked()) {
+        if (! $by->leadsLogistics() || ! ($t->executor_id || $t->coordinator_id) || ! $t->isPickup() || $t->state->picked()) {
             throw ValidationException::withMessages(['docs_by_cdek' => 'Поздно менять']);
         }
         $t->update(['docs_by_cdek' => $cdek] + ($cdek ? [] : ['docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]));

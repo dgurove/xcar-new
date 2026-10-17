@@ -55,11 +55,12 @@ final class Choices
         if (! $offer) {
             return null;
         }
-        $garage = $offer->garageCar()->with('manager')->first();
+        // Подгруженное списком (`SaleState::WITH`) — без запросов на строку.
+        $garage = $offer->relationLoaded('garageCar') ? $offer->garageCar : $offer->garageCar()->with('manager')->first();
         if ($garage?->manager) {
             return $garage->manager;
         }
-        $deal = $offer->deal()->where('state', DealState::Active)->with('buyer')->first();
+        $deal = $offer->relationLoaded('deal') ? $offer->deal : $offer->deal()->where('state', DealState::Active)->with('buyer')->first();
 
         return $deal?->buyer && ($deal->buyer->isManager() || $deal->buyer->isSuperBuyer()) ? $deal->buyer : null;
     }

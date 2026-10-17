@@ -2,6 +2,7 @@
 
 namespace App\Http\Logistics;
 
+use App\Cars\Car;
 use App\Cars\Region;
 use App\Live\Stream;
 use App\Logistics\Actions\AssignExecutor;
@@ -12,6 +13,7 @@ use App\Logistics\Actions\Docs;
 use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\PickUp;
 use App\Logistics\Executor;
+use App\Logistics\SaleState;
 use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
@@ -24,6 +26,7 @@ use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
 use App\Support\ListPrefs;
+use App\Support\ListView;
 use App\Support\Sort;
 use App\Support\Surface;
 use App\Users\Role;
@@ -41,8 +44,14 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 class TransportController
 {
-    /** «Когда» — дата строки (`Transport::shownAt`): в работе ближайшие сверху; ещё по названию и по дате заведения. */
-    public const SORTS = ['when' => ['Когда', 'asc'], 'title' => ['Марка, модель', 'asc'], 'created' => ['Заведена', 'desc']];
+    /**
+     * Сортировка заголовками (18.10.2026, владелец: «удобная таблица»): по умолчанию — когда машина поступила, новые сверху
+     * (у «Без исполнителя» и «У логиста»), в работе — дата вывоза, готовые — свежие сверху. Всё — в SQL.
+     */
+    public const SORTS = [
+        'created' => ['Поступила', 'desc'], 'title' => ['Марка, модель', 'asc'], 'vendor' => ['Вендор', 'asc'], 'sale' => ['Продажа', 'desc'],
+        'city' => ['Город', 'asc'], 'who' => ['Кто вывозит', 'asc'], 'when' => ['Когда', 'asc'],
+    ];
 
     /** Пилюли — шаги работы. Кому какие — `pills`. */
     private const PRESETS = [
@@ -66,58 +75,146 @@ class TransportController
         $pills = self::pills($user);
         $counts = collect($pills)->keys()->reject(fn ($k) => in_array($k, ['done', 'all'], true))
             ->mapWithKeys(fn ($k) => [$k => $facets->applyTo(Transport::visibleTo($user)->step($k))->count()])->filter()->all();
-        // Админу — сначала то, что ждёт его выбора; логисту — его; исполнителю — в работе.
-        $home = match (true) {
-            isset($pills['new']) && ($counts['new'] ?? 0) > 0 => 'new',
-            isset($pills['logist']) && ! $user->isAdmin() && ($counts['logist'] ?? 0) > 0 => 'logist',
-            default => 'work',
-        };
+        $home = self::homeOf($user, $pills, fn (string $k) => ($counts[$k] ?? 0) > 0);
         $preset = array_key_exists((string) $request->query('preset'), $pills) ? $request->query('preset') : $home;
         $q = is_string($q = $request->query('q')) ? $q : '';
+        $sort = Sort::from($request->query('sort'), self::SORTS, self::defaultSort($preset));
 
-        $transports = $facets->apply(Transport::visibleTo($user)->step($q !== '' ? 'all' : $preset))
-            ->with(['region', 'car', 'offer', 'offer.settlement', 'vehicle', 'executorUser', 'coordinator', 'toYard'])
-            ->search($q)
-            ->latest('id')->limit(300)->get();
-        $sort = Sort::from($request->query('sort'), self::SORTS, in_array($preset, ['done', 'all'], true) ? '-when' : 'when');
-        $transports = $transports->sortBy(fn (Transport $t) => match ($sort->key) {
-            'title' => [mb_strtolower($t->title()), $t->id],
-            'created' => [$t->created_at?->timestamp ?? 0, $t->id],
-            // Просроченные — первыми.
-            default => [$t->isLate() ? 0 : 1, $t->shownAt()?->timestamp ?? PHP_INT_MAX, $t->id],
-        }, SORT_REGULAR, $sort->desc)->values();
+        $query = $facets->apply(Transport::visibleTo($user)->step($q !== '' ? 'all' : $preset))
+            ->with(['region', 'car', ...SaleState::WITH, 'executorUser', 'coordinator', 'toYard'])
+            ->search($q, crm: $user->leadsLogistics());
+        self::sorted($query, $sort);
+        // Открытые вкладки — целиком (таблицу листают и выбирают галочками); «Готово» и «Все» растут без конца — страницами.
+        $transports = in_array($preset, ['done', 'all'], true) && $q === ''
+            ? $query->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString()
+            : $query->get();
 
         return view('logistics.transports.index', [
             'detail' => $detail, 'transports' => $transports, 'preset' => $preset, 'pills' => $pills, 'counts' => $counts, 'home' => $home, 'sort' => $sort,
             'facets' => $facets,
-            // Галочки — админу на «Без исполнителя»: назначить и отменить пачкой (118 задач по одной не назначить).
-            'pick' => $user->isAdmin() && $preset === 'new' && $q === '',
+            'pick' => self::pickable($user, $preset, $q),
+            'cols' => self::columns($user, $preset, $q !== ''),
         ]);
     }
 
     /**
-     * Чипы: регион машины (Татьяне — регионы: «Самарская → Выбрать все → Назначить») и кто вывозит (исполнитель, у логиста
-     * без исполнителя — логист). Исполнитель — только тем, кто видит чужие задачи.
+     * Галочки — ведущим логистику на «Без исполнителя», не в поиске: «Назначить (N)» и «Отменить (N)». Одна дверь списка
+     * и свежей строки карточки — иначе открытая строка приходила без галочки и столбцы съезжали (18.10.2026).
+     */
+    public static function pickable(User $user, string $preset, string $q): bool
+    {
+        return $user->leadsLogistics() && $preset === 'new' && $q === '';
+    }
+
+    /** Вкладка по умолчанию: ведущим — что ждёт их выбора; логисту — его; исполнителю — в работе. */
+    private static function homeOf(User $user, array $pills, \Closure $has): string
+    {
+        return match (true) {
+            isset($pills['new']) && $has('new') => 'new',
+            isset($pills['logist']) && ! $user->leadsLogistics() && $has('logist') => 'logist',
+            default => 'work',
+        };
+    }
+
+    /** Вкладка запроса — и для карточки строки (`detail`): адрес без `preset` — та же, что список выбрал сам. */
+    public static function presetOf(Request $request, User $user): string
+    {
+        $pills = self::pills($user);
+        if (array_key_exists((string) $request->query('preset'), $pills)) {
+            return $request->query('preset');
+        }
+        $facets = self::facets($request);
+
+        return self::homeOf($user, $pills, fn (string $k) => $facets->applyTo(Transport::visibleTo($user)->step($k))->exists());
+    }
+
+    private static function defaultSort(string $preset): string
+    {
+        return match ($preset) {
+            'new', 'logist' => '-created',
+            'done', 'all' => '-when',
+            default => 'when',
+        };
+    }
+
+    /** Порядок в SQL: по полю, при равенстве — новые задачи выше. */
+    private static function sorted($q, Sort $sort): void
+    {
+        $dir = $sort->dir();
+        match ($sort->key) {
+            'created' => $q->orderBy('transports.created_at', $dir),
+            'title' => $q->orderByRaw("(select b.name from cars c join brands b on b.id = c.brand_id where c.id = transports.car_id) {$dir} nulls last")
+                ->orderByRaw("(select m.name from cars c join car_models m on m.id = c.model_id where c.id = transports.car_id) {$dir} nulls last"),
+            'vendor' => $q->orderByRaw('(select vendors.name from vendors where vendors.id = '.SaleState::VENDOR_SQL.") {$dir} nulls last"),
+            'sale' => $q->orderByRaw(SaleState::RANK_SQL." {$dir}")->orderBy('transports.created_at'),
+            'city' => $q->orderByRaw("(select regions.name from regions where regions.id = transports.region_id) {$dir} nulls last"),
+            'who' => $q->orderByRaw("(select users.name from users where users.id = coalesce(transports.executor_id, transports.coordinator_id)) {$dir} nulls last"),
+            // «Когда»: просроченный вывоз — первым.
+            default => $q->orderByRaw("(transports.state = 'agreed' and transports.pickup_at < now()) desc")->orderByRaw(Transport::SHOWN_SQL." {$dir} nulls last"),
+        };
+        $q->orderByDesc('transports.id');
+    }
+
+    /**
+     * Столбцы таблицы — по человеку и вкладке (18.10.2026, Катя и Лиза: «не хватает номера убытка, логотипа страховой,
+     * менеджера — кому везти»). Вендор и номер убытка — только сотрудникам XCar (внешний логист и исполнители к страховой
+     * напрямую не ходят); продажа и менеджер — ведущим логистику; «Кто вывозит» — тем, кто видит чужие задачи.
+     *
+     * @return list<string>
+     */
+    public static function columns(User $user, string $preset, bool $searching = false): array
+    {
+        $lead = $user->leadsLogistics();
+        $deciding = in_array($preset, ['new', 'logist'], true) && ! $searching;
+
+        return array_values(array_filter([
+            self::pickable($user, $preset, $searching ? 'q' : '') ? 'pick' : null,
+            'title',
+            $user->isStaff() ? 'vendor' : null,
+            // Продажа — где решают, кому отдать (и в «Все», поиске); в работе решение уже принято.
+            $lead && ! in_array($preset, ['work', 'moving', 'done'], true) ? 'sale' : null,
+            'to',
+            'city',
+            // Что дальше — своим столбцом там, где шаги разные (на «Без исполнителя» и «У логиста» он у всех один).
+            $deciding ? null : 'step',
+            ($lead || $user->isLogist()) && $preset !== 'new' ? 'who' : null,
+            $lead ? 'created' : null,
+            $deciding ? null : 'when',
+        ]));
+    }
+
+    /**
+     * Чипы: «Срочно» и продажа (ведущим — кому отдавать в первую очередь), вендор (сотрудникам), менеджер — кому везти,
+     * регион (Татьяне — регионы: «Самарская → Выбрать все → Назначить»), кто вывозит (исполнитель, у логиста без исполнителя
+     * — логист), тип ТС.
      */
     private static function facets(Request $request): Facets
     {
         $user = $request->user();
+        $lead = $user->leadsLogistics();
 
         return Facets::for($request, 'transports', ...array_filter([
+            $lead ? Facet::toggle('urgent', 'Срочно', fn ($q) => SaleState::urgent($q))->dot('danger') : null,
+            $lead ? Facet::column('sale', 'Продажа', ['вид', 'вида', 'видов'], SaleState::BUCKET_SQL)->natural()
+                ->labels(fn (array $keys) => collect(['buyer' => 'Есть покупатель', 'open' => 'В продаже', 'draft' => 'Не в продаже', 'off' => 'Снята с продажи', 'park' => 'Перевод парковки'])
+                    ->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()) : null,
+            $user->isStaff() ? Common::vendor(SaleState::VENDOR_SQL)->none('Без вендора') : null,
+            $lead ? Common::manager(SaleState::MANAGER_SQL)->none('Без менеджера') : null,
             Facet::column('region', 'Регион', ['регион', 'региона', 'регионов'], 'transports.region_id')
                 ->numeric()->none('Без региона')
                 ->labels(fn (array $ids) => Region::whereIn('id', Common::ints($ids))->orderBy('name')->get(['id', 'name'])
                     ->mapWithKeys(fn (Region $r) => [(string) $r->id => new Option((string) $r->id, $r->name)])->all()),
-            $user->isAdmin() || $user->isLogist()
+            $lead || $user->isLogist()
                 ? Common::manager('coalesce(transports.executor_id, transports.coordinator_id)', 'who', 'Кто вывозит')->none('Без исполнителя')
                 : null,
+            Common::category(Car::sql('transports', 'category')),
         ]));
     }
 
-    /** «Назначить (N)» — админ пачкой: логист или наш сотрудник; менеджер — только по одной (у каждой сделки свой). */
+    /** «Назначить (N)» — ведущие пачкой: логист или наш сотрудник; менеджер — только по одной (у каждой сделки свой). */
     public function executorMany(Request $request, AssignExecutor $assign)
     {
-        abort_unless($request->user()->isAdmin(), 404);
+        abort_unless($request->user()->leadsLogistics(), 404);
         $request->validate(['executor' => ['required', Rule::in([Executor::Logist->value, Executor::Staff->value, Executor::Partner->value])]], ['executor.required' => 'Кто вывозит']);
         [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
         // Человек не годится — одна ошибка у поля, а не «не вышло 50».
@@ -135,10 +232,10 @@ class TransportController
         return $back;
     }
 
-    /** «Отменить (N)» — админ пачкой, с причиной. */
+    /** «Отменить (N)» — ведущие пачкой, с причиной. */
     public function cancelMany(Request $request, Cancel $cancel)
     {
-        abort_unless($request->user()->isAdmin(), 404);
+        abort_unless($request->user()->leadsLogistics(), 404);
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:500']])['reason'] ?? null;
         $n = 0;
         $back = $this->many($request, function (Transport $t) use ($cancel, $request, $reason, &$n) {
@@ -146,7 +243,7 @@ class TransportController
             $n++;
         }, 'Отменено', 'Вывоз отменён');
         if ($n) {
-            Notification::send(User::withRole(Role::Admin)->whereKeyNot($request->user()->id)->get(), TransportNotice::cancelledMany($n, $reason));
+            Notification::send(User::logisticsLeads()->whereKeyNot($request->user()->id)->get(), TransportNotice::cancelledMany($n, $reason));
         }
 
         return $back;
@@ -179,8 +276,8 @@ class TransportController
     private static function pills(User $user): array
     {
         return array_filter(self::PRESETS, fn ($label, $key) => match ($key) {
-            'new' => $user->isAdmin(),
-            'logist' => $user->isAdmin() || $user->isLogist(),
+            'new' => $user->leadsLogistics(),
+            'logist' => $user->leadsLogistics() || $user->isLogist(),
             default => true,
         }, ARRAY_FILTER_USE_BOTH);
     }
@@ -193,22 +290,27 @@ class TransportController
         return redirect('/transports?preset=all&peek='.$transport);
     }
 
-    public function detail(Transport $transport)
+    /** `list` — чей список открыл карточку: её строка должна быть той же, что в списке (`documents` — своя строка). */
+    public function detail(Transport $transport, string $list = 'transports')
     {
         // Карточку открывают и из списка (`?peek=`), а уведомление о задаче живёт по адресу `/transports/{id}` — открыл
         // карточку, значит прочитал (`ReadNoticesOnVisit` видит только адрес списка).
         if (($me = request()->user()) && ! request()->prefetch()) {
             app(ReadNotices::class)([$me->id], ['/transports/'.$transport->id], Surface::Logistics);
         }
-        $transport->load(['car.media', 'offer', 'offer.media', 'offer.settlement', 'vehicle', 'vehicle.media', 'executorUser', 'coordinator', 'toYard', 'invoice', 'docsSender']);
+        $transport->load(['car.media', 'offer.media', 'offer.positions.stage.block', 'vehicle.media', ...SaleState::WITH, 'executorUser', 'coordinator', 'region', 'toYard', 'invoice', 'docsSender']);
+        $me = request()->user();
+        $preset = $list === 'transports' ? self::presetOf(request(), $me) : null;
+        $q = is_string($q = request()->query('q')) ? $q : '';
 
-        return view('logistics.transports.detail', ['t' => $transport, 'me' => request()->user()]);
+        return view('logistics.transports.detail', ['t' => $transport, 'me' => $me, 'list' => $list,
+            'pick' => $preset !== null && self::pickable($me, $preset, $q), 'cols' => $preset !== null ? self::columns($me, $preset, $q !== '') : []]);
     }
 
-    /** «Кто вывозит» — админ. */
+    /** «Кто вывозит» — ведущие логистику. */
     public function executor(Request $request, Transport $transport, AssignExecutor $assign)
     {
-        abort_unless($request->user()->isAdmin(), 404);
+        abort_unless($request->user()->leadsLogistics(), 404);
         $request->validate(['executor' => ['required', Rule::in([Executor::Logist->value, Executor::Staff->value, Executor::Partner->value])]], ['executor.required' => 'Кто вывозит']);
         [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
         $assign($transport, $kind, $who, $request->user(), $cdek);
@@ -216,10 +318,10 @@ class TransportController
         return back()->with('toast', 'Вывозит '.($transport->fresh()->executorName() ?? ''));
     }
 
-    /** «Документы СДЭКом» — переключает админ. */
+    /** «Документы СДЭКом» — переключают ведущие логистику. */
     public function cdek(Request $request, Transport $transport, AssignExecutor $assign)
     {
-        abort_unless($request->user()->isAdmin(), 404);
+        abort_unless($request->user()->leadsLogistics(), 404);
         $assign->cdek($transport, $request->boolean('docs_by_cdek'), $request->user());
 
         return back()->with('toast', $transport->docs_by_cdek ? 'Документы СДЭКом' : 'Документы без СДЭКа');
@@ -299,7 +401,7 @@ class TransportController
     {
         $this->acts($request, $transport);
         // Закрытая задача — кадры уже факт: добавляет только админ.
-        abort_if(in_array($transport->state, [TransportState::Delivered, TransportState::Cancelled], true) && ! $request->user()->isAdmin(), 404);
+        abort_if(in_array($transport->state, [TransportState::Delivered, TransportState::Cancelled], true) && ! $request->user()->leadsLogistics(), 404);
         $request->validate(['file' => ['required', 'file', 'max:65536']]);
         $at = $request->input('stage') === 'delivery' ? 'delivery' : 'pickup';
         try {
@@ -335,7 +437,7 @@ class TransportController
     {
         $this->acts($request, $transport);
         // Удалить кадр — пока машину не забрали; потом это факт приёма (админ может всегда).
-        abort_unless($this->owns($transport, $media) && (! $transport->state->picked() || $request->user()->isAdmin()), 404);
+        abort_unless($this->owns($transport, $media) && (! $transport->state->picked() || $request->user()->leadsLogistics()), 404);
         $at = (string) $media->getCustomProperty('at');
         $media->delete();
 

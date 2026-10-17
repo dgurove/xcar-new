@@ -5,7 +5,6 @@ namespace App\Logistics\Console;
 use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
-use App\Users\Role;
 use App\Users\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -31,7 +30,7 @@ final class TickCommand extends Command
             ->where(fn ($q) => $q->whereNull('late_noticed_at')->orWhereColumn('late_noticed_at', '<', 'pickup_at'))
             ->with(['executorUser', 'car'])->get()
             ->each(function (Transport $t) {
-                Notification::send(User::withRole(Role::Admin)->get()->push($t->executorUser)->filter()->unique('id'), TransportNotice::late($t));
+                Notification::send(User::logisticsLeads()->get()->push($t->executorUser)->filter()->unique('id'), TransportNotice::late($t));
                 $t->update(['late_noticed_at' => now()]);
             });
 
@@ -70,7 +69,7 @@ final class TickCommand extends Command
         $waiting = Transport::where('state', TransportState::New)->where('created_at', '<', now()->subDay())->count();
         $silent = self::stuck()->count();
         if ($waiting + $silent > 0) {
-            Notification::send(User::withRole(Role::Admin)->get(), TransportNotice::stale($waiting, $silent));
+            Notification::send(User::logisticsLeads()->get(), TransportNotice::stale($waiting, $silent));
         }
     }
 }

@@ -70,12 +70,12 @@ final class Nav
         }
 
         // Логистика (17.10.2026): вывозы (что видно — `Transport::visibleTo`), документы СДЭКом — модератору и админу,
-        // исполнители и «Оплаты» (долг логисту, 19.01.2027) — логисту и админу. Модератору без поручений — только «Документы».
+        // исполнители и «Оплаты» (долг логисту, 19.01.2027) — логисту и админу. Модераторы ведут вывоз, как админ (18.10.2026).
         if ($surface === Surface::Logistics) {
             if (! $user) {
                 return [];
             }
-            $tasks = $user->isAdmin() || $user->isLogist() || $user->isDriver() || $user->isContractor() || $user->carriesForLogistics();
+            $tasks = $user->leadsLogistics() || $user->isLogist() || $user->isDriver() || $user->isContractor() || $user->carriesForLogistics();
 
             return array_values(array_filter([
                 $tasks ? self::item('Вывоз', '/transports') : null,

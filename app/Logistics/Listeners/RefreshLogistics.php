@@ -8,13 +8,12 @@ use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Events\TransportRequested;
 use App\Logistics\Transport;
-use App\Users\Role;
 use App\Users\User;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Вывоз поменялся — у тех, кто его видит (админы, логист задачи, исполнитель и прежний, модераторы — документы), список
+ * Вывоз поменялся — у тех, кто его видит (админы и модераторы, логист задачи, исполнитель и прежний), список
  * и открытая задача перечитываются морфом и значки пересчитываются: без обновления руками и без опроса.
  */
 final class RefreshLogistics
@@ -48,10 +47,10 @@ final class RefreshLogistics
         });
     }
 
-    /** Кто видит вывоз: админы, модераторы, логист задачи, исполнитель (и прежний — его список тоже меняется). */
+    /** Кто видит вывоз: ведущие логистику, логист задачи, исполнитель (и прежний — его список тоже меняется). */
     public static function topics(Transport $transport, ?int $previous = null): array
     {
-        return User::withRole(Role::Admin, Role::Moderator)->pluck('id')
+        return User::logisticsLeads()->pluck('id')
             ->push($transport->executor_id, $transport->coordinator_id, $transport->executorUser?->logist_id, $previous)
             ->filter()->unique()->map(fn (int $id) => Topics::user($id))->values()->all();
     }

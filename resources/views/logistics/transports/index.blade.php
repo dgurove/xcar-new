@@ -1,9 +1,10 @@
-{{-- Logistics XCar — вывоз (17.10.2026): задачи таблицей в два этажа — машина («!» — один ключ), под ней что дальше цветом
-     и кто вывозит; от 640 — город, от 1024 — исполнитель. Нажатие — карточка рядом (ПК — колонкой, телефон — листом
-     снизу). Админу первой пилюлей — «Без исполнителя», логисту — «У логиста». Чипы — регион и кто вывозит; на «Без
-     исполнителя» у админа галочки: «Назначить (N)» логисту или нашим и «Отменить (N)» с причиной (19.01.2027). --}}
+{{-- Logistics XCar — вывоз: одна таблица (18.10.2026, владелец: «полноценная, удобная»). Столбцы — по человеку и вкладке
+     (`TransportController::columns`): ведущим логистику (админ, модераторы) — вендор с номером убытка, продажа, кому
+     везти, когда поступила; по умолчанию новые сверху, сортировка каждым заголовком. Нажатие — карточка рядом (ПК —
+     колонкой, телефон — листом снизу). На «Без исполнителя» у ведущих галочки: «Назначить (N)» логисту или нашим и
+     «Отменить (N)» с причиной. «Готово» и «Все» — страницами. --}}
 <x-ui.shell title="Вывоз" :phone-heading="false" :detail="$detail">
-    <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :pill-home="$home" :counts="$counts" name="transports" :sort="$sort" :facets="$facets" search="Марка, VIN, владелец, трек" search-target="#transports"/>
+    <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :pill-home="$home" :counts="$counts" name="transports" :sort="$sort" :facets="$facets" search="{{ auth()->user()->leadsLogistics() ? 'Марка, VIN, убыток, владелец, трек' : 'Марка, VIN, владелец, трек' }}" search-target="#transports"/>
     <div id="transports" class="mt-4" @if ($pick) data-controller="pick" @endif>
         @if ($transports->isEmpty())
             <x-ui.empty class="mt-6">{{ match ($preset) { 'new' => 'Всем вывозам выбран исполнитель', 'logist' => 'Логист всех назначил', 'work', 'moving' => 'Вывозов в работе нет', default => 'Вывозов нет' } }}</x-ui.empty>
@@ -11,18 +12,11 @@
             @if ($pick)
                 <div class="pick-all"><label class="row-check gap-3"><span class="check"><input type="checkbox" id="pick-all-transports" data-turbo-permanent data-pick-target="all" data-action="pick#pickAll"></span><span>Выбрать все</span></label></div>
             @endif
-            <x-ui.table id="transports-table" :titles="$transports->map->title()">
-                <x-slot:head>
-                    <tr>
-                        @if ($pick)<th class="pick-cell"></th>@endif
-                        <x-ui.th :sort="$sort" key="title" class="grow">Марка, модель</x-ui.th>
-                        <th class="hidden sm:table-cell">Город</th>
-                        <th class="hidden lg:table-cell">Кто вывозит</th>
-                        <x-ui.th :sort="$sort" key="when" class="num">Когда</x-ui.th>
-                    </tr>
-                </x-slot:head>
-                @foreach ($transports as $t)<x-logistics.row :t="$t" :checkable="$pick"/>@endforeach
+            <x-ui.table id="transports-table" :titles="collect($transports instanceof \Illuminate\Contracts\Pagination\Paginator ? $transports->items() : $transports)->map->title()">
+                <x-slot:head><x-logistics.head :cols="$cols" :sort="$sort"/></x-slot:head>
+                @foreach ($transports as $t)<x-logistics.row :t="$t" :checkable="$pick" :cols="$cols"/>@endforeach
             </x-ui.table>
+            @if ($transports instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)<x-ui.pager :of="$transports"/>@endif
             @if ($pick)
                 <x-ui.action-bar data-pick-target="bar" hidden>
                     <div class="contents" data-controller="sheet">

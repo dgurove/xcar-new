@@ -28,7 +28,7 @@ class MoneyController
 
         return view('logistics.money.index', [
             'me' => $me,
-            'rows' => $logists->map(fn (User $u) => (object) ['user' => $u, 'party' => Party::forUser($u, false), ...self::invoices($u)]),
+            'rows' => $logists->map(fn (User $u) => (object) ['user' => $u, 'party' => $party = Party::forUser($u, false), ...self::invoices($party)]),
         ]);
     }
 
@@ -47,9 +47,8 @@ class MoneyController
      *
      * @return array{waiting: Collection, paid: Collection, tasks: Collection}
      */
-    private static function invoices(User $u): array
+    private static function invoices(Party $party): array
     {
-        $party = Party::forUser($u, false);
         $all = $party->exists
             ? Invoice::where('party_id', $party->id)->where('direction', 'owed')->where('kind', ChargeKind::Tow->value)
                 ->where('state', '!=', InvoiceState::Void->value)->with('charges')->latest('id')->get()
@@ -58,7 +57,7 @@ class MoneyController
         return [
             'waiting' => $all->where('state', InvoiceState::Issued)->sortBy(fn (Invoice $i) => $i->due_at?->timestamp ?? PHP_INT_MAX)->values(),
             'paid' => $all->where('state', InvoiceState::Paid)->values(),
-            'tasks' => Transport::whereIn('invoice_id', $all->pluck('id'))->with(['car', 'offer', 'vehicle'])->get()->keyBy('invoice_id'),
+            'tasks' => Transport::whereIn('invoice_id', $all->pluck('id'))->with(['car', 'offer.settlement', 'vehicle'])->get()->keyBy('invoice_id'),
         ];
     }
 }

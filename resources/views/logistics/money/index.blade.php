@@ -1,5 +1,5 @@
 {{-- «Оплаты» логистики (19.01.2027): логисту — реквизиты строкой (нажатие — шторка, те же поля, что у менеджера) и долг по
-     вывозам: «Ждут выплаты» по сроку, «Выплачено» — свежие сверху; строка — машина, город и км, справа сумма и срок. Админу —
+     вывозам: «Ждут выплаты» по сроку, «Выплачено» — свежие сверху, у заголовка — сколько и на какую сумму; строка — машина, город и км, справа сумма и срок. Админу —
      то же по каждому логисту, имя — заголовком группы. Выплачивают в CRM «Оплаты → Мы должны». --}}
 @php use App\Support\Money; @endphp
 <x-ui.shell title="Оплаты">
@@ -35,7 +35,7 @@
 
             @foreach (['waiting' => 'Ждут выплаты', 'paid' => 'Выплачено'] as $key => $head)
                 @if ($row->{$key}->isNotEmpty())
-                    <div class="list-head mt-6">{{ $head }} <span class="nums">{{ $row->{$key}->count() }}</span></div>
+                    <div class="list-head mt-6">{{ $head }} <span class="nums">{{ $row->{$key}->count() }}, {{ Money::rub((int) $row->{$key}->sum('total')) }}</span></div>
                     <div class="list">
                         @foreach ($row->{$key} as $invoice)
                             {{-- Задача знает только последний счёт: прежний оплаченный (цену поменяли после части выплаты) — по строке счёта. --}}
@@ -51,11 +51,11 @@
                                 <span class="shrink-0 text-right">
                                     <span class="block nums">{{ Money::rub((int) $invoice->total) }}</span>
                                     @if ($key === 'paid')
-                                        <span class="block text-sm text-ink-muted">выплачено{{ $invoice->paid_at ? ' '.$invoice->paid_at->translatedFormat('j M') : '' }}</span>
+                                        <span class="block text-sm text-ink-muted">выплачено{{ $invoice->paid_at ? ' '.\App\Support\Ago::day($invoice->paid_at) : '' }}</span>
                                     @elseif ($invoice->isOverdue())
                                         <span class="block text-sm text-danger">{{ $invoice->overdueLabel() }}</span>
                                     @elseif ($invoice->due_at)
-                                        <span class="block text-sm text-ink-muted">до {{ $invoice->due_at->translatedFormat('j M') }}</span>
+                                        <span class="block text-sm text-ink-muted">до {{ \App\Support\Ago::day($invoice->due_at) }}</span>
                                     @endif
                                 </span>
                             </a>

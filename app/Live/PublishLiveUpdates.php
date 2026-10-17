@@ -11,6 +11,8 @@ use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Events\ChatRead;
 use App\Garage\Car as GarageCar;
 use App\Garage\Events\GarageChanged;
+use App\Logistics\Listeners\RefreshLogistics;
+use App\Logistics\Transport;
 use App\Notifications\ChatNotice;
 use App\Notifications\Notice;
 use App\Offers\Events\BidAccepted;
@@ -26,6 +28,7 @@ use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersHidden;
 use App\Offers\Events\OffersShown;
 use App\Offers\Events\OfferStateChanged;
+use App\Offers\Offer;
 use App\Offers\Showing;
 use App\Support\Surface;
 use App\Users\User;
@@ -75,6 +78,17 @@ final class PublishLiveUpdates
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
         // Списки CRM — строкой: ушла из вкладки — уходит с экрана, во вкладку пришла — там перечитывается страница.
         $this->publish->rows(Topics::STAFF, ['/' => [$n], '/gallery' => [$n], '/work/deals' => RefreshCar::deals($e->offer)]);
+        $this->logistics($e->offer);
+    }
+
+    /**
+     * Продажа машины поменялась (вышла, сделка, гараж, снята) — у «Вывоза» ведущих меняются столбец «Продажа», менеджер и
+     * срочность (18.10.2026): открытые задачи машины перечитываются хвостом.
+     */
+    private function logistics(Offer $offer): void
+    {
+        Transport::open()->where('car_id', $offer->car_id)->get()
+            ->each(fn (Transport $t) => $this->publish->refreshSoon(RefreshLogistics::topics($t), ['/transports', "/transports/{$t->id}"]));
     }
 
     /** Покупателю открыли предложения: его лента и сводка перечитываются, у менеджера — карточки с числом «видят». */
@@ -228,6 +242,7 @@ final class PublishLiveUpdates
         $paths = ['/garage', "/garage/cars/{$n}"];
         $this->publish->refresh(Topics::STAFF, [...$paths, "/offers/{$n}"]);
         $this->publish->rows(Topics::STAFF, ['/work/garage' => [$n]]);
+        $this->logistics($e->car->offer);
         if ($e->car->manager_id) {
             $this->publish->refresh(Topics::user($e->car->manager_id), $paths);
         }

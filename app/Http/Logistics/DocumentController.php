@@ -17,11 +17,11 @@ class DocumentController
     {
         $user = $request->user();
         abort_unless($user->sendsLogisticsDocs(), 404);
-        $detail = Detail::of($request, fn (string $key) => ($t = Transport::where('docs_by_cdek', true)->find($key)) ? $transports->detail($t) : null);
+        $detail = Detail::of($request, fn (string $key) => ($t = Transport::where('docs_by_cdek', true)->find($key)) ? $transports->detail($t, 'documents') : null);
         if ($detail->framed()) {
             return $detail->response();
         }
-        $with = ['car', 'offer', 'vehicle', 'executorUser', 'coordinator'];
+        $with = ['car', 'offer.settlement', 'vehicle', 'executorUser', 'coordinator'];
         $waiting = Transport::awaitingDocs()->with($with)->oldest('assigned_at')->get();
         $sent = Transport::where('docs_by_cdek', true)->whereNotNull('docs_sent_at')->where('docs_sent_at', '>', now()->subDays(14))
             ->with($with)->latest('docs_sent_at')->get();

@@ -65,7 +65,7 @@ final class PickUp
             $to === Point::Yard && empty($data['to_yard_id']) => throw ValidationException::withMessages(['to_yard_id' => 'Какая парковка']),
             $to === Point::Other && ! $address => throw ValidationException::withMessages(['to_address' => 'Адрес']),
             // Админ отмечает факт за исполнителя и без кадров (забрали, а фото пришлют потом).
-            ! $by->isAdmin() && $t->photos('pickup')->isEmpty() => throw ValidationException::withMessages(['photos' => 'Добавьте фото приёма']),
+            ! $by->leadsLogistics() && $t->photos('pickup')->isEmpty() => throw ValidationException::withMessages(['photos' => 'Добавьте фото приёма']),
             default => null,
         };
 

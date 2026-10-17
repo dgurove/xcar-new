@@ -1,4 +1,7 @@
 {{-- Карточка вывоза (Logistics XCar, 17.10.2026): машина («!» — один ключ), что дальше словом, фразой — город и откуда.
+     Под названием коды: номер убытка с логотипом (сотрудникам), госномер, VIN. Ведущим логистику (админ, модераторы,
+     18.10.2026) — строка «Продажа»: где продажа (`SaleState`), менеджер чипом — кому везти, этап сделки, когда поступила;
+     три дня без покупателя — красным. Свежая строка списка в ответе — та же, что в списке (`list`, `pick`, `cols`).
      Владелец с телефоном (звонок нажатием) и адрес с картой — исполнителю первым делом: созвониться. Ниже — ход лесенкой
      (`Transport::steps`), документы СДЭКом (трек копируется, ссылка на отслеживание; модератору — поле трека), кадры
      приёма. Главное действие одно — подвалом во всю ширину, по шагу: админу «Выбрать исполнителя», логисту
@@ -13,7 +16,11 @@
     use App\Support\Phone;
     use App\Support\Surface;
     $car = $t->lane();
-    $admin = $me->isAdmin();
+    $admin = $me->leadsLogistics();
+    $sale = $admin ? \App\Logistics\SaleState::of($t) : null;
+    $offer = $t->saleOffer();
+    // Этап сделки — когда забирать уже можно (иначе «после оплаты» / «ждём поставщика» говорит то же).
+    $dealStage = $sale && in_array($sale->key, ['deal', 'garage'], true) && ! str_contains($sale->word, ',') ? $offer?->position()?->stage?->block?->name : null;
     $handles = $t->isHandledBy($me);
     $executes = $t->isExecutedBy($me) || $admin;
     $pickup = $t->isPickup();
@@ -24,7 +31,7 @@
     $mapUrl = $from ? 'https://yandex.ru/maps/?text='.rawurlencode($city && ! str_contains($from, $city) ? "{$city}, {$from}" : $from) : null;
     $id = $t->id;
     $carLink = match (true) {
-        $car instanceof \App\Offers\Offer && $me->isStaff() => Surface::Crm->url('/offers/'.$car->number),
+        $car instanceof \App\Offers\Offer && ($me->isAdmin() || $car->isEditableBy($me)) => Surface::Crm->url('/offers/'.$car->number),
         $t->vehicle && Surface::Park->opensFor($me) => Surface::Park->url('/cars/'.$t->vehicle->id),
         default => null,
     };
@@ -44,7 +51,14 @@
 @endphp
 <x-ui.detail>
     <x-ui.row-card :title="$t->title()" :photos="$car?->visiblePhotos() ?? collect()" :action="false" :blank="false">
-        <x-slot:row><x-logistics.row :t="$t"/></x-slot:row>
+        <x-slot:row>@if ($list === 'documents')<x-logistics.doc-row :t="$t"/>@else<x-logistics.row :t="$t" :checkable="$pick" :cols="$cols"/>@endif</x-slot:row>
+        @if (($me->isStaff() && ($t->vendorId() || $t->car?->claim_ref)) || $t->car?->plate || ($t->car?->vin && ($admin || $handles)))
+            <x-slot:marks>
+                @if ($me->isStaff())<x-vendor.ref :vendor-id="$t->vendorId()" :ref="$t->car?->claim_ref" copy class="tag"/>@endif
+                @if ($t->car?->plate)<x-ui.copy-code :value="$t->car->plate" class="tag" done="Госномер в буфере"/>@endif
+                @if ($admin || $handles)<x-ui.vin-code :vin="$t->car?->vin" class="tag"/>@endif
+            </x-slot:marks>
+        @endif
         <x-slot:badge><x-car.keys :count="$t->car?->keys_count" label/><span class="title-state {{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span></x-slot:badge>
         <x-slot:line>
             @if ($city)<span>{{ $city }}</span>@endif
@@ -56,6 +70,20 @@
             <x-slot:actions><a href="{{ $carLink }}" class="pill" data-turbo="false">{{ str_contains($carLink, '/offers/') ? 'Предложение в CRM' : 'Дело на парковке' }}</a></x-slot:actions>
         @endif
         @if ($errors->any())<x-ui.flash tone="danger" class="mt-3">{{ $errors->first() }}</x-ui.flash>@endif
+
+        {{-- Где продажа — тому, кто решает, кому отдать машину: покупатель есть — менеджер, к кому везти. --}}
+        @if ($sale)
+            <div class="list mt-4">
+                <div class="row items-center justify-between gap-3">
+                    <span class="min-w-0">
+                        <span class="block text-sm text-ink-muted">Продажа</span>
+                        <span class="block {{ $sale->tone }}">{{ $sale->word }}@if ($dealStage)<span class="text-ink-muted">, {{ mb_strtolower($dealStage) }}</span>@endif</span>
+                        <span class="block text-sm text-ink-muted nums">поступила {{ \App\Support\Ago::day($t->created_at, time: true) }}@if ($sale->urgent), <span class="text-danger">{{ $sale->days }}&nbsp;{{ \App\Support\Plural::of($sale->days, ['день', 'дня', 'дней']) }} без покупателя</span>@endif</span>
+                    </span>
+                    @if ($sale->manager)<x-ui.person :user="$sale->manager" class="shrink-0"/>@endif
+                </div>
+            </div>
+        @endif
 
         {{-- Владелец и откуда — тому, кто едет: созвониться первым делом. --}}
         @if ($pickup && ($handles || $me->sendsLogisticsDocs()))
@@ -71,6 +99,9 @@
                         <span class="min-w-0"><span class="block text-sm text-ink-muted">Где забрать</span><span class="block whitespace-pre-line break-words">{{ $t->pickup_place ?? $from }}</span></span>
                         <x-ui.icon name="map-pin" class="size-5 shrink-0 text-accent-text"/>
                     </a>
+                @endif
+                @if ($dest = $t->destinationLabel() ?? \App\Logistics\Transport::keeperLabel($offer))
+                    <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Куда везти</span><span class="block break-words">{{ $dest }}</span></span></div>
                 @endif
                 @if ($t->call_note)
                     <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Договорились</span><span class="block whitespace-pre-line break-words">{{ $t->call_note }}</span></span></div>
@@ -88,7 +119,7 @@
                     <div class="step-body">
                         <div class="step-head">
                             <span class="step-title flex-1">{{ $s['title'] }}</span>
-                            @if ($s['status'] === 'done' && $s['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ $s['at']->translatedFormat('j M') }}</span>@endif
+                            @if ($s['status'] === 'done' && $s['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($s['at'], time: true) }}</span>@endif
                         </div>
                         @if ($s['hint'])<p class="step-hint">{{ $s['hint'] }}</p>@endif
                         {{-- Трек: копировать и смотреть у СДЭКа; получил — отметить. --}}

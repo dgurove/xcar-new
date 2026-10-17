@@ -12,6 +12,7 @@ use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\Yard;
 use App\Search\Term;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Users\User;
@@ -220,12 +221,18 @@ class Transport extends Model
         return $this->from_address ?? $this->saleOffer()?->inspection_address;
     }
 
-    /** Город машины — по предложению, у ТС парковки — её город. */
+    /** Город машины — по предложению («Серпухов, 50» — с номером региона), у ТС парковки — её город. */
     public function city(): ?string
     {
         $lane = $this->lane();
 
-        return $lane instanceof Offer ? $lane->settlement?->name : ($lane?->city_id ? City::name($lane->city_id) : null);
+        return $lane instanceof Offer ? $lane->settlement?->title() : ($lane?->city_id ? City::name($lane->city_id) : null);
+    }
+
+    /** Вендор задачи — логотип с номером убытка в таблице: у продажи — её, у перевода парковки — вендор ТС. */
+    public function vendorId(): ?int
+    {
+        return $this->forSale() ? $this->offer?->vendor_id : $this->vehicle?->vendor_id;
     }
 
     /** Кто вывозит словом: «Иван С.»; у логиста без исполнителя — сам логист. */
@@ -272,12 +279,13 @@ class Transport extends Model
     /** Точка «к менеджеру»: гаражная — «В гараж Бородин Ф.», машина его покупателю — «Менеджеру Бородин Ф.». */
     public static function keeperLabel(?Offer $offer): ?string
     {
-        $keeper = $offer?->keeper();
+        $keeper = $offer ? Choices::managerOf($offer) : null;
         if (! $keeper) {
             return null;
         }
+        $garage = $offer->relationLoaded('garageCar') ? $offer->garageCar !== null : $offer->garageCar()->exists();
 
-        return ($offer->garageCar()->exists() ? 'В гараж ' : 'Менеджеру ').$keeper->shortName();
+        return ($garage ? 'В гараж ' : 'Менеджеру ').$keeper->shortName();
     }
 
     /**
@@ -373,7 +381,7 @@ class Transport extends Model
      */
     public function pickupBlocker(User $by): ?string
     {
-        if ($by->isAdmin() || ! in_array($this->state, [TransportState::Assigned, TransportState::Agreed], true)) {
+        if ($by->leadsLogistics() || ! in_array($this->state, [TransportState::Assigned, TransportState::Agreed], true)) {
             return null;
         }
         if ($this->isPickup() && $this->state === TransportState::Assigned) {
@@ -403,27 +411,26 @@ class Transport extends Model
         return $this->coordinator_id === $user->id;
     }
 
-    /** Действует ли человек по задаче: исполнитель, её логист или админ. */
+    /** Действует ли человек по задаче: исполнитель, её логист или тот, кто ведёт логистику (админ, модератор). */
     public function isHandledBy(User $user): bool
     {
-        return $user->isAdmin() || $this->isExecutedBy($user) || $this->isCoordinatedBy($user);
+        return $user->leadsLogistics() || $this->isExecutedBy($user) || $this->isCoordinatedBy($user);
     }
 
     /**
-     * Кто что видит: админ — всё; логист — свои (через него) и задачи своих исполнителей; остальные — назначенные им;
-     * модератор — те, где ждут документы (Лиза отправляет СДЭКом).
+     * Кто что видит: ведущие логистику (админ, модераторы — 18.10.2026) — всё; логист — свои (через него) и задачи своих
+     * исполнителей; остальные — назначенные им.
      */
     public function scopeVisibleTo(Builder $q, User $user): Builder
     {
         $q->inLogistics();
-        if ($user->isAdmin()) {
+        if ($user->leadsLogistics()) {
             return $q;
         }
 
         return $q->where(fn ($w) => $w->where('executor_id', $user->id)
             ->when($user->isLogist(), fn ($w) => $w->orWhere('coordinator_id', $user->id)
-                ->orWhereIn('executor_id', User::where('logist_id', $user->id)->select('id')))
-            ->when($user->sendsLogisticsDocs(), fn ($w) => $w->orWhere('docs_by_cdek', true)));
+                ->orWhereIn('executor_id', User::where('logist_id', $user->id)->select('id'))));
     }
 
     /**
@@ -454,10 +461,10 @@ class Transport extends Model
         return $q->whereIn('state', TransportState::OPEN);
     }
 
-    /** Чей ход у человека: админу — без исполнителя, логисту — ждущие его, исполнителю — созвон, вывоз, доставка. */
+    /** Чей ход у человека: ведущим — без исполнителя, логисту — ждущие его, исполнителю — созвон, вывоз, доставка. */
     public function scopeTurnOf(Builder $q, User $user): Builder
     {
-        if ($user->isAdmin()) {
+        if ($user->leadsLogistics()) {
             return $q->where('state', TransportState::New);
         }
 
@@ -475,8 +482,11 @@ class Transport extends Model
         return $q->open()->inLogistics()->where('docs_by_cdek', true)->whereNotNull('executor_id')->whereNull('docs_sent_at');
     }
 
-    /** Поиск по машине: марка, модель, VIN, госномер, номер предложения; по адресам, владельцу и треку. */
-    public function scopeSearch(Builder $q, string|Term $term): Builder
+    /**
+     * Поиск по машине: марка, модель, VIN, госномер, номер предложения; по адресам, владельцу и треку. `crm` — ведущим
+     * логистику ещё номер убытка и телефон (как поиск CRM); внешним исполнителям номера убытка нет.
+     */
+    public function scopeSearch(Builder $q, string|Term $term, bool $crm = false): Builder
     {
         $t = Term::of($term);
         if ($t->blank()) {
@@ -484,11 +494,24 @@ class Transport extends Model
         }
         $like = Term::like($t->raw);
 
-        return $q->where(fn ($w) => $w->whereHas('offer', fn ($o) => $o->search($t))
+        return $q->where(fn ($w) => $w->whereHas('offer', fn ($o) => $crm ? $o->searchCrm($t) : $o->search($t))
             ->orWhereHas('vehicle', fn ($v) => $v->search($t))
             ->orWhere('from_address', 'ilike', $like)->orWhere('to_address', 'ilike', $like)->orWhere('docs_track', 'ilike', $like)
             ->orWhereHas('car', fn ($c) => $c->where('insured_name', 'ilike', $like)
                 ->when($t->phone, fn ($c, $phone) => $c->orWhere('insured_phone', 'like', '%'.$phone.'%'))));
+    }
+
+    /** Дата строки в SQL — порядок «Когда» (то же, что `shownAt`). */
+    public const SHOWN_SQL = "(case transports.state when 'delivered' then transports.delivered_at when 'moving' then transports.picked_at
+        when 'cancelled' then transports.cancelled_at when 'agreed' then coalesce(transports.pickup_at, transports.agreed_at)
+        else coalesce(transports.assigned_at, transports.created_at) end)";
+
+    /** Дата строки словом: сегодня — время, иначе «9 окт, 14:05» (без времени, когда его нет — вывоз назначен днём). */
+    public function shownLabel(): string
+    {
+        $at = $this->shownAt();
+
+        return $at ? Ago::stamp($at, time: $at->format('H:i') !== '00:00') : '';
     }
 
     /** Дата строки: когда вывоз, иначе когда назначили, забрали, привезли. */
