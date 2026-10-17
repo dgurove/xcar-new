@@ -47,9 +47,9 @@ final class Deliver
 
     /**
      * ТС парковки привезли на парковку: другой город — перевод (`Transfer`), тот же город, другая парковка —
-     * перестановка (`Move`); ТС ещё ожидается — ждём её там (приём — как обычно, на парковке).
+     * перестановка (`Move`); ТС ещё ожидается — ждём её там (приём — как обычно, на парковке). Зовёт и «Уже вывезли» (`Backdate`).
      */
-    private function toYard(Transport $t, User $by): void
+    public function toYard(Transport $t, User $by): void
     {
         $vehicle = $t->parkVehicle();
         $yard = $t->toYard;

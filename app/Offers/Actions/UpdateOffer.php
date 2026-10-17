@@ -12,6 +12,7 @@ use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\DealAudience;
 use App\Offers\Jobs\ImportMigtorgLot;
+use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
@@ -127,8 +128,10 @@ final class UpdateOffer
             $offer = ($this->startRoute)($offer->load('vendor.workflows'), $by);
         }
         // Вендор, чьи машины вывозим все (Совкомбанк, 17.10.2026): встал вендор — встаёт и задача на вывоз в логистике.
-        // Один раз на машину: отменённый вывоз сам не возвращается.
+        // Один раз на машину: отменённый вывоз сам не возвращается. Машина из «Таблицы Кати» — сделка вне системы, её вывоз
+        // заводят руками («Вывезти» в CRM), а не сам (18.10.2026: 93 такие висели «Без исполнителя»).
         if (in_array('vendor_id', $changed, true) && $offer->vendor?->pickup_on_arrival && $offer->car_id && ! OpenPickup::blocker($offer)
+            && ! LegacyClaim::listed($offer)
             && ! Transport::where('car_id', $offer->car_id)->where('origin', 'sale')->exists()) {
             app(OpenPickup::class)($offer, $by);
         }

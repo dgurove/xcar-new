@@ -19,6 +19,7 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     Route::get('/transports/{transport}', [TransportController::class, 'show'])->whereNumber('transport');
     Route::put('/transports/executor', [TransportController::class, 'executorMany']);
     Route::post('/transports/cancel', [TransportController::class, 'cancelMany']);
+    Route::put('/transports/backdate', [TransportController::class, 'backdateMany']);
     Route::put('/transports/{transport}/executor', [TransportController::class, 'executor']);
     Route::post('/transports/{transport}/cdek', [TransportController::class, 'cdek']);
     Route::put('/transports/{transport}/logist', [TransportController::class, 'logist']);
@@ -33,6 +34,7 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     Route::post('/transports/{transport}/pickup', [TransportController::class, 'pickup']);
     Route::post('/transports/{transport}/deliver', [TransportController::class, 'deliver']);
     Route::post('/transports/{transport}/cancel', [TransportController::class, 'cancel']);
+    Route::post('/transports/{transport}/backdate', [TransportController::class, 'backdate']);
     Route::get('/documents', [DocumentController::class, 'index']);
 
     Route::middleware('ability:managesContractors')->group(function () {

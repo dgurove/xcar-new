@@ -6,6 +6,7 @@ use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Executor;
 use App\Offers\OfferEventType;
+use App\Support\Ago;
 use Illuminate\Events\Dispatcher;
 
 /**
@@ -37,7 +38,9 @@ final class RecordOnOffer
             'docs_sent' => 'документы отправлены СДЭКом, трек '.$t->docs_track,
             'docs_received' => 'документы получены',
             'picked' => 'вывезена'.(($d = $t->destinationLabel()) ? ', '.$d : ''),
-            'delivered' => 'привёз'.(($d = $t->destinationLabel()) ? ', '.$d : ''),
+            // «Уже вывезли» задним числом — с датой: «привёз, к нам, 12 окт, 14:00».
+            'delivered' => 'привёз'.(($d = $t->destinationLabel()) ? ', '.$d : '')
+                .($t->delivered_at?->lt(now()->subMinutes(5)) ? ', '.Ago::day($t->delivered_at, time: true) : ''),
             'cancelled' => 'отменён'.($t->cancel_reason ? ': '.$t->cancel_reason : ''),
             default => null,
         };

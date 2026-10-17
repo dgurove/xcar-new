@@ -321,8 +321,10 @@ class Transport extends Model
         $status = fn (bool $done, bool $current) => $done ? 'done' : ($current && ! $cancelled ? 'current' : 'later');
         $steps = [];
         $assigned = $this->executor_id !== null;
-        $steps[] = ['key' => 'executor', 'title' => $assigned ? 'Вывозит '.($this->executorUser?->shortName() ?? 'исполнитель') : ($this->executor === Executor::Logist ? 'У логиста'.($this->coordinator ? ' '.$this->coordinator->shortName() : '') : 'Кто вывозит'),
-            'status' => $status($assigned, ! $assigned), 'at' => $this->assigned_at,
+        // «Уже вывезли» задним числом без исполнителя (`Backdate`) — шаг позади, кто вёз, не знаем.
+        $unknown = ! $assigned && $s->picked() && $this->executor !== Executor::Logist;
+        $steps[] = ['key' => 'executor', 'title' => $assigned ? 'Вывозит '.($this->executorUser?->shortName() ?? 'исполнитель') : ($this->executor === Executor::Logist ? 'У логиста'.($this->coordinator ? ' '.$this->coordinator->shortName() : '') : ($unknown ? 'Исполнитель не указан' : 'Кто вывозит')),
+            'status' => $status($assigned || $s->picked(), ! $assigned && ! $s->picked()), 'at' => $this->assigned_at,
             'hint' => implode(', ', array_filter([
                 $this->executor === Executor::Logist && $this->coordinator && $assigned && $this->coordinator_id !== $this->executor_id ? 'через '.$this->coordinator->shortName() : null,
                 $this->distance_km ? $this->distance_km.' км' : null,

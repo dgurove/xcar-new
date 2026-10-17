@@ -110,6 +110,12 @@ final class TransportNotice extends Notice
         return new self(null, 'Отменено вывозов: '.$n, $reason, false, false, '/transports?preset=all');
     }
 
+    /** «Уже вывезли» пачкой — другим ведущим одной строкой. */
+    public static function backdatedMany(int $n): self
+    {
+        return new self(null, 'Отмечено вывезенными: '.$n, null, false, false, '/transports?preset=done');
+    }
+
     /** Третий раз подряд не дозвонились — админам: решать, что дальше. */
     public static function unreachable(Transport $t): self
     {

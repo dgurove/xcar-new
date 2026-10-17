@@ -6,6 +6,7 @@ use App\Cars\Car;
 use App\Cars\Region;
 use App\Live\Stream;
 use App\Logistics\Actions\AssignExecutor;
+use App\Logistics\Actions\Backdate;
 use App\Logistics\Actions\Call;
 use App\Logistics\Actions\Cancel;
 use App\Logistics\Actions\Deliver;
@@ -376,6 +377,32 @@ class TransportController
         $pickUp($transport, $transport->isPickup() ? $request->validate(PickUp::rules(), PickUp::messages()) : [], $request->user());
 
         return back()->with('toast', 'Вывезена: '.$transport->title());
+    }
+
+    /** «Уже вывезли» — задним числом (ведущие логистику). */
+    public function backdate(Request $request, Transport $transport, Backdate $backdate)
+    {
+        $this->visible($request, $transport);
+        $backdate($transport, $request->validate(Backdate::rules(), Backdate::messages()), $request->user());
+
+        return back()->with('toast', 'Отмечена вывезенной: '.$transport->title());
+    }
+
+    /** «Уже вывезли (N)» — ведущие пачкой, одна дата и точка на всех; что не прошло (нет менеджера), остальное не роняет. */
+    public function backdateMany(Request $request, Backdate $backdate)
+    {
+        abort_unless($request->user()->leadsLogistics(), 404);
+        $data = $request->validate(Backdate::rules(), Backdate::messages());
+        $n = 0;
+        $back = $this->many($request, function (Transport $t) use ($backdate, $request, $data, &$n) {
+            $backdate($t, $data, $request->user(), batch: true);
+            $n++;
+        }, 'Отмечено вывезенными', 'Отмечена вывезенной');
+        if ($n) {
+            Notification::send(User::logisticsLeads()->whereKeyNot($request->user()->id)->get(), TransportNotice::backdatedMany($n));
+        }
+
+        return $back;
     }
 
     public function deliver(Request $request, Transport $transport, Deliver $deliver)

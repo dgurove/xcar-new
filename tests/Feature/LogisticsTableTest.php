@@ -61,4 +61,35 @@ class LogisticsTableTest extends TestCase
         $this->actingAs($moderator)->get($host.'/transports?peek='.$deal->id, ['Turbo-Frame' => 'detail'])
             ->assertOk()->assertSee('pick-transport-'.$deal->id, false)->assertSee('Иван П.');
     }
+
+    /** «Уже вывезли» задним числом: машина у менеджера с гаражом этой датой, подготовка началась; пачкой — что не прошло, в тост. */
+    public function test_backdate_closes_task_as_delivered(): void
+    {
+        Notification::fake();
+        $moderator = User::create(['name' => 'Лиза', 'phone' => '79000000003', 'roles' => [Role::Moderator], 'approved_at' => now()]);
+        $manager = User::create(['name' => 'Иван Петров', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $kept = tap(Offer::create(['claim_ref' => 'T-7/26', 'floor_price' => 500000]), fn (Offer $o) => $o->forceFill(['state' => OfferState::Garage])->save());
+        $car = GarageCar::create(['offer_id' => $kept->id, 'manager_id' => $manager->id, 'taken_at' => now(), 'state' => 'waiting']);
+        $garage = Transport::create(['car_id' => $kept->car_id, 'state' => 'new', 'origin' => 'sale', 'kind' => 'pickup']);
+        $draft = Offer::create(['claim_ref' => 'T-8/26', 'floor_price' => 500000]);
+        $lone = Transport::create(['car_id' => $draft->car_id, 'state' => 'new', 'origin' => 'sale', 'kind' => 'pickup']);
+        $host = 'http://'.config('xcar.logistics_host');
+        $at = now()->subDay()->setTime(14, 30);
+
+        $this->actingAs($moderator)->put($host.'/transports/backdate', ['transports' => [$garage->id, $lone->id], 'picked_at' => $at->format('Y-m-d\TH:i'), 'destination' => 'keeper', 'keys' => '1'])
+            ->assertSessionHasNoErrors()->assertSessionHas('toast', fn ($t) => str_contains($t, 'Отмечено вывезенными 1') || str_contains($t, ': у машины нет менеджера'));
+        $garage->refresh();
+        $this->assertSame('delivered', $garage->state->value);
+        $this->assertSame($at->format('Y-m-d H:i'), $garage->delivered_at->format('Y-m-d H:i'));
+        $this->assertSame('keeper', $kept->fresh()->car_place->value);
+        $this->assertSame('repair', $car->fresh()->state->value, 'гаражная машина довезена — подготовка');
+        $this->assertSame(1, $kept->fresh()->car->keys_count);
+        $this->assertSame('new', $lone->fresh()->state->value, 'без менеджера «к менеджеру» не проходит');
+
+        // Одна задача — к нам, датой; позже «сейчас» нельзя.
+        $this->actingAs($moderator)->post($host.'/transports/'.$lone->id.'/backdate', ['picked_at' => now()->addDay()->format('Y-m-d\TH:i')])->assertSessionHasErrors('picked_at');
+        $this->actingAs($moderator)->post($host.'/transports/'.$lone->id.'/backdate', ['picked_at' => $at->format('Y-m-d\TH:i'), 'destination' => 'ours'])->assertSessionHasNoErrors();
+        $this->assertSame('delivered', $lone->fresh()->state->value);
+        $this->assertSame('with_us', $draft->fresh()->car_place->value);
+    }
 }

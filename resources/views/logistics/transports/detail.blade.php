@@ -47,6 +47,7 @@
     };
     $blocked = $step === 'pickup' ? $t->pickupBlocker($me) : null;
     $docsForm = $me->sendsLogisticsDocs() && $t->docs_by_cdek && $t->executor_id && $open && ! $t->state->picked();
+    $backdate = $admin && $open;
     $photosEdit = $handles && $open && ! in_array($t->state, [S::Delivered, S::Cancelled], true) && $t->executor_id;
 @endphp
 <x-ui.detail>
@@ -185,9 +186,11 @@
             </div>
         @endif
 
-        @if ($step)
+        {{-- «Уже вывезли» — ведущим у открытой задачи: тихой строкой под главным действием (вывоз задним числом). --}}
+        @if ($step || $backdate)
             <x-slot:foot>
                 <div class="detail-action">
+                    @if ($step)
                     @if ($blocked)
                         <button type="button" class="btn btn-quiet w-full" disabled>{{ $blocked }}</button>
                     @elseif ($step === 'call')
@@ -198,12 +201,21 @@
                     @else
                         <button type="button" class="btn btn-accent w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $step }}-{{ $id }}:open">{{ match ($step) { 'executor' => 'Выбрать исполнителя', 'logist' => 'Назначить исполнителя', 'pickup' => 'Забрал', 'deliver' => 'Привёз' } }}</button>
                     @endif
+                    @endif
+                    @if ($backdate)<button type="button" @class(['retreat-link', '!mt-0' => ! $step]) data-controller="emit" data-action="emit#send" data-emit-event-param="backdate-{{ $id }}:open">Уже вывезли</button>@endif
                 </div>
             </x-slot:foot>
         @endif
     </x-ui.row-card>
 
     {{-- Шторки шагов. --}}
+    @if ($backdate)
+        <div data-controller="sheet" data-action="backdate-{{ $id }}:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="'backdate-'.$id" title="Уже вывезли" tall>
+                <x-logistics.backdate-form :transport="$t" :action="'/transports/'.$id.'/backdate'" :prefix="'backdate-'.$id"/>
+            </x-ui.sheet>
+        </div>
+    @endif
     @if ($admin && $open && ! $t->state->picked())
         <div data-controller="sheet" data-action="executor-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'executor-'.$id" title="Кто вывозит">
