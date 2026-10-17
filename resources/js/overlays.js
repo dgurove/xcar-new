@@ -67,6 +67,19 @@ addEventListener('popstate', (event) => {
     if (turbo && turbo === window.Turbo?.session?.history?.restorationIdentifier) event.stopImmediatePropagation();
 }, { capture: true });
 
+// Слушатель Turbo — после нашего (17.10.2026). На window popstate идёт слушателям по порядку подключения: фаза перехвата
+// на самой цели их не опережает, а Turbo подключается раньше этого модуля. Шаг назад от шторки, закрытой ответом формы
+// (визит replace той же страницы дал записи новый ключ Turbo), доходил до Turbo — restore-визит перечитывал страницу:
+// после «Принять» пропадало окно письма вендору (flash уже прочитан). Перевешиваем его в конец очереди.
+function behindTurbo() {
+    const h = window.Turbo?.session?.history;
+    if (!h?.started) return false;
+    removeEventListener('popstate', h.onPopState, false);
+    addEventListener('popstate', h.onPopState, false);
+    return true;
+}
+if (!behindTurbo()) document.addEventListener('turbo:load', behindTurbo, { once: true });
+
 // Свой шаг по истории: его popstate пропускается молча. WebKit бывает не присылает popstate на запись, поставленную без
 // жеста, — через полсекунды ожидание снимается само (опоздавший шаг погасит проверка записи этой страницы выше).
 function go(delta) {

@@ -12,6 +12,7 @@ use App\Logistics\Executor;
 use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
+use App\Notifications\YourTurnNotice;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\CarPlace;
@@ -24,8 +25,10 @@ use App\Vendors\Vendor;
 use App\Workflow\Actions\ApplyPreset;
 use App\Workflow\Actions\EnterStage;
 use App\Workflow\Preset;
+use App\Workflow\Requirement;
 use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Workflow\WaitsFor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Notification;
@@ -76,6 +79,10 @@ class PickupLogisticsTest extends TestCase
         $this->assertFalse($t->docs_by_cdek, 'менеджеру — без СДЭКа: покупатель забирает у страхователя сам');
         $this->assertSame('Менеджер забирает автомобиль', $offer->stage()->name);
         $this->assertSame(0, Invoice::where('deal_id', $deal->id)->count());
+        // Вывоз был заведён раньше (Совкомбанк), шаг встал, пока исполнителя не было, — после выбора ход его и «Ваш ход».
+        $this->assertNull($offer->position(Track::Sale)->waits_for);
+        $this->assertTrue(Requirement::where('deal_id', $deal->id)->whereNull('done_at')->exists());
+        Notification::assertSentTo($manager, YourTurnNotice::class);
         // Забирает сам — это не логистика (17.10.2026): задачи там не видно, «Вам вывоз» ему не шлём.
         $this->assertFalse(Transport::visibleTo($admin)->whereKey($t->id)->exists());
         Notification::assertNotSentTo($manager, TransportNotice::class);
@@ -116,6 +123,11 @@ class PickupLogisticsTest extends TestCase
         $this->assertTrue(Transport::visibleTo($admin)->whereKey($t->id)->exists());
         Notification::assertSentTo($admin, TransportNotice::class, fn (TransportNotice $n) => str_starts_with($n->title(), 'Вывоз:'));
         $this->actingAs($manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee('Вывоз заказан, ждём исполнителя')->assertDontSee('Нужен вывоз');
+        // Везёт логистика — шаг получения ждёт нас: у менеджера ни просьбы «Заберите», ни часов, ни просрочки.
+        $position = $offer->fresh()->position(Track::Sale);
+        $this->assertSame(WaitsFor::Us, $position->waits_for);
+        $this->assertNull($position->deadline_at);
+        $this->assertFalse(Requirement::where('deal_id', $deal->id)->whereNull('done_at')->exists());
     }
 
     public function test_logist_assigns_own_contractor_and_debt_goes_to_logist(): void
