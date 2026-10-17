@@ -48,7 +48,8 @@
         <x-slot:badge><x-car.keys :count="$t->car?->keys_count" label/><span class="title-state {{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span></x-slot:badge>
         <x-slot:line>
             @if ($city)<span>{{ $city }}</span>@endif
-            @if ($t->executorName() && ! $t->isExecutedBy($me))<span>вывозит {{ $t->executorName() }}</span>@endif
+            {{-- У логиста, исполнителя ещё нет — «у логиста», а не «вывозит»; самому логисту его имя не пишем. --}}
+            @if ($t->executorUser && ! $t->isExecutedBy($me))<span>вывозит {{ $t->executorName() }}</span>@elseif ($t->coordinator && $t->coordinator_id !== $me->id)<span>у логиста {{ $t->coordinator->shortName() }}</span>@endif
             @if (! $pickup)<span>перевозка</span>@endif
         </x-slot:line>
         @if ($carLink)
