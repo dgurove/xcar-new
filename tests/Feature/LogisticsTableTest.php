@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Garage\Car as GarageCar;
 use App\Logistics\SaleState;
 use App\Logistics\Transport;
+use App\Offers\Actions\CancelDeal;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Offer;
@@ -91,5 +92,19 @@ class LogisticsTableTest extends TestCase
         $this->actingAs($moderator)->post($host.'/transports/'.$lone->id.'/backdate', ['picked_at' => $at->format('Y-m-d\TH:i'), 'destination' => 'ours'])->assertSessionHasNoErrors();
         $this->assertSame('delivered', $lone->fresh()->state->value);
         $this->assertSame('with_us', $draft->fresh()->car_place->value);
+    }
+
+    /** Сделку отменили — вывоз, заказанный ради неё, отменяется (у вендора, чьи машины вывозим все, — остаётся). */
+    public function test_deal_cancel_cancels_its_pickup(): void
+    {
+        Notification::fake();
+        $manager = User::create(['name' => 'Иван Петров', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $sold = tap(Offer::create(['claim_ref' => 'T-9/26', 'floor_price' => 500000]), fn (Offer $o) => $o->forceFill(['state' => OfferState::Sold])->save());
+        $deal = Deal::create(['offer_id' => $sold->id, 'buyer_id' => $manager->id, 'state' => DealState::Active, 'cost' => 500000]);
+        $t = Transport::create(['car_id' => $sold->car_id, 'state' => 'new', 'origin' => 'sale', 'kind' => 'pickup']);
+
+        app(CancelDeal::class)($deal, $manager);
+        $this->assertSame('cancelled', $t->fresh()->state->value);
+        $this->assertSame('Сделка отменена', $t->fresh()->cancel_reason);
     }
 }

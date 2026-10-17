@@ -10,6 +10,7 @@ use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
 use App\Logistics\Actions\AssignExecutor;
+use App\Logistics\Actions\Cancel;
 use App\Logistics\Executor;
 use App\Logistics\Point;
 use App\Logistics\Transport;
@@ -66,6 +67,11 @@ final class CancelDeal
             }
             if ($car && ! $keepCar && $open->destination === Point::Keeper) {
                 $open->update(['destination' => null]);
+            }
+            // Вывоз заказали ради этой сделки (заведён после принятия), а вендор не из тех, чьи машины вывозим все, — без
+            // сделки он не нужен: отменяется, а не висит «Без исполнителя» (18.10.2026: тестовая сделка Кати).
+            if (! $offer->vendor?->pickup_on_arrival && $open->created_at?->gte($deal->created_at) && ! $open->fresh()->state->picked()) {
+                app(Cancel::class)($open->fresh(), $by, 'Сделка отменена', system: true);
             }
         }
         if (($fee = $deal->agentFee()->first()) && $fee->state === InvoiceState::Issued && $fee->paid == 0) {
