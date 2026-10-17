@@ -20,6 +20,9 @@ use Illuminate\Support\Str;
  */
 final class Enroll
 {
+    /** Пространство замков `pg_advisory_xact_lock(LOCK, user_id)`. */
+    private const LOCK = 7101;
+
     public function __construct(private RevokeDevices $revoke) {}
 
     /** @param array{kty: string, crv: string, x: string, y: string}|null $key */
@@ -31,6 +34,10 @@ final class Enroll
         $topic = Lock::topic($request);
 
         $device = DB::connection('pgsql_async')->transaction(function () use ($user, $token, $key, $request, $topic) {
+            // Два входа разом (двойное нажатие «Войти через Telegram», 17.10.2026 у Дашкова) — по очереди: второй ждёт
+            // первого, гасит его устройство и встаёт сам. Без замка оба гасили старое и вставляли новое — 500 на
+            // `devices_live_user` (живое устройство у человека одно).
+            DB::connection('pgsql_async')->select('select pg_advisory_xact_lock(?, ?)', [self::LOCK, $user->id]);
             ($this->revoke)($user);
 
             return Device::create([
