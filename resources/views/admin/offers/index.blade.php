@@ -24,7 +24,7 @@
         // «Из таблицы Кати»: заведённые черновики, под ними незаведённые номера ($ghosts) своей группой.
         $preset === 'legacy' => collect(['legacy' => $offers->getCollection()])->filter(fn ($list) => $list->isNotEmpty()),
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
-        in_array($preset, ['published', 'bids'], true) && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
+        $preset === 'bids' && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
         default => collect(['' => $offers->getCollection()]),
     };
     $groupTitle = fn ($key, $list) => match (true) {
@@ -74,7 +74,7 @@
             @endif
         @endforeach
         @if ($offers->isEmpty() && $ghosts->isEmpty())
-            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
+            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'closed' => 'Закрытого приёма нет', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)
                 <form id="offers-pick" method="post" action="/offers/schedule">@csrf</form>

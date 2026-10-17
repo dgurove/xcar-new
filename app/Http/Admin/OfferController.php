@@ -75,11 +75,14 @@ class OfferController
      */
     public const PRESETS = [
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
-        'bids' => 'Есть подтверждения', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
+        'closed' => 'Приём закрыт', 'bids' => 'Есть подтверждения', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
 
-    /** Опубликованное: «Опубликованные» и «Есть подтверждения» — одни правила групп, сортировки и чипов. */
-    private const OPEN = ['published', 'bids'];
+    /**
+     * Опубликованное: «Опубликованные», «Приём закрыт» и «Есть подтверждения» — одни правила сортировки и чипов. «Приём
+     * закрыт» — своя вкладка с 17.10.2026 (начальник): была группой внизу «Опубликованных».
+     */
+    private const OPEN = ['published', 'closed', 'bids'];
 
     /** Вкладки, где порядок — когда предложение в них попало (`offers.tab_at`) и столбец даты — оно же. */
     public const BY_TAB = ['nofloor', 'unpriced', 'priced', 'archive', 'auction'];
@@ -96,7 +99,7 @@ class OfferController
     ];
 
     /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
-    private const STEPS = ['nofloor', 'unpriced', 'priced', 'slots', 'published', 'bids'];
+    private const STEPS = ['nofloor', 'unpriced', 'priced', 'slots', 'published', 'closed', 'bids'];
 
     /** Вкладки, где карточка после дела идёт к следующей строке. */
     private const TODO = ['nofloor', 'unpriced'];
@@ -148,6 +151,7 @@ class OfferController
         // Шаги работы — по тому, когда предложение сюда пришло, новые сверху (15.10.2026, владелец: оценил закупочную — и ищи
         // машину внизу «Без продажной»); опубликованные у админа — по закрытию приёма; остальное — по заведению.
         $default = match (true) {
+            $preset === 'closed' => '-closing',
             in_array($preset, self::OPEN, true) => $admin ? 'closing' : '-published',
             in_array($preset, self::BY_TAB, true) => '-tab',
             default => '-created',
@@ -183,7 +187,7 @@ class OfferController
         $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
             // «Новые» (опубликовано за сутки) и «Горящие» (приём закрывается за 12 ч) — как пилюли каталога, голубой и рыжей
             // точкой и своим цветом включённого (12.10.2026, владелец); подтверждения и сроки видит только админ.
-            'published', 'bids' => [
+            'published', 'closed', 'bids' => [
                 ...self::facets(),
                 ...($admin ? [
                     Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent'),
@@ -328,7 +332,11 @@ class OfferController
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
             'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0),
             'slots' => $q->scheduled(),
-            'published' => $q->where('offers.state', OfferState::Open)->when($admin, fn ($o) => $o->whereDoesntHave('bids', $bids)),
+            // Идёт приём (срок не прошёл или его нет); у админа — ещё без подтверждений, они в «Есть подтверждения».
+            'published' => $q->where('offers.state', OfferState::Open)->where(fn ($c) => $c->whereNull('offers.bids_close_at')->orWhere('offers.bids_close_at', '>', now()))
+                ->when($admin, fn ($o) => $o->whereDoesntHave('bids', $bids)),
+            'closed' => $q->where('offers.state', OfferState::Open)->where('offers.bids_close_at', '<=', now())
+                ->when($admin, fn ($o) => $o->whereDoesntHave('bids', $bids)),
             'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
             default => $q->whereIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
         };
@@ -337,7 +345,7 @@ class OfferController
     /**
      * Опубликованные — группами по тому, что делать: 0 «Выбрать» (приём закрыт, подтверждения есть), 1 «Идёт приём»
      * (скоро закроются — выше), 2 «Приём закрыт» без подтверждений. С 07.10.2026 подтверждения — своя вкладка: в «Есть
-     * подтверждения» группы 0 и 1, в «Опубликованных» — 1 и 2.
+     * подтверждения» группы 0 и 1; «Опубликованные» — только 1, группа 2 — вкладка «Приём закрыт» (17.10.2026).
      */
     public const PICK_GROUPS = ['Выбрать', 'Идёт приём', 'Приём закрыт'];
 
@@ -426,7 +434,7 @@ class OfferController
             'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
             // В «Опубликованных» у админа подтверждений нет по определению — столбца тоже.
-            'published' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
+            'published', 'closed' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
             'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
@@ -736,7 +744,8 @@ class OfferController
         $from = $offer->bids_close_at?->isFuture() ? $offer->bids_close_at : now();
         $offer = $update($offer, ['bids_close_at' => $from->copy()->addMinutes($minutes)], $request->user());
 
-        return back()->with('toast', 'Приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'));
+        // Из «Приём закрыт» строка уходит сразу (в «Опубликованные»), числа вкладок — следом, без обновления страницы.
+        return back()->with('toast', 'Приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'))->with(self::gone($request, $offer->refresh()));
     }
 
     /**

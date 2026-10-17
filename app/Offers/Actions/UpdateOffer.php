@@ -4,7 +4,6 @@ namespace App\Offers\Actions;
 
 use App\Cars\Vin\RememberVin;
 use App\Mail\Actions\LinkThread;
-use App\Vendors\Actions\LearnSenders;
 use App\Media\Jobs\StampPhotos;
 use App\Offers\Bid;
 use App\Offers\BidKind;
@@ -17,10 +16,15 @@ use App\Offers\OfferState;
 use App\Park\Sale;
 use App\Support\Changes;
 use App\Users\User;
+use App\Vendors\Actions\LearnSenders;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\StartRoute;
+use App\Workflow\Actions\TakeExit;
+use App\Workflow\Actor;
 use App\Workflow\DeadlineSource;
+use App\Workflow\Outcome;
 use App\Workflow\Position;
+use App\Workflow\Track;
 use Illuminate\Support\Facades\DB;
 
 final class UpdateOffer
@@ -114,11 +118,35 @@ final class UpdateOffer
             Position::where('offer_id', $offer->id)->whereHas('stage', fn ($s) => $s->where('deadline_source', DeadlineSource::InsurerDeadline))
                 ->update(['deadline_at' => $offer->insurer_deadline_at?->copy()->endOfDay(), 'reminded_at' => null, 'overdue_at' => null]);
         }
+        if (in_array('bids_close_at', $changed, true)) {
+            $offer = self::bidsCloseChanged($offer, $by);
+        }
         if ($offer->vendor_id) {
             $offer = ($this->startRoute)($offer->load('vendor.workflows'), $by);
         }
 
         return $offer;
+    }
+
+    /**
+     * Срок приёма поменяли у открытого (17.10.2026, начальник: продлили показ — а машина висит в «Приём закрыт», надо
+     * обновлять страницу и жать «Возобновить приём»). Этап «Приём подтверждений» берёт новый срок часами; приём уже
+     * закрылся и маршрут ушёл в «Выбор подтверждения» — продление само проходит его выход обратно в приём.
+     */
+    private static function bidsCloseChanged(Offer $offer, ?User $by): Offer
+    {
+        $position = $offer->state === OfferState::Open ? $offer->position(Track::Sale)?->load('stage.exits.to') : null;
+        if (! $position?->stage) {
+            return $offer;
+        }
+        if ($position->stage->deadline_source === DeadlineSource::BidsClose) {
+            $position->update(['deadline_at' => $offer->bids_close_at, 'reminded_at' => null, 'overdue_at' => null]);
+
+            return $offer;
+        }
+        $back = $offer->bidsOpen() ? $position->stage->exitsFor(Actor::Staff)->first(fn (Outcome $e) => $e->to?->deadline_source === DeadlineSource::BidsClose) : null;
+
+        return $back ? app(TakeExit::class)($offer, $back, Actor::Staff, $by) : $offer;
     }
 
     /**

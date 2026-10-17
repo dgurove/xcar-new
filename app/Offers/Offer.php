@@ -21,6 +21,7 @@ use App\Support\Demo\HidesDemo;
 use App\Support\InternalRefs;
 use App\Support\Surface;
 use App\Support\Units;
+use App\Support\VendorNames;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\ClaimRequest;
@@ -786,7 +787,7 @@ class Offer extends Model
     public function publicDescription(): ?string
     {
         $text = (string) preg_replace(['~^\s*Фото:\s*\S+\s*$~miu', '~https?://\S+~iu'], '', (string) $this->description);
-        $text = trim((string) \App\Support\VendorNames::strip(InternalRefs::hide($text, [$this->claim_ref])));
+        $text = trim((string) VendorNames::strip(InternalRefs::hide($text, [$this->claim_ref])));
 
         return $text !== '' ? $text : null;
     }
@@ -957,7 +958,7 @@ class Offer extends Model
                 default => $presets['nofloor'],
             },
             OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : $this->bids()->where('state', BidState::Active)->exists())
-                ? $presets['bids'] : $presets['published'],
+                ? $presets['bids'] : ($this->bidsOpen() ? $presets['published'] : $presets['closed']),
             OfferState::Sold, OfferState::Delivered => 'Сделки',
             OfferState::Garage => 'Гараж',
             default => $presets['archive'],
