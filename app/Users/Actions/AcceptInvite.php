@@ -3,7 +3,10 @@
 namespace App\Users\Actions;
 
 use App\Media\PhotoIngest;
+use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\SyncViewers;
+use App\Offers\Deal;
+use App\Offers\DealContract;
 use App\Users\Events\BuyerJoined;
 use App\Users\Events\ManagerJoined;
 use App\Users\Invite;
@@ -63,6 +66,11 @@ final class AcceptInvite
                 }
             }
             $invite->increment('uses_count');
+            // Ссылка из сделки (18.10.2026): пришедший — покупатель по договору, если его там ещё нет.
+            if ($buyer && $invite->deal_id && ($deal = Deal::find($invite->deal_id)) && $deal->isActive() && $deal->hasContract()
+                && ! DealContract::for($deal)->buyer_user_id && $deal->buyer) {
+                app(SaveDealContract::class)(DealContract::for($deal), ['buyer_id' => $user->id], $deal->buyer);
+            }
 
             return $user;
         });

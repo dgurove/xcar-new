@@ -25,8 +25,8 @@ use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RouteController;
 use App\Http\Admin\TagController;
-use App\Http\Admin\TimerController;
 use App\Http\Admin\TelegramChatController;
+use App\Http\Admin\TimerController;
 use App\Http\Admin\UserController;
 use App\Http\Admin\UserGroupController;
 use App\Http\Admin\VendorContactController;
@@ -39,6 +39,7 @@ use App\Http\Garage\CarController as GarageCarController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
+use App\Http\PeopleController;
 use App\Http\SearchController;
 use App\Http\Site\ShareController;
 use App\Purchases\Car;
@@ -332,6 +333,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/users/{user}/statement', [UserController::class, 'statement']);
             Route::get('/users/{user}/export', [UserController::class, 'export']);
             Route::post('/users/invites', [InviteController::class, 'store']);
+            // «+ Новый логист / сотрудник» в шторке выбора «Кто вывозит» (18.10.2026).
+            Route::post('/people', [PeopleController::class, 'store']);
             Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
             Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
 

@@ -14,7 +14,7 @@
             <x-ui.row-icon name="plus" tone="accent"/>
             <span class="min-w-0 flex-1 font-medium">{{ $admin ? 'Добавить' : 'Добавить покупателя' }}</span>
         </button>
-        <x-ui.sheet id="invite-new" :title="$admin ? 'Добавить' : 'Покупатель'" :open="request()->boolean('add')">
+        <x-ui.sheet id="invite-new" :title="$admin ? 'Добавить' : 'Покупатель'" :open="request()->boolean('add')" class="sheet-steady">
             <x-invites.form :action="$base" :admin="$admin" :managers="$managers" :groups="$groups"/>
         </x-ui.sheet>
     </div>

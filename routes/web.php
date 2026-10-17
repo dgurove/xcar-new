@@ -19,6 +19,7 @@ use App\Http\Garage\CarController as GarageCarController;
 use App\Http\Garage\PickupController as GaragePickupController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Live\FragmentController;
+use App\Http\PeopleController;
 use App\Http\Pwa\PushController;
 use App\Http\Pwa\PwaController;
 use App\Http\SearchController;
@@ -208,6 +209,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
         // Приглашения менеджера — внутри «Покупателей» (тот же экран, что в кабинете у админа).
         Route::get('/buyers/invites', [InviteController::class, 'index']);
         Route::post('/buyers/invites', [InviteController::class, 'store']);
+        // «+ Новый покупатель» в шторке выбора — на месте, без ухода со страницы (18.10.2026).
+        Route::post('/people', [PeopleController::class, 'store']);
         Route::post('/buyers/invites/{invite}/off', [InviteController::class, 'disable']);
         Route::post('/buyers/invites/{invite}/on', [InviteController::class, 'enable']);
         Route::get('/buyers/interest', [BuyerInterestController::class, 'index']);

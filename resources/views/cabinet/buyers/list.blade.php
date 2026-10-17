@@ -16,9 +16,10 @@
         </a>
         {{-- На телефоне «Добавить» — плашка внизу экрана; строкой — только на компьютере. Экран ссылок открывается сразу
              шторкой «Покупатель»: ввести данные или сделать ссылку (18.10.2026). --}}
-        <a href="{{ $invitesUrl }}?add=1" class="row max-md:!hidden">
-            <x-ui.row-icon name="plus" tone="accent"/>
-            <span class="min-w-0 flex-1 font-medium">Добавить покупателя</span>
+        <div class="contents max-md:hidden"><x-people.pick name="buyer" kind="buyer" only reload link placeholder="Добавить покупателя"/></div>
+        <a href="{{ $invitesUrl }}" class="row max-md:!hidden">
+            <x-ui.row-icon name="link"/>
+            <span class="min-w-0 flex-1">Ссылки-приглашения</span>
             <x-ui.chevron/>
         </a>
     </div>
@@ -62,7 +63,7 @@
         @if ($term)
             <x-ui.empty :href="$base" link="Все покупатели">Никого не нашлось</x-ui.empty>
         @else
-            <x-ui.empty :href="$invitesUrl.'?add=1'" link="Добавить">Покупателей пока нет</x-ui.empty>
+            <x-ui.empty>Покупателей пока нет</x-ui.empty>
         @endif
     @else
         <div class="list">

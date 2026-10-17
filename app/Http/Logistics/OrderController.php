@@ -4,7 +4,6 @@ namespace App\Http\Logistics;
 
 use App\Logistics\Actions\MarkPaid;
 use App\Logistics\Actions\OpenOrder;
-use App\Logistics\Choices;
 use App\Logistics\Client;
 use App\Logistics\Transport;
 use App\Users\User;
@@ -62,10 +61,7 @@ class OrderController
     {
         $t->loadMissing(['car', 'client']);
 
-        return view('logistics.transports.form', [
-            't' => $t, 'editing' => $editing,
-            'executors' => Choices::contractorsOf($me),
-        ]);
+        return view('logistics.transports.form', ['t' => $t, 'editing' => $editing]);
     }
 
     private function copy(Transport $from): Transport

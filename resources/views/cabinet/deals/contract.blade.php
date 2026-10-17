@@ -49,7 +49,7 @@
                             <span class="row-sub text-urgent">{{ $noScan ? 'нужен скан паспорта' : 'нужны данные для договора' }}</span></span>
                         <x-ui.chevron/>
                     </x-ui.sheet-row>
-                    <x-ui.sheet id="deal-buyer-data" title="Данные для договора" :open="$dataErrors" tall>
+                    <x-ui.sheet id="deal-buyer-data" title="Данные для договора" :open="$dataErrors || session('open_sheet') === 'deal-buyer-data'" tall>
                         @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
                         @if ($buyerParty->isPerson())<x-billing.passport-scan :party="$buyerParty" form="deal-buyer-data-form"/>@endif
                         <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="deal-buyer-data-form">
@@ -86,43 +86,19 @@
             @endif
         @endif
         @if ($editable && ! ($garage && $buyer) && ! $me->isSuperBuyer())
-            <div data-controller="sheet" data-action="buyer:open@window->sheet#open" class="contents">
-                <x-ui.sheet-row>
-                    <span @class(['min-w-0 flex-1', 'font-medium text-accent-text' => ! $buyer])>{{ $buyer ? 'Другой покупатель' : 'Выбрать покупателя' }}</span>
-                    <x-ui.chevron/>
-                </x-ui.sheet-row>
-                <x-ui.sheet id="deal-buyer" title="Покупатель" :open="$newErrors || $errors->has('buyer_id')">
-                    <div class="flex flex-col gap-4">
-                        <form method="post" action="/deals/{{ $deal->id }}/contract" data-controller="autosubmit">
-                            @csrf @method('put')
-                            <div class="list">
-                                <label class="row row-check">
-                                    <span class="min-w-0 flex-1">Я сам</span>
-                                    <span class="check"><input type="radio" name="buyer_id" value="me" @checked($current === 'me') data-action="change->autosubmit#submit"></span>
-                                </label>
-                                @foreach ($mine as $b)
-                                    <label class="row row-check">
-                                        <span class="min-w-0 flex-1 break-words">{{ $b->name }}</span>
-                                        <span class="check"><input type="radio" name="buyer_id" value="{{ $b->id }}" @checked($current === $b->id) data-action="change->autosubmit#submit"></span>
-                                    </label>
-                                @endforeach
-                                <a href="/buyers/invites" class="row"><span class="min-w-0 flex-1">Пригласить по ссылке</span><x-ui.chevron/></a>
-                            </div>
-                            @error('buyer_id')<p class="field-error mt-2">{{ $message }}</p>@enderror
-                        </form>
-                        <details @if ($newErrors) open @endif>
-                            <summary class="list-head cursor-pointer list-none">+ Новый покупатель</summary>
-                            <form method="post" action="/deals/{{ $deal->id }}/contract" class="mt-2 flex flex-col gap-3">
-                                @csrf @method('put')
-                                <input type="hidden" name="buyer_id" value="new">
-                                <div class="fields"><x-ui.field name="new_buyer[phone]" label="Телефон" type="tel"/></div>
-                                <x-billing.buyer-fields key="new-buyer"/>
-                                <x-ui.sheet-foot>Добавить покупателя</x-ui.sheet-foot>
-                            </form>
-                        </details>
-                    </div>
-                </x-ui.sheet>
-            </div>
+            {{-- Выбор покупателя — шторкой `x-people.pick` (18.10.2026, владелец: «покупателя ещё нет — приходится идти в кабинет
+                 в пользователей, это бред»): «Я сам», свои покупатели, «+ Новый покупатель» тут же — данными (пароль, вход) или
+                 ссылкой, что помнит сделку. Выбор сразу сохраняется; данных для договора нет — следом их шторка со сканом. --}}
+            @php
+                $rows = collect([['name' => 'Я сам'] + \App\Support\People::row($me, $me->party?->readyAsBuyer() ? 'данные для договора есть' : 'ваши данные для договора')])->map(fn ($r) => ['id' => 'me'] + $r)
+                    ->concat($me->buyers()->with('party')->orderBy('name')->get()->map(fn ($b) => \App\Support\People::row($b, $b->party?->readyAsBuyer() ? 'данные для договора есть' : ($b->phone ? \App\Support\Phone::format($b->phone) : 'данных для договора нет'))));
+            @endphp
+            <form method="post" action="/deals/{{ $deal->id }}/contract" class="contents">
+                @csrf @method('put')
+                <x-people.pick name="buyer_id" kind="buyer" variant="row" :people="$rows" :value="$current" title="Покупатель" :deal="$deal->id" link autosubmit
+                    :placeholder="$buyer ? 'Другой покупатель' : 'Выбрать покупателя'" finish="Выбрать" data-action="buyer:open@window->sheet#open"/>
+            </form>
+            @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror
         @endif
         @endif
         @if ($part !== 'buyer')

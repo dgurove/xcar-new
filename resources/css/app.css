@@ -2088,6 +2088,33 @@ html.kb-open { --home-gap: 0px; }
      (15.10.2026). Пока под полем строки подсказок (combobox на телефоне, `sheet-picking`) — так же, на время выбора.
      Высота одна — вся видимая часть. */
   .sheet-steady[open] { display: flex; flex-direction: column; }
+  /* Выбор человека (`x-people.pick`, 18.10.2026): список и «+ Новый» — две панели одной шторки, вторая выезжает справа,
+     как экран в iOS; высота шторки постоянная (`sheet-steady`), панель листается сама. */
+  .people-sheet[open] { overflow: hidden; }
+  .people-panes { display: grid; grid-template-columns: 100% 100%; flex: 1 1 auto; min-height: 0; overflow-x: clip; }
+  .people-panes > * { grid-row: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 1rem;
+    transition: translate var(--dur-slow) var(--ease-sheet), visibility 0s linear var(--dur-slow); }
+  .people-list-pane { grid-column: 1; }
+  .people-new-pane { grid-column: 2; visibility: hidden; }
+  .people-panes.is-new > * { translate: -100% 0; }
+  .people-panes.is-new .people-new-pane, .people-panes:not(.is-new) .people-list-pane { visibility: visible; transition-delay: 0s; }
+  .people-panes.is-new .people-list-pane { visibility: hidden; }
+  .people-panes--only { grid-template-columns: 100%; }
+  /* Форма заявки логиста (18.10.2026): телефон — одной колонкой и кнопкой в плашке; ПК — слева машина и маршрут, справа
+     липко заказчик, исполнитель, деньги и кнопка. */
+  .order-form { display: grid; gap: 1.5rem; max-width: 64rem; margin-inline: auto; }
+  .order-submit { display: none; }
+  @media (min-width: 1024px) {
+    .order-form { grid-template-columns: minmax(0, 1fr) 24rem; align-items: start; }
+    .order-side { position: sticky; top: calc(var(--spacing-header) + 1.5rem); }
+    .order-submit { display: flex; }
+  }
+  .people-panes--only .people-new-pane { grid-column: 1; visibility: visible; }
+  .people-new[data-mode="link"] :is(.people-person, .people-person-label),
+  .people-new[data-mode="person"] :is(.people-link, .people-link-label) { display: none; }
+  .people-done-mark { @apply flex size-14 items-center justify-center rounded-full bg-accent text-white; }
+  .people-value { display: flex; align-items: center; justify-content: flex-end; gap: .25rem; min-width: 0; cursor: pointer; }
+  .people-value > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (max-width: 639.98px) {
     :is(.sheet-steady, .sheet-steady-phone, .sheet-picking:not(.sheet-tall)):modal { height: calc(var(--vv-h, 100dvh) - var(--sheet-gap)); }
   }

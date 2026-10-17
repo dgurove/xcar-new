@@ -1,6 +1,6 @@
 {{-- На телефоне «Добавить покупателя» — плашкой внизу экрана; на компьютере хватает строки в списке. --}}
 <div class="contents md:hidden">
     <x-ui.action-bar>
-        <a href="{{ $invitesUrl }}?add=1" class="btn btn-accent min-w-0 flex-1"><x-ui.icon name="plus" class="size-5"/> Добавить покупателя</a>
+        <x-people.pick name="buyer" kind="buyer" only reload link trigger="button" placeholder="Добавить покупателя"/>
     </x-ui.action-bar>
 </div>

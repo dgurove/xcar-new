@@ -32,12 +32,12 @@
             <section class="mt-6">
                 <h2 class="list-head">Состав</h2>
                 @if ($buyers->isEmpty())
-                    <x-ui.empty line href="/buyers/invites" link="Пригласить">Покупателей пока нет</x-ui.empty>
+                    <div class="list"><x-people.pick name="users[]" kind="buyer" only reload placeholder="Добавить покупателя"/></div>
                 @else
                     <form method="post" action="/buyers/groups/{{ $group->id }}/members" class="flex flex-col gap-2" data-controller="autosubmit select">
                         @csrf @method('put')
                         @if ($buyers->count() > 8)<input type="search" class="field-input field-s" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif
-                        <div class="list">
+                        <div class="list" id="group-people">
                         @foreach ($buyers as $b)
                             <label class="row row-check" data-select-target="item" data-name="{{ mb_strtolower($b->name.' '.$b->login) }}">
                                 <x-ui.avatar :user="$b" :size="40"/>
@@ -48,6 +48,7 @@
                                 <span class="check"><input type="checkbox" name="users[]" value="{{ $b->id }}" @checked($group->members->contains('id', $b->id)) data-action="change->autosubmit#submit"></span>
                             </label>
                         @endforeach
+                        <x-people.pick name="users[]" kind="buyer" only append="#group-people" placeholder="Новый покупатель"/>
                         </div>
                     </form>
                 @endif

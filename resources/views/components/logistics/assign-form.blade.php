@@ -15,8 +15,9 @@
     $kind = old('executor', $transport?->executor && $transport->executor !== Executor::Manager ? $transport->executor->value : (count($logists) ? Executor::Logist->value : Executor::Staff->value));
     $current = $transport?->executor === Executor::Logist ? $transport->coordinator_id : $transport?->executor_id;
     $options = array_filter([
-        Executor::Logist->value => count($logists) ? 'Логист' : null,
-        Executor::Staff->value => count($staff) ? 'Наши' : null,
+        // Пусто — сегмент всё равно есть: «+ Новый логист / сотрудник» в шторке выбора (18.10.2026).
+        Executor::Logist->value => 'Логист',
+        Executor::Staff->value => 'Наши',
         Executor::Partner->value => count($partners) ? 'Менеджер' : null,
     ]);
     $pickup = ! $transport || $transport->isPickup();
@@ -30,13 +31,13 @@
         <x-ui.segment name="executor" :options="$options" :value="$kind" pick/>
         <div class="contents" data-reveal-target="pane" data-reveal-key="logist" @if ($kind !== 'logist') hidden @endif>
             <div class="fields">
-                <x-ui.field name="who[logist]" id="{{ $prefix }}-logist" label="Логист" :options="$logists" :value="$kind === 'logist' ? ($current ?? array_key_first($logists)) : array_key_first($logists)"/>
+                <x-people.pick name="who[logist]" label="Логист" kind="logist" :people="\App\Support\People::rows(\App\Users\User::whereKey(array_keys($logists))->orderBy('name')->get())" :value="$kind === 'logist' ? ($current ?? array_key_first($logists)) : array_key_first($logists)" title="Логист"/>
             </div>
             @if ($pickup)<input type="hidden" name="cdek[logist]" value="0"><x-ui.check name="cdek[logist]" :checked="$cdekOn('logist')">Документы СДЭКом</x-ui.check>@endif
         </div>
         <div class="contents" data-reveal-target="pane" data-reveal-key="staff" @if ($kind !== 'staff') hidden @endif>
             <div class="fields">
-                <x-ui.field name="who[staff]" id="{{ $prefix }}-staff" label="Кто едет" :options="$staff" placeholder="Выберите" :value="$kind === 'staff' ? $current : null"/>
+                <x-people.pick name="who[staff]" label="Кто едет" kind="driver" :people="\App\Support\People::rows(\App\Users\User::whereKey(array_keys($staff))->orderBy('name')->get())" :value="$kind === 'staff' ? $current : null" title="Кто едет"/>
             </div>
             @if ($pickup)<input type="hidden" name="cdek[staff]" value="0"><x-ui.check name="cdek[staff]" :checked="$cdekOn('staff')">Документы СДЭКом</x-ui.check>@endif
         </div>

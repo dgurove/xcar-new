@@ -39,6 +39,19 @@ final class IssueInvite
         ]);
     }
 
+    /**
+     * Ссылка покупателю менеджера — с места, где он понадобился (18.10.2026: сделка, показ, оплата): одноразовая, без
+     * названия, телефон спрашивается; `deal` — пришедший сразу встаёт покупателем по договору этой сделки (`AcceptInvite`).
+     */
+    public function buyer(User $manager, ?int $deal = null): Invite
+    {
+        return Invite::create([
+            'code' => Invite::freshCode(), 'role' => Role::Buyer, 'manager_id' => $manager->id, 'created_by' => $manager->id,
+            'max_uses' => 1, 'expires_at' => now()->addWeek(), 'fields' => ['phone' => true, 'email' => false], 'buyer_sees' => 'all',
+            'deal_id' => $deal,
+        ]);
+    }
+
     public function __invoke(User $by, array $data): Invite
     {
         $fields = ['phone' => (bool) ($data['phone'] ?? false), 'email' => (bool) ($data['email'] ?? false)];

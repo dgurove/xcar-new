@@ -72,14 +72,13 @@
             {{-- У логиста, исполнителя ещё нет — «у логиста», а не «вывозит»; самому логисту его имя не пишем. --}}
             @if ($t->executorUser && ! $t->isExecutedBy($me))<span>вывозит {{ $t->executorName() }}</span>@elseif (! $t->executorUser && $t->coordinator && $t->coordinator_id !== $me->id)<span>у логиста {{ $t->coordinator->shortName() }}</span>@endif
             @if (! $pickup)<span>перевозка</span>@endif
-            @if ($order && $mine)<span>{{ $t->client?->name }}</span>@endif
         </x-slot:line>
         @if ($carLink)
             <x-slot:actions><a href="{{ $carLink }}" class="pill" data-turbo="false">{{ str_contains($carLink, '/offers/') ? 'Предложение в CRM' : 'Дело на парковке' }}</a></x-slot:actions>
         @elseif ($order && $mine)
             <x-slot:actions>
-                @if ($open)<a href="/transports/{{ $id }}/edit" class="pill" data-turbo-frame="_top">Изменить</a>@endif
-                <a href="/transports/new?from={{ $id }}" class="pill" data-turbo-frame="_top">Повторить</a>
+                @if ($open)<a href="/transports/{{ $id }}/edit" class="btn btn-s btn-quiet" data-turbo-frame="_top"><x-ui.icon name="edit" class="size-4"/>Изменить</a>@endif
+                <a href="/transports/new?from={{ $id }}" class="btn btn-s btn-quiet" data-turbo-frame="_top"><x-ui.icon name="refresh" class="size-4"/>Повторить</a>
             </x-slot:actions>
         @endif
         @if ($errors->any())<x-ui.flash tone="danger" class="mt-3">{{ $errors->first() }}</x-ui.flash>@endif
@@ -94,6 +93,16 @@
                         <span class="block text-sm text-ink-muted nums">поступила {{ \App\Support\Ago::day($t->created_at, time: true) }}@if ($sale->urgent), <span class="text-danger">{{ $sale->days }}&nbsp;{{ \App\Support\Plural::of($sale->days, ['день', 'дня', 'дней']) }} без покупателя</span>@endif</span>
                     </span>
                     @if ($sale->manager)<x-ui.person :user="$sale->manager" class="shrink-0"/>@endif
+                </div>
+            </div>
+        @endif
+
+        {{-- Заказчик заявки логиста — строкой с телефоном (18.10.2026: во фразе «вывозит Пётр Э., ООО …» его не было видно). --}}
+        @if ($order && $mine && $t->client)
+            <div class="list mt-4">
+                <div class="row items-center justify-between gap-4">
+                    <span class="min-w-0"><span class="block text-sm text-ink-muted">Заказчик</span><span class="block break-words">{{ $t->client->name }}</span>@if ($t->client->contact_name)<span class="block text-sm text-ink-muted">{{ $t->client->contact_name }}</span>@endif</span>
+                    @if ($t->client->phone)<a href="tel:+{{ $t->client->phone }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->client->phone) }}</a>@endif
                 </div>
             </div>
         @endif
@@ -307,7 +316,8 @@
                 <form method="post" action="/transports/{{ $id }}/logist" class="flex flex-col gap-4">
                     @csrf @method('put')
                     <div class="fields">
-                        <x-ui.field name="executor_id" :id="'logist-who-'.$id" label="Кто вывозит" :options="Choices::contractorsOf($t->coordinator)" :value="old('executor_id', $t->executor_id)" placeholder="Выберите"/>
+                        {{-- Свои строками с городом и «в работе N» — видно, кто свободен; новый — тут же (18.10.2026). --}}
+                        <x-people.pick name="executor_id" label="Кто вывозит" kind="contractor" :people="\App\Support\People::contractorsOf($t->coordinator)" :value="old('executor_id', $t->executor_id)" title="Кто вывозит" link required/>
                         <x-ui.field name="distance_km" :id="'logist-km-'.$id" label="Расстояние, км" inputmode="numeric" :value="old('distance_km', $t->distance_km)"/>
                         <x-ui.field name="cost" :id="'logist-cost-'.$id" label="Стоимость, ₽" :value="old('cost', $t->cost ? (int) $t->cost : null)"/>
                         {{-- Своему исполнителю — для её «Оплат» (18.10.2026), XCar этого не видит. --}}

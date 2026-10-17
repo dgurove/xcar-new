@@ -32,7 +32,7 @@
         @endif
 
         @if ($rows === 0)
-            <x-ui.empty class="!py-12" href="/buyers/invites" link="Пригласить покупателей">Открывать некому</x-ui.empty>
+            <div class="list"><x-people.pick name="users[]" kind="buyer" only reload placeholder="Добавить покупателя"/></div>
         @else
             @if ($rows > 8)<input type="search" class="field-input field-s" placeholder="Найти" autocomplete="off" data-action="input->select#filter">@endif
             {{-- Видят ли отмеченные VIN целиком — решает менеджер (владелец 04.10.2026); не отмечено — звёздочки. --}}
@@ -42,7 +42,7 @@
                     <span class="check"><input type="checkbox" name="show_vin" value="1" @checked($showVin)></span>
                 </label>
             </div>
-            <div class="list">
+            <div class="list" id="showing-people">
                 @foreach ($groups as $g)
                     <label class="row row-check" data-select-target="item" data-name="{{ mb_strtolower($g->name) }}">
                         <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-3"><x-ui.icon name="users" class="size-5"/></span>
@@ -63,6 +63,8 @@
                         <span class="check"><input type="checkbox" name="users[]" value="{{ $b->id }}" @checked(in_array($b->id, $checkedUsers, true)) data-select-target="box" data-action="select#count"></span>
                     </label>
                 @endforeach
+                {{-- Нужного нет — завести тут же, встаёт отмеченным (18.10.2026). --}}
+                <x-people.pick name="users[]" kind="buyer" only append="#showing-people" placeholder="Новый покупатель"/>
             </div>
             <div class="sticky bottom-0 -mx-1 bg-surface px-1 pb-1 pt-3">
                 <button type="submit" class="btn btn-accent w-full" @unless ($single) data-select-target="submit" disabled @endunless>{{ $single && ($checkedUsers || $checkedGroups) ? 'Сохранить' : 'Открыть' }} <span class="nums" data-select-target="count"></span></button>

@@ -7,6 +7,7 @@ use App\Http\Admin\DealContractController as Document;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\Deal;
 use App\Offers\DealContract;
+use App\Offers\DealState;
 use Illuminate\Http\Request;
 
 /**
@@ -31,9 +32,11 @@ class DealContractController
             $data['new_buyer'] = ['phone' => $request->input('new_buyer.phone')];
             unset($data['buyer_id']);
         }
-        $save(DealContract::for($deal), $data, $request->user());
+        $contract = $save(DealContract::for($deal), $data, $request->user());
+        // Выбрали покупателя, а данных для договора у него нет — сразу их шторка со сканом паспорта (18.10.2026).
+        $needs = ! empty($data['buyer_id']) && ($b = $contract->fresh()->buyer) && ! $b->party?->readyAsBuyer();
 
-        return back()->with('toast', match (true) {
+        return back()->with('open_sheet', $needs ? 'deal-buyer-data' : null)->with('toast', match (true) {
             $new => 'Покупатель добавлен',
             $deal->isPrime() && $deal->fresh()->hasManagerInvoice() => 'Сохранено, счёт выставлен',
             default => 'Сохранено',
@@ -43,7 +46,7 @@ class DealContractController
     public function show(Request $request, Deal $deal)
     {
         abort_unless($deal->buyer_id === $request->user()->id && $deal->hasContract(), 404);
-        abort_if($deal->state === \App\Offers\DealState::Cancelled, 404);
+        abort_if($deal->state === DealState::Cancelled, 404);
         // Менеджеру — только готовый договор: с прочерками вместо покупателя его не печатают (06.10.2026).
         abort_unless(DealContract::for($deal)->isReady(), 404);
 
