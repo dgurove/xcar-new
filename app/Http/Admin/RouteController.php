@@ -92,7 +92,7 @@ class RouteController
         $t = DB::transaction(function () use ($offer, $pick, $by, $open, $assign) {
             $t = Transport::openFor($offer) ?? $open($offer, $by, quiet: $pick !== null);
 
-            return $pick ? $assign($t, $pick[0], $pick[1], $by) : $t;
+            return $pick ? $assign($t, $pick[0], $pick[1], $by, $pick[2]) : $t;
         });
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Вывоз: '.($t->executorName() ?? 'ждёт исполнителя'));

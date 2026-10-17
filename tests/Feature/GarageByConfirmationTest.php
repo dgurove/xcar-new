@@ -183,7 +183,7 @@ class GarageByConfirmationTest extends TestCase
         $this->assertSame($manager->id, $offer->keeper()?->id);
 
         // Наш человек вывез и довёз машину к менеджеру — подготовка, сделка на оплате ждёт от него цену продажи; счетов нет.
-        $driver = User::create(['name' => 'Иван Водитель', 'phone' => '79000000003', 'roles' => [Role::Driver], 'approved_at' => now(), 'has_seal' => true]);
+        $driver = User::create(['name' => 'Иван Водитель', 'phone' => '79000000003', 'roles' => [Role::Driver], 'approved_at' => now()]);
         app(AssignExecutor::class)($transport, Executor::Staff, $driver, $admin);
         app(LogisticsPickUp::class)($transport->fresh(), ['keys' => 1, 'destination' => 'keeper'], $admin);
         $this->assertSame(1, $offer->fresh()->keys_count);

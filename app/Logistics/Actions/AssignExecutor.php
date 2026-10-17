@@ -18,8 +18,10 @@ use Illuminate\Validation\ValidationException;
  * — логист (регионы): задача уходит ему, исполнителя, расстояние и цену он ставит сам (`LogistAssign`);
  * — менеджер, которому мы подтвердили сделку (в его гараж или его покупателю) — только он, другого менеджера не дать;
  * — наши люди ООО «ПРАЙМ» (`Role::Driver`).
- * Документы СДЭКом — тем, у кого нет печати (`User::seals`), админ может переключить. Поменять можно, пока машину не
- * забрали; созвон остаётся (дата с владельцем та же), документы прежнему исполнителю — нет.
+ * Документы СДЭКом — выбор админа галкой «Документы СДЭКом» (17.10.2026, владелец: «нужно выбирать, а не всем»; шлём,
+ * когда машину в регионе вывозит логист — Совкомбанк, иногда Альфа; покупатель менеджера забирает у страхователя сам): по
+ * умолчанию — только логисту, менеджеру и нашим — нет; переключить можно и в задаче. Поменять исполнителя можно, пока
+ * машину не забрали; созвон остаётся (дата с владельцем та же), документы прежнему исполнителю — нет.
  */
 final class AssignExecutor
 {
@@ -56,8 +58,9 @@ final class AssignExecutor
             if ($changed) {
                 $t->fill(['docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]);
             }
-            // Документы нужны только на вывоз от владельца: перевод между парковками едет без них.
-            $t->docs_by_cdek = $executor && $t->isPickup() ? ($cdek ?? ! $executor->seals()) : false;
+            // Документы нужны только на вывоз от владельца: перевод между парковками едет без них. Логисту галка встаёт до
+            // его исполнителя — Лиза увидит задачу, когда он назначит своего (`scopeAwaitingDocs`).
+            $t->docs_by_cdek = $t->isPickup() && ($cdek ?? $kind === Executor::Logist);
             // Менеджер сделки везёт к себе: точка — его гараж.
             if ($kind === Executor::Manager && $t->destination === null) {
                 $t->destination = Point::Keeper;
@@ -90,9 +93,10 @@ final class AssignExecutor
 
     /**
      * Из формы «Кто вывозит» (`x-logistics.assign-form`): вид и человек — поле `who[вид]` выбранного вида (старое
-     * `executor_id` — тоже). Вида нет — null: задача просто заводится.
+     * `executor_id` — тоже), «Документы СДЭКом» — `cdek[вид]` (формы без галки — null: умолчание по виду). Вида нет — null:
+     * задача просто заводится.
      *
-     * @return array{0: Executor, 1: ?User}|null
+     * @return array{0: Executor, 1: ?User, 2: ?bool}|null
      */
     public static function fromRequest(Request $request): ?array
     {
@@ -105,7 +109,7 @@ final class AssignExecutor
             throw ValidationException::withMessages(['executor_id' => 'Кто именно']);
         }
 
-        return [$kind, $who];
+        return [$kind, $who, $request->has('cdek') ? $request->boolean('cdek.'.$kind->value) : null];
     }
 
     /** Снять исполнителя: вывоз снова ждёт админа (менеджеру отдали сделку другого, отменили сделку). */
@@ -126,10 +130,10 @@ final class AssignExecutor
         return $t;
     }
 
-    /** Админ переключает «Документы СДЭКом» у назначенного исполнителя. */
+    /** Админ переключает «Документы СДЭКом» у задачи (и у логиста до его исполнителя). */
     public function cdek(Transport $t, bool $cdek, User $by): Transport
     {
-        if (! $by->isAdmin() || ! $t->executor_id || ! $t->isPickup() || $t->state->picked()) {
+        if (! $by->isAdmin() || ! ($t->executor_id || $t->coordinator_id) || ! $t->isPickup() || $t->state->picked()) {
             throw ValidationException::withMessages(['docs_by_cdek' => 'Поздно менять']);
         }
         $t->update(['docs_by_cdek' => $cdek] + ($cdek ? [] : ['docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]));

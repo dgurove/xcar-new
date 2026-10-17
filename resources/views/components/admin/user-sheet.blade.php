@@ -59,10 +59,6 @@
             <div data-managers class="flex flex-col gap-3">
                 <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" :user="$user" name="manager"/>
             </div>
-            {{-- Печать (17.10.2026): с ней менеджер и наш человек на вывозе едут без документов СДЭКом. --}}
-            @if ($user->isManager() || $user->isDriver())
-                <x-ui.check name="has_seal" :checked="old('has_seal', $user->has_seal)">Есть печать — документы на вывоз без СДЭКа</x-ui.check>
-            @endif
             <div data-crm class="flex flex-col gap-3">
                 <x-admin.crm-access-fields :areas="$user->access ?? []" :user="$user"/>
             </div>

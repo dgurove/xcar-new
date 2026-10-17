@@ -5,6 +5,9 @@ return [
     'crm_host' => env('CRM_HOST', 'crm.localhost'),
     'park_host' => env('PARK_HOST', 'park.localhost'),
     'logistics_host' => env('LOGISTICS_HOST', 'logistics.localhost'),
+    // Короткие имена логистики (`log.`, `l.`, `go.` у хоста сайта) — 301 на неё (`RedirectLegacyPaths`); в `SITE_ADDRESSES`
+    // прода они есть только ради сертификата.
+    'logistics_aliases' => array_filter(explode(',', (string) env('LOGISTICS_ALIASES', 'log,l,go'))),
 
     // ООО «ПРАЙМ» (`Seller::Prime`): счета сделок и гаража, страница «О компании» — по карточке предприятия.
     'company' => [

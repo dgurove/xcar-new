@@ -122,8 +122,8 @@
             @endforeach
         </div>
 
-        {{-- Админу — документы СДЭКом или без (по печати исполнителя ставятся сами). --}}
-        @if ($admin && $t->executor_id && $open && ! $t->state->picked() && $pickup)
+        {{-- Админу — документы СДЭКом или без: решение у задачи (по умолчанию — только у логиста), переключается и здесь. --}}
+        @if ($admin && ($t->executor_id || $t->coordinator_id) && $open && ! $t->state->picked() && $pickup)
             <form method="post" action="/transports/{{ $id }}/cdek" class="list mt-4" data-controller="autosubmit" data-action="change->autosubmit#submit">
                 @csrf
                 <label class="row items-center justify-between gap-4">

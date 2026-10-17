@@ -37,7 +37,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'buyer_sees', 'buyer_show_vin', 'has_seal', 'logist_id', 'logistics_city', 'cdek_point'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -74,7 +74,6 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'roles' => AsEnumCollection::of(Role::class),
             'access' => 'array',
             'park_readonly' => 'bool',
-            'has_seal' => 'bool',
             'notification_settings' => 'array',
             'seen_at' => 'datetime',
             'list_prefs' => 'array',
@@ -523,12 +522,6 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function sendsLogisticsDocs(): bool
     {
         return $this->isAdmin() || $this->isModerator();
-    }
-
-    /** Кто едет без СДЭКа: свой человек или менеджер с печатью (отмечает админ). Исполнители логиста — всегда СДЭКом. */
-    public function seals(): bool
-    {
-        return $this->has_seal && ! $this->isContractor();
     }
 
     /** Кто работает на парковке: администраторы парковки и управляющие — список «Кто ведёт», уведомления, закрытие месяца. */

@@ -172,7 +172,7 @@ class SmokeRoutesTest extends TestCase
             $user('Света Супер', [Role::SuperBuyer]),
             $user('Катя Парковка', [Role::Parking]),
             $logist = $user('Татьяна Логист', [Role::Logist]),
-            $driver = $user('Семён Водитель', [Role::Driver], ['has_seal' => true]),
+            $driver = $user('Семён Водитель', [Role::Driver]),
             $user('Пётр Исполнитель', [Role::Contractor], ['logist_id' => $logist->id, 'cdek_point' => 'Самара, Ленина 1']),
             $user('Роза Проверяющая', [Role::Reviewer]),
         ];

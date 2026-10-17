@@ -119,11 +119,11 @@ class TransportController
     {
         abort_unless($request->user()->isAdmin(), 404);
         $request->validate(['executor' => ['required', Rule::in([Executor::Logist->value, Executor::Staff->value])]], ['executor.required' => 'Кто вывозит']);
-        [$kind, $who] = AssignExecutor::fromRequest($request);
+        [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
         // Человек не годится — одна ошибка у поля, а не «не вышло 50».
         AssignExecutor::guard($kind, $who);
         $done = collect();
-        $back = $this->many($request, fn (Transport $t) => $done->push($assign($t, $kind, $who, $request->user(), batch: true)), 'Назначено', 'Вывозит '.$who->shortName());
+        $back = $this->many($request, fn (Transport $t) => $done->push($assign($t, $kind, $who, $request->user(), $cdek, batch: true)), 'Назначено', 'Вывозит '.$who->shortName());
         // По задаче не шлём (`TransportAssigned::batch`) — одна строка исполнителю или логисту и одна модераторам.
         if ($done->isNotEmpty()) {
             $who->notify(TransportNotice::assignedMany($done->count(), $kind === Executor::Logist));
@@ -210,8 +210,8 @@ class TransportController
     {
         abort_unless($request->user()->isAdmin(), 404);
         $request->validate(['executor' => ['required', Rule::enum(Executor::class)]], ['executor.required' => 'Кто вывозит']);
-        [$kind, $who] = AssignExecutor::fromRequest($request);
-        $assign($transport, $kind, $who, $request->user());
+        [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
+        $assign($transport, $kind, $who, $request->user(), $cdek);
 
         return back()->with('toast', 'Вывозит '.($transport->fresh()->executorName() ?? ''));
     }

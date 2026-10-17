@@ -19,6 +19,7 @@ use App\Offers\Actions\UpdateOffer;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -74,7 +75,10 @@ class PickupLogisticsTest extends TestCase
         $deal = $offer->deal()->first();
         $t->refresh();
         $this->assertSame($manager->id, $t->executor_id);
-        $this->assertTrue($t->docs_by_cdek, 'без печати — документы СДЭКом');
+        $this->assertFalse($t->docs_by_cdek, 'менеджеру — без СДЭКа: покупатель забирает у страхователя сам');
+        // Машина в регионе — админ ставит «Документы СДЭКом» сам, тогда без них не забрать.
+        app(AssignExecutor::class)->cdek($t, true, $admin);
+        $t->refresh();
         $this->assertSame('Менеджер забирает автомобиль', $offer->stage()->name);
         $this->assertSame(0, Invoice::where('deal_id', $deal->id)->count());
 
@@ -188,7 +192,7 @@ class PickupLogisticsTest extends TestCase
         $this->travelTo(now('Europe/Moscow')->setTime(11, 0));
         $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $logist = User::create(['name' => 'Татьяна', 'phone' => '79000000004', 'roles' => [Role::Logist], 'approved_at' => now()]);
-        $driver = User::create(['name' => 'Иван', 'phone' => '79000000007', 'roles' => [Role::Driver], 'has_seal' => true, 'approved_at' => now()]);
+        $driver = User::create(['name' => 'Иван', 'phone' => '79000000007', 'roles' => [Role::Driver], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'pickup_on_arrival' => true]);
         $open = fn (string $ref) => Transport::openFor(app(UpdateOffer::class)(Offer::create(['claim_ref' => $ref, 'floor_price' => 500000]), ['vendor_id' => $vendor->id], $admin));
         $open('600001/2026');
@@ -233,6 +237,47 @@ class PickupLogisticsTest extends TestCase
         $this->assertSame('2200000000000000', $logist->fresh()->party->card);
         $this->actingAs($logist)->put($host.'/money/'.$other->id.'/party', ['kind' => 'person', 'name' => 'Чужая'])->assertNotFound();
         $this->actingAs($admin)->get($host.'/money')->assertOk()->assertSee('Другой Логист')->assertSee('140 км');
+    }
+
+    /**
+     * «Документы СДЭКом» — выбор, а не всем (17.10.2026: тестовому менеджеру по Т-Страхованию встало «ждём документы»):
+     * менеджеру и нашим — без СДЭКа, логисту — со СДЭКом, и он доживает до его исполнителя; снятая галка — без.
+     */
+    public function test_cdek_only_by_choice(): void
+    {
+        Notification::fake();
+        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $logist = User::create(['name' => 'Татьяна', 'phone' => '79000000004', 'roles' => [Role::Logist], 'approved_at' => now()]);
+        $own = User::create(['name' => 'Пётр Исполнитель', 'phone' => '79000000005', 'roles' => [Role::Contractor], 'logist_id' => $logist->id, 'approved_at' => now()]);
+        $driver = User::create(['name' => 'Иван', 'phone' => '79000000007', 'roles' => [Role::Driver], 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'pickup_on_arrival' => true]);
+        $open = fn (string $ref) => Transport::openFor(app(UpdateOffer::class)(Offer::create(['claim_ref' => $ref, 'floor_price' => 500000]), ['vendor_id' => $vendor->id], $admin));
+
+        $staff = app(AssignExecutor::class)($open('800001/2026'), Executor::Staff, $driver, $admin);
+        $this->assertFalse($staff->fresh()->docs_by_cdek, 'нашим — без СДЭКа');
+
+        $regional = app(AssignExecutor::class)($open('800002/2026'), Executor::Logist, $logist, $admin);
+        $this->assertTrue($regional->fresh()->docs_by_cdek, 'логисту — СДЭКом по умолчанию');
+        app(LogistAssign::class)($regional->fresh(), ['executor_id' => $own->id, 'cost' => '10 000'], $logist);
+        $this->assertTrue($regional->fresh()->docs_by_cdek, 'галка доживает до исполнителя логиста');
+        $this->assertTrue(Transport::awaitingDocs()->whereKey($regional->id)->exists());
+
+        // Форма: галка вида снята — без СДЭКа и у логиста.
+        $host = 'http://'.config('xcar.logistics_host');
+        $t = $open('800003/2026');
+        $this->actingAs($admin)->put($host.'/transports/'.$t->id.'/executor', ['executor' => 'logist', 'who' => ['logist' => $logist->id], 'cdek' => ['logist' => '0']])
+            ->assertSessionHasNoErrors();
+        $this->assertFalse($t->fresh()->docs_by_cdek);
+    }
+
+    /** Короткие имена логистики (`go.`, `log.`, `l.`) — 301 туда же с путём и запросом. */
+    public function test_short_hosts_redirect_to_logistics(): void
+    {
+        $site = Surface::Site->host();
+        foreach (['go', 'log', 'l'] as $alias) {
+            $this->get('http://'.$alias.'.'.$site.'/transports?preset=new')
+                ->assertStatus(301)->assertRedirect(Surface::Logistics->url('/transports').'?preset=new');
+        }
     }
 
     private function addPhoto(Transport $t): void

@@ -14,8 +14,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Логист назначает вывоз в регионе (17.10.2026, владелец: «задача падает Татьяне, она сама вводит расстояние, стоимость
  * и назначает исполнителя»): исполнитель — её человек (`Contractor` с её `logist_id`) или она сама; цена — наш долг ей
- * («Оплаты → Мы должны», `SettleCost`), со своими исполнителями она рассчитывается сама. Документы — СДЭКом всегда
- * (у её исполнителей печати нет). Поменять можно, пока машину не забрали.
+ * («Оплаты → Мы должны», `SettleCost`), со своими исполнителями она рассчитывается сама. Документы СДЭКом — как решил админ,
+ * назначая её (`AssignExecutor`, галка), — уходят исполнителю, которого она поставит. Поменять можно, пока машину не забрали.
  */
 final class LogistAssign
 {
@@ -55,7 +55,6 @@ final class LogistAssign
                 'executor_id' => $who->id, 'cost' => $cost, 'distance_km' => $data['distance_km'] ?? null ?: null,
                 'state' => $t->agreed_at ? TransportState::Agreed : TransportState::Assigned,
                 'assigned_at' => $changed ? now() : $t->assigned_at,
-                'docs_by_cdek' => $t->isPickup() && ! $who->seals(),
             ]);
             if ($changed) {
                 $t->fill(['docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]);

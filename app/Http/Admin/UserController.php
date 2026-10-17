@@ -432,8 +432,6 @@ class UserController
         // Галки областей — модератору сверх черновиков (почта CRM).
         $data['access'] = in_array(Role::Moderator, $data['roles'], true) ? array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))) : [];
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
-        // Печать — у менеджера и нашего человека на вывозе: документы на вывоз ему СДЭКом не шлём.
-        $data['has_seal'] = (in_array(Role::Manager, $data['roles'], true) || in_array(Role::Driver, $data['roles'], true)) && $request->boolean('has_seal');
 
         return $data;
     }
