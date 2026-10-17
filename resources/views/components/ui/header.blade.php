@@ -49,12 +49,12 @@
 
     {{-- Десктоп --}}
     <div class="container-site hidden grid-cols-[auto_1fr] items-start gap-1 py-2 md:grid">
-        {{-- Компактный знак на два ряда: xcar, P, эвакуатор вписаны в одну коробку 64 px, чтобы были одного размера; у CRM — та же
+        {{-- Компактный знак на два ряда: xcar, P, эвакуатор (широкий — вписан по ширине, `object-contain`) вписаны в одну коробку 64 px, чтобы были одного размера; у CRM — та же
              надпись, что на телефоне, ниже ростом и по центру рядов. --}}
         @if ($surface === \App\Support\Surface::Crm)
             <a href="{{ $home }}" class="row-span-2 mr-2 flex shrink-0 items-center self-center" aria-label="XCar"><x-ui.brand class="h-9"/></a>
         @else
-            <a href="{{ $home }}" class="header-mark row-span-2 mr-2" aria-label="XCar"><x-ui.brand class="h-16"/></a>
+            <a href="{{ $home }}" class="header-mark row-span-2 mr-2" aria-label="XCar"><x-ui.brand class="h-16 max-w-16 object-contain"/></a>
         @endif
         <div class="header-row">
             {{-- Поиск — по закрытому: гостю не нужен. --}}

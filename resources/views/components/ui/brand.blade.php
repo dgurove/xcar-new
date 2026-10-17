@@ -7,7 +7,7 @@
     [$name, $w, $h] = match ($surface) {
         \App\Support\Surface::Crm => ['crm', 1300, 335],
         \App\Support\Surface::Park => $wide ? ['park-wide', 1543, 334] : ['park', 960, 1024],
-        \App\Support\Surface::Logistics => $wide ? ['logistics-wide', 2610, 334] : ['logistics', 1024, 1024],
+        \App\Support\Surface::Logistics => $wide ? ['logistics-wide', 2610, 334] : ['logistics', 1024, 680],
         default => $wide ? ['xcar', 180, 45] : ['xcar-mark', 64, 64],
     };
 @endphp
