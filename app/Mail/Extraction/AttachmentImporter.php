@@ -63,6 +63,11 @@ final class AttachmentImporter
 
                 continue;
             }
+            // Раньше не открылся и лёг документом (rar без кодека до 17.10.2026) — теперь развёрнут: архив в документах
+            // не нужен, документы из него ляжут ниже по одному, их прочтёт «✨».
+            if ($documentsCollection !== '' && ($sha = $archive->blob_sha ?: hash('sha256', (string) $archive->contents()))) {
+                $model->media()->where('collection_name', $documentsCollection)->where('custom_properties->sha', $sha)->get()->each->delete();
+            }
             foreach ($extracted as $file) {
                 // Кадры из архива и вырезки из листа — свойства того вложения, в котором они приехали.
                 if ($file['photo'] && ! $this->classifier->looksLikeDocument(mb_strtolower($file['name']))) {
