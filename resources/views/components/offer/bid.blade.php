@@ -64,7 +64,7 @@
                             {{-- Везут к нему в гараж: сам или мы (05.10.2026); выбрано, кто уже вывозит. Вывоз у гаражной
                                  есть всегда (06.10.2026), даже у вендора без маршрута — заведётся сам. --}}
                             @if (! $offer->pickedUp() && $offer->parkVehicle?->state !== \App\Park\VehicleState::Stored)
-                                @php $byBuyer = ! ($t = \App\Logistics\Transport::openFor($offer))?->executor_id || $t->executor_id === $bid->user_id; @endphp
+                                @php $byBuyer = ! ($pickupTask = \App\Logistics\Transport::openFor($offer))?->executor_id || $pickupTask->executor_id === $bid->user_id; @endphp
                                 <div class="flex flex-col gap-1.5">
                                     <span class="field-label">Везёт в гараж</span>
                                     <div class="flex flex-wrap gap-2">
@@ -85,7 +85,7 @@
                                  менеджер сделки по умолчанию; вывоз уже поручен другому (логист, наши) — по умолчанию
                                  «Логистика», то есть как назначено. --}}
                             @if ($offer->pickupChoosable())
-                                @php $byBuyer = ! ($t = \App\Logistics\Transport::openFor($offer))?->executor_id || $t->executor_id === $bid->user_id; @endphp
+                                @php $byBuyer = ! ($pickupTask = \App\Logistics\Transport::openFor($offer))?->executor_id || $pickupTask->executor_id === $bid->user_id; @endphp
                                 <div class="flex flex-col gap-1.5">
                                     <span class="field-label">Забирает автомобиль</span>
                                     <div class="flex flex-wrap gap-2">

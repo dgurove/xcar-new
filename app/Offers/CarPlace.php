@@ -13,6 +13,7 @@ enum CarPlace: string
     case Ours = 'ours';
     case Keeper = 'keeper';     // стоит у менеджера, который вывез (вне парковки)
     case WithUs = 'with_us';    // стоит у нас, но не на парковке: хранение не считаем
+    case Elsewhere = 'elsewhere'; // привезли по адресу, что вписал исполнитель вывоза (17.10.2026): не у нас и не у менеджера
 
     public function label(): string
     {
@@ -22,12 +23,18 @@ enum CarPlace: string
             self::Ours => 'На нашей парковке',
             self::Keeper => 'У менеджера',
             self::WithUs => 'У нас',
+            self::Elsewhere => 'По адресу',
         };
     }
 
     /** Подпись на витрине: что ТС стоит у другого менеджера, наружу не выходит — «У нас». */
-    public function publicLabel(): string
+    public function publicLabel(): ?string
     {
-        return $this === self::Keeper ? self::WithUs->label() : $this->label();
+        // Привезли по чужому адресу — на витрине места не пишем: «У нас» было бы неправдой.
+        return match ($this) {
+            self::Keeper => self::WithUs->label(),
+            self::Elsewhere => null,
+            default => $this->label(),
+        };
     }
 }

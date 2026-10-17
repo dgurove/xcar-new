@@ -128,9 +128,8 @@ final class UpdateOffer
         }
         // Вендор, чьи машины вывозим все (Совкомбанк, 17.10.2026): встал вендор — встаёт и задача на вывоз в логистике.
         // Один раз на машину: отменённый вывоз сам не возвращается.
-        if (in_array('vendor_id', $changed, true) && $offer->vendor?->pickup_on_arrival && $offer->car_id
-            && ! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)
-            && ! $offer->pickedUp() && ! Transport::where('car_id', $offer->car_id)->where('origin', 'sale')->exists()) {
+        if (in_array('vendor_id', $changed, true) && $offer->vendor?->pickup_on_arrival && $offer->car_id && ! OpenPickup::blocker($offer)
+            && ! Transport::where('car_id', $offer->car_id)->where('origin', 'sale')->exists()) {
             app(OpenPickup::class)($offer, $by);
         }
 

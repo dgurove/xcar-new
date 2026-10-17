@@ -23,6 +23,7 @@ final class PickupState
             $offer->car_place === CarPlace::Keeper => self::keeper($offer, $viewer),
             $offer->car_place === CarPlace::WithUs => ['стоит у нас', 'open'],
             $offer->car_place === CarPlace::Ours => ['на парковке', 'open'],
+            $offer->car_place === CarPlace::Elsewhere => ['по адресу', 'open'],
             ! $t => ['вывоз не начат', 'plain'],
             $t->state === TransportState::Moving => [$mine ? 'везёте' : 'везут', 'open'],
             $t->state === TransportState::Agreed && $t->pickup_at !== null => [($mine ? 'забрать ' : 'вывоз ').$t->pickup_at->translatedFormat('j M'), $mine ? 'urgent' : 'plain'],

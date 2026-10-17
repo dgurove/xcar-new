@@ -11,7 +11,6 @@ use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Slots;
-use App\Users\User;
 use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\StepBack;
 use App\Workflow\Actions\TakeExit;
@@ -87,20 +86,13 @@ class RouteController
      */
     public function pickup(Request $request, Offer $offer, OpenPickup $open, AssignExecutor $assign)
     {
-        $data = $request->validate([
-            'executor' => ['nullable', Rule::enum(Executor::class)],
-            'executor_id' => ['nullable', 'required_with:executor', 'integer', 'exists:users,id'],
-            'docs_by_cdek' => ['nullable', 'boolean'],
-        ], ['executor_id.required_with' => 'Кто именно']);
+        $request->validate(['executor' => ['nullable', Rule::enum(Executor::class)]]);
+        $pick = AssignExecutor::fromRequest($request);
         $by = $request->user();
-        $t = DB::transaction(function () use ($offer, $data, $by, $open, $assign) {
-            $t = Transport::openFor($offer) ?? $open($offer, $by, quiet: ! empty($data['executor']));
-            if (! empty($data['executor'])) {
-                $t = $assign($t, Executor::from($data['executor']), User::find($data['executor_id']), $by,
-                    array_key_exists('docs_by_cdek', $data) && $data['docs_by_cdek'] !== null ? (bool) $data['docs_by_cdek'] : null);
-            }
+        $t = DB::transaction(function () use ($offer, $pick, $by, $open, $assign) {
+            $t = Transport::openFor($offer) ?? $open($offer, $by, quiet: $pick !== null);
 
-            return $t;
+            return $pick ? $assign($t, $pick[0], $pick[1], $by) : $t;
         });
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Вывоз: '.($t->executorName() ?? 'ждёт исполнителя'));
@@ -112,7 +104,7 @@ class RouteController
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:500']])['reason'] ?? null;
         $open = Transport::openFor($offer);
         if ($open?->state->picked()) {
-            throw ValidationException::withMessages(['exit' => 'Машину уже везут: сначала «Привёз» или отмена в логистике']);
+            throw ValidationException::withMessages(['exit' => 'ТС уже везут: сначала «Привёз» или отмена в логистике']);
         }
         if ($open) {
             $cancel($open, $request->user(), $reason);

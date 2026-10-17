@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * `pgsql_async`: окно продлевается на каждом подтверждении, а фиксация на HDD прода стоит 160–290 мс. Потеря последней
  * записи при сбое сервера значит одно лишнее подтверждение.
  */
-#[Fillable(['user_id', 'token_hash', 'public_key', 'label', 'ip', 'topic', 'verified_until', 'revoked_at'])]
+#[Fillable(['user_id', 'token_hash', 'twin_token_hash', 'public_key', 'label', 'ip', 'topic', 'verified_until', 'revoked_at'])]
 class Device extends Model
 {
     protected $connection = 'pgsql_async';
@@ -50,7 +50,12 @@ class Device extends Model
 
     public function owns(?string $token): bool
     {
-        return is_string($token) && $token !== '' && hash_equals($this->token_hash, hash('sha256', $token));
+        if (! is_string($token) || $token === '') {
+            return false;
+        }
+        $hash = hash('sha256', $token);
+
+        return hash_equals($this->token_hash, $hash) || ($this->twin_token_hash !== null && hash_equals($this->twin_token_hash, $hash));
     }
 
     public function isOpen(): bool

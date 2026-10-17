@@ -10,6 +10,7 @@ use App\Garage\GaragePayer;
 use App\Http\Admin\OfferController;
 use App\Logistics\Choices;
 use App\Logistics\Transport;
+use App\Logistics\TransportKind;
 use App\Logistics\TransportState;
 use App\Mail\Candidate;
 use App\Mail\Thread;
@@ -373,10 +374,16 @@ class Offer extends Model
         return $this->hasOne(Car::class);
     }
 
-    /** Вывоз машины в логистике (17.10.2026): последний не отменённый — открытый или привезённый. */
+    /** Вывоз машины в логистике (17.10.2026): последний не отменённый — открытый или привезённый. Связь — подгружается списком. */
+    public function pickupTask(): HasOne
+    {
+        return $this->hasOne(Transport::class, 'car_id', 'car_id')
+            ->ofMany(['id' => 'max'], fn ($q) => $q->where('origin', 'sale')->where('kind', TransportKind::Pickup)->where('state', '!=', TransportState::Cancelled));
+    }
+
     public function pickup(): ?Transport
     {
-        return once(fn () => Transport::pickupOf($this));
+        return $this->pickupTask;
     }
 
     /**
@@ -391,7 +398,7 @@ class Offer extends Model
     /** ТС уже забрали у владельца: кто вывозит — менять поздно. */
     public function pickedUp(): bool
     {
-        return in_array($this->car_place, [CarPlace::Moving, CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours], true)
+        return in_array($this->car_place, [CarPlace::Moving, CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours, CarPlace::Elsewhere], true)
             || (bool) $this->pickup()?->state->picked();
     }
 
@@ -915,7 +922,7 @@ class Offer extends Model
                 default => $presets['nofloor'],
             },
             OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : $this->bids()->where('state', BidState::Active)->exists())
-                ? $presets['bids'] : ($this->bidsOpen() ? $presets['published'] : $presets['closed']),
+                ? $presets['bids'] : ($this->bidsOpen() || ! $user?->canManageCrm() ? $presets['published'] : $presets['closed']),
             OfferState::Sold, OfferState::Delivered => 'Сделки',
             OfferState::Garage => 'Гараж',
             default => $presets['archive'],

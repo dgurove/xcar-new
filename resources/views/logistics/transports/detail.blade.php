@@ -22,7 +22,6 @@
     $from = $t->fromAddress();
     $city = $t->city();
     $mapUrl = $from ? 'https://yandex.ru/maps/?text='.rawurlencode($city && ! str_contains($from, $city) ? "{$city}, {$from}" : $from) : null;
-    $keeper = $t->saleOffer()?->keeper();
     $id = $t->id;
     $carLink = match (true) {
         $car instanceof \App\Offers\Offer && $me->isStaff() => Surface::Crm->url('/offers/'.$car->number),
@@ -224,7 +223,7 @@
                         @php
                             $keysNow = old('keys');
                             $points = array_filter([
-                                Point::Keeper->value => $keeper ? 'В гараж '.$keeper->shortName() : null,
+                                Point::Keeper->value => \App\Logistics\Transport::keeperLabel($t->saleOffer()),
                                 Point::Ours->value => Point::Ours->label(),
                                 Point::Yard->value => Point::Yard->label(),
                                 Point::Other->value => Point::Other->label(),
@@ -258,7 +257,7 @@
             <x-ui.sheet :id="'deliver-'.$id" title="Привёз">
                 <form method="post" action="/transports/{{ $id }}/deliver" class="flex flex-col gap-4">
                     @csrf
-                    <p>{{ $t->destinationLabel() ?? 'Машина на месте' }}</p>
+                    <p>{{ $t->destinationLabel() ?? 'ТС на месте' }}</p>
                     <x-ui.sheet-foot>Привёз</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>

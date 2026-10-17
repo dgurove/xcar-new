@@ -87,10 +87,10 @@ class OfferController
     /** Вкладки, где порядок — когда предложение в них попало (`offers.tab_at`) и столбец даты — оно же. */
     public const BY_TAB = ['nofloor', 'unpriced', 'priced', 'archive', 'auction'];
 
-    /** Вкладки человека: подтверждения, «Из таблицы Кати» и «На аукцион» видит только админ. */
+    /** Вкладки человека: подтверждения, «Приём закрыт», «Из таблицы Кати» и «На аукцион» видит только админ (срок приёма модератору не виден). */
     public static function presets(User $user): array
     {
-        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'legacy' => true, 'auction' => true]);
+        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'closed' => true, 'legacy' => true, 'auction' => true]);
     }
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
@@ -332,9 +332,11 @@ class OfferController
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
             'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0),
             'slots' => $q->scheduled(),
-            // Идёт приём (срок не прошёл или его нет); у админа — ещё без подтверждений, они в «Есть подтверждения».
-            'published' => $q->where('offers.state', OfferState::Open)->where(fn ($c) => $c->whereNull('offers.bids_close_at')->orWhere('offers.bids_close_at', '>', now()))
-                ->when($admin, fn ($o) => $o->whereDoesntHave('bids', $bids)),
+            // Идёт приём (срок не прошёл или его нет); у админа — ещё без подтверждений, они в «Есть подтверждения». Модератору
+            // — всё открытое: срока приёма он не видит, «Приём закрыт» у него нет.
+            'published' => $q->where('offers.state', OfferState::Open)
+                ->when($admin, fn ($o) => $o->where(fn ($c) => $c->whereNull('offers.bids_close_at')->orWhere('offers.bids_close_at', '>', now()))
+                    ->whereDoesntHave('bids', $bids)),
             'closed' => $q->where('offers.state', OfferState::Open)->where('offers.bids_close_at', '<=', now())
                 ->when($admin, fn ($o) => $o->whereDoesntHave('bids', $bids)),
             'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),

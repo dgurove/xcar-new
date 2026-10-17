@@ -10,9 +10,14 @@ use App\Logistics\TransportNotice;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Events\Dispatcher;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
-/** Кому что рассказать о вывозе. */
+/**
+ * Кому что рассказать о вывозе. Уведомления в очереди, а события идут изнутри транзакций (письмо → предложение → вывоз,
+ * назначение, «Забрал»): шлём после коммита — иначе работник очереди не найдёт задачу, а при откате пришла бы весть о
+ * несуществующей.
+ */
 final class NotifyLogistics
 {
     public function subscribe(Dispatcher $events): array
@@ -27,7 +32,7 @@ final class NotifyLogistics
     /** Новый вывоз без исполнителя — админам. */
     public function requested(TransportRequested $e): void
     {
-        Notification::send(User::withRole(Role::Admin)->get(), TransportNotice::requested($e->transport));
+        DB::afterCommit(fn () => Notification::send(User::withRole(Role::Admin)->get(), TransportNotice::requested($e->transport)));
     }
 
     /**
@@ -36,7 +41,12 @@ final class NotifyLogistics
      */
     public function assigned(TransportAssigned $e): void
     {
-        $t = $e->transport;
+        DB::afterCommit(fn () => $this->sendAssigned($e));
+    }
+
+    private function sendAssigned(TransportAssigned $e): void
+    {
+        $t = $e->transport->fresh(['executorUser', 'coordinator']) ?? $e->transport;
         $to = $t->executorUser ?? ($t->executor === Executor::Logist ? $t->coordinator : null);
         // Менеджер сделки, а забирать рано (Альфа до оплаты, Каркаде до согласия поставщика, 11.10.2026): молчим — «Можно
         // забирать» скажет `Notify::pickupOpened`.
@@ -54,6 +64,11 @@ final class NotifyLogistics
      * нажал). «Не дозвонился» и «получил документы» — без уведомлений: это видно в задаче.
      */
     public function moved(TransportMoved $e): void
+    {
+        DB::afterCommit(fn () => $this->sendMoved($e));
+    }
+
+    private function sendMoved(TransportMoved $e): void
     {
         $t = $e->transport;
         if ($e->step === 'docs_sent') {

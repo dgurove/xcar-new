@@ -22,16 +22,21 @@ enum Point: string
     public function label(): string
     {
         return match ($this) {
-            self::Keeper => 'В гараж менеджера',
+            self::Keeper => 'К менеджеру',
             self::Ours => 'К нам',
             self::Yard => 'На парковку',
             self::Other => 'Другой адрес',
         };
     }
 
-    /** Где машина, когда её привезли. */
+    /** Где машина, когда её привезли: у менеджера, у нас, на нашей парковке или по чужому адресу. */
     public function place(): CarPlace
     {
-        return $this === self::Keeper ? CarPlace::Keeper : CarPlace::WithUs;
+        return match ($this) {
+            self::Keeper => CarPlace::Keeper,
+            self::Ours => CarPlace::WithUs,
+            self::Yard => CarPlace::Ours,
+            self::Other => CarPlace::Elsewhere,
+        };
     }
 }

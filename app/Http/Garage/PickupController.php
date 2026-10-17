@@ -2,7 +2,6 @@
 
 namespace App\Http\Garage;
 
-use App\Logistics\Transport;
 use App\Offers\Offer;
 use App\Support\Surface;
 use Illuminate\Http\Request;
@@ -16,7 +15,7 @@ class PickupController
     public function show(Request $request, Offer $offer)
     {
         $user = $request->user();
-        $t = Transport::pickupOf($offer);
+        $t = $offer->pickup();
         if ($t && ($t->isExecutedBy($user) || $user->isAdmin())) {
             return redirect()->away(Surface::Logistics->url('/transports/'.$t->id), 301);
         }

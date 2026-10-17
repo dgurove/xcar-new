@@ -36,6 +36,8 @@ final class NotifyNewOffers
               and jsonb_exists_any(u.roles, array[?, ?]) and u.rejected_at is null
               and o.state = ? and o.is_demo = false and o.urgent_at is null
               and exists (select 1 from offer_viewers w where w.offer_id = v.offer_id and w.user_id <> v.user_id)
+              -- Отмечал интерес в галерее — ему уже ушло «В продаже, вы отмечали интерес» (`NotifyViewers`), второе не нужно.
+              and not (o.gallery_from is not null and exists (select 1 from interests i where i.offer_id = v.offer_id and i.user_id = v.user_id))
             group by v.user_id
             having max(v.notified_at) <= ? or min(v.notified_at) <= ?', [
             $now, $now->copy()->subDay(), Role::Manager->value, Role::SuperBuyer->value, OfferState::Open->value,

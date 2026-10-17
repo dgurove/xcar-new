@@ -20,7 +20,6 @@ use App\Support\Detail;
 use App\Support\Sort;
 use App\Support\Surface;
 use App\Users\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -54,7 +53,7 @@ class TransportController
         }
         $pills = self::pills($user);
         $counts = collect($pills)->keys()->reject(fn ($k) => in_array($k, ['done', 'all'], true))
-            ->mapWithKeys(fn ($k) => [$k => self::scope(Transport::visibleTo($user), $k, $user)->count()])->filter()->all();
+            ->mapWithKeys(fn ($k) => [$k => Transport::visibleTo($user)->step($k)->count()])->filter()->all();
         // Админу — сначала то, что ждёт его выбора; логисту — его; исполнителю — в работе.
         $home = match (true) {
             isset($pills['new']) && ($counts['new'] ?? 0) > 0 => 'new',
@@ -64,7 +63,7 @@ class TransportController
         $preset = array_key_exists((string) $request->query('preset'), $pills) ? $request->query('preset') : $home;
         $q = is_string($q = $request->query('q')) ? $q : '';
 
-        $transports = self::scope(Transport::visibleTo($user), $q !== '' ? 'all' : $preset, $user)
+        $transports = Transport::visibleTo($user)->step($q !== '' ? 'all' : $preset)
             ->with(['car', 'offer', 'offer.settlement', 'vehicle', 'executorUser', 'coordinator', 'toYard'])
             ->search($q)
             ->latest('id')->limit(300)->get();
@@ -91,18 +90,6 @@ class TransportController
         }, ARRAY_FILTER_USE_BOTH);
     }
 
-    private static function scope(Builder $q, string $preset, User $user): Builder
-    {
-        return match ($preset) {
-            'new' => $q->where('state', TransportState::New),
-            'logist' => $q->where('state', TransportState::Logist),
-            'work' => $q->whereIn('state', [TransportState::Assigned, TransportState::Agreed]),
-            'moving' => $q->where('state', TransportState::Moving),
-            'done' => $q->where('state', TransportState::Delivered),
-            default => $q,
-        };
-    }
-
     /** Ссылка уведомления и Telegram: карточка поверх списка. */
     public function show(Request $request, int $transport)
     {
@@ -127,9 +114,9 @@ class TransportController
     public function executor(Request $request, Transport $transport, AssignExecutor $assign)
     {
         abort_unless($request->user()->isAdmin(), 404);
-        $data = $request->validate(['executor' => ['required', Rule::enum(Executor::class)], 'executor_id' => ['required', 'integer', 'exists:users,id']],
-            ['executor.required' => 'Кто вывозит', 'executor_id.required' => 'Кто именно']);
-        $assign($transport, Executor::from($data['executor']), User::find($data['executor_id']), $request->user());
+        $request->validate(['executor' => ['required', Rule::enum(Executor::class)]], ['executor.required' => 'Кто вывозит']);
+        [$kind, $who] = AssignExecutor::fromRequest($request);
+        $assign($transport, $kind, $who, $request->user());
 
         return back()->with('toast', 'Вывозит '.($transport->fresh()->executorName() ?? ''));
     }
@@ -216,6 +203,8 @@ class TransportController
     public function upload(Request $request, Transport $transport, PhotoIngest $ingest)
     {
         $this->acts($request, $transport);
+        // Закрытая задача — кадры уже факт: добавляет только админ.
+        abort_if(in_array($transport->state, [TransportState::Delivered, TransportState::Cancelled], true) && ! $request->user()->isAdmin(), 404);
         $request->validate(['file' => ['required', 'file', 'max:65536']]);
         $at = $request->input('stage') === 'delivery' ? 'delivery' : 'pickup';
         try {

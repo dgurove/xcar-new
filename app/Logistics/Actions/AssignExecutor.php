@@ -9,6 +9,7 @@ use App\Logistics\Point;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
 use App\Users\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -30,7 +31,11 @@ final class AssignExecutor
             throw ValidationException::withMessages(['executor' => 'Исполнителя выбирает админ']);
         }
         if (! $t->isOpen() || $t->state->picked()) {
-            throw ValidationException::withMessages(['executor' => 'Машину уже забрали: можно только «Привёз» или отмена']);
+            throw ValidationException::withMessages(['executor' => 'ТС уже забрали: можно только «Привёз» или отмена']);
+        }
+        // Закрытый доступ — не исполнитель.
+        if ($who?->rejected_at) {
+            throw ValidationException::withMessages(['executor_id' => 'У '.$who->shortName().' закрыт доступ']);
         }
         match ($kind) {
             Executor::Logist => $who?->isLogist() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите логиста']),
@@ -56,7 +61,8 @@ final class AssignExecutor
             if ($changed) {
                 $t->fill(['docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]);
             }
-            $t->docs_by_cdek = $executor ? ($cdek ?? ! $executor->seals()) : false;
+            // Документы нужны только на вывоз от владельца: перевод между парковками едет без них.
+            $t->docs_by_cdek = $executor && $t->isPickup() ? ($cdek ?? ! $executor->seals()) : false;
             // Менеджер сделки везёт к себе: точка — его гараж.
             if ($kind === Executor::Manager && $t->destination === null) {
                 $t->destination = Point::Keeper;
@@ -71,6 +77,26 @@ final class AssignExecutor
 
             return $t;
         });
+    }
+
+    /**
+     * Из формы «Кто вывозит» (`x-logistics.assign-form`): вид и человек — поле `who[вид]` выбранного вида (старое
+     * `executor_id` — тоже). Вида нет — null: задача просто заводится.
+     *
+     * @return array{0: Executor, 1: ?User}|null
+     */
+    public static function fromRequest(Request $request): ?array
+    {
+        $kind = Executor::tryFrom((string) $request->input('executor'));
+        if (! $kind) {
+            return null;
+        }
+        $id = $request->input('who.'.$kind->value) ?? $request->input('executor_id');
+        if (! $id || ! ($who = User::find((int) $id))) {
+            throw ValidationException::withMessages(['executor_id' => 'Кто именно']);
+        }
+
+        return [$kind, $who];
     }
 
     /** Снять исполнителя: вывоз снова ждёт админа (менеджеру отдали сделку другого, отменили сделку). */
@@ -94,7 +120,7 @@ final class AssignExecutor
     /** Админ переключает «Документы СДЭКом» у назначенного исполнителя. */
     public function cdek(Transport $t, bool $cdek, User $by): Transport
     {
-        if (! $by->isAdmin() || ! $t->executor_id || $t->state->picked()) {
+        if (! $by->isAdmin() || ! $t->executor_id || ! $t->isPickup() || $t->state->picked()) {
             throw ValidationException::withMessages(['docs_by_cdek' => 'Поздно менять']);
         }
         $t->update(['docs_by_cdek' => $cdek] + ($cdek ? [] : ['docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]));

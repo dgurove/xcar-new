@@ -19,20 +19,20 @@ final class Choices
     /** @return array<int, string> */
     public static function logists(): array
     {
-        return once(fn () => User::withRole(Role::Logist)->orderBy('name')->pluck('name', 'id')->all());
+        return once(fn () => User::withRole(Role::Logist)->whereNull('rejected_at')->orderBy('name')->pluck('name', 'id')->all());
     }
 
     /** Наши люди на вывозе (ООО «ПРАЙМ»). @return array<int, string> */
     public static function staff(): array
     {
-        return once(fn () => User::withRole(Role::Driver)->orderBy('name')->pluck('name', 'id')->all());
+        return once(fn () => User::withRole(Role::Driver)->whereNull('rejected_at')->orderBy('name')->pluck('name', 'id')->all());
     }
 
     /** Исполнители логиста и он сам — кого он может назначить. @return array<int, string> */
     public static function contractorsOf(User $logist): array
     {
         return [$logist->id => $logist->name.' (сам)']
-            + User::withRole(Role::Contractor)->where('logist_id', $logist->id)->orderBy('name')->pluck('name', 'id')->all();
+            + User::withRole(Role::Contractor)->where('logist_id', $logist->id)->whereNull('rejected_at')->orderBy('name')->pluck('name', 'id')->all();
     }
 
     /**

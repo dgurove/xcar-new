@@ -36,11 +36,11 @@ final class LogistAssign
             throw ValidationException::withMessages(['executor_id' => 'Задача не у вас']);
         }
         if (! $t->isOpen() || $t->state->picked()) {
-            throw ValidationException::withMessages(['executor_id' => 'Машину уже забрали']);
+            throw ValidationException::withMessages(['executor_id' => 'ТС уже забрали']);
         }
         $logist = $t->coordinator;
         $who = User::find($data['executor_id']);
-        if (! $who || ! ($who->is($logist) || ($who->isContractor() && $who->logist_id === $logist?->id))) {
+        if (! $who || $who->rejected_at || ! ($who->is($logist) || ($who->isContractor() && $who->logist_id === $logist?->id))) {
             throw ValidationException::withMessages(['executor_id' => 'Выберите своего исполнителя']);
         }
         $cost = Money::rubles($data['cost'] ?? null);
@@ -55,7 +55,7 @@ final class LogistAssign
                 'executor_id' => $who->id, 'cost' => $cost, 'distance_km' => $data['distance_km'] ?? null ?: null,
                 'state' => $t->agreed_at ? TransportState::Agreed : TransportState::Assigned,
                 'assigned_at' => $changed ? now() : $t->assigned_at,
-                'docs_by_cdek' => ! $who->seals(),
+                'docs_by_cdek' => $t->isPickup() && ! $who->seals(),
             ]);
             if ($changed) {
                 $t->fill(['docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]);

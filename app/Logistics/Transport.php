@@ -209,12 +209,23 @@ class Transport extends Model
     public function destinationLabel(): ?string
     {
         return match ($this->destination) {
-            Point::Keeper => ($keeper = $this->saleOffer()?->keeper()) ? 'В гараж '.$keeper->shortName() : Point::Keeper->label(),
+            Point::Keeper => self::keeperLabel($this->saleOffer()) ?? Point::Keeper->label(),
             Point::Yard => $this->toYard?->name ?? $this->to_address,
             Point::Other => $this->to_address,
             Point::Ours => trim(Point::Ours->label().($this->to_address ? ', '.$this->to_address : '')),
             null => $this->to_address,
         };
+    }
+
+    /** Точка «к менеджеру»: гаражная — «В гараж Бородин Ф.», машина его покупателю — «Менеджеру Бородин Ф.». */
+    public static function keeperLabel(?Offer $offer): ?string
+    {
+        $keeper = $offer?->keeper();
+        if (! $keeper) {
+            return null;
+        }
+
+        return ($offer->garageCar()->exists() ? 'В гараж ' : 'Менеджеру ').$keeper->shortName();
     }
 
     /**
@@ -352,6 +363,19 @@ class Transport extends Model
             ->when($user->sendsLogisticsDocs(), fn ($w) => $w->orWhere('docs_by_cdek', true)));
     }
 
+    /** Вкладка списка логистики: без исполнителя, у логиста, в работе, в пути, готово; иначе — все. */
+    public function scopeStep(Builder $q, string $step): Builder
+    {
+        return match ($step) {
+            'new' => $q->where('state', TransportState::New),
+            'logist' => $q->where('state', TransportState::Logist),
+            'work' => $q->whereIn('state', [TransportState::Assigned, TransportState::Agreed]),
+            'moving' => $q->where('state', TransportState::Moving),
+            'done' => $q->where('state', TransportState::Delivered),
+            default => $q,
+        };
+    }
+
     public function scopeOpen(Builder $q): Builder
     {
         return $q->whereIn('state', TransportState::OPEN);
@@ -415,12 +439,5 @@ class Transport extends Model
         return self::open()->where('car_id', $car instanceof Car ? $car->id : $car->car_id)
             ->when(! $car instanceof Car, fn ($q) => $q->where('origin', $car instanceof Offer ? 'sale' : 'park'))
             ->latest('id')->first();
-    }
-
-    /** Вывоз продажи — последний не отменённый: открытый или уже привезённый. */
-    public static function pickupOf(Offer $offer): ?self
-    {
-        return self::where('car_id', $offer->car_id)->where('origin', 'sale')->where('kind', TransportKind::Pickup)
-            ->where('state', '!=', TransportState::Cancelled)->latest('id')->first();
     }
 }

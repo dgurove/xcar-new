@@ -858,6 +858,10 @@ class MailController
             'sender' => ['required', 'email', 'max:255'],
             'domain' => ['nullable', 'boolean'],
         ], ['vendor_id.required_if' => 'Выберите вендора', 'name.required_if' => 'Название вендора']);
+        // Свой адрес (ящики, почта сотрудников) вендору не отдаётся — как и кнопка `VendorPick::of` его не предлагает.
+        if (in_array(mb_strtolower(trim($data['sender'])), [...Message::ownEmails(), ...Message::ownMailboxes()], true)) {
+            return back()->withErrors(['sender' => 'Это наш адрес']);
+        }
         $sides = fn () => $park ? Vendor::onPark() : Vendor::query()->whereNull('crm_vendor_id');
         if ($data['mode'] === 'pick') {
             $vendor = $sides()->find($data['vendor_id']);
@@ -873,7 +877,7 @@ class MailController
         $read = $bind($vendor, $data['sender'], $this->scope, (bool) ($data['domain'] ?? false));
         $back = $request->header('Turbo-Frame') === 'letters-frame' ? redirect("{$this->base}/{$thread->id}/window") : back();
         $toast = $vendor->wasRecentlyCreated ? "Вендор «{$vendor->name}» заведён"
-            : ($bind->movedFrom ? "Адрес перенесён от «{$bind->movedFrom}» к «{$vendor->name}»" : "Письма с адреса — «{$vendor->name}»");
+            : ($bind->movedFrom ? "Адрес перенесён от «{$bind->movedFrom}» к «{$vendor->name}»" : "Письма с адреса теперь у «{$vendor->name}»");
 
         return $back->with('toast', $toast.($read > 1 ? ", писем: {$read}" : ''))
             ->with('toast-href', $vendor->wasRecentlyCreated ? ($park ? "/vendors/{$vendor->id}" : "/settings/vendors/{$vendor->id}") : null);

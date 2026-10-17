@@ -32,12 +32,8 @@ final class OpenPickup
         if ($open = Transport::openFor($offer)) {
             return $open;
         }
-        if (in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)) {
-            throw ValidationException::withMessages(['pickup' => 'Предложение '.mb_strtolower($offer->state->label()).', вывоз не нужен']);
-        }
-        if (in_array($offer->car_place, [CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours], true)
-            || $offer->parkVehicle?->state === VehicleState::Stored) {
-            throw ValidationException::withMessages(['pickup' => 'Машина уже не у владельца']);
+        if ($reason = self::blocker($offer)) {
+            throw ValidationException::withMessages(['pickup' => $reason]);
         }
 
         $t = DB::transaction(function () use ($offer, $by, $to) {
@@ -58,5 +54,15 @@ final class OpenPickup
         }
 
         return $t;
+    }
+
+    /** Почему вывоз завести нельзя: продажа закрыта, ТС уже не у владельца (у нас, у менеджера, на парковке). null — можно. */
+    public static function blocker(Offer $offer): ?string
+    {
+        return match (true) {
+            in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true) => 'Предложение '.mb_strtolower($offer->state->label()).', вывоз не нужен',
+            $offer->pickedUp() || $offer->parkVehicle?->state === VehicleState::Stored => 'ТС уже не у владельца',
+            default => null,
+        };
     }
 }

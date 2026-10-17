@@ -23,6 +23,9 @@ final class Enroll
     /** Пространство замков `pg_advisory_xact_lock(LOCK, user_id)`. */
     private const LOCK = 7101;
 
+    /** Сколько секунд второй вход того же браузера считается двойным нажатием. */
+    private const TWIN_SECONDS = 10;
+
     public function __construct(private RevokeDevices $revoke) {}
 
     /** @param array{kty: string, crv: string, x: string, y: string}|null $key */
@@ -38,6 +41,16 @@ final class Enroll
             // первого, гасит его устройство и встаёт сам. Без замка оба гасили старое и вставляли новое — 500 на
             // `devices_live_user` (живое устройство у человека одно).
             DB::connection('pgsql_async')->select('select pg_advisory_xact_lock(?, ?)', [self::LOCK, $user->id]);
+            // Тот же браузер вошёл секунды назад (второй запрос двойного нажатия): его устройство не гасим — браузер
+            // оставит cookie любого из двух ответов, поэтому второй токен дописывается тому же устройству.
+            $twin = Device::on('pgsql_async')->where('user_id', $user->id)->whereNull('revoked_at')
+                ->where('created_at', '>', now()->subSeconds(self::TWIN_SECONDS))
+                ->where('ip', $request->ip())->where('label', UserAgent::label($request->userAgent()))->latest('id')->first();
+            if ($twin) {
+                $twin->update(['twin_token_hash' => hash('sha256', $token)] + ($key ? ['public_key' => $twin->keys() + [$request->getHost() => $key]] : []));
+
+                return $twin;
+            }
             ($this->revoke)($user);
 
             return Device::create([

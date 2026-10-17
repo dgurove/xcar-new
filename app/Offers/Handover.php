@@ -87,7 +87,7 @@ final class Handover
         }
         $owner = $picks || $saleAsks;
         if ($owner && $pickup) {
-            $fields['date'] ??= $pickup->pickup_at?->toDateString();
+            $fields['date'] ??= $pickup->pickup_at?->format('Y-m-d H:i');
             $fields['address'] ??= $pickup->pickup_place ?: null;
         }
         // «Контакт» бывает строкой «Валентин Сергеевич +7 905 …»: телефон — отдельно, чтобы по нему звонили.
@@ -107,6 +107,7 @@ final class Handover
         $where = match (true) {
             $place === CarPlace::Keeper => $offer->keeper()?->id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
             $place === CarPlace::WithUs => CarPlace::WithUs->label(),
+            $place === CarPlace::Elsewhere => CarPlace::Elsewhere->label(),
             $place === CarPlace::Ours || $atYard => 'На парковке',
             $atSupplier => 'У поставщика',
             $place === CarPlace::Owner, $place === CarPlace::Moving, $offer->insured_name || $offer->insured_phone => 'У владельца',
@@ -173,14 +174,19 @@ final class Handover
         return $this->phone ? Phone::format($this->phone) : null;
     }
 
-    /** Дата словами, если это дата: «12 октября». */
+    /** Дата словами, если это дата: «12 октября», со временем созвона — «12 октября, 14:00». */
     public function dateLabel(): ?string
     {
         if (! $this->date) {
             return null;
         }
         try {
-            return preg_match('/^\d{4}-\d{2}-\d{2}/', $this->date) ? Carbon::parse($this->date)->translatedFormat('j F') : $this->date;
+            if (! preg_match('/^\d{4}-\d{2}-\d{2}/', $this->date)) {
+                return $this->date;
+            }
+            $at = Carbon::parse($this->date);
+
+            return $at->translatedFormat($at->format('H:i') === '00:00' ? 'j F' : 'j F, H:i');
         } catch (\Throwable) {
             return $this->date;
         }
