@@ -28,9 +28,11 @@ final class TickCommand extends Command
     {
         Transport::inLogistics()->where('state', TransportState::Agreed)->where('pickup_at', '<', now()->subHours(2))
             ->where(fn ($q) => $q->whereNull('late_noticed_at')->orWhereColumn('late_noticed_at', '<', 'pickup_at'))
-            ->with(['executorUser', 'car'])->get()
+            ->with(['executorUser', 'coordinator', 'car'])->get()
             ->each(function (Transport $t) {
-                Notification::send(User::logisticsLeads()->get()->push($t->executorUser)->filter()->unique('id'), TransportNotice::late($t));
+                // Заявку логиста от его заказчика админы не видят: просрочка — ему и исполнителю.
+                $to = $t->isOrder() ? collect([$t->coordinator]) : User::logisticsLeads()->get();
+                Notification::send($to->push($t->executorUser)->filter()->unique('id'), TransportNotice::late($t));
                 $t->update(['late_noticed_at' => now()]);
             });
 
@@ -67,7 +69,7 @@ final class TickCommand extends Command
             return;
         }
         $waiting = Transport::where('state', TransportState::New)->where('created_at', '<', now()->subDay())->count();
-        $silent = self::stuck()->count();
+        $silent = self::stuck()->reject->isOrder()->count();
         if ($waiting + $silent > 0) {
             Notification::send(User::logisticsLeads()->get(), TransportNotice::stale($waiting, $silent));
         }

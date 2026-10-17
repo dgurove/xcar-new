@@ -14,10 +14,11 @@
             @endif
             <x-ui.chevron/>
         </a>
-        {{-- На телефоне «Пригласить» — плашка внизу экрана; строкой — только на компьютере. --}}
-        <a href="{{ $invitesUrl }}" class="row max-md:!hidden">
-            <x-ui.row-icon name="link" tone="accent"/>
-            <span class="min-w-0 flex-1 font-medium">Пригласить</span>
+        {{-- На телефоне «Добавить» — плашка внизу экрана; строкой — только на компьютере. Экран ссылок открывается сразу
+             шторкой «Покупатель»: ввести данные или сделать ссылку (18.10.2026). --}}
+        <a href="{{ $invitesUrl }}?add=1" class="row max-md:!hidden">
+            <x-ui.row-icon name="plus" tone="accent"/>
+            <span class="min-w-0 flex-1 font-medium">Добавить покупателя</span>
             <x-ui.chevron/>
         </a>
     </div>
@@ -61,7 +62,7 @@
         @if ($term)
             <x-ui.empty :href="$base" link="Все покупатели">Никого не нашлось</x-ui.empty>
         @else
-            <x-ui.empty :href="$invitesUrl" link="Сделать ссылку">Покупатели приходят по вашей ссылке</x-ui.empty>
+            <x-ui.empty :href="$invitesUrl.'?add=1'" link="Добавить">Покупателей пока нет</x-ui.empty>
         @endif
     @else
         <div class="list">

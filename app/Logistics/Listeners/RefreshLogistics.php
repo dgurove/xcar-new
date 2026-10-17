@@ -47,10 +47,13 @@ final class RefreshLogistics
         });
     }
 
-    /** Кто видит вывоз: ведущие логистику, логист задачи, исполнитель (и прежний — его список тоже меняется). */
+    /**
+     * Кто видит вывоз: ведущие логистику, логист задачи, исполнитель (и прежний — его список тоже меняется). Заявку логиста
+     * от его заказчика ведущие не видят — им и не перечитываем.
+     */
     public static function topics(Transport $transport, ?int $previous = null): array
     {
-        return User::logisticsLeads()->pluck('id')
+        return ($transport->isOrder() ? collect() : User::logisticsLeads()->pluck('id'))
             ->push($transport->executor_id, $transport->coordinator_id, $transport->executorUser?->logist_id, $previous)
             ->filter()->unique()->map(fn (int $id) => Topics::user($id))->values()->all();
     }

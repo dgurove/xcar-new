@@ -27,6 +27,8 @@ final class LogistAssign
             'executor_id' => ['required', 'integer'],
             'distance_km' => ['nullable', 'integer', 'min:0', 'max:20000'],
             'cost' => ['required', 'string', 'max:20'],
+            // Сколько она платит своему исполнителю — для её «Оплат» (18.10.2026); XCar это не видит и не платит.
+            'executor_cost' => ['nullable', 'string', 'max:20'],
         ];
     }
 
@@ -53,6 +55,7 @@ final class LogistAssign
             $changed = $t->executor_id !== $who->id;
             $t->fill([
                 'executor_id' => $who->id, 'cost' => $cost, 'distance_km' => $data['distance_km'] ?? null ?: null,
+                ...($t->isCoordinatedBy($by) && array_key_exists('executor_cost', $data) ? ['executor_cost' => Money::rubles($data['executor_cost'])] : []),
                 'state' => $t->agreed_at ? TransportState::Agreed : TransportState::Assigned,
                 'assigned_at' => $changed ? now() : $t->assigned_at,
             ]);

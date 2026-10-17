@@ -3,6 +3,7 @@
 namespace App\Http\Cabinet;
 
 use App\Support\Surface;
+use App\Users\Actions\AddPerson;
 use App\Users\Actions\IssueInvite;
 use App\Users\Invite;
 use App\Users\Role;
@@ -36,16 +37,39 @@ class InviteController
         return Invite::manageableBy($me)->with(['manager', 'creator', 'group', 'buyers'])->latest()->get();
     }
 
-    public function store(Request $request, IssueInvite $issue)
+    /**
+     * «Ссылкой» — ссылка; «Ввести данные» (`mode=person`, 18.10.2026) — тот же выбор роли и групп, но человек заводится сразу
+     * (`AddPerson`), а пароль показывает шторка входа.
+     */
+    public function store(Request $request, IssueInvite $issue, AddPerson $add)
     {
         $me = $request->user();
         abort_unless($me->isAdmin() || $me->isManager(), 404);
-        $data = $request->validate(IssueInvite::rules($me));
+        $person = $request->input('mode') === 'person';
+        if ($person) {
+            // Срок ссылке, которой человек «пришёл», не нужен: она использована тут же.
+            $request->merge(['expires_at' => now()->addDay()->format('Y-m-d H:i')]);
+        }
+        $data = $request->validate(IssueInvite::rules($me) + ($person ? AddPerson::rules() : []));
         $data['phone'] = $request->boolean('phone');
         $data['email'] = $request->boolean('email');
+        if ($person) {
+            [$user, $credentials] = $add(fn () => $issue($me, $data), $data);
+
+            return redirect(self::peopleHome($user))->with('credentials', $credentials);
+        }
         $invite = $issue($me, $data);
 
         return redirect(self::home())->with('invite', $invite->id);
+    }
+
+    /** Куда после «Добавить»: в CRM — список людей, менеджеру — его покупатели. */
+    private static function peopleHome(User $user): string
+    {
+        return match (Surface::current()) {
+            Surface::Crm => '/settings/users',
+            default => $user->isBuyer() && $user->manager_id === auth()->id() ? '/buyers/'.$user->id : self::site(),
+        };
     }
 
     public function disable(Request $request, Invite $invite)

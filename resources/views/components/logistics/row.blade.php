@@ -30,12 +30,14 @@
         <x-ui.row-link :key="$t->id" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">@if ($sale?->urgent)<span class="card-tone card-tone--danger" aria-label="Срочно"></span>@endif{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/></span></x-ui.row-link>
         <span class="cell-sub">
             @if ($staff && ($vendorId || $ref))<span class="sm:hidden"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref"/></span>@endif
+            @if ($has('client'))<span class="sm:hidden">{{ $t->client?->name ?? 'XCar' }}</span>@endif
             @if ($sale && $deciding)<span class="sm:hidden whitespace-nowrap {{ $sale->tone }}">{{ $sale->word }}</span>
             @elseif ($stepHere)<span @class(['whitespace-nowrap', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
             @if ($manager)<span class="sm:hidden whitespace-nowrap">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden">→ {{ $to }}</span>@endif
             @if ($has('who') && ($who || $logist))<span class="sm:hidden">{{ $who ? $who->shortName() : 'у логиста '.$logist->shortName() }}</span>@endif
         </span>
     </td>
+    @if ($has('client'))<td class="hidden sm:table-cell"><span @class(['text-ink-muted' => ! $t->client])>{{ $t->client?->name ?? 'XCar' }}</span></td>@endif
     @if ($has('vendor'))<td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref" cell/></td>@endif
     @if ($has('sale'))<td class="hidden sm:table-cell"><span class="{{ $sale?->tone }}">{{ $sale?->word }}</span></td>@endif
     @if ($has('to'))<td class="hidden sm:table-cell">@if ($manager)<x-ui.person :user="$manager"/>@elseif ($to)<span class="text-ink-muted">{{ $to }}</span>@endif</td>@endif

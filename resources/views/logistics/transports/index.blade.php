@@ -4,7 +4,14 @@
      колонкой, телефон — листом снизу). На «Без исполнителя» у ведущих галочки: «Назначить (N)» логисту или нашим, «Уже
      вывезли» задним числом и «Отменить» с причиной (число — у главной, три с числом на телефоне не влезали). «Готово» и «Все» — страницами. --}}
 <x-ui.shell title="Вывоз" :phone-heading="false" :detail="$detail">
-    <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :pill-home="$home" :counts="$counts" name="transports" :sort="$sort" :facets="$facets" search="{{ auth()->user()->leadsLogistics() ? 'Марка, VIN, убыток, владелец, трек' : 'Марка, VIN, владелец, трек' }}" search-target="#transports"/>
+    <x-ui.toolbar :pills="$pills" :pill="$preset" pill-param="preset" :pill-home="$home" :counts="$counts" name="transports" :sort="$sort" :facets="$facets" search="{{ auth()->user()->leadsLogistics() ? 'Марка, VIN, убыток, владелец, трек' : 'Марка, VIN, владелец, трек' }}" search-target="#transports">
+        @if (auth()->user()->isLogist())
+            {{-- Своя заявка логиста — от его заказчика (18.10.2026). --}}
+            <x-slot:actions>
+                <a href="/transports/new" class="btn btn-s btn-accent btn-round shrink-0" aria-label="Новая заявка"><x-ui.icon name="plus" class="size-5"/></a>
+            </x-slot:actions>
+        @endif
+    </x-ui.toolbar>
     <div id="transports" class="mt-4" @if ($pick) data-controller="pick" @endif>
         @if ($transports->isEmpty())
             <x-ui.empty class="mt-6">{{ match ($preset) { 'new' => 'Всем вывозам выбран исполнитель', 'logist' => 'Логист всех назначил', 'work', 'moving' => 'Вывозов в работе нет', default => 'Вывозов нет' } }}</x-ui.empty>

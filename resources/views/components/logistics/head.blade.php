@@ -5,6 +5,7 @@
 <tr>
     @if ($has('pick'))<th class="pick-cell"></th>@endif
     <x-ui.th :sort="$sort" key="title" class="grow">Марка, модель</x-ui.th>
+    @if ($has('client'))<th class="hidden sm:table-cell">Заказчик</th>@endif
     @if ($has('vendor'))<x-ui.th :sort="$sort" key="vendor" class="hidden sm:table-cell">Вендор, № убытка</x-ui.th>@endif
     @if ($has('sale'))<x-ui.th :sort="$sort" key="sale" class="hidden sm:table-cell">Продажа</x-ui.th>@endif
     @if ($has('to'))<th class="hidden sm:table-cell">Кому везти</th>@endif

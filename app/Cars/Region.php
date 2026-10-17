@@ -18,6 +18,13 @@ class Region extends Model
     /** @var array<int, self>|null */
     private static ?array $all = null;
 
+    /** Регионы поменяли (справочник, тест завёл свой) — память `inText` перечитается. */
+    protected static function booted(): void
+    {
+        static::saved(fn () => self::$all = null);
+        static::deleted(fn () => self::$all = null);
+    }
+
     /** Первый регион, названный в тексте адреса: «Пермский край, д. Ванюки», «Ярославская обл, р-н …». */
     public static function inText(?string $text): ?self
     {

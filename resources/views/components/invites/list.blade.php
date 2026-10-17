@@ -12,9 +12,9 @@
     <div data-controller="sheet" class="contents">
         <button type="button" class="row w-full text-left transition-colors hover:bg-hover" data-action="sheet#open">
             <x-ui.row-icon name="plus" tone="accent"/>
-            <span class="min-w-0 flex-1 font-medium">Новая ссылка</span>
+            <span class="min-w-0 flex-1 font-medium">{{ $admin ? 'Добавить' : 'Добавить покупателя' }}</span>
         </button>
-        <x-ui.sheet id="invite-new" title="Новая ссылка">
+        <x-ui.sheet id="invite-new" :title="$admin ? 'Добавить' : 'Покупатель'" :open="request()->boolean('add')">
             <x-invites.form :action="$base" :admin="$admin" :managers="$managers" :groups="$groups"/>
         </x-ui.sheet>
     </div>

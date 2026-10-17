@@ -17,14 +17,14 @@ use Illuminate\Support\Str;
  * регистрации). Админ зовёт менеджеров — такая ссылка одноразовая (`max_uses` 1):
  * пришедший сразу становится менеджером — и покупателей от имени менеджера.
  */
-#[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'expires_at', 'disabled_at', 'access', 'park_readonly', 'user_group_id', 'park_city_id', 'buyer_sees'])]
+#[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'expires_at', 'disabled_at', 'access', 'park_readonly', 'user_group_id', 'park_city_id', 'buyer_sees', 'manual'])]
 class Invite extends Model
 {
     public const FIELDS = ['phone' => 'Телефон', 'email' => 'Почта'];
 
     protected function casts(): array
     {
-        return ['fields' => 'array', 'disabled_at' => 'datetime', 'expires_at' => 'datetime', 'role' => Role::class, 'access' => 'array', 'park_readonly' => 'bool'];
+        return ['fields' => 'array', 'disabled_at' => 'datetime', 'expires_at' => 'datetime', 'role' => Role::class, 'access' => 'array', 'park_readonly' => 'bool', 'manual' => 'bool'];
     }
 
     public function getRouteKeyName(): string
@@ -65,13 +65,14 @@ class Invite extends Model
     public function scopeManageableBy(Builder $q, User $user): Builder
     {
         // Ссылки парковки ведёт парковка, исполнителям логиста — логистика: в CRM и кабинете их нет.
-        return ($user->isAdmin() ? $q : $q->where('manager_id', $user->id))->whereNotIn('role', [Role::Parking->value, Role::Contractor->value]);
+        // Заведённых руками (`AddPerson`) нет: их ссылка — только запись, кто и когда завёл.
+        return ($user->isAdmin() ? $q : $q->where('manager_id', $user->id))->whereNotIn('role', [Role::Parking->value, Role::Contractor->value])->where('manual', false);
     }
 
     /** Ссылки исполнителям логиста — в «Исполнителях» логистики: логисту свои, админу все. */
     public function scopeOfLogist(Builder $q, User $user): Builder
     {
-        return $q->where('role', Role::Contractor->value)->when(! $user->isAdmin(), fn ($q) => $q->where('created_by', $user->id));
+        return $q->where('role', Role::Contractor->value)->where('manual', false)->when(! $user->isAdmin(), fn ($q) => $q->where('created_by', $user->id));
     }
 
     /** Ссылки управляющим и помощникам — в «Пользователях» парковки. */

@@ -59,6 +59,10 @@ export default class extends Controller {
         fill.plain('inspection_address', v.inspection_address);
         fill.plain('contact_name', v.contact_name);
         fill.plain('contact_phone', v.contact_phone);
+        // Заявка логиста (18.10.2026): адрес осмотра — откуда забрать, страхователь — у кого.
+        fill.plain('from_address', v.inspection_address);
+        fill.plain('from_contact', v.contact_name);
+        fill.plain('from_phone', v.contact_phone);
         const value = form.elements.namedItem('value');
         if (form.elements.namedItem('floor_price')) fill.plain('floor_price', v.price);
         else if (value && !value.closest('[hidden]')) fill.plain('value', v.price);

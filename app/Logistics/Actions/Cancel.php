@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Отмена вывоза — админу, пока машину не привезли, с причиной: неоплаченный долг логисту и расход гаража уходят.
+ * Отмена вывоза — админу, пока машину не привезли, с причиной: неоплаченный долг логисту и расход гаража уходят. Свою
+ * заявку от своего заказчика отменяет сам логист (18.10.2026).
  * `system` — отменяет сама система (продажа ушла в архив, предложение удалили): роль не проверяется.
  */
 final class Cancel
@@ -25,7 +26,7 @@ final class Cancel
 
     public function __invoke(Transport $t, ?User $by, ?string $reason = null, bool $system = false, bool $batch = false): Transport
     {
-        if (! $system && ! $by?->leadsLogistics()) {
+        if (! $system && ! (($by?->leadsLogistics() && ! $t->isOrder()) || ($t->isOrder() && $by && $t->isCoordinatedBy($by)))) {
             throw ValidationException::withMessages(['transport' => 'Отменяют админ и модераторы']);
         }
         if (! $t->isOpen()) {

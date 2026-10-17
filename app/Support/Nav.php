@@ -12,6 +12,7 @@ use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
+use App\Logistics\Client;
 use App\Logistics\Transport;
 use App\Mail\Boxes;
 use App\Mail\Scope;
@@ -80,6 +81,8 @@ final class Nav
             return array_values(array_filter([
                 $tasks ? self::item('Вывоз', '/transports') : null,
                 $user->sendsLogisticsDocs() ? self::item('Документы', '/documents') : null,
+                // Свои заказчики логиста (18.10.2026): заявки не только от XCar.
+                $user->isLogist() ? self::item('Заказчики', '/clients') : null,
                 $user->isAdmin() || $user->isLogist() ? self::item('Исполнители', '/contractors') : null,
                 $user->isAdmin() || $user->isLogist() ? self::item('Оплаты', '/money') : null,
             ]));
@@ -479,6 +482,7 @@ final class Nav
                 return ['totals' => [
                     '/transports' => Transport::visibleTo($user)->open()->count(),
                     '/documents' => $user->sendsLogisticsDocs() ? Transport::awaitingDocs()->count() : 0,
+                    '/clients' => $user->isLogist() ? Client::of($user)->whereNull('archived_at')->count() : 0,
                     '/contractors' => $user->isAdmin() || $user->isLogist() ? User::contractorsFor($user)->count() : 0,
                     // Ждут выплаты логисту: свои — логисту, все — админу.
                     '/money' => $user->isAdmin() || $user->isLogist()

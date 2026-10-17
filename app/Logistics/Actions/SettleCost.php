@@ -31,6 +31,10 @@ final class SettleCost
 
     public function __invoke(Transport $t, User $by): void
     {
+        // Заявка логиста от его заказчика: XCar за неё не платит, деньги — её (`client_price`, `executor_cost`).
+        if ($t->isOrder()) {
+            return;
+        }
         // Исполнителя и счёт — заново: до назначения связь могла загрузиться пустой.
         $t->load(['invoice', 'coordinator'])->loadMissing(['offer.garageCar', 'vehicle']);
         $cost = (float) $t->cost;

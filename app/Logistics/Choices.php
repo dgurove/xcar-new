@@ -38,10 +38,10 @@ final class Choices
         return array_diff_key(once(fn () => User::withRole(Role::Manager)->whereNull('rejected_at')->orderBy('name')->pluck('name', 'id')->all()), [$own => true]);
     }
 
-    /** Исполнители логиста и он сам — кого он может назначить. @return array<int, string> */
+    /** Исполнители логиста и он сам — кого он может назначить; сам — подписью роли, без рода. @return array<int, string> */
     public static function contractorsOf(User $logist): array
     {
-        return [$logist->id => $logist->name.' (сам)']
+        return [$logist->id => $logist->name.', логист']
             + User::withRole(Role::Contractor)->where('logist_id', $logist->id)->whereNull('rejected_at')->orderBy('name')->pluck('name', 'id')->all();
     }
 

@@ -9,12 +9,15 @@ use App\Cars\Region;
 use App\Cars\Settlement;
 use App\Offers\Offer;
 use App\Park\City;
+use App\Park\Pass;
 use App\Park\Vehicle;
 use App\Park\Yard;
+use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Plural;
+use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,11 +39,17 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  *
  * Перевод ТС между парковками (`TransportKind::Move`) — та же строка без созвона и документов. Машина — одна запись
  * (`Cars\Car`): кадры с вывоза лежат у неё (`stage = pickup`, скрыты с витрины, пока админ не откроет).
+ *
+ * Заявка логиста (`origin = order`, 18.10.2026, владелец: «ей нужно удобно создавать заявки на вывоз от других, не только
+ * от xcar»): вывоз от её заказчика (`client`), машина — запись `Car` без продажи и хранения; видят только она и её
+ * исполнитель (`scopeVisibleTo`), XCar ей за неё не должен — деньги свои: цена заказчику и исполнителю, отметки оплаты.
  */
 #[Fillable(['car_id', 'origin', 'kind', 'executor', 'executor_id', 'coordinator_id', 'from_address', 'pickup_at',
     'pickup_place', 'call_note', 'call_attempts', 'docs_by_cdek', 'docs_track', 'docs_sent_at', 'docs_sent_by', 'docs_received_at', 'to_address',
     'destination', 'to_yard_id', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
-    'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at', 'region_id', 'nudged_at'])]
+    'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at', 'region_id', 'nudged_at',
+    'client_id', 'client_price', 'client_paid_at', 'executor_cost', 'executor_paid_at', 'from_contact', 'from_phone', 'to_contact',
+    'to_phone', 'comment', 'trip_code'])]
 class Transport extends Model
 {
     /** Шаг сменился — напоминание по нему снова возможно (`logistics:tick`). */
@@ -55,6 +64,14 @@ class Transport extends Model
             if ($t->exists && $t->isDirty(self::STEP) && ! $t->isDirty('nudged_at')) {
                 $t->nudged_at = null;
             }
+            // Страница исполнителя по ссылке (`/trip/{code}`, 18.10.2026): своя у каждого исполнителя задачи — сменили
+            // исполнителя, прежняя ссылка гаснет; отменили задачу — тоже.
+            if ($t->isDirty('executor_id') || ($t->executor_id && ! $t->trip_code)) {
+                $t->trip_code = $t->executor_id ? Pass::freshCode() : null;
+            }
+            if ($t->state === TransportState::Cancelled) {
+                $t->trip_code = null;
+            }
         });
     }
 
@@ -66,6 +83,10 @@ class Transport extends Model
             'state' => TransportState::class,
             'destination' => Point::class,
             'cost' => 'decimal:2',
+            'client_price' => 'decimal:2',
+            'executor_cost' => 'decimal:2',
+            'client_paid_at' => 'datetime',
+            'executor_paid_at' => 'datetime',
             'distance_km' => 'int',
             'docs_by_cdek' => 'bool',
             'call_attempts' => 'array',
@@ -87,10 +108,22 @@ class Transport extends Model
         return $this->belongsTo(Car::class);
     }
 
-    /** Задачу завела продажа (вывоз CRM), а не парковка (перевод между парковками). */
+    /** Задачу завела продажа (вывоз CRM), а не парковка (перевод между парковками) и не логист (своя заявка). */
     public function forSale(): bool
     {
-        return $this->origin !== 'park';
+        return $this->origin === 'sale';
+    }
+
+    /** Заявка логиста от его заказчика — не XCar. */
+    public function isOrder(): bool
+    {
+        return $this->origin === 'order';
+    }
+
+    /** Заказчик заявки логиста. */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
     }
 
     public function isPickup(): bool
@@ -110,10 +143,14 @@ class Transport extends Model
         return $this->forSale() ? null : $this->vehicle;
     }
 
-    /** Через что задачу видно людям: та дорожка, что её заказала, иначе другая (название, ссылка). */
+    /** Через что задачу видно людям: та дорожка, что её заказала, иначе другая (название, ссылка). У заявки логиста — нет. */
     public function lane(): Offer|Vehicle|null
     {
-        return $this->forSale() ? ($this->offer ?? $this->vehicle) : ($this->vehicle ?? $this->offer);
+        return match ($this->origin) {
+            'order' => null,
+            'park' => $this->vehicle ?? $this->offer,
+            default => $this->offer ?? $this->vehicle,
+        };
     }
 
     /** Продажа машины в CRM. */
@@ -201,18 +238,18 @@ class Transport extends Model
 
     public function title(): string
     {
-        return $this->lane()?->titleWithYear() ?? 'ТС';
+        return $this->lane()?->titleWithYear() ?? ($this->car?->titleWithYear() ?: 'ТС');
     }
 
     /** Владелец — страхователь машины (одна запись `Cars\Car`: правят в CRM, письмо дописывает — здесь то же). */
     public function ownerName(): ?string
     {
-        return $this->car?->insured_name;
+        return $this->from_contact ?? $this->car?->insured_name;
     }
 
     public function ownerPhone(): ?string
     {
-        return $this->car?->insured_phone;
+        return $this->from_phone ?? $this->car?->insured_phone;
     }
 
     /** Откуда забирать: у вывоза — адрес осмотра предложения (его правят в CRM), у перевода — свой адрес. */
@@ -326,7 +363,8 @@ class Transport extends Model
         $steps[] = ['key' => 'executor', 'title' => $assigned ? 'Вывозит '.($this->executorUser?->shortName() ?? 'исполнитель') : ($this->executor === Executor::Logist ? 'У логиста'.($this->coordinator ? ' '.$this->coordinator->shortName() : '') : ($unknown ? 'Исполнитель не указан' : 'Кто вывозит')),
             'status' => $status($assigned || $s->picked(), ! $assigned && ! $s->picked()), 'at' => $this->assigned_at,
             'hint' => implode(', ', array_filter([
-                $this->executor === Executor::Logist && $this->coordinator && $assigned && $this->coordinator_id !== $this->executor_id ? 'через '.$this->coordinator->shortName() : null,
+                // «Через Татьяну» — XCar-у; у её собственной заявки это и так ясно.
+                ! $this->isOrder() && $this->executor === Executor::Logist && $this->coordinator && $assigned && $this->coordinator_id !== $this->executor_id ? 'через '.$this->coordinator->shortName() : null,
                 $this->distance_km ? $this->distance_km.' км' : null,
                 $this->cost ? Money::rub((int) $this->cost) : null,
                 ! $assigned && $s === TransportState::New ? 'выбрать исполнителя' : null,
@@ -401,6 +439,12 @@ class Transport extends Model
         };
     }
 
+    /** Страница задачи для исполнителя без входа: адрес, контакт, «Созвонились», «Забрал», «Привёз». */
+    public function tripUrl(): ?string
+    {
+        return $this->trip_code ? Surface::Logistics->url('/trip/'.$this->trip_code) : null;
+    }
+
     /** Ведёт ли человек эту задачу как исполнитель. */
     public function isExecutedBy(User $user): bool
     {
@@ -416,18 +460,20 @@ class Transport extends Model
     /** Действует ли человек по задаче: исполнитель, её логист или тот, кто ведёт логистику (админ, модератор). */
     public function isHandledBy(User $user): bool
     {
-        return $user->leadsLogistics() || $this->isExecutedBy($user) || $this->isCoordinatedBy($user);
+        // Заявку логиста от своего заказчика ведущие не ведут: её видят только он и исполнитель.
+        return ($user->leadsLogistics() && ! $this->isOrder()) || $this->isExecutedBy($user) || $this->isCoordinatedBy($user);
     }
 
     /**
-     * Кто что видит: ведущие логистику (админ, модераторы — 18.10.2026) — всё; логист — свои (через него) и задачи своих
-     * исполнителей; остальные — назначенные им.
+     * Кто что видит: ведущие логистику (админ, модераторы — 18.10.2026) — всё, кроме заявок логиста от его заказчиков
+     * (владелец 18.10.2026: «только она»); логист — свои (через него, заявки тоже) и задачи своих исполнителей; остальные —
+     * назначенные им.
      */
     public function scopeVisibleTo(Builder $q, User $user): Builder
     {
         $q->inLogistics();
         if ($user->leadsLogistics()) {
-            return $q;
+            return $q->where(fn ($w) => $w->where('transports.origin', '!=', 'order')->orWhere('coordinator_id', $user->id));
         }
 
         return $q->where(fn ($w) => $w->where('executor_id', $user->id)
@@ -500,7 +546,13 @@ class Transport extends Model
             ->orWhereHas('vehicle', fn ($v) => $v->search($t))
             ->orWhere('from_address', 'ilike', $like)->orWhere('to_address', 'ilike', $like)->orWhere('docs_track', 'ilike', $like)
             ->orWhereHas('car', fn ($c) => $c->where('insured_name', 'ilike', $like)
-                ->when($t->phone, fn ($c, $phone) => $c->orWhere('insured_phone', 'like', '%'.$phone.'%'))));
+                ->when($t->phone, fn ($c, $phone) => $c->orWhere('insured_phone', 'like', '%'.$phone.'%')))
+            // Заявки логиста: машина без дорожек — по ней самой, заказчику и контактам на месте.
+            ->orWhere(fn ($o) => CarWords::apply($o->where('transports.origin', 'order'), $t))
+            ->when($t->plate, fn ($w, $p) => $w->orWhereHas('car', fn ($c) => $c->whereRaw(Term::latinSql('cars.plate').' like ?', [Term::like($p)])))
+            ->orWhere('from_contact', 'ilike', $like)->orWhere('to_contact', 'ilike', $like)
+            ->when($t->phone, fn ($w, $phone) => $w->orWhere('from_phone', 'like', '%'.$phone.'%')->orWhere('to_phone', 'like', '%'.$phone.'%'))
+            ->orWhereHas('client', fn ($c) => $c->where('name', 'ilike', $like)));
     }
 
     /** Дата строки в SQL — порядок «Когда» (то же, что `shownAt`). */

@@ -16,10 +16,8 @@
     </x-ui.pills>
 
     @if ($pill === 'people')
-        @if ($people->isEmpty())
-            <x-ui.empty>Исполнителей пока нет: позовите ссылкой</x-ui.empty>
-        @else
-            <div class="list">
+        <div class="list">
+            @if ($me->isLogist())<x-logistics.contractor-new label="Добавить исполнителя"/>@endif
                 @foreach ($people as $user)
                     <div class="contents" data-controller="sheet">
                         <x-ui.sheet-row>
@@ -41,14 +39,17 @@
                                 @if ($user->phone)<a href="tel:{{ $user->phone }}" class="text-accent-text nums">{{ \App\Support\Phone::format(\App\Support\Phone::normalize($user->phone) ?? $user->phone) }}</a>@endif
                                 <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                             </form>
+                            <form method="post" action="/contractors/{{ $user->id }}/password" class="mt-2" data-turbo-confirm="Прежний пароль {{ $user->shortName() }} перестанет действовать">
+                                @csrf<x-ui.button variant="quiet" block>Новый пароль</x-ui.button>
+                            </form>
                             <form method="post" action="/contractors/{{ $user->id }}/revoke" class="mt-2" data-turbo-confirm="Закрыть {{ $user->shortName() }} доступ?">
                                 @csrf<x-ui.button variant="ghost" block>Закрыть доступ</x-ui.button>
                             </form>
                         </x-ui.sheet>
                     </div>
                 @endforeach
-            </div>
-        @endif
+        </div>
+        @if ($people->isEmpty() && ! $me->isLogist())<x-ui.empty class="mt-4">Исполнителей пока нет</x-ui.empty>@endif
     @else
         <div class="list">
             <div data-controller="sheet" class="contents">

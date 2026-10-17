@@ -6,7 +6,10 @@
      (`Transport::steps`), документы СДЭКом (трек копируется, ссылка на отслеживание; модератору — поле трека), кадры
      приёма. Главное действие одно — подвалом во всю ширину, по шагу: админу «Выбрать исполнителя», логисту
      «Назначить», исполнителю «Созвонились» → «Забрал» → «Привёз»; рано — кнопка называет, чего ждём. Отмена — красной
-     строкой внизу, админу. --}}
+     строкой внизу, админу.
+     Заявка логиста от его заказчика (18.10.2026): заказчик во фразе, контакты на месте, «Деньги» — цена заказчику и
+     исполнителю с отметками оплаты, «Изменить» и «Повторить»; шаги за своего исполнителя логист отмечает сам. У любой задачи
+     с исполнителем — «Ссылка исполнителю»: страница без входа, текст задачи с ней — «Отправить». --}}
 @php
     use App\Logistics\Choices;
     use App\Logistics\Executor;
@@ -22,7 +25,10 @@
     // Этап сделки — когда забирать уже можно (иначе «после оплаты» / «ждём поставщика» говорит то же).
     $dealStage = $sale && in_array($sale->key, ['deal', 'garage'], true) && ! str_contains($sale->word, ',') ? $offer?->position()?->stage?->block?->name : null;
     $handles = $t->isHandledBy($me);
-    $executes = $t->isExecutedBy($me) || $admin;
+    $mine = $t->isCoordinatedBy($me);
+    $order = $t->isOrder();
+    // Логист отмечает шаги за своего исполнителя (у многих нет приложения — у них страница по ссылке).
+    $executes = $t->isExecutedBy($me) || $admin || $mine;
     $pickup = $t->isPickup();
     $open = $t->isOpen();
     $phone = Phone::normalize($t->ownerPhone());
@@ -66,9 +72,15 @@
             {{-- У логиста, исполнителя ещё нет — «у логиста», а не «вывозит»; самому логисту его имя не пишем. --}}
             @if ($t->executorUser && ! $t->isExecutedBy($me))<span>вывозит {{ $t->executorName() }}</span>@elseif (! $t->executorUser && $t->coordinator && $t->coordinator_id !== $me->id)<span>у логиста {{ $t->coordinator->shortName() }}</span>@endif
             @if (! $pickup)<span>перевозка</span>@endif
+            @if ($order && $mine)<span>{{ $t->client?->name }}</span>@endif
         </x-slot:line>
         @if ($carLink)
             <x-slot:actions><a href="{{ $carLink }}" class="pill" data-turbo="false">{{ str_contains($carLink, '/offers/') ? 'Предложение в CRM' : 'Дело на парковке' }}</a></x-slot:actions>
+        @elseif ($order && $mine)
+            <x-slot:actions>
+                @if ($open)<a href="/transports/{{ $id }}/edit" class="pill" data-turbo-frame="_top">Изменить</a>@endif
+                <a href="/transports/new?from={{ $id }}" class="pill" data-turbo-frame="_top">Повторить</a>
+            </x-slot:actions>
         @endif
         @if ($errors->any())<x-ui.flash tone="danger" class="mt-3">{{ $errors->first() }}</x-ui.flash>@endif
 
@@ -91,7 +103,7 @@
             <div class="list mt-4">
                 @if ($t->ownerName() || $phone)
                     <div class="row items-center justify-between gap-4">
-                        <span class="min-w-0"><span class="block text-sm text-ink-muted">Владелец</span><span class="block break-words">{{ $t->ownerName() ?? 'Имени нет' }}</span></span>
+                        <span class="min-w-0"><span class="block text-sm text-ink-muted">{{ $order ? 'У кого забрать' : 'Владелец' }}</span><span class="block break-words">{{ $t->ownerName() ?? 'Имени нет' }}</span></span>
                         @if ($phone)<a href="tel:+{{ $phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($phone) }}</a>@endif
                     </div>
                 @endif
@@ -102,7 +114,13 @@
                     </a>
                 @endif
                 @if ($dest = $t->destinationLabel() ?? \App\Logistics\Transport::keeperLabel($offer))
-                    <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Куда везти</span><span class="block break-words">{{ $dest }}</span></span></div>
+                    <div class="row items-center justify-between gap-4">
+                        <span class="min-w-0"><span class="block text-sm text-ink-muted">Куда везти</span><span class="block break-words">{{ $dest }}</span>@if ($t->to_contact)<span class="block text-sm text-ink-muted">принимает {{ $t->to_contact }}</span>@endif</span>
+                        @if ($t->to_phone)<a href="tel:+{{ $t->to_phone }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->to_phone) }}</a>@endif
+                    </div>
+                @endif
+                @if ($t->comment)
+                    <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Комментарий</span><span class="block whitespace-pre-line break-words">{{ $t->comment }}</span></span></div>
                 @endif
                 @if ($t->call_note)
                     <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Договорились</span><span class="block whitespace-pre-line break-words">{{ $t->call_note }}</span></span></div>
@@ -166,8 +184,47 @@
                 </label>
             </form>
         @endif
-        @if (($admin || $t->isCoordinatedBy($me)) && ($t->cost || $t->distance_km))
+        @if (! $order && ($admin || $mine) && ($t->cost || $t->distance_km))
             <p class="mt-3 text-sm text-ink-muted">{{ implode(', ', array_filter([$t->distance_km ? $t->distance_km.' км' : null, $t->cost ? Money::rub((int) $t->cost) : null])) }}</p>
+        @endif
+
+        {{-- Деньги логиста — отметкой (18.10.2026): заказчик заплатил ему, он — исполнителю. Повторное нажатие снимает. --}}
+        @php
+            $money = $mine ? array_filter([
+                'client' => $order && $t->client_price ? ['Заказчик', $t->client_price, $t->client_paid_at, 'получено', 'Деньги пришли'] : null,
+                'executor' => $t->executor_cost && $t->executor_id && $t->executor_id !== $me->id ? ['Исполнитель', $t->executor_cost, $t->executor_paid_at, 'выплачено', 'Выплачено'] : null,
+            ]) : [];
+        @endphp
+        @if ($money)
+            <h3 class="list-head mt-5">Деньги</h3>
+            <div class="list">
+                @foreach ($money as $side => [$who, $sum, $paidAt, $done, $verb])
+                    <form method="post" action="/transports/{{ $id }}/paid" class="row items-center justify-between gap-3"
+                        @if ($paidAt) data-turbo-confirm="Снять отметку «{{ $done }}»?" @endif>
+                        @csrf
+                        <input type="hidden" name="side" value="{{ $side }}"><input type="hidden" name="paid" value="{{ $paidAt ? 0 : 1 }}">
+                        <span class="min-w-0"><span class="block text-sm text-ink-muted">{{ $who }}</span><span class="block nums">{{ Money::rub((int) $sum) }}</span></span>
+                        @if ($paidAt)
+                            <button class="shrink-0 text-sm text-accent-text">{{ $done }} {{ \App\Support\Ago::day($paidAt) }}</button>
+                        @elseif ($side === 'executor' || $t->state === S::Delivered)
+                            <button class="btn btn-s btn-quiet shrink-0">{{ $verb }}</button>
+                        @else
+                            <span class="shrink-0 text-sm text-ink-muted">после «Привёз»</span>
+                        @endif
+                    </form>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Ссылка исполнителю (18.10.2026): страница задачи без входа — «Созвонились», «Забрал» с фото, «Привёз». --}}
+        @if ($open && $t->tripUrl() && ($admin || $mine) && ! $t->isExecutedBy($me) && $t->executor !== Executor::Manager)
+            <h3 class="list-head mt-5">Исполнителю {{ $t->executorUser?->shortName() }}</h3>
+            <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $t->tripUrl() }}" data-copy-title-value="Вывоз {{ $t->title() }}" data-copy-done-value="Задача и ссылка в буфере">
+                <textarea hidden data-copy-target="message">{{ \App\Logistics\TripText::for($t) }}</textarea>
+                <button type="button" class="act" data-action="copy#share" data-copy-target="share"><span class="btn btn-accent btn-round"><x-ui.icon name="share"/></span>Отправить</button>
+                <button type="button" class="act" data-action="copy#copy"><span class="btn btn-quiet btn-round" data-copy-fallback><x-ui.icon name="copy"/></span>Скопировать</button>
+                <a href="{{ $t->tripUrl() }}" target="_blank" rel="noopener" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="link"/></span>Открыть</a>
+            </div>
         @endif
 
         {{-- Пока можно жать «Забрал», фото приёма снимают в его шторке (17.10.2026, прогон: «сначала добавьте фото в карточке»
@@ -180,9 +237,10 @@
         @if ($t->pickup_note)<p class="mt-3 whitespace-pre-line text-sm">{{ $t->pickup_note }}</p>@endif
         @if ($t->state === S::Cancelled)<p class="mt-4 text-sm text-ink-muted">Отменён{{ $t->cancel_reason ? ': '.$t->cancel_reason : '' }}</p>@endif
 
-        @if ($admin && $open && ! $t->state->picked())
+        @php $cancels = ($admin && ! $order) || ($order && $mine); @endphp
+        @if ($cancels && $open && ! $t->state->picked())
             <div class="list mt-5">
-                <button type="button" class="row row-danger w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="cancel-{{ $id }}:open">Отменить вывоз</button>
+                <button type="button" class="row row-danger w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="cancel-{{ $id }}:open">{{ $order ? 'Отменить заявку' : 'Отменить вывоз' }}</button>
             </div>
         @endif
 
@@ -216,7 +274,7 @@
             </x-ui.sheet>
         </div>
     @endif
-    @if ($admin && $open && ! $t->state->picked())
+    @if ($admin && ! $order && $open && ! $t->state->picked())
         <div data-controller="sheet" data-action="executor-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'executor-'.$id" title="Кто вывозит">
                 <x-logistics.assign-form :transport="$t" :action="'/transports/'.$id.'/executor'" :prefix="'executor-'.$id">@method('put')</x-logistics.assign-form>
@@ -232,7 +290,18 @@
             </x-ui.sheet>
         </div>
     @endif
-    @if ($t->executor === Executor::Logist && ($t->isCoordinatedBy($me) || $admin) && $open && ! $t->state->picked() && $t->coordinator)
+    @if ($order && $mine && $open && ! $t->state->picked())
+        <div data-controller="sheet" data-action="cancel-{{ $id }}:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="'cancel-'.$id" title="Отменить заявку">
+                <form method="post" action="/transports/{{ $id }}/cancel" class="flex flex-col gap-4">
+                    @csrf
+                    <div class="fields"><x-ui.field name="reason" :id="'cancel-reason-'.$id" label="Почему" type="textarea"/></div>
+                    <x-ui.sheet-foot variant="danger">Отменить заявку</x-ui.sheet-foot>
+                </form>
+            </x-ui.sheet>
+        </div>
+    @endif
+    @if (! $order && $t->executor === Executor::Logist && ($mine || $admin) && $open && ! $t->state->picked() && $t->coordinator)
         <div data-controller="sheet" data-action="logist-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'logist-'.$id" title="Назначить исполнителя">
                 <form method="post" action="/transports/{{ $id }}/logist" class="flex flex-col gap-4">
@@ -241,6 +310,8 @@
                         <x-ui.field name="executor_id" :id="'logist-who-'.$id" label="Кто вывозит" :options="Choices::contractorsOf($t->coordinator)" :value="old('executor_id', $t->executor_id)" placeholder="Выберите"/>
                         <x-ui.field name="distance_km" :id="'logist-km-'.$id" label="Расстояние, км" inputmode="numeric" :value="old('distance_km', $t->distance_km)"/>
                         <x-ui.field name="cost" :id="'logist-cost-'.$id" label="Стоимость, ₽" :value="old('cost', $t->cost ? (int) $t->cost : null)"/>
+                        {{-- Своему исполнителю — для её «Оплат» (18.10.2026), XCar этого не видит. --}}
+                        @if ($mine)<x-ui.field name="executor_cost" :id="'logist-ecost-'.$id" label="Исполнителю, ₽" :value="old('executor_cost', $t->executor_cost ? (int) $t->executor_cost : null)"/>@endif
                     </div>
                     <x-ui.sheet-foot>{{ $t->executor_id ? 'Сохранить' : 'Назначить' }}</x-ui.sheet-foot>
                 </form>
@@ -267,44 +338,7 @@
             <x-ui.sheet :id="'pickup-'.$id" title="Забрал" tall>
                 <form method="post" action="/transports/{{ $id }}/pickup" class="flex flex-col gap-4" data-controller="reveal">
                     @csrf
-                    @if ($pickup)
-                        @php
-                            $keysNow = old('keys');
-                            $points = array_filter([
-                                Point::Keeper->value => \App\Logistics\Transport::keeperLabel($t->saleOffer()),
-                                Point::Ours->value => Point::Ours->label(),
-                                Point::Yard->value => Point::Yard->label(),
-                                Point::Other->value => Point::Other->label(),
-                            ]);
-                            $point = old('destination', $t->destination?->value ?? array_key_first($points));
-                        @endphp
-                        <x-logistics.photos :t="$t" at="pickup" edit class="!mt-0"/>
-                        <div>
-                            <h3 class="list-head">Сколько ключей</h3>
-                            <x-ui.segment name="keys" :options="[0 => 'Нет', 1 => '1', 2 => '2', 3 => '3+']" :value="$keysNow"/>
-                        </div>
-                        {{-- Куда — строками с галкой, как в Настройках: сегментом из четырёх «Менеджеру Иван П.» и «Другой адрес»
-                             ломались в две строки на телефоне. --}}
-                        <div>
-                            <h3 class="list-head">Куда везёте</h3>
-                            <div class="list">
-                                @foreach ($points as $value => $label)
-                                    <label class="row row-check">
-                                        <span class="min-w-0 flex-1">{{ $label }}</span>
-                                        <span class="check"><input type="radio" name="destination" value="{{ $value }}" @checked((string) $point === (string) $value) data-action="reveal#pick"></span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                        <div class="fields" data-reveal-target="pane" data-reveal-key="yard" @if ($point !== 'yard') hidden @endif>
-                            <x-ui.field name="to_yard_id" :id="'pickup-yard-'.$id" label="Парковка" :options="Choices::yards()" placeholder="Выберите" :value="old('to_yard_id', $t->to_yard_id)"/>
-                        </div>
-                        <div class="fields" data-reveal-target="pane" data-reveal-key="other" @if ($point !== 'other') hidden @endif>
-                            <x-ui.field name="to_address" :id="'pickup-address-'.$id" label="Адрес" type="textarea" :value="old('to_address', $t->to_address)"/>
-                        </div>
-                        <div class="fields"><x-ui.field name="pickup_note" :id="'pickup-note-'.$id" label="Комментарий" type="textarea" :value="old('pickup_note', $t->pickup_note)"/></div>
-                        @error('photos')<p class="field-error">{{ $message }}</p>@enderror
-                    @endif
+                    @if ($pickup)<x-logistics.pickup-fields :t="$t"/>@endif
                     <x-ui.sheet-foot>Забрал</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>

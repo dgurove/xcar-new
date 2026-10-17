@@ -13,6 +13,7 @@ use App\Logistics\Actions\Deliver;
 use App\Logistics\Actions\Docs;
 use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\PickUp;
+use App\Logistics\Client;
 use App\Logistics\Executor;
 use App\Logistics\SaleState;
 use App\Logistics\Transport;
@@ -82,7 +83,7 @@ class TransportController
         $sort = Sort::from($request->query('sort'), self::SORTS, self::defaultSort($preset));
 
         $query = $facets->apply(Transport::visibleTo($user)->step($q !== '' ? 'all' : $preset))
-            ->with(['region', 'car', ...SaleState::WITH, 'executorUser', 'coordinator', 'toYard'])
+            ->with(['region', 'car', ...SaleState::WITH, 'executorUser', 'coordinator', 'toYard', 'client'])
             ->search($q, crm: $user->leadsLogistics());
         self::sorted($query, $sort);
         // Открытые вкладки — целиком (таблицу листают и выбирают галочками); «Готово» и «Все» растут без конца — страницами.
@@ -172,6 +173,8 @@ class TransportController
         return array_values(array_filter([
             self::pickable($user, $preset) ? 'pick' : null,
             'title',
+            // Логисту — чей вывоз: XCar или его заказчик (18.10.2026).
+            $user->isLogist() && ! $lead ? 'client' : null,
             $user->isStaff() ? 'vendor' : null,
             // Продажа — где решают, кому отдать (и в «Все», поиске); в работе решение уже принято.
             $lead && ! in_array($preset, ['work', 'moving', 'done'], true) ? 'sale' : null,
@@ -210,6 +213,11 @@ class TransportController
             $lead || $user->isLogist()
                 ? Common::manager('coalesce(transports.executor_id, transports.coordinator_id)', 'who', 'Кто вывозит')->none('Без исполнителя')
                 : null,
+            // Заказчик логиста: XCar (вывоз продажи и парковки) или его заказчики; «Заявки N ›» заказчика ведёт сюда.
+            $user->isLogist() ? Facet::column('client', 'Заказчик', ['заказчик', 'заказчика', 'заказчиков'], 'transports.client_id')
+                ->numeric()->none('XCar')
+                ->labels(fn (array $ids) => Client::of($user)->whereIn('id', Common::ints($ids))->orderBy('name')->get(['id', 'name'])
+                    ->mapWithKeys(fn (Client $c) => [(string) $c->id => new Option((string) $c->id, $c->name)])->all()) : null,
             Common::category(Car::sql('transports', 'category')),
         ]));
     }
@@ -301,7 +309,7 @@ class TransportController
         if (($me = request()->user()) && ! request()->prefetch()) {
             app(ReadNotices::class)([$me->id], ['/transports/'.$transport->id], Surface::Logistics);
         }
-        $transport->load(['car.media', 'offer.media', 'offer.positions.stage.block', 'vehicle.media', ...SaleState::WITH, 'executorUser', 'coordinator', 'region', 'toYard', 'invoice', 'docsSender']);
+        $transport->load(['car.media', 'offer.media', 'offer.positions.stage.block', 'vehicle.media', ...SaleState::WITH, 'executorUser', 'coordinator', 'region', 'toYard', 'invoice', 'docsSender', 'client']);
         $me = request()->user();
         $preset = $list === 'transports' ? self::presetOf(request(), $me) : null;
 
@@ -493,6 +501,6 @@ class TransportController
     /** Действует по задаче: исполнитель, её логист, админ. */
     private function acts(Request $request, Transport $transport): void
     {
-        abort_unless($transport->isHandledBy($request->user()), 404);
+        abort_unless($transport->isHandledBy($request->user()) && Transport::visibleTo($request->user())->whereKey($transport->id)->exists(), 404);
     }
 }
