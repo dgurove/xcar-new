@@ -5,6 +5,7 @@ namespace App\Http\Cabinet;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Live\Stream;
+use App\Logistics\Actions\RequestPickup;
 use App\Media\PhotoIngest;
 use App\Offers\Bid;
 use App\Offers\BidState;
@@ -178,6 +179,15 @@ class DealController
 
         // Сразу туда, где сделку смотрят (гаражная — в гараж): второй редирект съел бы тост.
         return redirect($deal->refresh()->href())->with('toast', $exit->label);
+    }
+
+    /** «Нужен вывоз» — менеджер, что забирает сам, просит логистов (`RequestPickup`). */
+    public function requestPickup(Request $request, Deal $deal, RequestPickup $pickup)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id && $deal->isActive() && $deal->offer, 404);
+        $pickup($deal->offer, $request->user());
+
+        return redirect($deal->href())->with('toast', 'Попросили вывоз, логистика назначит исполнителя');
     }
 
     public function upload(Request $request, Deal $deal, PhotoIngest $ingest)

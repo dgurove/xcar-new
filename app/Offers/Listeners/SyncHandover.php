@@ -2,6 +2,7 @@
 
 namespace App\Offers\Listeners;
 
+use App\Logistics\Actions\SelfPickup;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Point;
 use App\Offers\CarPlace;
@@ -23,11 +24,12 @@ use Illuminate\Events\Dispatcher;
  * — менеджер сделки сам вывозит и нажал в логистике «Забрал» — машина у него;
  * — вывоз привёз машину в гараж менеджера сделки («Привёз» с точкой `keeper`);
  * — продажа пришла на шаг получения, а машина уже у него.
+ * Обратно: менеджер нажал в сделке «Автомобиль забрал» — задача вывоза закрывается «у него» (`SelfPickup`; вёл логист — отменена).
  * Конец пути гаражной ставит машину на «Подготовку» (`CloseGarageDeal`, `StartPrepOnArrival`).
  */
 final class SyncHandover
 {
-    public function __construct(private TakeExit $take) {}
+    public function __construct(private TakeExit $take, private SelfPickup $self) {}
 
     public function subscribe(Dispatcher $events): array
     {
@@ -61,6 +63,12 @@ final class SyncHandover
         }
         $offer = $e->offer;
         $deal = $e->deal ?? $offer->deal()->first();
+        // «Автомобиль забрал» в сделке — машина у менеджера: вывоз в логистике закрыт, ему туда ходить не нужно.
+        if ($e->exit && $e->exit->actor === Actor::Manager && Handover::picked($e->exit) && $deal?->buyer) {
+            ($this->self)($offer, $deal->buyer, $e->by ?? $this->system());
+
+            return;
+        }
         if (! $deal?->isActive() || $offer->car_place !== CarPlace::Keeper || $offer->keeper()?->id !== $deal->buyer_id) {
             return;
         }

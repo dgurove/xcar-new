@@ -182,9 +182,14 @@
                 @endif
             @endif
             @endif
-            {{-- Вывоз ведёт он сам в логистике: «Забрал» там, шаг продажи пройдёт сам. --}}
-            @if ($handover?->transportUrl)
-                <x-ui.button :href="$handover->transportUrl" block class="mt-5">Вывоз в логистике</x-ui.button>
+            {{-- Забирает сам — «Автомобиль забрал» кнопкой шага; логистов — только если попросит (17.10.2026, владелец). Везёт
+                 логистика — кто и когда словом, довезут — шаг пройдёт сам. --}}
+            @if ($handover?->carrier)
+                <p class="mt-4 text-sm text-ink-muted">{{ $handover->carrier }}</p>
+            @elseif ($handover?->canRequest)
+                <form method="post" action="/deals/{{ $deal->id }}/pickup" class="mt-3 text-center" data-turbo-confirm="Попросить логистов забрать ТС?" data-turbo-confirm-label="Попросить">
+                    @csrf<button class="retreat-link">Нужен вывоз</button>
+                </form>
             @endif
         </div>
     @elseif ($deal->state === DealState::Active)

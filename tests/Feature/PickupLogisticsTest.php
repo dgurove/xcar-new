@@ -7,9 +7,7 @@ use App\Cars\Region;
 use App\Cars\Settlement;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Call;
-use App\Logistics\Actions\Docs;
 use App\Logistics\Actions\LogistAssign;
-use App\Logistics\Actions\PickUp;
 use App\Logistics\Executor;
 use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
@@ -76,30 +74,48 @@ class PickupLogisticsTest extends TestCase
         $t->refresh();
         $this->assertSame($manager->id, $t->executor_id);
         $this->assertFalse($t->docs_by_cdek, 'менеджеру — без СДЭКа: покупатель забирает у страхователя сам');
-        // Машина в регионе — админ ставит «Документы СДЭКом» сам, тогда без них не забрать.
-        app(AssignExecutor::class)->cdek($t, true, $admin);
-        $t->refresh();
         $this->assertSame('Менеджер забирает автомобиль', $offer->stage()->name);
         $this->assertSame(0, Invoice::where('deal_id', $deal->id)->count());
+        // Забирает сам — это не логистика (17.10.2026): задачи там не видно, «Вам вывоз» ему не шлём.
+        $this->assertFalse(Transport::visibleTo($admin)->whereKey($t->id)->exists());
+        Notification::assertNotSentTo($manager, TransportNotice::class);
 
-        // Созвонились, но документов нет — «Забрал» нельзя.
-        app(Call::class)->agree($t, ['pickup_at' => now()->addDay()->format('Y-m-d H:i'), 'pickup_place' => 'Самара, Ленина 1'], $manager);
-        $this->addPhoto($t->fresh());
-        try {
-            app(PickUp::class)($t->fresh(), ['keys' => 1, 'destination' => 'keeper'], $manager);
-            $this->fail('без документов не забирают');
-        } catch (ValidationException) {
-        }
-        app(Docs::class)->send($t->fresh(), '1234 5678 90', $moderator);
-        app(Docs::class)->receive($t->fresh(), $manager);
+        // На странице сделки — «Автомобиль забрал» и тихое «Нужен вывоз», ссылки в логистику нет.
+        $this->actingAs($manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertOk()
+            ->assertDontSee('Вывоз в логистике')->assertSee('Автомобиль забрал')->assertSee('Нужен вывоз');
 
-        // «Забрал» к себе: машина у него, шаг сделки прошёл сам — дальше оплата по счёту ПРАЙМ.
-        app(PickUp::class)($t->fresh(), ['keys' => 1, 'destination' => 'keeper'], $manager);
+        // «Автомобиль забрал» в сделке: вывоз закрыт у него, дальше оплата по счёту ПРАЙМ.
+        $exit = $offer->fresh()->position(Track::Sale)->stage->exits->first(fn ($e) => $e->label === 'Автомобиль забрал');
+        $this->actingAs($manager)->post(Surface::Site->url('/deals/'.$deal->id.'/reply'), ['exit' => $exit->id])->assertSessionHasNoErrors();
         $t->refresh();
         $this->assertSame(TransportState::Delivered, $t->state);
-        $this->assertSame(1, $offer->fresh()->keys_count);
         $this->assertSame(CarPlace::Keeper, $offer->fresh()->car_place);
         $this->assertSame('Оплата по счёту ПРАЙМ', $offer->fresh()->stage()->name);
+    }
+
+    /** «Нужен вывоз»: задача менеджера уходит в логистику «Без исполнителя», админам — «Вывоз: …», у менеджера — «заказан». */
+    public function test_manager_requests_logistics(): void
+    {
+        Notification::fake();
+        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $manager = User::create(['name' => 'Филипп Бородин', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission', 'pickup_on_arrival' => true]);
+        app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
+        $offer = app(UpdateOffer::class)(Offer::create(['claim_ref' => '473699/2026', 'floor_price' => 900000, 'asking_price' => 1200000, 'bids_close_at' => now()->addDay()]), ['vendor_id' => $vendor->id], $admin);
+        $offer->forceFill(['state' => OfferState::Open])->save();
+        $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
+        app(EnterStage::class)($offer->fresh(), Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
+        $bid = app(PlaceBid::class)($offer->fresh(), $manager, 1100000);
+        $this->actingAs($admin)->post('http://'.config('xcar.crm_host').'/confirmations/'.$bid->id.'/accept', ['pickup' => 'manager', 'commission' => 50000]);
+        $deal = $offer->fresh()->deal()->first();
+        $t = Transport::openFor($offer->fresh());
+
+        $this->actingAs($manager)->post(Surface::Site->url('/deals/'.$deal->id.'/pickup'))->assertSessionHasNoErrors();
+        $t->refresh();
+        $this->assertSame(TransportState::New, $t->state);
+        $this->assertTrue(Transport::visibleTo($admin)->whereKey($t->id)->exists());
+        Notification::assertSentTo($admin, TransportNotice::class, fn (TransportNotice $n) => str_starts_with($n->title(), 'Вывоз:'));
+        $this->actingAs($manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee('Вывоз заказан, ждём исполнителя')->assertDontSee('Нужен вывоз');
     }
 
     public function test_logist_assigns_own_contractor_and_debt_goes_to_logist(): void

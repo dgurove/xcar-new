@@ -36,8 +36,9 @@ final class NotifyLogistics
     }
 
     /**
-     * Назначили: у логиста без исполнителя — ему, иначе исполнителю (прежнему поручение снято молча). Исполнитель без
-     * печати — модераторам: оформить и отправить документы.
+     * Назначили: у логиста без исполнителя — ему, иначе исполнителю (прежнему поручение снято молча). Документы СДЭКом —
+     * модераторам: оформить и отправить. Менеджер сделки забирает сам — не логистика: ему «Можно забирать» шлёт сделка
+     * (`HandoverNotice`), здесь молчим.
      */
     public function assigned(TransportAssigned $e): void
     {
@@ -50,11 +51,11 @@ final class NotifyLogistics
             return;
         }
         $t = $e->transport->fresh(['executorUser', 'coordinator']) ?? $e->transport;
+        if ($t->executor === Executor::Manager) {
+            return;
+        }
         $to = $t->executorUser ?? ($t->executor === Executor::Logist ? $t->coordinator : null);
-        // Менеджер сделки, а забирать рано (Альфа до оплаты, Каркаде до согласия поставщика, 11.10.2026): молчим — «Можно
-        // забирать» скажет `Notify::pickupOpened`.
-        $early = $t->executor === Executor::Manager && $t->saleOffer()?->deal?->pickupHold() !== null;
-        if ($to && $to->isNot($e->previous) && ! $early) {
+        if ($to && $to->isNot($e->previous)) {
             $to->notify(TransportNotice::assigned($t, $to));
         }
         if ($t->executorUser && $t->docs_by_cdek && ! $t->docs_sent_at) {
@@ -74,7 +75,8 @@ final class NotifyLogistics
     private function sendMoved(TransportMoved $e): void
     {
         $t = $e->transport;
-        if ($e->batch) {
+        // Пачкой — сводку шлёт контроллер; менеджер забрал сам — это не логистика, его шаг пишет сделка.
+        if ($e->batch || $t->executor === Executor::Manager) {
             return;
         }
         if ($e->step === 'docs_sent') {

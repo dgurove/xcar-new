@@ -60,7 +60,7 @@ final class AssignExecutor
             }
             // Документы нужны только на вывоз от владельца: перевод между парковками едет без них. Логисту галка встаёт до
             // его исполнителя — Лиза увидит задачу, когда он назначит своего (`scopeAwaitingDocs`).
-            $t->docs_by_cdek = $t->isPickup() && ($cdek ?? $kind === Executor::Logist);
+            $t->docs_by_cdek = $t->isPickup() && $kind !== Executor::Manager && ($cdek ?? $kind === Executor::Logist);
             // Менеджер сделки везёт к себе: точка — его гараж.
             if ($kind === Executor::Manager && $t->destination === null) {
                 $t->destination = Point::Keeper;

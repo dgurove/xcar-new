@@ -191,6 +191,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         // Действия по сделке.
         Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
+        Route::post('/deals/{deal}/pickup', [DealController::class, 'requestPickup']);
         Route::put('/deals/{deal}/contract', [DealContractController::class, 'update']);
         Route::get('/deals/{deal}/dkp', [DealContractController::class, 'show']);
         Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
@@ -233,6 +234,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/cars/{offer}', [GarageCarController::class, 'show']);
         Route::post('/cars/{offer}/costs', [GarageCarController::class, 'storeCost']);
         Route::delete('/cars/{offer}', [GarageCarController::class, 'destroy']);
+        // Забирает сам (17.10.2026): «Забрал» здесь, логистов — «Нужен вывоз».
+        Route::post('/cars/{offer}/picked', [GarageCarController::class, 'picked']);
+        Route::post('/cars/{offer}/pickup', [GarageCarController::class, 'requestPickup']);
         Route::put('/costs/{cost}', [GarageCarController::class, 'updateCost']);
         Route::delete('/costs/{cost}', [GarageCarController::class, 'destroyCost']);
         // Этапы: «Готова» — кнопкой; «Продаю» — менеджер ценой, итог и счёт — мы, об оплате сообщает он.

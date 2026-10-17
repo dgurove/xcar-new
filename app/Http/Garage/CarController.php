@@ -11,6 +11,8 @@ use App\Garage\Cost;
 use App\Garage\GarageView;
 use App\Garage\Payer;
 use App\Http\Cabinet\DealController;
+use App\Logistics\Actions\RequestPickup;
+use App\Logistics\Actions\SelfPickup;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Support\Money;
@@ -91,6 +93,26 @@ class CarController
     }
 
     /** Машина этого человека или любая — сотруднику; чужая для менеджера не существует. */
+    /** «Забрал» — менеджер забрал машину сам: вывоз закрыт «у него», подготовка начнётся сама (`SelfPickup`). */
+    public function picked(Request $request, Offer $offer, SelfPickup $self)
+    {
+        $car = $this->car($request, $offer);
+        abort_unless($car->manager_id === $request->user()->id && $car->isWaiting(), 404);
+        $self($offer, $request->user(), $request->user());
+
+        return back()->with('toast', 'Забрал: '.$offer->titleWithYear());
+    }
+
+    /** «Нужен вывоз» — просит логистов (`RequestPickup`). */
+    public function requestPickup(Request $request, Offer $offer, RequestPickup $pickup)
+    {
+        $car = $this->car($request, $offer);
+        abort_unless($car->manager_id === $request->user()->id && $car->isWaiting(), 404);
+        $pickup($offer, $request->user());
+
+        return back()->with('toast', 'Попросили вывоз, логистика назначит исполнителя');
+    }
+
     private function car(Request $request, Offer $offer): Car
     {
         $car = Car::where('offer_id', $offer->id)->with(['offer', 'offer.media', 'offer.settlement', 'manager', 'costs.author', 'invoice', 'payoutInvoice', 'deal'])->firstOrFail();

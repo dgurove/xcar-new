@@ -2,7 +2,6 @@
 
 namespace App\Logistics\Console;
 
-use App\Logistics\Executor;
 use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
@@ -28,7 +27,7 @@ final class TickCommand extends Command
 
     public function handle(): int
     {
-        Transport::where('state', TransportState::Agreed)->where('pickup_at', '<', now()->subHours(2))
+        Transport::inLogistics()->where('state', TransportState::Agreed)->where('pickup_at', '<', now()->subHours(2))
             ->where(fn ($q) => $q->whereNull('late_noticed_at')->orWhereColumn('late_noticed_at', '<', 'pickup_at'))
             ->with(['executorUser', 'car'])->get()
             ->each(function (Transport $t) {
@@ -48,29 +47,17 @@ final class TickCommand extends Command
     }
 
     /**
-     * Сутки без шага: у логиста без исполнителя или назначен, а созвона нет (перевод парковки — без созвона). Отсчёт — от
-     * назначения или от того, когда забирать стало можно: менеджеру сделки, пока рано (Альфа до оплаты, Каркаде до согласия
-     * поставщика, `Deal::pickupHold`), напоминать не о чем, и такая задача не «зависла» ни для него, ни в сводке.
+     * Сутки без шага: у логиста без исполнителя или назначен, а созвона нет (перевод парковки — без созвона). Вывоз менеджера
+     * сделки сюда не попадает — он не в логистике (`Transport::scopeInLogistics`), его шаг ведёт маршрут сделки.
      *
      * @return Collection<int, Transport>
      */
     public static function stuck(): Collection
     {
-        $day = now()->subDay();
-
-        return Transport::where('assigned_at', '<', $day)
+        return Transport::inLogistics()->where('assigned_at', '<', now()->subDay())
             ->where(fn ($q) => $q->where('state', TransportState::Logist)
                 ->orWhere(fn ($a) => $a->where('state', TransportState::Assigned)->where('kind', '!=', 'move')))
-            ->with(['executorUser', 'coordinator', 'car', 'offer.deal.offer.vendor'])->get()
-            ->filter(function (Transport $t) use ($day) {
-                $deal = $t->executor === Executor::Manager ? $t->saleOffer()?->deal : null;
-                if ($deal?->pickupHold() !== null) {
-                    return false;
-                }
-                $since = collect([$deal?->agreed_at, $deal?->prepaid_at])->filter()->max();
-
-                return $since === null || $since->lt($day);
-            })->values();
+            ->with(['executorUser', 'coordinator', 'car'])->get();
     }
 
     /** Сводка админам — раз в день, с 10:00 по Москве. */

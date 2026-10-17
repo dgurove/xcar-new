@@ -37,7 +37,6 @@
         @if ($manager)
             <div class="contents" data-reveal-target="pane" data-reveal-key="manager" @if ($kind !== 'manager') hidden @endif>
                 <input type="hidden" name="who[manager]" value="{{ $manager->id }}">
-                @if ($pickup)<input type="hidden" name="cdek[manager]" value="0"><x-ui.check name="cdek[manager]" :checked="$cdekOn('manager')">Документы СДЭКом</x-ui.check>@endif
             </div>
         @endif
         <div class="contents" data-reveal-target="pane" data-reveal-key="staff" @if ($kind !== 'staff') hidden @endif>

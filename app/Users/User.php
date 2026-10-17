@@ -4,7 +4,6 @@ namespace App\Users;
 
 use App\Billing\Party;
 use App\Chats\Chat;
-use App\Logistics\Transport;
 use App\Media\MediaUrl;
 use App\Notifications\PasswordResetLetter;
 use App\Offers\Actions\SyncViewers;
@@ -491,19 +490,13 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return self::withRole(Role::Contractor)->when(! $user->isAdmin(), fn ($q) => $q->where('logist_id', $user->id));
     }
 
-    /** Менеджер, которому поручали вывоз: его задачи — в логистике (17.10.2026), а не на xcar.ru. Раз на запрос. */
-    public function hasTransports(): bool
-    {
-        return $this->isManager() && once(fn () => Transport::where('executor_id', $this->id)->exists());
-    }
-
     /**
-     * logistics.xcar.ru: админ — всё; логист — свои вывозы и исполнители; наши люди, исполнители логиста и менеджеры с
-     * поручениями — свои задачи; модератор — «Документы» (СДЭК, 17.10.2026: оформляет Лиза).
+     * logistics.xcar.ru: админ — всё; логист — свои вывозы и исполнители; наши люди и исполнители логиста — свои задачи;
+     * модератор — «Документы» (СДЭК, 17.10.2026: оформляет Лиза). Менеджеру логистики нет: забирает сам — в своей сделке.
      */
     public function canLogistics(): bool
     {
-        return $this->isAdmin() || $this->isLogist() || $this->isDriver() || $this->isContractor() || $this->isModerator() || $this->hasTransports();
+        return $this->isAdmin() || $this->isLogist() || $this->isDriver() || $this->isContractor() || $this->isModerator();
     }
 
     /** Все задачи и назначение — админу. */

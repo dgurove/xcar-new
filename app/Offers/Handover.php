@@ -2,10 +2,10 @@
 
 namespace App\Offers;
 
+use App\Logistics\Transport;
 use App\Mail\Extraction\Patterns;
 use App\Park\VehicleState;
 use App\Support\Phone;
-use App\Support\Surface;
 use App\Support\VendorNames;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -20,8 +20,9 @@ use Illuminate\Support\Collection;
  * ТС, кто её забирает, с кем говорить, адрес и когда, и можно ли уже нажать «Забрал». Одним расчётом на страницу сделки
  * менеджера и карточку сделки в CRM.
  *
- * Открывается после «Поставщик согласовал» (решение владельца). «Забрал» — шаг продажи «Автомобиль забрал», а когда
- * вывоз в логистике ведёт сам менеджер — там (17.10.2026), шаг продажи догоняет его сам.
+ * Открывается после «Поставщик согласовал» (решение владельца). «Забрал» — всегда шаг продажи «Автомобиль забрал» в сделке
+ * менеджера (17.10.2026, владелец: «он сам вывозит через CRM либо вообще покупатель вывозит»; логистику он не видит): задачу
+ * закрывает `SelfPickup`. Попросит — «Нужен вывоз» (`RequestPickup`); везёт логистика — словом «Везёт …», без «Забрал».
  *
  * Откуда: поля текущего шага продажи (их вписали менеджеру), задача вывоза в логистике (созвон: дата и место), парковка,
  * где стоит ТС, и
@@ -54,8 +55,10 @@ final class Handover
         public readonly ?string $mapUrl,
         public readonly ?string $date,
         public readonly ?Outcome $saleExit,
-        /** Вывоз этой машины в логистике ведёт сам менеджер сделки: «Забрал» — там, шаг продажи догонит сам. */
-        public readonly ?string $transportUrl,
+        /** Машину везёт логистика (менеджер попросил или так решил админ): «Везёт Татьяна Л., 21 окт» вместо «Забрал». */
+        public readonly ?string $carrier,
+        /** Забирает менеджер сам и может попросить логистов — «Нужен вывоз». */
+        public readonly bool $canRequest,
         /** @var list<string> ключи полей шага продажи, что показаны здесь: в шаге второй раз не пишутся */
         public readonly array $keys,
     ) {}
@@ -68,7 +71,8 @@ final class Handover
         $pickup = $offer->pickup();
         $picks = $deal->buyerPicksUp();
         $place = $offer->car_place;
-        $inLogistics = $picks && $pickup?->isOpen();
+        // Везёт не он: задача в логистике открыта, а исполнитель — не менеджер сделки (логист, наши, ещё никто).
+        $carried = $pickup?->isOpen() && ! $picks;
 
         $saleExit = $sale?->stage->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $e) => self::picked($e));
         // Шаг продажи сам про получение: просит забрать (Каркаде, гараж, «Менеджер забирает автомобиль») или вписали ему,
@@ -151,10 +155,21 @@ final class Handover
             address: $address,
             mapUrl: $address ? $mapUrl : null,
             date: $withBuyer ? null : ($fields['date'] ?? null),
-            saleExit: $open && ! $inLogistics ? $saleExit : null,
-            transportUrl: $open && $inLogistics ? Surface::Logistics->url('/transports/'.$pickup->id) : null,
+            saleExit: $open && ! $carried ? $saleExit : null,
+            carrier: $open && $carried ? self::carrierLine($pickup) : null,
+            canRequest: $open && $picks && (bool) $pickup?->isOpen() && ! $pickup->state->picked(),
             keys: $keys,
         );
+    }
+
+    /** Кто везёт словом: «Везёт Татьяна Л., вывоз 21 окт», без исполнителя — «Вывоз заказан, ждём исполнителя». */
+    private static function carrierLine(Transport $t): string
+    {
+        if (! $t->executor) {
+            return 'Вывоз заказан, ждём исполнителя';
+        }
+
+        return 'Везёт '.$t->executorName().($t->pickup_at ? ', вывоз '.$t->pickup_at->translatedFormat('j M') : '');
     }
 
     /** Есть что показать: место, контакт или адрес. Пустой блок не рисуется. */
@@ -252,8 +267,8 @@ final class Handover
     }
 
     /**
-     * Кнопки шага менеджеру: «Автомобиль забрал» прячется, пока вывоз ведёт он сам в логистике — нажмёт там «Забрал», и
-     * шаг пройдёт сам (`SyncHandover`).
+     * Кнопки шага менеджеру: «Автомобиль забрал» прячется, пока машину везёт логистика (не он) — довезут к нему, и шаг
+     * пройдёт сам (`SyncHandover`).
      */
     public static function managerExits(?Stage $stage, Deal $deal): Collection
     {
@@ -263,7 +278,7 @@ final class Handover
         $exits = $stage->exitsFor(Actor::Manager, $deal);
         $pickup = $deal->offer?->pickup();
 
-        return $deal->buyerPicksUp() && $pickup?->isOpen() ? $exits->reject(fn (Outcome $e) => self::picked($e))->values() : $exits;
+        return $pickup?->isOpen() && ! $deal->buyerPicksUp() ? $exits->reject(fn (Outcome $e) => self::picked($e))->values() : $exits;
     }
 
     public static function picked(Outcome $exit): bool

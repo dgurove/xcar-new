@@ -28,12 +28,13 @@ final class GarageView
         $canAdd = ! $frozen && ($staff || $car->state->isWorking());
         $post = fn (string $label) => ['post', "/garage/cars/{$n}/stage", $label];
         $cost = $canAdd ? ['emit', 'cost-new', $car->state === CarState::Repair && ! $staff ? 'Записать расход' : 'Расход'] : null;
-        // Менеджер везёт сам и машина ещё не у него — его вывоз в логистике (17.10.2026): «Забрал» там.
+        // Менеджер везёт сам и машина ещё не у него — «Забрал» здесь же (17.10.2026, владелец: логистику он не видит,
+        // `SelfPickup`); логистов — только если попросит («Нужен вывоз» в «⋯», `RequestPickup`).
         $pickup = ! $staff && $car->isWaiting() ? $offer->pickup() : null;
-        $picks = $pickup?->isOpen() && $pickup->isExecutedBy($user);
+        $picks = $pickup?->isOpen() && ! $pickup->state->picked() && $pickup->isExecutedBy($user);
 
         $prep = array_values(array_filter(match (true) {
-            $picks => [['link', Surface::Logistics->url('/transports/'.$pickup->id), 'Вывоз в логистике']],
+            $picks => [['post', "/garage/cars/{$n}/picked", 'Забрал']],
             $car->state === CarState::Repair => $staff ? [$post('Готова')] : [$cost, $post('Готова')],
             default => [],
         }));
@@ -56,6 +57,7 @@ final class GarageView
             // «Вернуть в продажу» с переоценкой (`ReturnToSale`, шторка `x-offer.resale-sheet`) — только в CRM, и сделку тоже снимает.
             $staff && Surface::current() === Surface::Crm && ! $car->isSold() && $car->costs->isEmpty() ? ['emit', 'resale', 'Вернуть в продажу'] : null,
             $staff && ! $car->isSold() && ! $car->dealOpen() && $car->costs->isEmpty() ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', 'Вернуть ТС в черновики?'] : null,
+            $picks ? ['form', 'POST', "/garage/cars/{$n}/pickup", 'Нужен вывоз', 'Попросить логистов забрать ТС?'] : null,
         ]));
         $more = [...$moreSale, ...$morePrep];
         // На сайте менеджеру — одной плашкой: этап, рядом расход (кроме подготовки, где он уже в паре с «Готова»).

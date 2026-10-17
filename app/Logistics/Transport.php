@@ -289,6 +289,7 @@ class Transport extends Model
         return match (true) {
             $this->state === TransportState::New => 'выбрать исполнителя',
             $this->state === TransportState::Logist => 'ждёт исполнителя логиста',
+            $this->state === TransportState::Assigned && $this->executor === Executor::Manager => 'забирает сам',
             $this->state === TransportState::Assigned && $this->isPickup() => 'позвонить владельцу',
             $this->state === TransportState::Assigned => 'забрать',
             $this->state === TransportState::Agreed && $this->docs_by_cdek && $this->docs_sent_at === null => 'ждёт отправки документов',
@@ -321,7 +322,8 @@ class Transport extends Model
                 ! $assigned && $s === TransportState::New ? 'выбрать исполнителя' : null,
                 ! $assigned && $s === TransportState::Logist ? 'логист назначает исполнителя и цену' : null,
             ])) ?: null];
-        if ($this->isPickup()) {
+        // Менеджер забирает сам — созвона и документов у логистики нет: «Автомобиль забрал» он жмёт в своей сделке.
+        if ($this->isPickup() && $this->executor !== Executor::Manager) {
             $agreed = $this->agreed_at !== null;
             // Забрали — созвон и документы уже позади, даже если их не отмечали (задачи до 17.10.2026, админ за исполнителя).
             $steps[] = ['key' => 'call', 'title' => $agreed || $s->picked() ? 'Созвонились' : 'Созвон с владельцем', 'status' => $status($agreed || $s->picked(), $assigned && ! $agreed),
@@ -405,6 +407,7 @@ class Transport extends Model
      */
     public function scopeVisibleTo(Builder $q, User $user): Builder
     {
+        $q->inLogistics();
         if ($user->isAdmin()) {
             return $q;
         }
@@ -413,6 +416,16 @@ class Transport extends Model
             ->when($user->isLogist(), fn ($w) => $w->orWhere('coordinator_id', $user->id)
                 ->orWhereIn('executor_id', User::where('logist_id', $user->id)->select('id')))
             ->when($user->sendsLogisticsDocs(), fn ($w) => $w->orWhere('docs_by_cdek', true)));
+    }
+
+    /**
+     * Задачи логистики — без тех, что забирает менеджер сделки сам (17.10.2026, владелец: «если менеджер сам забирает, в
+     * логистике не надо отображать»): он отмечает «Автомобиль забрал» в своей сделке (`SelfPickup`), а попросит — задача
+     * уходит «Без исполнителя» (`RequestPickup`).
+     */
+    public function scopeInLogistics(Builder $q): Builder
+    {
+        return $q->where(fn ($w) => $w->whereNull('executor')->orWhere('executor', '!=', Executor::Manager->value));
     }
 
     /** Вкладка списка логистики: без исполнителя, у логиста, в работе, в пути, готово; иначе — все. */
@@ -451,7 +464,7 @@ class Transport extends Model
     /** Документы ждут отправки СДЭКом: исполнитель без печати назначен, трека нет. */
     public function scopeAwaitingDocs(Builder $q): Builder
     {
-        return $q->open()->where('docs_by_cdek', true)->whereNotNull('executor_id')->whereNull('docs_sent_at');
+        return $q->open()->inLogistics()->where('docs_by_cdek', true)->whereNotNull('executor_id')->whereNull('docs_sent_at');
     }
 
     /** Поиск по машине: марка, модель, VIN, госномер, номер предложения; по адресам, владельцу и треку. */
