@@ -38,11 +38,15 @@
                     <div class="list-head mt-6">{{ $head }} <span class="nums">{{ $row->{$key}->count() }}</span></div>
                     <div class="list">
                         @foreach ($row->{$key} as $invoice)
-                            @php $t = $row->tasks->get($invoice->id); @endphp
+                            {{-- Задача знает только последний счёт: прежний оплаченный (цену поменяли после части выплаты) — по строке счёта. --}}
+                            @php
+                                $t = $row->tasks->get($invoice->id);
+                                $line = $t ? null : trim((string) preg_replace('/^Вывоз,\s*/u', '', (string) $invoice->charges->first()?->title));
+                            @endphp
                             <a @if ($t) href="/transports?preset=all&peek={{ $t->id }}" @endif class="row">
                                 <span class="min-w-0 flex-1">
-                                    <span class="block truncate">{{ $t?->title() ?? 'Вывоз' }}</span>
-                                    <span class="row-sub">{{ implode(', ', array_filter([$t?->city(), $t?->distance_km ? $t->distance_km.' км' : null])) }}</span>
+                                    <span class="block truncate">{{ $t ? $t->title() : ($line ?: 'Вывоз') }}</span>
+                                    @if ($t)<span class="row-sub">{{ implode(', ', array_filter([$t->city(), $t->distance_km ? $t->distance_km.' км' : null])) }}</span>@endif
                                 </span>
                                 <span class="shrink-0 text-right">
                                     <span class="block nums">{{ Money::rub((int) $invoice->total) }}</span>

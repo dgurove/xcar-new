@@ -23,7 +23,7 @@ final class Cancel
 {
     public function __construct(private VoidInvoice $void, private RemoveCost $removeCost, private SetCarPlace $place) {}
 
-    public function __invoke(Transport $t, ?User $by, ?string $reason = null, bool $system = false): Transport
+    public function __invoke(Transport $t, ?User $by, ?string $reason = null, bool $system = false, bool $batch = false): Transport
     {
         if (! $system && ! $by?->isAdmin()) {
             throw ValidationException::withMessages(['transport' => 'Отменяет админ']);
@@ -47,7 +47,7 @@ final class Cancel
                 ($this->place)($offer, CarPlace::Owner, $by);
             }
         });
-        TransportMoved::dispatch($t, $by, 'cancelled');
+        TransportMoved::dispatch($t, $by, 'cancelled', $batch);
 
         return $t;
     }

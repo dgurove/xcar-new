@@ -9,6 +9,7 @@ use App\Billing\Party;
 use App\Cars\DamageZone;
 use App\Cars\OnCar;
 use App\Cars\Vin\VinDecoder;
+use App\Logistics\Transport;
 use App\Mail\Extraction\Code;
 use App\Mail\Template;
 use App\Mail\Thread;
@@ -57,6 +58,8 @@ class Vehicle extends Model
         });
         // ТС вендора на парковке — вендор становится её вендором (раздел «Вендоры» парковки).
         static::saved(fn (self $v) => $v->wasChanged('vendor_id') || $v->wasRecentlyCreated ? Vendor::markOnPark($v->vendor_id) : null);
+        // Город ТС поменялся (парковка, перевод) — регион её задач в логистике вслед.
+        static::saved(fn (self $v) => $v->car_id && $v->wasChanged('city_id') ? Transport::syncRegion($v) : null);
     }
 
     protected function casts(): array

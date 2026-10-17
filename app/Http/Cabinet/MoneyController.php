@@ -7,6 +7,7 @@ use App\Billing\Acquiring\Actions\CreatePayLink;
 use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
+use App\Billing\Actions\SaveRequisites;
 use App\Billing\ChargeKind;
 use App\Billing\DealMoney;
 use App\Billing\Documents\StatementPdf;
@@ -150,8 +151,7 @@ class MoneyController
     public function saveDetails(Request $request)
     {
         $data = $request->validate(PartyRules::rules());
-        $party = Party::forUser($request->user());
-        $party->update(['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null] + $data);
+        app(SaveRequisites::class)($request->user(), $data);
         // «Я сам» с паспортом и сканом — счёт и договор его сделок встают сами.
         PassportScanController::resyncFor($request->user(), $request->user(), app(SyncDealInvoices::class));
 
@@ -162,7 +162,7 @@ class MoneyController
     public function pdf(Request $request, Invoice $invoice)
     {
         // Аннулированный — нет: в перевыставленном счёте могли быть прежние суммы.
-        abort_unless($invoice->isVisibleToManager($request->user()) && $invoice->state !== \App\Billing\InvoiceState::Void, 404);
+        abort_unless($invoice->isVisibleToManager($request->user()) && $invoice->state !== InvoiceState::Void, 404);
         $media = $invoice->getFirstMedia('file');
         abort_unless($media, 404);
 

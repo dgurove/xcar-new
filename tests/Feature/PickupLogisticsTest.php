@@ -164,6 +164,13 @@ class PickupLogisticsTest extends TestCase
             ->assertSessionHasNoErrors()->assertSessionHas('toast', 'Назначено 2');
         $this->assertSame(TransportState::Logist, $a->fresh()->state);
         $this->assertSame($logist->id, $b->fresh()->coordinator_id);
+        // Пачкой — одно уведомление логисту, а не по задаче.
+        Notification::assertSentToTimes($logist, TransportNotice::class, 1);
+        Notification::assertSentTo($logist, TransportNotice::class, fn (TransportNotice $n) => $n->title() === 'Вывозы в регионах: 2');
+        // Негодный человек — одна ошибка у поля, а не «не вышло N».
+        $closed = User::create(['name' => 'Закрытый Логист', 'phone' => '79000000009', 'roles' => [Role::Logist], 'approved_at' => now(), 'rejected_at' => now()]);
+        $this->actingAs($admin)->put($host.'/transports/executor', ['executor' => 'logist', 'who' => ['logist' => $closed->id], 'transports' => [$c->id]])
+            ->assertSessionHasErrors('executor_id');
         $this->assertSame(TransportState::New, $c->fresh()->state);
 
         $this->actingAs($admin)->post($host.'/transports/cancel', ['transports' => [$c->id], 'reason' => 'Дубль'])->assertSessionHas('toast', 'Вывоз отменён');

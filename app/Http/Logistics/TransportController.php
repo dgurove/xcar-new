@@ -13,6 +13,7 @@ use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\PickUp;
 use App\Logistics\Executor;
 use App\Logistics\Transport;
+use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
@@ -25,8 +26,10 @@ use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\Sort;
 use App\Support\Surface;
+use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -117,8 +120,19 @@ class TransportController
         abort_unless($request->user()->isAdmin(), 404);
         $request->validate(['executor' => ['required', Rule::in([Executor::Logist->value, Executor::Staff->value])]], ['executor.required' => 'Кто вывозит']);
         [$kind, $who] = AssignExecutor::fromRequest($request);
+        // Человек не годится — одна ошибка у поля, а не «не вышло 50».
+        AssignExecutor::guard($kind, $who);
+        $done = collect();
+        $back = $this->many($request, fn (Transport $t) => $done->push($assign($t, $kind, $who, $request->user(), batch: true)), 'Назначено', 'Вывозит '.$who->shortName());
+        // По задаче не шлём (`TransportAssigned::batch`) — одна строка исполнителю или логисту и одна модераторам.
+        if ($done->isNotEmpty()) {
+            $who->notify(TransportNotice::assignedMany($done->count(), $kind === Executor::Logist));
+            if ($cdek = $done->filter(fn (Transport $t) => $t->docs_by_cdek && ! $t->docs_sent_at)->count()) {
+                Notification::send(User::withRole(Role::Moderator)->get(), TransportNotice::docsNeededMany($cdek));
+            }
+        }
 
-        return $this->many($request, fn (Transport $t) => $assign($t, $kind, $who, $request->user()), 'Назначено', 'Вывозит '.$who->shortName());
+        return $back;
     }
 
     /** «Отменить (N)» — админ пачкой, с причиной. */
@@ -126,8 +140,16 @@ class TransportController
     {
         abort_unless($request->user()->isAdmin(), 404);
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:500']])['reason'] ?? null;
+        $n = 0;
+        $back = $this->many($request, function (Transport $t) use ($cancel, $request, $reason, &$n) {
+            $cancel($t, $request->user(), $reason, batch: true);
+            $n++;
+        }, 'Отменено', 'Вывоз отменён');
+        if ($n) {
+            Notification::send(User::withRole(Role::Admin)->whereKeyNot($request->user()->id)->get(), TransportNotice::cancelledMany($n, $reason));
+        }
 
-        return $this->many($request, fn (Transport $t) => $cancel($t, $request->user(), $reason), 'Отменено', 'Вывоз отменён');
+        return $back;
     }
 
     /** Действие на каждую отмеченную задачу: что не прошло (уже забрали, закрыта), остальное не роняет — тост считает. */

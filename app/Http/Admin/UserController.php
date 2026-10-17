@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Billing\Actions\SaveRequisites;
 use App\Billing\Documents\StatementPdf;
 use App\Billing\Export\ManagerStatement;
 use App\Billing\ManagerLedger;
@@ -213,7 +214,7 @@ class UserController
         abort_unless($request->user()->isAdmin() && $user->hasDeals(), 404);
         $data = $request->validate(PartyRules::rules());
         // НДС ПРАЙМ в его счетах — в сумме (разница цен), «НДС сверху» — если так договорились.
-        Party::forUser($user)->update(['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null, 'vat_on_top' => $request->boolean('vat_on_top')] + $data);
+        app(SaveRequisites::class)($user, $data + ['vat_on_top' => $request->boolean('vat_on_top')]);
 
         return back()->with('toast', 'Реквизиты сохранены');
     }

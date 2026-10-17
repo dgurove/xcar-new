@@ -46,6 +46,9 @@ final class NotifyLogistics
 
     private function sendAssigned(TransportAssigned $e): void
     {
+        if ($e->batch) {
+            return;
+        }
         $t = $e->transport->fresh(['executorUser', 'coordinator']) ?? $e->transport;
         $to = $t->executorUser ?? ($t->executor === Executor::Logist ? $t->coordinator : null);
         // Менеджер сделки, а забирать рано (Альфа до оплаты, Каркаде до согласия поставщика, 11.10.2026): молчим — «Можно
@@ -71,6 +74,9 @@ final class NotifyLogistics
     private function sendMoved(TransportMoved $e): void
     {
         $t = $e->transport;
+        if ($e->batch) {
+            return;
+        }
         if ($e->step === 'docs_sent') {
             $t->executorUser?->notify(TransportNotice::docsSent($t));
 

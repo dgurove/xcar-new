@@ -167,18 +167,24 @@ class Transport extends Model
     {
         $lane = $this->lane();
         if ($lane instanceof Offer) {
-            return $lane->settlement?->region_id ?? Region::inText($lane->inspection_address ?? $this->from_address)?->id;
+            // Регион города — из базы по `settlement_id`: связь, загруженная до смены города, отдала бы прежний.
+            $city = $lane->settlement_id ? Settlement::whereKey($lane->settlement_id)->value('region_id') : null;
+
+            return $city ?? Region::inText($lane->inspection_address ?? $this->from_address)?->id;
         }
         $city = $lane?->city_id ? Settlement::whereKey($lane->city_id)->value('region_id') : null;
 
         return $city ?? Region::inText($this->from_address)?->id;
     }
 
-    /** Город или адрес продажи поменялся — регион её задач вслед (`Offer::saved`). */
-    public static function syncRegion(Offer $offer): void
+    /**
+     * Город или адрес дорожки поменялся — регион задач машины вслед: продажа (`Offer::saved`, город, адрес осмотра), ТС
+     * парковки (`Vehicle::saved`, город). Дорожки задача читает заново из базы: сохранённое уже там.
+     */
+    public static function syncRegion(Offer|Vehicle $lane): void
     {
-        self::where('car_id', $offer->car_id)->where('origin', '!=', 'park')->get()
-            ->each(fn (self $t) => $t->setRelation('offer', $offer)->forceFill(['region_id' => $t->regionFor()])->saveQuietly());
+        self::open()->where('car_id', $lane->car_id)->get()
+            ->each(fn (self $t) => ($region = $t->regionFor()) !== $t->region_id ? $t->forceFill(['region_id' => $region])->saveQuietly() : null);
     }
 
     public function author(): BelongsTo

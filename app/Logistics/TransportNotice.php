@@ -18,7 +18,7 @@ use App\Users\User;
  */
 final class TransportNotice extends Notice
 {
-    private function __construct(private ?Transport $transport, private string $title, private ?string $text, private bool $critical, private bool $telegram) {}
+    private function __construct(private ?Transport $transport, private string $title, private ?string $text, private bool $critical, private bool $telegram, private ?string $path = null) {}
 
     /** Новый вывоз — админам: выбрать, кто вывозит. */
     public static function requested(Transport $t): self
@@ -88,6 +88,28 @@ final class TransportNotice extends Notice
             : new self($t, 'Созвонитесь с владельцем: '.$t->title(), implode(', ', array_filter([$t->ownerName(), $t->ownerPhone()])), true, true);
     }
 
+    /**
+     * «Назначить (N)» пачкой — одно уведомление вместо N: исполнителю «Вам вывозов: N», логисту «Вывозы в регионах: N»,
+     * модераторам — «Отправьте документы: N» (исполнитель без печати).
+     */
+    public static function assignedMany(int $n, bool $logist): self
+    {
+        return $logist
+            ? new self(null, 'Вывозы в регионах: '.$n, 'назначьте исполнителей и цену', true, true, '/transports?preset=logist')
+            : new self(null, 'Вам вывозов: '.$n, 'созвонитесь с владельцами', true, true, '/transports?preset=work');
+    }
+
+    public static function docsNeededMany(int $n): self
+    {
+        return new self(null, 'Отправьте документы: '.$n.' '.Plural::of($n, ['вывоз', 'вывоза', 'вывозов']), null, true, true, '/documents');
+    }
+
+    /** Отменили пачкой — другим админам одной строкой. */
+    public static function cancelledMany(int $n, ?string $reason): self
+    {
+        return new self(null, 'Отменено вывозов: '.$n, $reason, false, false, '/transports?preset=all');
+    }
+
     /** Третий раз подряд не дозвонились — админам: решать, что дальше. */
     public static function unreachable(Transport $t): self
     {
@@ -112,7 +134,7 @@ final class TransportNotice extends Notice
 
     public function href(): string
     {
-        return Surface::Logistics->url($this->transport ? '/transports/'.$this->transport->id : '/transports?preset=new');
+        return Surface::Logistics->url($this->path ?? ($this->transport ? '/transports/'.$this->transport->id : '/transports?preset=new'));
     }
 
     public function offerNumber(): ?int

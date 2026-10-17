@@ -9,6 +9,7 @@ use App\Logistics\TransportState;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 
@@ -35,39 +36,52 @@ final class TickCommand extends Command
                 $t->update(['late_noticed_at' => now()]);
             });
 
-        self::silent()->whereNull('nudged_at')->with(['executorUser', 'coordinator', 'car'])->get()
-            ->each(function (Transport $t) {
-                $to = $t->state === TransportState::Logist ? $t->coordinator : $t->executorUser;
-                // Менеджеру сделки, пока забирать рано (Альфа до оплаты, Каркаде до согласия), — молчим, как при поручении.
-                $early = $t->executor === Executor::Manager && $t->saleOffer()?->deal?->pickupHold() !== null;
-                if (! $early) {
-                    $to?->notify(TransportNotice::callDue($t));
-                }
-                $t->update(['nudged_at' => now()]);
-            });
+        self::stuck()->whereNull('nudged_at')->each(function (Transport $t) {
+            $to = $t->state === TransportState::Logist ? $t->coordinator : $t->executorUser;
+            $to?->notify(TransportNotice::callDue($t));
+            $t->update(['nudged_at' => now()]);
+        });
 
         $this->digest();
 
         return self::SUCCESS;
     }
 
-    /** Сутки без шага: у логиста без исполнителя или назначен, а созвона нет (перевод парковки — без созвона). */
-    public static function silent()
+    /**
+     * Сутки без шага: у логиста без исполнителя или назначен, а созвона нет (перевод парковки — без созвона). Отсчёт — от
+     * назначения или от того, когда забирать стало можно: менеджеру сделки, пока рано (Альфа до оплаты, Каркаде до согласия
+     * поставщика, `Deal::pickupHold`), напоминать не о чем, и такая задача не «зависла» ни для него, ни в сводке.
+     *
+     * @return Collection<int, Transport>
+     */
+    public static function stuck(): Collection
     {
-        return Transport::where(fn ($q) => $q
-            ->where(fn ($l) => $l->where('state', TransportState::Logist)->where('assigned_at', '<', now()->subDay()))
-            ->orWhere(fn ($a) => $a->where('state', TransportState::Assigned)->where('kind', '!=', 'move')->where('assigned_at', '<', now()->subDay())));
+        $day = now()->subDay();
+
+        return Transport::where('assigned_at', '<', $day)
+            ->where(fn ($q) => $q->where('state', TransportState::Logist)
+                ->orWhere(fn ($a) => $a->where('state', TransportState::Assigned)->where('kind', '!=', 'move')))
+            ->with(['executorUser', 'coordinator', 'car', 'offer.deal.offer.vendor'])->get()
+            ->filter(function (Transport $t) use ($day) {
+                $deal = $t->executor === Executor::Manager ? $t->saleOffer()?->deal : null;
+                if ($deal?->pickupHold() !== null) {
+                    return false;
+                }
+                $since = collect([$deal?->agreed_at, $deal?->prepaid_at])->filter()->max();
+
+                return $since === null || $since->lt($day);
+            })->values();
     }
 
     /** Сводка админам — раз в день, с 10:00 по Москве. */
     private function digest(): void
     {
         $today = now('Europe/Moscow');
-        if ($today->hour < 10 || ! Cache::add('logistics:digest:'.$today->toDateString(), true, now()->addDay())) {
+        if ($today->hour < 10 || ! Cache::add('logistics:digest:'.$today->toDateString(), true, now()->addDays(2))) {
             return;
         }
         $waiting = Transport::where('state', TransportState::New)->where('created_at', '<', now()->subDay())->count();
-        $silent = self::silent()->count();
+        $silent = self::stuck()->count();
         if ($waiting + $silent > 0) {
             Notification::send(User::withRole(Role::Admin)->get(), TransportNotice::stale($waiting, $silent));
         }

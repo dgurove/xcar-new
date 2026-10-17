@@ -2,6 +2,7 @@
 
 namespace App\Http\Logistics;
 
+use App\Billing\Actions\SaveRequisites;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -36,7 +37,7 @@ class MoneyController
     {
         abort_unless($user->isLogist() && ($request->user()->isAdmin() || $request->user()->is($user)), 404);
         $data = $request->validate(PartyRules::rules());
-        Party::forUser($user)->update(['card' => isset($data['card']) ? preg_replace('/\D/', '', $data['card']) : null] + $data);
+        app(SaveRequisites::class)($user, $data);
 
         return back()->with('toast', 'Реквизиты сохранены');
     }
@@ -51,7 +52,7 @@ class MoneyController
         $party = Party::forUser($u, false);
         $all = $party->exists
             ? Invoice::where('party_id', $party->id)->where('direction', 'owed')->where('kind', ChargeKind::Tow->value)
-                ->where('state', '!=', InvoiceState::Void->value)->latest('id')->get()
+                ->where('state', '!=', InvoiceState::Void->value)->with('charges')->latest('id')->get()
             : collect();
 
         return [

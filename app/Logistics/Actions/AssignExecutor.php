@@ -25,7 +25,7 @@ final class AssignExecutor
 {
     public function __construct(private SettleCost $settle) {}
 
-    public function __invoke(Transport $t, Executor $kind, ?User $who, User $by, ?bool $cdek = null): Transport
+    public function __invoke(Transport $t, Executor $kind, ?User $who, User $by, ?bool $cdek = null, bool $batch = false): Transport
     {
         if (! $by->isAdmin()) {
             throw ValidationException::withMessages(['executor' => 'Исполнителя выбирает админ']);
@@ -33,17 +33,12 @@ final class AssignExecutor
         if (! $t->isOpen() || $t->state->picked()) {
             throw ValidationException::withMessages(['executor' => 'ТС уже забрали: можно только «Привёз» или отмена']);
         }
-        // Закрытый доступ — не исполнитель.
-        if ($who?->rejected_at) {
-            throw ValidationException::withMessages(['executor_id' => 'У '.$who->shortName().' закрыт доступ']);
+        self::guard($kind, $who);
+        if ($kind === Executor::Manager && ! ($who && $who->is(Choices::managerOf($t)))) {
+            throw ValidationException::withMessages(['executor_id' => 'Вывозит только менеджер, которому подтвердили сделку']);
         }
-        match ($kind) {
-            Executor::Logist => $who?->isLogist() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите логиста']),
-            Executor::Staff => $who?->isDriver() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите сотрудника на вывозе']),
-            Executor::Manager => $who && $who->is(Choices::managerOf($t)) ?: throw ValidationException::withMessages(['executor_id' => 'Вывозит только менеджер, которому подтвердили сделку']),
-        };
 
-        return DB::transaction(function () use ($t, $kind, $who, $by, $cdek) {
+        return DB::transaction(function () use ($t, $kind, $who, $by, $cdek, $batch) {
             $previous = $t->executorUser ?? $t->coordinator;
             $logist = $kind === Executor::Logist;
             $executor = $logist ? null : $who;
@@ -72,11 +67,25 @@ final class AssignExecutor
             ($this->settle)($t, $by);
             $t->load(['executorUser', 'coordinator']);
             if (($who && ! $who->is($previous)) || $changed) {
-                TransportAssigned::dispatch($t, $previous);
+                TransportAssigned::dispatch($t, $previous, $batch);
             }
 
             return $t;
         });
+    }
+
+    /** Человек годится в исполнители этого вида (без задачи; менеджера сделки проверяет сам вызов): пачка проверяет один раз. */
+    public static function guard(Executor $kind, ?User $who): void
+    {
+        // Закрытый доступ — не исполнитель.
+        if ($who?->rejected_at) {
+            throw ValidationException::withMessages(['executor_id' => 'У '.$who->shortName().' закрыт доступ']);
+        }
+        match ($kind) {
+            Executor::Logist => $who?->isLogist() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите логиста']),
+            Executor::Staff => $who?->isDriver() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите сотрудника на вывозе']),
+            Executor::Manager => $who ?: throw ValidationException::withMessages(['executor_id' => 'Кто именно']),
+        };
     }
 
     /**

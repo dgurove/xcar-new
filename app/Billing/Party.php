@@ -9,6 +9,7 @@ use App\Vendors\ContactRole;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
@@ -38,6 +39,12 @@ class Party extends Model implements HasMedia
     protected function casts(): array
     {
         return ['kind' => PartyKind::class, 'is_self' => 'bool', 'seller' => Seller::class, 'birth_at' => 'date', 'passport_issued_at' => 'date', 'vat_on_top' => 'bool'];
+    }
+
+    /** Номер карты — только цифры, из какой двери ни пришёл (форма даёт «2200 0000 …»): иначе в выплате и строке он разный. */
+    protected function card(): Attribute
+    {
+        return Attribute::make(set: fn (?string $v) => ($digits = preg_replace('/\D/', '', (string) $v)) === '' ? null : $digits);
     }
 
     public function invoices(): HasMany
