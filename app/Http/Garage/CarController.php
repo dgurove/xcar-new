@@ -98,6 +98,9 @@ class CarController
     {
         $car = $this->car($request, $offer);
         abort_unless($car->manager_id === $request->user()->id && $car->isWaiting(), 404);
+        if ($hold = $car->deal?->isActive() ? $car->deal->pickupHold() : null) {
+            return back()->with('toast-danger', 'Забирать рано: '.$hold);
+        }
         $self($offer, $request->user(), $request->user());
 
         return back()->with('toast', 'Забрал: '.$offer->titleWithYear());

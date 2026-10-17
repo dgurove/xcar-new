@@ -6,6 +6,7 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Live\Stream;
 use App\Logistics\Actions\RequestPickup;
+use App\Logistics\Actions\SelfPickup;
 use App\Media\PhotoIngest;
 use App\Offers\Bid;
 use App\Offers\BidState;
@@ -188,6 +189,16 @@ class DealController
         $pickup($deal->offer, $request->user());
 
         return redirect($deal->href())->with('toast', 'Попросили вывоз, логистика назначит исполнителя');
+    }
+
+    /** «Автомобиль забрал», когда шага получения в маршруте нет (`Handover::canPick`): вывоз закрыт у него. */
+    public function picked(Request $request, Deal $deal, SelfPickup $self)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id && $deal->isActive() && $deal->offer, 404);
+        abort_unless(Handover::for($deal)->canPick, 422, 'Забрать сейчас нельзя');
+        $self($deal->offer, $request->user(), $request->user());
+
+        return redirect($deal->href())->with('toast', 'Автомобиль забрал');
     }
 
     public function upload(Request $request, Deal $deal, PhotoIngest $ingest)

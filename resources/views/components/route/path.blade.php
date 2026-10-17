@@ -75,7 +75,9 @@
             // Пока цена не назначена, этап маршрута — впереди, без кнопок.
             if ($pricing && $step['state'] === Path::CURRENT) $step['state'] = Path::NEXT;
             $block = $step['block'];
-            $answers = $requirements->filter(fn ($r) => $r->done_at && $r->stage?->block_id === $block->id)
+            // Только то, что менеджер ответил сам (есть выход): просьбу, закрытую сменой этапа, отменой или оплатой мимо него
+            // (`closed_by`), «Менеджер: …» не подписываем.
+            $answers = $requirements->filter(fn ($r) => $r->done_at && ! empty($r->answer['exit']) && $r->stage?->block_id === $block->id)
                 // Вернулись на этап («Оплата не поступила») — прежний ответ на нём уже не в силе, в текущем шаге его нет.
                 ->reject(fn ($r) => $step['state'] === Path::CURRENT && $r->stage_id === $position->stage_id && $r->done_at < $position->entered_at)
                 ->sortBy('done_at');

@@ -338,6 +338,36 @@ class PickupLogisticsTest extends TestCase
         $this->assertFalse($owner->fresh()->canLogistics());
     }
 
+    /**
+     * Альфа: шага «Автомобиль забрал» в маршруте нет, а задачу менеджера логистика не показывает — без «Забрал» в сделке
+     * его вывоз висел открытым навсегда (17.10.2026, прогон).
+     */
+    public function test_manager_picks_up_where_route_has_no_pickup_step(): void
+    {
+        Notification::fake();
+        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $manager = User::create(['name' => 'Филипп Бородин', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'Альфа тест', 'deal_format' => 'supplier', 'pay_before_pickup' => true]);
+        app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Alfa);
+        $offer = app(UpdateOffer::class)(Offer::create(['claim_ref' => '0321/046/000001/26', 'floor_price' => 600000, 'asking_price' => 850000,
+            'bids_close_at' => now()->addDay(), 'insured_name' => 'Иван Владелец', 'insured_phone' => '+79001112233']), ['vendor_id' => $vendor->id], $admin);
+        $offer->forceFill(['state' => OfferState::Open])->save();
+        $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
+        $sale = fn (string $name) => Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', $name)->firstOrFail();
+        app(EnterStage::class)($offer->fresh(), $sale('Приём подтверждений'));
+        $bid = app(PlaceBid::class)($offer->fresh(), $manager, 830000);
+        $this->actingAs($admin)->post('http://'.config('xcar.crm_host').'/confirmations/'.$bid->id.'/accept', ['pickup' => 'manager'])->assertSessionHasNoErrors();
+        $deal = $offer->fresh()->deal()->first();
+
+        // Оплата подтверждена — дальше документы, шага получения нет: «Забрал» в сделке.
+        $deal->forceFill(['prepaid_at' => now(), 'agreed_at' => now()])->save();
+        app(EnterStage::class)($offer->fresh(), $sale('Место подписания документов'));
+        $this->actingAs($manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee('Автомобиль забрал');
+        $this->actingAs($manager)->post(Surface::Site->url('/deals/'.$deal->id.'/picked'))->assertRedirect();
+        $this->assertSame(TransportState::Delivered, Transport::where('car_id', $offer->car_id)->latest('id')->first()->state);
+        $this->assertSame(CarPlace::Keeper, $offer->fresh()->car_place);
+    }
+
     private function addPhoto(Transport $t): void
     {
         Media::forceCreate([

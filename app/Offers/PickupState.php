@@ -18,6 +18,10 @@ final class PickupState
         $t = $offer->pickup();
         $who = $t?->executorUser;
         $mine = $viewer && $who && $who->is($viewer);
+        // Забирать рано (Альфа — после оплаты, Каркаде — пока поставщик не согласовал): не «позвонить владельцу»
+        // оранжевым, а почему ждём (17.10.2026, прогон: гаражная Альфы сразу после «Принять» звала звонить).
+        $deal = $t?->isOpen() && ! $t->state->picked() ? $offer->deal : null;
+        $hold = $deal?->isActive() ? $deal->pickupHold() : null;
 
         return match (true) {
             $offer->car_place === CarPlace::Keeper => self::keeper($offer, $viewer),
@@ -25,6 +29,7 @@ final class PickupState
             $offer->car_place === CarPlace::Ours => ['на парковке', 'open'],
             $offer->car_place === CarPlace::Elsewhere => ['по адресу', 'open'],
             ! $t => ['вывоз не начат', 'plain'],
+            $hold !== null => [$hold, 'plain'],
             $t->state === TransportState::Moving => [$mine ? 'везёте' : 'везут', 'open'],
             $t->state === TransportState::Agreed && $t->pickup_at !== null => [($mine ? 'забрать ' : 'вывоз ').$t->pickup_at->translatedFormat('j M'), $mine ? 'urgent' : 'plain'],
             in_array($t->state, [TransportState::Assigned, TransportState::Agreed], true) => [$mine ? 'позвонить владельцу' : 'забирает '.$who?->shortName(), $mine ? 'urgent' : 'plain'],

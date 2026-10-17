@@ -14,6 +14,7 @@ use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Получение автомобиля по сделке (04.10.2026, владелец: «согласовали, он должен вывезти, а у него 0 инфы»): где стоит
@@ -59,6 +60,12 @@ final class Handover
         public readonly ?string $carrier,
         /** Забирает менеджер сам и может попросить логистов — «Нужен вывоз». */
         public readonly bool $canRequest,
+        /**
+         * «Автомобиль забрал» мимо маршрута: забирает он, а шага получения у продажи нет (Альфа — забирает после оплаты,
+         * шаги «Оплата» и «Оформление документов»). Без этой кнопки его вывоз висел бы открытым навсегда: в логистике
+         * задачу менеджера не видно (17.10.2026).
+         */
+        public readonly bool $canPick,
         /** @var list<string> ключи полей шага продажи, что показаны здесь: в шаге второй раз не пишутся */
         public readonly array $keys,
     ) {}
@@ -160,8 +167,17 @@ final class Handover
             saleExit: $open && ! $carried ? $saleExit : null,
             carrier: $open && $carried ? self::carrierLine($pickup) : null,
             canRequest: $open && $picks && (bool) $pickup?->isOpen() && ! $pickup->state->picked(),
+            canPick: $open && $picks && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->state->picked()
+                && $sale && ! self::routePicks($sale->stage),
             keys: $keys,
         );
+    }
+
+    /** В маршруте продажи есть свой шаг «Автомобиль забрал» (Совкомбанк, Т-Страхование, Каркаде — пусть и позже текущего). */
+    private static function routePicks(Stage $stage): bool
+    {
+        return Outcome::whereIn('stage_id', Stage::where('workflow_id', $stage->workflow_id)->select('id'))->where('actor', Actor::Manager)
+            ->whereIn(DB::raw('lower(label)'), self::PICKED)->exists();
     }
 
     /** Кто везёт словом: «Везёт Татьяна Л., вывоз 21 окт», без исполнителя — «Вывоз заказан, ждём исполнителя». */

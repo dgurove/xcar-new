@@ -68,13 +68,20 @@
                     $full = $deal->showsCommission() && $deal->amount ? (int) $deal->amount : null;
                     $net = $full !== null && $deal->commission_mode === \App\Offers\CommissionMode::Withheld ? $full - min((int) $deal->commission, max(0, $full - (int) $deal->cost)) : $full;
                 @endphp
-                <form method="post" action="/deals/{{ $deal->id }}/contract" class="row flex-wrap" data-controller="autosubmit">
+                {{-- Кто платит по счёту — две строки с галкой, как в Настройках (17.10.2026: пилюли «покупатель 980 000 ₽» и
+                     «я 980 000 ₽» не влезали в ширину телефона, вторая обрезалась). --}}
+                <form method="post" action="/deals/{{ $deal->id }}/contract" class="contents" data-controller="autosubmit">
                     @csrf @method('put')
-                    <span class="min-w-0 flex-1">Платит по счёту</span>
-                    <span class="flex gap-1.5">
-                        <label class="choice"><input type="radio" name="payer" value="buyer" @checked(! $contract->managerPays()) data-action="change->autosubmit#submit"><span>покупатель@if ($full) <span class="nums">{{ \App\Support\Money::rub($full) }}</span>@endif</span></label>
-                        <label class="choice"><input type="radio" name="payer" value="manager" @checked($contract->managerPays()) data-action="change->autosubmit#submit"><span>я@if ($net) <span class="nums">{{ \App\Support\Money::rub($net) }}</span>@endif</span></label>
-                    </span>
+                    <label class="row row-check">
+                        <span class="min-w-0 flex-1">Платит покупатель</span>
+                        @if ($full)<span class="nums shrink-0 text-ink-muted">{{ \App\Support\Money::rub($full) }}</span>@endif
+                        <span class="check"><input type="radio" name="payer" value="buyer" @checked(! $contract->managerPays()) data-action="change->autosubmit#submit"></span>
+                    </label>
+                    <label class="row row-check">
+                        <span class="min-w-0 flex-1">Плачу я</span>
+                        @if ($net)<span class="nums shrink-0 text-ink-muted">{{ \App\Support\Money::rub($net) }}</span>@endif
+                        <span class="check"><input type="radio" name="payer" value="manager" @checked($contract->managerPays()) data-action="change->autosubmit#submit"></span>
+                    </label>
                 </form>
             @endif
         @endif

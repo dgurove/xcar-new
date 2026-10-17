@@ -4,6 +4,12 @@
 @if ($handover?->carrier)
     <p class="mt-4 text-sm text-ink-muted">{{ $handover->carrier }}</p>
 @elseif ($handover?->canRequest)
+    @if ($handover->canPick)
+        {{-- Шага получения у маршрута нет (Альфа): «Забрал» — здесь, иначе его вывоз так и висел бы открытым. --}}
+        <form method="post" action="/deals/{{ $deal->id }}/picked" class="mt-4" data-turbo-confirm="Забрали автомобиль?" data-turbo-confirm-label="Автомобиль забрал">
+            @csrf<x-ui.button block variant="secondary">Автомобиль забрал</x-ui.button>
+        </form>
+    @endif
     <form method="post" action="/deals/{{ $deal->id }}/pickup" class="{{ ($inline ?? false) ? 'mt-1' : 'mt-3 text-center' }}" data-turbo-confirm="Попросить логистов забрать ТС?" data-turbo-confirm-label="Попросить">
         @csrf<button @class(["retreat-link", "!mx-0 !px-0" => $inline ?? false])>Нужен вывоз</button>
     </form>

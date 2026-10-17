@@ -64,7 +64,7 @@ final class AdvanceOnPayment
         $position = $offer->position(Track::Sale);
         $slip = $position?->stage->payExit($deal);
         if ($slip) {
-            $deal->openRequirement()->where('stage_id', $position->stage_id)->first()?->update(['done_at' => now(), 'answer' => ['exit' => $slip->label, 'fields' => []]]);
+            $deal->openRequirement()->where('stage_id', $position->stage_id)->first()?->update(['done_at' => now(), 'answer' => ['closed_by' => 'payment']]);
             // Строки «Менеджер: «Платёжное поручение приложено»» нет: деньги отметил сотрудник, пришли по ссылке или выписке —
             // менеджер ничего не отвечал (17.10.2026, прогон); его заявку об оплате ведёт `AdvanceOnClaim`. В истории — этап.
             ($this->take)($offer, $slip, Actor::Manager, $by);
