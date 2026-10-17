@@ -3,8 +3,9 @@
      логистику — где продажа (`SaleState`): ищем покупателя — строка приглушена, три дня без покупателя — красная точка и
      дни красным, покупатель есть — словом цветом и менеджер чипом «кому везти». Второй этаж названия (телефон, карточка
      рядом — краткая таблица показывает только `sm:hidden`): номер убытка с логотипом, продажа или что дальше, «→ Иван П.»,
-     кто вывозит. checkable — галочка пачки на «Без исполнителя». --}}
-@props(['t', 'checkable' => false, 'cols' => []])
+     кто вывозит. checkable — столбец галочек пачки на «Без исполнителя» (в выдаче лупы галочка — только у задачи без
+     исполнителя). preset — вкладка в ссылке строки: карточке не нужно вычислять её заново. --}}
+@props(['t', 'checkable' => false, 'cols' => [], 'preset' => null])
 @php
     $me = auth()->user();
     $lead = $me->leadsLogistics();
@@ -12,6 +13,8 @@
     $has = fn (string $k) => in_array($k, $cols, true);
     $sale = $lead ? \App\Logistics\SaleState::of($t) : null;
     $deciding = $t->state === \App\Logistics\TransportState::New;
+    // Шаг вне своего столбца — только когда он не тот же, что у всей вкладки («выбрать исполнителя», «у логиста»): в выдаче лупы.
+    $stepHere = $has('step') || ! in_array($t->state, [\App\Logistics\TransportState::New, \App\Logistics\TransportState::Logist], true);
     // Себя исполнитель в строке не видит; у логиста без исполнителя — «у логиста».
     $who = $t->isExecutedBy($me) ? null : $t->executorUser;
     $logist = ! $t->executorUser && $t->coordinator && $t->coordinator_id !== $me->id ? $t->coordinator : null;
@@ -22,13 +25,13 @@
     $vendorId = $t->vendorId();
 @endphp
 <tr data-detail-key="{{ $t->id }}" id="transport-{{ $t->id }}" data-search-row @class(['is-dim' => $sale?->waiting])>
-    @if ($checkable)<td class="pick-cell"><label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-transport-{{ $t->id }}" data-turbo-permanent name="transports[]" value="{{ $t->id }}" data-pick-target="box" data-action="pick#sync"></span></label></td>@endif
+    @if ($checkable)<td class="pick-cell">@if ($deciding)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-transport-{{ $t->id }}" data-turbo-permanent name="transports[]" value="{{ $t->id }}" data-pick-target="box" data-action="pick#sync"></span></label>@endif</td>@endif
     <td class="grow">
-        <x-ui.row-link :key="$t->id"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">@if ($sale?->urgent)<span class="card-tone card-tone--danger" aria-label="Срочно"></span>@endif{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/></span></x-ui.row-link>
+        <x-ui.row-link :key="$t->id" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">@if ($sale?->urgent)<span class="card-tone card-tone--danger" aria-label="Срочно"></span>@endif{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/></span></x-ui.row-link>
         <span class="cell-sub">
             @if ($staff && ($vendorId || $ref))<span class="sm:hidden"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref"/></span>@endif
             @if ($sale && $deciding)<span class="sm:hidden whitespace-nowrap {{ $sale->tone }}">{{ $sale->word }}</span>
-            @elseif ($has('step'))<span class="sm:hidden whitespace-nowrap {{ $late ? 'text-danger' : $t->state->tone() }}">{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
+            @elseif ($stepHere)<span @class(['whitespace-nowrap', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
             @if ($manager)<span class="sm:hidden whitespace-nowrap">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden">→ {{ $to }}</span>@endif
             @if ($has('who') && ($who || $logist))<span class="sm:hidden">{{ $who ? $who->shortName() : 'у логиста '.$logist->shortName() }}</span>@endif
         </span>

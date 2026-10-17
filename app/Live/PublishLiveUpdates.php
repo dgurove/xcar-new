@@ -82,8 +82,8 @@ final class PublishLiveUpdates
     }
 
     /**
-     * Продажа машины поменялась (вышла, сделка, гараж, снята) — у «Вывоза» ведущих меняются столбец «Продажа», менеджер и
-     * срочность (18.10.2026): открытые задачи машины перечитываются хвостом.
+     * Продажа машины поменялась (вышла, сделка, гараж, снята, шаг сделки) — у «Вывоза» ведущих меняются столбец «Продажа»,
+     * менеджер и срочность (18.10.2026): открытые задачи машины перечитываются хвостом.
      */
     private function logistics(Offer $offer): void
     {
@@ -164,6 +164,8 @@ final class PublishLiveUpdates
         $n = $e->offer->number;
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
         $this->publish->rows(Topics::STAFF, ['/work/deals' => RefreshCar::deals($e->offer), '/work/garage' => [$n]]);
+        // Шаг сделки двигает и «Продажу» вывоза: «после оплаты» / «ждём поставщика» снимаются здесь, а не сменой состояния.
+        $this->logistics($e->offer);
         if (($deal = $e->deal ?? $e->offer->deal()->first()) && $deal->buyer_id) {
             // Гаражная сделка живёт в гараже: шаг со страховой менеджер видит в карточке машины.
             $this->publish->refresh(Topics::user($deal->buyer_id), $deal->isGarage() ? ['/garage', "/garage/cars/{$n}"] : ['/deals', "/deals/{$deal->id}"]);

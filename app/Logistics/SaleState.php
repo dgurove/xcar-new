@@ -36,10 +36,11 @@ final readonly class SaleState
     /** Порядок «Продажа»: покупатель есть — выше, дальше в продаже, не в продаже, снята, перевод. */
     public const RANK_SQL = '(case '.self::KEY_SQL." when 'garage' then 4 when 'deal' then 4 when 'open' then 2 when 'draft' then 1 when 'none' then 1 when 'off' then 0 else -1 end)";
 
-    /** Кому везти — менеджер: держатель гаража, иначе покупатель идущей сделки. */
+    /** Кому везти — менеджер: держатель гаража, иначе покупатель идущей сделки, если он менеджер (`Choices::managerOf`). */
     public const MANAGER_SQL = "(select coalesce(
         (select g.manager_id from garage_cars g where g.offer_id = o.id order by g.id desc limit 1),
-        (select d.buyer_id from deals d where d.offer_id = o.id and d.state = 'active' and not d.is_demo order by d.id desc limit 1))
+        (select d.buyer_id from deals d join users u on u.id = d.buyer_id where d.offer_id = o.id and d.state = 'active' and not d.is_demo
+            and (u.roles @> '[\"manager\"]'::jsonb or u.roles @> '[\"super_buyer\"]'::jsonb) order by d.id desc limit 1))
         from offers o where o.car_id = transports.car_id and transports.origin <> 'park' order by o.id desc limit 1)";
 
     /** Вендор задачи: у продажи — её, у перевода парковки — вендор ТС. */
@@ -58,13 +59,14 @@ final readonly class SaleState
         public int $days,
     ) {}
 
-    /** Подгрузка, без которой `of()` спрашивает базу на каждой строке. */
-    public const WITH = ['offer.settlement', 'offer.garageCar.manager', 'offer.deal.buyer', 'vehicle'];
+    /** Подгрузка, без которой `of()` спрашивает базу на каждой строке (`offer.vendor.workflows` — для `Deal::pickupHold`). */
+    public const WITH = ['offer.settlement', 'offer.vendor.workflows', 'offer.garageCar.manager', 'offer.deal.buyer', 'vehicle'];
 
     public static function of(Transport $t): self
     {
         $o = $t->forSale() ? $t->offer : null;
-        $days = (int) ($t->created_at?->copy()->startOfDay()->diffInDays(now()->startOfDay()) ?? 0);
+        // Полные сутки с поступления — то же правило, что срочность (`DAYS` и `urgent()`), а не календарные дни.
+        $days = (int) ($t->created_at?->diffInDays(now()) ?? 0);
         $key = match (true) {
             ! $t->forSale() => 'park',
             ! $o => 'none',
@@ -74,11 +76,7 @@ final readonly class SaleState
             in_array($o->state, [OfferState::Draft, OfferState::Gallery], true) => 'draft',
             default => 'off',
         };
-        $manager = match ($key) {
-            'garage' => $o->garageCar->manager,
-            'deal' => $o->deal->buyer,
-            default => null,
-        };
+        $manager = in_array($key, ['garage', 'deal'], true) ? Choices::managerOf($o) : null;
         $buyer = in_array($key, ['garage', 'deal'], true);
         $deciding = $t->state === TransportState::New;
         $urgent = $deciding && ! $buyer && $key !== 'park' && $t->created_at !== null && $t->created_at->lte(now()->subDays(self::DAYS));

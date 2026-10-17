@@ -14,7 +14,7 @@
             @endif
             <x-ui.table id="transports-table" :titles="collect($transports instanceof \Illuminate\Contracts\Pagination\Paginator ? $transports->items() : $transports)->map->title()">
                 <x-slot:head><x-logistics.head :cols="$cols" :sort="$sort"/></x-slot:head>
-                @foreach ($transports as $t)<x-logistics.row :t="$t" :checkable="$pick" :cols="$cols"/>@endforeach
+                @foreach ($transports as $t)<x-logistics.row :t="$t" :checkable="$pick" :cols="$cols" :preset="$preset"/>@endforeach
             </x-ui.table>
             @if ($transports instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)<x-ui.pager :of="$transports"/>@endif
             @if ($pick)

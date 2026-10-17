@@ -2301,6 +2301,8 @@ html.kb-open { --home-gap: 0px; }
     /* Заголовки групп не бледнеют: они липнут друг на друга, и полупрозрачный пропускал нижний насквозь. Бледнеют без
        перехода: сотни строк, анимированных разом, тормозили закрытие листа. */
     .split[data-open] .split-main [data-detail-key]:not([aria-selected="true"]) { opacity: .45; }
+    /* Приглушённая строка логистики (`is-dim`) под листом бледнеет как все, а не вдвое. */
+    .split[data-open] .split-main tr.is-dim > td { opacity: 1; }
     .split[data-open] .split-main [data-detail-key] { scroll-margin-bottom: calc(50dvh + 1rem); }
     .split[data-open] .split-main tr[aria-selected="true"] > :first-child,
     .split[data-open] .split-main .row[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--color-accent); }

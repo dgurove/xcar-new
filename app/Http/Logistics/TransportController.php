@@ -92,18 +92,19 @@ class TransportController
         return view('logistics.transports.index', [
             'detail' => $detail, 'transports' => $transports, 'preset' => $preset, 'pills' => $pills, 'counts' => $counts, 'home' => $home, 'sort' => $sort,
             'facets' => $facets,
-            'pick' => self::pickable($user, $preset, $q),
-            'cols' => self::columns($user, $preset, $q !== ''),
+            'pick' => self::pickable($user, $preset),
+            'cols' => self::columns($user, $preset),
         ]);
     }
 
     /**
-     * Галочки — ведущим логистику на «Без исполнителя», не в поиске: «Назначить (N)» и «Отменить (N)». Одна дверь списка
-     * и свежей строки карточки — иначе открытая строка приходила без галочки и столбцы съезжали (18.10.2026).
+     * Галочки — ведущим логистику на «Без исполнителя»: «Назначить (N)» и «Отменить (N)». Одна дверь списка и свежей строки
+     * карточки — иначе открытая строка приходила без галочки и столбцы съезжали (18.10.2026). От поиска не зависит:
+     * лупа адрес не меняет, и карточка о ней не знает; в выдаче поиска галочка — только у задач без исполнителя.
      */
-    public static function pickable(User $user, string $preset, string $q): bool
+    public static function pickable(User $user, string $preset): bool
     {
-        return $user->leadsLogistics() && $preset === 'new' && $q === '';
+        return $user->leadsLogistics() && $preset === 'new';
     }
 
     /** Вкладка по умолчанию: ведущим — что ждёт их выбора; логисту — его; исполнителю — в работе. */
@@ -162,13 +163,13 @@ class TransportController
      *
      * @return list<string>
      */
-    public static function columns(User $user, string $preset, bool $searching = false): array
+    public static function columns(User $user, string $preset): array
     {
         $lead = $user->leadsLogistics();
-        $deciding = in_array($preset, ['new', 'logist'], true) && ! $searching;
+        $deciding = in_array($preset, ['new', 'logist'], true);
 
         return array_values(array_filter([
-            self::pickable($user, $preset, $searching ? 'q' : '') ? 'pick' : null,
+            self::pickable($user, $preset) ? 'pick' : null,
             'title',
             $user->isStaff() ? 'vendor' : null,
             // Продажа — где решают, кому отдать (и в «Все», поиске); в работе решение уже принято.
@@ -178,7 +179,8 @@ class TransportController
             // Что дальше — своим столбцом там, где шаги разные (на «Без исполнителя» и «У логиста» он у всех один).
             $deciding ? null : 'step',
             ($lead || $user->isLogist()) && $preset !== 'new' ? 'who' : null,
-            $lead ? 'created' : null,
+            // Поступила — тем, кто решает: ведущим и логисту (на «У логиста» это единственная дата).
+            $lead || $user->isLogist() ? 'created' : null,
             $deciding ? null : 'when',
         ]));
     }
@@ -301,10 +303,9 @@ class TransportController
         $transport->load(['car.media', 'offer.media', 'offer.positions.stage.block', 'vehicle.media', ...SaleState::WITH, 'executorUser', 'coordinator', 'region', 'toYard', 'invoice', 'docsSender']);
         $me = request()->user();
         $preset = $list === 'transports' ? self::presetOf(request(), $me) : null;
-        $q = is_string($q = request()->query('q')) ? $q : '';
 
-        return view('logistics.transports.detail', ['t' => $transport, 'me' => $me, 'list' => $list,
-            'pick' => $preset !== null && self::pickable($me, $preset, $q), 'cols' => $preset !== null ? self::columns($me, $preset, $q !== '') : []]);
+        return view('logistics.transports.detail', ['t' => $transport, 'me' => $me, 'list' => $list, 'preset' => $preset,
+            'pick' => $preset !== null && self::pickable($me, $preset), 'cols' => $preset !== null ? self::columns($me, $preset) : []]);
     }
 
     /** «Кто вывозит» — ведущие логистику. */

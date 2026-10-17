@@ -51,7 +51,7 @@
 @endphp
 <x-ui.detail>
     <x-ui.row-card :title="$t->title()" :photos="$car?->visiblePhotos() ?? collect()" :action="false" :blank="false">
-        <x-slot:row>@if ($list === 'documents')<x-logistics.doc-row :t="$t"/>@else<x-logistics.row :t="$t" :checkable="$pick" :cols="$cols"/>@endif</x-slot:row>
+        <x-slot:row>@if ($list === 'documents')<x-logistics.doc-row :t="$t"/>@else<x-logistics.row :t="$t" :checkable="$pick" :cols="$cols" :preset="$preset"/>@endif</x-slot:row>
         @if (($me->isStaff() && ($t->vendorId() || $t->car?->claim_ref)) || $t->car?->plate || ($t->car?->vin && ($admin || $handles)))
             <x-slot:marks>
                 @if ($me->isStaff())<x-vendor.ref :vendor-id="$t->vendorId()" :ref="$t->car?->claim_ref" copy class="tag"/>@endif
