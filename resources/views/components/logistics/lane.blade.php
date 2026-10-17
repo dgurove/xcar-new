@@ -29,8 +29,11 @@
     @if ($t)
         <div class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             {{-- Менеджер забирает сам — это не логистика (17.10.2026): ссылки туда нет, «Забрал» он жмёт в своей сделке. --}}
-            @if ($t->executor !== \App\Logistics\Executor::Manager)<a href="{{ Surface::Logistics->url('/transports/'.$t->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>@endif
-            <span class="{{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span>
+            {{-- «забирает менеджер» говорит получение ниже — второй раз «забирает сам» не пишем. --}}
+            @if ($t->executor !== \App\Logistics\Executor::Manager)
+                <a href="{{ Surface::Logistics->url('/transports/'.$t->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>
+                <span class="{{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span>
+            @endif
             <x-car.keys :count="$keys"/>
         </div>
         @if ($deal?->isActive() && ! $deal->isGarage())

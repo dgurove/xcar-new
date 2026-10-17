@@ -68,6 +68,17 @@ foreach ($doors as [$where, $type, $pattern, $allowed, $door]) {
     }
 }
 
+// Два метода с одним именем в классе контроллера (17.10.2026: `run(files)` загрузки и `run(id, act)` действия над кадром в
+// photos_controller — второй молча перекрыл первый, загрузка фото и файлов не работала полтора дня). Сборка такое пропускает.
+$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/resources/js", FilesystemIterator::SKIP_DOTS));
+foreach ($it as $file) {
+    if (! str_ends_with($file->getFilename(), '.js')) continue;
+    preg_match_all('/^    (?:async |static |get |set )?([A-Za-z_$][\w$]*)\([^)\n]*\)\s*\{/m', file_get_contents($file->getPathname()), $m);
+    foreach (array_unique(array_diff_assoc($m[1], array_unique($m[1]))) as $name) {
+        $bad[] = str_replace("$root/", '', $file->getPathname()).": метод {$name}() объявлен дважды — второй перекрывает первый";
+    }
+}
+
 if ($bad) {
     fwrite(STDERR, "Сторож выкладки не пропускает:\n  ".implode("\n  ", $bad)."\n");
     exit(1);

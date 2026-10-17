@@ -10,8 +10,9 @@
     $contract = DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
     $missing = $contract->missing();
     $scans = $deal->offer->papers()->filter(fn ($m) => $m->getCustomProperty('letter'))->values();
-    // Открыта полями: ошибка формы или «Заполнить» из шага пути (`?dkp=1`).
-    $editing = $errors->hasAny(['seller.*', 'vehicle.*']) || request()->boolean('dkp');
+    // Открыта полями: ошибка формы или «Заполнить» из шага пути (`?dkp=1`), пока чего-то не хватает — сохранили всё, и та же ссылка
+    // (`back()` с `?dkp=1`) показывает договор готовым.
+    $editing = $errors->hasAny(['seller.*', 'vehicle.*']) || (request()->boolean('dkp') && $missing);
     $form = 'dkp-'.$deal->id;
     $pdf = ['url' => '/work/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => 'ДКП '.$deal->offer->titleWithYear().'.pdf', 'label' => 'ДКП'];
 @endphp

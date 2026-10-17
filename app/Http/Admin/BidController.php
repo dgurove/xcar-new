@@ -80,7 +80,7 @@ class BidController
             // Кто забирает ТС у владельца (04.10.2026; с 17.10.2026 — задача логистики): менеджер сделки — он исполнитель
             // вывоза; «Логистика» — вывоз ждёт, кого выберет админ.
             $offer = $offer->fresh();
-            $t = Transport::openFor($offer) ?? app(OpenPickup::class)($offer, $request->user());
+            $t = Transport::openFor($offer) ?? app(OpenPickup::class)($offer, $request->user(), quiet: $data['pickup'] === 'manager');
             if ($data['pickup'] === 'manager') {
                 app(AssignExecutor::class)($t, Executor::Manager, $bid->user, $request->user());
             } elseif ($wasPicker) {

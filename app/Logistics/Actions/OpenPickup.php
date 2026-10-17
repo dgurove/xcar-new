@@ -22,6 +22,8 @@ use Illuminate\Validation\ValidationException;
  * каждую), «Вывезти» в CRM, гараж (`Garage\Actions\EnsurePickup`), «Принять» с «Забирает менеджер». Открытый вывоз у
  * машины один — повторный вызов отдаёт его. Владелец, телефон и адрес задача не копирует: читает у машины и предложения
  * (их дописывает письмо и правят в CRM). Без исполнителя задача ждёт админа («Без исполнителя», уведомление админам).
+ * `quiet` — везёт сам менеджер сделки или гаража (это не логистика: ни «Вывоз: …» админам, ни строки «задача в логистике»
+ * в истории; вывоз в истории пишет назначение) или просьбу логистам пишет вызывающий (`RequestPickup`).
  */
 final class OpenPickup
 {
@@ -36,7 +38,7 @@ final class OpenPickup
             throw ValidationException::withMessages(['pickup' => $reason]);
         }
 
-        $t = DB::transaction(function () use ($offer, $by, $to) {
+        $t = DB::transaction(function () use ($offer, $by, $to, $quiet) {
             $t = Transport::create([
                 'car_id' => $offer->car_id, 'origin' => 'sale', 'kind' => TransportKind::Pickup, 'state' => TransportState::New,
                 'destination' => $to ?? ($offer->garageCar()->exists() ? Point::Keeper : null),
@@ -45,7 +47,9 @@ final class OpenPickup
             if ($offer->car_place === null) {
                 ($this->place)($offer, CarPlace::Owner, $by);
             }
-            $offer->log(OfferEventType::Note, $by, ['text' => 'Вывоз: задача в логистике']);
+            if (! $quiet) {
+                $offer->log(OfferEventType::Note, $by, ['text' => 'Вывоз: задача в логистике']);
+            }
 
             return $t;
         });

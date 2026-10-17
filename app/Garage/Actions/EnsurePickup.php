@@ -41,12 +41,13 @@ final class EnsurePickup
 
             return $offer;
         }
-        $t = ($this->open)($offer, $by, $to);
+        // Везёт сам менеджер — только к себе, и это не логистика: тихо (`OpenPickup` quiet).
+        $self = $evacuator && $car->manager_id === $evacuator->id;
+        $t = ($this->open)($offer, $by, $to, quiet: $self);
         if ($t->destination !== $to) {
             $t->update(['destination' => $to]);
         }
-        // Везёт сам менеджер — только к себе.
-        if ($evacuator && $car->manager_id === $evacuator->id && ! $t->isExecutedBy($evacuator)) {
+        if ($self && ! $t->isExecutedBy($evacuator)) {
             ($this->assign)($t, Executor::Manager, $evacuator, $by);
         }
 

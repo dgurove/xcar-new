@@ -163,13 +163,15 @@ export default class extends Controller {
     async uploadFiles(files) {
         if (!files.length) return;
         if (this.uploading) { (this.later ??= []).push(...files); return; }
-        try { await this.run(files); } finally { this.uploading = false; }
+        try { await this.runUpload(files); } finally { this.uploading = false; }
         const later = this.later;
         this.later = null;
         if (later?.length) await this.uploadFiles(later);
     }
 
-    async run(files) {
+    // Не `run`: так зовётся действие над кадром ниже — второй метод с тем же именем перекрывал этот, и с 16.10.2026 загрузка
+    // слала файл в адрес действия («/files/[object File]/undefined», 405).
+    async runUpload(files) {
         if (!this.hasGridTarget || this.collectionValue !== 'photos') return this.uploadWithBar(files);
         const other = this.anyValue ? files.filter((f) => !isImage(f)) : [];
         files = this.anyValue ? files.filter(isImage) : files;

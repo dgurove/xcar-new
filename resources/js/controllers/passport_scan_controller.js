@@ -26,7 +26,7 @@ export default class extends Controller {
         const body = new FormData();
         body.append('file', file);
         tile.dataset.state = 'reading';
-        tile.classList.add('spark-busy', 'scan-tile--on');
+        tile.classList.add('spark-busy', 'passport-tile--on');
         this.preview(tile, URL.createObjectURL(file), file.type);
         this.filled.delete(tile.dataset.page);
         // Сбой называет свой тост ниже, поэтому запрос — без своего.
@@ -78,7 +78,7 @@ export default class extends Controller {
     }
 
     preview(tile, src, type) {
-        const box = tile.querySelector('.scan-tile-img');
+        const box = tile.querySelector('.passport-tile-img');
         if (!type.startsWith('image/')) return;
         box.innerHTML = '';
         const img = document.createElement('img');

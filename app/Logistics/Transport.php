@@ -338,6 +338,14 @@ class Transport extends Model
             }
         }
         $keys = $this->car?->keys_count;
+        // Менеджер везёт к себе сам: его «Автомобиль забрал» и есть «привёз» (`SelfPickup`) — один шаг, без «Привёз».
+        if ($this->executor === Executor::Manager) {
+            $steps[0]['title'] = $assigned ? 'Забирает '.$this->executorUser?->shortName() : $steps[0]['title'];
+            $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Забрал' : 'Забрать', 'status' => $status($s->picked(), $s === TransportState::Assigned),
+                'at' => $this->delivered_at ?? $this->picked_at, 'hint' => null];
+
+            return $steps;
+        }
         $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Вывезена' : 'Забрать', 'status' => $status($s->picked(), in_array($s, [TransportState::Agreed], true) || ($s === TransportState::Assigned && ! $this->isPickup())),
             'at' => $this->picked_at,
             'hint' => $s->picked() ? implode(', ', array_filter([$keys === null ? null : $keys.' '.Plural::of($keys, ['ключ', 'ключа', 'ключей']), $this->destinationLabel()])) : null];

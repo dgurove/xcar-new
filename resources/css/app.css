@@ -666,17 +666,17 @@ html.kb-open { --home-gap: 0px; }
   /* Скан паспорта (x-billing.passport-scan, 11.10.2026): две плитки над полями — разворот с фото и прописка. Пустая —
      значок камеры на мягком фоне, с файлом — миниатюра; подпись под ней, справа искра, пока читаем. */
   .passport-scan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }
-  .scan-tile { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .375rem .5rem; cursor: pointer; }
-  .scan-tile-img { grid-column: 1 / -1; position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; overflow: hidden;
+  .passport-tile { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .375rem .5rem; cursor: pointer; }
+  .passport-tile-img { grid-column: 1 / -1; position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; overflow: hidden;
     border-radius: var(--radius-l); background: var(--color-surface-3); color: var(--color-ink-muted); transition: background-color .15s; }
-  @media (hover: hover) { .scan-tile:hover .scan-tile-img { background: var(--color-line); } }
-  .scan-tile-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .scan-tile-label { min-width: 0; font-size: var(--text-sm); font-weight: 500; }
-  .scan-tile:not(.scan-tile--on) .scan-tile-label { color: var(--color-accent-text); }
-  .scan-tile-state { display: inline-flex; align-items: center; font-size: var(--text-sm); }
-  .scan-tile:not([data-state="reading"]) .scan-spark, .scan-tile:not([data-state="failed"]) .scan-failed { display: none; }
+  @media (hover: hover) { .passport-tile:hover .passport-tile-img { background: var(--color-line); } }
+  .passport-tile-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .passport-tile-label { min-width: 0; font-size: var(--text-sm); font-weight: 500; }
+  .passport-tile:not(.passport-tile--on) .passport-tile-label { color: var(--color-accent-text); }
+  .passport-tile-state { display: inline-flex; align-items: center; font-size: var(--text-sm); }
+  .passport-tile:not([data-state="reading"]) .scan-spark, .passport-tile:not([data-state="failed"]) .scan-failed { display: none; }
   .scan-failed { color: var(--color-urgent); }
-  .scan-tile:focus-within .scan-tile-img { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .passport-tile:focus-within .passport-tile-img { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   /* Пилюля вкладки, куда уехала строка из карточки (StreamActions.count): коротко лаймом и чуть крупнее. */
   @media (prefers-reduced-motion: no-preference) {
     .is-bumped { animation: pill-bump .9s cubic-bezier(.2,.8,.2,1) 1; }
