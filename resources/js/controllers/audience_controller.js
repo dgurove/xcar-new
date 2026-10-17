@@ -3,7 +3,7 @@ import { Controller } from '@hotwired/stimulus';
 // «Кому показывать» — список «кто → когда»: строки групп и менеджеров, последней «Остальные»; супер-покупатели — одной
 // строкой `super`, как один менеджер (AudienceRules::SUPER). Время у строки —
 // системный выбор справа (минуты от публикации, «Не показывать» — null, у своих строк ещё «Убрать»). Итог — JSON в
-// скрытом поле и change с него: карточка сохраняет само, форма вендора — кнопкой. Сводка — те же слова, что
+// скрытом поле и change с него (save_bar показывает «Сохранить изменения»), «Сохранить» шторки отправляет форму сразу. Сводка — те же слова, что
 // AudienceRules::summary.
 // Режим `list` — «Кому показывать» сделки (модуль «Показ», 12.10.2026): тот же список без времени — строка и «Убрать»,
 // без «Остальных» и супер-покупателей, итог `[{type, id}]`, пусто — «Никому» (DealAudience::summary).
@@ -55,6 +55,15 @@ export default class extends Controller {
         this.rulesTarget.value = JSON.stringify(this.rows);
         this.rulesTarget.dispatchEvent(new Event('change', { bubbles: true }));
         this.render();
+    }
+
+    // «Сохранить» в шторке: та же кнопка «Сохранить изменения» формы (у карточки строки она шлёт `_fields[]`), а без неё —
+    // обычная отправка. Ничего не тронуто — save_bar_controller ничего не шлёт.
+    save() {
+        const form = this.rulesTarget.form;
+        if (!form) return;
+        const button = [...form.elements].find((b) => b.matches('[data-save-bar-button]'));
+        form.requestSubmit(button);
     }
 
     render() {

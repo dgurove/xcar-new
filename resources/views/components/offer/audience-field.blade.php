@@ -28,6 +28,14 @@
         </button>
         <x-ui.sheet id="audience-{{ $offer->number }}-{{ $key }}" title="Кому показывать">
             <x-audience.editor/>
+            {{-- «Сохранить» в шторке (17.10.2026, владелец: «не сохраняется, не хватает кнопки сохранить» — «Сохранить
+                 изменения» оставалась под шторкой): форма уходит сразу. В чужой форме (шторка «Отменить сделку») — «Готово»,
+                 сохраняет её кнопка. --}}
+            @if ($form)
+                <x-ui.sheet-foot type="button" foot="mt-4" data-action="audience#save sheet#close">Сохранить</x-ui.sheet-foot>
+            @else
+                <x-ui.sheet-foot type="button" foot="mt-4" variant="secondary" data-action="sheet#close">Готово</x-ui.sheet-foot>
+            @endif
         </x-ui.sheet>
     </div>
 </div>
