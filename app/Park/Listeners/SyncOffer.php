@@ -4,8 +4,8 @@ namespace App\Park\Listeners;
 
 use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
+use App\Logistics\Transport;
 use App\Offers\CarPlace;
-use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Events\VehicleAccepted;
@@ -14,8 +14,6 @@ use App\Park\Events\VehicleRestored;
 use App\Park\Vehicle;
 use App\Users\Role;
 use App\Users\User;
-use App\Workflow\Actions\EnsureServiceWorkflow;
-use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\SetCarPlace;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
@@ -24,12 +22,12 @@ use Illuminate\Events\Dispatcher;
 
 /**
  * ТС с парковки в продаже — одна машина (`Cars\Car`): где она, знает парковка, «где машина» у предложения —
- * производное. Маршрут вывоза CRM парковка не двигает и не снимает (08.10.2026: вывоз CRM на парковку не
- * везёт). Без связанного предложения слушатель молчит.
+ * производное. Вывоз в логистике парковка не двигает и не снимает (08.10.2026: вывоз CRM дел на парковке не
+ * заводит). Без связанного предложения слушатель молчит.
  */
 final class SyncOffer
 {
-    public function __construct(private PlaceOnStage $place, private SetCarPlace $setPlace, private TakeExit $take) {}
+    public function __construct(private SetCarPlace $setPlace, private TakeExit $take) {}
 
     public function subscribe(Dispatcher $events): array
     {
@@ -53,8 +51,8 @@ final class SyncOffer
 
     /**
      * Выдали с парковки: если продажа ждёт передачи машины (своя машина, Stock), шаг «Автомобиль передан» делается сам.
-     * Гаражную машину выдали её менеджеру (без менеджера — нам): вывоз встаёт на «Стоит у …», гараж начинает подготовку
-     * (`StartPrepOnArrival`, 06.10.2026: шага «Выдача — в гараж» у продажи больше нет).
+     * Гаражную машину выдали её менеджеру (без менеджера — нам): стоит у него, гараж начинает подготовку (06.10.2026:
+     * шага «Выдача — в гараж» у продажи больше нет).
      */
     public function released(VehicleReleased $e): void
     {
@@ -64,15 +62,9 @@ final class SyncOffer
         $by = $e->by ?? $this->system();
         $offer->log(OfferEventType::Note, $e->by, ['text' => 'Выдана с парковки'.($e->vehicle->yard ? ' «'.$e->vehicle->yard->name.'»' : '')]);
         if ($car = $offer->garageCar()->first()) {
-            // Вывоза могло и не быть (машина пришла на парковку раньше гаража) — встаёт сразу на «Стоит у …»; нет и
-            // маршрута — подготовка начинается без него.
-            $to = $car->manager_id ? Destination::Keeper : Destination::Ours;
-            $workflow = $offer->position(Track::Service)?->stage->workflow ?? ($offer->vendor ? app(EnsureServiceWorkflow::class)($offer->vendor) : null);
-            $stage = $workflow?->stageForPlace($to === Destination::Keeper ? CarPlace::Keeper : CarPlace::WithUs);
-            $offer->update(['evacuation_to' => $to->value]);
-            if ($stage) {
-                ($this->place)($offer, $stage, $by);
-            } elseif ($car->state === CarState::Waiting) {
+            // Выдали её менеджеру (без менеджера — нам): стоит у него, подготовка начинается.
+            ($this->setPlace)($offer, $car->manager_id ? CarPlace::Keeper : CarPlace::WithUs, $by);
+            if ($car->state === CarState::Waiting) {
                 $car->moveTo(CarState::Repair, by: $by);
                 GarageChanged::dispatch($car);
             }
@@ -85,10 +77,10 @@ final class SyncOffer
         }
     }
 
-    /** У предложения свой вывоз в CRM (к менеджеру, к нам) — где машина, решает он, а не приём на парковке. */
+    /** У машины идёт свой вывоз в логистике — где она, решает он, а не приём на парковке. */
     private function moveTo(Vehicle $vehicle, CarPlace $place, ?User $by): void
     {
-        if (($offer = $this->offer($vehicle)) && ! $offer->position(Track::Service)) {
+        if (($offer = $this->offer($vehicle)) && ! Transport::openFor($offer)) {
             ($this->setPlace)($offer, $place, $by);
         }
     }

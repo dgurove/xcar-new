@@ -5,14 +5,13 @@ namespace App\Logistics;
 use App\Billing\Invoice;
 use App\Cars\Car;
 use App\Cars\Category;
-use App\Cars\Region;
-use App\Media\HasPhotos;
 use App\Offers\Offer;
-use App\Offers\PickupState;
 use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\Yard;
 use App\Search\Term;
+use App\Support\Money;
+use App\Support\Plural;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,51 +19,67 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
-use Spatie\MediaLibrary\HasMedia;
+use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * Перевозка машины A → B (Logistics XCar, 10.10.2026). Машина — одна запись (`Cars\Car`, 14.10.2026): её продажа в CRM и
- * хранение на парковке видны отсюда через неё. Внутри региона везёт
- * партнёр (менеджер с регионом) или наш водитель, между регионами логист назначает внешнего перевозчика или нашего
- * водителя. Точки и «кто принимает» — свободным текстом. Кадры «Забрал» и «Сдал» — у самой перевозки (`photos`,
- * свойство `at`), в продажу машины они не попадают.
+ * Вывоз машины — задача Logistics XCar (17.10.2026, владелец: «логистика — полноценный этап сделки»). Совкомбанк обязывает
+ * нас вывозить каждую машину по его заявке, поэтому задача встаёт вместе с предложением из письма (`OpenPickup`); у
+ * остальных вендоров — «Вывезти» в CRM, у гаража — сама. Кто вывозит, решает админ (`AssignExecutor`): логист (Татьяна,
+ * регионы — она назначает своего исполнителя, вводит расстояние и цену), менеджер сделки или наши люди. Исполнитель
+ * созванивается с владельцем («Созвонились»: дата, место, детали), без печати ждёт документы СДЭКом (трек вводит
+ * модератор), «Забрал» — фото, ключи, куда везёт, «Привёз». CRM и xcar.ru читают ту же задачу: где машина
+ * (`offers.car_place`), можно ли выставлять счёт Совкомбанка, шаг получения сделки.
+ *
+ * Перевод ТС между парковками (`TransportKind::Move`) — та же строка без созвона и документов. Машина — одна запись
+ * (`Cars\Car`): кадры с вывоза лежат у неё (`stage = pickup`, скрыты с витрины, пока админ не откроет).
  */
-#[Fillable(['car_id', 'origin', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'from_address', 'to_address',
-    'receiver', 'to_yard_id', 'cost', 'ship_on', 'arrive_on', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at', 'picked_at', 'delivered_at', 'cancelled_at'])]
-class Transport extends Model implements HasMedia
+#[Fillable(['car_id', 'origin', 'kind', 'executor', 'executor_id', 'coordinator_id', 'from_address', 'pickup_at',
+    'pickup_place', 'call_note', 'call_attempts', 'docs_by_cdek', 'docs_track', 'docs_sent_at', 'docs_sent_by', 'docs_received_at', 'to_address',
+    'destination', 'to_yard_id', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
+    'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at'])]
+class Transport extends Model
 {
-    use HasPhotos;
-
     protected function casts(): array
     {
         return [
-            'scope' => Scope::class,
+            'kind' => TransportKind::class,
             'executor' => Executor::class,
             'state' => TransportState::class,
+            'destination' => Point::class,
             'cost' => 'decimal:2',
-            'ship_on' => 'date',
-            'arrive_on' => 'date',
+            'distance_km' => 'int',
+            'docs_by_cdek' => 'bool',
+            'call_attempts' => 'array',
+            'pickup_at' => 'datetime',
+            'docs_sent_at' => 'datetime',
+            'docs_received_at' => 'datetime',
             'assigned_at' => 'datetime',
+            'agreed_at' => 'datetime',
             'picked_at' => 'datetime',
             'delivered_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
     }
 
-    /** Машина перевозки. */
+    /** Машина задачи. */
     public function car(): BelongsTo
     {
         return $this->belongsTo(Car::class);
     }
 
-    /** Перевозку заказала продажа (вывоз CRM), а не парковка (перевод между парковками). */
+    /** Задачу завела продажа (вывоз CRM), а не парковка (перевод между парковками). */
     public function forSale(): bool
     {
         return $this->origin !== 'park';
     }
 
-    /** Продажа, что заказала перевозку: её шаги вывоза, «забирать рано», расход гаража. У перевода парковки — нет. */
+    public function isPickup(): bool
+    {
+        return $this->kind !== TransportKind::Move;
+    }
+
+    /** Продажа, что заказала вывоз: её шаг получения, «забирать рано», расход гаража. У перевода парковки — нет. */
     public function saleOffer(): ?Offer
     {
         return $this->forSale() ? $this->offer : null;
@@ -76,7 +91,7 @@ class Transport extends Model implements HasMedia
         return $this->forSale() ? null : $this->vehicle;
     }
 
-    /** Через что перевозку видно людям: та дорожка, что её заказала, иначе другая (название, кадры, ссылка). */
+    /** Через что задачу видно людям: та дорожка, что её заказала, иначе другая (название, ссылка). */
     public function lane(): Offer|Vehicle|null
     {
         return $this->forSale() ? ($this->offer ?? $this->vehicle) : ($this->vehicle ?? $this->offer);
@@ -94,19 +109,20 @@ class Transport extends Model implements HasMedia
         return $this->hasOne(Vehicle::class, 'car_id', 'car_id')->withoutGlobalScope(City::SCOPE);
     }
 
-    public function fromRegion(): BelongsTo
-    {
-        return $this->belongsTo(Region::class, 'from_region_id');
-    }
-
-    public function toRegion(): BelongsTo
-    {
-        return $this->belongsTo(Region::class, 'to_region_id');
-    }
-
     public function executorUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'executor_id');
+    }
+
+    /** Логист, через которого идёт задача (ветка «Логист»): назначает своего исполнителя и цену. */
+    public function coordinator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'coordinator_id');
+    }
+
+    public function docsSender(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'docs_sent_by');
     }
 
     public function toYard(): BelongsTo
@@ -124,17 +140,6 @@ class Transport extends Model implements HasMedia
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** Дата строки списка: прибытие или отправка у межрегиона, иначе когда назначили, забрали, сдали (сортировка «Когда» — по ней же). */
-    public function shownAt(): ?Carbon
-    {
-        return match ($this->state) {
-            TransportState::Delivered => $this->delivered_at,
-            TransportState::Moving => $this->arrive_on ?? $this->picked_at,
-            TransportState::Cancelled => $this->cancelled_at,
-            default => $this->ship_on ?? $this->assigned_at ?? $this->created_at,
-        };
-    }
-
     /** Тип ТС машины — иконкой перед названием, как в таблицах CRM. */
     public function category(): ?Category
     {
@@ -146,69 +151,234 @@ class Transport extends Model implements HasMedia
         return $this->lane()?->titleWithYear() ?? 'ТС';
     }
 
-    /** Кто везёт словом: «Сахиб М.», «ТК Деловые линии»; пусто — ещё не назначили. */
-    public function executorName(): ?string
+    /** Владелец — страхователь машины (одна запись `Cars\Car`: правят в CRM, письмо дописывает — здесь то же). */
+    public function ownerName(): ?string
     {
-        return $this->executor === Executor::Carrier ? $this->carrier : $this->executorUser?->shortName();
+        return $this->car?->insured_name;
     }
 
-    /** «Москва → Санкт-Петербург»; внутри региона — один регион. */
-    public function regions(): ?string
+    public function ownerPhone(): ?string
     {
-        $from = $this->fromRegion?->name;
-        $to = $this->toRegion?->name;
-        if ($this->scope === Scope::Local || ! $to || $to === $from) {
-            return $from;
-        }
+        return $this->car?->insured_phone;
+    }
 
-        return ($from ?? '?').' → '.$to;
+    /** Откуда забирать: у вывоза — адрес осмотра предложения (его правят в CRM), у перевода — свой адрес. */
+    public function fromAddress(): ?string
+    {
+        return $this->from_address ?? $this->saleOffer()?->inspection_address;
+    }
+
+    /** Город машины — по предложению, у ТС парковки — её город. */
+    public function city(): ?string
+    {
+        $lane = $this->lane();
+
+        return $lane instanceof Offer ? $lane->settlement?->name : ($lane?->city_id ? City::name($lane->city_id) : null);
+    }
+
+    /** Кто вывозит словом: «Иван С.»; у логиста без исполнителя — сам логист. */
+    public function executorName(): ?string
+    {
+        return $this->executorUser?->shortName() ?? $this->coordinator?->shortName();
     }
 
     public function isOpen(): bool
     {
-        return in_array($this->state, [TransportState::New, TransportState::Assigned, TransportState::Moving], true);
+        return $this->state->isOpen();
     }
 
-    /** Кадры этапа: `pickup` — «Забрал», `delivery` — «Сдал». */
-    public function photosAt(string $at)
+    /** Документы едут СДЭКом и ещё не дошли до исполнителя. */
+    public function awaitsDocs(): bool
     {
-        return $this->photos()->filter(fn (Media $m) => $m->getCustomProperty('at') === $at)->values();
+        return $this->docs_by_cdek && $this->docs_received_at === null;
+    }
+
+    /** Дата вывоза прошла, а «Забрал» нет — красным у админа и исполнителя. */
+    public function isLate(): bool
+    {
+        return $this->state === TransportState::Agreed && $this->pickup_at !== null && $this->pickup_at->isPast();
+    }
+
+    /** Сколько раз не дозвонились. */
+    public function missedCalls(): int
+    {
+        return count($this->call_attempts ?? []);
+    }
+
+    /** Куда везёт словом: «В гараж Бородину», «К нам», «Краснопутиловская», адрес. */
+    public function destinationLabel(): ?string
+    {
+        return match ($this->destination) {
+            Point::Keeper => ($keeper = $this->saleOffer()?->keeper()) ? 'В гараж '.$keeper->shortName() : Point::Keeper->label(),
+            Point::Yard => $this->toYard?->name ?? $this->to_address,
+            Point::Other => $this->to_address,
+            Point::Ours => trim(Point::Ours->label().($this->to_address ? ', '.$this->to_address : '')),
+            null => $this->to_address,
+        };
     }
 
     /**
-     * Почему этот человек пока не может забрать машину (`PickupState::blocker`: оплата Альфы, документы); админ
-     * отмечает за исполнителя, как «Забрал» в CRM. Забрали уже или это ТС парковки — null.
+     * Что дальше — словом для строки и бейджа: решать админу, ждём логиста, позвонить владельцу, ждём документы,
+     * дата вывоза, везут, привёз.
+     */
+    public function next(): string
+    {
+        return match (true) {
+            $this->state === TransportState::New => 'выбрать исполнителя',
+            $this->state === TransportState::Logist => 'ждёт исполнителя логиста',
+            $this->state === TransportState::Assigned && $this->isPickup() => 'позвонить владельцу',
+            $this->state === TransportState::Assigned => 'забрать',
+            $this->state === TransportState::Agreed && $this->docs_by_cdek && $this->docs_sent_at === null => 'ждёт отправки документов',
+            $this->state === TransportState::Agreed && $this->awaitsDocs() => 'документы в пути',
+            $this->state === TransportState::Agreed && $this->pickup_at => 'вывоз '.$this->pickup_at->translatedFormat($this->pickup_at->format('H:i') === '00:00' ? 'j M' : 'j M, H:i'),
+            $this->state === TransportState::Agreed => 'забрать',
+            default => mb_strtolower($this->state->label()),
+        };
+    }
+
+    /**
+     * Ход задачи лесенкой — одной для логистики и карточки «Вывоз» в CRM: кто вывозит, созвон, документы (если СДЭКом),
+     * вывоз, привёз. Шаг: заголовок, состояние (`done` | `current` | `later`), когда, подсказка.
+     *
+     * @return list<array{key: string, title: string, status: string, at: ?Carbon, hint: ?string}>
+     */
+    public function steps(): array
+    {
+        $s = $this->state;
+        $cancelled = $s === TransportState::Cancelled;
+        $status = fn (bool $done, bool $current) => $done ? 'done' : ($current && ! $cancelled ? 'current' : 'later');
+        $steps = [];
+        $assigned = $this->executor_id !== null;
+        $steps[] = ['key' => 'executor', 'title' => $assigned ? 'Вывозит '.$this->executorUser?->shortName() : ($this->executor === Executor::Logist ? 'У логиста '.$this->coordinator?->shortName() : 'Кто вывозит'),
+            'status' => $status($assigned, ! $assigned), 'at' => $this->assigned_at,
+            'hint' => implode(', ', array_filter([
+                $this->executor === Executor::Logist && $this->coordinator && $assigned && $this->coordinator_id !== $this->executor_id ? 'через '.$this->coordinator->shortName() : null,
+                $this->distance_km ? $this->distance_km.' км' : null,
+                $this->cost ? Money::rub((int) $this->cost) : null,
+                ! $assigned && $s === TransportState::New ? 'выбрать исполнителя' : null,
+                ! $assigned && $s === TransportState::Logist ? 'логист назначает исполнителя и цену' : null,
+            ])) ?: null];
+        if ($this->isPickup()) {
+            $agreed = $this->agreed_at !== null;
+            // Забрали — созвон и документы уже позади, даже если их не отмечали (задачи до 17.10.2026, админ за исполнителя).
+            $steps[] = ['key' => 'call', 'title' => $agreed || $s->picked() ? 'Созвонились' : 'Созвон с владельцем', 'status' => $status($agreed || $s->picked(), $assigned && ! $agreed),
+                'at' => $this->agreed_at,
+                'hint' => $agreed ? implode(', ', array_filter([$this->pickup_at ? 'вывоз '.$this->pickup_at->translatedFormat($this->pickup_at->format('H:i') === '00:00' ? 'j M' : 'j M, H:i') : null, $this->pickup_place]))
+                    : ($this->missedCalls() ? 'не дозвонились '.$this->missedCalls().' '.Plural::of($this->missedCalls(), ['раз', 'раза', 'раз']) : null)];
+            if ($this->docs_by_cdek) {
+                $got = $this->docs_received_at !== null;
+                $steps[] = ['key' => 'docs', 'title' => $got ? 'Документы получены' : ($this->docs_sent_at ? 'Документы в пути' : 'Документы СДЭКом'),
+                    'status' => $status($got || $s->picked(), $assigned && ! $got), 'at' => $this->docs_received_at ?? $this->docs_sent_at,
+                    'hint' => $this->docs_track ? 'трек '.$this->docs_track : ($assigned ? 'ждём отправки' : null)];
+            }
+        }
+        $keys = $this->car?->keys_count;
+        $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Вывезена' : 'Забрать', 'status' => $status($s->picked(), in_array($s, [TransportState::Agreed], true) || ($s === TransportState::Assigned && ! $this->isPickup())),
+            'at' => $this->picked_at,
+            'hint' => $s->picked() ? implode(', ', array_filter([$keys === null ? null : $keys.' '.Plural::of($keys, ['ключ', 'ключа', 'ключей']), $this->destinationLabel()])) : null];
+        $steps[] = ['key' => 'delivered', 'title' => 'Привёз', 'status' => $status($s === TransportState::Delivered, $s === TransportState::Moving), 'at' => $this->delivered_at,
+            'hint' => $s === TransportState::Delivered || $s === TransportState::Moving ? $this->destinationLabel() : null];
+
+        return $steps;
+    }
+
+    /** Кадры с вывоза — у машины (`stage = pickup`, свойство `transport`); `at` — «Забрал» или «Привёз». */
+    public function photos(?string $at = null): Collection
+    {
+        if (! $this->car) {
+            return collect();
+        }
+
+        return $this->car->getMedia('photos')
+            ->filter(fn (Media $m) => (int) $m->getCustomProperty('transport') === $this->id && ($at === null || $m->getCustomProperty('at') === $at))
+            ->values();
+    }
+
+    /**
+     * Почему этот человек пока не может нажать «Забрал»: не созвонились, документы не дошли, у продажи рано (Альфа до
+     * оплаты, Каркаде до согласия поставщика — `Deal::pickupHold`). Админ отмечает за исполнителя и мимо этого. null — можно.
      */
     public function pickupBlocker(User $by): ?string
     {
-        if ($by->isAdmin() || ! $this->saleOffer() || $this->state !== TransportState::Assigned) {
+        if ($by->isAdmin() || ! in_array($this->state, [TransportState::Assigned, TransportState::Agreed], true)) {
             return null;
         }
+        if ($this->isPickup() && $this->state === TransportState::Assigned) {
+            return 'Сначала созвонитесь с владельцем';
+        }
+        if ($this->awaitsDocs()) {
+            return $this->docs_sent_at ? 'Отметьте, что документы получены' : 'Ждём, когда отправим документы';
+        }
+        $hold = $this->saleOffer()?->deal?->pickupHold();
 
-        return PickupState::blocker($this->saleOffer());
+        return match ($hold) {
+            null => null,
+            'после оплаты' => 'Забирать после оплаты',
+            default => 'Ждём согласия поставщика',
+        };
     }
 
-    /** Ведёт ли человек эту перевозку как исполнитель. */
+    /** Ведёт ли человек эту задачу как исполнитель. */
     public function isExecutedBy(User $user): bool
     {
-        return $this->executor_id === $user->id && $this->executor !== Executor::Carrier;
+        return $this->executor_id === $user->id;
+    }
+
+    /** Логист этой задачи — ведёт её, пока не назначит (и после: следит за своими исполнителями). */
+    public function isCoordinatedBy(User $user): bool
+    {
+        return $this->coordinator_id === $user->id;
+    }
+
+    /** Действует ли человек по задаче: исполнитель, её логист или админ. */
+    public function isHandledBy(User $user): bool
+    {
+        return $user->isAdmin() || $this->isExecutedBy($user) || $this->isCoordinatedBy($user);
     }
 
     /**
-     * Кто что видит: админ и логист — всё, водитель и партнёр — назначенные им. Логист видит и местные: он отвечает за
-     * всю логистику, а назначает их админ из CRM.
+     * Кто что видит: админ — всё; логист — свои (через него) и задачи своих исполнителей; остальные — назначенные им;
+     * модератор — те, где ждут документы (Лиза отправляет СДЭКом).
      */
     public function scopeVisibleTo(Builder $q, User $user): Builder
     {
-        return $user->seesAllTransports() ? $q : $q->where('executor_id', $user->id)->whereIn('executor', [Executor::Partner, Executor::Driver]);
+        if ($user->isAdmin()) {
+            return $q;
+        }
+
+        return $q->where(fn ($w) => $w->where('executor_id', $user->id)
+            ->when($user->isLogist(), fn ($w) => $w->orWhere('coordinator_id', $user->id)
+                ->orWhereIn('executor_id', User::where('logist_id', $user->id)->select('id')))
+            ->when($user->sendsLogisticsDocs(), fn ($w) => $w->orWhere('docs_by_cdek', true)));
     }
 
     public function scopeOpen(Builder $q): Builder
     {
-        return $q->whereIn('state', [TransportState::New, TransportState::Assigned, TransportState::Moving]);
+        return $q->whereIn('state', TransportState::OPEN);
     }
 
-    /** Поиск по машине: марка, модель, VIN, госномер, номер предложения; и по адресам. */
+    /** Чей ход у человека: админу — без исполнителя, логисту — ждущие его, исполнителю — созвон, вывоз, доставка. */
+    public function scopeTurnOf(Builder $q, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $q->where('state', TransportState::New);
+        }
+
+        return $q->where(fn ($w) => $w
+            ->when($user->isLogist(), fn ($w) => $w->orWhere(fn ($l) => $l->where('state', TransportState::Logist)->where('coordinator_id', $user->id)))
+            ->orWhere(fn ($e) => $e->where('executor_id', $user->id)->where(fn ($s) => $s
+                ->whereIn('state', [TransportState::Assigned, TransportState::Moving])
+                ->orWhere(fn ($a) => $a->where('state', TransportState::Agreed)
+                    ->where(fn ($d) => $d->where('docs_by_cdek', false)->orWhereNotNull('docs_sent_at'))))));
+    }
+
+    /** Документы ждут отправки СДЭКом: исполнитель без печати назначен, трека нет. */
+    public function scopeAwaitingDocs(Builder $q): Builder
+    {
+        return $q->open()->where('docs_by_cdek', true)->whereNotNull('executor_id')->whereNull('docs_sent_at');
+    }
+
+    /** Поиск по машине: марка, модель, VIN, госномер, номер предложения; по адресам, владельцу и треку. */
     public function scopeSearch(Builder $q, string|Term $term): Builder
     {
         $t = Term::of($term);
@@ -219,17 +389,38 @@ class Transport extends Model implements HasMedia
 
         return $q->where(fn ($w) => $w->whereHas('offer', fn ($o) => $o->search($t))
             ->orWhereHas('vehicle', fn ($v) => $v->search($t))
-            ->orWhere('from_address', 'ilike', $like)->orWhere('to_address', 'ilike', $like)->orWhere('carrier', 'ilike', $like));
+            ->orWhere('from_address', 'ilike', $like)->orWhere('to_address', 'ilike', $like)->orWhere('docs_track', 'ilike', $like)
+            ->orWhereHas('car', fn ($c) => $c->where('insured_name', 'ilike', $like)
+                ->when($t->phone, fn ($c, $phone) => $c->orWhere('insured_phone', 'like', '%'.$phone.'%'))));
+    }
+
+    /** Дата строки: когда вывоз, иначе когда назначили, забрали, привезли. */
+    public function shownAt(): ?Carbon
+    {
+        return match ($this->state) {
+            TransportState::Delivered => $this->delivered_at,
+            TransportState::Moving => $this->picked_at,
+            TransportState::Cancelled => $this->cancelled_at,
+            TransportState::Agreed => $this->pickup_at ?? $this->agreed_at,
+            default => $this->assigned_at ?? $this->created_at,
+        };
     }
 
     /**
-     * Открытая перевозка дорожки — одна: вторую не заводим, пока эта не доставлена или не отменена. Вывоз продажи и перевод
-     * парковки у одной машины — разные перевозки: отмена сделки или поручение вывоза менеджеру перевод парковки не трогают.
+     * Открытая задача дорожки — одна: вторую не заводим, пока эта не доставлена или не отменена. Вывоз продажи и перевод
+     * парковки у одной машины — разные задачи: отмена сделки перевод парковки не трогает.
      */
     public static function openFor(Offer|Vehicle|Car $car): ?self
     {
         return self::open()->where('car_id', $car instanceof Car ? $car->id : $car->car_id)
             ->when(! $car instanceof Car, fn ($q) => $q->where('origin', $car instanceof Offer ? 'sale' : 'park'))
             ->latest('id')->first();
+    }
+
+    /** Вывоз продажи — последний не отменённый: открытый или уже привезённый. */
+    public static function pickupOf(Offer $offer): ?self
+    {
+        return self::where('car_id', $offer->car_id)->where('origin', 'sale')->where('kind', TransportKind::Pickup)
+            ->where('state', '!=', TransportState::Cancelled)->latest('id')->first();
     }
 }

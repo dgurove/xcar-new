@@ -27,12 +27,12 @@ class RefillVendors extends Command
 
     public function handle(ApplyPreset $apply): int
     {
-        foreach (VendorSeeder::VENDORS as [$name, $senders, $parser, $sale, $autoPickup]) {
+        foreach (VendorSeeder::VENDORS as [$name, $senders, $parser, $sale]) {
             if (! $sale) {
                 continue;
             }
             $vendor = Vendor::firstOrCreate(['name' => $name]);
-            foreach ([[Track::Sale, $sale], [Track::Service, Preset::Pickup]] as [$track, $preset]) {
+            foreach ([[Track::Sale, $sale]] as [$track, $preset]) {
                 $workflow = $vendor->workflowOrNew($track);
                 $ids = $workflow->stages()->pluck('workflow_stages.id');
                 // Занятые этапы и ответы менеджеров по ним — история, её не сносим.
@@ -51,7 +51,7 @@ class RefillVendors extends Command
         }
 
         // Письма — тоже из заготовки: перезаливка возвращает и их текст.
-        foreach (Preset::Pickup->route()->letters() as $letter) {
+        foreach (Preset::TBank->route()->letters() as $letter) {
             Template::where('scope', Scope::Offers)->where('name', $letter['name'])->update(['subject' => $letter['subject'], 'body' => $letter['body']]);
         }
 

@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Mail\Extraction\Patterns;
 use App\Park\VehicleState;
 use App\Support\Phone;
+use App\Support\Surface;
 use App\Support\VendorNames;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -12,16 +13,18 @@ use App\Workflow\Position;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Получение автомобиля по сделке (04.10.2026, владелец: «согласовали, он должен вывезти, а у него 0 инфы»): где стоит
  * ТС, кто её забирает, с кем говорить, адрес и когда, и можно ли уже нажать «Забрал». Одним расчётом на страницу сделки
  * менеджера и карточку сделки в CRM.
  *
- * Открывается после «Поставщик согласовал» (решение владельца), «Забрал» — только где маршрут разрешает: шаг продажи
- * «Автомобиль забрал» (он в просьбе шага) или «Забрал» вывоза, когда у продажи такого шага нет (Альфа).
+ * Открывается после «Поставщик согласовал» (решение владельца). «Забрал» — шаг продажи «Автомобиль забрал», а когда
+ * вывоз в логистике ведёт сам менеджер — там (17.10.2026), шаг продажи догоняет его сам.
  *
- * Откуда: поля текущего шага продажи (их вписали менеджеру), поля «Вывоза и осмотра», парковка, где стоит ТС, и
+ * Откуда: поля текущего шага продажи (их вписали менеджеру), задача вывоза в логистике (созвон: дата и место), парковка,
+ * где стоит ТС, и
  * наконец само предложение — страхователь и адрес осмотра из письма. Контакт владельца менеджеру — только когда
  * забирает он сам или шаг продажи его и просит (Т-Страхование): забираем мы — сводить его с владельцем не нужно.
  * Письмо целиком менеджер не видит никогда: в нём закупочная.
@@ -51,7 +54,8 @@ final class Handover
         public readonly ?string $mapUrl,
         public readonly ?string $date,
         public readonly ?Outcome $saleExit,
-        public readonly bool $servicePick,
+        /** Вывоз этой машины в логистике ведёт сам менеджер сделки: «Забрал» — там, шаг продажи догонит сам. */
+        public readonly ?string $transportUrl,
         /** @var list<string> ключи полей шага продажи, что показаны здесь: в шаге второй раз не пишутся */
         public readonly array $keys,
     ) {}
@@ -60,16 +64,13 @@ final class Handover
     {
         $offer = $deal->offer->loadMissing(['positions.stage.exits', 'parkVehicle.yard.settlement', 'settlement']);
         $sale = $offer->position(Track::Sale);
-        $service = $offer->position(Track::Service);
+        // Вывоз — задача логистики (17.10.2026): дата, место и владелец — из неё.
+        $pickup = $offer->pickup();
         $picks = $deal->buyerPicksUp();
-        $place = $service?->stage->car_place;
+        $place = $offer->car_place;
+        $inLogistics = $picks && $pickup?->isOpen();
 
         $saleExit = $sale?->stage->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $e) => self::picked($e));
-        // «Забрал» вывоза — только когда у продажи своего шага получения нет вовсе (Альфа): есть — жмут там и в свой черёд
-        // (06.10.2026, Т-Страхование: сначала «Связался», потом «Забрал»).
-        $routePicks = $sale && Stage::where('workflow_id', $sale->stage->workflow_id)->with('exits')->get()
-            ->contains(fn (Stage $s) => $s->exitsFor(Actor::Manager, $deal)->contains(fn (Outcome $e) => self::picked($e)));
-        $servicePick = $picks && ! $routePicks && $service && $service->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty();
         // Шаг продажи сам про получение: просит забрать (Каркаде, гараж, «Менеджер забирает автомобиль») или вписали ему,
         // где и у кого (Т-Страхование).
         $saleAsks = $saleExit || ($sale && $sale->stage->awaitsManager($deal) && self::mapped($sale->stage) !== []);
@@ -85,12 +86,9 @@ final class Handover
             }
         }
         $owner = $picks || $saleAsks;
-        if ($owner && $service) {
-            foreach (self::mapped($service->stage) as $key => $kind) {
-                if (filled($v = $service->payload[$key] ?? null)) {
-                    $fields[$kind] ??= (string) $v;
-                }
-            }
+        if ($owner && $pickup) {
+            $fields['date'] ??= $pickup->pickup_at?->toDateString();
+            $fields['address'] ??= $pickup->pickup_place ?: null;
         }
         // «Контакт» бывает строкой «Валентин Сергеевич +7 905 …»: телефон — отдельно, чтобы по нему звонили.
         if (isset($fields['name']) && ! isset($fields['phone']) && ($phones = Patterns::phones($fields['name']))) {
@@ -101,10 +99,10 @@ final class Handover
         $vehicle = $offer->parkVehicle;
         $atYard = $vehicle?->state === VehicleState::Stored && $vehicle->yard;
         // Выдача у поставщика (Каркаде): забирает сам менеджер — шаг «Выдача у поставщика» ждёт его «Забрал».
-        $atSupplier = $sale && ! $service && $sale->stage->workflow->stages->contains(fn (Stage $s) => in_array('адрес выдачи', self::labels($s), true));
+        $atSupplier = $sale && ! $pickup && $sale->stage->workflow->stages->contains(fn (Stage $s) => in_array('адрес выдачи', self::labels($s), true));
         // Шаг продажи сам просит его «Автомобиль забрал» (Совкомбанк, Т-Страхование) — забирает он, а не мы.
-        // Везём мы (гаражной «Везёт в гараж: Мы») — шаг догонит вывоз, ему не ехать.
-        $weTow = ! $offer->evacuator_id && $offer->evacuation_to !== null;
+        // Везём мы (логистика с другим исполнителем) — шаг догонит вывоз, ему не ехать.
+        $weTow = $pickup !== null && ! $picks;
         $picks = $picks || $atSupplier || ($saleExit !== null && ! $weTow);
         $where = match (true) {
             $place === CarPlace::Keeper => $offer->keeper()?->id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
@@ -152,8 +150,8 @@ final class Handover
             address: $address,
             mapUrl: $address ? $mapUrl : null,
             date: $withBuyer ? null : ($fields['date'] ?? null),
-            saleExit: $open ? $saleExit : null,
-            servicePick: $open && $servicePick,
+            saleExit: $open && ! $inLogistics ? $saleExit : null,
+            transportUrl: $open && $inLogistics ? Surface::Logistics->url('/transports/'.$pickup->id) : null,
             keys: $keys,
         );
     }
@@ -222,7 +220,7 @@ final class Handover
      * Получение по ДКП чек-листом (06.10.2026, Т-Страхование): шаги «Связался с владельцем» → «Автомобиль забрал» →
      * «Подписанный договор» — где сейчас сделка и что уже сделано. Не этот маршрут или сделка не на этих шагах — null.
      *
-     * @return array{contact: string, pickup: string, signed: string}|null  done | current | later
+     * @return array{contact: string, pickup: string, signed: string}|null done | current | later
      */
     public static function checklist(Deal $deal, ?Position $sale): ?array
     {
@@ -240,9 +238,26 @@ final class Handover
 
         return [
             'contact' => $at === $contact->id ? 'current' : 'done',
-            'pickup' => match ($at) { $pick->id => 'current', $contact->id => 'later', default => 'done' },
+            'pickup' => match ($at) {
+                $pick->id => 'current', $contact->id => 'later', default => 'done'
+            },
             'signed' => $at === $signed->id ? 'current' : 'later',
         ];
+    }
+
+    /**
+     * Кнопки шага менеджеру: «Автомобиль забрал» прячется, пока вывоз ведёт он сам в логистике — нажмёт там «Забрал», и
+     * шаг пройдёт сам (`SyncHandover`).
+     */
+    public static function managerExits(?Stage $stage, Deal $deal): Collection
+    {
+        if (! $stage) {
+            return collect();
+        }
+        $exits = $stage->exitsFor(Actor::Manager, $deal);
+        $pickup = $deal->offer?->pickup();
+
+        return $deal->buyerPicksUp() && $pickup?->isOpen() ? $exits->reject(fn (Outcome $e) => self::picked($e))->values() : $exits;
     }
 
     public static function picked(Outcome $exit): bool

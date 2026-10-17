@@ -5,23 +5,24 @@ namespace App\Logistics;
 use App\Cars\HasLabels;
 
 /**
- * Кто везёт: партнёр в регионе (менеджер xcar, за стоимость эвакуации), наш водитель, внешний перевозчик (автовоз,
- * транспортная компания — только между регионами, его вписывает логист).
+ * Кто вывозит (17.10.2026, владелец): регионы — Татьяна (логист) своими исполнителями, она вводит расстояние и цену,
+ * платим ей; менеджер, которому мы подтвердили сделку (в его гараж или его покупателю); наши люди ООО «ПРАЙМ»
+ * (Иван, Сергей…). Решает админ — правилом по городу не распределить.
  */
 enum Executor: string
 {
     use HasLabels;
 
-    case Partner = 'partner';
-    case Driver = 'driver';
-    case Carrier = 'carrier';
+    case Logist = 'logist';
+    case Manager = 'manager';
+    case Staff = 'staff';
 
     public function label(): string
     {
         return match ($this) {
-            self::Partner => 'Партнёр',
-            self::Driver => 'Наш эвакуатор',
-            self::Carrier => 'Перевозчик',
+            self::Logist => 'Логист',
+            self::Manager => 'Менеджер',
+            self::Staff => 'Наши',
         };
     }
 }

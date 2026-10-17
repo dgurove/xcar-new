@@ -164,7 +164,7 @@ return new class extends Migration
             }
 
             // Машина уже у менеджера (вывоз «Стоит у менеджера») — сразу оплата, иначе «Заберите автомобиль».
-            $service = $offer->position(Track::Service);
+            $service = null; // маршрута вывоза больше нет (17.10.2026): на проде эта миграция давно прошла
             $picked = $service?->stage->car_place === CarPlace::Keeper && $offer->keeper()?->id === $deal->buyer_id;
             $to = $picked ? $invoice : $pickup;
             Event::fakeFor(fn () => $enter($offer->fresh(), $to, $by), [StageEntered::class]);

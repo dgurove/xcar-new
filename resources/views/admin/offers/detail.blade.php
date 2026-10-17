@@ -32,10 +32,10 @@
     $byValue = $floorFirst && \App\Vendors\Vendor::ratesByValue($offer->vendor_id);
     // Рядом с «Оценить» — «В гараж»: менеджеру без цены продажи (04.10.2026), та же форма, что в «···» редактора.
     $garage = $rate && $offer->state->allows(OfferState::Garage);
-    // И «Вывоз»: кто забирает ТС и куда (`AssignPickup`) — пока не забрали; цену после него всё равно ставить.
-    $pickup = $rate && $offer->vendor?->workflow(\App\Workflow\Track::Service)?->is_active && ! $offer->pickedUp();
+    // И «Вывоз»: кто вывозит ТС (задача логистики, `AssignExecutor`) — пока не забрали; цену после него всё равно ставить.
+    $pickup = $rate && ($offer->pickup()?->isOpen() || $offer->vendor?->pickup_on_arrival) && ! $offer->pickedUp();
     $ways = $garage || $pickup;
-    $way = $errors->hasAny(['mode', 'evacuator_id', 'evacuation_to', 'scope', 'from_region_id', 'to_region_id', 'executor', 'executor_id', 'carrier', 'cost']) ? 'pickup' : (old('stage') ? 'garage' : 'rate');
+    $way = $errors->hasAny(['executor', 'executor_id', 'pickup']) ? 'pickup' : (old('stage') ? 'garage' : 'rate');
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');
@@ -46,7 +46,7 @@
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         {{-- Состояние — словом у названия, а не среди кодов (владелец 10.10.2026: «статус тут не к месту»); слова «черновик»
              нет, как и в строке: вкладка и так говорит, на каком он шаге. --}}
-        <x-slot:badge><x-ui.state :tone="$offer->state->tone()" class="title-state">{{ $offer->crmTab() }}</x-ui.state>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/></x-slot:badge>
+        <x-slot:badge><x-ui.state :tone="$offer->state->tone()" class="title-state">{{ $offer->crmTab() }}</x-ui.state>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         {{-- Под названием — что это за машина (состояние словом, коды чипами: №, убыток или ДЛ, VIN), ниже фразой — где она
              и сколько осталось (`line`): владелец 10.10.2026 «одно к машине относится, другое к фактам». --}}
@@ -223,7 +223,7 @@
                     @endif
                     @if ($pickup)
                         <div data-reveal-target="pane" data-reveal-key="pickup" hidden>
-                            <x-offer.pickup-form :offer="$offer" :managers="$managers" prefix="detail-pickup-{{ $n }}"/>
+                            <x-logistics.assign-form :transport="$offer->pickup()?->isOpen() ? $offer->pickup() : null" :offer="$offer" :action="'/offers/'.$n.'/pickup'" prefix="detail-pickup-{{ $n }}"/>
                         </div>
                     @endif
                 </div>

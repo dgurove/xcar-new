@@ -37,7 +37,7 @@
                         @if ($vendor->kind !== Kind::Insurer)<span>{{ $vendor->kind->label() }}</span>@endif
                         @foreach (Track::cases() as $track)
                             @php $w = $vendor->workflow($track); @endphp
-                            @if ($w)<span class="{{ $w->is_active ? 'text-accent-text' : '' }}">{{ mb_strtolower($track->label()) }} {{ $w->is_active ? ($track === Track::Service && !$w->auto_start ? 'по кнопке' : ($track === Track::Sale ? 'включена' : 'включён')) : ($track === Track::Sale ? 'выключена' : 'выключен') }}</span>@endif
+                            @if ($w)<span class="{{ $w->is_active ? 'text-accent-text' : '' }}">{{ mb_strtolower($track->label()) }} {{ $w->is_active ? 'включена' : 'выключена' }}</span>@endif
                         @endforeach
                     </div>
                 </div>

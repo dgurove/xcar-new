@@ -27,7 +27,7 @@ return new class extends Migration
 
     public function up(): void
     {
-        foreach (Workflow::where('track', Track::Service)->get() as $workflow) {
+        foreach (Workflow::where('track', 'service')->get() as $workflow) {
             $stages = Stage::where('workflow_id', $workflow->id)->with('exits')->get();
             if ($stages->contains('name', 'Стоит у нас')) {
                 continue;

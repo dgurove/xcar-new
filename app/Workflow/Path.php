@@ -3,7 +3,6 @@
 namespace App\Workflow;
 
 use App\Offers\Deal;
-use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use Illuminate\Support\Carbon;
@@ -32,7 +31,7 @@ final class Path
             return collect();
         }
         $journal = self::journal($offer, $track, $since);
-        $blocks = self::ladder($position->stage, $journal->pluck('block')->all(), $offer->branchFor($track));
+        $blocks = self::ladder($position->stage, $journal->pluck('block')->all(), $offer->deal);
         $passed = true;
 
         return $blocks->map(function (Block $block) use (&$passed, $position, $journal) {
@@ -101,7 +100,7 @@ final class Path
      *
      * @return Collection<int, Block>
      */
-    public static function ladder(Stage $stage, array $passedNames, Deal|Destination|null $deal = null, bool $guess = false): Collection
+    public static function ladder(Stage $stage, array $passedNames, ?Deal $deal = null, bool $guess = false): Collection
     {
         $all = $stage->workflow->blocks()->with('stages.exits.to.block')->get();
         $current = $all->firstWhere('id', $stage->block_id);
@@ -139,7 +138,7 @@ final class Path
      *
      * @return list<int>
      */
-    private static function forward(Collection $all, Block $current, Deal|Destination|null $deal): array
+    private static function forward(Collection $all, Block $current, ?Deal $deal): array
     {
         $ids = [];
         $seen = [$current->id];

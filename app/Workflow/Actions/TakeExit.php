@@ -7,7 +7,6 @@ use App\Users\User;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
-use App\Workflow\Track;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -30,8 +29,8 @@ final class TakeExit
             if ($exit->actor !== $as) {
                 throw ValidationException::withMessages(['exit' => 'Эта кнопка не для вас']);
             }
-            if (! $exit->fits($track === Track::Sale ? $offer->deal()->first() : $offer->pickupDestination())) {
-                throw ValidationException::withMessages(['exit' => $track === Track::Sale ? 'Эта кнопка не для этой сделки' : 'Эта кнопка не для этого вывоза']);
+            if (! $exit->fits($offer->deal()->first())) {
+                throw ValidationException::withMessages(['exit' => 'Эта кнопка не для этой сделки']);
             }
             if ($exit->acceptsBid()) {
                 throw ValidationException::withMessages(['exit' => 'Подтверждение принимают кнопкой «Принять» у самого подтверждения']);

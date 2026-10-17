@@ -16,7 +16,7 @@
     <x-ui.card-media :photos="$photos" :href="$href" :link="$link"/>
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" {!! $link !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span></a>
+            <a href="{{ $href }}" {!! $link !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span><x-car.keys :count="$offer->keys_count"/></a>
         </div>
     </div>
     <div class="card-extra">

@@ -2,59 +2,52 @@
 
 namespace App\Garage\Actions;
 
-use App\Offers\Actions\AssignPickup;
-use App\Offers\CarPlace;
-use App\Offers\Destination;
+use App\Garage\CarState;
+use App\Garage\Events\GarageChanged;
+use App\Logistics\Actions\AssignExecutor;
+use App\Logistics\Actions\OpenPickup;
+use App\Logistics\Executor;
+use App\Logistics\Point;
 use App\Offers\Offer;
 use App\Park\VehicleState;
 use App\Users\User;
-use App\Vendors\Kind;
-use App\Workflow\Actions\EnsureServiceWorkflow;
-use App\Workflow\Actions\PlaceOnStage;
-use App\Workflow\Track;
+use App\Workflow\Actions\SetCarPlace;
 
 /**
- * У гаражной машины вывоз есть всегда (06.10.2026): где она физически — это он, а не этап гаража. Везём к её
- * менеджеру (`Destination::Keeper`), без менеджера — к нам. Кто везёт: менеджер, мы (null) или как было (false).
- * Где встать: `owner` — с начала (машина у страхователя; у лизинговой и прочих — сразу «Вывоз и осмотр», связываться
- * со страхователем там не с кем), `collect` — «Вывоз и осмотр» (можно забирать), `arrived` — «Стоит у …».
- * Забрали уже или машина на нашей парковке (её двигает выдача, `SyncOffer`) — не трогаем.
+ * У гаражной машины вывоз есть всегда (06.10.2026): где она физически — это он, а не этап гаража. С 17.10.2026 это задача
+ * логистики к её менеджеру (`Point::Keeper`), без менеджера — к нам. Кто везёт: сам менеджер (`$evacuator` — он) или
+ * «Логистика» (null — исполнителя выберет админ в окне «Кто вывозит»). `arrived` — машина уже у менеджера: задачи нет,
+ * место «у менеджера», подготовка сразу. Забрали уже или машина на нашей парковке (её двигает выдача, `SyncOffer`) — не
+ * трогаем.
  */
 final class EnsurePickup
 {
-    public function __construct(private AssignPickup $assign, private EnsureServiceWorkflow $workflow, private PlaceOnStage $place) {}
+    public function __construct(private OpenPickup $open, private AssignExecutor $assign, private SetCarPlace $place) {}
 
-    public function __invoke(Offer $offer, User $by, User|false|null $evacuator = false, string $where = 'owner'): Offer
+    public function __invoke(Offer $offer, User $by, ?User $evacuator = null, string $where = 'owner'): Offer
     {
-        $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow', 'parkVehicle', 'evacuator', 'garageCar.manager']);
+        $offer = $offer->fresh(['parkVehicle', 'garageCar.manager']);
         $car = $offer->garageCar;
-        if (! $car || ! $offer->vendor || $offer->pickedUp() || $offer->parkVehicle?->state === VehicleState::Stored) {
+        if (! $car || $offer->pickedUp() || $offer->parkVehicle?->state === VehicleState::Stored) {
             return $offer;
         }
-        $workflow = ($this->workflow)($offer->vendor);
-        if (! $workflow) {
-            return $offer;
-        }
-        $offer->load('vendor.workflows');
-        $to = $car->manager_id ? Destination::Keeper : Destination::Ours;
-        $who = $evacuator === false ? $offer->evacuator : $evacuator;
-        if (! $car->manager_id && $who) {
-            $who = null;
-        }
-        if (! $offer->position(Track::Service) || $offer->pickupDestination() !== $to || $offer->evacuator_id !== $who?->id) {
-            $offer = ($this->assign)($offer, $who, $to, $by)->fresh(['positions.stage.workflow', 'vendor.workflows']);
-        }
+        $to = $car->manager_id ? Point::Keeper : Point::Ours;
+        if ($where === 'arrived') {
+            ($this->place)($offer, $to->place(), $by);
+            if ($car->state === CarState::Waiting) {
+                $car->moveTo(CarState::Repair, by: $by);
+                GarageChanged::dispatch($car);
+            }
 
-        $target = match (true) {
-            $where === 'arrived' => $workflow->stageForPlace($to === Destination::Keeper ? CarPlace::Keeper : CarPlace::WithUs),
-            $where === 'collect' || $offer->vendor->kind !== Kind::Insurer => $workflow->stageForPlace(CarPlace::Moving),
-            default => null,
-        };
-        // Только вперёд: пройденное вывозом не отматываем.
-        $at = $offer->position(Track::Service)?->stage;
-        $order = fn ($s) => [$s->block->position, $s->position];
-        if ($target && $at && $order($at) < $order($target)) {
-            $offer = ($this->place)($offer, $target, $by);
+            return $offer;
+        }
+        $t = ($this->open)($offer, $by, $to);
+        if ($t->destination !== $to) {
+            $t->update(['destination' => $to]);
+        }
+        // Везёт сам менеджер — только к себе.
+        if ($evacuator && $car->manager_id === $evacuator->id && ! $t->isExecutedBy($evacuator)) {
+            ($this->assign)($t, Executor::Manager, $evacuator, $by);
         }
 
         return $offer;

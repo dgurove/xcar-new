@@ -18,13 +18,13 @@ use Illuminate\Database\Seeder;
  */
 class VendorSeeder extends Seeder
 {
-    /** имя, отправители, разбор, маршрут продажи, вывоз с каждым предложением */
+    /** имя, отправители, разбор, маршрут продажи, вывоз с каждым предложением (`vendors.pickup_on_arrival`) */
     public const VENDORS = [
         ['Т-Страхование', ['tinsurance.ru', 'tinkoffinsurance.ru', 'tbank.ru'], Parser::Tinkoff, Preset::TBank, false],
         // Альфа — два вендора: в Питере опоздавший покупатель платит сам, в Москве хранение целиком на страховой.
         ['АльфаСтрахование', ['alfastrah.ru'], Parser::Generic, Preset::Alfa, false],
         ['АльфаСтрахование СПб', ['kolbasinamp@alfastrah.ru', 'filippovaiaiu@alfastrah.ru'], Parser::Generic, Preset::Alfa, false],
-        // Совкомбанк обязывает вывозить каждую машину — вывоз идёт параллельно продаже.
+        // Совкомбанк обязывает вывозить каждую машину — задача на вывоз встаёт вместе с предложением.
         ['Совкомбанк Страхование', ['sovcomins.ru'], Parser::Sovcombank, Preset::Sovcombank, true],
         ['Энергогарант', ['msk-garant.ru', 'energogarant.ru'], Parser::Energogarant, null, false],
         ['ИНСАЙТ', ['insightins.ru'], Parser::Insight, null, false],
@@ -63,11 +63,10 @@ class VendorSeeder extends Seeder
         foreach (self::VENDORS as [$name, $senders, $parser, $sale, $autoPickup]) {
             $vendor = Vendor::firstOrCreate(['name' => $name]);
             if (! $vendor->senders) {
-                $vendor->update(['senders' => $senders, 'parser' => $parser]);
+                $vendor->update(['senders' => $senders, 'parser' => $parser, 'pickup_on_arrival' => $autoPickup]);
             }
             if ($sale) {
                 $this->fill($vendor->workflowOrNew(Track::Sale), $sale, true, $apply);
-                $this->fill($vendor->workflowOrNew(Track::Service), Preset::Pickup, $autoPickup, $apply);
             }
             if (isset(self::STORAGE_RATES[$name]) && ! $vendor->tariffs()->exists()) {
                 foreach (self::STORAGE_RATES[$name] as $category => $price) {

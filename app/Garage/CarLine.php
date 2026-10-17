@@ -34,7 +34,7 @@ final class CarLine
         $tone = $asks ? 'text-urgent' : self::tone($car->state->tone());
         // Ждёт машину — словом вывоза: «забрать» (везёт сам — его ход), «стоит у вас», «готовим документы».
         [$pickWord, $pickTone] = $car->isWaiting() ? PickupState::of($offer, $crm ? null : $viewer) : [null, null];
-        if (! $crm && $pickTone === 'urgent' && $offer->evacuator_id === $viewer->id) {
+        if (! $crm && $pickTone === 'urgent') {
             $tone = 'text-urgent';
         }
         $word = match (true) {

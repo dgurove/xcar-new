@@ -27,7 +27,7 @@ use Illuminate\Support\Carbon;
  */
 final class EnterStage
 {
-    public function __construct(private ChangeOfferState $changeState, private SetCarPlace $setPlace, private AgreeDeal $agree) {}
+    public function __construct(private ChangeOfferState $changeState, private AgreeDeal $agree) {}
 
     /** @param  bool  $back  откат («Отменить шаг», «Вернуть на этот шаг»): журнал пути сматывается до прежнего входа сюда */
     public function __invoke(Offer $offer, Stage $to, ?User $by = null, array $payload = [], ?Outcome $exit = null, bool $back = false): Offer
@@ -94,9 +94,6 @@ final class EnterStage
 
         if ($track === Track::Sale && $to->offer_state && $offer->state !== $to->offer_state && $offer->state->allows($to->offer_state)) {
             $offer = ($this->changeState)($offer, $to->offer_state, $by, followRoute: false);
-        }
-        if ($track === Track::Service && $to->car_place) {
-            $offer = ($this->setPlace)($offer, $to->car_place, $by);
         }
 
         if (! $noInvoice && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {

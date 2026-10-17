@@ -18,14 +18,8 @@
     // «Подтверждение принято» — не кнопка: в сделку ведёт только «Принять» у подтверждения.
     // Деньги сделки на этапах оплаты; её же ветка решает, какие кнопки видны (гараж «платим мы» — гаражные).
     $deal = $offer->deal?->isActive() ? $offer->deal : null;
-    // Вывоз выбирает исходы местом назначения (к менеджеру, к нам); «Забрал» ответственного сотрудник жмёт за
-    // него — первой кнопкой, а когда вывозим сами, она и есть наша: «Забрали».
-    $service = $position->track === \App\Workflow\Track::Service;
-    $evacuator = $service ? $offer->evacuator : null;
-    $branch = $service ? $offer->pickupDestination() : $deal;
-    $keeperExits = $service ? $stage->exitsFor(Actor::Keeper, $branch) : collect();
-    $label = fn ($x) => $x->actor === Actor::Keeper && ! $evacuator ? 'Забрали' : $x->label;
-    $exits = $keeperExits->concat($stage->exitsFor(Actor::Staff, $branch)->reject(fn ($x) => $x->acceptsBid()));
+    $label = fn ($x) => $x->label;
+    $exits = $stage->exitsFor(Actor::Staff, $deal)->reject(fn ($x) => $x->acceptsBid());
     // Имена блоков как есть: кто вывозит, видно строкой над путём («Стоит у Сергей К.» имя не склоняет).
     $blockName = fn ($block) => $block->name;
     [$breaks, $moves] = $exits->partition(fn ($x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd())->all();
@@ -151,7 +145,7 @@
                         <x-route.clock :position="$position" side="staff" class="step-hint" :letters="'/offers/'.$offer->number.'/letters'"/>
                     @elseif (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
-                        <p class="step-hint {{ $tone }}">@if ($keeperExits->isNotEmpty() && $evacuator && ! $overdue)Ждём {{ $evacuator->shortName() }}@elseif ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
+                        <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
                     @endif
                     @if ($position->fields())
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>

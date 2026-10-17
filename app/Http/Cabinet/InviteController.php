@@ -68,7 +68,7 @@ class InviteController
     public static function home(): string
     {
         return match (Surface::current()) {
-            Surface::Crm => '/settings/users?preset=invites', Surface::Park => '/users?preset=invites', default => self::site()
+            Surface::Crm => '/settings/users?preset=invites', Surface::Park => '/users?preset=invites', Surface::Logistics => '/contractors?preset=invites', default => self::site()
         };
     }
 
@@ -76,7 +76,7 @@ class InviteController
     public static function base(): string
     {
         return match (Surface::current()) {
-            Surface::Crm => '/settings/users/invites', Surface::Park => '/users/invites', default => self::site()
+            Surface::Crm => '/settings/users/invites', Surface::Park => '/users/invites', Surface::Logistics => '/contractors/invites', default => self::site()
         };
     }
 

@@ -360,7 +360,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/tariffs', fn () => redirect()->away(Surface::Park->url('/tariffs'), 301));
 
             Route::post('/workflows/{workflow}/enable', [WorkflowController::class, 'activate']);
-            Route::post('/workflows/{workflow}/launch', [WorkflowController::class, 'autoStart']);
             Route::post('/workflows/{workflow}/fill', [WorkflowController::class, 'fill']);
             Route::post('/workflows/{workflow}/order', [WorkflowController::class, 'reorder']);
             Route::post('/workflows/{workflow}/blocks', [WorkflowController::class, 'storeBlock']);

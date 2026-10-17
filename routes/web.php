@@ -191,7 +191,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
         // Действия по сделке.
         Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
-        Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
         Route::put('/deals/{deal}/contract', [DealContractController::class, 'update']);
         Route::get('/deals/{deal}/dkp', [DealContractController::class, 'show']);
         Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
@@ -233,7 +232,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/', [GarageCarController::class, 'index']);
         Route::get('/cars/{offer}', [GarageCarController::class, 'show']);
         Route::post('/cars/{offer}/costs', [GarageCarController::class, 'storeCost']);
-        Route::post('/cars/{offer}/picked', [GarageCarController::class, 'picked']);
         Route::delete('/cars/{offer}', [GarageCarController::class, 'destroy']);
         Route::put('/costs/{cost}', [GarageCarController::class, 'updateCost']);
         Route::delete('/costs/{cost}', [GarageCarController::class, 'destroyCost']);
@@ -252,7 +250,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::delete('/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);
         // Вывоз, порученный менеджеру (04.10.2026): страница ТС и «Забрал».
         Route::get('/pickups/{offer}', [GaragePickupController::class, 'show']);
-        Route::post('/pickups/{offer}/picked', [GaragePickupController::class, 'picked']);
     });
 
     Route::get('/purchases', [PurchaseController::class, 'index'])->middleware('ability:canSeePurchases');

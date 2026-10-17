@@ -14,8 +14,8 @@ use Illuminate\Events\Dispatcher;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Перевозка поменялась — у тех, кто её видит (логисты, админы, исполнитель, прежний исполнитель), список перевозок
- * перечитывается морфом и значки пересчитываются: без обновления руками и без опроса.
+ * Вывоз поменялся — у тех, кто его видит (админы, логист задачи, исполнитель и прежний, модераторы — документы), список
+ * и открытая задача перечитываются морфом и значки пересчитываются: без обновления руками и без опроса.
  */
 final class RefreshLogistics
 {
@@ -33,18 +33,26 @@ final class RefreshLogistics
     public function refresh(TransportRequested|TransportAssigned|TransportMoved $e): void
     {
         $topics = self::topics($e->transport, $e instanceof TransportAssigned ? $e->previous?->id : null);
+        $offer = $e->transport->saleOffer();
         // События идут изнутри транзакции действия — перечитывать страницу раньше записи бессмысленно.
-        DB::afterCommit(function () use ($topics) {
-            $this->publish->refresh($topics, ['/transports']);
+        DB::afterCommit(function () use ($topics, $offer) {
+            $this->publish->refresh($topics, ['/transports', '/documents']);
             $this->publish->badges($topics);
+            // Дорожка «Вывоз» в CRM и получение у менеджера сделки — та же задача.
+            if ($offer) {
+                $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$offer->number}"]);
+                if (($deal = $offer->deal) && $deal->buyer_id) {
+                    $this->publish->refreshSoon(Topics::user($deal->buyer_id), ['/deals', "/deals/{$deal->id}", '/garage', "/garage/cars/{$offer->number}"]);
+                }
+            }
         });
     }
 
-    /** Кто видит перевозку: логисты, админы, исполнитель (и прежний — его список тоже меняется). */
+    /** Кто видит вывоз: админы, модераторы, логист задачи, исполнитель (и прежний — его список тоже меняется). */
     public static function topics(Transport $transport, ?int $previous = null): array
     {
-        return User::withRole(Role::Logist, Role::Admin)->pluck('id')
-            ->push($transport->executor_id, $previous)
+        return User::withRole(Role::Admin, Role::Moderator)->pluck('id')
+            ->push($transport->executor_id, $transport->coordinator_id, $transport->executorUser?->logist_id, $previous)
             ->filter()->unique()->map(fn (int $id) => Topics::user($id))->values()->all();
     }
 }

@@ -1,7 +1,6 @@
 {{-- Машины гаража в пяти видах, как остальные списки сайта (10.10.2026): строки, ленты и плитки (`x-garage.card`), таблица и
-     подробная (`x-garage.table-row`). Группы во всех видах: «Вывоз» — ТС, что менеджеру поручили забрать или что стоят у
-     него (не его гараж: продаёт не обязательно он; машина, которая уже в гараже, второй раз здесь не стоит), «В гараже» —
-     сначала то, где ход менеджера, дальше по пути, внутри дольше стоящие первыми; «Рассчитались» — ниже. Строка — кадр,
+     подробная (`x-garage.table-row`). Группы во всех видах: «В гараже» — сначала то, где ход менеджера, дальше по пути,
+     внутри дольше стоящие первыми; «Рассчитались» — ниже. Вывозы, порученные менеджеру, — в логистике (17.10.2026). Строка — кадр,
      название, этап цветным словом с днями (ждут ответа — «ваш ход» и что сделать) и главное число справа (`CarLine`).
      До продажи главное число — закупочная (13.10.2026, владелец: её видят все). Сотрудник видит всех и чьи. Нажатие —
      страница машины. --}}
@@ -20,25 +19,14 @@
         'price' => [(float) $c->priceFor($staff), $c->id],
         default => [$c->deal?->openRequirement ? 0 : 1, $c->state->order(), $c->stage_at?->timestamp ?? 0],
     }, SORT_REGULAR, $sort->desc)->values();
-    $count = $open->count() + $pickups->count();
+    $count = $open->count();
     // Гараж по умолчанию — строками (11.10.2026, владелец), не плитками, как остальные списки сайта.
     $view = ListView::fromRequest(request(), shelves: true) ?? ListView::LIST;
-    // Строка вывоза — те же поля, что у машины: слово вывоза цветом и дни.
-    $pickupRow = function ($offer) use ($user) {
-        [$word, $tone] = \App\Offers\PickupState::of($offer, $user);
-        $d = \App\Offers\PickupState::days($offer);
-
-        return ['offer' => $offer, 'href' => '/garage/pickups/'.$offer->number, 'word' => $word,
-            'tone' => match ($tone) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' },
-            'when' => $d ? CarLine::days($d) : null];
-    };
-    $carRow = fn ($car) => ['offer' => $car->offer, 'href' => (in_array($car->offer_id, $picking, true) ? '/garage/pickups/' : '/garage/cars/').$car->offer->number, 'word' => $lines[$car->id]->word,
+    $carRow = fn ($car) => ['offer' => $car->offer, 'href' => '/garage/cars/'.$car->offer->number, 'word' => $lines[$car->id]->word,
         'tone' => $lines[$car->id]->tone, 'when' => $lines[$car->id]->when, 'value' => $lines[$car->id]->value,
         'caption' => $lines[$car->id]->caption, 'who' => $lines[$car->id]->who];
-    // Над «Вывозом» своя группа машин гаража тоже подписана — иначе она читалась бы продолжением вывоза.
     $groups = array_filter([
-        'Вывоз' => $pickups->map($pickupRow),
-        ($pickups->isNotEmpty() ? 'В гараже' : '') => $open->map(fn ($c) => $carRow($c) + ['car' => $c]),
+        '' => $open->map(fn ($c) => $carRow($c) + ['car' => $c]),
         'Рассчитались' => $closed->map(fn ($c) => $carRow($c) + ['car' => $c]),
     ], fn ($g) => $g->isNotEmpty());
 @endphp

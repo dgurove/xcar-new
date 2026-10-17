@@ -52,7 +52,7 @@
         </div>
     @endif
     @foreach ($car->path($states) as $p)
-        <div class="step step--{{ $p['status'] === 'current' && $p['state'] === CarState::Waiting && $where === 'забрать' ? 'ask' : $p['status'] }}">
+        <div class="step step--{{ $p['status'] === 'current' && $p['state'] === CarState::Waiting && (str_starts_with($where, 'забрать') || $where === 'позвонить владельцу') ? 'ask' : $p['status'] }}">
             <span class="step-dot">@if ($p['status'] === 'done')<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
                 <div class="step-head">

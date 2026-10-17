@@ -7,7 +7,6 @@ use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\MergeCatalogCommand;
-use App\Garage\Console\GarageReformFixCommand;
 use App\Http\Middleware\ActWindowBack;
 use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\DetailBack;
@@ -28,6 +27,7 @@ use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
 use App\Http\Middleware\TouchSeen;
 use App\Live\SubscriberCookie;
+use App\Logistics\Console\TickCommand as LogisticsTick;
 use App\Mail\Console\ArchiveStaleCandidates;
 use App\Mail\Console\BackfillMail;
 use App\Mail\Console\PriceMisses;
@@ -108,6 +108,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ReleaseByLettersCommand::class,
         TickBilling::class,
         CloseMonthCommand::class,
+        LogisticsTick::class,
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,
@@ -133,7 +134,6 @@ return Application::configure(basePath: dirname(__DIR__))
         PerpetualSecret::class,
         SeedDemo::class,
         MergeCatalogCommand::class,
-        GarageReformFixCommand::class,
         DealAgreementFixCommand::class,
         FillFromDocsCommand::class,
         FindValuesCommand::class,

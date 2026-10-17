@@ -1,6 +1,6 @@
 {{-- Дорожки редактора (06.10.2026, владелец: «как три параллельных маршрута»): одно событие — одно место.
      «Продажа» — вся коммерческая жизнь: маршрут со страховой, у гаражной машины дальше её продажа и расчёт.
-     «Вывоз» — только где машина физически (у сделки — и кто забирает у владельца, с контактом).
+     «Вывоз» — задача логистики: где машина физически, кто вывозит (у сделки — и кто забирает у владельца, с контактом).
      Третья — «Гараж» (подготовка, расходы), «Сделка» (кто взял, резерв) или «Подтверждения»; у гаража и сделки она
      одинаково кончается деньгами и ДКП (`admin.offers.deal-cards`; заметка и «Показ» — справа под «Ценами», 12.10.2026, 07.10.2026: «гараж — это тоже как сделка»).
      На ПК в ряд в основной колонке (колонок столько, сколько дорожек: две от 34rem, три от 52rem ширины колонки —
@@ -18,9 +18,10 @@
         $offer->isGallery() || $offer->interests->isNotEmpty() => 'interest',
         default => null,
     };
-    // Вывоз: идёт, или его можно назначить (у гаражной — всегда).
-    $service = $offer->vendor?->workflow(Track::Service);
-    $pickupLane = $offer->position(Track::Service) || $g || ($service?->is_active && ! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true));
+    // Вывоз — задача логистики (17.10.2026): идёт или был, или его заводят «Вывезти» — у гаражной, у сделки и у вендора,
+    // чьи машины вывозим всегда (Совкомбанк).
+    $pickupLane = $offer->pickup() || (! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)
+        && ($g || $deal || $offer->vendor?->pickup_on_arrival));
     $saleLane = $salePos || $g;
     $count = (int) $saleLane + (int) $pickupLane + (int) ($third !== null);
     // Хвост пути продажи у гаражной машины: в продаже, продана, расчёт — с кнопками на текущем шаге.
@@ -49,7 +50,7 @@
 
         @if ($pickupLane)
             <div class="flex min-w-0 flex-col gap-4">
-                @include('admin.offers.route', ['only' => Track::Service, 'cardClass' => '', 'deal' => $deal?->isActive() ? $deal : null])
+                <x-logistics.lane :offer="$offer" :deal="$deal?->isActive() ? $deal : null"/>
             </div>
         @endif
 

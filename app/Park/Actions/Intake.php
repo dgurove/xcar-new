@@ -43,6 +43,8 @@ final class Intake
                 'state' => VehicleState::Stored, 'yard_id' => $yard->id, 'spot' => $spot, 'accepted_at' => $vehicle->accepted_at ?? $at,
                 'damage_zones' => $zones, 'damage_note' => ($inspection['damage_note'] ?? null) ?: null,
                 'mileage' => $inspection['mileage'] ?? $vehicle->mileage, 'fuel' => $inspection['fuel'] ?? $vehicle->fuel,
+                // Ключи — факт машины (17.10.2026): один или ни одного — красный «!» у неё везде.
+                ...(isset($inspection['keys_count']) && $inspection['keys_count'] !== '' ? ['keys_count' => (int) $inspection['keys_count'], 'has_keys' => (int) $inspection['keys_count'] > 0] : []),
             ]);
             Inspection::create(['vehicle_id' => $vehicle->id, 'request_id' => $request?->id, 'kind' => InspectionKind::Intake, 'at' => $at, 'user_id' => $by->id, 'damage_zones' => $zones]
                 + self::fields($inspection));

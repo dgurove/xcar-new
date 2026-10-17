@@ -64,7 +64,7 @@
                             {{-- Везут к нему в гараж: сам или мы (05.10.2026); выбрано, кто уже вывозит. Вывоз у гаражной
                                  есть всегда (06.10.2026), даже у вендора без маршрута — заведётся сам. --}}
                             @if (! $offer->pickedUp() && $offer->parkVehicle?->state !== \App\Park\VehicleState::Stored)
-                                @php $byBuyer = ! $offer->evacuator_id || $offer->evacuator_id === $bid->user_id; @endphp
+                                @php $byBuyer = ! ($t = \App\Logistics\Transport::openFor($offer))?->executor_id || $t->executor_id === $bid->user_id; @endphp
                                 <div class="flex flex-col gap-1.5">
                                     <span class="field-label">Везёт в гараж</span>
                                     <div class="flex flex-wrap gap-2">
@@ -81,13 +81,11 @@
                             :confirm="$loss ? 'Принять за '.Money::rub($bid->amount).' при закупочной '.Money::rub($floor).'? '.($under > 0 ? 'Сделка в минус '.Money::rub($under) : 'Наценки нет') : null">
                             <input type="hidden" name="bid" value="{{ $bid->id }}">
                             @if ($loss)<input type="hidden" name="loss" value="1">@endif
-                            {{-- ТС ещё у владельца — кто её забирает (04.10.2026): менеджер сделки по умолчанию; поручено
-                                 другому — по умолчанию «Мы», то есть как назначено. --}}
-                            {{-- Совкомбанк: машину забирает сам менеджер, его шаг «Заберите автомобиль» (10.10.2026) — выбора нет. --}}
-                            @if ($offer->pickupChoosable() && $offer->vendor?->isCommission())
-                                <input type="hidden" name="pickup" value="manager">
-                            @elseif ($offer->pickupChoosable())
-                                @php $byBuyer = ! $offer->evacuator_id || $offer->evacuator_id === $bid->user_id; @endphp
+                            {{-- ТС ещё у владельца — кто её забирает (04.10.2026; с 17.10.2026 — исполнитель вывоза в логистике):
+                                 менеджер сделки по умолчанию; вывоз уже поручен другому (логист, наши) — по умолчанию
+                                 «Логистика», то есть как назначено. --}}
+                            @if ($offer->pickupChoosable())
+                                @php $byBuyer = ! ($t = \App\Logistics\Transport::openFor($offer))?->executor_id || $t->executor_id === $bid->user_id; @endphp
                                 <div class="flex flex-col gap-1.5">
                                     <span class="field-label">Забирает автомобиль</span>
                                     <div class="flex flex-wrap gap-2">

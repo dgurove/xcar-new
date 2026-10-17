@@ -5,23 +5,23 @@ namespace App\Support;
 use App\Billing\Closing;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\ManagerLedger;
 use App\Chats\Chat;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
 use App\Logistics\Transport;
-use App\Logistics\TransportState;
 use App\Mail\Boxes;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Bid;
 use App\Offers\BidState;
+use App\Offers\CatalogQuery;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Interest;
 use App\Offers\InterestState;
-use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\City;
@@ -68,9 +68,19 @@ final class Nav
             ]));
         }
 
-        // Логистика — один раздел: перевозки (что видно — решает `Transport::visibleTo`).
+        // Логистика (17.10.2026): вывозы (что видно — `Transport::visibleTo`), документы СДЭКом — модератору и админу,
+        // исполнители — логисту и админу. Модератору без поручений — только «Документы».
         if ($surface === Surface::Logistics) {
-            return $user ? [self::item('Перевозки', '/transports')] : [];
+            if (! $user) {
+                return [];
+            }
+            $tasks = $user->isAdmin() || $user->isLogist() || $user->isDriver() || $user->isContractor() || $user->hasTransports();
+
+            return array_values(array_filter([
+                $tasks ? self::item('Вывоз', '/transports') : null,
+                $user->sendsLogisticsDocs() ? self::item('Документы', '/documents') : null,
+                $user->isAdmin() || $user->isLogist() ? self::item('Исполнители', '/contractors') : null,
+            ]));
         }
 
         // Модератор: черновики, почта по галке и профиль — остальное в CRM админу.
@@ -463,7 +473,11 @@ final class Nav
                 ], 'fresh' => []];
             }
             if ($surface === Surface::Logistics) {
-                return ['totals' => ['/transports' => Transport::visibleTo($user)->open()->count()], 'fresh' => []];
+                return ['totals' => [
+                    '/transports' => Transport::visibleTo($user)->open()->count(),
+                    '/documents' => $user->sendsLogisticsDocs() ? Transport::awaitingDocs()->count() : 0,
+                    '/contractors' => $user->isAdmin() || $user->isLogist() ? User::contractorsFor($user)->count() : 0,
+                ], 'fresh' => []];
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
                 // Таб — как список без вкладки: «Без закупочной цены» его группы.
@@ -498,7 +512,7 @@ final class Nav
                 '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
                 // Как в заголовке «Гаража»: машины в работе, рассчитанные не считаются.
                 // И вывозы, порученные менеджеру (группа «Вывоз»): ТС у него, хоть и не его гаража.
-                '/garage' => $user->canGarage() ? GarageCar::of($user)->where('state', '!=', CarState::Settled)->count() + Offer::pickupsOf($user)->count() : null,
+                '/garage' => $user->canGarage() ? GarageCar::of($user)->where('state', '!=', CarState::Settled)->count() : null,
                 '/account/interests' => $user->isBuyer() || $user->isSuperBuyer() ? Interest::where('user_id', $user->id)->count() : null,
                 // Как список «Избранного»: только то, что человеку сейчас видно.
                 '/account/favorites' => Offer::visibleTo($user)->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id))->count(),
@@ -537,10 +551,13 @@ final class Nav
         if ($surface === Surface::Park || $surface === Surface::Crm) {
             return array_filter($badges + self::staffCounts($surface));
         }
-        // Логисту бейдж — межрегиональные без исполнителя, водителю и партнёру — назначенные, ещё не забранные.
+        // Бейдж — что ждёт этого человека: админу — без исполнителя, логисту — у него, исполнителю — его ход; Лизе — отправить
+        // документы.
         if ($surface === Surface::Logistics) {
-            return array_filter($badges + ['/transports' => Transport::visibleTo($user)
-                ->where('state', $user->seesAllTransports() ? TransportState::New : TransportState::Assigned)->count()]);
+            return array_filter($badges + [
+                '/transports' => Transport::visibleTo($user)->turnOf($user)->count(),
+                '/documents' => $user->sendsLogisticsDocs() ? Transport::awaitingDocs()->count() : 0,
+            ]);
         }
 
         if ($user->isManager()) {
@@ -558,9 +575,8 @@ final class Nav
             $paid = self::paidPayAsks($user);
             $badges['/deals/asks'] = max(0, (int) $asks->deals - $paid['deals']);
             $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];
-            // И «забрать» по вывозу: ход ответственного — порученные ему и своя гаражная, которую везёт сам.
-            $badges['/garage'] = max(0, (int) $asks->garage - $paid['garage']) + Offer::pickupsOf($user)->awaitingPickup()->count()
-                + Offer::where('evacuator_id', $user->id)->whereHas('garageCar', fn ($g) => $g->where('manager_id', $user->id))->awaitingPickup()->count();
+            // Вывоз, порученный ему, горит в логистике (17.10.2026), не здесь.
+            $badges['/garage'] = max(0, (int) $asks->garage - $paid['garage']);
         }
         if ($user->hasDeals()) {
             // «Оплаты» в кабинете горят тем, что ждёт его: оплатить, просрочено, указать покупателя (11.10.2026: в «Оплатах»
@@ -568,7 +584,7 @@ final class Nav
             // Число — строки самих «Оплат», где нужен он (`DealMoney::needsAction`), иначе бейдж и список расходятся; расчёт
             // тяжёлый — полминуты в кэше, как итоги таб-бара.
             $badges['/account/money'] = Cache::remember("nav.money:{$user->id}", 30,
-                fn () => (new \App\Billing\ManagerLedger($user))->rows()->filter(fn ($r) => $r->money->needsAction())->count());
+                fn () => (new ManagerLedger($user))->rows()->filter(fn ($r) => $r->money->needsAction())->count());
         }
         if ($user->isSuperBuyer()) {
             // Что ждут от него по сделкам — на табе «Сделки», как у менеджера.

@@ -182,10 +182,9 @@
                 @endif
             @endif
             @endif
-            @if ($handover?->servicePick && $showHandover)
-                <form method="post" action="/deals/{{ $deal->id }}/picked" class="mt-5" data-turbo-confirm="Забрали автомобиль?" data-turbo-confirm-label="Забрал">
-                    @csrf<x-ui.button block>Автомобиль забрал</x-ui.button>
-                </form>
+            {{-- Вывоз ведёт он сам в логистике: «Забрал» там, шаг продажи пройдёт сам. --}}
+            @if ($handover?->transportUrl)
+                <x-ui.button :href="$handover->transportUrl" block class="mt-5">Вывоз в логистике</x-ui.button>
             @endif
         </div>
     @elseif ($deal->state === DealState::Active)

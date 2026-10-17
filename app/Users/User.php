@@ -4,6 +4,7 @@ namespace App\Users;
 
 use App\Billing\Party;
 use App\Chats\Chat;
+use App\Logistics\Transport;
 use App\Media\MediaUrl;
 use App\Notifications\PasswordResetLetter;
 use App\Offers\Actions\SyncViewers;
@@ -36,7 +37,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'partner_regions', 'buyer_sees', 'buyer_show_vin'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'buyer_sees', 'buyer_show_vin', 'has_seal', 'logist_id', 'logistics_city', 'cdek_point'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -73,7 +74,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'roles' => AsEnumCollection::of(Role::class),
             'access' => 'array',
             'park_readonly' => 'bool',
-            'partner_regions' => 'array',
+            'has_seal' => 'bool',
             'notification_settings' => 'array',
             'seen_at' => 'datetime',
             'list_prefs' => 'array',
@@ -455,40 +456,79 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     // -------------------------------------------------------------- логистика
 
-    /** Логист (Татьяна): все перевозки, межрегиональные назначает она — кто везёт, стоимость, сроки. */
+    /** Логист (Татьяна): вывозы в регионах — назначает своих исполнителей, вводит расстояние и цену. */
     public function isLogist(): bool
     {
         return $this->hasRole(Role::Logist);
     }
 
-    /** Водитель нашего эвакуатора: только свои рейсы. */
+    /** Наш человек на вывозе (ООО «ПРАЙМ»): только свои задачи. */
     public function isDriver(): bool
     {
         return $this->hasRole(Role::Driver);
     }
 
-    /** Партнёр по логистике — менеджер, у которого отмечены регионы: везёт там сам за стоимость эвакуации. */
-    public function isPartner(): bool
+    /** Исполнитель логиста в регионах: только свои задачи, заводит его логист. */
+    public function isContractor(): bool
     {
-        return $this->isManager() && ! empty($this->partner_regions);
+        return $this->hasRole(Role::Contractor);
     }
 
-    /** Регион ли партнёра. */
-    public function partnersIn(int $regionId): bool
+    /** Чей исполнитель (логист, что его позвал). */
+    public function logist(): BelongsTo
     {
-        return $this->isPartner() && in_array($regionId, array_map('intval', $this->partner_regions), true);
+        return $this->belongsTo(self::class, 'logist_id');
     }
 
-    /** logistics.xcar.ru: админ, логист, водитель, партнёр. */
+    /** Исполнители логиста. */
+    public function contractors(): HasMany
+    {
+        return $this->hasMany(self::class, 'logist_id');
+    }
+
+    /** Исполнители, которых видит человек: логисту — свои, админу — все исполнители логистов. */
+    public static function contractorsFor(self $user): Builder
+    {
+        return self::withRole(Role::Contractor)->when(! $user->isAdmin(), fn ($q) => $q->where('logist_id', $user->id));
+    }
+
+    /** Менеджер, которому поручали вывоз: его задачи — в логистике (17.10.2026), а не на xcar.ru. Раз на запрос. */
+    public function hasTransports(): bool
+    {
+        return $this->isManager() && once(fn () => Transport::where('executor_id', $this->id)->exists());
+    }
+
+    /**
+     * logistics.xcar.ru: админ — всё; логист — свои вывозы и исполнители; наши люди, исполнители логиста и менеджеры с
+     * поручениями — свои задачи; модератор — «Документы» (СДЭК, 17.10.2026: оформляет Лиза).
+     */
     public function canLogistics(): bool
     {
-        return $this->isAdmin() || $this->isLogist() || $this->isDriver() || $this->isPartner();
+        return $this->isAdmin() || $this->isLogist() || $this->isDriver() || $this->isContractor() || $this->isModerator() || $this->hasTransports();
     }
 
-    /** Все перевозки и назначение — админу и логисту; водитель и партнёр видят свои. */
+    /** Все задачи и назначение — админу. */
     public function seesAllTransports(): bool
     {
+        return $this->isAdmin();
+    }
+
+    /** Исполнители логиста — сам логист и админ. */
+    public function managesContractors(): bool
+    {
         return $this->isAdmin() || $this->isLogist();
+    }
+
+    /** Отправка документов СДЭКом — модератору (Лизе) и админу. */
+    public function sendsLogisticsDocs(): bool
+    {
+        return $this->isAdmin() || $this->isModerator();
+    }
+
+    /** Кто едет без СДЭКа: свой человек или менеджер с печатью (отмечает админ). Исполнители логиста — всегда СДЭКом. */
+    public function seals(): bool
+    {
+        return $this->has_seal && ! $this->isContractor();
     }
 
     /** Кто работает на парковке: администраторы парковки и управляющие — список «Кто ведёт», уведомления, закрытие месяца. */
@@ -553,7 +593,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      */
     public function canLinkTelegram(): bool
     {
-        return ($this->isManager() || $this->isBuyer() || $this->isSuperBuyer() || $this->isAdmin() || $this->isModerator() || $this->isParking() || $this->isParkAdmin() || $this->isLogist() || $this->isDriver()) && $this->telegram_chat_id === null && ! $this->is_demo
+        return ($this->isManager() || $this->isBuyer() || $this->isSuperBuyer() || $this->isAdmin() || $this->isModerator() || $this->isParking() || $this->isParkAdmin() || $this->isLogist() || $this->isDriver() || $this->isContractor()) && $this->telegram_chat_id === null && ! $this->is_demo
             && app(Bot::class)->username() !== null;
     }
 

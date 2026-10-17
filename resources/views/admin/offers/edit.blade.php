@@ -38,7 +38,7 @@
     $foldMoney = $published && ($offer->floor_price || $offer->asking_price) && ! $errors->hasAny($moneyKeys) && ! array_intersect($hints, $moneyKeys);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
-    <x-slot:badge><x-ui.links :offer="$offer"/></x-slot:badge>
+    <x-slot:badge><x-car.keys :count="$offer->keys_count" label/><x-ui.links :offer="$offer"/></x-slot:badge>
     {{-- Под заголовком — только состояние и метки, пилюлями одного роста (номер, убыток и документы — в полях и блоках
          ниже). Метки: выбранные пилюлями, «+» и нажатие на метку — шторка со списком и своей меткой; галки ходят в форму
          оффера через form=, пилюли перерисовывает tag-chips сразу. Срок приёма, чаты и импорт — только когда они есть. --}}

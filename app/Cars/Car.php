@@ -38,7 +38,7 @@ class Car extends Model implements HasMedia
     /** Всё, что про машину; дорожки читают и пишут это через `OnCar`. */
     public const FIELDS = ['claim_ref', 'vin', 'plate', 'brand_id', 'model_id', 'year', 'color', 'mileage', 'body', 'transmission',
         'drive', 'fuel', 'engine_volume', 'engine_power', 'category', 'oversize', 'damage_cause', 'damage_zones', 'damage_note',
-        'incident_date', 'is_runnable', 'has_keys', 'papers', 'pts', 'sts', 'policy_no', 'value', 'insured_name', 'insured_phone',
+        'incident_date', 'is_runnable', 'has_keys', 'keys_count', 'papers', 'pts', 'sts', 'policy_no', 'value', 'insured_name', 'insured_phone',
         'flags', 'docs_required', 'holder'];
 
     /** Производные колонки: пишет сама машина. */
@@ -52,7 +52,7 @@ class Car extends Model implements HasMedia
     protected function casts(): array
     {
         return [
-            'year' => 'int', 'mileage' => 'int', 'engine_volume' => 'int', 'engine_power' => 'int', 'value' => 'int',
+            'year' => 'int', 'mileage' => 'int', 'keys_count' => 'int', 'engine_volume' => 'int', 'engine_power' => 'int', 'value' => 'int',
             'body' => Body::class, 'transmission' => Transmission::class, 'drive' => Drive::class, 'fuel' => Fuel::class,
             'damage_cause' => DamageCause::class, 'papers' => Papers::class, 'category' => Category::class,
             'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',

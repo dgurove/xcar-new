@@ -2,7 +2,6 @@
 
 namespace App\Garage;
 
-use App\Offers\PickupState;
 use App\Support\Surface;
 use App\Users\User;
 use App\Workflow\Track;
@@ -29,11 +28,12 @@ final class GarageView
         $canAdd = ! $frozen && ($staff || $car->state->isWorking());
         $post = fn (string $label) => ['post', "/garage/cars/{$n}/stage", $label];
         $cost = $canAdd ? ['emit', 'cost-new', $car->state === CarState::Repair && ! $staff ? 'Записать расход' : 'Расход'] : null;
-        // Менеджер везёт сам и машина ещё не у него — «Забрал» здесь же (его вывоз по своей машине, не отдельный экран).
-        $picks = ! $staff && $car->isWaiting() && $offer->evacuator_id === $user->id && PickupState::awaits($offer);
+        // Менеджер везёт сам и машина ещё не у него — его вывоз в логистике (17.10.2026): «Забрал» там.
+        $pickup = ! $staff && $car->isWaiting() ? $offer->pickup() : null;
+        $picks = $pickup?->isOpen() && $pickup->isExecutedBy($user);
 
         $prep = array_values(array_filter(match (true) {
-            $picks => [['post', "/garage/cars/{$n}/picked", 'Забрал']],
+            $picks => [['link', Surface::Logistics->url('/transports/'.$pickup->id), 'Вывоз в логистике']],
             $car->state === CarState::Repair => $staff ? [$post('Готова')] : [$cost, $post('Готова')],
             default => [],
         }));

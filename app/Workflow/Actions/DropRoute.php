@@ -32,10 +32,6 @@ final class DropRoute
             }
             $position->delete();
             $offer->unsetRelation('positions');
-            if ($track === Track::Service) {
-                // Вывоза нет — нет ни ответственного, ни места назначения.
-                $offer->update(['car_place' => null, 'evacuator_id' => null, 'evacuation_to' => null]);
-            }
             $offer->log(OfferEventType::RouteDropped, $by, ['track' => $track->value]);
 
             return $offer;

@@ -12,7 +12,6 @@ enum Actor: string
     case Staff = 'staff';
     case Manager = 'manager';
     case Timer = 'timer';
-    case Keeper = 'keeper';     // ответственный за вывоз: назначенный менеджер, а без него — мы
 
     public function label(): string
     {
@@ -20,7 +19,6 @@ enum Actor: string
             self::Staff => 'Мы',
             self::Manager => 'Менеджер',
             self::Timer => 'Время',
-            self::Keeper => 'Ответственный за вывоз',
         };
     }
 }

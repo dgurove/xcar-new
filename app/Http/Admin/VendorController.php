@@ -283,6 +283,7 @@ class VendorController
             'offers_include_vat' => ['boolean'],
             'to_gallery' => ['boolean'],
             'letters_to_telegram' => ['boolean'],
+            'pickup_on_arrival' => ['boolean'],
             'claim_ref_optional' => ['boolean'],
             'audience_rules' => ['nullable', 'json'],
             // Ящик продажи — только из ящиков CRM: парковочный отсюда не выбрать.
@@ -304,6 +305,7 @@ class VendorController
             'offers_include_vat' => $request->boolean('offers_include_vat'),
             'to_gallery' => $request->boolean('to_gallery'),
             'letters_to_telegram' => $request->boolean('letters_to_telegram'),
+            'pickup_on_arrival' => $request->boolean('pickup_on_arrival'),
             'claim_ref_optional' => $request->boolean('claim_ref_optional'),
         ]));
 

@@ -27,7 +27,7 @@ final class MergeOffers
 {
     /** Поля продажи, которые второе заполняет у оставшегося, если там пусто (поля машины сливает `JoinCars`). */
     private const FILL = ['description', 'settlement_id', 'inspection_address', 'floor_price', 'owner_price', 'publish_price', 'asking_price',
-        'min_bid_price', 'vendor_id', 'insurer_deadline_at', 'car_place', 'answer_by', 'contact_name', 'contact_email', 'evacuator_id', 'evacuation_to'];
+        'min_bid_price', 'vendor_id', 'insurer_deadline_at', 'car_place', 'answer_by', 'contact_name', 'contact_email'];
 
     public function __construct(private JoinCars $join) {}
 

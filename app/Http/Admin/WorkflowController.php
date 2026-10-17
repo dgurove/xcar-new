@@ -38,13 +38,6 @@ class WorkflowController
         return redirect($this->back($workflow))->with('toast', $workflow->is_active ? 'Маршрут включён' : 'Маршрут выключен');
     }
 
-    public function autoStart(Request $request, Workflow $workflow)
-    {
-        $workflow->update(['auto_start' => $request->boolean('auto_start')]);
-
-        return redirect($this->back($workflow))->with('toast', $workflow->auto_start ? 'Для каждого автомобиля' : 'По кнопке на карточке');
-    }
-
     public function fill(Request $request, Workflow $workflow, ApplyPreset $apply)
     {
         $preset = Preset::from($request->validate(['preset' => ['required', Rule::enum(Preset::class)]])['preset']);

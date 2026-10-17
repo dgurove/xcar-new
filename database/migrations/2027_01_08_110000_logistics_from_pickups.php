@@ -17,7 +17,7 @@ return new class extends Migration
     public function up(): void
     {
         Offer::whereNotNull('evacuation_to')->whereNull('evacuator_id')
-            ->whereHas('positions', fn ($p) => $p->where('track', Track::Service))
+            ->whereHas('positions', fn ($p) => $p->where('track', 'service'))
             ->whereNotIn('state', [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived])
             ->with(['settlement', 'positions.stage.exits', 'positions.stage.block'])->get()
             ->reject(fn (Offer $o) => $o->pickedUp() || Transport::openFor($o))

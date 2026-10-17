@@ -6,7 +6,7 @@ use App\Logistics\Transport;
 use App\Users\User;
 use Illuminate\Foundation\Events\Dispatchable;
 
-/** Перевозке назначили исполнителя (водителя или партнёра): ему — уведомление; прежнему поручение снято молча. */
+/** Задаче назначили исполнителя или логиста: ему — уведомление; прежнему поручение снято молча. */
 final class TransportAssigned
 {
     use Dispatchable;

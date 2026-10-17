@@ -4,15 +4,17 @@ namespace App\Http\Admin;
 
 use App\Garage\Actions\EnsurePickup;
 use App\Garage\GaragePayer;
+use App\Logistics\Actions\AssignExecutor;
+use App\Logistics\Actions\OpenPickup;
+use App\Logistics\Executor;
+use App\Logistics\Transport;
 use App\Offers\Actions\AcceptBid;
-use App\Offers\Actions\AssignPickup;
 use App\Offers\Actions\DeclineBid;
 use App\Offers\Actions\PlaceBidFor;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\CommissionMode;
 use App\Offers\DealScheme;
-use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Support\Money;
 use App\Users\User;
@@ -64,28 +66,25 @@ class BidController
         if ($scheme->paysSelection() && ! isset($data['owner_price']) && ! $bid->offer->owner_price && ! $bid->offer->floor_price) {
             return back()->withErrors(['owner_price' => $scheme === DealScheme::OwnerDkp ? 'Сколько покупатель отдаёт страхователю по ДКП' : 'Сколько покупатель отдаёт страховой'])->withInput();
         }
-        // Совкомбанк: забирает всегда менеджер сделки — шаг «Заберите автомобиль» (10.10.2026).
-        if ($bid->offer->vendor?->isCommission()) {
-            $data['pickup'] = 'manager';
-        }
         DB::transaction(function () use ($bid, $data, $request, $accept, $scheme) {
             $offer = $bid->offer->loadMissing('vendor.workflows', 'parkVehicle');
             $choosable = isset($data['pickup']) && $offer->pickupChoosable();
-            // Отдаём другому, а забирать должен был прежний: отмена сделки поручение снимет, «Мы» — вывозим к нам.
-            $wasPicker = $offer->deal && $offer->evacuator_id === $offer->deal->buyer_id && $offer->pickupDestination() === Destination::Keeper;
+            // Отдаём другому, а вывозил прежний: его поручение снимаем — вывоз снова ждёт исполнителя.
+            $pickup = Transport::openFor($offer);
+            $wasPicker = $offer->deal && $pickup?->executor === Executor::Manager && $pickup->executor_id === $offer->deal->buyer_id;
             $accept($bid, $request->user(), isset($data['commission']) ? (int) $data['commission'] : null, CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout,
                 scheme: $scheme, ownerPrice: isset($data['owner_price']) ? (int) $data['owner_price'] : null, loss: $request->boolean('loss'));
             if (! $choosable) {
                 return;
             }
-            // Кто забирает ТС у владельца (04.10.2026): менеджер сделки — он и вывозчик; мы — как назначено.
-            $offer = $offer->fresh(['vendor.workflows', 'positions.stage.workflow']);
+            // Кто забирает ТС у владельца (04.10.2026; с 17.10.2026 — задача логистики): менеджер сделки — он исполнитель
+            // вывоза; «Логистика» — вывоз ждёт, кого выберет админ.
+            $offer = $offer->fresh();
+            $t = Transport::openFor($offer) ?? app(OpenPickup::class)($offer, $request->user());
             if ($data['pickup'] === 'manager') {
-                app(AssignPickup::class)($offer, $bid->user, Destination::Keeper, $request->user());
-            } elseif ($wasPicker || ! $offer->evacuation_to) {
-                // «Логистика»: вывоз ещё никому не поручен (или забирал прежний) — везём мы, перевозка встаёт в логистику
-                // (`SyncPickupTransport`); поручен другому менеджеру — как назначено.
-                app(AssignPickup::class)($offer, null, Destination::Ours, $request->user());
+                app(AssignExecutor::class)($t, Executor::Manager, $bid->user, $request->user());
+            } elseif ($wasPicker) {
+                app(AssignExecutor::class)->release($t, $request->user());
             }
         });
 

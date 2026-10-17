@@ -48,6 +48,8 @@ final class AcceptInvite
                 'access' => $invite->role === Role::Moderator ? ($invite->access ?? []) : [],
                 'park_readonly' => $invite->role === Role::Parking && $invite->park_readonly,
                 'park_city_id' => $invite->role === Role::Parking ? $invite->park_city_id : null,
+                // Исполнитель логиста — её человек: она его и позвала.
+                'logist_id' => $invite->role === Role::Contractor ? $invite->created_by : null,
             ]);
             if ($buyer && $invite->group_id) {
                 $user->groups()->attach($invite->group_id, ['created_at' => now()]);

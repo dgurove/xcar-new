@@ -2,6 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Logistics\Actions\AssignExecutor;
+use App\Logistics\Actions\Deliver;
+use App\Logistics\Actions\PickUp as LogisticsPickUp;
+use App\Logistics\Executor;
+use App\Logistics\Point;
+use App\Logistics\Transport;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\Actions\VoidPayment;
@@ -19,12 +25,10 @@ use App\Garage\Car;
 use App\Garage\CarState;
 use App\Garage\GaragePayer;
 use App\Offers\Actions\AcceptBid;
-use App\Offers\Actions\PickUp;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\BidKind;
 use App\Offers\CarPlace;
 use App\Offers\DealState;
-use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Users\Role;
@@ -89,9 +93,11 @@ class GarageByConfirmationTest extends TestCase
         $this->assertSame(CarState::Waiting, $car->state);
         $this->assertSame(900000, $car->base());
 
-        // Машину везёт вывоз (у вендора его не было — заводится сам), «Забрал» менеджера — подготовка.
-        app(EnsurePickup::class)($offer->fresh(), $admin, $manager, 'collect');
-        app(PickUp::class)($offer->fresh(), $manager);
+        // Машину везёт вывоз — задача логистики, исполнитель — сам менеджер; «Забрал» к себе в гараж — подготовка.
+        app(EnsurePickup::class)($offer->fresh(), $admin, $manager);
+        $transport = Transport::openFor($offer);
+        $this->assertSame($manager->id, $transport->executor_id);
+        app(LogisticsPickUp::class)($transport, ['keys' => 2, 'destination' => 'keeper'], $admin);
         $car->refresh();
         $this->assertSame(CarState::Repair, $car->state);
         app(AddCost::class)($car, ['title' => 'Запчасти', 'amount' => 50000], $manager);
@@ -153,7 +159,6 @@ class GarageByConfirmationTest extends TestCase
         $manager = User::create(['name' => 'Филипп Бородин', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
-        app(ApplyPreset::class)($vendor->workflowOrNew(Track::Service), Preset::Pickup);
         $sale = $vendor->fresh()->workflow(Track::Sale);
         $this->assertSame([], $sale->problems());
         $this->assertFalse($sale->stages()->get()->contains(fn ($s) => str_contains($s->name, 'на себя') || str_contains($s->name, 'Уведомили')));
@@ -172,11 +177,18 @@ class GarageByConfirmationTest extends TestCase
         $this->assertTrue($deal->namesBuyer());
         $this->assertSame('Менеджер забирает автомобиль', $offer->stage()->name);
         $this->assertSame(0, Invoice::where('deal_id', $deal->id)->count());
-        $this->assertSame(Destination::Keeper, $offer->pickupDestination());
+        // Вывоз — задача логистики к менеджеру в гараж (17.10.2026).
+        $transport = Transport::openFor($offer);
+        $this->assertSame(Point::Keeper, $transport->destination);
         $this->assertSame($manager->id, $offer->keeper()?->id);
 
-        // Вывоз довёз машину к менеджеру — подготовка, сделка на оплате ждёт от него цену продажи; счетов по-прежнему нет.
-        $this->drive($offer, Track::Service, $admin, fn (Offer $o) => $o->position(Track::Service)->stage->car_place === CarPlace::Keeper);
+        // Наш человек вывез и довёз машину к менеджеру — подготовка, сделка на оплате ждёт от него цену продажи; счетов нет.
+        $driver = User::create(['name' => 'Иван Водитель', 'phone' => '79000000003', 'roles' => [Role::Driver], 'approved_at' => now(), 'has_seal' => true]);
+        app(AssignExecutor::class)($transport, Executor::Staff, $driver, $admin);
+        app(LogisticsPickUp::class)($transport->fresh(), ['keys' => 1, 'destination' => 'keeper'], $admin);
+        $this->assertSame(1, $offer->fresh()->keys_count);
+        app(Deliver::class)($transport->fresh(), $admin);
+        $this->assertSame(CarPlace::Keeper, $offer->fresh()->car_place);
         $car = Car::where('offer_id', $offer->id)->firstOrFail();
         $this->assertSame(CarState::Repair, $car->state);
         $position = $offer->fresh()->position(Track::Sale);
@@ -227,11 +239,10 @@ class GarageByConfirmationTest extends TestCase
     {
         for ($i = 0; $i < 20 && ! $until($o = $offer->fresh()); $i++) {
             $position = Position::where('offer_id', $o->id)->where('track', $track)->firstOrFail();
-            $branch = $o->branchFor($track);
+            $branch = $o->deal;
             $stage = $position->stage;
             $no = fn ($e) => ! preg_match('/отказ|не поступила|не найден/u', mb_strtolower($e->label));
             $exit = ($manager ? $stage->exitsFor(Actor::Manager, $branch)->first($no) : null)
-                ?? $stage->exitsFor(Actor::Keeper, $branch)->first($no)
                 ?? $stage->exitsFor(Actor::Staff, $branch)->first($no);
             $this->assertNotNull($exit, 'нечего нажать на «'.$stage->name.'»');
             app(TakeExit::class)($o, $exit, $exit->actor, $exit->actor === Actor::Manager ? $manager : $admin);

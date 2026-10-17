@@ -2317,6 +2317,9 @@ html.kb-open { --home-gap: 0px; }
   /* Состояние у названия карточки и страницы (слот badge): мелким цветным словом после имени, не переносится по слогам. */
   .title-state { display: inline-block; margin-inline-start: .5em; font-size: var(--text-sm); white-space: nowrap; vertical-align: .1em; }
   .title-state::first-letter { text-transform: lowercase; } /* «Оплачен» светофора счёта у названия — со строчной */
+  /* Один ключ или ни одного (17.10.2026): красный «!» у названия машины везде; с label — и словами рядом. */
+  .keys-alert { display: inline-flex; align-items: center; gap: .3em; margin-inline-start: .4em; vertical-align: .1em; color: var(--color-danger); font-size: var(--text-sm); font-weight: 700; line-height: 1; white-space: nowrap; }
+  .keys-alert-text { font-weight: 400; }
   .detail-line > .place { gap: 0; }
   .detail-line > .place > svg { margin-inline-end: .25em; }
   @media (max-width: 639.98px) {

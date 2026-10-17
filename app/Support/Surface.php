@@ -66,7 +66,7 @@ enum Surface: string
      * Дом человека, которому сайт не нужен вовсе (ни одной роли сайта: менеджер, админ, покупатель, проверяющий,
      * посетитель): модератору — CRM, управляющему — парковка. С хоста, который ему закрыт, уводят туда (SiteWall,
      * ResolveSurface, вход, регистрация по ссылке); с открытого — не уводят: модератор с ролью «Парковка» работает в обоих.
-     * Логисту и водителю — логистика.
+     * Логисту, нашим людям на вывозе и исполнителям логиста — логистика.
      */
     public static function onlyFor(?User $user): ?self
     {
@@ -77,7 +77,7 @@ enum Surface: string
         return match (true) {
             $user->isModerator() => self::Crm,
             $user->isParking() || $user->isParkAdmin() => self::Park,
-            $user->isLogist() || $user->isDriver() => self::Logistics,
+            $user->isLogist() || $user->isDriver() || $user->isContractor() => self::Logistics,
             default => null,
         };
     }

@@ -61,7 +61,7 @@ return new class extends Migration
 
     private function dropYardBranch(): void
     {
-        foreach (Workflow::where('track', Track::Service)->get() as $workflow) {
+        foreach (Workflow::where('track', 'service')->get() as $workflow) {
             $exits = Outcome::whereIn('stage_id', Stage::where('workflow_id', $workflow->id)->select('id'))->where('branch', 'yard')->get();
             if ($exits->isEmpty()) {
                 continue;

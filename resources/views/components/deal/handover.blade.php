@@ -1,6 +1,7 @@
 {{-- Получение автомобиля в CRM (04.10.2026): кто забирает ТС у владельца и с кем говорить — те же факты, что менеджер
      видит на своей странице сделки (`Offers\Handover`). Владелец, телефон и адрес — поля предложения: письмо вендора
-     заполняет их само (`TakeContactFromLetter`), здесь их правят. Кто забирает — та же шторка «Вывоз» маршрута.
+     заполняет их само (`TakeContactFromLetter`), здесь их правят (их же читает вывоз в логистике). Кто забирает — та же шторка
+     «Кто вывозит» дорожки «Вывоз».
      compact — карточка строки (раздел), иначе — карточка страницы сделки; lane — внутри дорожки «Вывоз» редактора
      (06.10.2026): без своего заголовка и «Кто забирает» — это «⋯» самой дорожки.
      Контакт — текстом, «Изменить / Готово» ставит на его место поля (07.10.2026, владелец: «слишком много полей, человек
@@ -9,7 +10,7 @@
 @php
     $offer = $deal->offer;
     $handover = \App\Offers\Handover::for($deal);
-    $sheet = $offer->position(\App\Workflow\Track::Service) && ! $offer->pickedUp();
+    $sheet = $offer->pickup()?->isOpen() && ! $offer->pickedUp();
     $keys = ['insured_name', 'insured_phone', 'inspection_address'];
     $empty = ! $offer->insured_name && ! $offer->insured_phone && ! $offer->inspection_address;
     $form = 'handover-'.$deal->id;
@@ -24,8 +25,8 @@
             @if ($handover->where)<x-ui.place class="text-sm">{{ $handover->where === 'У вас' ? 'У менеджера' : $handover->where }}</x-ui.place>@endif
             @if ($handover->buyerPicks)
                 <x-ui.state :tone="$handover->open ? 'open' : 'muted'">{{ $handover->open ? 'забирает менеджер, ему видно' : 'забирает менеджер' }}</x-ui.state>
-            @elseif ($offer->position(\App\Workflow\Track::Service))
-                <x-ui.state tone="muted">забираем мы</x-ui.state>
+            @elseif ($offer->pickup())
+                <x-ui.state tone="muted">вывозит {{ $offer->pickup()->executorName() ?? 'логистика' }}</x-ui.state>
             @endif
             </div>
             <span class="flex shrink-0 items-center gap-1">

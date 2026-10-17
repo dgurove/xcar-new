@@ -64,8 +64,14 @@ class Invite extends Model
     /** Кто вправе видеть и выключать (scopeManageableBy / isManageableBy): админ — все, менеджер — ссылки своих покупателей (и сделанные для него админом). */
     public function scopeManageableBy(Builder $q, User $user): Builder
     {
-        // Ссылки парковки ведёт парковка: в CRM и кабинете их нет.
-        return ($user->isAdmin() ? $q : $q->where('manager_id', $user->id))->where('role', '!=', Role::Parking->value);
+        // Ссылки парковки ведёт парковка, исполнителям логиста — логистика: в CRM и кабинете их нет.
+        return ($user->isAdmin() ? $q : $q->where('manager_id', $user->id))->whereNotIn('role', [Role::Parking->value, Role::Contractor->value]);
+    }
+
+    /** Ссылки исполнителям логиста — в «Исполнителях» логистики: логисту свои, админу все. */
+    public function scopeOfLogist(Builder $q, User $user): Builder
+    {
+        return $q->where('role', Role::Contractor->value)->when(! $user->isAdmin(), fn ($q) => $q->where('created_by', $user->id));
     }
 
     /** Ссылки управляющим и помощникам — в «Пользователях» парковки. */
@@ -78,6 +84,9 @@ class Invite extends Model
     {
         if ($this->role === Role::Parking) {
             return $user->isParkAdmin();
+        }
+        if ($this->role === Role::Contractor) {
+            return $user->isAdmin() || ($user->isLogist() && $this->created_by === $user->id);
         }
 
         return $user->isAdmin() || $this->manager_id === $user->id;
@@ -94,7 +103,8 @@ class Invite extends Model
             Role::Admin => 'администратору',
             Role::Parking => ($this->park_readonly ? 'помощнику парковки' : 'управляющему парковкой').(($city = City::name($this->park_city_id)) ? ', '.$city : ''),
             Role::Logist => 'логисту',
-            Role::Driver => 'водителю',
+            Role::Driver => 'сотруднику на вывоз',
+            Role::Contractor => 'исполнителю',
             default => $this->role->label(),
         };
     }
@@ -115,8 +125,8 @@ class Invite extends Model
             Role::Parking => $this->park_readonly
                 ? 'Вам откроется приём и выдача ТС на парковке XCar'.$city
                 : 'Вам откроется парковка XCar'.$city.': заявки, приём, выдача и оплаты',
-            Role::Logist => 'Вам откроется Logistics XCar: перевозки, перевозчики, стоимость и сроки',
-            Role::Driver => 'Вам откроется Logistics XCar: ваши рейсы',
+            Role::Logist => 'Вам откроется Logistics XCar: вывозы в регионах и ваши исполнители',
+            Role::Driver, Role::Contractor => 'Вам откроется Logistics XCar: ваши вывозы',
             default => 'Вам откроется доступ к предложениям XCar и кабинету менеджера',
         };
     }
@@ -140,7 +150,7 @@ class Invite extends Model
             Role::Admin => 'администратором',
             Role::Parking => ($this->park_readonly ? 'помощником на парковку' : 'управляющим парковкой').(($city = City::name($this->park_city_id)) ? " ({$city})" : ''),
             Role::Logist => 'логистом',
-            Role::Driver => 'водителем',
+            Role::Driver, Role::Contractor => 'исполнителем на вывоз',
             default => mb_strtolower($this->role->label()),
         }.'. Ссылка одноразовая';
         if ($this->expires_at) {

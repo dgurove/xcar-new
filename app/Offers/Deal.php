@@ -12,6 +12,7 @@ use App\Billing\PaymentState;
 use App\Billing\Seller;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
+use App\Logistics\Executor;
 use App\Support\Demo\HidesDemo;
 use App\Support\Surface;
 use App\Users\User;
@@ -476,14 +477,19 @@ class Deal extends Model
     }
 
     /**
-     * Автомобиль у страхователя забирает сам менеджер сделки (04.10.2026): он и вывозчик предложения. Админ решает это
-     * при принятии подтверждения (`BidController::accept` → `AssignPickup`), им же меняет в карточке сделки. Ветка
-     * продажи `Outcome::BUYER_PICKS` — его шаг «Заберите автомобиль».
+     * Автомобиль у страхователя забирает сам менеджер сделки (04.10.2026): он исполнитель вывоза в логистике (17.10.2026).
+     * Админ решает это при принятии подтверждения (`BidController::accept`) или в окне «Кто вывозит». Ветка продажи
+     * `Outcome::BUYER_PICKS` — его шаг «Заберите автомобиль».
      */
     public function buyerPicksUp(): bool
     {
         // Гаражная «платит менеджер» идёт путём обычной сделки: везёт сам — его шаг «Заберите автомобиль».
-        return $this->buyer_id !== null && ! $this->isGarageUs() && $this->offer?->evacuator_id === $this->buyer_id;
+        if ($this->buyer_id === null || $this->isGarageUs() || ! $this->offer) {
+            return false;
+        }
+        $pickup = $this->offer->pickup();
+
+        return $pickup?->executor === Executor::Manager && $pickup->executor_id === $this->buyer_id;
     }
 
     /** Разница между ценой подтверждения и закупочной; без закупочной — null. */

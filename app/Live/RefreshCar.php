@@ -57,15 +57,12 @@ final class RefreshCar
             $this->publish->card($n, $seers, only: true);
             $this->publish->refreshSoon($seers, ["/offers/{$n}"]);
         }
-        // С машиной работает менеджер: его сделка, гараж, вывоз.
+        // С машиной работает менеджер: его сделка и гараж (вывоз — в логистике, ниже).
         if ($buyer = $offer->deal?->buyer_id) {
             $this->publish->refreshSoon(Topics::user($buyer), ['/deals', "/deals/{$offer->deal->id}"]);
         }
         if ($manager = $offer->garageCar?->manager_id) {
             $this->publish->refreshSoon(Topics::user($manager), ['/garage', "/garage/cars/{$n}"]);
-        }
-        if ($offer->evacuator_id && $offer->evacuator_id !== $manager) {
-            $this->publish->refreshSoon(Topics::user($offer->evacuator_id), ['/garage', "/garage/pickups/{$n}"]);
         }
     }
 

@@ -5,7 +5,7 @@ namespace App\Logistics\Events;
 use App\Logistics\Transport;
 use Illuminate\Foundation\Events\Dispatchable;
 
-/** Перевозка между регионами отправлена в логистику без исполнителя: логисту — назначить. */
+/** Новый вывоз без исполнителя (письмо Совкомбанка, «Вывезти» в CRM, гараж): админам — выбрать, кто вывозит. */
 final class TransportRequested
 {
     use Dispatchable;

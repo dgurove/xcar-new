@@ -11,14 +11,11 @@ use App\Garage\Cost;
 use App\Garage\GarageView;
 use App\Garage\Payer;
 use App\Http\Cabinet\DealController;
-use App\Offers\Actions\PickUp;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
-use App\Offers\PickupState;
 use App\Support\Money;
 use App\Support\Sort;
 use App\Support\Surface;
-use App\Workflow\Track;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -31,22 +28,12 @@ class CarController
     public function index(Request $request)
     {
         $cars = Car::of($request->user())
-            ->with(['offer', 'offer.media', 'offer.vendor', 'offer.evacuator', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.openRequirement'])
+            ->with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.openRequirement'])
             ->orderBy('stage_at')
             ->get();
 
-        // Вывозы, порученные менеджеру, — своей группой сверху: ТС у него физически, но продаёт не обязательно он.
-        $pickups = Offer::pickupsOf($request->user())
-            ->with(['media', 'vendor', 'evacuator', 'deal', 'positions.stage.exits', 'positions.stage.block'])
-            ->get()->sortBy(fn (Offer $o) => [PickupState::awaits($o) ? 0 : 1, $o->position(Track::Service)?->block_entered_at?->timestamp ?? 0]);
-        // Машина, что уже стоит в гараже («ждёт ТС, забирает …»), второй раз в «Вывозе» не показывается; её строка ведёт
-        // на страницу вывоза — там «Забрал» (и «Забрал за менеджера» сотруднику), своему менеджеру она сама уводит в гараж.
-        [$picking, $pickups] = $pickups->partition(fn (Offer $o) => $cars->contains('offer_id', $o->id));
-
         return view('garage.cars.index', [
             'cars' => $cars,
-            'pickups' => $pickups->values(),
-            'picking' => $picking->pluck('id')->all(),
             // Закупочной у менеджера нет (15.10.2026) — и сортировки по ней.
             'sort' => Sort::from($request->query('sort'), $request->user()->isAdmin() ? self::SORTS : array_diff_key(self::SORTS, ['price' => 1]), 'stage'),
         ]);
@@ -91,14 +78,6 @@ class CarController
         $remove($cost, $request->user());
 
         return back()->with('toast', 'Расход убран');
-    }
-
-    /** «Забрал» своей машины: менеджер везёт её в свой гараж сам — вывоз отмечается со страницы машины. */
-    public function picked(Request $request, Offer $offer, PickUp $pick)
-    {
-        $pick($this->car($request, $offer)->offer, $request->user());
-
-        return back()->with('toast', 'Забрали');
     }
 
     /** «Отдали по ошибке»: только сотрудник и только пока ничего не записано. */

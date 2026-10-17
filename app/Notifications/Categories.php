@@ -53,12 +53,16 @@ final class Categories
                 'always' => ['Вам назначено', 'Срок вышел', ...($user->canManagePark() ? ['Просроченные счета'] : [])],
             ]);
         }
-        // Логистика: логисту — новые межрегиональные и ход перевозок; водителю и партнёру — назначенное им, всегда.
-        if ($user->hasRole(Role::Logist)) {
-            $add(['on' => ['logistics' => 'Перевозки'], 'always' => []]);
+        // Логистика (17.10.2026): админу — новый вывоз и ход (выключаемо); логисту и исполнителям — поручение всегда,
+        // модератору — документы СДЭКом всегда.
+        if ($user->hasRole(Role::Admin, Role::Logist)) {
+            $add(['on' => ['logistics' => 'Вывоз'], 'always' => []]);
         }
-        if ($user->hasRole(Role::Driver) || $user->isPartner()) {
-            $add(['on' => [], 'always' => ['Перевозка назначена вам']]);
+        if ($user->hasRole(Role::Logist, Role::Driver, Role::Contractor) || $user->hasTransports()) {
+            $add(['on' => [], 'always' => ['Вывоз поручен вам']]);
+        }
+        if ($user->hasRole(Role::Moderator)) {
+            $add(['on' => [], 'always' => ['Документы на вывоз']]);
         }
         if (! $on && ! $always && ! $user->hasRole(Role::Moderator)) {
             $add(['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => []]);
@@ -81,7 +85,7 @@ final class Categories
             ...($user->hasRole(Role::Buyer) ? ['offers', 'chats'] : []),
             ...($user->hasRole(Role::Moderator) ? ['letters'] : []),
             ...($user->hasRole(Role::Parking) ? ['park', 'park_money'] : []),
-            ...($user->hasRole(Role::Logist) ? ['logistics'] : []),
+            ...($user->hasRole(Role::Admin, Role::Logist) ? ['logistics'] : []),
         ];
 
         return array_intersect_key(self::for($user)['on'], array_flip($keys));

@@ -22,6 +22,23 @@ final class IssueInvite
     /** Кем может стать пришедший по ссылке админа CRM. Управляющего и помощника парковки зовёт парковка (`park()`). */
     public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Buyer, Role::SuperBuyer, Role::Logist, Role::Driver];
 
+    /**
+     * Логист зовёт своего исполнителя (17.10.2026, владелец: «у Татьяны свои исполнители, должна быть возможность
+     * заводить их в систему»): одноразовая на неделю, пришедший — `Contractor` с `logist_id` позвавшей (`AcceptInvite`).
+     */
+    public function contractor(User $by, ?string $label = null): Invite
+    {
+        return Invite::create([
+            'code' => Invite::freshCode(),
+            'role' => Role::Contractor,
+            'created_by' => $by->id,
+            'label' => trim((string) $label) ?: null,
+            'max_uses' => 1,
+            'expires_at' => now()->addWeek(),
+            'fields' => ['phone' => true, 'email' => false],
+        ]);
+    }
+
     public function __invoke(User $by, array $data): Invite
     {
         $fields = ['phone' => (bool) ($data['phone'] ?? false), 'email' => (bool) ($data['email'] ?? false)];

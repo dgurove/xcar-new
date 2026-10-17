@@ -17,11 +17,10 @@
     $shooting = match ($cur?->key) { 'intake' => PhotoStage::Intake, 'release' => PhotoStage::Release, default => null };
     // Перевозка в логистике (10.10.2026) — строкой шапки: ход, кто везёт, прибытие. Ссылка — тому, кому логистика открыта.
     $transport = \App\Logistics\Transport::openFor($vehicle);
-    $transportLine = $transport ? implode(', ', array_filter([mb_strtolower($transport->state->label()), $transport->executorName(),
-        $transport->arrive_on ? 'прибытие '.$transport->arrive_on->translatedFormat('j M') : null])) : null;
+    $transportLine = $transport ? implode(', ', array_filter([$transport->next(), $transport->executorName(), $transport->destinationLabel()])) : null;
 @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
-    <x-slot:badge><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
+    <x-slot:badge><x-car.keys :count="$vehicle->keys_count" label/><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
     {{-- Шапка — только положение и люди, текстом: состояние с местом и днями, что не так, долг красным словом; строкой ниже —
          продажа страховой («На выдачу с 6 окт», кто заберёт — нажатие открывает шторку «Покупатель», телефон ссылкой).
          Справа — только действия: документы и «⋯». Продажа в CRM — пунктами значка связи у названия (как в карточке
@@ -288,7 +287,10 @@
             <x-ui.sheet id="vehicle-logistics" title="В логистику">
                 <form method="post" action="/cars/{{ $vehicle->id }}/logistics" class="flex flex-col gap-4">
                     @csrf
-                    <x-logistics.fields :car="$vehicle" prefix="vehicle-{{ $vehicle->id }}-t" :yards="\App\Park\Yard::withoutGlobalScopes()->where('is_active', true)->orderBy('name')->get()"/>
+                    <div class="fields">
+                        <x-ui.field name="to_yard_id" id="vehicle-{{ $vehicle->id }}-to-yard" label="На парковку" :options="\App\Park\Yard::withoutGlobalScopes()->where('is_active', true)->where('id', '!=', $vehicle->yard_id)->orderBy('name')->pluck('name', 'id')" placeholder="Выберите"/>
+                        <x-ui.field name="to_address" id="vehicle-{{ $vehicle->id }}-to-address" label="Или по адресу"/>
+                    </div>
                     <x-ui.sheet-foot>Отправить</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>

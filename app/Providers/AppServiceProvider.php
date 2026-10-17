@@ -32,7 +32,9 @@ use App\Garage\Listeners\ReopenWhenVoided;
 use App\Garage\Listeners\StartPrepOnArrival;
 use App\Live\PublishLiveUpdates;
 use App\Live\RefreshCar;
+use App\Logistics\Events\TransportMoved;
 use App\Logistics\Listeners\NotifyLogistics;
+use App\Logistics\Listeners\RecordOnOffer;
 use App\Logistics\Listeners\RefreshLogistics;
 use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\AttachmentReader;
@@ -90,6 +92,7 @@ class AppServiceProvider extends ServiceProvider
         }
         Event::subscribe(Notify::class);
         Event::subscribe(NotifyLogistics::class);
+        Event::subscribe(RecordOnOffer::class);
         Event::subscribe(RefreshLogistics::class);
         Event::listen(NotificationSent::class, CollapseNotices::class);
         Event::subscribe(PublishLiveUpdates::class);
@@ -99,7 +102,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(AdvanceOnReply::class);
         Event::listen(MessageSent::class, MarkSupplierLetter::class);
         Event::listen(OfferStateChanged::class, RetractWhenGone::class);
-        Event::listen(StageEntered::class, StartPrepOnArrival::class);
+        Event::listen(TransportMoved::class, StartPrepOnArrival::class);
         Event::listen(VehicleSold::class, SendPickupLink::class);
         Event::listen(PaymentRecorded::class, AdvanceOnPayment::class);
         Event::listen(PaymentRecorded::class, PayoutWhenPaid::class);

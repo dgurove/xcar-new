@@ -5,7 +5,6 @@ namespace App\Workflow;
 use App\Mail\Template;
 use App\Offers\CarPlace;
 use App\Offers\Deal;
-use App\Offers\Destination;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -69,7 +68,7 @@ class Stage extends Model
      *
      * @return Collection<int, Outcome>
      */
-    public function exitsFor(Actor $actor, Deal|Destination|null $deal = null): Collection
+    public function exitsFor(Actor $actor, ?Deal $deal = null): Collection
     {
         return $this->loadedExits()->where('actor', $actor)->filter(fn (Outcome $e) => $e->fits($deal))->values();
     }
@@ -118,18 +117,18 @@ class Stage extends Model
     }
 
     /** Выход менеджера «Платёжное поручение приложено» этого этапа — его жмут заявка об оплате и сама оплата. */
-    public function payExit(Deal|Destination|null $deal = null): ?Outcome
+    public function payExit(?Deal $deal = null): ?Outcome
     {
         return $this->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $e) => str_starts_with(mb_strtolower($e->label), 'платёжное поручение'));
     }
 
-    public function awaitsManager(Deal|Destination|null $deal = null): bool
+    public function awaitsManager(?Deal $deal = null): bool
     {
         return $this->exitsFor(Actor::Manager, $deal)->isNotEmpty();
     }
 
     /** Наш исход, ведущий на этап с таким состоянием оффера: так кнопка «Опубликовать» догоняет маршрут. */
-    public function exitInto(OfferState $state, Deal|Destination|null $deal = null): ?Outcome
+    public function exitInto(OfferState $state, ?Deal $deal = null): ?Outcome
     {
         return $this->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $e) => $e->to?->offer_state === $state);
     }

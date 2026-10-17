@@ -3,7 +3,6 @@
 namespace App\Workflow;
 
 use App\Workflow\Presets\Alfa;
-use App\Workflow\Presets\Pickup;
 use App\Workflow\Presets\Route;
 use App\Workflow\Presets\Sovcombank;
 use App\Workflow\Presets\Stock;
@@ -19,7 +18,6 @@ enum Preset: string
     case TBank = 'tbank';
     case Alfa = 'alfa';
     case Sovcombank = 'sovcombank';
-    case Pickup = 'pickup';
     case Stock = 'stock';
 
     public function label(): string
@@ -28,14 +26,13 @@ enum Preset: string
             self::TBank => 'Как у Т-Страхования',
             self::Alfa => 'Как у АльфаСтрахования',
             self::Sovcombank => 'Как у Совкомбанка',
-            self::Pickup => 'Вывоз от страхователя',
             self::Stock => 'Своё ТС на парковке',
         };
     }
 
     public function track(): Track
     {
-        return $this === self::Pickup ? Track::Service : Track::Sale;
+        return Track::Sale;
     }
 
     /** @return list<self> */
@@ -50,7 +47,6 @@ enum Preset: string
             self::TBank => new TBank,
             self::Alfa => new Alfa,
             self::Sovcombank => new Sovcombank,
-            self::Pickup => new Pickup,
             self::Stock => new Stock,
         };
     }

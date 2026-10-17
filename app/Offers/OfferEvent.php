@@ -91,7 +91,10 @@ class OfferEvent extends Model
             OfferEventType::Proposal => ! empty($p['accepted']) ? 'Принято из заявок на приём' : 'Предложено из заявок на приём Park XCar',
             // Номер ушёл вендору в ежедневный запрос (15.10.2026) или метку сняли.
             OfferEventType::Requested => ! empty($p['cleared']) ? 'Номер возвращён в «К запросу»' : 'Номер отправлен вендору в запрос',
-            OfferEventType::PickupAssigned => 'Вывоз: '.($p['who'] ?? 'мы').', '.mb_strtolower(Destination::tryFrom($p['to'] ?? '')?->label() ?? ''),
+            // Прежняя запись (до 17.10.2026 вывоз поручали в CRM): «к менеджеру» / «к нам».
+            OfferEventType::PickupAssigned => 'Вывоз: '.($p['who'] ?? 'мы').match ($p['to'] ?? '') {
+                'keeper' => ', к менеджеру', 'ours' => ', к нам', default => ''
+            },
             // Слот: поставили («В слот 4 окт, 16:00»), убрали или часы не смогли выпустить (`error` — чего не хватило).
             OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Carbon::parse($p['at'])->translatedFormat('j M, H:i') : 'Убрано из слота'),
             // Окно галереи: открыли («В галерее до 11 окт, 23:59») или убрали руками.

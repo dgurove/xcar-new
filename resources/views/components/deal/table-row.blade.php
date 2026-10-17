@@ -17,7 +17,7 @@
 @endphp
 <tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
     <td class="grow">
-        <x-ui.row-link :key="$deal->id"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}</span></x-ui.row-link>
+        <x-ui.row-link :key="$deal->id"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}<x-car.keys :count="$offer->keys_count"/></span></x-ui.row-link>
         <span class="cell-sub" data-controller="fitline">
             <span class="fit-core sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" copy/>@if ($active && $position)<x-route.term :position="$position"/>@endif</span>
         </span>

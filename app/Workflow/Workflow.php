@@ -2,7 +2,6 @@
 
 namespace App\Workflow;
 
-use App\Offers\CarPlace;
 use App\Offers\Deal;
 use App\Offers\OfferState;
 use App\Vendors\Vendor;
@@ -60,18 +59,6 @@ class Workflow extends Model
             ?? $stages->first(fn (Stage $s) => $s->offer_state === OfferState::Sold);
     }
 
-    /** Первый этап ветки вывоза, где машина в этом месте; для «назначили дату» — этап перед первым «в пути». */
-    public function stageForPlace(CarPlace $place, bool $before = false): ?Stage
-    {
-        $stages = $this->stages()->with(['exits', 'block'])->get()->values();
-        $index = $stages->search(fn (Stage $s) => $s->car_place === $place);
-        if ($index === false) {
-            return null;
-        }
-
-        return $before ? ($index > 0 ? $stages[$index - 1] : null) : $stages[$index];
-    }
-
     /** Что в маршруте сломано — списком, человеческим языком. Пустой список — маршрут цел. */
     public function problems(): array
     {
@@ -104,24 +91,9 @@ class Workflow extends Model
             if ($stage->waits_for === WaitsFor::Manager && ! $stage->awaitsManager() && $stage->offer_state !== OfferState::Open) {
                 $problems[] = "Этап «{$stage->name}» ждёт менеджера, а нажать ему нечего";
             }
-            if ($this->track === Track::Service && $stage->offer_state) {
-                $problems[] = "Этап «{$stage->name}» меняет состояние продажи, хотя стоит в маршруте вывоза";
-            }
-            if ($this->track === Track::Sale && $stage->car_place) {
+            // Где машина — у вывоза в логистике, а не у этапа продажи.
+            if ($stage->car_place) {
                 $problems[] = "Этап «{$stage->name}» меняет положение автомобиля, хотя стоит в маршруте продажи";
-            }
-            if ($this->track === Track::Service && $stage->waits_for === WaitsFor::Manager) {
-                $problems[] = "Этап «{$stage->name}» ждёт менеджера, а в вывозе менеджер не участвует";
-            }
-            // Ответственный за вывоз и места назначения — только у вывоза; гаражная ветка — только у продажи.
-            foreach ($stage->exits as $exit) {
-                $serviceBranch = in_array($exit->branch, ['keeper', 'ours'], true);
-                if ($this->track === Track::Sale && ($exit->actor === Actor::Keeper || $serviceBranch)) {
-                    $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» для вывоза, а стоит в маршруте продажи";
-                }
-                if ($this->track === Track::Service && in_array($exit->branch, Outcome::SALE_BRANCHES, true)) {
-                    $problems[] = "Кнопка «{$exit->label}» этапа «{$stage->name}» для продажи, а стоит в маршруте вывоза";
-                }
             }
             if ($stage->exits->contains(fn (Outcome $e) => $e->actor === Actor::Timer) && $stage->timerMode() !== 'countdown') {
                 $problems[] = "У этапа «{$stage->name}» есть исход по времени, но срока нет";
@@ -131,9 +103,6 @@ class Workflow extends Model
             if (! in_array($stage->id, $reached, true)) {
                 $problems[] = "На этап «{$stage->name}» не ведёт ни один исход";
             }
-        }
-        if ($this->track === Track::Service && $stages->every(fn (Stage $s) => ! in_array($s->car_place, [CarPlace::WithUs, CarPlace::Keeper], true))) {
-            $problems[] = 'Ни один этап не доводит автомобиль до нас или до менеджера';
         }
 
         return array_values(array_unique($problems));

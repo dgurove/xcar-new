@@ -431,10 +431,8 @@ class UserController
         // Галки областей — модератору сверх черновиков (почта CRM).
         $data['access'] = in_array(Role::Moderator, $data['roles'], true) ? array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))) : [];
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
-        // Регионы партнёра по логистике — только у менеджера.
-        $request->validate(['partner_regions' => ['nullable', 'array'], 'partner_regions.*' => ['integer', Rule::exists('regions', 'id')]]);
-        $regions = array_values(array_unique(array_map('intval', (array) $request->input('partner_regions', []))));
-        $data['partner_regions'] = in_array(Role::Manager, $data['roles'], true) && $regions ? $regions : null;
+        // Печать — у менеджера и нашего человека на вывозе: документы на вывоз ему СДЭКом не шлём.
+        $data['has_seal'] = (in_array(Role::Manager, $data['roles'], true) || in_array(Role::Driver, $data['roles'], true)) && $request->boolean('has_seal');
 
         return $data;
     }
@@ -442,7 +440,7 @@ class UserController
     private function presetOf(User $user): string
     {
         return match (true) {
-            $user->isStaff() => 'staff', $user->isManager() => 'managers', $user->isSuperBuyer() => 'buyers', $user->isParking() => 'park', $user->isLogist() || $user->isDriver() => 'logistics', $user->hasRole(Role::Visitor) => 'visitors', default => 'staff'
+            $user->isStaff() => 'staff', $user->isManager() => 'managers', $user->isSuperBuyer() => 'buyers', $user->isParking() => 'park', $user->isLogist() || $user->isDriver() || $user->isContractor() => 'logistics', $user->hasRole(Role::Visitor) => 'visitors', default => 'staff'
         };
     }
 }

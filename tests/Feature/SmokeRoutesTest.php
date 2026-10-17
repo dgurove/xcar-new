@@ -171,8 +171,9 @@ class SmokeRoutesTest extends TestCase
             $user('Пётр Покупатель', [Role::Buyer], ['manager_id' => $manager->id]),
             $user('Света Супер', [Role::SuperBuyer]),
             $user('Катя Парковка', [Role::Parking]),
-            $user('Татьяна Логист', [Role::Logist]),
-            $user('Семён Водитель', [Role::Driver]),
+            $logist = $user('Татьяна Логист', [Role::Logist]),
+            $driver = $user('Семён Водитель', [Role::Driver], ['has_seal' => true]),
+            $user('Пётр Исполнитель', [Role::Contractor], ['logist_id' => $logist->id, 'cdek_point' => 'Самара, Ленина 1']),
             $user('Роза Проверяющая', [Role::Reviewer]),
         ];
 
@@ -202,12 +203,17 @@ class SmokeRoutesTest extends TestCase
         }
         $offers[2]->forceFill(['state' => OfferState::Sold])->save();
         Deal::create(['offer_id' => $offers[2]->id, 'buyer_id' => $manager->id, 'state' => DealState::Active, 'cost' => 502000, 'amount' => 615000]);
+        // Вывозы: без исполнителя, у логиста, у нашего человека с созвоном и документами СДЭКом.
+        Transport::create(['car_id' => $offers[0]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'new']);
+        Transport::create(['car_id' => $offers[1]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'logist', 'executor' => 'logist', 'coordinator_id' => $logist->id]);
+        Transport::create(['car_id' => $offers[2]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'agreed', 'executor' => 'staff', 'executor_id' => $driver->id,
+            'agreed_at' => now(), 'pickup_at' => now()->addDay(), 'pickup_place' => 'Москва', 'docs_by_cdek' => true, 'docs_track' => '123456789']);
 
         foreach ([0, 1] as $i) {
             $v = Vehicle::create(['vendor_id' => $vendors[$i]->id, 'yard_id' => $yard->id, 'brand_id' => $brand->id, 'model_id' => $model->id,
                 'ref' => 'AUT-26-80000'.$i, 'state' => VehicleState::Stored, 'accepted_at' => now()->subDays(3)]);
             ParkRequest::create(['vehicle_id' => $v->id, 'type' => RequestType::Release]);
-            Transport::create(['car_id' => $v->car_id, 'origin' => 'park', 'scope' => 'intercity']);
+            Transport::create(['car_id' => $v->car_id, 'origin' => 'park', 'kind' => 'move', 'to_yard_id' => $yard->id, 'destination' => 'yard']);
         }
         foreach ([0, 1] as $i) {
             $v = Vehicle::create(['vendor_id' => $vendors[$i]->id, 'brand_id' => $brand->id, 'ref' => 'AUT-26-70000'.$i, 'state' => VehicleState::Expected]);

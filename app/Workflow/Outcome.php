@@ -3,7 +3,8 @@
 namespace App\Workflow;
 
 use App\Offers\Deal;
-use App\Offers\Destination;
+use App\Offers\DealScheme;
+use App\Offers\OfferState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -68,17 +69,15 @@ class Outcome extends Model
     /**
      * Годится ли исход: на продаже — этой сделке (гаражный — только гаражной, где поставщику платим мы,
      * покупательский — всем остальным; нет сделки — гаражных не видно; передача — «забирает сам» только сделке, где
-     * менеджер и вывозчик одно лицо, «отдаём мы» — всем остальным, кроме гаражных: те кончаются бумагами, `keeps`), на
-     * вывозе — месту назначения (`Destination`:
-     * ветки keeper, ours; не назначено — к нам). Без ветки — всем.
+     * менеджер и вывозчик одно лицо, «отдаём мы» — всем остальным, кроме гаражных: те кончаются бумагами, `keeps`). Без
+     * ветки — всем; незнакомая ветка (бывшие `keeper|ours` маршрута вывоза) — никому.
      */
-    public function fits(Deal|Destination|null $for): bool
+    public function fits(?Deal $for): bool
     {
         $garage = $for instanceof Deal && $for->isGarageUs();
         $keeps = $for instanceof Deal && $for->isGarage();
         $picks = $for instanceof Deal && $for->buyerPicksUp();
-        $to = $for instanceof Destination ? $for : Destination::Ours;
-        $ros = $for instanceof Deal && $for->schemeOf() === \App\Offers\DealScheme::Ros;
+        $ros = $for instanceof Deal && $for->schemeOf() === DealScheme::Ros;
 
         return match ($this->branch) {
             null, '' => true,
@@ -90,7 +89,7 @@ class Outcome extends Model
             self::DEAL => ! $keeps,
             self::ROS => $ros,
             self::NOT_ROS => ! $ros,
-            default => $to->value === $this->branch,
+            default => false,
         };
     }
 
@@ -106,7 +105,7 @@ class Outcome extends Model
      */
     public function isRetreat(): bool
     {
-        return $this->actor === Actor::Manager && $this->to?->offer_state === \App\Offers\OfferState::Open;
+        return $this->actor === Actor::Manager && $this->to?->offer_state === OfferState::Open;
     }
 
     /**

@@ -7,7 +7,7 @@
 @php use App\Support\Money; $spent = $car?->extraSpent() ?? 0; $price = $car?->priceFor($staff); @endphp
 <tr id="garage-{{ $offer->number }}">
     <td class="grow">
-        <a href="{{ $href }}" class="row-link"><span class="cell-title">{{ $offer->titleWithYear() }}</span></a>
+        <a href="{{ $href }}" class="row-link"><span class="cell-title">{{ $offer->titleWithYear() }}<x-car.keys :count="$offer->keys_count"/></span></a>
         <span class="cell-sub"><span><span class="{{ $tone }}">{{ $word }}</span>{{ $when ? ', '.$when : '' }}@if ($who)<span class="md:hidden">, {{ $who }}</span>@endif</span></span>
     </td>
     @if ($staff)<td class="cell-dim hidden md:table-cell">{{ $car?->manager?->shortName() ?? $who }}</td>@endif

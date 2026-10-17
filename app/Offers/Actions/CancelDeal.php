@@ -9,16 +9,15 @@ use App\Billing\PaymentSource;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
-use App\Logistics\Actions\Cancel as CancelTransport;
+use App\Logistics\Actions\AssignExecutor;
+use App\Logistics\Executor;
+use App\Logistics\Point;
 use App\Logistics\Transport;
-use App\Logistics\TransportState;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
 use App\Offers\DealState;
-use App\Offers\Destination;
 use App\Offers\Jobs\RetractDealNotices;
-use App\Offers\OfferEventType;
 use App\Users\User;
 use App\Workflow\Requirement;
 use Illuminate\Validation\ValidationException;
@@ -56,19 +55,17 @@ final class CancelDeal
             $car->delete();
             GarageChanged::dispatch($car);
         }
-        // Забирать ТС у владельца должен был он сам (`Deal::buyerPicksUp`) и ещё не забрал — поручение снимается: кто
-        // вывозит теперь, решает админ (у новой сделки — при принятии).
+        // Вывоз в логистике (17.10.2026). Забирать должен был он сам и ещё не забрал — поручение снимается: кто вывозит
+        // теперь, решает админ. Гаражная сорвалась — везти к нему больше некуда: точка снимается (уже везут — «Привёз»
+        // поставит машину к нам).
         $offer = $deal->offer;
-        if ($offer && $offer->evacuator_id === $deal->buyer_id && $offer->pickupDestination() === Destination::Keeper && ! $offer->pickedUp()) {
-            $offer->update(['evacuator_id' => null, 'evacuation_to' => null]);
-            $offer->log(OfferEventType::PickupAssigned, $by, ['who' => 'мы', 'to' => Destination::Ours->value]);
-        }
-        // Гаражную везли «Мы» к её менеджеру, а гаража больше нет — везти некуда: вывоз снова не назначен, перевозка в
-        // логистике отменяется (уже везут — остаётся, её «Сдал» поставит машину к нам).
-        if ($offer && $car && ! $keepCar && ! $offer->evacuator_id && $offer->evacuation_to === Destination::Keeper->value && ! $offer->pickedUp()) {
-            $offer->update(['evacuation_to' => null]);
-            if (($open = Transport::openFor($offer)) && $open->state !== TransportState::Moving) {
-                app(CancelTransport::class)($open, $by, system: true);
+        $open = $offer ? Transport::openFor($offer) : null;
+        if ($open && ! $open->state->picked()) {
+            if ($open->executor === Executor::Manager && $open->executor_id === $deal->buyer_id) {
+                app(AssignExecutor::class)->release($open, $by);
+            }
+            if ($car && ! $keepCar && $open->destination === Point::Keeper) {
+                $open->update(['destination' => null]);
             }
         }
         if (($fee = $deal->agentFee()->first()) && $fee->state === InvoiceState::Issued && $fee->paid == 0) {

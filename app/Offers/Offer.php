@@ -8,6 +8,9 @@ use App\Cars\Settlement;
 use App\Garage\Car;
 use App\Garage\GaragePayer;
 use App\Http\Admin\OfferController;
+use App\Logistics\Choices;
+use App\Logistics\Transport;
+use App\Logistics\TransportState;
 use App\Mail\Candidate;
 use App\Mail\Thread;
 use App\Park\PhotoStage;
@@ -49,7 +52,7 @@ use Illuminate\Support\Facades\DB;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'evacuator_id', 'evacuation_to', 'deal_show_until',
+    'garage_allowed', 'deal_show_until',
 ])]
 class Offer extends Model
 {
@@ -370,50 +373,33 @@ class Offer extends Model
         return $this->hasOne(Car::class);
     }
 
-    /** Кто вывозит; пусто при живом вывозе — мы. */
-    public function evacuator(): BelongsTo
+    /** Вывоз машины в логистике (17.10.2026): последний не отменённый — открытый или привезённый. */
+    public function pickup(): ?Transport
     {
-        return $this->belongsTo(User::class, 'evacuator_id');
+        return once(fn () => Transport::pickupOf($this));
     }
 
     /**
-     * У кого ТС стоит «у менеджера» (`Destination::Keeper`): машина в гараже — у её менеджера, кто бы её ни вёз (05.10.2026,
-     * Бородин: везёт наш Алексей, а стоять ей у Бородина), иначе — у вывозчика.
+     * У кого ТС стоит «у менеджера» (`CarPlace::Keeper`): машина в гараже — у её менеджера (05.10.2026, Бородин: везёт
+     * наш Алексей, а стоять ей у Бородина), иначе — у менеджера идущей сделки.
      */
     public function keeper(): ?User
     {
-        $garage = $this->relationLoaded('garageCar') ? $this->garageCar : $this->garageCar()->with('manager')->first();
-
-        return $garage?->manager ?? $this->evacuator;
+        return Choices::managerOf($this);
     }
 
-    /** ТС уже забрали: вывоз дошёл до места (у менеджера, у нас) — кто и куда, менять поздно. */
+    /** ТС уже забрали у владельца: кто вывозит — менять поздно. */
     public function pickedUp(): bool
     {
-        return in_array($this->position(Track::Service)?->stage->car_place, [CarPlace::Keeper, CarPlace::WithUs], true);
+        return in_array($this->car_place, [CarPlace::Moving, CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours], true)
+            || (bool) $this->pickup()?->state->picked();
     }
 
-    /**
-     * Можно ли при принятии подтверждения выбрать, кто забирает ТС (04.10.2026): у вендора есть вывоз, ТС ещё у
-     * владельца — не забрана и не стоит у нас на парковке.
-     */
+    /** Можно ли при принятии подтверждения поручить вывоз менеджеру: ТС ещё у владельца, не у нас на парковке. */
     public function pickupChoosable(): bool
     {
-        return (bool) $this->vendor?->workflow(Track::Service)?->is_active && ! $this->pickedUp()
-            && $this->parkVehicle?->state !== VehicleState::Stored
-            && ! in_array($this->state, [OfferState::Garage, OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true);
-    }
-
-    /** Куда вывозят: не назначено — менеджер вывозит к себе, иначе к нам. */
-    public function pickupDestination(): Destination
-    {
-        return Destination::tryFrom((string) $this->evacuation_to) ?? ($this->evacuator_id ? Destination::Keeper : Destination::Ours);
-    }
-
-    /** Чем ветка маршрута выбирает исходы (`Outcome::fits`): на продаже — идущая сделка, на вывозе — куда везём. */
-    public function branchFor(Track $track): Deal|Destination|null
-    {
-        return $track === Track::Sale ? $this->deal : $this->pickupDestination();
+        return ! $this->pickedUp() && $this->parkVehicle?->state !== VehicleState::Stored
+            && ! in_array($this->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true);
     }
 
     /**
@@ -422,7 +408,7 @@ class Offer extends Model
      */
     public function worksWith(User $user): bool
     {
-        return $this->evacuator_id === $user->id
+        return Transport::where('car_id', $this->car_id)->where('executor_id', $user->id)->where('state', '!=', TransportState::Cancelled)->exists()
             || Car::where('offer_id', $this->id)->where('manager_id', $user->id)->exists()
             || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->whereIn('state', [DealState::Active, DealState::Done])->exists();
     }
@@ -490,35 +476,6 @@ class Offer extends Model
      * прошлого черновика, работой не считается. Такой не показывается в списке, удаляется при уходе из редактора
      * (`OfferController::dropEmpty`) и ночью (`offers:prune-drafts`).
      */
-    /**
-     * Вывозы (к менеджеру, к нам), что ещё живы: менеджеру — порученные ему, сотруднику — все с менеджером.
-     * Продали и выдали, сняли — из списка ушла.
-     */
-    public function scopePickupsOf(Builder $q, User $user): Builder
-    {
-        return $q->whereIn('evacuation_to', [Destination::Keeper->value, Destination::Ours->value])
-            ->whereNotIn('state', [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived])
-            ->whereHas('positions', fn ($p) => $p->where('track', Track::Service))
-            // Админу — все поручения менеджерам, остальным (и админу-менеджеру) — свои.
-            ->when($user->isAdmin() && ! $user->isManager(), fn ($q) => $q->whereNotNull('evacuator_id'), fn ($q) => $q->where('evacuator_id', $user->id))
-            // Вывозчик забирает ТС по своей сделке — это её шаг, а не поручение: живёт на странице сделки (`Handover`).
-            ->whereDoesntHave('deal', fn ($d) => $d->whereColumn('deals.buyer_id', 'offers.evacuator_id'))
-            // Везёт свою гаражную машину — «Забрал» на её странице в «Гараже», второй строкой не стоит.
-            ->whereDoesntHave('garageCar', fn ($g) => $g->whereColumn('garage_cars.manager_id', 'offers.evacuator_id'));
-    }
-
-    /** Ход ответственного за вывоз — «забрать»: на текущем этапе вывоза есть его кнопка той ветки, куда везём. Одним запросом. */
-    public function scopeAwaitingPickup(Builder $q): Builder
-    {
-        return $q->whereHas('positions', fn ($p) => $p->where('track', Track::Service)
-            ->whereHas('stage.exits', fn ($e) => $e->where('actor', 'keeper')->whereColumn('workflow_exits.branch', 'offers.evacuation_to')))
-            // Забирать рано (`Deal::pickupHold`): Каркаде — до согласия поставщика, Альфа — до оплаты. Бейдж «Гаража» не горит.
-            ->whereNot(fn ($o) => $o->whereHas('vendor', fn ($v) => $v->where('deal_format', DealFormat::Wholesale))
-                ->whereHas('deal', fn ($d) => $d->whereNull('agreed_at')))
-            ->whereNot(fn ($o) => $o->whereHas('vendor', fn ($v) => $v->where('pay_before_pickup', true))
-                ->whereHas('deal', fn ($d) => $d->whereNull('prepaid_at')));
-    }
-
     public function scopeEmptyDraft(Builder $q): Builder
     {
         return $q->where('state', OfferState::Draft)->whereNull('published_at')

@@ -2,13 +2,14 @@
 
 namespace App\Offers\Listeners;
 
+use App\Logistics\Events\TransportMoved;
+use App\Logistics\Point;
 use App\Offers\CarPlace;
 use App\Offers\Deal;
-use App\Offers\Destination;
 use App\Offers\Handover;
+use App\Offers\Offer;
 use App\Users\Role;
 use App\Users\User;
-use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Events\StageEntered;
@@ -17,58 +18,58 @@ use App\Workflow\Track;
 use Illuminate\Events\Dispatcher;
 
 /**
- * Менеджер сделки сам забирает ТС у владельца (04.10.2026) — два маршрута про одно событие: продажа («Менеджер
- * забирает автомобиль» → «Автомобиль забрал») и вывоз («Вывоз и осмотр» → «Стоит у менеджера»). Нажали в одном —
- * другой догоняет сам, в каком бы порядке это ни случилось:
- * — продажа ушла с шага получения → вывоз встаёт на «Стоит у менеджера»;
- * — вывоз дошёл до «Стоит у менеджера» (админ нажал «Забрал» за него) → продажа жмёт свой «Автомобиль забрал»;
- * — продажа пришла на шаг получения, а ТС уже у него → шаг проходит сам.
- * С 05.10.2026 так же машина в гараж: везём её к менеджеру мы — «Автомобиль передан» продажи и «Стоит у менеджера»
- * вывоза догоняют друг друга, конец маршрута ставит машину на «Подготовку» (`CloseGarageDeal`).
+ * Шаг получения продажи («Менеджер забирает автомобиль» → «Автомобиль забрал», у гаража «Автомобиль передан») и вывоз в
+ * логистике — одно событие (17.10.2026: вывоз — задача логистики, а не маршрут). Шаг проходит сам:
+ * — менеджер сделки сам вывозит и нажал в логистике «Забрал» — машина у него;
+ * — вывоз привёз машину в гараж менеджера сделки («Привёз» с точкой `keeper`);
+ * — продажа пришла на шаг получения, а машина уже у него.
+ * Конец пути гаражной ставит машину на «Подготовку» (`CloseGarageDeal`, `StartPrepOnArrival`).
  */
 final class SyncHandover
 {
-    public function __construct(private PlaceOnStage $place, private TakeExit $take) {}
+    public function __construct(private TakeExit $take) {}
 
     public function subscribe(Dispatcher $events): array
     {
-        return [StageEntered::class => 'entered'];
+        return [
+            TransportMoved::class => 'moved',
+            StageEntered::class => 'entered',
+        ];
     }
 
-    public function entered(StageEntered $e): void
+    public function moved(TransportMoved $e): void
     {
-        $offer = $e->offer;
-        $deal = $e->deal ?? $offer->deal()->first();
-        // ТС едет к самому менеджеру сделки: забирает он сам или (гараж) везём ему мы.
-        if (! $deal || $offer->pickupDestination() !== Destination::Keeper || $offer->keeper()?->id !== $deal->buyer_id) {
+        $t = $e->transport;
+        $offer = $t->saleOffer();
+        $deal = $offer?->deal()->first();
+        if (! $deal?->isActive()) {
             return;
         }
         $deal->setRelation('offer', $offer);
-        $by = $e->by ?? $this->system();
+        $own = $deal->buyer_id !== null && $t->executor_id === $deal->buyer_id;
+        $handed = $e->step === 'delivered' && $t->destination === Point::Keeper && $offer->keeper()?->id === $deal->buyer_id;
+        if (($e->step === 'picked' && $own) || $handed) {
+            $this->pressSale($deal, $e->by ?? $this->system());
+        }
+    }
 
-        if ($e->track === Track::Sale) {
-            // Ушли с шага получения вперёд — ТС у менеджера.
-            if ($e->exit && $e->from && $e->from->exits->contains(fn ($x) => self::handsOver($x))
-                && ($service = $offer->position(Track::Service)) && ! $offer->pickedUp()
-                && ($keeper = $service->stage->workflow->stageForPlace(CarPlace::Keeper))) {
-                ($this->place)($offer, $keeper, $by);
-
-                return;
-            }
-            // Пришли на шаг получения, а ТС уже у него.
-            if ($offer->position(Track::Service)?->stage->car_place === CarPlace::Keeper) {
-                $this->pressSale($deal, $by);
-            }
-
+    /** Продажа пришла на шаг получения, а машина уже у менеджера сделки. */
+    public function entered(StageEntered $e): void
+    {
+        if ($e->track !== Track::Sale) {
             return;
         }
-        if ($e->to->car_place === CarPlace::Keeper && $deal->isActive()) {
-            $this->pressSale($deal, $by);
+        $offer = $e->offer;
+        $deal = $e->deal ?? $offer->deal()->first();
+        if (! $deal?->isActive() || $offer->car_place !== CarPlace::Keeper || $offer->keeper()?->id !== $deal->buyer_id) {
+            return;
         }
+        $this->pressSale($deal->setRelation('offer', $offer), $e->by ?? $this->system());
     }
 
     private function pressSale(Deal $deal, User $by): void
     {
+        /** @var Offer $offer */
         $offer = $deal->offer->unsetRelation('positions');
         $stage = $offer->position(Track::Sale)?->stage;
         // Шаг его — «Автомобиль забрал»; отдавали мы (гараж, везём ему сами) — «Автомобиль передан».

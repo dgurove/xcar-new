@@ -27,16 +27,16 @@ use Illuminate\Validation\ValidationException;
  * «Отдать в гараж» из CRM — как принятое гаражное подтверждение, только без него (06.10.2026: одна дверь; отданная
  * менеджеру — «в гараже», как в сделке, не черновик). Заводится гаражная сделка, предложение встаёт на маршрут с
  * начала сделки, машина — в гараж, вывоз везёт её к менеджеру (без менеджера — «взяли под себя», платим мы, к нам).
- * Где машина: `owner` — у страховой, `collect` — можно забирать, `arrived` — уже у менеджера (подготовка сразу).
+ * Где машина: `owner` — у страховой (вывоз в логистике), `arrived` — уже у менеджера (подготовка сразу).
  * Отданную так до 06.10.2026 («В гараже» без сделки) тоже ведёт сюда: строка гаража получает сделку.
  */
 final class GiveToGarage
 {
-    public const WHERE = ['owner' => 'У страховой', 'collect' => 'Можно забирать', 'arrived' => 'Уже у менеджера'];
+    public const WHERE = ['owner' => 'У страховой', 'arrived' => 'Уже у менеджера'];
 
     public function __construct(private ChangeOfferState $state, private EnterStage $enter, private StartRoute $start, private ReserveCar $reserve, private EnsurePickup $pickup) {}
 
-    public function __invoke(Offer $offer, ?User $manager, GaragePayer $payer, User $by, string $where = 'owner', User|false|null $evacuator = false): Car
+    public function __invoke(Offer $offer, ?User $manager, GaragePayer $payer, User $by, string $where = 'owner', ?User $evacuator = null): Car
     {
         if ($manager && ! $manager->isManager()) {
             throw ValidationException::withMessages(['manager_id' => 'В гараж ТС берёт менеджер']);
@@ -76,7 +76,7 @@ final class GiveToGarage
                 $offer = ($this->start)($offer, $by, Track::Sale);
             }
 
-            ($this->pickup)($offer, $by, $evacuator === false ? $manager : $evacuator, $where);
+            ($this->pickup)($offer, $by, $evacuator, $where);
             // Счета — как у принятия: после согласования с поставщиком (`AgreeDeal` из `EnterStage`), без маршрута — сразу.
             if (! $offer->fresh()->position(Track::Sale)) {
                 app(AgreeDeal::class)($deal->fresh(), $by);

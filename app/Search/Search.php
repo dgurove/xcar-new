@@ -98,14 +98,14 @@ final class Search
         ];
     }
 
-    /** Логистика: перевозки, которые человек видит, — по машине и адресам. */
+    /** Логистика: вывозы, которые человек видит, — по машине, адресам, владельцу, треку. */
     private static function logistics(User $user, Term $t): array
     {
-        $rows = Transport::visibleTo($user)->search($t)->with(['offer', 'vehicle', 'fromRegion', 'toRegion', 'executorUser'])
+        $rows = Transport::visibleTo($user)->search($t)->with(['offer', 'vehicle', 'car', 'executorUser', 'coordinator'])
             ->latest('id')->limit(self::ROWS)->get()
-            ->map(fn (Transport $x) => new Hit($x->title(), '/transports?preset=all&peek='.$x->id, array_values(array_filter([$x->state->label(), $x->regions(), $x->executorName()]))))->all();
+            ->map(fn (Transport $x) => new Hit($x->title(), '/transports?preset=all&peek='.$x->id, array_values(array_filter([$x->next(), $x->city(), $x->executorName()]))))->all();
 
-        return ['transports' => ['title' => 'Перевозки', 'rows' => $rows]];
+        return ['transports' => ['title' => 'Вывоз', 'rows' => $rows]];
     }
 
     private static function site(User $user, Term $t): array

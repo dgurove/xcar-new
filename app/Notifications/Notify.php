@@ -36,7 +36,6 @@ use App\Offers\Events\EstimateTaken;
 use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
-use App\Offers\Events\PickupAssigned;
 use App\Offers\Handover;
 use App\Offers\Jobs\RetractEstimateNotices;
 use App\Offers\OfferViewer;
@@ -66,7 +65,6 @@ use App\Users\Events\ManagerJoined;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\DealFormat;
-use App\Workflow\Actor;
 use App\Workflow\Events\StageDue;
 use App\Workflow\Events\StageEntered;
 use App\Workflow\Position;
@@ -93,7 +91,6 @@ final class Notify
             InterestRegistered::class => 'interest',
             OffersShown::class => 'offersShown',
             StageEntered::class => 'stageEntered',
-            PickupAssigned::class => 'pickupAssigned',
             StageDue::class => 'stageDue',
             ChatMessagePosted::class => 'chat',
             BuyerJoined::class => 'buyerJoined',
@@ -176,7 +173,6 @@ final class Notify
         }
     }
 
-
     /** Оценка менеджером (11.10.2026): просьба — менеджеру, оценка — админам, решение — снова менеджеру. */
     public function estimatesAsked(EstimatesAsked $e): void
     {
@@ -230,24 +226,6 @@ final class Notify
 
     public function stageEntered(StageEntered $e): void
     {
-        // Вывоз — наша работа: менеджеру про шаги эвакуатора не пишем. Кроме вывоза, порученного ему: пора забирать.
-        if ($e->track === Track::Service) {
-            $offer = $e->offer->loadMissing('evacuator');
-            // Только шагом вперёд: откат «Отменить» и «Вернуть на этот шаг» (без выхода) второй раз не пишут.
-            if ($e->exit && $offer->evacuator && $e->to->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()) {
-                // Забирает сам менеджер сделки: «пора» скажет его шаг сделки, если у продажи он есть («Заберите автомобиль»).
-                $deal = $offer->deal;
-                // Альфа до оплаты, Каркаде до согласия поставщика (`Deal::mayPickUp`) — «пора» скажем, когда станет можно.
-                if ($deal && ! $deal->mayPickUp()) {
-                    return;
-                }
-                if (! ($deal?->buyerPicksUp() && ! Handover::for($deal)->servicePick)) {
-                    $offer->evacuator->notify(new PickupNotice($offer, turn: true));
-                }
-            }
-
-            return;
-        }
         $deal = $e->deal ?? $e->offer->deal()->with('buyer')->first();
         // Дошли до оплаты без счёта (`EnterStage`): счета ставятся сами, так что ход наш — только когда гаражной не вписана
         // доля или счёт не встал (сотрудникам и владельцу — словами того, что нужно); ПРАЙМ без покупателя — ход менеджера.
@@ -262,12 +240,12 @@ final class Notify
         // Альфа оплачена — теперь можно забирать (10.10.2026): тому, кто забирает, контакт и адрес.
         if ($deal?->prepaid_at && $e->exit && $e->offer->vendor?->pay_before_pickup
             && in_array(mb_strtolower(trim($e->exit->label)), ['оплата получена', 'поставщику оплачено'], true)) {
-            $this->pickupOpened($deal->setRelation('offer', $e->offer->loadMissing('evacuator')));
+            $this->pickupOpened($deal->setRelation('offer', $e->offer));
         }
         // Каркаде: поставщик согласовал заявку — теперь можно забирать (11.10.2026), до того менеджер только ждал.
         if ($deal && $e->exit && $e->offer->vendor?->deal_format === DealFormat::Wholesale
             && str_starts_with(mb_strtolower(trim($e->exit->label)), 'поставщик согласовал') && $deal->refresh()->agreed_at) {
-            $this->pickupOpened($deal->setRelation('offer', $e->offer->loadMissing('evacuator')));
+            $this->pickupOpened($deal->setRelation('offer', $e->offer));
         }
         // Шаг сдвинуло письмо страховой — менеджеру пишет «Страховая ответила» с этим ходом (`AdvanceOnReply`).
         if (! $deal?->buyer || $e->letter) {
@@ -297,39 +275,14 @@ final class Notify
         NotifyOwner::dispatch(new RosTransferDue($i));
     }
 
-    /** Можно забирать: менеджеру сделки, что забирает сам, — контакт владельца; иначе вывозчику — «пора забирать». */
+    /**
+     * Можно забирать: менеджеру сделки, что забирает сам, — контакт владельца (его вывоз в логистике до того молчал,
+     * `NotifyLogistics::assigned`). Остальным исполнителям задача сама показывает, что уже можно.
+     */
     private function pickupOpened(Deal $deal): void
     {
-        $offer = $deal->offer;
-        if ($deal->buyerPicksUp()) {
-            if (($handover = Handover::for($deal))->open) {
-                $deal->buyer?->notify(new HandoverNotice($deal, $handover));
-            }
-        } elseif ($offer->evacuator && $offer->position(Track::Service)?->stage->exitsFor(Actor::Keeper, $offer->pickupDestination())->isNotEmpty()) {
-            $offer->evacuator->notify(new PickupNotice($offer, turn: true));
-        }
-    }
-
-    /** Поручили вывоз — новому ответственному; прежнему поручение снято молча (строка ленты погаснет при визите). */
-    public function pickupAssigned(PickupAssigned $e): void
-    {
-        $offer = $e->offer->loadMissing('evacuator');
-        if ($offer->evacuator && $offer->evacuator->isNot($e->previous)) {
-            // Менеджер сделки забирает сам: до согласия поставщика молчим (скажет `HandoverNotice`), после — сразу оно.
-            $deal = $offer->deal;
-            // Забирать рано (Каркаде до согласия поставщика, Альфа до оплаты): «Вам поручен вывоз» не шлём — менеджер ждёт;
-            // «Можно забирать» скажет `pickupOpened`, когда станет можно (11.10.2026).
-            if ($deal && ! $deal->setRelation('offer', $offer)->mayPickUp()) {
-                return;
-            }
-            if ($deal?->buyerPicksUp()) {
-                if (($handover = Handover::for($deal))->open) {
-                    $offer->evacuator->notify(new HandoverNotice($deal, $handover));
-                }
-
-                return;
-            }
-            $offer->evacuator->notify(new PickupNotice($offer));
+        if ($deal->buyerPicksUp() && ($handover = Handover::for($deal))->open) {
+            $deal->buyer?->notify(new HandoverNotice($deal, $handover));
         }
     }
 

@@ -13,8 +13,9 @@ enum Role: string
     case ParkAdmin = 'park_admin'; // администратор парковки: вся парковка с настройками и людьми; отдельно от админа CRM (08.10.2026)
     case Reviewer = 'reviewer';   // проверяющий (модерация ЮKassa): открытые предложения с ценой продажи, действий нет
     case SuperBuyer = 'super_buyer'; // супер-покупатель (10.10.2026): без менеджера, все предложения своей волны, только цена продажи, подтверждает как менеджер
-    case Logist = 'logist';       // логист (10.10.2026, Татьяна): logistics.xcar — все перевозки, межрегион назначает она, стоимость и сроки
-    case Driver = 'driver';       // водитель нашего эвакуатора: logistics.xcar — только свои рейсы, «Забрал» и «Сдал»
+    case Logist = 'logist';       // логист (Татьяна): logistics.xcar — вывозы в регионах своими исполнителями (`Contractor`), расстояние и цена
+    case Driver = 'driver';       // наш человек на вывозе (ООО «ПРАЙМ», Иван, Сергей): logistics.xcar — только свои задачи
+    case Contractor = 'contractor'; // исполнитель логиста в регионах (17.10.2026): его заводит сам логист, видит только свои задачи
 
     public function label(): string
     {
@@ -29,7 +30,8 @@ enum Role: string
             self::Reviewer => 'Проверяющий',
             self::SuperBuyer => 'Супер-покупатель',
             self::Logist => 'Логист',
-            self::Driver => 'Водитель',
+            self::Driver => 'Сотрудник на вывозе',
+            self::Contractor => 'Исполнитель',
         };
     }
 
@@ -86,7 +88,7 @@ enum Role: string
     /** Поделиться PDF — всем, кроме покупателей (их цена — не для пересылки дальше) и модератора (у него черновики). */
     public function canShare(): bool
     {
-        return ! in_array($this, [self::Buyer, self::SuperBuyer, self::Parking, self::ParkAdmin, self::Reviewer, self::Moderator, self::Logist, self::Driver], true);
+        return ! in_array($this, [self::Buyer, self::SuperBuyer, self::Parking, self::ParkAdmin, self::Reviewer, self::Moderator, self::Logist, self::Driver, self::Contractor], true);
     }
 
     /** Гараж — машины на ремонте у менеджеров: сами менеджеры и админ, что вносит итог и счёт. */

@@ -6,7 +6,6 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Live\Stream;
 use App\Media\PhotoIngest;
-use App\Offers\Actions\PickUp;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
@@ -19,7 +18,6 @@ use App\Support\ListPrefs;
 use App\Support\Sort;
 use App\Users\User;
 use App\Workflow\Actions\AnswerRequirement;
-use App\Workflow\Actor;
 use App\Workflow\Outcome;
 use App\Workflow\Path;
 use App\Workflow\Requirement;
@@ -162,7 +160,7 @@ class DealController
             'blocks' => $blocks,
             'steps' => $steps,
             'requirement' => $deal->openRequirement,
-            'exits' => $deal->openRequirement ? $position?->stage->exitsFor(Actor::Manager, $deal) : collect(),
+            'exits' => $deal->openRequirement ? Handover::managerExits($position?->stage, $deal) : collect(),
             'handover' => Handover::for($deal),
             // Ответы страховой по сделке — урезанные (`ReplyText`, 15.10.2026: без подписи, вендора, сумм), новые сверху;
             // файлов писем менеджеру нет. Пустой после урезания ответ не показывается.
@@ -180,16 +178,6 @@ class DealController
 
         // Сразу туда, где сделку смотрят (гаражная — в гараж): второй редирект съел бы тост.
         return redirect($deal->refresh()->href())->with('toast', $exit->label);
-    }
-
-    /** «Автомобиль забрал» из карточки получения — у вывоза, когда шага продажи для этого нет (`Handover::servicePick`). */
-    public function picked(Request $request, Deal $deal, PickUp $pickUp)
-    {
-        abort_unless($deal->buyer_id === $request->user()->id && $deal->isActive(), 404);
-        abort_unless(Handover::for($deal)->servicePick, 422);
-        $pickUp($deal->offer, $request->user());
-
-        return redirect($deal->href())->with('toast', 'Автомобиль у вас');
     }
 
     public function upload(Request $request, Deal $deal, PhotoIngest $ingest)
@@ -229,6 +217,6 @@ class DealController
         $stage = $deal->offer->position(Track::Sale)?->stage;
 
         return Stream::view('cabinet.deals.files-stream', ['requirement' => $requirement, 'deal' => $deal,
-            'exits' => $stage ? $stage->exitsFor(Actor::Manager, $deal) : collect()]);
+            'exits' => Handover::managerExits($stage, $deal)]);
     }
 }
