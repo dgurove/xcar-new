@@ -62,8 +62,7 @@
                                 </div>
                                 {{-- Настройки этапа — строкой текста (чей ход, срок, состояние, где ТС, что просит), а не чипами (10.10.2026). --}}
                                 @php
-                                    $limit = $stage->deadline_source !== \App\Workflow\DeadlineSource::Own ? mb_strtolower($stage->deadline_source->label())
-                                        : ($stage->limit_minutes ? ($stage->limit_minutes >= 1440 ? intdiv($stage->limit_minutes, 1440).' д' : ($stage->limit_minutes >= 60 ? intdiv($stage->limit_minutes, 60).' ч' : $stage->limit_minutes.' мин')) : null);
+                                    $limit = $stage->limitLabel();
                                 @endphp
                                 <div class="detail-line !mt-1 text-sm text-ink-muted">
                                     <span>{{ $stage->waits_for->label() }}</span>

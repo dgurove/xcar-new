@@ -12,6 +12,7 @@ use App\Offers\Actions\RemindEstimates;
 use App\Offers\Actions\SendToAuction;
 use App\Offers\Actions\ShowInGallery;
 use App\Support\HoldsSingleRun;
+use App\Workflow\Actions\StagesDigest;
 use App\Workflow\Actions\TickStages;
 use Illuminate\Console\Command;
 
@@ -23,9 +24,11 @@ class TickOffers extends Command
 
     protected $description = 'Часы предложений: слот 16:00, черновики в галерею, исходы по времени, просрочки, напоминания, «приём закрыт» владельцу, следующие волны показа, новые предложения пачкой после 5 минут тишины, напоминания об оценке, на аукцион без подтверждений, черновики из писем';
 
-    public function handle(PublishDueSlots $slots, TickStages $tick, NotifyBidsClosed $closed, NotifyViewers $waves, NotifyNewOffers $digest, ShowInGallery $gallery, RemindEstimates $estimates, AutoOffer $auto, SendToAuction $auction): int
+    public function handle(PublishDueSlots $slots, TickStages $tick, NotifyBidsClosed $closed, NotifyViewers $waves, NotifyNewOffers $digest, ShowInGallery $gallery, RemindEstimates $estimates, AutoOffer $auto, SendToAuction $auction, StagesDigest $hot): int
     {
-        return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves, $digest, $gallery, $estimates, $auto, $auction) {
+        return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves, $digest, $gallery, $estimates, $auto, $auction, $hot) {
+            // Утренняя сводка «Горит» — раз в день с 10:00 (`StagesDigest`).
+            $hot();
             // Слот — первым: выпущенные им предложения тем же тиком уходят менеджерам одним уведомлением (волны).
             $counts = ['slot' => $slots(), 'gallery' => $gallery->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'waves' => $waves->due(), 'digest' => $digest(), 'estimates' => $estimates->due()]
                 // Письмо-предложение не завелось черновиком при приходе (выкладка); документы черновиков из писем дочитать —

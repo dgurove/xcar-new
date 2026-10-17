@@ -48,6 +48,8 @@
         ? $invoices->filter(fn ($i) => $i->state === InvoiceState::Issued && $i->remaining() > 0)->values()
         : collect();
     $undo = \App\Workflow\Actions\StepBack::undoable($offer, $position->track);
+    // «Продлить срок» (19.01.2027, начальник): шагу с часами — +1 день, +3 дня, до даты (`ExtendDeadline`).
+    $extend = $position->deadline_at !== null && auth()->user()?->canManageCrm();
     // Черновик без цены продажи (владелец 04.10.2026): первый шаг продажи — назначить цену, а не «Опубликовать». Шаг не
     // из маршрута — он стоит перед ним текущим с «Оценить» (`/offers/{n}/rate`), а этап маршрута ждёт впереди серым.
     $pricing = $position->track === \App\Workflow\Track::Sale && $offer->state === \App\Offers\OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled() && auth()->user()?->canManageCrm();
@@ -109,7 +111,7 @@
                 @elseif ($step['state'] === Path::CURRENT)
                     <div class="step-head">
                         <span class="step-title">{{ $blockName($block) }}</span>
-                        @if ($breaks->isNotEmpty() || $undo)
+                        @if ($breaks->isNotEmpty() || $undo || $extend)
                             <div class="contents" data-controller="menu">
                                 <button type="button" class="btn btn-s btn-quiet btn-round -my-1 ml-auto shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
                                 <div id="{{ $menu }}" class="menu" popover data-menu-target="list" role="menu">
@@ -121,10 +123,27 @@
                                             <button class="menu-item w-full" role="menuitem"><x-ui.icon name="undo" class="size-4"/>{{ $undoText }}</button>
                                         </form>
                                     @endif
+                                    @if ($extend)
+                                        @foreach ([1 => 'Продлить на день', 3 => 'Продлить на 3 дня'] as $days => $label)
+                                            <form method="post" action="/offers/{{ $n }}/deadline" class="contents">@csrf<input type="hidden" name="track" value="{{ $position->track->value }}"><input type="hidden" name="days" value="{{ $days }}"><button class="menu-item w-full" role="menuitem">{{ $label }}</button></form>
+                                        @endforeach
+                                        <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="deadline-{{ $position->id }}:open">Срок до даты…</button>
+                                    @endif
                                     @foreach ($breaks as $exit)
                                         <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="contents" data-turbo-confirm="{{ $exit->confirm ?: $exit->label.'?' }}">@csrf<button class="menu-item w-full text-danger" role="menuitem">{{ $label($exit) }}</button></form>
                                     @endforeach
                                 </div>
+                            </div>
+                        @endif
+                        @if ($extend)
+                            <div class="contents" data-controller="sheet" data-action="deadline-{{ $position->id }}:open@window->sheet#open">
+                                <x-ui.sheet id="deadline-{{ $position->id }}" title="Срок шага">
+                                    <form method="post" action="/offers/{{ $n }}/deadline" class="flex flex-col gap-4">
+                                        @csrf<input type="hidden" name="track" value="{{ $position->track->value }}">
+                                        <div class="fields"><x-ui.field name="until" :id="'deadline-until-'.$position->id" label="До" type="datetime-local" :value="$position->deadline_at->format('Y-m-d\TH:i')" :min="now()->format('Y-m-d\TH:i')" required/></div>
+                                        <x-ui.sheet-foot>Продлить</x-ui.sheet-foot>
+                                    </form>
+                                </x-ui.sheet>
                             </div>
                         @endif
                     </div>

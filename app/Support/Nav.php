@@ -296,6 +296,7 @@ final class Nav
                     self::link('Профиль', '/settings', exact: true),
                     ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users', icon: 'users')] : []),
                     self::link('Вендоры', '/settings/vendors', icon: 'deal'),
+                    ...($user->isAdmin() ? [self::link('Таймеры', '/settings/timers', icon: 'timer')] : []),
                     ...($user->isAdmin() ? [self::link('Банк', '/settings/bank', icon: 'bank')] : []),
                     ...($user->isAdmin() ? [self::link('Бот Telegram', '/settings/telegram', icon: 'send')] : []),
                     self::link('Ящики', '/settings/mailboxes', icon: 'mail'),

@@ -13,6 +13,18 @@ use Throwable;
 /** Раз в минуту: исходы по времени, просрочки, напоминания. Приём подтверждений часы не закрывают — он закрывается сам по bids_close_at. */
 final class TickStages
 {
+    private const REMIND_MIN = 30;
+
+    private const REMIND_MAX = 1440;
+
+    /** За сколько минут до срока напомнить: десятая часть всего срока шага (от входа или начала хода), от 30 мин до суток. */
+    public static function remindBefore(Position $position): int
+    {
+        $span = (int) abs($position->deadline_at->diffInMinutes($position->entered_at));
+
+        return max(self::REMIND_MIN, min(self::REMIND_MAX, intdiv($span, 10)));
+    }
+
     public function __construct(private TakeExit $takeExit) {}
 
     public function __invoke(): array
@@ -44,18 +56,20 @@ final class TickStages
             }
         }
 
-        $before = (int) config('xcar.remind_before_minutes');
-        if ($before > 0) {
-            foreach (Position::whereNotNull('deadline_at')->where('deadline_at', '>', $now)->where('deadline_at', '<=', $now->copy()->addMinutes($before))
-                ->whereNull('reminded_at')->with(['offer', 'stage'])->lazyById() as $position) {
-                try {
-                    $position->update(['reminded_at' => $now]);
-                    $position->offer->log(OfferEventType::StageReminded, null, ['stage' => $position->stage->name]);
-                    StageDue::dispatch($position->offer, $position, false);
-                    $counts['reminded']++;
-                } catch (Throwable $e) {
-                    Log::warning('Часы: напоминание не ушло', ['offer' => $position->offer_id, 'error' => $e->getMessage()]);
-                }
+        // «Срок подходит» — за десятую часть срока шага, от получаса до суток (19.01.2027: за час до срока у шага в час
+        // напоминание приходило сразу, у недельного — за час, когда уже поздно).
+        foreach (Position::whereNotNull('deadline_at')->where('deadline_at', '>', $now)->where('deadline_at', '<=', $now->copy()->addMinutes(self::REMIND_MAX))
+            ->whereNull('reminded_at')->with(['offer', 'stage'])->lazyById() as $position) {
+            if ($position->deadline_at->gt($now->copy()->addMinutes(self::remindBefore($position)))) {
+                continue;
+            }
+            try {
+                $position->update(['reminded_at' => $now]);
+                $position->offer->log(OfferEventType::StageReminded, null, ['stage' => $position->stage->name]);
+                StageDue::dispatch($position->offer, $position, false);
+                $counts['reminded']++;
+            } catch (Throwable $e) {
+                Log::warning('Часы: напоминание не ушло', ['offer' => $position->offer_id, 'error' => $e->getMessage()]);
             }
         }
 

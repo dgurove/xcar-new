@@ -25,6 +25,7 @@ use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RouteController;
 use App\Http\Admin\TagController;
+use App\Http\Admin\TimerController;
 use App\Http\Admin\TelegramChatController;
 use App\Http\Admin\UserController;
 use App\Http\Admin\UserGroupController;
@@ -208,6 +209,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
         Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
         Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
+        Route::post('/offers/{offer}/deadline', [RouteController::class, 'deadline']);
         Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
         // «Видно менеджеру» у документа — решает админ (модератору документ менеджерам не открыть).
         Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
@@ -359,6 +361,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             // Парковочное у вендора (реквизиты, хранение, прайс, деньги, заявки на приёмку) — на парковке с 24.09.2026.
             Route::get('/tariffs', fn () => redirect()->away(Surface::Park->url('/tariffs'), 301));
 
+            // Таймеры (19.01.2027): сроки всех этапов всех вендоров одной таблицей.
+            Route::get('/timers', [TimerController::class, 'index']);
+            Route::put('/timers/row', [TimerController::class, 'updateRow']);
+            Route::put('/timers/{stage}', [TimerController::class, 'update'])->whereNumber('stage');
             Route::post('/workflows/{workflow}/enable', [WorkflowController::class, 'activate']);
             Route::post('/workflows/{workflow}/fill', [WorkflowController::class, 'fill']);
             Route::post('/workflows/{workflow}/order', [WorkflowController::class, 'reorder']);

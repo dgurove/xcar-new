@@ -4,7 +4,9 @@
     $w = $workflow;
     $back = "/settings/vendors/{$w->vendor_id}?pill=routes&track={$w->track->value}";
     $m = $stage->limit_minutes;
-    [$limitValue, $limitUnit] = $m === null ? [null, 'hours'] : ($m % 1440 === 0 ? [$m / 1440, 'days'] : ($m % 60 === 0 ? [$m / 60, 'hours'] : [$m, 'minutes']));
+    [$limitValue, $limitUnit] = $m === null ? [null, 'hours'] : ($stage->limit_workdays ? [intdiv($m, 1440), 'workdays'] : ($m % 1440 === 0 ? [$m / 1440, 'days'] : ($m % 60 === 0 ? [$m / 60, 'hours'] : [$m, 'minutes'])));
+    $source = old('deadline_source', $stage->deadline_source?->value ?? 'own');
+    $occupied = $stage->exists ? \App\Workflow\Actions\RetimeStage::occupied($stage) : 0;
     $types = ['text' => 'Строка', 'number' => 'Число', 'date' => 'Дата', 'textarea' => 'Текст'];
 @endphp
 <x-ui.cabinet :title="$stage->exists ? $stage->name : 'Новый этап'" :back="[$w->vendor->name, $back]">
@@ -26,19 +28,33 @@
             </div>
         </x-ui.card>
 
-        <x-ui.card title="Срок">
+        {{-- Срок (19.01.2027): «Откуда срок» открывает своё поле (`reveal#choose`): свой — «Сколько ждём» с рабочими днями и галкой
+             «Применить к N сделкам на этапе» (`RetimeStage`); срок приёма — сколько дней приёма, если его возобновят; срок страховой
+             — ничего. Все сроки разом — «Настройки → Таймеры». --}}
+        <x-ui.card title="Срок" data-controller="reveal">
             <div class="grid gap-4 sm:grid-cols-2">
-                <x-ui.field name="deadline_source" label="Откуда срок" :options="DeadlineSource::options()" :value="$stage->deadline_source?->value ?? 'own'"/>
-                <div class="field">
+                <x-ui.field name="deadline_source" label="Откуда срок" :options="DeadlineSource::options()" :value="$source" data-action="change->reveal#choose"/>
+                <div class="field" data-reveal-target="pane" data-reveal-key="own" @if ($source !== 'own') hidden @endif>
                     <label class="field-label" for="f-limit_value">Сколько ждём</label>
                     <div class="flex gap-2">
-                        <input id="f-limit_value" name="limit_value" value="{{ old('limit_value', $limitValue) }}" class="field-input" placeholder="—">
+                        <input id="f-limit_value" name="limit_value" value="{{ old('limit_value', $limitValue) }}" class="field-input" inputmode="numeric" placeholder="—">
                         <select name="limit_unit" class="field-input !w-auto">
-                            @foreach (['minutes' => 'мин', 'hours' => 'ч', 'days' => 'дн'] as $k => $l)<option value="{{ $k }}" @selected(old('limit_unit', $limitUnit) === $k)>{{ $l }}</option>@endforeach
+                            @foreach (['minutes' => 'мин', 'hours' => 'ч', 'days' => 'дн', 'workdays' => 'раб. дн'] as $k => $l)<option value="{{ $k }}" @selected(old('limit_unit', $limitUnit) === $k)>{{ $l }}</option>@endforeach
                         </select>
                     </div>
                     @error('limit_value')<p class="field-error">{{ $message }}</p>@enderror
                 </div>
+                <div class="field" data-reveal-target="pane" data-reveal-key="bids_close" @if ($source !== 'bids_close') hidden @endif>
+                    <label class="field-label" for="f-limit_days">Приём при возобновлении, дн</label>
+                    <input id="f-limit_days" name="limit_value" value="{{ old('limit_value', $m ? max(1, intdiv($m, 1440)) : null) }}" class="field-input" inputmode="numeric" placeholder="3">
+                    <input type="hidden" name="limit_unit" value="days">
+                </div>
+                @if ($occupied)
+                    <div class="sm:col-span-2" data-reveal-target="pane" data-reveal-key="own" @if ($source !== 'own') hidden @endif>
+                        <input type="hidden" name="retime" value="0">
+                        <x-ui.check name="retime" :checked="true">Новый срок — и {{ $occupied }} {{ \App\Support\Plural::of($occupied, ['сделке', 'сделкам', 'сделкам']) }} на этапе</x-ui.check>
+                    </div>
+                @endif
             </div>
         </x-ui.card>
 

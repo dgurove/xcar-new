@@ -61,8 +61,10 @@ final class AdvanceOnReply
         }
         $moved = $contact && $this->advance($deal, $message);
         // Поставщик ответил на наше письмо, а шаг сам не прошёл — ход наш: отметить исход (11.10.2026, `Position::letterStatus`).
+        // Его срок снимается (19.01.2027): иначе шаг краснел «на нас» за срок поставщика; дальше — «Поставщик ответил N ч назад».
         if (! $moved && ($position = $offer->unsetRelation('positions')->position(Track::Sale)) && $position->letterStatus() === 'sent') {
-            $position->update(['waits_for' => WaitsFor::Us, 'payload' => [...$position->payload, 'reply_at' => ($message->date_at ?? now())->toIso8601String()]]);
+            $position->update(['waits_for' => WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null,
+                'payload' => [...$position->payload, 'reply_at' => ($message->date_at ?? now())->toIso8601String()]]);
         }
         if (! $deal->buyer) {
             return;

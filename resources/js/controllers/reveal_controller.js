@@ -23,6 +23,13 @@ export default class extends Controller {
     sync() {
         const checked = [...this.element.querySelectorAll('input[type=radio][data-action*="reveal#pick"]:checked')].find((r) => this.owns(r));
         if (checked) this.show(checked.value, checked.dataset.revealLabel);
+        const select = [...this.element.querySelectorAll('select[data-action*="reveal#choose"]')].find((s) => this.owns(s));
+        if (select) this.show(select.value);
+    }
+
+    // Выбор списком открывает панель своего значения («Откуда срок» этапа: свой — «Сколько ждём», срок приёма — дни приёма).
+    choose(event) {
+        this.show(event.currentTarget.value);
     }
 
     owns(el) {

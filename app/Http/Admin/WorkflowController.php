@@ -6,6 +6,7 @@ use App\Mail\Scope;
 use App\Mail\Template;
 use App\Offers\CarPlace;
 use App\Offers\OfferState;
+use App\Support\Plural;
 use App\Workflow\Actions\ApplyPreset;
 use App\Workflow\Actions\DeleteBlock;
 use App\Workflow\Actions\DeleteStage;
@@ -91,18 +92,32 @@ class WorkflowController
     public function storeStage(Request $request, Workflow $workflow, SaveStage $save)
     {
         $data = $this->validateStage($request, $workflow);
-        $save($workflow, $workflow->blocks()->findOrFail($data['block_id']), $data);
+        $save($workflow, $workflow->blocks()->findOrFail($data['block_id']), $data, by: $request->user());
 
-        return redirect($this->back($workflow))->with('toast', 'Этап добавлен');
+        return $this->saved($workflow, $save, 'Этап добавлен');
     }
 
     public function updateStage(Request $request, Stage $stage, SaveStage $save)
     {
         $workflow = $stage->workflow;
         $data = $this->validateStage($request, $workflow);
-        $save($workflow, $workflow->blocks()->findOrFail($data['block_id']), $data, $stage);
+        $save($workflow, $workflow->blocks()->findOrFail($data['block_id']), $data, $stage, $request->user());
 
-        return redirect($this->back($workflow))->with('toast', 'Сохранено');
+        return $this->saved($workflow, $save, 'Сохранено');
+    }
+
+    /**
+     * Ответ сохранения этапа: новый срок дошёл до N сделок — словом; маршрут после правки погас (`RevalidateWorkflow`) —
+     * красным с причиной, а не «Сохранено» (так маршрут вендора выключался молча).
+     */
+    private function saved(Workflow $workflow, SaveStage $save, string $done)
+    {
+        $back = redirect($this->back($workflow));
+        if ($save->problems) {
+            return $back->with('toast-danger', 'Сохранено, но маршрут выключен: '.$save->problems[0]);
+        }
+
+        return $back->with('toast', $done.($save->retimed ? ', новый срок у '.$save->retimed.' '.Plural::of($save->retimed, ['сделки', 'сделок', 'сделок']) : ''));
     }
 
     public function destroyStage(Stage $stage, DeleteStage $delete)
@@ -135,7 +150,8 @@ class WorkflowController
             'name' => ['required', 'string', 'max:80'],
             'waits_for' => ['required', Rule::enum(WaitsFor::class)],
             'limit_value' => ['nullable', 'integer', 'min:1', 'max:100000'],
-            'limit_unit' => ['nullable', Rule::in(['minutes', 'hours', 'days'])],
+            'limit_unit' => ['nullable', Rule::in(['minutes', 'hours', 'days', 'workdays'])],
+            'retime' => ['nullable', 'boolean'],
             'deadline_source' => ['required', Rule::enum(DeadlineSource::class)],
             // «В гараже» маршрут не ставит: в гараж машину ведёт гаражная сделка (её конец) или «Отдать в гараж».
             'offer_state' => ['nullable', Rule::enum(OfferState::class)->except([OfferState::Garage])],

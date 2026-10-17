@@ -296,7 +296,12 @@ final class Notify
                 $deal->buyer->notify(new StageDueNotice($e->offer, $e->position, $e->overdue, $deal->id));
             }
         }
-        Notification::send($this->staff(), new StageDueNotice($e->offer, $e->position, $e->overdue));
+        // Сотрудникам (19.01.2027: 598 уведомлений о сроках за неделю, по 28 в день на админа) — «скоро» только когда ход наш,
+        // чужой ход (менеджер, поставщик) — лишь «срок вышел»; утром — одна строка «Горит» (`StagesDigest`).
+        $waits = $e->position->waitsFor();
+        if ($waits === WaitsFor::Us || ($e->overdue && $waits !== WaitsFor::Nobody)) {
+            Notification::send($this->staff(), new StageDueNotice($e->offer, $e->position, $e->overdue));
+        }
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Slots;
+use App\Workflow\Actions\ExtendDeadline;
 use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\StepBack;
 use App\Workflow\Actions\TakeExit;
@@ -77,6 +78,17 @@ class RouteController
         $back($offer, $track, $request->user());
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', $undo['label'] ? 'Отменено «'.$undo['label'].'»' : 'Снова «'.$undo['to']->name.'»');
+    }
+
+    /** «Продлить срок» шага: +1 день, +3 дня или до даты (`ExtendDeadline`). */
+    public function deadline(Request $request, Offer $offer, ExtendDeadline $extend)
+    {
+        $data = $request->validate(['track' => ['required', Rule::enum(Track::class)], 'days' => ['nullable', 'integer', 'min:1', 'max:60'], 'until' => ['nullable', 'date']]);
+        $position = $offer->position(Track::from($data['track'])) ?? abort(404);
+        $until = ExtendDeadline::untilFrom($position, $data);
+        $extend($position, $until, $request->user());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Срок до '.$until->translatedFormat('j M, H:i'));
     }
 
     /**

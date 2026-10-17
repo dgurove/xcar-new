@@ -2,6 +2,7 @@
 
 namespace App\Workflow;
 
+use App\Billing\WorkDays;
 use App\Mail\Template;
 use App\Offers\CarPlace;
 use App\Offers\Deal;
@@ -21,7 +22,7 @@ use Illuminate\Support\Str;
  * выходит только просьба к нему — там, где его ход.
  */
 #[Fillable([
-    'workflow_id', 'block_id', 'name', 'position', 'waits_for', 'limit_minutes', 'deadline_source',
+    'workflow_id', 'block_id', 'name', 'position', 'waits_for', 'limit_minutes', 'limit_workdays', 'deadline_source',
     'offer_state', 'car_place', 'ask_title', 'ask_text', 'asks', 'fields', 'staff_fields', 'template_id',
 ])]
 class Stage extends Model
@@ -39,6 +40,7 @@ class Stage extends Model
             'fields' => 'array',
             'staff_fields' => 'array',
             'limit_minutes' => 'int',
+            'limit_workdays' => 'bool',
         ];
     }
 
@@ -151,8 +153,51 @@ class Stage extends Model
     public function deadlineFrom(Carbon $enteredAt): ?Carbon
     {
         return $this->limit_minutes !== null && $this->waits_for !== WaitsFor::Nobody
-            ? $enteredAt->copy()->addMinutes($this->limit_minutes)
+            ? self::addLimit($enteredAt, $this->limit_minutes, (bool) $this->limit_workdays)
             : null;
+    }
+
+    /**
+     * Срок от момента: календарные минуты или рабочие дни (19.01.2027, начальник: «3 дня» с пятницы горели в понедельник утром) —
+     * выходные не считаются, время суток то же (пт 15:00 + 1 раб. дн = пн 15:00). Рабочие дни — только целыми сутками.
+     */
+    public static function addLimit(Carbon $from, int $minutes, bool $workdays): Carbon
+    {
+        return $workdays ? WorkDays::add($from, intdiv($minutes, 1440)) : $from->copy()->addMinutes($minutes);
+    }
+
+    /** Обратно к `addLimit`: откуда тикали часы, если срок такой. */
+    public static function subLimit(Carbon $deadline, int $minutes, bool $workdays): Carbon
+    {
+        return $workdays ? WorkDays::sub($deadline, intdiv($minutes, 1440)) : $deadline->copy()->subMinutes($minutes);
+    }
+
+    /**
+     * Срок словом — одна функция на доску маршрута, экран «Таймеры», форму и шаг: «3 раб. дн», «1 д 12 ч», «90 мин» → «1 ч 30 мин»;
+     * чужой источник — его имя («срок приёма подтверждений»), без срока — null.
+     */
+    public function limitLabel(): ?string
+    {
+        if ($this->deadline_source !== DeadlineSource::Own) {
+            return mb_strtolower($this->deadline_source->label());
+        }
+
+        return self::durationLabel($this->limit_minutes, (bool) $this->limit_workdays);
+    }
+
+    public static function durationLabel(?int $minutes, bool $workdays = false): ?string
+    {
+        if ($minutes === null) {
+            return null;
+        }
+        if ($workdays) {
+            return intdiv($minutes, 1440).' раб. дн';
+        }
+        $d = intdiv($minutes, 1440);
+        $h = intdiv($minutes % 1440, 60);
+        $m = $minutes % 60;
+
+        return implode(' ', array_filter([$d ? $d.' д' : null, $h ? $h.' ч' : null, $m ? $m.' мин' : null])) ?: '0 мин';
     }
 
     /** Срок этапа для оффера, если войти в него сейчас: свой, конец приёма подтверждений или срок страховой. */

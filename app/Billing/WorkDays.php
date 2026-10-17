@@ -20,4 +20,18 @@ final class WorkDays
 
         return $at;
     }
+
+    /** Назад на столько рабочих дней — для пересчёта срока, что считали `add` (`Workflow\Stage::subLimit`). */
+    public static function sub(CarbonInterface $from, int $days): Carbon
+    {
+        $at = Carbon::instance($from);
+        while ($days > 0) {
+            $at->subDay();
+            if ($at->isWeekday()) {
+                $days--;
+            }
+        }
+
+        return $at;
+    }
 }
