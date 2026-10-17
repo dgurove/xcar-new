@@ -434,6 +434,26 @@ class Deal extends Model
         return $user->isAdmin() && ! $user->isManager() ? $q : $q->where('buyer_id', $user->id);
     }
 
+    /**
+     * Переоформленная (17.10.2026, Макаров: «почему отменено написано?»): отменённая, за которой тому же покупателю по той
+     * же машине открыли новую сделку — админ отменил и тут же принял снова (поправить вознаграждение). Менеджеру это не
+     * отмена: в архиве её нет, ссылка ведёт на новую (`successor`).
+     */
+    public function scopeNotSuperseded(Builder $q): Builder
+    {
+        return $q->where(fn ($w) => $w->where('deals.state', '!=', DealState::Cancelled->value)->orWhereNotExists(fn ($n) => $n->selectRaw('1')
+            ->from('deals as later')->whereColumn('later.offer_id', 'deals.offer_id')->whereColumn('later.buyer_id', 'deals.buyer_id')
+            ->whereColumn('later.id', '>', 'deals.id')));
+    }
+
+    /** Сделка, что заменила эту отменённую у того же покупателя; null — отмена настоящая. */
+    public function successor(): ?self
+    {
+        return $this->state === DealState::Cancelled && $this->buyer_id
+            ? self::where('offer_id', $this->offer_id)->where('buyer_id', $this->buyer_id)->where('id', '>', $this->id)->orderByDesc('id')->first()
+            : null;
+    }
+
     /** Сделка в CRM: админ ведёт её в редакторе предложения (`Admin\DealController::show`). */
     public function crmUrl(): string
     {

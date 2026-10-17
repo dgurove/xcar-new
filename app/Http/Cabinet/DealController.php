@@ -65,7 +65,7 @@ class DealController
 
         // Админ подтверждения решает в CRM — строки «Мои подтверждения» у него нет.
         $bids = $me->hasDeals() ? self::waiting($me)->count() : 0;
-        $archived = self::deals($me)->where('state', '!=', DealState::Active)->count();
+        $archived = self::deals($me)->where('state', '!=', DealState::Active)->notSuperseded()->count();
 
         return view('cabinet.deals.index', ['deals' => $deals, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
     }
@@ -84,7 +84,7 @@ class DealController
     private function archive(Request $request)
     {
         $me = $request->user();
-        $closed = self::deals($me)->where('state', '!=', DealState::Active)
+        $closed = self::deals($me)->where('state', '!=', DealState::Active)->notSuperseded()
             ->orderByRaw('coalesce(closed_at, updated_at) desc')->orderByDesc('id')->limit(self::ARCHIVE)->get();
 
         return view('cabinet.deals.archive', ['done' => $closed->where('state', DealState::Done)->values(), 'failed' => $closed->where('state', DealState::Cancelled)->values()]);
@@ -121,6 +121,10 @@ class DealController
             return redirect()->away($deal->crmUrl());
         }
         abort_unless($deal->buyer_id === $me->id, 404);
+        // Переоформили (отменили и приняли снова) — старая ссылка ленты и Telegram ведёт на новую, без «Сделка отменена».
+        if ($next = $deal->successor()) {
+            return redirect($next->href());
+        }
         // Отменённая сделка машину не открывает (13.10.2026): кадры, VIN и документы — только пока она ему видна.
         if ($deal->state === DealState::Cancelled && ! $deal->offer->isVisibleTo($me)) {
             return redirect('/deals?view=archive')->with('toast', 'Сделка отменена');

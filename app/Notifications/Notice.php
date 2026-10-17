@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Offers\Offer;
 use App\Push\WebPushChannel;
 use App\Support\Surface;
 use App\Users\User;
@@ -150,7 +151,13 @@ abstract class Notice extends Notification implements ShouldQueue
      */
     public function telegramSubject(): ?string
     {
-        return null;
+        // Сделочные (`/deals/{id}`) — предмет сделки: отменили её — сообщения уходят (`RetractDealNotices`).
+        return preg_match('#^/deals/(\d+)$#', $this->subject(), $m) ? self::dealSubject((int) $m[1]) : null;
+    }
+
+    public static function dealSubject(int $dealId): string
+    {
+        return 'deal:'.$dealId;
     }
 
     /**
@@ -165,7 +172,7 @@ abstract class Notice extends Notification implements ShouldQueue
     }
 
     /** Машина, которую должен видеть получатель; null — уведомление не о машине целиком. */
-    protected function visibleOffer(): ?\App\Offers\Offer
+    protected function visibleOffer(): ?Offer
     {
         return null;
     }

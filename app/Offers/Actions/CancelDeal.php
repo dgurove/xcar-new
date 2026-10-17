@@ -17,6 +17,7 @@ use App\Offers\BidState;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Destination;
+use App\Offers\Jobs\RetractDealNotices;
 use App\Offers\OfferEventType;
 use App\Users\User;
 use App\Workflow\Requirement;
@@ -44,6 +45,8 @@ final class CancelDeal
                 : 'ТС уже у менеджера: сделку так не отменить']);
         }
         $deal->update(['state' => DealState::Cancelled, 'closed_at' => now()]);
+        // Отмена — тихо (как отказ): «принято», ход и сроки этой сделки у менеджера стираются из ленты и Telegram.
+        RetractDealNotices::dispatch($deal->id);
         if ($deal->bid?->state === BidState::Accepted) {
             Bid::whereKey($deal->bid_id)->update($keepBid ? ['state' => BidState::Active, 'decided_at' => null, 'decided_by' => null] : ['state' => BidState::Declined]);
         }
