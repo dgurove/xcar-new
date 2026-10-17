@@ -10,11 +10,12 @@
     $contract = DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
     $missing = $contract->missing();
     $scans = $deal->offer->papers()->filter(fn ($m) => $m->getCustomProperty('letter'))->values();
-    $editing = $errors->hasAny(['seller.*', 'vehicle.*']);
+    // Открыта полями: ошибка формы или «Заполнить» из шага пути (`?dkp=1`).
+    $editing = $errors->hasAny(['seller.*', 'vehicle.*']) || request()->boolean('dkp');
     $form = 'dkp-'.$deal->id;
     $pdf = ['url' => '/work/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => 'ДКП '.$deal->offer->titleWithYear().'.pdf', 'label' => 'ДКП'];
 @endphp
-<x-ui.card :title="$deal->isPrime() ? 'ДКП '.$deal->seller()->short() : 'ДКП'" {{ $attributes }} data-controller="edit-card" :data-edit-card-form-value="$form" :data-edit-card-editing-value="$editing ? 'true' : null">
+<x-ui.card :title="$deal->isPrime() ? 'ДКП '.$deal->seller()->short() : 'ДКП'" id="dkp" class="scroll-mt-24" {{ $attributes }} data-controller="edit-card" :data-edit-card-form-value="$form" :data-edit-card-editing-value="$editing ? 'true' : null">
     <x-slot:actions><button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $editing ? 'Готово' : 'Изменить' }}</button></x-slot:actions>
     <div class="list">
         <x-ui.doc :doc="$pdf" class="row">

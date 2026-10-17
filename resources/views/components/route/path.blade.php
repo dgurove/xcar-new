@@ -147,6 +147,13 @@
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
                         <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
                     @endif
+                    {{-- ДКП: что вписываем мы (продавец по СТС, документы ТС, цена) — прямо в шаге, «Заполнить» открывает карточку «ДКП»
+                         сразу полями (17.10.2026, владелец: «нет возможности указать данные продавца, всё встало» — поля жили за
+                         «Изменить» внизу дорожки «Сделка»). Покупателя вносит менеджер — его тут нет. --}}
+                    @if ($deal?->isActive() && $deal->hasContract() && auth()->user()?->canManageCrm()
+                        && ($ours = array_values(array_diff(\App\Offers\DealContract::for($deal)->missing(), ['покупатель', 'данные покупателя', 'скан паспорта покупателя']))))
+                        <p class="step-hint text-urgent">ДКП ждёт: {{ implode(', ', $ours) }} <a href="/offers/{{ $offer->number }}?dkp=1#dkp" class="text-accent-text underline-offset-4" data-turbo-frame="_top">Заполнить</a></p>
+                    @endif
                     @if ($position->fields())
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
                     @endif
