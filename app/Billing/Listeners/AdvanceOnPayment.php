@@ -7,11 +7,10 @@ use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\InvoiceState;
 use App\Offers\Deal;
-use App\Offers\OfferEventType;
 use App\Users\User;
-use App\Workflow\Events\StageEntered;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
+use App\Workflow\Events\StageEntered;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 
@@ -66,12 +65,9 @@ final class AdvanceOnPayment
         $slip = $position?->stage->payExit($deal);
         if ($slip) {
             $deal->openRequirement()->where('stage_id', $position->stage_id)->first()?->update(['done_at' => now(), 'answer' => ['exit' => $slip->label, 'fields' => []]]);
+            // Строки «Менеджер: «Платёжное поручение приложено»» нет: деньги отметил сотрудник, пришли по ссылке или выписке —
+            // менеджер ничего не отвечал (17.10.2026, прогон); его заявку об оплате ведёт `AdvanceOnClaim`. В истории — этап.
             ($this->take)($offer, $slip, Actor::Manager, $by);
-            // «Менеджер: «Платёжное поручение приложено»» — только когда это он: деньги отметил сотрудник, пришли по ссылке
-            // или выписке — менеджер ничего не отвечал (17.10.2026, прогон), в истории остаётся строка этапа.
-            if ($by && $by->id === $deal->buyer_id) {
-                $offer->log(OfferEventType::RequirementAnswered, $by, ['exit' => $slip->label, 'fields' => []]);
-            }
             $position = $offer->fresh()->position(Track::Sale);
         }
         // Оплата до вывоза (Альфа, `pay_before_pickup`): «Оплата получена» на этапе, что ждёт поставщика, — это его

@@ -33,6 +33,8 @@
             @if ($t->executor !== \App\Logistics\Executor::Manager)
                 <a href="{{ Surface::Logistics->url('/transports/'.$t->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>
                 <span class="{{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span>
+            @elseif ($t->isLate())
+                <span class="text-danger">не забрал в срок</span>
             @endif
             <x-car.keys :count="$keys"/>
         </div>

@@ -205,7 +205,11 @@ export default class extends Controller {
 
     fresher(html) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
-        const n = [...doc.querySelectorAll('turbo-stream template')].reduce((sum, t) => sum + t.content.querySelectorAll('.photo-cell[data-id]').length, 0);
+        // Считаем только поток, что меняет этот блок: в ответе бывает и копия для просмотра (вывоз: шторка «Забрал» и
+        // карточка), и её кадры удваивали бы счёт — устаревший ответ проходил бы как свежий.
+        const streams = [...doc.querySelectorAll('turbo-stream')];
+        const mine = streams.filter((s) => { const id = s.getAttribute('target'); return id && this.element.closest(`#${CSS.escape(id)}`); });
+        const n = (mine.length ? mine : streams).reduce((sum, s) => sum + (s.querySelector('template')?.content.querySelectorAll('.photo-cell[data-id]').length ?? 0), 0);
         if (n < this.shown) return false;
         this.shown = n;
         return true;

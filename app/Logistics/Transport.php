@@ -313,7 +313,7 @@ class Transport extends Model
         $status = fn (bool $done, bool $current) => $done ? 'done' : ($current && ! $cancelled ? 'current' : 'later');
         $steps = [];
         $assigned = $this->executor_id !== null;
-        $steps[] = ['key' => 'executor', 'title' => $assigned ? 'Вывозит '.$this->executorUser?->shortName() : ($this->executor === Executor::Logist ? 'У логиста '.$this->coordinator?->shortName() : 'Кто вывозит'),
+        $steps[] = ['key' => 'executor', 'title' => $assigned ? 'Вывозит '.($this->executorUser?->shortName() ?? 'исполнитель') : ($this->executor === Executor::Logist ? 'У логиста'.($this->coordinator ? ' '.$this->coordinator->shortName() : '') : 'Кто вывозит'),
             'status' => $status($assigned, ! $assigned), 'at' => $this->assigned_at,
             'hint' => implode(', ', array_filter([
                 $this->executor === Executor::Logist && $this->coordinator && $assigned && $this->coordinator_id !== $this->executor_id ? 'через '.$this->coordinator->shortName() : null,
@@ -340,7 +340,7 @@ class Transport extends Model
         $keys = $this->car?->keys_count;
         // Менеджер везёт к себе сам: его «Автомобиль забрал» и есть «привёз» (`SelfPickup`) — один шаг, без «Привёз».
         if ($this->executor === Executor::Manager) {
-            $steps[0]['title'] = $assigned ? 'Забирает '.$this->executorUser?->shortName() : $steps[0]['title'];
+            $steps[0]['title'] = $assigned ? 'Забирает '.($this->executorUser?->shortName() ?? 'менеджер') : $steps[0]['title'];
             $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Забрал' : 'Забрать', 'status' => $status($s->picked(), $s === TransportState::Assigned),
                 'at' => $this->delivered_at ?? $this->picked_at, 'hint' => null];
 

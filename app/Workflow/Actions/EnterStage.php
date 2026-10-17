@@ -75,7 +75,7 @@ final class EnterStage
         $awaitsLetter = $track === Track::Sale && $deal?->isActive() && $to->isLetterStep() && ! $letter && ! $back;
         // Шаг «Менеджер забирает автомобиль», а везёт логистика (17.10.2026): ход наш, без часов и просьбы «Заберите» —
         // шаг пройдёт сам по «Привёз» к нему (`SyncHandover`); сняли вывоз — ход снова его (`SyncHandover::turn`).
-        $carried = $track === Track::Sale && $deal?->isActive() && $to->isPickupStep() && $deal->setRelation('offer', $offer)->carried();
+        $carried = $track === Track::Sale && $deal?->isActive() && $to->isPickupStep() && $deal->setRelation('offer', $offer->unsetRelation('pickupTask'))->carried();
         $position = Position::updateOrCreate(['offer_id' => $offer->id, 'track' => $track->value], [
             'stage_id' => $to->id,
             'waits_for' => $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null),

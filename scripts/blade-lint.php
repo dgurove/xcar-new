@@ -73,9 +73,16 @@ foreach ($doors as [$where, $type, $pattern, $allowed, $door]) {
 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/resources/js", FilesystemIterator::SKIP_DOTS));
 foreach ($it as $file) {
     if (! str_ends_with($file->getFilename(), '.js')) continue;
-    preg_match_all('/^    (?:async |static |get |set )?([A-Za-z_$][\w$]*)\([^)\n]*\)\s*\{/m', file_get_contents($file->getPathname()), $m);
-    foreach (array_unique(array_diff_assoc($m[1], array_unique($m[1]))) as $name) {
-        $bad[] = str_replace("$root/", '', $file->getPathname()).": метод {$name}() объявлен дважды — второй перекрывает первый";
+    // Внутри каждого класса отдельно: два класса в одном модуле вправе иметь по `connect()`. Кусок класса — от строки
+    // `class …` до следующего объявления верхнего уровня; get/set с одним именем — пара, а не дубль.
+    $parts = preg_split('/^(?=(?:export (?:default )?)?(?:class|function|const|let|var)\b)/m', file_get_contents($file->getPathname()));
+    foreach ($parts as $part) {
+        if (! preg_match('/^(?:export (?:default )?)?class\b/', $part)) continue;
+        preg_match_all('/^    (?:async |static )?(get |set )?([A-Za-z_$][\w$]*)\([^)\n]*\)\s*\{/m', $part, $m, PREG_SET_ORDER);
+        $names = array_map(fn ($x) => trim($x[1]).$x[2], $m);
+        foreach (array_unique(array_diff_assoc($names, array_unique($names))) as $name) {
+            $bad[] = str_replace("$root/", '', $file->getPathname()).": метод {$name}() объявлен дважды — второй перекрывает первый";
+        }
     }
 }
 

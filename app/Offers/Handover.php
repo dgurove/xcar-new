@@ -72,7 +72,7 @@ final class Handover
         $picks = $deal->buyerPicksUp();
         $place = $offer->car_place;
         // Везёт не он: задача в логистике открыта, а исполнитель — не менеджер сделки (логист, наши, ещё никто).
-        $carried = $pickup?->isOpen() && ! $picks;   // то же, что `Deal::carried`, без второго запроса
+        $carried = $deal->carried();
 
         $saleExit = $sale?->stage->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $e) => self::picked($e));
         // Шаг продажи сам про получение: просит забрать (Каркаде, гараж, «Менеджер забирает автомобиль») или вписали ему,

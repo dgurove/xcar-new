@@ -139,8 +139,10 @@
         @endif
 
         {{-- Пока можно жать «Забрал», фото приёма снимают в его шторке (17.10.2026, прогон: «сначала добавьте фото в карточке»
-             гонял из шторки обратно); здесь — только снятые. Блок один: поток загрузки меняет его по id. --}}
-        @if ($pickup && ! ($step === 'pickup' && ! $blocked) && ($photosEdit || $t->photos('pickup')->isNotEmpty()))
+             гонял из шторки обратно); здесь — снятые, для просмотра (`view`, свой id — поток загрузки меняет оба). --}}
+        @if ($pickup && $step === 'pickup' && ! $blocked)
+            <x-logistics.photos :t="$t" at="pickup" view/>
+        @elseif ($pickup && ($photosEdit || $t->photos('pickup')->isNotEmpty()))
             <x-logistics.photos :t="$t" at="pickup" :edit="$photosEdit && ! $t->state->picked()"/>
         @endif
         @if ($t->pickup_note)<p class="mt-3 whitespace-pre-line text-sm">{{ $t->pickup_note }}</p>@endif

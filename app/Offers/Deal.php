@@ -495,11 +495,12 @@ class Deal extends Model
     /**
      * Машину везёт не менеджер сделки: вывоз открыт, а исполнитель — логист, наши, другой менеджер или ещё никто (17.10.2026,
      * прогон этапов). Тогда шаг «Менеджер забирает автомобиль» ждёт нас: просьбы «Заберите» и часов у менеджера нет
-     * (`EnterStage`, `SyncHandover::turn`), в сделке — «Везёт …» (`Handover`).
+     * (`EnterStage`, `SyncHandover::turn`), в сделке — «Везёт …» (`Handover`). Вывоз читается из связи `pickupTask`: кто
+     * только что его завёл или назначил, снимает её до вызова.
      */
     public function carried(): bool
     {
-        return (bool) $this->offer?->unsetRelation('pickupTask')->pickup()?->isOpen() && ! $this->buyerPicksUp();
+        return (bool) $this->offer?->pickup()?->isOpen() && ! $this->buyerPicksUp();
     }
 
     /** Разница между ценой подтверждения и закупочной; без закупочной — null. */

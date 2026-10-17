@@ -92,12 +92,27 @@ class Template extends Model
         return ['subject' => strtr(self::dropEmpty((string) $this->subject, $values), $map), 'body' => strtr(self::dropEmpty((string) $this->body, $values), $map)];
     }
 
+    /** Коды машины с подписью перед ними в тексте шаблона: пустой код уходит вместе с подписью. */
+    private const LABELS = ['vin' => 'VIN', 'plate' => 'гос\.? ?номер', 'sts' => 'СТС', 'pts' => 'ПТС', 'claim_ref' => '№ убытка'];
+
     /**
-     * Пустой VIN уходит со своей подписью (17.10.2026, прогон): «…Ford Kuga, VIN (ПРОГОН-Т-2) за…» — у машины без VIN
-     * в письме поставщику оставалось голое «VIN». Шаблон правят админы, поэтому чистим при подстановке.
+     * Пустой код уходит со своей подписью (17.10.2026, прогон): «…Ford Kuga, VIN (ПРОГОН-Т-2) за…» — у машины без VIN
+     * в письме поставщику оставалось голое «VIN», у ТС парковки без номера — «госномер ,». Подписанные коды (`LABELS`) —
+     * «, VIN {{ vin }}», любой пустой в скобках — « ({{ claim_ref }})». Шаблон правят админы, поэтому чистим при подстановке.
      */
     private static function dropEmpty(string $text, array $values): string
     {
-        return filled($values['vin'] ?? null) ? $text : (string) preg_replace('/,?[ \t]*VIN:?[ \t]*\{\{ ?vin ?\}\}/u', '', $text);
+        foreach ($values as $key => $value) {
+            if (filled($value) || ! is_string($key)) {
+                continue;
+            }
+            $tag = '\{\{ ?'.preg_quote($key, '/').' ?\}\}';
+            $text = (string) preg_replace('/[ \t]*\('.$tag.'\)/u', '', $text);
+            if (isset(self::LABELS[$key])) {
+                $text = (string) preg_replace('/,?[ \t]*'.self::LABELS[$key].':?[ \t]*'.$tag.'/iu', '', $text);
+            }
+        }
+
+        return $text;
     }
 }
