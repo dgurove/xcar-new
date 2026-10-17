@@ -27,6 +27,17 @@ final class Choices
         return once(fn () => User::withRole(Role::Driver)->whereNull('rejected_at')->orderBy('name')->pluck('name', 'id')->all());
     }
 
+    /**
+     * Менеджеры, что могут вывезти как исполнители логистики (17.10.2026, владелец), — все, кроме менеджера этой сделки (он
+     * забирает сам, через «Принять»). @return array<int, string>
+     */
+    public static function partners(Transport|Offer|null $of = null): array
+    {
+        $own = $of ? self::managerOf($of)?->id : null;
+
+        return array_diff_key(once(fn () => User::withRole(Role::Manager)->whereNull('rejected_at')->orderBy('name')->pluck('name', 'id')->all()), [$own => true]);
+    }
+
     /** Исполнители логиста и он сам — кого он может назначить. @return array<int, string> */
     public static function contractorsOf(User $logist): array
     {

@@ -75,7 +75,7 @@ final class Nav
             if (! $user) {
                 return [];
             }
-            $tasks = $user->isAdmin() || $user->isLogist() || $user->isDriver() || $user->isContractor();
+            $tasks = $user->isAdmin() || $user->isLogist() || $user->isDriver() || $user->isContractor() || $user->carriesForLogistics();
 
             return array_values(array_filter([
                 $tasks ? self::item('Вывоз', '/transports') : null,

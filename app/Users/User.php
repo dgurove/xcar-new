@@ -4,6 +4,8 @@ namespace App\Users;
 
 use App\Billing\Party;
 use App\Chats\Chat;
+use App\Logistics\Executor;
+use App\Logistics\Transport;
 use App\Media\MediaUrl;
 use App\Notifications\PasswordResetLetter;
 use App\Offers\Actions\SyncViewers;
@@ -492,11 +494,18 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     /**
      * logistics.xcar.ru: админ — всё; логист — свои вывозы и исполнители; наши люди и исполнители логиста — свои задачи;
-     * модератор — «Документы» (СДЭК, 17.10.2026: оформляет Лиза). Менеджеру логистики нет: забирает сам — в своей сделке.
+     * модератор — «Документы» (СДЭК, 17.10.2026: оформляет Лиза); менеджер — только когда ему поручили вывоз чужой сделки
+     * (`Executor::Partner`). Свою он забирает сам — в своей сделке, логистики ему для этого не нужно.
      */
     public function canLogistics(): bool
     {
-        return $this->isAdmin() || $this->isLogist() || $this->isDriver() || $this->isContractor() || $this->isModerator();
+        return $this->isAdmin() || $this->isLogist() || $this->isDriver() || $this->isContractor() || $this->isModerator() || $this->carriesForLogistics();
+    }
+
+    /** Менеджер, которому поручили вывоз чужой сделки (`Executor::Partner`), — исполнитель логистики. Раз на запрос. */
+    public function carriesForLogistics(): bool
+    {
+        return $this->isManager() && once(fn () => Transport::where('executor', Executor::Partner->value)->where('executor_id', $this->id)->exists());
     }
 
     /** Все задачи и назначение — админу. */

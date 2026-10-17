@@ -296,6 +296,36 @@ class PickupLogisticsTest extends TestCase
         }
     }
 
+    /** «Вывозит логистика» — может и другой менеджер (не менеджер сделки): видит задачу в логистике, менеджеру сделки — нельзя. */
+    public function test_other_manager_carries_for_logistics(): void
+    {
+        Notification::fake();
+        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $owner = User::create(['name' => 'Филипп Бородин', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $other = User::create(['name' => 'Сахиб Перевозчик', 'phone' => '79000000011', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission', 'pickup_on_arrival' => true]);
+        app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
+        $offer = app(UpdateOffer::class)(Offer::create(['claim_ref' => '473700/2026', 'floor_price' => 900000, 'asking_price' => 1200000, 'bids_close_at' => now()->addDay()]), ['vendor_id' => $vendor->id], $admin);
+        $offer->forceFill(['state' => OfferState::Open])->save();
+        $offer->viewers()->create(['user_id' => $owner->id, 'opens_at' => now()]);
+        app(EnterStage::class)($offer->fresh(), Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
+        $bid = app(PlaceBid::class)($offer->fresh(), $owner, 1100000);
+        $this->actingAs($admin)->post('http://'.config('xcar.crm_host').'/confirmations/'.$bid->id.'/accept', ['pickup' => 'us', 'commission' => 50000]);
+        $t = Transport::openFor($offer->fresh());
+
+        try {
+            app(AssignExecutor::class)($t, Executor::Partner, $owner, $admin);
+            $this->fail('менеджер сделки — не исполнитель логистики');
+        } catch (ValidationException) {
+        }
+        app(AssignExecutor::class)($t->fresh(), Executor::Partner, $other, $admin);
+        $this->assertSame($other->id, $t->fresh()->executor_id);
+        $this->assertTrue(Transport::visibleTo($other)->whereKey($t->id)->exists());
+        $this->assertTrue(Transport::visibleTo($admin)->whereKey($t->id)->exists());
+        $this->assertTrue($other->fresh()->canLogistics());
+        $this->assertFalse($owner->fresh()->canLogistics());
+    }
+
     private function addPhoto(Transport $t): void
     {
         Media::forceCreate([

@@ -39,6 +39,10 @@ final class AssignExecutor
         if ($kind === Executor::Manager && ! ($who && $who->is(Choices::managerOf($t)))) {
             throw ValidationException::withMessages(['executor_id' => 'Вывозит только менеджер, которому подтвердили сделку']);
         }
+        // Другой менеджер — исполнитель логистики; менеджер этой сделки забирает сам («Принять»), не через логистику.
+        if ($kind === Executor::Partner && $who && $who->is(Choices::managerOf($t))) {
+            throw ValidationException::withMessages(['executor_id' => $who->shortName().' — менеджер этой сделки: забирает сам, через «Принять»']);
+        }
 
         return DB::transaction(function () use ($t, $kind, $who, $by, $cdek, $batch) {
             $previous = $t->executorUser ?? $t->coordinator;
@@ -87,6 +91,7 @@ final class AssignExecutor
         match ($kind) {
             Executor::Logist => $who?->isLogist() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите логиста']),
             Executor::Staff => $who?->isDriver() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите сотрудника на вывозе']),
+            Executor::Partner => $who?->isManager() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите менеджера']),
             Executor::Manager => $who ?: throw ValidationException::withMessages(['executor_id' => 'Кто именно']),
         };
     }

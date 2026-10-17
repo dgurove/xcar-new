@@ -58,7 +58,7 @@ final class Categories
         if ($user->hasRole(Role::Admin, Role::Logist)) {
             $add(['on' => ['logistics' => 'Вывоз'], 'always' => []]);
         }
-        if ($user->hasRole(Role::Logist, Role::Driver, Role::Contractor)) {
+        if ($user->hasRole(Role::Logist, Role::Driver, Role::Contractor) || $user->carriesForLogistics()) {
             $add(['on' => [], 'always' => ['Вывоз поручен вам']]);
         }
         if ($user->hasRole(Role::Moderator)) {
