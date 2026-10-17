@@ -73,12 +73,15 @@ final class EnterStage
         // Этап с письмом поставщику (11.10.2026): пока письмо не ушло, ход наш и срока нет — сутки на ответ считаются от
         // письма (`MarkSupplierLetter`). Шаг, сдвинутый самим письмом, и откат — не трогаем.
         $awaitsLetter = $track === Track::Sale && $deal?->isActive() && $to->isLetterStep() && ! $letter && ! $back;
+        // Шаг «Менеджер забирает автомобиль», а везёт логистика (17.10.2026): ход наш, без часов и просьбы «Заберите» —
+        // шаг пройдёт сам по «Привёз» к нему (`SyncHandover`); сняли вывоз — ход снова его (`SyncHandover::turn`).
+        $carried = $track === Track::Sale && $deal?->isActive() && $to->isPickupStep() && $deal->setRelation('offer', $offer)->carried();
         $position = Position::updateOrCreate(['offer_id' => $offer->id, 'track' => $track->value], [
             'stage_id' => $to->id,
-            'waits_for' => $ours || $awaitsLetter ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null),
+            'waits_for' => $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null),
             'entered_at' => $now,
             'block_entered_at' => $from && $from->block_id === $to->block_id && $position?->block_entered_at ? $position->block_entered_at : $now,
-            'deadline_at' => $noInvoice || $awaitsLetter ? null : $to->deadlineFor($offer, $now),
+            'deadline_at' => $noInvoice || $awaitsLetter || $carried ? null : $to->deadlineFor($offer, $now),
             'reminded_at' => null,
             'overdue_at' => null,
             'payload' => $payload ?: null,
@@ -96,7 +99,7 @@ final class EnterStage
             $offer = ($this->changeState)($offer, $to->offer_state, $by, followRoute: false);
         }
 
-        if (! $noInvoice && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
+        if (! $noInvoice && ! $carried && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
             Requirement::askFor($deal, $to, $position);
         }
 

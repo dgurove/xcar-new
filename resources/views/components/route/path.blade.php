@@ -124,8 +124,8 @@
                                         </form>
                                     @endif
                                     @if ($extend)
-                                        @foreach ([1 => 'Продлить на день', 3 => 'Продлить на 3 дня'] as $days => $label)
-                                            <form method="post" action="/offers/{{ $n }}/deadline" class="contents">@csrf<input type="hidden" name="track" value="{{ $position->track->value }}"><input type="hidden" name="days" value="{{ $days }}"><button class="menu-item w-full" role="menuitem">{{ $label }}</button></form>
+                                        @foreach ([1 => 'Продлить на день', 3 => 'Продлить на 3 дня'] as $days => $extendLabel)
+                                            <form method="post" action="/offers/{{ $n }}/deadline" class="contents">@csrf<input type="hidden" name="track" value="{{ $position->track->value }}"><input type="hidden" name="days" value="{{ $days }}"><button class="menu-item w-full" role="menuitem">{{ $extendLabel }}</button></form>
                                         @endforeach
                                         <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="deadline-{{ $position->id }}:open">Срок до даты…</button>
                                     @endif

@@ -3,8 +3,11 @@
 namespace App\Offers\Listeners;
 
 use App\Logistics\Actions\SelfPickup;
+use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
+use App\Logistics\Events\TransportRequested;
 use App\Logistics\Point;
+use App\Notifications\YourTurnNotice;
 use App\Offers\CarPlace;
 use App\Offers\Deal;
 use App\Offers\Handover;
@@ -15,8 +18,11 @@ use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Events\StageEntered;
 use App\Workflow\Outcome;
+use App\Workflow\Requirement;
 use App\Workflow\Track;
+use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
+use Illuminate\Support\Carbon;
 
 /**
  * Шаг получения продажи («Менеджер забирает автомобиль» → «Автомобиль забрал», у гаража «Автомобиль передан») и вывоз в
@@ -26,6 +32,8 @@ use Illuminate\Events\Dispatcher;
  * — продажа пришла на шаг получения, а машина уже у него.
  * Обратно: менеджер нажал в сделке «Автомобиль забрал» — задача вывоза закрывается «у него» (`SelfPickup`; вёл логист — отменена).
  * Конец пути гаражной ставит машину на «Подготовку» (`CloseGarageDeal`, `StartPrepOnArrival`).
+ * Чей ход на шаге получения — того, кто везёт (`turn`, 17.10.2026, прогон этапов): везёт логистика — ход наш, без часов и
+ * просьбы менеджеру; вывоз отменили или привезли к нам — снова его «Заберите автомобиль».
  */
 final class SyncHandover
 {
@@ -35,6 +43,8 @@ final class SyncHandover
     {
         return [
             TransportMoved::class => 'moved',
+            TransportAssigned::class => 'assigned',
+            TransportRequested::class => 'assigned',
             StageEntered::class => 'entered',
         ];
     }
@@ -53,6 +63,15 @@ final class SyncHandover
         if (($e->step === 'picked' && $own) || $handed) {
             $this->pressSale($deal, $e->by ?? $this->system());
         }
+        $this->turn($offer->fresh());
+    }
+
+    /** Назначили, сняли или попросили вывоз — ход на шаге получения за тем, кто везёт. */
+    public function assigned(TransportAssigned|TransportRequested $e): void
+    {
+        if ($offer = $e->transport->saleOffer()) {
+            $this->turn($offer);
+        }
     }
 
     /** Продажа пришла на шаг получения, а машина уже у менеджера сделки. */
@@ -70,9 +89,37 @@ final class SyncHandover
             return;
         }
         if (! $deal?->isActive() || $offer->car_place !== CarPlace::Keeper || $offer->keeper()?->id !== $deal->buyer_id) {
+            $this->turn($offer);
+
             return;
         }
         $this->pressSale($deal->setRelation('offer', $offer), $e->by ?? $this->system());
+    }
+
+    /**
+     * Шаг «Менеджер забирает автомобиль» ждёт того, кто везёт: открытый вывоз не у менеджера (логист, наши, другой менеджер,
+     * ещё никто — вывоз заказан) — ход наш, часов и просьбы «Заберите автомобиль» у менеджера нет (Совкомбанк с логистом:
+     * он видел «Заберите» и копил просрочку за чужую дорогу). Вывоза нет, он у менеджера или закрыт — ход его, часы от сейчас.
+     */
+    private function turn(Offer $offer): void
+    {
+        $deal = $offer->deal()->first();
+        $position = $offer->unsetRelation('positions')->position(Track::Sale);
+        if (! $deal?->isActive() || ! $position?->stage->isPickupStep()) {
+            return;
+        }
+        $ours = $deal->setRelation('offer', $offer)->carried();
+        if ($ours && $position->waits_for !== WaitsFor::Us) {
+            $position->update(['waits_for' => WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null]);
+            Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->delete();
+        } elseif (! $ours && $position->waits_for === WaitsFor::Us) {
+            $position->update(['waits_for' => null, 'deadline_at' => $position->stage->deadlineFor($offer, Carbon::now()), 'reminded_at' => null, 'overdue_at' => null]);
+            $open = Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->exists();
+            // Ход вернулся к нему (выбрали «Забирает менеджер» после входа в шаг, логистику сняли, привезли к нам) — «Ваш ход».
+            if (! $open && $deal->buyer && $position->stage->awaitsManager($deal)) {
+                $deal->buyer->notify(new YourTurnNotice(Requirement::askFor($deal, $position->stage, $position)->load('offer')));
+            }
+        }
     }
 
     private function pressSale(Deal $deal, User $by): void

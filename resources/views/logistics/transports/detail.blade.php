@@ -108,7 +108,7 @@
                             <form method="post" action="/transports/{{ $id }}/docs" class="mt-3 flex items-end gap-2">
                                 @csrf
                                 <div class="fields min-w-0 flex-1"><x-ui.field name="docs_track" id="docs-track-{{ $id }}" label="Трек-номер СДЭК" :value="$t->docs_track"/></div>
-                                <x-ui.button size="sm" class="shrink-0">{{ $t->docs_track ? 'Сохранить' : 'Отправила' }}</x-ui.button>
+                                <x-ui.button size="sm" class="shrink-0">{{ $t->docs_track ? 'Сохранить' : 'Отправлено' }}</x-ui.button>
                             </form>
                         @endif
                         @if ($s['key'] === 'call' && $t->agreed_at && $executes && $open && ! $t->state->picked())
