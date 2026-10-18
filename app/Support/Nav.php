@@ -84,6 +84,8 @@ final class Nav
                 $user->sendsLogisticsDocs() ? self::item('Документы', '/documents') : null,
                 // Свои заказчики логиста (18.10.2026): заявки не только от XCar.
                 $user->isLogist() ? self::item('Заказчики', '/clients') : null,
+                // Свои стоянки логиста (18.10.2026): где машины ждут между отрезками.
+                $user->isLogist() ? self::item('Стоянки', '/depots') : null,
                 $user->isAdmin() || $user->isLogist() ? self::item('Исполнители', '/contractors') : null,
                 $user->isAdmin() || $user->isLogist() ? self::item('Оплаты', '/money') : null,
             ]));
@@ -484,6 +486,8 @@ final class Nav
                     '/transports' => Transport::visibleTo($user)->open()->count(),
                     '/documents' => $user->sendsLogisticsDocs() ? Transport::awaitingDocs()->count() : 0,
                     '/clients' => $user->isLogist() ? Client::of($user)->whereNull('archived_at')->count() : 0,
+                    // Стоянки — сколько машин на них стоит сейчас.
+                    '/depots' => $user->isLogist() ? Transport::where('logist_id', $user->id)->whereNotNull('from_depot_id')->whereIn('state', [TransportState::New, TransportState::Logist, TransportState::Assigned, TransportState::Agreed])->count() : 0,
                     '/contractors' => $user->isAdmin() || $user->isLogist() ? User::contractorsFor($user)->count() : 0,
                     // Ждут выплаты логисту: свои — логисту, все — админу. Логисту ещё свои деньги (18.10.2026): привезённые заявки,
                     // за которые заказчик не заплатил, и вывозы, где он не заплатил исполнителю, — те же строки, что в «Оплатах».

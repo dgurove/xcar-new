@@ -84,7 +84,7 @@
         <x-slot:badge><x-car.keys :count="$t->car?->keys_count" label/><span class="title-state {{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span></x-slot:badge>
         <x-slot:line>
             @if ($city)<span>{{ $city }}</span>@endif
-            @if (! $pickup)<span>перевозка</span>@endif
+            @if (! $pickup && ! $t->from_depot_id)<span>перевозка</span>@endif
         </x-slot:line>
         @if ($carLink)
             <x-slot:actions><a href="{{ $carLink }}" class="pill" data-turbo="false">{{ str_contains($carLink, '/offers/') ? 'Предложение в CRM' : 'Дело на парковке' }}</a></x-slot:actions>
@@ -120,10 +120,18 @@
             </div>
         @endif
 
-        {{-- Владелец и откуда — тому, кто едет: созвониться первым делом. --}}
-        @if ($pickup && ($handles || $me->sendsLogisticsDocs()))
+        {{-- Владелец и откуда — тому, кто едет: созвониться первым делом. Отрезок со стоянки логиста — откуда: стоянка, кто
+             на месте и телефон. --}}
+        @php $fromDepot = $t->fromDepot; @endphp
+        @if (($pickup || $fromDepot) && ($handles || $me->sendsLogisticsDocs()))
             <div class="list mt-4">
-                @if ($t->ownerName() || $phone)
+                @if ($fromDepot && ($fromDepot->contact_name || $fromDepot->phone))
+                    <div class="row items-center justify-between gap-4">
+                        <span class="min-w-0"><span class="block text-sm text-ink-muted">На стоянке</span><span class="block break-words">{{ $fromDepot->contact_name ?? 'Телефон' }}</span></span>
+                        @if ($fromDepot->phone)<a href="tel:+{{ $fromDepot->phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($fromDepot->phone) }}</a>@endif
+                    </div>
+                @endif
+                @if ($pickup && ($t->ownerName() || $phone))
                     <div class="row items-center justify-between gap-4">
                         <span class="min-w-0"><span class="block text-sm text-ink-muted">{{ $order ? 'У кого забрать' : 'Владелец' }}</span><span class="block break-words">{{ $t->ownerName() ?? 'Имени нет' }}</span></span>
                         @if ($phone)<a href="tel:+{{ $phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($phone) }}</a>@endif
@@ -149,9 +157,14 @@
                     <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Договорились</span><span class="block whitespace-pre-line break-words">{{ $t->call_note }}</span></span></div>
                 @endif
             </div>
-        @elseif (! $pickup && ($t->from_address || $t->destinationLabel()))
+        @elseif (! $pickup && ! $fromDepot && ($t->from_address || $t->destinationLabel()))
             <p class="mt-4 text-sm">{{ $t->from_address ?? '?' }} → {{ $t->destinationLabel() ?? '?' }}</p>
         @endif
+
+        {{-- Отрезки через стоянку логиста — ведущим и логисту (исполнителю — только свой). --}}
+        @unless ($solo)
+            <x-logistics.legs :t="$t" :href="fn ($leg) => '/transports?preset=all&peek='.$leg->id" class="mt-4"/>
+        @endunless
 
         {{-- Ход лесенкой — тот же, что в CRM. --}}
         <div class="steps mt-5">
@@ -341,12 +354,29 @@
             <x-ui.sheet :id="'logist-'.$id" :title="$t->executor_id ? 'Исполнитель' : 'Назначить исполнителя'">
                 <form method="post" action="/transports/{{ $id }}/logist" class="flex flex-col gap-4">
                     @csrf @method('put')
-                    {{-- Куда и что сказал админ — фактом над выбором (18.10.2026): исполнителя выбирают под маршрут. --}}
-                    @if ($t->routeLabel() || $t->reach || $t->comment)
+                    {{-- Куда везёт исполнитель (18.10.2026): туда, куда указано, или сначала на свою стоянку — тогда указанное
+                         достанется следующему отрезку. Стоянку выбирают и заводят тут же. --}}
+                    @php
+                        $target = $t->destination === Point::Depot ? $t->nextLabel() : $t->routeLabel();
+                        $leg = old('leg', $t->destination === Point::Depot ? 'depot' : 'route');
+                    @endphp
+                    <div class="flex flex-col gap-3" data-controller="reveal">
+                        <h3 class="list-head -mb-1">Куда везёт исполнитель</h3>
                         <div class="list">
-                            <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Куда везти</span><span class="block break-words">{{ implode(', ', array_filter([$t->routeLabel() ?? 'пока неизвестно', $t->reach ? mb_lcfirst($t->reach->label()) : null])) }}</span>@if ($t->comment)<span class="block whitespace-pre-line break-words text-sm text-ink-muted">{{ $t->comment }}</span>@endif</span></div>
+                            <label class="row row-check">
+                                <span class="min-w-0 flex-1"><span class="block break-words {{ $target ? '' : 'text-urgent' }}">{{ $target ?? 'Пока неизвестно' }}</span>@if ($t->reach)<span class="block text-sm text-ink-muted">{{ $t->reach->label() }}</span>@endif</span>
+                                <span class="check"><input type="radio" name="leg" value="route" @checked($leg === 'route') data-action="reveal#pick"></span>
+                            </label>
+                            <label class="row row-check">
+                                <span class="min-w-0 flex-1">На стоянку</span>
+                                <span class="check"><input type="radio" name="leg" value="depot" @checked($leg === 'depot') data-action="reveal#pick"></span>
+                            </label>
                         </div>
-                    @endif
+                        <div class="fields" data-reveal-target="pane" data-reveal-key="depot" @if ($leg !== 'depot') hidden @endif>
+                            <x-people.pick name="depot_id" label="Стоянка" kind="depot" :people="\App\Support\People::depotsOf($t->logist)" :value="old('depot_id', $t->depot_id)" title="Стоянка" :owner="$t->logist_id"/>
+                        </div>
+                        @if ($t->comment)<p class="whitespace-pre-line px-1 text-sm text-ink-muted">{{ $t->comment }}</p>@endif
+                    </div>
                     <div class="fields">
                         {{-- Свои строками с городом и «в работе N» — видно, кто свободен; новый — тут же (18.10.2026). --}}
                         <x-people.pick name="executor_id" label="Исполнитель" kind="contractor" :people="\App\Support\People::contractorsOf($t->logist)" :value="old('executor_id', $t->executor_id)" title="Исполнитель" link required/>

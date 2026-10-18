@@ -16,7 +16,13 @@
             </div>
         @endif
         <div class="people-person fields">
-            @if ($kind === 'client')
+            @if ($kind === 'depot')
+                <x-ui.field :name="$f('name')" :id="$id('name')" label="Название" required autocomplete="off" placeholder="Например: Киров, Северная" data-people-field="name"/>
+                <x-ui.field :name="$f('city')" :id="$id('city')" label="Город" autocomplete="off" data-people-field="city"/>
+                <x-ui.field :name="$f('address')" :id="$id('address')" label="Адрес" type="textarea" data-people-field="address"/>
+                <x-ui.field :name="$f('contact_name')" :id="$id('contact')" label="Кто на месте" autocomplete="off" data-people-field="contact_name"/>
+                <x-ui.field :name="$f('phone')" :id="$id('phone')" label="Телефон" type="tel" data-people-field="phone"/>
+            @elseif ($kind === 'client')
                 <x-ui.field :name="$f('name')" :id="$id('name')" label="Название" required autocomplete="off" data-people-field="name"/>
                 <x-ui.field :name="$f('contact_name')" :id="$id('contact')" label="Контакт" autocomplete="off" data-people-field="contact_name"/>
                 <x-ui.field :name="$f('phone')" :id="$id('phone')" label="Телефон" type="tel" data-people-field="phone"/>

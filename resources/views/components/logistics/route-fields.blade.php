@@ -7,7 +7,9 @@
     use App\Logistics\Point;
     $offer ??= $t?->saleOffer();
     $keeper = \App\Logistics\Transport::keeperLabel($offer);
+    // Задача везёт на стоянку логиста — она первой строкой (исполнитель её видит и не теряет при «Забрал»).
     $points = array_filter([
+        Point::Depot->value => $t?->destination === Point::Depot ? $t->depot?->label() : null,
         Point::Keeper->value => $keeper,
         Point::Ours->value => Point::Ours->label(),
         Point::Yard->value => Point::Yard->label(),

@@ -94,6 +94,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(NotifyLogistics::class);
         Event::subscribe(RecordOnOffer::class);
         Event::listen(TransportMoved::class, RecordHistory::class);
+        Event::listen(TransportMoved::class, \App\Logistics\Actions\NextLeg::class);
         Event::subscribe(RefreshLogistics::class);
         Event::listen(NotificationSent::class, CollapseNotices::class);
         Event::subscribe(PublishLiveUpdates::class);

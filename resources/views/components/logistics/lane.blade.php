@@ -61,6 +61,7 @@
             <x-deal.handover :deal="$deal" compact lane class="mb-4"/>
         @endif
         @if (! $manager)
+            <x-logistics.legs :t="$t" class="mb-4"/>
             <div class="list mb-4">
                 <x-logistics.facts :t="$t" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
             </div>

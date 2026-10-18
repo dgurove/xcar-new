@@ -2,7 +2,9 @@
 
 namespace App\Http;
 
+use App\Cars\Settlement;
 use App\Logistics\Client;
+use App\Logistics\Depot;
 use App\Offers\Deal;
 use App\Support\People;
 use App\Support\Phone;
@@ -21,7 +23,7 @@ use Illuminate\Support\Facades\Blade;
  */
 class PeopleController
 {
-    public const KINDS = ['buyer', 'contractor', 'logist', 'driver', 'client'];
+    public const KINDS = ['buyer', 'contractor', 'logist', 'driver', 'client', 'depot'];
 
     public function store(Request $request, AddPerson $add, IssueInvite $issue)
     {
@@ -37,6 +39,18 @@ class PeopleController
             $client = Client::create(['logist_id' => $me->id, 'kind' => 'company', 'phone' => Phone::normalize($v['phone'] ?? null)] + array_diff_key($v, ['phone' => 1]));
 
             return response()->json(self::answer(People::row($client) + ['address' => $client->address]) + ['address' => $client->address]);
+        }
+
+        // Стоянка логиста (18.10.2026): промежуточная точка вывоза — заводится там, где её выбирают.
+        if ($kind === 'depot') {
+            $v = validator($data, ['name' => ['required', 'string', 'max:120'], 'city' => ['nullable', 'string', 'max:120'], 'address' => ['nullable', 'string', 'max:500'],
+                'contact_name' => ['nullable', 'string', 'max:120'], 'phone' => ['nullable', 'string', 'max:40']], ['name.required' => 'Название'])->validate();
+            $owner = $request->filled('owner') && $me->leadsLogistics() ? User::whereKey($request->integer('owner'))->first() : null;
+            $depot = Depot::create(['logist_id' => ($owner?->isLogist() ? $owner : $me)->id, 'name' => trim($v['name']),
+                'settlement_id' => ($v['city'] ?? null) ? (Settlement::named($v['city'])['id'] ?? null) : null, 'address' => trim((string) ($v['address'] ?? '')) ?: null,
+                'contact_name' => trim((string) ($v['contact_name'] ?? '')) ?: null, 'phone' => Phone::normalize($v['phone'] ?? null)]);
+
+            return response()->json(self::answer(People::row($depot->load('settlement'))));
         }
 
         $deal = $kind === 'buyer' && $request->filled('deal')
@@ -69,6 +83,7 @@ class PeopleController
         return match ($kind) {
             'buyer' => $me->isManager() && ! $me->isSuperBuyer(),
             'contractor', 'client' => $me->isLogist() && Surface::current() === Surface::Logistics,
+            'depot' => ($me->isLogist() || $me->leadsLogistics()) && Surface::current() === Surface::Logistics,
             'logist', 'driver' => $me->isAdmin(),
             default => false,
         };

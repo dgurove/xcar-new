@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Logistics\Client;
+use App\Logistics\Depot;
 use App\Logistics\Transport;
 use App\Users\User;
 use Illuminate\Support\Collection;
@@ -17,8 +18,13 @@ use Illuminate\Support\Collection;
 final class People
 {
     /** @return Row */
-    public static function row(User|Client $p, ?string $sub = null): array
+    public static function row(User|Client|Depot $p, ?string $sub = null): array
     {
+        // Стоянка логиста: город и адрес, сколько машин стоит.
+        if ($p instanceof Depot) {
+            return ['id' => $p->id, 'name' => $p->name, 'sub' => $sub ?? (implode(', ', array_filter([$p->settlement?->name, $p->address,
+                ($n = (int) ($p->waiting_count ?? 0)) ? 'стоит '.$n : null])) ?: null), 'user' => null];
+        }
         if ($p instanceof Client) {
             return ['id' => $p->id, 'name' => $p->name, 'sub' => $sub ?? (implode(', ', array_filter([$p->contact_name, $p->phone ? Phone::format($p->phone) : null])) ?: null), 'user' => null];
         }
@@ -44,5 +50,11 @@ final class People
     {
         return self::rows(User::contractorsFor($logist)->where('logist_id', $logist->id)->whereNull('rejected_at')->orderBy('name')
             ->select('users.*')->addSelect(['busy' => Transport::open()->selectRaw('count(*)')->whereColumn('transports.executor_id', 'users.id')])->get());
+    }
+
+    /** Стоянки логиста строками (`x-people.pick` вид `depot`): свои, не в архиве, где сейчас стоят машины — сверху. */
+    public static function depotsOf(?User $logist): Collection
+    {
+        return $logist ? self::rows(Depot::of($logist)->whereNull('archived_at')->with('settlement')->withWaiting()->orderByDesc('waiting_count')->orderBy('name')->get()) : collect();
     }
 }

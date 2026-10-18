@@ -3,6 +3,7 @@
 use App\Http\Admin\ReferenceController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Logistics\ClientController;
+use App\Http\Logistics\DepotController;
 use App\Http\Logistics\ContractorController;
 use App\Http\Logistics\DocumentController;
 use App\Http\Logistics\MoneyController;
@@ -29,6 +30,11 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     Route::get('/transports/{transport}/edit', [OrderController::class, 'edit'])->whereNumber('transport');
     Route::put('/transports/{transport}', [OrderController::class, 'update'])->whereNumber('transport');
     Route::post('/transports/{transport}/paid', [OrderController::class, 'paid'])->whereNumber('transport');
+    // Стоянки логиста (18.10.2026): промежуточные точки вывоза.
+    Route::get('/depots', [DepotController::class, 'index']);
+    Route::post('/depots', [DepotController::class, 'store']);
+    Route::put('/depots/{depot}', [DepotController::class, 'update'])->whereNumber('depot');
+    Route::post('/depots/{depot}/archive', [DepotController::class, 'archive'])->whereNumber('depot');
     Route::get('/clients', [ClientController::class, 'index']);
     Route::post('/clients', [ClientController::class, 'store']);
     Route::put('/clients/{client}', [ClientController::class, 'update'])->whereNumber('client');

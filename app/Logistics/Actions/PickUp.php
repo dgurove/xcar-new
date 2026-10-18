@@ -53,7 +53,14 @@ final class PickUp
         }
         // Перевод между парковками: куда — решено при отправке, ключи считает парковка.
         if (! $t->isPickup()) {
+            // Со стоянки логиста — куда дальше должно быть решено: иначе «Привёз» поставил бы машину «у нас» наугад.
+            if ($t->from_depot_id && $t->destination === null) {
+                throw ValidationException::withMessages(['transport' => 'Сначала укажите, куда везти']);
+            }
             $t->update(['state' => TransportState::Moving, 'picked_at' => now()]);
+            if ($t->from_depot_id && ($offer = $t->saleOffer())) {
+                ($this->place)($offer, CarPlace::Moving, $by);
+            }
             TransportMoved::dispatch($t, $by, 'picked');
 
             return $t;

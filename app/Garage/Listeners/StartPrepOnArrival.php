@@ -15,7 +15,8 @@ final class StartPrepOnArrival
 {
     public function handle(TransportMoved $e): void
     {
-        if ($e->step !== 'delivered' || ! ($offer = $e->transport->saleOffer())) {
+        // На стоянку логиста — ещё не довезли (18.10.2026): подготовка — когда последний отрезок привезёт к менеджеру.
+        if ($e->step !== 'delivered' || $e->transport->destination === \App\Logistics\Point::Depot || ! ($offer = $e->transport->saleOffer())) {
             return;
         }
         $car = $offer->garageCar()->first();

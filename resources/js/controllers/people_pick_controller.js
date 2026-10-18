@@ -13,7 +13,7 @@ import { focusField } from '../keyboard';
 export default class extends Controller {
     static targets = ['shown', 'hidden', 'list', 'panes', 'newPane', 'form', 'error', 'submit', 'done', 'doneTitle', 'doneSub', 'doneRows',
         'shareBtn', 'copyBtn', 'finish', 'finishLabel', 'addRow'];
-    static values = { kind: String, url: String, name: String, deal: Number, autosubmit: Boolean, placeholder: String, only: Boolean, append: String, reload: Boolean };
+    static values = { kind: String, url: String, name: String, deal: Number, owner: Number, autosubmit: Boolean, placeholder: String, only: Boolean, append: String, reload: Boolean };
 
     connect() {
         if (this.hasShareBtnTarget && !navigator.share) this.shareBtnTarget.hidden = true;
@@ -118,7 +118,7 @@ export default class extends Controller {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify({ kind: this.kindValue, mode: link ? 'link' : 'person', deal: this.dealValue || null, _person: person }),
+                body: JSON.stringify({ kind: this.kindValue, mode: link ? 'link' : 'person', deal: this.dealValue || null, owner: this.ownerValue || null, _person: person }),
             });
         } catch {
             this.fail('Нет связи');

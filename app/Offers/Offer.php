@@ -416,7 +416,7 @@ class Offer extends Model
     /** ТС уже забрали у владельца: кто вывозит — менять поздно. */
     public function pickedUp(): bool
     {
-        return in_array($this->car_place, [CarPlace::Moving, CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours, CarPlace::Elsewhere], true)
+        return in_array($this->car_place, [CarPlace::Moving, CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours, CarPlace::Elsewhere, CarPlace::Depot], true)
             || (bool) $this->pickup()?->state->picked();
     }
 

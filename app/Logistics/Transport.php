@@ -46,7 +46,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 #[Fillable(['car_id', 'origin', 'kind', 'channel', 'executor_id', 'logist_id', 'from_address', 'pickup_at',
     'pickup_place', 'call_note', 'call_attempts', 'docs_by_cdek', 'docs_track', 'docs_sent_at', 'docs_sent_by', 'docs_received_at', 'to_address',
-    'destination', 'reach', 'to_yard_id', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
+    'destination', 'reach', 'to_yard_id', 'depot_id', 'from_depot_id', 'previous_id', 'next_destination', 'next_to_yard_id',
+    'next_to_address', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
     'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at', 'region_id', 'nudged_at',
     'client_id', 'client_price', 'client_paid_at', 'executor_cost', 'executor_paid_at', 'from_contact', 'from_phone', 'to_contact',
     'to_phone', 'comment', 'trip_code'])]
@@ -83,6 +84,7 @@ class Transport extends Model
             'state' => TransportState::class,
             'destination' => Point::class,
             'reach' => Reach::class,
+            'next_destination' => Point::class,
             'cost' => 'decimal:2',
             'client_price' => 'decimal:2',
             'executor_cost' => 'decimal:2',
@@ -180,6 +182,51 @@ class Transport extends Model
     public function docsSender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'docs_sent_by');
+    }
+
+    /** Стоянка логиста, куда везёт этот отрезок (`Point::Depot`). */
+    public function depot(): BelongsTo
+    {
+        return $this->belongsTo(Depot::class);
+    }
+
+    /** Стоянка, откуда забирают на этом отрезке (второй и дальше). */
+    public function fromDepot(): BelongsTo
+    {
+        return $this->belongsTo(Depot::class, 'from_depot_id');
+    }
+
+    /** Прошлый отрезок цепочки (привёз на стоянку — завёл этот). */
+    public function previousLeg(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'previous_id');
+    }
+
+    /** Следующий отрезок: заведён «Привёз» на стоянку. */
+    public function nextLeg(): HasOne
+    {
+        return $this->hasOne(self::class, 'previous_id');
+    }
+
+    /**
+     * Все отрезки вывоза этой машины от первого до последнего (стоянки логиста между ними, 18.10.2026). Один отрезок —
+     * он сам. Глубина — сколько раз ставили на стоянку; цепочка короткая, запрос на звено.
+     *
+     * @return Collection<int, self>
+     */
+    public function chain(): Collection
+    {
+        $first = $this;
+        // Не `previous`: у модели Laravel это своё свойство (прошлые значения), внутри класса связь бы не сработала.
+        while ($first->previous_id && ($prev = $first->previousLeg)) {
+            $first = $prev;
+        }
+        $legs = collect([$first]);
+        while (($next = $legs->last()->nextLeg) && $legs->count() < 20) {
+            $legs->push($next);
+        }
+
+        return $legs;
     }
 
     public function toYard(): BelongsTo
@@ -323,7 +370,20 @@ class Transport extends Model
             Point::Yard => $this->toYard?->name ?? $this->to_address,
             Point::Other => $this->to_address,
             Point::Ours => trim(Point::Ours->label().($this->to_address ? ', '.$this->to_address : '')),
+            Point::Depot => $this->depot?->label() ?? Point::Depot->label(),
             null => $this->to_address,
+        };
+    }
+
+    /** Куда дальше, пока отрезок везёт на стоянку (`next_*`): «К нам», «В гараж Сергей К.», адрес; не решено — null. */
+    public function nextLabel(): ?string
+    {
+        return match ($this->next_destination) {
+            Point::Keeper => self::keeperLabel($this->saleOffer()) ?? Point::Keeper->label(),
+            Point::Yard => Yard::withoutGlobalScope(City::SCOPE)->find($this->next_to_yard_id)?->name ?? $this->next_to_address,
+            Point::Other => $this->next_to_address,
+            Point::Ours => trim(Point::Ours->label().($this->next_to_address ? ', '.$this->next_to_address : '')),
+            Point::Depot, null => $this->next_to_address,
         };
     }
 
@@ -357,6 +417,7 @@ class Transport extends Model
     {
         return match (true) {
             $this->state === TransportState::New => 'выбрать исполнителя',
+            $this->state === TransportState::Logist && $this->from_depot_id => 'на стоянке '.($this->fromDepot?->name ?? 'логиста'),
             $this->state === TransportState::Logist => 'ждёт исполнителя логиста',
             $this->state === TransportState::Assigned && $this->channel === Channel::Manager => 'забирает сам',
             $this->state === TransportState::Assigned && $this->isPickup() => 'позвонить владельцу',

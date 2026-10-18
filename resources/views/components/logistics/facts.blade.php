@@ -22,10 +22,12 @@
     {!! $row('Логист', $mine($t->logist), null, $logist) !!}
 @endif
 @if (! $manager && ! $brief)
-    {!! $row('Исполнитель', $mine($t->executor) ?? ($t->logist ? 'выбирает логист' : 'не выбран'), null, $who, $t->executor ? '' : 'text-urgent') !!}
+    {!! $row('Исполнитель', $mine($t->executor) ?? ($t->logist && ! ($me && $t->hasLogist($me)) ? 'выбирает логист' : 'не выбран'), null, $who, $t->executor ? '' : 'text-urgent') !!}
 @endif
-@if ($t->isPickup() && ! $t->isOrder())
-    {!! $row('Куда везти', $dest ?? 'пока неизвестно', $t->reach?->label(), $where, $dest ? '' : 'text-urgent') !!}
+@if (($t->isPickup() || $t->from_depot_id) && ! $t->isOrder())
+    {{-- На стоянку логиста — вторым этажом, куда дальше (следующий отрезок). --}}
+    @php $then = $t->destination === \App\Logistics\Point::Depot ? 'дальше: '.($t->nextLabel() ?? 'пока неизвестно') : null; @endphp
+    {!! $row('Куда везти', $dest ?? 'пока неизвестно', implode(', ', array_filter([$then, $t->reach ? mb_lcfirst($t->reach->label()) : null])) ?: null, $where, $dest ? '' : 'text-urgent') !!}
 @endif
 @if ($t->comment)
     <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Комментарий</span><span class="block whitespace-pre-line break-words">{{ $t->comment }}</span></span></div>

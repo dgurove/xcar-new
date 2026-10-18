@@ -61,7 +61,7 @@ final class TransportEvent extends Model
         $was = fn () => ($w = $name($p['was'] ?? null)) ? ', был '.$w : '';
 
         return match ($this->type) {
-            'opened' => 'Задача заведена',
+            'opened' => isset($p['from']) ? 'Следующий отрезок: со стоянки' : 'Задача заведена',
             // Точку не опускаем в строчные: адрес («Казань, Победы 1») — данные извне.
             'route' => 'Куда: '.implode(', ', array_filter([$p['to'] ?? 'пока неизвестно', isset($p['reach']) ? mb_lcfirst($p['reach']) : null])),
             'reopened' => 'Вывоз снова нужен',

@@ -12,7 +12,7 @@
      вид кнопки: row (строка с плюсом), button (лаймовая кнопка). --}}
 @props(['name', 'label' => null, 'value' => null, 'people' => collect(), 'kind', 'title' => null, 'newLabel' => null, 'link' => false,
     'deal' => null, 'autosubmit' => false, 'none' => null, 'variant' => 'field', 'placeholder' => 'Выбрать', 'required' => false, 'finish' => null,
-    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row'])
+    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null])
 @php
     use App\Support\Surface;
     $uid = 'pp'.substr(md5($name.$kind.uniqid('', true)), 0, 8);
@@ -23,11 +23,11 @@
     $error = $errors->first($name);
     // «Готово» в шторке только «+ Новый» (новый просто в списке); в выборе — «Выбрать»: он встаёт в поле.
     $finish ??= $only ? 'Готово' : 'Выбрать';
-    $newLabel ??= match ($kind) { 'buyer' => 'Новый покупатель', 'contractor' => 'Новый исполнитель', 'client' => 'Новый заказчик', 'logist' => 'Новый логист', 'driver' => 'Новый сотрудник', default => 'Новый' };
+    $newLabel ??= match ($kind) { 'buyer' => 'Новый покупатель', 'contractor' => 'Новый исполнитель', 'client' => 'Новый заказчик', 'logist' => 'Новый логист', 'driver' => 'Новый сотрудник', 'depot' => 'Новая стоянка', default => 'Новый' };
 @endphp
 <div {{ $attributes->class([$variant === 'field' && ! $only ? 'field' : 'contents', 'field-invalid' => $error]) }} data-controller="sheet people-pick"
     data-people-pick-kind-value="{{ $kind }}" data-people-pick-url-value="{{ $create }}" data-people-pick-name-value="{{ $name }}"
-    @if ($deal) data-people-pick-deal-value="{{ $deal }}" @endif @if ($autosubmit) data-people-pick-autosubmit-value="true" @endif
+    @if ($deal) data-people-pick-deal-value="{{ $deal }}" @endif @if ($owner) data-people-pick-owner-value="{{ $owner }}" @endif @if ($autosubmit) data-people-pick-autosubmit-value="true" @endif
     data-people-pick-placeholder-value="{{ $placeholder }}"
     @if ($only) data-people-pick-only-value="true" @endif @if ($append) data-people-pick-append-value="{{ $append }}" @endif @if ($reload) data-people-pick-reload-value="true" @endif>
     @if ($only)

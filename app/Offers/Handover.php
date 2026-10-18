@@ -123,7 +123,7 @@ final class Handover
             $place === CarPlace::Ours || $atYard => 'На парковке',
             $atSupplier => 'У поставщика',
             // Вывезли и везут (логистика, «Забрал») — уже не у владельца.
-            $place === CarPlace::Moving => 'В пути',
+            $place === CarPlace::Moving, $place === CarPlace::Depot => 'В пути',
             $place === CarPlace::Owner, $offer->insured_name || $offer->insured_phone => 'У владельца',
             default => null,
         };

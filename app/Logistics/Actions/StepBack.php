@@ -7,6 +7,7 @@ use App\Garage\Events\GarageChanged;
 use App\Logistics\Channel;
 use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
+use App\Logistics\Point;
 use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
 use App\Logistics\TransportState;
@@ -42,7 +43,8 @@ final class StepBack
         }
 
         return match ($t->state) {
-            TransportState::Delivered => $t->isPickup() ? 'delivered' : null,
+            // Перевод парковки привезли — ТС уже переставлена, назад не крутим; отрезок вывоза со стоянки — можно.
+            TransportState::Delivered => $t->isPickup() || $t->from_depot_id ? 'delivered' : null,
             TransportState::Moving => 'picked',
             TransportState::Assigned, TransportState::Agreed => self::latest($t) ?? ($t->executor_id ? 'executor' : null),
             TransportState::Logist => 'logist',
@@ -121,6 +123,13 @@ final class StepBack
 
     private function undeliver(Transport $t, User $by): void
     {
+        // Привезли на стоянку логиста — следующий отрезок, пока по нему ничего не сделали, уходит вместе с «Привёз».
+        if ($t->destination === Point::Depot && ($next = $t->nextLeg)) {
+            if ($next->executor_id || ! in_array($next->state, [TransportState::New, TransportState::Logist], true)) {
+                throw ValidationException::withMessages(['transport' => 'Следующий отрезок уже идёт: «Привёз» на стоянку не отменить']);
+            }
+            $next->delete();
+        }
         $offer = $t->saleOffer();
         $car = $offer?->garageCar()->first();
         if ($car && $car->state !== CarState::Waiting) {

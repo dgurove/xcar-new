@@ -18,6 +18,7 @@ enum Point: string
     case Ours = 'ours';
     case Yard = 'yard';
     case Other = 'other';
+    case Depot = 'depot';    // стоянка логиста (18.10.2026): промежуточная точка, дальше — следующий отрезок
 
     public function label(): string
     {
@@ -26,6 +27,7 @@ enum Point: string
             self::Ours => 'К нам',
             self::Yard => 'На парковку',
             self::Other => 'Другой адрес',
+            self::Depot => 'На стоянку',
         };
     }
 
@@ -37,6 +39,7 @@ enum Point: string
             self::Ours => CarPlace::WithUs,
             self::Yard => CarPlace::Ours,
             self::Other => CarPlace::Elsewhere,
+            self::Depot => CarPlace::Depot,
         };
     }
 }
