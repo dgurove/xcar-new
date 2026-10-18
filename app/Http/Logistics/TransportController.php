@@ -207,7 +207,7 @@ class TransportController
 
         return Facets::for($request, 'transports', ...array_filter([
             $lead ? Facet::column('sale', 'Продажа', ['вид', 'вида', 'видов'], SaleState::BUCKET_SQL)->natural()
-                ->labels(fn (array $keys) => collect(['buyer' => 'Есть покупатель', 'open' => 'В продаже', 'draft' => 'Не в продаже', 'off' => 'Снята с продажи', 'park' => 'Перевод парковки'])
+                ->labels(fn (array $keys) => collect(['buyer' => 'Есть покупатель', 'open' => 'Ищем покупателя', 'draft' => 'Не опубликовано', 'off' => 'Снята с продажи', 'park' => 'Перевод парковки'])
                     ->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()) : null,
             $user->isStaff() ? Common::vendor(SaleState::VENDOR_SQL)->none('Без вендора') : null,
             $lead ? Common::manager(SaleState::MANAGER_SQL)->none('Без менеджера') : null,

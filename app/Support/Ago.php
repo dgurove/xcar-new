@@ -34,15 +34,26 @@ final class Ago
     public static function left(Carbon $until, string $word = 'осталось'): string
     {
         $s = max(0, (int) floor(now()->diffInSeconds($until, false)));
-        [$d, $h, $m] = [intdiv($s, 86400), intdiv($s % 86400, 3600), intdiv($s % 3600, 60)];
-        $text = match (true) {
-            $d > 0 => $h ? "{$d} д {$h} ч" : "{$d} д",
-            $h > 0 => $m ? "{$h} ч {$m} мин" : "{$h} ч",
-            $s >= 60 => "{$m} мин",
-            default => '0:'.str_pad((string) $s, 2, '0', STR_PAD_LEFT),
-        };
+        $text = $s >= 60 ? self::span($s) : '0:'.str_pad((string) $s, 2, '0', STR_PAD_LEFT);
 
         return $word === '' ? $text : "{$word} {$text}";
+    }
+
+    /** Сколько прошло с момента — тем же видом, что `left`: «2 д 14 ч», «3 ч 5 мин», «12 мин». */
+    public static function since(Carbon $from): string
+    {
+        return self::span(max(60, (int) floor($from->diffInSeconds(now(), false))));
+    }
+
+    private static function span(int $s): string
+    {
+        [$d, $h, $m] = [intdiv($s, 86400), intdiv($s % 86400, 3600), intdiv($s % 3600, 60)];
+
+        return match (true) {
+            $d > 0 => $h ? "{$d} д {$h} ч" : "{$d} д",
+            $h > 0 => $m ? "{$h} ч {$m} мин" : "{$h} ч",
+            default => "{$m} мин",
+        };
     }
 
     /**

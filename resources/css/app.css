@@ -1316,7 +1316,12 @@ html.kb-open { --home-gap: 0px; }
      ячейка таблицы и соседний текст брали линию от иконки, буквы расходились (07.10.2026). */
   .cell-title:has(> .cell-name) > :not(.cell-name), .ref-line > :is(svg, img, .vendor-logo), .chip.person > .avatar { align-self: center; }
   .cell-title > .cell-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cell-title > .cell-name ~ * { flex-shrink: 0; }
+  /* Иконка типа ТС перед названием не ужимается: в широкой таблице («Все» логистики) flex сжимал её до 9 px. */
+  .cell-title > .cell-name ~ *, .cell-title > .cat-icon { flex-shrink: 0; }
+  /* «Вывоз» логистики (18.10.2026, владелец: «таблица и так листается вбок, нелогично резать только названия»): название
+     целиком, столбец шире, таблица листается. */
+  #transports-table td.grow { max-width: none; }
+  #transports-table .cell-title > .cell-name { overflow: visible; text-overflow: clip; }
   /* Дата и аватар создателя — в первой строке правого столбца краткой таблицы предложений, вплотную слева от цены (10.10.2026,
      владелец: слева всегда номер убытка, под ценой — подтверждения). */
   .num-meta { display: inline-flex; align-items: center; gap: .375rem; margin-right: .5rem; vertical-align: middle; font-size: var(--text-sm); color: var(--color-ink-muted); }

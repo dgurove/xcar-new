@@ -75,17 +75,15 @@ final readonly class SaleState
         $buyer = in_array($key, ['garage', 'deal'], true);
         $deciding = $t->state === TransportState::New;
         $hold = $key === 'deal' ? $o->deal->setRelation('offer', $o)->pickupHold() : null;
+        // Сколько ждёт — с поступления заявки, а не с публикации (18.10.2026, владелец: «ищем покупателя 2д 14ч»; срок
+        // приёма в строке логистике не нужен).
+        $since = $t->created_at ? ' '.Ago::since($t->created_at) : '';
         $word = match ($key) {
             'park' => 'перевод парковки',
-            'none' => 'нет в продаже',
             'garage' => 'гараж',
             'deal' => $hold ? 'сделка, '.$hold : 'сделка',
-            'open' => $o->bidsOpen() ? ($o->bids_close_at ? 'в продаже до '.Ago::day($o->bids_close_at, time: true) : 'в продаже') : 'приём закрыт',
-            'draft' => match (true) {
-                $o->slot_at !== null => 'выйдет '.Ago::day($o->slot_at, time: true),
-                $o->isGallery() => 'в галерее',
-                default => 'не в продаже',
-            },
+            'open' => 'ищем покупателя'.$since,
+            'none', 'draft' => 'не опубликовано'.$since,
             default => 'снята с продажи',
         };
 
