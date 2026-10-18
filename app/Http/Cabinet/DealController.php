@@ -182,6 +182,16 @@ class DealController
         return redirect($deal->refresh()->href())->with('toast', $exit->label);
     }
 
+    /** Кто заберёт машину с нашей парковки и когда (`SetReceiver`): пропуск новый, парковка видит сразу. */
+    public function receiver(Request $request, Deal $deal, \App\Offers\Actions\SetReceiver $set)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id, 404);
+        $deal = $set($deal, $request->user(), $request->validate(['who' => ['required', 'string', 'max:20'], 'name' => ['nullable', 'string', 'max:160'],
+            'phone' => ['nullable', 'string', 'max:32'], 'at' => ['nullable', 'date']]));
+
+        return redirect($deal->href())->with('toast', 'Заберёт '.$deal->receiver()?->labelFor($request->user()));
+    }
+
     /** «Нужен вывоз» — менеджер, что забирает сам, просит логистов (`RequestPickup`). */
     public function requestPickup(Request $request, Deal $deal, RequestPickup $pickup)
     {

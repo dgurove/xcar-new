@@ -84,6 +84,8 @@ final class CancelDeal
                 app(VoidInvoice::class)($invoice, $by, 'Сделка отменена');
             }
         }
+        // Выдача с нашей парковки по этой сделке снимается: пропуск гаснет, продажа на парковке — тоже (18.10.2026).
+        app(SyncParkRelease::class)($deal->fresh(), $by);
 
         return $deal;
     }

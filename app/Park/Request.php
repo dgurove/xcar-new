@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'done_at', 'note', 'created_by',
-    'contact_name', 'contact_phone', 'done_by', 'cancel_reason', 'letter_at', 'letter_id'])]
+    'contact_name', 'contact_phone', 'done_by', 'cancel_reason', 'letter_at', 'letter_id', 'deal_id'])]
 class Request extends Model
 {
     protected $table = 'park_requests';
@@ -71,12 +71,21 @@ class Request extends Model
      */
     public function source(): array
     {
-        [$email, $name, $at] = $this->letter
-            ? [NodeTitle::email($this->letter), null, $this->letter->date_at ?? $this->created_at]
-            : [null, $this->creator?->shortName(), $this->created_at];
+        // Выдача по нашей сделке (18.10.2026) — «Сделка XCar, Ф. Бородин»: не письмо и не сотрудник парковки.
+        [$email, $name, $at] = match (true) {
+            (bool) $this->deal_id => [null, 'Сделка XCar'.(($m = $this->deal?->buyer) ? ', '.$m->shortName() : ''), $this->created_at],
+            (bool) $this->letter => [NodeTitle::email($this->letter), null, $this->letter->date_at ?? $this->created_at],
+            default => [null, $this->creator?->shortName(), $this->created_at],
+        };
         $day = $at?->isToday() ? 'сегодня' : ($at?->isYesterday() ? 'вчера' : $at?->translatedFormat($at->isCurrentYear() ? 'j M' : 'j M Y'));
 
         return ['email' => $email, 'name' => $name, 'at' => $at, 'when' => $at ? $day.', '.$at->format('G:i') : null];
+    }
+
+    /** Сделка XCar, по которой выдача (`SyncParkRelease`). */
+    public function deal(): BelongsTo
+    {
+        return $this->belongsTo(\App\Offers\Deal::class);
     }
 
     public function doneBy(): BelongsTo

@@ -26,8 +26,17 @@
         <x-ui.date name="released_at" :value="old('released_at', now()->format('Y-m-d\TH:i'))" time now :clearable="false" class="release-when"/>
     </div>
     @error('released_at')<p class="field-error px-4 pb-2">{{ $message }}</p>@enderror
-    {{-- Кто заберёт — из письма о продаже; не вписан — «Указать» (шторка «Покупатель»), вписан — имя и звонок. --}}
-    @if (! $qr && $who)
+    {{-- Кто заберёт — из письма о продаже; не вписан — «Указать» (шторка «Покупатель»), вписан — имя и звонок. По сделке XCar
+         (18.10.2026) — получатель из сделки и над сканером: кого ждать и когда, менеджер сделки; сверяют по QR. --}}
+    @if (($pass ?? null)?->isDeal() && $pass->isLive())
+        <div class="row justify-between">
+            <span class="min-w-0">
+                <span class="block truncate">{{ $pass->name }}</span>
+                <span class="block text-sm text-ink-muted">{{ implode(', ', array_filter(['по сделке XCar', ($m = $pass->deal?->buyer) && $m->name !== $pass->name ? 'менеджер '.$m->shortName() : null, ($w = $pass->whenLabel('j M')) ? 'приедет '.$w : null])) }}</span>
+            </span>
+            @if ($pass->phone)<a href="tel:+{{ \App\Support\Phone::normalize($pass->phone) }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
+        </div>
+    @elseif (! $qr && $who)
         <div class="row justify-between">
             <span class="min-w-0"><span class="block truncate">{{ $who }}</span>@if ($vehicle->pickup_phone)<span class="nums block text-sm text-ink-muted">{{ $vehicle->pickup_phone }}</span>@endif</span>
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif

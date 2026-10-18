@@ -22,7 +22,7 @@ final class SendPickupLink
     {
         // Только на свежее «продано»: ТС, заведённые задним числом по старым письмам (StoreByLetters, загрузка истории
         // ящика), тоже проходят через MarkSold — отвечать страховой на письмо полугодовой давности незачем.
-        if ($e->message && $e->message->date_at?->gt(now()->subDays(7)) && $e->vehicle->releasesByQr() && $e->vehicle->state === VehicleState::Stored) {
+        if ($e->message && $e->message->date_at?->gt(now()->subDays(7)) && $e->vehicle->vendor?->release_by_qr && ! $e->vehicle->dealPass() && $e->vehicle->state === VehicleState::Stored) {
             $this->send($e->vehicle, $e->message);
         }
     }

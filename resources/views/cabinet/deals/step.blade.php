@@ -36,7 +36,8 @@
         ? \App\Billing\Payment::whereIn('invoice_id', $unpaid->pluck('id'))->where('state', \App\Billing\PaymentState::Rejected)->latest('id')->first() : null;
     $handover ??= null;
     // Машина уже у менеджера — «У вас» одним словом над чужой задачей (оплата, договор) ни о чём: получения больше нет.
-    $showHandover = $handover?->shows() && ! $handover->withBuyer;
+    // Машина на нашей парковке — блок «Забрать с парковки», как только сделке можно забирать (и гаражной: у неё `open` нет).
+    $showHandover = ($handover?->shows() || ($handover?->park && $deal->releasable())) && ! $handover->withBuyer;
     // Поля шага, что показаны в получении (контакт, адрес, дата), второй раз в шаге не пишем.
     // Наши служебные поля про деньги поставщику (дата и номер платёжки, перевод с Р.О.С., сумма сделки страховой) —
     // не менеджеру; в остальных — без названия вендора (15.10.2026).
@@ -134,7 +135,7 @@
                             <div class="task-step-body">
                                 <h4 class="task-step-title">{{ \App\Users\Wording::mine($title) }}</h4>
                                 @if ($key === 'contact')
-                                    @if ($showHandover)@include('cabinet.deals.handover')@endif
+                                    @if ($showHandover)@include($handover->park ? 'cabinet.deals.park-pickup' : 'cabinet.deals.handover')@endif
                                     @include('cabinet.deals.payload')
                                     @if ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
                                 @elseif ($key === 'buyer')
@@ -149,7 +150,7 @@
                     @endforeach
                 </ol>
             @else
-            @if ($showHandover)@include('cabinet.deals.handover')@endif
+            @if ($showHandover)@include($handover->park ? 'cabinet.deals.park-pickup' : 'cabinet.deals.handover')@endif
             @include('cabinet.deals.payload')
             @if ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
 

@@ -506,6 +506,12 @@ final class Notify
      * парковки (владелец 09.10.2026); им — только «управляющий принял / выдал» (`parkHandled`). Управляющего у города нет
      * (новая парковка, роль сняли) — администраторам: заявка не должна лечь молча.
      */
+    /** Управляющие парковки города — тем, кто ведёт выдачу (`SyncParkRelease`: сменился получатель по сделке). */
+    public function parkManagersOf(?int $city)
+    {
+        return $this->parkManagers($city);
+    }
+
     private function parkManagers(?int $city = null)
     {
         $staff = $this->parkStaff($city);

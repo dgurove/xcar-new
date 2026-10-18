@@ -20,7 +20,7 @@ class PassController
     {
         $pass = Pass::byCode((string) $request->input('code'));
         $pass?->load(['vehicle.yard', 'vehicle']);
-        $when = fn (Pass $p) => 'Заберёт '.$p->pickup_on->translatedFormat('j F').', сверьте с паспортом';
+        $when = fn (Pass $p) => \Illuminate\Support\Str::ucfirst(implode(', ', array_filter([$p->isDeal() ? 'по сделке XCar' : null, ($w = $p->whenLabel()) ? 'заберёт '.$w : null, 'сверьте с паспортом'])));
 
         return response()->json(match (true) {
             ! $pass => ['status' => 'unknown', 'title' => 'Это не пропуск XCar', 'text' => 'Попросите показать QR-код из письма'],

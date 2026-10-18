@@ -64,6 +64,7 @@ Route::get('/pickup/{code}', [PickupController::class, 'show'])->where('code', '
 Route::post('/pickup/{code}', [PickupController::class, 'store'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:5,1');
 Route::post('/pickup/{code}/resend', [PickupController::class, 'resend'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:3,10');
 // В QR адрес заглавными (буквенно-цифровой режим, крупные модули) — путь /P/…, руками набирают /p/….
+Route::get('/pass/{code}', [PickupController::class, 'dealPass'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:60,1');
 Route::get('/p/{code}', [PickupController::class, 'scanned'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:60,1');
 Route::get('/P/{code}', [PickupController::class, 'scanned'])->where('code', '[0-9A-Za-z]{20}')->middleware('throttle:60,1');
 // Оплата по ссылке: страница плательщика без входа и уведомления ЮKassa (без CSRF — `hooks/*` в исключениях).
@@ -192,6 +193,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         // Действия по сделке.
         Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
+        Route::put('/deals/{deal}/receiver', [DealController::class, 'receiver']);
         Route::post('/deals/{deal}/pickup', [DealController::class, 'requestPickup']);
         Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
         Route::put('/deals/{deal}/contract', [DealContractController::class, 'update']);

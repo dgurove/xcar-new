@@ -57,6 +57,12 @@ final class ParkNotice extends Notice
         return new self('На выдачу: '.$v->titleWithYear(), $who ? 'Заберёт '.$who : ($m?->subject ?: null), '/cars/'.$v->id, $v->id);
     }
 
+    /** Получатель по сделке XCar сменился (`SyncParkRelease`): прежний пропуск погашен, заберёт другой. */
+    public static function receiverChanged(Vehicle $v): self
+    {
+        return new self('Сменился получатель: '.$v->titleWithYear(), 'Заберёт '.trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? '')).', по сделке XCar', '/cars/'.$v->id, $v->id);
+    }
+
     public static function closing(CarbonInterface $month, int $count, float $sum): self
     {
         return new self('Закрытие '.mb_strtolower($month->translatedFormat('F')).': '.$count.' '.Plural::of($count, ['счёт', 'счёта', 'счетов']).' на '.Money::rub($sum), 'Проверьте и выставьте', '/money/closing?month='.$month->format('Y-m'),

@@ -33,6 +33,9 @@
             @include('cabinet.deals.step', $step + ['withInvoices' => true])
             {{-- Гаражная «платит менеджер» у ПРАЙМ: ДКП ПРАЙМ с ним самим — его данные для договора тут же. --}}
             @if ($step['deal']->hasContract())@include('cabinet.deals.contract', ['deal' => $step['deal']])@endif
+        @elseif (! $staff && $car->deal && ($parkHandover = \App\Offers\Handover::for($car->deal))->park && $car->deal->passes()->whereNull('revoked_at')->exists())
+            {{-- Сделка со страховой закрыта, а машина ещё на нашей парковке — забрать по пропуску (18.10.2026). --}}
+            <div class="box"><h2>Забрать с парковки</h2>@include('cabinet.deals.park-pickup', ['deal' => $car->deal, 'handover' => $parkHandover])</div>
         @endif
 
         <div class="box">

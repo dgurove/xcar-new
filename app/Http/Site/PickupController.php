@@ -85,6 +85,19 @@ class PickupController
         return view('site.pickup.scanned', ['pass' => $pass]);
     }
 
+    /**
+     * Пропуск по сделке XCar по ссылке (18.10.2026): менеджер отправил получателю — тот показывает QR на воротах. Без входа:
+     * код в 100 бит и есть ключ. Тот же вид, что пропуск анкеты, без «Изменить» и почты.
+     */
+    public function dealPass(string $code)
+    {
+        $pass = Pass::where('code', strtoupper($code))->whereNotNull('deal_id')->with(['vehicle.yard.settlement', 'vehicle'])->first();
+        abort_unless($pass, 404);
+        abort_if($pass->revoked_at, response()->view('site.pickup.gone', [], 410));
+
+        return view('site.pickup.pass', ['vehicle' => $pass->vehicle, 'pass' => $pass, 'qr' => PassQr::svg($pass), 'deal' => true]);
+    }
+
     private function vehicle(string $code): Vehicle
     {
         $vehicle = Vehicle::where('pickup_code', strtoupper($code))->with(['yard.settlement', 'vendor'])->first();

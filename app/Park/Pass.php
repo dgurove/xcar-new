@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * отказе покупателя или «не покупатель» (`revoked_at`). Живой у ТС один — `Vehicle::pass()`.
  */
 #[Fillable(['vehicle_id', 'code', 'name', 'phone', 'email', 'pickup_on', 'submitted_at', 'confirmed_at', 'confirmed_by', 'confirm_note',
-    'request_message_id', 'mailed_at', 'used_at', 'used_by', 'revoked_at', 'revoke_reason'])]
+    'request_message_id', 'mailed_at', 'used_at', 'used_by', 'revoked_at', 'revoke_reason', 'deal_id', 'planned_at'])]
 class Pass extends Model
 {
     protected $table = 'park_passes';
@@ -25,7 +25,7 @@ class Pass extends Model
 
     protected function casts(): array
     {
-        return ['pickup_on' => 'date', 'submitted_at' => 'datetime', 'confirmed_at' => 'datetime', 'mailed_at' => 'datetime', 'used_at' => 'datetime', 'revoked_at' => 'datetime'];
+        return ['pickup_on' => 'date', 'planned_at' => 'datetime', 'submitted_at' => 'datetime', 'confirmed_at' => 'datetime', 'mailed_at' => 'datetime', 'used_at' => 'datetime', 'revoked_at' => 'datetime'];
     }
 
     /** Случайный код в 20 знаков (100 бит): и для пропуска, и для ссылки на анкету. */
@@ -60,6 +60,17 @@ class Pass extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    /** Пропуск по сделке XCar (18.10.2026): выдан нами, подтверждён самой сделкой — анкеты и страховой у него нет. */
+    public function deal(): BelongsTo
+    {
+        return $this->belongsTo(\App\Offers\Deal::class);
+    }
+
+    public function isDeal(): bool
+    {
+        return $this->deal_id !== null;
     }
 
     public function confirmer(): BelongsTo
@@ -99,9 +110,16 @@ class Pass extends Model
         return match (true) {
             (bool) $this->used_at => ['Выдан', 'closed'],
             (bool) $this->revoked_at => ['Недействителен', 'danger'],
+            $this->isDeal() => ['Можно забирать', 'open'],
             $this->isConfirmed() => ['Подтверждено', 'open'],
             default => ['Ждём подтверждения страховой', 'urgent'],
         };
+    }
+
+    /** Когда заберут словами: анкета — день, сделка — день и время, если менеджер его назвал; иначе null. */
+    public function whenLabel(string $day = 'j F'): ?string
+    {
+        return $this->planned_at?->translatedFormat($day.', H:i') ?? $this->pickup_on?->translatedFormat($day);
     }
 
     /** «Иванов И. И.» — на странице, которую откроет любой, кто отсканирует код. */

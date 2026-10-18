@@ -10,7 +10,7 @@
         <div class="mt-6"><x-pickup.title :vehicle="$pass->vehicle" eyebrow="Пропуск на получение"/></div>
         <div class="pass-state pass-state--{{ $tone }} mt-4 rounded-(--radius-l)"><x-ui.icon :name="['open' => 'check-circle', 'urgent' => 'refresh', 'closed' => 'check-circle', 'danger' => 'x'][$tone]" class="size-5"/>{{ $status }}</div>
         <div class="list mt-4">
-            <div class="row justify-between"><span class="text-ink-muted">Когда</span><span>{{ \Illuminate\Support\Str::ucfirst($pass->pickup_on->translatedFormat('l, j F')) }}</span></div>
+            @if ($w = $pass->whenLabel('l, j F'))<div class="row justify-between"><span class="text-ink-muted">Когда</span><span>{{ \Illuminate\Support\Str::ucfirst($w) }}</span></div>@endif
             <x-pickup.yard :yard="$pass->vehicle->yard"/>
             <div class="row justify-between"><span class="text-ink-muted">Получатель</span><span>{{ $pass->shortName() }}</span></div>
         </div>

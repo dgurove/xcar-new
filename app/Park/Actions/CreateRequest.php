@@ -75,6 +75,7 @@ final class CreateRequest
                 // Письмо, из которого заявка: по его дате список заявок (новые сверху), без письма — по дате заявки.
                 'letter_at' => $data['letter_at'] ?? null,
                 'letter_id' => $data['letter_id'] ?? null,
+                'deal_id' => $data['deal_id'] ?? null,
             ]);
         });
     }

@@ -168,6 +168,15 @@ class DealController
         return back()->with('toast', 'Сохранено');
     }
 
+    /** Кто заберёт с нашей парковки — админ за менеджера (`SetReceiver`). */
+    public function receiver(Request $request, Deal $deal, \App\Offers\Actions\SetReceiver $set)
+    {
+        $deal = $set($deal, $request->user(), $request->validate(['who' => ['required', 'string', 'max:20'], 'name' => ['nullable', 'string', 'max:160'],
+            'phone' => ['nullable', 'string', 'max:32'], 'at' => ['nullable', 'date']]));
+
+        return back()->with('toast', 'Заберёт '.$deal->receiver()?->labelFor(null));
+    }
+
     /**
      * Ответ поставщика списком (09.10.2026): каждой сделке — её исход «Поставщик согласовал…» (своей ветки) или
      * «Поставщик отказал». Без ответа — ждёт дальше; уже ушедшую с этапа пропускаем.

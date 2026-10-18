@@ -33,9 +33,13 @@
                 @if ($sheet && ! $lane)
                     <button type="button" class="btn btn-s btn-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="pickup-{{ $offer->number }}:open">Кто забирает</button>
                 @endif
-                <button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle" @if ($empty) data-idle="Добавить" @endif>{{ $editing ? 'Готово' : ($empty ? 'Добавить' : 'Изменить') }}</button>
+                @unless ($handover->park)<button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle" @if ($empty) data-idle="Добавить" @endif>{{ $editing ? 'Готово' : ($empty ? 'Добавить' : 'Изменить') }}</button>@endunless
             </span>
         </div>
+        @if ($handover->park)
+            {{-- Машина на нашей парковке: забирают по пропуску сделки, контакт страхователя ни при чём (18.10.2026). --}}
+            <x-deal.park-release :deal="$deal" :vehicle="$handover->park"/>
+        @else
         <div data-edit-card-target="view" @if ($editing) hidden @endif>
             @unless ($empty)<div class="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2.5 leading-snug">
                 @if ($offer->insured_name)<div class="min-w-0"><div class="field-label">Владелец</div><div class="mt-0.5 break-words">{{ $offer->insured_name }}</div></div>@endif
@@ -53,5 +57,6 @@
                 <x-ui.save-bar class="sm:col-span-2" :page="! $compact"/>
             </form>
         </div>
+        @endif
     </section>
 @endif

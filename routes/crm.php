@@ -230,6 +230,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/deals', [DealController::class, 'index']);
         Route::get('/work/deals/{deal}', [DealController::class, 'show']);
         Route::post('/work/deals/supplier-answer', [DealController::class, 'supplierAnswer']);
+        Route::put('/work/deals/{deal}/receiver', [DealController::class, 'receiver']);
         // У кого что в гараже и во что обошлось.
         Route::get('/work/garage', [GarageController::class, 'index']);
         // Кто что вывозит: мы или менеджер, к нему, к нам или на парковку.

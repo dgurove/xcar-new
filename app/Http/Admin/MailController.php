@@ -527,7 +527,7 @@ class MailController
         }
         // Письмо о приёме у вендора с выдачей по QR — со ссылкой на анкету покупателя: в шаблоне её нет — абзацем
         // перед подписью (шаблоны в базе заведены раньше, чем появилась выдача по QR).
-        if ($vehicle && $template && $vehicle->releasesByQr() && $request->query('act') === 'intake' && ! str_contains((string) $template->body, 'pickup_link')) {
+        if ($vehicle && $template && $vehicle->vendor?->release_by_qr && $request->query('act') === 'intake' && ! str_contains((string) $template->body, 'pickup_link')) {
             $template = (clone $template)->forceFill(['body' => self::withPickupNotice((string) $template->body)]);
         }
         // Заявка поставщику на выкуп пачкой (Каркаде, 09.10.2026): все сделки вендора, что ждут заявки, — файлом во
@@ -992,7 +992,7 @@ class MailController
             'damages' => self::damagesLine($vehicle),
             'client' => $vehicle->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),
-            'pickup_link' => $vehicle->releasesByQr() ? $vehicle->pickupUrl() : '',
+            'pickup_link' => $vehicle->vendor?->release_by_qr ? $vehicle->pickupUrl() : '',
         ];
     }
 

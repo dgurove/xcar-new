@@ -18,11 +18,12 @@
         @endif
     </div>
     <div class="list mt-4">
-        <div class="row justify-between"><span class="text-ink-muted">Когда</span><span>{{ \Illuminate\Support\Str::ucfirst($pass->pickup_on->translatedFormat('l, j F')) }}</span></div>
+        @if ($w = $pass->whenLabel('l, j F'))<div class="row justify-between"><span class="text-ink-muted">Когда</span><span>{{ \Illuminate\Support\Str::ucfirst($w) }}</span></div>@endif
         <x-pickup.yard :yard="$vehicle->yard"/>
         <div class="row justify-between"><span class="text-ink-muted">Получатель</span><span class="text-right">{{ $pass->name }}</span></div>
     </div>
-    @if ($pass->isLive())
+    {{-- Пропуск по сделке XCar (`/pass/{code}`): кто и когда — решает менеджер, править тут нечего. --}}
+    @if ($pass->isLive() && ! ($deal ?? false))
         <div class="list mt-4">
             <a href="/pickup/{{ $code }}?edit=1" class="row justify-between"><span>{{ $pass->isConfirmed() ? 'Изменить дату' : 'Изменить данные или дату' }}</span><x-ui.icon name="chevron-right" class="size-4 text-ink-dim"/></a>
             <form method="post" action="/pickup/{{ $code }}/resend">@csrf<button type="submit" class="row justify-between w-full text-left"><span class="min-w-0"><span class="block">Отправить на почту ещё раз</span><span class="block truncate text-sm text-ink-muted">{{ $pass->email }}</span></span><x-ui.icon name="send" class="size-4 shrink-0 text-ink-dim"/></button></form>

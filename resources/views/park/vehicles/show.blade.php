@@ -34,10 +34,19 @@
                 <x-park.sale :vehicle="$vehicle"/>
                 @if ($debt > 0 && $money)<a href="/money?preset=all&car={{ $vehicle->id }}" class="fact nums !text-danger">долг {{ Money::rub($debt) }}</a>@endif
             </div>
+            @php
+                // Выдача по сделке XCar (18.10.2026): получателя решает менеджер в сделке — здесь не правится; сделка идёт, а
+                // забирать ещё нельзя — словом, чтобы парковка знала, что машину ждёт наш покупатель.
+                $dealPass = $vehicle->dealPass();
+                $saleDeal = ! $vehicle->sold_at && in_array($vehicle->state, [\App\Park\VehicleState::Stored, \App\Park\VehicleState::Expected], true) ? $vehicle->offer?->deal : null;
+            @endphp
+            @if ($saleDeal)
+                <p class="mt-1 text-sm text-ink-muted">Идёт сделка XCar, выдача — когда можно будет забирать</p>
+            @endif
             @if ($vehicle->sold_at)
                 <p class="mt-1 text-sm">
                     <span class="nums text-urgent">На выдачу с {{ $vehicle->sold_at->translatedFormat('j M') }}</span>@if ($vehicle->pickup_name || $canManage)<span class="text-ink-muted">, </span>@endif
-                    @if ($canManage)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif
+                    @if ($dealPass)<span>заберёт {{ $vehicle->pickup_name }}, по сделке XCar</span>@elseif ($canManage)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif
                     @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="nums ml-1 whitespace-nowrap text-accent-text">{{ $vehicle->pickup_phone }}</a>@endif
                 </p>
             @endif
@@ -81,7 +90,7 @@
     </div>
 
     <div class="flex min-w-0 flex-col gap-4">
-        @if (($byQr ?? false) && $vehicle->state === \App\Park\VehicleState::Stored)@include('park.vehicles.pickup-card')@endif
+        @if (($byQr ?? false) && $vehicle->vendor?->release_by_qr && ! ($pass ?? null)?->isDeal() && $vehicle->state === \App\Park\VehicleState::Stored)@include('park.vehicles.pickup-card')@endif
         {{-- Документы — над фото: их обычно немного. Строками, «+ Документ» сверху, у правого края — искра «Из документов». --}}
         <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">

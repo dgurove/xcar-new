@@ -183,10 +183,19 @@ class Vehicle extends Model
         return '/mail/new?'.http_build_query(['car' => $this->id, 'template' => $template, 'act' => $act === 'intake' ? 'intake' : 'release', 'back' => $back]);
     }
 
-    /** Выдача только по QR — у вендора включено. */
+    /**
+     * Выдача только по QR — у вендора включено или на машину есть живой пропуск нашей сделки (18.10.2026: выдаём нашему
+     * менеджеру или его покупателю по QR из сделки, `SyncParkRelease`).
+     */
     public function releasesByQr(): bool
     {
-        return (bool) $this->vendor?->release_by_qr;
+        return (bool) $this->vendor?->release_by_qr || $this->dealPass() !== null;
+    }
+
+    /** Живой (не погашенный и не выданный) пропуск сделки XCar. */
+    public function dealPass(): ?Pass
+    {
+        return $this->passes()->whereNotNull('deal_id')->whereNull('revoked_at')->whereNull('used_at')->first();
     }
 
     /** Ссылка на анкету покупателя: одна на ТС, код заводится при первой нужде; заменить — `RenewPickupLink`. */

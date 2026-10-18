@@ -69,6 +69,8 @@ final class Handover
         public readonly bool $canPick,
         /** @var list<string> ключи полей шага продажи, что показаны здесь: в шаге второй раз не пишутся */
         public readonly array $keys,
+        /** ТС парковки, если машина стоит у нас или едет к нам (18.10.2026): забирают с парковки по пропуску сделки. */
+        public readonly ?\App\Park\Vehicle $park = null,
     ) {}
 
     /** Кто на парковке отвечает за выдачу: управляющий её города (не «только приёмка»), иначе администратор парковки. */
@@ -184,10 +186,12 @@ final class Handover
             date: $withBuyer ? null : ($fields['date'] ?? null),
             saleExit: $open && ! $carried ? $saleExit : null,
             carrier: $open && $carried ? self::carrierLine($pickup) : null,
-            canRequest: $open && $picks && (bool) $pickup?->isOpen() && ! $pickup->state->picked(),
-            canPick: $open && $picks && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->state->picked()
+            // С нашей парковки выдаёт парковка по пропуску (18.10.2026): ни «Нужен вывоз», ни «Автомобиль забрал» сам.
+            canRequest: $open && $picks && ! $atYard && ! $toYard && (bool) $pickup?->isOpen() && ! $pickup->state->picked(),
+            canPick: $open && $picks && ! $atYard && ! $toYard && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->state->picked()
                 && $sale && ! self::routePicks($sale->stage),
             keys: $keys,
+            park: ($atYard || $toYard) && ! $withBuyer ? $vehicle : null,
         );
     }
 

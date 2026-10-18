@@ -98,8 +98,6 @@ final class EnterStage
         if ($track === Track::Sale && $deal?->isActive() && ! $deal->prepaid_at && $exit
             && in_array(mb_strtolower(trim($exit->label)), ['оплата получена', 'поставщику оплачено'], true)) {
             $deal->forceFill(['prepaid_at' => $now])->save();
-            // Машина на нашей парковке — выдача ей сама, получатель — кто забирает (18.10.2026, `HandToParking`).
-            \Illuminate\Support\Facades\DB::afterCommit(fn () => app(\App\Offers\Actions\HandToParking::class)($deal->fresh(), $by));
         }
 
         if ($track === Track::Sale && $to->offer_state && $offer->state !== $to->offer_state && $offer->state->allows($to->offer_state)) {
@@ -115,6 +113,10 @@ final class EnterStage
             'from_id' => $from?->id, 'to_id' => $to->id, ...($back ? ['back' => true] : []), ...($letter ? ['letter' => $letter] : []),
         ]);
         StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter);
+        // Машина сделки на нашей парковке: стало можно забирать — выдача, пропуск, получатель (18.10.2026, одна дверь).
+        if ($track === Track::Sale && $deal) {
+            \Illuminate\Support\Facades\DB::afterCommit(fn () => app(\App\Offers\Actions\SyncParkRelease::class)($deal->fresh(), $by));
+        }
 
         return $offer;
     }

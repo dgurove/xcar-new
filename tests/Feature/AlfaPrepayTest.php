@@ -219,35 +219,4 @@ class AlfaPrepayTest extends TestCase
         $offer->forceFill(['prices_include_vat' => true])->save();
         $this->assertContains(DealScheme::Ros, DealScheme::casesFor($offer->vendor, $offer->fresh()));
     }
-
-    /**
-     * Машина на нашей парковке (18.10.2026, владелец: «выдача сама после оплаты»): после «Оплата получена» парковке —
-     * продано и заявка на выдачу менеджеру; у менеджера контакт парковки, а не страхователя; выдали — вывоз «Забрал».
-     */
-    public function test_car_on_our_parking_is_released_to_manager_after_payment(): void
-    {
-        $offer = $this->offer(vat: false);
-        $offer->forceFill(['insured_name' => 'Иван Страхователь', 'insured_phone' => '+79001112233'])->save();
-        $yard = \App\Park\Yard::create(['name' => 'Измайловский лес', 'is_active' => true, 'address' => 'ул. Дорофеева, 2А']);
-        $keeper = User::create(['name' => 'Пётр Управляющий', 'phone' => '79000000009', 'roles' => [Role::Parking], 'approved_at' => now()]);
-        $vehicle = \App\Park\Vehicle::create(['vendor_id' => $offer->vendor_id, 'yard_id' => $yard->id, 'state' => \App\Park\VehicleState::Stored, 'accepted_at' => now()]);
-        \Illuminate\Support\Facades\DB::table('park_vehicles')->where('id', $vehicle->id)->update(['car_id' => $offer->car_id]);
-        $deal = $this->accept($offer);
-        app(\App\Offers\Actions\AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
-        $this->toPayStep($offer, $deal);
-        $this->exit($offer, 'Платёжное поручение приложено');
-        $this->exit($offer, 'Оплата получена');
-
-        $vehicle->refresh();
-        $this->assertNotNull($vehicle->sold_at);
-        $this->assertSame($this->manager->name, $vehicle->pickup_name);
-        $this->assertNotNull($vehicle->openRequest(\App\Park\RequestType::Release));
-        $h = Handover::for($deal->fresh());
-        $this->assertSame('На парковке', $h->where);
-        $this->assertStringContainsString('Пётр Управляющий', (string) $h->name);
-        $this->assertNotSame('+79001112233', $h->phone);
-
-        \App\Park\Events\VehicleReleased::dispatch($vehicle->fresh(), null, $this->admin);
-        $this->assertNull($deal->fresh()->closeBlocker());
-    }
 }

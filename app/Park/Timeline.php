@@ -83,10 +83,13 @@ final class Timeline
             if ($v->releasesByQr() && ($v->sold_at || $releasing || ($v->released_at && $pass))) {
                 $linkAt = $events->where('type', EventType::PickupLinkSent)->max('created_at');
                 $steps[] = match (true) {
+                    // Пропуск нашей сделки (18.10.2026): анкеты и страховой нет — кто заберёт, решил менеджер.
+                    (bool) $pass?->isDeal() => new Step('buyer', 'Пропуск по сделке XCar', Step::DONE, null, $pass->confirmed_at,
+                        array_values(array_filter([$pass->name, $pass->planned_at ? 'приедет '.$pass->planned_at->translatedFormat('j M, H:i') : null, ($m = $pass->deal?->buyer) ? 'менеджер '.$m->shortName() : null]))),
                     ! $pass => new Step('buyer', 'Ждём анкету покупателя', $v->released_at ? Step::NEXT : Step::TODO, null, null,
                         $linkAt ? ['ссылка отправлена '.Carbon::parse($linkAt)->translatedFormat('j M')] : []),
                     $pass->isConfirmed() => new Step('buyer', 'Покупатель подтверждён', Step::DONE, null, $pass->confirmed_at,
-                        array_values(array_filter([$pass->name, 'заберёт '.$pass->pickup_on->translatedFormat('j M'), $pass->confirm_note, $pass->confirmer?->shortName()]))),
+                        array_values(array_filter([$pass->name, ($w = $pass->whenLabel('j M')) ? 'заберёт '.$w : null, $pass->confirm_note, $pass->confirmer?->shortName()]))),
                     default => new Step('buyer', 'Покупатель заполнил анкету', Step::TODO, null, $pass->submitted_at),
                 };
             }

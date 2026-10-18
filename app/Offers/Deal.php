@@ -36,14 +36,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at', 'prepaid_at'])]
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at', 'prepaid_at',
+    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at'])]
 class Deal extends Model
 {
     use HidesDemo;
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime'];
+        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'receiver_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -225,12 +226,61 @@ class Deal extends Model
      */
     public function closeBlocker(): ?string
     {
+        // Машина ещё на нашей парковке (стоит или едет к нам) — её выдают по пропуску сделки (18.10.2026).
+        $park = $this->isGarage() ? null : $this->offer?->parkVehicle()->first();
+        if ($park && in_array($park->state, [\App\Park\VehicleState::Stored, \App\Park\VehicleState::Expected], true)) {
+            return 'Сначала заберите автомобиль с парковки';
+        }
         $pickup = $this->isGarage() ? null : $this->offer?->pickup();
         if (! $pickup || $pickup->state->picked()) {
             return null;
         }
 
         return $pickup->channel === Channel::Manager ? 'Сначала отметьте «Автомобиль забрал»' : 'Автомобиль ещё не забрали';
+    }
+
+    /**
+     * Кто заберёт машину (18.10.2026): выбранный в сделке, иначе по умолчанию — исполнитель вывоза, если везёт логистика;
+     * у гаражной — её менеджер; иначе покупатель по договору, если это не сам менеджер; иначе менеджер сделки.
+     */
+    public function receiver(): ?Receiver
+    {
+        $at = $this->receiver_at;
+        if ($this->receiver_user_id && ($u = User::find($this->receiver_user_id))) {
+            return new Receiver($u->name, $u->phone, $u, $u->id === $this->buyer_id ? 'manager' : 'buyer', $at, true);
+        }
+        if (filled($this->receiver_name)) {
+            return new Receiver($this->receiver_name, $this->receiver_phone, null, 'person', $at, true);
+        }
+        $pickup = $this->offer?->pickup();
+        if ($pickup?->executor && $pickup->executor_id !== $this->buyer_id && $pickup->isOpen()) {
+            return new Receiver($pickup->executor->name, $pickup->executor->phone, $pickup->executor, 'executor', $at);
+        }
+        $garage = $this->isGarage() ? $this->offer?->garageCar()->with('manager')->first()?->manager : null;
+        if ($garage) {
+            return new Receiver($garage->name, $garage->phone, $garage, 'manager', $at);
+        }
+        $buyer = $this->contract?->buyer;
+        if ($buyer && $buyer->id !== $this->buyer_id) {
+            return new Receiver($buyer->name, $buyer->phone, $buyer, 'buyer', $at);
+        }
+
+        return $this->buyer ? new Receiver($this->buyer->name, $this->buyer->phone, $this->buyer, 'manager', $at) : null;
+    }
+
+    /**
+     * Можно забирать (одно правило для выдачи с нашей парковки, 18.10.2026): сделка идёт, держать нечем (`pickupHold`:
+     * Альфа — оплачено, Каркаде — согласовано) и, кроме гаражной, поставщик уже согласовал (`Handover::open`).
+     */
+    public function releasable(): bool
+    {
+        return $this->isActive() && $this->pickupHold() === null && ($this->isGarage() || Handover::for($this)->open);
+    }
+
+    /** Пропуска на нашу парковку по этой сделке (`SyncParkRelease`). */
+    public function passes(): HasMany
+    {
+        return $this->hasMany(\App\Park\Pass::class);
     }
 
     /** Исход ведёт в конец сделки «Сделка закрыта» (оффер — «Выдан»). */
