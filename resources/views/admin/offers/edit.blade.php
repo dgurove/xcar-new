@@ -12,8 +12,9 @@
     if ($garage) $transitions = collect();
     // «Вернуть в продажу» с новыми ценами — из сделки и из гаража (`ReturnToSale`, 11.10.2026).
     $resale = $admin && (in_array($offer->state, [OfferState::Sold, OfferState::Garage], true) || $garage);
-    // Руками в гараж — не из сделки: идущую сначала отменяют; отдают как гаражную сделку (`GiveToGarage`), со страховой — маршрутом.
-    $canGarage = $admin && ! $garage && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
+    // «Отдать…» (`Give`, 18.10.2026): из черновика и продажи — в сделку ценой или в гараж, без публикации; из сделки отдают
+    // другому «Отдать» у подтверждения резерва.
+    $canGive = $admin && ! $garage && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     // Подтверждения: ждущие по сумме вниз, потом решённые.
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $grid = 'grid grid-cols-2 gap-3 @4xl:grid-cols-3';
@@ -228,14 +229,7 @@
     </div>
     </div>
 
-    {{-- Гараж минуя подтверждение (x-offer.garage-form): этап, кому, кто платит поставщику. --}}
-    @if ($canGarage)
-        <div data-controller="sheet" data-action="garage:open@window->sheet#open" class="contents">
-            <x-ui.sheet id="offer-garage" title="Отдать в гараж">
-                <x-offer.garage-form :offer="$offer" :managers="$managers"/>
-            </x-ui.sheet>
-        </div>
-    @endif
+    @if ($canGive)<x-offer.give-sheet :offer="$offer"/>@endif
 
     {{-- Черновик из писем до первого сохранения: «Отменить» (черновика не было, цепочка снова в «Из писем»), «Не заявка»
          (и цепочку в архив), «Сохранить». Черновик и дальше только «Сохранить»: публикуют из списка по маршруту. --}}
@@ -273,7 +267,7 @@
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
         @php $auctionItems = $admin && $offer->auctionActions() !== []; @endphp
-        @if (($transitions->isNotEmpty() || $resale || $publishItems || $auctionItems || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
+        @if (($transitions->isNotEmpty() || $resale || $publishItems || $auctionItems || $canGive || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
             {{-- Контроллер шторки — только вместе с ней: у сделки «···» нет, и пустой контроллер падал в консоль. --}}
             <div class="contents" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
@@ -297,8 +291,8 @@
                         </form>
                     @endforeach
                     @if ($auctionItems && ! $offer->onAuction())@include('admin.offers.auction-items', ['offer' => $offer])@endif
-                    @if ($canGarage)
-                        <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="garage:open">Отдать в гараж</x-ui.button>
+                    @if ($canGive)
+                        <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="give-{{ $n }}:open">Отдать…</x-ui.button>
                     @endif
                     @if ($admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true))
                         <form method="post" action="/offers/{{ $n }}/purge" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">@csrf<x-ui.button block variant="danger">Удалить навсегда</x-ui.button></form>

@@ -131,7 +131,7 @@ class PriceHistoryTest extends TestCase
             app(AcceptBid::class)($bid, $this->admin, 0, CommissionMode::Payout, scheme: DealScheme::Prime);
             $this->fail('приняли не выше закупочной молча');
         } catch (ValidationException $e) {
-            $this->assertArrayHasKey('bid', $e->errors());
+            $this->assertArrayHasKey('give', $e->errors());
         }
         $this->assertNull($offer->fresh()->deal);
         $deal = app(AcceptBid::class)($bid->fresh(), $this->admin, 0, CommissionMode::Payout, scheme: DealScheme::Prime, loss: true);

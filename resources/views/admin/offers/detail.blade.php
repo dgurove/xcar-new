@@ -30,12 +30,15 @@
     // «Оценить», цену продажи без закупочной не ставят. У Альфы первой — оценочная, закупочная от неё на лету.
     $floorFirst = $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->floor_price && ! $offer->isScheduled();
     $byValue = $floorFirst && \App\Vendors\Vendor::ratesByValue($offer->vendor_id);
-    // Рядом с «Оценить» — «В гараж»: менеджеру без цены продажи (04.10.2026), та же форма, что в «···» редактора.
+    // Рядом с «Оценить» — «В гараж»: менеджеру без цены продажи (04.10.2026), та же форма, что в листе «Отдать» (`Give`).
     $garage = $rate && $offer->state->allows(OfferState::Garage);
+    // «Отдать…» в «Действиях» (18.10.2026): в сделку ценой или в гараж без публикации — у черновика с ценой и в продаже;
+    // без цены продажи отдают только в гараж — сегментом ниже.
+    $giveMenu = $admin && ! $garage && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     // И «Вывоз»: кто вывозит ТС (задача логистики, `AssignExecutor`) — пока не забрали; цену после него всё равно ставить.
     $pickup = $rate && ($offer->pickup()?->isOpen() || $offer->vendor?->pickup_on_arrival) && ! $offer->pickedUp();
     $ways = $garage || $pickup;
-    $way = $errors->hasAny(['executor', 'executor_id', 'pickup']) ? 'pickup' : (old('stage') ? 'garage' : 'rate');
+    $way = $errors->hasAny(['executor', 'executor_id', 'pickup']) ? 'pickup' : (old('to') === 'garage' ? 'garage' : 'rate');
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');
@@ -95,7 +98,7 @@
                 {{-- Без закупочной тоже (14.10.2026, владелец): шторка спросит «Вы уверены…», менеджер оценивает без заявленной. --}}
                 @php $askMenu = ($correct || $rate) && $offer->openEstimates->isEmpty() && $offer->declinedEstimates->isEmpty(); @endphp
                 @php $auctionMenu = $admin && $offer->auctionActions() !== []; @endphp
-                @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu || $auctionMenu)
+                @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu || $auctionMenu || $giveMenu)
                     <div class="contents" data-controller="menu">
                         <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
                         <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
@@ -118,6 +121,11 @@
                                     @endforeach
                                     <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="publish-day:open"><x-ui.icon name="calendar" class="size-5 text-ink-muted"/>Другой день…</button>
                                     <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="urgent:open"><x-ui.icon name="fire" fill class="size-5 text-fire"/>Срочно…</button>
+                                </div>
+                            @endif
+                            @if ($giveMenu)
+                                <div class="menu-group">
+                                    <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="give-{{ $n }}:open"><x-ui.icon name="deal" class="size-5 text-ink-muted"/>Отдать…</button>
                                 </div>
                             @endif
                             {{-- Менеджерам на оценку (без цены) или на корректировку (цена стоит, админ не уверен), 11.10.2026: пунктом, а не
@@ -218,7 +226,7 @@
                     </div>
                     @if ($garage)
                         <div data-reveal-target="pane" data-reveal-key="garage" hidden>
-                            <x-offer.garage-form :offer="$offer" :managers="$managers" prefix="detail-garage-{{ $n }}"/>
+                            <x-offer.give-garage :offer="$offer" :prefix="'detail-'.$n" inline/>
                         </div>
                     @endif
                     @if ($pickup)
@@ -237,6 +245,7 @@
             @if ($resale || ($admin && $offer->onAuction()))<x-offer.resale-sheet :offer="$offer"/>@endif
             @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
             @if ($askMenu)<x-offer.estimate-ask :offer="$offer" :managers="$managers" :trigger="false"/>@endif
+            @if ($giveMenu)<x-offer.give-sheet :offer="$offer"/>@endif
         </x-slot:actions>
         {{-- Письма — сразу под шапкой, над подтверждениями и полями (11.10.2026, владелец: «в окошке очень не хватает писем»;
              по ним заполняют поля и оценивают): все строками, как в «Почте», строка открывает окно поверх списка на письме. --}}

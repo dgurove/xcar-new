@@ -5,9 +5,7 @@ namespace App\Http\Admin;
 use App\Cars\Car;
 use App\Cars\Vin\Vin;
 use App\Chats\Chat;
-use App\Garage\Actions\GiveToGarage;
 use App\Garage\Car as GarageCar;
-use App\Garage\GaragePayer;
 use App\Garage\GarageView;
 use App\Live\Rows;
 use App\Mail\Candidate;
@@ -59,7 +57,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class OfferController
@@ -640,7 +637,7 @@ class OfferController
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'chats' => $admin ? Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']) : collect(),
             'list' => $gallery ?? $request->boolean('gallery'),
-            // Кому отдать в гараж и на оценку — у черновика без цены; на корректировку — у оценённого, пока не в слоте.
+            // Кому отдать на оценку — у черновика без цены; на корректировку — у оценённого, пока не в слоте.
             'managers' => $admin && $offer->state === OfferState::Draft && ! $offer->isScheduled() ? User::withRole(Role::Manager)->with(User::withAvatar())->orderBy('name')->get() : collect(),
         ]);
     }
@@ -748,27 +745,6 @@ class OfferController
 
         // Из «Приём закрыт» строка уходит сразу (в «Опубликованные»), числа вкладок — следом, без обновления страницы.
         return back()->with('toast', 'Приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'))->with(self::gone($request, $offer->refresh()));
-    }
-
-    /**
-     * Отдать машину в гараж, минуя подтверждение (`GiveToGarage`, 06.10.2026): как принятое гаражное — сделка, маршрут
-     * со страховой, вывоз к менеджеру. Без менеджера — «взяли под себя», платим мы. Где машина — с чего начать вывоз.
-     */
-    public function garage(Request $request, Offer $offer, GiveToGarage $give)
-    {
-        $data = $request->validate([
-            'where' => ['required', Rule::in(array_keys(GiveToGarage::WHERE))],
-            'manager_id' => ['nullable', 'exists:users,id'],
-            'payer' => ['nullable', Rule::enum(GaragePayer::class)],
-            'pickup' => ['nullable', Rule::in(['manager', 'us'])],
-        ]);
-        $manager = $data['manager_id'] ? User::findOrFail($data['manager_id']) : null;
-        $evacuator = $manager && ($data['pickup'] ?? 'manager') === 'manager' ? $manager : null;
-        $give($offer, $manager, GaragePayer::tryFrom($data['payer'] ?? '') ?? GaragePayer::Us, $request->user(), $data['where'], $evacuator);
-
-        // Из карточки «Без цены» (DetailBack): строка уходит из списка, карточка — к следующей без цены.
-        return redirect("/offers/{$offer->number}")->with('toast', $manager ? 'В гараже у '.$manager->shortName() : 'В гараже')
-            ->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', self::counts($request->user()));
     }
 
     /**

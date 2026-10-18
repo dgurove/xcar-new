@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Billing\Seller;
 use App\Cars\HasLabels;
 use App\Vendors\DealFormat;
+use App\Vendors\Vendor;
 
 /**
  * Кто получает деньги за ТС и что платят нам (05.10.2026, у страховых по-разному — решает админ при принятии,
@@ -96,9 +97,23 @@ enum DealScheme: string
     }
 
     /** Схемы в шторке: Р.О.С. — только у Альфы. @return list<self> */
-    public static function casesFor(?\App\Vendors\Vendor $vendor): array
+    public static function casesFor(?Vendor $vendor): array
     {
         return array_values(array_filter(self::cases(), fn (self $s) => $s !== self::Ros || $vendor?->pay_before_pickup));
+    }
+
+    /**
+     * Схема сделки, которую заводит «Отдать» (`Give`): выбранная в шторке, если её можно выбрать у этого вендора
+     * (оптом — только ПРАЙМ, Р.О.С. — только у Альфы), иначе по умолчанию предложения.
+     */
+    public static function resolve(Offer $offer, ?self $requested): self
+    {
+        $default = self::forOffer($offer);
+        if (! $requested || ! self::choiceFor($offer->vendor?->deal_format)) {
+            return $default;
+        }
+
+        return in_array($requested, self::casesFor($offer->vendor), true) ? $requested : $default;
     }
 
     /** Схема на выбор в шторках «Принять» и «Деньги»: оптом схема одна — ПРАЙМ, выбирать нечего (null). */

@@ -5,6 +5,7 @@ use App\Http\Admin\BidController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
+use App\Http\Admin\GiveController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
 use App\Http\Admin\InterestController;
@@ -206,7 +207,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/purge', [OfferController::class, 'purgeMany']);
         Route::post('/offers/{offer}/purge', [OfferController::class, 'purge']);
         Route::post('/offers/{offer}/unschedule', [OfferController::class, 'unschedule']);
-        Route::post('/offers/{offer}/garage', [OfferController::class, 'garage']);
+        Route::post('/offers/{offer}/give', [GiveController::class, 'store']);
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
         Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
         Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
@@ -216,7 +217,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
         Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);
 
-        Route::post('/confirmations/{bid}/accept', [BidController::class, 'accept']);
+        Route::post('/confirmations/{bid}/accept', [GiveController::class, 'accept']);
         Route::post('/offers/{offer}/confirmations', [BidController::class, 'storeFor']);
         Route::post('/offers/{offer}/interests', [InterestController::class, 'store']);
         Route::get('/reference/managers', [ReferenceController::class, 'managers']);

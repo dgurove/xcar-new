@@ -5,9 +5,10 @@ import { nums, rub, rubles } from '../lib/money';
 // пересчитанные на месте. ours — «нам остаётся» (разница минус вознаграждение), due —
 // сколько менеджер отдаёт (база минус вознаграждение); ушло в минус — подпись dueLabel
 // меняется на data-negative: тогда отдаём мы. payout — сколько выплатим менеджеру, когда за машину из гаража платит
-// его покупатель: его расходы (spent) плюс вознаграждение.
+// его покупатель: его расходы (spent) плюс вознаграждение. price — цену вписывают тут же («Отдать» без подтверждения):
+// разница и «нам остаётся» идут за ней, не выше закупочной — форма переспрашивает и шлёт согласие loss.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset', 'payee'];
+    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset', 'payee', 'price', 'margin', 'loss'];
     static values = { margin: Number, base: Number, spent: Number, amount: Number, cost: Number };
 
     connect() {
@@ -35,6 +36,39 @@ export default class extends Controller {
     }
 
     input() {
+        const priced = this.hasPriceTarget ? this.price() : true;
+        this.sums();
+        if (!priced) {
+            if (this.hasOursTarget) this.oursTarget.textContent = '';
+            if (this.hasMarginTarget) this.marginTarget.textContent = '';
+        }
+    }
+
+    // Цена вписана здесь: от неё разница, а цена не выше закупочной — вопрос перед отправкой и согласие loss.
+    price() {
+        const p = rubles(this.priceTarget.value);
+        this.amountValue = p ?? 0;
+        if (this.hasCostValue) {
+            this.marginValue = (p ?? 0) - this.costValue;
+            if (this.hasMarginTarget) {
+                this.marginTarget.textContent = this.money(this.marginValue);
+                this.marginTarget.classList.toggle('text-danger', this.marginValue < 0);
+            }
+            const minus = p !== null && p <= this.costValue;
+            if (this.hasLossTarget) this.lossTarget.value = minus ? '1' : '';
+            if (minus) {
+                this.element.dataset.turboConfirm = `Отдать за ${rub(p)} при закупочной ${rub(this.costValue)}?`;
+                this.element.dataset.turboConfirmText = this.costValue > p ? `Сделка в минус ${rub(this.costValue - p)}` : 'Наценки нет';
+            } else {
+                delete this.element.dataset.turboConfirm;
+                delete this.element.dataset.turboConfirmText;
+            }
+        }
+
+        return p !== null;
+    }
+
+    sums() {
         const typed = rubles(this.displayTarget.value);
         const value = typed ?? 0;
         this.displayTarget.value = typed === null ? '' : nums(value);

@@ -7,14 +7,17 @@
      07.10.2026: суммы строками (.fields), кнопка .sheet-foot (форма всегда в шторке). `fee` false — без вознаграждения
      (супер-покупатель покупает у нас сам, 10.10.2026): поле и режим спрятаны, «Нам остаётся» — вся разница.
      15.10.2026: `cost` — закупочная, с которой менеджер подтверждал (закрепляется в сделке); `supplierCost` — нынешняя,
-     если другая, строкой только для админа; у идущей сделки сумма собственнику не правится (`ownerLocked`). --}}
+     если другая, строкой только для админа; у идущей сделки сумма собственнику не правится (`ownerLocked`).
+     18.10.2026: `priced` — цену менеджеру вписывают тут же («Отдать» без подтверждения, поле `amount` — в слоте с
+     `data-commission-target="price"`): разница и «нам остаётся» считаются по ходу набора, цена не выше закупочной —
+     форма переспрашивает и шлёт согласие `loss`. --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false])
 @php
     use App\Offers\CommissionMode;
     use App\Offers\DealScheme;
     use App\Support\Money;
-    $margin = $cost === null ? null : $amount - $cost;
+    $margin = $cost === null ? null : (int) $amount - $cost;
     $current = old('commission', $commission);
     $id ??= 'commission-'.uniqid();
     $scheme = DealScheme::tryFrom((string) old('scheme', $scheme?->value ?? '')) ?? $scheme;
@@ -27,6 +30,7 @@
     @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
     @csrf
     @if ($method !== 'post')@method($method)@endif
+    @if ($priced)<input type="hidden" name="loss" value="" data-commission-target="loss">@endif
     {{ $slot }}
     @if ($scheme)
         <div class="flex flex-col gap-1.5">
@@ -39,10 +43,10 @@
         </div>
     @endif
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
-        <dt class="text-sm text-ink-dim">Цена подтверждения</dt><dd class="nums text-right font-medium">{{ Money::rub($amount) }}</dd>
+        @unless ($priced)<dt class="text-sm text-ink-dim">Цена подтверждения</dt><dd class="nums text-right font-medium">{{ Money::rub($amount) }}</dd>@endunless
         <dt class="text-sm text-ink-dim">Закупочная</dt><dd class="nums text-right">{{ $cost === null ? 'не указана' : Money::rub($cost) }}</dd>
         @if ($supplierCost !== null && $supplierCost !== $cost)<dt class="text-sm text-ink-dim">Закупочная поставщика</dt><dd class="nums text-right">{{ Money::rub($supplierCost) }}</dd>@endif
-        @if ($margin !== null)<dt class="text-sm text-ink-dim" data-commission-target="oursOnly" @if ($dkp) hidden @endif>Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}" data-commission-target="oursOnly" @if ($dkp) hidden @endif>{{ Money::rub($margin) }}</dd>@endif
+        @if ($margin !== null)<dt class="text-sm text-ink-dim" data-commission-target="oursOnly" @if ($dkp) hidden @endif>Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}" data-commission-target="oursOnly margin" @if ($dkp) hidden @endif>{{ $priced && ! $amount ? '' : Money::rub($margin) }}</dd>@endif
     </dl>
     <div class="fields">
         @if ($scheme)
@@ -64,7 +68,7 @@
     @if ($margin !== null || $scheme)
         <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4">
             <dt class="text-sm text-ink-dim" data-commission-target="oursLabel" data-ours="Нам остаётся" data-dkp="Менеджер платит нам">{{ $dkp ? 'Менеджер платит нам' : 'Нам остаётся' }}</dt>
-            <dd class="nums text-right text-lg font-semibold" data-commission-target="ours">{{ $margin !== null ? Money::rub($margin - (int) $current) : '' }}</dd>
+            <dd class="nums text-right text-lg font-semibold" data-commission-target="ours">{{ $margin !== null && ($amount || ! $priced) ? Money::rub($margin - (int) $current) : '' }}</dd>
         </dl>
     @endif
     <div @unless ($fee) hidden @endunless>
