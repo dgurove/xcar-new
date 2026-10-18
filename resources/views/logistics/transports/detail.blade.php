@@ -103,7 +103,7 @@
                     <span class="min-w-0">
                         <span class="block text-sm text-ink-muted">Продажа</span>
                         <span class="block {{ $sale->tone }}">{{ $sale->word }}@if ($dealStage)<span class="text-ink-muted">, {{ mb_strtolower($dealStage) }}</span>@endif</span>
-                        <span class="block text-sm text-ink-muted nums">поступила {{ \App\Support\Ago::day($t->created_at, time: true) }}@if ($sale->urgent), <span class="text-danger">{{ $sale->days }}&nbsp;{{ \App\Support\Plural::of($sale->days, ['день', 'дня', 'дней']) }} без покупателя</span>@endif</span>
+                        <span class="block text-sm text-ink-muted nums">поступила {{ \App\Support\Ago::day($t->created_at, time: true) }}</span>
                     </span>
                     @if ($sale->manager)<x-ui.person :user="$sale->manager" class="shrink-0"/>@endif
                 </div>

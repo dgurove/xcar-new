@@ -18,7 +18,7 @@ use Tests\TestCase;
 
 /**
  * Таблица «Вывоза» (18.10.2026). Тихие дорогие ошибки: чип «Продажа» и сортировка (SQL) разошлись со словом строки (PHP)
- * — Катя отдаёт исполнителю машину, у которой уже есть покупатель; «Срочно» считает не те строки; открытая карточка
+ * — Катя отдаёт исполнителю машину, у которой уже есть покупатель; открытая карточка
  * подменяет строку списка строкой без галочки — столбцы съезжают (владелец: «нажал на строку — всё нахер съезжает»).
  */
 class LogisticsTableTest extends TestCase
@@ -52,9 +52,6 @@ class LogisticsTableTest extends TestCase
         }
         $this->assertSame(['draft', 'draft', 'open', 'deal', 'garage'], [$states[$draft->id]->key, $states[$old->id]->key, $states[$open->id]->key, $states[$deal->id]->key, $states[$garage->id]->key]);
         $this->assertTrue($states[$draft->id]->waiting, 'ищем покупателя, время есть — приглушена');
-        $urgent = $states->filter->urgent->keys()->sort()->values()->all();
-        $this->assertSame([$old->id, $open->id], $urgent, 'срочно — без покупателя три дня и больше');
-        $this->assertSame($urgent, SaleState::urgent(Transport::query())->orderBy('id')->pluck('id')->all(), 'чип «Срочно» — те же строки');
 
         // Модератор ведёт логистику: «Без исполнителя» со всеми задачами, а свежая строка карточки — с галочкой, как в списке.
         $host = 'http://'.config('xcar.logistics_host');

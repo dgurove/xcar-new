@@ -13,15 +13,11 @@ use Illuminate\Database\Eloquent\Builder;
  * срочно вывозить»). Одна дверь для строки «Вывоза», карточки задачи, чипа «Продажа» и сортировки; SQL-зеркала
  * (`KEY_SQL` …) — для чипов и порядка, ветки в том же порядке, что `of()`.
  *
- * Срочность и приглушение — только у задач без исполнителя: после назначения решение принято, подсвечивать нечего.
- * Срочно — покупателя нет, а с поступления машины (`transports.created_at`, письмо страховой) прошло `DAYS` дней;
- * ещё есть время и ищем покупателя — строка приглушена (`waiting`).
+ * Приглушение — только у задач без исполнителя: ищем покупателя — строка приглушена (`waiting`). Меток и чипа «Срочно»
+ * нет (18.10.2026, владелец: «только мешает»).
  */
 final readonly class SaleState
 {
-    /** Дней без покупателя, после которых вывозить срочно (решение владельца 18.10.2026). */
-    public const DAYS = 3;
-
     /** Ключ продажи: park (перевод парковки), none (продажи нет), garage, deal, open, draft, off (снята). Демо-сделки не в счёт — их прячет `HidesDemo`. */
     public const KEY_SQL = "(case when transports.origin = 'park' then 'park' else coalesce((select case
         when exists (select 1 from garage_cars g where g.offer_id = o.id) then 'garage'
@@ -51,10 +47,9 @@ final readonly class SaleState
     private function __construct(
         public string $key,
         public string $word,
-        /** Класс цвета слова: text-danger (срочно), text-accent-text (покупатель есть), text-urgent (ждём оплаты), text-ink-muted. */
+        /** Класс цвета слова: text-accent-text (покупатель есть), text-urgent (ждём оплаты), text-ink-muted. */
         public string $tone,
         public ?User $manager,
-        public bool $urgent,
         public bool $waiting,
         public int $days,
     ) {}
@@ -65,7 +60,7 @@ final readonly class SaleState
     public static function of(Transport $t): self
     {
         $o = $t->forSale() ? $t->offer : null;
-        // Полные сутки с поступления — то же правило, что срочность (`DAYS` и `urgent()`), а не календарные дни.
+        // Полные сутки с поступления, а не календарные дни.
         $days = (int) ($t->created_at?->diffInDays(now()) ?? 0);
         $key = match (true) {
             ! $t->forSale() => 'park',
@@ -79,7 +74,6 @@ final readonly class SaleState
         $manager = in_array($key, ['garage', 'deal'], true) ? Choices::managerOf($o) : null;
         $buyer = in_array($key, ['garage', 'deal'], true);
         $deciding = $t->state === TransportState::New;
-        $urgent = $deciding && ! $buyer && $key !== 'park' && $t->created_at !== null && $t->created_at->lte(now()->subDays(self::DAYS));
         $hold = $key === 'deal' ? $o->deal->setRelation('offer', $o)->pickupHold() : null;
         $word = match ($key) {
             'park' => 'перевод парковки',
@@ -97,25 +91,15 @@ final readonly class SaleState
 
         return new self(
             key: $key,
-            word: $urgent ? $word.', '.$days."\u{00A0}д" : $word,
+            word: $word,
             tone: match (true) {
-                $urgent => 'text-danger',
                 $hold !== null => 'text-urgent',
                 $buyer => 'text-accent-text',
                 default => 'text-ink-muted',
             },
             manager: $manager,
-            urgent: $urgent,
-            waiting: $deciding && ! $buyer && ! $urgent && $key !== 'park',
+            waiting: $deciding && ! $buyer && $key !== 'park',
             days: $days,
         );
-    }
-
-    /** Срочно: без исполнителя, покупателя нет, поступила `DAYS` дней назад и раньше — то же правило, что `of()`. */
-    public static function urgent(Builder $q): Builder
-    {
-        return $q->where('transports.state', TransportState::New)
-            ->where('transports.created_at', '<=', now()->subDays(self::DAYS))
-            ->whereRaw(self::KEY_SQL." in ('draft', 'open', 'off', 'none')");
     }
 }
