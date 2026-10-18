@@ -332,6 +332,19 @@ class Invoice extends Model implements HasMedia
         return ($capital ? 'Просрочен' : 'просрочен').' на '.$this->overdueDays().' д';
     }
 
+    /**
+     * Срока ещё нет (подбор до шага оплаты, `SyncDealInvoices::dueFor`): у ДКП — после договора с покупателем, у
+     * «страховой напрямую» (Альфа) договора с покупателем в маршруте нет — срок встаёт вместе с оплатой за ТС (18.10.2026).
+     */
+    public function laterLabel(bool $long = false): string
+    {
+        return match ($this->deal?->scheme) {
+            \App\Offers\DealScheme::OwnerDkp => $long ? 'после договора с покупателем' : 'после договора',
+            \App\Offers\DealScheme::Insurer => 'вместе с оплатой за ТС',
+            default => 'без срока',
+        };
+    }
+
     public function isPartial(): bool
     {
         return $this->state === InvoiceState::Issued && $this->paidMoney() > 0 && $this->remaining() > 0;

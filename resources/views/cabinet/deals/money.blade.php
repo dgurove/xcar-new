@@ -40,7 +40,15 @@
             @if ($deal->offset() && ! $deal->isDirect())
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Взаимозачёт со страховой</span><span class="nums text-ink-muted">−{{ Money::rub($deal->offset()) }}</span></div>
             @endif
-            <div class="row"><span class="min-w-0 flex-1">{{ $deal->schemeOf()->payLabel() }}</span><span class="nums font-semibold">@if ($deal->isDirect() && $deal->owner_price === null)уточним@else{{ Money::rub((int) $deal->ownerPrice()) }}@endif</span></div>
+            @php
+                // Платёж поставщику у Альфы (оплата до вывоза) — подтверждает поставщик: «оплачено», пока ждём — что платёжка у нас.
+                $paidSupplier = $deal->offer?->vendor?->pay_before_pickup ? match (true) {
+                    $deal->prepaid_at !== null => ['оплачено', 'text-open'],
+                    \App\Workflow\Requirement::where('deal_id', $deal->id)->whereNotNull('done_at')->where('answer->exit', 'Платёжное поручение приложено')->exists() => ['ждём подтверждения поставщика', ''],
+                    default => null,
+                } : null;
+            @endphp
+            <div class="row"><span class="min-w-0 flex-1"><span class="block">{{ $deal->schemeOf()->payLabel() }}</span>@if ($paidSupplier)<span @class(['row-sub', $paidSupplier[1]])>{{ $paidSupplier[0] }}</span>@endif</span><span class="nums font-semibold">@if ($deal->isDirect() && $deal->owner_price === null)уточним@else{{ Money::rub((int) $deal->ownerPrice()) }}@endif</span></div>
         </div>
         @if ($deal->selectionBase() !== null)
             <div class="mt-3 flex items-baseline justify-between gap-3 px-4"><span class="text-ink-muted">Остаток</span><span class="nums font-semibold">{{ Money::rub((int) $deal->selectionBase()) }}</span></div>

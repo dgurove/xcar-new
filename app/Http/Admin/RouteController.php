@@ -24,6 +24,7 @@ use App\Workflow\Path;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -45,10 +46,14 @@ class RouteController
                 : 'Выйдет '.Slots::phrase($offer->slot_at));
         }
         $payload = [];
-        foreach ($exit->to?->staff_fields ?? [] as $field) {
+        foreach ($exit->staffFields() as $field) {
             $value = trim((string) $request->input("fields.{$field['key']}", ''));
+            if ($value === '' && ($field['required'] ?? false)) {
+                throw ValidationException::withMessages(["fields.{$field['key']}" => 'Заполните']);
+            }
             if ($value !== '') {
-                $payload[$field['key']] = $value;
+                // Дата со временем — словами, как её прочтёт менеджер: «20 октября, 10:00».
+                $payload[$field['key']] = ($field['type'] ?? '') === 'datetime' ? Carbon::parse($value)->translatedFormat('j F, H:i') : $value;
             }
         }
         $offer = $take($offer, $exit, Actor::Staff, $request->user(), $payload);

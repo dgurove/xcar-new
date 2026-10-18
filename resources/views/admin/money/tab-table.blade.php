@@ -59,7 +59,7 @@
                         $key === 'payouts' && ! $i->party->payoutReady() => ['реквизитов нет', 'text-danger'],
                         (bool) $link => $link,
                         (bool) $due => $due,
-                        default => ['срок после договора', ''],
+                        default => ['срок '.$i->laterLabel(), ''],
                     };
                     $partial = $i->isPartial() ? 'оплачено '.Money::rub($i->total - $i->remaining()).' из '.Money::rub($i->total) : null;
                 @endphp

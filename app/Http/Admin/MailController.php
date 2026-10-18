@@ -584,6 +584,16 @@ class MailController
             }
         }
 
+        // Письмо поставщику об оплате (шаблон этапа, Альфа): платёжка, что менеджер приложил на шаге оплаты, — во вложении
+        // (18.10.2026: «Платёжное поручение во вложении» уходило без него).
+        if ($offer?->deal && $template && ! $request->old() && $template->id === $offer->stage()?->template_id) {
+            $slip = \App\Workflow\Requirement::where('deal_id', $offer->deal->id)->whereNotNull('done_at')
+                ->where('answer->exit', 'Платёжное поручение приложено')->latest('done_at')->first();
+            foreach ($slip?->getMedia('files') ?? [] as $media) {
+                $defaults['files'][] = $outbox->put($media->file_name, file_get_contents($media->getPath()));
+            }
+        }
+
         if ($supplierRequest && ! $request->old()) {
             $defaults['files'][] = $outbox->put($supplierRequest->filename(), $supplierRequest->xlsx());
         }
@@ -938,8 +948,9 @@ class MailController
             'claim_ref' => $offer->claim_ref ?? '',
             // Закупочная с наценкой к оценочной — «Прошу согласовать реализацию за 756 000 ₽ (+10%)» (08.10.2026).
             'floor' => Sale::floorLabel($offer->floor_price, $offer->value),
-            // Письмо поставщику — наша закупка у него (`supplierCost`), а не закреплённая цена менеджера.
-            'price' => ($p = $offer->deal ? ($offer->deal->amount ?? $offer->deal->supplierCost()) : null) ? Money::plain($p) : ($offer->asking_price ? Money::plain($offer->asking_price) : ''),
+            // Письмо поставщику — сколько получает он: наша закупка (`supplierCost`) или то, что покупатель платит ему сам
+            // («Страховой напрямую»), а не цена менеджера (18.10.2026: «оплачен на сумму» уходило Альфе с ценой сделки).
+            'price' => ($p = $offer->deal ? ($offer->deal->paysSelection() ? $offer->deal->supplierPayment() : $offer->deal->supplierCost()) : null) ? Money::plain($p) : ($offer->asking_price ? Money::plain($offer->asking_price) : ''),
             'manager' => $offer->deal?->buyer?->name ?? '',
             'insurer' => $offer->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),

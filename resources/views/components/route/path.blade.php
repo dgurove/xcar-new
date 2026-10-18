@@ -211,7 +211,12 @@
                             @if ($wantsInvoice)
                                 {{-- Счета ставятся сами (`SyncDealInvoices`); гаражной не хватает нашей доли — вписать её в «Деньгах» сделки. --}}
                                 @php $action = \App\Workflow\Position::gapAction($position->gap(), $deal); @endphp
-                                <a href="{{ $action['url'] }}" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $action['button'] }}</a>
+                                {{-- Реквизиты Р.О.С. правятся на парковке: у кого её нет, кнопка вела бы в стену (18.10.2026). --}}
+                                @if ($position->gap() === 'ros_requisites' && ! auth()->user()?->isParkAdmin())
+                                    <p class="text-sm font-medium text-urgent">Ждём реквизиты Р.О.С.</p>
+                                @else
+                                    <a href="{{ $action['url'] }}" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $action['button'] }}</a>
+                                @endif
                             @endif
                             @foreach ($payNow as $i)
                                 <div data-controller="sheet">
@@ -230,7 +235,7 @@
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-offer.publish-sheet :offer="$offer" id="exit-{{ $exit->id }}" action="/offers/{{ $n }}/exit/{{ $exit->id }}"/>
                                     </div>
-                                @elseif ($exit->to?->staff_fields)
+                                @elseif ($exit->staffFields())
                                     <div data-controller="sheet">
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-ui.sheet id="exit-{{ $exit->id }}" :title="$exit->label">
@@ -239,7 +244,7 @@
                                                 {{-- Контакт и адрес из письма — уже вписаны (`Handover::prefill`), поправить можно. --}}
                                                 @php $prefill = \App\Offers\Handover::prefill($exit->to, $offer); @endphp
                                                 <div class="fields">
-                                                    @foreach ($exit->to->staff_fields as $field)
+                                                    @foreach ($exit->staffFields() as $field)
                                                         <x-route.field :field="$field" :name="'fields['.$field['key'].']'" :value="$prefill[$field['key']] ?? null"/>
                                                     @endforeach
                                                 </div>
@@ -248,7 +253,9 @@
                                         </x-ui.sheet>
                                     </div>
                                 @else
-                                    <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @if ($exit->confirm) data-turbo-confirm="{{ $exit->confirm }}" @endif>
+                                    {{-- Закрыть сделку, пока автомобиль не забрали (18.10.2026), — только переспросив. --}}
+                                    @php $confirm = \App\Offers\Deal::closes($exit) && $offer->deal?->closeBlocker() ? 'Автомобиль ещё не забрали. Закрыть сделку?' : $exit->confirm; @endphp
+                                    <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
                                         @csrf<x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                     </form>
                                 @endif

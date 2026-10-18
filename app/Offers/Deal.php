@@ -18,7 +18,9 @@ use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\DealFormat;
 use App\Workflow\Requirement;
+use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Workflow\WaitsFor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -204,6 +206,43 @@ class Deal extends Model
     public function paysSelection(): bool
     {
         return ! $this->isGarage() && $this->schemeOf()->paysSelection();
+    }
+
+    /**
+     * Шаг оплаты, где за ТС платят не нам, а поставщику или собственнику («Страховой напрямую», «Страхователю по ДКП»
+     * у маршрута со счётом поставщика — Альфа; 18.10.2026, прогон): менеджер платит сам и прикладывает платёжку, её
+     * подтверждает поставщик. Наш подбор этот шаг не двигает — Т-Страхованию (проверка подбора — наш ход) не мешает.
+     */
+    public function paysSupplierOn(?Stage $stage): bool
+    {
+        return $stage !== null && $this->paysSelection() && $stage->isPayStep()
+            && $stage->payExit($this)?->to?->waits_for === WaitsFor::Supplier;
+    }
+
+    /**
+     * Почему сделку рано закрывать: автомобиль ещё не забрали (18.10.2026, владелец: «без „Забрал“ не закрывать» — у Альфы
+     * «Документы переданы» закрывали сделку, а вывоз висел). Гаражная закрывается, пока машину везут, — ей не мешает.
+     */
+    public function closeBlocker(): ?string
+    {
+        $pickup = $this->isGarage() ? null : $this->offer?->pickup();
+        if (! $pickup || $pickup->state->picked()) {
+            return null;
+        }
+
+        return $pickup->channel === Channel::Manager ? 'Сначала отметьте «Автомобиль забрал»' : 'Автомобиль ещё не забрали';
+    }
+
+    /** Исход ведёт в конец сделки «Сделка закрыта» (оффер — «Выдан»). */
+    public static function closes(?\App\Workflow\Outcome $exit): bool
+    {
+        return $exit?->to?->offer_state === OfferState::Delivered;
+    }
+
+    /** Сколько менеджер платит поставщику или собственнику на таком шаге — подписью «Оплатите страховой N ₽». */
+    public function supplierPayment(): ?int
+    {
+        return $this->owner_price ?? $this->cost;
     }
 
     /**

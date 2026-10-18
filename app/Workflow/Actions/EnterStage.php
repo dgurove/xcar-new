@@ -65,7 +65,8 @@ final class EnterStage
             ($this->agree)($deal->setRelation('offer', $offer), $by);
         }
 
-        $noInvoice = $track === Track::Sale && $deal?->isActive() && $to->isPayStep() && ! $deal->hasManagerInvoice();
+        // Платят поставщику сами (Альфа, «Страховой напрямую») — счёт не наш, ждать его нечего: ход менеджера.
+        $noInvoice = $track === Track::Sale && $deal?->isActive() && $to->isPayStep() && ! $deal->hasManagerInvoice() && ! $deal->paysSupplierOn($to);
         // ПРАЙМ: счёт встанет сам, как только менеджер укажет, кому он (05.10.2026) — ход его, а не наш «Выставите счёт».
         // Гаражная Совкомбанка без цены продажи — тоже его ход: цену он называет, когда продаёт (`Deal::managerGap`).
         $needsBuyer = $noInvoice && $deal->managerGap();

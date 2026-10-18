@@ -67,6 +67,28 @@ class Outcome extends Model
     }
 
     /**
+     * Поля, что сотрудник вписывает этим исходом, — поля этапа, куда он ведёт. У «Подписания документов» два входа: запись
+     * на приём (дата и время, адрес) и отправка оригиналов (трек) — каждому только свои и обязательно (18.10.2026, прогон
+     * Альфы: «Приём назначен» просил и трек-номер, а менеджер не узнавал, когда и куда ехать).
+     *
+     * @return list<array{key: string, label: string, type: string, required?: bool}>
+     */
+    public function staffFields(): array
+    {
+        $fields = $this->to?->staff_fields ?? [];
+        $track = fn (array $f) => str_contains(mb_strtolower($f['label']), 'трек');
+        if (! collect($fields)->contains($track) || collect($fields)->every($track)) {
+            return $fields;
+        }
+        $sending = str_contains(mb_strtolower($this->label), 'отправлен');
+
+        return array_values(array_map(
+            fn (array $f) => ['required' => true] + (! $sending && str_contains(mb_strtolower($f['label']), 'дата') ? ['type' => 'datetime'] + $f : $f),
+            array_filter($fields, fn (array $f) => $track($f) === $sending),
+        ));
+    }
+
+    /**
      * Годится ли исход: на продаже — этой сделке (гаражный — только гаражной, где поставщику платим мы,
      * покупательский — всем остальным; нет сделки — гаражных не видно; передача — «забирает сам» только сделке, где
      * менеджер и вывозчик одно лицо, «отдаём мы» — всем остальным, кроме гаражных: те кончаются бумагами, `keeps`). Без

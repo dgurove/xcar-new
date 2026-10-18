@@ -42,7 +42,7 @@ final class PassTurnOnInvoice
             if (! $open && $deal->buyer_id && $position->stage->awaitsManager($deal)) {
                 Requirement::askFor($deal, $position->stage, $position);
             }
-        } elseif ($e instanceof InvoiceVoided && $position->waits_for === null && ! $deal->hasManagerInvoice()) {
+        } elseif ($e instanceof InvoiceVoided && $position->waits_for === null && ! $deal->hasManagerInvoice() && ! $deal->paysSupplierOn($position->stage)) {
             $position->update(['waits_for' => $deal->managerGap() ? WaitsFor::Manager : WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null]);
             Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->delete();
         }

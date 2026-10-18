@@ -73,6 +73,8 @@ class SupplierLetterStepTest extends TestCase
         $this->assertSame('unsent', $position->letterStatus());
         $this->assertSame(WaitsFor::Us, $position->waitsFor());
         $this->assertNull($position->deadline_at);
+        // У Альфы этот шаг без срока с 18.10.2026 (владелец); срок от письма проверяем на этапе со сроком.
+        $position->stage->update(['limit_minutes' => 1440]);
 
         $thread = $this->thread($deal->offer);
         $sentAt = now()->subHour();

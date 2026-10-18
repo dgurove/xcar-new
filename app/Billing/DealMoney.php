@@ -61,7 +61,9 @@ final class DealMoney
         }
         // Подбор до шага оплаты срока не имеет (`SyncDealInvoices::dueFor`): он не должник, пока не продал (06.10.2026).
         if ($open->isNotEmpty() && $open->every(fn (Invoice $i) => ! $i->due_at && $i->claimed() == 0)) {
-            return new self($staff ? 'Оплатит подбор после договора с покупателем' : 'Оплатите подбор после договора с покупателем',
+            $later = $open->first()->laterLabel(true);
+
+            return new self(($staff ? 'Оплатит подбор ' : 'Оплатите подбор ').$later,
                 round($open->sum(fn (Invoice $i) => $i->remaining()), 2), 'plain', 'open', $staff ? 'будет должен' : 'К оплате позже');
         }
         if ($open->isNotEmpty()) {
@@ -212,7 +214,7 @@ final class DealMoney
                 $steps[] = $step('Оплата', 'current', null, $unpaid->overdueLabel(true), 'danger');
             } else {
                 // Подбор по ДКП выставлен без срока: срок встаёт с шага оплаты (`StartSelectionDue`).
-                $when = $unpaid->due_at ? 'до '.$unpaid->due_at->translatedFormat('j M') : 'после договора с покупателем';
+                $when = $unpaid->due_at ? 'до '.$unpaid->due_at->translatedFormat('j M') : $unpaid->laterLabel(true);
                 $steps[] = $step('Оплата', 'current', null, ($unpaid->paidMoney() > 0 ? 'Оплачено '.Money::rub($unpaid->paidMoney()).', остаток ' : 'Ждём оплату ').$when);
             }
         }

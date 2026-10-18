@@ -31,7 +31,12 @@ final class Alfa extends Route
             'exits' => [['Переведено поставщику', 'staff', 'payment_check']],
         ];
 
-        return $this->head(garage: true)
+        // Альфа на письмо о покупке отвечает когда как и не на deal@ (18.10.2026, владелец: «убрать срок шага») — 50 сделок
+        // горели просроченными. Ждём её без часов.
+        $head = $this->head(garage: true);
+        $head['claimed']['limit_minutes'] = null;
+
+        return $head
             + ['confirmed' => $this->confirmed('invoice')]
             + $payment
             + $this->signingSegment('closed_won', intro: 'Оплата принята. ')

@@ -149,4 +149,57 @@ class AlfaPrepayTest extends TestCase
         $this->exit($offer, 'Оплата получена');
         $this->assertTrue($deal->fresh()->mayPickUp());
     }
+
+    /**
+     * «Страховой напрямую» (18.10.2026, прогон): оплата нашего подбора не двигает шаг оплаты — Альфе ещё не платили; шаг
+     * идёт по платёжке менеджера, а сделку без «Забрал» менеджер не закрывает.
+     */
+    public function test_direct_payment_waits_for_slip_not_selection(): void
+    {
+        $offer = $this->offer(vat: false);
+        $deal = $this->accept($offer);
+        $this->toPayStep($offer, $deal);
+        $this->assertTrue($deal->fresh()->paysSupplierOn($offer->fresh()->stage()));
+
+        // Подбор оплачен по ссылке — шаг на месте, ход менеджера, вывоз закрыт.
+        $selection = $deal->fresh()->issuedInvoices()->sole();
+        app(RecordPayment::class)($selection->fresh(), $this->admin, (float) $selection->total, now(), PaymentSource::Acquiring);
+        $this->assertSame('Счёт выставлен менеджеру', $offer->fresh()->stage()->name);
+        $this->assertNotSame(WaitsFor::Us, $offer->fresh()->position(Track::Sale)->waits_for);
+        $this->assertFalse($deal->fresh()->mayPickUp());
+
+        // Платёжка Альфе — ответом на просьбу шага.
+        $requirement = $deal->fresh()->openRequirement()->firstOrFail();
+        $requirement->addMedia(\Illuminate\Http\UploadedFile::fake()->create('pp.pdf', 10, 'application/pdf'))->toMediaCollection('files');
+        $slip = $offer->fresh()->stage()->payExit($deal->fresh());
+        app(\App\Workflow\Actions\AnswerRequirement::class)($requirement->fresh(), $slip, $this->manager);
+        $this->assertSame('Подтверждение оплаты поставщиком', $offer->fresh()->stage()->name);
+
+        $this->exit($offer, 'Оплата получена');
+        $this->assertTrue($deal->fresh()->mayPickUp());
+
+        // Машину забирает менеджер и ещё не забрал — «Документы переданы» сделку не закрывает.
+        app(\App\Offers\Actions\AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
+        $this->exit($offer, 'В Москве');
+        $this->exit($offer, 'Приём назначен');
+        $this->assertSame('Сначала отметьте «Автомобиль забрал»', $deal->fresh()->closeBlocker());
+        $requirement = $deal->fresh()->openRequirement()->firstOrFail();
+        $requirement->addMedia(\Illuminate\Http\UploadedFile::fake()->create('dkp.pdf', 10, 'application/pdf'))->toMediaCollection('files');
+        $close = $offer->fresh()->stage()->exitsFor(Actor::Manager, $deal->fresh())->first(fn ($e) => $e->label === 'Документы переданы');
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(\App\Workflow\Actions\AnswerRequirement::class)($requirement->fresh(), $close, $this->manager);
+    }
+
+    /** «Приём назначен» просит дату и адрес приёма, а не трек; «Отправлено» — только трек. */
+    public function test_signing_exits_ask_own_fields(): void
+    {
+        $offer = $this->offer(vat: false);
+        $workflow = $offer->vendor->workflow(Track::Sale);
+        $exit = fn (string $label) => \App\Workflow\Outcome::whereHas('from', fn ($q) => $q->where('workflow_id', $workflow->id))->where('label', $label)->firstOrFail();
+        $labels = fn (string $label) => array_column($exit($label)->staffFields(), 'label');
+
+        $this->assertSame(['Дата приёма', 'Адрес приёма'], $labels('Приём назначен'));
+        $this->assertSame('datetime', $exit('Приём назначен')->staffFields()[0]['type']);
+        $this->assertSame(['Трек-номер отправления'], $labels('Отправлено'));
+    }
 }

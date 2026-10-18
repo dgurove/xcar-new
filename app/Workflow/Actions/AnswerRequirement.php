@@ -37,6 +37,9 @@ final class AnswerRequirement
                     $answer[$field['key']] = $value;
                 }
             }
+            if (\App\Offers\Deal::closes($exit) && ($blocker = $requirement->deal?->closeBlocker())) {
+                throw ValidationException::withMessages(['exit' => $blocker]);
+            }
             if ($requirement->asks === Asks::Document && $requirement->getMedia('files')->isEmpty()) {
                 throw ValidationException::withMessages(['files' => 'Приложите документ']);
             }

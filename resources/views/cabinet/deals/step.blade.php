@@ -10,9 +10,12 @@
     use App\Workflow\Asks;
     // Шаг «оплатите счёт»: оплата тут же — счёт, ссылка, «Оплатить» шторкой (`x-billing.pay-sheet`).
     $payStep = $requirement && $position?->stage->isPayStep();
+    // За ТС платят не нам, а поставщику или собственнику (Альфа, «Страховой напрямую»; 18.10.2026): задача — заплатить им и
+    // приложить платёжку, её и подтверждает поставщик. Наш подбор — отдельной строкой ниже, шаг он не держит.
+    $direct = $payStep && $deal->paysSupplierOn($position->stage);
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
     // Шаг оплаты, а счета уже оплачены (оплатили по ссылке, маршрут ещё не догнал) — «Оплатите» с «Приложить» тут врут.
-    $paidUp = $payStep && $unpaid->isEmpty() && $deal->fullyPaid();
+    $paidUp = $payStep && ! $direct && $unpaid->isEmpty() && $deal->fullyPaid();
     // Оплата, а счёта ещё нет: ход наш (`Position::awaitsInvoice`), просить оплатить нечего — счёт готовим.
     $noInvoice = (bool) $position?->awaitsInvoice();
     // ПРАЙМ без покупателя — ход менеджера: счёт встанет сам, как только он укажет, кому (`Deal::invoiceGap`).
@@ -82,7 +85,7 @@
                 <h3 class="mt-5 text-lg">Оплата получена</h3>
             @elseif ($requirement && ! ($pickupSteps ?? null))
                 {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
-                <h3 class="mt-5 text-lg">{{ \App\Users\Wording::mine($requirement->title) }}</h3>
+                <h3 class="mt-5 text-lg">@if ($direct){{ $deal->schemeOf()->payLabel() }}@if ($deal->supplierPayment()) <span class="nums">{{ \App\Support\Money::rub($deal->supplierPayment()) }}</span>@endif @else{{ \App\Users\Wording::mine($requirement->title) }}@endif</h3>
                 @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ $rejected->paid_at->translatedFormat('j M') }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                 {{-- Срок просьбы — тот же, что часы в шапке шага: второй раз его не пишем. --}}
                 @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
@@ -154,7 +157,7 @@
                 <div class="list mt-5">
                     @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])<x-billing.pay-status :invoice="$i" compact/>@endforeach
                 </div>
-            @elseif ($selectionPay)
+            @elseif ($selectionPay && ! $direct)
                 {{-- Подбор по ДКП и «страховой напрямую» — та же группа, что в «Расчёте» (там её на этом шаге нет). --}}
                 @include('cabinet.deals.selection-pay', ['invoice' => $selectionPay])
             @elseif ($payStep && $unpaid->isNotEmpty())
@@ -168,8 +171,8 @@
             @if ($needsBuyer)
                 <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])</div>
             @endif
-            @if ($requirement && ! $needsBuyer && ! $selectionPay && ! $paidUp)
-                @if ($payStep && $unpaid->isNotEmpty())
+            @if ($requirement && ! $needsBuyer && (! $selectionPay || $direct) && ! $paidUp)
+                @if ($payStep && $unpaid->isNotEmpty() && ! $direct)
                     @if ($claimable->isNotEmpty())
                         {{-- Та же шторка, что в «Деньгах»: ссылкой (кто платит), по счёту с платёжкой, наличными. Ответ — сюда же. --}}
                         <div data-controller="sheet" class="mt-5">
@@ -179,8 +182,15 @@
                         </div>
                     @endif
                 @else
-                    @include('cabinet.deals.answer')
+                    @include('cabinet.deals.answer', $direct ? ['attachLabel' => 'Приложить платёжку'] : [])
                 @endif
+            @endif
+            @if ($direct && $selectionPay)
+                {{-- Наш подбор — своей группой под платежом поставщику, вторичной кнопкой. --}}
+                <div class="mt-6 border-t border-line pt-5">
+                    <h4 class="font-medium">Оплата услуг подбора</h4>
+                    @include('cabinet.deals.selection-pay', ['invoice' => $selectionPay, 'variant' => 'secondary', 'class' => 'mt-3'])
+                </div>
             @endif
             @endif
             {{-- В чек-листе договора с получением строка стоит под «Заберите автомобиль». --}}

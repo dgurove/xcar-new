@@ -176,6 +176,10 @@ export function outside(d, e) {
     return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
 }
 
+// Редактор письма (Trix) после загрузки переписывает текст в своём виде — его value сразу не равен серверному
+// defaultValue, и нетронутый черновик спрашивал «Не сохранять?» (18.10.2026). Точка отсчёта — текст на момент загрузки.
+document.addEventListener('trix-initialize', (e) => { e.target.dataset.clean = e.target.value; });
+
 // Несохранённое в формах листа (не поиск и не фильтр — у них GET): поле, галка или выбор не такие, как пришли с сервера.
 export function dirty(d) {
     for (const form of d.querySelectorAll('form')) {
@@ -190,6 +194,7 @@ export function dirty(d) {
                 if (opts.some((o, i) => o.selected !== (preset ? o.defaultSelected : (!el.multiple && i === 0)))) return true;
                 continue;
             }
+            if (el.tagName === 'TRIX-EDITOR') { if (el.value !== (el.dataset.clean ?? el.defaultValue)) return true; continue; }
             if ('defaultValue' in el && el.value !== el.defaultValue) return true;
         }
     }

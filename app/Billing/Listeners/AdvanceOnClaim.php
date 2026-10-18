@@ -35,6 +35,10 @@ final class AdvanceOnClaim
         }
         $offer = $deal->offer;
         $position = $offer->position(Track::Sale);
+        // Сообщил об оплате нашего подбора, а за ТС платит поставщику сам — шаг ждёт его платёжку поставщику.
+        if ($deal->paysSupplierOn($position?->stage)) {
+            return;
+        }
         $exit = $position?->stage->payExit($deal);
         if (! $exit) {
             return;

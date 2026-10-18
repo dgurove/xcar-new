@@ -79,7 +79,7 @@ final class MoneyNotice extends Notice
     public static function invoiceIssued(Invoice $i): self
     {
         // Подбор до шага оплаты срока не имеет: платить после договора с покупателем (`SyncDealInvoices::dueFor`).
-        $when = $i->due_at ? ', оплатить до '.$i->due_at->translatedFormat('j M') : ', оплатить после договора с покупателем';
+        $when = $i->due_at ? ', оплатить до '.$i->due_at->translatedFormat('j M') : ', оплатить '.$i->laterLabel(true);
 
         return (new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).$when, $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number))
             ->tg($i, 'Счёт по :car', 'Счёт '.$i->label(), Money::rub($i->remaining()).$when)->about($i);

@@ -6,6 +6,11 @@
     $waiting = $requirement->asks === Asks::Document && $requirement->getMedia('files')->isEmpty();
     // «Я передумал» — не второй кнопкой рядом, а тихой строкой под главной (10.10.2026, владелец).
     [$retreats, $moves] = $exits->partition(fn ($e) => $e->isRetreat());
+    // Закрыть сделку, пока автомобиль не забрали, нельзя (18.10.2026): вместо кнопки — что сделать сначала.
+    $blocker = $moves->contains(fn ($e) => \App\Offers\Deal::closes($e)) ? $deal->closeBlocker() : null;
+    if ($blocker) {
+        $moves = $moves->reject(fn ($e) => \App\Offers\Deal::closes($e));
+    }
 @endphp
 <div id="requirement-exits">
     @unless ($waiting)
@@ -17,6 +22,7 @@
                 @endforeach
             @endif
             @if ($errors->has('exit'))<p class="field-error">{{ $errors->first('exit') }}</p>@endif
+            @if ($blocker)<p class="font-medium text-urgent">{{ $blocker }}</p>@endif
             {{-- Один исход — во всю ширину, два — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
             <div @class(['gap-3', 'grid' => $moves->count() <= 2, 'grid-cols-2' => $moves->count() === 2, 'flex flex-wrap' => $moves->count() > 2])>
                 @foreach ($moves as $exit)

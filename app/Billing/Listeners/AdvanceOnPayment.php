@@ -62,6 +62,11 @@ final class AdvanceOnPayment
         }
         $offer->unsetRelation('positions');
         $position = $offer->position(Track::Sale);
+        // За ТС платят поставщику сами (Альфа, «Страховой напрямую»): оплата нашего подбора — не оплата поставщику, шаг
+        // ждёт платёжку менеджера (18.10.2026: иначе Альфе уходило «счёт оплачен», хотя ей не платили).
+        if ($deal->paysSupplierOn($position?->stage)) {
+            return;
+        }
         $slip = $position?->stage->payExit($deal);
         if ($slip) {
             $deal->openRequirement()->where('stage_id', $position->stage_id)->first()?->update(['done_at' => now(), 'answer' => ['closed_by' => 'payment']]);
