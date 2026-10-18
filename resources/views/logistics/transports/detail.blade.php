@@ -17,7 +17,6 @@
     use App\Logistics\TransportState as S;
     use App\Support\Money;
     use App\Support\Phone;
-    use App\Support\Surface;
     $car = $t->lane();
     $admin = $me->leadsLogistics();
     $sale = $admin ? \App\Logistics\SaleState::of($t) : null;
@@ -39,11 +38,6 @@
     $city = $t->city();
     $mapUrl = $from ? 'https://yandex.ru/maps/?text='.rawurlencode($city && ! str_contains($from, $city) ? "{$city}, {$from}" : $from) : null;
     $id = $t->id;
-    $carLink = match (true) {
-        $car instanceof \App\Offers\Offer && ($me->isAdmin() || $car->isEditableBy($me)) => Surface::Crm->url('/offers/'.$car->number),
-        $t->vehicle && Surface::Park->opensFor($me) => Surface::Park->url('/cars/'.$t->vehicle->id),
-        default => null,
-    };
     // Главное действие по шагу и кто его жмёт.
     $step = match (true) {
         ! $open => null,
@@ -81,14 +75,12 @@
                 @if ($admin || $handles)<x-ui.vin-code :vin="$t->car?->vin" class="tag"/>@endif
             </x-slot:marks>
         @endif
-        <x-slot:badge><x-car.keys :count="$t->car?->keys_count" label/><span class="title-state {{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span></x-slot:badge>
+        <x-slot:badge><x-car.keys :count="$t->car?->keys_count" label/><x-ui.links :transport="$t"/><span class="title-state {{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span></x-slot:badge>
         <x-slot:line>
             @if ($city)<span>{{ $city }}</span>@endif
             @if (! $pickup && ! $t->from_depot_id)<span>перевозка</span>@endif
         </x-slot:line>
-        @if ($carLink)
-            <x-slot:actions><a href="{{ $carLink }}" class="pill" data-turbo="false">{{ str_contains($carLink, '/offers/') ? 'Предложение в CRM' : 'Дело на парковке' }}</a></x-slot:actions>
-        @elseif ($order && $mine)
+        @if ($order && $mine)
             <x-slot:actions>
                 @if ($open)<a href="/transports/{{ $id }}/edit" class="btn btn-s btn-quiet" data-turbo-frame="_top"><x-ui.icon name="edit" class="size-4"/>Изменить</a>@endif
                 <a href="/transports/new?from={{ $id }}" class="btn btn-s btn-quiet" data-turbo-frame="_top"><x-ui.icon name="refresh" class="size-4"/>Повторить</a>

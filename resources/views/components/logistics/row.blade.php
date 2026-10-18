@@ -30,7 +30,7 @@
 <tr data-detail-key="{{ $t->id }}" id="transport-{{ $t->id }}" data-search-row @class(['is-dim' => $sale?->waiting])>
     @if ($checkable)<td class="pick-cell">@if ($deciding)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-transport-{{ $t->id }}" data-turbo-permanent name="transports[]" value="{{ $t->id }}" data-pick-target="box" data-action="pick#sync"></span></label>@endif</td>@endif
     <td class="grow">
-        <x-ui.row-link :key="$t->id" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/></span></x-ui.row-link>
+        <x-ui.row-link :key="$t->id" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/></span></x-ui.row-link>
         <span class="cell-sub">
             @if ($staff && ($vendorId || $ref))<span class="sm:hidden"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref"/></span>@endif
             @if ($has('client'))<span class="sm:hidden">{{ $t->client?->name ?? 'XCar' }}</span>@endif
