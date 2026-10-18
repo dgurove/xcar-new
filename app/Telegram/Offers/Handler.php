@@ -10,6 +10,7 @@ use App\Support\Plural;
 use App\Support\Surface;
 use App\Telegram\StartLink;
 use App\Users\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -120,6 +121,8 @@ final class Handler
                 Keys::NEXT => $this->next($sub, 'next'),
                 Keys::PIN => $this->pin($sub),
                 Keys::SKIP => $this->skipAsk($sub),
+                // Старая клавиатура с 💬 — молча ставим новую.
+                Keys::ASK => $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, '✨🔍', Keys::feed())),
                 Keys::SLEEP => $this->sleep($sub),
                 default => $this->unknown($sub),
             },
@@ -163,7 +166,8 @@ final class Handler
         $sub = $this->subscribe($user, $chatId, resubscribe: true);
         $name = e($user->firstName());
         $this->bot->quietly(fn () => $this->bot->say($chatId, $user->isAdmin()
-            ? "Готово, {$name}. Сюда будут приходить вопросы менеджеров по предложениям"
+            // Вопросов из бота с 18.10.2026 нет (💬 убран) — обещать их админу нечего.
+            ? "Готово, {$name}"
             : "Готово, {$name}. Каждый день в 16:00 пришлю новые предложения"));
         $this->menu($sub);
     }
@@ -319,6 +323,10 @@ final class Handler
     /** Ответ на «Пропустить все?»: да — всё в боте показанным и «🏁», нет — вопрос уходит, карточка на месте. */
     private function skipAnswer(Subscriber $sub, int $messageId, bool $yes): void
     {
+        // Двойное нажатие: второй колбэк приходит до того, как кнопки снялись, — иначе «Пропущено 0» и второй «🏁».
+        if ($messageId && ! Cache::add("offers-bot:skip:{$sub->chat_id}:{$messageId}", 1, now()->addDay())) {
+            return;
+        }
         if (! $yes) {
             $messageId && $this->bot->deleteQuietly($sub->chat_id, $messageId);
 
@@ -377,7 +385,7 @@ final class Handler
     }
 
     /**
-     * «Опубликовано N предложений, показать их?» (слот) или «Появились новые предложения: N» (опубликовано сейчас). Того, кто сейчас листает или пишет вопрос, не перебиваем —
+     * «Опубликовано N предложений, показать их?» (слот) или «Появились новые предложения: N» (опубликовано сейчас). Того, кто сейчас листает, не перебиваем —
      * клавиатуру не сбиваем; отметка не ставится, анонс дождётся, пока он выйдет (новое он и так увидит в ленте).
      * Анонс в чате один (владелец 10.10.2026: «не захламлять»): N — всё, что ждёт его в ленте, и растёт с каждой
      * публикацией; прежний анонс удаляется, новый приходит со звуком.
