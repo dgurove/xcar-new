@@ -140,9 +140,10 @@ final class Publisher
             }
             Cache::put("live:rows:{$key}", $kept, 60);
         });
+        // Хвост — без запроса автора (18.10.2026): в нём копятся строки разных людей, и автор, узнав свой запрос, пропускал
+        // всё событие вместе с чужими строками. Свою строку автор перечитывает сам после формы (`live.js` refreshOwn).
         if (Cache::add("live:tail:{$key}", 1, 60)) {
-            $request = request()->header('X-Turbo-Request-Id');
-            PublishRows::dispatch((array) $topics, $key, is_string($request) ? $request : null)->delay(self::SOON);
+            PublishRows::dispatch((array) $topics, $key)->delay(self::SOON);
         }
     }
 

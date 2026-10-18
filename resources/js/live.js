@@ -71,7 +71,8 @@ export function live() {
         mutatedAt = performance.now();
         // Форма карточки строки (или с `data-live-rows="ключ,ключ"`) — её строка: осталась во вкладке — свежая, ушла —
         // убирается, с числом группы и пилюль (`patch`).
-        const frame = form.closest('turbo-frame#detail');
+        // Форма в окне поверх открытой карточки (приём и выдача парковки, письма) — про ту же строку.
+        const frame = form.closest('turbo-frame#detail') || (form.closest('dialog') && document.querySelector('turbo-frame#detail'));
         const peek = frame && (frame.querySelector('.detail-card')?.dataset.peek || new URL(frame.src || location.href, location.href).searchParams.get('peek'));
         const keys = [...(form.dataset.liveRows || '').split(','), peek].filter(Boolean);
         if (keys.length) refreshOwn(keys);
@@ -248,7 +249,9 @@ export function refreshPage(request) {
 // Строки списка по ключу: ждут того же, что и страница, копятся в одну пачку; ждёт страница целиком — она их и покроет.
 // own — свои строки после своей формы: карточку их ответ уже нарисовал, фрейм не трогаем.
 export function refreshRows(keys, { own = false } = {}) {
-    if (waiting && !waiting.keys) { waiting.at = performance.now(); return; }
+    // Ждёт страница целиком — она покроет и эти строки; но со своим запросом Turbo её пропустит, и строки пропали бы:
+    // такую делаем обычной.
+    if (waiting && !waiting.keys) { waiting.at = performance.now(); waiting.request = null; return; }
     waiting ??= { keys: new Set(), own: true };
     waiting.at = performance.now();
     waiting.own &&= own;

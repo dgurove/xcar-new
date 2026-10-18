@@ -2,6 +2,8 @@
 
 namespace App\Mail;
 
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Mail\Extraction\Keys;
 use App\Offers\Offer;
 use App\Park\City;
@@ -36,6 +38,16 @@ class Thread extends Model
     {
         return ['participants' => 'array', 'last_message_at' => 'datetime', 'has_attachments' => 'bool', 'buyer' => 'bool', 'unlinked_at' => 'datetime', 'keys' => 'array', 'archived_at' => 'datetime',
             'needs_reply_at' => 'datetime', 'answered_at' => 'datetime'];
+    }
+
+    /**
+     * Ветку убрали в архив, достали или отметили «Ответ не нужен» — «Почта» и «Из писем» своей стороны перечитываются у
+     * всех, кто их открыл (18.10.2026: у других дело висело в «Требуют внимания» до перезагрузки). После коммита.
+     */
+    public function refreshLists(): void
+    {
+        $park = $this->account()->value('scope') === Scope::Park->value;
+        app(Publisher::class)->refreshSoon($park ? Topics::PARK : Topics::STAFF, $park ? ['/mail', '/requests/from-mail'] : ['/work/mail', '/offers/from-mail']);
     }
 
     public function account(): BelongsTo

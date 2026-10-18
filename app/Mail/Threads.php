@@ -50,6 +50,7 @@ final class Threads
     {
         $thread->forceFill(['answered_at' => now()])->save();
         $this->refresh($thread);
+        $thread->refreshLists();
         $last = Message::where('thread_id', $thread->id)->orderByDesc('date_at')->orderByDesc('id')->first(['id', 'subject']);
         $thread->vehicle()->withoutGlobalScope(City::SCOPE)->first()
             ?->log(EventType::LetterAnswered, $by, ['message' => $last?->id, 'subject' => $last?->subject, 'thread' => $thread->id]);

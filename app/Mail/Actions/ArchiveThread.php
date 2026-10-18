@@ -21,6 +21,7 @@ final class ArchiveThread
             app(MarkThreadRead::class)($thread); // в архив — значит обработана
         }
         Nav::forgetStaffCounts();
+        $thread->refreshLists();
     }
 
     public function candidate(Candidate $candidate, bool $archive = true): void
