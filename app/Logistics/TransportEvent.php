@@ -62,6 +62,8 @@ final class TransportEvent extends Model
 
         return match ($this->type) {
             'opened' => 'Задача заведена',
+            // Точку не опускаем в строчные: адрес («Казань, Победы 1») — данные извне.
+            'route' => 'Куда: '.implode(', ', array_filter([$p['to'] ?? 'пока неизвестно', isset($p['reach']) ? mb_lcfirst($p['reach']) : null])),
             'reopened' => 'Вывоз снова нужен',
             'logist' => 'Логист '.$name($p['logist'] ?? null).$was(),
             'assigned' => 'Исполнитель '.$name($p['executor'] ?? null).$was(),

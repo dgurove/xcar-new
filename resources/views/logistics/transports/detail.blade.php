@@ -136,9 +136,22 @@
                         <x-ui.icon name="map-pin" class="size-5 shrink-0 text-accent-text"/>
                     </a>
                 @endif
-                @if ($dest = $t->destinationLabel() ?? \App\Logistics\Transport::keeperLabel($offer))
+                {{-- Куда везти (18.10.2026): точка, дальность; не указано — «пока неизвестно». Нажатием — поправить (`SetRoute`):
+                     ведущим, логисту и исполнителю, пока ТС не привезли. --}}
+                @php
+                    $dest = $t->routeLabel();
+                    $reroute = ! $order && $open && $handles;
+                    $routeText = '<span class="block text-sm text-ink-muted">Куда везти</span><span class="block break-words '.($dest ? '' : 'text-urgent').'">'.e($dest ?? 'пока неизвестно').'</span>'
+                        .($t->reach ? '<span class="block text-sm text-ink-muted">'.e(mb_lcfirst($t->reach->label())).'</span>' : '')
+                        .($t->to_contact ? '<span class="block text-sm text-ink-muted">принимает '.e($t->to_contact).'</span>' : '');
+                @endphp
+                @if ($reroute)
+                    <button type="button" class="row w-full items-center justify-between gap-4 text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="route-{{ $id }}:open">
+                        <span class="min-w-0">{!! $routeText !!}</span><x-ui.chevron/>
+                    </button>
+                @elseif ($dest || $t->reach)
                     <div class="row items-center justify-between gap-4">
-                        <span class="min-w-0"><span class="block text-sm text-ink-muted">Куда везти</span><span class="block break-words">{{ $dest }}</span>@if ($t->to_contact)<span class="block text-sm text-ink-muted">принимает {{ $t->to_contact }}</span>@endif</span>
+                        <span class="min-w-0">{!! $routeText !!}</span>
                         @if ($t->to_phone)<a href="tel:+{{ $t->to_phone }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->to_phone) }}</a>@endif
                     </div>
                 @endif
@@ -311,7 +324,7 @@
     @endif
     @if ($admin && ! $order && $open && ! $t->state->picked())
         <div data-controller="sheet" data-action="executor-{{ $id }}:open@window->sheet#open" class="contents">
-            <x-ui.sheet :id="'executor-'.$id" title="Кто вывозит">
+            <x-ui.sheet :id="'executor-'.$id" :title="$t->channel ? 'Вывоз' : 'Назначить вывоз'" tall>
                 <x-logistics.assign-form :transport="$t" :action="'/transports/'.$id.'/executor'" :prefix="'executor-'.$id">@method('put')</x-logistics.assign-form>
             </x-ui.sheet>
         </div>
@@ -341,6 +354,12 @@
             <x-ui.sheet :id="'logist-'.$id" :title="$t->executor_id ? 'Исполнитель' : 'Назначить исполнителя'">
                 <form method="post" action="/transports/{{ $id }}/logist" class="flex flex-col gap-4">
                     @csrf @method('put')
+                    {{-- Куда и что сказал админ — фактом над выбором (18.10.2026): исполнителя выбирают под маршрут. --}}
+                    @if ($t->routeLabel() || $t->reach || $t->comment)
+                        <div class="list">
+                            <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Куда везти</span><span class="block break-words">{{ implode(', ', array_filter([$t->routeLabel() ?? 'пока неизвестно', $t->reach ? mb_lcfirst($t->reach->label()) : null])) }}</span>@if ($t->comment)<span class="block whitespace-pre-line break-words text-sm text-ink-muted">{{ $t->comment }}</span>@endif</span></div>
+                        </div>
+                    @endif
                     <div class="fields">
                         {{-- Свои строками с городом и «в работе N» — видно, кто свободен; новый — тут же (18.10.2026). --}}
                         <x-people.pick name="executor_id" label="Исполнитель" kind="contractor" :people="\App\Support\People::contractorsOf($t->logist)" :value="old('executor_id', $t->executor_id)" title="Исполнитель" link required/>
@@ -350,6 +369,21 @@
                         @if ($mine)<x-ui.field name="executor_cost" :id="'logist-ecost-'.$id" label="Исполнителю, ₽" :value="old('executor_cost', $t->executor_cost ? (int) $t->executor_cost : null)"/>@endif
                     </div>
                     <x-ui.sheet-foot>{{ $t->executor_id ? 'Сохранить' : 'Назначить' }}</x-ui.sheet-foot>
+                </form>
+            </x-ui.sheet>
+        </div>
+    @endif
+    @if ($pickup && ! $order && $open && $handles)
+        @php $routeFull = \App\Logistics\Actions\SetRoute::full($t, $me); @endphp
+        <div data-controller="sheet" data-action="route-{{ $id }}:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="'route-'.$id" title="Куда везти">
+                <form method="post" action="/transports/{{ $id }}/route" class="flex flex-col gap-4">
+                    @csrf @method('put')
+                    @if ($routeFull)<x-ui.segment name="reach" :options="\App\Logistics\Reach::options()" :value="old('reach', $t->reach?->value)"/>@endif
+                    @error('reach')<p class="field-error -mt-2">{{ $message }}</p>@enderror
+                    <x-logistics.route-fields :t="$t" :prefix="'route-'.$id" unknown/>
+                    @if ($routeFull)<div class="fields"><x-ui.field name="comment" :id="'route-comment-'.$id" label="Комментарий" type="textarea" :value="old('comment', $t->comment)" placeholder="Например: пока неизвестно, кому везти"/></div>@endif
+                    <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                 </form>
             </x-ui.sheet>
         </div>

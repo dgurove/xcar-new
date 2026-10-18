@@ -22,7 +22,7 @@ final class TripText
             ($from = $t->pickup_place ?? $t->fromAddress()) ? 'Откуда: '.$from : null,
             ($t->ownerName() || $phone) ? 'Контакт: '.implode(', ', array_filter([$t->ownerName(), $phone ? Phone::format($phone) : null])) : null,
             $t->pickup_at ? 'Когда: '.$t->pickup_at->translatedFormat($t->pickup_at->format('H:i') === '00:00' ? 'j F' : 'j F, H:i') : null,
-            ($to = $t->destinationLabel()) ? 'Куда: '.$to : null,
+            ($t->routeLabel() || $t->reach) ? 'Куда: '.implode(', ', array_filter([$t->routeLabel() ?? 'пока неизвестно', $t->reach ? mb_lcfirst($t->reach->label()) : null])) : null,
             ($t->to_contact || $t->to_phone) ? 'Принимает: '.implode(', ', array_filter([$t->to_contact, $t->to_phone ? Phone::format($t->to_phone) : null])) : null,
             $t->executor_cost ? 'Оплата: '.Money::rub((int) $t->executor_cost) : null,
             $t->comment,

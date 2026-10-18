@@ -46,7 +46,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 #[Fillable(['car_id', 'origin', 'kind', 'channel', 'executor_id', 'logist_id', 'from_address', 'pickup_at',
     'pickup_place', 'call_note', 'call_attempts', 'docs_by_cdek', 'docs_track', 'docs_sent_at', 'docs_sent_by', 'docs_received_at', 'to_address',
-    'destination', 'to_yard_id', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
+    'destination', 'reach', 'to_yard_id', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
     'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at', 'region_id', 'nudged_at',
     'client_id', 'client_price', 'client_paid_at', 'executor_cost', 'executor_paid_at', 'from_contact', 'from_phone', 'to_contact',
     'to_phone', 'comment', 'trip_code'])]
@@ -82,6 +82,7 @@ class Transport extends Model
             'channel' => Channel::class,
             'state' => TransportState::class,
             'destination' => Point::class,
+            'reach' => Reach::class,
             'cost' => 'decimal:2',
             'client_price' => 'decimal:2',
             'executor_cost' => 'decimal:2',
@@ -324,6 +325,16 @@ class Transport extends Model
             Point::Ours => trim(Point::Ours->label().($this->to_address ? ', '.$this->to_address : '')),
             null => $this->to_address,
         };
+    }
+
+    /**
+     * Куда везти — одной фразой для карточки, строки, страницы исполнителя и текста «Отправить» (18.10.2026: три места
+     * считали по-своему): выбранная точка; у старой задачи сделки без точки — её менеджер; иначе null — «пока неизвестно»
+     * (выбрали в окне назначения: тогда `reach` уже стоит, и менеджера за точку не выдаём).
+     */
+    public function routeLabel(): ?string
+    {
+        return $this->destinationLabel() ?? ($this->reach === null && $this->forSale() ? self::keeperLabel($this->saleOffer()) : null);
     }
 
     /** Точка «к менеджеру»: гаражная — «В гараж Бородин Ф.», машина его покупателю — «Менеджеру Бородин Ф.». */

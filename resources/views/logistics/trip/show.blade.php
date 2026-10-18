@@ -12,7 +12,7 @@
     $from = $t->pickup_place ?? $t->fromAddress();
     $city = $t->city();
     $map = fn (?string $a) => $a ? 'https://yandex.ru/maps/?text='.rawurlencode($city && ! str_contains($a, $city) ? "{$city}, {$a}" : $a) : null;
-    $to = $t->destinationLabel() ?? \App\Logistics\Transport::keeperLabel($t->saleOffer());
+    $to = $t->routeLabel();
     $blocked = in_array($t->state, [S::Assigned, S::Agreed], true) ? $t->pickupBlocker($by) : null;
     $step = match (true) {
         $t->state === S::Assigned && $t->isPickup() => 'call',
@@ -48,9 +48,9 @@
         @if ($t->pickup_at)
             <div class="row justify-between gap-4"><span class="text-ink-muted">Когда</span><span class="nums">{{ $t->pickup_at->translatedFormat($t->pickup_at->format('H:i') === '00:00' ? 'j F' : 'j F, H:i') }}</span></div>
         @endif
-        @if ($to)
+        @if ($to || $t->reach)
             <a @if ($t->isOrder() || $t->destination?->value === 'other') href="{{ $map($t->to_address) }}" target="_blank" rel="noopener" @endif class="row items-start justify-between gap-4">
-                <span class="min-w-0"><span class="block text-sm text-ink-muted">Куда</span><span class="block break-words">{{ $to }}</span>@if ($t->to_contact)<span class="block text-sm text-ink-muted">принимает {{ $t->to_contact }}</span>@endif</span>
+                <span class="min-w-0"><span class="block text-sm text-ink-muted">Куда</span><span class="block break-words {{ $to ? '' : 'text-urgent' }}">{{ $to ?? 'пока неизвестно' }}</span>@if ($t->reach)<span class="block text-sm text-ink-muted">{{ mb_lcfirst($t->reach->label()) }}</span>@endif @if ($t->to_contact)<span class="block text-sm text-ink-muted">принимает {{ $t->to_contact }}</span>@endif</span>
                 @if ($t->isOrder() || $t->destination?->value === 'other')<span class="shrink-0 text-sm text-accent-text">Маршрут</span>@endif
             </a>
             @if ($t->to_phone)

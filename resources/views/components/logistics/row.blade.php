@@ -20,7 +20,10 @@
     $logist = ! $t->executor && $t->logist && $t->logist_id !== $me->id ? $t->logist : null;
     $late = $t->isLate();
     $manager = $sale?->manager;
-    $to = $manager ? null : ($t->destination || ! $t->forSale() ? $t->destinationLabel() ?? $t->toYard?->name : null);
+    // Куда — одной фразой задачи (`routeLabel`); менеджер чипом, когда точка — к нему (или не выбрана у старой задачи).
+    $to = $manager && in_array($t->destination, [null, \App\Logistics\Point::Keeper], true) && $t->reach === null ? null : $t->routeLabel();
+    $manager = $to ? null : $manager;
+    $far = $t->reach === \App\Logistics\Reach::Intercity;
     $ref = $t->car?->claim_ref;
     $vendorId = $t->vendorId();
 @endphp
@@ -34,13 +37,14 @@
             @if ($sale && $deciding)<span class="sm:hidden whitespace-nowrap {{ $sale->tone }}">{{ $sale->word }}</span>
             @elseif ($stepHere)<span @class(['whitespace-nowrap', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
             @if ($manager)<span class="sm:hidden whitespace-nowrap">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden">→ {{ $to }}</span>@endif
+            @if ($far)<span class="sm:hidden whitespace-nowrap">между регионами</span>@endif
             @if ($has('who') && ($who || $logist))<span class="sm:hidden">{{ $who ? $who->shortName() : 'у логиста '.$logist->shortName() }}</span>@endif
         </span>
     </td>
     @if ($has('client'))<td class="hidden sm:table-cell"><span @class(['text-ink-muted' => ! $t->client])>{{ $t->client?->name ?? 'XCar' }}</span></td>@endif
     @if ($has('vendor'))<td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref" cell/></td>@endif
     @if ($has('sale'))<td class="hidden sm:table-cell"><span class="{{ $sale?->tone }}">{{ $sale?->word }}</span></td>@endif
-    @if ($has('to'))<td class="hidden sm:table-cell">@if ($manager)<x-ui.person :user="$manager"/>@elseif ($to)<span class="text-ink-muted">{{ $to }}</span>@endif</td>@endif
+    @if ($has('to'))<td class="hidden sm:table-cell">@if ($manager)<x-ui.person :user="$manager"/>@elseif ($to)<span class="text-ink-muted">{{ $to }}</span>@endif @if ($far)<span class="block text-sm text-ink-dim">между регионами</span>@endif</td>@endif
     @if ($has('city'))<td class="col-detail-hide hidden 2xl:table-cell">@if ($city = $t->city())<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $city }}</x-ui.place>@endif</td>@endif
     @if ($has('step'))<td class="hidden sm:table-cell"><span class="{{ $late ? 'text-danger' : $t->state->tone() }}">{{ $late ? 'не вывезли в срок' : $t->next() }}</span></td>@endif
     @if ($has('who'))<td class="hidden sm:table-cell">@if ($who)<x-ui.person :user="$who"/>@elseif ($logist)<span class="text-ink-muted">у логиста {{ $logist->shortName() }}</span>@endif</td>@endif

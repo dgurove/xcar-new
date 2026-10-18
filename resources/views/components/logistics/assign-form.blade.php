@@ -4,8 +4,11 @@
      окошко строки) и в логистике (карточка задачи). Кто именно — своё поле у каждого вида (`who[logist|manager|staff]`, сервер
      берёт поле выбранного вида: без JS скрытые панели не перебивают выбор). «Документы СДЭКом» — так же своей галкой у вида
      (`cdek[вид]`; владелец 17.10.2026: «нужно выбирать, а не всем»): у логиста (регионы) отмечена, у менеджера и наших — нет;
-     у перевода парковки её нет. action — куда отправить: CRM `/offers/{n}/pickup`, логистика `/transports/{id}/executor`. --}}
-@props(['transport' => null, 'offer' => null, 'action', 'prefix' => 'assign'])
+     у перевода парковки её нет. action — куда отправить: CRM `/offers/{n}/pickup`, логистика `/transports/{id}/executor`.
+     18.10.2026 (начальник: «невозможно указать, куда везти»): группами, как Настройки iOS — «Кто вывозит», «Куда везти»
+     (дальность обязательна, точка — `x-logistics.route-fields` с «Пока неизвестно») и комментарий тому, кто везёт
+     (`SetRoute`). Пачкой (`route` false) — без точки и комментария: у машин они разные. --}}
+@props(['transport' => null, 'offer' => null, 'action', 'prefix' => 'assign', 'route' => true])
 @php
     use App\Logistics\Choices;
     use App\Logistics\Channel;
@@ -28,6 +31,7 @@
     @csrf
     {{ $slot }}
     @if ($options)
+        <h3 class="list-head -mb-2">Кто вывозит</h3>
         <x-ui.segment name="channel" :options="$options" :value="$kind" pick/>
         <div class="contents" data-reveal-target="pane" data-reveal-key="logist" @if ($kind !== 'logist') hidden @endif>
             <div class="fields">
@@ -52,6 +56,15 @@
     @endif
     @error('channel')<p class="field-error">{{ $message }}</p>@enderror
     @error('executor_id')<p class="field-error">{{ $message }}</p>@enderror
+    @if ($options && (! $transport || $transport->isPickup()))
+        <h3 class="list-head -mb-2 mt-2">Куда везти</h3>
+        <x-ui.segment name="reach" :options="\App\Logistics\Reach::options()" :value="old('reach', $transport?->reach?->value)"/>
+        @error('reach')<p class="field-error -mt-2">{{ $message }}</p>@enderror
+        @if ($route)
+            <x-logistics.route-fields :t="$transport" :offer="$offer" :prefix="$prefix.'-route'" unknown/>
+            <div class="fields"><x-ui.field name="comment" :id="$prefix.'-comment'" label="Комментарий" type="textarea" :value="old('comment', $transport?->comment)" placeholder="Например: пока неизвестно, кому везти"/></div>
+        @endif
+    @endif
     @if ($options)
         <x-ui.button type="submit" variant="primary" block>{{ $transport?->channel && $transport->channel !== Channel::Manager ? 'Сохранить' : 'Назначить' }}</x-ui.button>
     @endif

@@ -59,6 +59,7 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     Route::post('/transports/{transport}/pickup', [TransportController::class, 'pickup']);
     Route::post('/transports/{transport}/deliver', [TransportController::class, 'deliver']);
     Route::post('/transports/{transport}/back', [TransportController::class, 'back']);
+    Route::put('/transports/{transport}/route', [TransportController::class, 'route']);
     Route::post('/transports/{transport}/cancel', [TransportController::class, 'cancel']);
     Route::post('/transports/{transport}/backdate', [TransportController::class, 'backdate']);
     Route::get('/documents', [DocumentController::class, 'index']);

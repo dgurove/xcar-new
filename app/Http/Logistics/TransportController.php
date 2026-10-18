@@ -13,9 +13,11 @@ use App\Logistics\Actions\Deliver;
 use App\Logistics\Actions\Docs;
 use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\PickUp;
+use App\Logistics\Actions\SetRoute;
 use App\Logistics\Actions\StepBack;
 use App\Logistics\Channel;
 use App\Logistics\Client;
+use App\Logistics\Reach;
 use App\Logistics\SaleState;
 use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
@@ -36,6 +38,7 @@ use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -209,6 +212,8 @@ class TransportController
                     ->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()) : null,
             $user->isStaff() ? Common::vendor(SaleState::VENDOR_SQL)->none('Без вендора') : null,
             $lead ? Common::manager(SaleState::MANAGER_SQL)->none('Без менеджера') : null,
+            // Межрегион (18.10.2026, начальник: «важно») — переключателем, как «Срочно».
+            Facet::toggle('far', 'Между регионами', fn ($q) => $q->where('transports.reach', Reach::Intercity->value)),
             Facet::column('region', 'Регион', ['регион', 'региона', 'регионов'], 'transports.region_id')
                 ->numeric()->none('Без региона')
                 ->labels(fn (array $ids) => Region::whereIn('id', Common::ints($ids))->orderBy('name')->get(['id', 'name'])
@@ -226,15 +231,19 @@ class TransportController
     }
 
     /** «Назначить (N)» — ведущие пачкой: логист или наш сотрудник; менеджер — только по одной (у каждой сделки свой). */
-    public function executorMany(Request $request, AssignExecutor $assign)
+    public function executorMany(Request $request, AssignExecutor $assign, SetRoute $route)
     {
         abort_unless($request->user()->leadsLogistics(), 404);
         $request->validate(['channel' => ['required', Rule::in([Channel::Logist->value, Channel::Staff->value, Channel::Partner->value])]], ['channel.required' => 'Кто вывозит']);
         [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
+        $reach = $request->validate(['reach' => SetRoute::rules()['reach']], SetRoute::messages());
         // Человек не годится — одна ошибка у поля, а не «не вышло 50».
         AssignExecutor::guard($kind, $who);
         $done = collect();
-        $back = $this->many($request, fn (Transport $t) => $done->push($assign($t, $kind, $who, $request->user(), $cdek, batch: true)), 'Назначено', 'Вывозит '.$who->shortName());
+        $back = $this->many($request, function (Transport $t) use ($done, $assign, $kind, $who, $request, $cdek, $route, $reach) {
+            $done->push($assign($t, $kind, $who, $request->user(), $cdek, batch: true));
+            $route($t->fresh(), $reach, $request->user());
+        }, 'Назначено', 'Вывозит '.$who->shortName());
         // По задаче не шлём (`TransportAssigned::batch`) — одна строка исполнителю или логисту и одна модераторам.
         if ($done->isNotEmpty()) {
             $who->notify(TransportNotice::assignedMany($done->count(), $kind === Channel::Logist));
@@ -321,14 +330,30 @@ class TransportController
     }
 
     /** «Кто вывозит» — ведущие логистику. */
-    public function executor(Request $request, Transport $transport, AssignExecutor $assign)
+    public function executor(Request $request, Transport $transport, AssignExecutor $assign, SetRoute $route)
     {
         abort_unless($request->user()->leadsLogistics(), 404);
         $request->validate(['channel' => ['required', Rule::in([Channel::Logist->value, Channel::Staff->value, Channel::Partner->value])]], ['channel.required' => 'Кто вывозит']);
         [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
-        $assign($transport, $kind, $who, $request->user(), $cdek);
+        // Куда, дальность и комментарий — в том же окне (18.10.2026); у перевода парковки точка решена при отправке.
+        $data = $transport->isPickup() ? $request->validate(SetRoute::rules(), SetRoute::messages()) : null;
+        DB::transaction(function () use ($transport, $assign, $kind, $who, $request, $cdek, $route, $data) {
+            $assign($transport, $kind, $who, $request->user(), $cdek);
+            if ($data) {
+                $route($transport->fresh(), $data, $request->user());
+            }
+        });
 
         return back()->with('toast', Str::ucfirst($transport->fresh()->carrier() ?? 'ждёт исполнителя'));
+    }
+
+    /** «Куда везти» строкой карточки: точку правит любой, кто ведёт задачу, и исполнитель; дальность и комментарий — ведущие и логист. */
+    public function route(Request $request, Transport $transport, SetRoute $route)
+    {
+        $this->visible($request, $transport);
+        $route($transport, $request->validate(SetRoute::rules(SetRoute::full($transport, $request->user())), SetRoute::messages()), $request->user());
+
+        return back()->with('toast', 'Куда: '.($transport->fresh()->routeLabel() ?? 'пока неизвестно'));
     }
 
     /** «Документы СДЭКом» — переключают ведущие логистику. */

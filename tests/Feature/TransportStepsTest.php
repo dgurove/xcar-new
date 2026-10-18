@@ -8,6 +8,7 @@ use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\OpenPickup;
 use App\Logistics\Actions\StepBack;
 use App\Logistics\Channel;
+use App\Logistics\Reach;
 use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
 use App\Logistics\TransportState;
@@ -150,5 +151,34 @@ class TransportStepsTest extends TestCase
         $t = $this->viaTanya();
         $this->expectException(ValidationException::class);
         app(StepBack::class)($t, $this->ivan);
+    }
+
+    public function test_route_is_set_with_executor_and_edited_later(): void
+    {
+        $t = app(OpenPickup::class)($this->offer->fresh(), $this->admin);
+
+        // Без «внутри / между» — не назначается.
+        $this->actingAs($this->admin)->put(self::LOG.'/transports/'.$t->id.'/executor', ['channel' => 'logist', 'who' => ['logist' => $this->tanya->id], 'destination' => 'ours'])
+            ->assertSessionHasErrors('reach');
+        $this->assertNull($t->fresh()->channel);
+
+        $this->actingAs($this->admin)->put(self::LOG.'/transports/'.$t->id.'/executor', ['channel' => 'logist', 'who' => ['logist' => $this->tanya->id],
+            'reach' => 'intercity', 'destination' => '', 'comment' => 'Пока неизвестно, кому везти'])->assertSessionHasNoErrors();
+        $t->refresh();
+        $this->assertSame(Reach::Intercity, $t->reach);
+        $this->assertNull($t->destination);
+        $this->assertNull($t->routeLabel());
+        $this->assertSame('Пока неизвестно, кому везти', $t->comment);
+
+        // Стало известно — Татьяна ставит точку; исполнитель — другой адрес, дальность и комментарий ему не трогать.
+        app(LogistAssign::class)($t, ['executor_id' => $this->ivan->id, 'cost' => '65 000'], $this->tanya);
+        $this->actingAs($this->tanya)->put(self::LOG.'/transports/'.$t->id.'/route', ['reach' => 'local', 'destination' => 'ours', 'comment' => 'Везём к нам'])->assertSessionHasNoErrors();
+        $this->assertSame('К нам', $t->fresh()->routeLabel());
+        $this->actingAs($this->ivan)->put(self::LOG.'/transports/'.$t->id.'/route', ['destination' => 'other', 'to_address' => 'Казань, Победы 1', 'reach' => 'intercity', 'comment' => 'x'])->assertSessionHasNoErrors();
+        $t->refresh();
+        $this->assertSame('Казань, Победы 1', $t->routeLabel());
+        $this->assertSame(Reach::Local, $t->reach);
+        $this->assertSame('Везём к нам', $t->comment);
+        $this->assertSame('Куда: Казань, Победы 1, внутри региона', TransportEvent::where('transport_id', $t->id)->where('type', 'route')->latest('id')->first()->what());
     }
 }

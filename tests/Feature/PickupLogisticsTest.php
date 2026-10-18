@@ -192,7 +192,7 @@ class PickupLogisticsTest extends TestCase
             ->assertSee('data-detail-key="'.$a->id.'"', false)->assertDontSee('data-detail-key="'.$c->id.'"', false)
             ->assertSee('Выбрать все');
 
-        $this->actingAs($admin)->put($host.'/transports/executor', ['channel' => 'logist', 'who' => ['logist' => $logist->id], 'transports' => [$a->id, $b->id]])
+        $this->actingAs($admin)->put($host.'/transports/executor', ['channel' => 'logist', 'who' => ['logist' => $logist->id], 'reach' => 'local', 'transports' => [$a->id, $b->id]])
             ->assertSessionHasNoErrors()->assertSessionHas('toast', 'Назначено 2');
         $this->assertSame(TransportState::Logist, $a->fresh()->state);
         $this->assertSame($logist->id, $b->fresh()->logist_id);
@@ -201,7 +201,7 @@ class PickupLogisticsTest extends TestCase
         Notification::assertSentTo($logist, TransportNotice::class, fn (TransportNotice $n) => $n->title() === 'Вывозы в регионах: 2');
         // Негодный человек — одна ошибка у поля, а не «не вышло N».
         $closed = User::create(['name' => 'Закрытый Логист', 'phone' => '79000000009', 'roles' => [Role::Logist], 'approved_at' => now(), 'rejected_at' => now()]);
-        $this->actingAs($admin)->put($host.'/transports/executor', ['channel' => 'logist', 'who' => ['logist' => $closed->id], 'transports' => [$c->id]])
+        $this->actingAs($admin)->put($host.'/transports/executor', ['channel' => 'logist', 'who' => ['logist' => $closed->id], 'reach' => 'local', 'transports' => [$c->id]])
             ->assertSessionHasErrors('executor_id');
         $this->assertSame(TransportState::New, $c->fresh()->state);
 
@@ -293,7 +293,7 @@ class PickupLogisticsTest extends TestCase
         // Форма: галка вида снята — без СДЭКа и у логиста.
         $host = 'http://'.config('xcar.logistics_host');
         $t = $open('800003/2026');
-        $this->actingAs($admin)->put($host.'/transports/'.$t->id.'/executor', ['channel' => 'logist', 'who' => ['logist' => $logist->id], 'cdek' => ['logist' => '0']])
+        $this->actingAs($admin)->put($host.'/transports/'.$t->id.'/executor', ['channel' => 'logist', 'who' => ['logist' => $logist->id], 'cdek' => ['logist' => '0'], 'reach' => 'local'])
             ->assertSessionHasNoErrors();
         $this->assertFalse($t->fresh()->docs_by_cdek);
     }

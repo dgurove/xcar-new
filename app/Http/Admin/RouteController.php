@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Cancel as CancelTransport;
 use App\Logistics\Actions\OpenPickup;
+use App\Logistics\Actions\SetRoute;
 use App\Logistics\Actions\StepBack as TransportStepBack;
 use App\Logistics\Channel;
 use App\Logistics\Transport;
@@ -98,15 +99,21 @@ class RouteController
      * логист (регионы), менеджер сделки или наши (`AssignExecutor`); пусто — задача ждёт в логистике «Без исполнителя».
      * Отвечает туда, откуда нажали: редактор, окошко строки.
      */
-    public function pickup(Request $request, Offer $offer, OpenPickup $open, AssignExecutor $assign)
+    public function pickup(Request $request, Offer $offer, OpenPickup $open, AssignExecutor $assign, SetRoute $route)
     {
         $request->validate(['channel' => ['nullable', Rule::enum(Channel::class)]]);
         $pick = AssignExecutor::fromRequest($request);
+        // Окно «Кто вывозит» — и куда везти, дальность, комментарий (18.10.2026); «Вывезти» без окна их не шлёт.
+        $data = $pick ? $request->validate(SetRoute::rules(), SetRoute::messages()) : null;
         $by = $request->user();
-        $t = DB::transaction(function () use ($offer, $pick, $by, $open, $assign) {
+        $t = DB::transaction(function () use ($offer, $pick, $by, $open, $assign, $route, $data) {
             $t = Transport::openFor($offer) ?? $open($offer, $by, quiet: $pick !== null);
+            if (! $pick) {
+                return $t;
+            }
+            $t = $assign($t, $pick[0], $pick[1], $by, $pick[2]);
 
-            return $pick ? $assign($t, $pick[0], $pick[1], $by, $pick[2]) : $t;
+            return $route($t->fresh(), $data, $by);
         });
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Вывоз: '.($t->carrier() ?? 'ждёт исполнителя'));

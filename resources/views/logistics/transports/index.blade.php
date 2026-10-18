@@ -44,8 +44,8 @@
                     </div>
                     <div class="contents" data-controller="sheet">
                         <x-ui.button type="button" class="min-w-0 flex-[1.4]" data-action="sheet#open">Назначить <span class="nums" data-pick-target="count"></span></x-ui.button>
-                        <x-ui.sheet id="transports-assign" title="Кто вывозит">
-                            <x-logistics.assign-form action="/transports/executor" prefix="batch" data-action="formdata->pick#carry">@method('PUT')</x-logistics.assign-form>
+                        <x-ui.sheet id="transports-assign" title="Назначить вывоз">
+                            <x-logistics.assign-form action="/transports/executor" prefix="batch" :route="false" data-action="formdata->pick#carry">@method('PUT')</x-logistics.assign-form>
                         </x-ui.sheet>
                     </div>
                 </x-ui.action-bar>

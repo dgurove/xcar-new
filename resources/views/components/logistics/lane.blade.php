@@ -47,6 +47,11 @@
             @endif
             <x-car.keys :count="$keys"/>
         </div>
+        {{-- Куда везти (18.10.2026): точка и дальность фразой, комментарий исполнителю — ниже; меняют в окне «Кто вывозит». --}}
+        @if ($t->channel !== \App\Logistics\Channel::Manager && ($t->routeLabel() || $t->reach || $t->comment))
+            <p class="mb-3 text-sm">Куда: <span @class(['text-urgent' => ! $t->routeLabel()])>{{ $t->routeLabel() ?? 'пока неизвестно' }}</span>@if ($t->reach), {{ mb_lcfirst($t->reach->label()) }}@endif</p>
+            @if ($t->comment)<p class="mb-3 -mt-2 whitespace-pre-line text-sm text-ink-muted">{{ $t->comment }}</p>@endif
+        @endif
         @if ($deal?->isActive() && ! $deal->isGarage())
             <x-deal.handover :deal="$deal" compact lane class="mb-4"/>
         @endif
@@ -93,7 +98,7 @@
 </x-ui.card>
 @if ($open)
     <div data-controller="sheet" data-action="{{ $sheet }}:open@window->sheet#open" class="contents">
-        <x-ui.sheet :id="$sheet" title="Кто вывозит">
+        <x-ui.sheet :id="$sheet" :title="$t->channel ? 'Вывоз' : 'Назначить вывоз'" tall>
             <x-logistics.assign-form :transport="$t" :offer="$offer" :action="'/offers/'.$offer->number.'/pickup'" :prefix="$sheet"/>
         </x-ui.sheet>
     </div>
