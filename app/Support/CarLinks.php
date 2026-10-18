@@ -65,11 +65,13 @@ final class CarLinks
         if (! $from instanceof Offer) {
             $links[] = ['title' => 'Продажа', 'state' => $offer->crmTab().', № '.$offer->number, 'href' => Surface::Crm->url('/offers/'.$offer->number)];
         }
-        if ($deal = $offer->deal) {
+        // Гаражная сделка — это и есть гараж (владелец 18.10.2026: «как это и сделка, и гараж?»): одним пунктом «Гараж».
+        $car = GarageCar::where('offer_id', $offer->id)->latest('id')->first();
+        if (($deal = $offer->deal) && ! ($car && $deal->isGarage())) {
             $links[] = ['title' => 'Сделка', 'state' => $deal->buyer?->name ?? 'идёт', 'href' => Surface::Crm->url('/work/deals/'.$deal->id)];
         }
-        if ($car = GarageCar::where('offer_id', $offer->id)->latest('id')->first()) {
-            $links[] = ['title' => 'Гараж', 'state' => mb_strtolower($car->state->label()), 'href' => $car->crmUrl()];
+        if ($car) {
+            $links[] = ['title' => 'Гараж', 'state' => mb_lcfirst($car->state->label()).($car->manager ? ', '.$car->manager->shortName() : ''), 'href' => $car->crmUrl()];
         }
         // Связь — загружена или нет, как в `shows`: строки списков её не грузят, меню собирается на строку.
         $purchase = $offer->relationLoaded('purchaseCar') ? $offer->purchaseCar?->loadMissing('purchase') : $offer->purchaseCar()->with('purchase')->first();
