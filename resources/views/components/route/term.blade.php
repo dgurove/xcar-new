@@ -10,6 +10,8 @@
     [$text, $hot] = match (true) {
         $invoice => [e(mb_lcfirst(\App\Workflow\Position::gapAction($position->gap(), $position->deal)['button'])), true],
         $letter === 'unsent' => ['письмо не ушло', true],
+        $letter === 'failed' => ['письмо не ушло', true],
+        $letter === 'bounced' => ['не доставлено', true],
         $letter === 'replied' => ['ответили', true],
         $letter === 'sent' => ['без ответа '.$timer('since', $position->letterAt()), $overdue],
         $position->deadline_at && $overdue => ['просрочено '.$timer('since', $position->deadline_at), true],

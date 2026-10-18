@@ -25,8 +25,11 @@
     $letter = $side === 'staff' && ! $invoice ? $position->letterStatus() : null;
 @endphp
 @if ($letter)
-    <p {{ $attributes->merge(['class' => 'text-sm '.($letter === 'sent' && ! $position->isOverdue() ? 'text-ink-muted' : 'text-urgent')]) }}>
-        @if ($letter === 'unsent')Письмо поставщику не отправлено, идёт <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>
+    <p {{ $attributes->merge(['class' => 'text-sm '.(in_array($letter, ['failed', 'bounced'], true) ? 'text-danger' : ($letter === 'sent' && ! $position->isOverdue() ? 'text-ink-muted' : 'text-urgent'))]) }}>
+        {{-- Доставка (18.10.2026): не ушло с нашей стороны — причина; почтовый сервер вернул отказ — куда не дошло. --}}
+        @if ($letter === 'failed')Письмо поставщику не ушло{{ ($e = $position->payload['letter_failed']['error'] ?? '') !== '' ? ': '.$e : '' }}
+        @elseif ($letter === 'bounced')Письмо не доставлено{{ ($to = $position->payload['letter_bounced']['to'] ?? '') !== '' ? ' на '.$to : '' }}
+        @elseif ($letter === 'unsent')Письмо поставщику не отправлено, идёт <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>
         @elseif ($letter === 'replied')@if ($letters)<button type="button" class="underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $letters }}">Поставщик ответил {{ $position->replyAt()->translatedFormat('j M, H:i') }}</button>@else Поставщик ответил {{ $position->replyAt()->translatedFormat('j M, H:i') }}@endif
         @else @if ($letters && isset($position->payload['letter_id']))<button type="button" class="underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $letters }}?at={{ $position->payload['letter_id'] }}">Письмо ушло {{ $position->letterAt()->translatedFormat('j M, H:i') }}</button>@else Письмо ушло {{ $position->letterAt()->translatedFormat('j M, H:i') }}@endif, ответа нет <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->letterAt()->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif
     </p>

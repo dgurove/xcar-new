@@ -255,8 +255,11 @@
                             @endforeach
                             @if ($stage->template_id)
                                 {{-- Письмо не ушло — это и есть дело шага: лаймовой первой; ушло — серой «Написать ещё». --}}
-                                @if ($position->letterStatus() === 'unsent')
-                                    <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-accent btn-s order-first"><x-ui.icon name="send" class="size-4"/>Написать поставщику</a>
+                                @if ($position->letterStatus() === 'failed' && ($failedId = $position->payload['letter_failed']['id'] ?? null))
+                                    {{-- Не ушло с нашей стороны — то же письмо ещё раз (`MailController::resend`). --}}
+                                    <form method="post" action="/work/mail/messages/{{ $failedId }}/retry" class="order-first">@csrf<button class="btn btn-accent btn-s"><x-ui.icon name="send" class="size-4"/>Повторить отправку</button></form>
+                                @elseif (in_array($position->letterStatus(), ['unsent', 'bounced'], true))
+                                    <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-accent btn-s order-first"><x-ui.icon name="send" class="size-4"/>{{ $position->letterStatus() === 'bounced' ? 'Написать снова' : 'Написать поставщику' }}</a>
                                 @else
                                     <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-quiet btn-s"><x-ui.icon name="send" class="size-4"/>{{ $position->letterStatus() ? 'Написать ещё' : 'Письмо вендору' }}</a>
                                 @endif

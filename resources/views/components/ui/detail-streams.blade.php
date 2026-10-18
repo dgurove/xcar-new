@@ -8,5 +8,6 @@
 @elseif ($row ?? null)<turbo-stream action="replace" targets="tr[data-detail-key=&quot;{{ \App\Support\Detail::key() }}&quot;]"><template>{{ $row }}</template></turbo-stream>@endif
 <x-ui.flash-stream/>
 @if (session('detail-advance'))<turbo-stream action="advance"></turbo-stream>@endif
-{{-- letters — открыть окно писем с черновиком (приняли подтверждение — письмо вендору), когда карточка встанет. --}}
-@if (session('letters'))<turbo-stream action="letters" url="{{ session('letters') }}"></turbo-stream>@endif
+{{-- letters — открыть окно писем с черновиком (приняли подтверждение — письмо вендору), когда карточка встанет. Письмо ждёт
+     в очереди человека на сервере (`Mail\LetterPrompt`), а не в сессии: её метку съедал соседний запрос. --}}
+@if ($letterPrompt = session('letters') ?? \App\Mail\LetterPrompt::take())<turbo-stream action="letters" url="{{ $letterPrompt }}"></turbo-stream>@endif

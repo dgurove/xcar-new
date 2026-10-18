@@ -36,7 +36,6 @@ use App\Logistics\Events\TransportMoved;
 use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Listeners\RecordOnOffer;
 use App\Logistics\Listeners\RefreshLogistics;
-use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\AttachmentReader;
 use App\Mail\Extraction\TextAttachmentReader;
 use App\Mail\OnMessage;
@@ -100,7 +99,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(SyncOffer::class);
         Event::subscribe(SyncHandover::class);
         Event::subscribe(AdvanceOnReply::class);
-        Event::listen(MessageSent::class, MarkSupplierLetter::class);
+        Event::subscribe(MarkSupplierLetter::class);
         Event::listen(OfferStateChanged::class, RetractWhenGone::class);
         Event::listen(TransportMoved::class, StartPrepOnArrival::class);
         Event::listen(VehicleSold::class, SendPickupLink::class);

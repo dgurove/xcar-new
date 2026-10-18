@@ -6,7 +6,7 @@
      Без пропа — адрес из session letters (приняли подтверждение в редакторе — черновик письма вендору после редиректа).
      letters:close — отправили письмо с then=close: окно закрывается, страница не перечитывается. --}}
 @props(['url' => null, 'title' => 'Письма'])
-@php $url ??= session('letters'); @endphp
+@php $url ??= session('letters') ?? \App\Mail\LetterPrompt::take(); @endphp
 <div data-controller="sheet window" data-action="letters:open@window->window#open letters:close@window->window#close" @if ($url) data-window-url-value="{{ $url }}" @endif class="contents">
     <x-ui.sheet id="letters" :title="$title" tall>
         <x-slot:tools><span class="contents" data-window-target="tools"></span></x-slot:tools>

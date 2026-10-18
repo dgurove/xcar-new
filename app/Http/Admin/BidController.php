@@ -8,6 +8,7 @@ use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\OpenPickup;
 use App\Logistics\Executor;
 use App\Logistics\Transport;
+use App\Mail\LetterPrompt;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\DeclineBid;
 use App\Offers\Actions\PlaceBidFor;
@@ -103,8 +104,12 @@ class BidController
         $after = $before ? $this->stageId($bid) : null;
         $letter = $after && $after !== $before ? $bid->offer->vendorLetterUrl(Stage::find($after)) : null;
 
-        return back()->with('toast', $toast)->with(OfferController::gone($request, $bid->offer))
-            ->with('letters', $letter ? $letter.'&then=close' : null);
+        // Окно письма — из очереди человека на сервере (`LetterPrompt`), не из сессии: метку сессии съедал соседний запрос.
+        if ($letter) {
+            LetterPrompt::push($request->user(), $letter.'&then=close');
+        }
+
+        return back()->with('toast', $toast)->with(OfferController::gone($request, $bid->offer));
     }
 
     /** Этап продажи предложения — только номер: сравнить до и после принятия. */

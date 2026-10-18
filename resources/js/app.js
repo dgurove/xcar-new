@@ -29,7 +29,8 @@ Turbo.StreamActions.advance = function () {
 // Окно писем с черновиком из ответа карточки (x-ui.row-card, session letters — письмо вендору после «Принять»).
 // Открываем, когда карточка встала: поток advance перед этим меняет адрес страницы (detail_controller#address
 // переписывает верхнюю запись истории) — открытое раньше окно потеряло бы свою запись, и «Назад» увёл бы со списка.
-// Карточка не грузится (дальше строк нет) — сразу; ответ не пришёл за 4 с — всё равно открываем.
+// Карточка не грузится (дальше строк нет) — сразу; ответ не пришёл за 1,5 с — всё равно открываем (18.10.2026: окно ждали
+// по 4 с, и казалось, что его нет).
 Turbo.StreamActions.letters = function () {
     const url = this.getAttribute('url');
     const open = () => window.dispatchEvent(new CustomEvent('letters:open', { detail: { url } }));
@@ -39,7 +40,7 @@ Turbo.StreamActions.letters = function () {
         let done = false;
         const once = () => { if (!done) { done = true; requestAnimationFrame(open); } };
         frame.addEventListener('turbo:frame-load', once, { once: true });
-        setTimeout(once, 4000);
+        setTimeout(once, 1500);
     });
 };
 // Письмо из черновика ушло (MailController::send с then=close) — окно писем закрывается без перечитывания страницы.

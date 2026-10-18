@@ -2,6 +2,7 @@
 
 namespace App\Mail\Jobs;
 
+use App\Mail\Events\MessageFailed;
 use App\Mail\Events\MessageSent;
 use App\Mail\Message;
 use App\Mail\Sender;
@@ -37,6 +38,7 @@ final class SendMessage implements ShouldQueue
         } catch (Throwable $e) {
             Log::error('Почта: письмо не ушло', ['message' => $message->id, 'error' => $e->getMessage()]);
             $message->forceFill(['send_state' => SendState::Failed, 'send_error' => mb_substr($e->getMessage(), 0, 2000)])->save();
+            MessageFailed::dispatch($message);
         }
     }
 }

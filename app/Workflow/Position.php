@@ -67,16 +67,19 @@ class Position extends Model
             return null;
         }
 
+        // Доставка (18.10.2026): отказ сервера после «ушло» и неуспех с нашей стороны — тоже наш ход.
         return match (true) {
             isset($this->payload['reply_at']) => 'replied',
+            isset($this->payload['letter_bounced']) => 'bounced',
             isset($this->payload['letter_at']) => 'sent',
+            isset($this->payload['letter_failed']) => 'failed',
             $this->waits_for === WaitsFor::Us => 'unsent',
             default => null,
         };
     }
 
     /** Служебные ключи позиции (письмо поставщику) — не поля этапа: на экране их нет. */
-    public const LETTER_KEYS = ['letter_id', 'letter_at', 'reply_at'];
+    public const LETTER_KEYS = ['letter_id', 'letter_at', 'reply_at', 'letter_failed', 'letter_bounced'];
 
     /** Поля этапа, что вписали люди (адрес, дата вывоза…), — без служебных ключей. */
     public function fields(): array
