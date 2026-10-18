@@ -57,7 +57,7 @@ class GalleryController
             default => $q->orderBy('gallery_from', $dir),
         };
         $q->orderByDesc('offers.id');
-        Rows::only($q, 'offers.number');
+        Rows::offers($q);
 
         return view('admin.gallery.index', [
             'offers' => ListView::paginate($request, $q, $total),

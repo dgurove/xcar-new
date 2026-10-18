@@ -2,6 +2,8 @@
 
 namespace App\Park;
 
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Mail\Chains\NodeTitle;
 use App\Mail\Message;
 use App\Mail\Thread;
@@ -22,6 +24,9 @@ class Request extends Model
     protected static function booted(): void
     {
         static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::requests($q, $city) : null);
+        // Заявку закрыли или завели — строка «Заявок» уходит или входит у всех, кто их открыл (18.10.2026). После коммита.
+        static::saved(fn (self $r) => $r->wasRecentlyCreated || $r->wasChanged('state')
+            ? app(Publisher::class)->rowsSoon(Topics::PARK, ['/requests' => [$r->id]]) : null);
     }
 
     protected function casts(): array

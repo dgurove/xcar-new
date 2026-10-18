@@ -5,6 +5,7 @@ namespace App\Live;
 use Closure;
 use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Живое обновление строками (событие `rows`, 16.10.2026, владелец: «постоянно всё лагает»): открытый список не
@@ -46,6 +47,16 @@ final class Rows
         $by instanceof Closure ? $by($q, $keys) : $q->whereIn($by, $keys);
 
         return $q;
+    }
+
+    /**
+     * Строки предложений: номер или прежний номер (`offer_number_aliases`) — при выходе в галерею и в продажу номер
+     * меняется, а на экране строка ещё со старым: по нему находится новая, и клиент перечитывает список (`patch`).
+     */
+    public static function offers(Builder $q): Builder
+    {
+        return self::only($q, fn ($q, array $keys) => $q->where(fn ($w) => $w->whereIn('offers.number', $keys)
+            ->orWhereIn('offers.id', DB::table('offer_number_aliases')->whereIn('number', $keys)->select('offer_id'))));
     }
 
     /** То же для списка, собранного в памяти. */

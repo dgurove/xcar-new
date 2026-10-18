@@ -2,6 +2,8 @@
 
 namespace App\Offers;
 
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +12,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['offer_id', 'user_id', 'placed_by', 'kind', 'amount', 'comment', 'state', 'decided_at', 'decided_by', 'cost'])]
 class Bid extends Model
 {
+    /**
+     * Подтверждение появилось, отозвано, отклонено, принято — строка предложения переезжает между «Опубликованными», «Приём
+     * закрыт» и «Есть подтверждения» (18.10.2026: отзыв и отказ внесённому сотрудником событий не слали, строка висела).
+     * После коммита — `Publisher`.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (self $bid) {
+            if (($bid->wasRecentlyCreated || $bid->wasChanged(['state', 'amount'])) && ($n = Offer::whereKey($bid->offer_id)->value('number'))) {
+                app(Publisher::class)->rowsSoon(Topics::STAFF, ['/' => [$n]]);
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return ['state' => BidState::class, 'kind' => BidKind::class, 'amount' => 'int', 'cost' => 'int', 'decided_at' => 'datetime'];

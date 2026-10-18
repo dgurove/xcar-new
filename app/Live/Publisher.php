@@ -7,6 +7,7 @@ use App\Live\Jobs\PublishRows;
 use App\Support\Nav;
 use App\Support\Surface;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -22,6 +23,14 @@ final class Publisher
     public const SOON = 2;
 
     public function __invoke(array|string $topics, string $type, array $data = []): void
+    {
+        // Только после коммита (18.10.2026): событие изнутри транзакции («Принять», публикация, шаг сделки) уходило раньше,
+        // чем запись становилась видна, — другие вкладки перечитывали строку в старом виде, и она оставалась во вкладке,
+        // откуда ушла. Вне транзакции — сразу.
+        DB::afterCommit(fn () => $this->send($topics, $type, $data));
+    }
+
+    private function send(array|string $topics, string $type, array $data): void
     {
         // Событие для сотрудников — счётчики Nav::staffCounts пересчитываются (и без хаба тоже).
         if (in_array($type, ['badges', 'refresh', 'rows'], true) && array_intersect([Topics::STAFF, Topics::PARK], (array) $topics)) {

@@ -8,7 +8,7 @@ import { touchPrefetch, prefetch } from './touch-prefetch';
 import { confirmSheet } from './confirm';
 import { closeSheet } from './sheet';
 import { netGuards } from './net';
-import { live } from './live';
+import { live, dropKey, refreshOwn } from './live';
 import './flip';
 import { longPressMenu } from './longpress';
 import { setTheme, paintBar, chosenTheme } from './theme';
@@ -76,6 +76,17 @@ Turbo.StreamActions.reload = function () {
     go(0);
 };
 // Число у пилюли вкладки после дела в карточке: выросло — пилюля коротко вспыхивает, видно, куда уехала строка.
+// Строка ушла из вкладки (ответ карточки, `detail-gone`): убрать её и вычесть из числа группы и итога экрана — как
+// ушедшую при живом обновлении; голый `remove` оставлял числа старыми и пустую группу с заголовком.
+Turbo.StreamActions.drop = function () {
+    dropKey(this.getAttribute('key'));
+};
+
+// Действие тронуло и другие строки (пачка из карточки, «Ответ по списку»): перечитать их, как свои.
+Turbo.StreamActions.rows = function () {
+    refreshOwn((this.getAttribute('keys') || '').split(','));
+};
+
 Turbo.StreamActions.count = function () {
     const n = Number(this.getAttribute('count')) || 0;
     this.targetElements.forEach((el) => {

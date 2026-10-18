@@ -8,6 +8,8 @@ use App\Cars\Settlement;
 use App\Garage\Car;
 use App\Garage\GaragePayer;
 use App\Http\Admin\OfferController;
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Logistics\Choices;
 use App\Logistics\Transport;
 use App\Logistics\TransportKind;
@@ -74,6 +76,10 @@ class Offer extends Model
      */
     public const LETTER_SQL = "exists (select 1 from mail_threads t join mail_messages m on m.thread_id = t.id where t.offer_id = offers.id and m.direction = 'in')";
 
+    /** Поля, от которых зависит вкладка CRM или вид строки в ней (`saved` → живое обновление строки). */
+    private const ROW_FIELDS = ['state', 'tab_at', 'number', 'floor_price', 'asking_price', 'publish_price', 'bids_close_at', 'slot_at',
+        'auction_at', 'auction_planned_at', 'gallery_from', 'gallery_until', 'urgent_at', 'proposed_at', 'vendor_id', 'recommended'];
+
     /** Машина (`Cars\Car`) — с каждым предложением: название, VIN, фото. */
     protected $with = ['car'];
 
@@ -108,7 +114,16 @@ class Offer extends Model
             if ($o->car_id && $o->wasChanged(['settlement_id', 'inspection_address'])) {
                 Transport::syncRegion($o);
             }
+            // Строка могла уехать в другую вкладку CRM (шаг работы, слот, аукцион, срок приёма, окно галереи) или поменять
+            // цены — открытые списки у всех перечитывают её (18.10.2026: правка цены, слот, аукцион, продление срока
+            // событий не слали, и строка висела во вкладке до перезагрузки). Номер сменился при выходе в продажу — и
+            // прежний: на экранах строка ещё с ним. После коммита — `Publisher`.
+            if ($o->wasChanged(self::ROW_FIELDS)) {
+                $keys = array_filter([$o->number, $o->wasChanged('number') ? $o->getOriginal('number') : null]);
+                app(Publisher::class)->rowsSoon(Topics::STAFF, ['/' => $keys, '/gallery' => $keys]);
+            }
         });
+        static::deleted(fn (self $o) => $o->number ? app(Publisher::class)->rowsSoon(Topics::STAFF, ['/' => [$o->number], '/gallery' => [$o->number]]) : null);
         // Черновик удаляют (бросили, «Отменить», ночная уборка) — так же, записью в истории ТС; у архивного и снятого она
         // уже есть.
         static::deleting(fn (self $o) => in_array($o->state, [OfferState::Archived, OfferState::Cancelled], true) ? null : Sale::end($o));

@@ -2,6 +2,8 @@
 
 namespace App\Offers\Console;
 
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Mail\Scan\AutoScan;
 use App\Offers\Actions\AutoOffer;
 use App\Offers\Actions\NotifyBidsClosed;
@@ -11,10 +13,13 @@ use App\Offers\Actions\PublishDueSlots;
 use App\Offers\Actions\RemindEstimates;
 use App\Offers\Actions\SendToAuction;
 use App\Offers\Actions\ShowInGallery;
+use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Support\HoldsSingleRun;
 use App\Workflow\Actions\StagesDigest;
 use App\Workflow\Actions\TickStages;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 class TickOffers extends Command
 {
@@ -33,10 +38,29 @@ class TickOffers extends Command
             $counts = ['slot' => $slots(), 'gallery' => $gallery->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'waves' => $waves->due(), 'digest' => $digest(), 'estimates' => $estimates->due()]
                 // Письмо-предложение не завелось черновиком при приходе (выкладка); документы черновиков из писем дочитать —
                 // раз в пять минут, как у парковки: проход читает письма всех их веток.
-                + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0];
+                + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0]
+                + ['expired' => $this->expired()];
             $this->line(collect($counts)->filter()->map(fn ($n, $k) => "{$k}: {$n}")->implode(', ') ?: 'тихо');
 
             return self::SUCCESS;
         });
+    }
+
+    /**
+     * Срок приёма прошёл — строка переезжает из «Опубликованных» в «Приём закрыт» (или в «Есть подтверждения» — порядок):
+     * это не правка записи, события не было, и строка висела в «Опубликованных» до перезагрузки (18.10.2026). Номера,
+     * у которых срок прошёл с прошлого тика, — строкой в открытые списки CRM.
+     */
+    private function expired(): int
+    {
+        $since = Cache::get('offers:expired-tick', now()->subMinutes(5));
+        $now = now();
+        $numbers = Offer::where('state', OfferState::Open)->whereBetween('bids_close_at', [$since, $now])->pluck('number')->filter()->all();
+        Cache::put('offers:expired-tick', $now, now()->addDay());
+        if ($numbers) {
+            app(Publisher::class)->rows(Topics::STAFF, ['/' => $numbers]);
+        }
+
+        return count($numbers);
     }
 }

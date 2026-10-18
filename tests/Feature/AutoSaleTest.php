@@ -123,7 +123,7 @@ class AutoSaleTest extends TestCase
         $this->actingAs($admin)->withHeaders(['Turbo-Frame' => 'detail', 'Referer' => $list])
             ->delete('http://crm.xcar.localhost/offers/'.$offer->number.'/proposal')->assertRedirect();
         $frame = $this->withHeaders(['Turbo-Frame' => 'detail'])->get($list)->assertOk()->getContent();
-        $this->assertStringContainsString('action="remove"', $frame);
+        $this->assertStringContainsString('action="drop"', $frame);
         $this->assertStringContainsString('action="advance"', $frame);
 
         $other = app(AutoSale::class)($this->vehicle(['ref' => '785R/046/00067/26', 'vin' => 'LS5A2ASE6PD930372']));

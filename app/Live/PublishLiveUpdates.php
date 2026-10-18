@@ -152,6 +152,8 @@ final class PublishLiveUpdates
     {
         $n = $e->interest->offer->number;
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
+        // «Галерея → Отклики» и число интересов в строке (18.10.2026: отклик живьём не появлялся).
+        $this->publish->rows(Topics::STAFF, ['/gallery' => [$n], '/' => [$n]]);
         // Интерес покупателя — менеджеру: страница оффера и его список интересов.
         if ($manager = $e->interest->user->manager_id) {
             $this->publish->refresh(Topics::user($manager), ["/offers/{$n}", '/buyers/interest', "/buyers/{$e->interest->user_id}"]);

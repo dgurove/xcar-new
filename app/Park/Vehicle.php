@@ -9,6 +9,8 @@ use App\Billing\Party;
 use App\Cars\DamageZone;
 use App\Cars\OnCar;
 use App\Cars\Vin\VinDecoder;
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Logistics\Transport;
 use App\Mail\Extraction\Code;
 use App\Mail\Template;
@@ -60,6 +62,14 @@ class Vehicle extends Model
         static::saved(fn (self $v) => $v->wasChanged('vendor_id') || $v->wasRecentlyCreated ? Vendor::markOnPark($v->vendor_id) : null);
         // Город ТС поменялся (парковка, перевод) — регион её задач в логистике вслед.
         static::saved(fn (self $v) => $v->car_id && $v->wasChanged('city_id') ? Transport::syncRegion($v) : null);
+        // Приняли, выдали, переставили, сменили ставку или продажу — строка «Наличия» и заявок уезжает или меняется у всех,
+        // кто их открыл (18.10.2026: поля самой парковки событий не слали — выданная висела «На парковке»). После коммита.
+        static::saved(function (self $v) {
+            if ($v->wasChanged(['state', 'yard_id', 'spot', 'accepted_at', 'released_at', 'storage_rate', 'sold_at', 'vendor_id'])) {
+                $requests = Request::withoutGlobalScope(City::SCOPE)->where('vehicle_id', $v->id)->pluck('id')->all();
+                app(Publisher::class)->rowsSoon(Topics::PARK, ['/requests' => $requests, '/cars' => [$v->id]]);
+            }
+        });
     }
 
     protected function casts(): array

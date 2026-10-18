@@ -5,6 +5,8 @@ namespace App\Billing;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Acquiring\PayLinkState;
 use App\Garage\Car as GarageCar;
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
@@ -44,6 +46,17 @@ class Invoice extends Model implements HasMedia
     protected static function booted(): void
     {
         static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::invoices($q, $city) : null);
+        // Счёт выставили, оплатили, аннулировали — «Оплаты» у всех, кто их открыл, перечитываются (18.10.2026: у других
+        // строка висела в «Проверить» / «Ждём»). После коммита.
+        static::saved(fn (self $i) => $i->wasRecentlyCreated || $i->wasChanged(['state', 'paid', 'due_at']) ? $i->refreshLists() : null);
+    }
+
+    /** Перечитать списки «Оплат» своей стороны: парковки или CRM. */
+    public function refreshLists(): void
+    {
+        $this->park
+            ? app(Publisher::class)->refreshSoon(Topics::PARK, ['/money'])
+            : app(Publisher::class)->refreshSoon(Topics::STAFF, ['/work/money']);
     }
 
     public const VAT = 20;

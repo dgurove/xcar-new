@@ -28,6 +28,9 @@ import { onResume, RESUME } from './lib/resume';
 //           пропуском (после подтверждения у cookie хаба новый срок)
 let source = null;
 let topics = '';
+let mutatedAt = 0;
+let restoredNow = false;
+const leftAt = new Map();
 let lastEventId = '';
 let attempts = 0;
 let timer = null;
@@ -49,8 +52,34 @@ export function live() {
     }, RESUME.live);
     window.addEventListener('online', () => source?.readyState === EventSource.CLOSED && reopen(0));
     // Человек что-то печатает — refresh от хаба страницу под руками не дёргает.
-    // GET-форма (лупа, фильтр) — не правка: её флаг держал бы живые обновления списка до ухода со страницы.
-    document.addEventListener('input', (e) => { const form = e.target.form; if (form && form.method.toLowerCase() !== 'get') form.dataset.dirty = '1'; });
+    // GET-форма (лупа, фильтр) — не правка: её флаг держал бы живые обновления списка до ухода со страницы. Галочки выбора
+    // строк (`data-pick-target`, форма `data-live-select` — «Оцененные», «Публикация») — тоже не правка: одна отмеченная и
+    // снятая галочка замораживала живые обновления до перезагрузки (18.10.2026, «висит в „Оцененных“, пока не обновят»).
+    document.addEventListener('input', (e) => {
+        const form = e.target.form;
+        if (!form || form.method.toLowerCase() === 'get' || form.hasAttribute('data-live-select') || e.target.matches?.('[data-pick-target]')) return;
+        form.dataset.dirty = '1';
+    });
+    // Форма ушла — правки в ней больше нет (её карточку перерисует ответ, а морф страницы метку не снимает). Свою строку
+    // перечитать здесь же: своё событие `rows` автор пропускает (`rows` ниже), а ответ карточки строку из вкладки убирает
+    // не везде — строка, уехавшая в другую вкладку, висела до перезагрузки.
+    document.addEventListener('turbo:submit-end', (e) => {
+        if (!e.detail.success) return;
+        const form = e.target;
+        if (!form.matches?.('[data-controller~="save-bar"]')) delete form.dataset.dirty;
+        if ((form.method || '').toLowerCase() === 'get') return;
+        mutatedAt = performance.now();
+        // Форма карточки строки (или с `data-live-rows="ключ,ключ"`) — её строка: осталась во вкладке — свежая, ушла —
+        // убирается, с числом группы и пилюль (`patch`).
+        const frame = form.closest('turbo-frame#detail');
+        const peek = frame && (frame.querySelector('.detail-card')?.dataset.peek || new URL(frame.src || location.href, location.href).searchParams.get('peek'));
+        const keys = [...(form.dataset.liveRows || '').split(','), peek].filter(Boolean);
+        if (keys.length) refreshOwn(keys);
+    });
+    // «Назад» на список показывает снимок Turbo, снятый до правки в редакторе, — его перечитываем.
+    document.addEventListener('turbo:before-cache', () => { leftAt.set(location.href, performance.now()); });
+    document.addEventListener('turbo:load', () => { if (restoredNow && mutatedAt > (leftAt.get(location.href) ?? 0)) refreshPage(); restoredNow = false; });
+    document.addEventListener('turbo:visit', (e) => { restoredNow = e.detail.action === 'restore'; });
     document.addEventListener('live:retopic', (e) => {
         topics = e.detail?.topics || '';
         clearTimeout(timer);
@@ -198,11 +227,15 @@ document.addEventListener('turbo:load', () => {
     clearTimeout(waitTimer);
 });
 
+// Правят форму, что на экране: в закрытой шторке и в форме выбора галочками правки нет (`data-live-select`).
+const editing = () => [...document.querySelectorAll('form[data-dirty]:not([data-live-select])')]
+    .some((f) => f.checkVisibility?.() || [...f.elements].some((el) => el.type !== 'hidden' && el.checkVisibility?.()));
+
 const busy = () => document.visibilityState !== 'visible'
     // Идёт визит Turbo (aria-busy на <html>) — его ответ придёт и сам решит, нужно ли ждущее.
     || (document.documentElement.hasAttribute('aria-busy') && performance.now() - visitAt < 10_000)
     || fingers > 0 || performance.now() - movedAt < 600
-    || document.querySelector('form[data-dirty], [data-searching], dialog:modal')
+    || editing() || document.querySelector('[data-searching], dialog:modal')
     || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
 
 export function refreshPage(request) {
@@ -213,21 +246,36 @@ export function refreshPage(request) {
 }
 
 // Строки списка по ключу: ждут того же, что и страница, копятся в одну пачку; ждёт страница целиком — она их и покроет.
-export function refreshRows(keys) {
+// own — свои строки после своей формы: карточку их ответ уже нарисовал, фрейм не трогаем.
+export function refreshRows(keys, { own = false } = {}) {
     if (waiting && !waiting.keys) { waiting.at = performance.now(); return; }
-    waiting ??= { keys: new Set() };
+    waiting ??= { keys: new Set(), own: true };
     waiting.at = performance.now();
+    waiting.own &&= own;
     keys.forEach((k) => waiting.keys.add(String(k)));
     flush();
+}
+
+// Строки, что тронула своя форма (карточка, пачка): перечитать сразу, мимо пропуска своего события.
+export const refreshOwn = (keys) => refreshRows(keys.filter(Boolean), { own: true });
+
+// Убрать строку по ключу (поток `drop` ответа карточки): как ушедшую при живом обновлении — число группы и итог экрана.
+export function dropKey(key) {
+    const olds = rowsOf(document, String(key));
+    olds.forEach(dropRow);
+    if (olds.length) document.querySelectorAll('[data-shell-count]').forEach((el) => {
+        const n = Number(el.textContent.replace(/\D/g, ''));
+        if (n) el.textContent = String(Math.max(0, n - olds.length));
+    });
 }
 
 function flush() {
     clearTimeout(waitTimer);
     if (!waiting) return;
     if (busy()) { if (document.visibilityState === 'visible') waitTimer = setTimeout(flush, 700); return; }
-    const { request, keys } = waiting;
+    const { request, keys, own } = waiting;
     waiting = null;
-    if (keys && keys.size <= ROWS_MAX) { patching = patching.then(() => patch([...keys])).catch(() => {}); return; }
+    if (keys && keys.size <= ROWS_MAX) { patching = patching.then(() => patch([...keys], own)).catch(() => {}); return; }
     // Догруженная лента целиком не перечитывается: ответ — одна первая порция (endless_controller).
     if (document.querySelector('[data-controller~="endless"][data-extended]')) return;
     Turbo.renderStreamMessage(`<turbo-stream action="refresh"${request ? ` request-id="${request}"` : ''}></turbo-stream>`);
@@ -243,21 +291,26 @@ const rowsOf = (root, key) => [...root.querySelectorAll(`[data-detail-key="${CSS
 // Строка есть и тут, и в ответе — морф одной строки; в ответе её нет — ушла из списка: убрать (и число у её группы);
 // в ответе есть, а на экране нет (вошла в список) или раскладка не сошлась — страница целиком, как раньше. Открытая
 // карточка той же строки — морфом фрейма из ответа (сторожа detail_controller те же: события Turbo морфа).
-async function patch(keys) {
+async function patch(keys, own = false) {
     const href = location.href;
     const url = new URL(href);
     const card = document.querySelector('turbo-frame#detail .detail-card')?.dataset.peek;
-    const withCard = !!card && keys.includes(card);
+    const withCard = !own && !!card && keys.includes(card);
     if (!withCard) url.searchParams.delete('peek');
     let doc;
     try {
         const r = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'text/html', 'X-Live-Rows': keys.join(',') } });
-        if (!r.ok || r.redirected) return;
+        if (r.redirected) return;
+        if (!r.ok) { retryLater(keys, own); return; }
         doc = new DOMParser().parseFromString(await r.text(), 'text/html');
-    } catch { return; }
-    // Пока шёл ответ, ушли на другую страницу или открыли другую строку — он устарел; взялись за экран — подождём.
-    if (location.href !== href) return;
-    if (busy()) { refreshRows(keys); return; }
+    } catch { retryLater(keys, own); return; }
+    // Пока шёл ответ, ушли на другую страницу, вкладку или фильтр — он устарел. Открыли другую строку (сменился только
+    // ?peek) — список тот же, ответ годен: прежде он выбрасывался, и строка оставалась старой. Взялись за экран — подождём.
+    if (listOf(location.href) !== listOf(href)) return;
+    if (busy()) { refreshRows(keys, { own }); return; }
+    // В ответе строка, которой на экране нет под своим ключом (номер сменился при выходе в галерею или продажу — нашлась по
+    // прежнему), — раскладка не та: страница целиком.
+    if ([...doc.querySelectorAll('[data-detail-key]')].some((el) => !el.closest(ROW_OUT) && !rowsOf(document, el.dataset.detailKey).length)) { refreshPage(); return; }
     const plan = [];
     for (const key of keys) {
         const olds = rowsOf(document, key), next = rowsOf(doc, key);
@@ -269,11 +322,25 @@ async function patch(keys) {
         if (next.length) olds.forEach((el, i) => morphRow(el, next[i]));
         else { olds.forEach(dropRow); gone += olds.length; }
     }
-    if (gone && !document.querySelector('[data-detail-key]:not(turbo-frame#detail *)')) { refreshPage(); return; }
+    // Числа — до перечитывания: оно может и не пойти (Turbo пропускает его во время визита фрейма), а пилюля «1» у пустой
+    // вкладки остаётся враньём.
     syncCounts(doc, gone);
+    if (gone && !document.querySelector('[data-detail-key]:not(turbo-frame#detail *)')) { refreshPage(); return; }
     const frame = document.querySelector('turbo-frame#detail'), fresh = withCard && doc.querySelector('turbo-frame#detail');
     if (frame && fresh) Turbo.morphElements(frame, fresh);
     document.dispatchEvent(new CustomEvent('live:rows', { detail: { keys } }));
+}
+
+// Адрес списка без открытой строки: смена ?peek — тот же список.
+function listOf(href) {
+    const u = new URL(href);
+    u.searchParams.delete('peek');
+    return u.pathname + u.search;
+}
+
+// Нет связи или сбой сервера — строки не теряются: ещё раз через 5 с (не чаще).
+function retryLater(keys, own) {
+    setTimeout(() => refreshRows(keys, { own }), 5000);
 }
 
 // Выделение строки знает только адрес (detail_controller), сервер его не рисует — морф его не снимает.

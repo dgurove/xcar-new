@@ -20,6 +20,12 @@ class Payment extends Model implements HasMedia
 
     protected $table = 'billing_payments';
 
+    /** Заявили оплату, подтвердили, отклонили — «Оплаты» перечитываются у всех (`Invoice::refreshLists`). */
+    protected static function booted(): void
+    {
+        static::saved(fn (self $p) => $p->wasRecentlyCreated || $p->wasChanged('state') ? $p->invoice?->refreshLists() : null);
+    }
+
     protected function casts(): array
     {
         return ['amount' => 'float', 'paid_at' => 'date', 'source' => PaymentSource::class, 'state' => PaymentState::class, 'decided_at' => 'datetime', 'voided_at' => 'datetime'];
