@@ -56,6 +56,7 @@ final class Announce
               and (o.bids_close_at is null or o.bids_close_at > ?)
               and v.notified_at <= ? and (s.announced_at is null or v.notified_at > s.announced_at)
               and not exists (select 1 from offer_bot_seen x where x.user_id = s.user_id and x.offer_id = o.id)
+              and not exists (select 1 from offer_reads r where r.user_id = s.user_id and r.offer_id = o.id)
             group by s.chat_id
             having bool_or(o.urgent_at is not null) or max(v.notified_at) <= ? or min(v.notified_at) <= ?
 ", [Role::Manager->value, $now, $now, $now->copy()->subMinutes(NotifyNewOffers::QUIET), $now->copy()->subMinutes(NotifyNewOffers::LIMIT)]);

@@ -17,7 +17,15 @@ final class Keys
 
     public const PIN = '📌';
 
+    /** «Пропустить все» (18.10.2026, вместо вопроса 💬): с подтверждением кнопками под сообщением. */
+    public const SKIP = '⏭️';
+
+    /** Старая кнопка вопроса — на клавиатурах, что остались у людей: просто ставим новую. */
     public const ASK = '💬';
+
+    public const SKIP_YES = 'skip:yes';
+
+    public const SKIP_NO = 'skip:no';
 
     public const SLEEP = '💤';
 
@@ -45,7 +53,7 @@ final class Keys
 
     public static function feed(): array
     {
-        return self::reply([[self::NEXT, self::PIN, self::ASK, self::SLEEP]]);
+        return self::reply([[self::NEXT, self::PIN, self::SKIP, self::SLEEP]]);
     }
 
     public static function prompt(): array

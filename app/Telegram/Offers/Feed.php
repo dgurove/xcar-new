@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Лента бота: что менеджер видит на сайте, в продаже, приём открыт, своего подтверждения нет и бот это ему ещё не
  * показывал. Новые сверху, рекомендуемые раньше прочих. Показанное помечается сразу при показе — «и ещё N» убывает,
- * а вернувшийся из меню продолжает с того, что не видел.
+ * а вернувшийся из меню продолжает с того, что не видел. Открытое на сайте («Просмотрено», `offer_reads`) бот не
+ * показывает и не считает (владелец 18.10.2026: «показывает то, что они уже видели, приходится долго листать»).
  */
 final class Feed
 {
@@ -20,7 +21,16 @@ final class Feed
         return Offer::visibleTo($user)->where('state', OfferState::Open)
             ->where(fn ($q) => $q->whereNull('bids_close_at')->orWhere('bids_close_at', '>', now()))
             ->whereDoesntHave('bids', fn ($b) => $b->where('user_id', $user->id))
-            ->whereNotExists(fn ($q) => $q->from('offer_bot_seen')->whereColumn('offer_bot_seen.offer_id', 'offers.id')->where('offer_bot_seen.user_id', $user->id));
+            ->whereNotExists(fn ($q) => $q->from('offer_bot_seen')->whereColumn('offer_bot_seen.offer_id', 'offers.id')->where('offer_bot_seen.user_id', $user->id))
+            ->whereNotExists(fn ($q) => $q->from('offer_reads')->whereColumn('offer_reads.offer_id', 'offers.id')->where('offer_reads.user_id', $user->id));
+    }
+
+    /** «⏭️ Пропустить все»: всё, что осталось в ленте, — показанным, только в боте («Просмотрено» на сайте не ставится). */
+    public static function skipAll(User $user): int
+    {
+        $rows = self::query($user)->pluck('offers.id')->map(fn ($id) => ['user_id' => $user->id, 'offer_id' => $id, 'reaction' => 'skip', 'created_at' => now()])->all();
+
+        return $rows ? DB::connection('pgsql_async')->table('offer_bot_seen')->insertOrIgnore($rows) : 0;
     }
 
     public static function next(User $user): ?Offer
@@ -50,7 +60,7 @@ final class Feed
             ->update(['chat_id' => $chatId, 'message_id' => $messageId]);
     }
 
-    /** Показали (`reaction` пусто) или отреагировали: ➡️ next, 📌 pin, 💬 ask, 💤 sleep. */
+    /** Показали (`reaction` пусто) или отреагировали: ➡️ next, 📌 pin, 💤 sleep (⏭️ skip — `skipAll`; ask — до 18.10.2026). */
     public static function mark(User $user, Offer $offer, ?string $reaction = null): void
     {
         $table = DB::connection('pgsql_async')->table('offer_bot_seen');

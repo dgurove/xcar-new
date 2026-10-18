@@ -16,7 +16,7 @@ use Throwable;
 
 /**
  * Разговор бота предложений по образцу «Дайвинчика» (владелец 03.10.2026): анонс «Опубликовано N предложений,
- * показать их?», «✨🔍» и карточки по одной (➡️ дальше, 📌 в избранное, 💬 вопрос, 💤 потом), в конце — «Вы увидели
+ * показать их?», «✨🔍» и карточки по одной (➡️ дальше, 📌 в избранное, ⏭️ пропустить все, 💤 потом), в конце — «Вы увидели
  * все предложения на сегодня», главное меню цифрами. Тексты — слово в слово владельца, без точки в конце.
  *
  * Одна запись дорожки — обновление Telegram или «часы» (анонс, 13:00, напоминание) по одному человеку: в чат пишет
@@ -74,8 +74,11 @@ final class Handler
         $chatId = (int) ($q['message']['chat']['id'] ?? 0);
         $sub = Subscriber::with('user')->where('chat_id', $chatId)->first();
         $this->bot->answer((string) ($q['id'] ?? ''), '');
-        if ($sub && str_starts_with((string) ($q['data'] ?? ''), 'invite:')) {
-            $this->invites->press($sub, (string) $q['data']);
+        $data = (string) ($q['data'] ?? '');
+        if ($sub && str_starts_with($data, 'invite:')) {
+            $this->invites->press($sub, $data);
+        } elseif ($sub && in_array($data, [Keys::SKIP_YES, Keys::SKIP_NO], true) && self::eligible($sub->user)) {
+            $this->skipAnswer($sub, (int) ($q['message']['message_id'] ?? 0), $data === Keys::SKIP_YES);
         }
     }
 
@@ -106,17 +109,17 @@ final class Handler
         }
 
         match ($sub->mode) {
-            Subscriber::ASKING => $this->asking($sub, $msg, $text),
             Subscriber::INVITE => $this->invites->label($sub, $text) || $this->unknown($sub),
             Subscriber::PROMPT => match ($text) {
                 Keys::SHOW, '1' => $this->feed($sub),
                 Keys::LATER, '2' => $this->later($sub),
                 default => $this->unknown($sub),
             },
-            Subscriber::FEED => match ($text) {
+            // Писал вопрос до 18.10.2026 (💬 убран) — дальше как в ленте.
+            Subscriber::FEED, Subscriber::ASKING => match ($text) {
                 Keys::NEXT => $this->next($sub, 'next'),
                 Keys::PIN => $this->pin($sub),
-                Keys::ASK => $this->ask($sub),
+                Keys::SKIP => $this->skipAsk($sub),
                 Keys::SLEEP => $this->sleep($sub),
                 default => $this->unknown($sub),
             },
@@ -232,9 +235,8 @@ final class Handler
     private function unknown(Subscriber $sub): bool
     {
         $keys = match ($sub->mode) {
-            Subscriber::FEED => Keys::feed(),
+            Subscriber::FEED, Subscriber::ASKING => Keys::feed(),
             Subscriber::PROMPT => Keys::prompt(),
-            Subscriber::ASKING => Keys::reply([[Keys::BACK]]),
             Subscriber::INVITE => Keys::reply([[Keys::NO_LABEL], [Keys::MENU]]),
             default => Keys::menu($sub->isSubscribed()),
         };
@@ -299,45 +301,34 @@ final class Handler
         $this->next($sub, 'pin');
     }
 
-    /** 💬 — вопрос админам по этому предложению: в чат по предложению (сайт и CRM «Чаты»). */
-    private function ask(Subscriber $sub): void
+    /** ⏭️ — пропустить всё, что осталось: сначала спросить кнопками под сообщением (18.10.2026). */
+    private function skipAsk(Subscriber $sub): void
     {
-        $offer = $sub->offer;
-        if (! $offer || ! $offer->chatOpenFor($sub->user)) {
-            $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, 'Чат по этому предложению закрыт'));
+        // Текущая карточка уже показана — считаем то, что осталось.
+        $n = Feed::left($sub->user);
+        if ($n === 0) {
+            $this->end($sub);
 
             return;
         }
-        $sub->moveTo(Subscriber::ASKING, $offer->id);
-        $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, 'Напишите вопрос по '.e($offer->titleWithYear()), Keys::reply([[Keys::BACK]])));
+        $this->bot->quietly(fn () => $this->bot->say($sub->chat_id,
+            'Пропустить все '.$n.' '.Plural::of($n, ['предложение', 'предложения', 'предложений']).'? В боте они больше не покажутся, на сайте останутся',
+            Keys::inline([[['text' => 'Пропустить', 'callback_data' => Keys::SKIP_YES], ['text' => 'Отмена', 'callback_data' => Keys::SKIP_NO]]])));
     }
 
-    private function asking(Subscriber $sub, array $msg, string $text): void
+    /** Ответ на «Пропустить все?»: да — всё в боте показанным и «🏁», нет — вопрос уходит, карточка на месте. */
+    private function skipAnswer(Subscriber $sub, int $messageId, bool $yes): void
     {
-        $offer = $sub->offer;
-        // Пока писал, машина могла уйти от него (сузили круг, сделка) — чат по ней не заводим.
-        if ($offer && $text !== Keys::BACK && ! $offer->chatOpenFor($sub->user)) {
-            $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, 'Чат по этому предложению закрыт', Keys::feed()));
-            $this->next($sub, 'next');
+        if (! $yes) {
+            $messageId && $this->bot->deleteQuietly($sub->chat_id, $messageId);
 
             return;
         }
-        if ($text === Keys::BACK || ! $offer) {
-            $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, '✨🔍', Keys::feed()));
-            // Пока писал вопрос, предложение могло уйти в сделку — тогда не его карточку, а следующую.
-            $offer && Feed::showable($sub->user, $offer) ? $this->card($sub, $offer) : $this->next($sub, 'next');
-
-            return;
+        $n = Feed::skipAll($sub->user);
+        if ($messageId) {
+            $this->bot->edit($sub->chat_id, $messageId, 'Пропущено '.$n.' '.Plural::of($n, ['предложение', 'предложения', 'предложений']));
         }
-        if ($text === '') {
-            $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, 'Напишите вопрос текстом', Keys::reply([[Keys::BACK]])));
-
-            return;
-        }
-        $this->questions->ask($sub, $offer, $text, (int) $msg['message_id']);
-        Feed::mark($sub->user, $offer, 'ask');
-        $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, 'Вопрос отправлен, ответ придёт сюда', Keys::feed()));
-        $this->next($sub, 'ask');
+        $this->end($sub);
     }
 
     /** 💤 на карточке — «потом»: в меню. */
