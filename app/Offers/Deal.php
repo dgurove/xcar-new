@@ -226,9 +226,10 @@ class Deal extends Model
      */
     public function closeBlocker(): ?string
     {
-        // Машина ещё на нашей парковке (стоит или едет к нам) — её выдают по пропуску сделки (18.10.2026).
+        // Машина стоит на нашей парковке — её выдают по пропуску сделки (18.10.2026). «Ждём на парковке» не держит: страховая
+        // бывает и не привозит, а сделку тогда было бы не закрыть никогда.
         $park = $this->isGarage() ? null : $this->offer?->parkVehicle()->first();
-        if ($park && in_array($park->state, [\App\Park\VehicleState::Stored, \App\Park\VehicleState::Expected], true)) {
+        if ($park?->state === \App\Park\VehicleState::Stored) {
             return 'Сначала заберите автомобиль с парковки';
         }
         $pickup = $this->isGarage() ? null : $this->offer?->pickup();
@@ -247,10 +248,10 @@ class Deal extends Model
     {
         $at = $this->receiver_at;
         if ($this->receiver_user_id && ($u = User::find($this->receiver_user_id))) {
-            return new Receiver($u->name, $u->phone, $u, $u->id === $this->buyer_id ? 'manager' : 'buyer', $at, true);
+            return new Receiver($u->name, $u->phone, $u, $u->id === $this->buyer_id ? 'manager' : 'buyer', $at);
         }
         if (filled($this->receiver_name)) {
-            return new Receiver($this->receiver_name, $this->receiver_phone, null, 'person', $at, true);
+            return new Receiver($this->receiver_name, $this->receiver_phone, null, 'person', $at);
         }
         $pickup = $this->offer?->pickup();
         if ($pickup?->executor && $pickup->executor_id !== $this->buyer_id && $pickup->isOpen()) {
@@ -270,11 +271,12 @@ class Deal extends Model
 
     /**
      * Можно забирать (одно правило для выдачи с нашей парковки, 18.10.2026): сделка идёт, держать нечем (`pickupHold`:
-     * Альфа — оплачено, Каркаде — согласовано) и, кроме гаражной, поставщик уже согласовал (`Handover::open`).
+     * Альфа — оплачено, Каркаде — согласовано) и поставщик уже согласовал — у обычной `Handover::open`, у гаражной (у неё
+     * `open` нет) — `agreed_at`: иначе гаражную выдавали бы прямо с «Принять», до ответа поставщика.
      */
     public function releasable(): bool
     {
-        return $this->isActive() && $this->pickupHold() === null && ($this->isGarage() || Handover::for($this)->open);
+        return $this->isActive() && $this->pickupHold() === null && ($this->isGarage() ? $this->agreed() : Handover::for($this)->open);
     }
 
     /** Пропуска на нашу парковку по этой сделке (`SyncParkRelease`). */

@@ -192,10 +192,24 @@ class Vehicle extends Model
         return (bool) $this->vendor?->release_by_qr || $this->dealPass() !== null;
     }
 
-    /** Живой (не погашенный и не выданный) пропуск сделки XCar. */
+    /** Живой (не погашенный и не выданный) пропуск сделки XCar. Один запрос на экземпляр: экран дела спрашивает его по 4–5 раз. */
     public function dealPass(): ?Pass
     {
-        return $this->passes()->whereNotNull('deal_id')->whereNull('revoked_at')->whereNull('used_at')->first();
+        if (! array_key_exists('dealPass', $this->memo)) {
+            $this->memo['dealPass'] = $this->passes()->whereNotNull('deal_id')->whereNull('revoked_at')->whereNull('used_at')->first();
+        }
+
+        return $this->memo['dealPass'];
+    }
+
+    /** Память экземпляра (`dealPass`): сбрасывается `refresh()`, `fresh()` — новый экземпляр. */
+    private array $memo = [];
+
+    public function refresh()
+    {
+        $this->memo = [];
+
+        return parent::refresh();
     }
 
     /** Ссылка на анкету покупателя: одна на ТС, код заводится при первой нужде; заменить — `RenewPickupLink`. */

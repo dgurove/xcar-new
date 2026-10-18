@@ -5,9 +5,14 @@
     $pass = $deal->passes()->where('vehicle_id', $vehicle->id)->whereNull('revoked_at')->latest('id')->first();
     $receiver = $deal->receiver();
     $sheet = 'receiver-crm-'.$deal->id;
+    // Парковка погасила пропуск сама («Покупатель отказался») — новый только выбором в шторке.
+    $revoked = $pass ? null : $deal->passes()->where('vehicle_id', $vehicle->id)->whereNotNull('revoked_at')
+        ->where('revoke_reason', '!=', \App\Offers\Actions\SyncParkRelease::CHANGED)->latest('id')->first();
     $state = match (true) {
         (bool) $pass?->used_at => ['выдан '.$pass->used_at->translatedFormat('j M, H:i'), 'text-open'],
         (bool) $pass => ['пропуск выдан'.(($w = $pass->whenLabel('j M')) ? ', приедет '.$w : ''), 'text-open'],
+        (bool) $revoked => ['пропуск погашен парковкой'.($revoked->revoke_reason ? ': '.mb_lcfirst($revoked->revoke_reason) : ''), 'text-urgent'],
+        $deal->releasable() => ['пропуск ещё не выдан', 'text-ink-muted'],
         default => [$deal->pickupHold() ?? 'когда поставщик согласует', 'text-ink-muted'],
     };
 @endphp
@@ -23,5 +28,5 @@
     @endif
 </div>
 @if ($deal->isActive() && ! $pass?->used_at)
-    <x-deal.receiver-sheet :deal="$deal" :id="$sheet" :action="'/work/deals/'.$deal->id.'/receiver'"/>
+    <x-deal.receiver-sheet :deal="$deal" :receiver="$receiver" :id="$sheet" :action="'/work/deals/'.$deal->id.'/receiver'"/>
 @endif

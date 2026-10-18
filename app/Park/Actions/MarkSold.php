@@ -46,7 +46,9 @@ final class MarkSold
             $vehicle->log($fresh ? EventType::Sold : EventType::Updated, $by, $fresh
                 ? array_filter(['who' => trim(($name ?? '').' '.($phone ?? '')) ?: null, 'thread' => $message?->thread_id])
                 : ['fields' => ['sold_at', 'pickup_name']]);
-            if ($fresh && $vehicle->state === VehicleState::Stored && ! $vehicle->openRequest(RequestType::Release)) {
+            // Открытую выдачу — запросом, а не загруженной связью: она бывает устаревшей, и `CreateRequest` тогда бросал
+            // «заявка уже есть», откатывая всю продажу (выдача по сделке XCar зовёт продажу с уже загруженными заявками).
+            if ($fresh && $vehicle->state === VehicleState::Stored && ! $vehicle->requests()->where('type', RequestType::Release)->whereIn('state', \App\Park\RequestState::open())->exists()) {
                 ($this->create)($by, RequestType::Release, $vehicle,
                     ['contact_name' => $name, 'contact_phone' => $phone, 'thread_id' => $message?->thread_id, 'letter_at' => $message?->date_at, 'letter_id' => $message?->id]);
             }

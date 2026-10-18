@@ -165,4 +165,61 @@ class ParkReleaseByDealTest extends TestCase
         \App\Park\Events\VehicleAccepted::dispatch($vehicle->fresh(), null, $this->keeper);
         $this->assertSame($deal->id, $vehicle->fresh()->requests()->where('type', RequestType::Release)->first()?->deal_id);
     }
+
+    /** Повторная сверка (следующий шаг, приём, тот же получатель) не гасит выданный QR. */
+    public function test_repeated_sync_keeps_the_pass(): void
+    {
+        [$offer, $deal, $vehicle] = $this->deal();
+        $this->paid($offer, $deal);
+        $pass = $vehicle->fresh()->dealPass();
+        app(\App\Offers\Actions\SyncParkRelease::class)($deal->fresh(), $this->admin);
+        app(\App\Offers\Actions\SyncParkRelease::class)($deal->fresh(), $this->admin);
+        $this->assertNull($pass->fresh()->revoked_at);
+        $this->assertSame($pass->id, $vehicle->fresh()->dealPass()->id);
+    }
+
+    /** «Покупатель отказался» на парковке сверка не перебивает; новый пропуск — только выбором получателя. */
+    public function test_parking_refusal_is_not_overridden(): void
+    {
+        [$offer, $deal, $vehicle] = $this->deal();
+        $this->paid($offer, $deal);
+        app(\App\Park\Actions\RefuseRelease::class)($vehicle->fresh(), $this->keeper, 'Не приехал');
+        app(\App\Offers\Actions\SyncParkRelease::class)($deal->fresh(), $this->admin);
+        $this->assertNull($vehicle->fresh()->dealPass());
+        $this->assertNull($vehicle->fresh()->sold_at);
+
+        app(\App\Offers\Actions\SetReceiver::class)($deal->fresh(), $this->manager, ['who' => 'me']);
+        $this->assertNotNull($vehicle->fresh()->dealPass());
+    }
+
+    /** Продажу, вписанную парковкой руками (не наша), сделка не перетирает. */
+    public function test_manual_parking_sale_is_kept(): void
+    {
+        [$offer, $deal, $vehicle] = $this->deal();
+        app(\App\Park\Actions\MarkSold::class)($vehicle, $this->keeper, now(), 'Пётр Чужой', '+79001234567');
+        $this->paid($offer, $deal);
+        $this->assertSame('Пётр Чужой', $vehicle->fresh()->pickup_name);
+        $this->assertNull($vehicle->fresh()->dealPass());
+    }
+
+    /** Машину ждём на парковке, а страховая не довезла — сделку это не держит, забрать можно у владельца. */
+    public function test_expected_car_does_not_block_closing(): void
+    {
+        [$offer, $deal] = $this->deal(VehicleState::Expected);
+        app(\App\Offers\Actions\AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
+        $this->paid($offer, $deal);
+        // Держит только его собственный вывоз (отметить «Забрал»), а не парковка; кнопка у него есть, контакт владельца — тоже.
+        $this->assertSame('Сначала отметьте «Автомобиль забрал»', $deal->fresh()->closeBlocker());
+        $h = Handover::for($deal->fresh());
+        $this->assertTrue($h->canPick);
+        $this->assertSame('Иван Страхователь', $h->name);
+    }
+
+    /** Выдали не по пропуску сделки (страховой, её покупателю) — машина не «у менеджера». */
+    public function test_release_to_someone_else_is_not_ours(): void
+    {
+        [$offer, $deal, $vehicle] = $this->deal();
+        app(Release::class)($vehicle->fresh(), $this->keeper, now());
+        $this->assertNotSame(\App\Offers\CarPlace::Keeper, $offer->fresh()->car_place);
+    }
 }

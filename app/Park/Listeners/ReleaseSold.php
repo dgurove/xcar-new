@@ -18,7 +18,8 @@ final class ReleaseSold
     {
         $vehicle = $e->vehicle->fresh();
         // Машину сделки XCar привезли — выдача и пропуск по сделке, если её уже можно забирать.
-        if ($deal = $vehicle?->offer?->deal) {
+        // Сделка — идущая у предложения или та, чей пропуск жив (гаражная уже закрыта, а машину только привезли).
+        if ($deal = $vehicle?->dealPass()?->deal ?? $vehicle?->offer?->deal) {
             app(\App\Offers\Actions\SyncParkRelease::class)($deal, $e->by);
             $vehicle->refresh();
         }

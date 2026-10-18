@@ -255,7 +255,8 @@ final class Notify
         $agreed = $e->exit && str_starts_with(mb_strtolower($e->exit->label), 'поставщик согласовал');
         if ($requirement) {
             $deal->buyer->notify(new YourTurnNotice($requirement->load('offer')));
-        } elseif ($agreed && $deal->buyerPicksUp() && ($handover = Handover::for($deal->setRelation('offer', $e->offer)))->open) {
+        } elseif ($agreed && $deal->buyerPicksUp() && ($handover = Handover::for($deal->setRelation('offer', $e->offer)))->open
+            && $handover->park?->state !== \App\Park\VehicleState::Stored) {
             $deal->buyer->notify(new HandoverNotice($deal, $handover));
         } elseif ($e->from?->block_id !== $e->to->block_id && $deal->created_at->lt(now()->subMinute())) {
             // Первый шаг только что открытой сделки не пишем: менеджеру уже идёт «подтверждение принято».
@@ -285,7 +286,9 @@ final class Notify
      */
     private function pickupOpened(Deal $deal): void
     {
-        if ($deal->buyerPicksUp() && ($handover = Handover::for($deal))->open) {
+        // Машина стоит на нашей парковке — менеджеру пишет «Можно забирать с парковки» с пропуском (`SyncParkRelease`),
+        // второе «Можно забирать» с тем же было бы дублем.
+        if ($deal->buyerPicksUp() && ($handover = Handover::for($deal))->open && $handover->park?->state !== \App\Park\VehicleState::Stored) {
             $deal->buyer?->notify(new HandoverNotice($deal, $handover));
         }
     }

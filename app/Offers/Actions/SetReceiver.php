@@ -45,8 +45,11 @@ final class SetReceiver
             $fields['receiver_user_id'] = $buyer->id;
         }
         $fields['receiver_at'] = filled($data['at'] ?? null) ? Carbon::parse($data['at'], 'Europe/Moscow') : null;
+        if ($fields['receiver_at']?->lt(now()->subHour())) {
+            throw ValidationException::withMessages(['at' => 'Это время уже прошло']);
+        }
         $deal->update($fields);
-        ($this->sync)($deal->fresh(), $by);
+        ($this->sync)($deal->fresh(), $by, explicit: true);
 
         return $deal->fresh();
     }

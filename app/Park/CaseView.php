@@ -68,7 +68,10 @@ final class CaseView
         // Письма машины — только ящика парковки (`Thread::ofCar`).
         $threads = Thread::ofCar($vehicle, $user)->orderByDesc('last_message_at')->get(['id', 'subject', 'needs_reply_at', 'account_id']);
         // Выдача по QR: живой пропуск (анкета покупателя) — один запрос на экран и таймлайн.
-        $pass = $vehicle->releasesByQr() ? $vehicle->pass() : null;
+        // Пропуск сделки XCar (18.10.2026) — и после выдачи: шаг «Пропуск по сделке» остаётся в истории.
+        $byQr = $vehicle->releasesByQr();
+        $pass = $vehicle->pass();
+        $pass = $byQr || $pass?->isDeal() ? $pass : null;
         $ids = $threads->pluck('id');
         // Ждёт ответа — одно правило на почту, дело и ленту: последнее письмо ветки их, с вопросом, и после него
         // мы не писали и не нажимали «Сделано» (`Threads::refresh` → `needs_reply_at`). Само письмо — последнее входящее.
@@ -120,9 +123,9 @@ final class CaseView
             // Карточка и документы дела расходятся — чип «в документе …» у полей (FillFromDocs, в кеше на день).
             'differences' => $user->canManagePark() ? app(FillFromDocs::class)->differences($vehicle) : [],
             // Выдача по QR: живой пропуск (анкета покупателя), код из адреса — отсканировали камерой телефона.
-            'byQr' => $vehicle->releasesByQr(),
+            'byQr' => $byQr,
             'pass' => $pass,
-            'scannedPass' => $vehicle->releasesByQr() && $release ? Pass::codeFrom((string) request()->query('pass')) : null,
+            'scannedPass' => $byQr && $release ? Pass::codeFrom((string) request()->query('pass')) : null,
         ];
     }
 

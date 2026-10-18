@@ -31,9 +31,16 @@ use Illuminate\Support\Facades\Notification;
  */
 final class SyncParkRelease
 {
+    /** Причина, с которой гаснет прежний пропуск сделки, когда менеджер сменил получателя. */
+    public const CHANGED = 'Сменился получатель';
+
     public function __construct(private MarkSold $sold, private CreateRequest $create) {}
 
-    public function __invoke(Deal $deal, ?User $by = null): void
+    /**
+     * `$explicit` — менеджер или админ сам выбрал получателя (`SetReceiver`): пропуск выпускается и после того, как парковка
+     * погасила прежний («Покупатель отказался»); сверка по шагам сделки такой отказ не перебивает.
+     */
+    public function __invoke(Deal $deal, ?User $by = null, bool $explicit = false): void
     {
         $offer = $deal->offer;
         $vehicle = $offer?->parkVehicle()->first();
@@ -47,18 +54,29 @@ final class SyncParkRelease
             return;
         }
         if (! $deal->isActive()) {
+            // Гаражная закрылась, пропуск жив, а машину только привезли — выдача по нему.
+            if (($live = $vehicle->dealPass()) && $live->deal_id === $deal->id) {
+                $this->ensureRequest($deal, $vehicle, $live->name, $live->phone ?: null, $by);
+            }
+
             return;
         }
         if (! in_array($vehicle->state, [VehicleState::Stored, VehicleState::Expected], true) || ! $deal->releasable()) {
             return;
         }
         $receiver = $deal->receiver();
-        $pass = $vehicle->passes()->where('deal_id', $deal->id)->whereNull('revoked_at')->whereNull('used_at')->first();
-        // Продано по письму страховой кому-то ещё, а нашего пропуска нет — не трогаем: решают люди.
-        if (! $receiver || ($vehicle->sold_at && $vehicle->sold_message_id && ! $pass)) {
+        $passes = $vehicle->passes()->where('deal_id', $deal->id)->get();
+        $pass = $passes->first(fn (Pass $p) => $p->isLive());
+        // Продажа на парковке не наша (письмо страховой или покупатель, вписанный парковкой руками), а пропусков сделки не
+        // было — не трогаем: решают люди.
+        if (! $receiver || ($vehicle->sold_at && $passes->isEmpty())) {
             return;
         }
-        $phone = Phone::normalize($receiver->phone) ? Phone::format(Phone::normalize($receiver->phone)) : $receiver->phone;
+        // Парковка погасила пропуск сделки сама («Покупатель отказался», «Выдача снята») — заново только по выбору человека.
+        if (! $pass && ! $explicit && $passes->contains(fn (Pass $p) => $p->revoked_at && $p->revoke_reason !== self::CHANGED)) {
+            return;
+        }
+        $phone = mb_substr((string) (Phone::normalize($receiver->phone) ? Phone::format(Phone::normalize($receiver->phone)) : $receiver->phone), 0, 20) ?: null;
         if ($pass && $receiver->matches($pass->name, $pass->phone ?: null, $pass->planned_at)) {
             $this->ensureRequest($deal, $vehicle->fresh(), $receiver->name, $phone, $by);
 
@@ -67,7 +85,7 @@ final class SyncParkRelease
         $first = ! $pass;
         DB::transaction(function () use ($deal, $vehicle, $receiver, $phone, $by, $pass) {
             // Анкета страховой (или прежний пропуск сделки) гаснет: на воротах — один живой пропуск.
-            $vehicle->revokePass($pass ? 'Сменился получатель' : 'Выдача по сделке XCar');
+            $vehicle->revokePass($pass ? self::CHANGED : 'Выдача по сделке XCar');
             ($this->sold)($vehicle, $by, now(), $receiver->name, $phone);
             Pass::create([
                 'vehicle_id' => $vehicle->id, 'code' => self::code(), 'name' => $receiver->name, 'phone' => (string) $phone,
@@ -75,6 +93,11 @@ final class SyncParkRelease
                 'confirm_note' => 'по сделке № '.$deal->offer->number, 'deal_id' => $deal->id, 'planned_at' => $receiver->at,
             ]);
             $this->ensureRequest($deal, $vehicle->fresh(), $receiver->name, $phone, $by);
+            // Открытый вывоз этой машины — откуда ехать: с парковки, а не от страхователя.
+            $pickup = \App\Logistics\Transport::openFor($deal->offer);
+            if ($pickup && ! $pickup->state->picked() && $vehicle->yard) {
+                $pickup->update(['from_address' => 'Парковка «'.$vehicle->yard->name.'», '.$vehicle->yard->fullAddress()]);
+            }
             $who = $receiver->name.($receiver->at ? ', приедет '.$receiver->at->translatedFormat('j M, H:i') : '');
             $vehicle->log(EventType::Note, $by, ['text' => ($pass ? 'Сменился получатель по сделке XCar № ' : 'На выдачу по сделке XCar № ').$deal->offer->number.': '.$who]);
             $deal->offer->log(OfferEventType::Note, $by, ['text' => ($pass ? 'Парковке: сменился получатель, ' : 'Парковке: на выдачу, заберёт ').$who]);

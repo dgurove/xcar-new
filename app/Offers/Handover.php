@@ -148,12 +148,13 @@ final class Handover
             $fields['address'] ??= $vehicle->yard->fullAddress();
             $mapUrl = $vehicle->yard->mapUrl();
         }
-        // Забирать с нашей парковки — звонить управляющему её города, а не страхователю (18.10.2026).
-        if (($atYard || $toYard) && ! $withBuyer && ($keeper = self::parkContact($vehicle))) {
+        // Забирать с нашей парковки — звонить управляющему её города, а не страхователю (18.10.2026). Едет к нам — контакт
+        // владельца остаётся: не довезут — забирать у него.
+        if ($atYard && ! $withBuyer && ($keeper = self::parkContact($vehicle))) {
             $fields['name'] ??= $keeper->name.', парковка';
             $fields['phone'] ??= $keeper->phone;
         }
-        if ($owner && ! $withBuyer && ! $atYard && ! $toYard) {
+        if ($owner && ! $withBuyer && ! $atYard) {
             $fields['name'] ??= $offer->insured_name;
             $fields['phone'] ??= $offer->insured_phone;
             $fields['address'] ??= $offer->inspection_address ?: null;
@@ -186,9 +187,10 @@ final class Handover
             date: $withBuyer ? null : ($fields['date'] ?? null),
             saleExit: $open && ! $carried ? $saleExit : null,
             carrier: $open && $carried ? self::carrierLine($pickup) : null,
-            // С нашей парковки выдаёт парковка по пропуску (18.10.2026): ни «Нужен вывоз», ни «Автомобиль забрал» сам.
-            canRequest: $open && $picks && ! $atYard && ! $toYard && (bool) $pickup?->isOpen() && ! $pickup->state->picked(),
-            canPick: $open && $picks && ! $atYard && ! $toYard && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->state->picked()
+            // Стоит на нашей парковке — выдаёт парковка по пропуску (18.10.2026): ни «Нужен вывоз», ни «Автомобиль забрал» сам.
+            // Едет к нам — кнопки остаются: страховая бывает и не довозит, тогда забирают у владельца.
+            canRequest: $open && $picks && ! $atYard && (bool) $pickup?->isOpen() && ! $pickup->state->picked(),
+            canPick: $open && $picks && ! $atYard && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->state->picked()
                 && $sale && ! self::routePicks($sale->stage),
             keys: $keys,
             park: ($atYard || $toYard) && ! $withBuyer ? $vehicle : null,

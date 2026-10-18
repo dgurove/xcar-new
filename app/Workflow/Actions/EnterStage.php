@@ -115,7 +115,11 @@ final class EnterStage
         StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter);
         // Машина сделки на нашей парковке: стало можно забирать — выдача, пропуск, получатель (18.10.2026, одна дверь).
         if ($track === Track::Sale && $deal) {
-            \Illuminate\Support\Facades\DB::afterCommit(fn () => app(\App\Offers\Actions\SyncParkRelease::class)($deal->fresh(), $by));
+            \Illuminate\Support\Facades\DB::afterCommit(function () use ($deal, $by) {
+                if ($fresh = $deal->fresh()) {
+                    app(\App\Offers\Actions\SyncParkRelease::class)($fresh, $by);
+                }
+            });
         }
 
         return $offer;

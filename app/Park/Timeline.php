@@ -80,7 +80,7 @@ final class Timeline
             // Выдача по QR: покупатель заполняет анкету по ссылке, страховая подтверждает — шаг между хранением и выдачей.
             // Никогда не текущий: форма выдачи остаётся на месте, а шаг показывает, где анкета, и даёт «Страховая подтвердила».
             // У выданной без QR ждать анкету уже нечего — шага нет.
-            if ($v->releasesByQr() && ($v->sold_at || $releasing || ($v->released_at && $pass))) {
+            if (($pass?->isDeal() || $v->releasesByQr()) && ($v->sold_at || $releasing || ($v->released_at && $pass))) {
                 $linkAt = $events->where('type', EventType::PickupLinkSent)->max('created_at');
                 $steps[] = match (true) {
                     // Пропуск нашей сделки (18.10.2026): анкеты и страховой нет — кто заберёт, решил менеджер.

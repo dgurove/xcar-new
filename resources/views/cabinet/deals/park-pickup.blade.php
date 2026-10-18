@@ -7,7 +7,11 @@
     $vehicle = $handover->park;
     $pass = $vehicle->passes()->where('deal_id', $deal->id)->whereNull('revoked_at')->latest('id')->first();
     $receiver = $deal->receiver();
-    $keeper = \App\Offers\Handover::parkContact($vehicle);
+    $stored = $vehicle->state === \App\Park\VehicleState::Stored;
+    $keeper = $stored ? \App\Offers\Handover::parkContact($vehicle) : null;
+    // Парковка погасила пропуск сама (покупатель отказался, выдача снята) — сказать почему: новый — выбором «Заберёт».
+    $revoked = $pass ? null : $vehicle->passes()->where('deal_id', $deal->id)->whereNotNull('revoked_at')
+        ->where('revoke_reason', '!=', \App\Offers\Actions\SyncParkRelease::CHANGED)->latest('id')->first();
     $sheet = 'receiver-'.$deal->id;
     $url = $pass ? \App\Support\Surface::Site->url('/pass/'.$pass->code) : null;
 @endphp
@@ -19,6 +23,13 @@
             <div class="row"><span class="min-w-0"><span class="block">Едет на нашу парковку</span><span class="block text-sm text-ink-muted">Адрес будет, когда её примут</span></span></div>
         @endif
         @if ($keeper)<x-ui.person-row :user="$keeper" :size="36" class="row"/>@endif
+        {{-- Ещё едет к нам — пока она у владельца: не довезут, забирать у него. --}}
+        @if (! $stored && ($handover->name || $handover->phone))
+            <div class="row justify-between">
+                <span class="min-w-0"><span class="block truncate">{{ $handover->name ?? 'Владелец' }}</span><span class="block text-sm text-ink-muted">пока у владельца</span></span>
+                @if ($handover->phone)<a href="tel:+{{ $handover->phone }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
+            </div>
+        @endif
         @if ($deal->isActive() && ! $pass?->used_at)
             <button type="button" class="row justify-between text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">
                 <span class="text-ink-muted">Заберёт</span>
@@ -27,7 +38,9 @@
         @endif
     </div>
 
-    @if ($pass?->used_at)
+    @if ($revoked)
+        <p class="text-sm font-medium text-urgent">Парковка погасила пропуск{{ $revoked->revoke_reason ? ': '.mb_lcfirst($revoked->revoke_reason) : '' }}. Выберите, кто заберёт, выдадим новый</p>
+    @elseif ($pass?->used_at)
         <p class="font-medium text-open">Выдан {{ $pass->used_at->translatedFormat('j M, H:i') }}</p>
     @elseif ($pass)
         <div class="pass-card">
@@ -43,5 +56,5 @@
     @endif
 </section>
 @if ($deal->isActive() && ! $pass?->used_at)
-    <x-deal.receiver-sheet :deal="$deal" :id="$sheet" :action="'/deals/'.$deal->id.'/receiver'"/>
+    <x-deal.receiver-sheet :deal="$deal" :receiver="$receiver" :id="$sheet" :action="'/deals/'.$deal->id.'/receiver'"/>
 @endif

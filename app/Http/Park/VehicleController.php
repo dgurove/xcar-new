@@ -202,7 +202,7 @@ class VehicleController
         $fromRequests = $task !== null;
         // Строка, которую карточка обновит в «Заявках», — та заявка, что открыли (ключ строки — её номер); закрылась — уходит.
         // ТС с её связями и числом веток уже подняты выше — строке заявки догружается только своё.
-        $listed = $task?->setRelation('vehicle', $vehicle)->loadMissing(['yard', 'letter', 'creator']);
+        $listed = $task?->setRelation('vehicle', $vehicle)->loadMissing(['yard', 'letter', 'creator', 'deal.buyer']);
         if ($listed && ! $listed->isOpen()) {
             session()->now('detail-gone', true);
         }

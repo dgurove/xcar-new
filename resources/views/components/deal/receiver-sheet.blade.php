@@ -1,12 +1,12 @@
 {{-- Кто заберёт машину с нашей парковки (18.10.2026, владелец: «решает менеджер в сделке») — строками с аватарами, как
      «Кто платит»: менеджер сделки, его покупатели, другой человек по ФИО и телефону; ниже «Когда приедете». Одно на
      страницу сделки менеджера и карточку сделки CRM (админ меняет за менеджера). Сохранили — пропуск новый, парковка видит. --}}
-@props(['deal', 'action', 'id' => 'receiver'])
+@props(['deal', 'action', 'id' => 'receiver', 'receiver' => null])
 @php
     $manager = $deal->buyer;
     $mine = auth()->id() === $deal->buyer_id;
     $buyers = $manager?->buyers()->with(\App\Users\User::withAvatar())->orderBy('name')->get() ?? collect();
-    $r = $deal->receiver();
+    $r = $receiver ?? $deal->receiver();
     $who = old('who', match (true) {
         filled($deal->receiver_name) => 'other',
         $r?->user && $r->user->id !== $deal->buyer_id && $buyers->contains('id', $r->user->id) => (string) $r->user->id,
