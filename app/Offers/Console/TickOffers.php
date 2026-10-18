@@ -19,6 +19,7 @@ use App\Support\HoldsSingleRun;
 use App\Workflow\Actions\StagesDigest;
 use App\Workflow\Actions\TickStages;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 class TickOffers extends Command
@@ -53,10 +54,11 @@ class TickOffers extends Command
      */
     private function expired(): int
     {
-        $since = Cache::get('offers:expired-tick', now()->subMinutes(5));
+        // В кэше — число, не дата: объекты кэш не принимает (`serializable_classes` выключен), Carbon возвращался обломком.
         $now = now();
+        $since = Carbon::createFromTimestamp((int) Cache::get('offers:expired-tick', $now->copy()->subMinutes(5)->getTimestamp()));
         $numbers = Offer::where('state', OfferState::Open)->whereBetween('bids_close_at', [$since, $now])->pluck('number')->filter()->all();
-        Cache::put('offers:expired-tick', $now, now()->addDay());
+        Cache::put('offers:expired-tick', $now->getTimestamp(), now()->addDay());
         if ($numbers) {
             app(Publisher::class)->rows(Topics::STAFF, ['/' => $numbers]);
         }
