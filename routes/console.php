@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('offers:tick')->everyMinute()->withoutOverlapping();
 Schedule::command('park:tick')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('logistics:tick')->everyFifteenMinutes()->withoutOverlapping();
-Schedule::command('park:digest')->weekdays()->dailyAt('09:00');
 Schedule::command('billing:tick')->dailyAt('09:05');
 // Прозрачности водяных знаков по снятым и почищенным вручную кадрам — ночью, процессор свободен.
 Schedule::command('media:unmark-tune')->dailyAt('04:20')->withoutOverlapping();

@@ -396,11 +396,13 @@ final class Notify
         Notification::send($this->parkStaff()->filter->isParkAdmin(), ParkNotice::idle($e->vehicle, $e->days));
     }
 
-    /** Просроченный счёт — владельцу в Telegram с кнопкой «Оплачен»; CRM — админам, парковки — управляющим её города и админам. */
+    /**
+     * Просроченный счёт: CRM — админам, парковки — управляющим её города и админам. Владельцу в Telegram — нет (18.10.2026,
+     * владелец: сводки там «бесят, бесполезные»); кнопка «Оплачен» у прежних сообщений работает (`UpdateHandler`).
+     */
     public function invoiceOverdue(InvoiceOverdue $e): void
     {
         $invoice = $e->invoice->load(['party', 'vehicle', 'deal.offer']);
-        NotifyOwner::dispatch(new \App\Telegram\Messages\InvoiceOverdue($invoice), park: (bool) $invoice->park);
         if (! $invoice->park) {
             Notification::send($this->staff(), MoneyNotice::overdue($invoice));
 

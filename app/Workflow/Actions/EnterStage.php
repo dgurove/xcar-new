@@ -82,7 +82,11 @@ final class EnterStage
             'waits_for' => $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null),
             'entered_at' => $now,
             'block_entered_at' => $from && $from->block_id === $to->block_id && $position?->block_entered_at ? $position->block_entered_at : $now,
-            'deadline_at' => $noInvoice || $awaitsLetter || $carried ? null : $to->deadlineFor($offer, $now),
+            'deadline_at' => match (true) {
+                $awaitsLetter => Stage::letterDeadline($now),
+                $noInvoice || $carried => null,
+                default => $to->deadlineFor($offer, $now),
+            },
             'reminded_at' => null,
             'overdue_at' => null,
             'payload' => $payload ?: null,

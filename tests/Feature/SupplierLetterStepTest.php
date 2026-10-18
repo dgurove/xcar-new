@@ -72,7 +72,8 @@ class SupplierLetterStepTest extends TestCase
         $this->assertTrue($position->stage->isLetterStep(), 'этап после «Принять» у Альфы — с письмом поставщику');
         $this->assertSame('unsent', $position->letterStatus());
         $this->assertSame(WaitsFor::Us, $position->waitsFor());
-        $this->assertNull($position->deadline_at);
+        // Пока не ушло — свой срок отправить (18.10.2026): до 21:00, после 18:00 — до 12:00 завтра.
+        $this->assertTrue($position->deadline_at->equalTo(\App\Workflow\Stage::letterDeadline($position->entered_at)));
         // У Альфы этот шаг без срока с 18.10.2026 (владелец); срок от письма проверяем на этапе со сроком.
         $position->stage->update(['limit_minutes' => 1440]);
 

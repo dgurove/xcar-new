@@ -43,7 +43,8 @@ final class Stock extends Route
         return [
             ...$head,
             'request' => [
-                'name' => 'Собираем заявку поставщику', 'block' => 'request', 'waits_for' => 'us', 'offer_state' => 'sold',
+                // Ход наш — без срока заявка не уходила по 9 дней (18.10.2026): двое суток, потом красным.
+                'name' => 'Собираем заявку поставщику', 'block' => 'request', 'waits_for' => 'us', 'offer_state' => 'sold', 'limit_minutes' => 2 * self::DAY,
                 'exits' => [['Заявка отправлена', 'staff', 'claimed'], ['Поставщик отказал', 'staff', 'supplier_declined']],
             ],
             'claimed' => $claimed,

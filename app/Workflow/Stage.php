@@ -150,6 +150,18 @@ class Stage extends Model
         };
     }
 
+    /**
+     * Срок отправить письмо поставщику, пока оно не ушло (18.10.2026, владелец: наш ход без срока «не виден нигде» —
+     * письма висели по 5 дней): до 21:00 того же дня по Москве, вошли после 18:00 — до 12:00 следующего. Ушло — срок
+     * ответа поставщика от письма (`MarkSupplierLetter`).
+     */
+    public static function letterDeadline(Carbon $enteredAt): Carbon
+    {
+        $at = $enteredAt->copy()->setTimezone('Europe/Moscow');
+
+        return ($at->hour < 18 ? $at->setTime(21, 0) : $at->addDay()->setTime(12, 0))->setTimezone(config('app.timezone'));
+    }
+
     public function deadlineFrom(Carbon $enteredAt): ?Carbon
     {
         return $this->limit_minutes !== null && $this->waits_for !== WaitsFor::Nobody

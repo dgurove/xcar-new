@@ -55,7 +55,6 @@ use App\Offers\Console\TickOffers;
 use App\Park\Console\AutoRequestsCommand;
 use App\Park\Console\FillFromDocsCommand;
 use App\Park\Console\FindValuesCommand;
-use App\Park\Console\ParkDigestCommand;
 use App\Park\Console\ReleaseByLettersCommand;
 use App\Park\Console\SpbFactCommand;
 use App\Park\Console\StoreByLettersCommand;
@@ -103,7 +102,6 @@ return Application::configure(basePath: dirname(__DIR__))
         MigtorgArchive::class,
         RefillVendors::class,
         TickPark::class,
-        ParkDigestCommand::class,
         StoreByLettersCommand::class,
         SpbFactCommand::class,
         AutoRequestsCommand::class,
