@@ -53,6 +53,20 @@ class StageTimersTest extends TestCase
         $this->assertSame('2026-10-16 12:00', $offer->fresh()->position(Track::Sale)->deadline_at->timezone('Europe/Moscow')->format('Y-m-d H:i'));
     }
 
+    /** Этап был без срока — срок получают и сделки на нём, от входа (18.10.2026: падало на сравнении с пустым сроком). */
+    public function test_limit_on_stage_without_one_reaches_deals(): void
+    {
+        [$admin, $offer, $stage] = $this->onStage('Проверка оплаты');
+        $stage->update(['limit_minutes' => null]);
+        $this->travelTo(Carbon::parse('2026-10-14 12:00', 'Europe/Moscow'));
+        $offer = $this->enter($offer, $stage->fresh());
+        $this->assertNull($offer->position(Track::Sale)->deadline_at);
+
+        app(\App\Workflow\Actions\SetStageLimit::class)($stage->fresh(), 2 * 24 * 60, false, true, $admin);
+        $position = $offer->fresh()->position(Track::Sale);
+        $this->assertTrue($position->deadline_at->equalTo($position->entered_at->copy()->addDays(2)));
+    }
+
     public function test_workdays_skip_weekend(): void
     {
         $friday = Carbon::parse('2026-10-16 15:00');

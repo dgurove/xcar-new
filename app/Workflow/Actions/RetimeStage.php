@@ -34,7 +34,8 @@ final class RetimeStage
 
         foreach (Position::where('stage_id', $stage->id)->with('offer')->get() as $position) {
             $deadline = $this->deadline($stage, $position, $oldMinutes, $oldWorkdays);
-            if ($deadline === false || $deadline?->equalTo($position->deadline_at) || ($deadline === null && $position->deadline_at === null)) {
+            // Срока не было, теперь есть (этап без срока получил его) — сравнивать не с чем: equalTo(null) падал (18.10.2026).
+            if ($deadline === false || ($deadline && $position->deadline_at && $deadline->equalTo($position->deadline_at)) || ($deadline === null && $position->deadline_at === null)) {
                 continue;
             }
             DB::transaction(function () use ($position, $deadline, $stage, $by, $was, $now) {
