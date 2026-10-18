@@ -151,6 +151,9 @@ document.addEventListener('turbo:before-morph-attribute', (event) => {
 });
 document.addEventListener('turbo:before-morph-element', (event) => {
     const el = event.target;
+    // Фрейм в открытой модальной шторке (окно письма после «Принять», окно приёма парковки) грузит то, что поставил
+    // клиент: морф страницы снимал ему src — запрос обрывался, окно оставалось заготовкой (18.10.2026).
+    if (el instanceof HTMLElement && el.matches('turbo-frame') && el.closest('dialog')?.matches(':modal')) event.preventDefault();
     if (el === document.activeElement && el.matches('input, textarea, select')) event.preventDefault();
     if (el.matches('input, textarea') && el.value !== el.defaultValue) event.preventDefault();
 });
