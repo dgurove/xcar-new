@@ -141,8 +141,9 @@ class OfferController
             'number' => true,
             'closing' => in_array($preset, self::OPEN, true),
             'tab' => in_array($preset, self::BY_TAB, true),
-            // Дата заведения — в окошке сортировки всегда, и там, где столбец даты — «Во вкладке».
-            'created' => true,
+            // Во вкладках шагов время, порядок и аватар — про приход во вкладку (18.10.2026, начальник: сортировал по
+            // заведению, а в столбце время прихода — «непонятно, что значит»). Запомненная «Дата заведения» тут — умолчание.
+            'created' => ! in_array($preset, self::BY_TAB, true),
             default => $cols === null || in_array($key, $cols, true),
         }, ARRAY_FILTER_USE_BOTH);
         // Шаги работы — по тому, когда предложение сюда пришло, новые сверху (15.10.2026, владелец: оценил закупочную — и ищи
@@ -246,7 +247,7 @@ class OfferController
             $offers->loadMissing('media');
         }
         // Кто завёл — аватар у даты (столбец «Создано» на ПК у черновика, краткая таблица телефона — у всех строк, 09.10.2026).
-        $offers->getCollection()->load('moderator.media');
+        $offers->getCollection()->load(['moderator.media', 'tabBy.media']);
         // Оценки менеджеров — на месте «Оценить» у черновика без цены продажи (`x-offer.rate-chip`).
         if ($admin) {
             $offers->getCollection()->load(['openEstimates.user', ...User::withAvatar('openEstimates.user.media')]);

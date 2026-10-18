@@ -13,6 +13,7 @@ use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Reading\ReadLetter;
 use App\Offers\Actions\FillFromLetter;
+use App\Offers\Actions\ShowInGallery;
 use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
 use App\Offers\Offer;
@@ -69,6 +70,8 @@ final class OnMessage
         }
         // Письмо по заведённому предложению дописывает пустое: контакт, у черновика — машину, цену, документы.
         if ($offer = $linked instanceof Offer ? $linked : $thread?->offer) {
+            // Новое письмо вендора по черновику в галерее — окно закрывается (привязку новой ветки ловит LinkThread).
+            ShowInGallery::onLetter($offer);
             try {
                 app(FillFromLetter::class)($offer, $message);
             } catch (Throwable $e) {

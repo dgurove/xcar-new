@@ -67,6 +67,13 @@ class Offer extends Model
 
     public const HOT_HOURS = 12;
 
+    /**
+     * Вендор сам прислал предложение письмом: у предложения ветка почты со входящим (пересылка сотрудника — тоже). Такие
+     * не запрашиваем у вендора (`ClaimRequest`) и сами в галерею не отправляем (18.10.2026, начальник: галерея — сбор
+     * интереса к машинам с Мигторга, а письмо — уже предложение). Флага нет: письмо отвязали — признак ушёл.
+     */
+    public const LETTER_SQL = "exists (select 1 from mail_threads t join mail_messages m on m.thread_id = t.id where t.offer_id = offers.id and m.direction = 'in')";
+
     /** Машина (`Cars\Car`) — с каждым предложением: название, VIN, фото. */
     protected $with = ['car'];
 
@@ -88,6 +95,8 @@ class Offer extends Model
             $was = $o->getRawOriginal();
             if (! $o->exists || self::tabKeyOf($now) !== self::tabKeyOf($was)) {
                 $o->tab_at = now();
+                // И кто перевёл (18.10.2026): аватар у времени в строке. Письмо, часы, файл — без человека.
+                $o->tab_by = auth()->id();
             }
         });
         // Продажа кончилась (в архив, снята) — в истории ТС парковки «Снята с продажи»; машина и её файлы — у машины,
@@ -233,6 +242,12 @@ class Offer extends Model
     public function moderator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'moderator_id');
+    }
+
+    /** Кто перевёл во вкладку шага работы (`tab_at`): вписал закупочную, поставил цену. Сделала система — пусто. */
+    public function tabBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'tab_by');
     }
 
     /** Подтверждение знает своё предложение без запроса (`chaperone`): строка спрашивает закупочную и цену предложения. */
@@ -630,6 +645,17 @@ class Offer extends Model
         }
 
         return $q->whereRaw('false');
+    }
+
+    /** Пришло письмом вендора (`LETTER_SQL`); `false` — без такого письма. */
+    public function scopeByLetter(Builder $q, bool $yes = true): Builder
+    {
+        return $q->whereRaw(($yes ? '' : 'not ').self::LETTER_SQL);
+    }
+
+    public function hasLetter(): bool
+    {
+        return $this->exists && self::whereKey($this->id)->byLetter()->exists();
     }
 
     /** Заведено почтой само (`AutoOffer`): без автора, в истории «Заведён из письма». */

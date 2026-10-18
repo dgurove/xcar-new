@@ -10,6 +10,7 @@ use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
+use App\Offers\Actions\ShowInGallery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\City;
@@ -32,6 +33,10 @@ final class LinkThread
         $thread->update(($to instanceof Offer ? ['offer_id' => $to->id] : ['vehicle_id' => $to->id]) + ['unlinked_at' => null]);
         if ($files) {
             ImportThreadFiles::attachNow($thread);
+        }
+        // Письмо вендора по черновику в галерее — предложение уже пришло, интерес не нужен (18.10.2026).
+        if ($to instanceof Offer) {
+            ShowInGallery::onLetter($to);
         }
     }
 

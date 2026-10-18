@@ -22,8 +22,8 @@ class ClaimRequest extends Model
     /** Был отклик: подтверждение (любое, и отклонённое) или интерес. */
     public const REPLY_SQL = '(exists (select 1 from bids where bids.offer_id = offers.id) or exists (select 1 from interests where interests.offer_id = offers.id))';
 
-    /** Вендор сам прислал предложение письмом: ветка почты предложения со входящим. Такие не запрашиваем. */
-    public const LETTER_SQL = "exists (select 1 from mail_threads t join mail_messages m on m.thread_id = t.id where t.offer_id = offers.id and m.direction = 'in')";
+    /** Вендор сам прислал предложение письмом (`Offer::LETTER_SQL`). Такие не запрашиваем. */
+    public const LETTER_SQL = Offer::LETTER_SQL;
 
     protected function casts(): array
     {
