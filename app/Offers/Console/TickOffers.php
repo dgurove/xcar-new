@@ -56,7 +56,7 @@ class TickOffers extends Command
     {
         // В кэше — число, не дата: объекты кэш не принимает (`serializable_classes` выключен), Carbon возвращался обломком.
         $now = now();
-        $since = Carbon::createFromTimestamp((int) Cache::get('offers:expired-tick', $now->copy()->subMinutes(5)->getTimestamp()));
+        $since = Carbon::createFromTimestamp((int) Cache::get('offers:expired-tick', $now->copy()->subMinutes(5)->getTimestamp()), $now->getTimezone());
         $numbers = Offer::where('state', OfferState::Open)->whereBetween('bids_close_at', [$since, $now])->pluck('number')->filter()->all();
         Cache::put('offers:expired-tick', $now->getTimestamp(), now()->addDay());
         if ($numbers) {
