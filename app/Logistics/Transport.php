@@ -367,7 +367,7 @@ class Transport extends Model
     {
         return match ($this->destination) {
             Point::Keeper => self::keeperLabel($this->saleOffer()) ?? Point::Keeper->label(),
-            Point::Yard => $this->toYard?->name ?? $this->to_address,
+            Point::Yard => ($this->toYard ? 'Парковка '.$this->toYard->name : null) ?? $this->to_address,
             Point::Other => $this->to_address,
             Point::Ours => trim(Point::Ours->label().($this->to_address ? ', '.$this->to_address : '')),
             Point::Depot => $this->depot?->label() ?? Point::Depot->label(),
@@ -380,7 +380,7 @@ class Transport extends Model
     {
         return match ($this->next_destination) {
             Point::Keeper => self::keeperLabel($this->saleOffer()) ?? Point::Keeper->label(),
-            Point::Yard => Yard::withoutGlobalScope(City::SCOPE)->find($this->next_to_yard_id)?->name ?? $this->next_to_address,
+            Point::Yard => (($y = Yard::withoutGlobalScope(City::SCOPE)->find($this->next_to_yard_id)) ? 'Парковка '.$y->name : null) ?? $this->next_to_address,
             Point::Other => $this->next_to_address,
             Point::Ours => trim(Point::Ours->label().($this->next_to_address ? ', '.$this->next_to_address : '')),
             Point::Depot, null => $this->next_to_address,

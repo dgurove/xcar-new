@@ -25,7 +25,8 @@ final class SetRoute
     public static function rules(bool $reach = true): array
     {
         return [
-            'destination' => ['nullable', Rule::enum(Point::class)],
+            // Точка или строка парковки `yard:5` (`Point::read`).
+            'destination' => ['nullable', 'string', 'max:20'],
             'to_yard_id' => ['nullable', 'integer', 'exists:park_yards,id'],
             'to_address' => ['nullable', 'string', 'max:500'],
             'reach' => [$reach ? 'required' : 'nullable', Rule::enum(Reach::class)],
@@ -52,17 +53,19 @@ final class SetRoute
         if (! $t->isOpen() || $t->state === TransportState::Delivered) {
             throw ValidationException::withMessages(['destination' => 'ТС уже привезли']);
         }
-        $to = Point::tryFrom((string) ($data['destination'] ?? ''));
+        [$to, $yard] = Point::read($data);
         $address = trim((string) ($data['to_address'] ?? '')) ?: null;
         match (true) {
             $to === Point::Keeper && ! Transport::keeperLabel($t->saleOffer()) => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера']),
-            $to === Point::Yard && empty($data['to_yard_id']) => throw ValidationException::withMessages(['to_yard_id' => 'Какая парковка']),
+            $to === Point::Yard && ! $yard => throw ValidationException::withMessages(['destination' => 'Какая парковка']),
+            // «К нам» без адреса — не место (18.10.2026): только парковка по названию или адрес.
+            $to === Point::Ours => throw ValidationException::withMessages(['destination' => 'Выберите парковку или адрес']),
             $to === Point::Other && ! $address => throw ValidationException::withMessages(['to_address' => 'Адрес']),
             default => null,
         };
         // Пачкой («Назначить (N)») точку не шлют — у машин она разная: не трогаем.
-        $fields = array_key_exists('destination', $data) ? ['destination' => $to, 'to_yard_id' => $to === Point::Yard ? (int) $data['to_yard_id'] : null,
-            'to_address' => in_array($to, [Point::Other, Point::Ours], true) ? $address : null] : [];
+        $fields = array_key_exists('destination', $data) ? ['destination' => $to, 'to_yard_id' => $to === Point::Yard ? $yard : null,
+            'to_address' => $to === Point::Other ? $address : null] : [];
         if (self::full($t, $by)) {
             if (array_key_exists('reach', $data)) {
                 $fields['reach'] = Reach::tryFrom((string) $data['reach']) ?? $t->reach;

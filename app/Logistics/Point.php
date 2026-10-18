@@ -24,7 +24,7 @@ enum Point: string
     {
         return match ($this) {
             self::Keeper => 'К менеджеру',
-            self::Ours => 'К нам',
+            self::Ours => 'К нам',   // старые задачи до 18.10.2026: новых «к нам» без адреса нет
             self::Yard => 'На парковку',
             self::Other => 'Другой адрес',
             self::Depot => 'На стоянку',
@@ -41,5 +41,34 @@ enum Point: string
             self::Other => CarPlace::Elsewhere,
             self::Depot => CarPlace::Depot,
         };
+    }
+
+    /**
+     * Значение строки «Куда» из формы: точка и у парковки — её номер. Каждая наша парковка — своя строка
+     * (`yard:5`, 18.10.2026, владелец: «„к нам“ — это куда, непонятно»); старое `yard` с полем `to_yard_id` — тоже.
+     *
+     * @return array{0: ?self, 1: ?int}
+     */
+    public static function read(array $data): array
+    {
+        $value = (string) ($data['destination'] ?? '');
+        $point = preg_match('/^yard:(\d+)$/', $value, $m) ? self::Yard : self::tryFrom($value);
+        $yard = $point === self::Yard ? (int) ($m[1] ?? $data['to_yard_id'] ?? 0) : 0;
+
+        // Чужой номер — «какая парковка?», а не ошибка базы.
+        return [$point, $yard && array_key_exists($yard, Choices::yards()) ? $yard : null];
+    }
+
+    /**
+     * Строки «Куда» формы — значение → подпись: менеджеру сделки (если он есть), каждая наша парковка по названию, другой
+     * адрес. «К нам» без адреса больше не предлагается: это не место. `$keeper` — подпись строки менеджера.
+     *
+     * @return array<string, string>
+     */
+    public static function choices(?string $keeper): array
+    {
+        return array_filter([self::Keeper->value => $keeper])
+            + collect(Choices::yards())->mapWithKeys(fn ($name, $id) => ['yard:'.$id => 'Парковка '.$name])->all()
+            + [self::Other->value => self::Other->label()];
     }
 }

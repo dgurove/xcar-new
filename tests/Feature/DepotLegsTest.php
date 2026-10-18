@@ -13,6 +13,7 @@ use App\Logistics\TransportKind;
 use App\Logistics\TransportState;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
+use App\Park\Yard;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -41,9 +42,12 @@ class DepotLegsTest extends TestCase
 
     private Offer $offer;
 
+    private Yard $yard;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->yard = Yard::create(['name' => 'Измайловский лес']);
         Notification::fake();
         $this->admin = User::create(['name' => 'Андрей Кузнецов', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $this->tanya = User::create(['name' => 'Татьяна Логинова', 'phone' => '79000000002', 'roles' => [Role::Logist], 'approved_at' => now()]);
@@ -57,7 +61,7 @@ class DepotLegsTest extends TestCase
     {
         $t = app(OpenPickup::class)($this->offer->fresh(), $this->admin);
         app(AssignExecutor::class)($t, Channel::Logist, $this->tanya, $this->admin);
-        app(SetRoute::class)($t->fresh(), ['destination' => 'ours', 'reach' => 'intercity'], $this->admin);
+        app(SetRoute::class)($t->fresh(), ['destination' => 'yard:'.$this->yard->id, 'reach' => 'intercity'], $this->admin);
 
         // Новую стоянку Татьяна заводит прямо в шторке выбора.
         $this->actingAs($this->tanya)->postJson(self::LOG.'/people', ['kind' => 'depot', '_person' => ['name' => 'Киров, Северная', 'address' => 'ул. Северная 5', 'contact_name' => 'Сторож Николай', 'phone' => '+7 900 111-22-33']])
@@ -74,7 +78,7 @@ class DepotLegsTest extends TestCase
     {
         [$t, $depot] = $this->toDepot();
         $this->assertSame(Point::Depot, $t->destination);
-        $this->assertSame(Point::Ours, $t->next_destination);
+        $this->assertSame(Point::Yard, $t->next_destination);
         $this->assertSame('Сторож Николай', $t->to_contact);
         $this->assertStringStartsWith('Стоянка Киров, Северная', $t->routeLabel());
 
@@ -88,7 +92,7 @@ class DepotLegsTest extends TestCase
         $this->assertSame(TransportKind::Move, $leg->kind);
         $this->assertSame(TransportState::Logist, $leg->state);
         $this->assertSame($depot->id, $leg->from_depot_id);
-        $this->assertSame(Point::Ours, $leg->destination);
+        $this->assertSame(Point::Yard, $leg->destination);
         $this->assertSame('Сторож Николай', $leg->ownerName());
         $this->assertTrue(Transport::openFor($this->offer->fresh())->is($leg));
         $this->assertCount(2, $leg->chain());
@@ -98,7 +102,7 @@ class DepotLegsTest extends TestCase
         $this->actingAs($this->petr)->post(self::LOG.'/transports/'.$leg->id.'/pickup')->assertSessionHasNoErrors();
         $this->assertSame(CarPlace::Moving, $this->offer->fresh()->car_place);
         $this->actingAs($this->petr)->post(self::LOG.'/transports/'.$leg->id.'/deliver')->assertSessionHasNoErrors();
-        $this->assertSame(CarPlace::WithUs, $this->offer->fresh()->car_place);
+        $this->assertSame(CarPlace::Ours, $this->offer->fresh()->car_place);
         $this->assertNull($leg->fresh()->nextLeg);
     }
 
@@ -120,7 +124,7 @@ class DepotLegsTest extends TestCase
         [$t] = $this->toDepot();
         $this->actingAs($this->tanya)->put(self::LOG.'/transports/'.$t->id.'/logist', ['executor_id' => $this->ivan->id, 'cost' => '40 000', 'leg' => 'route'])->assertSessionHasNoErrors();
         $t->refresh();
-        $this->assertSame(Point::Ours, $t->destination);
+        $this->assertSame(Point::Yard, $t->destination);
         $this->assertNull($t->depot_id);
 
         $other = User::create(['name' => 'Другой логист', 'phone' => '79000000005', 'roles' => [Role::Logist], 'approved_at' => now()]);

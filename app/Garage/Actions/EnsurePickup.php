@@ -8,6 +8,7 @@ use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\OpenPickup;
 use App\Logistics\Channel;
 use App\Logistics\Point;
+use App\Offers\CarPlace;
 use App\Offers\Offer;
 use App\Park\VehicleState;
 use App\Users\User;
@@ -31,9 +32,10 @@ final class EnsurePickup
         if (! $car || $offer->pickedUp() || $offer->parkVehicle?->state === VehicleState::Stored) {
             return $offer;
         }
-        $to = $car->manager_id ? Point::Keeper : Point::Ours;
+        // Без менеджера («взяли под себя») — куда везти, решают при назначении: «к нам» без адреса — не место (18.10.2026).
+        $to = $car->manager_id ? Point::Keeper : null;
         if ($where === 'arrived') {
-            ($this->place)($offer, $to->place(), $by);
+            ($this->place)($offer, $to?->place() ?? CarPlace::WithUs, $by);
             if ($car->state === CarState::Waiting) {
                 $car->moveTo(CarState::Repair, by: $by);
                 GarageChanged::dispatch($car);
@@ -44,7 +46,7 @@ final class EnsurePickup
         // Везёт сам менеджер — только к себе, и это не логистика: тихо (`OpenPickup` quiet).
         $self = $evacuator && $car->manager_id === $evacuator->id;
         $t = ($this->open)($offer, $by, $to, quiet: $self);
-        if ($t->destination !== $to) {
+        if ($to && $t->destination !== $to) {
             $t->update(['destination' => $to]);
         }
         if ($self && ! $t->isExecutedBy($evacuator)) {

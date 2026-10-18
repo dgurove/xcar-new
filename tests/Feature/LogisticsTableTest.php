@@ -87,11 +87,11 @@ class LogisticsTableTest extends TestCase
         $this->assertSame(1, $kept->fresh()->car->keys_count);
         $this->assertSame('new', $lone->fresh()->state->value, 'без менеджера «к менеджеру» не проходит');
 
-        // Одна задача — к нам, датой; позже «сейчас» нельзя.
+        // Одна задача — по адресу, датой; позже «сейчас» нельзя.
         $this->actingAs($moderator)->post($host.'/transports/'.$lone->id.'/backdate', ['picked_at' => now()->addDay()->format('Y-m-d\TH:i')])->assertSessionHasErrors('picked_at');
-        $this->actingAs($moderator)->post($host.'/transports/'.$lone->id.'/backdate', ['picked_at' => $at->format('Y-m-d\TH:i'), 'destination' => 'ours'])->assertSessionHasNoErrors();
+        $this->actingAs($moderator)->post($host.'/transports/'.$lone->id.'/backdate', ['picked_at' => $at->format('Y-m-d\TH:i'), 'destination' => 'other', 'to_address' => 'Москва, база'])->assertSessionHasNoErrors();
         $this->assertSame('delivered', $lone->fresh()->state->value);
-        $this->assertSame('with_us', $draft->fresh()->car_place->value);
+        $this->assertSame('elsewhere', $draft->fresh()->car_place->value);
     }
 
     /** Сделку отменили — вывоз, заказанный ради неё, отменяется (у вендора, чьи машины вывозим все, — остаётся). */

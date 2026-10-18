@@ -29,7 +29,7 @@ final class Backdate
         return [
             'picked_at' => ['required', 'date', 'before_or_equal:now'],
             'keys' => ['nullable', 'integer', 'min:0', 'max:9'],
-            'destination' => ['nullable', Rule::enum(Point::class)],
+            'destination' => ['nullable', 'string', 'max:20'],
             'to_yard_id' => ['nullable', 'integer', Rule::exists('park_yards', 'id')],
             'to_address' => ['nullable', 'string', 'max:500'],
             'pickup_note' => ['nullable', 'string', 'max:2000'],
@@ -52,25 +52,27 @@ final class Backdate
         $at = Carbon::parse($data['picked_at']);
         $picked = $t->state->picked();
         // Перевод парковки: куда — решено при отправке; у вывоза — точка из формы, по умолчанию менеджеру с гаражом или к нам.
-        $to = $t->isPickup() ? (isset($data['destination']) && $data['destination'] !== '' ? Point::from($data['destination'])
-            : ($t->saleOffer()?->keeper() ? Point::Keeper : Point::Ours)) : $t->destination;
+        [$chosen, $yard] = Point::read($data);
+        $yard ??= $t->to_yard_id;
+        $to = $t->isPickup() ? ($chosen ?? ($t->saleOffer()?->keeper() ? Point::Keeper : $t->destination)) : $t->destination;
         $address = trim((string) ($data['to_address'] ?? '')) ?: null;
         if ($t->isPickup()) {
             match (true) {
                 $to === Point::Keeper && ! $t->saleOffer()?->keeper() => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера с гаражом или сделкой']),
-                $to === Point::Yard && empty($data['to_yard_id']) => throw ValidationException::withMessages(['to_yard_id' => 'Какая парковка']),
+                $to === null => throw ValidationException::withMessages(['destination' => 'Куда привезли']),
+                $to === Point::Yard && ! $yard => throw ValidationException::withMessages(['destination' => 'Какая парковка']),
                 $to === Point::Other && ! $address => throw ValidationException::withMessages(['to_address' => 'Адрес']),
                 default => null,
             };
         }
 
-        DB::transaction(function () use ($t, $data, $by, $at, $to, $address, $picked) {
+        DB::transaction(function () use ($t, $data, $by, $at, $to, $address, $picked, $yard) {
             $t->update([
                 'state' => TransportState::Delivered,
                 'picked_at' => $picked ? $t->picked_at : $at,
                 'delivered_at' => $picked && $t->picked_at?->gt($at) ? $t->picked_at : $at,
                 ...($t->isPickup() ? [
-                    'destination' => $to, 'to_yard_id' => $to === Point::Yard ? (int) $data['to_yard_id'] : null,
+                    'destination' => $to, 'to_yard_id' => $to === Point::Yard ? $yard : null,
                     'to_address' => $to === Point::Other ? $address : $t->to_address,
                     'pickup_note' => trim((string) ($data['pickup_note'] ?? '')) ?: $t->pickup_note,
                 ] : []),

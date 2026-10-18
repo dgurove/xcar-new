@@ -390,7 +390,7 @@
             </x-ui.sheet>
         </div>
     @endif
-    @if ($pickup && ! $order && $open && $handles)
+    @if (($pickup || $t->from_depot_id) && ! $order && $open && $handles)
         @php $routeFull = \App\Logistics\Actions\SetRoute::full($t, $me); @endphp
         <div data-controller="sheet" data-action="route-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'route-'.$id" title="Куда везти">

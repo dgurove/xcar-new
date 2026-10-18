@@ -14,6 +14,7 @@ use App\Logistics\TransportEvent;
 use App\Logistics\TransportState;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
+use App\Park\Yard;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -42,9 +43,12 @@ class TransportStepsTest extends TestCase
 
     private Offer $offer;
 
+    private Yard $yard;
+
     protected function setUp(): void
     {
         parent::setUp();
+        $this->yard = Yard::create(['name' => 'Измайловский лес']);
         Notification::fake();
         $this->admin = User::create(['name' => 'Андрей Кузнецов', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $this->tanya = User::create(['name' => 'Татьяна Логинова', 'phone' => '79000000002', 'roles' => [Role::Logist], 'approved_at' => now()]);
@@ -90,7 +94,7 @@ class TransportStepsTest extends TestCase
         $this->assertSame($this->ivan->id, $called->for_id);
         $this->assertSame('Татьяна Л. за исполнителя Иван П.', $called->who());
 
-        $this->actingAs($this->admin)->post(self::LOG.'/transports/'.$t->id.'/pickup', ['destination' => 'ours', 'keys' => 2])->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->post(self::LOG.'/transports/'.$t->id.'/pickup', ['destination' => 'yard:'.$this->yard->id, 'keys' => 2])->assertSessionHasNoErrors();
         $this->assertSame(TransportState::Moving, $t->fresh()->state);
         $this->assertSame(CarPlace::Moving, $this->offer->fresh()->car_place);
 
@@ -113,7 +117,7 @@ class TransportStepsTest extends TestCase
     public function test_delivered_is_undone_only_by_admin(): void
     {
         $t = $this->viaTanya();
-        $this->actingAs($this->admin)->post(self::LOG.'/transports/'.$t->id.'/pickup', ['destination' => 'ours', 'keys' => 1])->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->post(self::LOG.'/transports/'.$t->id.'/pickup', ['destination' => 'yard:'.$this->yard->id, 'keys' => 1])->assertSessionHasNoErrors();
         $this->actingAs($this->admin)->post(self::LOG.'/transports/'.$t->id.'/deliver')->assertSessionHasNoErrors();
 
         $this->actingAs($this->tanya)->post(self::LOG.'/transports/'.$t->id.'/back')->assertSessionHasErrors('transport');
@@ -158,7 +162,7 @@ class TransportStepsTest extends TestCase
         $t = app(OpenPickup::class)($this->offer->fresh(), $this->admin);
 
         // Без «внутри / между» — не назначается.
-        $this->actingAs($this->admin)->put(self::LOG.'/transports/'.$t->id.'/executor', ['channel' => 'logist', 'who' => ['logist' => $this->tanya->id], 'destination' => 'ours'])
+        $this->actingAs($this->admin)->put(self::LOG.'/transports/'.$t->id.'/executor', ['channel' => 'logist', 'who' => ['logist' => $this->tanya->id], 'destination' => 'yard:'.$this->yard->id])
             ->assertSessionHasErrors('reach');
         $this->assertNull($t->fresh()->channel);
 
@@ -172,8 +176,8 @@ class TransportStepsTest extends TestCase
 
         // Стало известно — Татьяна ставит точку; исполнитель — другой адрес, дальность и комментарий ему не трогать.
         app(LogistAssign::class)($t, ['executor_id' => $this->ivan->id, 'cost' => '65 000'], $this->tanya);
-        $this->actingAs($this->tanya)->put(self::LOG.'/transports/'.$t->id.'/route', ['reach' => 'local', 'destination' => 'ours', 'comment' => 'Везём к нам'])->assertSessionHasNoErrors();
-        $this->assertSame('К нам', $t->fresh()->routeLabel());
+        $this->actingAs($this->tanya)->put(self::LOG.'/transports/'.$t->id.'/route', ['reach' => 'local', 'destination' => 'yard:'.$this->yard->id, 'comment' => 'Везём к нам'])->assertSessionHasNoErrors();
+        $this->assertSame('Парковка Измайловский лес', $t->fresh()->routeLabel());
         $this->actingAs($this->ivan)->put(self::LOG.'/transports/'.$t->id.'/route', ['destination' => 'other', 'to_address' => 'Казань, Победы 1', 'reach' => 'intercity', 'comment' => 'x'])->assertSessionHasNoErrors();
         $t->refresh();
         $this->assertSame('Казань, Победы 1', $t->routeLabel());
