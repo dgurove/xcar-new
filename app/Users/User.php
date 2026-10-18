@@ -448,6 +448,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->isParking() && $this->park_readonly && ! $this->isParkAdmin();
     }
 
+    /** Личная заметка к ТС на xcar.ru (18.10.2026): менеджеру, покупателю, супер-покупателю и админу; демо и проверяющему — нет. */
+    public function keepsNotes(): bool
+    {
+        return ! $this->is_demo && ($this->isManager() || $this->isBuyer() || $this->isSuperBuyer() || $this->isAdmin());
+    }
+
     /** Сайтовое (избранное, чаты, интересы, поддержка, поток каталога) — всем, у кого сайт есть: не только парковка или логистика. */
     public function usesSite(): bool
     {

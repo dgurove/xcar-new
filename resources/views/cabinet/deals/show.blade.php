@@ -87,6 +87,7 @@
                     </div>
                 @endif
             </div>
+            <x-offer.my-note :offer="$offer" class="order-3 min-w-0"/>
             <x-offer.facts :offer="$offer" :full="true" class="order-7"/>
             @if ($docs->isNotEmpty())
                 <section class="order-8 min-w-0">

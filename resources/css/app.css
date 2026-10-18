@@ -1555,6 +1555,9 @@ html.kb-open { --home-gap: 0px; }
   .estimate-due--danger { @apply justify-center; color: var(--color-danger); }
   /* Отказ (11.10.2026): разница желаемой к ориентиру — следом за ним, тусклее; причина — поле, растущее по строкам. */
   .estimate-diff:not(:empty) { @apply ml-1.5 text-ink-dim; }
+  /* Личная заметка к ТС на сайте (x-offer.my-note, 18.10.2026): поле растёт по строкам до ~16rem, дальше листается. */
+  .note-field { @apply block w-full rounded-(--radius-l) bg-surface-2 px-4 py-3 text-ink outline-none placeholder:text-ink-dim; resize: none; field-sizing: content; min-height: 4.5rem; max-height: 16rem; overflow-wrap: anywhere; }
+  .note-field[readonly] { @apply text-ink-muted; }
   .estimate-note { @apply block w-full rounded-(--radius-l) bg-surface-2 px-4 py-3 text-ink outline-none placeholder:text-ink-dim; resize: none; field-sizing: content; min-height: 2.875rem; max-height: 9rem; }
   /* Причина отказа в CRM — словами менеджера, его репликой: пузырь входящего с острым углом у аватара. */
   .estimate-reason { @apply mt-4 whitespace-pre-line rounded-(--radius-l) rounded-tl-[4px] bg-surface-2 px-4 py-3 text-left; overflow-wrap: anywhere; }

@@ -32,6 +32,7 @@ use App\Http\Site\FavoriteController;
 use App\Http\Site\FileController;
 use App\Http\Site\InterestController;
 use App\Http\Site\LandingController;
+use App\Http\Site\NoteController;
 use App\Http\Site\OfferController;
 use App\Http\Site\PayController;
 use App\Http\Site\PickupController;
@@ -107,6 +108,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/interest', [InterestController::class, 'store'])->middleware('throttle:30,1');
     Route::delete('/offers/{offer}/interest', [InterestController::class, 'destroy']);
     Route::post('/offers/{offer}/favorites', [FavoriteController::class, 'toggle']);
+    // Личная заметка к ТС (18.10.2026): сохраняется сама при наборе и при уходе со страницы (sendBeacon — только POST).
+    Route::post('/offers/{offer}/note', [NoteController::class, 'update'])->middleware('throttle:60,1');
     Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
     Route::get('/offers/{offer}/photo/{media}', [ShareController::class, 'photo'])->whereNumber('media');
     Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');

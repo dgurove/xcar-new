@@ -21,13 +21,12 @@
 
     <x-offer.object :offer="$offer" :photos="$photos" :docs="$docs">
         @php $chat = ! $staff && $offer->chatOpenFor($user); @endphp
-        @if ($money || $chat)
-            <x-slot:aside>
-                @if ($money)@include('garage.cars.money')@endif
-                {{-- Вопросы по машине — тем же чатом, что и до гаража: на всех этапах до продажи. --}}
-                @if ($chat)<a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать</a>@endif
-            </x-slot:aside>
-        @endif
+        <x-slot:aside>
+            @if ($money)@include('garage.cars.money')@endif
+            {{-- Вопросы по машине — тем же чатом, что и до гаража: на всех этапах до продажи. --}}
+            @if ($chat)<a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать</a>@endif
+            <x-offer.my-note :offer="$offer"/>
+        </x-slot:aside>
 
         @if ($step && ! $staff)
             @include('cabinet.deals.step', $step + ['withInvoices' => true])

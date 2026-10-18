@@ -32,6 +32,8 @@
 
         <aside class="flex flex-col gap-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:gap-8">
             <x-offer.deal-box :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat" :can-chat="$canChat"/>
+            {{-- Своя заметка — сразу под ценой (ПК), на телефоне после цены, перед «Характеристиками». --}}
+            <x-offer.my-note :offer="$offer" class="order-2 lg:order-1"/>
 
             @if ($user?->isManager() && $offer->state->isPublic())
                 {{-- Менеджер: кто из его покупателей это видит. Видящие всё (12.10.2026, по умолчанию) — одной строкой со
