@@ -19,6 +19,7 @@ use App\Offers\Actions\PlaceBid;
 use App\Offers\CommissionMode;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -59,17 +60,21 @@ class SupplierLetterTest extends TestCase
         $position->update(['waits_for' => WaitsFor::Us]);
         $this->assertSame('unsent', $position->fresh()->letterStatus());
 
-        // Окно: предзагрузка соседней карточки очередь не трогает, страница забирает письмо один раз.
+        // Окно: предзагрузка и парковка письмо CRM не забирают, страница CRM забирает один раз.
         $this->actingAs($admin);
         LetterPrompt::push($admin, '/work/mail/new?offer='.$offer->number.'&template=1&then=close');
-        $this->app->instance('request', Request::create('/', 'GET', [], [], [], ['HTTP_SEC_PURPOSE' => 'prefetch']));
-        $this->app['request']->setUserResolver(fn () => $admin);
+        $at = function (string $host, array $server = []) use ($admin) {
+            $this->app->instance('request', $r = Request::create('http://'.$host.'/', 'GET', [], [], [], $server));
+            $r->setUserResolver(fn () => $admin);
+            $this->app->instance(Surface::class, Surface::fromHost($host));
+        };
+        $at(config('xcar.crm_host'), ['HTTP_SEC_PURPOSE' => 'prefetch']);
         $this->assertNull(LetterPrompt::take(), 'предзагрузка письмо не забирает');
-        $this->app->instance('request', Request::create('/', 'GET'));
-        $this->app['request']->setUserResolver(fn () => $admin);
+        $at(config('xcar.park_host'));
+        $this->assertNull(LetterPrompt::take(), 'парковка письмо CRM не забирает');
+        $at(config('xcar.crm_host'));
         $this->assertStringContainsString('then=close', (string) LetterPrompt::take());
-        $this->app->instance('request', Request::create('/', 'GET'));
-        $this->app['request']->setUserResolver(fn () => $admin);
+        $at(config('xcar.crm_host'));
         $this->assertNull(LetterPrompt::take(), 'второй раз окно не открывается');
 
         // Доставка: не ушло → failed и уведомление; ушло → sent; вернулся отказ → bounced.
@@ -81,14 +86,22 @@ class SupplierLetterTest extends TestCase
         $this->assertSame('failed', $position->fresh()->letterStatus());
         Notification::assertSentTo($admin, SupplierLetterNotice::class);
 
-        $letter->update(['send_state' => SendState::Sent, 'send_error' => null]);
+        MessageFailed::dispatch($letter->fresh());
+        Notification::assertSentToTimes($admin, SupplierLetterNotice::class, 1);
+        $letter->update(['send_state' => SendState::Sent, 'send_error' => null, 'date_at' => now()]);
         MessageSent::dispatch($letter->fresh());
         $p = $position->fresh();
         $this->assertSame('sent', $p->letterStatus());
         $this->assertArrayNotHasKey('letter_failed', $p->payload);
 
-        $bounce = Message::create(['account_id' => $account->id, 'thread_id' => $thread->id, 'direction' => Direction::In, 'message_id' => 'b@mail.ru',
-            'subject' => 'Undelivered Mail Returned to Sender', 'intent' => 'bounce', 'date_at' => now()]);
+        // Отказ — своей веткой, письмо узнаётся по Message-ID в теле; старый отказ (раньше письма) и история ящика не в счёт.
+        $other = Thread::create(['account_id' => $account->id, 'subject' => 'Undelivered Mail', 'last_message_at' => now()]);
+        $old = Message::create(['account_id' => $account->id, 'thread_id' => $other->id, 'direction' => Direction::In, 'message_id' => 'old@mail.ru',
+            'subject' => 'Undelivered Mail Returned to Sender', 'intent' => 'bounce', 'date_at' => now()->subDays(2), 'text_body' => 'Message-ID: <a@xcar.ru>']);
+        MessageParsed::dispatch($old);
+        MessageParsed::dispatch($bounce = Message::create(['account_id' => $account->id, 'thread_id' => $other->id, 'direction' => Direction::In, 'message_id' => 'q@mail.ru',
+            'subject' => 'Undelivered Mail Returned to Sender', 'intent' => 'bounce', 'date_at' => now()->addMinute(), 'text_body' => 'could not be delivered to implementation@alfastrah.ru Message-ID: <a@xcar.ru>']), true);
+        $this->assertSame('sent', $position->fresh()->letterStatus(), 'старый отказ и история ящика письмо не красят');
         MessageParsed::dispatch($bounce);
         $this->assertSame('bounced', $position->fresh()->letterStatus());
     }

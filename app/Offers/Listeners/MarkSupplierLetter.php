@@ -41,7 +41,7 @@ final class MarkSupplierLetter
         $offer = $position->offer;
         $message = $e->message;
         $at = $message->sent_at ?? $message->date_at ?? now();
-        $payload = array_diff_key($position->payload ?? [], array_flip(['letter_failed', 'letter_bounced', 'reply_at']));
+        $payload = array_diff_key($position->payload ?? [], array_flip(['letter_failed', 'letter_bounced']));
         $position->update([
             'waits_for' => null,
             'deadline_at' => $position->stage->deadlineFor($offer, $at->copy()),
@@ -52,32 +52,52 @@ final class MarkSupplierLetter
         $offer->log(OfferEventType::SupplierLetter, $message->author, ['letter' => $message->id]);
     }
 
+    /** Не ушло: шаг красным; уведомление — один раз на письмо («Повторить» с тем же сбоем не звенит снова). */
     public function failed(MessageFailed $e): void
     {
         $position = self::position($e->message);
         if (! $position || ! in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true)) {
             return;
         }
+        $again = ($position->payload['letter_failed']['id'] ?? null) === $e->message->id;
         $position->update(['payload' => [...($position->payload ?? []), 'letter_failed' => ['id' => $e->message->id, 'error' => self::reason((string) $e->message->send_error)]]]);
-        $e->message->author?->notify(new SupplierLetterNotice($position->offer, 'failed'));
+        if (! $again) {
+            $e->message->author?->notify(new SupplierLetterNotice($position->offer, 'failed'));
+        }
     }
 
-    /** Отказ почтового сервера в ветке письма, что ушло этому этапу. */
+    /**
+     * Отказ почтового сервера на наше письмо этого шага. Отказ приходит своей темой («Undelivered Mail…», «Не доставлено»)
+     * и часто своей веткой — письмо ищем по его Message-ID в заголовках и теле отказа, иначе по ветке, иначе по адресату и
+     * теме; только отказ новее письма и не из истории ящика (`quiet`, перечитывание) — старый отказ не красит новое письмо.
+     */
     public function bounced(MessageParsed $e): void
     {
         $m = $e->message;
-        if ($m->direction !== Direction::In || $m->intent !== Intent::Bounce->value) {
+        if ($e->quiet || $m->direction !== Direction::In || $m->intent !== Intent::Bounce->value || $m->account?->scope !== Scope::Offers) {
             return;
         }
-        $m->loadMissing('thread.offer');
-        $offer = $m->thread?->offer;
-        $position = $offer?->deal?->isActive() ? $offer->unsetRelation('positions')->position(Track::Sale) : null;
-        $letter = $position && isset($position->payload['letter_id']) ? Message::find($position->payload['letter_id']) : null;
-        if (! $letter || $letter->thread_id !== $m->thread_id || isset($position->payload['reply_at'])) {
+        $letter = self::bouncedLetter($m);
+        $position = $letter ? self::position($letter) : null;
+        if (! $position || $position->letterStatus() !== 'sent' || ($position->payload['letter_id'] ?? null) !== $letter->id) {
             return;
         }
-        $position->update(['waits_for' => WaitsFor::Us, 'payload' => [...$position->payload, 'letter_bounced' => ['at' => now()->toIso8601String(), 'to' => $letter->to_preview]]]);
-        $letter->author?->notify(new SupplierLetterNotice($offer, 'bounced'));
+        $position->update(['waits_for' => WaitsFor::Us, 'payload' => [...$position->payload, 'letter_bounced' => ['at' => now()->toIso8601String(), 'to' => Intent::bounceRecipient($m->text_body ?: strip_tags((string) $m->html_body)) ?? $letter->to_preview]]]);
+        $letter->author?->notify(new SupplierLetterNotice($position->offer, 'bounced'));
+    }
+
+    /** Наше письмо, на которое пришёл отказ: за три дня до него, тем же ящиком. */
+    private static function bouncedLetter(Message $bounce): ?Message
+    {
+        $at = $bounce->date_at ?? now();
+        $text = implode("\n", [$bounce->in_reply_to, $bounce->references_header, $bounce->text_body, $bounce->html_body]);
+        $to = Intent::bounceRecipient($bounce->text_body ?: strip_tags((string) $bounce->html_body));
+        $letters = Message::where('account_id', $bounce->account_id)->where('direction', Direction::Out)
+            ->whereBetween('date_at', [$at->copy()->subDays(3), $at])->latest('date_at')->get();
+
+        return $letters->first(fn (Message $l) => $l->message_id && str_contains($text, trim($l->message_id, '<>')))
+            ?? $letters->first(fn (Message $l) => $l->thread_id === $bounce->thread_id)
+            ?? ($to ? $letters->first(fn (Message $l) => str_contains(mb_strtolower((string) $l->to_preview), $to) && $l->subject && str_contains($text, $l->subject)) : null);
     }
 
     /** Позиция сделки, которой адресовано наше письмо из ветки предложения с ящика продаж. */

@@ -62,10 +62,7 @@ class ContractorController
             'logistics_city' => $data['logistics_city'] ?? null, 'cdek_point' => $data['cdek_point'] ?? null,
         ]));
 
-        // Из формы заявки — обратно в неё, и новый исполнитель уже выбран (черновик формы не перебьёт: значение с сервера).
-        return $request->input('back') === 'order'
-            ? redirect(url()->previous())->withInput(['executor_id' => $user->id])->with('credentials', $credentials)
-            : redirect('/contractors')->with('credentials', $credentials);
+        return redirect('/contractors')->with('credentials', $credentials);
     }
 
     /** Новый пароль своему исполнителю — шторка входа, как после «Добавить». */

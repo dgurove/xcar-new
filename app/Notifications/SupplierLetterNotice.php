@@ -23,9 +23,10 @@ final class SupplierLetterNotice extends Notice
         return $this->offer->vendor?->name;
     }
 
+    /** Сделка CRM (`/work/deals/{id}` ведёт в редактор, на шаг): адрес CRM, а не страница витрины (`Notice::leadsToCrm`). */
     public function href(): string
     {
-        return '/offers/'.$this->offer->number;
+        return $this->offer->deal ? '/work/deals/'.$this->offer->deal->id : '/work/deals';
     }
 
     public function offerNumber(): ?int
@@ -45,6 +46,6 @@ final class SupplierLetterNotice extends Notice
 
     public function subject(): string
     {
-        return '/offers/'.$this->offer->number;
+        return $this->href();
     }
 }

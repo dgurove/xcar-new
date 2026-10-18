@@ -16,6 +16,7 @@ use App\Http\Middleware\EnsureOfferEditable;
 use App\Http\Middleware\EnsureParkManager;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\Impersonated;
+use App\Http\Middleware\KeepFlashInBackground;
 use App\Http\Middleware\MarkInstalled;
 use App\Http\Middleware\MarkPrefetch;
 use App\Http\Middleware\NormalizeNumbers;
@@ -145,7 +146,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend([ServerTiming::class, RedirectLegacyPaths::class, MarkPrefetch::class, ScalarSearch::class]);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);
-        $middleware->web(append: [NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, DetailBack::class, ActWindowBack::class, Impersonated::class, DeviceGate::class, TouchSeen::class, ReadNoticesOnVisit::class, DemoReadOnly::class]);
+        $middleware->web(append: [KeepFlashInBackground::class, NormalizeNumbers::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, DetailBack::class, ActWindowBack::class, Impersonated::class, DeviceGate::class, TouchSeen::class, ReadNoticesOnVisit::class, DemoReadOnly::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE, 'xcar-reset']);
         // Уведомления провайдеров: подписи у ЮKassa нет, статус перечитывается по API (`PayController::hook`).
         $middleware->validateCsrfTokens(except: ['hooks/*']);

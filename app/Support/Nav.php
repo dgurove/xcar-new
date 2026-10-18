@@ -14,6 +14,7 @@ use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
 use App\Logistics\Client;
 use App\Logistics\Transport;
+use App\Logistics\TransportState;
 use App\Mail\Boxes;
 use App\Mail\Scope;
 use App\Mail\Thread;
@@ -484,13 +485,18 @@ final class Nav
                     '/documents' => $user->sendsLogisticsDocs() ? Transport::awaitingDocs()->count() : 0,
                     '/clients' => $user->isLogist() ? Client::of($user)->whereNull('archived_at')->count() : 0,
                     '/contractors' => $user->isAdmin() || $user->isLogist() ? User::contractorsFor($user)->count() : 0,
-                    // Ждут выплаты логисту: свои — логисту, все — админу.
-                    '/money' => $user->isAdmin() || $user->isLogist()
+                    // Ждут выплаты логисту: свои — логисту, все — админу. Логисту ещё свои деньги (18.10.2026): привезённые заявки,
+                    // за которые заказчик не заплатил, и вывозы, где он не заплатил исполнителю, — те же строки, что в «Оплатах».
+                    '/money' => ($user->isAdmin() || $user->isLogist()
                         ? Invoice::where('direction', 'owed')->where('kind', ChargeKind::Tow->value)->where('state', InvoiceState::Issued)
                             ->when($user->isAdmin(),
                                 fn ($q) => $q->whereIn('party_id', User::withRole(Role::Logist)->whereNotNull('party_id')->select('party_id')),
                                 fn ($q) => $q->where('party_id', $user->party_id ?? 0))->count()
-                        : 0,
+                        : 0) + ($user->isLogist() && ! $user->isAdmin()
+                        ? Transport::where('coordinator_id', $user->id)->where('state', TransportState::Delivered)->where(fn ($q) => $q
+                            ->where(fn ($c) => $c->where('origin', 'order')->whereNotNull('client_price')->whereNull('client_paid_at'))
+                            ->orWhere(fn ($x) => $x->whereNotNull('executor_cost')->whereNull('executor_paid_at')->whereNotNull('executor_id')->where('executor_id', '!=', $user->id)))->count()
+                        : 0),
                 ], 'fresh' => []];
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
