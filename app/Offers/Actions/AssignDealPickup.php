@@ -5,7 +5,7 @@ namespace App\Offers\Actions;
 use App\Garage\Actions\EnsurePickup;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\OpenPickup;
-use App\Logistics\Executor;
+use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Offers\Deal;
 use App\Offers\Offer;
@@ -35,10 +35,10 @@ final class AssignDealPickup
             return;
         }
         $t = Transport::openFor($offer);
-        $wasPicker = $previous && $t?->executor === Executor::Manager && $t->executor_id === $previous->buyer_id;
+        $wasPicker = $previous && $t?->channel === Channel::Manager && $t->executor_id === $previous->buyer_id;
         if ($manager) {
             $t ??= ($this->open)($offer, $by, quiet: true);
-            ($this->assign)($t, Executor::Manager, $manager, $by);
+            ($this->assign)($t, Channel::Manager, $manager, $by);
         } elseif ($wasPicker) {
             $this->assign->release($t, $by);
         } elseif (! $t) {

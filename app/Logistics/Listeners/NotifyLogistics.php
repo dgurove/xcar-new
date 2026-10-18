@@ -2,10 +2,10 @@
 
 namespace App\Logistics\Listeners;
 
+use App\Logistics\Channel;
 use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Events\TransportRequested;
-use App\Logistics\Executor;
 use App\Logistics\TransportNotice;
 use App\Users\Role;
 use App\Users\User;
@@ -50,15 +50,15 @@ final class NotifyLogistics
         if ($e->batch) {
             return;
         }
-        $t = $e->transport->fresh(['executorUser', 'coordinator']) ?? $e->transport;
-        if ($t->executor === Executor::Manager) {
+        $t = $e->transport->fresh(['executor', 'logist']) ?? $e->transport;
+        if ($t->channel === Channel::Manager) {
             return;
         }
-        $to = $t->executorUser ?? ($t->executor === Executor::Logist ? $t->coordinator : null);
+        $to = $t->executor ?? ($t->channel === Channel::Logist ? $t->logist : null);
         if ($to && $to->isNot($e->previous)) {
             $to->notify(TransportNotice::assigned($t, $to));
         }
-        if ($t->executorUser && $t->docs_by_cdek && ! $t->docs_sent_at) {
+        if ($t->executor && $t->docs_by_cdek && ! $t->docs_sent_at) {
             Notification::send(User::withRole(Role::Moderator)->get(), TransportNotice::docsNeeded($t));
         }
     }
@@ -76,11 +76,11 @@ final class NotifyLogistics
     {
         $t = $e->transport;
         // Пачкой — сводку шлёт контроллер; менеджер забрал сам — это не логистика, его шаг пишет сделка.
-        if ($e->batch || $t->executor === Executor::Manager) {
+        if ($e->batch || $t->channel === Channel::Manager) {
             return;
         }
         if ($e->step === 'docs_sent') {
-            $t->executorUser?->notify(TransportNotice::docsSent($t));
+            $t->executor?->notify(TransportNotice::docsSent($t));
 
             return;
         }
@@ -88,7 +88,7 @@ final class NotifyLogistics
             return;
         }
         // Заявка логиста от своего заказчика — только ему (владелец 18.10.2026: «видит только она»).
-        $to = ($t->isOrder() ? collect() : User::logisticsLeads()->get())->push($t->coordinator)->filter()
+        $to = ($t->isOrder() ? collect() : User::logisticsLeads()->get())->push($t->logist)->filter()
             ->unique('id')->reject(fn (User $u) => $u->is($e->by));
         Notification::send($to, TransportNotice::moved($t, $e->step));
     }

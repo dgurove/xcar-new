@@ -22,7 +22,7 @@ final class MarkPaid
         $column = self::SIDES[$side] ?? throw ValidationException::withMessages(['side' => 'Кто платит']);
         $n = 0;
         foreach ($tasks instanceof Transport ? collect([$tasks]) : $tasks as $t) {
-            if (! $t->isCoordinatedBy($by) || ($side === 'client' && ! $t->isOrder())) {
+            if (! $t->hasLogist($by) || ($side === 'client' && ! $t->isOrder())) {
                 abort(404);
             }
             if (($t->{$column} !== null) !== $paid) {

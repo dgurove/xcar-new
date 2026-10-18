@@ -16,8 +16,8 @@
     // Шаг вне своего столбца — только когда он не тот же, что у всей вкладки («выбрать исполнителя», «у логиста»): в выдаче лупы.
     $stepHere = $has('step') || ! in_array($t->state, [\App\Logistics\TransportState::New, \App\Logistics\TransportState::Logist], true);
     // Себя исполнитель в строке не видит; у логиста без исполнителя — «у логиста».
-    $who = $t->isExecutedBy($me) ? null : $t->executorUser;
-    $logist = ! $t->executorUser && $t->coordinator && $t->coordinator_id !== $me->id ? $t->coordinator : null;
+    $who = $t->isExecutedBy($me) ? null : $t->executor;
+    $logist = ! $t->executor && $t->logist && $t->logist_id !== $me->id ? $t->logist : null;
     $late = $t->isLate();
     $manager = $sale?->manager;
     $to = $manager ? null : ($t->destination || ! $t->forSale() ? $t->destinationLabel() ?? $t->toYard?->name : null);

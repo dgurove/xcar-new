@@ -17,7 +17,7 @@
     $shooting = match ($cur?->key) { 'intake' => PhotoStage::Intake, 'release' => PhotoStage::Release, default => null };
     // Перевозка в логистике (10.10.2026) — строкой шапки: ход, кто везёт, прибытие. Ссылка — тому, кому логистика открыта.
     $transport = \App\Logistics\Transport::openFor($vehicle);
-    $transportLine = $transport ? implode(', ', array_filter([$transport->next(), $transport->executorName(), $transport->destinationLabel()])) : null;
+    $transportLine = $transport ? implode(', ', array_filter([$transport->next(), $transport->carrier(), $transport->destinationLabel()])) : null;
 @endphp
 <x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
     <x-slot:badge><x-car.keys :count="$vehicle->keys_count" label/><x-ui.links :vehicle="$vehicle"/></x-slot:badge>

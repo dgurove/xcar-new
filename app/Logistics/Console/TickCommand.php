@@ -28,16 +28,16 @@ final class TickCommand extends Command
     {
         Transport::inLogistics()->where('state', TransportState::Agreed)->where('pickup_at', '<', now()->subHours(2))
             ->where(fn ($q) => $q->whereNull('late_noticed_at')->orWhereColumn('late_noticed_at', '<', 'pickup_at'))
-            ->with(['executorUser', 'coordinator', 'car'])->get()
+            ->with(['executor', 'logist', 'car'])->get()
             ->each(function (Transport $t) {
                 // Заявку логиста от его заказчика админы не видят: просрочка — ему и исполнителю.
-                $to = $t->isOrder() ? collect([$t->coordinator]) : User::logisticsLeads()->get();
-                Notification::send($to->push($t->executorUser)->filter()->unique('id'), TransportNotice::late($t));
+                $to = $t->isOrder() ? collect([$t->logist]) : User::logisticsLeads()->get();
+                Notification::send($to->push($t->executor)->filter()->unique('id'), TransportNotice::late($t));
                 $t->update(['late_noticed_at' => now()]);
             });
 
         self::stuck()->whereNull('nudged_at')->each(function (Transport $t) {
-            $to = $t->state === TransportState::Logist ? $t->coordinator : $t->executorUser;
+            $to = $t->state === TransportState::Logist ? $t->logist : $t->executor;
             $to?->notify(TransportNotice::callDue($t));
             $t->update(['nudged_at' => now()]);
         });
@@ -58,7 +58,7 @@ final class TickCommand extends Command
         return Transport::inLogistics()->where('assigned_at', '<', now()->subDay())
             ->where(fn ($q) => $q->where('state', TransportState::Logist)
                 ->orWhere(fn ($a) => $a->where('state', TransportState::Assigned)->where('kind', '!=', 'move')))
-            ->with(['executorUser', 'coordinator', 'car'])->get();
+            ->with(['executor', 'logist', 'car'])->get();
     }
 
     /** Сводка админам — раз в день, с 10:00 по Москве. */

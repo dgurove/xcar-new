@@ -4,11 +4,12 @@ namespace App\Logistics\Actions;
 
 use App\Cars\Car;
 use App\Cars\Vin\Vin;
+use App\Logistics\Channel;
 use App\Logistics\Client;
 use App\Logistics\Events\TransportAssigned;
-use App\Logistics\Executor;
 use App\Logistics\Point;
 use App\Logistics\Transport;
+use App\Logistics\TransportEvent;
 use App\Logistics\TransportKind;
 use App\Logistics\TransportState;
 use App\Support\Money;
@@ -61,7 +62,7 @@ final class OpenOrder
 
     public function __invoke(array $data, User $by, ?Transport $t = null): Transport
     {
-        if (! $by->isLogist() || ($t && (! $t->isOrder() || ! $t->isCoordinatedBy($by)))) {
+        if (! $by->isLogist() || ($t && (! $t->isOrder() || ! $t->hasLogist($by)))) {
             abort(404);
         }
         if ($t && ! $t->isOpen()) {
@@ -72,7 +73,7 @@ final class OpenOrder
             throw ValidationException::withMessages(['client_id' => 'Выберите заказчика']);
         }
         $who = ($data['executor_id'] ?? null) ? User::find($data['executor_id']) : null;
-        if ($who && ($who->rejected_at || ! ($who->is($by) || ($who->isContractor() && $who->logist_id === $by->id)))) {
+        if ($who && ($who->rejected_at || ! ($who->isContractor() && $who->logist_id === $by->id))) {
             throw ValidationException::withMessages(['executor_id' => 'Выберите своего исполнителя']);
         }
         if ($t && $t->state->picked() && $t->executor_id !== $who?->id) {
@@ -90,9 +91,10 @@ final class OpenOrder
                 'plate' => $data['plate'] ?? null, 'vin' => $vin,
             ])->save();
 
-            $t ??= new Transport(['origin' => 'order', 'kind' => TransportKind::Pickup, 'executor' => Executor::Logist,
-                'coordinator_id' => $by->id, 'created_by' => $by->id, 'destination' => Point::Other, 'state' => TransportState::Logist]);
-            $previous = $t->exists ? $t->executorUser : null;
+            $t ??= new Transport(['origin' => 'order', 'kind' => TransportKind::Pickup, 'channel' => Channel::Logist,
+                'logist_id' => $by->id, 'created_by' => $by->id, 'destination' => Point::Other, 'state' => TransportState::Logist]);
+            $fresh = ! $t->exists;
+            $previous = $t->exists ? $t->executor : null;
             $changed = $t->executor_id !== $who?->id;
             $t->fill([
                 'car_id' => $car->id, 'client_id' => $client->id,
@@ -118,8 +120,14 @@ final class OpenOrder
                 ]);
             }
             $t->save();
+            if ($fresh) {
+                TransportEvent::record($t, 'opened', $by);
+            }
+            if ($changed) {
+                TransportEvent::record($t, $who ? 'assigned' : 'released', $by, $who ? ['executor' => $who->id, 'was' => $previous?->id] : []);
+            }
             if ($changed && $who && ! $who->is($by)) {
-                TransportAssigned::dispatch($t->load('executorUser'), $previous);
+                TransportAssigned::dispatch($t->load('executor'), $previous);
             }
 
             return $t;

@@ -15,7 +15,6 @@ use App\Park\Yard;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Ago;
-use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Surface;
 use App\Users\User;
@@ -23,6 +22,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -44,7 +44,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * от xcar»): вывоз от её заказчика (`client`), машина — запись `Car` без продажи и хранения; видят только она и её
  * исполнитель (`scopeVisibleTo`), XCar ей за неё не должен — деньги свои: цена заказчику и исполнителю, отметки оплаты.
  */
-#[Fillable(['car_id', 'origin', 'kind', 'executor', 'executor_id', 'coordinator_id', 'from_address', 'pickup_at',
+#[Fillable(['car_id', 'origin', 'kind', 'channel', 'executor_id', 'logist_id', 'from_address', 'pickup_at',
     'pickup_place', 'call_note', 'call_attempts', 'docs_by_cdek', 'docs_track', 'docs_sent_at', 'docs_sent_by', 'docs_received_at', 'to_address',
     'destination', 'to_yard_id', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
     'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at', 'region_id', 'nudged_at',
@@ -53,7 +53,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class Transport extends Model
 {
     /** Шаг сменился — напоминание по нему снова возможно (`logistics:tick`). */
-    private const STEP = ['state', 'executor_id', 'coordinator_id', 'agreed_at'];
+    private const STEP = ['state', 'executor_id', 'logist_id', 'agreed_at'];
 
     protected static function booted(): void
     {
@@ -79,7 +79,7 @@ class Transport extends Model
     {
         return [
             'kind' => TransportKind::class,
-            'executor' => Executor::class,
+            'channel' => Channel::class,
             'state' => TransportState::class,
             'destination' => Point::class,
             'cost' => 'decimal:2',
@@ -165,15 +165,15 @@ class Transport extends Model
         return $this->hasOne(Vehicle::class, 'car_id', 'car_id')->withoutGlobalScope(City::SCOPE);
     }
 
-    public function executorUser(): BelongsTo
+    public function executor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'executor_id');
     }
 
     /** Логист, через которого идёт задача (ветка «Логист»): назначает своего исполнителя и цену. */
-    public function coordinator(): BelongsTo
+    public function logist(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'coordinator_id');
+        return $this->belongsTo(User::class, 'logist_id');
     }
 
     public function docsSender(): BelongsTo
@@ -272,10 +272,23 @@ class Transport extends Model
         return $this->forSale() ? $this->offer?->vendor_id : $this->vehicle?->vendor_id;
     }
 
-    /** Кто вывозит словом: «Иван С.»; у логиста без исполнителя — сам логист. */
-    public function executorName(): ?string
+    /**
+     * Кто сейчас ведёт вывоз — фразой: «вывозит Иван С.»; исполнителя ещё нет — «у логиста Татьяна Л.» (логист
+     * распределяет, а не везёт — его именем исполнителя не называем); никого — null.
+     */
+    public function carrier(): ?string
     {
-        return $this->executorUser?->shortName() ?? $this->coordinator?->shortName();
+        return match (true) {
+            (bool) $this->executor => 'вывозит '.$this->executor->shortName(),
+            (bool) $this->logist => 'у логиста '.$this->logist->shortName(),
+            default => null,
+        };
+    }
+
+    /** История задачи (`TransportEvent`), по порядку. */
+    public function events(): HasMany
+    {
+        return $this->hasMany(TransportEvent::class)->orderBy('id');
     }
 
     public function isOpen(): bool
@@ -334,7 +347,7 @@ class Transport extends Model
         return match (true) {
             $this->state === TransportState::New => 'выбрать исполнителя',
             $this->state === TransportState::Logist => 'ждёт исполнителя логиста',
-            $this->state === TransportState::Assigned && $this->executor === Executor::Manager => 'забирает сам',
+            $this->state === TransportState::Assigned && $this->channel === Channel::Manager => 'забирает сам',
             $this->state === TransportState::Assigned && $this->isPickup() => 'позвонить владельцу',
             $this->state === TransportState::Assigned => 'забрать',
             $this->state === TransportState::Agreed && $this->docs_by_cdek && $this->docs_sent_at === null => 'ждёт отправки документов',
@@ -359,19 +372,25 @@ class Transport extends Model
         $steps = [];
         $assigned = $this->executor_id !== null;
         // «Уже вывезли» задним числом без исполнителя (`Backdate`) — шаг позади, кто вёз, не знаем.
-        $unknown = ! $assigned && $s->picked() && $this->executor !== Executor::Logist;
-        $steps[] = ['key' => 'executor', 'title' => $assigned ? 'Вывозит '.($this->executorUser?->shortName() ?? 'исполнитель') : ($this->executor === Executor::Logist ? 'У логиста'.($this->coordinator ? ' '.$this->coordinator->shortName() : '') : ($unknown ? 'Исполнитель не указан' : 'Кто вывозит')),
-            'status' => $status($assigned || $s->picked(), ! $assigned && ! $s->picked()), 'at' => $this->assigned_at,
-            'hint' => implode(', ', array_filter([
-                // «Через Татьяну» — XCar-у; у её собственной заявки это и так ясно.
-                ! $this->isOrder() && $this->executor === Executor::Logist && $this->coordinator && $assigned && $this->coordinator_id !== $this->executor_id ? 'через '.$this->coordinator->shortName() : null,
-                $this->distance_km ? $this->distance_km.' км' : null,
-                $this->cost ? Money::rub((int) $this->cost) : null,
-                ! $assigned && $s === TransportState::New ? 'выбрать исполнителя' : null,
-                ! $assigned && $s === TransportState::Logist ? 'логист назначает исполнителя и цену' : null,
-            ])) ?: null];
+        $unknown = ! $assigned && $s->picked() && $this->channel !== Channel::Logist;
+        // Логист и исполнитель — разные люди и разные шаги (18.10.2026): логист распределяет, исполнитель едет.
+        if ($this->channel === Channel::Logist && $this->logist) {
+            // Цена логисту — не всем (исполнитель её не видит): её строка в карточке, у ведущих и самого логиста.
+            $steps[] = ['key' => 'logist', 'title' => 'Логист '.$this->logist->shortName(), 'status' => 'done', 'at' => null, 'hint' => null];
+        }
+        $steps[] = ['key' => 'executor', 'title' => match (true) {
+            $assigned => 'Исполнитель '.($this->executor?->shortName() ?? ''),
+            $unknown => 'Исполнитель не указан',
+            $s === TransportState::New => 'Кто вывозит',
+            default => 'Исполнитель',
+        }, 'status' => $status($assigned || $s->picked(), ! $assigned && ! $s->picked()), 'at' => $this->assigned_at,
+            'hint' => match (true) {
+                ! $assigned && $s === TransportState::New => 'выбрать исполнителя',
+                ! $assigned && $s === TransportState::Logist => 'назначает логист',
+                default => null,
+            }];
         // Менеджер забирает сам — созвона и документов у логистики нет: «Автомобиль забрал» он жмёт в своей сделке.
-        if ($this->isPickup() && $this->executor !== Executor::Manager) {
+        if ($this->isPickup() && $this->channel !== Channel::Manager) {
             $agreed = $this->agreed_at !== null;
             // Забрали — созвон и документы уже позади, даже если их не отмечали (задачи до 17.10.2026, админ за исполнителя).
             $steps[] = ['key' => 'call', 'title' => $agreed || $s->picked() ? 'Созвонились' : 'Созвон с владельцем', 'status' => $status($agreed || $s->picked(), $assigned && ! $agreed),
@@ -387,8 +406,8 @@ class Transport extends Model
         }
         $keys = $this->car?->keys_count;
         // Менеджер везёт к себе сам: его «Автомобиль забрал» и есть «привёз» (`SelfPickup`) — один шаг, без «Привёз».
-        if ($this->executor === Executor::Manager) {
-            $steps[0]['title'] = $assigned ? 'Забирает '.($this->executorUser?->shortName() ?? 'менеджер') : $steps[0]['title'];
+        if ($this->channel === Channel::Manager) {
+            $steps[0]['title'] = $assigned ? 'Забирает '.($this->executor?->shortName() ?? 'менеджер') : $steps[0]['title'];
             $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Забрал' : 'Забрать', 'status' => $status($s->picked(), $s === TransportState::Assigned),
                 'at' => $this->delivered_at ?? $this->picked_at, 'hint' => null];
 
@@ -452,16 +471,16 @@ class Transport extends Model
     }
 
     /** Логист этой задачи — ведёт её, пока не назначит (и после: следит за своими исполнителями). */
-    public function isCoordinatedBy(User $user): bool
+    public function hasLogist(User $user): bool
     {
-        return $this->coordinator_id === $user->id;
+        return $this->logist_id === $user->id;
     }
 
     /** Действует ли человек по задаче: исполнитель, её логист или тот, кто ведёт логистику (админ, модератор). */
     public function isHandledBy(User $user): bool
     {
         // Заявку логиста от своего заказчика ведущие не ведут: её видят только он и исполнитель.
-        return ($user->leadsLogistics() && ! $this->isOrder()) || $this->isExecutedBy($user) || $this->isCoordinatedBy($user);
+        return ($user->leadsLogistics() && ! $this->isOrder()) || $this->isExecutedBy($user) || $this->hasLogist($user);
     }
 
     /**
@@ -473,11 +492,11 @@ class Transport extends Model
     {
         $q->inLogistics();
         if ($user->leadsLogistics()) {
-            return $q->where(fn ($w) => $w->where('transports.origin', '!=', 'order')->orWhere('coordinator_id', $user->id));
+            return $q->where(fn ($w) => $w->where('transports.origin', '!=', 'order')->orWhere('logist_id', $user->id));
         }
 
         return $q->where(fn ($w) => $w->where('executor_id', $user->id)
-            ->when($user->isLogist(), fn ($w) => $w->orWhere('coordinator_id', $user->id)
+            ->when($user->isLogist(), fn ($w) => $w->orWhere('logist_id', $user->id)
                 ->orWhereIn('executor_id', User::where('logist_id', $user->id)->select('id'))));
     }
 
@@ -488,7 +507,7 @@ class Transport extends Model
      */
     public function scopeInLogistics(Builder $q): Builder
     {
-        return $q->where(fn ($w) => $w->whereNull('executor')->orWhere('executor', '!=', Executor::Manager->value));
+        return $q->where(fn ($w) => $w->whereNull('channel')->orWhere('channel', '!=', Channel::Manager->value));
     }
 
     /** Вкладка списка логистики: без исполнителя, у логиста, в работе, в пути, готово; иначе — все. */
@@ -517,7 +536,7 @@ class Transport extends Model
         }
 
         return $q->where(fn ($w) => $w
-            ->when($user->isLogist(), fn ($w) => $w->orWhere(fn ($l) => $l->where('state', TransportState::Logist)->where('coordinator_id', $user->id)))
+            ->when($user->isLogist(), fn ($w) => $w->orWhere(fn ($l) => $l->where('state', TransportState::Logist)->where('logist_id', $user->id)))
             ->orWhere(fn ($e) => $e->where('executor_id', $user->id)->where(fn ($s) => $s
                 ->whereIn('state', [TransportState::Assigned, TransportState::Moving])
                 ->orWhere(fn ($a) => $a->where('state', TransportState::Agreed)

@@ -73,7 +73,7 @@
 
     <div class="steps mt-6">
         @foreach ($t->steps() as $s)
-            @continue($s['key'] === 'executor')
+            @continue(in_array($s['key'], ['logist', 'executor'], true))
             <div class="step step--{{ $s['status'] }}">
                 <span class="step-dot">@if ($s['status'] === 'done')<x-ui.icon name="check" class="size-3"/>@endif</span>
                 <div class="step-body">

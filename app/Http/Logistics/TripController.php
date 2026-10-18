@@ -26,15 +26,15 @@ class TripController
     public function show(string $code)
     {
         $t = $this->task($code);
-        $t->load(['car.media', 'executorUser', 'coordinator', 'offer', 'vehicle']);
+        $t->load(['car.media', 'executor', 'logist', 'offer', 'vehicle']);
 
-        return view('logistics.trip.show', ['t' => $t, 'by' => $t->executorUser, 'code' => $code]);
+        return view('logistics.trip.show', ['t' => $t, 'by' => $t->executor, 'code' => $code]);
     }
 
     public function call(Request $request, string $code, Call $call)
     {
         $t = $this->open($code);
-        $call->agree($t, $request->validate(Call::rules(), Call::messages()), $t->executorUser);
+        $call->agree($t, $request->validate(Call::rules(), Call::messages()), $t->executor);
 
         return back()->with('toast', 'Созвонились');
     }
@@ -42,7 +42,7 @@ class TripController
     public function missed(string $code, Call $call)
     {
         $t = $this->open($code);
-        $call->missed($t, $t->executorUser);
+        $call->missed($t, $t->executor);
 
         return back()->with('toast', 'Не дозвонились');
     }
@@ -50,7 +50,7 @@ class TripController
     public function received(string $code, Docs $docs)
     {
         $t = $this->open($code);
-        $docs->receive($t, $t->executorUser);
+        $docs->receive($t, $t->executor);
 
         return back()->with('toast', 'Документы у вас');
     }
@@ -58,7 +58,7 @@ class TripController
     public function pickup(Request $request, string $code, PickUp $pickUp)
     {
         $t = $this->open($code);
-        $pickUp($t, $t->isPickup() ? $request->validate(PickUp::rules(), PickUp::messages()) : [], $t->executorUser);
+        $pickUp($t, $t->isPickup() ? $request->validate(PickUp::rules(), PickUp::messages()) : [], $t->executor);
 
         return back()->with('toast', 'Забрали: '.$t->title());
     }
@@ -66,7 +66,7 @@ class TripController
     public function deliver(string $code, Deliver $deliver)
     {
         $t = $this->open($code);
-        $deliver($t, $t->executorUser);
+        $deliver($t, $t->executor);
 
         return back()->with('toast', 'Привезли: '.$t->title());
     }
@@ -132,7 +132,7 @@ class TripController
     private function task(string $code): Transport
     {
         $t = strlen($code) >= 16 ? Transport::where('trip_code', $code)->first() : null;
-        if (! $t || ! $t->executorUser instanceof User) {
+        if (! $t || ! $t->executor instanceof User) {
             abort(response()->view('logistics.trip.gone', [], 410));
         }
 

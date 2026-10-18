@@ -101,9 +101,9 @@ final class Search
     /** Логистика: вывозы, которые человек видит, — по машине, адресам, владельцу, треку. */
     private static function logistics(User $user, Term $t): array
     {
-        $rows = Transport::visibleTo($user)->search($t)->with(['offer', 'vehicle', 'car', 'executorUser', 'coordinator'])
+        $rows = Transport::visibleTo($user)->search($t)->with(['offer', 'vehicle', 'car', 'executor', 'logist'])
             ->latest('id')->limit(self::ROWS)->get()
-            ->map(fn (Transport $x) => new Hit($x->title(), '/transports?preset=all&peek='.$x->id, array_values(array_filter([$x->next(), $x->city(), $x->executorName()]))))->all();
+            ->map(fn (Transport $x) => new Hit($x->title(), '/transports?preset=all&peek='.$x->id, array_values(array_filter([$x->next(), $x->city(), $x->carrier()]))))->all();
 
         return ['transports' => ['title' => 'Вывоз', 'rows' => $rows]];
     }

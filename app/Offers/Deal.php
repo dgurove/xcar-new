@@ -12,7 +12,7 @@ use App\Billing\PaymentState;
 use App\Billing\Seller;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
-use App\Logistics\Executor;
+use App\Logistics\Channel;
 use App\Support\Demo\HidesDemo;
 use App\Support\Surface;
 use App\Users\User;
@@ -489,7 +489,7 @@ class Deal extends Model
         }
         $pickup = $this->offer->pickup();
 
-        return $pickup?->executor === Executor::Manager && $pickup->executor_id === $this->buyer_id;
+        return $pickup?->channel === Channel::Manager && $pickup->executor_id === $this->buyer_id;
     }
 
     /**

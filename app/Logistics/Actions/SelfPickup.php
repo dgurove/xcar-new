@@ -2,8 +2,8 @@
 
 namespace App\Logistics\Actions;
 
+use App\Logistics\Channel;
 use App\Logistics\Events\TransportMoved;
-use App\Logistics\Executor;
 use App\Logistics\Point;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
@@ -29,12 +29,12 @@ final class SelfPickup
         if (! $t || ! $t->isPickup() || $t->state->picked()) {
             return $t;
         }
-        if ($t->executor !== null && $t->executor !== Executor::Manager) {
+        if ($t->channel !== null && $t->channel !== Channel::Manager) {
             return ($this->cancel)($t, $by, 'Менеджер забрал сам', system: true);
         }
         DB::transaction(function () use ($t, $manager, $offer, $by) {
             $t->update([
-                'executor' => Executor::Manager, 'executor_id' => $manager->id, 'coordinator_id' => null, 'docs_by_cdek' => false,
+                'channel' => Channel::Manager, 'executor_id' => $manager->id, 'logist_id' => null, 'docs_by_cdek' => false,
                 'state' => TransportState::Delivered, 'assigned_at' => $t->assigned_at ?? now(), 'picked_at' => now(), 'delivered_at' => now(),
                 'destination' => Point::Keeper,
             ]);

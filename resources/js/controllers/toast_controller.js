@@ -47,7 +47,8 @@ export default class extends Controller {
         if (flash.dataset.href) return { kind, href: flash.dataset.href };
         if (!('undo' in flash.dataset)) return kind;
         return { kind, action: { label: 'Отменить', run: () => {
-            const form = scope.querySelector('form[data-step-back]');
+            // Чей шаг: пути сделки — data-step-back пустой, вывоза — data-step-back="transport" (тост несёт ключ).
+            const form = scope.querySelector(`form[data-step-back="${flash.dataset.undo || ''}"]`);
             if (!form) return;
             const copy = form.cloneNode(true);
             delete copy.dataset.turboConfirm;

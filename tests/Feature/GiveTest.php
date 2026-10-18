@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Garage\Car;
 use App\Garage\CarState;
 use App\Garage\GaragePayer;
-use App\Logistics\Executor;
+use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\BidKind;
@@ -86,7 +86,7 @@ class GiveTest extends TestCase
         // Маршрут — на входе сделки, а не на черновике.
         $this->assertSame($offer->stage()->workflow->dealEntry($deal)->id, $offer->stage()->id);
         // Забирает Роман — он исполнитель вывоза; страница предложения у него открыта.
-        $this->assertSame(Executor::Manager, Transport::openFor($offer)->executor);
+        $this->assertSame(Channel::Manager, Transport::openFor($offer)->channel);
         $this->assertSame($this->roman->id, Transport::openFor($offer)->executor_id);
         $this->assertTrue($offer->isVisibleTo($this->roman));
     }

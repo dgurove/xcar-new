@@ -4,7 +4,7 @@ namespace App\Logistics\Listeners;
 
 use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
-use App\Logistics\Executor;
+use App\Logistics\TransportEvent;
 use App\Offers\OfferEventType;
 use App\Support\Ago;
 use Illuminate\Events\Dispatcher;
@@ -26,7 +26,7 @@ final class RecordOnOffer
     public function assigned(TransportAssigned $e): void
     {
         $t = $e->transport;
-        $who = $t->executorUser?->name ?? ($t->executor === Executor::Logist ? 'логист '.$t->coordinator?->name : null);
+        $who = $t->executor ? 'исполнитель '.$t->executor->name : ($t->logist ? 'логист '.$t->logist->name : null);
         $t->saleOffer()?->log(OfferEventType::PickupAssigned, null, ['who' => $who ?? 'не выбран']);
     }
 
@@ -42,7 +42,7 @@ final class RecordOnOffer
             'delivered' => 'привёз'.(($d = $t->destinationLabel()) ? ', '.$d : '')
                 .($t->delivered_at?->lt(now()->subMinutes(5)) ? ', '.Ago::day($t->delivered_at, time: true) : ''),
             'cancelled' => 'отменён'.($t->cancel_reason ? ': '.$t->cancel_reason : ''),
-            default => null,
+            default => str_starts_with($e->step, 'undo:') ? 'отменили «'.(TransportEvent::STEPS[substr($e->step, 5)] ?? 'шаг').'»' : null,
         };
         if ($text) {
             $t->saleOffer()?->log(OfferEventType::Note, $e->by, ['text' => 'Вывоз: '.$text]);

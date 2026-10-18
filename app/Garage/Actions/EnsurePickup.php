@@ -6,7 +6,7 @@ use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\OpenPickup;
-use App\Logistics\Executor;
+use App\Logistics\Channel;
 use App\Logistics\Point;
 use App\Offers\Offer;
 use App\Park\VehicleState;
@@ -48,7 +48,7 @@ final class EnsurePickup
             $t->update(['destination' => $to]);
         }
         if ($self && ! $t->isExecutedBy($evacuator)) {
-            ($this->assign)($t, Executor::Manager, $evacuator, $by);
+            ($this->assign)($t, Channel::Manager, $evacuator, $by);
         }
 
         return $offer;

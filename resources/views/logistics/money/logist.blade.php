@@ -25,12 +25,12 @@
             @foreach ($groups as $key => $tasks)
                 @php
                     $first = $tasks->first();
-                    $name = $pill === 'clients' ? $first->client?->name : $first->executorUser?->name;
+                    $name = $pill === 'clients' ? $first->client?->name : $first->executor?->name;
                     $sum = (int) $tasks->sum($field);
                 @endphp
                 <div class="contents" data-controller="sheet">
                     <x-ui.sheet-row>
-                        <x-ui.avatar :name="$name" :user="$pill === 'executors' ? $first->executorUser : null" :size="44"/>
+                        <x-ui.avatar :name="$name" :user="$pill === 'executors' ? $first->executor : null" :size="44"/>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate">{{ $name }}</span>
                             <span class="row-sub">{{ $tasks->count() }} {{ Plural::of($tasks->count(), ['заявка', 'заявки', 'заявок']) }}</span>

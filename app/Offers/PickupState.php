@@ -16,7 +16,7 @@ final class PickupState
     public static function of(Offer $offer, ?User $viewer = null): array
     {
         $t = $offer->pickup();
-        $who = $t?->executorUser;
+        $who = $t?->executor;
         $mine = $viewer && $who && $who->is($viewer);
         // Забирать рано (Альфа — после оплаты, Каркаде — пока поставщик не согласовал): не «позвонить владельцу»
         // оранжевым, а почему ждём (17.10.2026, прогон: гаражная Альфы сразу после «Принять» звала звонить).

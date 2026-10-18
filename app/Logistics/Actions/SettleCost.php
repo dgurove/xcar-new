@@ -13,7 +13,7 @@ use App\Garage\Actions\UpdateCost;
 use App\Garage\Cost;
 use App\Garage\Events\GarageChanged;
 use App\Garage\Payer;
-use App\Logistics\Executor;
+use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Users\User;
 
@@ -36,9 +36,9 @@ final class SettleCost
             return;
         }
         // Исполнителя и счёт — заново: до назначения связь могла загрузиться пустой.
-        $t->load(['invoice', 'coordinator'])->loadMissing(['offer.garageCar', 'vehicle']);
+        $t->load(['invoice', 'logist'])->loadMissing(['offer.garageCar', 'vehicle']);
         $cost = (float) $t->cost;
-        $party = $cost > 0 && $t->executor === Executor::Logist && $t->coordinator ? Party::forUser($t->coordinator) : null;
+        $party = $cost > 0 && $t->channel === Channel::Logist && $t->logist ? Party::forUser($t->logist) : null;
 
         // Аннулированный счёт (руками в «Оплатах» или прошлой правкой) — всё равно что его нет: долг выставится заново.
         $old = $t->invoice?->state === InvoiceState::Void ? null : $t->invoice;
@@ -72,7 +72,7 @@ final class SettleCost
         if (! $car || $car->isFrozen()) {
             return;
         }
-        if ($cost <= 0 || $t->executor !== Executor::Logist) {
+        if ($cost <= 0 || $t->channel !== Channel::Logist) {
             if ($row) {
                 ($this->removeCost)($row, $by);
             }
@@ -80,7 +80,7 @@ final class SettleCost
 
             return;
         }
-        $data = ['title' => 'Вывоз'.($t->coordinator ? ', '.$t->coordinator->shortName() : ''), 'amount' => $cost];
+        $data = ['title' => 'Вывоз'.($t->logist ? ', '.$t->logist->shortName() : ''), 'amount' => $cost];
         if ($row) {
             if ($row->title !== $data['title'] || (float) $row->amount !== $cost) {
                 ($this->updateCost)($row, $data, $by);

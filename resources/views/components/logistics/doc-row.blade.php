@@ -3,7 +3,7 @@
      отправлены — датой и временем. Та же строка приходит в ответе карточки (`TransportController::detail`, `documents`). --}}
 @props(['t'])
 @php
-    $u = $t->executorUser;
+    $u = $t->executor;
     $at = $t->docs_sent_at ?? $t->assigned_at;
 @endphp
 <tr data-detail-key="{{ $t->id }}" id="doc-{{ $t->id }}" data-search-row>

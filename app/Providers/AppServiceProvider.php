@@ -34,6 +34,7 @@ use App\Live\PublishLiveUpdates;
 use App\Live\RefreshCar;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Listeners\NotifyLogistics;
+use App\Logistics\Listeners\RecordHistory;
 use App\Logistics\Listeners\RecordOnOffer;
 use App\Logistics\Listeners\RefreshLogistics;
 use App\Mail\Extraction\AttachmentReader;
@@ -92,6 +93,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(Notify::class);
         Event::subscribe(NotifyLogistics::class);
         Event::subscribe(RecordOnOffer::class);
+        Event::listen(TransportMoved::class, RecordHistory::class);
         Event::subscribe(RefreshLogistics::class);
         Event::listen(NotificationSent::class, CollapseNotices::class);
         Event::subscribe(PublishLiveUpdates::class);

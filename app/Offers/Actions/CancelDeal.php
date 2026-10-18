@@ -11,7 +11,7 @@ use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Cancel;
-use App\Logistics\Executor;
+use App\Logistics\Channel;
 use App\Logistics\Point;
 use App\Logistics\Transport;
 use App\Offers\Bid;
@@ -62,7 +62,7 @@ final class CancelDeal
         $offer = $deal->offer;
         $open = $offer ? Transport::openFor($offer) : null;
         if ($open && ! $open->state->picked()) {
-            if ($open->executor === Executor::Manager && $open->executor_id === $deal->buyer_id) {
+            if ($open->channel === Channel::Manager && $open->executor_id === $deal->buyer_id) {
                 app(AssignExecutor::class)->release($open, $by);
             }
             if ($car && ! $keepCar && $open->destination === Point::Keeper) {

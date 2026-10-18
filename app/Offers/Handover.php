@@ -15,6 +15,7 @@ use App\Workflow\Track;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Получение автомобиля по сделке (04.10.2026, владелец: «согласовали, он должен вывезти, а у него 0 инфы»): где стоит
@@ -183,11 +184,11 @@ final class Handover
     /** Кто везёт словом: «Везёт Татьяна Л., вывоз 21 окт», без исполнителя — «Вывоз заказан, ждём исполнителя». */
     private static function carrierLine(Transport $t): string
     {
-        if (! $t->executor) {
+        if (! $t->channel) {
             return 'Вывоз заказан, ждём исполнителя';
         }
 
-        return 'Везёт '.$t->executorName().($t->pickup_at ? ', вывоз '.$t->pickup_at->translatedFormat('j M') : '');
+        return Str::ucfirst($t->carrier() ?? 'ждёт исполнителя').($t->pickup_at ? ', вывоз '.$t->pickup_at->translatedFormat('j M') : '');
     }
 
     /** Есть что показать: место, контакт или адрес. Пустой блок не рисуется. */

@@ -5,9 +5,9 @@ use App\Http\Admin\BidController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
-use App\Http\Admin\GiveController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
+use App\Http\Admin\GiveController;
 use App\Http\Admin\InterestController;
 use App\Http\Admin\InvoiceController;
 use App\Http\Admin\LegacyClaimController;
@@ -216,6 +216,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // «Видно менеджеру» у документа — решает админ (модератору документ менеджерам не открыть).
         Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
         Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);
+        Route::post('/offers/{offer}/pickup/back', [RouteController::class, 'pickupBack']);
 
         Route::post('/confirmations/{bid}/accept', [GiveController::class, 'accept']);
         Route::post('/offers/{offer}/confirmations', [BidController::class, 'storeFor']);

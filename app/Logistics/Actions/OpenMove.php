@@ -5,6 +5,7 @@ namespace App\Logistics\Actions;
 use App\Logistics\Events\TransportRequested;
 use App\Logistics\Point;
 use App\Logistics\Transport;
+use App\Logistics\TransportEvent;
 use App\Logistics\TransportKind;
 use App\Logistics\TransportState;
 use App\Park\EventType;
@@ -47,6 +48,7 @@ final class OpenMove
         $t ??= new Transport(['car_id' => $vehicle->car_id, 'origin' => 'park', 'kind' => TransportKind::Move, 'state' => TransportState::New, 'created_by' => $by->id]);
         $t->fill(['from_address' => $vehicle->yard?->fullAddress(), 'destination' => $yard ? Point::Yard : Point::Other, 'to_yard_id' => $yard, 'to_address' => $address])->save();
         if ($fresh) {
+            TransportEvent::record($t, 'opened', $by);
             $vehicle->log(EventType::Note, $by, ['text' => 'Логистика: перевозка '.($t->toYard?->name ?? $address)]);
             TransportRequested::dispatch($t);
         }

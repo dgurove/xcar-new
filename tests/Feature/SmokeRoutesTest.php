@@ -205,8 +205,8 @@ class SmokeRoutesTest extends TestCase
         Deal::create(['offer_id' => $offers[2]->id, 'buyer_id' => $manager->id, 'state' => DealState::Active, 'cost' => 502000, 'amount' => 615000]);
         // Вывозы: без исполнителя, у логиста, у нашего человека с созвоном и документами СДЭКом.
         Transport::create(['car_id' => $offers[0]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'new']);
-        Transport::create(['car_id' => $offers[1]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'logist', 'executor' => 'logist', 'coordinator_id' => $logist->id]);
-        Transport::create(['car_id' => $offers[2]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'agreed', 'executor' => 'staff', 'executor_id' => $driver->id,
+        Transport::create(['car_id' => $offers[1]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'logist', 'channel' => 'logist', 'logist_id' => $logist->id]);
+        Transport::create(['car_id' => $offers[2]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'agreed', 'channel' => 'staff', 'executor_id' => $driver->id,
             'agreed_at' => now(), 'pickup_at' => now()->addDay(), 'pickup_place' => 'Москва', 'docs_by_cdek' => true, 'docs_track' => '123456789']);
 
         foreach ([0, 1] as $i) {

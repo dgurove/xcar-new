@@ -46,7 +46,7 @@ class LogisticsOrdersTest extends TestCase
             'client_price' => '25 000', 'executor_id' => $driver->id, 'executor_cost' => '18000',
         ])->assertRedirect();
         $t = Transport::where('origin', 'order')->sole();
-        $this->assertSame($tanya->id, $t->coordinator_id);
+        $this->assertSame($tanya->id, $t->logist_id);
         $this->assertSame(25000, (int) $t->client_price);
         $this->assertNotNull($t->trip_code);
         $this->assertSame(0, Invoice::count(), 'XCar за заявку логиста не должен');
@@ -77,7 +77,7 @@ class LogisticsOrdersTest extends TestCase
         $this->post($trip.'/deliver')->assertStatus(410);
 
         // Сменили исполнителя — прежняя ссылка гаснет.
-        $other = Transport::create(['car_id' => $t->car_id, 'origin' => 'order', 'kind' => 'pickup', 'executor' => 'logist', 'coordinator_id' => $tanya->id, 'executor_id' => $driver->id, 'state' => 'assigned']);
+        $other = Transport::create(['car_id' => $t->car_id, 'origin' => 'order', 'kind' => 'pickup', 'channel' => 'logist', 'logist_id' => $tanya->id, 'executor_id' => $driver->id, 'state' => 'assigned']);
         $old = $other->trip_code;
         $other->update(['executor_id' => $tanya->id]);
         $this->get($this->host.'/trip/'.$old)->assertStatus(410);

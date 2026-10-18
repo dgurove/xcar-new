@@ -26,7 +26,7 @@
             @if ($handover->buyerPicks)
                 <x-ui.state :tone="$handover->open ? 'open' : 'muted'">{{ $handover->open ? 'забирает менеджер, ему видно' : 'забирает менеджер' }}</x-ui.state>
             @elseif ($offer->pickup())
-                <x-ui.state tone="muted">вывозит {{ $offer->pickup()->executorName() ?? 'логистика' }}</x-ui.state>
+                <x-ui.state tone="muted">{{ $offer->pickup()->carrier() ?? 'вывозит логистика' }}</x-ui.state>
             @endif
             </div>
             <span class="flex shrink-0 items-center gap-1">

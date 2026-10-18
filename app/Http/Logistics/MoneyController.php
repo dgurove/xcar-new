@@ -45,8 +45,8 @@ class MoneyController
     /** Своё логиста: долги заказчиков и долг исполнителям — задачи, привезённые и без отметки оплаты. */
     private function logist(Request $request, User $me)
     {
-        $base = fn () => Transport::where('coordinator_id', $me->id)->where('state', TransportState::Delivered)
-            ->with(['car', 'client', 'executorUser'])->latest('delivered_at');
+        $base = fn () => Transport::where('logist_id', $me->id)->where('state', TransportState::Delivered)
+            ->with(['car', 'client', 'executor'])->latest('delivered_at');
         $clients = $base()->where('origin', 'order')->whereNotNull('client_price')->whereNull('client_paid_at')->get()->groupBy('client_id');
         $executors = $base()->whereNotNull('executor_cost')->whereNull('executor_paid_at')->whereNotNull('executor_id')
             ->where('executor_id', '!=', $me->id)->get()->groupBy('executor_id');

@@ -8,7 +8,7 @@ use App\Cars\Settlement;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Call;
 use App\Logistics\Actions\LogistAssign;
-use App\Logistics\Executor;
+use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
@@ -141,7 +141,7 @@ class PickupLogisticsTest extends TestCase
         $offer = app(UpdateOffer::class)(Offer::create(['claim_ref' => '473698/2026', 'floor_price' => 500000]), ['vendor_id' => $vendor->id], $admin);
         $t = Transport::openFor($offer);
 
-        app(AssignExecutor::class)($t, Executor::Logist, $logist, $admin);
+        app(AssignExecutor::class)($t, Channel::Logist, $logist, $admin);
         $this->assertSame(TransportState::Logist, $t->fresh()->state);
         $this->assertTrue(Transport::visibleTo($logist)->whereKey($t->id)->exists());
         $this->assertFalse(Transport::visibleTo($own)->whereKey($t->id)->exists());
@@ -192,16 +192,16 @@ class PickupLogisticsTest extends TestCase
             ->assertSee('data-detail-key="'.$a->id.'"', false)->assertDontSee('data-detail-key="'.$c->id.'"', false)
             ->assertSee('Выбрать все');
 
-        $this->actingAs($admin)->put($host.'/transports/executor', ['executor' => 'logist', 'who' => ['logist' => $logist->id], 'transports' => [$a->id, $b->id]])
+        $this->actingAs($admin)->put($host.'/transports/executor', ['channel' => 'logist', 'who' => ['logist' => $logist->id], 'transports' => [$a->id, $b->id]])
             ->assertSessionHasNoErrors()->assertSessionHas('toast', 'Назначено 2');
         $this->assertSame(TransportState::Logist, $a->fresh()->state);
-        $this->assertSame($logist->id, $b->fresh()->coordinator_id);
+        $this->assertSame($logist->id, $b->fresh()->logist_id);
         // Пачкой — одно уведомление логисту, а не по задаче.
         Notification::assertSentToTimes($logist, TransportNotice::class, 1);
         Notification::assertSentTo($logist, TransportNotice::class, fn (TransportNotice $n) => $n->title() === 'Вывозы в регионах: 2');
         // Негодный человек — одна ошибка у поля, а не «не вышло N».
         $closed = User::create(['name' => 'Закрытый Логист', 'phone' => '79000000009', 'roles' => [Role::Logist], 'approved_at' => now(), 'rejected_at' => now()]);
-        $this->actingAs($admin)->put($host.'/transports/executor', ['executor' => 'logist', 'who' => ['logist' => $closed->id], 'transports' => [$c->id]])
+        $this->actingAs($admin)->put($host.'/transports/executor', ['channel' => 'logist', 'who' => ['logist' => $closed->id], 'transports' => [$c->id]])
             ->assertSessionHasErrors('executor_id');
         $this->assertSame(TransportState::New, $c->fresh()->state);
 
@@ -209,8 +209,8 @@ class PickupLogisticsTest extends TestCase
         $this->assertSame(TransportState::Cancelled, $c->fresh()->state);
         $this->actingAs($admin)->post($host.'/transports/cancel', ['transports' => [$c->id, $a->id]])->assertSessionHas('toast', fn ($t) => str_starts_with($t, 'Отменено 1, '));
         // Менеджера пачкой не назначают.
-        $this->actingAs($admin)->put($host.'/transports/executor', ['executor' => 'manager', 'transports' => [$b->id]])->assertSessionHasErrors('executor');
-        $this->actingAs($logist)->put($host.'/transports/executor', ['executor' => 'logist', 'who' => ['logist' => $logist->id], 'transports' => [$b->id]])->assertNotFound();
+        $this->actingAs($admin)->put($host.'/transports/executor', ['channel' => 'manager', 'transports' => [$b->id]])->assertSessionHasErrors('channel');
+        $this->actingAs($logist)->put($host.'/transports/executor', ['channel' => 'logist', 'who' => ['logist' => $logist->id], 'transports' => [$b->id]])->assertNotFound();
     }
 
     /** Напоминания: сутки у логиста — ему один раз; третье «Не дозвонился» — админам; сводка админам — раз в день. */
@@ -226,8 +226,8 @@ class PickupLogisticsTest extends TestCase
         $open('600001/2026');
         $atLogist = $open('600002/2026');
         $called = $open('600003/2026');
-        app(AssignExecutor::class)($atLogist, Executor::Logist, $logist, $admin);
-        app(AssignExecutor::class)($called, Executor::Staff, $driver, $admin);
+        app(AssignExecutor::class)($atLogist, Channel::Logist, $logist, $admin);
+        app(AssignExecutor::class)($called, Channel::Staff, $driver, $admin);
 
         $this->travel(25)->hours();
         Artisan::call('logistics:tick');
@@ -253,7 +253,7 @@ class PickupLogisticsTest extends TestCase
         $own = User::create(['name' => 'Пётр Исполнитель', 'phone' => '79000000005', 'roles' => [Role::Contractor], 'logist_id' => $logist->id, 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'pickup_on_arrival' => true]);
         $t = Transport::openFor(app(UpdateOffer::class)(Offer::create(['claim_ref' => '700001/2026', 'floor_price' => 500000]), ['vendor_id' => $vendor->id], $admin));
-        app(AssignExecutor::class)($t, Executor::Logist, $logist, $admin);
+        app(AssignExecutor::class)($t, Channel::Logist, $logist, $admin);
         app(LogistAssign::class)($t->fresh(), ['executor_id' => $own->id, 'cost' => '17 500', 'distance_km' => 140], $logist);
 
         $host = 'http://'.config('xcar.logistics_host');
@@ -281,10 +281,10 @@ class PickupLogisticsTest extends TestCase
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'pickup_on_arrival' => true]);
         $open = fn (string $ref) => Transport::openFor(app(UpdateOffer::class)(Offer::create(['claim_ref' => $ref, 'floor_price' => 500000]), ['vendor_id' => $vendor->id], $admin));
 
-        $staff = app(AssignExecutor::class)($open('800001/2026'), Executor::Staff, $driver, $admin);
+        $staff = app(AssignExecutor::class)($open('800001/2026'), Channel::Staff, $driver, $admin);
         $this->assertFalse($staff->fresh()->docs_by_cdek, 'нашим — без СДЭКа');
 
-        $regional = app(AssignExecutor::class)($open('800002/2026'), Executor::Logist, $logist, $admin);
+        $regional = app(AssignExecutor::class)($open('800002/2026'), Channel::Logist, $logist, $admin);
         $this->assertTrue($regional->fresh()->docs_by_cdek, 'логисту — СДЭКом по умолчанию');
         app(LogistAssign::class)($regional->fresh(), ['executor_id' => $own->id, 'cost' => '10 000'], $logist);
         $this->assertTrue($regional->fresh()->docs_by_cdek, 'галка доживает до исполнителя логиста');
@@ -293,7 +293,7 @@ class PickupLogisticsTest extends TestCase
         // Форма: галка вида снята — без СДЭКа и у логиста.
         $host = 'http://'.config('xcar.logistics_host');
         $t = $open('800003/2026');
-        $this->actingAs($admin)->put($host.'/transports/'.$t->id.'/executor', ['executor' => 'logist', 'who' => ['logist' => $logist->id], 'cdek' => ['logist' => '0']])
+        $this->actingAs($admin)->put($host.'/transports/'.$t->id.'/executor', ['channel' => 'logist', 'who' => ['logist' => $logist->id], 'cdek' => ['logist' => '0']])
             ->assertSessionHasNoErrors();
         $this->assertFalse($t->fresh()->docs_by_cdek);
     }
@@ -326,11 +326,11 @@ class PickupLogisticsTest extends TestCase
         $t = Transport::openFor($offer->fresh());
 
         try {
-            app(AssignExecutor::class)($t, Executor::Partner, $owner, $admin);
+            app(AssignExecutor::class)($t, Channel::Partner, $owner, $admin);
             $this->fail('менеджер сделки — не исполнитель логистики');
         } catch (ValidationException) {
         }
-        app(AssignExecutor::class)($t->fresh(), Executor::Partner, $other, $admin);
+        app(AssignExecutor::class)($t->fresh(), Channel::Partner, $other, $admin);
         $this->assertSame($other->id, $t->fresh()->executor_id);
         $this->assertTrue(Transport::visibleTo($other)->whereKey($t->id)->exists());
         $this->assertTrue(Transport::visibleTo($admin)->whereKey($t->id)->exists());

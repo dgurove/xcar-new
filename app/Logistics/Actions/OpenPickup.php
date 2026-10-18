@@ -5,6 +5,7 @@ namespace App\Logistics\Actions;
 use App\Logistics\Events\TransportRequested;
 use App\Logistics\Point;
 use App\Logistics\Transport;
+use App\Logistics\TransportEvent;
 use App\Logistics\TransportKind;
 use App\Logistics\TransportState;
 use App\Offers\CarPlace;
@@ -20,7 +21,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Завести вывоз машины (17.10.2026) — одна дверь: письмо вендора с `pickup_on_arrival` (Совкомбанк: обязаны вывезти
  * каждую), «Вывезти» в CRM, гараж (`Garage\Actions\EnsurePickup`), «Принять» с «Забирает менеджер». Открытый вывоз у
- * машины один — повторный вызов отдаёт его. Владелец, телефон и адрес задача не копирует: читает у машины и предложения
+ * машины один — повторный вызов отдаёт его. Отменили, а вывоз снова нужен (18.10.2026: сменить исполнителя отменой
+ * — по одной машине копились задачи) — снова открывается прежняя задача, с её историей, а не новая строка. Владелец, телефон и адрес задача не копирует: читает у машины и предложения
  * (их дописывает письмо и правят в CRM). Без исполнителя задача ждёт админа («Без исполнителя», уведомление админам).
  * `quiet` — везёт сам менеджер сделки или гаража (это не логистика: ни «Вывоз: …» админам, ни строки «задача в логистике»
  * в истории; вывоз в истории пишет назначение) или просьбу логистам пишет вызывающий (`RequestPickup`).
@@ -39,11 +41,18 @@ final class OpenPickup
         }
 
         $t = DB::transaction(function () use ($offer, $by, $to, $quiet) {
-            $t = Transport::create([
-                'car_id' => $offer->car_id, 'origin' => 'sale', 'kind' => TransportKind::Pickup, 'state' => TransportState::New,
-                'destination' => $to ?? ($offer->garageCar()->exists() ? Point::Keeper : null),
-                'created_by' => $by?->id,
-            ]);
+            $fields = ['state' => TransportState::New, 'destination' => $to ?? ($offer->garageCar()->exists() ? Point::Keeper : null)];
+            $t = Transport::where('car_id', $offer->car_id)->where('origin', 'sale')->where('kind', TransportKind::Pickup)
+                ->where('state', TransportState::Cancelled)->whereNull('picked_at')->latest('id')->first();
+            if ($t) {
+                $t->update($fields + ['channel' => null, 'executor_id' => null, 'logist_id' => null, 'cost' => null, 'distance_km' => null,
+                    'assigned_at' => null, 'cancelled_at' => null, 'cancel_reason' => null, 'docs_by_cdek' => false,
+                    'docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]);
+                TransportEvent::record($t, 'reopened', $by);
+            } else {
+                $t = Transport::create($fields + ['car_id' => $offer->car_id, 'origin' => 'sale', 'kind' => TransportKind::Pickup, 'created_by' => $by?->id]);
+                TransportEvent::record($t, 'opened', $by);
+            }
             if ($offer->car_place === null) {
                 ($this->place)($offer, CarPlace::Owner, $by);
             }

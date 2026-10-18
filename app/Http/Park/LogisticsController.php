@@ -13,6 +13,6 @@ class LogisticsController
     {
         $t = $open($vehicle, $request->validate(OpenMove::rules()), $request->user());
 
-        return back()->with('toast', 'Логистика: '.($t->executorName() ?? 'ждёт исполнителя'));
+        return back()->with('toast', 'Логистика: '.($t->carrier() ?? 'ждёт исполнителя'));
     }
 }

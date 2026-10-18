@@ -13,10 +13,12 @@ use App\Logistics\Actions\Deliver;
 use App\Logistics\Actions\Docs;
 use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\PickUp;
+use App\Logistics\Actions\StepBack;
+use App\Logistics\Channel;
 use App\Logistics\Client;
-use App\Logistics\Executor;
 use App\Logistics\SaleState;
 use App\Logistics\Transport;
+use App\Logistics\TransportEvent;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
 use App\Media\Actions\RotatePhoto;
@@ -35,6 +37,7 @@ use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -52,7 +55,7 @@ class TransportController
      */
     public const SORTS = [
         'created' => ['Поступила', 'desc'], 'title' => ['Марка, модель', 'asc'], 'vendor' => ['Вендор', 'asc'], 'sale' => ['Продажа', 'desc'],
-        'city' => ['Город', 'asc'], 'who' => ['Кто вывозит', 'asc'], 'when' => ['Когда', 'asc'],
+        'city' => ['Город', 'asc'], 'who' => ['Исполнитель', 'asc'], 'when' => ['Когда', 'asc'],
     ];
 
     /** Пилюли — шаги работы. Кому какие — `pills`. */
@@ -83,7 +86,7 @@ class TransportController
         $sort = Sort::from($request->query('sort'), self::SORTS, self::defaultSort($preset));
 
         $query = $facets->apply(Transport::visibleTo($user)->step($q !== '' ? 'all' : $preset))
-            ->with(['region', 'car', ...SaleState::WITH, 'executorUser', 'coordinator', 'toYard', 'client'])
+            ->with(['region', 'car', ...SaleState::WITH, 'executor', 'logist', 'toYard', 'client'])
             ->search($q, crm: $user->leadsLogistics());
         self::sorted($query, $sort);
         // Открытые вкладки — целиком (таблицу листают и выбирают галочками); «Готово» и «Все» растут без конца — страницами.
@@ -151,7 +154,7 @@ class TransportController
             'vendor' => $q->orderByRaw('(select vendors.name from vendors where vendors.id = '.SaleState::VENDOR_SQL.") {$dir} nulls last"),
             'sale' => $q->orderByRaw(SaleState::RANK_SQL." {$dir}")->orderBy('transports.created_at'),
             'city' => $q->orderByRaw("(select regions.name from regions where regions.id = transports.region_id) {$dir} nulls last"),
-            'who' => $q->orderByRaw("(select users.name from users where users.id = coalesce(transports.executor_id, transports.coordinator_id)) {$dir} nulls last"),
+            'who' => $q->orderByRaw("(select users.name from users where users.id = coalesce(transports.executor_id, transports.logist_id)) {$dir} nulls last"),
             // «Когда»: просроченный вывоз — первым.
             default => $q->orderByRaw("(transports.state = 'agreed' and transports.pickup_at < now()) desc")->orderByRaw(Transport::SHOWN_SQL." {$dir} nulls last"),
         };
@@ -211,7 +214,7 @@ class TransportController
                 ->labels(fn (array $ids) => Region::whereIn('id', Common::ints($ids))->orderBy('name')->get(['id', 'name'])
                     ->mapWithKeys(fn (Region $r) => [(string) $r->id => new Option((string) $r->id, $r->name)])->all()),
             $lead || $user->isLogist()
-                ? Common::manager('coalesce(transports.executor_id, transports.coordinator_id)', 'who', 'Кто вывозит')->none('Без исполнителя')
+                ? Common::manager('coalesce(transports.executor_id, transports.logist_id)', 'who', 'Исполнитель')->none('Без исполнителя')
                 : null,
             // Заказчик логиста: XCar (вывоз продажи и парковки) или его заказчики; «Заявки N ›» заказчика ведёт сюда.
             $user->isLogist() ? Facet::column('client', 'Заказчик', ['заказчик', 'заказчика', 'заказчиков'], 'transports.client_id')
@@ -226,7 +229,7 @@ class TransportController
     public function executorMany(Request $request, AssignExecutor $assign)
     {
         abort_unless($request->user()->leadsLogistics(), 404);
-        $request->validate(['executor' => ['required', Rule::in([Executor::Logist->value, Executor::Staff->value, Executor::Partner->value])]], ['executor.required' => 'Кто вывозит']);
+        $request->validate(['channel' => ['required', Rule::in([Channel::Logist->value, Channel::Staff->value, Channel::Partner->value])]], ['channel.required' => 'Кто вывозит']);
         [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
         // Человек не годится — одна ошибка у поля, а не «не вышло 50».
         AssignExecutor::guard($kind, $who);
@@ -234,7 +237,7 @@ class TransportController
         $back = $this->many($request, fn (Transport $t) => $done->push($assign($t, $kind, $who, $request->user(), $cdek, batch: true)), 'Назначено', 'Вывозит '.$who->shortName());
         // По задаче не шлём (`TransportAssigned::batch`) — одна строка исполнителю или логисту и одна модераторам.
         if ($done->isNotEmpty()) {
-            $who->notify(TransportNotice::assignedMany($done->count(), $kind === Executor::Logist));
+            $who->notify(TransportNotice::assignedMany($done->count(), $kind === Channel::Logist));
             if ($cdek = $done->filter(fn (Transport $t) => $t->docs_by_cdek && ! $t->docs_sent_at)->count()) {
                 Notification::send(User::withRole(Role::Moderator)->get(), TransportNotice::docsNeededMany($cdek));
             }
@@ -309,7 +312,7 @@ class TransportController
         if (($me = request()->user()) && ! request()->prefetch()) {
             app(ReadNotices::class)([$me->id], ['/transports/'.$transport->id], Surface::Logistics);
         }
-        $transport->load(['car.media', 'offer.media', 'offer.positions.stage.block', 'vehicle.media', ...SaleState::WITH, 'executorUser', 'coordinator', 'region', 'toYard', 'invoice', 'docsSender', 'client']);
+        $transport->load(['car.media', 'offer.media', 'offer.positions.stage.block', 'vehicle.media', ...SaleState::WITH, 'executor', 'logist', 'region', 'toYard', 'invoice', 'docsSender', 'client']);
         $me = request()->user();
         $preset = $list === 'transports' ? self::presetOf(request(), $me) : null;
 
@@ -321,11 +324,11 @@ class TransportController
     public function executor(Request $request, Transport $transport, AssignExecutor $assign)
     {
         abort_unless($request->user()->leadsLogistics(), 404);
-        $request->validate(['executor' => ['required', Rule::in([Executor::Logist->value, Executor::Staff->value, Executor::Partner->value])]], ['executor.required' => 'Кто вывозит']);
+        $request->validate(['channel' => ['required', Rule::in([Channel::Logist->value, Channel::Staff->value, Channel::Partner->value])]], ['channel.required' => 'Кто вывозит']);
         [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
         $assign($transport, $kind, $who, $request->user(), $cdek);
 
-        return back()->with('toast', 'Вывозит '.($transport->fresh()->executorName() ?? ''));
+        return back()->with('toast', Str::ucfirst($transport->fresh()->carrier() ?? 'ждёт исполнителя'));
     }
 
     /** «Документы СДЭКом» — переключают ведущие логистику. */
@@ -343,7 +346,7 @@ class TransportController
         $this->visible($request, $transport);
         $assign($transport, $request->validate(LogistAssign::rules(), ['executor_id.required' => 'Кто вывозит', 'cost.required' => 'Стоимость вывоза']), $request->user());
 
-        return back()->with('toast', 'Вывозит '.$transport->fresh()->executorName());
+        return back()->with('toast', Str::ucfirst($transport->fresh()->carrier() ?? 'ждёт исполнителя'));
     }
 
     public function call(Request $request, Transport $transport, Call $call)
@@ -351,7 +354,7 @@ class TransportController
         $this->visible($request, $transport);
         $call->agree($transport, $request->validate(Call::rules(), Call::messages()), $request->user());
 
-        return back()->with('toast', 'Созвонились');
+        return back()->with('toast', 'Созвонились')->with('toast-undo', 'transport');
     }
 
     public function missed(Request $request, Transport $transport, Call $call)
@@ -368,7 +371,7 @@ class TransportController
         $this->visible($request, $transport);
         $docs->send($transport, (string) $request->validate(['docs_track' => ['required', 'string', 'max:60']], ['docs_track.required' => 'Трек-номер СДЭК'])['docs_track'], $request->user());
 
-        return back()->with('toast', 'Документы отправлены');
+        return back()->with('toast', 'Документы отправлены')->with('toast-undo', 'transport');
     }
 
     public function received(Request $request, Transport $transport, Docs $docs)
@@ -376,7 +379,7 @@ class TransportController
         $this->visible($request, $transport);
         $docs->receive($transport, $request->user());
 
-        return back()->with('toast', 'Документы у вас');
+        return back()->with('toast', 'Документы у вас')->with('toast-undo', 'transport');
     }
 
     public function pickup(Request $request, Transport $transport, PickUp $pickUp)
@@ -384,7 +387,7 @@ class TransportController
         $this->visible($request, $transport);
         $pickUp($transport, $transport->isPickup() ? $request->validate(PickUp::rules(), PickUp::messages()) : [], $request->user());
 
-        return back()->with('toast', 'Вывезена: '.$transport->title());
+        return back()->with('toast', 'Вывезена: '.$transport->title())->with('toast-undo', 'transport');
     }
 
     /** «Уже вывезли» — задним числом (ведущие логистику). */
@@ -418,7 +421,17 @@ class TransportController
         $this->visible($request, $transport);
         $deliver($transport, $request->user());
 
-        return back()->with('toast', 'Привёз: '.$transport->title());
+        return back()->with('toast', 'Привёз: '.$transport->title())->with('toast-undo', 'transport');
+    }
+
+    /** «Отменить «шаг»» — последний шаг задачи назад (`StepBack`): из «···» шага и тостом сразу после него. */
+    public function back(Request $request, Transport $transport, StepBack $back)
+    {
+        $this->visible($request, $transport);
+        $step = StepBack::last($transport);
+        $back($transport, $request->user());
+
+        return back()->with('toast', 'Отменено: «'.(TransportEvent::STEPS[$step] ?? 'шаг').'»');
     }
 
     public function cancel(Request $request, Transport $transport, Cancel $cancel)

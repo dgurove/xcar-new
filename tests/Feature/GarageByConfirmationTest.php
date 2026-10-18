@@ -2,12 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Logistics\Actions\AssignExecutor;
-use App\Logistics\Actions\Deliver;
-use App\Logistics\Actions\PickUp as LogisticsPickUp;
-use App\Logistics\Executor;
-use App\Logistics\Point;
-use App\Logistics\Transport;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\Actions\VoidPayment;
@@ -23,11 +17,23 @@ use App\Garage\Actions\MoveCar;
 use App\Garage\Actions\SettleGarageCar;
 use App\Garage\Car;
 use App\Garage\CarState;
+use App\Garage\Cost;
 use App\Garage\GaragePayer;
+use App\Logistics\Actions\AssignExecutor;
+use App\Logistics\Actions\Deliver;
+use App\Logistics\Actions\PickUp as LogisticsPickUp;
+use App\Logistics\Channel;
+use App\Logistics\Point;
+use App\Logistics\Transport;
+use App\Notifications\InvoiceNeededNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
+use App\Offers\Actions\SaveDealContract;
+use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\BidKind;
 use App\Offers\CarPlace;
+use App\Offers\Deal;
+use App\Offers\DealContract;
 use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -42,7 +48,9 @@ use App\Workflow\Position;
 use App\Workflow\Preset;
 use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Workflow\WaitsFor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -154,7 +162,7 @@ class GarageByConfirmationTest extends TestCase
     public function test_sovcombank_garage_picks_up_without_payment_and_sells_through_deal(): void
     {
         Storage::fake('private');
-        \Illuminate\Support\Facades\Notification::fake();
+        Notification::fake();
         $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $manager = User::create(['name' => 'Филипп Бородин', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
@@ -184,7 +192,7 @@ class GarageByConfirmationTest extends TestCase
 
         // Наш человек вывез и довёз машину к менеджеру — подготовка, сделка на оплате ждёт от него цену продажи; счетов нет.
         $driver = User::create(['name' => 'Иван Водитель', 'phone' => '79000000003', 'roles' => [Role::Driver], 'approved_at' => now()]);
-        app(AssignExecutor::class)($transport, Executor::Staff, $driver, $admin);
+        app(AssignExecutor::class)($transport, Channel::Staff, $driver, $admin);
         app(LogisticsPickUp::class)($transport->fresh(), ['keys' => 1, 'destination' => 'keeper'], $admin);
         $this->assertSame(1, $offer->fresh()->keys_count);
         app(Deliver::class)($transport->fresh(), $admin);
@@ -193,7 +201,7 @@ class GarageByConfirmationTest extends TestCase
         $this->assertSame(CarState::Repair, $car->state);
         $position = $offer->fresh()->position(Track::Sale);
         $this->assertSame('Оплата по счёту ПРАЙМ', $position->stage->name);
-        $this->assertSame(\App\Workflow\WaitsFor::Manager, $position->waits_for);
+        $this->assertSame(WaitsFor::Manager, $position->waits_for);
         $this->assertSame('price', $deal->fresh()->invoiceGap());
         $this->assertSame(0, Invoice::where('deal_id', $deal->id)->count());
 
@@ -204,16 +212,16 @@ class GarageByConfirmationTest extends TestCase
         $this->assertSame(1500000, (int) $deal->fresh()->amount);
         $this->assertSame('buyer', $deal->fresh()->invoiceGap());
 
-        app(\App\Offers\Actions\SaveDealContract::class)(\App\Offers\DealContract::for($deal->fresh()), ['buyer_id' => 'new', 'new_buyer' => ['phone' => '+7 900 555-44-33'],
+        app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'new', 'new_buyer' => ['phone' => '+7 900 555-44-33'],
             'buyer' => ['kind' => 'person', 'name' => 'Покупаев Пётр Петрович', 'birth_at' => '1985-05-05', 'passport' => '11 11 111111',
                 'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2010-10-10', 'reg_address' => 'г. Москва']], $manager);
         $this->assertSame('commission', $deal->fresh()->invoiceGap());
-        $this->assertSame(\App\Workflow\WaitsFor::Us, $offer->fresh()->position(Track::Sale)->waits_for);
+        $this->assertSame(WaitsFor::Us, $offer->fresh()->position(Track::Sale)->waits_for);
         // Ход наш — сотрудникам «Назначьте вознаграждение», а не тишина.
-        \Illuminate\Support\Facades\Notification::assertSentTo($admin, \App\Notifications\InvoiceNeededNotice::class);
+        Notification::assertSentTo($admin, InvoiceNeededNotice::class);
 
         $deal->fresh()->update(['commission' => 100000]);
-        app(\App\Offers\Actions\SyncDealInvoices::class)($deal->fresh(), $admin);
+        app(SyncDealInvoices::class)($deal->fresh(), $admin);
         // Вознаграждение назначено — дальше скан паспорта покупателя (11.10.2026), со сканом счёт встаёт сам.
         $this->assertSame('passport', $deal->fresh()->invoiceGap());
         $this->passportFor($deal->fresh()->contract->buyer);
@@ -226,11 +234,11 @@ class GarageByConfirmationTest extends TestCase
         $this->drive($offer, Track::Sale, $admin, fn (Offer $o) => $o->state !== OfferState::Sold, $manager);
         $this->assertSame(DealState::Done, $deal->fresh()->state);
         $this->assertSame(CarState::Settled, $car->fresh()->state);
-        $this->assertFalse($car->fresh()->costs()->where('kind', \App\Garage\Cost::SUPPLIER)->exists());
+        $this->assertFalse($car->fresh()->costs()->where('kind', Cost::SUPPLIER)->exists());
         $this->assertSame(1, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->where('state', '!=', 'void')->count());
 
         // «Взяли под себя» (платим мы, без менеджера) — не она: машину оплачиваем и оформляем сами, расчёт по машине свой.
-        $ours = (new \App\Offers\Deal(['garage_payer' => GaragePayer::Us]))->setRelation('offer', $offer->fresh());
+        $ours = (new Deal(['garage_payer' => GaragePayer::Us]))->setRelation('offer', $offer->fresh());
         $this->assertFalse($ours->namesBuyer());
     }
 

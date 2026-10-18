@@ -28,6 +28,7 @@ use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
 use App\Http\Middleware\TouchSeen;
 use App\Live\SubscriberCookie;
+use App\Logistics\Console\MergeCancelledCommand;
 use App\Logistics\Console\TickCommand as LogisticsTick;
 use App\Mail\Console\ArchiveStaleCandidates;
 use App\Mail\Console\BackfillMail;
@@ -110,6 +111,7 @@ return Application::configure(basePath: dirname(__DIR__))
         TickBilling::class,
         CloseMonthCommand::class,
         LogisticsTick::class,
+        MergeCancelledCommand::class,
         SyncMail::class,
         WatchMail::class,
         ReconcileMail::class,

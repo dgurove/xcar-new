@@ -493,7 +493,7 @@ final class Nav
                                 fn ($q) => $q->whereIn('party_id', User::withRole(Role::Logist)->whereNotNull('party_id')->select('party_id')),
                                 fn ($q) => $q->where('party_id', $user->party_id ?? 0))->count()
                         : 0) + ($user->isLogist() && ! $user->isAdmin()
-                        ? Transport::where('coordinator_id', $user->id)->where('state', TransportState::Delivered)->where(fn ($q) => $q
+                        ? Transport::where('logist_id', $user->id)->where('state', TransportState::Delivered)->where(fn ($q) => $q
                             ->where(fn ($c) => $c->where('origin', 'order')->whereNotNull('client_price')->whereNull('client_paid_at'))
                             ->orWhere(fn ($x) => $x->whereNotNull('executor_cost')->whereNull('executor_paid_at')->whereNotNull('executor_id')->where('executor_id', '!=', $user->id)))->count()
                         : 0),

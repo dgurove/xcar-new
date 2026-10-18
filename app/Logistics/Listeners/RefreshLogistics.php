@@ -54,7 +54,7 @@ final class RefreshLogistics
     public static function topics(Transport $transport, ?int $previous = null): array
     {
         return ($transport->isOrder() ? collect() : User::logisticsLeads()->pluck('id'))
-            ->push($transport->executor_id, $transport->coordinator_id, $transport->executorUser?->logist_id, $previous)
+            ->push($transport->executor_id, $transport->logist_id, $transport->executor?->logist_id, $previous)
             ->filter()->unique()->map(fn (int $id) => Topics::user($id))->values()->all();
     }
 }

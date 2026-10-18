@@ -36,13 +36,13 @@ final class People
         return collect($people)->map(fn ($p) => self::row($p))->values();
     }
 
-    /** Исполнители логиста с числом открытых вывозов (`busy`) — и сам логист первой строкой. */
+    /**
+     * Исполнители логиста с числом открытых вывозов (`busy`). Самого логиста нет (18.10.2026, владелец: логист только
+     * распределяет; за исполнителя шаг он отмечает «за него»).
+     */
     public static function contractorsOf(User $logist): Collection
     {
-        $busy = fn ($q) => $q->select('users.*')->addSelect(['busy' => Transport::open()->selectRaw('count(*)')->whereColumn('transports.executor_id', 'users.id')]);
-        $self = $busy(User::whereKey($logist->id))->first();
-
-        return collect([self::row($self, 'вы, '.(($n = (int) $self->busy) ? 'в работе '.$n : 'без вывозов'))])
-            ->concat(self::rows($busy(User::contractorsFor($logist)->where('logist_id', $logist->id)->whereNull('rejected_at')->orderBy('name'))->get()));
+        return self::rows(User::contractorsFor($logist)->where('logist_id', $logist->id)->whereNull('rejected_at')->orderBy('name')
+            ->select('users.*')->addSelect(['busy' => Transport::open()->selectRaw('count(*)')->whereColumn('transports.executor_id', 'users.id')])->get());
     }
 }

@@ -58,6 +58,7 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     Route::delete('/transports/{transport}/media/{media}', [TransportController::class, 'destroyMedia']);
     Route::post('/transports/{transport}/pickup', [TransportController::class, 'pickup']);
     Route::post('/transports/{transport}/deliver', [TransportController::class, 'deliver']);
+    Route::post('/transports/{transport}/back', [TransportController::class, 'back']);
     Route::post('/transports/{transport}/cancel', [TransportController::class, 'cancel']);
     Route::post('/transports/{transport}/backdate', [TransportController::class, 'backdate']);
     Route::get('/documents', [DocumentController::class, 'index']);

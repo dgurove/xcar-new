@@ -21,7 +21,7 @@ class DocumentController
         if ($detail->framed()) {
             return $detail->response();
         }
-        $with = ['car', 'offer.settlement', 'vehicle', 'executorUser', 'coordinator'];
+        $with = ['car', 'offer.settlement', 'vehicle', 'executor', 'logist'];
         $waiting = Transport::awaitingDocs()->with($with)->oldest('assigned_at')->get();
         $sent = Transport::where('docs_by_cdek', true)->whereNotNull('docs_sent_at')->where('docs_sent_at', '>', now()->subDays(14))
             ->with($with)->latest('docs_sent_at')->get();

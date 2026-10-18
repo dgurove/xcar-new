@@ -29,7 +29,7 @@ final class TransportNotice extends Notice
     /** Поручение исполнителю или логисту. */
     public static function assigned(Transport $t, User $to): self
     {
-        return $t->executor === Executor::Logist && ! $t->isExecutedBy($to)
+        return $t->channel === Channel::Logist && ! $t->isExecutedBy($to)
             ? new self($t, 'Вывоз в регионе: '.$t->title(), self::where($t), true, true)
             : new self($t, 'Вам вывоз: '.$t->title(), implode(', ', array_filter([self::where($t), $t->ownerName() ? 'владелец '.$t->ownerName() : null])), true, true);
     }
@@ -37,7 +37,7 @@ final class TransportNotice extends Notice
     /** Модератору — оформить и отправить документы СДЭКом. */
     public static function docsNeeded(Transport $t): self
     {
-        return new self($t, 'Отправьте документы: '.$t->title(), implode(', ', array_filter([$t->executorUser?->name, $t->executorUser?->cdek_point])), true, true);
+        return new self($t, 'Отправьте документы: '.$t->title(), implode(', ', array_filter([$t->executor?->name, $t->executor?->cdek_point])), true, true);
     }
 
     /** Исполнителю — трек отправленных документов. */
@@ -63,7 +63,7 @@ final class TransportNotice extends Notice
     /** Дата вывоза прошла, «Забрал» нет — админам и исполнителю. */
     public static function late(Transport $t): self
     {
-        return new self($t, 'Не вывезли в срок: '.$t->title(), $t->executorName(), true, true);
+        return new self($t, 'Не вывезли в срок: '.$t->title(), $t->carrier(), true, true);
     }
 
     /**
@@ -119,7 +119,7 @@ final class TransportNotice extends Notice
     /** Третий раз подряд не дозвонились — админам: решать, что дальше. */
     public static function unreachable(Transport $t): self
     {
-        return new self($t, 'Не дозвонились 3 раза: '.$t->title(), implode(', ', array_filter([$t->executorName(), $t->ownerPhone()])), true, true);
+        return new self($t, 'Не дозвонились 3 раза: '.$t->title(), implode(', ', array_filter([$t->carrier(), $t->ownerPhone()])), true, true);
     }
 
     /** Город и адрес, откуда забирать. */

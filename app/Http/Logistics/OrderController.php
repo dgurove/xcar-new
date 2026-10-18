@@ -36,7 +36,7 @@ class OrderController
     public function edit(Request $request, Transport $transport)
     {
         $me = $request->user();
-        abort_unless($me->isLogist() && $transport->isOrder() && $transport->isCoordinatedBy($me) && $transport->isOpen(), 404);
+        abort_unless($me->isLogist() && $transport->isOrder() && $transport->hasLogist($me) && $transport->isOpen(), 404);
 
         return $this->form($me, $transport, true);
     }

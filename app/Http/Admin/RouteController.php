@@ -5,8 +5,10 @@ namespace App\Http\Admin;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Cancel as CancelTransport;
 use App\Logistics\Actions\OpenPickup;
-use App\Logistics\Executor;
+use App\Logistics\Actions\StepBack as TransportStepBack;
+use App\Logistics\Channel;
 use App\Logistics\Transport;
+use App\Logistics\TransportEvent;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -98,7 +100,7 @@ class RouteController
      */
     public function pickup(Request $request, Offer $offer, OpenPickup $open, AssignExecutor $assign)
     {
-        $request->validate(['executor' => ['nullable', Rule::enum(Executor::class)]]);
+        $request->validate(['channel' => ['nullable', Rule::enum(Channel::class)]]);
         $pick = AssignExecutor::fromRequest($request);
         $by = $request->user();
         $t = DB::transaction(function () use ($offer, $pick, $by, $open, $assign) {
@@ -107,7 +109,17 @@ class RouteController
             return $pick ? $assign($t, $pick[0], $pick[1], $by, $pick[2]) : $t;
         });
 
-        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Вывоз: '.($t->executorName() ?? 'ждёт исполнителя'));
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Вывоз: '.($t->carrier() ?? 'ждёт исполнителя'));
+    }
+
+    /** «Отменить «шаг»» вывоза из дорожки «Вывоз» — то же, что в логистике (`Logistics\Actions\StepBack`). */
+    public function pickupBack(Request $request, Offer $offer, TransportStepBack $back)
+    {
+        $t = $offer->pickup() ?? abort(404);
+        $step = TransportStepBack::last($t);
+        $back($t, $request->user());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Вывоз: отменено «'.(TransportEvent::STEPS[$step] ?? 'шаг').'»');
     }
 
     /** «Вывоз не нужен»: задача в логистике отменена с причиной (уже везут — нельзя). */
