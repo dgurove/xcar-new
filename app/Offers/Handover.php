@@ -71,6 +71,15 @@ final class Handover
         public readonly array $keys,
     ) {}
 
+    /** Кто на парковке отвечает за выдачу: управляющий её города (не «только приёмка»), иначе администратор парковки. */
+    public static function parkContact(\App\Park\Vehicle $vehicle): ?\App\Users\User
+    {
+        $staff = \App\Users\User::parkStaff()->whereNotNull('approved_at')->whereNotNull('phone')->orderBy('id')->get()
+            ->filter(fn ($u) => ! \App\Park\City::of($u) || \App\Park\City::of($u) === $vehicle->city_id);
+
+        return $staff->first(fn ($u) => $u->isParking() && ! $u->isParkHelper()) ?? $staff->first(fn ($u) => $u->isParkAdmin());
+    }
+
     public static function for(Deal $deal): self
     {
         $offer = $deal->offer->loadMissing(['positions.stage.exits', 'parkVehicle.yard.settlement', 'settlement']);
@@ -110,6 +119,8 @@ final class Handover
 
         $vehicle = $offer->parkVehicle;
         $atYard = $vehicle?->state === VehicleState::Stored && $vehicle->yard;
+        // Машину ждём на нашей парковке (Альфа везёт к нам, 18.10.2026): забирать её будут оттуда, не у страхователя.
+        $toYard = $vehicle?->state === VehicleState::Expected;
         // Выдача у поставщика (Каркаде): забирает сам менеджер — шаг «Выдача у поставщика» ждёт его «Забрал».
         $atSupplier = $sale && ! $pickup && $sale->stage->workflow->stages->contains(fn (Stage $s) => in_array('адрес выдачи', self::labels($s), true));
         // Шаг продажи сам просит его «Автомобиль забрал» (Совкомбанк, Т-Страхование) — забирает он, а не мы.
@@ -121,6 +132,7 @@ final class Handover
             $place === CarPlace::WithUs => CarPlace::WithUs->label(),
             $place === CarPlace::Elsewhere => CarPlace::Elsewhere->label(),
             $place === CarPlace::Ours || $atYard => 'На парковке',
+            $toYard && in_array($place, [null, CarPlace::Owner], true) => 'Едет на парковку',
             $atSupplier => 'У поставщика',
             // Вывезли и везут (логистика, «Забрал») — уже не у владельца.
             $place === CarPlace::Moving, $place === CarPlace::Depot => 'В пути',
@@ -130,11 +142,16 @@ final class Handover
         $withBuyer = $where === 'У вас';
 
         $mapUrl = null;
-        if ($atYard && ! $withBuyer) {
+        if (($atYard || ($toYard && $vehicle->yard)) && ! $withBuyer) {
             $fields['address'] ??= $vehicle->yard->fullAddress();
             $mapUrl = $vehicle->yard->mapUrl();
         }
-        if ($owner && ! $withBuyer) {
+        // Забирать с нашей парковки — звонить управляющему её города, а не страхователю (18.10.2026).
+        if (($atYard || $toYard) && ! $withBuyer && ($keeper = self::parkContact($vehicle))) {
+            $fields['name'] ??= $keeper->name.', парковка';
+            $fields['phone'] ??= $keeper->phone;
+        }
+        if ($owner && ! $withBuyer && ! $atYard && ! $toYard) {
             $fields['name'] ??= $offer->insured_name;
             $fields['phone'] ??= $offer->insured_phone;
             $fields['address'] ??= $offer->inspection_address ?: null;

@@ -121,7 +121,7 @@ class AlfaPrepayTest extends TestCase
         // «Поступило» на Р.О.С. — громко сотрудникам, сделка на нашем переводе Альфе, забирать всё ещё рано.
         app(RecordPayment::class)($invoice->fresh(), $this->admin, (float) $invoice->total, now(), PaymentSource::Bank);
         Notification::assertSentTo($this->admin, MoneyNotice::class, fn (MoneyNotice $n) => str_contains($n->title(), 'с Р.О.С.') && $n->important());
-        $this->assertSame('Перевод поставщику с Р.О.С.', $offer->fresh()->stage()->name);
+        $this->assertSame('Перевод поставщику', $offer->fresh()->stage()->name);
         $this->assertFalse($deal->fresh()->mayPickUp());
 
         $this->exit($offer, 'Переведено поставщику');
@@ -178,28 +178,76 @@ class AlfaPrepayTest extends TestCase
         $this->exit($offer, 'Оплата получена');
         $this->assertTrue($deal->fresh()->mayPickUp());
 
-        // Машину забирает менеджер и ещё не забрал — «Документы переданы» сделку не закрывает.
+        // Документы у Альфы — «Передача договора» одним шагом; машину забирает менеджер и ещё не забрал — не закрыть.
+        $this->assertSame('Передача договора', $offer->fresh()->stage()->name);
         app(\App\Offers\Actions\AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
-        $this->exit($offer, 'В Москве');
-        $this->exit($offer, 'Приём назначен');
         $this->assertSame('Сначала отметьте «Автомобиль забрал»', $deal->fresh()->closeBlocker());
         $requirement = $deal->fresh()->openRequirement()->firstOrFail();
-        $requirement->addMedia(\Illuminate\Http\UploadedFile::fake()->create('dkp.pdf', 10, 'application/pdf'))->toMediaCollection('files');
-        $close = $offer->fresh()->stage()->exitsFor(Actor::Manager, $deal->fresh())->first(fn ($e) => $e->label === 'Документы переданы');
+        $close = $offer->fresh()->stage()->exitsFor(Actor::Manager, $deal->fresh())->first(fn ($e) => $e->label === 'Договор у покупателя');
         $this->expectException(\Illuminate\Validation\ValidationException::class);
         app(\App\Workflow\Actions\AnswerRequirement::class)($requirement->fresh(), $close, $this->manager);
     }
 
-    /** «Приём назначен» просит дату и адрес приёма, а не трек; «Отправлено» — только трек. */
-    public function test_signing_exits_ask_own_fields(): void
+
+    /** ПРАЙМ у Альфы (18.10.2026): деньги за ТС пришли ПРАЙМ — сначала наш перевод поставщику, потом его подтверждение. */
+    public function test_prime_transfers_to_supplier(): void
     {
         $offer = $this->offer(vat: false);
-        $workflow = $offer->vendor->workflow(Track::Sale);
-        $exit = fn (string $label) => \App\Workflow\Outcome::whereHas('from', fn ($q) => $q->where('workflow_id', $workflow->id))->where('label', $label)->firstOrFail();
-        $labels = fn (string $label) => array_column($exit($label)->staffFields(), 'label');
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1200000), $this->admin, 50000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $this->assertSame(DealScheme::Prime, $deal->scheme);
+        $this->toPayStep($offer, $deal);
+        app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'me'], $this->manager);
+        $this->passportFor($this->manager);
+        $invoice = $deal->fresh()->issuedInvoices()->sole();
+        $this->assertSame(Seller::Prime, $invoice->seller);
 
-        $this->assertSame(['Дата приёма', 'Адрес приёма'], $labels('Приём назначен'));
-        $this->assertSame('datetime', $exit('Приём назначен')->staffFields()[0]['type']);
-        $this->assertSame(['Трек-номер отправления'], $labels('Отправлено'));
+        app(RecordPayment::class)($invoice->fresh(), $this->admin, (float) $invoice->total, now(), PaymentSource::Bank);
+        $this->assertSame('Перевод поставщику', $offer->fresh()->stage()->name);
+        Notification::assertSentTo($this->admin, MoneyNotice::class, fn (MoneyNotice $n) => str_contains($n->title(), 'с ПРАЙМ'));
+        $this->assertFalse($deal->fresh()->mayPickUp());
+        $this->exit($offer, 'Переведено поставщику');
+        $this->exit($offer, 'Оплата получена');
+        $this->assertTrue($deal->fresh()->mayPickUp());
+    }
+
+    /** Р.О.С. — только у предложения с НДС (18.10.2026, владелец: без НДС — «ошибка»). */
+    public function test_ros_only_with_vat(): void
+    {
+        $offer = $this->offer(vat: false);
+        $this->assertNotContains(DealScheme::Ros, DealScheme::casesFor($offer->vendor, $offer));
+        $this->assertSame(DealScheme::Insurer, DealScheme::resolve($offer, DealScheme::Ros));
+        $offer->forceFill(['prices_include_vat' => true])->save();
+        $this->assertContains(DealScheme::Ros, DealScheme::casesFor($offer->vendor, $offer->fresh()));
+    }
+
+    /**
+     * Машина на нашей парковке (18.10.2026, владелец: «выдача сама после оплаты»): после «Оплата получена» парковке —
+     * продано и заявка на выдачу менеджеру; у менеджера контакт парковки, а не страхователя; выдали — вывоз «Забрал».
+     */
+    public function test_car_on_our_parking_is_released_to_manager_after_payment(): void
+    {
+        $offer = $this->offer(vat: false);
+        $offer->forceFill(['insured_name' => 'Иван Страхователь', 'insured_phone' => '+79001112233'])->save();
+        $yard = \App\Park\Yard::create(['name' => 'Измайловский лес', 'is_active' => true, 'address' => 'ул. Дорофеева, 2А']);
+        $keeper = User::create(['name' => 'Пётр Управляющий', 'phone' => '79000000009', 'roles' => [Role::Parking], 'approved_at' => now()]);
+        $vehicle = \App\Park\Vehicle::create(['vendor_id' => $offer->vendor_id, 'yard_id' => $yard->id, 'state' => \App\Park\VehicleState::Stored, 'accepted_at' => now()]);
+        \Illuminate\Support\Facades\DB::table('park_vehicles')->where('id', $vehicle->id)->update(['car_id' => $offer->car_id]);
+        $deal = $this->accept($offer);
+        app(\App\Offers\Actions\AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
+        $this->toPayStep($offer, $deal);
+        $this->exit($offer, 'Платёжное поручение приложено');
+        $this->exit($offer, 'Оплата получена');
+
+        $vehicle->refresh();
+        $this->assertNotNull($vehicle->sold_at);
+        $this->assertSame($this->manager->name, $vehicle->pickup_name);
+        $this->assertNotNull($vehicle->openRequest(\App\Park\RequestType::Release));
+        $h = Handover::for($deal->fresh());
+        $this->assertSame('На парковке', $h->where);
+        $this->assertStringContainsString('Пётр Управляющий', (string) $h->name);
+        $this->assertNotSame('+79001112233', $h->phone);
+
+        \App\Park\Events\VehicleReleased::dispatch($vehicle->fresh(), null, $this->admin);
+        $this->assertNull($deal->fresh()->closeBlocker());
     }
 }

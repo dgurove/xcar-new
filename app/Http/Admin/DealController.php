@@ -159,8 +159,8 @@ class DealController
         $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
         $scheme = DealScheme::choiceFor($deal->offer->vendor?->deal_format) ? DealScheme::tryFrom($data['scheme'] ?? '') : DealScheme::Prime;
         // Р.О.С. — только у Альфы (`DealScheme::casesFor`), как в «Принять»: чужому вендору схему с запроса не берём.
-        if ($scheme && ! in_array($scheme, DealScheme::casesFor($deal->offer->vendor), true)) {
-            $scheme = DealScheme::Prime;
+        if ($scheme && ! in_array($scheme, DealScheme::casesFor($deal->offer->vendor, $deal->offer), true)) {
+            $scheme = DealScheme::forOffer($deal->offer);
         }
         $update($deal, $request->user(), $commission, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
             $scheme, isset($data['share']) ? (int) $data['share'] : null);

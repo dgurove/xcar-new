@@ -3,7 +3,6 @@
 namespace App\Workflow;
 
 use App\Offers\Deal;
-use App\Offers\DealScheme;
 use App\Offers\OfferState;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -99,7 +98,9 @@ class Outcome extends Model
         $garage = $for instanceof Deal && $for->isGarageUs();
         $keeps = $for instanceof Deal && $for->isGarage();
         $picks = $for instanceof Deal && $for->buyerPicksUp();
-        $ros = $for instanceof Deal && $for->schemeOf() === DealScheme::Ros;
+        // Ветка «перевод поставщику»: за ТС заплатили нам — Р.О.С. или ПРАЙМ (18.10.2026: у ПРАЙМ Альфы шага перевода не было,
+        // и Альфе уходило «счёт оплачен», хотя ей никто не платил). Имя ветки `ros` — прежнее, в маршрутах в базе.
+        $ros = $for instanceof Deal && $for->schemeOf()->paysCar();
 
         return match ($this->branch) {
             null, '' => true,

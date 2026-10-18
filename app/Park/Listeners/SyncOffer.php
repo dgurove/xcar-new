@@ -75,6 +75,12 @@ final class SyncOffer
         if ($exit) {
             ($this->take)($offer, $exit, Actor::Staff, $by);
         }
+        // Выдали менеджеру сделки (Альфа: выдача после оплаты, 18.10.2026) — его вывоз «Забрал», иначе задача висит, и
+        // сделку без «Забрал» не закрыть (`Deal::closeBlocker`). Везёт логистика — её «Забрал» жмёт исполнитель.
+        $deal = $offer->deal()->first();
+        if ($deal?->buyer && ($t = Transport::openFor($offer)) && $t->isPickup() && ! $t->state->picked() && in_array($t->channel, [null, \App\Logistics\Channel::Manager], true)) {
+            app(\App\Logistics\Actions\SelfPickup::class)($offer->fresh(), $deal->buyer, $by);
+        }
     }
 
     /** У машины идёт свой вывоз в логистике — где она, решает он, а не приём на парковке. */

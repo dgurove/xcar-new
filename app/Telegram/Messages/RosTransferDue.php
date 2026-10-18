@@ -16,12 +16,12 @@ final class RosTransferDue extends Message
     {
         $deal = $this->invoice->deal;
 
-        return 'Переведите '.Money::rub((int) ($deal?->supplierCost() ?? $this->invoice->total)).' '.($deal?->offer?->vendor?->name ?? 'поставщику').' с Р.О.С.';
+        return 'Переведите '.Money::rub((int) ($deal?->supplierCost() ?? $this->invoice->total)).' '.($deal?->offer?->vendor?->name ?? 'поставщику').' с '.$this->invoice->seller->short();
     }
 
     protected function lines(): array
     {
-        return Text::lines($this->invoice->deal?->offer, 'Оплачен счёт Р.О.С. '.$this->invoice->label().' на '.Money::rub($this->invoice->total));
+        return Text::lines($this->invoice->deal?->offer, 'Оплачен счёт '.$this->invoice->seller->short().' '.$this->invoice->label().' на '.Money::rub($this->invoice->total));
     }
 
     protected function decisions(): array

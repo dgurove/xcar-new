@@ -96,10 +96,13 @@ enum DealScheme: string
         return self::forVendor($offer->vendor?->deal_format);
     }
 
-    /** Схемы в шторке: Р.О.С. — только у Альфы. @return list<self> */
-    public static function casesFor(?Vendor $vendor): array
+    /**
+     * Схемы в шторке: Р.О.С. — только у Альфы и только у предложения с НДС (18.10.2026, владелец: 20 сделок без НДС на
+     * Р.О.С. — «ошибка»: его счёт с НДС 22 %). @return list<self>
+     */
+    public static function casesFor(?Vendor $vendor, ?Offer $offer = null): array
     {
-        return array_values(array_filter(self::cases(), fn (self $s) => $s !== self::Ros || $vendor?->pay_before_pickup));
+        return array_values(array_filter(self::cases(), fn (self $s) => $s !== self::Ros || ($vendor?->pay_before_pickup && (! $offer || $offer->prices_include_vat))));
     }
 
     /**
@@ -113,7 +116,7 @@ enum DealScheme: string
             return $default;
         }
 
-        return in_array($requested, self::casesFor($offer->vendor), true) ? $requested : $default;
+        return in_array($requested, self::casesFor($offer->vendor, $offer), true) ? $requested : $default;
     }
 
     /** Схема на выбор в шторках «Принять» и «Деньги»: оптом схема одна — ПРАЙМ, выбирать нечего (null). */

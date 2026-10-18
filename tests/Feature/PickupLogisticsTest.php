@@ -361,7 +361,7 @@ class PickupLogisticsTest extends TestCase
 
         // Оплата подтверждена — дальше документы, шага получения нет: «Забрал» в сделке.
         $deal->forceFill(['prepaid_at' => now(), 'agreed_at' => now()])->save();
-        app(EnterStage::class)($offer->fresh(), $sale('Место подписания документов'));
+        app(EnterStage::class)($offer->fresh(), $sale('Передача договора'));
         $this->actingAs($manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee('Автомобиль забрал');
         $this->actingAs($manager)->post(Surface::Site->url('/deals/'.$deal->id.'/picked'))->assertRedirect();
         $this->assertSame(TransportState::Delivered, Transport::where('car_id', $offer->car_id)->latest('id')->first()->state);

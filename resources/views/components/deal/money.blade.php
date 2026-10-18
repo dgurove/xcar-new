@@ -40,7 +40,7 @@
                         </form>
                     @else
                         <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()" :mode="$deal->commission_mode"
-                            :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" :schemes="\App\Offers\DealScheme::casesFor($deal->offer->vendor)" :owner-price="$deal->owner_price" :owner-locked="true" :supplier-cost="$deal->supplier_cost" submit="Сохранить"/>
+                            :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" :schemes="\App\Offers\DealScheme::casesFor($deal->offer->vendor, $deal->offer)" :owner-price="$deal->owner_price" :owner-locked="true" :supplier-cost="$deal->supplier_cost" submit="Сохранить"/>
                     @endif
                 </x-ui.sheet>
             </div>

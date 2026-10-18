@@ -106,6 +106,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(OfferStateChanged::class, RetractWhenGone::class);
         Event::listen(TransportMoved::class, StartPrepOnArrival::class);
         Event::listen(VehicleSold::class, SendPickupLink::class);
+        Event::listen(\App\Park\Events\VehicleAccepted::class, \App\Park\Listeners\ReleaseSold::class);
         Event::listen(PaymentRecorded::class, AdvanceOnPayment::class);
         Event::listen(PaymentRecorded::class, PayoutWhenPaid::class);
         Event::listen(PaymentRecorded::class, PayoutWhenBuyerPaid::class);

@@ -16,7 +16,6 @@ use App\Billing\Events\PaymentRejected;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
-use App\Billing\Seller;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
@@ -264,10 +263,15 @@ final class Notify
         }
     }
 
-    /** Счёт Р.О.С. оплачен целиком — сотрудникам громко и владельцу в Telegram: перевести Альфе (10.10.2026). */
+    /**
+     * Счёт за ТС оплачен целиком, а деньги надо переслать поставщику (Альфа: Р.О.С. с 10.10.2026, ПРАЙМ с 18.10.2026) —
+     * сотрудникам громко и владельцу в Telegram.
+     */
     private function rosPaid(Invoice $i): void
     {
-        if ($i->seller !== Seller::Ros || $i->direction !== 'issued' || $i->state !== InvoiceState::Paid || ! $i->deal_id) {
+        $deal = $i->deal_id ? $i->deal : null;
+        if ($i->direction !== 'issued' || $i->state !== InvoiceState::Paid || ! $deal?->schemeOf()->paysCar()
+            || $i->seller !== $deal->seller() || ! $deal->offer?->vendor?->pay_before_pickup) {
             return;
         }
         $i->load(['party', 'deal.offer.vendor']);
