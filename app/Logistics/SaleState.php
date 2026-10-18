@@ -13,8 +13,9 @@ use Illuminate\Database\Eloquent\Builder;
  * срочно вывозить»). Одна дверь для строки «Вывоза», карточки задачи, чипа «Продажа» и сортировки; SQL-зеркала
  * (`KEY_SQL` …) — для чипов и порядка, ветки в том же порядке, что `of()`.
  *
- * Приглушение — только у задач без исполнителя: ищем покупателя — строка приглушена (`waiting`). Меток и чипа «Срочно»
- * нет (18.10.2026, владелец: «только мешает»).
+ * Приглушение — только у задач без исполнителя: ищем покупателя меньше трёх суток — строка приглушена (`waiting`), три и
+ * больше — слово красным, строка в полный цвет. Меток и чипа «Срочно» нет (18.10.2026, владелец: «только мешает», слово и
+ * так красное).
  */
 final readonly class SaleState
 {
@@ -43,6 +44,9 @@ final readonly class SaleState
     public const VENDOR_SQL = "(case when transports.origin = 'park'
         then (select v.vendor_id from park_vehicles v where v.car_id = transports.car_id order by v.id desc limit 1)
         else (select o.vendor_id from offers o where o.car_id = transports.car_id order by o.id desc limit 1) end)";
+
+    /** Столько полных суток без покупателя — пора вывозить. */
+    public const DAYS = 3;
 
     private function __construct(
         public string $key,
@@ -87,16 +91,21 @@ final readonly class SaleState
             default => 'снята с продажи',
         };
 
+        // Три дня без покупателя — слово красным и строка в полный цвет: «пизда рулю, надо срочно что-то делать»
+        // (18.10.2026, владелец); меньше — ещё ищем, строка без исполнителя приглушена.
+        $late = in_array($key, ['open', 'draft', 'none'], true) && $days >= self::DAYS;
+
         return new self(
             key: $key,
             word: $word,
             tone: match (true) {
+                $late => 'text-danger',
                 $hold !== null => 'text-urgent',
                 $buyer => 'text-accent-text',
                 default => 'text-ink-muted',
             },
             manager: $manager,
-            waiting: $deciding && ! $buyer && $key !== 'park',
+            waiting: $deciding && ! $buyer && $key !== 'park' && ! $late,
             days: $days,
         );
     }

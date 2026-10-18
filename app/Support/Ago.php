@@ -39,10 +39,10 @@ final class Ago
         return $word === '' ? $text : "{$word} {$text}";
     }
 
-    /** Сколько прошло с момента — тем же видом, что `left`: «2 д 14 ч», «3 ч 5 мин», «12 мин». */
+    /** Сколько прошло с момента — слитно, как просил владелец: «2д 14ч», «3ч 5мин», «12мин». */
     public static function since(Carbon $from): string
     {
-        return self::span(max(60, (int) floor($from->diffInSeconds(now(), false))));
+        return str_replace([' д', ' ч', ' мин'], ['д', 'ч', 'мин'], self::span(max(60, (int) floor($from->diffInSeconds(now(), false)))));
     }
 
     private static function span(int $s): string
