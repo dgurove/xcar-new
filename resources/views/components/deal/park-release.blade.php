@@ -11,6 +11,7 @@
     $state = match (true) {
         (bool) $pass?->used_at => ['выдан '.$pass->used_at->translatedFormat('j M, H:i'), 'text-open'],
         (bool) $pass => ['пропуск выдан'.(($w = $pass->whenLabel('j M')) ? ', приедет '.$w : ''), 'text-open'],
+        ! $receiver => ['укажите, кто заберёт, и выдадим пропуск', 'text-urgent'],
         (bool) $revoked => ['пропуск погашен парковкой'.($revoked->revoke_reason ? ': '.mb_lcfirst($revoked->revoke_reason) : ''), 'text-urgent'],
         $deal->releasable() => ['пропуск ещё не выдан', 'text-ink-muted'],
         default => [$deal->pickupHold() ?? 'когда поставщик согласует', 'text-ink-muted'],
@@ -20,7 +21,7 @@
     @if ($vehicle->yard)<x-pickup.yard :yard="$vehicle->yard"/>@else<div class="row text-ink-muted">Едет на нашу парковку</div>@endif
     @if ($deal->isActive() && ! $pass?->used_at)
         <button type="button" class="row justify-between text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">
-            <span class="min-w-0"><span class="block">Заберёт {{ $receiver?->labelFor(null) ?? '—' }}</span><span class="block text-sm {{ $state[1] }}">{{ $state[0] }}</span></span>
+            <span class="min-w-0"><span class="block">{{ $receiver ? 'Заберёт '.$receiver->labelFor(null) : 'Кто заберёт' }}</span><span class="block text-sm {{ $state[1] }}">{{ $state[0] }}</span></span>
             <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
         </button>
     @else

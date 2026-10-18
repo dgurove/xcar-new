@@ -187,6 +187,7 @@ class ParkReleaseByDealTest extends TestCase
         app(\App\Offers\Actions\SyncParkRelease::class)($deal->fresh(), $this->admin);
         $this->assertNull($vehicle->fresh()->dealPass());
         $this->assertNull($vehicle->fresh()->sold_at);
+        Notification::assertSentTo($this->manager, \App\Notifications\ParkPassRevokedNotice::class);
 
         app(\App\Offers\Actions\SetReceiver::class)($deal->fresh(), $this->manager, ['who' => 'me']);
         $this->assertNotNull($vehicle->fresh()->dealPass());

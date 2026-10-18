@@ -108,6 +108,16 @@ final class OnMessage
                 ($this->sold)($vehicle, null, $message->date_at ?? now(), $sold['name'], $sold['phone'], $message, $sold['free_until']);
             } elseif (! Intent::silent($message->intent)) {
                 LetterArrived::dispatch($vehicle, $message);
+                // Страховая продала машину, по которой у нас живой пропуск сделки (18.10.2026): продажу сделки письмо не
+                // перетирает — но людям решать, кому отдавать: парковке громко (управляющим и администраторам), в CRM — строкой
+                // в истории предложения.
+                if ($message->intent === Intent::Sold->value && ($pass = $vehicle->dealPass())) {
+                    \Illuminate\Support\Facades\Notification::send(
+                        app(\App\Notifications\Notify::class)->parkManagersOf($vehicle->city_id)
+                            ->merge(\App\Users\User::withRole(\App\Users\Role::ParkAdmin)->whereNotNull('approved_at')->get())->unique('id'),
+                        \App\Notifications\ParkNotice::insurerSoldDeal($vehicle, $pass));
+                    $vehicle->offer?->log(\App\Offers\OfferEventType::Note, null, ['text' => 'Страховая прислала «продано» по машине, а по нашей сделке ждём '.$pass->name.': сверить, кому выдавать']);
+                }
             }
             $paths[] = "/cars/{$vehicle->id}";
         }

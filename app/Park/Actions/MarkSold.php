@@ -67,6 +67,9 @@ final class MarkSold
     public function clear(Vehicle $vehicle, ?User $by, string $reason): void
     {
         Nav::forgetStaffCounts();
+        // Живой пропуск нашей сделки гаснет решением парковки — менеджеру сделки сказать (18.10.2026): иначе он узнал бы,
+        // только открыв сделку, а получатель ехал бы с погашенным QR.
+        $dealPass = $vehicle->passes()->whereNotNull('deal_id')->whereNull('revoked_at')->whereNull('used_at')->with('deal.buyer', 'deal.offer')->first();
         DB::transaction(function () use ($vehicle, $by, $reason) {
             // Контрагент-покупатель остаётся, если ему уже выставляли счета: иначе его неоплаченное перестало бы
             // считаться долгом покупателя (долги ищутся по контрагенту) и показывалось бы вендорским.
@@ -77,6 +80,9 @@ final class MarkSold
             // Пропуск прежнего покупателя гаснет: новый заполнит анкету по той же ссылке.
             $vehicle->revokePass($reason);
         });
+        if ($dealPass?->deal?->buyer && $dealPass->deal->isActive()) {
+            DB::afterCommit(fn () => $dealPass->deal->buyer->notify(new \App\Notifications\ParkPassRevokedNotice($dealPass->deal, $reason)));
+        }
     }
 
     /** Контрагенту-покупателю этой ТС уже выставляли счета — он больше не «черновик», его нельзя ни стереть, ни переписать. */

@@ -23,7 +23,13 @@ final class PickupState
         $deal = $t?->isOpen() && ! $t->state->picked() ? $offer->deal : null;
         $hold = $deal?->isActive() ? $deal->pickupHold() : null;
 
+        // ТС стоит на нашей парковке (или едет к нам) — это главнее отметки места продажи: та не сдвигается, пока открыт
+        // вывоз (`Park\Listeners\SyncOffer::moveTo`), и машина на парковке «стояла у владельца» (18.10.2026).
+        $park = $offer->parkVehicle;
+
         return match (true) {
+            $park?->state === \App\Park\VehicleState::Stored => ['на парковке', 'open'],
+            $park?->state === \App\Park\VehicleState::Expected && in_array($offer->car_place, [null, CarPlace::Owner], true) => ['едет на парковку', 'plain'],
             $offer->car_place === CarPlace::Keeper => self::keeper($offer, $viewer),
             $offer->car_place === CarPlace::WithUs => ['стоит у нас', 'open'],
             $offer->car_place === CarPlace::Ours => ['на парковке', 'open'],

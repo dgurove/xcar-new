@@ -57,6 +57,12 @@ final class ParkNotice extends Notice
         return new self('На выдачу: '.$v->titleWithYear(), $who ? 'Заберёт '.$who : ($m?->subject ?: null), '/cars/'.$v->id, $v->id);
     }
 
+    /** Письмо страховой «продано, заберёт …» по машине с живым пропуском нашей сделки — кому отдавать, решают люди. */
+    public static function insurerSoldDeal(Vehicle $v, \App\Park\Pass $pass): self
+    {
+        return new self('Страховая продала машину сделки XCar: '.$v->titleWithYear(), 'По пропуску сделки ждём '.$pass->name.'. Сверьте со сделкой, прежде чем выдавать', '/cars/'.$v->id, $v->id, critical: true);
+    }
+
     /** Получатель по сделке XCar сменился (`SyncParkRelease`): прежний пропуск погашен, заберёт другой. */
     public static function receiverChanged(Vehicle $v): self
     {

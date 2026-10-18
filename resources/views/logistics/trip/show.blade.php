@@ -89,6 +89,23 @@
 
     @if ($errors->any())<x-ui.flash tone="danger" class="mt-4">{{ $errors->first() }}</x-ui.flash>@endif
 
+    {{-- Забирать с нашей парковки по сделке XCar (18.10.2026): пропуск сделки на этого исполнителя — QR показать на воротах. --}}
+    @php
+        $parkPass = ! $t->state->picked() && ($v = $t->offer?->parkVehicle()->first()) ? $v->dealPass() : null;
+        $parkPass = $parkPass && $t->executor && $parkPass->name === $t->executor->name ? $parkPass : null;
+    @endphp
+    @if ($parkPass)
+        <section class="mt-6">
+            <div class="list-cap">Пропуск на парковку</div>
+            <div class="pass-card">
+                <div class="pass-state pass-state--open"><x-ui.icon name="check-circle" class="size-5"/>Покажите QR на воротах</div>
+                <div class="pass-qr mx-auto max-w-64">{!! \App\Park\PassQr::svg($parkPass) !!}</div>
+                <div class="nums pb-4 text-center text-sm tracking-[.2em] text-ink-muted">{{ trim(chunk_split($parkPass->code, 5, ' ')) }}</div>
+            </div>
+            @if ($parkPass->vehicle?->yard)<div class="list mt-3"><x-pickup.yard :yard="$parkPass->vehicle->yard"/></div>@endif
+        </section>
+    @endif
+
     @if ($step === 'call')
         <section class="mt-6">
             <h2 class="list-head">Созвонились с владельцем</h2>

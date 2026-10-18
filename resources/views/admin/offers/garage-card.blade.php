@@ -27,6 +27,14 @@
             @if ($errors->has('exit'))<p class="field-error mt-2">{{ $errors->first('exit') }}</p>@endif
         </section>
     @endif
+    {{-- Машина на нашей парковке (18.10.2026): кто заберёт и пропуск — как у обычной сделки в «Получении». --}}
+    @php $parked = $car->deal && $car->deal->state !== \App\Offers\DealState::Cancelled ? $offer->parkVehicle()->first() : null; @endphp
+    @if ($parked && in_array($parked->state, [\App\Park\VehicleState::Stored, \App\Park\VehicleState::Expected], true) && ($car->deal->releasable() || $car->deal->passes()->exists()))
+        <section>
+            <div class="list-cap">Выдача с парковки</div>
+            <x-deal.park-release :deal="$car->deal" :vehicle="$parked"/>
+        </section>
+    @endif
     @include('garage.cars.path', $routeHere ? ['set' => 'all', 'withDeal' => false, 'buttonsHere' => [...$prep, ...$sale]] : ['set' => 'prep', 'buttonsHere' => $prep])
     @if ($money && ($routeHere || ! $car->isSold()))@include('garage.cars.money')@endif
     @include('garage.cars.costs')
