@@ -1,10 +1,13 @@
-{{-- Дорожка «Вывоз» в CRM (17.10.2026): вывоз — задача Logistics XCar, здесь — её ход лесенкой (`Transport::steps`), кто
-     вывозит, ссылка в логистику. 18.10.2026: логиста и исполнителя меняют нажатием на шаг, последний шаг — «Отменить «…»»,
-     история задачи свёрнута «История N». Вывоза нет — «Вывезти». В «···»: «Кто вывозит» (шторка `x-logistics.assign-form`) и «Вывоз не
-     нужен» (с причиной). У сделки внутри — получение (контакт владельца менеджеру, `x-deal.handover`). --}}
+{{-- Дорожка «Вывоз» в CRM (17.10.2026): вывоз — задача Logistics XCar. 18.10.2026 (владелец: «сырая вёрстка»): сверху —
+     ссылка в логистику и что дальше; ниже группой строк, как Настройки iOS, — логист, исполнитель, куда везти с дальностью,
+     комментарий (`x-logistics.facts`, строка нажатием открывает окно «Назначить вывоз», `x-logistics.assign-form`); под ней —
+     ход лесенкой (`Transport::steps`, без шагов «кто» — они строками выше) и история свёрнутой строкой. В «···»: «Кто и
+     куда», отменить последний шаг (`Logistics\Actions\StepBack`), «Вывоз не нужен». Вывоза нет — «Вывезти». У сделки внутри
+     — получение (контакт владельца менеджеру, `x-deal.handover`). --}}
 @props(['offer', 'deal' => null, 'class' => ''])
 @php
-    use App\Logistics\Transport;
+    use App\Logistics\Channel;
+    use App\Logistics\TransportState;
     use App\Offers\OfferState;
     use App\Support\Surface;
     $t = $offer->pickup();
@@ -13,24 +16,32 @@
         && $offer->parkVehicle?->state !== \App\Park\VehicleState::Stored;
     $sheet = 'pickup-'.$offer->number;
     $keys = $offer->car?->keys_count;
-    // Сменить — нажатием на шаг (логиста и исполнителя, кроме исполнителя логиста — его ставит логист); отменить —
-    // последний сделанный шаг (`Logistics\Actions\StepBack`), как в логистике.
-    $changeable = $open && ! $t->state->picked() && $t->channel !== \App\Logistics\Channel::Manager;
-    $tap = fn (string $key) => $changeable && ($key === 'logist' || ($key === 'executor' && $t->channel !== \App\Logistics\Channel::Logist && $t->state !== \App\Logistics\TransportState::New));
+    $manager = $t?->channel === Channel::Manager;
+    // Кто и куда меняются окном «Назначить вывоз», пока ТС не забрали; исполнителя логиста ставит логист.
+    $changeable = $open && ! $t->state->picked() && ! $manager;
     $undo = $t ? \App\Logistics\Actions\StepBack::last($t) : null;
     $undo = $undo && \App\Logistics\Actions\StepBack::allowed($t, auth()->user(), $undo) ? $undo : null;
-    $undoKey = match ($undo) { 'called' => 'call', 'docs_sent', 'docs_received' => 'docs', default => $undo };
     $undoLabel = match ($undo) { 'logist' => 'Снять логиста', 'executor' => 'Снять исполнителя', null => null, default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$undo].'»' };
+    $events = $t ? $t->events()->count() : 0;
 @endphp
 @if ($t || $canOpen)
 <x-ui.card title="Вывоз" :class="$class" id="pickup">
-    @if ($open && ! $t->state->picked())
+    @if ($changeable || $undo)
         <x-slot:actions>
             <div class="contents" data-controller="menu">
                 <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="pickup-more-{{ $offer->number }}"><x-ui.icon name="more" class="size-5"/></button>
-                <div id="pickup-more-{{ $offer->number }}" class="menu" popover data-menu-target="list" role="menu">
-                    <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">Кто вывозит</button>
-                    <button type="button" class="menu-item w-full text-danger" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}-drop:open">Вывоз не нужен</button>
+                <div id="pickup-more-{{ $offer->number }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
+                    @if ($changeable)
+                        <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="{{ $sheet }}:open"><x-ui.icon name="truck" class="size-5 text-ink-muted"/>Кто и куда</button>
+                    @endif
+                    @if ($undo)
+                        <form method="post" action="/offers/{{ $offer->number }}/pickup/back" data-step-back="transport" data-turbo-confirm="{{ $undoLabel }}?" data-turbo-confirm-label="{{ str_starts_with($undoLabel, 'Снять') ? 'Снять' : 'Отменить' }}">
+                            @csrf<button class="menu-item w-full" role="menuitem" data-action="menu#close"><x-ui.icon name="undo" class="size-5 text-ink-muted"/>{{ $undoLabel }}</button>
+                        </form>
+                    @endif
+                    @if ($changeable)
+                        <button type="button" class="menu-item w-full text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="{{ $sheet }}-drop:open"><x-ui.icon name="x" class="size-5"/>Вывоз не нужен</button>
+                    @endif
                 </div>
             </div>
         </x-slot:actions>
@@ -38,8 +49,7 @@
     @if ($t)
         <div class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             {{-- Менеджер забирает сам — это не логистика (17.10.2026): ссылки туда нет, «Забрал» он жмёт в своей сделке. --}}
-            {{-- «забирает менеджер» говорит получение ниже — второй раз «забирает сам» не пишем. --}}
-            @if ($t->channel !== \App\Logistics\Channel::Manager)
+            @if (! $manager)
                 <a href="{{ Surface::Logistics->url('/transports/'.$t->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>
                 <span class="{{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span>
             @elseif ($t->isLate())
@@ -47,45 +57,40 @@
             @endif
             <x-car.keys :count="$keys"/>
         </div>
-        {{-- Куда везти (18.10.2026): точка и дальность фразой, комментарий исполнителю — ниже; меняют в окне «Кто вывозит». --}}
-        @if ($t->channel !== \App\Logistics\Channel::Manager && ($t->routeLabel() || $t->reach || $t->comment))
-            <p class="mb-3 text-sm">Куда: <span @class(['text-urgent' => ! $t->routeLabel()])>{{ $t->routeLabel() ?? 'пока неизвестно' }}</span>@if ($t->reach), {{ mb_lcfirst($t->reach->label()) }}@endif</p>
-            @if ($t->comment)<p class="mb-3 -mt-2 whitespace-pre-line text-sm text-ink-muted">{{ $t->comment }}</p>@endif
-        @endif
         @if ($deal?->isActive() && ! $deal->isGarage())
             <x-deal.handover :deal="$deal" compact lane class="mb-4"/>
         @endif
+        @if (! $manager)
+            <div class="list mb-4">
+                <x-logistics.facts :t="$t" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
+            </div>
+        @endif
         <div class="steps">
             @foreach ($t->steps() as $step)
-                <div class="step step--{{ $step['status'] === 'current' && $t->state === \App\Logistics\TransportState::New ? 'ask' : $step['status'] }}">
+                @continue(! $manager && in_array($step['key'], ['logist', 'executor'], true) && $t->state !== TransportState::New)
+                <div class="step step--{{ $step['status'] === 'current' && $t->state === TransportState::New ? 'ask' : $step['status'] }}">
                     <span class="step-dot">@if ($step['status'] === 'done')<x-ui.icon name="check" class="size-3"/>@endif</span>
                     <div class="step-body">
                         <div class="step-head">
-                            @if ($tap($step['key']))
-                                <button type="button" class="step-title flex-1 text-left underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">{{ $step['title'] }}</button>
-                            @else
-                                <span class="step-title flex-1">{{ $step['title'] }}</span>
-                            @endif
+                            <span class="step-title flex-1">{{ $step['title'] }}</span>
                             @if ($step['status'] === 'done' && $step['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ $step['at']->translatedFormat('j M') }}</span>@endif
                         </div>
                         @if ($step['hint'])<p class="step-hint">{{ $step['hint'] }}</p>@endif
-                        @if ($step['key'] === 'executor' && $step['status'] === 'current' && $t->state === \App\Logistics\TransportState::New)
+                        @if ($step['key'] === 'executor' && $step['status'] === 'current' && $t->state === TransportState::New)
                             <x-ui.button type="button" size="sm" class="mt-2" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">Выбрать</x-ui.button>
-                        @endif
-                        @if ($step['key'] === $undoKey)
-                            <form method="post" action="/offers/{{ $offer->number }}/pickup/back" class="mt-2" data-step-back="transport" data-turbo-confirm="{{ $undoLabel }}?" data-turbo-confirm-label="{{ str_starts_with($undoLabel, 'Снять') ? 'Снять' : 'Отменить' }}">
-                                @csrf<button class="text-sm text-ink-muted underline decoration-dotted underline-offset-4">{{ $undoLabel }}</button>
-                            </form>
                         @endif
                     </div>
                 </div>
             @endforeach
         </div>
-        @if ($t->state === \App\Logistics\TransportState::Cancelled)<p class="mt-2 text-sm text-ink-muted">Вывоз отменён{{ $t->cancel_reason ? ': '.$t->cancel_reason : '' }}</p>@endif
-        @if (($n = $t->events()->count()) > 0)
-            <details class="group mt-3">
-                <summary class="cursor-pointer list-none text-sm text-ink-muted group-open:mb-2">История {{ $n }}</summary>
-                <x-logistics.history :t="$t" :show="8"/>
+        @if ($t->state === TransportState::Cancelled)<p class="mt-2 text-sm text-ink-muted">Вывоз отменён{{ $t->cancel_reason ? ': '.$t->cancel_reason : '' }}</p>@endif
+        @if ($events)
+            <details class="group list mt-4">
+                <summary class="row cursor-pointer list-none items-center justify-between gap-4">
+                    <span>История <span class="nums text-ink-dim">{{ $events }}</span></span>
+                    <x-ui.chevron class="transition-transform group-open:rotate-90"/>
+                </summary>
+                <div class="row"><x-logistics.history :t="$t" :me="auth()->user()" :show="8" class="w-full"/></div>
             </details>
         @endif
     @endif

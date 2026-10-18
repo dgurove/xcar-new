@@ -422,13 +422,30 @@ class Transport extends Model
             $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Забрал' : 'Забрать', 'status' => $status($s->picked(), $s === TransportState::Assigned),
                 'at' => $this->delivered_at ?? $this->picked_at, 'hint' => null];
 
-            return $steps;
+            return self::oneCurrent($steps);
         }
         $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Вывезена' : 'Забрать', 'status' => $status($s->picked(), in_array($s, [TransportState::Agreed], true) || ($s === TransportState::Assigned && ! $this->isPickup())),
             'at' => $this->picked_at,
             'hint' => $s->picked() ? implode(', ', array_filter([$keys === null ? null : $keys.' '.Plural::of($keys, ['ключ', 'ключа', 'ключей']), $this->destinationLabel()])) : null];
         $steps[] = ['key' => 'delivered', 'title' => 'Привёз', 'status' => $status($s === TransportState::Delivered, $s === TransportState::Moving), 'at' => $this->delivered_at,
             'hint' => $s === TransportState::Delivered || $s === TransportState::Moving ? $this->destinationLabel() : null];
+
+        return self::oneCurrent($steps);
+    }
+
+    /**
+     * Текущий шаг — один (18.10.2026: созвон и документы горели оба): первый незавершённый; остальные незавершённые —
+     * впереди. Шаги, что идут параллельно (документы, пока ждём созвона), видны своей подсказкой.
+     */
+    private static function oneCurrent(array $steps): array
+    {
+        $seen = false;
+        foreach ($steps as &$step) {
+            if ($step['status'] === 'current') {
+                $step['status'] = $seen ? 'later' : 'current';
+                $seen = true;
+            }
+        }
 
         return $steps;
     }
