@@ -477,17 +477,19 @@ class Transport extends Model
             }
         }
         $keys = $this->car?->keys_count;
+        // Забирать рано (Альфа — после оплаты, Каркаде — до согласия поставщика): у шага «Забрать» словом, а не голой кнопкой.
+        $hold = $s->picked() ? null : $this->saleOffer()?->deal?->pickupHold();
         // Менеджер везёт к себе сам: его «Автомобиль забрал» и есть «привёз» (`SelfPickup`) — один шаг, без «Привёз».
         if ($this->channel === Channel::Manager) {
             $steps[0]['title'] = $assigned ? 'Забирает '.($this->executor?->shortName() ?? 'менеджер') : $steps[0]['title'];
             $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Забрал' : 'Забрать', 'status' => $status($s->picked(), $s === TransportState::Assigned),
-                'at' => $this->delivered_at ?? $this->picked_at, 'hint' => null];
+                'at' => $this->delivered_at ?? $this->picked_at, 'hint' => $hold];
 
             return self::oneCurrent($steps);
         }
         $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Вывезена' : 'Забрать', 'status' => $status($s->picked(), in_array($s, [TransportState::Agreed], true) || ($s === TransportState::Assigned && ! $this->isPickup())),
             'at' => $this->picked_at,
-            'hint' => $s->picked() ? implode(', ', array_filter([$keys === null ? null : $keys.' '.Plural::of($keys, ['ключ', 'ключа', 'ключей']), $this->destinationLabel()])) : null];
+            'hint' => $s->picked() ? implode(', ', array_filter([$keys === null ? null : $keys.' '.Plural::of($keys, ['ключ', 'ключа', 'ключей']), $this->destinationLabel()])) : $hold];
         $steps[] = ['key' => 'delivered', 'title' => 'Привёз', 'status' => $status($s === TransportState::Delivered, $s === TransportState::Moving), 'at' => $this->delivered_at,
             'hint' => $s === TransportState::Delivered || $s === TransportState::Moving ? $this->destinationLabel() : null];
 
