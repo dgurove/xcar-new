@@ -1,5 +1,6 @@
 {{-- Подтверждения предложения — одно на редактор и карточка строки. Без сделки — ждущие по сумме вниз, лучшая
-     отмечена. Со сделкой — принятое сверху со ссылкой в сделку, ниже «Резерв N»: остальные ждущие не отклоняются,
+     отмечена. Со сделкой — принятое сверху со ссылкой в сделку («Перейти к сделке»: «Открыть сделку» читали как
+     действие, которое ещё не сделано, 18.10.2026), ниже «Резерв N»: остальные ждущие не отклоняются,
      выбранный передумал — «Отдать» другому. Отклонённые и отозванные — свёрнуто. Внизу — «+ За менеджера» (админ вносит
      подтверждение сам, `x-offer.bid-for`), у предложения в продаже и в сделке. --}}
 @php
@@ -22,7 +23,7 @@
 <div class="flex flex-col gap-2">
     @if ($accepted)
         <div class="list"><x-offer.bid :bid="$accepted" :offer="$offer" :parked="$parked"/></div>
-        @unless ($inside ?? false)<a href="/offers/{{ $offer->number }}" class="btn btn-s btn-quiet self-start" data-turbo-frame="_top">Открыть сделку</a>@endunless
+        @unless ($inside ?? false)<a href="/offers/{{ $offer->number }}" class="btn btn-s btn-quiet self-start" data-turbo-frame="_top">Перейти к сделке</a>@endunless
         @if ($active->isNotEmpty())<div class="mt-2 px-1 text-sm text-ink-dim">Резерв <span class="nums">{{ $active->count() }}</span></div>@endif
     @endif
     @if ($active->isNotEmpty())
