@@ -16,6 +16,7 @@ use App\Mail\Scope;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Support\Nav;
+use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -34,7 +35,7 @@ use Throwable;
  *
  * Не заводит — цепочка ждёт человека в «Из писем»: вендор не узнан, номера убытка нет или их несколько (письмо о двух
  * машинах), номер в документах письма другой, машины нет (ни VIN, ни марки из справочника), письмо старше недели
- * (история ящика), давняя пересылка с номером не из таблицы Кати.
+ * (история ящика), давняя пересылка с номером не из таблицы Кати (у вендора с вывозом каждой машины — заводится).
  */
 final class AutoOffer
 {
@@ -90,9 +91,11 @@ final class AutoOffer
             return 'номер убытка в теме и в документах разный';
         }
         // 12.10.2026: Катя переслала июньское письмо, машина продана давно. Давнюю пересылку заводим, только если номер в
-        // таблице Кати: её Андрей и пересылает пачкой.
+        // таблице Кати: её Андрей и пересылает пачкой. У вендора, чьи машины вывозим все (Совкомбанк), — заводим всегда
+        // (18.10.2026, владелец: 483511/2024 письмом марта 2025 Катя заводила руками — машина ещё стояла у клиента).
         $sent = self::forwardedAt($letter->text_body ?: strip_tags((string) $letter->html_body));
-        if (! $old && $sent && $sent->lt(now()->subDays(self::FORWARD_DAYS)) && ! $listed) {
+        $vendor = Vendor::find($candidate->vendor_id ?: $candidate->value('vendor_id'));
+        if (! $old && $sent && $sent->lt(now()->subDays(self::FORWARD_DAYS)) && ! $listed && ! $vendor?->pickup_on_arrival) {
             return 'давнее пересланное письмо, номера нет в таблице Кати';
         }
         if (! Vin::full((string) $candidate->value('vin')) && ! ($candidate->value('brand') && Brand::known((string) $candidate->value('brand')))) {
