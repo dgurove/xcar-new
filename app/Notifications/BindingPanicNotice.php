@@ -53,6 +53,16 @@ final class BindingPanicNotice extends Notice
         return true;
     }
 
+    public function alarm(): bool
+    {
+        return true;
+    }
+
+    public function icon(): string
+    {
+        return 'siren';
+    }
+
     public function subject(): string
     {
         return $this->transport ? '/transports/'.$this->transport->id : '/offers/'.$this->offer->number;

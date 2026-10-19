@@ -66,6 +66,12 @@ class Deal extends Model
                 $deal->commission = null;
             }
         });
+        // Сделка — покупатель есть: тревога «нет покупателя» гаснет; отменили — может загореться (`Binding`).
+        static::saved(function (self $deal) {
+            if ($deal->wasRecentlyCreated || $deal->wasChanged('state')) {
+                Binding::touch(Offer::find($deal->offer_id));
+            }
+        });
     }
 
     public function buyer(): BelongsTo

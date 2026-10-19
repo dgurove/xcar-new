@@ -4,6 +4,7 @@ namespace App\Garage;
 
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Offers\Binding;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Offer;
@@ -25,6 +26,13 @@ use Illuminate\Support\Carbon;
 class Car extends Model
 {
     protected $table = 'garage_cars';
+
+    protected static function booted(): void
+    {
+        // Машина в гараже — покупатель есть: тревога «нет покупателя» гаснет; убрали из гаража — может загореться.
+        static::created(fn (self $car) => Binding::touch(Offer::find($car->offer_id)));
+        static::deleted(fn (self $car) => Binding::touch(Offer::find($car->offer_id)));
+    }
 
     protected function casts(): array
     {

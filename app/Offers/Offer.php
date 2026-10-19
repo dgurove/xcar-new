@@ -121,6 +121,10 @@ class Offer extends Model
                 $car = $o->car_id;
                 DB::afterCommit(fn () => CarChanged::dispatch($car, ['inspection_address']));
             }
+            // Тревога в шапке (`Binding::touch`): новый срок, ушло из продажи или вернулось.
+            if ($o->wasChanged(['binding_until', 'state'])) {
+                Binding::touch($o);
+            }
             // Срок обязывающего — в строке «Вывоза» логистики и у всех экранов машины (19.10.2026).
             if ($o->car_id && $o->wasChanged('binding_until')) {
                 $car = $o->car_id;

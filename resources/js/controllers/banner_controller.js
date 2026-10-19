@@ -178,11 +178,23 @@ export default class extends Controller {
         el.classList.add('is-leaving');
         el.style.translate = '';
         el.style.opacity = '';
+        // Тревога «нет покупателя» не исчезает, а сворачивается в красную капсулу шапки: причина ещё не устранена.
+        if (el.classList.contains('banner--alarm')) this.toAlarm(el);
         const gone = () => { el.remove(); this.layout(); };
         el.addEventListener('animationend', gone, { once: true });
         setTimeout(gone, 450);
         if (!quiet) this.channel?.postMessage({ close: el.dataset.bannerId });
         this.keep(el);
+    }
+
+    // Полёт карточки в капсулу тревоги: сжимается к её месту в шапке (видимой на этой ширине).
+    toAlarm(el) {
+        const pill = [...document.querySelectorAll('[data-alarm-button]:not([hidden])')].find((b) => b.offsetParent);
+        if (!pill) return;
+        const from = el.getBoundingClientRect(), to = pill.getBoundingClientRect();
+        el.classList.add('is-to-alarm');
+        el.style.transformOrigin = 'center';
+        el.style.transform = `translate(${to.left + to.width / 2 - (from.left + from.width / 2)}px, ${to.top + to.height / 2 - (from.top + from.height / 2)}px) scale(${Math.max(0.08, to.width / from.width)})`;
     }
 
     // Без анимации — карточку заменила новая о том же объекте.

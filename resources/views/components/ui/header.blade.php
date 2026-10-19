@@ -17,6 +17,8 @@
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
     // Чаты площадки в шапке CRM — на месте «Избранного» сайта; у модератора их нет.
     $crmChats = $surface === \App\Support\Surface::Crm && $user?->canManageCrm();
+    // Тревога «нет покупателя» — ведущим логистику в CRM и логистике, логисту в логистике (`Offers\Binding::alarmsFor`).
+    $alarm = \App\Offers\Binding::alarmsFor($user, $surface);
 @endphp
 <header id="header" class="header">
     {{-- Телефон: на всех хостах горизонтальный логотип ровно по центру (1fr | auto | 1fr), по бокам квадраты. Слева лупа и
@@ -37,11 +39,13 @@
         <div class="flex items-center gap-1 justify-self-end">
             <span class="net" aria-live="polite"></span>
             @if ($user)
+                {{-- Тревога «нет покупателя» — перед колокольчиком; пока горит, тема на телефоне уступает ей место. --}}
+                @if ($alarm)<x-ui.header-btn name="alarm"/>@endif
                 <x-ui.header-btn name="notifications" :badges="$badges"/>
             @else
                 <a href="/login" class="header-btn header-sq" aria-label="Войти"><x-ui.icon name="login" class="size-[18px]"/></a>
             @endif
-            <x-ui.header-btn name="theme"/>
+            <span class="contents" data-theme-phone><x-ui.header-btn name="theme"/></span>
         </div>
         {{-- Заголовок экрана собирается в шапку, когда h1 ушёл под неё (app.js → .is-past-title). --}}
         @if ($heading)<span class="header-title" aria-hidden="true">{{ $heading }}</span>@endif
@@ -83,6 +87,7 @@
                 </a>
             @endforeach
             @if ($user)
+                @if ($alarm)<x-ui.header-btn name="alarm" wide/>@endif
                 <x-ui.header-btn name="notifications" wide :badges="$badges"/>
                 @if ($site || $crmChats)<x-ui.header-btn :name="$site ? 'favorites' : 'chats'" wide :badges="$badges"/>@endif
             @endif

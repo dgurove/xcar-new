@@ -153,4 +153,32 @@ class BindingTest extends TestCase
         $this->actingAs($this->admin)->get('http://logistics.xcar.localhost/transports?preset=all&binding=panic&sort=binding')->assertOk()
             ->assertSee('binding-panic', false);
     }
+
+    public function test_header_alarm_until_cause_removed(): void
+    {
+        $moderator = User::create(['name' => 'Лиза Модератор', 'phone' => '79000000003', 'roles' => [Role::Moderator], 'approved_at' => now()]);
+        $this->offer->forceFill(['state' => OfferState::Open, 'binding_until' => Carbon::parse('2026-10-21 16:00')])->saveQuietly();
+        $t = app(OpenPickup::class)($this->offer->fresh(), $this->admin);
+
+        // CRM и логистика: капсула с числом, шторка со списком (в логистике — на задачу).
+        $this->assertSame(1, Binding::alarmQuery($moderator)->count());
+        $this->actingAs($moderator)->get('http://crm.xcar.localhost/?preset=published')->assertOk()->assertSee('data-alarm-button="wide"', false);
+        $this->actingAs($moderator)->get('http://logistics.xcar.localhost/live/alarms')->assertOk()->assertSee('/transports/'.$t->id, false)->assertSee('Горит');
+        $this->actingAs($this->admin)->get('http://crm.xcar.localhost/live/badges', ['Accept' => 'text/vnd.turbo-stream.html'])->assertOk()
+            ->assertSee('data-alarm-button', false)->assertSee('Нет покупателя: 1', false);
+
+        // Давно вышедший — красный в списках, но не в тревоге.
+        $old = Offer::create(['vendor_id' => $this->offer->vendor_id, 'claim_ref' => '483513/2026']);
+        $old->forceFill(['binding_until' => now()->subDays(Binding::ALARM_DAYS + 3)])->saveQuietly();
+        $this->assertSame(1, Binding::alarmQuery($moderator)->count());
+
+        // Подтверждение — причины нет, капсула гаснет.
+        $manager = User::create(['name' => 'Иван Менеджер', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        Bid::create(['offer_id' => $this->offer->id, 'user_id' => $manager->id, 'amount' => 500000, 'state' => BidState::Active]);
+        $this->assertSame(0, Binding::alarmQuery($moderator)->count());
+
+        // Менеджеру и сайту тревоги нет.
+        $this->assertFalse(Binding::alarmsFor($manager, \App\Support\Surface::Crm));
+        $this->assertFalse(Binding::alarmsFor($this->admin, \App\Support\Surface::Site));
+    }
 }

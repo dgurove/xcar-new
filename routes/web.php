@@ -152,6 +152,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/account/notifications/{id}', [NotificationController::class, 'open']);
 
     Route::get('/live/badges', [FragmentController::class, 'badges']);
+    Route::get('/live/alarms', [FragmentController::class, 'alarms']);
 
     // Приглашения — менеджеру и админу один экран (чужому 404 в контроллере); прежний адрес — навсегда сюда.
     Route::get('/account/invites', [InviteController::class, 'index']);

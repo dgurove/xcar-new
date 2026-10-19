@@ -1,4 +1,4 @@
-{{-- Квадратная кнопка шапки, одна на оба ряда: избранное, чаты, уведомления со шторкой, тема. Телефон — квадрат
+{{-- Квадратная кнопка шапки, одна на оба ряда: избранное, чаты, уведомления со шторкой, тревога, тема. Телефон — квадрат
      header-sq со значком 18 px, ПК (wide) — капсула ряда header-h со значком 16 px и своими id шторки. --}}
 @props(['name', 'wide' => false, 'badges' => []])
 @php
@@ -21,6 +21,15 @@
             <div class="mt-4 flex gap-2">
                 <a href="/account/notifications" class="btn btn-s btn-quiet flex-1">Все уведомления</a>
             </div>
+        </x-ui.sheet>
+    </div>
+@elseif ($name === 'alarm')
+    {{-- Тревога «нет покупателя» (19.10.2026, `Offers\Binding`): красная мерцающая капсула с числом, пока причина не устранена;
+         закрыть её нельзя — гаснет сама. Нажатие — шторка со списком машин. Число и видимость обновляет `/live/badges`. --}}
+    <div class="contents header-sq-wrap" data-controller="sheet alarms">
+        <x-alarm.button :wide="$wide"/>
+        <x-ui.sheet :id="'alarm-sheet'.$tail" title="Нет покупателя">
+            <turbo-frame id="alarms{{ $tail }}" src="/live/alarms" loading="lazy" data-alarms-target="frame" class="block min-h-32"><x-ui.skeleton :rows="3"/></turbo-frame>
         </x-ui.sheet>
     </div>
 @elseif ($name === 'theme')

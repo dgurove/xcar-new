@@ -71,6 +71,15 @@ abstract class Notice extends Notification implements ShouldQueue
         return ! $this->quiet() && ($this->critical() || $this->toTelegram() !== null);
     }
 
+    /**
+     * Тревога (срок обязывающего горит, покупателя нет — `BindingPanicNotice`): карточка красная, а закрытая сворачивается
+     * в капсулу тревоги шапки — та держится, пока причину не устранят.
+     */
+    public function alarm(): bool
+    {
+        return false;
+    }
+
     /** Кто совершил действие — его аватар на карточке; нет человека — иконка (`icon`). */
     public function actor(): ?User
     {
@@ -248,7 +257,8 @@ abstract class Notice extends Notification implements ShouldQueue
     public function toArray(User $user): array
     {
         return ['title' => $this->titleFor($user), 'text' => $this->textFor($user), 'href' => $this->href(), 'offer' => $this->offerNumber(), 'subject' => $this->subject()]
-            + ($this->surface() ? ['surface' => $this->surface()->value] : []);
+            + ($this->surface() ? ['surface' => $this->surface()->value] : [])
+            + ($this->alarm() ? ['alarm' => true] : []);
     }
 
     public function toMail(User $user): MailMessage

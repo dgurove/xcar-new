@@ -803,6 +803,20 @@ html.kb-open { --home-gap: 0px; }
   .binding-tag { border-radius: 999px; padding: .05rem .5rem; font-size: var(--text-xs); line-height: 1.35; white-space: nowrap; vertical-align: .05em; }
   @keyframes binding-pulse { 0%, 100% { background: var(--color-danger); } 50% { background: color-mix(in srgb, var(--color-danger) 70%, #fff); } }
   @media (prefers-reduced-motion: reduce) { .binding-panic { animation: none; } }
+  /* Тревога в шапке: красная, мерцает заливкой; число рядом с сиреной. На телефоне, пока она есть, тема уступает место. */
+  .header-btn.alarm-btn, .dark .header-btn.alarm-btn { gap: .25rem; background: var(--color-danger); color: #fff; font-weight: 600; font-size: var(--text-sm); animation: binding-pulse 1.6s ease-in-out infinite; }
+  .header-sq.alarm-btn { width: auto; min-width: 2.5rem; padding-inline: .5rem; }
+  .header:has([data-alarm-button="phone"]:not([hidden])) [data-theme-phone] { display: none; }
+  .header-btn.alarm-btn[hidden] { display: none; }
+  @media (prefers-reduced-motion: reduce) { .header-btn.alarm-btn { animation: none; } }
+  /* Карточка уведомления тревоги — красная (`Notice::alarm`), закрытая — улетает в капсулу шапки. */
+  .banner.banner--alarm { background: var(--color-danger); color: #fff; }
+  .banner.banner--alarm :is(.banner-time, .banner-text, .banner-close) { color: rgb(255 255 255 / .85); }
+  .banner.banner--alarm .row-icon { background: rgb(255 255 255 / .2); color: #fff; }
+  /* Строка шторки тревоги — красная полоса слева, как у строки с паникой. */
+  .alarm-row { position: relative; }
+  .alarm-row::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--color-danger); }
+  .banner.is-to-alarm { transition: transform .45s cubic-bezier(.4, 0, .2, 1), opacity .45s; opacity: 0; }
   /* Жёлтое «внимание» без срочности: «Без цены», «С НДС», «отключён». */
   .tag-amber { --tag-bg: #fef3c7; --tag-text: #92400e; --tag-bg-d: #3f2606; --tag-text-d: #fcd34d; }
   .tag-recommended { --tag-bg: #e3f1fb; --tag-text: #1878b8; --tag-bg-d: #0f2537; --tag-text-d: #6cc0ff; }

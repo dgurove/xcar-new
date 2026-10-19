@@ -3,8 +3,14 @@
 namespace App\Offers;
 
 use App\Billing\WorkDays;
+use App\Live\Publisher;
+use App\Live\Topics;
+use App\Logistics\Transport;
 use App\Support\Ago;
+use App\Support\Surface;
+use App\Users\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Срок обязывающего предложения (19.10.2026, владелец: «очень не хватает в CRM и в логистике»): до когда поставщик держит
@@ -165,5 +171,64 @@ final class Binding
         $limit = self::closeLimit($offer);
 
         return $limit && $at && Carbon::instance($at)->gt($limit) ? 'Приём не позже срока обязывающего предложения: '.self::date($limit) : null;
+    }
+
+    /**
+     * Тревога в шапке (19.10.2026, владелец: «не убрать, пока не устранят причину, но чтобы интерфейс не перегораживали»):
+     * красная капсула «🚨 N» в CRM и логистике — ведущим логистику (админы и модераторы) всё, логисту — машины его вывозов.
+     * В тревоге — горит и вышедшие за последние `ALARM_DAYS` дней (владелец: «только горящие и свежие»); давние — красным в
+     * списках. Гаснет сама: покупатель, новый срок, машину убрали.
+     */
+    public const ALARM_DAYS = 7;
+
+    /** Кому тревога на этом приложении. */
+    public static function alarmsFor(?User $user, ?Surface $surface = null): bool
+    {
+        $surface ??= Surface::current();
+
+        return $user !== null && match ($surface) {
+            Surface::Crm => $user->leadsLogistics(),
+            Surface::Logistics => $user->leadsLogistics() || $user->isLogist(),
+            default => false,
+        };
+    }
+
+    /** Выборка тревог человека: горит или вышел недавно, без покупателя; логисту — только машины его вывозов. */
+    public static function alarmQuery(User $user)
+    {
+        $q = Offer::query()->where('offers.binding_until', '>=', now()->subDays(self::ALARM_DAYS));
+        self::scope($q, 'panic');
+        if (! $user->leadsLogistics()) {
+            $q->whereIn('offers.car_id', Transport::open()->where('logist_id', $user->id)->select('car_id'));
+        }
+
+        return $q;
+    }
+
+    public static function alarmCount(?User $user): int
+    {
+        return self::alarmsFor($user) ? once(fn () => self::alarmQuery($user)->count()) : 0;
+    }
+
+    /** @return Collection<int, Offer> по сроку, ближние сверху */
+    public static function alarms(User $user): Collection
+    {
+        return self::alarmQuery($user)->orderBy('offers.binding_until')->limit(100)->get();
+    }
+
+    /**
+     * Тревога могла загореться или погаснуть (срок, подтверждение, сделка, гараж, состояние): шапки пересчитываются у всех,
+     * кому она видна (`badges` → `/live/badges`). Логистика слушает только личные темы — каждому по его теме.
+     */
+    public static function touch(?Offer $offer): void
+    {
+        if (! $offer?->binding_until) {
+            return;
+        }
+        $ids = User::logisticsLeads()->pluck('id');
+        if ($offer->car_id) {
+            $ids = $ids->merge(Transport::open()->where('car_id', $offer->car_id)->whereNotNull('logist_id')->pluck('logist_id'));
+        }
+        app(Publisher::class)->badges($ids->unique()->map(fn (int $id) => Topics::user($id))->values()->all());
     }
 }
