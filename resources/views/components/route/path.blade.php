@@ -160,6 +160,14 @@
                         $req = ! $wantsInvoice && $stage->awaitsManager($deal) ? $requirements->first(fn ($r) => ! $r->done_at && $r->stage_id === $stage->id) : null;
                         $replies = $req ? $stage->exitsFor(\App\Workflow\Actor::Manager, $deal)->pluck('label')->map(fn ($l) => '«'.$l.'»') : collect();
                         $waitsWord = $replies->count() > 1 ? 'Менеджер ответит '.$replies->slice(0, -1)->implode(', ').' или '.$replies->last() : ($replies->isNotEmpty() ? 'Ждём от менеджера '.$replies->first() : null);
+                        // Шаг просит документ — что именно, а не имя кнопки (19.10.2026: «Ждём от менеджера «Договор приложен»»).
+                        if ($req?->asks === \App\Workflow\Asks::Document) {
+                            $waitsWord = 'Ждём от менеджера '.match (true) {
+                                (bool) preg_match('/договор/iu', $stage->name.' '.$req->title) => 'подписанный договор',
+                                (bool) preg_match('/плат[её]ж/iu', (string) $req->title) => 'платёжку',
+                                default => 'документ',
+                            };
+                        }
                     @endphp
                     @if ($position->letterStatus())
                         {{-- Этап с письмом поставщику — что с письмом, а не «Ждём поставщика» (`x-route.clock`, 11.10.2026). --}}
@@ -167,6 +175,10 @@
                     @elseif (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
                         <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
+                    @endif
+                    {{-- Менеджер уже приложил, но шаг ещё не отметил — файл видно сразу. --}}
+                    @if ($req && $req->getMedia('files')->isNotEmpty())
+                        <div class="mt-2 flex flex-col gap-1">@foreach ($req->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach</div>
                     @endif
                     {{-- ДКП: что вписываем мы (продавец по СТС, документы ТС, цена) — прямо в шаге, «Заполнить» открывает карточку «ДКП»
                          сразу полями (17.10.2026, владелец: «нет возможности указать данные продавца, всё встало» — поля жили за

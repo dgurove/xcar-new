@@ -19,11 +19,13 @@
                 <x-ui.section-title level="h1" :count="$gallery ? $counts['gallery'] : $counts['offers']">{{ $title }}</x-ui.section-title>
             </div>
 
-            {{-- Лупа сайта — в шапке (поиск по разделам); пришли из неё — тулбар сразу в поиске, с полем и «Отмена». --}}
-            <x-ui.toolbar class="md:mt-5" :sort="$sorting" :pills="$views" :dots="$gallery ? [] : ['urgent' => 'urgent', 'fresh' => 'fresh', 'ending' => 'hot']" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
+            {{-- Лупа сайта — в шапке (поиск по разделам); пришли из неё — тулбар сразу в поиске, с полем и «Отмена».
+                 Раздел пуст целиком (покупателю ещё ничего не открыли) — сортировать и менять вид нечего (19.10.2026). --}}
+            @php $none = ! ($gallery ? $counts['gallery'] : $counts['offers']) && blank($filters['q'] ?? null); @endphp
+            <x-ui.toolbar class="md:mt-5" :sort="$none ? null : $sorting" :pills="$views" :dots="$gallery ? [] : ['urgent' => 'urgent', 'fresh' => 'fresh', 'ending' => 'hot']" :pill="$filters['view'] ?? ''" :counts="$counts" :name="$gallery ? 'gallery' : 'catalog'" :facets="$facets" :search="filled($filters['q'] ?? null) ? 'Марка, модель, номер, VIN' : null" search-target="#catalog-list">
                 <x-slot:extra>
                     @if ($selecting && $offers->isNotEmpty() && ! \App\Support\ListView::isTable($view))<button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="selection#toggle" data-selection-target="toggle" aria-pressed="false"><x-ui.icon name="check-circle" class="size-4"/><span class="hidden sm:inline">Выбрать</span></button>@endif
-                    <x-ui.view-switch :current="$view" :views="\App\Support\ListView::SHELVED"/>
+                    @unless ($none)<x-ui.view-switch :current="$view" :views="\App\Support\ListView::SHELVED"/>@endunless
                 </x-slot:extra>
             </x-ui.toolbar>
 
