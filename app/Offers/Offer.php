@@ -56,7 +56,7 @@ use Illuminate\Support\Facades\DB;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'deal_show_until', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category',
+    'garage_allowed', 'deal_show_until', 'binding_until', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category',
 ])]
 class Offer extends Model
 {
@@ -79,7 +79,7 @@ class Offer extends Model
 
     /** Поля, от которых зависит вкладка CRM или вид строки в ней (`saved` → живое обновление строки). */
     private const ROW_FIELDS = ['state', 'tab_at', 'number', 'floor_price', 'asking_price', 'publish_price', 'bids_close_at', 'slot_at',
-        'auction_at', 'auction_planned_at', 'gallery_from', 'gallery_until', 'urgent_at', 'proposed_at', 'vendor_id', 'recommended'];
+        'auction_at', 'auction_planned_at', 'gallery_from', 'gallery_until', 'urgent_at', 'proposed_at', 'vendor_id', 'recommended', 'binding_until'];
 
     /** Машина (`Cars\Car`) — с каждым предложением: название, VIN, фото. */
     protected $with = ['car'];
@@ -90,6 +90,8 @@ class Offer extends Model
         static::saving(fn (self $o) => $o->offsetUnset('opened_at'));
         // `viewed` — «Просмотрено» из каталога (`CatalogQuery::cards`), тоже без колонки.
         static::saving(fn (self $o) => $o->offsetUnset('viewed'));
+        // `binding_panic` — вычисленное списком (`Binding::select`).
+        static::saving(fn (self $o) => $o->offsetUnset('binding_panic'));
         static::saving(function (self $o) {
             // У продажи свой вендор: «АльфаСтрахование СПб» парковки здесь — «АльфаСтрахование».
             if ($o->isDirty('vendor_id')) {
@@ -118,6 +120,11 @@ class Offer extends Model
                 // её полей (19.10.2026: адрес — поле продажи, не машины, и правка одного адреса не доезжала никуда).
                 $car = $o->car_id;
                 DB::afterCommit(fn () => CarChanged::dispatch($car, ['inspection_address']));
+            }
+            // Срок обязывающего — в строке «Вывоза» логистики и у всех экранов машины (19.10.2026).
+            if ($o->car_id && $o->wasChanged('binding_until')) {
+                $car = $o->car_id;
+                DB::afterCommit(fn () => CarChanged::dispatch($car, ['binding_until']));
             }
             // Строка могла уехать в другую вкладку CRM (шаг работы, слот, аукцион, срок приёма, окно галереи) или поменять
             // цены — открытые списки у всех перечитывают её (18.10.2026: правка цены, слот, аукцион, продление срока
@@ -157,6 +164,8 @@ class Offer extends Model
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
             'deal_show_until' => 'datetime',
+            'binding_until' => 'datetime',
+            'binding_alerted_for' => 'datetime',
             'slot_at' => 'datetime',
             'gallery_from' => 'datetime',
             'gallery_until' => 'datetime',
@@ -1199,6 +1208,8 @@ class Offer extends Model
     public function crmTone(): ?string
     {
         return match (true) {
+            // Срок обязывающего горит, покупателя нет (19.10.2026) — важнее всего, красной полосой.
+            Binding::panics($this) => 'binding',
             ($this->marginMark()['tone'] ?? null) === 'loss' => 'loss',
             $this->state !== OfferState::Open => null,
             $this->isUrgent() => 'urgent',

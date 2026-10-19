@@ -11,7 +11,7 @@
             <input type="hidden" name="when" value="{{ \App\Offers\Slots::DAY }}">
             <div class="fields">
                 <x-ui.field name="day" :id="'publish-day-field-'.$n" label="Когда" type="datetime-local" required :default-time="$hour"
-                    :value="\App\Offers\Slots::dayDefault()->format('Y-m-d\TH:i')" :min="now()->format('Y-m-d\TH:i')"/>
+                    :value="\App\Offers\Slots::dayDefault()->format('Y-m-d\TH:i')" :min="now()->format('Y-m-d\TH:i')" :limit="\App\Offers\Binding::closeLimit($offer)"/>
             </div>
             <x-ui.sheet-foot><x-ui.icon name="calendar" class="size-5"/> Опубликовать</x-ui.sheet-foot>
         </form>

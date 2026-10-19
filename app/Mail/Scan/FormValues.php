@@ -51,6 +51,8 @@ final class FormValues
             'color' => ['value' => $v = Colors::normalize((string) $value) ?? $text, 'text' => $v],
             'engine_volume' => ['value' => Liters::format((int) $value), 'text' => $text],
             'year', 'mileage', 'engine_power', 'value' => ['value' => (string) (int) $value, 'text' => $text],
+            // Календарь (`x-ui.date`) ждёт «Y-m-dTH:i».
+            'binding_until' => ['value' => str_replace(' ', 'T', (string) $value), 'text' => $text],
             default => ['value' => (string) $value, 'text' => $text],
         };
     }

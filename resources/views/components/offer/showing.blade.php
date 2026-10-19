@@ -35,7 +35,7 @@
         @if ($mode === 'offer')
             {{-- Срок приёма — выбор даты (`x-ui.date`), время по умолчанию 17:30 (владелец 10.10.2026: «чаще всего надо 17:30»). --}}
             <x-ui.field name="bids_close_at" id="f-bids_close_at-{{ $n }}" label="Приём подтверждений до" type="datetime-local" default-time="17:30" span="col-span-2"
-                :value="$offer->bids_close_at?->format('Y-m-d\TH:i')" :form="$form"/>
+                :value="$offer->bids_close_at?->format('Y-m-d\TH:i')" :limit="\App\Offers\Binding::closeLimit($offer)" :form="$form"/>
         @else
             <x-ui.field name="deal_show_for" id="f-deal_show_for-{{ $n }}" label="Сколько показывать" :options="$for" :value="$offer->deal_show_until ? 'keep' : ''" span="col-span-2" :form="$form"/>
         @endif

@@ -13,7 +13,7 @@
     $garage = $offer->state === \App\Offers\OfferState::Garage || \App\Garage\Car::where('offer_id', $offer->id)->exists();
     $isDeal = ! $garage && $offer->state === \App\Offers\OfferState::Sold;
     $auction = $offer->onAuction();
-    $closeAt = old('bids_close_at', \App\Offers\Slots::closeFor(now())->format('Y-m-d\TH:i'));
+    $closeAt = old('bids_close_at', \App\Offers\Binding::clampClose($offer, \App\Offers\Slots::closeFor(now()))->format('Y-m-d\TH:i'));
     $confirm = $garage
         ? 'ТС уйдёт из гаража менеджера, гаражная сделка отменится, неоплаченные счета аннулируются'
         : 'Сделка отменится, подтверждение менеджера останется среди подтверждений, неоплаченные счета сделки аннулируются';
@@ -38,7 +38,7 @@
                     <div>
                         <h3 class="list-head">Показ</h3>
                         <div class="fields">
-                            <x-ui.field name="bids_close_at" :id="'resale-close-'.$n" label="Приём подтверждений до" type="datetime-local" default-time="17:30" :value="$closeAt" required/>
+                            <x-ui.field name="bids_close_at" :id="'resale-close-'.$n" label="Приём подтверждений до" type="datetime-local" default-time="17:30" :value="$closeAt" :limit="\App\Offers\Binding::closeLimit($offer)" required/>
                             <x-offer.audience-field :offer="$offer" key="resale"/>
                         </div>
                     </div>

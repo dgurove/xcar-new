@@ -2,8 +2,10 @@
 
 namespace App\Mail\Extraction;
 
+use App\Billing\WorkDays;
 use App\Cars\Colors;
 use App\Cars\Vin\VinText;
+use Illuminate\Support\Carbon;
 
 /**
  * Поля машины из текста документа во вложении письма — то, что страховая в самом письме не пишет:
@@ -115,7 +117,7 @@ final class DocumentFields
         $city = self::values($text, '\bГород')[0] ?? null;
         $put('city', $city ? trim((string) preg_replace('/^г\.?\s+/u', '', $city)) : null);
         $put('floor_price', self::price($text));
-        $put('offer_until', self::until($text));
+        $put('binding_until', self::binding($text));
 
         return $f;
     }
@@ -286,19 +288,55 @@ final class DocumentFields
         return null;
     }
 
-    /** Покупатель держит цену до: «Срок действия предложения до 14.10.2026», «… до 11 октября 2026». */
-    private static function until(string $text): ?string
+    /**
+     * Срок обязывающего предложения — до когда покупатель торгов держит цену (19.10.2026, `Offers\Binding`), «Y-m-d H:i»
+     * по Москве. Явная дата — конец дня: Мигторг «Срок действия предложения покупателя 30 календарных дней … до 1 октября
+     * 2026», БитАвто «Срок действия предложения до 16.10.2026 включительно». Днями — от окончания торгов с его временем:
+     * CarXbid и SD-Assistance «Срок обязывающего предложения: 60 дней» (число бывает строкой ниже) и «Окончание торгов:
+     * 2026-09-02 16:00:00» / «13.02.2026 16:00:00»; рабочие дни — без выходных.
+     */
+    public static function binding(string $text): ?string
     {
-        if (! preg_match('/срок\s+действия\s+предложения[^0-9]{0,80}?до\s+(\d{1,2})[.\s]+(\d{1,2}|[а-я]+)[.\s]+(\d{4})/ui', $text, $m)) {
+        if (preg_match('/срок\s+действия\s+предложения[^\n]{0,160}?\bдо\s+(\d{1,2})[.\s]+(\d{1,2}|[а-я]+)[.\s]+(\d{4})/ui', $text, $m)
+            && ($day = self::date((int) $m[1], $m[2], (int) $m[3]))) {
+            return $day.' 23:59';
+        }
+        if (! preg_match('/срок\s+обязывающего\s+предложения\s*:?\s*(\d{1,3})\s*(рабоч)?\S*\s*дн/ui', $text, $d)
+            || ! ($end = self::auctionEnd($text))) {
             return null;
         }
-        $month = ctype_digit($m[2]) ? (int) $m[2] : null;
-        foreach (self::MONTHS as $stem => $n) {
-            if ($month === null && str_starts_with(mb_strtolower($m[2]), $stem)) {
-                $month = $n;
+        $at = ! empty($d[2]) ? WorkDays::add($end, (int) $d[1]) : $end->addDays((int) $d[1]);
+
+        return $at->format('Y-m-d H:i');
+    }
+
+    /** «Окончание торгов: 2026-09-02 16:00:00», «13.02.2026 16:00:00», «— 16:00 01.09.2026». */
+    private static function auctionEnd(string $text): ?Carbon
+    {
+        if (! preg_match('/окончание\s+торгов\s*[:—–-]?\s*([^\n]{6,40})/ui', $text, $m)) {
+            return null;
+        }
+        $s = $m[1];
+        $time = preg_match('/(\d{1,2}):(\d{2})/u', $s, $t) ? sprintf('%02d:%02d', $t[1], $t[2]) : '23:59';
+        if (preg_match('/(\d{4})-(\d{2})-(\d{2})/u', $s, $x)) {
+            $day = self::date((int) $x[3], $x[2], (int) $x[1]);
+        } elseif (preg_match('/(\d{1,2})\.(\d{1,2})\.(\d{4})/u', $s, $x)) {
+            $day = self::date((int) $x[1], $x[2], (int) $x[3]);
+        }
+
+        return ! empty($day) ? Carbon::parse("{$day} {$time}", 'Europe/Moscow') : null;
+    }
+
+    /** День «Y-m-d» из числа, месяца цифрой или словом («октября») и года; невозможная дата — null. */
+    private static function date(int $day, string $month, int $year): ?string
+    {
+        $n = ctype_digit($month) ? (int) $month : null;
+        foreach (self::MONTHS as $stem => $i) {
+            if ($n === null && str_starts_with(mb_strtolower($month), $stem)) {
+                $n = $i;
             }
         }
 
-        return $month && checkdate($month, (int) $m[1], (int) $m[3]) ? sprintf('%04d-%02d-%02d', $m[3], $month, $m[1]) : null;
+        return $n && checkdate($n, $day, $year) ? sprintf('%04d-%02d-%02d', $year, $n, $day) : null;
     }
 }

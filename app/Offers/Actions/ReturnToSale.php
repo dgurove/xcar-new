@@ -7,6 +7,7 @@ use App\Garage\Events\GarageChanged;
 use App\Offers\AudienceRules;
 use App\Offers\DealState;
 use App\Offers\Offer;
+use App\Offers\Binding;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Users\User;
@@ -43,6 +44,10 @@ final class ReturnToSale
         }
         if ($car?->costs()->exists()) {
             throw ValidationException::withMessages(['state' => 'По ТС в гараже есть расходы: сначала уберите их']);
+        }
+
+        if ($error = Binding::closeError($offer, $closeAt)) {
+            throw ValidationException::withMessages(['bids_close_at' => $error]);
         }
 
         return DB::transaction(function () use ($offer, $by, $prices, $car, $closeAt, $audience, $auction) {

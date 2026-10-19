@@ -99,6 +99,20 @@
                     </span>
                     @if ($sale->manager)<x-ui.person :user="$sale->manager" class="shrink-0"/>@endif
                 </div>
+                @if ($offer?->binding_until)
+                    <div class="row items-center justify-between gap-3">
+                        <span class="text-sm text-ink-muted">Обязывающее до</span>
+                        <x-offer.binding :offer="$offer" plain class="text-right"/>
+                    </div>
+                @endif
+            </div>
+        @elseif ($mine && $offer?->binding_until)
+            {{-- Логисту — срок обязывающего тоже (19.10.2026): к нему вывоз и торопят. --}}
+            <div class="list mt-4">
+                <div class="row items-center justify-between gap-3">
+                    <span class="text-sm text-ink-muted">Обязывающее до</span>
+                    <x-offer.binding :offer="$offer" plain class="text-right"/>
+                </div>
             </div>
         @endif
 

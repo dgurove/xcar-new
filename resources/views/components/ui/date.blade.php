@@ -3,9 +3,9 @@
      `disabled`, `form`) — у скрытого поля, `disabled` ещё и у видимого. Время по умолчанию — `default-time` (CRM срок
      приёма 17:30, парковка 12:00). Зовёт его `x-ui.field` с `type="date|datetime-local"`.
      `chip` — вместо поля кнопка с текстом «принята 5 мая, 14:05» (`prefix` — слово перед датой, класс — снаружи): дата
-     сама и есть кнопка (`x-park.date-edit`); пустая — `placeholder` («Указать»). `submit` — значение уходит одной отправкой формы скрытого поля, когда
+     сама и есть кнопка (`x-park.date-edit`); `limit` — позже нельзя, дни после красные (срок обязывающего); пустая — `placeholder` («Указать»). `submit` — значение уходит одной отправкой формы скрытого поля, когда
      всплывашку закрыли и значение поменялось (выбор дня до времени формы не отправляет). --}}
-@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false])
+@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'limit' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false])
 @php
     $id ??= 'f-'.str_replace(['[', ']'], ['-', ''], $name);
     // Прежние значения бывают с секундами и пробелом («2026-10-09 17:30:00») — к виду поля.
@@ -16,7 +16,7 @@
     $chipText = $chip && $v !== '' ? trim($prefix.' '.\Illuminate\Support\Carbon::parse($v)->translatedFormat('j M'.(substr($v, 0, 4) == now()->year ? '' : ' Y').($time ? ', H:i' : ''))) : ($prefix ?: $placeholder);
 @endphp
 <{{ $chip ? 'span' : 'div' }} class="{{ $chip ? 'contents' : 'date-field' }}" data-controller="date" data-date-prefix-value="{{ $prefix }}" @if ($chip && $placeholder) data-date-placeholder-value="{{ $placeholder }}" @endif data-date-submit-value="{{ $submit ? 'true' : 'false' }}" data-date-time-value="{{ $time ? 'true' : 'false' }}" data-date-default-time-value="{{ $defaultTime }}" data-date-now-value="{{ $now ? 'true' : 'false' }}"
-    data-date-min-value="{{ $day($min) }}" data-date-max-value="{{ $day($max) }}">
+    data-date-min-value="{{ $day($min) }}" data-date-max-value="{{ $day($max) }}" @if ($limit) data-date-limit-value="{{ $limit instanceof \DateTimeInterface ? $limit->format('Y-m-d\TH:i') : substr(str_replace(' ', 'T', (string) $limit), 0, 16) }}" @endif>
     <input type="hidden" name="{{ $name }}" value="{{ $v }}" data-date-target="value" {{ $attributes->except(['class', 'id', 'type', 'placeholder']) }}>
     @if ($chip)
         <button type="button" id="{{ $id }}" class="{{ $attributes->get('class') }}" data-date-target="text" data-action="date#open:prevent:stop">{{ $chipText }}</button>

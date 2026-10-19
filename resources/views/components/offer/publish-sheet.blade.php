@@ -35,11 +35,11 @@
             @endif
         </div>
         <div class="publish-day fields">
-            <x-ui.field name="day" :id="$id.'-day'" label="Когда" type="datetime-local" :default-time="sprintf('%02d:00', (int) config('xcar.slot_hour'))" :value="\App\Offers\Slots::dayDefault()->format('Y-m-d\TH:i')" :min="now()->format('Y-m-d\TH:i')" :form="$form"/>
+            <x-ui.field name="day" :id="$id.'-day'" label="Когда" type="datetime-local" :default-time="sprintf('%02d:00', (int) config('xcar.slot_hour'))" :value="\App\Offers\Slots::dayDefault()->format('Y-m-d\TH:i')" :min="now()->format('Y-m-d\TH:i')" :limit="$offer ? \App\Offers\Binding::closeLimit($offer) : null" :form="$form"/>
         </div>
         @if ($offer && ! $move)
             <div class="urgent-until fields">
-                <x-ui.field name="urgent_until" :id="$id.'-urgent-until'" label="Приём до" type="datetime-local" :value="\App\Offers\Slots::urgentDefault()->format('Y-m-d\TH:i')" :min="now()->addMinutes(30)->format('Y-m-d\TH:i')" :form="$form"/>
+                <x-ui.field name="urgent_until" :id="$id.'-urgent-until'" label="Приём до" type="datetime-local" :value="\App\Offers\Slots::urgentDefault()->format('Y-m-d\TH:i')" :min="now()->addMinutes(30)->format('Y-m-d\TH:i')" :limit="$offer ? \App\Offers\Binding::closeLimit($offer) : null" :form="$form"/>
             </div>
         @endif
         {{-- Шторка закрывается сразу: ошибка поля (номер убытка, фото) должна быть видна, а не под шторкой. --}}

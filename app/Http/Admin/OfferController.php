@@ -28,6 +28,7 @@ use App\Offers\Actions\UnscheduleOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\BidKind;
 use App\Offers\BidState;
+use App\Offers\Binding;
 use App\Offers\CatalogQuery;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
@@ -132,6 +133,7 @@ class OfferController
         'floor' => ['Закупочная', 'asc'],
         'price' => ['Цена продажи', 'asc'],
         'bids' => ['Подтверждения', 'desc'],
+        'binding' => ['Срок обязывающего', 'asc'],
     ];
 
     /** Сортировка вкладки: поля её столбцов, номер всегда, закрытие приёма — у опубликованных. */
@@ -201,7 +203,10 @@ class OfferController
                 ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')] : []),
             ],
             default => self::facets(),
-        })->always();
+        }, ...($admin && $preset !== 'bids' ? [
+            // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом.
+            Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, 'panic'))->dot('danger'),
+        ] : []))->always();
         ListPrefs::sync($request, 'crm-offers', keep: $facets->keys());
         $cols = self::columns($preset, $request->user());
         $sort = self::sortFor($request, $preset, $cols, $admin);
@@ -215,6 +220,8 @@ class OfferController
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
         $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['settlement', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
             ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
+        // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
+        Binding::select($q);
 
         if ($searching) {
             $q->searchCrm(trim((string) $request->query('q')))->orderByDesc('updated_at');
@@ -382,6 +389,7 @@ class OfferController
             'floor' => $q->orderByRaw("offers.floor_price {$dir} nulls last"),
             'price' => $q->orderByRaw("offers.asking_price {$dir} nulls last"),
             'bids' => $q->orderByRaw("{$bids} {$dir}"),
+            'binding' => $q->orderByRaw("offers.binding_until {$dir} nulls last"),
             default => $q->orderBy('offers.id', $dir),
         };
         $q->orderByDesc('offers.id');
@@ -425,16 +433,17 @@ class OfferController
 
         $cols = match ($preset ?? 'unpriced') {
             // Закупочную заполняют — цены продажи здесь не бывает.
-            'nofloor' => ['vendor', 'city', 'floor', 'created'],
+            'nofloor' => ['vendor', 'city', 'binding', 'floor', 'created'],
             // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»). Оценочной в таблице нет
             // (владелец 05.10.2026: «скрой») — она в карточке строки, в «Деньгах».
-            'unpriced', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'floor', 'price', 'created'],
+            // Срок обязывающего (19.10.2026) — до какого числа поставщик держит закупочную: там, где покупателя ещё ищут.
+            'unpriced', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'binding', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
-            'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
+            'slots' => ['vendor', 'city', 'binding', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
             // В «Опубликованных» у админа подтверждений нет по определению — столбца тоже.
-            'published', 'closed' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
+            'published', 'closed' => ['vendor', 'city', ...($admin ? ['state'] : []), 'binding', 'floor', 'price', 'published'],
             'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };

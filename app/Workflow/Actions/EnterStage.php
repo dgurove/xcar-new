@@ -4,6 +4,7 @@ namespace App\Workflow\Actions;
 
 use App\Offers\Actions\AgreeDeal;
 use App\Offers\Actions\ChangeOfferState;
+use App\Offers\Binding;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
@@ -56,7 +57,7 @@ final class EnterStage
         if ($track === Track::Sale && $to->offer_state === OfferState::Open
             && (! $offer->bids_close_at || $offer->bids_close_at->isPast())) {
             // Как у публикации кнопкой: через N дней в 17:00 (`Slots::closeFor`), N — срок этапа «Приём» в днях.
-            $offer->bids_close_at = Slots::closeFor($now, $to->limit_minutes ? max(1, intdiv($to->limit_minutes, 1440)) : null);
+            $offer->bids_close_at = Binding::clampClose($offer, Slots::closeFor($now, $to->limit_minutes ? max(1, intdiv($to->limit_minutes, 1440)) : null));
             $offer->save();
         }
 

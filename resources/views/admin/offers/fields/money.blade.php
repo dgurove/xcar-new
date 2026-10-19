@@ -1,7 +1,7 @@
 {{-- Поля «Деньги» — одни на редактор и карточка строки, узкой колонкой в две: закупочная во всю ширину с «С НДС», заявленная и цена продажи, минимальная и доля; «С НДС» у закупочной (и у модератора: цены от страховой бывают и так, и так), метки — в карточке строки (в редакторе они в
      шапке); срок приёма, кому показывать и галки показа — модуль «Показ» (`x-offer.showing`) под «Ценами». В редакторе блок стоит справа над
      «Историей», вне формы — поля ходят в неё через `form` ($form). Серые подсказки заявленной и минимальной считаются на
-     ходу (min-bid). floorElsewhere — закупочная с оценочной сверху карточки, здесь их нет. Модератору — закупочная и НДС: цены продажи, галки, метки и приём ставит админ (OfferRequest::MODERATOR). --}}
+     ходу (min-bid). Срок обязывающего предложения — под закупочной, у админа и модератора. floorElsewhere — закупочная с оценочной сверху карточки, здесь их нет. Модератору — закупочная и НДС: цены продажи, галки, метки и приём ставит админ (OfferRequest::MODERATOR). --}}
 @php
     $form ??= null;
     // Закупочная стоит сверху карточки (вкладка «Без закупочной цены») — второй раз не нужна.
@@ -19,6 +19,10 @@
     <x-ui.field name="floor_price" data-controller="digits" data-value-floor-target="floor" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
         <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
     </x-ui.field>
+    @endunless
+    {{-- Срок обязывающего предложения (19.10.2026): до когда поставщик держит эту закупочную; приём подтверждений — не позже. --}}
+    @unless ($garageOnly ?? false)
+    <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :form="$form" span="col-span-2"/>
     @endunless
     {{-- Гаражной машине цены показа ни к чему: продаёт менеджер сам, своему покупателю (06.10.2026). --}}
     @unless ($garageOnly ?? false)
@@ -39,6 +43,10 @@
     <x-ui.field name="floor_price" data-controller="digits" data-value-floor-target="floor" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
         <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
     </x-ui.field>
+    @endunless
+    {{-- Срок обязывающего предложения (19.10.2026): до когда поставщик держит эту закупочную; приём подтверждений — не позже. --}}
+    @unless ($garageOnly ?? false)
+    <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :form="$form" span="col-span-2"/>
     @endunless
     @endif
 </div>

@@ -47,7 +47,7 @@
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
         {{-- Состояние — словом у названия, а не среди кодов (владелец 10.10.2026: «статус тут не к месту»); слова «черновик»
              нет, как и в строке: вкладка и так говорит, на каком он шаге. --}}
-        <x-slot:badge><x-ui.state :tone="$offer->state->tone()" class="title-state">{{ $offer->crmTab() }}</x-ui.state>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/></x-slot:badge>
+        <x-slot:badge><x-ui.state :tone="$offer->state->tone()" class="title-state">{{ $offer->crmTab() }}</x-ui.state>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/><x-offer.binding :offer="$offer" tag/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         {{-- Под названием — что это за машина (состояние словом, коды чипами: №, убыток или ДЛ, VIN), ниже фразой — где она
              и сколько осталось (`line`): владелец 10.10.2026 «одно к машине относится, другое к фактам». --}}
@@ -65,6 +65,8 @@
             {{-- Окно галереи (08.10.2026): висит — сколько осталось, кончилось — до какого числа висело. --}}
             @if ($gallery)<span class="nums {{ $offer->isGalleryEndingSoon() ? 'text-urgent' : 'text-accent-text' }}">в галерее <span data-controller="timer" data-timer-until-value="{{ $offer->gallery_until->toIso8601String() }}" data-timer-done-value="закрыта" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->gallery_until, 'ещё') }}</span></span>
             @elseif ($offer->gallery_from)<span class="nums text-ink-muted">в галерее до {{ $offer->gallery_until->translatedFormat('j M, H:i') }}</span>@endif
+            {{-- Срок обязывающего (19.10.2026): не горит — словами во фразе; горит — меткой у названия. --}}
+            @if ($offer->binding_until && in_array($offer->state, \App\Offers\Binding::LIVE, true) && ! \App\Offers\Binding::panics($offer))<span class="nums">обязывающее до {{ \App\Offers\Binding::date($offer->binding_until) }}</span>@endif
             @if ($offer->interests_count)<span class="nums text-accent-text">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</span>@endif
         </x-slot:line>
         {{-- Цен в шапке нет: закупочная, заявленная и продажи — поля «Деньги» ниже. --}}

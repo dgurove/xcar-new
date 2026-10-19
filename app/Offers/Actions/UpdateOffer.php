@@ -8,6 +8,7 @@ use App\Logistics\Transport;
 use App\Mail\Actions\LinkThread;
 use App\Media\Jobs\StampPhotos;
 use App\Offers\Bid;
+use App\Offers\Binding;
 use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\DealAudience;
@@ -29,6 +30,7 @@ use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Track;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 final class UpdateOffer
 {
@@ -63,6 +65,14 @@ final class UpdateOffer
             $offer->shown_floor = null;
         } elseif ($offer->isDirty('floor_price') && $offer->getOriginal('floor_price') && $offer->getOriginal('state') !== OfferState::Draft) {
             $offer->shown_floor ??= (int) $offer->getOriginal('floor_price');
+        }
+        // Срок обязывающего предложения (19.10.2026, владелец: «приём подтверждений не должен быть после него»): приём
+        // позже — ошибка поля; срок сдвинули раньше идущего приёма — приём встаёт на срок (`Binding`).
+        if ($offer->isDirty('bids_close_at') && ($error = Binding::closeError($offer, $offer->bids_close_at))) {
+            throw ValidationException::withMessages(['bids_close_at' => $error]);
+        }
+        if ($offer->isDirty('binding_until') && $offer->bids_close_at?->isFuture()) {
+            $offer->bids_close_at = Binding::clampClose($offer, $offer->bids_close_at);
         }
         // Правка пишет и предложение, и его машину (`Cars\Car`): история и «что поменялось» — по обеим.
         $diff = Changes::ofLane($offer);

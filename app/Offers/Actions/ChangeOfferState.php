@@ -10,6 +10,7 @@ use App\Offers\DealState;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
+use App\Offers\Binding;
 use App\Offers\OfferEventType;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
@@ -62,7 +63,7 @@ final class ChangeOfferState
                 if ($at) {
                     // Слотом — ровно в 16:00: от этого времени считаются волны показа и срок приёма.
                     $offer->published_at = $at;
-                    $offer->bids_close_at = Slots::closeFor($at);
+                    $offer->bids_close_at = Binding::clampClose($offer, Slots::closeFor($at));
                 } else {
                     // Волны показа — от этого выхода из черновика (13.10.2026): «остальным через 5 дней» считаются заново, а
                     // не от первой публикации, когда всё давно «наступило»; из гаража («Вернуть в продажу») — так же. Из
@@ -70,7 +71,7 @@ final class ChangeOfferState
                     $offer->published_at = in_array($from, [OfferState::Draft, OfferState::Garage], true) ? now() : ($offer->published_at ?? now());
                     if (! $offer->bids_close_at || $offer->bids_close_at->isPast()) {
                         // Срок приёма по умолчанию — через 3 дня в 17:00 (владелец 04.10.2026), а не текущая минута.
-                        $offer->bids_close_at = Slots::closeFor(now());
+                        $offer->bids_close_at = Binding::clampClose($offer, Slots::closeFor(now()));
                     }
                 }
             }

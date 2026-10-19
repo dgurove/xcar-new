@@ -26,6 +26,7 @@ use App\Logistics\TransportState;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Notifications\ReadNotices;
+use App\Offers\Binding;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -59,6 +60,7 @@ class TransportController
     public const SORTS = [
         'created' => ['Поступила', 'desc'], 'title' => ['Марка, модель', 'asc'], 'vendor' => ['Вендор', 'asc'], 'sale' => ['Продажа', 'desc'],
         'city' => ['Город', 'asc'], 'who' => ['Исполнитель', 'asc'], 'when' => ['Когда', 'asc'],
+        'binding' => ['Срок обязывающего', 'asc'],
     ];
 
     /** Пилюли — шаги работы. Кому какие — `pills`. */
@@ -158,6 +160,7 @@ class TransportController
             'sale' => $q->orderByRaw(SaleState::RANK_SQL." {$dir}")->orderBy('transports.created_at'),
             'city' => $q->orderByRaw("(select regions.name from regions where regions.id = transports.region_id) {$dir} nulls last"),
             'who' => $q->orderByRaw("(select users.name from users where users.id = coalesce(transports.executor_id, transports.logist_id)) {$dir} nulls last"),
+            'binding' => $q->orderByRaw(Binding::UNTIL_SQL." {$dir} nulls last"),
             // «Когда»: просроченный вывоз — первым.
             default => $q->orderByRaw("(transports.state = 'agreed' and transports.pickup_at < now()) desc")->orderByRaw(Transport::SHOWN_SQL." {$dir} nulls last"),
         };
@@ -184,6 +187,8 @@ class TransportController
             $user->isStaff() ? 'vendor' : null,
             // Продажа — где решают, кому отдать (и в «Все», поиске); в работе решение уже принято.
             $lead && ! in_array($preset, ['work', 'moving', 'done'], true) ? 'sale' : null,
+            // Срок обязывающего предложения (19.10.2026, логистика: «хотим сортировать и фильтровать по нему») — ведущим и логисту.
+            ($lead || $user->isLogist()) && $preset !== 'done' ? 'binding' : null,
             'to',
             'city',
             // Что дальше — своим столбцом там, где шаги разные (на «Без исполнителя» и «У логиста» он у всех один).
@@ -211,6 +216,10 @@ class TransportController
                     ->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()) : null,
             $user->isStaff() ? Common::vendor(SaleState::VENDOR_SQL)->none('Без вендора') : null,
             $lead ? Common::manager(SaleState::MANAGER_SQL)->none('Без менеджера') : null,
+            // Срок обязывающего предложения (19.10.2026): горит без покупателя, вышел, есть, нет.
+            $lead || $user->isLogist() ? Facet::column('binding', 'Срок обязывающего', ['вид', 'вида', 'видов'], Binding::bucketSql())->natural()
+                ->labels(fn (array $keys) => collect(['panic' => 'Горит, нет покупателя', 'over' => 'Вышел, нет покупателя', 'set' => 'Есть срок', 'empty' => 'Нет срока'])
+                    ->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()) : null,
             // Межрегион (18.10.2026, начальник: «важно») — переключателем, как «Срочно».
             Facet::toggle('far', 'Между регионами', fn ($q) => $q->where('transports.reach', Reach::Intercity->value)),
             Facet::column('region', 'Регион', ['регион', 'региона', 'регионов'], 'transports.region_id')

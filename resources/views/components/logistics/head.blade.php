@@ -8,6 +8,7 @@
     @if ($has('client'))<th class="hidden sm:table-cell">Заказчик</th>@endif
     @if ($has('vendor'))<x-ui.th :sort="$sort" key="vendor" class="hidden sm:table-cell">Вендор, № убытка</x-ui.th>@endif
     @if ($has('sale'))<x-ui.th :sort="$sort" key="sale" class="hidden sm:table-cell">Продажа</x-ui.th>@endif
+    @if ($has('binding'))<x-ui.th :sort="$sort" key="binding" class="hidden sm:table-cell">Обязывающее до</x-ui.th>@endif
     @if ($has('to'))<th class="hidden sm:table-cell">Кому везти</th>@endif
     @if ($has('city'))<x-ui.th :sort="$sort" key="city" class="col-detail-hide hidden 2xl:table-cell">Город</x-ui.th>@endif
     @if ($has('step'))<th class="hidden sm:table-cell">Что дальше</th>@endif

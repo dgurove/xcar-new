@@ -797,6 +797,12 @@ html.kb-open { --home-gap: 0px; }
   .urgent-fire { display: inline-flex; flex-shrink: 0; margin-left: .3em; vertical-align: -.12em; color: var(--color-fire); }
   .tag-urgent-fire { --tag-bg: var(--color-fire-soft); --tag-text: #d93a0b; --tag-bg-d: #3a1508; --tag-text-d: #ff8a5c; }
   .text-fire { color: var(--color-fire); }
+  /* Срок обязывающего предложения горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — сплошным красным, мерцает
+     (теней нет — меняется заливка); в строке списка — меткой у названия (`x-offer.binding tag`). */
+  .binding-panic { display: inline-flex; align-items: center; gap: .3rem; background: var(--color-danger); color: #fff; font-weight: 600; animation: binding-pulse 1.6s ease-in-out infinite; }
+  .binding-tag { border-radius: 999px; padding: .05rem .5rem; font-size: var(--text-xs); line-height: 1.35; white-space: nowrap; vertical-align: .05em; }
+  @keyframes binding-pulse { 0%, 100% { background: var(--color-danger); } 50% { background: color-mix(in srgb, var(--color-danger) 70%, #fff); } }
+  @media (prefers-reduced-motion: reduce) { .binding-panic { animation: none; } }
   /* Жёлтое «внимание» без срочности: «Без цены», «С НДС», «отключён». */
   .tag-amber { --tag-bg: #fef3c7; --tag-text: #92400e; --tag-bg-d: #3f2606; --tag-text-d: #fcd34d; }
   .tag-recommended { --tag-bg: #e3f1fb; --tag-text: #1878b8; --tag-bg-d: #0f2537; --tag-text-d: #6cc0ff; }
@@ -1650,6 +1656,8 @@ html.kb-open { --home-gap: 0px; }
   /* Наведение — только мышью: на телефоне :hover залипал на нажатом дне, и рядом с выбранным горел второй кружок. */
   @media (hover: hover) { calendar-month::part(button):hover { background: var(--color-hover); } }
   calendar-month::part(today) { color: var(--color-accent-text); font-weight: 600; }
+  /* После срока обязывающего предложения (`limit`) — красным и не нажать. */
+  calendar-month::part(after-limit) { color: var(--color-danger); background: color-mix(in oklab, var(--color-danger) 10%, transparent); opacity: 1; text-decoration: line-through; cursor: not-allowed; }
   calendar-month::part(selected) { background: var(--color-accent); color: #fff; font-weight: 500; }
   calendar-month::part(outside), calendar-month::part(disallowed) { opacity: .3; }
   calendar-month::part(disallowed) { cursor: default; background: transparent; }
@@ -3099,7 +3107,7 @@ html.kb-open { --home-gap: 0px; }
   .card-tone--fresh { background: var(--color-fresh); }
   .card-tone--urgent { background: var(--color-fire); }
   .card-tone--hot { background: var(--color-urgent); }
-  .card-tone--only, .card-tone--loss, .card-tone--danger { background: var(--color-danger); }
+  .card-tone--only, .card-tone--loss, .card-tone--danger, .card-tone--binding { background: var(--color-danger); }
   /* Выбранная пилюля «Новые» / «Горящие» (каталог, переключатели CRM) — своим цветом, а не лаймом (владелец 12.10.2026);
      точка на ней — цветом надписи. */
   .pill[aria-current="true"] .card-tone { background: currentColor; }
@@ -3116,11 +3124,11 @@ html.kb-open { --home-gap: 0px; }
   .pill[data-tone="hot"][aria-current="true"] .badge { color: var(--color-urgent); }
   .pill[data-tone="urgent"][aria-current="true"] .badge { color: var(--color-fire); }
   .pill[data-tone="loss"][aria-current="true"] .badge, .pill[data-tone="danger"][aria-current="true"] .badge { color: var(--color-danger); }
-  .card--fresh::before, .card--hot::before, .card--only::before, .card--loss::before, .card--urgent::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
+  .card--fresh::before, .card--hot::before, .card--only::before, .card--loss::before, .card--urgent::before, .card--binding::before { content: ''; display: var(--tone-stripe, none); position: absolute; z-index: 1; left: 0; top: var(--stripe-top); bottom: 0; width: 3px; pointer-events: none; }
   .card--fresh::before { background: var(--color-fresh); }
   .card--urgent::before { background: var(--color-fire); }
   .card--hot::before { background: var(--color-urgent); }
-  .card--only::before, .card--loss::before { background: var(--color-danger); }
+  .card--only::before, .card--loss::before, .card--binding::before { background: var(--color-danger); }
   /* Без контейнерных единиц (iOS до 16) полоса плитки встала бы на кадр — там в плитке точка у названия. */
   @supports not (top: 1cqi) {
     .cards--grid { --tone-stripe: none !important; --tone-dot: inline-block !important; }

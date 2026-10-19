@@ -30,7 +30,7 @@ class OfferRequest extends FormRequest
     public const MODERATOR = [
         'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'show_address', 'body', 'transmission', 'drive', 'fuel',
         'engine_volume', 'engine_power', 'color', 'settlement_id', 'inspection_address', 'description', 'floor_price', 'value', 'vendor_id', 'claim_ref',
-        'prices_include_vat', 'vehicle_category', 'plate', 'pts', 'sts', 'policy_no', 'body_no', 'chassis_no',
+        'prices_include_vat', 'vehicle_category', 'plate', 'pts', 'sts', 'policy_no', 'body_no', 'chassis_no', 'binding_until',
     ];
 
     protected function prepareForValidation(): void
@@ -106,12 +106,13 @@ class OfferRequest extends FormRequest
                 }
             }],
             'insurer_deadline_at' => ['nullable', 'date'],
+            'binding_until' => ['nullable', 'date'],
         ]];
     }
 
     public function attributes(): array
     {
-        return ['brand_id' => 'марка', 'model_id' => 'модель', 'plate' => 'госномер', 'pts' => 'ПТС', 'sts' => 'СТС', 'body_no' => 'номер кузова', 'chassis_no' => 'номер шасси', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'insured_name' => 'владелец', 'insured_phone' => 'телефон', 'insured_phone2' => 'ещё телефон'];
+        return ['brand_id' => 'марка', 'model_id' => 'модель', 'plate' => 'госномер', 'pts' => 'ПТС', 'sts' => 'СТС', 'body_no' => 'номер кузова', 'chassis_no' => 'номер шасси', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'insured_name' => 'владелец', 'insured_phone' => 'телефон', 'insured_phone2' => 'ещё телефон', 'binding_until' => 'срок обязывающего предложения'];
     }
 
     /**

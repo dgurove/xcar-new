@@ -15,6 +15,8 @@
          не было — 04.10.2026). У черновика номера нет — пусто. --}}
     <th class="col-detail-hide hidden sm:table-cell">№</th>
     @if ($has('city'))<th class="col-detail-hide hidden sm:table-cell">Город</th>@endif
+    {{-- Срок обязывающего предложения (19.10.2026) — до когда поставщик держит закупочную. --}}
+    @if ($cols !== null && $has('binding'))<x-ui.th :sort="$sort" key="binding" class="col-detail-hide hidden sm:table-cell">Обязывающее до</x-ui.th>@endif
     {{-- Карточка рядом — места мало: город, закупочная, оценочная и дата уходят (col-detail-hide, они в карточке), подтверждения
          и цена остаются (владелец 05.10.2026); в подробной таблице не уходит ничего — листается вбок. --}}
     @if ($has('state'))<x-ui.th :sort="$sort" key="closing" class="fill hidden sm:table-cell">{{ $cols !== null && $has('bids') ? 'Приём' : 'Состояние' }}</x-ui.th>

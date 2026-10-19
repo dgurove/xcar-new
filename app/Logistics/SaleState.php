@@ -2,6 +2,7 @@
 
 namespace App\Logistics;
 
+use App\Offers\Binding;
 use App\Offers\OfferState;
 use App\Support\Ago;
 use App\Users\User;
@@ -56,10 +57,12 @@ final readonly class SaleState
         public ?User $manager,
         public bool $waiting,
         public int $days,
+        /** Срок обязывающего горит или вышел, покупателя нет (`Offers\Binding`) — паника важнее «ищем покупателя». */
+        public bool $panic = false,
     ) {}
 
     /** Подгрузка, без которой `of()` спрашивает базу на каждой строке (`offer.vendor.workflows` — для `Deal::pickupHold`). */
-    public const WITH = ['offer.settlement', 'offer.vendor.workflows', 'offer.garageCar.manager', 'offer.deal.buyer', 'vehicle'];
+    public const WITH = ['offer.settlement', 'offer.vendor.workflows', 'offer.garageCar.manager', 'offer.deal.buyer', 'offer.activeBids', 'vehicle'];
 
     public static function of(Transport $t): self
     {
@@ -94,19 +97,22 @@ final readonly class SaleState
         // Три дня без покупателя — слово красным и строка в полный цвет: «пизда рулю, надо срочно что-то делать»
         // (18.10.2026, владелец); меньше — ещё ищем, строка без исполнителя приглушена.
         $late = in_array($key, ['open', 'draft', 'none'], true) && $days >= self::DAYS;
+        // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!»): красным и в полный цвет.
+        $panic = $o && in_array($key, ['open', 'draft'], true) && Binding::panics($o);
 
         return new self(
             key: $key,
             word: $word,
             tone: match (true) {
-                $late => 'text-danger',
+                $late, $panic => 'text-danger',
                 $hold !== null => 'text-urgent',
                 $buyer => 'text-accent-text',
                 default => 'text-ink-muted',
             },
             manager: $manager,
-            waiting: $deciding && ! $buyer && $key !== 'park' && ! $late,
+            waiting: $deciding && ! $buyer && $key !== 'park' && ! $late && ! $panic,
             days: $days,
+            panic: $panic,
         );
     }
 }

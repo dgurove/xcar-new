@@ -12,9 +12,11 @@ use App\Cars\Transmission;
 use App\Mail\Candidate;
 use App\Mail\Scan\Files;
 use App\Mail\Scan\ScanFile;
+use App\Offers\Binding;
 use App\Offers\Offer;
 use App\Park\Vehicle;
 use App\Support\Units;
+use Illuminate\Support\Carbon;
 
 /**
  * Поля шага «что подставить» в «✨ Распознать»: что уже знает цепочка или ТС и что нашлось в каждом прочитанном
@@ -34,7 +36,9 @@ final class ScanFields
      */
     public const SPECS = ['mileage' => 'Пробег', 'transmission' => 'КПП', 'drive' => 'Привод', 'fuel' => 'Топливо', 'engine_volume' => 'Объём', 'engine_power' => 'Мощность', 'city' => 'Город',
         // Документы ТС для ДКП (19.10.2026) — у машины, из бумаг страховой, только в пустые.
-        'plate' => 'Госномер', 'pts' => 'ПТС', 'sts' => 'СТС'];
+        'plate' => 'Госномер', 'pts' => 'ПТС', 'sts' => 'СТС',
+        // Срок обязывающего предложения (19.10.2026) — из протокола торгов, «Y-m-d H:i».
+        'binding_until' => 'Срок обязывающего'];
 
     /** Что знает цепочка «Из писем»: поле → значение и откуда («письмо», «выбрано», «по VIN»). */
     public static function ofCandidate(Candidate $candidate): array
@@ -68,6 +72,9 @@ final class ScanFields
         }
         if ($offer->settlement) {
             $current['city'] = ['value' => $offer->settlement->name, 'from' => 'в карточке'];
+        }
+        if ($offer->binding_until) {
+            $current['binding_until'] = ['value' => $offer->binding_until->format('Y-m-d H:i'), 'from' => 'в карточке'];
         }
 
         return $current;
@@ -246,6 +253,7 @@ final class ScanFields
             'engine_volume' => Units::liters($value) ?? (string) $value,
             'engine_power' => Units::hp($value) ?? (string) $value,
             'color' => Colors::normalize((string) $value) ?? mb_convert_case(mb_strtolower((string) $value), MB_CASE_TITLE),
+            'binding_until' => Binding::date(Carbon::parse((string) $value)),
             default => (string) $value,
         };
     }

@@ -10,6 +10,8 @@ import 'cally';
 // Скрытое поле получает `input` и `change` — формы, черновики и `autosubmit` видят правку как раньше.
 // Кнопка вместо поля (`chip`): текст — слово `prefix` и дата; `submit` — форма скрытого поля уходит, когда всплывашку
 // закрыли с новым значением (дата приёма в деле: день, потом время — одна отправка, а не две).
+// `limit` («Y-m-dTH:i») — позже нельзя (срок обязывающего предложения, 19.10.2026, владелец: «прям запретить в календарике,
+// красным всё, что после»): дни после него красные и не нажимаются, время позже на последний день — до предела и словами.
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -18,14 +20,22 @@ const moscow = () => { const [day, clock] = new Date().toLocaleString('sv-SE', {
 
 export default class extends Controller {
     static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error'];
-    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, now: Boolean, prefix: String, submit: Boolean, placeholder: String };
+    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, limit: String, now: Boolean, prefix: String, submit: Boolean, placeholder: String };
 
     get field() { return this.textTarget.tagName === 'INPUT'; }
 
     connect() {
         // Телефон — без клавиатуры: поле только открывает календарь.
         if (this.field && matchMedia('(pointer: coarse)').matches) this.textTarget.readOnly = true;
+        if (this.limitValue) {
+            const last = this.limitValue.slice(0, 10);
+            this.calTarget.isDateDisallowed = (d) => iso(d) > last;
+            this.calTarget.getDayParts = (d) => (iso(d) > last ? 'after-limit' : '');
+        }
         this.render();
+        // Значение вписали снаружи (читалка документов, `fill.js`) — слова поля догоняют.
+        this.onChange = () => this.render();
+        this.valueTarget.addEventListener('change', this.onChange);
         // POST → редирект на ту же страницу Turbo делает морфом: контроллер не переподключается, скрытое поле получает
         // новое значение, а слова остаются прежними (13.10.2026: «Вернуть в продажу» — срок приёма показывал старый).
         this.onMorph = () => { if (!this.popTarget.matches(':popover-open')) this.render(); };
@@ -34,6 +44,7 @@ export default class extends Controller {
 
     disconnect() {
         document.removeEventListener('turbo:morph', this.onMorph);
+        this.valueTarget.removeEventListener('change', this.onChange);
         this.close();
     }
 
@@ -156,7 +167,8 @@ export default class extends Controller {
         const day = new Date(year, Number(m[2]) - 1, Number(m[1]));
         if (day.getDate() !== Number(m[1])) { this.render(); return; }
         // Набранное за границами поля — как у календаря, где такие дни не нажать: словами под полем, значение прежнее.
-        const out = (this.minValue && iso(day) < this.minValue) ? `Не раньше ${this.human(this.minValue)}` : (this.maxValue && iso(day) > this.maxValue ? `Не позже ${this.human(this.maxValue)}` : null);
+        const out = (this.minValue && iso(day) < this.minValue) ? `Не раньше ${this.human(this.minValue)}` : (this.maxValue && iso(day) > this.maxValue ? `Не позже ${this.human(this.maxValue)}`
+            : (this.limitValue && iso(day) > this.limitValue.slice(0, 10) ? this.limitText() : null));
         if (out) { this.fail(out); this.render(); return; }
         const time = m[4] ? `${pad(Math.min(23, Number(m[4])))}:${pad(Math.min(59, Number(m[5])))}` : (this.parts?.time || this.defaultTimeValue);
         this.set(this.timeValue ? `${iso(day)}T${time}` : iso(day));
@@ -166,6 +178,11 @@ export default class extends Controller {
     human(date) {
         const [y, m, d] = date.split('-').map(Number);
         return `${d} ${MONTHS[m - 1]}${y !== new Date().getFullYear() ? ` ${y}` : ''}`;
+    }
+
+    limitText() {
+        const [day, time] = this.limitValue.split('T');
+        return `Не позже ${this.human(day)}${this.timeValue && time && time !== '23:59' ? `, ${time}` : ''}`;
     }
 
     fail(message) {
@@ -181,6 +198,14 @@ export default class extends Controller {
 
     set(value) {
         if (this.hasErrorTarget) this.errorTarget.hidden = true;
+        // Последний день, время позже срока — встаёт ровно на срок, и словами под полем.
+        if (value && this.limitValue && this.timeValue && value > this.limitValue) {
+            value = this.limitValue;
+            if (this.hasTimeTarget) this.timeTarget.value = value.slice(11, 16);
+            this.set(value);
+            this.fail(this.limitText());
+            return;
+        }
         const changed = this.valueTarget.value !== value;
         this.valueTarget.value = value;
         this.render();

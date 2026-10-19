@@ -3,6 +3,7 @@
 namespace App\Offers\Actions;
 
 use App\Offers\Offer;
+use App\Offers\Binding;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Offers\Slots;
@@ -29,11 +30,19 @@ final class ScheduleOffer
         // волны и рассылка читают метку.
         if ($when === Slots::URGENT) {
             ChangeOfferState::assertReady($offer);
-            $offer->forceFill(['bids_close_at' => $until ?? Slots::urgentDefault(), 'urgent_at' => now(), 'urgent_by' => $by->id])->save();
+            // Приём не позже срока обязывающего предложения (`Binding`): вписанный позже — ошибка, по умолчанию — подрезан.
+            if ($error = Binding::closeError($offer, $until)) {
+                throw ValidationException::withMessages(['urgent_until' => $error]);
+            }
+            $offer->forceFill(['bids_close_at' => $until ?? Binding::clampClose($offer, Slots::urgentDefault()), 'urgent_at' => now(), 'urgent_by' => $by->id])->save();
 
             return ($this->change)($offer, OfferState::Open, $by);
         }
         $at = Slots::at($when);
+        // Выйти в продажу позже срока обязывающего — приём начнётся, когда поставщик цену уже не держит.
+        if ($at && ($limit = Binding::closeLimit($offer)) && $at->gt($limit)) {
+            throw ValidationException::withMessages([str_starts_with($when, Slots::DAY) ? 'day' : 'when' => 'Публикация не позже срока обязывающего предложения: '.Binding::date($limit)]);
+        }
         if (! $at) {
             return ($this->change)($offer, OfferState::Open, $by, batch: $batch);
         }

@@ -26,11 +26,13 @@
     $far = $t->reach === \App\Logistics\Reach::Intercity;
     $ref = $t->car?->claim_ref;
     $vendorId = $t->vendorId();
+    // Срок обязывающего предложения (19.10.2026): горит без покупателя — меткой у названия, строка в полный цвет.
+    $binding = $has('binding') && $t->forSale() ? $t->offer : null;
 @endphp
-<tr data-detail-key="{{ $t->id }}" id="transport-{{ $t->id }}" data-search-row @class(['is-dim' => $sale?->waiting])>
+<tr data-detail-key="{{ $t->id }}" id="transport-{{ $t->id }}" data-search-row @class(['is-dim' => $sale?->waiting && ! ($binding && \App\Offers\Binding::panics($binding))])>
     @if ($checkable)<td class="pick-cell">@if ($deciding)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-transport-{{ $t->id }}" data-turbo-permanent name="transports[]" value="{{ $t->id }}" data-pick-target="box" data-action="pick#sync"></span></label>@endif</td>@endif
     <td class="grow">
-        <x-ui.row-link :key="$t->id" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/></span></x-ui.row-link>
+        <x-ui.row-link :key="$t->id" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($binding)<x-offer.binding :offer="$binding" tag class="ml-1.5 sm:hidden"/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
             @if ($staff && ($vendorId || $ref))<span class="sm:hidden"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref"/></span>@endif
             @if ($has('client'))<span class="sm:hidden">{{ $t->client?->name ?? 'XCar' }}</span>@endif
@@ -44,6 +46,7 @@
     @if ($has('client'))<td class="hidden sm:table-cell"><span @class(['text-ink-muted' => ! $t->client])>{{ $t->client?->name ?? 'XCar' }}</span></td>@endif
     @if ($has('vendor'))<td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref" cell/></td>@endif
     @if ($has('sale'))<td class="hidden sm:table-cell"><span class="{{ $sale?->tone }}">{{ $sale?->word }}</span></td>@endif
+    @if ($has('binding'))<td @class(['hidden sm:table-cell nums whitespace-nowrap', 'font-semibold text-danger' => $binding && \App\Offers\Binding::panics($binding), 'text-ink-muted' => ! ($binding && \App\Offers\Binding::panics($binding))])>{{ $binding?->binding_until ? \App\Offers\Binding::date($binding->binding_until) : '' }}</td>@endif
     @if ($has('to'))<td class="hidden sm:table-cell">@if ($manager)<x-ui.person :user="$manager"/>@elseif ($to)<span class="text-ink-muted">{{ $to }}</span>@endif @if ($far)<span class="block text-sm text-ink-dim">между регионами</span>@endif</td>@endif
     @if ($has('city'))<td class="col-detail-hide hidden 2xl:table-cell">@if ($city = $t->city())<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $city }}</x-ui.place>@endif</td>@endif
     @if ($has('step'))<td class="hidden sm:table-cell"><span class="{{ $late ? 'text-danger' : $t->state->tone() }}">{{ $late ? 'не вывезли в срок' : $t->next() }}</span></td>@endif

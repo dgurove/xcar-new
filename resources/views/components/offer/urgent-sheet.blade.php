@@ -11,7 +11,7 @@
             <input type="hidden" name="when" value="{{ \App\Offers\Slots::URGENT }}">
             <div class="fields">
                 <x-ui.field name="urgent_until" :id="'urgent-until-'.$n" label="Приём до" type="datetime-local" required
-                    :value="old('urgent_until', \App\Offers\Slots::urgentDefault()->format('Y-m-d\TH:i'))" :min="now()->addMinutes(30)->format('Y-m-d\TH:i')"/>
+                    :value="old('urgent_until', \App\Offers\Slots::urgentDefault()->format('Y-m-d\TH:i'))" :min="now()->addMinutes(30)->format('Y-m-d\TH:i')" :limit="\App\Offers\Binding::closeLimit($offer)"/>
             </div>
             <x-ui.sheet-foot class="btn-fire"><x-ui.icon name="fire" fill class="size-5"/> Опубликовать срочно</x-ui.sheet-foot>
         </form>

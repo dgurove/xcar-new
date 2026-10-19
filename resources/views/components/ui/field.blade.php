@@ -57,7 +57,7 @@
         {{-- Дата и время — свой выбор (`x-ui.date`, календарь), не системное поле: год текущий и время по умолчанию
              (`default-time`) уже стоят, день — одним нажатием (владелец 10.10.2026). --}}
         <x-ui.date :name="$name" :id="$id" :value="$bound" :time="$type === 'datetime-local'" :default-time="$attributes->get('default-time', '12:00')"
-            :min="$attributes->get('min')" :max="$attributes->get('max')" :placeholder="$placeholder" :clearable="! $required" :now="$attributes->has('now')" {{ $attributes->except(['id', 'min', 'max', 'default-time', 'now'])->merge($wiring) }}/>
+            :min="$attributes->get('min')" :max="$attributes->get('max')" :limit="$attributes->get('limit')" :placeholder="$placeholder" :clearable="! $required" :now="$attributes->has('now')" {{ $attributes->except(['id', 'min', 'max', 'limit', 'default-time', 'now'])->merge($wiring) }}/>
     @elseif ($options !== null)
         <select id="{{ $id }}" name="{{ $name }}" {{ $attributes->except('id')->merge(['class' => 'field-input'] + $wiring) }}>
             @if ($placeholder)<option value="">{{ $placeholder }}</option>@endif

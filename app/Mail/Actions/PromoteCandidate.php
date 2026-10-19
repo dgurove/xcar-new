@@ -102,6 +102,8 @@ final class PromoteCandidate
             'prices_include_vat' => $v('vat') ?? Vendor::offersVat($vendor?->id),
             'answer_by' => $v('answer_by'),
             'insurer_deadline_at' => $answerBy?->toDateString(),
+            // Срок обязывающего предложения — из протокола торгов во вложении (`DocumentFields::binding`).
+            'binding_until' => $v('binding_until'),
             'insured_name' => $v('insured_name'),
             'insured_phone' => $v('insured_phone'),
             'flags' => $v('flags') ?: null,
