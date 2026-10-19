@@ -56,8 +56,14 @@ build() {
 migrate() {
     echo "==> миграции"
     compose_in "$(release_dir)" up -d --wait postgres
-    # Дамп базы перед миграциями: откатить их нечем. Первый раз базы может не быть.
-    remote "docker exec xcar-postgres-1 pg_isready -q 2>/dev/null && bash $(release_dir)/deploy/backup.sh db || echo '    бэкап пропущен'"
+    # Дамп базы перед миграциями: откатить их нечем. Только когда они есть (`--pending=1` отвечает 1; ошибка — тоже
+    # дамп): полный дамп на каждую выкладку — минута чтения с диска, а выкладок бывает по 6–7 в час (19.10.2026).
+    # Первый раз базы может не быть.
+    if compose_in "$(release_dir)" run --rm --no-deps app php artisan migrate:status --pending=1 >/dev/null 2>&1; then
+        echo "    миграций нет, дамп не нужен"
+    else
+        remote "docker exec xcar-postgres-1 pg_isready -q 2>/dev/null && bash $(release_dir)/deploy/backup.sh db || echo '    бэкап пропущен'"
+    fi
     compose_in "$(release_dir)" run --rm --no-deps app php artisan migrate --force
 }
 

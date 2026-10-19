@@ -5,9 +5,9 @@
 # Данные лежат не в томах, а на втором диске `${XCAR_DATA}` (см.
 # `server-setup.sh`): `storage/` — рабочие каталоги Laravel, поверх него
 # `media/` (публичное, Caddy отдаёт сам), `private/` (письма, документы),
-# `cache/` (воспроизводимое, не бэкапится), `postgres/` — база. Так бэкап и
-# `du` видят каждую часть отдельно. Сжатые версии фото — `${XCAR_HOT}` на
-# корневом SSD (пересчитываемое, не бэкапится): списки с фото грузятся с него.
+# `cache/` (воспроизводимое, не бэкапится). Так бэкап и `du` видят каждую часть
+# отдельно. На корневом SSD — база `${XCAR_PG}` и сжатые версии фото `${XCAR_HOT}`
+# (пересчитываемое, не бэкапится): списки с фото грузятся с него.
 name: xcar
 
 x-data: &data
@@ -162,7 +162,9 @@ services:
       - default_toast_compression=lz4
     volumes:
       # С 18-й версии монтировать надо /var/lib/postgresql, не .../data.
-      - ${XCAR_DATA:-/srv/xcar/data}/postgres:/var/lib/postgresql
+      # Корневой SSD, не второй диск: на HDD запись шла 112 мс, COMMIT — 1–6 с, сохранение в CRM ждало секундами
+      # (19.10.2026). База — полгигабайта, бэкап — дампом на второй диск.
+      - ${XCAR_PG:-/srv/xcar/pg}:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s

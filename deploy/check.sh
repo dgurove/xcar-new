@@ -67,8 +67,8 @@ fi
 
 report() {
     echo "корень: $(df -h / | awk 'NR==2{print $3 " из " $2}'); docker — $(docker system df --format '{{.Type}} {{.Size}}' 2>/dev/null | paste -sd, - | sed 's/,/, /g')"
-    echo "данные: $(df -h "$DATA" | awk 'NR==2{print $3 " из " $2}'); hot: $(du -sh /srv/xcar/hot 2>/dev/null | cut -f1)"
-    (cd "$DATA" && du -sh media private postgres cache backups storage 2>/dev/null | awk '{printf "    %-9s %s\n", $2, $1}')
+    echo "данные: $(df -h "$DATA" | awk 'NR==2{print $3 " из " $2}'); hot: $(du -sh /srv/xcar/hot 2>/dev/null | cut -f1); база: $(du -sh /srv/xcar/pg 2>/dev/null | cut -f1)"
+    (cd "$DATA" && du -sh media private cache backups storage 2>/dev/null | awk '{printf "    %-9s %s\n", $2, $1}')
     (cd "$ROOT/current/deploy" && docker compose exec -T app php artisan storage:report 2>/dev/null)
 }
 

@@ -16,7 +16,9 @@ const VERSION = '__VERSION__';
 // `Clear-Site-Data: "cache"` (`ResolveSurface`) — браузер выбрасывает и свой HTTP-кэш.
 const RESET = '__RESET__';
 const STATIC = `static-${VERSION}-${RESET}`;
-const MEDIA = `media-${VERSION}-${RESET}`;
+// Картинки — без версии сборки: адреса /hot/ от выкладки не меняются. С версией каждая выкладка стирала у всех до 300
+// миниатюр, и при 6–7 выкладках в час списки с фото грузились заново каждые 10–20 минут (19.10.2026).
+const MEDIA = `media-${RESET}`;
 const PAGES = `pages-${VERSION}-${RESET}`;
 const MEDIA_LIMIT = 300;
 const PAGES_LIMIT = 30;
