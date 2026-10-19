@@ -5,7 +5,10 @@
      — ПРАЙМ: продажа, счёт ПРАЙМ (кому, сколько, оплачен ли); закупочной нет.
      Пока поставщик не согласовал (`Deal::agreed`, 09.10.2026) — счетов нет, вместо «готовим счёт» — «после ответа поставщика».
      Только деньги: договор — в задаче или своим блоком (`cabinet.deals.contract`). Ссылка — внутри `.list`, иначе её
-     стили не срабатывают и адрес в узкой колонке шёл по букве в строку. --}}
+     стили не срабатывают и адрес в узкой колонке шёл по букве в строку.
+     19.10.2026 (владелец: «менеджер путает страницу оплаты счёта и страницу сделки — объединить»): отдельного расчёта в
+     «Оплатах» больше нет — счёт открывается шторкой тут же (`cabinet.deals.invoice-sheet`: строки, оплаты, PDF, ссылка),
+     «К оплате» у счёта ПРАЙМ — как у подбора, выплаты вознаграждения — строками под ним. --}}
 @php
     use App\Support\Money;
     use App\Billing\ChargeKind;
@@ -23,9 +26,10 @@
     };
     // Когда встанет счёт до согласия (`Deal::invoiceNotYet`): Совкомбанк — после «Забрал», Альфа — после «Беру в работу».
     $notYet = $deal->invoiceNotYet() ?? 'после ответа поставщика';
-    $pay = fn ($i) => '/account/money/deals/'.$deal->id.($i && $i->state === InvoiceState::Issued ? '?pay=1' : '');
+    $fee = $deal->agentFee;
+    $onPayStep = $requirement && $position?->stage->isPayStep();
 @endphp
-<div class="box">
+<div class="box" id="money">
     <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ Money::rub($deal->amount) }}</a>
     <span class="mt-1 block text-sm text-ink-muted">продажа</span>
     @if ($deal->paysSelection())
@@ -57,7 +61,8 @@
             @if ($deal->commission)
                 <div class="row profit"><span class="min-w-0 flex-1 font-medium">Ваша доля</span><span class="profit-sum nums">+{{ Money::rub((int) $deal->commission) }}</span></div>
             @endif
-            <div class="row">
+            <div @if ($selection) data-controller="sheet" class="contents" @else class="row" @endif>
+                @if ($selection)<button type="button" class="row w-full text-left" data-action="sheet#open">@endif
                 <span class="min-w-0 flex-1">
                     <span class="block">Оплата услуг подбора</span>
                     @php
@@ -72,30 +77,40 @@
                     @elseif ($selection->due_at)<span class="row-sub"><x-billing.light :invoice="$selection"/></span>@endif
                 </span>
                 <span class="nums font-semibold">{{ Money::rub($selection ? ($selection->state === InvoiceState::Paid ? $selection->total : $selection->remaining()) : (int) $deal->ours()) }}</span>
+                @if ($selection)<x-ui.chevron/></button>@include('cabinet.deals.invoice-sheet', ['invoice' => $selection])@endif
             </div>
         </div>
         {{-- На шаге оплаты «Оплатить» стоит в задаче (`cabinet.deals.step`) — тут его второй раз нет. --}}
-        @if ($selection && ! ($requirement && $position?->stage->isPayStep()))
+        @if ($selection && ! $onPayStep)
             @include('cabinet.deals.selection-pay', ['invoice' => $selection])
         @endif
     @else
         {{-- Отменённая — ни счёта «укажите покупателя», ни вознаграждения «к выплате»: только сумма. --}}
         @unless ($deal->state === \App\Offers\DealState::Cancelled && ! $sale)
         <div class="list mt-4">
-            <a href="{{ $sale ? $pay($sale) : '#dkp-buyer' }}" class="row">
+            <div @if ($sale) data-controller="sheet" class="contents" @else class="contents" @endif>
+            @if ($sale)<button type="button" class="row w-full text-left" data-action="sheet#open">@else<a href="#dkp-buyer" class="row">@endif
                 <span class="min-w-0 flex-1">
                     <span class="block">{{ 'Счёт '.$deal->seller()->short().($sale ? ' '.$sale->label() : '') }}</span>
                     <span class="row-sub">@if (! $sale && ! $deal->agreed()){{ $notYet }}@elseif (! $sale)<span class="text-urgent">{{ $deal->invoiceGap() === 'passport' ? 'нужен паспорт покупателя' : 'укажите покупателя' }}</span>@elseif ($sale->state === InvoiceState::Paid)<span class="text-open">оплачен</span>@else<x-billing.light :invoice="$sale"/> платит {{ $sale->party?->name }}@endif</span>
                 </span>
-                @if ($sale)<span class="nums font-semibold">{{ Money::rub($sale->state === InvoiceState::Paid ? $sale->total : $sale->remaining()) }}</span>@endif
-            </a>
+                @if ($sale)<span class="nums font-semibold">{{ Money::rub($sale->state === InvoiceState::Paid ? $sale->total : $sale->remaining()) }}</span><x-ui.chevron/>@endif
+            @if ($sale)</button>@include('cabinet.deals.invoice-sheet', ['invoice' => $sale])@else</a>@endif
+            </div>
             @if ($deal->commission)
                 <div class="row profit">
                     <span class="min-w-0 flex-1"><span class="block font-medium">Ваше вознаграждение</span><span class="row-sub">{{ $feeWord }}</span></span>
                     <span class="profit-sum nums">+{{ Money::rub((int) $deal->commission) }}</span>
                 </div>
+                @foreach ($fee?->payments ?? [] as $p)
+                    <x-money.payment :payment="$p" title="Выплачено" icon="wallet" :slip="'/account/money/invoices/'.$fee->id.'/payments/'.$p->id.'/slip'"/>
+                @endforeach
             @endif
         </div>
+        {{-- Оплатить счёт ПРАЙМ — той же кнопкой, что подбор; на шаге оплаты она в задаче. --}}
+        @if ($sale && ! $onPayStep)
+            @include('cabinet.deals.selection-pay', ['invoice' => $sale])
+        @endif
         @endunless
     @endif
 </div>

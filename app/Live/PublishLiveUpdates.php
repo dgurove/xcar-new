@@ -265,7 +265,7 @@ final class PublishLiveUpdates
         }]);
         $manager = $invoice->deal?->buyer_id ?? $garage?->manager_id;
         if ($manager) {
-            $this->publish->refresh(Topics::user($manager), ['/account/money', $garage ? '/garage/cars/'.$garage->offer->number : '/account/money/deals/'.$invoice->deal_id]);
+            $this->publish->refresh(Topics::user($manager), ['/account/money', $garage ? '/garage/cars/'.$garage->offer->number : '/deals/'.$invoice->deal_id]);
         }
     }
 

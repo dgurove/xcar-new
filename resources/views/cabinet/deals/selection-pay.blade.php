@@ -21,6 +21,6 @@
             </span>
         </div>
         <x-billing.pay-sheet id="pay-selection" :invoices="collect([$i])" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf"
-            :buyers="$buyers" :open="($errors->any() && old('way')) || ($link && session('open-link') === $link->id)"/>
+            :buyers="$buyers" :open="($errors->any() && old('way')) || ($link && session('open-link') === $link->id) || request()->boolean('pay')"/>
     </div>
 @endif

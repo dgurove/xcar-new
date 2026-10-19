@@ -69,7 +69,7 @@ class MoneyController
         // Гаражный счёт без сделки — расчёт живёт на машине в гараже; долг за перевозку партнёру — в логистике.
         $transport = $invoice->isTransport() ? Transport::firstWhere('invoice_id', $invoice->id) : null;
         $url = match (true) {
-            (bool) $invoice->deal_id => '/account/money/deals/'.$invoice->deal_id,
+            (bool) $invoice->deal_id => $invoice->deal->href().'#money',
             (bool) $transport => Surface::Logistics->url('/transports/'.$transport->id),
             default => GarageCar::ofInvoice($invoice)?->url(),
         };
@@ -78,22 +78,16 @@ class MoneyController
         return redirect($url, 301);
     }
 
-    /** Расчёт по сделке: цена, счета со строками и оплатами, вознаграждение и выплаты, история. */
+    /**
+     * Расчёт по сделке жил отдельной страницей — с 19.10.2026 он часть страницы сделки (владелец: «менеджер путает страницу
+     * оплаты счёта и страницу сделки»). Старые ссылки (уведомления, Telegram, закладки) ведут туда; `?pay=1` открывает
+     * «Оплатить», у гаражной — машина.
+     */
     public function deal(Request $request, Deal $deal)
     {
-        $me = $request->user();
-        abort_unless($deal->buyer_id === $me->id, 404);
-        // Счета сделки с заявками и ссылками — сразу: расклад (`DealMoney`) и состояние вознаграждения читают их по
-        // нескольку раз за страницу, без загрузки каждый раз шли в базу.
-        $deal->load(['offer', 'offer.media', 'agentFee.payments.media', 'invoices.claims', 'invoices.payLinks']);
-        $invoices = $deal->issuedInvoices()->with(['party', 'charges', 'allPayments.media', 'claims', 'payLinks.attempts'])->get()->each->setRelation('deal', $deal);
+        abort_unless($deal->buyer_id === $request->user()->id, 404);
 
-        return view('cabinet.money.deal', [
-            'deal' => $deal, 'offer' => $deal->offer, 'invoices' => $invoices, 'fee' => $deal->agentFee, 'state' => $deal->commissionState(),
-            // Счёт вендору (вознаграждение от поставщика) платит не менеджер: его в «Оплатить» нет.
-            'claimable' => $invoices->filter(fn (Invoice $i) => $i->state === InvoiceState::Issued && $i->kind !== ChargeKind::Reward && $i->remaining() - $i->claimed() > 0)->values(),
-            'buyers' => $me->buyers()->with(User::withAvatar())->orderBy('name')->get(),
-        ]);
+        return redirect($deal->href().($request->boolean('pay') ? '?pay=1' : '').'#money', 301);
     }
 
     /** «Оплатить»: ссылкой, по счёту или наличными — одной шторкой. */
@@ -111,7 +105,7 @@ class MoneyController
         $from = match (true) {
             $back === '/deals/'.$deal->id => $back,
             $car && $back === parse_url($car->url(), PHP_URL_PATH) => $back,
-            default => '/account/money/deals/'.$deal->id,
+            default => $deal->href(),
         };
 
         return redirect($from)->with('toast', $toast)->with('open-link', $link?->id);

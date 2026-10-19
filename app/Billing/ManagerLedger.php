@@ -157,7 +157,7 @@ final class ManagerLedger
             $href = match (true) {
                 (bool) $car => $car->url(),
                 (bool) $transport => Surface::Logistics->url('/transports/'.$transport->id),
-                default => '/account/money/deals/'.$i->deal_id,
+                default => ($i->deal?->href() ?? '/deals/'.$i->deal_id).'#money',
             };
             $rows->push(['at' => $i->issued_at->copy()->setTimeFrom($i->created_at), 'title' => match (true) {
                 $i->isAgentFee() => 'Вознаграждение к выплате', $i->isTransport() => 'Перевозка к выплате', default => 'Счёт '.$i->label().' выставлен',

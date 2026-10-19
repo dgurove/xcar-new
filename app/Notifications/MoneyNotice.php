@@ -59,7 +59,7 @@ final class MoneyNotice extends Notice
      * Telegram-вид: событие с машиной в заголовке («Оплата по Kia Rio, 2021 принята»), VIN, суть, #номер (Telegram\Text).
      * Счёт без машины — заголовок со счётом.
      */
-    private function tg(Invoice $i, string $withCar, string $withoutCar, ?string $line, string $button = 'Открыть расчёт'): self
+    private function tg(Invoice $i, string $withCar, string $withoutCar, ?string $line, string $button = 'Открыть сделку'): self
     {
         $offer = $i->deal?->offer ?? Car::ofInvoice($i)?->offer;
         $this->telegram = [
@@ -81,7 +81,7 @@ final class MoneyNotice extends Notice
         // Подбор до шага оплаты срока не имеет: платить после договора с покупателем (`SyncDealInvoices::dueFor`).
         $when = $i->due_at ? ', оплатить до '.$i->due_at->translatedFormat('j M') : ', оплатить '.$i->laterLabel(true);
 
-        return (new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).$when, $i->deal?->offer?->titleWithYear(), '/account/money/deals/'.$i->deal_id, $i->deal?->offer?->number))
+        return (new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).$when, $i->deal?->offer?->titleWithYear(), self::path($i, open: true), $i->deal?->offer?->number))
             ->tg($i, 'Счёт по :car', 'Счёт '.$i->label(), Money::rub($i->remaining()).$when)->about($i);
     }
 
@@ -102,10 +102,13 @@ final class MoneyNotice extends Notice
             ->tg($i, 'Оплата по :car принята', 'Оплата по счёту '.$i->label().' принята', Money::rub($p->amount).', '.self::rest($i))->about($i);
     }
 
-    /** Куда вести менеджера по счёту: расчёт сделки на сайте или машина в гараже. */
-    private static function path(Invoice $i): string
+    /**
+     * Куда вести менеджера по счёту: «Расчёт» на странице сделки (19.10.2026 — отдельного расчёта больше нет; `$open` —
+     * сразу шторка этого счёта) или машина в гараже.
+     */
+    private static function path(Invoice $i, bool $open = false): string
     {
-        return Car::ofInvoice($i)?->url() ?? '/account/money/deals/'.$i->deal_id;
+        return Car::ofInvoice($i)?->url() ?? ($i->deal?->href() ?? '/deals/'.$i->deal_id).($open ? '?invoice='.$i->id : '').'#money';
     }
 
     public static function paymentRejected(Payment $p): self

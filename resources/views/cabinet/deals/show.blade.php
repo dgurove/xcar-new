@@ -81,7 +81,7 @@
                         <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
                             <div class="min-w-0"><dt class="text-sm text-ink-dim">Предложение</dt><dd class="nums mt-0.5 break-words font-normal"><x-ui.copy-code :value="(string) $offer->number"/></dd></div>
                             @if ($feeState !== CommissionState::Hidden)
-                                <div class="col-span-2 min-w-0"><dt class="text-sm text-ink-dim">Агентское вознаграждение</dt><dd class="mt-0.5 flex flex-wrap items-baseline justify-between gap-2"><a href="/account/money/deals/{{ $deal->id }}" class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</a><x-ui.state :tone="$feeState->tone()">{{ mb_strtolower($feeState->label()) }}</x-ui.state></dd></div>
+                                <div class="col-span-2 min-w-0"><dt class="text-sm text-ink-dim">Агентское вознаграждение</dt><dd class="mt-0.5 flex flex-wrap items-baseline justify-between gap-2"><span class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</span><x-ui.state :tone="$feeState->tone()">{{ mb_strtolower($feeState->label()) }}</x-ui.state></dd></div>
                             @endif
                         </dl>
                     </div>

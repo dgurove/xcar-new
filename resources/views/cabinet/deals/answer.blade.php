@@ -9,7 +9,7 @@
             <div class="mb-1 text-sm text-ink-muted" data-label></div>
             <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
         </div>
-        <x-ui.button type="button" variant="secondary" size="s" data-action="photos#pick"><x-ui.icon name="camera" class="size-4"/> {{ $attachLabel ?? 'Приложить' }}</x-ui.button>
+        @include('cabinet.deals.attach')
         @if ($errors->has('files'))<p class="field-error mt-2">{{ $errors->first('files') }}</p>@endif
     </div>
 @endif
