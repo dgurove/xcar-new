@@ -32,7 +32,9 @@ final class ScanFields
      * Характеристики, которые документ знает, а карточка предложения ждёт (`OfferSubject`): только дописываются —
      * стоящее в карточке документ не правит, расхождений по ним нет. У цепочек и ТС их не бывает.
      */
-    public const SPECS = ['mileage' => 'Пробег', 'transmission' => 'КПП', 'drive' => 'Привод', 'fuel' => 'Топливо', 'engine_volume' => 'Объём', 'engine_power' => 'Мощность', 'city' => 'Город'];
+    public const SPECS = ['mileage' => 'Пробег', 'transmission' => 'КПП', 'drive' => 'Привод', 'fuel' => 'Топливо', 'engine_volume' => 'Объём', 'engine_power' => 'Мощность', 'city' => 'Город',
+        // Документы ТС для ДКП (19.10.2026) — у машины, из бумаг страховой, только в пустые.
+        'plate' => 'Госномер', 'pts' => 'ПТС', 'sts' => 'СТС'];
 
     /** Что знает цепочка «Из писем»: поле → значение и откуда («письмо», «выбрано», «по VIN»). */
     public static function ofCandidate(Candidate $candidate): array
@@ -58,7 +60,7 @@ final class ScanFields
         if ($offer->brand) {
             $current['car'] = ['value' => self::car($offer->brand, $offer->model), 'from' => 'в карточке'];
         }
-        foreach (['vin', 'year', 'color', 'mileage', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power'] as $field) {
+        foreach (['vin', 'year', 'color', 'mileage', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'plate', 'pts', 'sts'] as $field) {
             $value = $offer->{$field} instanceof \BackedEnum ? $offer->{$field}->value : $offer->{$field};
             if (! blank($value)) {
                 $current[$field] = ['value' => $value, 'from' => 'в карточке'];

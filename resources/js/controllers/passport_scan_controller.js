@@ -18,14 +18,23 @@ export default class extends Controller {
         clearTimeout(this.timer);
     }
 
+    // Две фотографии сразу — разворот и прописка по порядку; PDF из двух страниц сервер сам делит на обе плитки.
     async upload(event) {
         const input = event.target;
-        const tile = input.closest('[data-page]');
-        const file = input.files?.[0];
-        if (!file) return;
+        const files = [...(input.files || [])];
+        input.value = '';
+        if (files.length >= 2) {
+            for (const [i, tile] of this.tileTargets.slice(0, 2).entries()) await this.send(tile, files[i]);
+            return;
+        }
+        if (files[0]) await this.send(input.closest('[data-page]'), files[0]);
+    }
+
+    async send(tile, file) {
         const body = new FormData();
         body.append('file', file);
         tile.dataset.state = 'reading';
+        tile.dataset.sent = '1';
         tile.classList.add('spark-busy', 'passport-tile--on');
         this.preview(tile, URL.createObjectURL(file), file.type);
         this.filled.delete(tile.dataset.page);
@@ -37,7 +46,6 @@ export default class extends Controller {
             tile.classList.remove('spark-busy');
             window.toast?.('Скан не загрузился');
         }
-        input.value = '';
     }
 
     poll() {
@@ -54,6 +62,13 @@ export default class extends Controller {
             if (!page) continue;
             tile.dataset.state = page.state;
             tile.classList.toggle('spark-busy', page.state === 'reading');
+            tile.classList.add('passport-tile--on');
+            // Страница с сервера (PDF разделили на обе плитки) — её миниатюра, если плитка показывает другое.
+            if (page.thumb && tile.dataset.thumb !== page.thumb) {
+                tile.dataset.thumb = page.thumb;
+                if (!tile.querySelector('img')?.src.startsWith('blob:') || tile.dataset.sent !== '1') this.preview(tile, page.thumb, 'image/jpeg');
+            }
+            delete tile.dataset.sent;
             if (page.state === 'done' && !this.filled.has(tile.dataset.page)) {
                 this.filled.add(tile.dataset.page);
                 this.fill(page.fields || {}, page.checked || []);

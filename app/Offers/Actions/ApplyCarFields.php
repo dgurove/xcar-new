@@ -13,6 +13,7 @@ use App\Cars\Papers;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Cars\Vin\Vin;
+use App\Mail\Extraction\Patterns;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Users\User;
@@ -30,7 +31,7 @@ use Illuminate\Validation\Rule;
 final class ApplyCarFields
 {
     /** Только в пустые — всегда: документ или лот их знает, но вписанное человеком важнее. */
-    private const SPECS = ['mileage', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'settlement_id', 'body', 'has_keys', 'papers', 'insurer_deadline_at', 'answer_by'];
+    private const SPECS = ['mileage', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'settlement_id', 'body', 'has_keys', 'papers', 'insurer_deadline_at', 'answer_by', 'plate', 'pts', 'sts'];
 
     /** @return list<string> поля, которые записаны */
     public function __invoke(Offer $offer, array $chosen, ?User $by, bool $onlyEmpty = false, array $log = []): array
@@ -48,6 +49,9 @@ final class ApplyCarFields
                 'mileage', 'engine_volume', 'engine_power' => $data[$field] = (int) $value,
                 'transmission', 'drive', 'fuel', 'body', 'papers' => $data[$field] = (string) $value,
                 'has_keys' => $data['has_keys'] = (bool) $value,
+                // Документы ТС для ДКП (19.10.2026): госномер ключом, как у формы; ПТС и СТС — как в документе.
+                'plate' => $data['plate'] = Patterns::plateKey((string) $value),
+                'pts', 'sts' => $data[$field] = trim((string) $value),
                 'city' => ($id = (Settlement::resolve((string) $value, $item['region'] ?? null) ?? (! empty($item['create']) && trim((string) $value) !== '' ? Settlement::free((string) $value, $item['region'] ?? null) : null))['id'] ?? null) ? $data['settlement_id'] = $id : null,
                 'deadline' => [$data['insurer_deadline_at'], $data['answer_by']] = [Carbon::parse($value)->toDateString(), Carbon::parse($value)],
                 default => null,
@@ -87,6 +91,9 @@ final class ApplyCarFields
             'has_keys' => ['boolean'],
             'engine_volume' => ['integer', 'between:1,20000'],
             'engine_power' => ['integer', 'between:1,3000'],
+            'plate' => ['string', 'max:12'],
+            'pts' => ['string', 'max:40'],
+            'sts' => ['string', 'max:40'],
             'settlement_id' => ['exists:settlements,id'],
             'insurer_deadline_at' => ['date'],
             'answer_by' => ['date'],

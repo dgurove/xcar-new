@@ -13,8 +13,9 @@
 @if ($party)
 <div class="passport-scan" data-controller="passport-scan" data-passport-scan-url-value="/parties/{{ $party->id }}/passport" data-passport-scan-form-value="{{ $form }}" data-passport-scan-prefix-value="{{ $prefix }}">
     @foreach ($pages as $page => $p)
-        <label @class(['passport-tile', 'passport-tile--on' => $p['media'], 'spark-busy' => $p['state'] === 'reading']) data-passport-scan-target="tile" data-page="{{ $page }}" data-state="{{ $p['state'] ?? 'none' }}">
-            <input type="file" class="sr-only" accept="image/*,application/pdf" data-action="change->passport-scan#upload">
+        <label @class(['passport-tile', 'passport-tile--on' => $p['media'], 'spark-busy' => $p['state'] === 'reading']) data-passport-scan-target="tile" data-page="{{ $page }}" data-state="{{ $p['state'] ?? 'none' }}" @if ($p['media']) data-thumb="/files/{{ $p['media']->id }}?thumb=1" @endif>
+            {{-- PDF из двух страниц или две фотографии сразу — раскладываются на обе плитки (19.10.2026). --}}
+            <input type="file" class="sr-only" accept="image/*,application/pdf" multiple data-action="change->passport-scan#upload">
             <span class="passport-tile-img">
                 @if ($p['media'])<img src="/files/{{ $p['media']->id }}?thumb=1" alt="" data-passport-scan-target="img">@else<x-ui.icon name="camera" class="size-6"/>@endif
             </span>

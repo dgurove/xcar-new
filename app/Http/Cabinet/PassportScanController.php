@@ -11,6 +11,7 @@ use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Process;
 
 /**
  * Скан паспорта покупателя (11.10.2026, владелец: «пусть прикрепляют скан, распознаётся, поля можно поправить; без
@@ -28,19 +29,50 @@ class PassportScanController
         abort_unless(isset(Party::PASSPORT_PAGES[$page]) && ($me->isAdmin() || $party->managedBy($me)), 404);
         $request->validate(['file' => ['required', 'file', 'max:30720', 'mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf']]);
         $file = $request->file('file');
-        $props = ['page' => $page, 'read' => 'reading', 'by' => $me->id];
-        $old = $party->passportScan($page);
-        if (str_starts_with((string) $file->getMimeType(), 'image/')) {
-            $media = $ingest->fromUpload($party, 'passport', $file, $props, self::MAX);
+        // Скан одним PDF (19.10.2026, владелец: «иногда не фото, а PDF с двумя страницами — разворот и прописка»): первая
+        // страница — разворот с фото, вторая — прописка, на какую плитку ни бросили. Картинками, как фото с телефона:
+        // миниатюры и чтение те же.
+        $pages = str_starts_with((string) $file->getMimeType(), 'image/') ? [] : self::pdfPages($file->getRealPath());
+        if (count($pages) >= 2) {
+            foreach (array_keys(Party::PASSPORT_PAGES) as $i => $p) {
+                $this->store($party, $p, fn ($props) => $ingest->fromString($party, 'passport', $pages[$i], 'passport-'.$p.'.jpg', $props, self::MAX), $me);
+            }
         } else {
-            $media = $party->addMedia($file)->usingFileName('passport-'.$page.'.pdf')
-                ->withCustomProperties($props + ['sha' => hash_file('sha256', $file->getRealPath())])->toMediaCollection('passport');
+            $this->store($party, $page, fn ($props) => str_starts_with((string) $file->getMimeType(), 'image/')
+                ? $ingest->fromUpload($party, 'passport', $file, $props, self::MAX)
+                : $party->addMedia($file)->usingFileName('passport-'.$page.'.pdf')
+                    ->withCustomProperties($props + ['sha' => hash_file('sha256', $file->getRealPath())])->toMediaCollection('passport'), $me);
         }
-        $old?->delete();
-        ReadPassport::dispatch($media->id);
         $this->resync($party, $me, $invoices);
 
         return response()->json($this->state($party));
+    }
+
+    /** Новая страница скана вместо прежней и её чтение. @param  callable(array): \Spatie\MediaLibrary\MediaCollections\Models\Media  $add */
+    private function store(Party $party, string $page, callable $add, User $me): void
+    {
+        $old = $party->passportScan($page);
+        $media = $add(['page' => $page, 'read' => 'reading', 'by' => $me->id]);
+        $old?->delete();
+        $party->unsetRelation('media');
+        ReadPassport::dispatch($media->id);
+    }
+
+    /** Первые две страницы PDF картинками JPEG (200 dpi — строка паспорта мелкая); одна страница или не PDF — пусто. @return list<string> */
+    private static function pdfPages(string $path): array
+    {
+        $dir = sys_get_temp_dir().'/passport-'.bin2hex(random_bytes(6));
+        @mkdir($dir);
+        try {
+            Process::timeout(60)->run(['pdftoppm', '-jpeg', '-r', '200', '-f', '1', '-l', '2', $path, $dir.'/p']);
+            $files = glob($dir.'/p-*.jpg') ?: [];
+            sort($files, SORT_NATURAL);
+
+            return array_map('file_get_contents', $files);
+        } finally {
+            array_map('unlink', glob($dir.'/*') ?: []);
+            @rmdir($dir);
+        }
     }
 
     /** Что прочитано: по странице — состояние, миниатюра и поля; шторка заполняет пустые. */

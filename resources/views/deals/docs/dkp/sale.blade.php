@@ -22,8 +22,8 @@
 <body>
     @unless (($pdf ?? false) || request()->boolean('embed'))<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     @if ($pdf ?? false)<div class="pagenum"></div>@endif
-    {{-- Не собран — сотруднику с пометкой: такой договор не печатают. --}}
-    @if ($doc->draft())<div class="draft">ЧЕРНОВИК</div>@endif
+    {{-- Не собран — сотруднику водяным знаком «ОБРАЗЕЦ»: такой договор не печатают. --}}
+    @include('deals.docs.dkp.draft')
     <article class="sheet">
         @if ($pdf ?? false)<div class="mask"></div>@endif
         <h1>Договор № {{ $doc->v($doc->number(), 19) }}</h1>

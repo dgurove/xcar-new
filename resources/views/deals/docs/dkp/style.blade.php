@@ -46,7 +46,8 @@
     .sign .blank { width: 40mm; }
     .cap { font-size: 9pt; }
     .act { page-break-before: always; height: 0; }
-    .draft { position: fixed; top: 100mm; left: 0; right: 0; text-align: center; font-size: 60pt; letter-spacing: 4pt; font-weight: 700; color: #ececec; }
+    .draft { position: fixed; top: -15mm; left: -20mm; right: -10mm; bottom: -15mm; overflow: hidden; }
+    .draft-row { position: absolute; white-space: nowrap; font-size: 26pt; font-weight: 700; letter-spacing: 3pt; color: #ededed; }
     .print { position: fixed; top: 12px; right: 12px; font-family: system-ui, sans-serif; }
     .print button { font: inherit; font-size: 14px; padding: 8px 16px; border: 0; border-radius: 12px; background: #97bf0d; color: #fff; }
     @if ($embed)
