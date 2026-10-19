@@ -28,6 +28,10 @@
             </span>
             <x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/>
         </x-ui.doc>
+        {{-- Договор ждёт ПТС — к его карточке «ПТС и СТС» под «Транспортным средством» (19.10.2026). --}}
+        @if (in_array('(Э)ПТС', $missing, true))
+            <a href="#car-docs" class="row"><span class="min-w-0 flex-1 text-urgent">Внести ПТС и СТС</span><x-ui.chevron/></a>
+        @endif
         {{-- Дата договора — сама календарь (19.10.2026): у ДКП юрлица встаёт сама, когда договор собрался, у собственника —
              когда подписывают; правит и менеджер у себя. --}}
         <div class="row">
@@ -54,11 +58,8 @@
             <div class="list-cap">Продавец, собственник по СТС</div>
             <x-billing.passport-fields :party="$contract->seller" prefix="seller"/>
         @endif
-        <div class="list-cap">Транспортное средство</div>
+        <div class="list-cap">Договор</div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            @foreach (DealContract::VEHICLE as $key => $label)
-                <x-ui.field :name="'vehicle['.$key.']'" :label="$label" :value="$car?->{$key} ?? ($key === 'body_no' ? $deal->offer->vin : null)"/>
-            @endforeach
             <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null"/>
             <x-ui.field name="vehicle[city]" label="Город договора" :value="$contract->city" :placeholder="$doc->city()"/>
         </div>

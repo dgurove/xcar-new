@@ -143,6 +143,8 @@
                 <div @if ($published) data-edit-card-target="edit" @if ($foldCar) hidden @endif @endif>@include('admin.offers.fields.car')</div>
             </x-ui.card>
         </form>
+        {{-- Документы ТС для ДКП — своей карточкой под «Транспортным средством», когда машина вышла из черновика. --}}
+        @if ($published && $admin)<x-offer.car-docs :offer="$offer" class="order-2 @4xl:order-none"/>@endif
 
         {{-- Дорожки — от ширины своей колонки (`@container/lanes`): от 52rem три в линию, уже — две, ещё уже — столбиком. --}}
         @if ($admin)

@@ -97,6 +97,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/offers/{offer}', [OfferController::class, 'update']);
         // «Закупочная» сверху карточки во вкладке «Без закупочной цены» — дело модератора.
         Route::post('/offers/{offer}/floor', [OfferController::class, 'floor']);
+        // «ПТС и СТС» — документы ТС отдельной карточкой (19.10.2026).
+        Route::put('/offers/{offer}/car-docs', [\App\Http\Admin\OfferCarDocsController::class, 'update']);
         // Черновик из писем до первого сохранения: «Отменить» и «Не заявка» (decline) — черновика не было, письма снова ждут.
         Route::post('/offers/{offer}/drop', [MailController::class, 'dropDraft'])->middleware('ability:canCrmMail');
         // Ушли из пустого черновика «+ Новый» — его нет (sendBeacon при уходе; не пустой сервер не трогает).
