@@ -22,6 +22,7 @@
                 <dd>
                     @if ($handover->name)<span class="block break-words">{{ $handover->name }}</span>@endif
                     @if ($handover->phone)<a href="tel:+{{ $handover->phone }}" class="handover-phone nums"><x-ui.icon name="phone" class="size-4"/>{{ $handover->phoneFormatted() }}</a>@endif
+                    @if ($handover->phone2)<a href="tel:+{{ $handover->phone2 }}" class="handover-phone nums"><x-ui.icon name="phone" class="size-4"/>{{ $handover->phone2Formatted() }}</a>@endif
                 </dd>
             </div>
         @endif

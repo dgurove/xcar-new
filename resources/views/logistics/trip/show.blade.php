@@ -39,10 +39,11 @@
                 <span class="shrink-0 text-sm text-accent-text">Маршрут</span>
             </a>
         @endif
-        @if ($t->ownerName() || $phone)
+        @if ($t->ownerName() || $phone || $t->ownerPhone2())
             <div class="row items-center justify-between gap-4">
                 <span class="min-w-0"><span class="block text-sm text-ink-muted">У кого забрать</span><span class="block break-words">{{ $t->ownerName() ?? 'Имени нет' }}</span></span>
-                @if ($phone)<a href="tel:+{{ $phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($phone) }}</a>@endif
+                <span class="flex shrink-0 flex-col items-end gap-1.5">@if ($phone)<a href="tel:+{{ $phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($phone) }}</a>@endif
+                    @if ($t->ownerPhone2())<a href="tel:+{{ $t->ownerPhone2() }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->ownerPhone2()) }}</a>@endif</span>
             </div>
         @endif
         @if ($t->pickup_at)

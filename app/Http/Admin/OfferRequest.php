@@ -69,6 +69,10 @@ class OfferRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:5000'],
             'settlement_id' => ['nullable', 'exists:settlements,id'],
             'inspection_address' => ['nullable', 'string', 'max:255'],
+            // Владелец и его телефоны — карточка «Получение» (19.10.2026: без правил форма молча их отбрасывала).
+            'insured_name' => ['nullable', 'string', 'max:120'],
+            'insured_phone' => ['nullable', 'string', 'max:40'],
+            'insured_phone2' => ['nullable', 'string', 'max:40'],
             'floor_price' => ['nullable', 'integer', 'max:100000000'],
             'value' => ['nullable', 'integer', 'min:0', 'max:1000000000'],
             'publish_price' => ['nullable', 'integer', 'max:100000000', ...($this->filled('asking_price') ? ['lte:asking_price'] : [])],
@@ -107,7 +111,7 @@ class OfferRequest extends FormRequest
 
     public function attributes(): array
     {
-        return ['brand_id' => 'марка', 'model_id' => 'модель', 'plate' => 'госномер', 'pts' => 'ПТС', 'sts' => 'СТС', 'body_no' => 'номер кузова', 'chassis_no' => 'номер шасси', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена'];
+        return ['brand_id' => 'марка', 'model_id' => 'модель', 'plate' => 'госномер', 'pts' => 'ПТС', 'sts' => 'СТС', 'body_no' => 'номер кузова', 'chassis_no' => 'номер шасси', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'insured_name' => 'владелец', 'insured_phone' => 'телефон', 'insured_phone2' => 'ещё телефон'];
     }
 
     /**

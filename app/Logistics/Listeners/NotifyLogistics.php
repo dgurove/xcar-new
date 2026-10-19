@@ -3,10 +3,12 @@
 namespace App\Logistics\Listeners;
 
 use App\Logistics\Channel;
+use App\Logistics\Choices;
 use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Events\TransportRequested;
 use App\Logistics\TransportNotice;
+use App\Notifications\PickupTakenNotice;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Events\Dispatcher;
@@ -51,6 +53,12 @@ final class NotifyLogistics
             return;
         }
         $t = $e->transport->fresh(['executor', 'logist']) ?? $e->transport;
+        // Вывоз забрали у менеджера сделки (сняли или отдали другому) — ему: ехать не нужно (19.10.2026).
+        $manager = $e->previous ? Choices::managerOf($t) : null;
+        if ($manager && $e->previous->is($manager) && ! ($t->channel === Channel::Manager && $t->executor?->is($manager)) && ($offer = $t->saleOffer())) {
+            $deal = $offer->deal()->first();
+            $manager->notify(new PickupTakenNotice($t, $offer, $deal?->href() ?? '/deals'));
+        }
         if ($t->channel === Channel::Manager) {
             return;
         }

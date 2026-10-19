@@ -83,8 +83,8 @@ class PickupLogisticsTest extends TestCase
         $this->assertNull($offer->position(Track::Sale)->waits_for);
         $this->assertTrue(Requirement::where('deal_id', $deal->id)->whereNull('done_at')->exists());
         Notification::assertSentTo($manager, YourTurnNotice::class);
-        // Забирает сам — это не логистика (17.10.2026): задачи там не видно, «Вам вывоз» ему не шлём.
-        $this->assertFalse(Transport::visibleTo($admin)->whereKey($t->id)->exists());
+        // Забирает сам — «Вам вывоз» ему не шлём; ведущие логистику задачу видят (19.10.2026: снять или сменить исполнителя).
+        $this->assertTrue(Transport::visibleTo($admin)->whereKey($t->id)->exists());
         Notification::assertNotSentTo($manager, TransportNotice::class);
 
         // На странице сделки — «Автомобиль забрал» и тихое «Нужен вывоз», ссылки в логистику нет.

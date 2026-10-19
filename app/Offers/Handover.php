@@ -4,9 +4,12 @@ namespace App\Offers;
 
 use App\Logistics\Transport;
 use App\Mail\Extraction\Patterns;
+use App\Park\City;
+use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Support\Phone;
 use App\Support\VendorNames;
+use App\Users\User;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
@@ -70,14 +73,16 @@ final class Handover
         /** @var list<string> ключи полей шага продажи, что показаны здесь: в шаге второй раз не пишутся */
         public readonly array $keys,
         /** ТС парковки, если машина стоит у нас или едет к нам (18.10.2026): забирают с парковки по пропуску сделки. */
-        public readonly ?\App\Park\Vehicle $park = null,
+        public readonly ?Vehicle $park = null,
+        /** Второй телефон владельца (19.10.2026) — когда контакт и есть владелец, а не парковка и не держатель. */
+        public readonly ?string $phone2 = null,
     ) {}
 
     /** Кто на парковке отвечает за выдачу: управляющий её города (не «только приёмка»), иначе администратор парковки. */
-    public static function parkContact(\App\Park\Vehicle $vehicle): ?\App\Users\User
+    public static function parkContact(Vehicle $vehicle): ?User
     {
-        $staff = \App\Users\User::parkStaff()->whereNotNull('approved_at')->whereNotNull('phone')->orderBy('id')->get()
-            ->filter(fn ($u) => ! \App\Park\City::of($u) || \App\Park\City::of($u) === $vehicle->city_id);
+        $staff = User::parkStaff()->whereNotNull('approved_at')->whereNotNull('phone')->orderBy('id')->get()
+            ->filter(fn ($u) => ! City::of($u) || City::of($u) === $vehicle->city_id);
 
         return $staff->first(fn ($u) => $u->isParking() && ! $u->isParkHelper()) ?? $staff->first(fn ($u) => $u->isParkAdmin());
     }
@@ -154,9 +159,11 @@ final class Handover
             $fields['name'] ??= $keeper->name.', парковка';
             $fields['phone'] ??= $keeper->phone;
         }
+        $phone2 = null;
         if ($owner && ! $withBuyer && ! $atYard) {
             $fields['name'] ??= $offer->insured_name;
             $fields['phone'] ??= $offer->insured_phone;
+            $phone2 = Phone::normalize($offer->insured_phone2);
             $fields['address'] ??= $offer->inspection_address ?: null;
         }
         $phone = Phone::normalize($fields['phone'] ?? null);
@@ -194,6 +201,7 @@ final class Handover
                 && $sale && ! self::routePicks($sale->stage),
             keys: $keys,
             park: ($atYard || $toYard) && ! $withBuyer ? $vehicle : null,
+            phone2: $withBuyer || $phone2 === $phone ? null : $phone2,
         );
     }
 
@@ -229,6 +237,11 @@ final class Handover
     public function phoneFormatted(): ?string
     {
         return $this->phone ? Phone::format($this->phone) : null;
+    }
+
+    public function phone2Formatted(): ?string
+    {
+        return $this->phone2 ? Phone::format($this->phone2) : null;
     }
 
     /** Дата словами, если это дата: «12 октября», со временем созвона — «12 октября, 14:00». */

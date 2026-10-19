@@ -89,7 +89,7 @@ final class CarLinks
         if ($from instanceof Transport || ! $from->car_id) {
             return [];
         }
-        $t = Transport::query()->inLogistics()->where('car_id', $from->car_id)->where('origin', '<>', 'order')->latest('id')->first();
+        $t = Transport::query()->where('car_id', $from->car_id)->where('origin', '<>', 'order')->latest('id')->first();
 
         return $t ? [['title' => 'Вывоз', 'state' => $t->isOpen() ? $t->next() : mb_strtolower($t->state->label()), 'href' => Surface::Logistics->url('/transports/'.$t->id)]] : [];
     }

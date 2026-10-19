@@ -15,6 +15,7 @@ use App\Park\Yard;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Ago;
+use App\Support\Phone;
 use App\Support\Plural;
 use App\Support\Surface;
 use App\Users\User;
@@ -300,6 +301,14 @@ class Transport extends Model
         return $this->from_phone ?? $this->car?->insured_phone;
     }
 
+    /** Второй телефон владельца (19.10.2026) — у вывоза от владельца машины; у заявки логиста контакт на месте свой. */
+    public function ownerPhone2(): ?string
+    {
+        $phone = $this->from_phone ? null : Phone::normalize($this->car?->insured_phone2);
+
+        return $phone && $phone !== Phone::normalize($this->ownerPhone()) ? $phone : null;
+    }
+
     /** Откуда забирать: у вывоза — адрес осмотра предложения (его правят в CRM), у перевода — свой адрес. */
     public function fromAddress(): ?string
     {
@@ -581,19 +590,21 @@ class Transport extends Model
      */
     public function scopeVisibleTo(Builder $q, User $user): Builder
     {
-        $q->inLogistics();
+        // Ведущим — и вывоз, что забирает менеджер сделки (19.10.2026, владелец: «в логистике хотят видеть все вывозы»):
+        // его можно снять или сменить. Логисту и исполнителю — по-прежнему только логистика.
         if ($user->leadsLogistics()) {
             return $q->where(fn ($w) => $w->where('transports.origin', '!=', 'order')->orWhere('logist_id', $user->id));
         }
 
-        return $q->where(fn ($w) => $w->where('executor_id', $user->id)
+        return $q->inLogistics()->where(fn ($w) => $w->where('executor_id', $user->id)
             ->when($user->isLogist(), fn ($w) => $w->orWhere('logist_id', $user->id)
                 ->orWhereIn('executor_id', User::where('logist_id', $user->id)->select('id'))));
     }
 
     /**
      * Задачи логистики — без тех, что забирает менеджер сделки сам (17.10.2026, владелец: «если менеджер сам забирает, в
-     * логистике не надо отображать»): он отмечает «Автомобиль забрал» в своей сделке (`SelfPickup`), а попросит — задача
+     * логистике не надо отображать»; с 19.10.2026 ведущие их видят — `scopeVisibleTo`, а сроки и напоминания по-прежнему
+     * только логистике): он отмечает «Автомобиль забрал» в своей сделке (`SelfPickup`), а попросит — задача
      * уходит «Без исполнителя» (`RequestPickup`).
      */
     public function scopeInLogistics(Builder $q): Builder

@@ -38,8 +38,9 @@ final class StepBack
     /** Последний сделанный шаг, что можно отменить (ключ `TransportEvent::STEPS`), — одно место на вид и действие. */
     public static function last(Transport $t): ?string
     {
+        // Забирает менеджер сделки — снять его, пока не забрал (19.10.2026); «Забрал» он откатывает в своей сделке.
         if ($t->channel === Channel::Manager) {
-            return null;
+            return in_array($t->state, [TransportState::Assigned, TransportState::Agreed], true) ? 'executor' : null;
         }
 
         return match ($t->state) {

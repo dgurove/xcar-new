@@ -11,7 +11,7 @@
     $offer = $deal->offer;
     $handover = \App\Offers\Handover::for($deal);
     $sheet = $offer->pickup()?->isOpen() && ! $offer->pickedUp();
-    $keys = ['insured_name', 'insured_phone', 'inspection_address'];
+    $keys = ['insured_name', 'insured_phone', 'insured_phone2', 'inspection_address'];
     $empty = ! $offer->insured_name && ! $offer->insured_phone && ! $offer->inspection_address;
     $form = 'handover-'.$deal->id;
     // Адрес — то же поле, что в «Транспортном средстве» редактора: открываться только на ошибку своей формы (`_form`).
@@ -44,6 +44,8 @@
             @unless ($empty)<div class="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2.5 leading-snug">
                 @if ($offer->insured_name)<div class="min-w-0"><div class="field-label">Владелец</div><div class="mt-0.5 break-words">{{ $offer->insured_name }}</div></div>@endif
                 @if ($offer->insured_phone)<div class="min-w-0"><div class="field-label">Телефон</div><a href="tel:{{ preg_replace('/[^\d+]/', '', $offer->insured_phone) }}" class="nums mt-0.5 block whitespace-nowrap text-accent-text">{{ $offer->insured_phone }}</a></div>@endif
+                {{-- Второй телефон владельца (19.10.2026) — тем же видом, под первым. --}}
+                @if ($offer->insured_phone2)<div class="col-start-2 min-w-0"><div class="field-label">Ещё телефон</div><a href="tel:{{ preg_replace('/[^\d+]/', '', $offer->insured_phone2) }}" class="nums mt-0.5 block whitespace-nowrap text-accent-text">{{ $offer->insured_phone2 }}</a></div>@endif
                 @if ($offer->inspection_address)<div class="col-span-2 min-w-0"><div class="field-label">Адрес</div><div class="mt-0.5 break-words">{{ $offer->inspection_address }}</div></div>@endif
             </div>@endunless
         </div>
@@ -53,6 +55,7 @@
                 <input type="hidden" name="_form" value="{{ $form }}">
                 <x-ui.field name="insured_name" label="Владелец" :value="$offer->insured_name" id="handover-name-{{ $deal->id }}"/>
                 <x-ui.field name="insured_phone" label="Телефон" :value="$offer->insured_phone" id="handover-phone-{{ $deal->id }}"/>
+                <x-ui.field name="insured_phone2" label="Ещё телефон" type="tel" :value="$offer->insured_phone2" id="handover-phone2-{{ $deal->id }}"/>
                 <x-ui.field name="inspection_address" label="Адрес" :value="$offer->inspection_address" span="sm:col-span-2" id="handover-address-{{ $deal->id }}"/>
                 <x-ui.save-bar class="sm:col-span-2" :page="! $compact"/>
             </form>

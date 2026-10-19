@@ -132,6 +132,7 @@ final class AssignExecutor
         if (! $t->isOpen() || $t->state->picked() || $t->state === TransportState::New) {
             return $t;
         }
+        $previous = $t->executor ?? $t->logist;
         $t->update(['channel' => null, 'executor_id' => null, 'logist_id' => null, 'cost' => null, 'distance_km' => null,
             'state' => TransportState::New, 'assigned_at' => null, 'docs_by_cdek' => false,
             'docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]);
@@ -140,7 +141,7 @@ final class AssignExecutor
             ($this->settle)($t, $by);
         }
         TransportEvent::record($t, 'released', $by);
-        TransportAssigned::dispatch($t, null);
+        TransportAssigned::dispatch($t, $previous);
 
         return $t;
     }
