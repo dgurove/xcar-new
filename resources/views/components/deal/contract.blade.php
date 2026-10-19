@@ -28,11 +28,18 @@
             </span>
             <x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/>
         </x-ui.doc>
+        {{-- Дата договора — сама календарь (19.10.2026): у ДКП юрлица встаёт сама, когда договор собрался, у собственника —
+             когда подписывают; правит и менеджер у себя. --}}
+        <div class="row">
+            <span class="shrink-0 text-ink-muted">Дата договора</span>
+            <span class="min-w-0 flex-1 text-right"><x-ui.date chip submit :clearable="false" name="signed_at" :id="'dkp-date-field-'.$deal->id" :value="$contract->signed_at" :form="'dkp-date-'.$deal->id" placeholder="Указать" class="text-accent-text"/></span>
+        </div>
         <div class="row">
             <span class="shrink-0 text-ink-muted">Покупатель</span>
             <span class="min-w-0 flex-1 text-right">{{ $contract->buyer ? ($contract->buyer->party?->name ?: $contract->buyer->name) : 'выбирает менеджер' }}</span>
         </div>
     </div>
+    <form method="post" action="/work/deals/{{ $deal->id }}/contract" id="dkp-date-{{ $deal->id }}" class="hidden">@csrf @method('put')</form>
     <div data-edit-card-target="view" @if ($editing) hidden @endif></div>
     <div data-edit-card-target="edit" @unless ($editing) hidden @endunless>
     @if ($scans->isNotEmpty())
@@ -54,7 +61,6 @@
             @endforeach
             <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null"/>
             <x-ui.field name="vehicle[city]" label="Город договора" :value="$contract->city" :placeholder="$doc->city()"/>
-            <x-ui.field name="vehicle[signed_at]" label="Дата договора" type="date" :value="$contract->signed_at?->toDateString()"/>
         </div>
         <x-ui.save-bar page/>
     </form>

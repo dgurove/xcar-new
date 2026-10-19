@@ -5,6 +5,7 @@ use App\Http\Admin\UserController;
 use App\Http\Cabinet\BuyerController;
 use App\Http\Cabinet\BuyerInterestController;
 use App\Http\Cabinet\ChatController as CabinetChatController;
+use App\Http\Cabinet\ContractDataController;
 use App\Http\Cabinet\DealContractController;
 use App\Http\Cabinet\DealController;
 use App\Http\Cabinet\GroupController;
@@ -128,6 +129,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/account/chats/support', [CabinetChatController::class, 'support']);
         Route::get('/account/chats/{chat}', [CabinetChatController::class, 'show']);
         Route::get('/account/interests', [ListsController::class, 'interests']);
+        // Данные для договора у самого покупателя (19.10.2026).
+        Route::get('/account/contract', [ContractDataController::class, 'show']);
+        Route::put('/account/contract', [ContractDataController::class, 'update']);
         // Скан паспорта покупателя (11.10.2026): загрузка страницы и опрос распознанного.
         Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
         Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);

@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Billing\Party;
 use App\Billing\PartyKind;
+use App\Notifications\BuyerContractDataNotice;
 use App\Offers\DealContract;
 use App\Offers\OfferEventType;
 use App\Support\Phone;
@@ -14,7 +15,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Данные ДКП (05.10.2026). Сотрудник по сканам страховой вносит продавца (`seller`: паспорт собственника) и ТС
- * (`vehicle`: госномер, СТС, (Э)ПТС, кузов, шасси — в машину; цена, город, дата — в договор). Менеджер — покупателя: своего (`buyer_id`), себя
+ * (`vehicle`: госномер, СТС, (Э)ПТС, кузов, шасси — в машину; цена и город — в договор), дату договора (`signed_at`) —
+ * и менеджер, и сотрудник. Менеджер — покупателя: своего (`buyer_id`), себя
  * (`me`) или нового (`new_buyer`: заводится в его «Покупателях» без пароля), с паспортом или реквизитами организации
  * (`buyer`), и у ПРАЙМ — кто платит по счёту (`payer`). Счёт ПРАЙМ ставится тут же сам (`SyncDealInvoices`). Договор
  * собрался впервые — менеджеру «ДКП готов».
@@ -39,7 +41,7 @@ final class SaveDealContract
                 $contract->seller_party_id = $seller->id;
             }
             if (isset($data['vehicle'])) {
-                $contract->fill(array_intersect_key($data['vehicle'], array_flip(['price', 'city', 'signed_at'])));
+                $contract->fill(array_intersect_key($data['vehicle'], array_flip(['price', 'city'])));
                 // Документы ТС — поля машины (одна запись на все дорожки), правка с историей в предложении.
                 $car = array_intersect_key($data['vehicle'], DealContract::VEHICLE);
                 $car && ($this->offers)($deal->offer, $car, $by, ['why' => 'ДКП']);
@@ -62,6 +64,10 @@ final class SaveDealContract
                     ?? throw ValidationException::withMessages(['buyer_id' => 'Это не ваш покупатель']);
                 $contract->buyer_user_id = $buyer->id;
             }
+            // Дата договора — менеджер ставит сам (19.10.2026): подписывают в тот день, когда встретились.
+            if (array_key_exists('signed_at', $data)) {
+                $contract->signed_at = $data['signed_at'];
+            }
             if (in_array($data['payer'] ?? null, ['buyer', 'manager'], true)) {
                 $contract->payer = $data['payer'];
             }
@@ -74,13 +80,19 @@ final class SaveDealContract
             }
             $contract->save();
             $deal->offer->log(OfferEventType::Note, $by, ['text' => 'ДКП: '.implode(', ', array_filter([
-                isset($data['seller']) ? 'продавец' : null, isset($data['vehicle']) ? 'ТС' : null, $contract->wasChanged('buyer_user_id') ? 'покупатель '.$contract->buyer?->name : null,
+                isset($data['seller']) ? 'продавец' : null, isset($data['vehicle']) ? 'ТС' : null, isset($data['signed_at']) ? 'дата '.$contract->signed_at?->format('d.m.Y') : null, $contract->wasChanged('buyer_user_id') ? 'покупатель '.$contract->buyer?->name : null,
                 isset($data['buyer']) && ! $contract->wasChanged('buyer_user_id') ? 'паспорт покупателя' : null,
             ]))]);
         });
+        $picked = $contract->wasChanged('buyer_user_id');
         // Плательщик или его данные сменились — счёт ПРАЙМ встаёт сам (или перевыставляется, если за него не платили).
         ($this->invoices)($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);
         $contract = $contract->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer']);
+        // Выбрали покупателя без паспорта — ему самому «Нужны данные для договора» (19.10.2026): вносит в кабинете.
+        $buyer = $contract->buyer;
+        if ($buyer && $picked && $buyer->id !== $deal->buyer_id && ! $buyer->party?->readyAsBuyer()) {
+            $buyer->notify(new BuyerContractDataNotice($deal));
+        }
 
         return ($this->settle)($contract);
     }

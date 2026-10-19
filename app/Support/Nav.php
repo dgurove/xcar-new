@@ -12,6 +12,7 @@ use App\Garage\Car as GarageCar;
 use App\Garage\CarState;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
+use App\Http\Cabinet\ContractDataController;
 use App\Logistics\Client;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
@@ -335,6 +336,10 @@ final class Nav
             $links[] = self::link('Приглашения', '/account/invites', icon: 'link');
         } elseif (! $user->isAdmin()) {
             $links[] = self::link('Интерес', '/account/interests', icon: 'flag');
+            // Покупатель по договору идущей сделки — паспорт и скан вносит сам (19.10.2026).
+            if (ContractDataController::opensFor($user)) {
+                $links[] = self::link('Данные для договора', '/account/contract', icon: 'file');
+            }
         }
         // Сотруднику — чаты площадки здесь же, а не переадресацией в CRM: другой хост в приложении — встроенный браузер.
         if ($user->canChat() || $user->isAdmin()) {

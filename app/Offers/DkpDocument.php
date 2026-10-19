@@ -10,11 +10,13 @@ use App\Cars\Category;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Words;
+use Illuminate\Support\HtmlString;
 
 /**
  * Что подставляется в ДКП (19.10.2026, по шаблонам владельца): виды `deals/docs/dkp-owner` (физлицо физлицу,
  * Т-Страхование) и `deals/docs/dkp-sale` (ДКП и акт от ПРАЙМ / Р.О.С.) берут готовые строки отсюда и сами ничего не
- * считают. Пустое — `null`, вид рисует линию для ручки. Род («гражданка», «именуемая») — по отчеству (`Party::isFemale`).
+ * считают. Пустое — `null`, вид рисует линию для ручки (`v`). Род («гражданка», «именуемая») — по отчеству
+ * (`Party::isFemale`). Вёрстка — по ГОСТ Р 7.0.97-2016 (`deals/docs/dkp/style`).
  */
 final class DkpDocument
 {
@@ -35,6 +37,38 @@ final class DkpDocument
         $this->car = $this->offer->car;
         $this->seller = $contract->sellerParty();
         $this->buyer = $contract->buyerParty();
+    }
+
+    /**
+     * Значение в текст договора; пустое — линия для ручки нужной ширины. Линия — блок, а не «______»: подчёркивания —
+     * одно неразрывное слово, и выравнивание по ширине растягивало строку перед ним дырами (19.10.2026, владелец: «криво»).
+     */
+    public function v(mixed $value, int $mm = 30): HtmlString
+    {
+        // Короткие коды («ПР-15/2026», дата) не рвутся по дефису.
+        $text = filled($value) ? e($value) : null;
+
+        return new HtmlString($text === null ? '<span class="blank" style="width:'.$mm.'mm"></span>' : (mb_strlen($text) <= 20 ? '<span class="nb">'.$text.'</span>' : $text));
+    }
+
+    /** Расшифровка подписи по ГОСТ: инициалы перед фамилией — «А. В. Кузнецов»; у организации — её руководитель. */
+    public function signature(?Party $p): ?string
+    {
+        $name = $this->signer($p);
+        $parts = preg_split('/\s+/u', trim((string) $name)) ?: [];
+        if (count($parts) < 2) {
+            return $name ?: null;
+        }
+        // «Кузнецов Андрей Викторович» и «Кузнецов А. В.» — одинаково «А. В. Кузнецов» («А.В.» склеенные — тоже).
+        $initials = preg_split('/(?<=\.)(?=\S)|\s+/u', implode(' ', array_slice($parts, 1)));
+
+        return implode(' ', array_map(fn ($w) => mb_substr($w, 0, 1).'.', array_filter($initials))).' '.$parts[0];
+    }
+
+    /** Договор ещё не собран (`DealContract::missing`) — открыть может только сотрудник, на листах «Черновик». */
+    public function draft(): bool
+    {
+        return ! $this->contract->isReady();
     }
 
     public function form(): string

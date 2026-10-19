@@ -21,14 +21,19 @@ class DealContractController
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         abort_unless($deal->hasContract(), 404);
+        // Дата договора — своей формой из строки-календаря карточки (19.10.2026).
+        if ($request->has('signed_at') && ! $request->has('vehicle')) {
+            $contract = $save(DealContract::for($deal), $request->validate(['signed_at' => ['required', 'date']], [], ['signed_at' => 'дата договора']), $request->user());
+
+            return back()->with('toast', 'Дата договора '.$contract->signed_at->translatedFormat('j F'));
+        }
         $request->merge(['vehicle' => array_merge((array) $request->input('vehicle'), ['price' => Money::rubles($request->input('vehicle.price')) ?: null])]);
         // Продавец вносится только у ДКП (собственник по сканам); у ПРАЙМ продавец — ПРАЙМ.
         $data = $request->validate(($deal->isDkp() ? PartyRules::passport('seller') : []) + [
             'vehicle' => ['required', 'array'], 'vehicle.price' => ['nullable', 'integer', 'min:1'], 'vehicle.city' => ['nullable', 'string', 'max:80'],
-            'vehicle.signed_at' => ['nullable', 'date'],
         ] + collect(DealContract::VEHICLE)->keys()->mapWithKeys(fn ($k) => ["vehicle.{$k}" => ['nullable', 'string', 'max:40']])->all(),
             // Подписи полей ТС — те же, что в форме: «Кузов №», а не «vehicle.body_no» (07.10.2026).
-            [], ['seller.name' => 'ФИО продавца', 'vehicle.price' => 'цена по ДКП', 'vehicle.city' => 'город договора', 'vehicle.signed_at' => 'дата договора']
+            [], ['seller.name' => 'ФИО продавца', 'vehicle.price' => 'цена по ДКП', 'vehicle.city' => 'город договора']
                 + collect(DealContract::VEHICLE)->mapWithKeys(fn ($label, $k) => ["vehicle.{$k}" => $label])->all());
         $save(DealContract::for($deal), $data, $request->user());
 

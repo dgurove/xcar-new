@@ -20,14 +20,14 @@ class DealContractController
     {
         abort_unless($deal->buyer_id === $request->user()->id && $deal->hasContract() && $deal->isActive(), 404);
         $new = $request->input('buyer_id') === 'new';
-        $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager']];
+        $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager'], 'signed_at' => ['sometimes', 'required', 'date']];
         if ($new) {
             $rules += ['new_buyer.phone' => ['nullable', 'string', 'max:20']];
         }
         if ($request->has('buyer') || $new) {
             $rules += PartyRules::passport('buyer');
         }
-        $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя']);
+        $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя', 'signed_at' => 'дата договора']);
         if ($new) {
             $data['new_buyer'] = ['phone' => $request->input('new_buyer.phone')];
             unset($data['buyer_id']);
@@ -38,6 +38,7 @@ class DealContractController
 
         return back()->with('open_sheet', $needs ? 'deal-buyer-data' : null)->with('toast', match (true) {
             $new => 'Покупатель добавлен',
+            isset($data['signed_at']) => 'Дата договора '.$contract->signed_at?->translatedFormat('j F'),
             $deal->isPrime() && $deal->fresh()->hasManagerInvoice() => 'Сохранено, счёт выставлен',
             default => 'Сохранено',
         });

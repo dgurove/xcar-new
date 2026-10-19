@@ -18,7 +18,7 @@ const moscow = () => { const [day, clock] = new Date().toLocaleString('sv-SE', {
 
 export default class extends Controller {
     static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error'];
-    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, now: Boolean, prefix: String, submit: Boolean };
+    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, now: Boolean, prefix: String, submit: Boolean, placeholder: String };
 
     get field() { return this.textTarget.tagName === 'INPUT'; }
 
@@ -51,7 +51,8 @@ export default class extends Controller {
             text = `${d} ${MONTHS[m - 1]}${year}${this.timeValue && p.time ? `, ${p.time}` : ''}`;
         }
         if (this.field) this.textTarget.value = text;
-        else this.textTarget.textContent = [this.prefixValue, text].filter(Boolean).join(' ');
+        // Пустая кнопка-дата — словом-приглашением («Указать»), а не пустым местом.
+        else this.textTarget.textContent = [this.prefixValue, text].filter(Boolean).join(' ') || this.placeholderValue;
     }
 
     open() {

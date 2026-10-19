@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Billing\Party;
 use App\Billing\PartyKind;
+use App\Notifications\BuyerContractDataNotice;
+use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\SettleContract;
 use App\Offers\Deal;
 use App\Offers\DealContract;
@@ -52,7 +54,10 @@ class DkpDocumentTest extends TestCase
 
     private function html(Deal $deal): string
     {
-        return $this->actingAs($this->admin)->get('http://crm.xcar.localhost/work/deals/'.$deal->id.'/dkp')->assertOk()->getContent();
+        // Текст договора без разметки: короткие коды обёрнуты в неразрывные span, пропуски — линии.
+        $html = $this->actingAs($this->admin)->get('http://crm.xcar.localhost/work/deals/'.$deal->id.'/dkp')->assertOk()->getContent();
+
+        return preg_replace('/[ \t\n]+/', ' ', strip_tags(preg_replace('#<style.*?</style>#s', '', $html)));
     }
 
     public function test_prime_contract_with_act_number_and_vat(): void
@@ -110,10 +115,10 @@ class DkpDocumentTest extends TestCase
         DealContract::for($deal)->update(['buyer_user_id' => $buyer->id, 'seller_party_id' => $seller->id, 'price' => 750000]);
 
         $html = $this->html($deal);
-        $this->assertStringContainsString('Мы, гр. Иванов Иван Иванович, 06.05.1980 г.р.', $html);
+        $this->assertStringContainsString('Мы, гр. Иванов Иван Иванович, 06.05.1980 г. р.', $html);
         $this->assertStringContainsString('паспорт серии 46 01 № 112233', $html);
-        $this->assertStringContainsString('Зарегистрирована по адресу', $html);
-        $this->assertStringContainsString('Именуемая в дальнейшем «Покупатель»', $html);
+        $this->assertStringContainsString('зарегистрирована по адресу', $html);
+        $this->assertStringContainsString('именуемая в дальнейшем «Покупатель»', $html);
         $this->assertStringContainsString('электронный паспорт транспортного средства № 164302075126838', $html);
         $this->assertStringContainsString("750\u{00A0}000 (семьсот пятьдесят тысяч) рублей 00 копеек", $html);
         $this->assertStringNotContainsString('Договор №', $html);
@@ -124,5 +129,28 @@ class DkpDocumentTest extends TestCase
     {
         $deal = $this->deal(DealScheme::Insurer);
         $this->actingAs($this->admin)->get('http://crm.xcar.localhost/work/deals/'.$deal->id.'/dkp')->assertNotFound();
+    }
+
+    public function test_manager_and_staff_set_contract_date_and_buyer_fills_own_data(): void
+    {
+        $deal = $this->deal(DealScheme::OwnerDkp, 750000);
+        $buyer = $this->buyer(['kind' => PartyKind::Person, 'name' => 'Смирнова Анна Сергеевна']);
+        app(SaveDealContract::class)(DealContract::for($deal), ['buyer_id' => (string) $buyer->id], $this->manager);
+        Notification::assertSentTo($buyer, BuyerContractDataNotice::class);
+
+        // Дату ставит менеджер у себя и сотрудник в CRM.
+        $this->actingAs($this->manager)->put('http://xcar.localhost/deals/'.$deal->id.'/contract', ['signed_at' => '2026-10-21'])->assertRedirect();
+        $this->assertSame('2026-10-21', DealContract::for($deal->fresh())->signed_at->toDateString());
+        $this->actingAs($this->admin)->put('http://crm.xcar.localhost/work/deals/'.$deal->id.'/contract', ['signed_at' => '2026-10-22'])->assertRedirect();
+        $this->assertSame('2026-10-22', $deal->fresh()->contract->signed_at->toDateString());
+        $this->assertStringContainsString('22.10.2026', $this->html($deal));
+
+        // Покупатель вносит паспорт сам; чужому экран закрыт.
+        $this->actingAs($buyer)->get('http://xcar.localhost/account/contract')->assertOk()->assertSee('Данные для договора');
+        $this->actingAs($buyer)->put('http://xcar.localhost/account/contract', ['buyer' => ['kind' => 'person', 'name' => 'Смирнова Анна Сергеевна', 'birth_at' => '1990-01-02',
+            'passport' => '4512345678', 'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2015-06-02', 'reg_address' => 'г. Москва']])->assertRedirect();
+        $this->assertSame('4512345678', $buyer->fresh()->party->passport);
+        $other = $this->buyer(['kind' => PartyKind::Person, 'name' => 'Чужой Покупатель']);
+        $this->actingAs($other)->get('http://xcar.localhost/account/contract')->assertNotFound();
     }
 }

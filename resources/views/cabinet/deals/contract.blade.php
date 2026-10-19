@@ -26,7 +26,8 @@
     $dataErrors = $errors->any() && ! old('buyer_id') && ! old('payer');
     $part ??= 'all';
     $embedded ??= false;
-    $pdf = ['url' => '/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => 'ДКП '.$deal->offer->titleWithYear().'.pdf', 'label' => 'ДКП'];
+    $doc = new \App\Offers\DkpDocument($contract);
+    $pdf = ['url' => '/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => $doc->fileName(), 'label' => 'ДКП'];
     $missing = $contract->missing();
     // Покупатель — пункт менеджера выше; у договора называем то, что вносим мы (продавец, документы ТС, цена).
     $ours = array_values(array_diff($missing, ['покупатель', 'данные покупателя', 'скан паспорта покупателя']));
@@ -107,9 +108,20 @@
             @if (! $missing)
                 <x-ui.doc :doc="$pdf" class="row">
                     <x-ui.row-icon name="file" size="s" tone="open"/>
-                    <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}</span><span class="row-sub text-open">готов, распечатайте</span></span>
+                    <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}{{ $doc->number() ? ' № '.$doc->number() : '' }}</span><span class="row-sub text-open">готов, распечатайте</span></span>
                     <x-ui.chevron/>
                 </x-ui.doc>
+                {{-- Дату договора менеджер ставит сам (19.10.2026, владелец): подписывают в тот день, когда встретились. У ДКП
+                     юрлица она встаёт сама, когда договор собрался, у ДКП собственника — пусто до «Указать». --}}
+                <div class="row">
+                    <span class="min-w-0 flex-1">Дата договора</span>
+                    @if ($editable)
+                        <form method="post" action="/deals/{{ $deal->id }}/contract" id="dkp-date-{{ $deal->id }}" class="hidden">@csrf @method('put')</form>
+                        <x-ui.date chip submit :clearable="false" name="signed_at" :id="'dkp-date-field-'.$deal->id" :value="$contract->signed_at" :form="'dkp-date-'.$deal->id" placeholder="Указать" class="shrink-0 text-accent-text"/>
+                    @else
+                        <span class="shrink-0 text-ink-muted">{{ $contract->signed_at?->translatedFormat('j M Y') ?? 'не указана' }}</span>
+                    @endif
+                </div>
             @else
                 <div class="row">
                     <x-ui.row-icon name="file" size="s" tone="muted"/>
