@@ -17,7 +17,10 @@
         <input type="radio" name="_way-{{ $n }}" value="rate" class="sr-only" id="way-rate-{{ $n }}" data-action="reveal#pick" @checked($way === 'rate')>
     @endif
     <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="rate" @if ($way !== 'rate') hidden @endif>
-        <h2 @class(['text-lg font-medium' => ! $plain, 'detail-section !mb-0' => $plain])>Цены</h2>
+        <div class="flex items-center gap-3">
+            <h2 @class(['text-lg font-medium' => ! $plain, 'detail-section !mb-0' => $plain])>Цены</h2>
+            <span class="ml-auto">@include('admin.offers.fields.vat-check', ['form' => $form])</span>
+        </div>
         @include('admin.offers.fields.money', ['form' => $form, 'now' => $now, 'idp' => 'price-'.$n.'-', 'plate' => ! $plain])
         {{-- Действие шага — последним: без цены — «Сохранить и дальше» и «В гараж» / «Вывоз». Оценённому — «Выставить в
              продажу» под «Показом» (`admin/offers/publish-row`): перед ним решают, до когда приём и кому показывать. --}}

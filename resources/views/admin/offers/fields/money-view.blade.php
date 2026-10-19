@@ -18,7 +18,7 @@
 @endphp
 <dl class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 leading-snug">
     @foreach ($rows as $field => [$label, $value])
-        <dt class="text-ink-dim">{{ $label }}@if ($field === 'floor_price' && $offer->prices_include_vat) <span class="text-sm">с НДС</span>@endif</dt>
+        <dt class="text-ink-dim">{{ $label }}</dt>
         <dd @class(['nums text-right', 'font-semibold' => $field === 'asking_price', 'text-danger' => $field === 'asking_price' && ($offer->marginMark()['tone'] ?? null) === 'loss'])>
             @if ($history->has($field))
                 <span class="contents" data-controller="sheet">
