@@ -116,7 +116,8 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
 
     /**
      * «Фото и документы по ссылке» (12.10.2026, Инсайт: облако Nextcloud в письме вместо вложений) — ссылки на облако из
-     * писем вендора в ветке скачиваются тем же `CloudShare`, что ответы по сделке, и кладутся к предложению: кадры в фото,
+     * писем вендора в ветке (и пересылок сотрудника — `isFromVendor`, 19.10.2026: Андрей переслал Инсайт со своего mail.ru)
+     * скачиваются тем же `CloudShare`, что ответы по сделке, и кладутся к предложению: кадры в фото,
      * остальное в документы. Каждая ссылка — один раз на предложение; не скачалась — запись в «Истории», без повтора.
      *
      * @return array{photos: int, documents: int}
@@ -124,7 +125,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
     private static function cloud(Thread $thread, Offer $offer, AttachmentImporter $importer, array $photos, callable $report): array
     {
         $added = ['photos' => 0, 'documents' => 0];
-        $links = $thread->messages()->get()->reject(fn ($m) => $m->isOurs())
+        $links = $thread->messages()->get()->filter(fn ($m) => $m->isFromVendor())
             ->flatMap(fn ($m) => CloudShare::links($m->ownText()."\n".$m->replyText(marks: true)))->unique('token');
         foreach ($links as $link) {
             if (! Cache::add('cloud-import:'.$offer->id.':'.$link['token'], 1, now()->addDays(60))) {
