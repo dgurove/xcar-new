@@ -819,8 +819,9 @@ html.kb-open { --home-gap: 0px; }
   @keyframes binding-pulse { 0%, 100% { background: var(--color-danger); } 50% { background: color-mix(in srgb, var(--color-danger) 70%, #fff); } }
   @media (prefers-reduced-motion: reduce) { .binding-panic { animation: none; } }
   /* Тревога в шапке: красная, мерцает заливкой; число рядом с сиреной. На телефоне, пока она есть, тема уступает место. */
-  .header-btn.alarm-btn, .dark .header-btn.alarm-btn { gap: .25rem; background: var(--color-danger); color: #fff; font-weight: 600; font-size: var(--text-sm); animation: binding-pulse 1.6s ease-in-out infinite; }
-  .header-sq.alarm-btn { width: auto; min-width: 2.5rem; padding-inline: .5rem; }
+  .header-btn.alarm-btn, .dark .header-btn.alarm-btn { background: var(--color-danger); color: #fff; animation: binding-pulse 1.6s ease-in-out infinite; }
+  /* Число тревоги — кружком в углу, как у остальных кнопок шапки: белый кружок с красной цифрой на красной кнопке. */
+  .alarm-btn .alarm-badge { background: #fff; color: var(--color-danger); }
   /* Телефон: тревога — на месте «Чатов» (19.10.2026); горит — «Чаты» прячутся. */
   .header:has([data-alarm-button="phone"]:not([hidden])) [data-chats-phone] { display: none; }
   .header-btn.alarm-btn[hidden] { display: none; }
