@@ -174,17 +174,25 @@ export default class extends Controller {
         }
     }
 
-    async preparePdf(seq, photos) {
+    // retry — второй заход: сервер не ответил (19.10.2026: запрос попал в перезапуск выкладки, «PDF не собрался» у
+    // менеджера), через 3 с спрашиваем ещё раз, и только потом строка об ошибке.
+    async preparePdf(seq, photos, retry = false) {
         this.ready(false, 'Собираем PDF…');
         this.status('');
         const form = new FormData();
         photos.forEach((id) => form.append('photos[]', id));
         form.append('watermark', this.watermark());
         try {
-            // 422 — отказ словами сервера; обрыв и прочие сбои request называет тостом сам, здесь — строка и маяк.
-            const r = await request(this.urlValue, { method: 'POST', body: form, accept: 'application/pdf', statuses: [422] });
+            // 422 — отказ словами сервера; обрыв и прочие сбои request называет тостом сам (на первом заходе молча — будет повтор),
+            // здесь — строка и маяк.
+            const r = await request(this.urlValue, { method: 'POST', body: form, accept: 'application/pdf', statuses: [422], quiet: !retry });
             if (seq !== this.seq) return;
             if (!r) {
+                if (!retry) {
+                    await new Promise((resolve) => setTimeout(resolve, 3000));
+                    if (seq === this.seq) this.preparePdf(seq, photos, true);
+                    return;
+                }
                 this.status('PDF не собрался');
                 this.beacon('prepare', { name: 'request', message: '' });
                 return;
