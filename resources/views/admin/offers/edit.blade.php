@@ -160,7 +160,7 @@
                     <x-slot:actions><button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $foldMoney ? 'Изменить' : 'Готово' }}</button></x-slot:actions>
                     <div data-edit-card-target="view" @unless ($foldMoney) hidden @endunless>@include('admin.offers.fields.money-view', ['garageOnly' => (bool) $garageView])</div>
                 @endif
-                <div @if ($published) data-edit-card-target="edit" @if ($foldMoney) hidden @endif @endif>@include('admin.offers.fields.money', ['form' => 'offer-form', 'withTags' => false, 'garageOnly' => (bool) $garageView])</div>
+                <div @if ($published) data-edit-card-target="edit" @if ($foldMoney) hidden @endif @endif>@include('admin.offers.fields.money', ['form' => 'offer-form', 'garageOnly' => (bool) $garageView])</div>
             </x-ui.card>
 
             {{-- «Показ» — сразу под «Ценами», на ПК и на телефоне (12.10.2026, владелец): у предложения срок приёма и волны, у

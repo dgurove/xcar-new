@@ -3,13 +3,13 @@
      (`action`: выход маршрута) или полями чужой (`form`: редактор, `submit` — then=open). Срок страховой раньше слота —
      дата красным: таймер черновика уведёт предложение раньше. Без offer — пачкой (галочки «Оцененных» и «Публикации»,
      `form` — их форма); move — перенос стоящих в слоте: «Перенести на завтра в 16:00». «Другой день» — календарь (`Slots::DAY`). --}}
-@props(['offer' => null, 'id', 'action' => null, 'form' => null, 'submit' => [], 'title' => 'Опубликовать', 'move' => false])
+@props(['offer' => null, 'id', 'action' => null, 'form' => null, 'submit' => [], 'title' => 'Опубликовать', 'move' => false, 'state' => null])
 @php
     $choices = \App\Offers\Slots::choices();
     $late = fn ($at) => $offer && $at && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($at);
 @endphp
 <x-ui.sheet :id="$id" :title="$title">
-    @if ($action)<form method="post" action="{{ $action }}" class="publish-choice flex flex-col gap-4">@csrf @else<div class="publish-choice flex flex-col gap-4">@endif
+    @if ($action)<form method="post" action="{{ $action }}" class="publish-choice flex flex-col gap-4">@csrf @if ($state)<input type="hidden" name="state" value="{{ $state }}">@endif @else<div class="publish-choice flex flex-col gap-4">@endif
         <div class="list">
             @foreach ($choices as $c)
                 <label class="row row-check">

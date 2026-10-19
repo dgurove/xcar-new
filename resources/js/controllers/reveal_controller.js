@@ -61,9 +61,10 @@ export default class extends Controller {
             pane.hidden = !on;
             // Поля скрытой панели — своей, вложенной или внешнего reveal — так и остаются выключенными. Прочее скрытое
             // снаружи не в счёт: шторка в плашке, что прячется до первой галочки (логистика: «Назначить (N)»), иначе
-            // выключала поля навсегда, и выбранный логист не уходил в запрос.
+            // выключала поля навсегда, и выбранный логист не уходил в запрос. Поле вендора (`by-vendor`: оценочная, срок
+            // обязывающего в «Ценах» окошка) прячется и показывается само при смене вендора — его не выключаем.
             for (const field of pane.querySelectorAll('input, select, textarea')) {
-                const hid = field.closest('[hidden]');
+                const hid = field.closest('[hidden]:not([data-controller~="by-vendor"])');
                 field.disabled = !on || !!field.closest('[data-reveal-target~="pane"][hidden]')
                     || (!!hid && hid !== this.element && this.element.contains(hid));
             }

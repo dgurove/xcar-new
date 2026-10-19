@@ -765,9 +765,12 @@ class OfferController
     /** Продлить приём на ходу: от текущего срока, если он ещё не прошёл, иначе от сейчас. */
     public function extend(Request $request, Offer $offer, UpdateOffer $update)
     {
-        $minutes = (int) $request->validate(['minutes' => ['required', 'integer', 'in:15,60']])['minutes'];
+        // «+15 мин», «+1 ч» или «Возобновить» (`renew`, 19.10.2026: кнопкой в окошке «Приём закрыт») — обычный срок приёма
+        // от сейчас, не позже срока обязывающего (`Binding::clampClose`).
+        $data = $request->validate(['minutes' => ['required_without:renew', 'integer', 'in:15,60'], 'renew' => ['nullable', 'boolean']]);
         $from = $offer->bids_close_at?->isFuture() ? $offer->bids_close_at : now();
-        $offer = $update($offer, ['bids_close_at' => $from->copy()->addMinutes($minutes)], $request->user());
+        $until = $request->boolean('renew') ? \App\Offers\Binding::clampClose($offer, Slots::closeFor(now())) : $from->copy()->addMinutes((int) $data['minutes']);
+        $offer = $update($offer, ['bids_close_at' => $until], $request->user());
 
         // Из «Приём закрыт» строка уходит сразу (в «Опубликованные»), числа вкладок — следом, без обновления страницы.
         return back()->with('toast', 'Приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'))->with(self::gone($request, $offer->refresh()));

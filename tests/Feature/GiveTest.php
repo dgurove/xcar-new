@@ -115,7 +115,13 @@ class GiveTest extends TestCase
     {
         $offer = $this->draft(null);
 
-        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', ['to' => 'garage', 'payer' => 'manager', 'pickup' => 'manager', 'where' => 'arrived'])
+        // «Кому → Менеджеру» без менеджера — ошибка, а не «под себя» молча (19.10.2026).
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', ['to' => 'garage', 'whom' => 'manager', 'where' => 'arrived'])
+            ->assertSessionHasErrors('manager_id');
+        $this->assertNull($offer->fresh()->deal);
+
+        // «Себе»: менеджер из формы не берётся, даже если пришёл.
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', ['to' => 'garage', 'whom' => 'self', 'manager_id' => $this->roman->id, 'payer' => 'manager', 'pickup' => 'manager', 'where' => 'arrived'])
             ->assertSessionHasNoErrors();
 
         $deal = $offer->fresh()->deal;

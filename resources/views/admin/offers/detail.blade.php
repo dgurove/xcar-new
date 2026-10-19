@@ -25,7 +25,7 @@
     // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
     $rate = $admin && $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled();
     // Оценённый черновик («Оцененные»), пока не в слоте — корректировки менеджеров и «+ Спросить менеджеров» (11.10.2026).
-    $correct = $admin && $offer->state === OfferState::Draft && $offer->asking_price && ! $offer->isScheduled();
+    $correct = $admin && $offer->state === OfferState::Draft && $offer->asking_price && ! $offer->isScheduled() && ! $offer->onAuction();
     // Закупочной нет — сначала она (вкладка «Без закупочной цены», 05.10.2026): у всех, и у модератора; у админа — на месте
     // «Оценить», цену продажи без закупочной не ставят. У Альфы первой — оценочная, закупочная от неё на лету.
     $floorFirst = $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->floor_price && ! $offer->isScheduled();
@@ -38,6 +38,20 @@
     // И «Вывоз»: кто вывозит ТС (задача логистики, `AssignExecutor`) — пока не забрали; цену после него всё равно ставить.
     $pickup = $rate && ($offer->pickup()?->isOpen() || $offer->vendor?->pickup_on_arrival) && ! $offer->pickedUp();
     $ways = $garage || $pickup;
+    // Цены черновика — блоком по шагам сверху окошка (19.10.2026); у остального — разделом «Цены» в форме.
+    $steps = $offer->state === OfferState::Draft && ! $offer->isScheduled() && ! $offer->onAuction();
+    // Слот, аукцион, архив — плашка «что сейчас» сверху (`admin/offers/now-block`) с кнопками вместо пунктов «Действий».
+    $nowKind = ! $admin ? null : match (true) {
+        $offer->isScheduled() => 'slot',
+        $offer->onAuction() => 'auction',
+        in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true) => 'archive',
+        default => null,
+    };
+    // Оценённый черновик — «Выставить в продажу» кнопкой в «Ценах» (19.10.2026, владелец: «пропала кнопка выставить в
+    // продажу»); тогда в «Действиях» ни «Опубликовать», ни «Отдать…» второй раз нет.
+    $publishButton = $steps && $publishItems;
+    // Открытое — блок «Приём» сверху (`admin/offers/intake-block`): срок и продление кнопками, во фразе под названием его нет.
+    $intake = $admin && $offer->state === OfferState::Open && $offer->bids_close_at;
     $way = $errors->hasAny(['executor', 'executor_id', 'pickup']) ? 'pickup' : (old('to') === 'garage' ? 'garage' : 'rate');
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
@@ -60,27 +74,26 @@
         <x-slot:line>
             @if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif
             @if ($offer->car_place)<span>{{ mb_strtolower($offer->car_place->label()) }}</span>@endif
-            @if ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
+            @if ($intake)
+            @elseif ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
             @elseif (! $gallery && $offer->closed() && auth()->user()->canManageCrm())<span class="text-ink-muted">приём закрыт</span>@endif
             {{-- Окно галереи (08.10.2026): висит — сколько осталось, кончилось — до какого числа висело. --}}
             @if ($gallery)<span class="nums {{ $offer->isGalleryEndingSoon() ? 'text-urgent' : 'text-accent-text' }}">в галерее <span data-controller="timer" data-timer-until-value="{{ $offer->gallery_until->toIso8601String() }}" data-timer-done-value="закрыта" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->gallery_until, 'ещё') }}</span></span>
             @elseif ($offer->gallery_from)<span class="nums text-ink-muted">в галерее до {{ $offer->gallery_until->translatedFormat('j M, H:i') }}</span>@endif
             @if ($offer->interests_count)<span class="nums text-accent-text">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</span>@endif
         </x-slot:line>
-        {{-- Цен в шапке нет: закупочная, заявленная и продажи — поля «Деньги» ниже. --}}
+        {{-- Цен в шапке нет: у черновика — блок «Цены» по шагам в `actions`, у остального — раздел «Цены» ниже. --}}
         <x-slot:actions>
             {{-- Черновик выставила ТС из «Заявок на приём» (`AutoSale`) — первым решение: «Принять» или «Отклонить». --}}
             @if ($admin && $offer->proposed())<x-offer.proposal :offer="$offer" class="w-full"/>@endif
             {{-- Ряд кнопок над плашкой дела (12.10.2026, владелец выбрал вариант «В»): слот, сделка и чат слева, «Действия»
                  справа; ниже — плашка «Закупочная / Оценить / В гараж / Вывоз» или ответы менеджеров. --}}
             <div class="flex w-full flex-wrap items-center gap-2">
-                @if ($admin && $offer->isScheduled())<x-offer.slot-menu :offer="$offer"/>@endif
                 @if ($admin && $offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
                 @if ($chats->isNotEmpty())<x-ui.pill :tone="$unread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чаты' }}@if ($chats->count() > 1 && ! $unread) <span class="nums text-ink-dim">{{ $chats->count() }}</span>@endif @if ($unread) <span class="badge">{{ $unread }}</span>@endif</x-ui.pill>@endif
                 {{-- «Действия» (05.10.2026, начальник: одной кнопкой справа, как в приложениях) — меню группами, как в iOS: продлить
                      приём, опубликовать (сейчас или в слот), смена состояния; архив и удаление — красным последними. --}}
                 @php
-                    $extend = $admin && $offer->state === OfferState::Open && $offer->bids_close_at;
                     $purge = $admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true);
                     // «Вернуть в продажу» из сделки и гаража — шторкой с ценами (`x-offer.resale-sheet`, стоит вне меню).
                     $resale = $admin && in_array($offer->state, [OfferState::Sold, OfferState::Garage], true);
@@ -91,24 +104,19 @@
                     if ($resale && $offer->state === OfferState::Sold) $danger = $danger->except(OfferState::Draft->value);
                     // Черновик из таблицы Кати — «Вернуть в черновики»: номер уходит из списка, машина — в свою рабочую вкладку.
                     $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
+                    // Архив — «Вернуть в черновики» и «Удалить навсегда» кнопками плашки (`now-block`), в «Действиях» их нет.
+                    if ($nowKind === 'archive') [$calm, $danger] = [collect(), collect()];
+                    $menuPurge = $purge && $nowKind !== 'archive';
                     $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
                 @endphp
                 {{-- Без закупочной тоже (14.10.2026, владелец): шторка спросит «Вы уверены…», менеджер оценивает без заявленной. --}}
                 @php $askMenu = ($correct || $rate) && $offer->openEstimates->isEmpty() && $offer->declinedEstimates->isEmpty(); @endphp
-                @php $auctionMenu = $admin && $offer->auctionActions() !== []; @endphp
-                @if ($extend || $transitions->isNotEmpty() || $publishItems || $purge || $listed || $resale || $askMenu || $auctionMenu || $giveMenu)
+                @php $auctionMenu = $admin && $offer->auctionActions() !== [] && $nowKind !== 'auction'; @endphp
+                @if ($calm->isNotEmpty() || $danger->isNotEmpty() || ($publishItems && ! $publishButton) || $menuPurge || $listed || $resale || $askMenu || $auctionMenu || ($giveMenu && ! $publishButton))
                     <div class="contents" data-controller="menu">
                         <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
                         <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
-                            @if ($extend)
-                                <div class="menu-group">
-                                    <div class="menu-head">Продлить приём</div>
-                                    @foreach ([15 => '15 минут', 60 => '1 час'] as $minutes => $label)
-                                        <form method="post" action="/offers/{{ $n }}/extend">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon name="clock" class="size-5 text-ink-muted"/><span class="nums">+{{ $label }}</span></button></form>
-                                    @endforeach
-                                </div>
-                            @endif
-                            @if ($publishItems)
+                            @if ($publishItems && ! $publishButton)
                                 <div class="menu-group">
                                     <div class="menu-head">Опубликовать</div>
                                     @foreach (\App\Offers\Slots::choices() as $c)
@@ -121,7 +129,7 @@
                                     <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="urgent:open"><x-ui.icon name="fire" fill class="size-5 text-fire"/>Срочно…</button>
                                 </div>
                             @endif
-                            @if ($giveMenu)
+                            @if ($giveMenu && ! $publishButton)
                                 <div class="menu-group">
                                     <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="give-{{ $n }}:open"><x-ui.icon name="deal" class="size-5 text-ink-muted"/>Отдать…</button>
                                 </div>
@@ -154,7 +162,7 @@
                                     @endforeach
                                 </div>
                             @endif
-                            @if ($danger->isNotEmpty() || $purge || $resale)
+                            @if ($danger->isNotEmpty() || $menuPurge || $resale)
                                 <div class="menu-group">
                                     @if ($resale)
                                         <button type="button" class="menu-item text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="resale:open"><x-ui.icon name="undo" class="size-5"/>{{ $offer->state === OfferState::Sold && ! $offer->garageCar ? 'Отменить сделку' : 'Вернуть в продажу' }}</button>
@@ -166,7 +174,7 @@
                                         </form>
                                     @endforeach
                                     {{-- Из архива — навсегда, со всем связанным (PurgeOffer): кадры, документы, сделки, чаты, счета. --}}
-                                    @if ($purge)
+                                    @if ($menuPurge)
                                         <form method="post" action="/offers/{{ $n }}/purge" data-turbo-frame="_top" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">
                                             @csrf<button class="menu-item text-danger" role="menuitem" data-action="menu#close"><x-ui.icon name="trash" class="size-5"/>Удалить навсегда</button>
                                         </form>
@@ -177,63 +185,20 @@
                     </div>
                 @endif
             </div>
-            @if ($rate || $floorFirst)
-                {{-- «Оценить» (вкладка «Без цены»): только цена продажи — машина уходит в «Оцененные», карточка переходит к
-                     следующей без цены; пустое поле — просто дальше. В продажу отправляют пачкой из «Оцененных». Под полем
-                     ориентиры из закупки, если черновик сделан по контрпредложению: цены менеджеров, под ними админская. --}}
-                {{-- Или «В гараж»: менеджеру сразу, без цены продажи; строка так же уходит, карточка — к следующей. После
-                     ошибки (не выбран менеджер) открыт снова гараж. --}}
-                <div class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3" @if ($ways) data-controller="reveal" @endif>
-                    @if ($ways)
-                        <x-ui.segment name="_way" :options="array_filter(['rate' => $floorFirst ? 'Закупочная' : 'Оценить', 'garage' => $garage ? 'В гараж' : null, 'pickup' => $pickup ? 'Вывоз' : null])" :value="$way" pick/>
-                    @endif
-                    <div data-reveal-target="pane" data-reveal-key="rate">
-                        @if ($floorFirst)
-                        {{-- Закупочная (у Альфы — оценочная и посчитанная от неё закупочная): машина уходит в «Без продажной
-                             цены», карточка — к следующей; пустое поле — просто дальше. Поля и кнопка — той же формы
-                             карточки, что «Сохранить изменения» (08.10.2026, владелец: «должны одно и то же делать»):
-                             своя форма гонялась с ней и оставляла карточку в странном состоянии. --}}
-                        <div class="flex flex-col gap-2" data-controller="value-floor">
-                            @if ($byValue)
-                                <input type="text" name="value" form="detail-edit-{{ $n }}" data-save-own inputmode="decimal" autocomplete="off" enterkeyhint="next" class="field-input field-s nums !bg-surface" placeholder="Оценочная, ₽" aria-label="Оценочная, ₽"
-                                    data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" value="{{ $offer->value ? \App\Support\Money::nums($offer->value) : '' }}" data-detail-focus>
-                            @endif
-                            <div class="flex gap-2">
-                                <input type="text" name="floor_price" form="detail-edit-{{ $n }}" data-save-own inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Закупочная, ₽" aria-label="Закупочная, ₽"
-                                    data-controller="digits" data-action="input->digits#format" data-value-floor-target="floor" value="" @unless ($byValue) data-detail-focus @endunless>
-                                <button type="submit" form="detail-edit-{{ $n }}" name="then" value="advance" class="btn btn-s btn-accent shrink-0">Сохранить</button>
-                            </div>
-                        </div>
-                        @else
-                        {{-- Цена продажи — поле формы карточки, «Оценить» — её кнопка: одно сохранение с «Сохранить изменения». --}}
-                        <div class="flex gap-2">
-                            <input type="text" name="asking_price" form="detail-edit-{{ $n }}" data-save-own inputmode="decimal" autocomplete="off" enterkeyhint="go" class="field-input field-s nums min-w-0 flex-1 !bg-surface" placeholder="Цена продажи, ₽" aria-label="Цена продажи, ₽"
-                                data-controller="digits" data-action="input->digits#format" value="" data-detail-focus>
-                            <button type="submit" form="detail-edit-{{ $n }}" name="then" value="advance" class="btn btn-s btn-accent shrink-0">Оценить</button>
-                        </div>
-                        @endif
-                        {{-- Оценка менеджером (11.10.2026): кто оценил — «Взять» / «Отклонить», кто думает — срок, «+ Отдать ещё»; группа —
-                             только когда уже отдали, первый раз — пунктом «Действий» (владелец: «отдать на оценку в действия»).
-                             И под закупочной: оценку дают и без неё (14.10.2026). --}}
-                        @if ($rate && ($offer->openEstimates->isNotEmpty() || $offer->declinedEstimates->isNotEmpty()))
-                            @include('admin.offers.estimates')
-                        @endif
-                        @if ($offer->purchaseCar)
-                            @include('admin.offers.purchase-prices', ['car' => $offer->purchaseCar])
-                        @endif
-                    </div>
-                    @if ($garage)
-                        <div data-reveal-target="pane" data-reveal-key="garage" hidden>
-                            <x-offer.give-garage :offer="$offer" :prefix="'detail-'.$n" inline/>
-                        </div>
-                    @endif
-                    @if ($pickup)
-                        <div data-reveal-target="pane" data-reveal-key="pickup" hidden>
-                            <x-logistics.assign-form :transport="$offer->pickup()?->isOpen() ? $offer->pickup() : null" :offer="$offer" :action="'/offers/'.$n.'/pickup'" prefix="detail-pickup-{{ $n }}"/>
-                        </div>
-                    @endif
-                </div>
-            @elseif ($correct && ($offer->openEstimates->isNotEmpty() || $offer->declinedEstimates->isNotEmpty()))
+            {{-- Черновик — цены одним блоком по шагам (`admin/offers/price-steps`): закупочная, цена продажи, «Сохранить и
+                 дальше», «В гараж» / «Вывоз» рядом; остальные цены свёрнуты. --}}
+            @if ($steps)
+                @include('admin.offers.price-steps')
+                {{-- Метки — открыто под блоком цен, не в нём (19.10.2026, владелец). --}}
+                @if ($admin)<div class="w-full">@include('admin.offers.fields.tags', ['form' => 'detail-edit-'.$n])</div>@endif
+            @endif
+            @if ($intake)
+                @include('admin.offers.intake-block')
+            @endif
+            @if ($nowKind)
+                @include('admin.offers.now-block')
+            @endif
+            @if ($correct && ($offer->openEstimates->isNotEmpty() || $offer->declinedEstimates->isNotEmpty()))
                 {{-- Цена поставлена, админ не уверен — ответы менеджеров на корректировку: «Согласен» или своя цена. --}}
                 <div class="flex w-full flex-col rounded-(--radius-l) bg-surface-2 p-3">
                     @include('admin.offers.estimates', ['correction' => true])
@@ -241,7 +206,7 @@
             @endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
             @if ($resale || ($admin && $offer->onAuction()))<x-offer.resale-sheet :offer="$offer"/>@endif
-            @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
+            @if ($publishItems && ! $publishButton)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
             @if ($askMenu)<x-offer.estimate-ask :offer="$offer" :managers="$managers" :trigger="false"/>@endif
             @if ($giveMenu)<x-offer.give-sheet :offer="$offer"/>@endif
         </x-slot:actions>
@@ -268,19 +233,10 @@
         @endif
         <form method="post" action="/offers/{{ $n }}" id="detail-edit-{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar migtorg-diff" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
             @csrf @method('put')
-            {{-- Модератору в «Ценах» только закупочная — она уже сверху, пустой блок не рисуется. --}}
-            @unless ($floorFirst && ! $admin)
-            <section>
-                <h2 class="detail-section">Цены</h2>
-                {{-- Оценки из закупки — ориентир цены: у машины по контрпредложению всегда, а не только под «Оценить». --}}
-                @if ($admin && $offer->purchaseCar && ! $rate && ! $floorFirst)
-                    <div class="mb-3 rounded-(--radius-l) bg-surface-2 p-3">
-                        <div class="text-sm font-medium">Закупка № {{ $offer->purchaseCar->purchase->number }}</div>
-                        @include('admin.offers.purchase-prices', ['car' => $offer->purchaseCar])
-                    </div>
-                @endif
-                @include('admin.offers.fields.money', ['askingElsewhere' => $rate && ! $floorFirst, 'floorElsewhere' => $floorFirst])
-            </section>
+            {{-- Не черновик — те же «Цены» разделом формы, без шагов и кнопок. --}}
+            @unless ($steps)
+                @include('admin.offers.price-steps', ['plain' => true])
+                @if ($admin)<section>@include('admin.offers.fields.tags')</section>@endif
             @endunless
             {{-- «Показ» — тот же модуль, что справа в редакторе: под «Ценами», режим по делу (у сделки и гаража — свой или нет). --}}
             <x-offer.showing :offer="$offer" :form="'detail-edit-'.$n" as="section"/>

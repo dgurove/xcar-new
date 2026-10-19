@@ -382,6 +382,17 @@ html.kb-open { --home-gap: 0px; }
   .btn-quiet  { @apply bg-surface-3 text-ink hover:bg-line; }
   .btn-ghost  { @apply text-ink hover:bg-surface-3; }
   /* Отступной ответ шага («Я передумал»): тихой строкой под главной кнопкой, палец — 44 px. */
+  /* «Отдать в гараж» по сценарию «Кому» (19.10.2026): «Себе» — ТС «Уже у нас», «Везёт в гараж» нет (везёт логистика:
+     сервер без менеджера так и делает); ТС уже у менеджера или у нас — везти нечего. */
+  .give-garage .give-to-self { display: none; }
+  .give-garage:has(input[name="whom"][value="self"]:checked) .give-to-self { display: inline; }
+  .give-garage:has(input[name="whom"][value="self"]:checked) .give-to-manager,
+  .give-garage:has(input[name="whom"][value="self"]:checked) .give-carry,
+  .give-garage:has(input[name="where"][value="arrived"]:checked) .give-carry { display: none; }
+  /* «Заявленная, минимальная, доля, метки» в блоке «Цены» окошка черновика — свёрнуто строкой с шевроном. */
+  .price-more > summary { list-style: none; width: fit-content; }
+  .price-more > summary::-webkit-details-marker { display: none; }
+  .price-more[open] .price-more-chevron { rotate: 180deg; }
   .retreat-link { @apply mx-auto -mt-1 block px-4 py-3 text-sm text-ink-muted hover:text-ink; }
   .btn-danger { @apply bg-danger-soft text-danger hover:bg-danger hover:text-white; }
   .btn-glass  { color: #fff; background: rgb(255 255 255 / .12); backdrop-filter: blur(10px); }

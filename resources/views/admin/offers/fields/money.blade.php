@@ -1,60 +1,66 @@
-{{-- Поля «Деньги» — одни на редактор и карточка строки, узкой колонкой в две: закупочная во всю ширину с «С НДС», заявленная и цена продажи, минимальная и доля; «С НДС» у закупочной (и у модератора: цены от страховой бывают и так, и так), метки — в карточке строки (в редакторе они в
-     шапке); срок приёма, кому показывать и галки показа — модуль «Показ» (`x-offer.showing`) под «Ценами». В редакторе блок стоит справа над
-     «Историей», вне формы — поля ходят в неё через `form` ($form). Серые подсказки заявленной и минимальной считаются на
-     ходу (min-bid). Срок обязывающего предложения — под закупочной, у админа и модератора. floorElsewhere — закупочная с оценочной сверху карточки, здесь их нет. Модератору — закупочная и НДС: цены продажи, галки, метки и приём ставит админ (OfferRequest::MODERATOR). --}}
+{{-- Поля цен — одни на окошко строки (`admin/offers/price-steps`: черновик — блоком по шагам, остальное — разделом) и
+     редактор (карточка «Цены», `form=offer-form`), 19.10.2026: «к унификации». Столбиком, каждое подписано и на своём месте:
+     оценочная (только у вендора `rate_by_value`, Альфа; модератору — и если уже вписана), закупочная с «С НДС», цена
+     продажи (админ), срок обязывающего (только вендор по комиссии, `Binding::applies`); заявленная, минимальная и доля
+     свёрнуты строкой (раскрыты, если вписаны). Метки — не здесь: в окошке под блоком, в редакторе в шапке. Модератору —
+     оценочная, закупочная, НДС и срок (OfferRequest::MODERATOR). Гаражной (`garageOnly`) — только закупочная.
+     `now` — текущий шаг окошка (`floor` | `asking`): лаймовая рамка и фокус, поля шага — `data-save-own` (их несёт своя
+     кнопка «Сохранить и дальше»); `plate` — поля на плашке (фон поверхности); `idp` — начало id полей. Серые подсказки
+     заявленной и минимальной считаются на ходу (min-bid), закупочная от оценочной — value-floor. --}}
 @php
     $form ??= null;
-    // Закупочная стоит сверху карточки (вкладка «Без закупочной цены») — второй раз не нужна.
-    $floorElsewhere ??= false;
+    $now ??= null;
+    $idp ??= 'price-';
+    $plate ??= false;
+    $garageOnly ??= false;
+    $admin = auth()->user()->canManageCrm();
     $byValue = once(fn () => \App\Vendors\Vendor::where('rate_by_value', true)->pluck('id')->all());
+    $more = $offer->publish_price || $offer->min_bid_price || $offer->min_bid_share || $errors->hasAny(['publish_price', 'min_bid_price', 'min_bid_share']);
+    $input = 'field-input nums'.($plate ? ' !bg-surface' : '');
+    $ring = '!ring-2 !ring-accent';
+    $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0;
 @endphp
-<div class="grid grid-cols-2 gap-3" data-controller="min-bid value-floor">
-    @if (auth()->user()->canManageCrm())
-    {{-- Оценочная — только у вендора, чья закупочная от неё (`rate_by_value`, Альфа; владелец 05.10.2026: «у Совкомбанка
-         поля быть не должно»), даже если с парковки она пришла; та же, что у ТС парковки (`Cars\Car`: оценочная у машины одна). --}}
-    @unless ($floorElsewhere)
-    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true)) hidden @endunless>
-        <x-ui.field digits name="value" data-action="input->value-floor#sync" data-value-floor-target="value" label="Оценочная, ₽" :value="$offer->value" :form="$form"/>
+<div class="flex flex-col gap-3" data-controller="min-bid value-floor">
+    <div class="flex flex-col gap-3">
+        {{-- Оценочная — только у вендора, чья закупочная от неё (`rate_by_value`, Альфа); сменили вендора — прячется сама. --}}
+        <div class="field" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true) || (! $admin && $offer->value)) hidden @endunless>
+            <label for="{{ $idp }}value" class="field-label">Оценочная, ₽</label>
+            <input type="text" id="{{ $idp }}value" name="value" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="next" class="{{ $input }}"
+                data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" value="{{ old('value', $offer->value ? \App\Support\Money::nums($offer->value) : '') }}"
+                @if ($now === 'floor' && in_array($offer->vendor_id, $byValue, true)) data-detail-focus @endif>
+        </div>
+        <div class="field @error('floor_price') field-invalid @enderror">
+            <span class="field-label flex items-center gap-1.5"><label for="{{ $idp }}floor">Закупочная, ₽</label>
+                <span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></span>
+            <input type="text" id="{{ $idp }}floor" name="floor_price" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="{{ $admin ? 'next' : 'go' }}" class="{{ $input }} {{ $now === 'floor' ? $ring : '' }}"
+                data-controller="digits" data-action="input->digits#format" data-value-floor-target="floor" value="{{ old('floor_price', $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '') }}"
+                @if ($now === 'floor' && ! in_array($offer->vendor_id, $byValue, true)) data-detail-focus @endif>
+            @error('floor_price')<span class="field-error">{{ $message }}</span>@enderror
+        </div>
+        @if ($admin && ! $garageOnly)
+            <div class="field @error('asking_price') field-invalid @enderror">
+                <label for="{{ $idp }}asking" class="field-label">Цена продажи, ₽</label>
+                <input type="text" id="{{ $idp }}asking" name="asking_price" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="go" class="{{ $input }} {{ $now === 'asking' ? $ring : '' }}"
+                    data-controller="digits" data-action="input->digits#format" value="{{ old('asking_price', $offer->asking_price ? \App\Support\Money::nums($offer->asking_price) : '') }}"
+                    @if ($now === 'asking') data-detail-focus @endif>
+                @error('asking_price')<span class="field-error">{{ $message }}</span>@enderror
+            </div>
+        @endif
+        {{-- Срок обязывающего — только у вендора по комиссии (Совкомбанк, `Binding::applies`). --}}
+        @unless ($garageOnly)
+        <div data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
+            <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form" :id="$idp.'binding'"/>
+        </div>
+        @endunless
     </div>
-    <x-ui.field name="floor_price" data-controller="digits" data-value-floor-target="floor" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
-        <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
-    </x-ui.field>
-    @endunless
-    {{-- Срок обязывающего предложения (19.10.2026): до когда поставщик держит эту закупочную; приём подтверждений — не позже. --}}
-    @unless ($garageOnly ?? false)
-    @php $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0; @endphp
-    {{-- Только у вендора по комиссии (Совкомбанк, `Binding::applies`): сменили вендора — поле прячется и показывается само. --}}
-    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
-        <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form"/>
-    </div>
-    @endunless
-    {{-- Гаражной машине цены показа ни к чему: продаёт менеджер сам, своему покупателю (06.10.2026). --}}
-    @unless ($garageOnly ?? false)
-    <x-ui.field name="publish_price" label="Заявленная, ₽" :value="$offer->publish_price" :form="$form" :placeholder="$offer->bidFloor() ? \App\Support\Money::nums(\App\Offers\Offer::declaredFrom($offer->bidFloor())) : null"/>
-    {{-- В карточке у черновика цена продажи стоит в «Оценке» рядом с «В продажу» — второй раз не нужна. --}}
-    @unless ($askingElsewhere ?? false)<x-ui.field name="asking_price" label="Цена продажи, ₽" :value="$offer->asking_price" :form="$form"/>@endunless
-    <x-ui.field name="min_bid_price" label="Минимальная, ₽" :value="$offer->min_bid_price" :form="$form" :placeholder="$offer->minBid() ? \App\Support\Money::nums($offer->minBid()) : null"/>
-    <x-ui.field name="min_bid_share" label="Доля до продажной" :value="$offer->min_bid_share" :form="$form" placeholder="0,6"/>
-    {{-- Метки: в редакторе — в шапке пилюлями, здесь только в карточке строки. --}}
-    @endunless
-    @if ($withTags ?? true)<div class="col-span-2">@include('admin.offers.fields.tags')</div>@endif
-    @else
-    {{-- Оценочная — у вендора, чья закупочная от неё (`rate_by_value`, Альфа); та же, что у ТС парковки (`Cars\Car`: оценочная у машины одна). --}}
-    @unless ($floorElsewhere)
-    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true) || $offer->value) hidden @endunless>
-        <x-ui.field digits name="value" data-action="input->value-floor#sync" data-value-floor-target="value" label="Оценочная, ₽" :value="$offer->value" :form="$form"/>
-    </div>
-    <x-ui.field name="floor_price" data-controller="digits" data-value-floor-target="floor" data-action="input->digits#format" label="Закупочная, ₽" :value="$offer->floor_price" :form="$form" span="col-span-2">
-        <x-slot:after-label><span class="flags ml-auto pt-0"><x-ui.check name="prices_include_vat" :checked="$offer->prices_include_vat" :form="$form">С НДС</x-ui.check></span></x-slot:after-label>
-    </x-ui.field>
-    @endunless
-    {{-- Срок обязывающего предложения (19.10.2026): до когда поставщик держит эту закупочную; приём подтверждений — не позже. --}}
-    @unless ($garageOnly ?? false)
-    @php $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0; @endphp
-    {{-- Только у вендора по комиссии (Совкомбанк, `Binding::applies`): сменили вендора — поле прячется и показывается само. --}}
-    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
-        <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form"/>
-    </div>
-    @endunless
+    @if ($admin && ! $garageOnly)
+        <details class="price-more" @if ($more) open @endif>
+            <summary class="flex items-center gap-1 text-sm text-ink-muted">Заявленная, минимальная, доля <x-ui.icon name="chevron-down" class="price-more-chevron size-4"/></summary>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+                <x-ui.field name="publish_price" label="Заявленная, ₽" :value="$offer->publish_price" :form="$form" :id="$idp.'publish'" span="col-span-2" :placeholder="$offer->bidFloor() ? \App\Support\Money::nums(\App\Offers\Offer::declaredFrom($offer->bidFloor())) : null"/>
+                <x-ui.field name="min_bid_price" label="Минимальная, ₽" :value="$offer->min_bid_price" :form="$form" :id="$idp.'min'" :placeholder="$offer->minBid() ? \App\Support\Money::nums($offer->minBid()) : null"/>
+                <x-ui.field name="min_bid_share" label="Доля до продажной" :value="$offer->min_bid_share" :form="$form" :id="$idp.'share'" placeholder="0,6"/>
+            </div>
+        </details>
     @endif
 </div>

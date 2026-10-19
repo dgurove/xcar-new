@@ -57,6 +57,14 @@ class GiveController
             'pickup' => ['nullable', Rule::in(Giving::PICKUP)],
             'where' => ['nullable', Rule::in(array_keys(Giving::WHERE))],
         ]);
+        // «Кому → Менеджеру» без менеджера — не «взяли под себя» молча (19.10.2026): под себя — только явным «Себе».
+        if ($garage && ! $bid && $request->input('whom') === 'manager' && empty($data['manager_id'])) {
+            throw ValidationException::withMessages(['manager_id' => 'Выберите менеджера']);
+        }
+        if ($request->input('whom') === 'self') {
+            $data['manager_id'] = null;
+            $data['pickup'] = 'us';
+        }
         $scheme = DealScheme::resolve($offer, DealScheme::tryFrom($data['scheme'] ?? ''));
         if (! $garage && $scheme->paysSelection() && ! isset($data['owner_price']) && ! $offer->owner_price && ! $offer->floor_price) {
             throw ValidationException::withMessages(['owner_price' => $scheme === DealScheme::OwnerDkp ? 'Сколько покупатель отдаёт страхователю по ДКП' : 'Сколько покупатель отдаёт страховой']);

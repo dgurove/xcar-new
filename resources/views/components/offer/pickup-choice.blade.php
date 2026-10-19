@@ -14,22 +14,32 @@
 @endphp
 @if ($shows)
     @if ($garage)
+        {{-- Гараж «Себе» (`.give-garage` с «Кому» = «Себе», 19.10.2026): «Уже у нас», а «Везёт в гараж» нет — только логистика. --}}
         <div class="flex flex-col gap-1.5">
             <span class="field-label">Где ТС</span>
             <div class="flex flex-wrap gap-2">
-                @foreach (\App\Offers\Giving::WHERE as $key => $label)
-                    <label class="choice"><input type="radio" name="where" value="{{ $key }}" @checked(old('where', 'owner') === $key)><span>{{ $label }}</span></label>
-                @endforeach
+                <label class="choice"><input type="radio" name="where" value="owner" @checked(old('where', 'owner') === 'owner')><span>У страховой</span></label>
+                <label class="choice"><input type="radio" name="where" value="arrived" @checked(old('where') === 'arrived')><span><span class="give-to-manager">Уже у менеджера</span><span class="give-to-self">Уже у нас</span></span></label>
             </div>
         </div>
-    @endif
+        <div class="give-carry">
+            <div class="flex flex-col gap-1.5">
+                <span class="field-label">Везёт в гараж</span>
+                <div class="flex flex-wrap gap-2">
+                    <label class="choice"><input type="radio" name="pickup" value="manager" @checked($pick === 'manager')><span>{{ $manager ? $manager->shortName().' сам' : 'Менеджер сам' }}</span></label>
+                    <label class="choice"><input type="radio" name="pickup" value="us" @checked($pick === 'us')><span>Логистика</span></label>
+                </div>
+            </div>
+        </div>
+    @else
     <div class="flex flex-col gap-1.5">
-        <span class="field-label">{{ $garage ? 'Везёт в гараж' : 'Забирает автомобиль' }}</span>
+        <span class="field-label">Забирает автомобиль</span>
         <div class="flex flex-wrap gap-2">
             <label class="choice"><input type="radio" name="pickup" value="manager" @checked($pick === 'manager')><span>{{ $manager?->shortName() ?? 'Менеджер' }}</span></label>
             <label class="choice"><input type="radio" name="pickup" value="us" @checked($pick === 'us')><span>Логистика</span></label>
         </div>
     </div>
+    @endif
 @elseif ($garage)
     <input type="hidden" name="where" value="arrived">
 @endif
