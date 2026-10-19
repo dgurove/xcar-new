@@ -325,6 +325,31 @@ final class Binding
         return self::alarmsFor($user) ? once(fn () => self::alarmQuery($user)->count()) : 0;
     }
 
+    /**
+     * Причина тревоги — подзаголовок группы на экране «Горит» (19.10.2026, начальник: «причину подзаголовками по группировке»),
+     * по тому, что ближе к деньгам: сделка не заплатила поставщику, приём закрылся пустым, в продаже нет подтверждений, не
+     * выставлено в продажу.
+     */
+    public const REASONS = [
+        'unpaid' => 'Поставщику не заплачено',
+        'closed' => 'Приём закрыт, подтверждений нет',
+        'open' => 'В продаже, подтверждений нет',
+        'draft' => 'Не выставлено в продажу',
+    ];
+
+    /** @return key-of<self::REASONS> */
+    public static function reason(Offer $offer): string
+    {
+        return match (true) {
+            self::unpaidDeal($offer) => 'unpaid',
+            $offer->state === OfferState::Open => $offer->closed() ? 'closed' : 'open',
+            default => 'draft',
+        };
+    }
+
+    /** Менеджер идущей сделки — чип «Менеджер» экрана «Горит» (машина без покупателя — «Без менеджера»). */
+    public const MANAGER_SQL = "(select d.buyer_id from deals d where d.offer_id = offers.id and d.state = 'active' order by d.id desc limit 1)";
+
     /** @return Collection<int, Offer> по сроку, ближние сверху */
     public static function alarms(User $user): Collection
     {
@@ -340,6 +365,9 @@ final class Binding
         if (! $offer?->binding_until) {
             return;
         }
-        app(Publisher::class)->badges(User::logisticsLeads()->pluck('id')->map(fn (int $id) => Topics::user($id))->values()->all());
+        $topics = User::logisticsLeads()->pluck('id')->map(fn (int $id) => Topics::user($id))->values()->all();
+        app(Publisher::class)->badges($topics);
+        // Экран «Горит» (`AlarmController`) — перечитывается у тех же людей: потушили — строка ушла.
+        app(Publisher::class)->refreshSoon($topics, ['/alarms']);
     }
 }

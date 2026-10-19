@@ -40,6 +40,12 @@ final class Ago
     }
 
     /** Сколько прошло с момента — слитно, как просил владелец: «2д 14ч», «3ч 5мин», «12мин». */
+    /** «просрочено 2 д 4 ч» — сколько прошло после срока, тем же видом, что `left` («осталось 1 д 5 ч»). */
+    public static function overdue(Carbon $until): string
+    {
+        return 'просрочено '.self::span(max(60, (int) floor($until->diffInSeconds(now(), false))));
+    }
+
     public static function since(Carbon $from): string
     {
         return str_replace([' д', ' ч', ' мин'], ['д', 'ч', 'мин'], self::span(max(60, (int) floor($from->diffInSeconds(now(), false)))));

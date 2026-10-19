@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Route;
 Route::domain(config('xcar.logistics_host'))->get('/', fn () => redirect(auth()->user()?->isModerator() && ! auth()->user()->isAdmin() ? '/documents' : '/transports'));
 
 Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLogistics'])->group(function () {
+    // «Горит» — срок обязывающего (19.10.2026): тот же экран, что в CRM, строка ведёт в задачу вывоза.
+    Route::get('/alarms', [\App\Http\Admin\AlarmController::class, 'index'])->middleware('ability:leadsLogistics');
     Route::get('/search', SearchController::class);
     // «+ Новый исполнитель / заказчик / логист / сотрудник» в шторке выбора (18.10.2026).
     Route::post('/people', [PeopleController::class, 'store']);

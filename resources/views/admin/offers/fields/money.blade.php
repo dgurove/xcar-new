@@ -1,7 +1,7 @@
 {{-- Поля цен — одни на окошко строки (`admin/offers/price-steps`: черновик — блоком по шагам, остальное — разделом) и
      редактор (карточка «Цены», `form=offer-form`), 19.10.2026: «к унификации». Столбиком, каждое подписано и на своём месте:
      оценочная (только у вендора `rate_by_value`, Альфа; модератору — и если уже вписана), закупочная, цена
-     продажи (админ) — рядом в две колонки; срок обязывающего — тихой строкой под ними (только вендор по комиссии); заявленная, минимальная и доля
+     продажи (админ) — рядом в две колонки; срок обязывающего — в «Показе» (модератору — тихой строкой под ценами) (только вендор по комиссии); заявленная, минимальная и доля
      свёрнуты строкой (раскрыты, если вписаны). Метки — не здесь: в окошке под блоком, в редакторе в шапке; «С НДС» — у заголовка «Цены» (`fields/vat-check`). Модератору —
      оценочная, закупочная, НДС и срок (OfferRequest::MODERATOR). Гаражной (`garageOnly`) — только закупочная.
      `now` — текущий шаг окошка (`floor` | `asking`): лаймовая рамка и фокус, поля шага — `data-save-own` (их несёт своя
@@ -48,16 +48,15 @@
                 </div>
             @endif
         </div>
-        {{-- Срок обязывающего — данность от страховой (19.10.2026, владелец: «меняется супер редко, показывать компактно»):
-             тихой строкой под ценами, до когда поставщик держит закупочную; нажатие — календарь. Только вендор по комиссии
-             (Совкомбанк, `Binding::applies`), сменили вендора — строка прячется сама. --}}
-        @unless ($garageOnly)
+        {{-- Срок обязывающего живёт в «Показе» (`x-offer.showing`, 19.10.2026, владелец). У модератора «Показа» нет — ему
+             тихой строкой под ценами, нажатие — календарь. Только вендор по комиссии (Совкомбанк, `Binding::applies`). --}}
+        @if (! $admin && ! $garageOnly)
             @php $bindingHot = $offer->binding_until && \App\Offers\Binding::word($offer); @endphp
             <span class="flex flex-wrap items-baseline gap-x-1 text-sm {{ $bindingHot ? 'text-danger' : 'text-ink-muted' }}" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
                 обязывающее до <x-ui.date name="binding_until" :id="$idp.'binding'" chip time default-time="23:59" :value="old('binding_until', $offer->binding_until?->format('Y-m-d\TH:i'))" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : 'указать'" :form="$form" class="nums underline decoration-dotted underline-offset-4"/>@if ($bindingHot)<span class="nums">, {{ \App\Offers\Binding::word($offer) }}</span>@endif
             </span>
             @error('binding_until')<span class="field-error">{{ $message }}</span>@enderror
-        @endunless
+        @endif
     </div>
     @if ($admin && ! $garageOnly)
         <details class="price-more" @if ($more) open @endif>

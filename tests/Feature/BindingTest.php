@@ -168,17 +168,22 @@ class BindingTest extends TestCase
         $this->offer->forceFill(['state' => OfferState::Open, 'binding_until' => Carbon::parse('2026-10-21 16:00')])->saveQuietly();
         $t = app(OpenPickup::class)($this->offer->fresh(), $this->admin);
 
-        // CRM и логистика: капсула с числом, шторка со списком (в логистике — на задачу).
+        // CRM и логистика: капсула с числом ведёт на экран «Горит» (в логистике строка — на задачу).
         $this->assertSame(1, Binding::alarmQuery($moderator)->count());
         $this->actingAs($moderator)->get('http://crm.xcar.localhost/?preset=published')->assertOk()->assertSee('data-alarm-button="wide"', false);
-        $this->actingAs($moderator)->get('http://logistics.xcar.localhost/live/alarms')->assertOk()->assertSee('/transports/'.$t->id, false)->assertSee('Горит');
+        $this->actingAs($moderator)->get('http://logistics.xcar.localhost/alarms')->assertOk()->assertSee('/transports/'.$t->id, false)
+            ->assertSee('Вот-вот сгорят')->assertSee('В продаже, подтверждений нет');
         $this->actingAs($this->admin)->get('http://crm.xcar.localhost/live/badges', ['Accept' => 'text/vnd.turbo-stream.html'])->assertOk()
             ->assertSee('data-alarm-button', false)->assertSee('Горит срок обязывающего: 1', false);
 
-        // Две машины в шторке — строка на каждую (19.10.2026: вторая роняла шторку «не получилось»).
+        // Две машины — строка на каждую (19.10.2026: вторая роняла шторку «не получилось»); вышедший — в «Сгорели».
         $second = Offer::create(['vendor_id' => $this->offer->vendor_id, 'claim_ref' => '483515/2026']);
         $second->forceFill(['state' => OfferState::Open, 'binding_until' => Carbon::parse('2026-10-21 18:00')])->saveQuietly();
-        $this->actingAs($moderator)->get('http://crm.xcar.localhost/live/alarms')->assertOk()->assertSee('/offers/'.$second->fresh()->number, false);
+        $this->actingAs($moderator)->get('http://crm.xcar.localhost/alarms')->assertOk()->assertSee('peek='.$second->fresh()->number, false);
+        $second->forceFill(['binding_until' => now()->subDay()])->saveQuietly();
+        $this->actingAs($moderator)->get('http://crm.xcar.localhost/alarms')->assertOk()->assertSee('Сгорели')->assertSee('просрочено');
+        // Чип «Менеджер»: «Без менеджера» — машины без покупателя, они и есть.
+        $this->actingAs($moderator)->get('http://crm.xcar.localhost/alarms?manager=none')->assertOk()->assertSee('peek='.$second->fresh()->number, false);
         $second->forceFill(['binding_until' => null])->saveQuietly();
 
         // Давно вышедший — красный в списках, но не в тревоге.

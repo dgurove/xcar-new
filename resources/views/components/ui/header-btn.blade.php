@@ -8,7 +8,7 @@
     $link = ['favorites' => ['/account/favorites', 'bookmark', 'Избранное'], 'chats' => ['/work/chats', 'chat', 'Чаты']][$name] ?? null;
 @endphp
 @if ($link)
-    <a href="{{ $link[0] }}" class="{{ $class(true) }}" aria-label="{{ $link[2] }}">
+    <a href="{{ $link[0] }}" class="{{ $class(true) }}" aria-label="{{ $link[2] }}" @if ($name === 'chats' && ! $wide) data-chats-phone @endif>
         <x-ui.icon :name="$link[1]" class="{{ $size }}"/><x-ui.badge :href="$link[0]" :badges="$badges"/>
     </a>
 @elseif ($name === 'notifications')
@@ -25,13 +25,8 @@
     </div>
 @elseif ($name === 'alarm')
     {{-- Тревога «нет покупателя» (19.10.2026, `Offers\Binding`): красная мерцающая капсула с числом, пока причина не устранена;
-         закрыть её нельзя — гаснет сама. Нажатие — шторка со списком машин. Число и видимость обновляет `/live/badges`. --}}
-    <div class="contents header-sq-wrap" data-controller="sheet alarms">
-        <x-alarm.button :wide="$wide"/>
-        <x-ui.sheet :id="'alarm-sheet'.$tail" title="Горит срок обязывающего">
-            <turbo-frame id="alarms{{ $tail }}" src="/live/alarms" loading="lazy" data-alarms-target="frame" class="block min-h-32"><x-ui.skeleton :rows="3"/></turbo-frame>
-        </x-ui.sheet>
-    </div>
+         закрыть её нельзя — гаснет сама. Нажатие — экран «Горит» (`/alarms`). Число и видимость обновляет `/live/badges`. --}}
+    <x-alarm.button :wide="$wide"/>
 @elseif ($name === 'theme')
     <button type="button" class="{{ $class(false) }}" data-controller="theme" data-action="theme#toggle" aria-label="Тема">
         <x-ui.icon name="sun" class="on-light {{ $size }}"/><x-ui.icon name="moon" class="on-dark {{ $size }}"/>

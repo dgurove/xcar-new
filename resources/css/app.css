@@ -821,7 +821,8 @@ html.kb-open { --home-gap: 0px; }
   /* Тревога в шапке: красная, мерцает заливкой; число рядом с сиреной. На телефоне, пока она есть, тема уступает место. */
   .header-btn.alarm-btn, .dark .header-btn.alarm-btn { gap: .25rem; background: var(--color-danger); color: #fff; font-weight: 600; font-size: var(--text-sm); animation: binding-pulse 1.6s ease-in-out infinite; }
   .header-sq.alarm-btn { width: auto; min-width: 2.5rem; padding-inline: .5rem; }
-  .header:has([data-alarm-button="phone"]:not([hidden])) [data-theme-phone] { display: none; }
+  /* Телефон: тревога — на месте «Чатов» (19.10.2026); горит — «Чаты» прячутся. */
+  .header:has([data-alarm-button="phone"]:not([hidden])) [data-chats-phone] { display: none; }
   .header-btn.alarm-btn[hidden] { display: none; }
   @media (prefers-reduced-motion: reduce) { .header-btn.alarm-btn { animation: none; } }
   /* Карточка уведомления тревоги — красная (`Notice::alarm`), закрытая — улетает в капсулу шапки. */

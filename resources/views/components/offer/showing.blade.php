@@ -1,5 +1,5 @@
 {{-- «Показ» — один модуль у предложения и у сделки (12.10.2026, владелец: «бесит, что „Кому показывать“ в одном месте, а в
-     сделке в другом», «сделай их одинаковыми»): первое поле — срок, второе — «Кому показывать» строкой-сводкой со шторкой.
+     сделке в другом», «сделай их одинаковыми»): первое поле — срок обязывающего (у вендора по комиссии), дальше срок показа и «Кому показывать» строкой-сводкой со шторкой.
      У предложения срок — «Приём подтверждений до», в шторке волны «кто → когда», ниже галки показа; у сделки — «Сколько
      показывать» (`deal_show_until`), в шторке тот же список без времени (`audience_controller` mode=list). Гараж, архив и
      прочее — модуля нет. Стоит справа под «Ценами» в редакторе (`as=card`) и разделом в окошках (`as=section`); у черновика и
@@ -34,6 +34,13 @@
     {{-- Блок пришёл в форме: снятые галки и пустой список — снятые (`OfferRequest::payload`). --}}
     <input type="hidden" name="{{ $mode === 'deal' ? '_deal_show' : '_show' }}" value="1" form="{{ $form }}">
     <div class="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-3">
+        {{-- Срок обязывающего (19.10.2026, владелец: «туда хорошо подходит»): данность от страховой, до когда поставщик держит
+             закупочную; приём подтверждений — не позже. Только вендор по комиссии (Совкомбанк), сменили вендора — прячется. --}}
+        @php $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0; @endphp
+        <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
+            <x-ui.field name="binding_until" :id="'f-binding_until-'.$n.'-'.$as" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59"
+                :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form"/>
+        </div>
         @if ($mode === 'offer')
             {{-- Срок приёма — выбор даты (`x-ui.date`), время по умолчанию 17:30 (владелец 10.10.2026: «чаще всего надо 17:30»). --}}
             <x-ui.field name="bids_close_at" id="f-bids_close_at-{{ $n }}" label="Приём подтверждений до" type="datetime-local" default-time="17:30" span="col-span-2"

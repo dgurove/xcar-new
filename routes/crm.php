@@ -56,6 +56,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::get('/', [OfferController::class, 'index'])->name('crm.offers');
     // Поиск в шапке — модератору тоже: свои черновики (`Search\Search::for` сам решает, кому какие группы).
     Route::get('/search', SearchController::class);
+    // «Горит» — срок обязывающего (19.10.2026): ведущим логистику, админам и модераторам.
+    Route::get('/alarms', [\App\Http\Admin\AlarmController::class, 'index'])->middleware('ability:leadsLogistics');
     Route::get('/offers', fn () => redirect('/'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
     Route::post('/offers', [OfferController::class, 'store']);
     // Из писем: та же почта с вшитой выборкой «надо завести» — раньше `/offers/{offer}`, иначе from-mail примут за номер.

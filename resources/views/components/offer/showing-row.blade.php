@@ -17,6 +17,8 @@
         ! $offer->garage_allowed ? 'без гаража' : null,
     ]);
     $who = AudienceRules::summary(AudienceRules::of($offer)).($marks ? ', '.implode(', ', $marks) : '');
+    // Срок обязывающего — в шторке; строкой сводки только когда горит (красным).
+    $binding = \App\Offers\Binding::matters($offer) ? \App\Offers\Binding::word($offer) : null;
     $id = 'showing-'.$offer->number.'-'.$form;
 @endphp
 @if (auth()->user()->canManageCrm())
@@ -26,6 +28,7 @@
         <span class="min-w-0 flex-1">
             @if ($when !== false)<span class="block nums">{{ $when }}</span>@endif
             <span @class(['block', 'text-sm text-ink-muted' => $when !== false])>{{ $who }}</span>
+            @if ($binding)<span class="block nums text-sm text-danger">обязывающее до {{ \App\Offers\Binding::date($offer->binding_until) }}, {{ $binding }}</span>@endif
         </span>
         <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
     </button>

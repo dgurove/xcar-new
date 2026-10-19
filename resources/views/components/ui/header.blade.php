@@ -32,6 +32,8 @@
                 </a>
             @elseif ($user)
                 <x-search.box phone/>
+                {{-- Тревога — на месте «Чатов» (19.10.2026, владелец): горит — капсула, «Чаты» прячутся; погасла — «Чаты» снова. --}}
+                @if ($alarm)<x-ui.header-btn name="alarm"/>@endif
                 @if ($site || $crmChats)<x-ui.header-btn :name="$site ? 'favorites' : 'chats'" :badges="$badges"/>@endif
             @endif
         </div>
@@ -39,8 +41,6 @@
         <div class="flex items-center gap-1 justify-self-end">
             <span class="net" aria-live="polite"></span>
             @if ($user)
-                {{-- Тревога «нет покупателя» — перед колокольчиком; пока горит, тема на телефоне уступает ей место. --}}
-                @if ($alarm)<x-ui.header-btn name="alarm"/>@endif
                 <x-ui.header-btn name="notifications" :badges="$badges"/>
             @else
                 <a href="/login" class="header-btn header-sq" aria-label="Войти"><x-ui.icon name="login" class="size-[18px]"/></a>
