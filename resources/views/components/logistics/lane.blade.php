@@ -17,8 +17,9 @@
     $sheet = 'pickup-'.$offer->number;
     $keys = $offer->car?->keys_count;
     $manager = $t?->channel === Channel::Manager;
-    // Кто и куда меняются окном «Назначить вывоз», пока ТС не забрали; исполнителя логиста ставит логист.
-    $changeable = $open && ! $t->state->picked() && ! $manager;
+    // Кто и куда меняются окном «Назначить вывоз», пока ТС не забрали; исполнителя логиста ставит логист. Забирает менеджер
+    // сделки — тоже: 19.10.2026 (ГАЗель 807360) такой вывоз нельзя было передать в логистику — окна не было ни тут, ни там.
+    $changeable = $open && ! $t->state->picked();
     $undo = $t ? \App\Logistics\Actions\StepBack::last($t) : null;
     $undo = $undo && \App\Logistics\Actions\StepBack::allowed($t, auth()->user(), $undo) ? $undo : null;
     $undoLabel = match ($undo) { 'logist' => 'Снять логиста', 'executor' => 'Снять исполнителя', null => null, default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$undo].'»' };
@@ -59,6 +60,15 @@
         </div>
         @if ($deal?->isActive() && ! $deal->isGarage())
             <x-deal.handover :deal="$deal" compact lane class="mb-4"/>
+        @endif
+        @if ($manager && $changeable)
+            {{-- Менеджер забирает сам — одной строкой; нажатие — то же окно «Назначить вывоз», где его меняют на логиста или наших. --}}
+            <div class="list mb-4">
+                <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">
+                    <span class="min-w-0 flex-1"><span class="block">Забирает сам</span><span class="row-sub">{{ $t->executor?->shortName() }}</span></span>
+                    <span class="shrink-0 text-accent-text">Передать в логистику</span><x-ui.chevron/>
+                </button>
+            </div>
         @endif
         @if (! $manager)
             <x-logistics.legs :t="$t" class="mb-4"/>
