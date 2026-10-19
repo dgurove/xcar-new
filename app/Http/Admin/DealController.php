@@ -59,7 +59,9 @@ class DealController
             // Срок обязывающего горит, а поставщику не заплачено (19.10.2026, `Offers\Binding`).
             Facet::toggle('binding', 'Горит обязывающее', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger'),
         );
+        $askedSort = $request->query('sort');
         ListPrefs::sync($request, 'crm-deals', keep: $facets->keys());
+        OfferController::forgetBindingSort($request, $askedSort);
         $preset = $request->query('preset', 'active');
         $searching = $facets->searching();
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');

@@ -136,11 +136,25 @@ class OfferController
         'binding' => ['Срок обязывающего', 'asc'],
     ];
 
+    /**
+     * Сортировка по сроку обязывающего — на этот раз, не запоминается (19.10.2026: однажды нажали — и список навсегда стоял
+     * по сроку): запомненная снимается, вкладка встаёт по своему умолчанию. Одна дверь у предложений и «Сделок».
+     */
+    public static function forgetBindingSort(Request $request, mixed $asked): void
+    {
+        $sort = (string) $request->query('sort');
+        if (ltrim($sort, '-') === 'binding' && $asked !== $sort) {
+            $request->query->remove('sort');
+        }
+    }
+
     /** Сортировка вкладки: поля её столбцов, номер всегда, закрытие приёма — у опубликованных. */
     private static function sortFor(Request $request, string $preset, ?array $cols, bool $admin): Sort
     {
         $options = array_filter(self::SORTS, fn ($_, $key) => match ($key) {
             'number' => true,
+            // Срок обязывающего — без столбца (19.10.2026, владелец: «засрали интерфейс»): только в окошке сортировки.
+            'binding' => $cols !== null,
             'closing' => in_array($preset, self::OPEN, true),
             'tab' => in_array($preset, self::BY_TAB, true),
             // Во вкладках шагов время, порядок и аватар — про приход во вкладку (18.10.2026, начальник: сортировал по
@@ -208,7 +222,9 @@ class OfferController
             // «Есть подтверждения» — подтверждение есть, а принять не успели (`undecided`).
             Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger'),
         ] : []))->always();
+        $askedSort = $request->query('sort');
         ListPrefs::sync($request, 'crm-offers', keep: $facets->keys());
+        self::forgetBindingSort($request, $askedSort);
         $cols = self::columns($preset, $request->user());
         $sort = self::sortFor($request, $preset, $cols, $admin);
         // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.
@@ -434,18 +450,17 @@ class OfferController
 
         $cols = match ($preset ?? 'unpriced') {
             // Закупочную заполняют — цены продажи здесь не бывает.
-            'nofloor' => ['vendor', 'city', 'binding', 'floor', 'created'],
+            'nofloor' => ['vendor', 'city', 'floor', 'created'],
             // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»). Оценочной в таблице нет
             // (владелец 05.10.2026: «скрой») — она в карточке строки, в «Деньгах».
-            // Срок обязывающего (19.10.2026) — до какого числа поставщик держит закупочную: там, где покупателя ещё ищут.
-            'unpriced', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'binding', 'floor', 'price', 'created'],
+            'unpriced', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
-            'slots' => ['vendor', 'city', 'binding', 'floor', 'price', 'created'],
+            'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
             // В «Опубликованных» у админа подтверждений нет по определению — столбца тоже.
-            'published', 'closed' => ['vendor', 'city', ...($admin ? ['state'] : []), 'binding', 'floor', 'price', 'published'],
-            'bids' => ['vendor', 'city', 'state', 'binding', 'bids', 'floor', 'price', 'published'],
+            'published', 'closed' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
+            'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
 

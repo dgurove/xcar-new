@@ -216,8 +216,8 @@ class BindingTest extends TestCase
         $this->assertSame('2026-10-21 18:00', $pos->fresh()->deadline_at->format('Y-m-d H:i'));
         $this->assertSame('2026-10-21 18:00', Binding::stageDeadline($this->offer->fresh(), $deal, null, Carbon::parse('2026-10-30'))->format('Y-m-d H:i'));
 
-        // «Работа → Сделки»: столбец и красная дата.
-        $this->actingAs($this->admin)->get('http://crm.xcar.localhost/work/deals?vid=table')->assertOk()->assertSee('Обязывающее до');
+        // «Работа → Сделки»: столбца нет, горит — короткая метка у названия.
+        $this->actingAs($this->admin)->get('http://crm.xcar.localhost/work/deals?vid=table')->assertOk()->assertSee('binding-tag', false)->assertDontSee('Обязывающее до');
 
         // Заплатили поставщику — срок больше не грозит.
         $deal->forceFill(['supplier_paid_at' => now()])->save();

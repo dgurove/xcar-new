@@ -19,10 +19,9 @@
     {{ $slot }}
     <x-ui.sheet :id="$id" :title="$title" tall>
         <div class="mb-4 flex flex-wrap items-center gap-1.5">@if ($bid)<x-ui.person :user="$bid->user" full/>@endif<span class="tag">{{ $offer->titleWithYear() }}</span>
-            {{-- Срок обязывающего (19.10.2026): решать и платить поставщику — до него. --}}
-            @if (\App\Offers\Binding::matters($offer))
-                @php $bindingWord = \App\Offers\Binding::word($offer); @endphp
-                <span @class(['text-sm nums', 'font-medium text-danger' => $bindingWord, 'text-ink-muted' => ! $bindingWord])>обязывающее до {{ \App\Offers\Binding::date($offer->binding_until) }}@if ($bindingWord), {{ $bindingWord }}@endif</span>
+            {{-- Срок обязывающего горит (19.10.2026): решать и платить поставщику — до него. --}}
+            @if ($bindingWord = \App\Offers\Binding::word($offer))
+                <span class="nums text-sm font-medium text-danger">обязывающее {{ $offer->binding_until->isPast() ? $bindingWord : 'до '.\App\Offers\Binding::date($offer->binding_until).', '.$bindingWord }}</span>
             @endif
         </div>
         @if ($bid)

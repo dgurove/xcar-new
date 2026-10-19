@@ -1,7 +1,7 @@
 {{-- Строка «Предложений» вендора: название, под ним номер убытка (копируется) и где сейчас — на телефоне; от 640 номер
      своим столбцом, от 768 «Где» словом вкладки (`Offer::crmTab`). Подтверждения и интерес — сколько было всего, цены. «Запрос» — когда номер отправили вендору, ссылкой на шторку того запроса в «Запросах» (на телефоне — во второй
      строке); присланное вендором письмом — серое «письмом». Нажатие — редактор предложения (`row-go`). --}}
-@props(['offer', 'base'])
+@props(['offer', 'base', 'binding' => true])
 @php use App\Support\Money; $tab = $offer->crmTab(); $sent = $offer->claimRequest; @endphp
 <tr>
     <td class="grow">
@@ -11,7 +11,7 @@
     <td class="cell-dim hidden sm:table-cell">@if ($offer->claim_ref)<x-ui.copy-code :value="$offer->claim_ref"/>@endif</td>
     <td class="hidden whitespace-nowrap text-ink-muted md:table-cell">{{ $tab }}</td>
     {{-- Срок обязывающего (19.10.2026): горит всерьёз — красным (`binding_panic` из выборки). --}}
-    <td @class(['hidden whitespace-nowrap nums md:table-cell', 'font-semibold text-danger' => $offer->binding_panic, 'text-ink-muted' => ! $offer->binding_panic])>{{ $offer->binding_until ? \App\Offers\Binding::date($offer->binding_until) : '' }}</td>
+    @if ($binding)<td @class(['hidden whitespace-nowrap nums md:table-cell', 'font-semibold text-danger' => $offer->binding_panic, 'text-ink-muted' => ! $offer->binding_panic])>{{ $offer->binding_until ? \App\Offers\Binding::date($offer->binding_until) : '' }}</td>@endif
     <td class="num nums">@if ($offer->bids_count)<span class="text-accent-text">{{ $offer->bids_count }}</span>@endif</td>
     <td class="num nums">@if ($offer->interests_count)<span class="text-accent-text">{{ $offer->interests_count }}</span>@endif</td>
     <td class="num nums hidden whitespace-nowrap sm:table-cell">@if ($offer->floor_price){{ Money::exact($offer->floor_price) }}@endif</td>

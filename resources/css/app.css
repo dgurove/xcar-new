@@ -800,7 +800,7 @@ html.kb-open { --home-gap: 0px; }
   /* Срок обязывающего предложения горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — сплошным красным, мерцает
      (теней нет — меняется заливка); в строке списка — меткой у названия (`x-offer.binding tag`). */
   .binding-panic { display: inline-flex; align-items: center; gap: .3rem; background: var(--color-danger); color: #fff; font-weight: 600; animation: binding-pulse 1.6s ease-in-out infinite; }
-  .binding-tag { border-radius: 999px; padding: .05rem .5rem; font-size: var(--text-xs); line-height: 1.35; white-space: nowrap; vertical-align: .05em; }
+  .binding-tag { animation: none; border-radius: 999px; padding: .05rem .5rem; font-size: var(--text-xs); line-height: 1.35; white-space: nowrap; vertical-align: .05em; }
   @keyframes binding-pulse { 0%, 100% { background: var(--color-danger); } 50% { background: color-mix(in srgb, var(--color-danger) 70%, #fff); } }
   @media (prefers-reduced-motion: reduce) { .binding-panic { animation: none; } }
   /* Тревога в шапке: красная, мерцает заливкой; число рядом с сиреной. На телефоне, пока она есть, тема уступает место. */

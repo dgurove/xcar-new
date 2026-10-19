@@ -20,8 +20,8 @@
             <span>{{ $car->manager?->shortName() ?? 'взяли под себя' }}</span>
             @if ($car->deal?->garagePayerLine())<span>{{ $car->deal->garagePayerLine() }}</span>@endif
             @unless ($car->isSold())<span>{{ \App\Garage\CarLine::days($car->stageDays()) }} на этапе</span>@endunless
-            {{-- Срок обязывающего, пока поставщику не заплачено (19.10.2026). --}}
-            @if ($car->dealOpen() && \App\Offers\Binding::matters($offer))<span @class(['nums', 'text-danger font-medium' => \App\Offers\Binding::panics($offer)])>обязывающее до {{ \App\Offers\Binding::date($offer->binding_until) }}</span>@endif
+            {{-- Срок обязывающего, пока поставщику не заплачено, — только горящий (19.10.2026). --}}
+            @if ($car->dealOpen() && ($bindingWord = \App\Offers\Binding::word($offer)))<span class="nums font-medium text-danger">обязывающее {{ $offer->binding_until->isPast() ? $bindingWord : 'до '.\App\Offers\Binding::date($offer->binding_until).', '.$bindingWord }}</span>@endif
         </x-slot:line>
         <div class="mt-4">@include('admin.offers.garage-card', ['routeHere' => true])</div>
         @if ($letters)

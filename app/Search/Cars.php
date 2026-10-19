@@ -55,10 +55,9 @@ final class Cars
         $hit->external = false;
         $hit->title = $o->titleWithYear();
         array_unshift($hit->line, $state);
-        // Срок обязывающего — админу CRM, пока он что-то значит (19.10.2026): горит — красным.
-        if ($who && Binding::matters($o)) {
-            $word = Binding::word($o);
-            array_splice($hit->line, 1, 0, [new HtmlString('<span class="'.($word ? 'text-danger' : '').'">обязывающее до '.e(Binding::date($o->binding_until)).($word ? ', '.e($word) : '').'</span>')]);
+        // Срок обязывающего — админу CRM, только горящий (19.10.2026): красным.
+        if ($who && ($word = Binding::word($o))) {
+            array_splice($hit->line, 1, 0, [new HtmlString('<span class="text-danger">обязывающее '.e($o->binding_until->isPast() ? $word : 'до '.Binding::date($o->binding_until).', '.$word).'</span>')]);
         }
         // На сайте номер убытка не ищется — и выше от него не встаёт (по рангу его можно было бы угадать).
         $hit->rank = min($hit->rank, $this->exact($crm ? $o->claim_ref_key : null, $o->vin, (string) $o->number) ? 0 : (in_array($o->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true) ? 2 : 1));
