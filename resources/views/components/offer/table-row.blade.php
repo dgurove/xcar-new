@@ -136,13 +136,13 @@
              согласились — галочка с числом у цены; ждём — аватары и срок под ценой вместо закупочной. --}}
         @elseif ($price->shown() && $correcting)
             @if ($proposes)<span class="text-ink-muted">{{ $price::money($price->to) }}&nbsp;→</span> <x-offer.correction-chip :offer="$offer" part="proposal"/>@else{{ $price::money($price->to) }} <x-offer.correction-chip :offer="$offer" part="agreed"/>@endif
-            @if ($waits)<span class="mt-1 flex justify-end"><x-offer.correction-chip :offer="$offer" part="waiting"/></span>@endif
+            @if ($waits)<span class="mt-1 flex justify-end sm:mt-0 sm:ml-1.5 sm:inline-flex"><x-offer.correction-chip :offer="$offer" part="waiting"/></span>@endif
         @elseif ($price->shown()){{ $price::money($price->to) }}
         @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
         {{-- Телефон: подтверждения — под ценой, а не в конце второй строки: там их съедало «…» за номерами (владелец
              04.10.2026: «самое важное, никогда нельзя скрывать»). Есть подтверждения — они вместо закупочной. --}}
         {{-- В минус или почти без наценки (`Offers\Margin`, 14.10.2026) — под ценой, только в CRM админу. --}}
-        @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin" class="cell-sub !ml-0 block"/>@endif
+        @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin" class="cell-sub max-sm:!ml-0"/>@endif
         @if ($count)<span class="cell-sub sm:hidden nums {{ $gallery ? '!text-accent-text' : '!text-urgent' }}">{{ $countWord }}</span>
         @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span class="cell-sub sm:hidden" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>@endif

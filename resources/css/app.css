@@ -1244,9 +1244,22 @@ html.kb-open { --home-gap: 0px; }
     .table th.fill { width: 100%; }
   }
   .table th, .table td { @apply text-left align-middle; padding: .375rem .25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  /* На ПК строка в одну линию: ячейки по буквам, а не по центру — название крупнее остальных, и по центру номер, дата и
-     сумма вставали на 1–1,5 px ниже него (07.10.2026, «некрасиво, что текст на разной высоте»). */
-  @media (min-width: 640px) { .table tbody td { vertical-align: baseline; } }
+  /* На ПК строка — ровно одна линия и одной высоты (19.10.2026, владелец: «почему строки разных высот», «она постоянно
+     ломается»). Было по базовой линии (07.10.2026 — «текст на разной высоте»), и строку распирало всё, у чего своя линия:
+     аватар-фото садился низом на линию текста (40 px против 36 у аватара с буквами), второй этаж под ценой («+55 300»,
+     «в минус») — 51 px. Теперь ячейки по центру с одной высотой строки у всех (буквы 15 и 13 встают на линию с разницей
+     меньше пикселя), а всё, что в ячейке лежало вторым этажом, на ПК идёт в линию за первым. */
+  @media (min-width: 640px) {
+    .table tbody tr:not(.table-group) > td { vertical-align: middle; line-height: 1.25rem; }
+    /* Мелкий текст по центру садится на пиксель выше крупного — ячейку целиком на пиксель вниз, к линии букв названия. */
+    .table tbody tr:not(.table-group) > td:is(.cell-dim, .text-sm, .text-xs, .\!text-xs) { padding-top: calc(.375rem + 2px); }
+    /* `block` в разметке — утилита, она сильнее слоя компонентов: поэтому !important, но не у спрятанного (hidden, sm:hidden). */
+    .table tbody td:not(.grow) > :is(div, p, .cell-sub, .block):not(.flex, .grid, [class*="hidden"]) { display: inline !important; }
+    .table tbody td:not(.grow) > :is(div, p, .cell-sub, .block):not(.flex, .grid, [class*="hidden"]) + :is(div, p, .cell-sub, .block) { margin-left: .375rem; }
+    /* Чип человека, метка, пилюля — по центру строки, а не по буквам: по буквам они вылезали за линию и раздували строку. */
+    .table tbody td :is(.chip, .tag, .pill, .avatar), .table tbody td > .inline-flex { vertical-align: middle; }
+    .table tbody td .chip.person { padding-block: 1px; }
+  }
   .table th:first-child, .table td:first-child { padding-left: .75rem; }
   .table th:last-child, .table td:last-child { padding-right: .75rem; }
   /* Последний столбец только для телефона (`sm:hidden`, «Сумма» гаража) — на ПК край держит предпоследний. */

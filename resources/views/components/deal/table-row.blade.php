@@ -29,7 +29,7 @@
     <td class="hidden sm:table-cell">@if ($active && $position)<x-route.term :position="$position"/>@endif</td>
     <td class="num nums">
         {{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}
-        <x-offer.margin :m="$deal->marginMark()" class="cell-sub !ml-0"/>
+        <x-offer.margin :m="$deal->marginMark()" class="cell-sub max-sm:!ml-0"/>
         <span class="cell-sub ml-auto max-w-40 truncate sm:hidden {{ $tone }}">{{ $word }}</span>
     </td>
 </tr>
