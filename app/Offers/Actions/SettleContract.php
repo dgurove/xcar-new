@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Live\RefreshDeal;
 use App\Notifications\ContractReadyNotice;
 use App\Offers\DealContract;
 use Illuminate\Support\Facades\Cache;
@@ -12,19 +13,21 @@ use Illuminate\Support\Facades\DB;
  * менеджеру «ДКП готов». Номер и дата ДКП нашего юрлица (19.10.2026, владелец: «номер и дата сами»): у ПРАЙМ и Р.О.С.
  * свой сквозной номер за год («ПР-15/2026»), дата — день, когда договор собрался (по Москве). Номер у этого продавца уже
  * есть — не трогаем; сменился продавец (ПРАЙМ → Р.О.С.) — новый у нового. ДКП собственника (Т-Страхование) без номера.
+ * Сюда приходит каждая правка договора (покупатель, паспорт, дата, ПТС и СТС) — экраны сделки перечитываются здесь, уже с
+ * номером и «ДКП готов» (`RefreshDeal`; событие машины уходит раньше и номера не видит).
  */
 final class SettleContract
 {
     public function __invoke(DealContract $contract): DealContract
     {
-        if (! $contract->isReady()) {
-            return $contract;
+        if ($contract->isReady()) {
+            $this->number($contract);
+            if (! $contract->ready_at) {
+                $contract->update(['ready_at' => now()]);
+                $contract->deal->buyer?->notify(new ContractReadyNotice($contract->deal));
+            }
         }
-        $this->number($contract);
-        if (! $contract->ready_at) {
-            $contract->update(['ready_at' => now()]);
-            $contract->deal->buyer?->notify(new ContractReadyNotice($contract->deal));
-        }
+        RefreshDeal::of($contract->deal);
 
         return $contract;
     }

@@ -3,6 +3,7 @@
 namespace App\Logistics\Listeners;
 
 use App\Live\Publisher;
+use App\Live\RefreshCar;
 use App\Live\Topics;
 use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
@@ -31,17 +32,21 @@ final class RefreshLogistics
 
     public function refresh(TransportRequested|TransportAssigned|TransportMoved $e): void
     {
-        $topics = self::topics($e->transport, $e instanceof TransportAssigned ? $e->previous?->id : null);
-        $offer = $e->transport->saleOffer();
+        $t = $e->transport;
+        $topics = self::topics($t, $e instanceof TransportAssigned ? $e->previous?->id : null);
+        $offer = $t->saleOffer();
         // События идут изнутри транзакции действия — перечитывать страницу раньше записи бессмысленно.
-        DB::afterCommit(function () use ($topics, $offer) {
-            $this->publish->refresh($topics, ['/transports', '/documents']);
+        DB::afterCommit(function () use ($t, $topics, $offer) {
+            // Открытая задача — тоже (19.10.2026: сняли исполнителя, а у второго ведущего карточка висела прежней).
+            $this->publish->refresh($topics, ['/transports', '/documents', "/transports/{$t->id}"]);
             $this->publish->badges($topics);
-            // Дорожка «Вывоз» в CRM и получение у менеджера сделки — та же задача.
+            // Дорожка «Вывоз» в CRM (редактор и окошко «Сделок» / «Гаража») и получение у менеджера сделки — та же задача.
             if ($offer) {
-                $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$offer->number}"]);
+                $n = $offer->number;
+                $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$n}"]);
+                $this->publish->rowsSoon(Topics::STAFF, ['/work/deals' => RefreshCar::deals($offer), '/work/garage' => $offer->garageCar ? [$n] : []]);
                 if (($deal = $offer->deal) && $deal->buyer_id) {
-                    $this->publish->refreshSoon(Topics::user($deal->buyer_id), ['/deals', "/deals/{$deal->id}", '/garage', "/garage/cars/{$offer->number}"]);
+                    $this->publish->refreshSoon(Topics::user($deal->buyer_id), ['/deals', "/deals/{$deal->id}", '/garage', "/garage/cars/{$n}"]);
                 }
             }
         });

@@ -4,6 +4,7 @@ namespace App\Http\Cabinet;
 
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Live\RefreshDeal;
 use App\Live\Stream;
 use App\Logistics\Actions\RequestPickup;
 use App\Logistics\Actions\SelfPickup;
@@ -247,6 +248,8 @@ class DealController
     /** Файлы шага, его кнопки (появляются с первым файлом) и галка «Подписанный договор» — одним потоком. */
     private function filesStream(Deal $deal, Requirement $requirement)
     {
+        // Файл шага видят CRM (путь сделки) и вторая вкладка менеджера — без перезагрузки (19.10.2026).
+        RefreshDeal::of($deal);
         $requirement = $requirement->fresh();
         $stage = $deal->offer->position(Track::Sale)?->stage;
 

@@ -4,6 +4,7 @@ namespace App\Http\Cabinet;
 
 use App\Billing\Jobs\ReadPassport;
 use App\Billing\Party;
+use App\Live\RefreshDeal;
 use App\Media\PhotoIngest;
 use App\Offers\Actions\SettleContract;
 use App\Offers\Actions\SyncDealInvoices;
@@ -120,6 +121,8 @@ class PassportScanController
             $invoices($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);
             if ($contract = $deal->contract?->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer'])) {
                 app(SettleContract::class)($contract);
+            } else {
+                RefreshDeal::of($deal);
             }
         }
     }

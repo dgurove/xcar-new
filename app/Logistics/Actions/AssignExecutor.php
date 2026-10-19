@@ -5,6 +5,7 @@ namespace App\Logistics\Actions;
 use App\Logistics\Channel;
 use App\Logistics\Choices;
 use App\Logistics\Events\TransportAssigned;
+use App\Logistics\Events\TransportMoved;
 use App\Logistics\Point;
 use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
@@ -153,6 +154,8 @@ final class AssignExecutor
             throw ValidationException::withMessages(['docs_by_cdek' => 'Поздно менять']);
         }
         $t->update(['docs_by_cdek' => $cdek] + ($cdek ? [] : ['docs_track' => null, 'docs_sent_at' => null, 'docs_sent_by' => null, 'docs_received_at' => null]));
+        // Шаг без истории и уведомлений — только экраны: «Документы» у Лизы, «Забрал» исполнителя ждёт или нет.
+        TransportMoved::dispatch($t, $by, 'cdek');
 
         return $t;
     }

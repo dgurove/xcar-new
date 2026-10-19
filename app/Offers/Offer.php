@@ -3,6 +3,7 @@
 namespace App\Offers;
 
 use App\Cars\Category;
+use App\Cars\Events\CarChanged;
 use App\Cars\OnCar;
 use App\Cars\Settlement;
 use App\Garage\Car;
@@ -113,6 +114,10 @@ class Offer extends Model
             }
             if ($o->car_id && $o->wasChanged(['settlement_id', 'inspection_address'])) {
                 Transport::syncRegion($o);
+                // Где забрать — в получении у менеджера и в задаче вывоза: экраны машины перечитываются, как от правки
+                // её полей (19.10.2026: адрес — поле продажи, не машины, и правка одного адреса не доезжала никуда).
+                $car = $o->car_id;
+                DB::afterCommit(fn () => CarChanged::dispatch($car, ['inspection_address']));
             }
             // Строка могла уехать в другую вкладку CRM (шаг работы, слот, аукцион, срок приёма, окно галереи) или поменять
             // цены — открытые списки у всех перечитывают её (18.10.2026: правка цены, слот, аукцион, продление срока

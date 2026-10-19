@@ -2,8 +2,13 @@
 
 namespace App\Live;
 
+use App\Billing\Events\InvoiceIssued;
+use App\Billing\Events\InvoiceVoided;
 use App\Billing\Events\PaymentClaimed;
 use App\Billing\Events\PaymentRecorded;
+use App\Billing\Events\PaymentRejected;
+use App\Billing\Events\PaymentVoided;
+use App\Billing\Invoice;
 use App\Chats\AuthorKind;
 use App\Chats\Chat;
 use App\Chats\Events\ChatMessageChanged;
@@ -65,6 +70,10 @@ final class PublishLiveUpdates
             GarageChanged::class => 'garage',
             PaymentRecorded::class => 'payment',
             PaymentClaimed::class => 'payment',
+            PaymentRejected::class => 'payment',
+            PaymentVoided::class => 'payment',
+            InvoiceIssued::class => 'invoice',
+            InvoiceVoided::class => 'invoice',
         ];
     }
 
@@ -252,20 +261,37 @@ final class PublishLiveUpdates
         }
     }
 
-    /** Оплата по счёту (по ссылке, из выписки, руками) или заявка — перечитать деньги у сотрудников и расчёт у менеджера. */
-    public function payment(PaymentRecorded|PaymentClaimed $e): void
+    /**
+     * Оплата по счёту (по ссылке, из выписки, руками), заявка, отказ или отмена — перечитать деньги у сотрудников, расчёт
+     * и сделку у менеджера, редактор в CRM (`RefreshDeal`: у гаражной сделки — машина в гараже, а не `/deals/{id}`).
+     */
+    public function payment(PaymentRecorded|PaymentClaimed|PaymentRejected|PaymentVoided $e): void
     {
-        $invoice = $e instanceof PaymentClaimed ? $e->payment->invoice : $e->invoice;
-        $this->publish->refresh(Topics::STAFF, ['/work/money', '/settings/bank/statement']);
-        $garage = $invoice->deal_id ? null : GarageCar::ofInvoice($invoice);
-        $this->publish->rows(Topics::STAFF, ['/work/deals' => $invoice->deal_id ? [$invoice->deal_id] : [], '/work/garage' => match (true) {
-            (bool) $garage => [$garage->offer->number],
-            (bool) $invoice->deal?->isGarage() => [$invoice->deal->offer->number],
-            default => [],
-        }]);
-        $manager = $invoice->deal?->buyer_id ?? $garage?->manager_id;
-        if ($manager) {
-            $this->publish->refresh(Topics::user($manager), ['/account/money', $garage ? '/garage/cars/'.$garage->offer->number : '/deals/'.$invoice->deal_id]);
+        $this->invoiceChanged($e instanceof PaymentRecorded ? $e->invoice : $e->payment->invoice);
+        $this->publish->refresh(Topics::STAFF, ['/settings/bank/statement']);
+    }
+
+    /** Счёт выставлен или аннулирован: у менеджера появляется «К оплате» и его ход, в CRM — строка и шаг сделки. */
+    public function invoice(InvoiceIssued|InvoiceVoided $e): void
+    {
+        $this->invoiceChanged($e->invoice);
+    }
+
+    private function invoiceChanged(Invoice $invoice): void
+    {
+        $this->publish->refresh(Topics::STAFF, ['/work/money']);
+        if ($invoice->deal) {
+            RefreshDeal::of($invoice->deal);
+
+            return;
+        }
+        if ($garage = GarageCar::ofInvoice($invoice)) {
+            $n = $garage->offer->number;
+            $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$n}"]);
+            $this->publish->rows(Topics::STAFF, ['/work/garage' => [$n]]);
+            if ($garage->manager_id) {
+                $this->publish->refresh(Topics::user($garage->manager_id), ['/account/money', '/garage', "/garage/cars/{$n}"]);
+            }
         }
     }
 
