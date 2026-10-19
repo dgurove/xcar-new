@@ -316,6 +316,8 @@ final class Binding
     {
         $q = Offer::query()->where('offers.binding_until', '>=', now()->subDays(self::ALARM_DAYS));
         self::scope($q, 'panic');
+        // «Из таблицы Кати» — старые, что ещё актуализируют: в тревоге не шумят (19.10.2026, владелец).
+        LegacyClaim::offList($q);
 
         return $user->leadsLogistics() ? $q : $q->whereRaw('false');
     }

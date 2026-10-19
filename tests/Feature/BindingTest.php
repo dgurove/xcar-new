@@ -186,6 +186,11 @@ class BindingTest extends TestCase
         $this->actingAs($moderator)->get('http://crm.xcar.localhost/alarms?manager=none')->assertOk()->assertSee('peek='.$second->fresh()->number, false);
         $second->forceFill(['binding_until' => null])->saveQuietly();
 
+        // Номер из «Из таблицы Кати» — старые, их актуализируют: в тревоге не шумят.
+        $legacy = \App\Offers\LegacyClaim::create(['claim_ref' => '483512/2026', 'position' => 1]);
+        $this->assertSame(0, Binding::alarmQuery($moderator)->count());
+        $legacy->delete();
+
         // Давно вышедший — красный в списках, но не в тревоге.
         $old = Offer::create(['vendor_id' => $this->offer->vendor_id, 'claim_ref' => '483513/2026']);
         $old->forceFill(['binding_until' => now()->subDays(Binding::ALARM_DAYS + 3)])->saveQuietly();
