@@ -7,6 +7,7 @@ use App\Logistics\Actions\Call;
 use App\Logistics\Actions\Deliver;
 use App\Logistics\Actions\Docs;
 use App\Logistics\Actions\PickUp;
+use App\Logistics\FileAccess;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
 use App\Media\Actions\RotatePhoto;
@@ -29,6 +30,21 @@ class TripController
         $t->load(['car.media', 'executor', 'logist', 'offer', 'vehicle']);
 
         return view('logistics.trip.show', ['t' => $t, 'by' => $t->executor, 'code' => $code]);
+    }
+
+    /** Фото или документ машины, что исполнителю открыли глазом (`FileAccess::forExecutor`); ссылка погасла — 410. */
+    public function file(string $code, Media $media)
+    {
+        $t = $this->task($code);
+        abort_unless(FileAccess::belongs($t, $media) && FileAccess::forExecutor($t, $media), 404);
+        $inline = str_starts_with((string) $media->mime_type, 'image/') && $media->mime_type !== 'image/svg+xml' || $media->mime_type === 'application/pdf';
+
+        return response()->file($media->getPath(), [
+            'Content-Type' => $media->mime_type,
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($media->file_name),
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
     }
 
     public function call(Request $request, string $code, Call $call)

@@ -4,6 +4,7 @@ namespace App\Http\Logistics;
 
 use App\Cars\Car;
 use App\Cars\Region;
+use App\Live\Publisher;
 use App\Live\Stream;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Backdate;
@@ -17,6 +18,8 @@ use App\Logistics\Actions\SetRoute;
 use App\Logistics\Actions\StepBack;
 use App\Logistics\Channel;
 use App\Logistics\Client;
+use App\Logistics\FileAccess;
+use App\Logistics\Listeners\RefreshLogistics;
 use App\Logistics\Reach;
 use App\Logistics\SaleState;
 use App\Logistics\Transport;
@@ -524,6 +527,24 @@ class TransportController
         $media->delete();
 
         return $this->photos($transport, $at);
+    }
+
+    /**
+     * Глаз «кто видит» у фото и документа машины (`Logistics\FileAccess`, 19.10.2026): ведущий решает за логиста (без него —
+     * за исполнителя), логист — за своего исполнителя. Кадр шлёт `photos#hide`, документ — форма в строке; ответ — блок
+     * целиком, у остальных задача перечитывается.
+     */
+    public function fileEye(Request $request, Transport $transport, Media $media, Publisher $publish)
+    {
+        $this->acts($request, $transport);
+        $me = $request->user();
+        $who = FileAccess::toggleFor($transport, $me);
+        abort_unless($who && FileAccess::belongs($transport, $media) && FileAccess::visible($transport, $me, $media), 404);
+        FileAccess::toggle($media, $who);
+        $publish->refresh(RefreshLogistics::topics($transport), ["/transports/{$transport->id}"]);
+        $transport->unsetRelation('car');
+
+        return Stream::view('logistics.transports.files-stream', ['t' => $transport]);
     }
 
     private function photos(Transport $transport, string $at)

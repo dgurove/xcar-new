@@ -4,6 +4,8 @@ namespace App\Http\Site;
 
 use App\Billing\Party;
 use App\Cars\Car;
+use App\Logistics\FileAccess;
+use App\Logistics\Transport;
 use App\Media\ForManagers;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
@@ -72,6 +74,11 @@ final class FileController
         // Файл машины (`Cars\Car`) — её продажи и её хранения.
         $car = $media->model_type === Car::class ? Car::find($media->model_id) : null;
         $offer = $car?->offer;
+        // Логистика (19.10.2026): файл машины задачи вывоза — ведущим, логисту и исполнителю, что ему открыт глазом
+        // (`Logistics\FileAccess`). До модератора: Катя и Лиза ведут вывоз и машин, что не правят в CRM.
+        if ($car && Transport::where('car_id', $car->id)->get()->contains(fn (Transport $t) => FileAccess::belongs($t, $media) && FileAccess::visible($t, $user, $media))) {
+            return true;
+        }
         // Модератору — документы и фото только тех предложений, что ему можно открыть в CRM.
         if ($user->isModerator()) {
             return (bool) $offer?->isEditableBy($user);

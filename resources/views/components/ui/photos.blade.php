@@ -10,14 +10,16 @@
      pending — сколько заглушек «качается» в конце ряда. add=false — без плитки «добавить» (карточка строки парковки).
      Кнопка «Показать все» / «Скрыть все» — отдельно, x-ui.photos-all, там, где ей место по вёрстке.
      mainId — главный кадр всей машины, когда кадры разложены блоками по стадиям (PhotoBlocks): звезда у него, в чужом
-     блоке — только контурные «сделать главным». --}}
-@props(['photos', 'hide' => true, 'main' => true, 'mainId' => null, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true, 'rotatable' => true, 'pending' => 0, 'add' => true])
+     блоке — только контурные «сделать главным».
+     hideBy — что значит глаз: по умолчанию «скрыт с сайта» (`Media\Hidden`), в логистике — «не видит логист / исполнитель»
+     (`Logistics\FileAccess`, замыкание «скрыт ли кадр»); eyeTitle — подсказка глаза («Логисту»). --}}
+@props(['photos', 'hide' => true, 'hideBy' => null, 'eyeTitle' => null, 'main' => true, 'mainId' => null, 'readonly' => false, 'id' => 'gallery', 'grid' => false, 'deletable' => true, 'rotatable' => true, 'pending' => 0, 'add' => true])
 <div id="{{ $id }}" class="{{ $grid ? 'photo-grid' : 'photo-row' }}">
     @if (! $readonly && $add)<button type="button" class="photo-add" data-action="photos#pick" aria-label="Добавить фото"><x-ui.icon name="camera" class="size-6"/></button>@endif
     <div class="{{ $grid ? 'contents' : 'photo-strip' }}" data-photos-target="grid">
     @php $mainShown = false; @endphp
     @foreach ($photos as $media)
-        @php $hidden = $hide && \App\Media\Hidden::is($media); @endphp
+        @php $hidden = $hide && ($hideBy ? $hideBy($media) : \App\Media\Hidden::is($media)); @endphp
         <div class="photo-cell {{ $hidden ? 'is-hidden' : '' }}" data-id="{{ $media->id }}" data-hidden="{{ $hidden ? 1 : 0 }}">
             <img src="{{ \App\Media\MediaUrl::for($media, 'w320') }}" data-full="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" alt="" loading="lazy" data-action="click->photos#open">
             {{-- Главное — лаймовая звезда в углу; нажали — у остальных кадров контурные звёзды, нажатая становится главной. --}}
@@ -32,7 +34,7 @@
             @if (! $readonly || $hide)
             <div class="photo-actions">
                 {{-- Обе иконки сразу: глаз переключается классом плитки, не дожидаясь ответа сервера. --}}
-                @if ($hide)<button type="button" data-action="photos#act" data-act="hide" aria-label="{{ $hidden ? 'Показать' : 'Скрыть' }}"><x-ui.icon name="eye-off" class="photo-eye-off size-4"/><x-ui.icon name="eye" class="photo-eye-on size-4"/></button>@endif
+                @if ($hide)<button type="button" data-action="photos#act" data-act="hide" aria-label="{{ $hidden ? 'Показать' : 'Скрыть' }}" @if ($eyeTitle) title="{{ $eyeTitle }}" @endif><x-ui.icon name="eye-off" class="photo-eye-off size-4"/><x-ui.icon name="eye" class="photo-eye-on size-4"/></button>@endif
                 @if (! $readonly && $rotatable)<button type="button" data-action="photos#act" data-act="rotate" aria-label="Повернуть"><x-ui.icon name="rotate" class="size-4"/></button>@endif
                 @if (! $readonly && ($deletable instanceof \Closure ? $deletable($media) : $deletable))<button type="button" data-action="photos#act" data-act="delete" data-confirm="Удалить фото?" aria-label="Удалить"><x-ui.icon name="trash" class="size-4"/></button>@endif
             </div>

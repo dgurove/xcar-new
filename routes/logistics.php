@@ -62,6 +62,9 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     Route::post('/transports/{transport}/media/order', [TransportController::class, 'order']);
     Route::post('/transports/{transport}/media/{media}/rotate', [TransportController::class, 'rotate']);
     Route::delete('/transports/{transport}/media/{media}', [TransportController::class, 'destroyMedia']);
+    // Фото и документы машины: глаз «кто видит» (кадр — `photos#hide`, документ — кнопка в строке).
+    Route::post('/transports/{transport}/files/{media}/hide', [TransportController::class, 'fileEye']);
+    Route::post('/transports/{transport}/files/{media}/eye', [TransportController::class, 'fileEye']);
     Route::post('/transports/{transport}/pickup', [TransportController::class, 'pickup']);
     Route::post('/transports/{transport}/deliver', [TransportController::class, 'deliver']);
     Route::post('/transports/{transport}/back', [TransportController::class, 'back']);
@@ -88,6 +91,7 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
 // Страница задачи для исполнителя без входа (18.10.2026): ссылка из «Отправить исполнителю».
 Route::domain(config('xcar.logistics_host'))->prefix('/trip/{code}')->middleware('throttle:60,1')->group(function () {
     Route::get('/', [TripController::class, 'show']);
+    Route::get('/files/{media}', [TripController::class, 'file']);
     Route::post('/call', [TripController::class, 'call']);
     Route::post('/missed', [TripController::class, 'missed']);
     Route::post('/received', [TripController::class, 'received']);

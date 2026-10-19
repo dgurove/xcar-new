@@ -66,7 +66,8 @@
     $undoLabel = match ($undo) { 'logist' => 'Снять логиста', 'executor' => 'Снять исполнителя', null => null, default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$undo].'»' };
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :title="$t->title()" :photos="$car?->visiblePhotos() ?? collect()" :action="false" :blank="false">
+    {{-- Лента сверху — кадры машины, что видит этот человек (`Logistics\FileAccess`); глазами ими правят в блоке «Фото». --}}
+    <x-ui.row-card :title="$t->title()" :photos="\App\Logistics\FileAccess::files($t)['photos']->filter(fn ($m) => \App\Logistics\FileAccess::visible($t, $me, $m))->values()" :action="false" :blank="false">
         <x-slot:row>@if ($list === 'documents')<x-logistics.doc-row :t="$t"/>@else<x-logistics.row :t="$t" :checkable="$pick" :cols="$cols" :preset="$preset"/>@endif</x-slot:row>
         @if (($me->isStaff() && ($t->vendorId() || $t->car?->claim_ref)) || $t->car?->plate || ($t->car?->vin && ($admin || $handles)))
             <x-slot:marks>
@@ -172,6 +173,9 @@
         @unless ($solo)
             <x-logistics.legs :t="$t" :href="fn ($leg) => '/transports?preset=all&peek='.$leg->id" class="mt-4"/>
         @endunless
+
+        {{-- Фото и документы машины с глазами «кто видит» (19.10.2026). --}}
+        <x-logistics.files :t="$t"/>
 
         {{-- Ход лесенкой — тот же, что в CRM. --}}
         <div class="steps mt-5">

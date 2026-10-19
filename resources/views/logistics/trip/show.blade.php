@@ -14,6 +14,10 @@
     $map = fn (?string $a) => $a ? 'https://yandex.ru/maps/?text='.rawurlencode($city && ! str_contains($a, $city) ? "{$city}, {$a}" : $a) : null;
     $to = $t->routeLabel();
     $blocked = in_array($t->state, [S::Assigned, S::Agreed], true) ? $t->pickupBlocker($by) : null;
+    // Фото и документы машины, что исполнителю открыли глазом (`Logistics\FileAccess`, 19.10.2026).
+    $files = \App\Logistics\FileAccess::files($t);
+    $carPhotos = $files['photos']->filter(fn ($m) => \App\Logistics\FileAccess::forExecutor($t, $m))->values();
+    $carPapers = $files['papers']->filter(fn ($m) => \App\Logistics\FileAccess::forExecutor($t, $m))->values();
     $step = match (true) {
         $t->state === S::Assigned && $t->isPickup() => 'call',
         $t->awaitsDocs() && $t->docs_sent_at && in_array($t->state, [S::Assigned, S::Agreed], true) => 'docs',
@@ -71,6 +75,25 @@
             </div>
         @endif
     </div>
+
+    @if ($carPhotos->isNotEmpty())
+        <section class="mt-5"><x-offer.gallery :photos="$carPhotos" :alt="$t->title()" tiles/></section>
+    @endif
+    {{-- Документы — ссылкой своей задачи (`/trip/{code}/files/{id}`): входа на странице нет, шторки документов тоже. --}}
+    @if ($carPapers->isNotEmpty())
+        <section class="mt-5">
+            <h2 class="list-head">Документы</h2>
+            <div class="flex flex-col">
+                @foreach ($carPapers as $m)
+                    <a href="{{ $base }}/files/{{ $m->id }}" target="_blank" rel="noopener" class="file-row">
+                        <x-ui.file-icon :name="$m->file_name" :mime="$m->mime_type"/>
+                        <span class="min-w-0 flex-1 truncate">{{ $m->file_name }}</span>
+                        <span class="shrink-0 text-sm text-ink-muted">{{ $m->humanReadableSize }}</span>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     <div class="steps mt-6">
         @foreach ($t->steps() as $s)
