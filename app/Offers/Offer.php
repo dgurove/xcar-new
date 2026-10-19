@@ -464,6 +464,17 @@ class Offer extends Model
      * Работает ли менеджер с этой ТС: держит её в гараже, вывозит или ведёт по ней сделку (идущую или закрытую).
      * Им открываются отмеченные документы (`Media\ForManagers`) и кадры.
      */
+    /**
+     * Менеджер, что с машиной работает как продавец: держатель гаража или покупатель сделки. Исполнитель вывоза сюда не
+     * входит (19.10.2026, владелец: «исполнителям документы — только что открыли»): его файлы — только через
+     * `Logistics\FileAccess`. Им же решает `FileController`.
+     */
+    public function managedBy(User $user): bool
+    {
+        return Car::where('offer_id', $this->id)->where('manager_id', $user->id)->exists()
+            || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->whereIn('state', [DealState::Active, DealState::Done])->exists();
+    }
+
     public function worksWith(User $user): bool
     {
         return Transport::where('car_id', $this->car_id)->where('executor_id', $user->id)->where('state', '!=', TransportState::Cancelled)->exists()

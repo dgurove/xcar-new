@@ -110,4 +110,59 @@ class LogisticsFilesTest extends TestCase
         $this->assertFalse(FileAccess::visible($this->t, $this->ivan, $this->photo->refresh()));
         $this->assertTrue(FileAccess::visible($this->t, $this->tanya, $this->photo));
     }
+
+    public function test_logist_gets_commission_and_act_executor_never_by_default(): void
+    {
+        $car = $this->t->car;
+        $commission = $car->addMediaFromString('%PDF-1.4 к')->usingFileName('Договор комиссии 483514.pdf')->toMediaCollection('papers');
+        $act = $car->addMediaFromString('%PDF-1.4 а')->usingFileName('Акт приема-передачи.pdf')->toMediaCollection('papers');
+        $inspection = $car->addMediaFromString('%PDF-1.4 о')->usingFileName('Акт осмотра.pdf')->toMediaCollection('papers');
+
+        foreach ([$commission, $act] as $m) {
+            $this->assertTrue(FileAccess::visible($this->t, $this->tanya, $m), $m->file_name.' — логисту по умолчанию');
+            $this->assertFalse(FileAccess::visible($this->t, $this->ivan, $m), $m->file_name.' — исполнителю нет');
+        }
+        $this->assertFalse(FileAccess::visible($this->t, $this->tanya, $inspection));
+        $this->actingAs($this->tanya)->get(self::LOG.'/files/'.$commission->id)->assertOk();
+        $this->actingAs($this->ivan)->get(self::LOG.'/files/'.$commission->id)->assertNotFound();
+        Auth::logout();
+        $this->get(self::LOG.'/trip/'.$this->t->fresh()->trip_code.'/files/'.$act->id)->assertNotFound();
+        $this->get(self::LOG.'/trip/'.$this->t->fresh()->trip_code)->assertOk()->assertDontSee($act->file_name);
+    }
+
+    public function test_executor_not_let_in_by_other_doors(): void
+    {
+        // «Видно менеджеру» в CRM — не исполнителю вывоза: его дверь — только глаз логистики.
+        $this->paper->setCustomProperty('managers', true)->save();
+        $this->actingAs($this->ivan)->get(self::LOG.'/files/'.$this->paper->id)->assertNotFound();
+        // С сайта исполнитель уводится стеной — файла нет и там.
+        $this->assertNotSame(200, $this->actingAs($this->ivan)->get('http://xcar.localhost/files/'.$this->paper->id)->status());
+        // Скрытый от исполнителя кадр не отдаётся и через /files.
+        $this->photo->setCustomProperty('executor', false)->save();
+        $this->actingAs($this->ivan)->get(self::LOG.'/files/'.$this->photo->id)->assertNotFound();
+
+        // Сняли с задачи — открытое раньше больше не открывается.
+        $this->paper->setCustomProperty('executor', true)->setCustomProperty('logist', true)->save();
+        $this->actingAs($this->ivan)->get(self::LOG.'/files/'.$this->paper->id)->assertOk();
+        $this->t->forceFill(['state' => \App\Logistics\TransportState::Cancelled])->saveQuietly();
+        $this->actingAs($this->ivan)->get(self::LOG.'/files/'.$this->paper->id)->assertNotFound();
+    }
+
+    public function test_finished_task_gives_nothing(): void
+    {
+        // Отметки — у файла машины: открыли следующему отрезку — прошлый исполнитель, что уже привёз, не видит.
+        $trip = self::LOG.'/trip/'.$this->t->fresh()->trip_code;
+        $this->t->forceFill(['state' => \App\Logistics\TransportState::Delivered])->saveQuietly();
+        $this->paper->setCustomProperty('executor', true)->setCustomProperty('logist', true)->save();
+        $this->assertFalse(FileAccess::visible($this->t, $this->ivan, $this->paper));
+        $this->assertFalse(FileAccess::visible($this->t, $this->tanya, $this->paper));
+        $this->assertNull(FileAccess::toggleFor($this->t, $this->tanya));
+        $this->actingAs($this->ivan)->get(self::LOG.'/files/'.$this->paper->id)->assertNotFound();
+        $this->actingAs($this->tanya)->get(self::LOG.'/files/'.$this->paper->id)->assertNotFound();
+        Auth::logout();
+        $this->get($trip.'/files/'.$this->paper->id)->assertNotFound();
+        $this->get($trip.'/files/'.$this->photo->id)->assertNotFound();
+        // Ведущим — всё, как было.
+        $this->actingAs($this->admin)->get(self::LOG.'/files/'.$this->paper->id)->assertOk();
+    }
 }

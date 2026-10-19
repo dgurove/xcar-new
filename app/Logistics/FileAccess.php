@@ -3,6 +3,7 @@
 namespace App\Logistics;
 
 use App\Cars\Car;
+use App\Mail\Extraction\AttachmentClassifier;
 use App\Users\User;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -10,8 +11,9 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 /**
  * Фото и документы машины в логистике (19.10.2026, админы и Татьяна: «не хватает документов и фоток из писем»): ведущие
  * логистику решают глазиком, что видит логист, логист — что видит его исполнитель. Отметки — у файла машины, как «Видно
- * менеджеру» (`Media\ForManagers`): `custom_properties.logist` и `executor`; пусто — по умолчанию: кадр виден, документ
- * скрыт (владелец: в документах оценка с ценой и паспорта). Кадры погрузки и выдачи сюда не входят — у них свой блок
+ * менеджеру» (`Media\ForManagers`): `custom_properties.logist` и `executor`; пусто — по умолчанию (`byDefault`): кадр виден
+ * обоим; логисту ещё договор комиссии и акт приёма-передачи (19.10.2026, владелец: «только Татьяне»), остальные документы
+ * скрыты (оценка с ценой, паспорта); исполнителю документы по умолчанию не видны никогда. Кадры погрузки и выдачи сюда не входят — у них свой блок
  * (`x-logistics.photos`); «скрыто с сайта» (`Media\Hidden`) здесь ни при чём.
  */
 final class FileAccess
@@ -21,7 +23,26 @@ final class FileAccess
     {
         $mark = $media->getCustomProperty($who);
 
-        return $mark === null ? $media->collection_name === 'photos' : (bool) $mark;
+        return $mark === null ? self::byDefault($media, $who) : (bool) $mark;
+    }
+
+    /**
+     * Видно ли без отметки: кадр — обоим; документ — только логисту и только договор комиссии или акт приёма-передачи (по
+     * имени файла, как их называет почта — `AttachmentClassifier`). Всё прочее — только глазом.
+     *
+     * @param  'logist'|'executor'  $who
+     */
+    public static function byDefault(Media $media, string $who): bool
+    {
+        if ($media->collection_name === 'photos') {
+            return true;
+        }
+        if ($who !== 'logist' || $media->collection_name !== 'papers') {
+            return false;
+        }
+        $name = mb_strtolower(str_replace('ё', 'е', $media->file_name.' '.$media->name));
+
+        return str_contains($name, 'комисси') || AttachmentClassifier::kindOf($name) === 'act';
     }
 
     /** @param  'logist'|'executor'  $who */
@@ -42,26 +63,37 @@ final class FileAccess
     {
         return match (true) {
             $user->leadsLogistics() && ! $t->isOrder() => $t->logist_id ? 'logist' : 'executor',
-            $t->hasLogist($user) => 'executor',
+            $t->hasLogist($user) && self::live($t) => 'executor',
             default => null,
         };
     }
 
-    /** Видит ли человек этот файл в задаче. Исполнитель через логиста — только то, что открыто и логисту. */
+    /**
+     * Видит ли человек этот файл в задаче. Исполнитель через логиста — только то, что открыто и логисту. Логист и исполнитель
+     * — только пока задача идёт (`live`): отметки лежат у файла машины, а не у задачи, и иначе исполнитель прошлого отрезка
+     * или снятый с задачи видел бы то, что потом открыли следующему.
+     */
     public static function visible(Transport $t, User $user, Media $media): bool
     {
         return match (true) {
             $user->leadsLogistics() && ! $t->isOrder() => true,
+            ! self::live($t) => false,
             $t->hasLogist($user) => self::sees($media, 'logist'),
             $t->isExecutedBy($user) => self::forExecutor($t, $media),
             default => false,
         };
     }
 
-    /** Исполнителю — и со входом, и по ссылке `/trip/{code}`. */
+    /** Исполнителю — и со входом, и по ссылке `/trip/{code}`; привёз или сняли — больше ничего. */
     public static function forExecutor(Transport $t, Media $media): bool
     {
-        return self::sees($media, 'executor') && (! $t->logist_id || self::sees($media, 'logist'));
+        return self::live($t) && self::sees($media, 'executor') && (! $t->logist_id || self::sees($media, 'logist'));
+    }
+
+    /** Задача идёт: не привезена и не отменена. */
+    public static function live(Transport $t): bool
+    {
+        return ! in_array($t->state, [TransportState::Delivered, TransportState::Cancelled], true);
     }
 
     /**

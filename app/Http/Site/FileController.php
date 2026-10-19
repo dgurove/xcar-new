@@ -6,6 +6,7 @@ use App\Billing\Party;
 use App\Cars\Car;
 use App\Logistics\FileAccess;
 use App\Logistics\Transport;
+use App\Logistics\TransportState;
 use App\Media\ForManagers;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
@@ -76,15 +77,18 @@ final class FileController
         $offer = $car?->offer;
         // Логистика (19.10.2026): файл машины задачи вывоза — ведущим, логисту и исполнителю, что ему открыт глазом
         // (`Logistics\FileAccess`). До модератора: Катя и Лиза ведут вывоз и машин, что не правят в CRM.
-        if ($car && Transport::where('car_id', $car->id)->get()->contains(fn (Transport $t) => FileAccess::belongs($t, $media) && FileAccess::visible($t, $user, $media))) {
+        // Привезённая и отменённая задача логисту и исполнителю доступа не даёт (`FileAccess::live`): отметки глаза — у файла
+        // машины, и исполнитель прошлого отрезка иначе видел бы открытое следующему.
+        if ($car && Transport::where('car_id', $car->id)->where('state', '!=', TransportState::Cancelled)->get()->contains(fn (Transport $t) => FileAccess::belongs($t, $media) && FileAccess::visible($t, $user, $media))) {
             return true;
         }
         // Модератору — документы и фото только тех предложений, что ему можно открыть в CRM.
         if ($user->isModerator()) {
             return (bool) $offer?->isEditableBy($user);
         }
-        // Файлы ТС — менеджеру, который с ней работает (гараж, вывоз, сделка); документы — только отмеченные админом.
-        $works = fn () => $offer && $offer->worksWith($user) && ($media->collection_name !== 'papers' || ForManagers::is($media));
+        // Файлы ТС — менеджеру, который с ней работает как продавец (гараж, сделка); документы — только отмеченные админом.
+        // Исполнитель вывоза — только через `FileAccess` выше (19.10.2026: «Видно менеджеру» и скрытые кадры ему не открывать).
+        $works = fn () => $offer && $offer->managedBy($user) && ($media->collection_name !== 'papers' || ForManagers::is($media));
 
         return match ($media->model_type) {
             // На парковке — ТС, которую человек видит: у управляющего с городом область `Park\City` прячет чужие.
