@@ -17,7 +17,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /** Контрагент счёта: юрлицо, ИП, самозанятый или физлицо с паспортом. Строки `is_self` — мы, по одной на продавца (`seller`). */
-#[Fillable(['kind', 'name', 'is_self', 'seller', 'inn', 'kpp', 'ogrn', 'legal_address', 'director', 'director_basis', 'bank_name', 'bik', 'account', 'corr_account',
+#[Fillable(['kind', 'name', 'is_self', 'seller', 'inn', 'kpp', 'ogrn', 'legal_address', 'director', 'director_basis', 'full_name', 'director_full', 'signed_by', 'bank_name', 'bik', 'account', 'corr_account',
     'passport', 'passport_issued', 'passport_issued_at', 'passport_code', 'reg_address', 'birth_at', 'birth_place', 'phone', 'email', 'card', 'payment_purpose', 'notes', 'vat_on_top'])]
 class Party extends Model implements HasMedia
 {
@@ -83,6 +83,7 @@ class Party extends Model implements HasMedia
             'is_self' => true, 'kind' => $seller === Seller::Park ? PartyKind::Entrepreneur : PartyKind::Company, 'name' => $c['name'],
             'inn' => $c['inn'] ?? null, 'kpp' => $c['kpp'] ?? null, 'ogrn' => $c['ogrn'] ?? null, 'legal_address' => $c['address'] ?? null,
             'director' => $c['director'] ?? null, 'director_basis' => $seller === Seller::Park ? null : 'Устава',
+            'full_name' => $c['full_name'] ?? null, 'director_full' => $c['director_full'] ?? null, 'signed_by' => $c['signed_by'] ?? null,
             'bank_name' => $c['bank'] ?? null, 'bik' => $c['bik'] ?? null, 'account' => $c['account'] ?? null, 'corr_account' => $c['corr_account'] ?? null,
             'phone' => $c['phone'] ?? null, 'email' => $c['email'] ?? null,
         ]);
@@ -92,6 +93,38 @@ class Party extends Model implements HasMedia
     public function signerTitle(): string
     {
         return $this->kind === PartyKind::Entrepreneur ? 'Индивидуальный предприниматель' : 'Руководитель';
+    }
+
+    /**
+     * Серия и номер паспорта порознь — для договора «паспорт серии 45 12 № 345678». Храним одной строкой как ввели
+     * («4512345678», «45 12 345678», «серия 4512 № 345678»): десять цифр — 4 + 6, иначе последние цифры от шести — номер.
+     *
+     * @return array{0: ?string, 1: ?string} серия, номер (не разобралось — серии нет, номер как вписан)
+     */
+    public function passportParts(): array
+    {
+        $raw = trim((string) $this->passport);
+        $digits = preg_replace('/\D/', '', $raw);
+        if (strlen($digits) === 10) {
+            return [substr($digits, 0, 2).' '.substr($digits, 2, 2), substr($digits, 4)];
+        }
+        if (preg_match('/^(.*?\d.*?)\s*№?\s*(\d{6,})$/u', $raw, $m)) {
+            return [trim(preg_replace('/^серия\s*/iu', '', rtrim($m[1], ' №'))), $m[2]];
+        }
+
+        return [null, $raw ?: null];
+    }
+
+    /** Женщина ли по отчеству (-вна, -чна, кызы) — для «гражданка», «именуемая» в договоре; отчества нет — null. */
+    public function isFemale(): ?bool
+    {
+        $last = mb_strtolower((string) last(preg_split('/\s+/u', trim((string) $this->name)) ?: ['']));
+
+        return match (true) {
+            (bool) preg_match('/(вна|чна|кызы)$/u', $last) => true,
+            (bool) preg_match('/(вич|ич|оглы)$/u', $last) => false,
+            default => null,
+        };
     }
 
     /** Паспорт для договора: ФИО, дата рождения, серия и номер, кем и когда выдан, адрес регистрации (ДКП). */

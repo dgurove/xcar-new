@@ -1,7 +1,5 @@
 <?php
 
-use App\Billing\Party;
-use App\Billing\Seller;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Vendors\Vendor;
@@ -32,7 +30,8 @@ return new class extends Migration
         if (! Schema::hasColumn('deals', 'prepaid_at')) {
             Schema::table('deals', fn (Blueprint $t) => $t->timestamp('prepaid_at')->nullable());
         }
-        Party::seller(Seller::Ros);
+        // Строку Р.О.С. в `billing_parties` заводит `Party::seller` при первом обращении (здесь через модель нельзя: у неё
+        // колонки поздних миграций, на свежей базе их ещё нет).
 
         foreach (Vendor::whereRaw("name ilike '%альфа%'")->get() as $vendor) {
             DB::table('vendors')->where('id', $vendor->id)->update(['pay_before_pickup' => true]);

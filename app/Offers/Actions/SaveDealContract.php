@@ -4,7 +4,6 @@ namespace App\Offers\Actions;
 
 use App\Billing\Party;
 use App\Billing\PartyKind;
-use App\Notifications\ContractReadyNotice;
 use App\Offers\DealContract;
 use App\Offers\OfferEventType;
 use App\Support\Phone;
@@ -15,14 +14,14 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Данные ДКП (05.10.2026). Сотрудник по сканам страховой вносит продавца (`seller`: паспорт собственника) и ТС
- * (`vehicle`: госномер, СТС, ПТС, номера агрегатов, цена, город). Менеджер — покупателя: своего (`buyer_id`), себя
+ * (`vehicle`: госномер, СТС, (Э)ПТС, кузов, шасси — в машину; цена, город, дата — в договор). Менеджер — покупателя: своего (`buyer_id`), себя
  * (`me`) или нового (`new_buyer`: заводится в его «Покупателях» без пароля), с паспортом или реквизитами организации
  * (`buyer`), и у ПРАЙМ — кто платит по счёту (`payer`). Счёт ПРАЙМ ставится тут же сам (`SyncDealInvoices`). Договор
  * собрался впервые — менеджеру «ДКП готов».
  */
 final class SaveDealContract
 {
-    public function __construct(private SyncDealInvoices $invoices) {}
+    public function __construct(private SyncDealInvoices $invoices, private UpdateOffer $offers, private SettleContract $settle) {}
 
     public function __invoke(DealContract $contract, array $data, User $by): DealContract
     {
@@ -40,7 +39,10 @@ final class SaveDealContract
                 $contract->seller_party_id = $seller->id;
             }
             if (isset($data['vehicle'])) {
-                $contract->fill(array_intersect_key($data['vehicle'], array_flip([...array_keys(DealContract::VEHICLE), 'price', 'city'])));
+                $contract->fill(array_intersect_key($data['vehicle'], array_flip(['price', 'city', 'signed_at'])));
+                // Документы ТС — поля машины (одна запись на все дорожки), правка с историей в предложении.
+                $car = array_intersect_key($data['vehicle'], DealContract::VEHICLE);
+                $car && ($this->offers)($deal->offer, $car, $by, ['why' => 'ДКП']);
             }
             if (! empty($data['new_buyer'])) {
                 $phone = Phone::normalize($data['new_buyer']['phone'] ?? null);
@@ -79,12 +81,8 @@ final class SaveDealContract
         // Плательщик или его данные сменились — счёт ПРАЙМ встаёт сам (или перевыставляется, если за него не платили).
         ($this->invoices)($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);
         $contract = $contract->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer']);
-        if (! $contract->ready_at && $contract->isReady()) {
-            $contract->update(['ready_at' => now()]);
-            $contract->deal->buyer?->notify(new ContractReadyNotice($contract->deal));
-        }
 
-        return $contract;
+        return ($this->settle)($contract);
     }
 
     /** Реквизиты организации из набора формы. */

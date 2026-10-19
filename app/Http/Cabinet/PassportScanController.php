@@ -5,7 +5,7 @@ namespace App\Http\Cabinet;
 use App\Billing\Jobs\ReadPassport;
 use App\Billing\Party;
 use App\Media\PhotoIngest;
-use App\Notifications\ContractReadyNotice;
+use App\Offers\Actions\SettleContract;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Deal;
 use App\Offers\DealState;
@@ -86,10 +86,8 @@ class PassportScanController
         $deals = Deal::where('state', DealState::Active)->where(fn ($q) => $q->whereHas('contract', fn ($c) => $c->where('buyer_user_id', $user->id))->orWhere('buyer_id', $user->id))->get();
         foreach ($deals as $deal) {
             $invoices($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);
-            $contract = $deal->contract?->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer']);
-            if ($contract && ! $contract->ready_at && $contract->isReady()) {
-                $contract->update(['ready_at' => now()]);
-                $contract->deal->buyer?->notify(new ContractReadyNotice($contract->deal));
+            if ($contract = $deal->contract?->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer'])) {
+                app(SettleContract::class)($contract);
             }
         }
     }

@@ -23,6 +23,10 @@
         @if ($staff)
             <x-ui.field name="director" id="director-company" label="Руководитель" :value="$party?->director"/>
             <x-ui.field name="director_basis" id="director_basis-company" label="Действует на основании" :value="$party?->director_basis"/>
+            {{-- Для договоров (ДКП, 19.10.2026): полное наименование, подписант полностью и «в лице …» родительным падежом. --}}
+            <x-ui.field name="full_name" id="full_name-company" label="Полное наименование" :value="$party?->full_name" span="col-span-2"/>
+            <x-ui.field name="director_full" id="director_full-company" label="Руководитель, ФИО полностью" :value="$party?->director_full"/>
+            <x-ui.field name="signed_by" id="signed_by-company" label="В лице" :value="$party?->signed_by" placeholder="Генерального директора Иванова Ивана Ивановича"/>
         @endif
     </div>
     <div class="{{ $g }}" data-reveal-target="pane" data-reveal-key="ip">

@@ -14,14 +14,16 @@
     // (`back()` с `?dkp=1`) показывает договор готовым.
     $editing = $errors->hasAny(['seller.*', 'vehicle.*']) || (request()->boolean('dkp') && $missing);
     $form = 'dkp-'.$deal->id;
-    $pdf = ['url' => '/work/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => 'ДКП '.$deal->offer->titleWithYear().'.pdf', 'label' => 'ДКП'];
+    $doc = new \App\Offers\DkpDocument($contract);
+    $car = $contract->car();
+    $pdf = ['url' => '/work/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => $doc->fileName(), 'label' => 'ДКП'];
 @endphp
 <x-ui.card :title="$deal->isPrime() ? 'ДКП '.$deal->seller()->short() : 'ДКП'" id="dkp" class="scroll-mt-24" {{ $attributes }} data-controller="edit-card" :data-edit-card-form-value="$form" :data-edit-card-editing-value="$editing ? 'true' : null">
     <x-slot:actions><button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $editing ? 'Готово' : 'Изменить' }}</button></x-slot:actions>
     <div class="list">
         <x-ui.doc :doc="$pdf" class="row">
             <span class="min-w-0 flex-1">
-                <span class="block">Договор купли-продажи</span>
+                <span class="block">Договор купли-продажи{{ $doc->number() ? ' № '.$doc->number() : '' }}</span>
                 <span class="row-sub">@if ($missing)<span class="text-urgent">нет: {{ implode(', ', $missing) }}</span>@else<span class="text-open">готов</span>@endif</span>
             </span>
             <x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/>
@@ -48,10 +50,11 @@
         <div class="list-cap">Транспортное средство</div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             @foreach (DealContract::VEHICLE as $key => $label)
-                <x-ui.field :name="'vehicle['.$key.']'" :label="$label" :value="$contract->{$key} ?? ($key === 'body_no' ? $deal->offer->vin : null)" :span="$key === 'pts_issued' ? 'sm:col-span-2' : null"/>
+                <x-ui.field :name="'vehicle['.$key.']'" :label="$label" :value="$car?->{$key} ?? ($key === 'body_no' ? $deal->offer->vin : null)"/>
             @endforeach
             <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null"/>
-            <x-ui.field name="vehicle[city]" label="Город договора" :value="$contract->city"/>
+            <x-ui.field name="vehicle[city]" label="Город договора" :value="$contract->city" :placeholder="$doc->city()"/>
+            <x-ui.field name="vehicle[signed_at]" label="Дата договора" type="date" :value="$contract->signed_at?->toDateString()"/>
         </div>
         <x-ui.save-bar page/>
     </form>

@@ -9,8 +9,10 @@ use App\Billing\Seller;
 use App\Notifications\InvoiceNeededNotice;
 use App\Notifications\MoneyNotice;
 use App\Offers\Actions\AcceptBid;
+use App\Offers\Actions\AssignDealPickup;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
+use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
@@ -21,6 +23,7 @@ use App\Offers\OfferState;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
+use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Actions\ApplyPreset;
 use App\Workflow\Actions\EnterStage;
 use App\Workflow\Actions\TakeExit;
@@ -30,8 +33,10 @@ use App\Workflow\Stage;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
@@ -101,7 +106,9 @@ class AlfaPrepayTest extends TestCase
         $this->assertFalse($deal->fresh()->mayPickUp());
         $this->assertFalse(Handover::for($deal->fresh())->open);
 
-        // Покупатель указан, а реквизитов Р.О.С. нет — счёта нет, ход наш «Заполните реквизиты Р.О.С.».
+        // Покупатель указан, а реквизитов Р.О.С. нет (с 19.10.2026 они в конфиге из шаблона ДКП — стираем) — счёта нет,
+        // ход наш «Заполните реквизиты Р.О.С.».
+        Party::seller(Seller::Ros)->update(['inn' => null, 'bank_name' => null, 'bik' => null, 'account' => null]);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'me'], $this->manager);
         $this->assertSame('ros_requisites', $deal->fresh()->invoiceGap());
         $this->assertSame(WaitsFor::Us, $offer->fresh()->position(Track::Sale)->waits_for);
@@ -110,7 +117,7 @@ class AlfaPrepayTest extends TestCase
         // Реквизиты заполнили — счёт от Р.О.С., своей нумерацией, без ссылки.
         Party::seller(Seller::Ros)->update(['inn' => '7700000000', 'bank_name' => 'Банк', 'bik' => '044525000', 'account' => '40702810000000000001', 'corr_account' => '30101810000000000000']);
         // Дальше ход менеджера: «Я сам» — физлицо, без паспорта со сканом счёта нет (11.10.2026).
-        app(\App\Offers\Actions\SyncDealInvoices::class)($deal->fresh(), $this->admin);
+        app(SyncDealInvoices::class)($deal->fresh(), $this->admin);
         $this->assertSame('passport', $deal->fresh()->invoiceGap());
         $this->passportFor($this->manager);
         $invoice = $deal->fresh()->issuedInvoices()->sole();
@@ -170,9 +177,9 @@ class AlfaPrepayTest extends TestCase
 
         // Платёжка Альфе — ответом на просьбу шага.
         $requirement = $deal->fresh()->openRequirement()->firstOrFail();
-        $requirement->addMedia(\Illuminate\Http\UploadedFile::fake()->create('pp.pdf', 10, 'application/pdf'))->toMediaCollection('files');
+        $requirement->addMedia(UploadedFile::fake()->create('pp.pdf', 10, 'application/pdf'))->toMediaCollection('files');
         $slip = $offer->fresh()->stage()->payExit($deal->fresh());
-        app(\App\Workflow\Actions\AnswerRequirement::class)($requirement->fresh(), $slip, $this->manager);
+        app(AnswerRequirement::class)($requirement->fresh(), $slip, $this->manager);
         $this->assertSame('Подтверждение оплаты поставщиком', $offer->fresh()->stage()->name);
 
         $this->exit($offer, 'Оплата получена');
@@ -180,14 +187,13 @@ class AlfaPrepayTest extends TestCase
 
         // Документы у Альфы — «Передача договора» одним шагом; машину забирает менеджер и ещё не забрал — не закрыть.
         $this->assertSame('Передача договора', $offer->fresh()->stage()->name);
-        app(\App\Offers\Actions\AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
+        app(AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
         $this->assertSame('Сначала отметьте «Автомобиль забрал»', $deal->fresh()->closeBlocker());
         $requirement = $deal->fresh()->openRequirement()->firstOrFail();
         $close = $offer->fresh()->stage()->exitsFor(Actor::Manager, $deal->fresh())->first(fn ($e) => $e->label === 'Договор у покупателя');
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
-        app(\App\Workflow\Actions\AnswerRequirement::class)($requirement->fresh(), $close, $this->manager);
+        $this->expectException(ValidationException::class);
+        app(AnswerRequirement::class)($requirement->fresh(), $close, $this->manager);
     }
-
 
     /** ПРАЙМ у Альфы (18.10.2026): деньги за ТС пришли ПРАЙМ — сначала наш перевод поставщику, потом его подтверждение. */
     public function test_prime_transfers_to_supplier(): void
