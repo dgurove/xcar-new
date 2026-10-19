@@ -5,10 +5,10 @@ namespace App\Offers;
 use App\Billing\WorkDays;
 use App\Live\Publisher;
 use App\Live\Topics;
-use App\Logistics\Transport;
 use App\Support\Ago;
 use App\Support\Surface;
 use App\Users\User;
+use App\Vendors\DealFormat;
 use App\Vendors\Vendor;
 use App\Workflow\WaitsFor;
 use Illuminate\Support\Carbon;
@@ -97,7 +97,23 @@ final class Binding
     /** Срок ещё что-то значит: продажа ищет покупателя или сделка не заплатила поставщику. */
     public static function matters(Offer $offer): bool
     {
-        return $offer->binding_until !== null && (in_array($offer->state, self::LIVE, true) || self::unpaidDeal($offer));
+        return $offer->binding_until !== null && self::applies($offer) && (in_array($offer->state, self::LIVE, true) || self::unpaidDeal($offer));
+    }
+
+    /**
+     * Срок обязывающего — только у вендоров, что продают через нас по комиссии (Совкомбанк; 19.10.2026, владелец: «в Тинь
+     * вообще не нужно, это совком информация»). У остальных поля нет, из документов и от вендора не встаёт, вписанное
+     * стирается (`UpdateOffer`). Список — раз на запрос.
+     */
+    public static function applies(Offer $offer): bool
+    {
+        return $offer->vendor_id !== null && in_array((int) $offer->vendor_id, self::vendorIds(), true);
+    }
+
+    /** @return list<int> вендоры со сроком обязывающего */
+    public static function vendorIds(): array
+    {
+        return once(fn () => Vendor::where('deal_format', DealFormat::Commission->value)->pluck('id')->map(fn ($id) => (int) $id)->all());
     }
 
     public static function hasBuyer(Offer $offer): bool
@@ -220,7 +236,7 @@ final class Binding
      */
     public static function fromVendor(Offer $offer): ?Carbon
     {
-        if ($offer->binding_until || ! $offer->vendor_id) {
+        if ($offer->binding_until || ! self::applies($offer)) {
             return null;
         }
         $days = (int) Vendor::whereKey($offer->vendor_id)->value('binding_days');
@@ -276,7 +292,8 @@ final class Binding
 
     /**
      * Тревога в шапке (19.10.2026, владелец: «не убрать, пока не устранят причину, но чтобы интерфейс не перегораживали»):
-     * красная капсула «🚨 N» в CRM и логистике — ведущим логистику (админы и модераторы) всё, логисту — машины его вывозов.
+     * красная капсула «🚨 N» в CRM и логистике — ведущим логистику (админы и модераторы); логисту и исполнителям — нет
+     * (владелец: «это совком информация, видно только нам»).
      * В тревоге — горит и вышедшие за последние `ALARM_DAYS` дней (владелец: «только горящие и свежие»); давние — красным в
      * списках. Гаснет сама: покупатель, новый срок, машину убрали.
      */
@@ -289,21 +306,18 @@ final class Binding
 
         return $user !== null && match ($surface) {
             Surface::Crm => $user->leadsLogistics(),
-            Surface::Logistics => $user->leadsLogistics() || $user->isLogist(),
+            Surface::Logistics => $user->leadsLogistics(),
             default => false,
         };
     }
 
-    /** Выборка тревог человека: горит или вышел недавно, без покупателя; логисту — только машины его вывозов. */
+    /** Выборка тревог: горит или вышел недавно — нет покупателя или поставщику не заплачено. Только сотрудникам XCar. */
     public static function alarmQuery(User $user)
     {
         $q = Offer::query()->where('offers.binding_until', '>=', now()->subDays(self::ALARM_DAYS));
         self::scope($q, 'panic');
-        if (! $user->leadsLogistics()) {
-            $q->whereIn('offers.car_id', Transport::open()->where('logist_id', $user->id)->select('car_id'));
-        }
 
-        return $q;
+        return $user->leadsLogistics() ? $q : $q->whereRaw('false');
     }
 
     public static function alarmCount(?User $user): int
@@ -326,10 +340,6 @@ final class Binding
         if (! $offer?->binding_until) {
             return;
         }
-        $ids = User::logisticsLeads()->pluck('id');
-        if ($offer->car_id) {
-            $ids = $ids->merge(Transport::open()->where('car_id', $offer->car_id)->whereNotNull('logist_id')->pluck('logist_id'));
-        }
-        app(Publisher::class)->badges($ids->unique()->map(fn (int $id) => Topics::user($id))->values()->all());
+        app(Publisher::class)->badges(User::logisticsLeads()->pluck('id')->map(fn (int $id) => Topics::user($id))->values()->all());
     }
 }

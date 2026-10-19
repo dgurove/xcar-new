@@ -190,8 +190,9 @@ class TransportController
             $user->isStaff() ? 'vendor' : null,
             // Продажа — где решают, кому отдать (и в «Все», поиске); в работе решение уже принято.
             $lead && ! in_array($preset, ['work', 'moving', 'done'], true) ? 'sale' : null,
-            // Срок обязывающего предложения (19.10.2026, логистика: «хотим сортировать и фильтровать по нему») — ведущим и логисту.
-            ($lead || $user->isLogist()) && $preset !== 'done' ? 'binding' : null,
+            // Срок обязывающего предложения (19.10.2026, логистика: «хотим сортировать и фильтровать по нему») — только сотрудникам
+            // XCar: это сведения Совкомбанка, логисту и исполнителям их не видно.
+            $lead && $preset !== 'done' ? 'binding' : null,
             'to',
             'city',
             // Что дальше — своим столбцом там, где шаги разные (на «Без исполнителя» и «У логиста» он у всех один).
@@ -220,7 +221,7 @@ class TransportController
             $user->isStaff() ? Common::vendor(SaleState::VENDOR_SQL)->none('Без вендора') : null,
             $lead ? Common::manager(SaleState::MANAGER_SQL)->none('Без менеджера') : null,
             // Срок обязывающего предложения (19.10.2026): горит без покупателя, вышел, есть, нет.
-            $lead || $user->isLogist() ? Facet::column('binding', 'Срок обязывающего', ['вид', 'вида', 'видов'], Binding::bucketSql())->natural()
+            $lead ? Facet::column('binding', 'Срок обязывающего', ['вид', 'вида', 'видов'], Binding::bucketSql())->natural()
                 ->labels(fn (array $keys) => collect(Binding::BUCKETS)
                     ->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()) : null,
             // Межрегион (18.10.2026, начальник: «важно») — переключателем, как «Срочно».

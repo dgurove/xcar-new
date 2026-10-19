@@ -66,6 +66,10 @@ final class UpdateOffer
         } elseif ($offer->isDirty('floor_price') && $offer->getOriginal('floor_price') && $offer->getOriginal('state') !== OfferState::Draft) {
             $offer->shown_floor ??= (int) $offer->getOriginal('floor_price');
         }
+        // Срок обязывающего — только у Совкомбанка (`Binding::applies`): у другого вендора не встаёт и стирается.
+        if ($offer->binding_until && ! Binding::applies($offer)) {
+            $offer->binding_until = null;
+        }
         // Срок обязывающего пуст, а встал вендор или окончание торгов — от «Срока предложения, дней» вендора (`Binding::fromVendor`).
         if (! $offer->binding_until && ! array_key_exists('binding_until', $data) && $offer->isDirty(['vendor_id', 'insurer_deadline_at'])
             && ($at = Binding::fromVendor($offer))) {

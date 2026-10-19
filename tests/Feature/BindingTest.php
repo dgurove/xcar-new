@@ -246,4 +246,20 @@ class BindingTest extends TestCase
 
         return \App\Workflow\Stage::create(['workflow_id' => $workflow->id, 'block_id' => $block->id, 'name' => 'Менеджер забирает автомобиль', 'position' => 1, 'waits_for' => 'manager']);
     }
+
+    public function test_only_sovcombank_and_only_staff(): void
+    {
+        // Вендор не по комиссии (Т-Страхование) — срока нет: вписанный стирается, из вендора не встаёт.
+        $this->offer->vendor->forceFill(['deal_format' => 'direct', 'binding_days' => 60])->save();
+        app(UpdateOffer::class)($this->offer->fresh(), ['binding_until' => Carbon::parse('2026-10-21 16:00'), 'insurer_deadline_at' => '2026-09-02'], $this->admin);
+        $this->assertNull($this->offer->fresh()->binding_until);
+
+        // Логисту — ни тревоги, ни столбца.
+        $this->offer->vendor->forceFill(['deal_format' => 'commission'])->save();
+        $this->offer->forceFill(['state' => OfferState::Open, 'binding_until' => Carbon::parse('2026-10-21 16:00')])->saveQuietly();
+        $tanya = User::create(['name' => 'Татьяна Логинова', 'phone' => '79000000009', 'roles' => [Role::Logist], 'approved_at' => now()]);
+        $this->assertFalse(Binding::alarmsFor($tanya, \App\Support\Surface::Logistics));
+        $this->assertSame(0, Binding::alarmQuery($tanya)->count());
+        $this->assertTrue(Binding::alarmsFor($this->admin, \App\Support\Surface::Logistics));
+    }
 }

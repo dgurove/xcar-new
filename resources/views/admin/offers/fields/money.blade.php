@@ -23,7 +23,10 @@
     {{-- Срок обязывающего предложения (19.10.2026): до когда поставщик держит эту закупочную; приём подтверждений — не позже. --}}
     @unless ($garageOnly ?? false)
     @php $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0; @endphp
-    <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form" span="col-span-2"/>
+    {{-- Только у вендора по комиссии (Совкомбанк, `Binding::applies`): сменили вендора — поле прячется и показывается само. --}}
+    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
+        <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form"/>
+    </div>
     @endunless
     {{-- Гаражной машине цены показа ни к чему: продаёт менеджер сам, своему покупателю (06.10.2026). --}}
     @unless ($garageOnly ?? false)
@@ -48,7 +51,10 @@
     {{-- Срок обязывающего предложения (19.10.2026): до когда поставщик держит эту закупочную; приём подтверждений — не позже. --}}
     @unless ($garageOnly ?? false)
     @php $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0; @endphp
-    <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form" span="col-span-2"/>
+    {{-- Только у вендора по комиссии (Совкомбанк, `Binding::applies`): сменили вендора — поле прячется и показывается само. --}}
+    <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
+        <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form"/>
+    </div>
     @endunless
     @endif
 </div>
