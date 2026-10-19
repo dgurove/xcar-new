@@ -12,6 +12,8 @@ export default class extends Controller {
     static values = { options: Object, effective: Array, mode: { type: String, default: 'waves' } };
 
     connect() {
+        // Значение с сервера: у скрытого поля присвоение value меняет и defaultValue — сравнивать не с чем.
+        this.initial = this.rulesTarget.value;
         this.rows = this.isList
             ? (this.parse(this.rulesTarget.value) ?? []).map((r) => ({ type: r.type, id: Number(r.id) }))
             : this.clean(this.parse(this.rulesTarget.value) ?? this.effectiveValue);
@@ -62,6 +64,9 @@ export default class extends Controller {
     save() {
         const form = this.rulesTarget.form;
         if (!form) return;
+        // Форма узнаёт о правке по change скрытого поля; если его пропустили (шторка открылась раньше этого куска,
+        // 19.10.2026: значение в поле новое, а форма «не тронута» и «Сохранить» молчал) — сообщаем ещё раз перед отправкой.
+        if (this.rulesTarget.value !== this.initial) this.rulesTarget.dispatchEvent(new Event('change', { bubbles: true }));
         const button = [...form.elements].find((b) => b.matches('[data-save-bar-button]'));
         form.requestSubmit(button);
     }
