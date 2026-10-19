@@ -14,7 +14,8 @@
         <div class="chain-head-title {{ $c->hasCar() ? '' : 'text-ink-muted' }}">{{ $c->title() }}</div>
         <div class="chain-head-sub">
             @if (! $c->vendor)<x-mail.vendor-pick :pick="\App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $park ? '/mail' : '/work/mail', $c->thread, $c->relationLoaded('messages') ? $c->messages : [], $c)"/>@endif
-            <x-vendor.ref :vendor="$c->vendor" :ref="$c->code"/>
+            {{-- Без номера — с именем вендора: у одного логотипа нет базовой линии, и на ПК строка садилась ниже названия. --}}
+            <x-vendor.ref :vendor="$c->vendor" :ref="$c->code ?: $c->vendor?->name"/>
             <span class="{{ $c->stage === CandidateStage::Sold ? 'text-urgent' : '' }}">{{ $stage }}</span>
         </div>
     </div>
