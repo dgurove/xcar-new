@@ -42,8 +42,6 @@
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
     $waiting = $bids->where('state', BidState::Active);
     $unread = $chats->sum('unread_for_staff');
-    // Две колонки, которые не распирает содержимое (дата-время, VIN с кнопкой): иначе карточка листалось вбок.
-    $grid = 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
 @endphp
 <x-ui.detail>
     <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)">
@@ -286,10 +284,10 @@
             @endunless
             {{-- «Показ» — тот же модуль, что справа в редакторе: под «Ценами», режим по делу (у сделки и гаража — свой или нет). --}}
             <x-offer.showing :offer="$offer" :form="'detail-edit-'.$n" as="section"/>
-            <section>
-                <h2 class="detail-section">Транспортное средство</h2>
-                @include('admin.offers.fields.car')
-            </section>
+            {{-- Машина — те же блоки, что в редакторе и на парковке (`x-car.blocks`), разделами окошка. --}}
+            <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section"
+                :required="$offer->state === \App\Offers\OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []"/>
+            @include('admin.offers.fields.sale', ['as' => 'section'])
         </form>
         <section class="mt-5">
             <h2 class="detail-section">Документы</h2>

@@ -71,7 +71,6 @@ use App\Support\Phone;
 use App\Support\Sort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -271,24 +270,13 @@ class VehicleController
         ]);
     }
 
-    /**
-     * «Сохранить изменения» у полей ТС внутри формы шага дела: та же форма, но сохраняются только поля ТС (VehicleFields),
-     * шаг не выполняется. Ошибки и тост — как у update.
-     */
-    public function fields(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link, PromoteCandidate $promote)
-    {
-        $request->replace(Arr::only($request->all(), [...VehicleFields::KEYS, '_token']));
-
-        return $this->update($request, $vehicle, $update, $link, $promote);
-    }
-
     public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link, PromoteCandidate $promote)
     {
         // Поля тождества (VehicleFields) шлёт форма дела; договор — шторка «Договор». Одна дверь на обе.
         VehicleFields::clean($request);
         $data = $request->validate(VehicleFields::rules(identity: $request->hasAny(['brand_id', 'model_id', 'ref', 'vin', 'plate'])) + [
             'contract_kind' => ['nullable', Rule::in(['storage', 'commission'])], 'contract_no' => ['nullable', 'string', 'max:60'], 'contract_at' => ['nullable', 'date'], 'assigned_price' => ['nullable', 'integer', 'min:0'],
-            'pts' => ['nullable', 'string', 'max:40'], 'sts' => ['nullable', 'string', 'max:40'], 'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'], 'billing_cadence' => ['nullable', Rule::enum(Cadence::class)],
+            'owner_party_id' => ['nullable', 'exists:billing_parties,id'], 'storage_rate' => ['nullable', 'numeric', 'min:0'], 'storage_rate_note' => ['nullable', 'string', 'max:120'], 'billing_cadence' => ['nullable', Rule::enum(Cadence::class)],
             'back' => ['nullable', 'string', 'max:200', 'regex:#^/(?!/)#'],
         ]);
         $back = $data['back'] ?? null;
@@ -561,10 +549,6 @@ class VehicleController
     public function yard(Request $request, Vehicle $vehicle, SetYard $setYard)
     {
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
-        if ($request->has('vehicle_form')) {
-            VehicleFields::clean($request);
-            app(UpdateVehicle::class)($vehicle, VehicleFields::only($request->validate(VehicleFields::rules())), $request->user());
-        }
         $setYard($vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Парковка указана');

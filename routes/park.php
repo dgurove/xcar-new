@@ -60,7 +60,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     // Кадры письма прикрепляются: строка хода и ряд «От страховой», пока ImportThreadFiles идёт (attach_controller).
     Route::get('/cars/{vehicle}/attach', [AttachController::class, 'vehicle']);
     Route::put('/cars/{vehicle}', [VehicleController::class, 'update'])->middleware('park.manage');
-    Route::post('/cars/{vehicle}/fields', [VehicleController::class, 'fields'])->middleware('park.manage');
     // «В логистику» (10.10.2026): перевозка ТС — на logistics.xcar.ru.
     Route::post('/cars/{vehicle}/logistics', [LogisticsController::class, 'store'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);
@@ -140,6 +139,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/reference/twins', [VehicleController::class, 'twins']);
     Route::get('/reference/vin', [ReferenceController::class, 'vin']);
     Route::post('/reference/car-text', [ReferenceController::class, 'carText']);
+    Route::get('/reference/vendors', [ReferenceController::class, 'vendors']);
     Route::get('/reference/brands', [ReferenceController::class, 'brands']);
     Route::get('/reference/settlements', [ReferenceController::class, 'settlements']);
     Route::get('/reference/models', [ReferenceController::class, 'models']);

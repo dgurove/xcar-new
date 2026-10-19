@@ -12,6 +12,7 @@ use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Cars\Vin\VinAutofill;
 use App\Support\Liters;
+use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -127,7 +128,9 @@ class ReferenceController
     /** Поле «Вендор» предложения: вендоры CRM (не парковые двойники), действующие, по началу и куску имени. */
     public function vendors(Request $request)
     {
-        $vendors = Vendor::query()->whereNull('crm_vendor_id')->where('is_active', true)->search((string) $request->query('q', ''))
+        // Вендоры своей стороны (24.09.2026): на парковке — парковки (`onPark`, город управляющего), в CRM — продажи.
+        $side = Surface::current() === Surface::Park ? Vendor::onPark() : Vendor::query()->whereNull('crm_vendor_id');
+        $vendors = $side->where('is_active', true)->search((string) $request->query('q', ''))
             ->orderBy('name')->limit(20)->get(['id', 'name']);
 
         return response()->json($vendors->map(fn ($v) => ['id' => $v->id, 'label' => $v->name]));

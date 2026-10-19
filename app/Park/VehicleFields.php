@@ -2,21 +2,25 @@
 
 namespace App\Park;
 
-use App\Cars\Category;
-use App\Cars\Colors;
-use App\Cars\Vin\Vin;
+use App\Cars\CarFields;
 use App\Support\Money;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
- * Поля тождества ТС — те, что приходят в письме и что вела таблица парковки (Питер, 09.10.2026): убыток, вендор, марка,
- * модель, год, госномер, VIN, СТС, (Э)ПТС, категория, цвет, № полиса, страхователь с телефоном, заявленная стоимость. Одна форма на дело и на новую заявку,
+ * Поля ТС на парковке — те же блоки машины, что в CRM (`Cars\CarFields`, 19.10.2026: «ТС одна сущность»): «Транспортное
+ * средство», «ПТС и СТС», «Страхователь», и своё парковки — оценочная стоимость. Одна форма на дело и на новую заявку,
  * одни правила. Негабарит, повреждения и показания не спрашиваются — осмотр будет отдельным модулем.
  */
 final class VehicleFields
 {
-    public const KEYS = ['ref', 'vendor_id', 'brand_id', 'model_id', 'year', 'plate', 'vin', 'sts', 'pts', 'color', 'category', 'policy_no', 'contact_name', 'contact_phone', 'value'];
+    /** Блоки машины на парковке. */
+    public const BLOCKS = ['car', 'papers', 'owner'];
+
+    /** @return list<string> имена полей ТС в форме парковки */
+    public static function keys(): array
+    {
+        return [...CarFields::names(Vehicle::class, ...self::BLOCKS), 'value'];
+    }
 
     /**
      * Марка и модель обязательны: ТС без имени в списках не нужна, номер убытка человеку ничего не говорит.
@@ -28,42 +32,29 @@ final class VehicleFields
     {
         $name = $identity ? 'required' : 'nullable';
 
-        return [
-            'ref' => ['nullable', 'string', 'max:60'], 'vin' => ['nullable', 'string', 'size:17'], 'plate' => ['nullable', 'string', 'max:12'],
-            'sts' => ['nullable', 'string', 'max:40'], 'pts' => ['nullable', 'string', 'max:40'],
-            'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)],
-            'brand_id' => [$name, 'exists:brands,id'], 'model_id' => [$name, 'exists:car_models,id'], 'vendor_id' => ['nullable', 'exists:vendors,id'],
-            'category' => ['nullable', Rule::enum(Category::class)], 'color' => ['nullable', 'string', 'max:32'], 'policy_no' => ['nullable', 'string', 'max:60'],
-            'contact_name' => ['nullable', 'string', 'max:80'], 'contact_phone' => ['nullable', 'string', 'max:20'], 'value' => ['nullable', 'integer', 'min:0'],
+        return [...CarFields::rules(Vehicle::class, self::BLOCKS),
+            'brand_id' => [$name, 'exists:brands,id'], 'model_id' => [$name, 'exists:car_models,id'],
+            'value' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
-    /**
-     * Заявленная стоимость приходит разрядами («1 450 000», digits_controller) — до проверки остаются цифры. Цвет —
-     * с заглавной, как у всех (`Colors` без исправления опечаток: «серая» → «Серая»); не из словаря — как написано.
-     */
+    /** Чистка машины — общая с CRM (`CarFields::clean`); оценочная и своя ставка набираются разрядами. */
     public static function clean(Request $request): void
     {
-        // VIN одной записью с предложением и поиском двойников: кириллица того же начертания — латиница (`Vin`).
-        if ($request->has('vin')) {
-            $request->merge(['vin' => Vin::normalize((string) $request->input('vin'))]);
-        }
+        CarFields::clean($request, Vehicle::class);
         if ($request->has('value')) {
             $request->merge(['value' => Money::rubles((string) $request->input('value'))]);
         }
         // Своя ставка набирается разрядами и с запятой («1 200», «120,5»).
         if ($request->has('storage_rate')) {
-            $rate = str_replace([' ', ' ', ','], ['', '', '.'], (string) $request->input('storage_rate'));
+            $rate = str_replace([' ', ' ', ','], ['', '', '.'], (string) $request->input('storage_rate'));
             $request->merge(['storage_rate' => $rate === '' ? null : $rate]);
-        }
-        if ($request->filled('color')) {
-            $request->merge(['color' => Colors::normalize($request->input('color'), fuzzy: false) ?? trim((string) $request->input('color'))]);
         }
     }
 
     /** Только поля ТС из проверенных данных формы — этап заявки шлёт их вместе со своими. */
     public static function only(array $data): array
     {
-        return array_intersect_key($data, array_flip(self::KEYS));
+        return array_intersect_key($data, array_flip(self::keys()));
     }
 }

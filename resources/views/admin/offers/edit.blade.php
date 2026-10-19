@@ -17,9 +17,7 @@
     $canGive = $admin && ! $garage && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     // Подтверждения: ждущие по сумме вниз, потом решённые.
     $bids = $admin ? $offer->bids->sortBy([fn ($a, $b) => ($a->state === BidState::Active ? 0 : 1) <=> ($b->state === BidState::Active ? 0 : 1), ['amount', 'desc']]) : collect();
-    $grid = 'grid grid-cols-2 gap-3 @4xl:grid-cols-3';
     // С публикации поля ТС и цены свёрнуты (владелец 06.10.2026); раскрыты сами, если в них есть что смотреть.
-    $carKeys = ['vendor_id', 'claim_ref', 'vin', 'brand_id', 'model_id', 'year', 'mileage', 'color', 'body', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'settlement_id', 'inspection_address', 'description'];
     $moneyKeys = ['value', 'floor_price', 'publish_price', 'asking_price', 'min_bid_price', 'min_bid_share'];
     // Подсветка Мигторга читается один раз (`glowed` забирает её из кэша) — и для формы ниже.
     $glow = \App\Offers\Jobs\ImportMigtorgLot::glowed($offer);
@@ -28,9 +26,6 @@
     // Сворачивание и «Показ» — от дела, а не от одного состояния: у машины в сделке или гараже ТС и цены свёрнуты всегда
     // (07.10.2026, владелец: «гараж — это тоже как сделка»).
     $published = $offer->state !== OfferState::Draft || $deal || $garage;
-    // Ошибка формы «Получения» (адрес — общее поле) ТС не раскрывает.
-    $ownErrors = ! str_starts_with((string) old('_form'), 'handover-');
-    $foldCar = $published && ! ($ownErrors && $errors->hasAny($carKeys)) && ! array_intersect($hints, $carKeys);
     // Чат сделки — карточкой первой в правой колонке (`x-deal.chat-card`, 07.10.2026); в «Чатах» и пилюле — остальные.
     $dealChat = $deal?->buyer;
     $isDealChat = fn ($c) => $dealChat && $c->user_id === $deal->buyer_id && ! $c->manager_id;
@@ -126,25 +121,25 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:min-w-0 @4xl:flex-col @4xl:gap-4">
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 @4xl:order-none">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 flex flex-col gap-4 @4xl:order-none">
             @csrf @method('put')
 
-            {{-- С публикации — «Изменить / Готово», как в Контактах iOS (06.10.2026): данные текстом в той же сетке, что поля
-                 (`fields.passport`), «Изменить» ставит на их место поля (`edit_card_controller`), «Готово» сохраняет. Поля
-                 всё время в форме, скрытые: сохранение «Показа» шлёт их как есть. Черновик — сразу поля; есть ошибки или
-                 расхождения Мигторга — тоже, с «Готово». --}}
-            <x-ui.card title="Транспортное средство" :data-controller="$published ? 'edit-card' : null" :data-edit-card-editing-value="$published && ! $foldCar ? 'true' : null">
-                @if ($published)
-                    <x-slot:actions><button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $foldCar ? 'Изменить' : 'Готово' }}</button></x-slot:actions>
-                @endif
-                <x-mail.reader-diffs form="offer-form" class="mb-3"/>
-                @if ($empty)<div class="mb-3"><x-ui.paste/></div>@endif
-                @if ($published)<div data-edit-card-target="view" @unless ($foldCar) hidden @endunless>@include('admin.offers.fields.passport')</div>@endif
-                <div @if ($published) data-edit-card-target="edit" @if ($foldCar) hidden @endif @endif>@include('admin.offers.fields.car')</div>
-            </x-ui.card>
+            {{-- Машина — те же блоки, что на парковке (`x-car.blocks`, 19.10.2026: «ТС одна сущность»): «Транспортное
+                 средство», «ПТС и СТС», «Характеристики»; продаже своё — «Осмотр». С публикации — «Изменить / Готово»,
+                 как в Контактах iOS: текстом, «Изменить» ставит поля, «Готово» сохраняет. Поля всё время в форме, скрытые:
+                 сохранение «Показа» шлёт их как есть. Черновик — сразу поля; ошибка или расхождение Мигторга раскрывает
+                 свой блок. --}}
+            <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" :fold="$published ? true : null" :hints="$hints"
+                :required="$published ? [] : ['vendor_id', 'claim_ref', 'brand_id']">
+                <x-slot:top>
+                    <x-mail.reader-diffs form="offer-form" class="mb-3"/>
+                    @if ($empty)
+                        <div class="mb-3"><x-ui.paste/></div>
+                    @endif
+                </x-slot:top>
+            </x-car.blocks>
+            @include('admin.offers.fields.sale', ['fold' => $published ? true : null])
         </form>
-        {{-- Документы ТС для ДКП — своей карточкой под «Транспортным средством», когда машина вышла из черновика. --}}
-        @if ($published && $admin)<x-offer.car-docs :offer="$offer" class="order-2 @4xl:order-none"/>@endif
 
         {{-- Дорожки — от ширины своей колонки (`@container/lanes`): от 52rem три в линию, уже — две, ещё уже — столбиком. --}}
         @if ($admin)

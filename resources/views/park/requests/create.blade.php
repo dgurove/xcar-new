@@ -80,12 +80,19 @@
                 </x-ui.card>
                 <input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}">
             @elseif ($type === RequestType::Intake)
-                <x-ui.card title="Транспортное средство">
-                    @if ($reader)<x-mail.reader-diffs form="request-form" class="mb-3"/>@endif
-                    {{-- Руками (не из письма): первым — поле для текста про машину, поля заполнятся из него. --}}
-                    @unless ($candidate)<div class="mb-3"><x-ui.paste/></div>@endunless
-                    <x-park.vehicle-fields :values="$p" :brand="$p['brand'] ?? null" :model="$p['model'] ?? null" :vendors="$vendors" :categories="$categories" :cols="$letters ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'" :candidate="$candidate?->id"/>
-                </x-ui.card>
+                {{-- Те же блоки машины, что в деле и в CRM (`x-car.blocks`), полями. Руками (не из письма) первым — поле
+                     для текста про машину, поля заполнятся из него. --}}
+                <x-car.blocks :of="\App\Park\Vehicle::class" :blocks="\App\Park\VehicleFields::BLOCKS" :values="$p" :required="['brand_id']" :candidate="$candidate?->id">
+                    <x-slot:top>
+                        @if ($reader)
+                            <x-mail.reader-diffs form="request-form" class="mb-3"/>
+                        @endif
+                        @unless ($candidate)
+                            <div class="mb-3"><x-ui.paste/></div>
+                        @endunless
+                    </x-slot:top>
+                </x-car.blocks>
+                @include('park.vehicles.storage-block', ['vehicle' => null, 'values' => $p])
                 @if ($reader)
                     <x-ui.card title="Документы" data-controller="reader" data-reader-url-value="{{ $reader->url() }}" data-reader-subject-value="{{ $reader->key() }}" data-reader-form-value="request-form" data-reader-auto-value="true" data-scan-subject="{{ $reader->url() }}" data-scan-reader>
                         <x-slot:actions><x-mail.reader-spark/></x-slot:actions>

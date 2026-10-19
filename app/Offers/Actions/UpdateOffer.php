@@ -108,6 +108,10 @@ final class UpdateOffer
         if (in_array('share_locked', $changed, true)) {
             StampPhotos::dispatch($offer->carRecord());
         }
+        // ПТС и СТС вписали — договор, что ждал документы ТС, собрался: номер, дата, менеджеру «ДКП готов».
+        if (array_intersect(['plate', 'pts', 'sts', 'body_no', 'chassis_no'], $changed) && ($contract = $offer->deal()->first()?->contract)) {
+            app(SettleContract::class)($contract->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer']));
+        }
         // Цена продажи поставлена (своя админа, «Взять», «Из текста») — оценка менеджеров больше не нужна.
         if (in_array('asking_price', $changed, true) && $offer->asking_price) {
             app(CloseEstimates::class)($offer, $by);

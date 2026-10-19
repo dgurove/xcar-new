@@ -68,9 +68,9 @@
         {{-- Машина — страницей, действие — окном (`x-park.act-window`, 12.10.2026): приём, письмо вендору и выдача
              открываются кнопкой текущего шага; поля ТС — своей формой с «Сохранить изменения». --}}
         @if ($canManage && ! $state->isFinal())
-            <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" data-controller="vin save-bar draft next" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}">
+            <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" class="flex flex-col gap-4" data-controller="vin save-bar draft next" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}">
                 @csrf @method('put')
-                @include('park.vehicles.fields-block', ['save' => true])
+                @include('park.vehicles.fields-block')
             </form>
         @endif
         @if ($letters)@include('park.vehicles.letters-card')@endif

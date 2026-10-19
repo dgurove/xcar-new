@@ -2,22 +2,17 @@
 
 namespace App\Http\Admin;
 
-use App\Cars\Body;
-use App\Cars\Colors;
+use App\Cars\CarFields;
 use App\Cars\DamageCause;
 use App\Cars\DamageZone;
-use App\Cars\Drive;
-use App\Cars\Fuel;
 use App\Cars\Papers;
-use App\Cars\Transmission;
-use App\Cars\Vin\Vin;
 use App\Mail\Extraction\Code;
 use App\Offers\AudienceRules;
 use App\Offers\DealAudience;
 use App\Offers\Flag;
+use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Tag;
-use App\Support\Liters;
 use App\Support\Money;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
@@ -35,26 +30,16 @@ class OfferRequest extends FormRequest
     public const MODERATOR = [
         'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'show_address', 'body', 'transmission', 'drive', 'fuel',
         'engine_volume', 'engine_power', 'color', 'settlement_id', 'inspection_address', 'description', 'floor_price', 'value', 'vendor_id', 'claim_ref',
-        'prices_include_vat',
+        'prices_include_vat', 'vehicle_category', 'plate', 'pts', 'sts', 'policy_no', 'body_no', 'chassis_no',
     ];
 
     protected function prepareForValidation(): void
     {
-        // Числа приходят с пробелами и знаком рубля — чистим до цифр.
-        if ($this->has('engine_volume')) {
-            $this->merge(['engine_volume' => Liters::parse($this->input('engine_volume'), $this->route('offer')?->engine_volume)]);
-        }
-        // VIN одной записью с парковкой и поиском двойников: кириллица того же начертания — латиница (`Vin`).
-        if ($this->has('vin')) {
-            $this->merge(['vin' => Vin::normalize((string) $this->input('vin'))]);
-        }
-        // Цвет — как в форме ТС парковки: словарь пишет его одинаково («черный» → «Черный»), опечаток не правит.
-        if ($this->filled('color')) {
-            $this->merge(['color' => Colors::normalize($this->input('color'), fuzzy: false) ?? trim((string) $this->input('color'))]);
-        }
+        // Поля машины — одной чисткой с парковкой (`CarFields::clean`): VIN, цвет, коды, пробег, объём литрами.
+        CarFields::clean($this, Offer::class, $this->route('offer')?->engine_volume);
         // Целые рубли (Money::rubles): клавиатура с запятой даёт набрать «1 200 000,5» — копейки отбрасываются, а не
         // приклеиваются к рублям.
-        $this->merge(collect($this->only(['mileage', 'floor_price', 'value', 'publish_price', 'asking_price', 'min_bid_price', 'engine_power']))
+        $this->merge(collect($this->only(['floor_price', 'value', 'publish_price', 'asking_price', 'min_bid_price']))
             ->map(fn ($v) => Money::rubles($v))
             ->all());
     }
@@ -68,21 +53,12 @@ class OfferRequest extends FormRequest
         $vendor = $this->filled('vendor_id') ? Vendor::badges()->get((int) $this->input('vendor_id')) : null;
         $need = fn (bool $when = true) => $full && $when ? 'required' : 'nullable';
 
-        return [
+        // Поля машины — одними правилами с парковкой (`CarFields::rules`), обязательность черновика — здесь.
+        return [...CarFields::rules(Offer::class), ...[
             'brand_id' => [$need(), 'exists:brands,id'],
             'model_id' => [$need(), 'exists:car_models,id'],
-            'year' => ['nullable', 'integer', 'between:1950,'.(now()->year + 1)],
-            'mileage' => ['nullable', 'integer', 'max:5000000'],
-            'vin' => ['nullable', 'string', 'size:17'],
             'show_vin' => ['boolean'],
             'show_address' => ['boolean'],
-            'body' => ['nullable', Rule::enum(Body::class)],
-            'transmission' => ['nullable', Rule::enum(Transmission::class)],
-            'drive' => ['nullable', Rule::enum(Drive::class)],
-            'fuel' => ['nullable', Rule::enum(Fuel::class)],
-            'engine_volume' => ['nullable', 'integer', 'max:20000'],
-            'engine_power' => ['nullable', 'integer', 'max:3000'],
-            'color' => ['nullable', 'string', 'max:32'],
             'damage_cause' => ['nullable', Rule::enum(DamageCause::class)],
             'damage_zones' => ['nullable', 'array'],
             'damage_zones.*' => [Rule::enum(DamageZone::class)],
@@ -113,8 +89,6 @@ class OfferRequest extends FormRequest
             'deal_show_for' => ['nullable', Rule::in(['keep', ...array_map('strval', array_keys(DealAudience::FOR))])],
             'vendor_id' => [$need(), 'exists:vendors,id'],
             'answer_by' => ['nullable', 'date'],
-            'insured_name' => ['nullable', 'string', 'max:80'],
-            'insured_phone' => ['nullable', 'string', 'max:20'],
             'flags' => ['nullable', 'array'],
             'flags.*' => ['string', Rule::enum(Flag::class)],
             'holder' => ['nullable', 'string', 'max:80'],
@@ -128,12 +102,12 @@ class OfferRequest extends FormRequest
                 }
             }],
             'insurer_deadline_at' => ['nullable', 'date'],
-        ];
+        ]];
     }
 
     public function attributes(): array
     {
-        return ['brand_id' => 'марка', 'model_id' => 'модель', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена'];
+        return ['brand_id' => 'марка', 'model_id' => 'модель', 'plate' => 'госномер', 'pts' => 'ПТС', 'sts' => 'СТС', 'body_no' => 'номер кузова', 'chassis_no' => 'номер шасси', 'vendor_id' => 'вендор', 'claim_ref' => 'номер', 'asking_price' => 'цена продажи', 'floor_price' => 'закупочная цена', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена'];
     }
 
     /**

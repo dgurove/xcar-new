@@ -55,6 +55,8 @@ final class CreateRequest
                     'brand_id' => $brand?->id, 'model_id' => $model?->id, 'vendor_id' => $data['vendor_id'] ?? null,
                     'category' => $data['category'] ?? null, 'color' => $data['color'] ?? null, 'policy_no' => $data['policy_no'] ?? null,
                     'contact_name' => $data['contact_name'] ?? null, 'contact_phone' => $data['contact_phone'] ?? null,
+                    // Все поля машины формы (`VehicleFields`): СТС и ПТС раньше терялись — в форме были, сюда не шли.
+                    ...array_intersect_key($data, array_flip(['sts', 'pts', 'body_no', 'chassis_no', 'mileage'])),
                     'flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? [], 'value' => $data['value'] ?? null,
                     'state' => VehicleState::Expected,
                 ]);
