@@ -10,8 +10,6 @@
     // Деньги дела (счета, начисления, долг) — тем, кому они открыты на парковке (галка «Деньги» у управляющего).
     $money = auth()->user()->canManagePark();
     $open = $req !== null;
-    // Поля ТС сверху, пока ТС ожидается (данные из письма надо сверить); после приёма — строкой с раскрытием среди фаз.
-    $vehicleOpen = $state->isBefore();
     $cur = App\Park\Timeline::current($steps);
     // Блок кадров стоит в ленте того шага, на котором их снимают, и справа на всех остальных: видны всегда.
     $shooting = match ($cur?->key) { 'intake' => PhotoStage::Intake, 'release' => PhotoStage::Release, default => null };
