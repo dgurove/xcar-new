@@ -19,7 +19,7 @@
     @endif
     <div class="flex flex-col gap-2.5" data-reveal-target="pane" data-reveal-key="rate" @if ($way !== 'rate') hidden @endif>
         <div class="flex items-center gap-3">
-            <h2 @class(['text-lg font-medium' => ! $plain, 'detail-section !mb-0' => $plain])>Цены</h2>
+            <h2 @class(['text-base font-medium' => ! $plain, 'detail-section !mb-0' => $plain])>Цены</h2>
             <span class="ml-auto">@include('admin.offers.fields.vat-check', ['form' => $form])</span>
         </div>
         @include('admin.offers.fields.money', ['form' => $form, 'now' => $now, 'idp' => 'price-'.$n.'-', 'plate' => ! $plain])
@@ -56,7 +56,7 @@
         <input type="radio" name="_way-{{ $n }}" value="garage" class="sr-only" id="way-garage-{{ $n }}" data-action="reveal#pick" @checked($way === 'garage')>
         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="garage" @unless ($way === 'garage') hidden @endunless>
             <label class="flex items-center gap-1 self-start text-sm text-accent-text" for="way-rate-{{ $n }}"><x-ui.icon name="chevron-left" class="size-4"/>Цены</label>
-            <h2 class="text-lg font-medium">В гараж</h2>
+            <h2 class="text-base font-medium">В гараж</h2>
             <x-offer.give-garage :offer="$offer" :prefix="'detail-'.$n" inline/>
         </div>
     @endif
@@ -64,7 +64,7 @@
         <input type="radio" name="_way-{{ $n }}" value="pickup" class="sr-only" id="way-pickup-{{ $n }}" data-action="reveal#pick" @checked($way === 'pickup')>
         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="pickup" @unless ($way === 'pickup') hidden @endunless>
             <label class="flex items-center gap-1 self-start text-sm text-accent-text" for="way-rate-{{ $n }}"><x-ui.icon name="chevron-left" class="size-4"/>Цены</label>
-            <h2 class="text-lg font-medium">Вывоз</h2>
+            <h2 class="text-base font-medium">Вывоз</h2>
             <x-logistics.assign-form :transport="$offer->pickup()?->isOpen() ? $offer->pickup() : null" :offer="$offer" :action="'/offers/'.$n.'/pickup'" prefix="detail-pickup-{{ $n }}"/>
         </div>
     @endif

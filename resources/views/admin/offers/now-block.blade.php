@@ -13,7 +13,7 @@
 @endphp
 <section class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
     @if ($kind === 'slot')
-        <h2 class="text-lg font-medium">Выйдет {{ Slots::phrase($offer->slot_at) }}</h2>
+        <h2 class="text-base font-medium">Выйдет {{ Slots::phrase($offer->slot_at) }}</h2>
         <div class="flex flex-wrap gap-2" data-controller="sheet">
             <form method="post" action="/offers/{{ $n }}/state" class="flex basis-full">
                 @csrf<input type="hidden" name="state" value="open"><input type="hidden" name="when" value="{{ Slots::NOW }}">
@@ -24,13 +24,13 @@
             <x-offer.publish-sheet :offer="$offer" :id="'slot-move-'.$n" :action="'/offers/'.$n.'/state'" state="open" title="Перенести" move/>
         </div>
     @elseif ($kind === 'auction')
-        <h2 class="text-lg font-medium">На аукционе{{ $offer->auction_at ? ' с '.$offer->auction_at->translatedFormat('j M') : '' }}</h2>
+        <h2 class="text-base font-medium">На аукционе{{ $offer->auction_at ? ' с '.$offer->auction_at->translatedFormat('j M') : '' }}</h2>
         <div class="flex flex-wrap gap-2">
             <button type="button" class="btn btn-s btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="resale:open">Вернуть в продажу</button>
             <form method="post" action="/offers/{{ $n }}/auction" class="flex">@csrf @method('delete')<button class="btn btn-s btn-quiet">В черновики</button></form>
         </div>
     @else
-        <h2 class="text-lg font-medium">{{ $offer->state === OfferState::Cancelled ? 'Снято' : 'В архиве' }}</h2>
+        <h2 class="text-base font-medium">{{ $offer->state === OfferState::Cancelled ? 'Снято' : 'В архиве' }}</h2>
         <div class="flex flex-wrap gap-2">
             @foreach ($transitions as [$next, $label])
                 <form method="post" action="/offers/{{ $n }}/state" class="flex min-w-0 flex-1">

@@ -18,7 +18,7 @@
         @foreach ($asks as $m)
             <section class="flex flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
                 <div class="flex min-w-0 flex-col gap-0.5">
-                    <h2 class="text-lg font-medium">{{ $words($m) }}</h2>
+                    <h2 class="text-base font-medium">{{ $words($m) }}</h2>
                     <span class="text-sm text-ink-muted">{{ \App\Mail\Chains\NodeTitle::who($m) }}, <span class="nums">{{ \App\Support\Ago::stamp($m->date_at) }}</span></span>
                     @if ($text = trim($m->ownText()))<p class="truncate text-sm">{{ $text }}</p>@endif
                 </div>
@@ -32,7 +32,7 @@
         @endforeach
         @foreach ($steps as $key)
             <section class="flex items-center gap-3 rounded-(--radius-l) bg-surface-2 p-3">
-                <h2 class="min-w-0 flex-1 text-lg font-medium">{{ \App\Park\Tasks::LABELS[$key] }}</h2>
+                <h2 class="min-w-0 flex-1 text-base font-medium">{{ \App\Park\Tasks::LABELS[$key] }}</h2>
                 <a href="{{ $href }}" class="btn btn-s btn-accent shrink-0" data-turbo-frame="_top">Открыть дело</a>
             </section>
         @endforeach
