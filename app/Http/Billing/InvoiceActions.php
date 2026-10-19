@@ -47,9 +47,10 @@ trait InvoiceActions
     public function pay(Request $request, Invoice $invoice, RecordPayment $record)
     {
         $this->guardInvoice($invoice);
-        $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01'], 'paid_at' => ['nullable', 'date'], 'source' => ['required', Rule::enum(PaymentSource::class)], 'ref' => ['nullable', 'string', 'max:60'], 'note' => ['nullable', 'string', 'max:255'], 'slip' => ['nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic']]);
+        // Номер — у банка и эквайринга, скан платёжки — только у банка: у наличных их нет (19.10.2026, владелец).
+        $data = $request->validate(['amount' => ['required', 'numeric', 'min:0.01'], 'paid_at' => ['nullable', 'date'], 'source' => ['required', Rule::enum(PaymentSource::class)], 'ref' => ['exclude_unless:source,bank,acquiring', 'nullable', 'string', 'max:60'], 'note' => ['nullable', 'string', 'max:255'], 'slip' => ['exclude_unless:source,bank', 'nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic']]);
         $payment = $record($invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, PaymentSource::from($data['source']), $data['ref'] ?? null, $data['note'] ?? null);
-        if ($request->hasFile('slip')) {
+        if (isset($data['slip'])) {
             $payment->addMediaFromRequest('slip')->toMediaCollection('slip');
         }
         $paid = $invoice->fresh()->state === InvoiceState::Paid;

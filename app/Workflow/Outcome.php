@@ -70,21 +70,30 @@ class Outcome extends Model
      * на приём (дата и время, адрес) и отправка оригиналов (трек) — каждому только свои и обязательно (18.10.2026, прогон
      * Альфы: «Приём назначен» просил и трек-номер, а менеджер не узнавал, когда и куда ехать).
      *
-     * @return list<array{key: string, label: string, type: string, required?: bool}>
+     * Платёжка нашей оплаты (`Stage::paysOut`, 19.10.2026) — наоборот, на выходе из этапа оплаты («Поставщику оплачено»,
+     * «Переведено поставщику»), необязательно и с `out`: в позицию следующего этапа она не идёт, только в «Историю»
+     * (`EnterStage`). На входе в этап оплаты («Договор получен») её не спрашиваем — платили ещё не мы.
+     *
+     * @return list<array{key: string, label: string, type: string, required?: bool, out?: bool, default?: string}>
      */
     public function staffFields(): array
     {
-        $fields = $this->to?->staff_fields ?? [];
+        $out = $this->actor === Actor::Staff
+            // «Дата оплаты» — календарём и сегодняшним днём: чаще всего жмут в день оплаты.
+            ? array_map(fn (array $f) => ['required' => false, 'out' => true]
+                + (str_contains(mb_strtolower($f['label']), 'дата') ? ['type' => 'date', 'default' => now()->toDateString()] : []) + $f, $this->from?->payFields() ?? [])
+            : [];
+        $fields = array_values(array_filter($this->to?->staff_fields ?? [], fn (array $f) => ! Stage::isPayField($f)));
         $track = fn (array $f) => str_contains(mb_strtolower($f['label']), 'трек');
         if (! collect($fields)->contains($track) || collect($fields)->every($track)) {
-            return $fields;
+            return [...$fields, ...$out];
         }
         $sending = str_contains(mb_strtolower($this->label), 'отправлен');
 
-        return array_values(array_map(
+        return [...array_values(array_map(
             fn (array $f) => ['required' => true] + (! $sending && str_contains(mb_strtolower($f['label']), 'дата') ? ['type' => 'datetime'] + $f : $f),
             array_filter($fields, fn (array $f) => $track($f) === $sending),
-        ));
+        )), ...$out];
     }
 
     /**

@@ -86,6 +86,27 @@ class Stage extends Model
     }
 
     /**
+     * Этап нашей оплаты поставщику (19.10.2026, владелец: «постоянно всплывает ввод № и даты платёжки»): «Оплата поставщику»,
+     * «… в гараж», «Перевод поставщику с Р.О.С.» — поля платёжки (`payFields`). Их вписывают выходом отсюда, когда заплатили,
+     * а не входом сюда (`Outcome::staffFields`): на «Договор получен» оплаты ещё нет.
+     */
+    public function paysOut(): bool
+    {
+        return $this->payFields() !== [];
+    }
+
+    /** @return list<array{key: string, label: string, type: string}> */
+    public function payFields(): array
+    {
+        return array_values(array_filter($this->staff_fields ?? [], fn (array $f) => self::isPayField($f)));
+    }
+
+    public static function isPayField(array $field): bool
+    {
+        return preg_match('/оплат|платёж|платеж|перевод/u', mb_strtolower((string) ($field['label'] ?? ''))) === 1;
+    }
+
+    /**
      * Этап с письмом поставщику (11.10.2026): шаблон письма и ход поставщика — «Согласование с поставщиком» Альфы
      * («Уведомили поставщика о покупке»), «Подтвердили покупку поставщику». Пока письмо не ушло — ход наш, срок ответа
      * считается от письма (`Position::letterStatus`, `Offers\Listeners\MarkSupplierLetter`).

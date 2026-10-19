@@ -69,7 +69,7 @@ final class Path
         foreach ($entries as $e) {
             $p = $e->payload;
             $entry = ['at' => $e->created_at, 'block' => $p['block'], 'stage' => $p['to'] ?? null, 'stage_id' => $p['to_id'] ?? null,
-                'from' => $p['from'] ?? null, 'from_id' => $p['from_id'] ?? null, 'exit' => $p['exit'] ?? null];
+                'from' => $p['from'] ?? null, 'from_id' => $p['from_id'] ?? null, 'exit' => $p['label'] ?? $p['exit'] ?? null];
             // Снова в этапе, где уже были (откат, «Оплата не поступила», «Отказываюсь»), — всё после прежнего входа
             // из пути уходит. Откат оставляет прежний вход (с ним и выход, которым пришли тогда, — его и отменит
             // следующий откат), обычный возврат — новый: отменять надо уже его («Оплата не поступила»).

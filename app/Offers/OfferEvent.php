@@ -73,7 +73,9 @@ class OfferEvent extends Model
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
             OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
             OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : (! empty($p['placed_by']) ? 'Интерес, внесён за менеджера' : 'Интерес'),
-            OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.$p['exit'].'»'.(! empty($p['letter']) ? ' по письму' : '').')' : '')),
+            OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.($p['label'] ?? $p['exit']).'»'.(! empty($p['letter']) ? ' по письму' : '').')' : ''))
+                // Платёжка нашей оплаты поставщику («Поставщику оплачено»): «дата оплаты 19 октября 2026, номер платёжки 512».
+                .(! empty($p['fields']) ? ', '.collect($p['fields'])->map(fn ($v, $k) => mb_strtolower($k).' '.$v)->implode(', ') : ''),
             OfferEventType::StageOverdue => 'Срок вышел: '.($p['stage'] ?? ''),
             OfferEventType::StageReminded => 'Срок подходит: '.($p['stage'] ?? ''),
             OfferEventType::RouteDropped => 'Вывоз отменён',
@@ -102,7 +104,7 @@ class OfferEvent extends Model
             OfferEventType::PlaceChanged => 'Автомобиль: '.(CarPlace::labelOf($p['place'] ?? null) ?? 'место не указано'),
             OfferEventType::Note => (string) ($p['text'] ?? ''),
             OfferEventType::Garage => self::garageText($p),
-            OfferEventType::RequirementAnswered => 'Менеджер: «'.($p['exit'] ?? '').'»'.(! empty($p['fields']) ? ' — '.implode(', ', $p['fields']) : ''),
+            OfferEventType::RequirementAnswered => 'Менеджер: «'.($p['label'] ?? $p['exit'] ?? '').'»'.(! empty($p['fields']) ? ' — '.implode(', ', $p['fields']) : ''),
             default => $this->type->value,
         };
     }

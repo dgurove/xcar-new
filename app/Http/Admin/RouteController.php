@@ -53,7 +53,17 @@ class RouteController
             }
             if ($value !== '') {
                 // Дата со временем — словами, как её прочтёт менеджер: «20 октября, 10:00».
-                $payload[$field['key']] = ($field['type'] ?? '') === 'datetime' ? Carbon::parse($value)->translatedFormat('j F, H:i') : $value;
+                $value = match ($field['type'] ?? '') {
+                    'datetime' => Carbon::parse($value)->translatedFormat('j F, H:i'),
+                    'date' => ($field['out'] ?? false) ? Carbon::parse($value)->translatedFormat('j F Y') : $value,
+                    default => $value,
+                };
+                // Платёжка нашей оплаты — подписью в «Историю», не в поля следующего этапа (`Outcome::staffFields`).
+                if ($field['out'] ?? false) {
+                    $payload['out'][$field['label']] = $value;
+                } else {
+                    $payload[$field['key']] = $value;
+                }
             }
         }
         $offer = $take($offer, $exit, Actor::Staff, $request->user(), $payload);

@@ -34,7 +34,11 @@ final class EnterStage
     {
         // Письмо, которое сдвинуло шаг, — в журнал и событие, не в поля этапа.
         $letter = isset($payload['letter']) ? (int) $payload['letter'] : null;
-        unset($payload['letter']);
+        // Платёжка нашей оплаты, вписанная выходом из этапа оплаты, — подписями в событие, полями нового этапа она не становится.
+        $out = array_filter((array) ($payload['out'] ?? []), fn ($v) => filled($v));
+        // Как назвать шаг в «Истории», если не именем выхода: «Отдал наличными» тем же выходом «Платёжное поручение приложено».
+        $said = isset($payload['label']) ? (string) $payload['label'] : null;
+        unset($payload['letter'], $payload['out'], $payload['label']);
         $to->loadMissing(['workflow', 'block', 'exits.to']);
         $track = $to->workflow->track;
         $now = Carbon::now();
@@ -111,6 +115,7 @@ final class EnterStage
         $offer->log(OfferEventType::StageEntered, $by, [
             'track' => $track->value, 'from' => $from?->name, 'to' => $to->name, 'block' => $to->block?->name, 'exit' => $exit?->label,
             'from_id' => $from?->id, 'to_id' => $to->id, ...($back ? ['back' => true] : []), ...($letter ? ['letter' => $letter] : []),
+            ...($out ? ['fields' => $out] : []), ...($said ? ['label' => $said] : []),
         ]);
         StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter);
         // Машина сделки на нашей парковке: стало можно забирать — выдача, пропуск, получатель (18.10.2026, одна дверь).
