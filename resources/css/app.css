@@ -389,6 +389,9 @@ html.kb-open { --home-gap: 0px; }
   .give-garage:has(input[name="whom"][value="self"]:checked) .give-to-manager,
   .give-garage:has(input[name="whom"][value="self"]:checked) .give-carry,
   .give-garage:has(input[name="where"][value="arrived"]:checked) .give-carry { display: none; }
+  /* «Показ» строкой в блоке «Цены» и плашке «Приём» (`x-offer.showing-row`): срок приёма и кому — двумя этажами, нажатие —
+     шторка «Показ». Фон поля поверх плашки. */
+  .showing-row { @apply flex w-full items-center gap-3 rounded-(--radius-m) bg-surface px-3 py-2 text-left; }
   /* «Заявленная, минимальная, доля, метки» в блоке «Цены» окошка черновика — свёрнуто строкой с шевроном. */
   .price-more > summary { list-style: none; width: fit-content; }
   .price-more > summary::-webkit-details-marker { display: none; }

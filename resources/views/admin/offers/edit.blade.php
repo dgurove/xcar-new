@@ -45,6 +45,8 @@
     };
     $purge = $nowKind === 'archive';
     $publishButton = $admin && ! $garage && $offer->state === OfferState::Draft && $offer->asking_price && ! $offer->isScheduled() && ! $offer->onAuction();
+    // Черновик (не в слоте и не на аукционе) — «Показ» строкой в карточке «Цены», отдельной карточки нет.
+    $draftShow = $admin && ! $garage && ! $deal && $offer->state === OfferState::Draft && ! $offer->isScheduled() && ! $offer->onAuction();
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/><x-ui.links :offer="$offer"/></x-slot:badge>
@@ -161,7 +163,7 @@
             {{-- Что сейчас и что с этим сделать — верхом правой колонки, на телефоне сразу под шапкой. --}}
             @if ($intake || $nowKind)
                 <div class="order-first flex flex-col gap-4">
-                    @if ($intake)@include('admin.offers.intake-block')@endif
+                    @if ($intake)@include('admin.offers.intake-block', ['showForm' => 'offer-form', 'showSummary' => $showingSummary])@endif
                     @if ($nowKind)@include('admin.offers.now-block', ['transitions' => $transitions->except(OfferState::Open->value)])@endif
                 </div>
             @endif
@@ -173,14 +175,26 @@
                     <div data-edit-card-target="view" @unless ($foldMoney) hidden @endunless>@include('admin.offers.fields.money-view', ['garageOnly' => (bool) $garageView])</div>
                 @endif
                 <div @if ($published) data-edit-card-target="edit" @if ($foldMoney) hidden @endif @endif>@include('admin.offers.fields.money', ['form' => 'offer-form', 'garageOnly' => (bool) $garageView])</div>
+                {{-- Черновик: «Показ» строкой со шторкой и, у оценённого, «Выставить в продажу» и «Отдать» — в этой же карточке. --}}
+                @if ($draftShow)
+                    <div class="mt-3 flex flex-col gap-2.5">
+                        <x-offer.showing-row :offer="$offer" form="offer-form"/>
+                        @if ($publishButton)
+                            <div class="flex gap-2">
+                                <button type="button" class="btn btn-s btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="publish-{{ $n }}:open">Выставить в продажу</button>
+                                @if ($canGive)<button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="give-{{ $n }}:open">Отдать</button>@endif
+                            </div>
+                        @endif
+                    </div>
+                @endif
             </x-ui.card>
 
             {{-- «Показ» — сразу под «Ценами», на ПК и на телефоне (12.10.2026, владелец): у предложения срок приёма и волны, у
                  сделки — сколько и кому показывать, один модуль `x-offer.showing`; гараж и прочее — без него. Заметка сделки
                  (и гаража — «как сделка») — под ним же, а не в дорожке. --}}
-            <x-offer.showing :offer="$offer" form="offer-form" :summary="$showingSummary" class="order-3"/>
-            {{-- Оценённый черновик — «Выставить в продажу» под «Показом»: сначала до когда приём и кому показывать. --}}
-            @if ($publishButton)<div class="order-3">@include('admin.offers.publish-row', ['give' => $canGive])@include('admin.offers.publish-sheet-slot')</div>@endif
+            {{-- «Показ» карточкой — только у сделки; у черновика — строкой в «Ценах», у открытого — в плашке «Приём». --}}
+            @unless ($draftShow || $intake)<x-offer.showing :offer="$offer" form="offer-form" :summary="$showingSummary" class="order-3"/>@endunless
+            @if ($publishButton)@include('admin.offers.publish-sheet-slot')@endif
             @php $noteDeal = $garage?->deal ?? $deal; @endphp
             @if ($admin && $noteDeal)<x-deal.note :deal="$noteDeal" id="deal-note" class="order-3"/>@endif
 

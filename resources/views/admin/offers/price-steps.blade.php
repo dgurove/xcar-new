@@ -2,7 +2,8 @@
      местами»; владелец: «к унификации»). Поля — один кусок с редактором (`fields/money`): всё подписано и на своих местах.
      Черновик — плашкой сверху окошка, по шагам: текущий шаг лаймовой рамкой и с фокусом, последним — действие шага: без цены
      «Сохранить и дальше» (`then=advance`: строка уходит, карточка — к следующей; пустое поле — просто дальше) и рядом «В
-     гараж» / «Вывоз» (их формы на месте полей, «‹ Цены» — назад). Остальное
+     гараж» / «Вывоз» (их формы на месте полей, «‹ Цены» — назад); оценённый — «Выставить в продажу» и «Отдать». Над
+     кнопками — «Показ» строкой (`x-offer.showing-row`, шторка со всем показом). Остальное
      (`plain`) — разделом формы без кнопок. Метки — под блоком, не в нём. --}}
 @php
     $form = 'detail-edit-'.$n;
@@ -16,15 +17,23 @@
     @if ($ways)
         <input type="radio" name="_way-{{ $n }}" value="rate" class="sr-only" id="way-rate-{{ $n }}" data-action="reveal#pick" @checked($way === 'rate')>
     @endif
-    <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="rate" @if ($way !== 'rate') hidden @endif>
+    <div class="flex flex-col gap-2.5" data-reveal-target="pane" data-reveal-key="rate" @if ($way !== 'rate') hidden @endif>
         <div class="flex items-center gap-3">
             <h2 @class(['text-lg font-medium' => ! $plain, 'detail-section !mb-0' => $plain])>Цены</h2>
             <span class="ml-auto">@include('admin.offers.fields.vat-check', ['form' => $form])</span>
         </div>
         @include('admin.offers.fields.money', ['form' => $form, 'now' => $now, 'idp' => 'price-'.$n.'-', 'plate' => ! $plain])
-        {{-- Действие шага — последним: без цены — «Сохранить и дальше» и «В гараж» / «Вывоз». Оценённому — «Выставить в
-             продажу» под «Показом» (`admin/offers/publish-row`): перед ним решают, до когда приём и кому показывать. --}}
-        @if ($now)
+        {{-- «Показ» строкой (срок приёма, кому, отметки) — нажатие открывает шторку со всем показом (`x-offer.showing-row`);
+             у оценённого — решают перед «Выставить в продажу», поэтому прямо над ней. --}}
+        @unless ($plain)<x-offer.showing-row :offer="$offer" :form="$form"/>@endunless
+        {{-- Действие шага — последним: без цены — «Сохранить и дальше» и «В гараж» / «Вывоз»; оценённый — «Выставить в
+             продажу» (шторка слотов `publish-sheet-slot`, вне формы, событием) и «Отдать» (`x-offer.give-sheet`). --}}
+        @if ($publishButton ?? false)
+            <div class="flex gap-2">
+                <button type="button" class="btn btn-s btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="publish-{{ $n }}:open">Выставить в продажу</button>
+                @if ($giveMenu ?? false)<button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="give-{{ $n }}:open">Отдать</button>@endif
+            </div>
+        @elseif ($now)
             <div class="flex gap-2">
                 <button type="submit" form="{{ $form }}" name="then" value="advance" class="btn btn-s btn-accent min-w-0 flex-1">Сохранить и дальше</button>
                 @if ($garage)<label class="btn btn-s btn-quiet shrink-0" for="way-garage-{{ $n }}">В гараж</label>@endif

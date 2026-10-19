@@ -193,7 +193,7 @@
                 @if ($admin)<div class="w-full">@include('admin.offers.fields.tags', ['form' => 'detail-edit-'.$n])</div>@endif
             @endif
             @if ($intake)
-                @include('admin.offers.intake-block')
+                @include('admin.offers.intake-block', ['showForm' => 'detail-edit-'.$n])
             @endif
             @if ($nowKind)
                 @include('admin.offers.now-block')
@@ -240,8 +240,8 @@
                 @if ($admin)<section>@include('admin.offers.fields.tags')</section>@endif
             @endunless
             {{-- «Показ» — тот же модуль, что справа в редакторе: под «Ценами», режим по делу (у сделки и гаража — свой или нет). --}}
-            <x-offer.showing :offer="$offer" :form="'detail-edit-'.$n" as="section"/>
-            @if ($publishButton)@include('admin.offers.publish-row', ['give' => $giveMenu])@endif
+            {{-- У черновика и открытого «Показ» — строкой со шторкой в блоке «Цены» и плашке «Приём»; разделом — только у сделки. --}}
+            @unless ($steps || $intake)<x-offer.showing :offer="$offer" :form="'detail-edit-'.$n" as="section"/>@endunless
             {{-- Машина — те же блоки, что в редакторе и на парковке (`x-car.blocks`), разделами окошка. --}}
             <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section"
                 :required="$offer->state === \App\Offers\OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []"/>
