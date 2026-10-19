@@ -221,7 +221,7 @@ class TransportController
             $lead ? Common::manager(SaleState::MANAGER_SQL)->none('Без менеджера') : null,
             // Срок обязывающего предложения (19.10.2026): горит без покупателя, вышел, есть, нет.
             $lead || $user->isLogist() ? Facet::column('binding', 'Срок обязывающего', ['вид', 'вида', 'видов'], Binding::bucketSql())->natural()
-                ->labels(fn (array $keys) => collect(['panic' => 'Горит, нет покупателя', 'over' => 'Вышел, нет покупателя', 'set' => 'Есть срок', 'empty' => 'Нет срока'])
+                ->labels(fn (array $keys) => collect(Binding::BUCKETS)
                     ->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()) : null,
             // Межрегион (18.10.2026, начальник: «важно») — переключателем, как «Срочно».
             Facet::toggle('far', 'Между регионами', fn ($q) => $q->where('transports.reach', Reach::Intercity->value)),

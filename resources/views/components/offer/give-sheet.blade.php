@@ -18,7 +18,13 @@
 <div class="contents" data-controller="sheet" @unless ($bid) data-action="give-{{ $n }}:open@window->sheet#open" @endunless>
     {{ $slot }}
     <x-ui.sheet :id="$id" :title="$title" tall>
-        <div class="mb-4 flex flex-wrap items-center gap-1.5">@if ($bid)<x-ui.person :user="$bid->user" full/>@endif<span class="tag">{{ $offer->titleWithYear() }}</span></div>
+        <div class="mb-4 flex flex-wrap items-center gap-1.5">@if ($bid)<x-ui.person :user="$bid->user" full/>@endif<span class="tag">{{ $offer->titleWithYear() }}</span>
+            {{-- Срок обязывающего (19.10.2026): решать и платить поставщику — до него. --}}
+            @if (\App\Offers\Binding::matters($offer))
+                @php $bindingWord = \App\Offers\Binding::word($offer); @endphp
+                <span @class(['text-sm nums', 'font-medium text-danger' => $bindingWord, 'text-ink-muted' => ! $bindingWord])>обязывающее до {{ \App\Offers\Binding::date($offer->binding_until) }}@if ($bindingWord), {{ $bindingWord }}@endif</span>
+            @endif
+        </div>
         @if ($bid)
             @if ($bid->isGarage())
                 <x-offer.give-garage :offer="$offer" :bid="$bid" :prefix="$id"/>

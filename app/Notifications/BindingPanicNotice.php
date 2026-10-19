@@ -18,7 +18,7 @@ final class BindingPanicNotice extends Notice
 
     public function title(): string
     {
-        return 'Нет покупателя: '.$this->offer->titleWithYear();
+        return (Binding::of($this->offer) === 'deal' ? 'Поставщику не заплачено: ' : 'Нет покупателя: ').$this->offer->titleWithYear();
     }
 
     public function text(): ?string

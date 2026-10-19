@@ -203,9 +203,10 @@ class OfferController
                 ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')] : []),
             ],
             default => self::facets(),
-        }, ...($admin && $preset !== 'bids' ? [
-            // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом.
-            Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, 'panic'))->dot('danger'),
+        }, ...($admin ? [
+            // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
+            // «Есть подтверждения» — подтверждение есть, а принять не успели (`undecided`).
+            Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger'),
         ] : []))->always();
         ListPrefs::sync($request, 'crm-offers', keep: $facets->keys());
         $cols = self::columns($preset, $request->user());
@@ -444,7 +445,7 @@ class OfferController
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
             // В «Опубликованных» у админа подтверждений нет по определению — столбца тоже.
             'published', 'closed' => ['vendor', 'city', ...($admin ? ['state'] : []), 'binding', 'floor', 'price', 'published'],
-            'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
+            'bids' => ['vendor', 'city', 'state', 'binding', 'bids', 'floor', 'price', 'published'],
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
 

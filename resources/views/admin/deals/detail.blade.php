@@ -13,6 +13,8 @@
             {{-- Коды чипами. --}}
             <x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" copy class="tag nums"/>
             <span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $offer->number" done="Номер в буфере"/></span>
+            {{-- Срок обязывающего, пока поставщику не заплачено (19.10.2026). --}}
+            <x-offer.binding :offer="$offer"/>
         </x-slot:marks>
         {{-- Покупатель с телефоном ссылкой — фразой; состояние (закрыта, отменена) — у названия. --}}
         {{-- Слот и @endif — на разных строках: вплотную («</x-slot:badge>@endif») Blade склеивает их и шаблон не собирается. --}}

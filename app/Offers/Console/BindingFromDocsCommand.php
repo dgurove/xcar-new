@@ -45,14 +45,19 @@ class BindingFromDocsCommand extends Command
 
                 continue;
             }
+            // В документах нет — от «Срока предложения, дней» вендора (`Binding::fromVendor`).
+            $vendor = ! $until && ($at = Binding::fromVendor($offer));
+            if ($vendor) {
+                $until = $at->format('Y-m-d H:i');
+            }
             if (! $until) {
                 continue;
             }
             $found++;
             $at = Carbon::parse($until);
-            $this->line("{$offer->id} {$offer->claim_ref} {$offer->titleWithYear()} [{$offer->state->value}]: ".Binding::date($at).($at->isPast() ? ', вышел' : ''));
+            $this->line("{$offer->id} {$offer->claim_ref} {$offer->titleWithYear()} [{$offer->state->value}]: ".Binding::date($at).($at->isPast() ? ', вышел' : '').($vendor ? ', по вендору' : ''));
             if ($write) {
-                $apply($offer, ['binding_until' => ['value' => $until]], null, log: ['why' => 'Из протокола торгов']);
+                $apply($offer, ['binding_until' => ['value' => $until]], null, log: ['why' => $vendor ? 'Из настроек вендора' : 'Из протокола торгов']);
             }
         }
         $this->info(($write ? 'Вписано: ' : 'Найдено: ').$found);

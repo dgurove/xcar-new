@@ -17,6 +17,7 @@
                         <th class="grow title-cap">Марка, модель</th>
                         <th class="hidden sm:table-cell">№ убытка</th>
                         <th class="hidden md:table-cell">Где</th>
+                        <x-ui.th :sort="$sort" key="binding" class="hidden md:table-cell">Обязывающее до</x-ui.th>
                         <x-ui.th :sort="$sort" key="bids" class="num">Подтв.</x-ui.th>
                         <x-ui.th :sort="$sort" key="interest" class="num">Интерес</x-ui.th>
                         <x-ui.th :sort="$sort" key="floor" class="num hidden sm:table-cell">Закупочная</x-ui.th>

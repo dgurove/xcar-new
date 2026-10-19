@@ -43,7 +43,7 @@
             @endif
         </dd>
     @endforeach
-    @if ($offer->binding_until && ! $garageOnly)
+    @if (\App\Offers\Binding::matters($offer))
         <dt class="text-ink-dim">Обязывающее до</dt>
         <dd class="text-right"><x-offer.binding :offer="$offer" plain/></dd>
     @endif

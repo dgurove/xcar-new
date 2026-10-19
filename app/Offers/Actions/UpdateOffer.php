@@ -66,11 +66,17 @@ final class UpdateOffer
         } elseif ($offer->isDirty('floor_price') && $offer->getOriginal('floor_price') && $offer->getOriginal('state') !== OfferState::Draft) {
             $offer->shown_floor ??= (int) $offer->getOriginal('floor_price');
         }
+        // Срок обязывающего пуст, а встал вендор или окончание торгов — от «Срока предложения, дней» вендора (`Binding::fromVendor`).
+        if (! $offer->binding_until && ! array_key_exists('binding_until', $data) && $offer->isDirty(['vendor_id', 'insurer_deadline_at'])
+            && ($at = Binding::fromVendor($offer))) {
+            $offer->binding_until = $at;
+        }
         // Срок обязывающего предложения (19.10.2026, владелец: «приём подтверждений не должен быть после него»): приём
         // позже — ошибка поля; срок сдвинули раньше идущего приёма — приём встаёт на срок (`Binding`).
         if ($offer->isDirty('bids_close_at') && ($error = Binding::closeError($offer, $offer->bids_close_at))) {
             throw ValidationException::withMessages(['bids_close_at' => $error]);
         }
+        $oldBinding = $offer->getOriginal('binding_until');
         if ($offer->isDirty('binding_until') && $offer->bids_close_at?->isFuture()) {
             $offer->bids_close_at = Binding::clampClose($offer, $offer->bids_close_at);
         }
@@ -133,6 +139,17 @@ final class UpdateOffer
         }
         if (in_array('bids_close_at', $changed, true)) {
             $offer = self::bidsCloseChanged($offer, $by);
+        }
+        // Срок обязывающего сдвинули — шаг идущей сделки, что ждал его, получает новый (`Binding::stageDeadline`): свой срок
+        // шага, если он был раньше прежнего срока обязывающего, остаётся.
+        if (in_array('binding_until', $changed, true) && ($deal = $offer->deal()->first())
+            && ($pos = Position::where('offer_id', $offer->id)->where('track', Track::Sale)->with('stage')->first())) {
+            $own = $pos->deadline_at && ! ($oldBinding && $pos->deadline_at->eq($oldBinding)) ? $pos->deadline_at
+                : ($pos->waits_for ? null : $pos->stage?->deadlineFor($offer, $pos->entered_at));
+            $new = Binding::stageDeadline($offer, $deal, $pos->waitsFor(), $own);
+            if ($new?->toDateTimeString() !== $pos->deadline_at?->toDateTimeString()) {
+                $pos->update(['deadline_at' => $new, 'reminded_at' => null, 'overdue_at' => null]);
+            }
         }
         if ($offer->vendor_id) {
             $offer = ($this->startRoute)($offer->load('vendor.workflows'), $by);

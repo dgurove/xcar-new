@@ -10,9 +10,13 @@ use App\Offers\Actions\UpdateOffer;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Binding;
+use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Users\Role;
+use App\Workflow\Position;
+use App\Workflow\Track;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,13 +91,17 @@ class BindingTest extends TestCase
         Binding::scope($q, 'panic');
         $this->assertSame([$this->offer->id], $q->pluck('id')->all(), 'SQL-зеркало то же');
 
-        // Хотя бы подтверждение — уже не паника.
+        // Хотя бы подтверждение — уже не паника, только «не принято» (метка во вкладках подтверждений).
         $manager = User::create(['name' => 'Иван Менеджер', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         Bid::create(['offer_id' => $this->offer->id, 'user_id' => $manager->id, 'amount' => 500000, 'state' => BidState::Active]);
-        $this->assertSame('set', Binding::of($this->offer->fresh()));
+        $this->assertSame('undecided', Binding::of($this->offer->fresh()));
+        $this->assertFalse(Binding::panics($this->offer->fresh()));
         $q = Offer::query();
         Binding::scope($q, 'panic');
         $this->assertSame(0, $q->count());
+        $q = Offer::query();
+        Binding::scope($q, 'undecided');
+        $this->assertSame(1, $q->count());
 
         // Вышел без покупателя — «over».
         Bid::query()->update(['state' => BidState::Withdrawn]);
@@ -165,7 +173,13 @@ class BindingTest extends TestCase
         $this->actingAs($moderator)->get('http://crm.xcar.localhost/?preset=published')->assertOk()->assertSee('data-alarm-button="wide"', false);
         $this->actingAs($moderator)->get('http://logistics.xcar.localhost/live/alarms')->assertOk()->assertSee('/transports/'.$t->id, false)->assertSee('Горит');
         $this->actingAs($this->admin)->get('http://crm.xcar.localhost/live/badges', ['Accept' => 'text/vnd.turbo-stream.html'])->assertOk()
-            ->assertSee('data-alarm-button', false)->assertSee('Нет покупателя: 1', false);
+            ->assertSee('data-alarm-button', false)->assertSee('Горит срок обязывающего: 1', false);
+
+        // Две машины в шторке — строка на каждую (19.10.2026: вторая роняла шторку «не получилось»).
+        $second = Offer::create(['vendor_id' => $this->offer->vendor_id, 'claim_ref' => '483515/2026']);
+        $second->forceFill(['state' => OfferState::Open, 'binding_until' => Carbon::parse('2026-10-21 18:00')])->saveQuietly();
+        $this->actingAs($moderator)->get('http://crm.xcar.localhost/live/alarms')->assertOk()->assertSee('/offers/'.$second->fresh()->number, false);
+        $second->forceFill(['binding_until' => null])->saveQuietly();
 
         // Давно вышедший — красный в списках, но не в тревоге.
         $old = Offer::create(['vendor_id' => $this->offer->vendor_id, 'claim_ref' => '483513/2026']);
@@ -180,5 +194,56 @@ class BindingTest extends TestCase
         // Менеджеру и сайту тревоги нет.
         $this->assertFalse(Binding::alarmsFor($manager, \App\Support\Surface::Crm));
         $this->assertFalse(Binding::alarmsFor($this->admin, \App\Support\Surface::Site));
+    }
+
+    public function test_deal_burns_until_supplier_paid(): void
+    {
+        $manager = User::create(['name' => 'Иван Менеджер', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $this->offer->forceFill(['state' => OfferState::Sold, 'binding_until' => Carbon::parse('2026-10-22 16:00')])->saveQuietly();
+        $deal = Deal::create(['offer_id' => $this->offer->id, 'buyer_id' => $manager->id, 'state' => DealState::Active, 'cost' => 400000, 'amount' => 500000]);
+
+        $this->assertSame('deal', Binding::of($this->offer->fresh()));
+        $this->assertTrue(Binding::panics($this->offer->fresh()));
+        $this->assertSame(1, Binding::alarmQuery($this->admin)->count(), 'в тревоге шапки');
+        $q = Offer::query();
+        Binding::scope($q, 'deal');
+        $this->assertSame(1, $q->count());
+
+        // Шаг сделки получает срок обязывающего, правка срока его двигает.
+        $stage = $this->stage();
+        $pos = Position::create(['offer_id' => $this->offer->id, 'track' => Track::Sale->value, 'stage_id' => $stage->id, 'entered_at' => now(), 'block_entered_at' => now(), 'deadline_at' => null]);
+        app(UpdateOffer::class)($this->offer->fresh(), ['binding_until' => Carbon::parse('2026-10-21 18:00')], $this->admin);
+        $this->assertSame('2026-10-21 18:00', $pos->fresh()->deadline_at->format('Y-m-d H:i'));
+        $this->assertSame('2026-10-21 18:00', Binding::stageDeadline($this->offer->fresh(), $deal, null, Carbon::parse('2026-10-30'))->format('Y-m-d H:i'));
+
+        // «Работа → Сделки»: столбец и красная дата.
+        $this->actingAs($this->admin)->get('http://crm.xcar.localhost/work/deals?vid=table')->assertOk()->assertSee('Обязывающее до');
+
+        // Заплатили поставщику — срок больше не грозит.
+        $deal->forceFill(['supplier_paid_at' => now()])->save();
+        $this->assertSame('set', Binding::of($this->offer->fresh()));
+        $this->assertSame(0, Binding::alarmQuery($this->admin)->count());
+        $this->assertSame('2026-10-30 00:00', Binding::stageDeadline($this->offer->fresh(), $deal->fresh(), null, Carbon::parse('2026-10-30'))->format('Y-m-d H:i'));
+    }
+
+    public function test_vendor_days_fill_empty_deadline(): void
+    {
+        $this->offer->vendor->forceFill(['binding_days' => 60])->save();
+        app(UpdateOffer::class)($this->offer->fresh(), ['insurer_deadline_at' => '2026-09-02'], $this->admin);
+        $this->assertSame('2026-11-01 23:59', $this->offer->fresh()->binding_until->format('Y-m-d H:i'));
+
+        // Вписанный руками не трогается.
+        app(UpdateOffer::class)($this->offer->fresh(), ['binding_until' => Carbon::parse('2026-11-10 16:00')], $this->admin);
+        app(UpdateOffer::class)($this->offer->fresh(), ['insurer_deadline_at' => '2026-09-05'], $this->admin);
+        $this->assertSame('2026-11-10 16:00', $this->offer->fresh()->binding_until->format('Y-m-d H:i'));
+    }
+
+    private function stage(): \App\Workflow\Stage
+    {
+        $workflow = \App\Workflow\Workflow::create(['vendor_id' => $this->offer->vendor_id, 'track' => Track::Sale->value]);
+
+        $block = \App\Workflow\Block::create(['workflow_id' => $workflow->id, 'name' => 'Получение', 'position' => 1]);
+
+        return \App\Workflow\Stage::create(['workflow_id' => $workflow->id, 'block_id' => $block->id, 'name' => 'Менеджер забирает автомобиль', 'position' => 1, 'waits_for' => 'manager']);
     }
 }

@@ -70,6 +70,13 @@ final class EnterStage
             ($this->agree)($deal->setRelation('offer', $offer), $by);
         }
 
+        // Заплатили поставщику — выход из этапа нашей оплаты («Поставщику оплачено», «Переведено поставщику»): срок
+        // обязывающего предложения сделке больше не грозит (`Deal::supplierPaid`, 19.10.2026). Откат отметку не снимает.
+        if ($track === Track::Sale && $deal?->isActive() && ! $deal->supplier_paid_at && $exit && ! $back
+            && ($from?->paysOut() || in_array(mb_strtolower(trim($exit->label)), ['поставщику оплачено', 'переведено поставщику'], true))) {
+            $deal->forceFill(['supplier_paid_at' => $now])->save();
+        }
+
         // Платят поставщику сами (Альфа, «Страховой напрямую») — счёт не наш, ждать его нечего: ход менеджера.
         $noInvoice = $track === Track::Sale && $deal?->isActive() && $to->isPayStep() && ! $deal->hasManagerInvoice() && ! $deal->paysSupplierOn($to);
         // ПРАЙМ: счёт встанет сам, как только менеджер укажет, кому он (05.10.2026) — ход его, а не наш «Выставите счёт».
@@ -82,16 +89,19 @@ final class EnterStage
         // Шаг «Менеджер забирает автомобиль», а везёт логистика (17.10.2026): ход наш, без часов и просьбы «Заберите» —
         // шаг пройдёт сам по «Привёз» к нему (`SyncHandover`); сняли вывоз — ход снова его (`SyncHandover::turn`).
         $carried = $track === Track::Sale && $deal?->isActive() && $to->isPickupStep() && $deal->setRelation('offer', $offer->unsetRelation('pickupTask'))->carried();
+        $waits = $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null);
+        $deadline = match (true) {
+            $awaitsLetter => Stage::letterDeadline($now),
+            $noInvoice || $carried => null,
+            default => $to->deadlineFor($offer, $now),
+        };
         $position = Position::updateOrCreate(['offer_id' => $offer->id, 'track' => $track->value], [
             'stage_id' => $to->id,
-            'waits_for' => $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null),
+            'waits_for' => $waits,
             'entered_at' => $now,
             'block_entered_at' => $from && $from->block_id === $to->block_id && $position?->block_entered_at ? $position->block_entered_at : $now,
-            'deadline_at' => match (true) {
-                $awaitsLetter => Stage::letterDeadline($now),
-                $noInvoice || $carried => null,
-                default => $to->deadlineFor($offer, $now),
-            },
+            // Пока поставщику не заплачено — не позже срока обязывающего предложения (`Binding::stageDeadline`).
+            'deadline_at' => $track === Track::Sale ? Binding::stageDeadline($offer, $deal, $waits ?? $to->waits_for, $deadline) : $deadline,
             'reminded_at' => null,
             'overdue_at' => null,
             'payload' => $payload ?: null,

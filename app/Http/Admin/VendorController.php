@@ -7,6 +7,7 @@ use App\Mail\Scope;
 use App\Offers\Actions\SendClaimRequest;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\AudienceRules;
+use App\Offers\Binding;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Tag;
@@ -53,6 +54,7 @@ class VendorController
     public const OFFER_SORTS = [
         'created' => ['Заведено', 'desc'], 'bids' => ['Подтверждения', 'desc'], 'interest' => ['Интерес', 'desc'],
         'floor' => ['Закупочная', 'desc'], 'price' => ['Цена продажи', 'desc'], 'requested' => ['Запрос', 'desc'],
+        'binding' => ['Срок обязывающего', 'asc'],
     ];
 
     /** Справочник — по имени (владелец 06.10.2026), работающие первыми; дата и число предложений — выбором. */
@@ -229,6 +231,9 @@ class VendorController
             // Вендор сам прислал письмом (16.10.2026) — такие не запрашивают.
             Facet::column('letter', 'Письмо', [], 'case when '.ClaimRequest::LETTER_SQL." then 'yes' else 'no' end")->natural()
                 ->labels(fn (array $keys) => collect(['yes' => 'Прислали письмом', 'no' => 'Без письма'])->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all()),
+            // Срок обязывающего (19.10.2026): горит, вышел, есть, нет — те же корзины, что в логистике.
+            Facet::column('binding', 'Срок обязывающего', ['вид', 'вида', 'видов'], Binding::bucketCase())->natural()
+                ->labels(fn (array $keys) => collect(Binding::BUCKETS)->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all()),
             Facet::column('month', 'Заведено', ['месяц', 'месяца', 'месяцев'], "to_char(offers.created_at, 'YYYY-MM')")->natural()
                 ->labels(fn (array $keys) => collect($keys)->sortDesc()->mapWithKeys(fn ($k) => [$k => new Option($k, Carbon::parse($k.'-01')->isoFormat('MMMM YYYY'))])->all()),
         );
@@ -236,6 +241,8 @@ class VendorController
         $sort = Sort::from($request->query('sort'), self::OFFER_SORTS, '-created');
         $q = Offer::where('offers.vendor_id', $vendor->id)->with(['bids:id,offer_id,state', 'claimRequest:id,created_at'])
             ->withCount(['bids', 'interests'])->withMax('bids as best_bid', 'amount')->selectRaw(ClaimRequest::LETTER_SQL.' as by_letter');
+        // Горит ли срок обязывающего — одним подзапросом (`Binding::select`), строка красит дату.
+        Binding::select($q);
         if ($facets->searching()) {
             $q->searchCrm(trim((string) $request->query('q')));
         }
@@ -247,6 +254,7 @@ class VendorController
             'floor' => $q->orderByRaw("offers.floor_price {$dir} nulls last"),
             'price' => $q->orderByRaw("offers.asking_price {$dir} nulls last"),
             'requested' => $q->orderByRaw("(select created_at from claim_requests where claim_requests.id = offers.claim_request_id) {$dir} nulls last"),
+            'binding' => $q->orderByRaw("offers.binding_until {$dir} nulls last"),
             default => $q->orderBy('offers.created_at', $dir),
         };
 

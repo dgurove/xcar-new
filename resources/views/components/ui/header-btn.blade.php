@@ -28,7 +28,7 @@
          закрыть её нельзя — гаснет сама. Нажатие — шторка со списком машин. Число и видимость обновляет `/live/badges`. --}}
     <div class="contents header-sq-wrap" data-controller="sheet alarms">
         <x-alarm.button :wide="$wide"/>
-        <x-ui.sheet :id="'alarm-sheet'.$tail" title="Нет покупателя">
+        <x-ui.sheet :id="'alarm-sheet'.$tail" title="Горит срок обязывающего">
             <turbo-frame id="alarms{{ $tail }}" src="/live/alarms" loading="lazy" data-alarms-target="frame" class="block min-h-32"><x-ui.skeleton :rows="3"/></turbo-frame>
         </x-ui.sheet>
     </div>

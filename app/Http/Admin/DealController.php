@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Live\Rows;
 use App\Offers\Actions\UpdateDealMoney;
+use App\Offers\Binding;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
@@ -32,7 +33,7 @@ class DealController
 {
     public const PRESETS = ['active' => 'В работе', 'hot' => 'Горит', 'manager' => 'Ждём менеджера', 'done' => 'Закончены'];
 
-    public const SORTS = ['deadline' => ['Срок', 'asc'], 'fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
+    public const SORTS = ['deadline' => ['Срок', 'asc'], 'binding' => ['Срок обязывающего', 'asc'], 'fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
 
     public function index(Request $request)
     {
@@ -55,6 +56,8 @@ class DealController
             Facet::column('due', 'Срок', ['срок', 'срока', 'сроков'], "(case when deals.state = 'active' and exists (select 1 from offer_positions p
                 where p.offer_id = deals.offer_id and p.track = 'sale' and p.deadline_at < now()) then 'late' else 'ok' end)")
                 ->labels(fn (array $keys) => array_intersect_key(['late' => new Option('late', 'Просрочено'), 'ok' => new Option('ok', 'В срок')], array_flip($keys))),
+            // Срок обязывающего горит, а поставщику не заплачено (19.10.2026, `Offers\Binding`).
+            Facet::toggle('binding', 'Горит обязывающее', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger'),
         );
         ListPrefs::sync($request, 'crm-deals', keep: $facets->keys());
         $preset = $request->query('preset', 'active');
@@ -62,7 +65,7 @@ class DealController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
         // Гаражные сделки живут во вкладке «Гараж» (13.10.2026, владелец), здесь их нет ни в списке, ни в лупе, ни в числах.
-        $q = Deal::query()->whereNull('garage_payer')->with(['offer', 'offer.media', 'offer.positions.stage.block', 'buyer', 'openRequirement']);
+        $q = Deal::query()->whereNull('garage_payer')->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'buyer', 'openRequirement']);
         if ($searching) {
             // Лупа — по всем сделкам: номер предложения, VIN, марка, убыток, менеджер.
             $term = trim((string) $request->query('q'));
@@ -78,6 +81,7 @@ class DealController
         match ($sort->key) {
             'fresh' => $q->orderBy('created_at', $dir),
             'amount' => $q->orderByRaw("amount {$dir} nulls last"),
+            'binding' => $q->orderByRaw("(select binding_until from offers where offers.id = deals.offer_id) {$dir} nulls last"),
             default => $q->orderByRaw("(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) {$dir} nulls last"),
         };
         $q->orderByDesc('deals.id');

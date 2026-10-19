@@ -36,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at', 'prepaid_at',
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at', 'prepaid_at', 'supplier_paid_at',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at'])]
 class Deal extends Model
 {
@@ -44,7 +44,7 @@ class Deal extends Model
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'receiver_at' => 'datetime'];
+        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -220,6 +220,17 @@ class Deal extends Model
      * у маршрута со счётом поставщика — Альфа; 18.10.2026, прогон): менеджер платит сам и прикладывает платёжку, её
      * подтверждает поставщик. Наш подбор этот шаг не двигает — Т-Страхованию (проверка подбора — наш ход) не мешает.
      */
+    /**
+     * Поставщику заплачено — срок обязывающего предложения сделке больше не грозит (`Offers\Binding`, 19.10.2026): сделка
+     * закрыта, мы оплатили («Поставщику оплачено», перевод с Р.О.С. — `supplier_paid_at`, ставит `EnterStage`) или
+     * поставщик с оплатой до вывоза (Альфа) сам подтвердил оплату (`prepaid_at`).
+     */
+    public function supplierPaid(): bool
+    {
+        return $this->state === DealState::Done || $this->supplier_paid_at !== null
+            || ($this->prepaid_at !== null && (bool) $this->offer?->vendor?->pay_before_pickup);
+    }
+
     public function paysSupplierOn(?Stage $stage): bool
     {
         return $stage !== null && $this->paysSelection() && $stage->isPayStep()

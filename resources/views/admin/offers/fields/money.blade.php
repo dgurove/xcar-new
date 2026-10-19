@@ -22,7 +22,8 @@
     @endunless
     {{-- Срок обязывающего предложения (19.10.2026): до когда поставщик держит эту закупочную; приём подтверждений — не позже. --}}
     @unless ($garageOnly ?? false)
-    <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :form="$form" span="col-span-2"/>
+    @php $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0; @endphp
+    <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form" span="col-span-2"/>
     @endunless
     {{-- Гаражной машине цены показа ни к чему: продаёт менеджер сам, своему покупателю (06.10.2026). --}}
     @unless ($garageOnly ?? false)
@@ -46,7 +47,8 @@
     @endunless
     {{-- Срок обязывающего предложения (19.10.2026): до когда поставщик держит эту закупочную; приём подтверждений — не позже. --}}
     @unless ($garageOnly ?? false)
-    <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :form="$form" span="col-span-2"/>
+    @php $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0; @endphp
+    <x-ui.field name="binding_until" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59" :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form" span="col-span-2"/>
     @endunless
     @endif
 </div>

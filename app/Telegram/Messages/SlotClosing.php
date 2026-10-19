@@ -4,6 +4,7 @@ namespace App\Telegram\Messages;
 
 use App\Offers\BidKind;
 use App\Offers\BidState;
+use App\Offers\Binding;
 use App\Offers\Offer;
 use App\Support\Money;
 use App\Support\Plural;
@@ -39,7 +40,10 @@ final class SlotClosing extends Message
                 default => 'подтверждений '.$priced->count().', лучшая '.Money::rub($priced->max('amount')).($garage->isNotEmpty() ? ', в гараж '.$garage->count() : ''),
             };
 
-            return $offer->titleWithYear().': '.$summary;
+            // Срок обязывающего в ближайшие дни — тут же: выбирать надо до него (19.10.2026).
+            $binding = $offer->binding_until && $offer->binding_until->lte(now()->addDays(5)) ? ', обязывающее до '.Binding::date($offer->binding_until) : '';
+
+            return $offer->titleWithYear().': '.$summary.$binding;
         })->all();
         if (($more = $this->offers->count() - self::MAX) > 0) {
             $lines[] = 'и ещё '.$more;

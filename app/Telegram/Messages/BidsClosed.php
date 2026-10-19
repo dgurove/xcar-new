@@ -4,6 +4,7 @@ namespace App\Telegram\Messages;
 
 use App\Offers\BidKind;
 use App\Offers\BidState;
+use App\Offers\Binding;
 use App\Offers\Offer;
 use App\Support\Money;
 use App\Support\Surface;
@@ -30,7 +31,10 @@ final class BidsClosed extends Message
             default => 'Подтверждений '.$priced->count().', лучшая '.Money::rub($priced->max('amount')).($garage->isNotEmpty() ? ', в гараж '.$garage->count() : ''),
         };
 
-        return Text::lines($this->offer, $summary);
+        // Выбирать подтверждение и платить поставщику — до срока обязывающего (19.10.2026).
+        $binding = $this->offer->binding_until ? 'Обязывающее до '.Binding::date($this->offer->binding_until).(($w = Binding::word($this->offer)) ? ', '.$w : '') : null;
+
+        return Text::lines($this->offer, $summary, $binding);
     }
 
     protected function decisions(): array

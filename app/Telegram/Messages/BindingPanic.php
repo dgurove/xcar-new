@@ -14,7 +14,7 @@ final class BindingPanic extends Message
 
     protected function title(): string
     {
-        return '🚨 Нет покупателя: '.$this->offer->titleWithYear();
+        return (Binding::of($this->offer) === 'deal' ? '🚨 Поставщику не заплачено: ' : '🚨 Нет покупателя: ').$this->offer->titleWithYear();
     }
 
     protected function lines(): array
