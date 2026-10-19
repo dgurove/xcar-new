@@ -625,8 +625,9 @@ html.kb-open { --home-gap: 0px; }
   .surface-crm .row, .surface-park .row { padding: .5rem .75rem; gap: .5rem; }
   .surface-crm .box-nested, .surface-park .box-nested { padding: .75rem; }
   @media (min-width: 640px) {
-    .surface-crm .field-input, .surface-park .field-input, .form-dense .field-input { font-size: var(--text-sm); min-height: 2.5rem; }
-    .surface-crm .box, .surface-park .box { padding: 1.25rem; }
+    /* ПК (19.10.2026, владелец: «всё огромное»): поле 36 px, карточка с отступом 16 px — как плотные таблицы CRM. */
+    .surface-crm .field-input, .surface-park .field-input, .form-dense .field-input { font-size: var(--text-sm); min-height: 2.25rem; padding-block: .375rem; }
+    .surface-crm .box, .surface-park .box { padding: 1rem; }
     .surface-crm .btn-s, .surface-park .btn-s { height: 2.25rem; }
   }
 
@@ -1081,7 +1082,8 @@ html.kb-open { --home-gap: 0px; }
   @media (prefers-reduced-motion: reduce) { .valuation-tick, .valuation-ok circle, .valuation-ok path { animation: none !important; stroke-dashoffset: 0; } }
   .migtorg-field-btn { @apply flex size-9 items-center justify-center rounded-full transition-colors; background: color-mix(in oklab, #D6514A 18%, transparent); }
   /* «б/н» в пустом номере убытка у вендора без номеров (ТИТ): вписывает значение, лайм — глагол. */
-  .claim-none { @apply flex h-9 shrink-0 items-center rounded-full bg-accent-soft px-3 text-sm; color: var(--color-accent-text); }
+  /* «б/н» — внутри поля справа, как ✨ у VIN (19.10.2026, владелец: «от кнопки б/н всё съезжает»): сетка формы не растёт. */
+  .claim-none { @apply absolute top-1/2 right-1.5 flex h-7 -translate-y-1/2 items-center rounded-full bg-accent-soft px-2.5 text-sm; color: var(--color-accent-text); }
   .migtorg-field-btn:hover { background: color-mix(in oklab, #D6514A 30%, transparent); }
   /* «Удалить черновик» в плашке модератора уступает место «Сохранить изменения»: втроём не влезают на телефоне. */
   .action-bar:has([data-save-bar-button]:not([hidden])) .draft-delete { display: none !important; }

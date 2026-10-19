@@ -214,8 +214,13 @@ class VehicleController
             ->with(['author', 'attachments', 'account'])->orderBy('date_at')->orderBy('id')->get();
 
         $yards = Yard::where('is_active', true)->orderBy('name')->get();
+        // «Ждут от нас» сверху карточки (19.10.2026, владелец: «непонятно, что от тебя хотят в этом окне»): письма без ответа
+        // — последнее входящее ветки с `needs_reply_at`, то же правило, что шаг «Нужно ответить» в деле и почта.
+        $waiting = Thread::ofCar($vehicle, $request->user())->whereNotNull('needs_reply_at')->pluck('id');
+        $asks = $messages->whereIn('thread_id', $waiting)->where('direction', Direction::In)->groupBy('thread_id')->map->last()->sortBy('date_at')->values();
 
         return view('park.vehicles.detail', [
+            'asks' => $asks, 'tasks' => Tasks::of([$vehicle->id])[$vehicle->id] ?? [],
             'vehicle' => $vehicle, 'yards' => $yards->pluck('name', 'id'),
             // Свободные места парковок — шторке «Переставить» в карточке (spots_controller); приём и выдача — окном действия.
             'yardRows' => $vehicle->state === VehicleState::Stored ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],

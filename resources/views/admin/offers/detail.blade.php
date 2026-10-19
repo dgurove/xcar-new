@@ -209,6 +209,7 @@
             @if ($publishItems && ! $publishButton)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
             @if ($askMenu)<x-offer.estimate-ask :offer="$offer" :managers="$managers" :trigger="false"/>@endif
             @if ($giveMenu)<x-offer.give-sheet :offer="$offer"/>@endif
+            @if ($publishButton)@include('admin.offers.publish-sheet-slot')@endif
         </x-slot:actions>
         {{-- Письма — сразу под шапкой, над подтверждениями и полями (11.10.2026, владелец: «в окошке очень не хватает писем»;
              по ним заполняют поля и оценивают): все строками, как в «Почте», строка открывает окно поверх списка на письме. --}}
@@ -240,6 +241,7 @@
             @endunless
             {{-- «Показ» — тот же модуль, что справа в редакторе: под «Ценами», режим по делу (у сделки и гаража — свой или нет). --}}
             <x-offer.showing :offer="$offer" :form="'detail-edit-'.$n" as="section"/>
+            @if ($publishButton)@include('admin.offers.publish-row', ['give' => $giveMenu])@endif
             {{-- Машина — те же блоки, что в редакторе и на парковке (`x-car.blocks`), разделами окошка. --}}
             <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section"
                 :required="$offer->state === \App\Offers\OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []"/>

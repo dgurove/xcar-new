@@ -32,6 +32,19 @@
     // Пустой чат (заведён и брошен) — не строка, как во всех списках чатов.
     $otherChats = $chats->reject(fn ($c) => $isDealChat($c) || ! $c->messages_count)->values();
     $foldMoney = $published && ($offer->floor_price || $offer->asking_price) && ! $errors->hasAny($moneyKeys) && ! array_intersect($hints, $moneyKeys);
+    // Плашки «что сейчас» — те же, что в окошке строки (19.10.2026, владелец: «и в редакторе тоже»): открытое — «Приём»
+    // (`admin/offers/intake-block`), слот, аукцион, архив — `admin/offers/now-block`; кнопками, а не строкой под шапкой и
+    // пунктами «···». Оценённый черновик — «Выставить в продажу» и «Отдать» под «Ценами».
+    $waiting = $bids->where('state', BidState::Active);
+    $intake = $admin && ! $garage && $offer->state === OfferState::Open && $offer->bids_close_at;
+    $nowKind = ! $admin || $garage ? null : match (true) {
+        $offer->isScheduled() => 'slot',
+        $offer->onAuction() => 'auction',
+        in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true) => 'archive',
+        default => null,
+    };
+    $purge = $nowKind === 'archive';
+    $publishButton = $admin && ! $garage && $offer->state === OfferState::Draft && $offer->asking_price && ! $offer->isScheduled() && ! $offer->onAuction();
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/><x-ui.links :offer="$offer"/></x-slot:badge>
@@ -46,8 +59,6 @@
         @if ($garage)
             {{-- Отданная в гараж — «в гараже», как в сделке, пока идут и бумаги со страховой (владелец 06.10.2026). --}}
             <x-ui.pill tone="plain" href="#garage">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
-        @elseif ($admin && $offer->isScheduled())
-            <x-offer.slot-menu :offer="$offer"/>
         @elseif ($admin && $offer->deal)
             {{-- В сделке пилюля состояния ведёт к дорожке «Сделка» ниже. --}}
             <x-ui.pill :tone="$offer->state->tone()" href="#deal">{{ $offer->crmTab() }}</x-ui.pill>
@@ -86,30 +97,24 @@
         {{-- Сроки и переписка — строкой текста под капсулами (владелец 10.10.2026: «что-то чипами, что-то текстом»): приём
              ещё сколько или закрыт с какого времени, продление лаймовыми словами, чаты ссылкой. --}}
         @php $chatUnread = $otherChats->sum('unread_for_staff'); @endphp
-        @if ($admin || $otherChats->isNotEmpty())
+        {{-- Действия с предложением целиком — справа в строке капсул (19.10.2026, владелец: своей строкой «всё съезжает»). --}}
+        @if ($admin)
+            <span class="ml-auto flex items-center gap-1">
+                @if ($offer->parkVehicle && ! $offer->proposed() && \App\Offers\Actions\UnlistParkOffer::allowed($offer))
+                    <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="btn btn-s btn-quiet">Снять с продажи</button></form>
+                @endif
+                @include('admin.offers.share-button')
+            </span>
+        @endif
+        @if (($admin && ! $intake && $offer->closed()) || $otherChats->isNotEmpty())
             <div class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                @if (! $admin)
+                @if (! $admin || $intake)
                 @elseif ($offer->closed())
                     <span class="nums text-ink-muted">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
                 @elseif ($offer->bids_close_at && $offer->state === OfferState::Open)
                     <span class="nums">Приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
                 @endif
-                @if ($admin && $offer->state === OfferState::Open && $offer->bids_close_at)
-                    {{-- Продлить приём на ходу, как в закупке: от текущего срока, если он не прошёл, иначе от сейчас. --}}
-                    @foreach ([15 => '+15 мин', 60 => '+1 ч'] as $minutes => $label)
-                        <form method="post" action="/offers/{{ $n }}/extend" class="contents">@csrf<input type="hidden" name="minutes" value="{{ $minutes }}"><button class="nums text-accent-text">{{ $label }}</button></form>
-                    @endforeach
-                @endif
                 @if ($otherChats->isNotEmpty())<a href="/work/chats?preset=all&q={{ $offer->number }}" class="inline-flex items-center gap-1 {{ $chatUnread ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="chat" class="size-4"/>{{ $otherChats->count() === 1 ? 'Чат' : 'Чатов: '.$otherChats->count() }}@if ($chatUnread) <span class="badge">{{ $chatUnread }}</span>@endif</a>@endif
-                {{-- Действия с предложением целиком — справа этой строки, а не капсулами среди меток. --}}
-                @if ($admin)
-                    <span class="ml-auto flex items-center gap-1">
-                        @if ($offer->parkVehicle && ! $offer->proposed() && \App\Offers\Actions\UnlistParkOffer::allowed($offer))
-                            <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="btn btn-s btn-quiet">Снять с продажи</button></form>
-                        @endif
-                        @include('admin.offers.share-button')
-                    </span>
-                @endif
             </div>
         @endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
@@ -153,6 +158,13 @@
             {{-- Чат с менеджером сделки — верхом колонки, на телефоне самым верхом страницы, как на странице сделки на xcar
                  (07.10.2026, владелец: «чуть ли не самая важная кнопка во время сделки»). --}}
             @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$chats->first(fn ($c) => $isDealChat($c) && $c->messages_count > 0)" class="order-first"/>@endif
+            {{-- Что сейчас и что с этим сделать — верхом правой колонки, на телефоне сразу под шапкой. --}}
+            @if ($intake || $nowKind)
+                <div class="order-first flex flex-col gap-4">
+                    @if ($intake)@include('admin.offers.intake-block')@endif
+                    @if ($nowKind)@include('admin.offers.now-block', ['transitions' => $transitions->except(OfferState::Open->value)])@endif
+                </div>
+            @endif
             {{-- Деньги — справа над «Историей», у всех; поля ходят в форму оффера через form=. На телефоне — сразу под ТС. --}}
             {{-- Цены — так же: суммы текстом, «Изменить» — поля, «Готово» — сохранить (поля привязаны к форме через form=). --}}
             <x-ui.card title="Цены" class="order-3" :data-controller="$published ? 'edit-card' : null" data-edit-card-form-value="offer-form" :data-edit-card-editing-value="$published && ! $foldMoney ? 'true' : null">
@@ -167,6 +179,8 @@
                  сделки — сколько и кому показывать, один модуль `x-offer.showing`; гараж и прочее — без него. Заметка сделки
                  (и гаража — «как сделка») — под ним же, а не в дорожке. --}}
             <x-offer.showing :offer="$offer" form="offer-form" :summary="$showingSummary" class="order-3"/>
+            {{-- Оценённый черновик — «Выставить в продажу» под «Показом»: сначала до когда приём и кому показывать. --}}
+            @if ($publishButton)<div class="order-3">@include('admin.offers.publish-row', ['give' => $canGive])@include('admin.offers.publish-sheet-slot')</div>@endif
             @php $noteDeal = $garage?->deal ?? $deal; @endphp
             @if ($admin && $noteDeal)<x-deal.note :deal="$noteDeal" id="deal-note" class="order-3"/>@endif
 
@@ -239,6 +253,8 @@
         if ($draft || $offer->state === OfferState::Gallery) $transitions = $transitions->except(OfferState::Open->value);
         // «Отменить сделку, в черновики» — пунктом шторки «Отменить сделку» (`x-offer.resale-sheet`), второй кнопкой не нужна.
         if ($resale && $offer->state === OfferState::Sold) $transitions = $transitions->except(OfferState::Draft->value);
+        // Архив — кнопками плашки «что сейчас» (`now-block`), в «···» их нет.
+        if ($nowKind === 'archive') $transitions = collect();
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
     @if ($resale || ($admin && $offer->onAuction()))<x-offer.resale-sheet :offer="$offer"/>@endif
@@ -265,8 +281,8 @@
         @else
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
-        @php $auctionItems = $admin && $offer->auctionActions() !== []; @endphp
-        @if (($transitions->isNotEmpty() || $resale || $publishItems || $auctionItems || $canGive || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
+        @php $auctionItems = $admin && $offer->auctionActions() !== [] && $nowKind !== 'auction'; @endphp
+        @if (($transitions->isNotEmpty() || $resale || $publishItems || $auctionItems || ($canGive && ! $publishButton) || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
             {{-- Контроллер шторки — только вместе с ней: у сделки «···» нет, и пустой контроллер падал в консоль. --}}
             <div class="contents" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
@@ -290,10 +306,10 @@
                         </form>
                     @endforeach
                     @if ($auctionItems && ! $offer->onAuction())@include('admin.offers.auction-items', ['offer' => $offer])@endif
-                    @if ($canGive)
+                    @if ($canGive && ! $publishButton)
                         <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="give-{{ $n }}:open">Отдать…</x-ui.button>
                     @endif
-                    @if ($admin && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true))
+                    @if ($admin && ! $purge && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true))
                         <form method="post" action="/offers/{{ $n }}/purge" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">@csrf<x-ui.button block variant="danger">Удалить навсегда</x-ui.button></form>
                     @endif
                     @if ($deletable && $admin)

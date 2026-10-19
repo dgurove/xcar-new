@@ -97,6 +97,7 @@
             @endif
         </div>
         @if ($handedTo)<p class="text-ink-muted">{{ $handedTo }}{{ $released && ! empty($released->payload['pass']) ? ', по QR' : ($released && ! empty($released->payload['without_qr']) ? ', без QR' : '') }}</p>@endif
+        @include('park.vehicles.now')
         <x-park.sale :vehicle="$vehicle" row/>
         @if ($task)
             @include('park.vehicles.task')

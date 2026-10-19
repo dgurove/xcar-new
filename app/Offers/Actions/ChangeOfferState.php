@@ -63,7 +63,10 @@ final class ChangeOfferState
                 if ($at) {
                     // Слотом — ровно в 16:00: от этого времени считаются волны показа и срок приёма.
                     $offer->published_at = $at;
-                    $offer->bids_close_at = Binding::clampClose($offer, Slots::closeFor($at));
+                    // «Приём до» вписали перед выставлением («Показ», 19.10.2026) — он и остаётся, если позже выхода; иначе срок по умолчанию.
+                    if (! $offer->bids_close_at || $offer->bids_close_at->lte($at)) {
+                        $offer->bids_close_at = Binding::clampClose($offer, Slots::closeFor($at));
+                    }
                 } else {
                     // Волны показа — от этого выхода из черновика (13.10.2026): «остальным через 5 дней» считаются заново, а
                     // не от первой публикации, когда всё давно «наступило»; из гаража («Вернуть в продажу») — так же. Из
