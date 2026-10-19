@@ -5,6 +5,7 @@ import { openLightbox } from '../lightbox';
 // листание в просмотре двигает и ленту — после закрытия на странице тот же кадр.
 export default class extends Controller {
     static targets = ['strip', 'counter', 'thumb'];
+    static values = { download: Boolean };
 
     connect() {
         if (!this.hasStripTarget) return;
@@ -72,7 +73,7 @@ export default class extends Controller {
             return { src: a.href, mid: a.dataset.mid, el: img, thumb: a.dataset.thumb || img?.currentSrc || img?.src };
         });
         this.viewer = await openLightbox({
-            items, index,
+            items, index, download: this.downloadValue,
             onChange: (i) => this.reveal(i),
             onClose: () => { this.viewer = null; },
         });

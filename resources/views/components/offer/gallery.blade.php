@@ -2,11 +2,19 @@
      (:thumbs="false" — миниатюры только от lg). strip — узкая лента кадров в карточке
      строки таблицы: несколько в ряд, без стрелок, тап — во весь экран. tiles — плитка 3 в ряд в сделке: шесть кадров,
      на шестом «+N», остальные скрытыми ссылками той же ленты — просмотр листает все. --}}
-@props(['photos', 'alt' => '', 'thumbs' => true, 'strip' => false, 'tiles' => false])
+@props(['photos', 'alt' => '', 'thumbs' => true, 'strip' => false, 'tiles' => false, 'offer' => null])
+@php
+    // «Скачать» в просмотре (19.10.2026, менеджеры: «скринишь — ничего не видно»): сотрудникам CRM, парковки и логистики —
+    // всегда, на сайте — кому можно делиться этим предложением (`canShare` и не «Запретить шеринг»): скачанный кадр — тот же
+    // шеринг. Без предложения на сайте (закупки) — нет.
+    $viewer = auth()->user();
+    $download = \App\Support\Surface::current() !== \App\Support\Surface::Site
+        || ($offer && $viewer?->canShare() && ! $offer->shareLockedFor($viewer));
+@endphp
 @if ($photos->isEmpty())
     @if ($strip)<div class="detail-strip-empty"><x-ui.car-blank/></div>@else<div class="flex aspect-[4/3] items-center justify-center rounded-(--radius-xl) bg-surface-3 text-ink-dim">Фотографий нет</div>@endif
 @elseif ($tiles)
-    <div class="photo-tiles" data-controller="gallery" data-gallery-target="strip">
+    <div class="photo-tiles" data-controller="gallery" @if ($download) data-gallery-download-value="true" @endif data-gallery-target="strip">
         @foreach ($photos as $i => $media)
             <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" data-thumb="{{ \App\Media\MediaUrl::for($media, 'w320') }}" class="photo-tile" data-action="click->gallery#open" data-index="{{ $i }}" @if ($i > 5) hidden @endif>
                 @if ($i <= 5)<x-offer.photo :media="$media" sizes="120px" class="size-full object-cover"/>@endif
@@ -15,7 +23,7 @@
         @endforeach
     </div>
 @elseif ($strip)
-    <div class="detail-strip" data-controller="gallery" data-gallery-target="strip">
+    <div class="detail-strip" data-controller="gallery" @if ($download) data-gallery-download-value="true" @endif data-gallery-target="strip">
         @foreach ($photos as $i => $media)
             <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" data-thumb="{{ \App\Media\MediaUrl::for($media, 'w320') }}" class="detail-strip-frame" data-action="click->gallery#open" data-index="{{ $i }}">
                 <x-offer.photo :media="$media" sizes="108px" :eager="$i < 2" class="size-full object-cover"/>
@@ -23,7 +31,7 @@
         @endforeach
     </div>
 @else
-    <div data-controller="gallery" data-action="keydown@window->gallery#key">
+    <div data-controller="gallery" @if ($download) data-gallery-download-value="true" @endif data-action="keydown@window->gallery#key">
         <div class="relative overflow-hidden rounded-(--radius-xl) bg-surface-3">
             <div class="flex snap-x snap-mandatory overflow-x-auto" data-gallery-target="strip" style="scrollbar-width:none">
                 @foreach ($photos as $i => $media)

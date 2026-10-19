@@ -102,7 +102,7 @@
             @if ($photos->isNotEmpty())
                 <section class="order-9 min-w-0">
                     <h2 class="list-head lg:pt-0">Фото <span class="nums">{{ $photos->count() }}</span></h2>
-                    <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" tiles/>
+                    <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" tiles :offer="$offer"/>
                 </section>
             @endif
         </aside>

@@ -6,7 +6,7 @@
     {{-- Пустой блок не рисуется: без кадров нет и заглушки «Фотографий нет» на пол-экрана. --}}
     @if ($photos->isNotEmpty())
         <div class="order-1 min-w-0 lg:col-start-1 lg:row-start-1">
-            <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" :thumbs="false"/>
+            <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" :thumbs="false" :offer="$offer"/>
         </div>
     @endif
 

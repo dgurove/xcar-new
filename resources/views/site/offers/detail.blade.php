@@ -18,7 +18,7 @@
     $manager = $user?->isBuyer() ? $user->manager : null;
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="array_slice($offer->facts(), 1)" :action="false">
+    <x-ui.row-card :href="$href" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :offer="$offer" :facts="array_slice($offer->facts(), 1)" :action="false">
         {{-- Коды и метки — чипами, где и сколько осталось — фразой (`line`, как в CRM; владелец 10.10.2026: «одно к машине
              относится, другое к фактам»). --}}
         <x-slot:badge>@if (!$gallery && $offer->isFresh())<x-ui.state tone="fresh" class="title-state">новый</x-ui.state>@endif</x-slot:badge>

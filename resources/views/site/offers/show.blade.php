@@ -27,7 +27,7 @@
         <div class="lg:col-start-1 lg:row-start-1">
             {{-- Знак на кадрах поставила оценка — уйдёт вместе с ней (владелец 11.10.2026). Запрет шеринга админа — строки нет. --}}
             @if ($offer->share_locked_by_estimate && $photos->isNotEmpty() && \App\Offers\Estimate::openFor($offer, $user))<p class="mb-2 text-sm text-ink-muted">Водяные знаки пропадут после оценки</p>@endif
-            <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()"/>
+            <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" :offer="$offer"/>
         </div>
 
         <aside class="flex flex-col gap-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:gap-8">
