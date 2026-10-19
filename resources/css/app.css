@@ -2487,6 +2487,8 @@ html.kb-open { --home-gap: 0px; }
   .banner.is-restored { animation: none; }
   .banner.is-leaving { @apply pointer-events-none; animation: banner-out-top var(--dur) var(--ease-in) forwards; }
   .banner-main { @apply flex items-center gap-3 py-3 pr-4 pl-3 text-ink; -webkit-user-drag: none; }
+  /* Аватар карточки — всегда 44 px, даже если разметка пришла без своего размера (сохранённая до 19.10.2026). */
+  .banner-main > .avatar { width: 2.75rem; height: 2.75rem; flex-shrink: 0; }
   .banner-body { @apply min-w-0 flex-1; }
   .banner-head { @apply flex items-baseline gap-2; }
   .banner-title { @apply min-w-0 flex-1 font-medium; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }

@@ -232,9 +232,20 @@ export default class extends Controller {
     keep(closing = null) {
         try {
             const items = [...this.element.querySelectorAll('.banner[data-important]')].filter((el) => el !== closing && !el.classList.contains('is-leaving'))
-                .map((el) => ({ id: el.dataset.bannerId, subject: el.dataset.subject || null, important: true, surface: document.querySelector('meta[name="surface"]')?.content, html: el.outerHTML.replace(/ (style|data-depth|data-buried)="[^"]*"| data-buried/g, '').replace(' is-restored', '') }));
+                .map((el) => ({ id: el.dataset.bannerId, subject: el.dataset.subject || null, important: true, surface: document.querySelector('meta[name="surface"]')?.content, html: this.bare(el) }));
             sessionStorage.setItem(KEEP, JSON.stringify(items));
         } catch {}
+    }
+
+    // Разметка карточки без следов стопки — только у самой карточки: у вложенных `style` свой (размер аватара 44 px),
+    // прежняя замена строкой стирала и его, и восстановленная после перезагрузки карточка выходила с огромным аватаром.
+    bare(el) {
+        const copy = el.cloneNode(true);
+        copy.removeAttribute('style');
+        delete copy.dataset.depth;
+        delete copy.dataset.buried;
+        copy.classList.remove('is-restored');
+        return copy.outerHTML;
     }
 
     restore() {
