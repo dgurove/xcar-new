@@ -16,6 +16,9 @@ use Illuminate\Support\HtmlString;
  */
 final class Term
 {
+    /** Слов в поиске не больше — дальше вставленное описание, а не запрос. */
+    public const MAX_WORDS = 6;
+
     public readonly string $raw;
 
     /** Номер убытка ключом (`Code::key`) — от четырёх цифр; сравнение подстрокой. */
@@ -65,7 +68,32 @@ final class Term
         $this->digits = $onlyDigits !== '' && preg_match('/^[\d\s№#]+$/u', $raw) ? $onlyDigits : null;
         $this->invoice = preg_match('/^(?:сч[её]т|№|#)\s*№?\s*(\d{1,6})$/ui', $raw, $m) ? (int) $m[1]
             : ($this->digits !== null && strlen($this->digits) <= 6 ? (int) $this->digits : null);
-        $this->words = array_values(array_filter(preg_split('/[\s,]+/u', mb_strtolower($raw)) ?: [], fn ($w) => self::meaningful($w)));
+        $this->words = self::wordsOf($raw);
+    }
+
+    /**
+     * Слова запроса: знаки по краям слова отрезаются («дизель;» — «дизель», дефис внутри остаётся — «cr-v»), повторы
+     * выкидываются. Вставили целое описание машины (19.10.2026, «Great Wall Poer King Kong 2023 Самара 63
+     * автоматическая; дизель; 2,0 л …» — 29 слов, каждое своим `exists` через И, 1,5 с на прогоне) — однобуквенные и
+     * одноцифровые слова уходят, ищутся первые `MAX_WORDS`: это марка, модель и год.
+     *
+     * @return list<string>
+     */
+    private static function wordsOf(string $raw): array
+    {
+        $words = [];
+        foreach (preg_split('/[\s,;:!?()\[\]{}«»"\'“”„…]+/u', mb_strtolower($raw)) ?: [] as $word) {
+            $word = (string) preg_replace('/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/u', '', $word);
+            if ($word !== '') {
+                $words[$word] = $word;
+            }
+        }
+        if (count($words) > self::MAX_WORDS) {
+            // Одни буквы — ищутся они же: пустой список слов нашёл бы всё.
+            $words = array_slice(array_filter($words, fn ($w) => mb_strlen($w) > 1) ?: $words, 0, self::MAX_WORDS);
+        }
+
+        return array_values($words);
     }
 
     public static function of(string|self $raw): self
