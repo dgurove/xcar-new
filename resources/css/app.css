@@ -1588,8 +1588,13 @@ html.kb-open { --home-gap: 0px; }
   .estimate-due--danger { @apply justify-center; color: var(--color-danger); }
   /* Отказ (11.10.2026): разница желаемой к ориентиру — следом за ним, тусклее; причина — поле, растущее по строкам. */
   .estimate-diff:not(:empty) { @apply ml-1.5 text-ink-dim; }
-  /* Личная заметка к ТС на сайте (x-offer.my-note, 18.10.2026): поле растёт по строкам до ~16rem, дальше листается. */
-  .note-field { @apply block w-full rounded-(--radius-l) bg-surface-2 px-4 py-3 text-ink outline-none placeholder:text-ink-dim; resize: none; field-sizing: content; min-height: 4.5rem; max-height: 16rem; overflow-wrap: anywhere; }
+  /* Личная заметка к ТС на сайте (x-offer.my-note): одна плашка тоном коробки — карандаш и поле, поле растёт по строкам до
+     ~16rem, дальше листается; нажатие в любое место плашки — в поле (label). В карточке строки (bare) — тоном поля. */
+  .note-card { @apply flex cursor-text items-start gap-3 rounded-(--radius-xl) bg-surface px-4 py-3.5 sm:px-5; }
+  .note-card--bare { @apply rounded-(--radius-l) bg-surface-2; }
+  .note-card-icon { @apply mt-0.5 shrink-0 text-ink-dim transition-colors; }
+  .note-card:focus-within .note-card-icon, .note-card:has(.note-field:not(:placeholder-shown)) .note-card-icon { @apply text-accent-text; }
+  .note-field { @apply block min-w-0 flex-1 bg-transparent p-0 leading-snug text-ink outline-none placeholder:text-ink-dim; resize: none; field-sizing: content; min-height: 1lh; max-height: 16rem; overflow-wrap: anywhere; }
   .note-field[readonly] { @apply text-ink-muted; }
   .estimate-note { @apply block w-full rounded-(--radius-l) bg-surface-2 px-4 py-3 text-ink outline-none placeholder:text-ink-dim; resize: none; field-sizing: content; min-height: 2.875rem; max-height: 9rem; }
   /* Причина отказа в CRM — словами менеджера, его репликой: пузырь входящего с острым углом у аватара. */
