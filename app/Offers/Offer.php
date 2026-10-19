@@ -392,7 +392,8 @@ class Offer extends Model
 
     public function deal(): HasOne
     {
-        return $this->hasOne(Deal::class)->where('state', DealState::Active);
+        // Сделка знает своё предложение без запроса (`chaperone`): гараж и списки звали `$deal->offer` строкой на строку.
+        return $this->hasOne(Deal::class)->where('state', DealState::Active)->chaperone('offer');
     }
 
     /**

@@ -637,7 +637,7 @@ class VehicleController
         $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q !== '' ? null : ($preset === 'out' ? VehicleState::Released : VehicleState::Stored));
         // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
         $vehicles = Vehicle::withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
-            ->with(['vendor', 'yard', 'offer.deal', 'requests',
+            ->with(['vendor', 'yard', 'offer.deal.buyer', 'requests',
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
             ->when($state, fn ($v, $s) => $v->where('state', $s))
             // Деньги выданной словом — в строке, карточке и выгрузке, тем же выражением, что чип «Деньги».

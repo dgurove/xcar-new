@@ -94,7 +94,7 @@ class TransportController
         $sort = Sort::from($request->query('sort'), self::SORTS, self::defaultSort($preset));
 
         $query = $facets->apply(Transport::visibleTo($user)->step($q !== '' ? 'all' : $preset))
-            ->with(['region', 'car', ...SaleState::WITH, 'executor', 'logist', 'toYard', 'client'])
+            ->with(['region', 'car', ...SaleState::WITH, 'executor', 'logist', 'toYard', 'client', 'depot', 'fromDepot'])
             ->search($q, crm: $user->leadsLogistics());
         self::sorted($query, $sort);
         // Открытые вкладки — целиком (таблицу листают и выбирают галочками); «Готово» и «Все» растут без конца — страницами.

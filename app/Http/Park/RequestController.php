@@ -70,7 +70,7 @@ class RequestController
         // Счётчики пилюль — с выбранными чипами; лупа — по всем открытым заявкам, мимо пилюли и чипов.
         $filters = fn ($q) => $facets->applyTo($q)
             ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->search($qs)));
-        $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle', 'vehicle.offer', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'letter', 'creator', 'deal.buyer']));
+        $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle', 'vehicle.offer.deal', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'letter', 'creator', 'deal.buyer']));
         $q->whereIn('state', RequestState::open());
         if ($qs !== '') {
             $filters($q);

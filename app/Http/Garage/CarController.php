@@ -30,7 +30,7 @@ class CarController
     public function index(Request $request)
     {
         $cars = Car::of($request->user())
-            ->with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.openRequirement'])
+            ->with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'offer.parkVehicle', 'offer.pickupTask.executor', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.openRequirement', 'deal.offer'])
             ->orderBy('stage_at')
             ->get();
 
