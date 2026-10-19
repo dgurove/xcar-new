@@ -699,6 +699,17 @@ class Offer extends Model
             || $this->isAskedOf($user);
     }
 
+    /**
+     * Шеринг закрыт этому человеку: галкой админа — всем, на время оценки — только тому, кого попросили оценить и кто ещё
+     * не ответил (19.10.2026, владелец: «то, что Виталик не оценил, для других висит „Запретить шеринг“ — это только для
+     * него»).
+     */
+    public function shareLockedFor(?User $user): bool
+    {
+        return $this->share_locked || ($user !== null && $this->share_locked_by_estimate
+            && $this->estimates()->where('user_id', $user->id)->where('state', EstimateState::Asked)->exists());
+    }
+
     /** Черновик отдан этому менеджеру на оценку, и просьба открыта — страница ему открыта (11.10.2026). */
     public function isAskedOf(?User $user): bool
     {

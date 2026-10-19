@@ -274,7 +274,7 @@ final class Handler
         $caption = Card::caption($offer, $user, $more);
         $buttons = Card::buttons($offer, $this->bot->logsIn());
         // Запрет шеринга у предложения — и в Telegram не переслать и не сохранить.
-        $extra = $offer->share_locked ? ['protect_content' => 'true'] : [];
+        $extra = $offer->shareLockedFor($user) ? ['protect_content' => 'true'] : [];
         $photo = $offer->mainPhoto();
         $sent = $this->bot->quietly(fn () => $photo
             ? PhotoCache::send($this->bot, $sub->chat_id, $photo, $caption, $buttons, $extra)

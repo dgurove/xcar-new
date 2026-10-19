@@ -20,17 +20,18 @@ class Restamp extends Command
     {
         $n = 0;
         foreach ([Offer::class, Car::class] as $class) {
-            $class::where('share_locked', true)->with('media')->lazy()->each(function ($model) use ($stamp, $unstamp, &$n) {
-                foreach ($model->photos() as $media) {
-                    try {
-                        $unstamp($media);
-                        $stamp($media);
-                        $n++;
-                    } catch (Throwable $e) {
-                        $this->warn("Кадр {$media->id}: {$e->getMessage()}");
+            $class::where('share_locked', true)
+                ->when($class === Offer::class, fn ($q) => $q->orWhere('share_locked_by_estimate', true))->with('media')->lazy()->each(function ($model) use ($stamp, $unstamp, &$n) {
+                    foreach ($model->photos() as $media) {
+                        try {
+                            $unstamp($media);
+                            $stamp($media);
+                            $n++;
+                        } catch (Throwable $e) {
+                            $this->warn("Кадр {$media->id}: {$e->getMessage()}");
+                        }
                     }
-                }
-            });
+                });
         }
         $this->info("Перебито кадров: {$n}");
 

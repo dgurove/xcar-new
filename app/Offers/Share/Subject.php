@@ -48,10 +48,10 @@ final class Subject
         return $this->model instanceof Offer ? Caption::fields($this->model, $user) : Caption::car($this->model, $user);
     }
 
-    /** Шеринг запрещён тумблером в редакторе оффера или машины закупки — до согласования цены менеджера администратором. */
-    public function locked(): bool
+    /** Шеринг запрещён тумблером в редакторе оффера или машины закупки, у оффера ещё — этому человеку, пока он оценивает. */
+    public function locked(?User $user): bool
     {
-        return (bool) $this->model->share_locked;
+        return $this->model instanceof Offer ? $this->model->shareLockedFor($user) : (bool) $this->model->share_locked;
     }
 
     public function vatMark(): string

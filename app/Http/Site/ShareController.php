@@ -24,7 +24,7 @@ class ShareController
     {
         $user = $request->user();
         abort_unless($user->canShare() && $offer->isVisibleTo($user), 404);
-        if ($offer->share_locked) {
+        if ($offer->shareLockedFor($user)) {
             return response()->json(['message' => Subject::LOCKED], 422);
         }
 
@@ -46,7 +46,7 @@ class ShareController
     {
         $user = $request->user();
         abort_unless($user->canShare() && $offer->isVisibleTo($user), 404);
-        abort_if($offer->share_locked, 422, Subject::LOCKED);
+        abort_if($offer->shareLockedFor($user), 422, Subject::LOCKED);
 
         return $this->respondPhoto($request, Subject::offer($offer), $media, $pdf);
     }

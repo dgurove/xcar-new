@@ -106,10 +106,6 @@ final class UpdateOffer
             $offer->bids()->where('state', BidState::Active)->where('kind', BidKind::Garage)->get()->each(fn (Bid $bid) => app(DeclineBid::class)($bid, $by));
         }
         if (in_array('share_locked', $changed, true)) {
-            // Запрет шеринга переключил админ — он его и держит: оценка менеджером при закрытии его не снимет.
-            if ($offer->share_locked_by_estimate) {
-                $offer->forceFill(['share_locked_by_estimate' => false])->saveQuietly();
-            }
             StampPhotos::dispatch($offer->carRecord());
         }
         // Цена продажи поставлена (своя админа, «Взять», «Из текста») — оценка менеджеров больше не нужна.

@@ -75,8 +75,12 @@ class EstimateFlowTest extends TestCase
 
         app(AskEstimates::class)($offer, [$ivan, $petr], $admin);
         $offer->refresh();
-        $this->assertTrue($offer->share_locked);
+        // Галки «Запретить шеринг» оценка не ставит: шеринг закрыт только тем, кто оценивает, знак на фото — у всех.
+        $this->assertFalse($offer->share_locked);
         $this->assertTrue($offer->share_locked_by_estimate);
+        $this->assertTrue($offer->shareLockedFor($ivan));
+        $this->assertFalse($offer->shareLockedFor($admin));
+        $this->assertTrue($offer->carRecord()->shareLocked());
         Queue::assertPushed(StampPhotos::class);
         // Черновик — только тем, кому отдан: чужой менеджер его не видит, в каталоге своего круга его нет.
         $this->assertTrue($offer->isVisibleTo($ivan));
@@ -144,7 +148,7 @@ class EstimateFlowTest extends TestCase
         $ivan = $this->user('Иванов Иван', Role::Manager);
 
         app(AskEstimates::class)($offer, [$ivan], $admin);
-        $this->assertFalse($offer->fresh()->share_locked_by_estimate);
+        $this->assertTrue($offer->fresh()->share_locked);
 
         app(UpdateOffer::class)($offer->fresh(), ['asking_price' => 900000], $admin);
         $offer->refresh();

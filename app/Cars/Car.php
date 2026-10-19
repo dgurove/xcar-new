@@ -211,11 +211,11 @@ class Car extends Model implements HasMedia
         return Identity::carName($this);
     }
 
-    /** Знак «Запретить шеринг» над кадрами машины: у продажи, иначе у лота закупки. */
+    /** Знак над кадрами машины: запрет шеринга или идущая оценка у продажи, иначе запрет у лота закупки. */
     public function shareLocked(): bool
     {
-        $offer = $this->relationLoaded('offer') ? $this->offer : $this->offer()->first(['id', 'car_id', 'share_locked']);
+        $offer = $this->relationLoaded('offer') ? $this->offer : $this->offer()->first(['id', 'car_id', 'share_locked', 'share_locked_by_estimate']);
 
-        return $offer ? (bool) $offer->share_locked : PurchaseCar::where('car_id', $this->id)->where('share_locked', true)->exists();
+        return $offer ? ($offer->share_locked || $offer->share_locked_by_estimate) : PurchaseCar::where('car_id', $this->id)->where('share_locked', true)->exists();
     }
 }

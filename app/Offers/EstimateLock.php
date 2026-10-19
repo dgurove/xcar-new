@@ -5,19 +5,20 @@ namespace App\Offers;
 use App\Media\Jobs\StampPhotos;
 
 /**
- * Запрет шеринга и знак на фото на время оценки менеджером (11.10.2026). Держится, пока хоть один менеджер ещё
- * оценивает (просьба `asked`): оценил или отказался — ему делать нечего, и запрет снимается сразу, не дожидаясь цены
- * продажи (13.10.2026, начальник: «он оценил, а висит „Запретить шеринг“»). Оценку отклонили — менеджер оценивает
- * снова, запрет возвращается. Ставила оценка — помнит (`share_locked_by_estimate`); поставленный админом не трогает.
+ * Знак на фото и запрет шеринга на время оценки менеджером (11.10.2026). Запрет — личный (19.10.2026, владелец: «для
+ * других висит „Запретить шеринг“, это только для него»): галку «Запретить шеринг» оценка не ставит, закрыт шеринг только
+ * тому, кто ещё оценивает (`Offer::shareLockedFor`). Знак на кадрах — общий, файл у машины один: держится, пока хоть один
+ * менеджер оценивает (просьба `asked`), помнит его `share_locked_by_estimate` (`Car::shareLocked`). Оценил или отказался —
+ * снимается сразу; оценку отклонили — менеджер оценивает снова, знак возвращается.
  */
 final class EstimateLock
 {
     public static function lock(Offer $offer): void
     {
-        if ($offer->share_locked) {
+        if ($offer->share_locked_by_estimate) {
             return;
         }
-        $offer->forceFill(['share_locked' => true, 'share_locked_by_estimate' => true])->save();
+        $offer->forceFill(['share_locked_by_estimate' => true])->save();
         StampPhotos::dispatch($offer->carRecord());
     }
 
@@ -27,7 +28,7 @@ final class EstimateLock
         if (! $offer->share_locked_by_estimate || $offer->estimates()->where('state', EstimateState::Asked)->exists()) {
             return;
         }
-        $offer->forceFill(['share_locked' => false, 'share_locked_by_estimate' => false])->save();
+        $offer->forceFill(['share_locked_by_estimate' => false])->save();
         StampPhotos::dispatch($offer->carRecord());
     }
 }

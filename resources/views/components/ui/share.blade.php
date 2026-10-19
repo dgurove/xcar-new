@@ -9,7 +9,7 @@
     $iconClass = $attributes->get('class') ?: 'btn btn-s btn-quiet btn-round';
     $iconSize = $attributes->get('class') ? 'size-[18px]' : 'size-5';
 @endphp
-@if ($subject->locked())
+@if ($subject->locked($user))
     {{-- Запрет шеринга: кнопка на месте, но серая; нажатие — тост с причиной. Не disabled — у .btn он режет клики. --}}
     <div data-controller="share" data-share-locked-value="{{ \App\Offers\Share\Subject::LOCKED }}" class="contents">
         @if ($icon)
