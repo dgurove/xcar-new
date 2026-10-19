@@ -42,6 +42,9 @@
                 $letters = $section['letters']->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values();
                 // Вендор письма не узнан — «Выбрать вендора» на месте логотипа (у дела машины вендор — её, не письма).
                 $pick = $head && ! $head['vendor'] && ! $v && ! $o ? \App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $base, $t, $letters, $c) : null;
+                // Письмо вендора без цепочки и предложения в CRM — «Завести» в шапке (19.10.2026: у писем CRM смысла нет, правило
+                // «письмо-заявка без тождества» их не ловит, и с 16.10 они во «Все» без кнопок — «запрос … по вывозу 934000-2025»).
+                $enroll = ! $park && $section['kind'] === 't' && ! $orphan && $t->vendor_id && $section['letters']->contains(fn ($m) => $m->isFromVendor());
                 // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
                 $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
                 $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
@@ -74,12 +77,16 @@
                             @if ($head['vendor'] || $head['ref'] || $head['state'] || $pick)
                                 <div class="chain-head-sub">
                                     <x-mail.vendor-pick :pick="$pick"/>
-                                    <x-vendor.ref :vendor="$head['vendor']" :ref="$head['ref']"/>
+                                    {{-- Один логотип без номера и состояния — с именем вендора: у логотипа нет базовой линии, строка съезжала вниз. --}}
+                                    <x-vendor.ref :vendor="$head['vendor']" :ref="$head['ref'] ?? ($head['state'] ? null : $head['vendor']?->name)"/>
                                     @if ($head['state'])<span class="{{ $head['urgent'] ? 'text-urgent' : '' }}">{{ $head['state'] }}</span>@endif
                                 </div>
                             @endif
                         </div>
                         @if ($head['href'])<a href="{{ $head['href'] }}" class="-mr-1.5 shrink-0 p-1.5" aria-label="Открыть" @if ($v && $crm) data-turbo="false" @endif><x-ui.chevron/></a>@endif
+                        @if ($enroll)
+                            <form method="post" action="{{ $base }}/{{ $t->id }}/candidate" class="contents">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
+                        @endif
                     </div>
                 @endif
                 <x-mail.rail :messages="$letters" :url="$url" :asks="$asks" :stages="collect($c?->stages ?? [])->pluck('message_id')"/>

@@ -275,8 +275,12 @@ final class ChainBuilder
     private function starts(Message $message, bool $park, array $fields): bool
     {
         // Цепочку начинает письмо вендора с номером, VIN или госномером; бухгалтерия, автоответ и «прочее» не от вендора — нет.
-        if ($message->direction !== Direction::In || ! $message->keys()) {
+        // В CRM письмо извне о машине — и с одной маркой, без ключей (19.10.2026: «Годные Мазда 3» от ТИТ, у него «б/н»).
+        if ($message->direction !== Direction::In) {
             return false;
+        }
+        if (! $message->keys()) {
+            return ! $park && $this->carFromOutside($message, $fields);
         }
         if ($park && ($message->intent === Intent::Billing->value || Intent::silent($message->intent))) {
             return false;

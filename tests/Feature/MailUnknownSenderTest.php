@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Cars\Brand;
 use App\Mail\Account;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Chains\ChainBuilder;
@@ -10,6 +11,7 @@ use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Reading\ReadLetter;
+use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Offers\Actions\UpdateOffer;
@@ -62,6 +64,18 @@ class MailUnknownSenderTest extends TestCase
         $this->assertNotNull(app(ChainBuilder::class)->attach($message, files: false), 'письмо с машиной от незнакомой страховой — дело в «Из писем»');
     }
 
+    public function test_brand_only_letter_starts_chain(): void
+    {
+        // 19.10.2026: «Годные Мазда 3» — ни номера, ни VIN, ни госномера, только марка; дела не было вовсе.
+        Event::fake();
+        Brand::firstOrCreate(['slug' => 'mazda'], ['name' => 'Mazda']);
+        $message = $this->letter('Fwd: Годные Мазда 3', "-------- Пересылаемое сообщение --------\nОт: Набойченко Артём <4959678612@mail.ru>\nКому: Андрей Кузнецов <6691111@mail.ru>\n"
+            ."Тема: Годные Мазда 3\n\nТС в Москве, пострадало от удара БПЛА. Год выпуска 2018. Ждем Ваше предложение.\n");
+
+        $this->assertSame([], $message->keys());
+        $this->assertNotNull(app(ChainBuilder::class)->attach($message, files: false), 'письмо извне с одной маркой — дело в «Из писем»');
+    }
+
     public function test_reply_in_correspondence_does_not_start_chain(): void
     {
         Event::fake();
@@ -82,7 +96,7 @@ class MailUnknownSenderTest extends TestCase
 
         $this->assertContains('4959678612@mail.ru', $tit->fresh()->senders);
         $this->assertSame($tit->id, $message->thread->fresh()->vendor_id, 'ветка получает вендора по отправителю пересылки');
-        $this->assertSame($tit->id, Vendor::forSender('4959678612@mail.ru', \App\Mail\Scope::Offers)?->id);
+        $this->assertSame($tit->id, Vendor::forSender('4959678612@mail.ru', Scope::Offers)?->id);
     }
 
     public function test_bounce_waits_for_us_and_names_recipient(): void
