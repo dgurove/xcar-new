@@ -188,4 +188,31 @@ class TransportRouteTest extends TestCase
         $this->assertSame(Point::Yard, $next->destination);
         $this->assertSame(1, Transport::listed($this->tanya)->step('logist')->count());
     }
+
+    public function test_reorder_and_replace_stops_keep_executors_on_legs(): void
+    {
+        [$legs, $kirov, $moscow] = $this->route();
+        [$one, $two, $three] = $legs->all();
+        $this->assign($two, $this->stepan, '40 000', 'intercity');
+
+        // Перетащили Москву перед Кировом: точки меняются, Степан остаётся на втором отрезке.
+        $this->actingAs($this->tanya)->postJson(self::LOG.'/transports/'.$one->id.'/stops/order', ['order' => [$moscow->id, $kirov->id]])->assertOk();
+        $legs = Route::legs($one->fresh());
+        $this->assertSame([$moscow->id, $kirov->id], [$legs[0]->depot_id, $legs[1]->depot_id]);
+        $this->assertSame($moscow->id, $legs[1]->from_depot_id);
+        $this->assertSame($kirov->id, $legs[2]->from_depot_id);
+        $this->assertSame($this->stepan->id, $legs[1]->executor_id);
+
+        // Другая стоянка на месте Кирова.
+        $vyatka = $this->depot('Вятка');
+        $this->actingAs($this->tanya)->put(self::LOG.'/transports/'.$legs[1]->id.'/stop', ['depot_id' => $vyatka->id])->assertSessionHasNoErrors();
+        $this->assertSame($vyatka->id, $legs[1]->fresh()->depot_id);
+        $this->assertSame($vyatka->id, $legs[2]->fresh()->from_depot_id);
+
+        // Машину довезли до первой стоянки — её уже не переставить.
+        $this->assign($legs[0]->fresh(), $this->ivan, '5 000', 'local');
+        app(PickUp::class)($legs[0]->fresh(), ['keys' => 1], $this->admin);
+        app(Deliver::class)($legs[0]->fresh(), $this->admin);
+        $this->actingAs($this->tanya)->postJson(self::LOG.'/transports/'.$one->id.'/stops/order', ['order' => [$vyatka->id, $moscow->id]])->assertStatus(422);
+    }
 }

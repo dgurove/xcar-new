@@ -129,6 +129,23 @@ final class Route
         return $next;
     }
 
+    /**
+     * Стоянку между отрезками `$before` (везёт на неё) и `$after` (везёт с неё) можно заменить или переставить: машину до
+     * неё не довезли — `$before` не начат или ещё в пути, а `$after` «Впереди».
+     */
+    public static function movable(Transport $before, Transport $after): bool
+    {
+        return $after->state === TransportState::Planned && ! in_array($before->state, [TransportState::Delivered, TransportState::Cancelled], true);
+    }
+
+    /** Поставить стоянку между двумя отрезками: «куда» первого и «откуда» второго. */
+    public static function setStop(Transport $before, Transport $after, Depot $depot): void
+    {
+        $before->update(['destination' => Point::Depot, 'depot_id' => $depot->id, 'to_yard_id' => null, 'to_address' => null,
+            'to_contact' => $depot->contact_name, 'to_phone' => $depot->phone]);
+        $after->update(['from_depot_id' => $depot->id, 'from_address' => $depot->label(), 'from_contact' => $depot->contact_name, 'from_phone' => $depot->phone]);
+    }
+
     /** Подпись точки «откуда» отрезка: владелец (или адрес заказчика) — у первого, стоянка — у остальных. */
     public static function fromLabel(Transport $t): string
     {

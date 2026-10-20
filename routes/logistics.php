@@ -60,6 +60,8 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     // Маршрут из отрезков (20.10.2026): «+ Стоянка» делит отрезок, «×» у стоянки — склеивает.
     Route::post('/transports/{transport}/stops', [TransportController::class, 'stop']);
     Route::delete('/transports/{transport}/stop', [TransportController::class, 'unstop']);
+    Route::put('/transports/{transport}/stop', [TransportController::class, 'replaceStop']);
+    Route::post('/transports/{transport}/stops/order', [TransportController::class, 'reorderStops']);
     Route::post('/transports/{transport}/call', [TransportController::class, 'call']);
     Route::post('/transports/{transport}/missed', [TransportController::class, 'missed']);
     Route::post('/transports/{transport}/docs', [TransportController::class, 'docs']);

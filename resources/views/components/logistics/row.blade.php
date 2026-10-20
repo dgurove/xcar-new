@@ -35,7 +35,11 @@
     $to = $manager && in_array($goal->destination, [null, \App\Logistics\Point::Keeper], true) && $goal->reach === null ? null : $goalLabel;
     $manager = $to ? null : $manager;
     $far = $legs->contains(fn ($l) => $l->reach === \App\Logistics\Reach::Intercity);
-    $legNo = $legs->count() > 1 ? 'отрезок '.$t->seq.' из '.$legs->count() : null;
+    // Путь через стоянки (20.10.2026): «Киров Север → Москва-Юг → Парковка …», пройденные точки тусклым, текущая — цветом текста.
+    $path = $legs->count() > 1
+        ? $legs->slice(0, -1)->map(fn ($l) => ['name' => $l->depot?->name ?? 'стоянка', 'passed' => $l->state === \App\Logistics\TransportState::Delivered && $l->seq < $t->seq])
+            ->push(['name' => $goalLabel ?? 'пока неизвестно', 'passed' => false])->values()
+        : null;
     $ahead = ($lead || $t->hasLogist($me)) && $legs->contains(fn ($l) => $l->seq > $t->seq && $l->state === \App\Logistics\TransportState::Planned && ! $l->executor_id);
     $ref = $t->car?->claim_ref;
     $vendorId = $t->vendorId();
@@ -51,9 +55,9 @@
             @if ($has('client'))<span class="sm:hidden">{{ $t->client?->name ?? 'XCar' }}</span>@endif
             @if ($sale && $deciding)<span class="sm:hidden whitespace-nowrap {{ $sale->tone }}">{{ $sale->word }}</span>
             @elseif ($stepHere)<span @class(['whitespace-nowrap', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
-            @if ($manager)<span class="sm:hidden whitespace-nowrap">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden">→ {{ $to }}</span>@endif
+            @if ($path)<span>@foreach ($path as $p)<span @class(['text-ink-dim' => $p['passed']])>→ {{ $p['name'] }}</span>@if (! $loop->last) @endif @endforeach</span>
+            @elseif ($manager)<span class="sm:hidden whitespace-nowrap">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden">→ {{ $to }}</span>@endif
             @if ($far)<span class="sm:hidden whitespace-nowrap">между регионами</span>@endif
-            @if ($legNo)<span class="whitespace-nowrap">{{ $legNo }}</span>@endif
             @if ($ahead)<span class="whitespace-nowrap text-urgent">дальше без исполнителя</span>@endif
             @if ($has('who') && ($who || $logist))<span class="sm:hidden">{{ $who ? $who->shortName() : 'у логиста '.$logist->shortName() }}</span>@endif
         </span>

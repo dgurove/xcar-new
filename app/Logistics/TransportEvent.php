@@ -68,6 +68,7 @@ final class TransportEvent extends Model
             // Маршрут (20.10.2026): стоянку вставили или убрали.
             'stop' => 'Стоянка в маршруте: '.($p['depot'] ?? ''),
             'unstop' => 'Стоянка убрана: '.($p['depot'] ?? ''),
+            'stops' => 'Стоянки по порядку: '.($p['order'] ?? ''),
             'leg' => 'Отрезок '.($p['seq'] ?? '').(isset($p['executor']) ? ': исполнитель '.$name($p['executor']) : ''),
             'logist' => 'Логист '.$name($p['logist'] ?? null).$was(),
             'assigned' => 'Исполнитель '.$name($p['executor'] ?? null).$was(),

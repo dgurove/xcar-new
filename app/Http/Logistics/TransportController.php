@@ -16,6 +16,8 @@ use App\Logistics\Actions\Docs;
 use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\PickUp;
 use App\Logistics\Actions\RemoveStop;
+use App\Logistics\Actions\ReorderStops;
+use App\Logistics\Actions\ReplaceStop;
 use App\Logistics\Actions\SetRoute;
 use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Actions\StepBack;
@@ -452,6 +454,36 @@ class TransportController
         }
 
         return back()->with('toast', 'Стоянка в маршруте: '.$depot->name);
+    }
+
+    /** Другая стоянка на месте этой (`ReplaceStop`): `transport` — отрезок, что везёт на неё. */
+    public function replaceStop(Request $request, Transport $transport, ReplaceStop $replace)
+    {
+        $this->visible($request, $transport);
+        $depot = Depot::find($request->integer('depot_id')) ?? throw ValidationException::withMessages(['depot_id' => 'Какая стоянка']);
+        $replace($transport, $depot, $request->user());
+        $this->tellRerouted(collect([$transport->fresh()]), $request->user());
+
+        return back()->with('toast', 'Стоянка: '.$depot->name);
+    }
+
+    /** Стоянки в другом порядке — перетаскиванием (`ReorderStops`); ответ скрипту — без перехода. */
+    public function reorderStops(Request $request, Transport $transport, ReorderStops $reorder)
+    {
+        $this->visible($request, $transport);
+        $order = $request->validate(['order' => ['required', 'array', 'max:20'], 'order.*' => ['integer']])['order'];
+        $changed = $reorder($transport, $order, $request->user());
+        $this->tellRerouted($changed, $request->user());
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** Отрезкам, что уже у исполнителя, сменили точки — ему и логисту, как при правке «Куда везти». */
+    private function tellRerouted(\Illuminate\Support\Collection $legs, User $by): void
+    {
+        foreach ($legs->filter(fn (Transport $t) => $t->isOpen() && $t->executor_id) as $t) {
+            Notification::send(NotifyLogistics::workers($t, $by), TransportNotice::rerouted($t));
+        }
     }
 
     /** Убрать стоянку: отрезок на неё и отрезок «Впереди» за ней склеиваются (`RemoveStop`). */
