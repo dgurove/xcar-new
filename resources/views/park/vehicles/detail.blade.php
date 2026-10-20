@@ -98,7 +98,6 @@
         </div>
         @if ($handedTo)<p class="text-ink-muted">{{ $handedTo }}{{ $released && ! empty($released->payload['pass']) ? ', по QR' : ($released && ! empty($released->payload['without_qr']) ? ', без QR' : '') }}</p>@endif
         @include('park.vehicles.now')
-        <x-park.sale :vehicle="$vehicle" row/>
         @if ($task)
             @include('park.vehicles.task')
         @endif
@@ -109,17 +108,37 @@
                 <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :reply="! $state->isFinal()"/>
             </section>
         @endif
+        {{-- Остальное по машине — одной группой строк, как «Настройки» iOS (20.10.2026, владелец: «симпатичнее и компактнее,
+             как цены в CRM»): страхователь у заявки на приём (звонок), продажа (`x-park.sale row=bare`), расхождения с
+             документами и «Заполнить из документов». Было плашкой на каждое — стопкой между письмами и заметкой. Кнопки
+             расхождений — формой `take-…` вне группы: у продажи в группе шторка со своими формами. --}}
+        @php
+            $tel = $task && $task->type === \App\Park\RequestType::Intake && $state->isBefore() ? ($task->contact_phone ?? $vehicle->contact_phone) : null;
+            $who = $task && $task->type === \App\Park\RequestType::Intake && $state->isBefore() ? rtrim((string) ($task->contact_name ?? $vehicle->contact_name), " ,") : '';
+        @endphp
+        <div class="list mt-3 [&:not(:has(*))]:hidden">
+            @if ($tel)
+                <a href="tel:+{{ preg_replace('/\D+/', '', $tel) }}" class="row">
+                    <x-ui.row-icon name="phone" tone="soft" size="s"/>
+                    <span class="min-w-0 flex-1 truncate">{{ $who ?: 'Страхователь' }}</span>
+                    <span class="nums shrink-0 text-accent-text">{{ $tel }}</span>
+                </a>
+            @elseif ($who !== '')
+                <div class="row"><x-ui.row-icon name="phone" tone="muted" size="s"/><span class="min-w-0 flex-1 truncate">{{ $who }}</span></div>
+            @endif
+            <x-park.sale :vehicle="$vehicle" row="bare"/>
+            @if ($differences || $scanFiles->isNotEmpty())
+                <x-park.doc-differences :vehicle="$vehicle" :differences="$differences" bare :form="'take-'.$vehicle->id">
+                    @if ($scanFiles->isNotEmpty())<x-mail.scan-button :url="$scanUrl" :fill="$gaps" :files="$scanFiles"/>@endif
+                </x-park.doc-differences>
+            @endif
+        </div>
+        @if ($differences)<form id="take-{{ $vehicle->id }}" method="post" action="{{ $href }}/take" hidden>@csrf</form>@endif
         <x-park.date-forms :vehicle="$vehicle"/>
         @if ($state === VehicleState::Stored && ! ($fromRequests ?? false))
             @include('park.vehicles.move-sheet')
         @endif
-        @if ($differences || $scanFiles->isNotEmpty())
-            <form method="post" action="{{ $href }}/take" class="mt-3">@csrf
-                <x-park.doc-differences :vehicle="$vehicle" :differences="$differences">
-                    @if ($scanFiles->isNotEmpty())<x-mail.scan-button :url="$scanUrl" :fill="$gaps" :files="$scanFiles"/>@endif
-                </x-park.doc-differences>
-            </form>
-        @endif
+
         {{-- Остальные открытые заявки ТС чипами: текущая — уже задача карточки, закрытые — в истории («Приём Выполнена»). --}}
         @php $otherRequests = $vehicle->requests->filter(fn ($r) => $r->isOpen() && ! $task?->is($r)); @endphp
         @if ($otherRequests->isNotEmpty())

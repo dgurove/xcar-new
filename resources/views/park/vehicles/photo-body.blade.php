@@ -9,4 +9,6 @@
 @php $me = auth()->user(); @endphp
 @if (($collapsed ?? false) && $me->isAdmin())<div class="photos-over"><x-ui.photos-all/></div>@endif
 {{-- Глаз — показ в продаже, только админу: в деле ТС видны все кадры, скрытый только сереет. --}}
-<x-ui.photos :photos="$photos" :readonly="! $edit" grid :hide="$me->isAdmin()" :rotatable="$me->canManagePark()" :deletable="$me->canManagePark()" :main="false" :id="'gallery-'.$stage->value" :pending="$pending ?? 0"/>
+{{-- Пустой блок (`$blank` в `x-park.photos`) — без сетки: добавляют кнопкой «+ Фото» в строке подписи, ответ загрузки
+     подменит карточку уже с кадрами. --}}
+<div @if ($blank ?? false) hidden @else class="contents" @endif><x-ui.photos :photos="$photos" :readonly="! $edit" grid :hide="$me->isAdmin()" :rotatable="$me->canManagePark()" :deletable="$me->canManagePark()" :main="false" :id="'gallery-'.$stage->value" :pending="$pending ?? 0"/></div>

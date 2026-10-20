@@ -1,11 +1,12 @@
 {{-- Группа «документы» над полями ТС: строка на расхождение карточки с документом (FillFromDocs::differences) —
      «в карточке → в документе», под ней поле и документ; справа «Отклонить» и «Взять» с подтверждением: кнопки
      отправляют форму вокруг на свой адрес (вложенной формы быть не может). Последней строкой — слот: вход в окно
-     «Из документов» (x-mail.scan-button). Пусто и то и другое — группы нет. --}}
-@props(['vehicle', 'differences' => []])
+     «Из документов» (x-mail.scan-button). Пусто и то и другое — группы нет. bare — строками чужой группы `.list` (окошко
+     строки, 20.10.2026), form — id внешней формы `/take`: в группе есть шторки со своими формами, вложить её нельзя. --}}
+@props(['vehicle', 'differences' => [], 'bare' => false, 'form' => null])
 @php $labels = ['vin' => 'VIN', 'plate' => 'Госномер', 'year' => 'Год', 'color' => 'Цвет', 'value' => 'Оценочная стоимость', 'model' => 'Модель']; @endphp
 @if ($differences || $slot->isNotEmpty())
-    <div {{ $attributes->merge(['class' => 'list doc-diff']) }}>
+    @unless ($bare)<div {{ $attributes->merge(['class' => 'list doc-diff']) }}>@endunless
         @foreach ($differences as $field => $d)
             @php
                 $now = $field === 'model' ? $vehicle->model?->name : $vehicle->{$field};
@@ -20,12 +21,12 @@
                     <span class="scan-from">{{ implode(', ', $d['sources']) }}</span>
                 </span>
                 <span class="flex shrink-0 items-center gap-3 self-center text-sm">
-                    <button type="submit" class="text-ink-muted" formaction="/cars/{{ $vehicle->id }}/take" formmethod="post" formnovalidate name="reject" value="{{ $field }}|{{ $d['value'] }}">Отклонить</button>
-                    <button type="submit" class="text-accent-text" formaction="/cars/{{ $vehicle->id }}/take" formmethod="post" formnovalidate name="take" value="{{ $field }}|{{ $d['value'] }}"
+                    <button type="submit" @if ($form) form="{{ $form }}" @endif class="text-ink-muted" formaction="/cars/{{ $vehicle->id }}/take" formmethod="post" formnovalidate name="reject" value="{{ $field }}|{{ $d['value'] }}">Отклонить</button>
+                    <button type="submit" @if ($form) form="{{ $form }}" @endif class="text-accent-text" formaction="/cars/{{ $vehicle->id }}/take" formmethod="post" formnovalidate name="take" value="{{ $field }}|{{ $d['value'] }}"
                         data-turbo-confirm="{{ $labels[$field] }} из документа: {{ $show($d['value']) }}?" data-turbo-confirm-label="Взять">Взять</button>
                 </span>
             </div>
         @endforeach
         {{ $slot }}
-    </div>
+    @unless ($bare)</div>@endunless
 @endif

@@ -1,5 +1,5 @@
-{{-- Таймлайн дела: точки на линии слева, как трекинг посылки. Сделанное — строкой с раскрытием, текущее — подсказка и
-     кнопка окна действия (приём, письмо вендору, выдача — `x-park.act-window`), будущее — серым. --}}
+{{-- Таймлайн дела: точки на линии слева, как трекинг посылки. Сделанное — строкой с раскрытием, текущее — строкой (его
+     действие — плашкой сверху дела, `now-step`), будущее — серым. --}}
 @php use App\Park\Step; @endphp
 <div class="steps">
     @foreach ($steps as $step)
@@ -28,11 +28,10 @@
                         @include('park.vehicles.steps.done')
                     </details>
                 @elseif ($step->isCurrent())
+                    {{-- Действие текущего шага — плашкой сверху дела (`now-step`, 20.10.2026), здесь — строкой. --}}
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>
                     </div>
-                    @if ($step->hint)<p class="step-hint">{{ $step->hint }}</p>@endif
-                    @include('park.vehicles.steps.'.$partial, ['req' => $r, 'step' => $step])
                 @elseif ($step->key === 'buyer' && $step->state === Step::TODO)
                     {{-- Анкета покупателя (выдача по QR): не текущий шаг, но с делом — ссылка или «Страховая подтвердила». --}}
                     <div class="step-head">
@@ -42,13 +41,11 @@
                     </div>
                     @include('park.vehicles.steps.buyer')
                 @elseif ($step->key === 'reply')
-                    {{-- Письмо, которое ждёт ответа: текст и два действия, форма текущего шага при этом на месте. --}}
+                    {{-- Письмо, которое ждёт ответа: строкой; ответить — плашкой «Ждут от нас» сверху дела (`park/vehicles/now`). --}}
                     <div class="step-head"><span class="step-title">{{ $step->title }}</span>@if ($step->at)<span class="fact nums">{{ $step->at->translatedFormat('j M, H:i') }}</span>@endif</div>
-                    @include('park.vehicles.steps.reply')
                 @else
                     <div class="step-head">
                         <span class="step-title">{{ $step->title }}</span>
-                        @if ($step->state === Step::TODO && $step->plate && $step->plate['kind'] === 'window')<x-mail.window-button :url="$step->plate['url']" :label="$step->plate['label']" chip/>@elseif ($step->state === Step::TODO && ($step->plate['kind'] ?? null) === 'act')<x-park.act-button :vehicle="$vehicle" :step="$step->plate['step']" :label="$step->plate['label']" chip/>@endif
                     </div>
                     @if ($step->state === Step::TODO && $step->hint)<p class="step-hint">{{ $step->hint }}</p>@endif
                 @endif

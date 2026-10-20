@@ -63,10 +63,13 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="flex min-w-0 flex-col gap-4">
+        {{-- Что сейчас — сверху (20.10.2026): письма, что ждут ответа, и текущий шаг с его кнопками. --}}
+        @if (($asks ?? collect())->isNotEmpty())<div class="-mt-3">@include('park.vehicles.now', ['asks' => $asks, 'tasks' => []])</div>@endif
+        @if ($cur)@include('park.vehicles.now-step')@endif
         {{-- Машина — страницей, действие — окном (`x-park.act-window`, 12.10.2026): приём, письмо вендору и выдача
              открываются кнопкой текущего шага; поля ТС — своей формой с «Сохранить изменения». --}}
         @if ($canManage && ! $state->isFinal())
-            <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" class="flex flex-col gap-4" data-controller="vin save-bar draft next" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}">
+            <form method="post" action="/cars/{{ $vehicle->id }}" id="vehicle-form" class="flex flex-col gap-4" data-controller="vin save-bar draft next empty-blocks" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}">
                 @csrf @method('put')
                 @include('park.vehicles.fields-block')
             </form>
@@ -89,10 +92,11 @@
 
     <div class="flex min-w-0 flex-col gap-4">
         @if (($byQr ?? false) && $vehicle->vendor?->release_by_qr && ! ($pass ?? null)?->isDeal() && $vehicle->state === \App\Park\VehicleState::Stored)@include('park.vehicles.pickup-card')@endif
-        {{-- Документы — над фото: их обычно немного. Строками, «+ Документ» сверху, у правого края — искра «Из документов». --}}
+        {{-- Документы — над фото: их обычно немного. Строками; «+ Документ» и искра «Из документов» — в строке подписи справа,
+             как «+ Фото» у пустых блоков кадров (20.10.2026). --}}
         <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
+            <x-slot:actions><span class="flex items-center gap-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Документ</x-ui.button>@include('park.vehicles.scan-row')</span></x-slot:actions>
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
-            <div class="mb-2 flex items-center gap-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Документ</x-ui.button>@include('park.vehicles.scan-row')</div>
             <div hidden data-photos-target="progress" class="mb-3">
                 <div class="mb-1 text-sm text-ink-muted" data-label></div>
                 <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>

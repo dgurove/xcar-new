@@ -1,6 +1,7 @@
 {{-- Продажа этой ТС — только админу (владелец 05.10.2026: «выставить и убрать на парковке, красиво и удобно»).
      Вид — как документы в том же месте (11.10.2026, владелец: кнопку не находили, «подумай над дизайном»):
-     - row — строкой группы в карточке «Наличия» и «Заявок», как «Заполнить из документов»: не в продаже — «Выставить в
+     - row — строкой группы в карточке «Наличия» и «Заявок», как «Заполнить из документов» (`row="bare"` — строкой чужой
+       группы `.list`, 20.10.2026: продажа, страхователь и документы одной группой): не в продаже — «Выставить в
        продажу» лаймовым словом, шторка с оценочной и закупочной (`x-park.sell-sheet`); в продаже — «Продажа» и состояние справа, нажатие — шторка;
      - иначе капсулой в шапке дела рядом с местом («Измайловский лес ⌄»): «В продажу» с сумкой / состояние ⌄.
      Шторка «Продажа» — предложение в CRM, сделка, если идёт, и красная «Убрать из продажи» (`TakeOffSale`: черновик
@@ -33,7 +34,7 @@
 @if (! auth()->user()?->isAdmin() || (! $offer && ! $canSell))
 @elseif (! $offer)
     {{-- 13.10.2026: шторкой с оценочной и закупочной (`x-park.sell-sheet`), а не подтверждением без цифр. --}}
-    <span @class(['list mt-3' => $row, 'contents' => ! $row]) data-controller="sheet">
+    <span @class(['list mt-3' => $row === true, 'contents' => $row !== true]) data-controller="sheet">
         @if ($row)
             <x-ui.sheet-row><x-ui.row-icon name="bag" tone="soft" size="s"/><span class="min-w-0 flex-1 text-accent-text">Выставить в продажу</span><x-ui.chevron/></x-ui.sheet-row>
         @else
@@ -42,7 +43,7 @@
         <x-park.sell-sheet :vehicle="$vehicle" :id="'sell-'.$vehicle->id"/>
     </span>
 @else
-    <span @class(['list mt-3' => $row, 'contents' => ! $row]) data-controller="sheet">
+    <span @class(['list mt-3' => $row === true, 'contents' => $row !== true]) data-controller="sheet">
         @if ($row)
             <x-ui.sheet-row>
                 <x-ui.row-icon name="bag" :tone="$tone === 'plain' ? 'muted' : $tone" size="s"/>

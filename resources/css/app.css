@@ -296,6 +296,9 @@ html.kb-open { --home-gap: 0px; }
   a.row, button.row, a.pill, button.pill, a.chip, button.chip, a.tag, button.tag, .menu a, .menu button, label:has(input) { cursor: pointer; }
   /* Заголовок раздела — подписью группы, как в приложении: мелко, серым, без веса статьи. */
   .box h2.box-title { font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-dim); letter-spacing: .01em; }
+  /* Под заголовком карточки ничего видимого (пустые «Документы»: кнопка в строке подписи) — без отступа снизу. */
+  .box-head { margin-bottom: .75rem; }
+  .box-head:not(:has(~ :not(input, [hidden], script, template))) { margin-bottom: 0; }
   /* «Изменить / Готово» в заголовке карточки (edit_card_controller): тихой ссылкой, «Готово» плотнее — как в iOS.
      -mr-3 — текст по правому краю содержимого карточки, подложка наведения уходит в её поле. */
   .edit-card-toggle { @apply -my-1 -mr-3 rounded-full px-3 py-1 text-sm text-accent-text transition-[background-color,font-weight] duration-200 hover:bg-surface-2 active:scale-[.97]; }
@@ -392,6 +395,10 @@ html.kb-open { --home-gap: 0px; }
   /* «Показ» строкой в блоке «Цены» и плашке «Приём» (`x-offer.showing-row`): срок приёма и кому — двумя этажами, нажатие —
      шторка «Показ». Фон поля поверх плашки. */
   .showing-row { @apply flex w-full items-center gap-3 rounded-(--radius-m) bg-surface px-3 py-2 text-left; }
+  /* Пустые блоки машины одной строкой (`empty_blocks_controller`): названия блоков чипами с «+». */
+  .empty-blocks { @apply flex flex-wrap items-center gap-1.5 rounded-(--radius-xl) bg-surface px-4 py-3; }
+  .empty-blocks-chip { @apply text-accent-text; }
+  .empty-blocks-chip::before { content: '+'; margin-right: .25rem; }
   /* «Заявленная, минимальная, доля, метки» в блоке «Цены» окошка черновика — свёрнуто строкой с шевроном. */
   .price-more > summary { list-style: none; width: fit-content; }
   .price-more > summary::-webkit-details-marker { display: none; }

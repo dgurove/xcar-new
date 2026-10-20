@@ -4,8 +4,8 @@
      своё у шага — только с какого дня платит покупатель. --}}
 @if ($buyerFrom)<div class="mt-2 flex flex-wrap items-center gap-1.5"><span class="chip nums {{ $buyerFrom->isPast() ? 'bg-danger-soft text-danger' : '' }}">покупатель с {{ $buyerFrom->translatedFormat('j M') }}, {{ Money::rub($buyerRate) }}/сут</span></div>@endif
 @if ($canManage)
-    <div class="mt-3 flex flex-wrap gap-2">
-        <x-ui.button type="button" variant="secondary" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->sold_at ? 'Изменить покупателя' : 'Покупатель' }}</x-ui.button>
-        <x-park.act-button :vehicle="$vehicle" step="release" label="Выдать"/>
+    <div class="mt-2 flex gap-2">
+        <x-park.act-button :vehicle="$vehicle" step="release" label="Выдать" class="btn btn-s btn-accent min-w-0 flex-1"/>
+        <button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->sold_at ? 'Изменить покупателя' : 'Покупатель' }}</button>
     </div>
 @endif

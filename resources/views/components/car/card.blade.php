@@ -5,7 +5,9 @@
      разделом окошка строки CRM. Пусто — «Добавить». --}}
 @props(['title', 'fold' => null, 'empty' => false, 'as' => 'card', 'form' => null, 'top' => null, 'view' => null])
 @php $toggle = $fold !== null && $as === 'card'; @endphp
-<section {{ $attributes->class(['box' => $as === 'card']) }}
+{{-- Пустой свёрнутый блок помечен `data-empty-block`: такие блоки собирает в одну строку «Добавить: …» `empty_blocks_controller`
+     (20.10.2026, владелец: «компактнее»), нажатие раскрывает свой блок полями. --}}
+<section {{ $attributes->class(['box' => $as === 'card']) }} @if ($toggle && $fold && $empty) data-empty-block="{{ $title }}" @endif
     @if ($toggle) data-controller="edit-card" @if (! $fold) data-edit-card-editing-value="true" @endif @if ($form) data-edit-card-form-value="{{ $form }}" @endif @endif>
     @if ($as === 'card')
         <div class="mb-3 flex items-center gap-3">

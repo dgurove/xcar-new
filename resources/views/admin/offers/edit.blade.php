@@ -130,7 +130,7 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:min-w-0 @4xl:flex-col @4xl:gap-4">
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 flex flex-col gap-4 @4xl:order-none">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 flex flex-col gap-4 @4xl:order-none">
             @csrf @method('put')
 
             {{-- Машина — те же блоки, что на парковке (`x-car.blocks`, 19.10.2026: «ТС одна сущность»): «Транспортное

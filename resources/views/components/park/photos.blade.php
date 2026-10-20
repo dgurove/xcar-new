@@ -15,15 +15,19 @@
     @if ($collapsed)
         <details class="step-details" @if ($n) open @endif>
             <summary class="flex items-center gap-2">
-                <h2>{{ $stage->label() }}@if ($n) <span class="nums text-sm font-normal text-ink-dim">{{ $n }}</span>@endif</h2>
+                <h2 class="box-title">{{ $stage->label() }}@if ($n) <span class="nums">{{ $n }}</span>@endif</h2>
                 <x-ui.icon name="chevron-down" class="step-chevron size-5 text-ink-dim"/>
             </summary>
             <div class="mt-4">@include('park.vehicles.photo-body')</div>
         </details>
     @else
-        <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <h2>{{ $stage->label() }}@if ($n) <span class="nums text-sm font-normal text-ink-dim">{{ $n }}</span>@endif</h2>
-            @if (auth()->user()->isAdmin())<x-ui.photos-all class="ml-auto"/>@endif
+        {{-- Подписью раздела, как «Документы» и «Оплаты» рядом (20.10.2026): крупным — сами кадры. Пусто — строка
+             «подпись … + Фото», без плитки с камерой во всю карточку (два пустых блока стояли столбом). --}}
+        @php $blank = $edit && ! $n && ! $pending; @endphp
+        <div @class(['flex flex-wrap items-center gap-x-3 gap-y-1.5', 'mb-3' => ! $blank])>
+            <h2 class="box-title !mb-0">{{ $stage->label() }}@if ($n) <span class="nums">{{ $n }}</span>@endif</h2>
+            @if ($blank)<x-ui.button type="button" variant="secondary" size="sm" class="ml-auto" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Фото</x-ui.button>
+            @elseif (auth()->user()->isAdmin())<x-ui.photos-all class="ml-auto"/>@endif
         </div>
         @include('park.vehicles.photo-body')
     @endif

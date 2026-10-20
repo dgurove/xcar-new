@@ -54,7 +54,7 @@
                         <div class="field-label">{{ $c === 'pts' ? $ptsLabel($value) : CarFields::label($c, $lane) }}</div>
                         <div class="mt-0.5 break-words">
                             @if ($c === 'vin')<x-ui.vin-code :vin="$value" copy/>
-                            @elseif (CarFields::kind($c) === 'code' || $c === 'plate')<x-ui.copy-code :value="$value"/>
+                            @elseif (CarFields::kind($c) === 'code' || $c === 'plate')<x-ui.copy-code :value="$value" class="break-all"/>
                             @elseif (CarFields::kind($c) === 'tel')<a href="tel:{{ preg_replace('/[^\d+]/', '', $value) }}" class="text-accent-text">{{ $value }}</a>
                             @else{{ $value }}@endif
                         </div>
