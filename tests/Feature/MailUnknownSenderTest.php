@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Cars\Brand;
 use App\Mail\Account;
+use App\Mail\Actions\ArchiveThread;
 use App\Mail\Actions\LinkThread;
+use App\Mail\CandidateState;
 use App\Mail\Chains\ChainBuilder;
 use App\Mail\Chains\NodeTitle;
 use App\Mail\Direction;
@@ -74,6 +76,21 @@ class MailUnknownSenderTest extends TestCase
 
         $this->assertSame([], $message->keys());
         $this->assertNotNull(app(ChainBuilder::class)->attach($message, files: false), 'письмо извне с одной маркой — дело в «Из писем»');
+    }
+
+    public function test_staff_forward_revives_archived_chain(): void
+    {
+        // 20.10.2026: 677209/2026 Андрей убрал в архив, Катя переслала то же письмо снова — цепочка осталась в архиве, никто
+        // её не видел. Новое письмо извне (и пересылка сотрудника) возвращает цепочку в «Из писем».
+        Event::fake();
+        $chain = app(ChainBuilder::class)->attach($this->tit(), files: false);
+        $chain->update(['state' => CandidateState::Rejected]);
+        app(ArchiveThread::class)->candidate($chain, true);
+
+        $again = app(ChainBuilder::class)->attach($this->tit(), files: false);
+        $this->assertTrue($again->is($chain));
+        $this->assertSame(CandidateState::New, $chain->fresh()->state);
+        $this->assertNull($again->threads()->first()?->fresh()->archived_at);
     }
 
     public function test_reply_in_correspondence_does_not_start_chain(): void

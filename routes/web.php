@@ -254,6 +254,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         // Забирает сам (17.10.2026): «Забрал» здесь, логистов — «Нужен вывоз».
         Route::post('/cars/{offer}/picked', [GarageCarController::class, 'picked']);
         Route::post('/cars/{offer}/pickup', [GarageCarController::class, 'requestPickup']);
+        Route::post('/cars/{offer}/waiting', [GarageCarController::class, 'notArrived']);
         Route::put('/costs/{cost}', [GarageCarController::class, 'updateCost']);
         Route::delete('/costs/{cost}', [GarageCarController::class, 'destroyCost']);
         // Этапы: «Готова» — кнопкой; «Продаю» — менеджер ценой, итог и счёт — мы, об оплате сообщает он.

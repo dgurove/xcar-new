@@ -119,6 +119,15 @@ final class ChainBuilder
         foreach ($matches as $candidate) {
             if (! $candidate->messages()->whereKey($message->id)->exists()) {
                 $candidate->messages()->attach($message->id, ['created_at' => now()]);
+                // Цепочка в архиве («не заявка»), а вендор написал снова — или сотрудник заново переслал его письмо (20.10.2026:
+                // Катя переслала 677209/2026 повторно, а цепочка осталась в архиве, и её никто не увидел): снова ждёт, как
+                // новая — с «Новое из писем» и черновиком, если уверены. История ящика (`quiet`) и служебные письма — нет.
+                if (! $quiet && $candidate->state === CandidateState::Rejected && $message->isFromVendor()
+                    && ! Intent::isService($message->subject, $message->from_email) && ! in_array($message->intent, ['auto', 'billing'], true)) {
+                    $candidate->update(['state' => CandidateState::New]);
+                    $this->archive->candidate($candidate, false);
+                    $fresh = true;
+                }
             }
             $this->fold($candidate);
             $candidate = $candidate->fresh();

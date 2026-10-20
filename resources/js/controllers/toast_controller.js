@@ -45,6 +45,21 @@ export default class extends Controller {
         const kind = flash.dataset.kind || '';
         // data-href — тост ведёт туда нажатием («Вендор «ТИТ» заведён» → его настройки).
         if (flash.dataset.href) return { kind, href: flash.dataset.href };
+        // data-undo-url — «Вернуть» отправляет POST на этот адрес (20.10.2026: убрали в архив — вернуть тут же, а не искать
+        // в «Архиве»): форма, что вызвала тост, к этому времени уже ушла со страницы вместе с делом.
+        if (flash.dataset.undoUrl) return { kind, action: { label: flash.dataset.undoLabel || 'Вернуть', run: () => {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = flash.dataset.undoUrl;
+            form.hidden = true;
+            const token = document.createElement('input');
+            token.type = 'hidden';
+            token.name = '_token';
+            token.value = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            form.append(token);
+            document.body.append(form);
+            form.requestSubmit();
+        } } };
         if (!('undo' in flash.dataset)) return kind;
         return { kind, action: { label: 'Отменить', run: () => {
             // Чей шаг: пути сделки — data-step-back пустой, вывоза — data-step-back="transport" (тост несёт ключ).

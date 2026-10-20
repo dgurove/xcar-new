@@ -5,6 +5,7 @@ namespace App\Http\Garage;
 use App\Garage\Actions\AddCost;
 use App\Garage\Actions\RemoveCost;
 use App\Garage\Actions\ReturnFromGarage;
+use App\Garage\Actions\UndoArrival;
 use App\Garage\Actions\UpdateCost;
 use App\Garage\Car;
 use App\Garage\Cost;
@@ -114,6 +115,15 @@ class CarController
         $pickup($offer, $request->user());
 
         return back()->with('toast', 'Попросили вывоз, логистика назначит исполнителя');
+    }
+
+    /** «Ещё не вывезли» — при «Отдать» ошиблись «Уже у нас»: снова ждёт ТС, вывоз в логистике (`UndoArrival`). */
+    public function notArrived(Request $request, Offer $offer, UndoArrival $undo)
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $undo($this->car($request, $offer), $request->user());
+
+        return back()->with('toast', 'Ждёт ТС, вывоз в логистике');
     }
 
     private function car(Request $request, Offer $offer): Car

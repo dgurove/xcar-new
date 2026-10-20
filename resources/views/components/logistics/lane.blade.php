@@ -2,7 +2,8 @@
      ссылка в логистику и что дальше; ниже группой строк, как Настройки iOS, — логист, исполнитель, куда везти с дальностью,
      комментарий (`x-logistics.facts`, строка нажатием открывает окно «Назначить вывоз», `x-logistics.assign-form`); под ней —
      ход лесенкой (`Transport::steps`, без шагов «кто» — они строками выше) и история свёрнутой строкой. В «···»: «Кто и
-     куда», отменить последний шаг (`Logistics\Actions\StepBack`), «Вывоз не нужен». Вывоза нет — «Вывезти». У сделки внутри
+     куда», «Уже вывезли» (задним числом, `Logistics\Actions\Backdate`: ТС уже у нас или у менеджера — 20.10.2026, при «Отдать»
+     ошиблись «У страховой»), отменить последний шаг (`Logistics\Actions\StepBack`), «Вывоз не нужен». Вывоза нет — «Вывезти». У сделки внутри
      — получение (контакт владельца менеджеру, `x-deal.handover`). --}}
 @props(['offer', 'deal' => null, 'class' => ''])
 @php
@@ -23,17 +24,21 @@
     $undo = $t ? \App\Logistics\Actions\StepBack::last($t) : null;
     $undo = $undo && \App\Logistics\Actions\StepBack::allowed($t, auth()->user(), $undo) ? $undo : null;
     $undoLabel = match ($undo) { 'logist' => 'Снять логиста', 'executor' => 'Снять исполнителя', null => null, default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$undo].'»' };
+    $backdate = $open && auth()->user()->leadsLogistics();
     $events = $t ? $t->events()->count() : 0;
 @endphp
 @if ($t || $canOpen)
 <x-ui.card title="Вывоз" :class="$class" id="pickup">
-    @if ($changeable || $undo)
+    @if ($changeable || $undo || $backdate)
         <x-slot:actions>
             <div class="contents" data-controller="menu">
                 <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="pickup-more-{{ $offer->number }}"><x-ui.icon name="more" class="size-5"/></button>
                 <div id="pickup-more-{{ $offer->number }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
                     @if ($changeable)
                         <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="{{ $sheet }}:open"><x-ui.icon name="truck" class="size-5 text-ink-muted"/>Кто и куда</button>
+                    @endif
+                    @if ($backdate)
+                        <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="{{ $sheet }}-backdate:open"><x-ui.icon name="check" class="size-5 text-ink-muted"/>Уже вывезли</button>
                     @endif
                     @if ($undo)
                         <form method="post" action="/offers/{{ $offer->number }}/pickup/back" data-step-back="transport" data-turbo-confirm="{{ $undoLabel }}?" data-turbo-confirm-label="{{ str_starts_with($undoLabel, 'Снять') ? 'Снять' : 'Отменить' }}">
@@ -120,6 +125,13 @@
             <x-logistics.assign-form :transport="$t" :offer="$offer" :action="'/offers/'.$offer->number.'/pickup'" :prefix="$sheet"/>
         </x-ui.sheet>
     </div>
+    @if ($backdate)
+        <div data-controller="sheet" data-action="{{ $sheet }}-backdate:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="$sheet.'-backdate'" title="Уже вывезли" tall>
+                <x-logistics.backdate-form :transport="$t" :action="'/offers/'.$offer->number.'/pickup/backdate'" :prefix="$sheet.'-backdate'"/>
+            </x-ui.sheet>
+        </div>
+    @endif
     <div data-controller="sheet" data-action="{{ $sheet }}-drop:open@window->sheet#open" class="contents">
         <x-ui.sheet :id="$sheet.'-drop'" title="Вывоз не нужен">
             <form method="post" action="/offers/{{ $offer->number }}/pickup" class="flex flex-col gap-4">

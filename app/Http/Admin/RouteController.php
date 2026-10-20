@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Logistics\Actions\AssignExecutor;
+use App\Logistics\Actions\Backdate;
 use App\Logistics\Actions\Cancel as CancelTransport;
 use App\Logistics\Actions\OpenPickup;
 use App\Logistics\Actions\SetRoute;
@@ -144,6 +145,15 @@ class RouteController
         $back($t, $request->user());
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Вывоз: отменено «'.(TransportEvent::STEPS[$step] ?? 'шаг').'»');
+    }
+
+    /** «Уже вывезли» из дорожки «Вывоз» — то же, что в логистике (`Logistics\Actions\Backdate`): ТС уже не у владельца. */
+    public function pickupBackdate(Request $request, Offer $offer, Backdate $backdate)
+    {
+        $t = $offer->pickup() ?? abort(404);
+        $backdate($t, $request->validate(Backdate::rules(), Backdate::messages()), $request->user());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Отмечена вывезенной')->with('toast-undo', 'transport');
     }
 
     /** «Вывоз не нужен»: задача в логистике отменена с причиной (уже везут — нельзя). */

@@ -48,6 +48,8 @@
                 // Ждёт ответа — последнее входящее ветки с `needs_reply_at`, как в ленте.
                 $waiting = $section['threads']->whereNotNull('needs_reply_at')->pluck('id')->all();
                 $asks = $letters->filter(fn ($m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->pluck('id')->all();
+                // Дело в архиве (поиск, пилюля «Архив») — «Вернуть» кнопкой в шапке, не только свайпом (20.10.2026).
+                $archived = $c?->state === CandidateState::Rejected || $section['threads']->every(fn ($x) => $x->archived_at);
             @endphp
             {{-- Смахивается дело целиком: архивировать одно письмо из цепочки смысла нет. --}}
             <x-ui.swipe id="case-{{ $section['kind'] }}-{{ $section['id'] }}" data-search-group>
@@ -63,7 +65,11 @@
                             @if ($t->vendor)<div class="chain-head-sub"><x-vendor.ref :vendor="$t->vendor" :ref="$t->vendor->name"/></div>@endif
                         </div>
                         {{-- «Не заявка» здесь — просто архив письма: цепочки у него ещё нет, отклонять нечего. --}}
-                        <form method="post" action="{{ $base }}/case/t/{{ $section['id'] }}/archive" class="hidden md:contents" data-turbo-confirm="Не заявка? Письмо уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
+                        @if ($archived)
+                            <form method="post" action="{{ $base }}/case/t/{{ $section['id'] }}/archive?restore=1" class="contents">@csrf<button class="btn btn-s btn-quiet case-do">Вернуть</button></form>
+                        @else
+                            <form method="post" action="{{ $base }}/case/t/{{ $section['id'] }}/archive" class="hidden md:contents" data-turbo-confirm="Не заявка? Письмо уйдёт в архив">@csrf<button class="btn btn-s btn-quiet case-do"><span class="opacity-70">Не заявка</span></button></form>
+                        @endif
                         <form method="post" action="{{ $base }}/{{ $t->id }}/candidate" class="contents">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                     </div>
                 @elseif ($head)
@@ -83,8 +89,11 @@
                                 </div>
                             @endif
                         </div>
+                        @if ($archived)
+                            <form method="post" action="{{ $base }}/case/{{ $section['kind'] }}/{{ $section['id'] }}/archive?restore=1" class="contents">@csrf<button class="btn btn-s btn-quiet case-do">Вернуть</button></form>
+                        @endif
                         @if ($head['href'])<a href="{{ $head['href'] }}" class="-mr-1.5 shrink-0 p-1.5" aria-label="Открыть" @if ($v && $crm) data-turbo="false" @endif><x-ui.chevron/></a>@endif
-                        @if ($enroll)
+                        @if ($enroll && ! $archived)
                             <form method="post" action="{{ $base }}/{{ $t->id }}/candidate" class="contents">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                         @endif
                     </div>

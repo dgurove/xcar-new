@@ -10,9 +10,9 @@
 @endphp
 @if ($costs->isNotEmpty() || ($staff && $canAdd))
     <section>
-        <h2 class="list-head lg:pt-0">Расходы@if ($costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($total) }}</span>@endif
+        <h2 @class(['list-head lg:pt-0', '!items-center' => $staff && $canAdd])>Расходы@if ($costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($total) }}</span>@endif
             @if ($staff && $canAdd)
-                <button type="button" class="btn btn-s btn-quiet ml-auto self-center" data-controller="emit" data-action="emit#send" data-emit-event-param="cost-new:open"><x-ui.icon name="plus" class="size-4"/>Расход</button>
+                <button type="button" class="btn btn-s btn-quiet ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="cost-new:open"><x-ui.icon name="plus" class="size-4"/>Расход</button>
             @endif
         </h2>
         @if ($costs->isNotEmpty())

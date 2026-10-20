@@ -67,6 +67,7 @@ use App\Vendors\Actions\BindSender;
 use App\Vendors\ContactRole;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
+use App\Workflow\Requirement;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -285,7 +286,7 @@ class MailController
             return redirect("{$this->base}/{$thread->id}/window");
         }
 
-        return back()->with('toast', $thread->archived_at ? 'В архиве' : 'Снова во входящих');
+        return back()->with('toast', $thread->archived_at ? 'В архиве' : 'Снова во входящих')->with('toast-undo-url', $thread->archived_at ? request()->url() : null);
     }
 
     /**
@@ -295,6 +296,8 @@ class MailController
     public function archiveCase(Request $request, string $kind, int $id, ArchiveThread $archive, FreezeMessages $freeze, ChainBuilder $chains)
     {
         $restore = $request->boolean('restore');
+        // «Вернуть» в тосте — тот же адрес обратно.
+        $undo = "{$this->base}/case/{$kind}/{$id}/archive?restore=1";
         // Состояние двигается только у живой цепочки: «закрыта» — конечное, а заведённую свайп по письмам
         // отклонять не должен. У таких дел свайп остаётся просто архивом писем.
         $candidate = $kind === 'c' ? Candidate::where('scope', $this->scope)->findOrFail($id) : null;
@@ -311,10 +314,10 @@ class MailController
             }
         }
         if (str_contains((string) $request->header('Accept'), 'turbo-stream')) {
-            return response()->view('admin.mail.case-stream', ['kind' => $kind, 'id' => $id])->header('Content-Type', 'text/vnd.turbo-stream.html');
+            return response()->view('admin.mail.case-stream', ['kind' => $kind, 'id' => $id, 'restore' => $restore, 'undo' => $undo])->header('Content-Type', 'text/vnd.turbo-stream.html');
         }
 
-        return back()->with('toast', $restore ? 'Снова во входящих' : 'В архиве');
+        return back()->with('toast', $restore ? 'Снова во входящих' : 'В архиве')->with('toast-undo-url', $restore ? null : $undo);
     }
 
     /**
@@ -394,7 +397,8 @@ class MailController
         abort_if($candidate->scope !== $this->scope || ! in_array($candidate->state, [CandidateState::New, CandidateState::Rejected], true), 404);
         $rejected = $this->toggleChain($candidate, $candidate->state === CandidateState::Rejected, $archive, $freeze, $chains);
 
-        return back()->with('toast', $rejected ? 'В архиве' : 'Снова ждёт');
+        // «Не заявка» по ошибке — «Вернуть» в тосте: тот же адрес переключает обратно.
+        return back()->with('toast', $rejected ? 'В архиве' : 'Снова ждёт')->with('toast-undo-url', $rejected ? request()->url() : null);
     }
 
     /** Цепочка и её письма ходят в архив вместе; вернулась — письма читаются заново (свёртка размораживает). */
@@ -587,7 +591,7 @@ class MailController
         // Письмо поставщику об оплате (шаблон этапа, Альфа): платёжка, что менеджер приложил на шаге оплаты, — во вложении
         // (18.10.2026: «Платёжное поручение во вложении» уходило без него).
         if ($offer?->deal && $template && ! $request->old() && $template->id === $offer->stage()?->template_id) {
-            $slip = \App\Workflow\Requirement::where('deal_id', $offer->deal->id)->whereNotNull('done_at')
+            $slip = Requirement::where('deal_id', $offer->deal->id)->whereNotNull('done_at')
                 ->where('answer->exit', 'Платёжное поручение приложено')->latest('done_at')->first();
             foreach ($slip?->getMedia('files') ?? [] as $media) {
                 $defaults['files'][] = $outbox->put($media->file_name, file_get_contents($media->getPath()));

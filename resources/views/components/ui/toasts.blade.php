@@ -4,7 +4,7 @@
      (отмена шага пути: форма [data-step-back] на странице, без подтверждения). --}}
 <div class="toasts" data-controller="toast" id="toasts" data-turbo-permanent></div>
 @if (session('toast') || session('toast-danger'))
-<template id="flash" data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo="{{ is_string(session('toast-undo')) ? session('toast-undo') : '' }}" @endif @if (session('toast-href')) data-href="{{ session('toast-href') }}" @endif></template>
+<template id="flash" data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo="{{ is_string(session('toast-undo')) ? session('toast-undo') : '' }}" @endif @if (session('toast-href')) data-href="{{ session('toast-href') }}" @endif @if (session('toast-undo-url')) data-undo-url="{{ session('toast-undo-url') }}" data-undo-label="{{ session('toast-undo-label', 'Вернуть') }}" @endif></template>
 @endif
 {{-- Уведомления карточками (banner_controller): ПК — справа снизу, телефон — сверху. Тоже постоянный узел. --}}
 <div class="banners" id="banners" data-controller="banner" data-turbo-permanent>

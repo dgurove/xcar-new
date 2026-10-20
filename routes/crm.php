@@ -177,6 +177,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Машину в гараже сотрудник ведёт в CRM (карточка «Гараж» редактора и «Работа → Гараж») — теми же адресами, что на сайте.
         Route::post('/garage/cars/{offer}/costs', [GarageCarController::class, 'storeCost']);
         Route::delete('/garage/cars/{offer}', [GarageCarController::class, 'destroy']);
+        Route::post('/garage/cars/{offer}/waiting', [GarageCarController::class, 'notArrived']);
         Route::put('/garage/costs/{cost}', [GarageCarController::class, 'updateCost']);
         Route::delete('/garage/costs/{cost}', [GarageCarController::class, 'destroyCost']);
         Route::post('/garage/cars/{offer}/stage', [GarageSettlementController::class, 'stage']);
@@ -225,6 +226,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
         Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);
         Route::post('/offers/{offer}/pickup/back', [RouteController::class, 'pickupBack']);
+        Route::post('/offers/{offer}/pickup/backdate', [RouteController::class, 'pickupBackdate']);
 
         Route::post('/confirmations/{bid}/accept', [GiveController::class, 'accept']);
         Route::post('/offers/{offer}/confirmations', [BidController::class, 'storeFor']);

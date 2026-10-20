@@ -131,6 +131,27 @@ class GiveTest extends TestCase
         $this->assertSame(CarState::Repair, Car::where('offer_id', $offer->id)->firstOrFail()->state);
     }
 
+    /** Ошиблись, где ТС (20.10.2026, 488319/2026): «У страховой» → «Уже вывезли» из CRM, «Уже у нас» → «Ещё не вывезли». */
+    public function test_where_car_is_can_be_corrected_both_ways(): void
+    {
+        $offer = $this->draft(null);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', ['to' => 'garage', 'whom' => 'self', 'where' => 'owner'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(CarState::Waiting, Car::where('offer_id', $offer->id)->firstOrFail()->state);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/pickup/backdate', ['picked_at' => now()->subMonths(4)->format('Y-m-d\TH:i'), 'destination' => 'other', 'to_address' => 'Москва, Шоссе Энтузиастов'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(CarState::Repair, Car::where('offer_id', $offer->id)->firstOrFail()->state);
+
+        $other = $this->draft(null);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$other->number.'/give', ['to' => 'garage', 'whom' => 'self', 'where' => 'arrived'])
+            ->assertSessionHasNoErrors();
+        $this->assertNull(Transport::openFor($other->fresh()));
+        $this->actingAs($this->admin)->post(self::CRM.'/garage/cars/'.$other->number.'/waiting')->assertSessionHasNoErrors();
+        $this->assertSame(CarState::Waiting, Car::where('offer_id', $other->id)->firstOrFail()->state);
+        $this->assertSame(\App\Offers\CarPlace::Owner, $other->fresh()->car_place);
+        $this->assertNotNull(Transport::openFor($other->fresh()));
+    }
+
     public function test_open_offer_given_to_third_keeps_others_as_reserve(): void
     {
         $offer = Offer::create(['vendor_id' => $this->vendor->id, 'floor_price' => 900000, 'asking_price' => 1200000, 'bids_close_at' => now()->addDay()]);

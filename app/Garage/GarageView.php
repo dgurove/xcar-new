@@ -74,6 +74,8 @@ final class GarageView
             $staff && Surface::current() === Surface::Crm && ! $car->isSold() && ($buyerCar ? ! $buyerPaid : $car->costs->isEmpty()) ? ['emit', 'resale', 'Вернуть в продажу'] : null,
             $staff && ! $car->isSold() && ! $car->dealOpen() && ($buyerCar ? ! $buyerPaid : $car->costs->isEmpty()) ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', $buyerCar ? 'Забрать ТС у покупателя и вернуть в черновики? Счёт аннулируется' : 'Вернуть ТС в черновики?'] : null,
             $picks ? ['form', 'POST', "/garage/cars/{$n}/pickup", 'Нужен вывоз', 'Попросить логистов забрать ТС?'] : null,
+            // При «Отдать» ошиблись «Уже у нас» — назад (20.10.2026, `UndoArrival`); обратное — «Уже вывезли» в дорожке «Вывоз».
+            $staff && Actions\UndoArrival::allows($car) ? ['form', 'POST', "/garage/cars/{$n}/waiting", 'Ещё не вывезли', 'ТС ещё у владельца? Подготовка встанет, вывоз снова в логистике'] : null,
         ]));
         $more = [...$moreSale, ...$morePrep];
         // На сайте менеджеру — одной плашкой: этап, рядом расход (кроме подготовки, где он уже в паре с «Готова»).
