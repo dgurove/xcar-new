@@ -216,10 +216,14 @@ final class Binding
     /** «6 ноя, 16:00»; конец дня — без времени. */
     public static function date(Carbon $until): string
     {
-        return Ago::day($until, time: $until->format('H:i') !== '23:59');
+        // Числами «03.10» (20.10.2026, владелец), не «3 окт»: так срок пишут в протоколах торгов. Другой год — «03.10.25»,
+        // время — только если не конец дня.
+        $at = $until->copy()->timezone(config('app.timezone'));
+
+        return $at->format($at->isCurrentYear() ? 'd.m' : 'd.m.y').($at->format('H:i') !== '23:59' ? ', '.$at->format('H:i') : '');
     }
 
-    /** Фраза горящего срока: «осталось 1 д 5 ч» / «истёк 3 окт». */
+    /** Фраза горящего срока: «осталось 1 д 5 ч» / «истёк 03.10». */
     public static function word(Offer $offer): ?string
     {
         return match (true) {
