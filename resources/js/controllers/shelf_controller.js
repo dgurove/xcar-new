@@ -1,11 +1,13 @@
 import { Controller } from '@hotwired/stimulus';
 
 // Лента пачки плиток (x-ui.shelf): на телефоне листается пальцем, на ПК — ещё стрелками в заголовке. Стрелка листает на
-// видимую ширину, у края гаснет; лента помещается целиком — стрелок нет.
+// видимую ширину, у края гаснет; лента помещается целиком — стрелок нет. На сенсорном экране стрелок нет — и следить
+// за прокруткой незачем.
 export default class extends Controller {
     static targets = ['track', 'prev', 'next', 'arrows'];
 
     connect() {
+        if (matchMedia('(hover: none)').matches) return;
         this.onScroll = () => {
             if (this.frame) return;
             this.frame = requestAnimationFrame(() => { this.frame = null; this.sync(); });
@@ -17,6 +19,7 @@ export default class extends Controller {
     }
 
     disconnect() {
+        if (!this.onScroll) return;
         this.trackTarget.removeEventListener('scroll', this.onScroll);
         this.resize?.disconnect();
         if (this.frame) cancelAnimationFrame(this.frame);

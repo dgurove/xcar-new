@@ -124,7 +124,9 @@ final class ListView
     {
         return match ($view) {
             self::LIST, self::TABLE, self::WIDE => '(min-width: 640px) 6rem, 4.5rem',
-            self::GRID, self::SHELF => '(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw',
+            self::GRID => '(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw',
+            // Плитка ленты — 72 % ширины телефона, от 640 — 18rem (`.cards-shelf`).
+            self::SHELF => '(min-width: 640px) 18rem, 72vw',
             default => '(min-width: 1024px) 320px, (min-width: 640px) 45vw, 4.5rem',
         };
     }

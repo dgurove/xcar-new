@@ -2,7 +2,7 @@
      предложения, CRM, парковки, закупки и гаража. link — атрибуты ссылок как есть (карточка рядом со списком), eager — первый кадр сразу. --}}
 @props(['photos', 'href', 'sizes' => null, 'eager' => false, 'link' => null])
 @php
-    $sizes ??= \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request()));
+    $sizes ??= \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request(), shelves: true));
     $extra = $link === null ? '' : ' '.$link;
 @endphp
 @if ($photos->isNotEmpty())

@@ -9,9 +9,10 @@ let interval = null;
 let stopped = false;
 
 // Пока страницу листают или палец на экране (и секунду после), такт пропускается: плавная прокрутка ленты кадров и
-// подгрузка следующего кадра посреди жеста давали рывки (15.10.2026).
+// подгрузка следующего кадра посреди жеста давали рывки (15.10.2026). Прокрутка — любая, и ленты вбок тоже (`capture`:
+// scroll элемента не всплывает, без него инерция ленты пачки такт не держала).
 let movedAt = 0;
-addEventListener('scroll', () => { movedAt = performance.now(); }, { passive: true });
+addEventListener('scroll', () => { movedAt = performance.now(); }, { capture: true, passive: true });
 addEventListener('touchstart', () => { movedAt = performance.now(); }, { capture: true, passive: true });
 addEventListener('touchend', () => { movedAt = performance.now(); }, { capture: true, passive: true });
 

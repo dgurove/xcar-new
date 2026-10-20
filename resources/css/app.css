@@ -3198,7 +3198,11 @@ html.kb-open { --home-gap: 0px; }
   .cards-group:first-child { margin-top: 0; }
   /* Пачка лентой (x-ui.shelf, 11.10.2026): заголовок с числом и стрелками ПК, под ним плитки одной строкой вбок — на
      телефоне 72 % ширины, видно край следующей, навылет за поля; от 640 — по 18rem. Плитка та же, что в сетке. Не липкая:
-     высота пачки — одна плитка. */
+     высота пачки — одна плитка. Пачка за экраном не раскладывается и не рисуется (на одной странице весь каталог — сотня
+     плиток в пачке), `auto` помнит её высоту. Он же обрезает по краю пачки — поэтому за поля на телефоне выходит сама
+     пачка, а не только лента. */
+  .shelf { content-visibility: auto; contain-intrinsic-size: auto 18rem; margin-inline: -1rem; padding-inline: 1rem; }
+  @media (min-width: 640px) { .shelf { margin-inline: 0; padding-inline: 0; } }
   .shelf + .shelf { margin-top: 1.5rem; }
   .shelf-head { display: flex; align-items: center; gap: .5rem; min-height: 2.25rem; margin-bottom: .5rem; }
   .shelf-title { display: flex; flex: 1; min-width: 0; align-items: baseline; gap: .375rem; font-size: var(--text-lg); font-weight: 500; color: var(--color-ink); }
@@ -3217,6 +3221,12 @@ html.kb-open { --home-gap: 0px; }
      край плитки с `content-visibility: auto` браузер считал запасными 320 px, и по ним тянулся весь ряд — здесь рисуются
      все; метки — одной строкой (в узкой плитке вставали каждая своей), ряд меток есть и у плитки без них. */
   .cards.cards-shelf > .card { scroll-snap-align: start; content-visibility: visible; }
+  /* Плитка ленты — одна обложка (20.10.2026, с телефона: ленты «лагают, криво листаются»): кадры были второй лентой внутри
+     ленты — палец на фото листал кадры, а не ленту, и каждая плитка качала по шесть кадров. Кадры не скроллер и жест
+     отдают ленте, остальные и точки скрыты — ленивые скрытые не качаются, такт их не листает (`frames#next` смотрит
+     точку). Все кадры — на странице ТС и в виде «Плитками». */
+  .cards-shelf .card-strip { overflow-x: hidden; scroll-snap-type: none; overscroll-behavior: auto; }
+  .cards-shelf .card-strip > img:not(:first-child), .cards-shelf .card-frames { display: none; }
   .cards-shelf .card-extra { flex-wrap: nowrap; overflow: hidden; mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent); }
   .cards-shelf .card-extra > * { flex: none; }
   .cards-shelf:has(.card-extra > *) .card-extra { display: flex; min-height: calc(1.1875rem + .375rem); }

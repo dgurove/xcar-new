@@ -1,5 +1,7 @@
 // Звук важного уведомления — две ноты на Web Audio, без файла. Браузер даёт звук только после жеста человека:
-// контекст создаётся и будится на первом касании или клавише, до этого chime() молчит. Звенит одна вкладка:
+// контекст создаётся и будится на первом нажатии или клавише, до этого chime() молчит. Нажатие — `click`, не касание:
+// на `pointerdown`/`touchend` контекст рождался посреди первого свайпа ленты (рывок 35 мс на телефоне, 20.10.2026), а
+// касание, закончившее прокрутку, iOS жестом для звука и не считает. Звенит одна вкладка:
 // метка уведомления в localStorage, видимая вкладка первой, скрытые ждут и проверяют, не звенела ли она уже.
 let context = null;
 
@@ -11,7 +13,7 @@ function wake() {
 }
 
 export function unlockChime() {
-    ['pointerdown', 'keydown', 'touchend'].forEach((name) => document.addEventListener(name, wake, { capture: true, passive: true }));
+    ['click', 'keydown'].forEach((name) => document.addEventListener(name, wake, { capture: true, passive: true }));
 }
 
 function claim(id) {
