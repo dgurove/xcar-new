@@ -273,7 +273,7 @@ class Deal extends Model
             return 'Сначала заберите автомобиль с парковки';
         }
         $pickup = $this->isGarage() ? null : $this->offer?->pickup();
-        if (! $pickup || $pickup->state->picked()) {
+        if (! $pickup || $pickup->taken()) {
             return null;
         }
 

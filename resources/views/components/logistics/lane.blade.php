@@ -19,7 +19,7 @@
     $manager = $t?->channel === Channel::Manager;
     // Кто и куда меняются окном «Назначить вывоз», пока ТС не забрали; исполнителя логиста ставит логист. Забирает менеджер
     // сделки — тоже: 19.10.2026 (ГАЗель 807360) такой вывоз нельзя было передать в логистику — окна не было ни тут, ни там.
-    $changeable = $open && ! $t->state->picked();
+    $changeable = $open && ! $t->taken();
     $undo = $t ? \App\Logistics\Actions\StepBack::last($t) : null;
     $undo = $undo && \App\Logistics\Actions\StepBack::allowed($t, auth()->user(), $undo) ? $undo : null;
     $undoLabel = match ($undo) { 'logist' => 'Снять логиста', 'executor' => 'Снять исполнителя', null => null, default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$undo].'»' };
@@ -71,10 +71,12 @@
             </div>
         @endif
         @if (! $manager && $t->channel !== Channel::Auction)
-            <x-logistics.legs :t="$t" class="mb-4"/>
+            {{-- Маршрут через стоянки (20.10.2026) — только смотреть: стоянки и исполнителей отрезков ставят в логистике. --}}
+            @php $routed = $t->channel === Channel::Logist && $t->logist && $t->chain()->count() > 1; @endphp
             <div class="list mb-4">
-                <x-logistics.facts :t="$t" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
+                <x-logistics.facts :t="$t" :route="$routed" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
             </div>
+            @if ($routed)<div class="mb-4"><x-logistics.route :t="$t" :me="auth()->user()" readonly/></div>@endif
         @endif
         <div class="steps">
             @foreach ($t->steps() as $step)

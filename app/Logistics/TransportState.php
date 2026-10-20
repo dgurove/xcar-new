@@ -7,12 +7,15 @@ use App\Cars\HasLabels;
 /**
  * Ход вывоза (17.10.2026): без исполнителя (решает админ) → у логиста (Татьяна назначает своего исполнителя и цену) →
  * назначен (ждём созвона) → созвонились (дата и место есть) → вывезена («Забрал») → привёз. Перевозка A → B
- * (`TransportKind::Move`) созвона не знает: назначена → в пути → привёз.
+ * (`TransportKind::Move`) созвона не знает: назначена → в пути → привёз. Отрезок маршрута, до которого очередь не дошла
+ * (20.10.2026, `Logistics\Route`), — «Впереди» (`Planned`): ему заранее ставят исполнителя и цену, но он не открыт — в
+ * списках, у исполнителя и в «открытых» его нет, пока машину не привезли на стоянку перед ним.
  */
 enum TransportState: string
 {
     use HasLabels;
 
+    case Planned = 'planned';
     case New = 'new';
     case Logist = 'logist';
     case Assigned = 'assigned';
@@ -26,6 +29,7 @@ enum TransportState: string
     public function label(): string
     {
         return match ($this) {
+            self::Planned => 'Впереди',
             self::New => 'Без исполнителя',
             self::Logist => 'У логиста',
             self::Assigned => 'Назначен',
@@ -43,7 +47,7 @@ enum TransportState: string
             self::New, self::Logist => 'text-urgent',
             self::Assigned, self::Agreed => 'text-ink',
             self::Moving => 'text-accent-text',
-            self::Delivered, self::Cancelled => 'text-ink-muted',
+            self::Planned, self::Delivered, self::Cancelled => 'text-ink-muted',
         };
     }
 

@@ -445,9 +445,15 @@ class Offer extends Model
             ->ofMany(['id' => 'max'], fn ($q) => $q->where('origin', 'sale')->where('kind', TransportKind::Pickup)->where('state', '!=', TransportState::Cancelled));
     }
 
+    /**
+     * Вывоз — текущий отрезок маршрута (20.10.2026, `Logistics\Route`): после «Привёз» на стоянку логиста дальше везёт
+     * следующий отрезок, а первый уже закрыт. Связь `pickupTask` — первый отрезок (вывоз от владельца).
+     */
     public function pickup(): ?Transport
     {
-        return $this->pickupTask;
+        $head = $this->pickupTask;
+
+        return $head && ! $head->current ? \App\Logistics\Route::current($head) : $head;
     }
 
     /**
@@ -463,7 +469,7 @@ class Offer extends Model
     public function pickedUp(): bool
     {
         return in_array($this->car_place, [CarPlace::Moving, CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours, CarPlace::Elsewhere, CarPlace::Depot, CarPlace::Buyer], true)
-            || (bool) $this->pickup()?->state->picked();
+            || (bool) $this->pickup()?->taken();
     }
 
     /** Можно ли при принятии подтверждения поручить вывоз менеджеру: ТС ещё у владельца, не у нас на парковке. */

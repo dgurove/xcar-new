@@ -95,7 +95,7 @@ final class SyncParkRelease
             $this->ensureRequest($deal, $vehicle->fresh(), $receiver->name, $phone, $by);
             // Открытый вывоз этой машины — откуда ехать: с парковки, а не от страхователя.
             $pickup = \App\Logistics\Transport::openFor($deal->offer);
-            if ($pickup && ! $pickup->state->picked() && $vehicle->yard) {
+            if ($pickup && ! $pickup->taken() && $vehicle->yard) {
                 $pickup->update(['from_address' => 'Парковка «'.$vehicle->yard->name.'», '.$vehicle->yard->fullAddress()]);
             }
             $who = $receiver->name.($receiver->at ? ', приедет '.$receiver->at->translatedFormat('j M, H:i') : '');

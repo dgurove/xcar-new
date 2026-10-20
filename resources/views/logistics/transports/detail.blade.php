@@ -63,6 +63,9 @@
     ];
     $undo = \App\Logistics\Actions\StepBack::last($t);
     $undo = $undo && \App\Logistics\Actions\StepBack::allowed($t, $me, $undo) ? $undo : null;
+    // Маршрут из отрезков (20.10.2026, `Logistics\Route`) — у вывоза через логиста: исполнитель и «куда» — в нём, по отрезкам.
+    $routed = ! $solo && ! $order && $t->channel === Channel::Logist && $t->logist;
+    $last = $t->chain()->last() ?? $t;
     $undoLabel = match ($undo) { 'logist' => 'Снять логиста', 'executor' => 'Снять исполнителя', null => null, default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$undo].'»' };
 @endphp
 <x-ui.detail>
@@ -151,7 +154,7 @@
                         @if ($t->to_phone)<a href="tel:+{{ $t->to_phone }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->to_phone) }}</a>@endif
                     </div>
                 @endif
-                <x-logistics.facts :t="$t" :me="$me" :brief="$solo" :logist="$change['logist'] ? $change['logist'].'-'.$id.':open' : null"
+                <x-logistics.facts :t="$t" :me="$me" :brief="$solo" :route="$routed" :logist="$change['logist'] ? $change['logist'].'-'.$id.':open' : null"
                     :who="$change['executor'] ? $change['executor'].'-'.$id.':open' : null" :where="! $order && $open && $handles ? 'route-'.$id.':open' : null"/>
                 @if ($t->call_note)
                     <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Договорились</span><span class="block whitespace-pre-line break-words">{{ $t->call_note }}</span></span></div>
@@ -161,10 +164,10 @@
             <p class="mt-4 text-sm">{{ $t->from_address ?? '?' }} → {{ $t->destinationLabel() ?? '?' }}</p>
         @endif
 
-        {{-- Отрезки через стоянку логиста — ведущим и логисту (исполнителю — только свой). --}}
-        @unless ($solo)
-            <x-logistics.legs :t="$t" :href="fn ($leg) => '/transports?preset=all&peek='.$leg->id" class="mt-4"/>
-        @endunless
+        {{-- Маршрут: точки и отрезки со своими исполнителями — ведущим и логисту (исполнителю — только его отрезок). --}}
+        @if ($routed)
+            <x-logistics.route :t="$t" :me="$me" class="mt-5"/>
+        @endif
 
         {{-- Фото и документы машины с глазами «кто видит» (19.10.2026). --}}
         <x-logistics.files :t="$t"/>
@@ -355,56 +358,16 @@
             </x-ui.sheet>
         </div>
     @endif
-    @if (! $order && $t->channel === Channel::Logist && ($mine || $admin) && $open && ! $t->state->picked() && $t->logist)
-        <div data-controller="sheet" data-action="logist-{{ $id }}:open@window->sheet#open" class="contents">
-            <x-ui.sheet :id="'logist-'.$id" :title="$t->executor_id ? 'Исполнитель' : 'Назначить исполнителя'">
-                <form method="post" action="/transports/{{ $id }}/logist" class="flex flex-col gap-4">
-                    @csrf @method('put')
-                    {{-- Куда везёт исполнитель (18.10.2026): туда, куда указано, или сначала на свою стоянку — тогда указанное
-                         достанется следующему отрезку. Стоянку выбирают и заводят тут же. --}}
-                    @php
-                        $target = $t->destination === Point::Depot ? $t->nextLabel() : $t->routeLabel();
-                        $leg = old('leg', $t->destination === Point::Depot ? 'depot' : 'route');
-                    @endphp
-                    <div class="flex flex-col gap-3" data-controller="reveal">
-                        <h3 class="list-head -mb-1">Куда везёт исполнитель</h3>
-                        <div class="list">
-                            <label class="row row-check">
-                                <span class="min-w-0 flex-1"><span class="block break-words {{ $target ? '' : 'text-urgent' }}">{{ $target ?? 'Пока неизвестно' }}</span>@if ($t->reach)<span class="block text-sm text-ink-muted">{{ $t->reach->label() }}</span>@endif</span>
-                                <span class="check"><input type="radio" name="leg" value="route" @checked($leg === 'route') data-action="reveal#pick"></span>
-                            </label>
-                            <label class="row row-check">
-                                <span class="min-w-0 flex-1">На стоянку</span>
-                                <span class="check"><input type="radio" name="leg" value="depot" @checked($leg === 'depot') data-action="reveal#pick"></span>
-                            </label>
-                        </div>
-                        <div class="fields" data-reveal-target="pane" data-reveal-key="depot" @if ($leg !== 'depot') hidden @endif>
-                            <x-people.pick name="depot_id" label="Стоянка" kind="depot" :people="\App\Support\People::depotsOf($t->logist)" :value="old('depot_id', $t->depot_id)" title="Стоянка" :owner="$t->logist_id"/>
-                        </div>
-                        @if ($t->comment)<p class="whitespace-pre-line px-1 text-sm text-ink-muted">{{ $t->comment }}</p>@endif
-                    </div>
-                    <div class="fields">
-                        {{-- Свои строками с городом и «в работе N» — видно, кто свободен; новый — тут же (18.10.2026). --}}
-                        <x-people.pick name="executor_id" label="Исполнитель" kind="contractor" :people="\App\Support\People::contractorsOf($t->logist)" :value="old('executor_id', $t->executor_id)" title="Исполнитель" link required/>
-                        <x-ui.field name="distance_km" :id="'logist-km-'.$id" label="Расстояние, км" inputmode="numeric" :value="old('distance_km', $t->distance_km)"/>
-                        <x-ui.field name="cost" :id="'logist-cost-'.$id" label="Стоимость, ₽" :value="old('cost', $t->cost ? (int) $t->cost : null)"/>
-                        {{-- Своему исполнителю — для её «Оплат» (18.10.2026), XCar этого не видит. --}}
-                        @if ($mine)<x-ui.field name="executor_cost" :id="'logist-ecost-'.$id" label="Исполнителю, ₽" :value="old('executor_cost', $t->executor_cost ? (int) $t->executor_cost : null)"/>@endif
-                    </div>
-                    <x-ui.sheet-foot>{{ $t->executor_id ? 'Сохранить' : 'Назначить' }}</x-ui.sheet-foot>
-                </form>
-            </x-ui.sheet>
-        </div>
-    @endif
     @if (($pickup || $t->from_depot_id) && ! $order && $open && $handles)
-        @php $routeFull = \App\Logistics\Actions\SetRoute::full($t, $me); @endphp
+        {{-- Цель маршрута — «куда» последнего отрезка; дальность и комментарий — у отрезка, здесь — только у вывоза в один отрезок. --}}
+        @php $routeFull = \App\Logistics\Actions\SetRoute::full($t, $me) && $last->is($t); @endphp
         <div data-controller="sheet" data-action="route-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'route-'.$id" title="Куда везти">
                 <form method="post" action="/transports/{{ $id }}/route" class="flex flex-col gap-4">
                     @csrf @method('put')
                     @if ($routeFull)<x-ui.segment name="reach" :options="\App\Logistics\Reach::options()" :value="old('reach', $t->reach?->value)"/>@endif
                     @error('reach')<p class="field-error -mt-2">{{ $message }}</p>@enderror
-                    <x-logistics.route-fields :t="$t" :prefix="'route-'.$id" unknown/>
+                    <x-logistics.route-fields :t="$last" :prefix="'route-'.$id" unknown/>
                     @if ($routeFull)<div class="fields"><x-ui.field name="comment" :id="'route-comment-'.$id" label="Комментарий" type="textarea" :value="old('comment', $t->comment)" placeholder="Например: пока неизвестно, кому везти"/></div>@endif
                     <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                 </form>

@@ -65,6 +65,10 @@ final class TransportEvent extends Model
             // Точку не опускаем в строчные: адрес («Казань, Победы 1») — данные извне.
             'route' => 'Куда: '.implode(', ', array_filter([$p['to'] ?? 'пока неизвестно', isset($p['reach']) ? mb_lcfirst($p['reach']) : null])),
             'reopened' => 'Вывоз снова нужен',
+            // Маршрут (20.10.2026): стоянку вставили или убрали.
+            'stop' => 'Стоянка в маршруте: '.($p['depot'] ?? ''),
+            'unstop' => 'Стоянка убрана: '.($p['depot'] ?? ''),
+            'leg' => 'Отрезок '.($p['seq'] ?? '').(isset($p['executor']) ? ': исполнитель '.$name($p['executor']) : ''),
             'logist' => 'Логист '.$name($p['logist'] ?? null).$was(),
             'assigned' => 'Исполнитель '.$name($p['executor'] ?? null).$was(),
             'released' => 'Исполнитель снят',

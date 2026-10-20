@@ -14,6 +14,9 @@
 @if ($order)
     {{-- Заявка логиста: куда — адрес заявки, точек XCar у неё нет. --}}
     <input type="hidden" name="destination" value="other"><input type="hidden" name="to_address" value="{{ $t->to_address }}">
+@elseif ($t->destination === \App\Logistics\Point::Depot && ! \App\Logistics\Route::isLast($t))
+    {{-- Отрезок маршрута до стоянки (20.10.2026): куда — решил маршрут. --}}
+    <div class="list"><div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Куда везёте</span><span class="block break-words">{{ $t->depot?->label() }}</span></span></div></div>
 @else
 {{-- Куда — строками с галкой (`x-logistics.route-fields`), выбрано то, что указали при назначении. --}}
 <div>

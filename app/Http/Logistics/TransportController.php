@@ -6,6 +6,7 @@ use App\Cars\Car;
 use App\Cars\Region;
 use App\Live\Publisher;
 use App\Live\Stream;
+use App\Logistics\Actions\AddStop;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Backdate;
 use App\Logistics\Actions\Call;
@@ -14,12 +15,14 @@ use App\Logistics\Actions\Deliver;
 use App\Logistics\Actions\Docs;
 use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\PickUp;
+use App\Logistics\Actions\RemoveStop;
 use App\Logistics\Actions\SetRoute;
 use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Actions\StepBack;
 use App\Logistics\Channel;
 use App\Offers\Actions\SellAtAuction;
 use App\Logistics\Client;
+use App\Logistics\Depot;
 use App\Logistics\FileAccess;
 use App\Logistics\Listeners\RefreshLogistics;
 use App\Logistics\Reach;
@@ -81,7 +84,7 @@ class TransportController
     public function index(Request $request)
     {
         $user = $request->user();
-        $detail = Detail::of($request, fn (string $key) => ($t = Transport::visibleTo($user)->find($key)) ? $this->detail($t) : null);
+        $detail = Detail::of($request, fn (string $key) => ($t = self::legFor($user, (int) $key)) ? $this->detail($t) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -89,14 +92,14 @@ class TransportController
         ListPrefs::sync($request, 'transports', keep: [...$facets->keys(), 'sort'], view: false);
         $pills = self::pills($user);
         $counts = collect($pills)->keys()->reject(fn ($k) => in_array($k, ['done', 'all'], true))
-            ->mapWithKeys(fn ($k) => [$k => $facets->applyTo(Transport::visibleTo($user)->step($k))->count()])->filter()->all();
+            ->mapWithKeys(fn ($k) => [$k => $facets->applyTo(Transport::listed($user)->step($k))->count()])->filter()->all();
         $home = self::homeOf($user, $pills, fn (string $k) => ($counts[$k] ?? 0) > 0);
         $preset = array_key_exists((string) $request->query('preset'), $pills) ? $request->query('preset') : $home;
         $q = is_string($q = $request->query('q')) ? $q : '';
         $sort = Sort::from($request->query('sort'), self::SORTS, self::defaultSort($preset));
 
-        $query = $facets->apply(Transport::visibleTo($user)->step($q !== '' ? 'all' : $preset))
-            ->with(['region', 'car', ...SaleState::WITH, 'executor', 'logist', 'toYard', 'client', 'depot', 'fromDepot'])
+        $query = $facets->apply(Transport::listed($user)->step($q !== '' ? 'all' : $preset))
+            ->with(['region', 'car', ...SaleState::WITH, 'executor', 'logist', 'toYard', 'client', 'depot', 'fromDepot', 'routeLegs.depot', 'routeLegs.toYard'])
             ->search($q, crm: $user->leadsLogistics());
         self::sorted($query, $sort);
         // Открытые вкладки — целиком (таблицу листают и выбирают галочками); «Готово» и «Все» растут без конца — страницами.
@@ -141,7 +144,7 @@ class TransportController
         }
         $facets = self::facets($request);
 
-        return self::homeOf($user, $pills, fn (string $k) => $facets->applyTo(Transport::visibleTo($user)->step($k))->exists());
+        return self::homeOf($user, $pills, fn (string $k) => $facets->applyTo(Transport::listed($user)->step($k))->exists());
     }
 
     private static function defaultSort(string $preset): string
@@ -327,12 +330,27 @@ class TransportController
         }, ARRAY_FILTER_USE_BOTH);
     }
 
-    /** Ссылка уведомления и Telegram: карточка поверх списка. */
+    /**
+     * Отрезок маршрута, что открывает строка (ключ строки — маршрут, `route_id`; старые ссылки с номером отрезка тоже):
+     * ведущим и логисту — текущий отрезок, исполнителю — его отрезок в этом маршруте (идущий, иначе последний).
+     */
+    public static function legFor(User $user, int $key): ?Transport
+    {
+        $route = Transport::whereKey($key)->value('route_id') ?? $key;
+        $q = Transport::visibleTo($user)->where('route_id', $route);
+
+        return $user->leadsLogistics() || $user->isLogist()
+            ? (clone $q)->where('current', true)->first() ?? $q->orderByDesc('seq')->first()
+            : $q->orderByDesc('current')->orderByDesc('seq')->first();
+    }
+
+    /** Ссылка уведомления и Telegram: карточка поверх списка — строка маршрута. */
     public function show(Request $request, int $transport)
     {
-        abort_unless(Transport::visibleTo($request->user())->whereKey($transport)->exists(), 404);
+        $t = Transport::visibleTo($request->user())->whereKey($transport)->first();
+        abort_unless($t, 404);
 
-        return redirect('/transports?preset=all&peek='.$transport);
+        return redirect('/transports?preset=all&peek='.$t->route_id);
     }
 
     /** `list` — чей список открыл карточку: её строка должна быть той же, что в списке (`documents` — своя строка). */
@@ -343,7 +361,8 @@ class TransportController
         if (($me = request()->user()) && ! request()->prefetch()) {
             app(ReadNotices::class)([$me->id], ['/transports/'.$transport->id], Surface::Logistics);
         }
-        $transport->load(['car.media', 'offer.media', 'offer.positions.stage.block', 'vehicle.media', ...SaleState::WITH, 'executor', 'logist', 'region', 'toYard', 'invoice', 'docsSender', 'client']);
+        $transport->load(['car.media', 'offer.media', 'offer.positions.stage.block', 'vehicle.media', ...SaleState::WITH, 'executor', 'logist', 'region', 'toYard', 'invoice', 'docsSender', 'client',
+            'routeLegs.depot', 'routeLegs.fromDepot', 'routeLegs.executor', 'routeLegs.toYard']);
         $me = request()->user();
         $preset = $list === 'transports' ? self::presetOf(request(), $me) : null;
 
@@ -378,10 +397,18 @@ class TransportController
         return back()->with('toast', 'Продана на аукционе, забрал аукцион');
     }
 
-    /** «Куда везти» строкой карточки: точку правит любой, кто ведёт задачу, и исполнитель; дальность и комментарий — ведущие и логист. */
+    /**
+     * «Куда везти» строкой карточки: точку правит любой, кто ведёт задачу, и исполнитель; дальность и комментарий — ведущие и
+     * логист. Это цель маршрута — «куда» последнего отрезка (20.10.2026): у отрезков до стоянки «куда» — стоянка.
+     */
     public function route(Request $request, Transport $transport, SetRoute $route)
     {
         $this->visible($request, $transport);
+        $last = \App\Logistics\Route::legs($transport)->last();
+        if ($last && ! $last->is($transport)) {
+            abort_unless($transport->hasLogist($request->user()) || $request->user()->leadsLogistics(), 404);
+            $transport = $last;
+        }
         $was = $transport->routeLabel();
         $route($transport, $request->validate(SetRoute::rules(SetRoute::full($transport, $request->user())), SetRoute::messages()), $request->user());
         // Точку поменял не тот, кто везёт, — логисту и исполнителю, у кого задача уже в работе (20.10.2026).
@@ -401,13 +428,42 @@ class TransportController
         return back()->with('toast', $transport->docs_by_cdek ? 'Документы СДЭКом' : 'Документы без СДЭКа');
     }
 
-    /** Логист: исполнитель, расстояние, цена. */
+    /** Логист: исполнитель, расстояние, цена, межрегион отрезка маршрута (и отрезка «Впереди» — заранее). */
     public function logist(Request $request, Transport $transport, LogistAssign $assign)
     {
         $this->visible($request, $transport);
         $assign($transport, $request->validate(LogistAssign::rules(), ['executor_id.required' => 'Кто вывозит', 'cost.required' => 'Стоимость вывоза']), $request->user());
+        $t = $transport->fresh();
 
-        return back()->with('toast', Str::ucfirst($transport->fresh()->carrier() ?? 'ждёт исполнителя'));
+        return back()->with('toast', $t->state === TransportState::Planned
+            ? 'Отрезок '.$t->seq.': '.$t->executor?->shortName().', получит, когда машина будет на стоянке'
+            : Str::ucfirst($t->carrier() ?? 'ждёт исполнителя'));
+    }
+
+    /** «+ Стоянка» в маршруте: отрезок делится стоянкой логиста (`AddStop`). */
+    public function stop(Request $request, Transport $transport, AddStop $add)
+    {
+        $this->visible($request, $transport);
+        $depot = Depot::find($request->integer('depot_id')) ?? throw ValidationException::withMessages(['depot_id' => 'Какая стоянка']);
+        $add($transport, $depot, $request->user());
+        // Отрезок уже у исполнителя — «куда» сменилось: ему и логисту, как при правке «Куда везти».
+        if ($transport->isOpen() && $transport->executor_id) {
+            Notification::send(NotifyLogistics::workers($transport->fresh(), $request->user()), TransportNotice::rerouted($transport->fresh()));
+        }
+
+        return back()->with('toast', 'Стоянка в маршруте: '.$depot->name);
+    }
+
+    /** Убрать стоянку: отрезок на неё и отрезок «Впереди» за ней склеиваются (`RemoveStop`). */
+    public function unstop(Request $request, Transport $transport, RemoveStop $remove)
+    {
+        $this->visible($request, $transport);
+        $remove($transport, $request->user());
+        if ($transport->isOpen() && $transport->executor_id) {
+            Notification::send(NotifyLogistics::workers($transport->fresh(), $request->user()), TransportNotice::rerouted($transport->fresh()));
+        }
+
+        return back()->with('toast', 'Стоянка убрана из маршрута');
     }
 
     public function call(Request $request, Transport $transport, Call $call)

@@ -39,7 +39,7 @@ final class GarageView
         // `SelfPickup`); логистов — только если попросит («Нужен вывоз» в «⋯», `RequestPickup`).
         $pickup = ! $staff && $car->isWaiting() ? $offer->pickup() : null;
         // Рано — нет (Альфа после оплаты, Каркаде до согласия поставщика: `Deal::pickupHold`, его слово — в пути машины).
-        $picks = $pickup?->isOpen() && ! $pickup->state->picked() && $pickup->isExecutedBy($user) && ! ($car->deal?->isActive() && $car->deal->pickupHold());
+        $picks = $pickup?->isOpen() && ! $pickup->taken() && $pickup->isExecutedBy($user) && ! ($car->deal?->isActive() && $car->deal->pickupHold());
 
         $prep = array_values(array_filter(match (true) {
             $picks => [['post', "/garage/cars/{$n}/picked", 'Забрал']],

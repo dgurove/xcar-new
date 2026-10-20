@@ -47,8 +47,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 #[Fillable(['car_id', 'origin', 'kind', 'channel', 'executor_id', 'logist_id', 'from_address', 'pickup_at',
     'pickup_place', 'call_note', 'call_attempts', 'docs_by_cdek', 'docs_track', 'docs_sent_at', 'docs_sent_by', 'docs_received_at', 'to_address',
-    'destination', 'reach', 'to_yard_id', 'depot_id', 'from_depot_id', 'previous_id', 'next_destination', 'next_to_yard_id',
-    'next_to_address', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
+    'destination', 'reach', 'to_yard_id', 'depot_id', 'from_depot_id', 'previous_id', 'route_id', 'seq', 'current', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
     'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at', 'region_id', 'nudged_at',
     'client_id', 'client_price', 'client_paid_at', 'executor_cost', 'executor_paid_at', 'from_contact', 'from_phone', 'to_contact',
     'to_phone', 'comment', 'trip_code'])]
@@ -59,6 +58,12 @@ class Transport extends Model
 
     protected static function booted(): void
     {
+        // Маршрут (`Logistics\Route`): новая задача — первый отрезок своего маршрута, если её не вставили в чужой.
+        static::created(function (self $t) {
+            if (! $t->route_id) {
+                $t->forceFill(['route_id' => $t->id, 'seq' => 1, 'current' => true])->saveQuietly();
+            }
+        });
         static::saving(function (self $t) {
             if (! $t->exists || $t->isDirty(['car_id', 'origin', 'from_address'])) {
                 $t->region_id = $t->regionFor();
@@ -68,11 +73,11 @@ class Transport extends Model
             }
             // Страница исполнителя по ссылке (`/trip/{code}`, 18.10.2026): своя у каждого исполнителя задачи — сменили
             // исполнителя, прежняя ссылка гаснет; отменили задачу — тоже.
-            if ($t->isDirty('executor_id') || ($t->executor_id && ! $t->trip_code)) {
-                $t->trip_code = $t->executor_id ? Pass::freshCode() : null;
-            }
-            if ($t->state === TransportState::Cancelled) {
+            // Отрезок, до которого не дошла очередь (`Planned`), ссылки не имеет: исполнитель видит его только в свой ход.
+            if (in_array($t->state, [TransportState::Cancelled, TransportState::Planned], true)) {
                 $t->trip_code = null;
+            } elseif ($t->isDirty('executor_id') || ($t->executor_id && ! $t->trip_code)) {
+                $t->trip_code = $t->executor_id ? Pass::freshCode() : null;
             }
         });
     }
@@ -85,7 +90,8 @@ class Transport extends Model
             'state' => TransportState::class,
             'destination' => Point::class,
             'reach' => Reach::class,
-            'next_destination' => Point::class,
+            'current' => 'bool',
+            'seq' => 'int',
             'cost' => 'decimal:2',
             'client_price' => 'decimal:2',
             'executor_cost' => 'decimal:2',
@@ -203,31 +209,26 @@ class Transport extends Model
         return $this->belongsTo(self::class, 'previous_id');
     }
 
-    /** Следующий отрезок: заведён «Привёз» на стоянку. */
+    /** Следующий отрезок маршрута. */
     public function nextLeg(): HasOne
     {
         return $this->hasOne(self::class, 'previous_id');
     }
 
+    /** Отрезки маршрута (`Logistics\Route`) — связью, чтобы список подгружал их одним запросом. */
+    public function routeLegs(): HasMany
+    {
+        return $this->hasMany(self::class, 'route_id', 'route_id')->orderBy('seq');
+    }
+
     /**
-     * Все отрезки вывоза этой машины от первого до последнего (стоянки логиста между ними, 18.10.2026). Один отрезок —
-     * он сам. Глубина — сколько раз ставили на стоянку; цепочка короткая, запрос на звено.
+     * Все отрезки маршрута этой машины от первого до последнего (стоянки логиста между ними). Один отрезок — он сам.
      *
      * @return Collection<int, self>
      */
     public function chain(): Collection
     {
-        $first = $this;
-        // Не `previous`: у модели Laravel это своё свойство (прошлые значения), внутри класса связь бы не сработала.
-        while ($first->previous_id && ($prev = $first->previousLeg)) {
-            $first = $prev;
-        }
-        $legs = collect([$first]);
-        while (($next = $legs->last()->nextLeg) && $legs->count() < 20) {
-            $legs->push($next);
-        }
-
-        return $legs;
+        return $this->relationLoaded('routeLegs') ? $this->routeLegs : Route::legs($this);
     }
 
     public function toYard(): BelongsTo
@@ -354,6 +355,15 @@ class Transport extends Model
         return $this->state->isOpen();
     }
 
+    /**
+     * Машину уже забрали у владельца (20.10.2026): этот отрезок «Забрал» или он не первый в маршруте — до него её уже везли
+     * на стоянку. Кто вывозит и откуда — менять поздно.
+     */
+    public function taken(): bool
+    {
+        return $this->state->picked() || ($this->seq ?? 1) > 1;
+    }
+
     /** Документы едут СДЭКом и ещё не дошли до исполнителя. */
     public function awaitsDocs(): bool
     {
@@ -382,18 +392,6 @@ class Transport extends Model
             Point::Ours => trim(Point::Ours->label().($this->to_address ? ', '.$this->to_address : '')),
             Point::Depot => $this->depot?->label() ?? Point::Depot->label(),
             null => $this->to_address,
-        };
-    }
-
-    /** Куда дальше, пока отрезок везёт на стоянку (`next_*`): «К нам», «В гараж Сергей К.», адрес; не решено — null. */
-    public function nextLabel(): ?string
-    {
-        return match ($this->next_destination) {
-            Point::Keeper => self::keeperLabel($this->saleOffer()) ?? Point::Keeper->label(),
-            Point::Yard => (($y = Yard::withoutGlobalScope(City::SCOPE)->find($this->next_to_yard_id)) ? 'Парковка '.$y->name : null) ?? $this->next_to_address,
-            Point::Other => $this->next_to_address,
-            Point::Ours => trim(Point::Ours->label().($this->next_to_address ? ', '.$this->next_to_address : '')),
-            Point::Depot, null => $this->next_to_address,
         };
     }
 
@@ -602,7 +600,8 @@ class Transport extends Model
             return $q->where(fn ($w) => $w->where('transports.origin', '!=', 'order')->orWhere('logist_id', $user->id));
         }
 
-        return $q->inLogistics()->where(fn ($w) => $w->where('executor_id', $user->id)
+        // Исполнитель не видит свой отрезок, пока до него не дошла очередь (20.10.2026, владелец: «только когда его ход»).
+        return $q->inLogistics()->where(fn ($w) => $w->where(fn ($e) => $e->where('executor_id', $user->id)->where('transports.state', '!=', TransportState::Planned->value))
             ->when($user->isLogist(), fn ($w) => $w->orWhere('logist_id', $user->id)
                 ->orWhereIn('executor_id', User::where('logist_id', $user->id)->select('id'))));
     }
@@ -618,12 +617,35 @@ class Transport extends Model
         return $q->where(fn ($w) => $w->whereNull('channel')->orWhere('channel', '!=', Channel::Manager->value));
     }
 
-    /** Вкладка списка логистики: без исполнителя, у логиста, в работе, в пути, готово; иначе — все. */
+    /**
+     * Строки таблицы «Вывоз» — строка на машину (20.10.2026): ведущим и логисту — текущий отрезок каждого маршрута;
+     * исполнителю — свои начатые отрезки, по одному на маршрут (последний).
+     */
+    public function scopeListed(Builder $q, User $user): Builder
+    {
+        $q->visibleTo($user);
+        if ($user->leadsLogistics() || $user->isLogist()) {
+            return $q->where('transports.current', true);
+        }
+
+        return $q->whereNotExists(fn ($e) => $e->from('transports as later')->whereColumn('later.route_id', 'transports.route_id')
+            ->whereColumn('later.seq', '>', 'transports.seq')->where('later.executor_id', $user->id)->where('later.state', '!=', TransportState::Planned->value));
+    }
+
+    /** Впереди в маршруте есть отрезок без исполнителя (`Planned`): логисту ещё назначать. */
+    public const AHEAD_UNASSIGNED_SQL = "exists (select 1 from transports ahead where ahead.route_id = transports.route_id and ahead.seq > transports.seq
+        and ahead.state = 'planned' and ahead.executor_id is null)";
+
+    /**
+     * Вкладка списка логистики: без исполнителя, у логиста (и маршрут, где впереди отрезок без исполнителя), в работе, в
+     * пути, готово; иначе — все.
+     */
     public function scopeStep(Builder $q, string $step): Builder
     {
         return match ($step) {
             'new' => $q->where('state', TransportState::New),
-            'logist' => $q->where('state', TransportState::Logist),
+            'logist' => $q->where(fn ($w) => $w->where('state', TransportState::Logist)
+                ->orWhere(fn ($a) => $a->where('channel', Channel::Logist->value)->whereIn('state', TransportState::OPEN)->whereRaw(self::AHEAD_UNASSIGNED_SQL))),
             'work' => $q->whereIn('state', [TransportState::Assigned, TransportState::Agreed]),
             'moving' => $q->where('state', TransportState::Moving),
             'done' => $q->where('state', TransportState::Delivered),

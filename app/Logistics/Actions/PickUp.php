@@ -4,6 +4,7 @@ namespace App\Logistics\Actions;
 
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Point;
+use App\Logistics\Route;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
 use App\Offers\CarPlace;
@@ -28,7 +29,8 @@ final class PickUp
     {
         return [
             'keys' => ['required', 'integer', 'min:0', 'max:9'],
-            'destination' => ['required', 'string', 'max:20'],
+            // Отрезок до стоянки маршрута «куда» не шлёт — его решил маршрут (`__invoke`).
+            'destination' => ['nullable', 'string', 'max:20'],
             'to_yard_id' => ['nullable', 'integer', Rule::exists('park_yards', 'id')],
             'to_address' => ['nullable', 'string', 'max:500'],
             'pickup_note' => ['nullable', 'string', 'max:2000'],
@@ -65,8 +67,10 @@ final class PickUp
 
             return $t;
         }
-        [$to, $yard] = Point::read($data);
-        $address = trim((string) ($data['to_address'] ?? '')) ?: null;
+        // Отрезок маршрута до стоянки (20.10.2026, `Logistics\Route`): «куда» решено маршрутом — стоянка, не спрашиваем.
+        $stop = $t->destination === Point::Depot && ! Route::isLast($t);
+        [$to, $yard] = $stop ? [Point::Depot, null] : Point::read($data);
+        $address = $stop ? null : (trim((string) ($data['to_address'] ?? '')) ?: null);
         match (true) {
             $to === Point::Keeper && ! $t->saleOffer()?->keeper() => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера с гаражом']),
             $to === null, $to === Point::Ours => throw ValidationException::withMessages(['destination' => 'Куда везёте']),

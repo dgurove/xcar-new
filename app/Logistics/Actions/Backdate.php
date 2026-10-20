@@ -2,8 +2,11 @@
 
 namespace App\Logistics\Actions;
 
+use App\Billing\Actions\VoidInvoice;
+use App\Billing\InvoiceState;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Point;
+use App\Logistics\Route;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
 use App\Users\User;
@@ -22,7 +25,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class Backdate
 {
-    public function __construct(private SetCarPlace $place, private Deliver $deliver) {}
+    public function __construct(private SetCarPlace $place, private Deliver $deliver, private VoidInvoice $void) {}
 
     public static function rules(): array
     {
@@ -51,12 +54,16 @@ final class Backdate
         }
         $at = Carbon::parse($data['picked_at']);
         $picked = $t->state->picked();
+        // Маршрут через стоянки (20.10.2026): «уже вывезли» — машина уже в точке; отрезки впереди не нужны, этот кончается
+        // там, куда привезли.
+        $ahead = Transport::where('route_id', $t->route_id)->where('seq', '>', $t->seq)->where('state', TransportState::Planned)->get();
+        $choose = $t->isPickup() || $ahead->isNotEmpty();
         // Перевод парковки: куда — решено при отправке; у вывоза — точка из формы, по умолчанию менеджеру с гаражом или к нам.
         [$chosen, $yard] = Point::read($data);
         $yard ??= $t->to_yard_id;
-        $to = $t->isPickup() ? ($chosen ?? ($t->saleOffer()?->keeper() ? Point::Keeper : $t->destination)) : $t->destination;
+        $to = $choose ? ($chosen ?? ($t->saleOffer()?->keeper() ? Point::Keeper : ($ahead->last()?->destination ?? $t->destination))) : $t->destination;
         $address = trim((string) ($data['to_address'] ?? '')) ?: null;
-        if ($t->isPickup()) {
+        if ($choose) {
             match (true) {
                 $to === Point::Keeper && ! $t->saleOffer()?->keeper() => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера с гаражом или сделкой']),
                 $to === null => throw ValidationException::withMessages(['destination' => 'Куда привезли']),
@@ -66,13 +73,21 @@ final class Backdate
             };
         }
 
-        DB::transaction(function () use ($t, $data, $by, $at, $to, $address, $picked, $yard) {
+        DB::transaction(function () use ($t, $data, $by, $at, $to, $address, $picked, $yard, $ahead, $choose) {
+            // Отрезки впереди не начинались — их просто нет (и неоплаченного долга логисту за них).
+            $ahead->each(function (Transport $leg) use ($by) {
+                if ($leg->invoice && $leg->invoice->state === InvoiceState::Issued && (float) $leg->invoice->paid === 0.0) {
+                    ($this->void)($leg->invoice, $by, 'Уже вывезли');
+                }
+                $leg->events()->delete();
+                $leg->delete();
+            });
             $t->update([
                 'state' => TransportState::Delivered,
                 'picked_at' => $picked ? $t->picked_at : $at,
                 'delivered_at' => $picked && $t->picked_at?->gt($at) ? $t->picked_at : $at,
-                ...($t->isPickup() ? [
-                    'destination' => $to, 'to_yard_id' => $to === Point::Yard ? $yard : null,
+                ...($choose ? [
+                    'destination' => $to, 'to_yard_id' => $to === Point::Yard ? $yard : null, 'depot_id' => $to === Point::Depot ? $t->depot_id : null,
                     'to_address' => $to === Point::Other ? $address : $t->to_address,
                     'pickup_note' => trim((string) ($data['pickup_note'] ?? '')) ?: $t->pickup_note,
                 ] : []),
@@ -85,6 +100,8 @@ final class Backdate
                 ($this->place)($offer, ($to ?? Point::Ours)->place(), $by);
             }
             $this->deliver->toYard($t->unsetRelation('toYard'), $by);
+            Route::continueAt($t->fresh(), $by);
+            Route::sync($t->route_id, $by);
         });
         // «Вывезена» — без уведомлений: о деле говорит «привёз».
         if (! $picked) {

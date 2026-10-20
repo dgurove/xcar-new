@@ -4,6 +4,7 @@ namespace App\Logistics\Actions;
 
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Point;
+use App\Logistics\Route;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
 use App\Park\Actions\Move;
@@ -39,6 +40,9 @@ final class Deliver
                 ($this->place)($offer, ($t->destination ?? Point::Ours)->place(), $by);
             }
             $this->toYard($t, $by);
+            // Привезли на стоянку логиста — очередь следующего отрезка маршрута (`Route::sync` откроет его и пошлёт поручение).
+            Route::continueAt($t, $by);
+            Route::sync($t->route_id, $by);
         });
         TransportMoved::dispatch($t, $by, 'delivered');
 

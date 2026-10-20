@@ -8,6 +8,7 @@ use App\Logistics\Channel;
 use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Point;
+use App\Logistics\Route;
 use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
 use App\Logistics\TransportState;
@@ -47,6 +48,12 @@ final class StepBack
             return in_array($t->state, [TransportState::Assigned, TransportState::Agreed], true) ? 'executor' : null;
         }
 
+        // Отрезок маршрута, который открылся сам по «Привёз» на стоянку (20.10.2026): своих шагов у него ещё нет — последний
+        // шаг маршрута — «Привёз» прошлого отрезка, его и откатываем (`undeliver` вернёт этот отрезок в «Впереди»).
+        if (self::opened($t)) {
+            return 'delivered';
+        }
+
         return match ($t->state) {
             // Перевод парковки привезли — ТС уже переставлена, назад не крутим; отрезок вывоза со стоянки — можно.
             TransportState::Delivered => $t->isPickup() || $t->from_depot_id ? 'delivered' : null,
@@ -55,6 +62,13 @@ final class StepBack
             TransportState::Logist => 'logist',
             default => null,
         };
+    }
+
+    /** Отрезок не первый, открыт очередью маршрута и по нему ничего не сделали. */
+    private static function opened(Transport $t): bool
+    {
+        return $t->seq > 1 && $t->from_depot_id && $t->channel === Channel::Logist && ! $t->state->picked()
+            && in_array($t->state, [TransportState::Logist, TransportState::Assigned], true) && self::latest($t) === null;
     }
 
     /** Может ли человек отменить шаг. */
@@ -75,6 +89,10 @@ final class StepBack
         $step = DB::transaction(function () use ($t, $by, &$since) {
             $t = Transport::whereKey($t->id)->lockForUpdate()->firstOrFail();
             $step = self::last($t);
+            // «Привёз» прошлого отрезка — откатываем у него.
+            if ($step === 'delivered' && $t->state !== TransportState::Delivered) {
+                $t = Transport::where('route_id', $t->route_id)->where('seq', '<', $t->seq)->orderByDesc('seq')->lockForUpdate()->firstOrFail();
+            }
             if (! $step) {
                 throw ValidationException::withMessages(['transport' => 'Отменять нечего']);
             }
@@ -92,8 +110,9 @@ final class StepBack
                 'logist' => $this->assign->release($t, $by),
             };
 
-            return $step;
+            return [$step, $t];
         });
+        [$step, $t] = $step;
         $t->refresh();
         // Исполнителя и логиста снимают своим событием (история «Исполнитель снят»), остальное — откатом шага.
         if (! in_array($step, ['executor', 'logist'], true)) {
@@ -122,18 +141,21 @@ final class StepBack
     {
         $t->update(['state' => $t->agreed_at ? TransportState::Agreed : TransportState::Assigned, 'picked_at' => null, 'delivered_at' => null]);
         if ($offer = $t->saleOffer()) {
-            ($this->place)($offer, CarPlace::Owner, $by);
+            // Со стоянки логиста — машина снова там, а не у владельца.
+            ($this->place)($offer, $t->from_depot_id ? CarPlace::Depot : CarPlace::Owner, $by);
         }
     }
 
     private function undeliver(Transport $t, User $by): void
     {
-        // Привезли на стоянку логиста — следующий отрезок, пока по нему ничего не сделали, уходит вместе с «Привёз».
-        if ($t->destination === Point::Depot && ($next = $t->nextLeg)) {
-            if ($next->executor_id || ! in_array($next->state, [TransportState::New, TransportState::Logist], true)) {
-                throw ValidationException::withMessages(['transport' => 'Следующий отрезок уже идёт: «Привёз» на стоянку не отменить']);
+        // Привезли на стоянку логиста — следующий отрезок маршрута, пока по нему ничего не сделали, снова «Впереди»
+        // (исполнитель, цена остаются; ссылка исполнителя гаснет), а этот — снова в пути.
+        $next = $t->destination === Point::Depot ? Route::after($t) : null;
+        if ($next && $next->state !== TransportState::Planned) {
+            if ($next->state->picked() || $next->agreed_at || ! in_array($next->state, [TransportState::New, TransportState::Logist, TransportState::Assigned], true)) {
+                throw ValidationException::withMessages(['transport' => 'Следующий отрезок уже идёт: сначала отмените его шаг']);
             }
-            $next->delete();
+            $next->update(['state' => TransportState::Planned, 'assigned_at' => null]);
         }
         $offer = $t->saleOffer();
         $car = $offer?->garageCar()->first();
@@ -148,6 +170,7 @@ final class StepBack
         if ($offer) {
             ($this->place)($offer, CarPlace::Moving, $by);
         }
+        Route::sync($t->route_id, $by);
     }
 
     /** Исполнитель снят: у логиста — снова ему выбирать, иначе — ведущим. */

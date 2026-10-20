@@ -61,7 +61,7 @@ final class CancelDeal
         // поставит машину к нам).
         $offer = $deal->offer;
         $open = $offer ? Transport::openFor($offer) : null;
-        if ($open && ! $open->state->picked()) {
+        if ($open && ! $open->taken()) {
             if ($open->channel === Channel::Manager && $open->executor_id === $deal->buyer_id) {
                 app(AssignExecutor::class)->release($open, $by);
             }
@@ -70,7 +70,7 @@ final class CancelDeal
             }
             // Вывоз заказали ради этой сделки (заведён после принятия), а вендор не из тех, чьи машины вывозим все, — без
             // сделки он не нужен: отменяется, а не висит «Без исполнителя» (18.10.2026: тестовая сделка Кати).
-            if (! $offer->vendor?->pickup_on_arrival && $open->created_at?->gte($deal->created_at) && ! $open->fresh()->state->picked()) {
+            if (! $offer->vendor?->pickup_on_arrival && $open->created_at?->gte($deal->created_at) && ! $open->fresh()->taken()) {
                 app(Cancel::class)($open->fresh(), $by, 'Сделка отменена', system: true);
             }
         }

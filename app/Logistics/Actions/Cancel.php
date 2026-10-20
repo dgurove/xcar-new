@@ -7,6 +7,7 @@ use App\Billing\InvoiceState;
 use App\Garage\Actions\RemoveCost;
 use App\Garage\Cost;
 use App\Logistics\Events\TransportMoved;
+use App\Logistics\Route;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
 use App\Offers\CarPlace;
@@ -43,10 +44,19 @@ final class Cancel
                 $cost = null;
             }
             $t->update(['state' => TransportState::Cancelled, 'cancelled_at' => now(), 'cancel_reason' => trim((string) $reason) ?: null, 'garage_cost_id' => $cost?->id]);
+            // Отрезки маршрута впереди (20.10.2026, `Logistics\Route`) уходят вместе с ним, их неоплаченный долг логисту — тоже.
+            Transport::where('route_id', $t->route_id)->where('seq', '>', $t->seq)->where('state', TransportState::Planned)->get()
+                ->each(function (Transport $leg) use ($by) {
+                    if ($leg->invoice && $leg->invoice->state === InvoiceState::Issued && (float) $leg->invoice->paid === 0.0) {
+                        ($this->void)($leg->invoice, $by, 'Вывоз отменён');
+                    }
+                    $leg->update(['state' => TransportState::Cancelled, 'cancelled_at' => now()]);
+                });
             // Машину уже везли — где она теперь, не знаем: у владельца, пока вывоз не заведут снова.
             if (($offer = $t->saleOffer()) && $offer->car_place === CarPlace::Moving) {
                 ($this->place)($offer, CarPlace::Owner, $by);
             }
+            Route::sync($t->route_id, $by);
         });
         TransportMoved::dispatch($t, $by, 'cancelled', $batch);
 

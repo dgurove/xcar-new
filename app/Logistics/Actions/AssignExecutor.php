@@ -50,7 +50,13 @@ final class AssignExecutor
             throw ValidationException::withMessages(['executor_id' => $who->shortName().' — менеджер этой сделки: забирает сам, через «Принять»']);
         }
 
-        return DB::transaction(function () use ($t, $kind, $who, $by, $cdek, $batch) {
+        // Маршрут через стоянки (20.10.2026, `Logistics\Route`) ведёт логист: отдать его другому виду — сначала убрать стоянки.
+        $ahead = Transport::where('route_id', $t->route_id)->where('seq', '>', $t->seq)->where('state', TransportState::Planned)->get();
+        if ($ahead->isNotEmpty() && $kind !== Channel::Logist) {
+            throw ValidationException::withMessages(['channel' => 'В маршруте есть стоянки: их ведёт логист. Сначала уберите стоянки']);
+        }
+
+        return DB::transaction(function () use ($t, $kind, $who, $by, $cdek, $batch, $ahead) {
             $previous = $t->executor ?? $t->logist;
             [$wasLogist, $wasExecutor] = [$t->logist_id, $t->executor_id];
             $logist = $kind === Channel::Logist;
@@ -79,6 +85,13 @@ final class AssignExecutor
             $t->created_by ??= $by->id;
             $t->save();
             ($this->settle)($t, $by);
+            // Маршрут целиком у одного логиста: сменили его — отрезки впереди к новому, без прежних исполнителей и цен.
+            if ($logist) {
+                $ahead->filter(fn (Transport $leg) => $leg->logist_id !== $who->id)->each(function (Transport $leg) use ($who, $by) {
+                    $leg->update(['logist_id' => $who->id, 'channel' => Channel::Logist, 'executor_id' => null, 'cost' => null, 'distance_km' => null, 'executor_cost' => null]);
+                    ($this->settle)($leg, $by);
+                });
+            }
             $t->load(['executor', 'logist']);
             // История: кого поставили и кто был (`TransportEvent`).
             if ($t->logist_id && $t->logist_id !== $wasLogist) {

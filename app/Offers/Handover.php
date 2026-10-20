@@ -196,8 +196,8 @@ final class Handover
             carrier: $open && $carried ? self::carrierLine($pickup) : null,
             // Стоит на нашей парковке — выдаёт парковка по пропуску (18.10.2026): ни «Нужен вывоз», ни «Автомобиль забрал» сам.
             // Едет к нам — кнопки остаются: страховая бывает и не довозит, тогда забирают у владельца.
-            canRequest: $open && $picks && ! $atYard && (bool) $pickup?->isOpen() && ! $pickup->state->picked(),
-            canPick: $open && $picks && ! $atYard && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->state->picked()
+            canRequest: $open && $picks && ! $atYard && (bool) $pickup?->isOpen() && ! $pickup->taken(),
+            canPick: $open && $picks && ! $atYard && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->taken()
                 && $sale && ! self::routePicks($sale->stage),
             keys: $keys,
             park: ($atYard || $toYard) && ! $withBuyer ? $vehicle : null,

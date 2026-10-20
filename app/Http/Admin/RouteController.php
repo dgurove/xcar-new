@@ -151,7 +151,7 @@ class RouteController
     {
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:500']])['reason'] ?? null;
         $open = Transport::openFor($offer);
-        if ($open?->state->picked()) {
+        if ($open?->taken()) {
             throw ValidationException::withMessages(['exit' => 'ТС уже везут: сначала «Привёз» или отмена в логистике']);
         }
         if ($open) {

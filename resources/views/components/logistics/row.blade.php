@@ -20,19 +20,32 @@
     $logist = ! $t->executor && $t->logist && $t->logist_id !== $me->id ? $t->logist : null;
     $late = $t->isLate();
     $manager = $sale?->manager;
+    // Строка — маршрут (20.10.2026, `Logistics\Route`): ключ — `route_id`, «куда» — цель маршрута (последний отрезок),
+    // межрегион — если он у любого отрезка, вторым этажом — «отрезок 2 из 3» и «дальше без исполнителя».
+    $legs = $t->relationLoaded('routeLegs') ? $t->routeLegs : collect([$t]);
+    $goal = $legs->count() > 1 ? $legs->last() : $t;
+    $key = $t->route_id ?? $t->id;
+    // Цель другого отрезка — без его продажи (она та же, что у строки): к менеджеру — по продаже строки.
+    $goalLabel = $goal === $t ? $t->routeLabel() : match ($goal->destination) {
+        \App\Logistics\Point::Keeper => \App\Logistics\Transport::keeperLabel($t->saleOffer()) ?? \App\Logistics\Point::Keeper->label(),
+        null => $goal->to_address,
+        default => $goal->destinationLabel(),
+    };
     // Куда — одной фразой задачи (`routeLabel`); менеджер чипом, когда точка — к нему (или не выбрана у старой задачи).
-    $to = $manager && in_array($t->destination, [null, \App\Logistics\Point::Keeper], true) && $t->reach === null ? null : $t->routeLabel();
+    $to = $manager && in_array($goal->destination, [null, \App\Logistics\Point::Keeper], true) && $goal->reach === null ? null : $goalLabel;
     $manager = $to ? null : $manager;
-    $far = $t->reach === \App\Logistics\Reach::Intercity;
+    $far = $legs->contains(fn ($l) => $l->reach === \App\Logistics\Reach::Intercity);
+    $legNo = $legs->count() > 1 ? 'отрезок '.$t->seq.' из '.$legs->count() : null;
+    $ahead = ($lead || $t->hasLogist($me)) && $legs->contains(fn ($l) => $l->seq > $t->seq && $l->state === \App\Logistics\TransportState::Planned && ! $l->executor_id);
     $ref = $t->car?->claim_ref;
     $vendorId = $t->vendorId();
     // Срок обязывающего предложения (19.10.2026): горит без покупателя — меткой у названия, строка в полный цвет.
     $binding = $has('binding') && $t->forSale() ? $t->offer : null;
 @endphp
-<tr data-detail-key="{{ $t->id }}" id="transport-{{ $t->id }}" data-search-row @class(['is-dim' => $sale?->waiting && ! ($binding && \App\Offers\Binding::panics($binding))])>
+<tr data-detail-key="{{ $key }}" id="transport-{{ $key }}" data-search-row @class(['is-dim' => $sale?->waiting && ! ($binding && \App\Offers\Binding::panics($binding))])>
     @if ($checkable)<td class="pick-cell">@if ($deciding)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-transport-{{ $t->id }}" data-turbo-permanent name="transports[]" value="{{ $t->id }}" data-pick-target="box" data-action="pick#sync"></span></label>@endif</td>@endif
     <td class="grow">
-        <x-ui.row-link :key="$t->id" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($binding)<x-offer.binding :offer="$binding" tag class="ml-1.5 sm:hidden"/>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$key" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($binding)<x-offer.binding :offer="$binding" tag class="ml-1.5 sm:hidden"/>@endif</span></x-ui.row-link>
         <span class="cell-sub">
             @if ($staff && ($vendorId || $ref))<span class="sm:hidden"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref"/></span>@endif
             @if ($has('client'))<span class="sm:hidden">{{ $t->client?->name ?? 'XCar' }}</span>@endif
@@ -40,6 +53,8 @@
             @elseif ($stepHere)<span @class(['whitespace-nowrap', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
             @if ($manager)<span class="sm:hidden whitespace-nowrap">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden">→ {{ $to }}</span>@endif
             @if ($far)<span class="sm:hidden whitespace-nowrap">между регионами</span>@endif
+            @if ($legNo)<span class="whitespace-nowrap">{{ $legNo }}</span>@endif
+            @if ($ahead)<span class="whitespace-nowrap text-urgent">дальше без исполнителя</span>@endif
             @if ($has('who') && ($who || $logist))<span class="sm:hidden">{{ $who ? $who->shortName() : 'у логиста '.$logist->shortName() }}</span>@endif
         </span>
     </td>
