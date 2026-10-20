@@ -55,7 +55,11 @@ export default class extends Controller {
     write(text) {
         if (!this.visible || (this.text === text && this.element.textContent !== '')) return;
         this.text = text;
-        this.element.textContent = text;
+        // Правим текстовый узел на месте: это characterData, а не замена детей — наблюдатели документа (app.js, ленты, карточка)
+        // ждут childList и раз в секунду на каждый таймер не просыпаются (аудит 20.10.2026).
+        const node = this.element.firstChild;
+        if (node?.nodeType === Node.TEXT_NODE && !node.nextSibling) node.data = text;
+        else this.element.textContent = text;
     }
 
     tick() {

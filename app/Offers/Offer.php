@@ -970,6 +970,19 @@ class Offer extends Model
      * подтверждения не видны — открытое у него «Опубликованные».
      */
     /**
+     * Есть ли у предложения живое подтверждение — для строк списков (`crmTab`): все такие предложения одним запросом на
+     * веб-запрос (159 запросов на «Приём закрыт», аудит 20.10.2026); в очереди и консоли — прямой запрос.
+     */
+    private static function hasActiveBids(int $id): bool
+    {
+        if (app()->runningInConsole()) {
+            return Bid::where('offer_id', $id)->where('state', BidState::Active)->exists();
+        }
+
+        return isset(once(fn () => Bid::where('state', BidState::Active)->distinct()->pluck('offer_id')->flip()->all())[$id]);
+    }
+
+    /**
      * Шаг работы по полям предложения — то, от чего зависит его вкладка CRM (`crmTab`): состояние, у черновика — аукцион,
      * слот, галерея-состояние, продажная, закупочная. Таблица Кати и подтверждения — не поля предложения, их тут нет.
      */
@@ -999,14 +1012,14 @@ class Offer extends Model
         return match ($this->state) {
             OfferState::Draft, OfferState::Gallery => match (true) {
                 $this->onAuction() => $presets['auction'],
-                $this->state === OfferState::Draft && LegacyClaim::listed($this) !== null => $presets['legacy'],
+                $this->state === OfferState::Draft && LegacyClaim::has($this->claim_ref_key) => $presets['legacy'],
                 $this->slot_at !== null => $presets['slots'],
                 $this->state === OfferState::Gallery => 'Галерея',
                 $this->asking_price > 0 => $presets['priced'],
                 $this->floor_price > 0 => $presets['unpriced'],
                 default => $presets['nofloor'],
             },
-            OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : $this->bids()->where('state', BidState::Active)->exists())
+            OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : self::hasActiveBids($this->id))
                 ? $presets['bids'] : ($this->bidsOpen() || ! $user?->canManageCrm() ? $presets['published'] : $presets['closed']),
             OfferState::Sold, OfferState::Delivered => 'Сделки',
             OfferState::Garage => 'Гараж',

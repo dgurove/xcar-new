@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { onMorphAttribute, onMorphElement } from '../lib/morph-guard';
 import { focusField } from '../keyboard';
 import * as overlays from '../overlays';
 import { confirmSheet } from '../confirm';
@@ -35,8 +36,19 @@ function fetchCard(href) {
 }
 
 const forget = () => cards.clear();
+// Поток бейджей, тревоги и чисел строк не меняет — готовые карточки не выбрасываем (раньше каждый бейдж стирал память, и
+// карточки качались снова).
+const CHROME = /^\[data-(badge|alarm-button)|^meta\[|^\[data-(pill-)?count/;
 document.addEventListener('turbo:submit-start', forget);
-document.addEventListener('turbo:before-stream-render', forget);
+document.addEventListener('turbo:before-stream-render', (e) => {
+    const s = e.detail?.newStream ?? e.target;
+    const target = s?.getAttribute?.('targets') || s?.getAttribute?.('target') || '';
+    if (['toast', 'count'].includes(s?.getAttribute?.('action')) || CHROME.test(target)) return;
+    forget();
+});
+// Касание, остановившее инерцию прокрутки, — не выбор строки: запроса карточки нет.
+let scrolledAt = 0;
+addEventListener('scroll', () => { scrolledAt = performance.now(); }, { capture: true, passive: true });
 document.addEventListener('lock:freeze', forget);
 
 export default class extends Controller {
@@ -94,12 +106,14 @@ export default class extends Controller {
         this.frameTarget.addEventListener('turbo:fetch-request-error', this.onFail);
         // Живое обновление списка (морф страницы, live.js refreshPage) не трогает положение листа: data-full, сдвиг и
         // адрес фрейма знает только браузер, сервер их не рисует — морф снимал их, и лист сам падал на полэкрана.
+        // Зовутся на каждый атрибут и элемент страницы (24 тыс. на списке CRM): `this.frameTarget` — поиск по DOM на каждое
+        // чтение, и эти две проверки стоили 2,2 с морфа на телефоне (аудит 20.10.2026). Сначала дешёвое — вид узла.
+        const SKIP = ['data-full', 'data-moving', 'style', 'src', 'busy', 'aria-busy', 'complete'];
         this.onMorphAttribute = (e) => {
-            const name = e.detail.attributeName;
-            if ((e.target === this.frameTarget && ['data-full', 'data-moving', 'style', 'src', 'busy', 'aria-busy', 'complete'].includes(name))
-                || (e.target === this.element && name === 'data-open')) e.preventDefault();
+            const t = e.target, name = e.detail.attributeName;
+            if (t.localName === 'turbo-frame' ? SKIP.includes(name) && t === this.frameTarget : name === 'data-open' && t === this.element) e.preventDefault();
         };
-        document.addEventListener('turbo:before-morph-attribute', this.onMorphAttribute);
+        this.offMorphAttribute = onMorphAttribute(this.onMorphAttribute);
         // Живой морф страницы не подменяет карточку (16.10.2026, начальник: «Оценить» уходило в прошлую машину). Turbo
         // перечитывает страницу по адресу на начало запроса и с ним же возвращает адрес: ответ, прочитанный ещё со старым
         // ?peek, приходил, когда лист уже на следующей строке (advance, ↓, нажатие), — морф вставлял карточку прежней
@@ -108,11 +122,11 @@ export default class extends Controller {
         // чужая или лист ещё грузит свою — фрейм не трогаем, список вокруг обновляется; после морфа адрес — снова на
         // открытой строке (`onMark`). Своя той же строки морфится как раньше.
         this.onMorphElement = (e) => {
-            if (e.target !== this.frameTarget) return;
+            if (e.target.localName !== 'turbo-frame' || e.target !== this.frameTarget) return;
             const incoming = e.detail.newElement?.querySelector?.('.detail-card')?.dataset.peek ?? '';
             if (this.frameTarget.hasAttribute('busy') || this.frameTarget.hasAttribute('aria-busy') || incoming !== (this.chosen ?? '')) e.preventDefault();
         };
-        document.addEventListener('turbo:before-morph-element', this.onMorphElement);
+        this.offMorphElement = onMorphElement(this.onMorphElement);
         // Уход со страницы с несохранённым в карточке (таб-бар, «Открыть страницу», ссылка) — тот же вопрос, что у листа.
         // Ссылку после «Не сохранять» нажимаем заново — Turbo берёт её действие (replace), фрейм и прочее как было;
         // визит из скрипта повторяется тем же адресом.
@@ -168,8 +182,8 @@ export default class extends Controller {
         this.frameTarget.removeEventListener('turbo:before-frame-render', this.onRender);
         this.frameTarget.removeEventListener('turbo:frame-render', this.onRendered);
         this.frameTarget.removeEventListener('turbo:fetch-request-error', this.onFail);
-        document.removeEventListener('turbo:before-morph-attribute', this.onMorphAttribute);
-        document.removeEventListener('turbo:before-morph-element', this.onMorphElement);
+        this.offMorphAttribute?.();
+        this.offMorphElement?.();
         document.removeEventListener('turbo:before-visit', this.onVisit);
         document.removeEventListener('turbo:click', this.onLink);
         this.frameTarget.removeEventListener('detail:hold', this.onHold);
@@ -291,7 +305,7 @@ export default class extends Controller {
         };
         const go = (r) => { if (r && r !== this.current) fetchCard(this.urlFor(r)); };
         const onTouchStart = (e) => {
-            const r = row(e), t = e.touches[0];
+            const r = performance.now() - scrolledAt < 150 ? null : row(e), t = e.touches[0];
             clearTimeout(touch?.timer);
             touch = r && e.touches.length === 1 ? { r, x: t.clientX, y: t.clientY, timer: setTimeout(() => { go(r); touch.done = true; }, 70) } : null;
         };

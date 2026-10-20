@@ -41,9 +41,12 @@ export function touchPrefetch() {
         touch.entry = prefetch(touch.href);
     };
 
+    // Касание, остановившее инерцию прокрутки, — не тап: страница не предзагружается.
+    let scrolledAt = 0;
+    addEventListener('scroll', () => { scrolledAt = performance.now(); }, { capture: true, passive: true });
     document.addEventListener('touchstart', (event) => {
         const link = event.target.closest?.('a[href]');
-        if (!link || !prefetchable(link)) { touch = null; return; }
+        if (!link || !prefetchable(link) || performance.now() - scrolledAt < 150) { touch = null; return; }
         // Касание у самого края — это жест «назад» iOS, а не тап по карточке.
         const t = event.touches[0];
         if (t.clientX < 24 || t.clientX > innerWidth - 24) { touch = null; return; }

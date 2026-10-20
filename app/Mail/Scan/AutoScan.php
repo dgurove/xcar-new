@@ -114,7 +114,7 @@ final class AutoScan
     public static function photoArrived(Offer $offer): void
     {
         if (self::mark('o:'.$offer->id)) {
-            self::nudge();
+            self::nudge($offer);
         }
     }
 
@@ -358,11 +358,14 @@ final class AutoScan
         }
     }
 
-    /** Пинг списку CRM о ходе фото — не чаще раза в `NUDGE_SECONDS`: у сотни строк в пути. */
-    private static function nudge(): void
+    /**
+     * Пинг списку CRM о ходе фото — строкой этого предложения (`Live\Rows`), не чаще раза в `NUDGE_SECONDS` на строку.
+     * Был `refresh` всего списка раз в 2 с: морф 28 тыс. узлов — 2,5 с замёрзшего телефона, и посреди листания (аудит 20.10.2026).
+     */
+    private static function nudge(Offer $offer): void
     {
-        if (Cache::add('scan:auto:nudge', true, self::NUDGE_SECONDS)) {
-            app(Publisher::class)->refresh(Topics::STAFF, ['/']);
+        if (Cache::add('scan:auto:nudge:'.$offer->id, true, self::NUDGE_SECONDS)) {
+            app(Publisher::class)->rows(Topics::STAFF, ['/' => [$offer->number]]);
         }
     }
 

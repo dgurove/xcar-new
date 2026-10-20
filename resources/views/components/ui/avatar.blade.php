@@ -13,5 +13,5 @@
     }
 @endphp
 <span {{ $attributes->merge(['class' => 'avatar'.($online ? ' is-online' : '').($hue ? ' avatar-hue-'.$hue : '')]) }} style="width: {{ $size }}px; height: {{ $size }}px; font-size: {{ max(9, (int) round($size * .4)) }}px">
-    @if ($url)<img src="{{ $url }}" alt="" width="{{ $size }}" height="{{ $size }}">@else{{ $text ?: '·' }}@endif
+    @if ($url)<img src="{{ $url }}" alt="" width="{{ $size }}" height="{{ $size }}" loading="lazy" decoding="async">@else{{ $text ?: '·' }}@endif
 </span>

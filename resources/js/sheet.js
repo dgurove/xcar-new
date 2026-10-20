@@ -72,13 +72,27 @@ function scrollsToward(found, dx, dy) {
         x0 = t.clientX; y0 = t.clientY;
         found = scrollers(target, box);
     }, { capture: true, passive: true });
-    addEventListener('touchmove', (e) => {
+    const move = (e) => {
         if (!box || e.defaultPrevented || e.touches.length !== 1) return;
         const t = e.touches[0], dx = t.clientX - x0, dy = t.clientY - y0;
         x0 = t.clientX; y0 = t.clientY;
         if (scrollsToward(found, dx, dy)) return;
         e.preventDefault();
-    }, { passive: false });
+    };
+    // Непассивный touchmove заставляет браузер ждать основной поток на каждом шаге прокрутки пальцем. Висел на всех
+    // страницах всегда — во время морфа список стоял (аудит 20.10.2026). Нужен он только при шторке или клавиатуре:
+    // вешается, пока на <html> есть их класс.
+    const root = document.documentElement;
+    let on = false;
+    const sync = () => {
+        const need = root.classList.contains('sheet-open') || root.classList.contains('kb-open');
+        if (need === on) return;
+        on = need;
+        if (on) addEventListener('touchmove', move, { passive: false });
+        else removeEventListener('touchmove', move, { passive: false });
+    };
+    new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['class'] });
+    sync();
 })();
 
 // Отправка из шторки несёт _sheet — id шторки: вернулись ошибки проверки — x-ui.sheet открывается сам по old('_sheet'),

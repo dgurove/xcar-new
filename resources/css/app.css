@@ -814,12 +814,16 @@ html.kb-open { --home-gap: 0px; }
   .text-fire { color: var(--color-fire); }
   /* Срок обязывающего предложения горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — сплошным красным, мерцает
      (теней нет — меняется заливка); в строке списка — меткой у названия (`x-offer.binding tag`). */
-  .binding-panic { display: inline-flex; align-items: center; gap: .3rem; background: var(--color-danger); color: #fff; font-weight: 600; animation: binding-pulse 1.6s ease-in-out infinite; }
-  .binding-tag { animation: none; border-radius: 999px; padding: .05rem .5rem; font-size: var(--text-xs); line-height: 1.35; white-space: nowrap; vertical-align: .05em; }
-  @keyframes binding-pulse { 0%, 100% { background: var(--color-danger); } 50% { background: color-mix(in srgb, var(--color-danger) 70%, #fff); } }
-  @media (prefers-reduced-motion: reduce) { .binding-panic { animation: none; } }
+  .binding-panic { position: relative; display: inline-flex; align-items: center; gap: .3rem; background: var(--color-danger); color: #fff; font-weight: 600; }
+  /* Мерцание — белой вуалью по прозрачности, а не заливкой: прозрачность анимирует видеокарта, заливка перерисовывалась
+     каждый кадр, пока тревога горит (аудит 20.10.2026). Вуаль — ::before: число тревоги идёт позже и стоит поверх. */
+  .binding-panic::before, .header-btn.alarm-btn::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; pointer-events: none; animation: binding-pulse 1.6s ease-in-out infinite; }
+  .binding-tag::before { animation: none; content: none; }
+  .binding-tag { border-radius: 999px; padding: .05rem .5rem; font-size: var(--text-xs); line-height: 1.35; white-space: nowrap; vertical-align: .05em; }
+  @keyframes binding-pulse { 0%, 100% { opacity: 0; } 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .binding-panic::before, .header-btn.alarm-btn::before { animation: none; } }
   /* Тревога в шапке: красная, мерцает заливкой; число рядом с сиреной. На телефоне, пока она есть, тема уступает место. */
-  .header-btn.alarm-btn, .dark .header-btn.alarm-btn { background: var(--color-danger); color: #fff; animation: binding-pulse 1.6s ease-in-out infinite; }
+  .header-btn.alarm-btn, .dark .header-btn.alarm-btn { position: relative; background: var(--color-danger); color: #fff; }
   /* Число тревоги — кружком в углу, как у остальных кнопок шапки: белый кружок с красной цифрой на красной кнопке. */
   .alarm-btn .alarm-badge { background: #fff; color: var(--color-danger); }
   /* Телефон: тревога — на месте «Чатов» (19.10.2026); горит — «Чаты» прячутся. */

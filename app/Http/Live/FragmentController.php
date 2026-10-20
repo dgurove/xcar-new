@@ -3,6 +3,10 @@
 namespace App\Http\Live;
 
 use App\Live\Stream;
+use App\Logistics\Transport;
+use App\Park\City;
+use App\Park\Vehicle;
+use App\Support\CarLinks;
 use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\Showing;
@@ -12,6 +16,19 @@ use Illuminate\Http\Request;
 /** Фрагменты, которые клиент перечитывает по событию из хаба. */
 class FragmentController
 {
+    /** Пункты меню «где ещё это ТС» (`x-ui.links`): фрейм грузится, когда меню открыли. */
+    public function carLinks(string $kind, int $id)
+    {
+        $from = match ($kind) {
+            'o' => Offer::query()->findOrFail($id),
+            'v' => Vehicle::withoutGlobalScope(City::SCOPE)->findOrFail($id),
+            't' => Transport::query()->findOrFail($id),
+        };
+
+        return response()->view('live.car-links', ['id' => "links-{$kind}{$id}", 'links' => CarLinks::for($from)])
+            ->header('Cache-Control', 'no-store');
+    }
+
     public function badges(Request $request)
     {
         return Stream::view('live.badges-stream', ['badges' => Nav::badges($request->user())]);

@@ -126,6 +126,8 @@ final class Docs
     {
         $docs = [];
         $photos = [];
+        $messages = collect($messages);
+        \App\Media\DocumentScan::prime($messages->flatMap(fn ($m) => $m->files())->pluck('blob_sha'));
         foreach ($messages as $m) {
             foreach ($m->files() as $a) {
                 $key = $a->fileKey();

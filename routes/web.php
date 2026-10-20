@@ -152,6 +152,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/account/notifications/{id}', [NotificationController::class, 'open']);
 
     Route::get('/live/badges', [FragmentController::class, 'badges']);
+    // Пункты меню значка связи — по открытию меню (`x-ui.links`), а не 3–4 запроса на каждую строку списка.
+    Route::get('/live/car-links/{kind}/{id}', [FragmentController::class, 'carLinks'])->whereIn('kind', ['o', 'v', 't'])->whereNumber('id')->middleware('ability:isAdmin');
 
     // Приглашения — менеджеру и админу один экран (чужому 404 в контроллере); прежний адрес — навсегда сюда.
     Route::get('/account/invites', [InviteController::class, 'index']);

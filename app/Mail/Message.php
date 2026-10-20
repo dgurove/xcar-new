@@ -178,7 +178,15 @@ class Message extends Model
     /** @return list<string> */
     public static function ownEmails(): array
     {
-        return Cache::remember('mail:own-emails', 60, fn () => User::query()->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->filter()->values()->all());
+        // Зовут на каждое письмо списка: кэш в базе — запрос на вызов (359 на почте парковки, аудит 20.10.2026). Память
+        // процесса на ту же минуту, что и кэш: воркер Octane и очередь живут дольше запроса.
+        static $emails = null, $at = 0;
+        if ($emails === null || time() - $at >= 60) {
+            $emails = Cache::remember('mail:own-emails', 60, fn () => User::query()->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->filter()->values()->all());
+            $at = time();
+        }
+
+        return $emails;
     }
 
     public function existsOnServer(): bool

@@ -43,6 +43,23 @@ class LegacyClaim extends Model
             ->orderBy('position');
     }
 
+    /**
+     * Есть ли номер в таблице Кати — для строк списков (`Offer::crmTab`): весь список ключей одним запросом на веб-запрос,
+     * а не запрос на строку (180 на «Без закупочной», аудит 20.10.2026). В очереди и консоли — прямой запрос: `once` там
+     * живёт всю задачу.
+     */
+    public static function has(?string $key): bool
+    {
+        if (! $key) {
+            return false;
+        }
+        if (app()->runningInConsole()) {
+            return self::where('claim_ref_key', $key)->exists();
+        }
+
+        return isset(once(fn () => self::query()->pluck('claim_ref_key')->flip()->all())[$key]);
+    }
+
     public static function listed(?Offer $offer): ?self
     {
         return $offer?->claim_ref_key ? self::where('claim_ref_key', $offer->claim_ref_key)->first() : null;

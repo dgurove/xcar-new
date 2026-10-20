@@ -8,7 +8,8 @@ import { touchPrefetch, prefetch } from './touch-prefetch';
 import { confirmSheet } from './confirm';
 import { closeSheet } from './sheet';
 import { netGuards } from './net';
-import { live, dropKey, refreshOwn } from './live';
+import { live, dropKey, refreshOwn, refreshRows } from './live';
+import { onMorphAttribute, onMorphElement } from './lib/morph-guard';
 import './flip';
 import { longPressMenu } from './longpress';
 import { setTheme, paintBar, chosenTheme } from './theme';
@@ -137,20 +138,24 @@ Turbo.config.forms.confirm = (message, form, submitter) => (message === '' ? Pro
 // Морф бережёт то, что живёт на клиенте и серверному HTML неизвестно:
 // open у диалогов (блок в потоке, открытая шторка), точки и подгрузка кадров,
 // поле с фокусом или набранным текстом (тосты — постоянный узел, морф их обходит).
-document.addEventListener('turbo:before-morph-attribute', (event) => {
-    const { attributeName } = event.detail;
+// Зовётся на каждый атрибут каждого элемента — сначала имя атрибута, `matches` только для своих.
+onMorphAttribute((event) => {
     const el = event.target;
-    if (el instanceof HTMLDialogElement && attributeName === 'open') event.preventDefault();
-    if (el.matches('[data-frames-target="frame"]') && attributeName === 'loading') event.preventDefault();
-    if (el.matches('.card-dot') && attributeName === 'class') event.preventDefault();
-    // Блок ключа открывает JS; серверный `hidden` при морфе его бы снова спрятал.
-    if (el.matches('[data-controller~="passkey"]') && attributeName === 'hidden') event.preventDefault();
-    // Режим поиска лупой ставит JS; морф по live-обновлению его бы снял.
-    if (el.matches('[data-controller~="live-search"]') && attributeName === 'data-searching') event.preventDefault();
-    // Своя проверка формы (formCheck): без novalidate вернулся бы пузырь Safari.
-    if (el instanceof HTMLFormElement && ['novalidate', 'data-check'].includes(attributeName)) event.preventDefault();
+    let keep = false;
+    switch (event.detail.attributeName) {
+        case 'open': keep = el instanceof HTMLDialogElement; break;
+        case 'loading': keep = el.dataset.framesTarget === 'frame'; break;
+        case 'class': keep = el.classList.contains('card-dot'); break;
+        // Блок ключа открывает JS; серверный `hidden` при морфе его бы снова спрятал.
+        case 'hidden': keep = el.matches('[data-controller~="passkey"]'); break;
+        // Режим поиска лупой ставит JS; морф по live-обновлению его бы снял.
+        case 'data-searching': keep = el.matches('[data-controller~="live-search"]'); break;
+        // Своя проверка формы (formCheck): без novalidate вернулся бы пузырь Safari.
+        case 'novalidate': case 'data-check': keep = el instanceof HTMLFormElement; break;
+    }
+    if (keep) event.preventDefault();
 });
-document.addEventListener('turbo:before-morph-element', (event) => {
+onMorphElement((event) => {
     const el = event.target;
     // Фрейм в открытой модальной шторке (окно письма после «Принять», окно приёма парковки) грузит то, что поставил
     // клиент: морф страницы снимал ему src — запрос обрывался, окно оставалось заготовкой (18.10.2026).
@@ -589,11 +594,17 @@ function noZoom() {
 }
 
 // Таймер дошёл до нуля: всё, что помечено data-closes-with-timer, гаснет сразу
-// (форма цены, кнопка «Подтвердить»), а через три секунды страница перечитывается
-// морфом — сервер решает по времени (bidsOpen), состояния «закрыт» нет.
+// (форма цены, кнопка «Подтвердить»), а через три секунды перечитывается — сервер решает по времени (bidsOpen),
+// состояния «закрыт» нет. Таймер в строке списка — только его строки (`refreshRows`): у списка CRM часы в каждой строке,
+// и весь список (28 тыс. узлов) перерисовывался на каждом истёкшем сроке (аудит 20.10.2026). Вне строк — страница.
 function timerDone() {
     let planned = null;
-    document.addEventListener('timer:done', () => {
+    const keys = new Set();
+    let page = false;
+    document.addEventListener('timer:done', (e) => {
+        const row = e.target.closest?.('[data-detail-key]');
+        if (row && !row.closest('turbo-frame#detail, dialog')) keys.add(row.dataset.detailKey);
+        else page = true;
         document.querySelectorAll('[data-closes-with-timer]').forEach((el) => {
             if (el.matches('button, a')) { el.classList.add('btn-quiet'); el.classList.remove('btn-accent'); el.setAttribute('aria-disabled', 'true'); el.style.pointerEvents = 'none'; }
             else el.hidden = true;
@@ -602,7 +613,10 @@ function timerDone() {
         clearTimeout(planned);
         planned = setTimeout(() => {
             if (document.querySelector('form[data-dirty], dialog:modal')) return;
-            Turbo.visit(location.href, { action: 'replace' });
+            if (page) Turbo.visit(location.href, { action: 'replace' });
+            else if (keys.size) refreshRows([...keys]);
+            keys.clear();
+            page = false;
         }, 3000);
     });
 }

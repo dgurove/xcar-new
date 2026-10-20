@@ -38,6 +38,8 @@ final class Closing
             ->with(['vendor.party', 'vendor.contacts', 'yard', 'ownerParty', 'buyerParty', 'offer.deal.buyer',
                 // Лента площадок — заранее: ставка считается по площадке того дня, иначе запрос на каждую ТС.
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])->orderBy('accepted_at')->get();
+        // Начисления вне счёта — одной выборкой на всех: запрос на ТС давал 411 запросов на экран (аудит 20.10.2026).
+        $pendingBy = Charge::whereIn('vehicle_id', $vehicles->modelKeys())->whereNull('invoice_id')->whereNull('voided_at')->get()->groupBy('vehicle_id');
         $items = collect();
         foreach ($vehicles as $v) {
             $cadence = $v->cadence();
@@ -64,7 +66,7 @@ final class Closing
                     $groups[] = ['payer' => $s['payer'], 'from' => $s['from'], 'to' => $s['to'], 'days' => $s['days'], 'amount' => $s['amount']];
                 }
             }
-            $pending = Charge::where('vehicle_id', $v->id)->whereNull('invoice_id')->whereNull('voided_at')->get();
+            $pending = $pendingBy->get($v->id, collect());
             foreach ($groups as $n => $g) {
                 $party = Ledger::payerParty($v, $g['payer'], false);
                 // Начисления вне счёта того же контрагента — в его первый счёт.

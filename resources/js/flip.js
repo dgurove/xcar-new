@@ -1,3 +1,4 @@
+import { onMorphAttribute } from './lib/morph-guard';
 // Живой морф списка (live.js → refreshPage) двигается, а не прыгает (12.10.2026, владелец: черновики из писем входят «прям
 // красиво»). Перед морфом запоминаем, где стояли видимые строки и какие были числа у пилюль и групп; после — FLIP:
 // - строки, что съехали (над ними встала новая), едут со старого места на новое, а не прыгают;
@@ -22,7 +23,7 @@ const TRANSIENT = ['is-entering', 'is-flown', 'is-revealed', 'is-holding', 'is-b
 
 let before = null;
 
-document.addEventListener('turbo:before-morph-attribute', (e) => {
+onMorphAttribute((e) => {
     if (e.detail.attributeName !== 'class') return;
     const el = e.target;
     const keep = TRANSIENT.filter((name) => el.classList.contains(name));

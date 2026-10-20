@@ -215,6 +215,16 @@ addEventListener('touchstart', (e) => { fingers = e.touches.length; movedAt = pe
 addEventListener('touchend', (e) => { fingers = e.touches.length; movedAt = performance.now(); }, { capture: true, passive: true });
 addEventListener('touchcancel', () => { fingers = 0; }, { capture: true, passive: true });
 addEventListener('scroll', () => { movedAt = performance.now(); }, { capture: true, passive: true });
+// Ответ морфа пришёл, а человек листает: вставка ждёт, пока палец уйдёт и прокрутка встанет. busy() проверялся только до
+// запроса, а ответ тяжёлого списка приходит через 0,3–0,7 с — морф 28 тыс. узлов замораживал телефон на 2,5 с посреди
+// жеста (аудит 20.10.2026). Одна дверь для всех морфов страницы: живое `refresh`, таймер на нуле, возврат из фона.
+const moving = () => fingers > 0 || performance.now() - movedAt < 600;
+document.addEventListener('turbo:before-render', (e) => {
+    if (e.detail.renderMethod !== 'morph' || !moving()) return;
+    e.preventDefault();
+    const go = () => (moving() ? setTimeout(go, 250) : e.detail.resume());
+    setTimeout(go, 250);
+});
 // Вернулись из фона — чуть позже: долгий фон и так перечитывает страницу визитом (app.js freshness), он идёт первым, а
 // ждущее, пришедшее до него, снимет его turbo:load.
 onResume(() => { clearTimeout(waitTimer); waitTimer = setTimeout(flush, 120); }, RESUME.queue);

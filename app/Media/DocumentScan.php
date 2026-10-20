@@ -33,15 +33,44 @@ final class DocumentScan
         return $verdict;
     }
 
+    /** @var array<string, bool> вердикты не меняются — память процесса, пусто не кладётся */
+    private static array $memo = [];
+
     /** Вердикт без расчёта: true — скан, false — фото, null — ещё не смотрели. */
     public static function known(?string $sha): ?bool
     {
         if (! $sha) {
             return null;
         }
+        if (isset(self::$memo[$sha])) {
+            return self::$memo[$sha];
+        }
         $v = Cache::get(self::key($sha));
 
-        return $v === null ? null : (bool) $v;
+        return $v === null ? null : self::$memo[$sha] = (bool) $v;
+    }
+
+    /**
+     * Вердикты списка файлов одним запросом (кэш в базе: `Cache::get` — запрос на файл, 194 на дело ТС, аудит 20.10.2026).
+     *
+     * @param  iterable<string|null>  $shas
+     */
+    public static function prime(iterable $shas): void
+    {
+        $keys = [];
+        foreach ($shas as $sha) {
+            if ($sha && ! isset(self::$memo[$sha])) {
+                $keys[self::key($sha)] = $sha;
+            }
+        }
+        if (! $keys) {
+            return;
+        }
+        foreach (Cache::many(array_keys($keys)) as $key => $v) {
+            if ($v !== null) {
+                self::$memo[$keys[$key]] = (bool) $v;
+            }
+        }
     }
 
     private static function measure(string $contents): bool
