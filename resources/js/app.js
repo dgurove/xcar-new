@@ -171,6 +171,7 @@ live();
 imageFade();
 freshness();
 keepSideScroll();
+lazyInSnapshot();
 keepPush();
 focusInvalid();
 formCheck();
@@ -317,6 +318,28 @@ function imageFade() {
 // Только на списках и не под руками: открытая шторка или правка формы — не трогаем. Догруженная лента — тоже (ответ
 // принёс бы одну первую порцию). Другой экран, оставленный надолго (больше 10 мин, на ночь), — тоже перечитывается.
 // Ими же «потянуть вниз» (lib/pull.js): тянуть можно везде, где не под руками.
+// Снимок страницы для «Назад» Turbo делает копией (`cloneNode`), а Chrome у отсоединённой копии качает все ленивые
+// картинки сразу: уход из каталога тянул 550 кадров, которых никто не увидит (аудит 20.10.2026). Перед снимком у ещё не
+// загруженных ленивых картинок адрес уходит в data-, на показе снимка возвращается — дальше они ленивые, как были.
+function lazyInSnapshot() {
+    document.addEventListener('turbo:before-cache', () => {
+        for (const img of document.querySelectorAll('img[loading="lazy"]')) {
+            if (img.complete && img.naturalWidth) continue;
+            if (img.hasAttribute('srcset')) { img.dataset.lazySrcset = img.getAttribute('srcset'); img.removeAttribute('srcset'); }
+            if (img.hasAttribute('src')) { img.dataset.lazySrc = img.getAttribute('src'); img.removeAttribute('src'); }
+        }
+    });
+    const back = () => {
+        for (const img of document.querySelectorAll('img[data-lazy-src], img[data-lazy-srcset]')) {
+            if (img.dataset.lazySrcset) img.setAttribute('srcset', img.dataset.lazySrcset);
+            if (img.dataset.lazySrc) img.setAttribute('src', img.dataset.lazySrc);
+            delete img.dataset.lazySrc; delete img.dataset.lazySrcset;
+        }
+    };
+    document.addEventListener('turbo:render', back);
+    document.addEventListener('turbo:load', back);
+}
+
 // «Назад» возвращает и прокрутку вбок: снимок Turbo копирует разметку, а scrollLeft лент плиток, широких таблиц, пилюль
 // и кадров плитки в копию не переходит — полки сайта вставали к началу. Порядок лент на странице — ключ.
 function keepSideScroll() {

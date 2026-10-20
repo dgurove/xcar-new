@@ -48,12 +48,21 @@
             <button type="button" class="absolute right-2 top-2 flex size-11 items-center justify-center rounded-full bg-surface/80 backdrop-blur hover:bg-surface" data-action="gallery#open" aria-label="Открыть на весь экран"><x-ui.icon name="expand" class="size-4"/></button>
         </div>
         @if ($photos->count() > 1)
+            {{-- Миниатюр — две строки ПК (12), дальше «+N» открывает просмотр: у машины бывает 240 кадров, и сетка из 240
+                 миниатюр грузила сотню картинок при открытии страницы (аудит 20.10.2026). --}}
+            @php $shown = $photos->count() > 12 ? 11 : 12; @endphp
             <div class="mt-3 {{ $thumbs ? 'grid' : 'hidden lg:grid' }} grid-cols-4 gap-2 sm:grid-cols-6">
-                @foreach ($photos as $i => $media)
+                @foreach ($photos->take($shown) as $i => $media)
                     <button type="button" class="overflow-hidden rounded-(--radius-s) ring-accent {{ $i === 0 ? 'ring-2' : 'opacity-70 hover:opacity-100' }}" data-gallery-target="thumb" data-action="gallery#to" data-gallery-index-param="{{ $i }}">
-                        <img src="{{ \App\Media\MediaUrl::for($media, 'thumb') }}" alt="" width="400" height="300" loading="lazy" class="aspect-[4/3] w-full object-cover">
+                        <img src="{{ \App\Media\MediaUrl::for($media, 'thumb') }}" alt="" width="400" height="300" loading="lazy" decoding="async" class="aspect-[4/3] w-full object-cover">
                     </button>
                 @endforeach
+                @if ($photos->count() > $shown)
+                    <button type="button" class="relative overflow-hidden rounded-(--radius-s)" data-action="gallery#open" data-index="{{ $shown }}" aria-label="Все фотографии">
+                        <img src="{{ \App\Media\MediaUrl::for($photos->values()->get($shown), 'thumb') }}" alt="" width="400" height="300" loading="lazy" decoding="async" class="aspect-[4/3] w-full object-cover">
+                        <span class="photo-tile-more nums">+{{ $photos->count() - $shown }}</span>
+                    </button>
+                @endif
             </div>
         @endif
     </div>

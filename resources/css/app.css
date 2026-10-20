@@ -3475,6 +3475,13 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   /* Глаз — состояние кадра: открыт — фото видно, перечёркнут — скрыто. */
   .photo-cell .photo-eye-off, .photo-cell.is-hidden .photo-eye-on, .photo-cell.is-hidden .photo-star { display: none; }
   .photo-cell.is-hidden .photo-eye-off { display: block; }
+  /* Значки действий кадра — маской из CSS, а не SVG в каждой кнопке: у машины бывает 240 кадров, и четыре SVG на кадр
+     давали 300 КБ HTML карточки строки (аудит 20.10.2026). Цвет — currentColor, как у x-ui.icon. */
+  .photo-actions .pa-icon { display: block; width: 1rem; height: 1rem; background: currentColor; -webkit-mask: var(--pa) center / contain no-repeat; mask: var(--pa) center / contain no-repeat; }
+  .photo-actions [data-act="hide"] .pa-icon { --pa: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12Zm9.5 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z'/%3E%3C/svg%3E"); }
+  .photo-cell.is-hidden .photo-actions [data-act="hide"] .pa-icon { --pa: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3l18 18M10.6 5.8A10.5 10.5 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.6 6.6C4 8.5 2.5 12 2.5 12s3.5 6.5 9.5 6.5c1.6 0 3-.4 4.2-1M9.9 9.9a3 3 0 0 0 4.2 4.2'/%3E%3C/svg%3E"); }
+  .photo-actions [data-act="rotate"] .pa-icon { --pa: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 4v6h-6M19.4 10A8 8 0 1 0 20 14'/%3E%3C/svg%3E"); }
+  .photo-actions [data-act="delete"] .pa-icon { --pa: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6'/%3E%3C/svg%3E"); }
   .photo-cell.is-turning img { rotate: calc(var(--turn, 0) * 90deg); scale: var(--fit, 1); }
   @media (prefers-reduced-motion: no-preference) { .photo-cell.is-turning img { transition: rotate var(--dur-fast) var(--ease-out), scale var(--dur-fast) var(--ease-out); } }
   /* Кадр в очереди: превью сразу, кольцо прогресса (--p от 0 до 1), красная точка — не ушёл, тап — повтор. */

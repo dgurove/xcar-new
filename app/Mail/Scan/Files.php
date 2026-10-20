@@ -38,7 +38,11 @@ final class Files
      */
     public static function of(iterable $messages, iterable $papers = []): Collection
     {
-        return collect($messages)->flatMap(fn (Message $m) => $m->files())->concat($papers)
+        $files = collect($messages)->flatMap(fn (Message $m) => $m->files());
+        // Вердикт «скан или фото» — одним запросом на все вложения (88 запросов на карточку ТС, аудит 20.10.2026).
+        \App\Media\DocumentScan::prime($files->pluck('blob_sha'));
+
+        return $files->concat($papers)
             ->filter(fn (ScanFile $f) => DocumentText::scannable($f))
             ->unique(fn (ScanFile $f) => $f->scanSha() ?: $f->fileKey())
             ->sortBy(fn (ScanFile $f) => $f->isPhoto() ? 1 : 0)
