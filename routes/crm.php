@@ -243,6 +243,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
+        // Скан паспорта покупателя, которого админ указывает за менеджера (20.10.2026) — та же загрузка, что в кабинете.
+        Route::post('/parties/{party}/passport/{page}', [\App\Http\Cabinet\PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
+        Route::get('/parties/{party}/passport/live', [\App\Http\Cabinet\PassportScanController::class, 'live']);
         Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
         Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         // Оплаты — вкладки «По ссылкам / Нам должны / Мы должны» (07.10.2026); карточка счёта — общая со стоянкой.

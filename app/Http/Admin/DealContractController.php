@@ -14,13 +14,30 @@ use Illuminate\Support\Str;
 
 /**
  * ДКП сделки в CRM (05.10.2026): сотрудник по сканам страховой вносит продавца — собственника по СТС — и документы ТС;
- * договор — страницей на печать и PDF. Покупателя вносит менеджер (`Cabinet\DealContractController`).
+ * договор — страницей на печать и PDF. Покупателя вносит менеджер (`Cabinet\DealContractController`) или админ за него.
  */
 class DealContractController
 {
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         abort_unless($deal->hasContract(), 404);
+        // Покупатель за менеджера (20.10.2026, владелец: «пока менеджер не укажет покупателя, мы не можем закрыть сделку,
+        // должна быть возможность указывать за него»): тот же выбор, что у менеджера, — его покупатели, сам менеджер
+        // (`me` — покупатель сделки), данные для договора и кто платит по счёту ПРАЙМ.
+        if (($request->hasAny(['buyer_id', 'payer', 'buyer'])) && ! $request->has('vehicle')) {
+            abort_unless($deal->isActive(), 404);
+            $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager']];
+            if ($request->has('buyer')) {
+                $rules += PartyRules::passport('buyer');
+            }
+            $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя']);
+            $contract = $save(DealContract::for($deal), $data, $request->user());
+            // Выбрали покупателя без данных для договора — сразу их шторка со сканом паспорта, как у менеджера.
+            $needs = ! empty($data['buyer_id']) && ($b = $contract->fresh()->buyer) && ! $b->party?->readyAsBuyer();
+
+            return back()->with('open_sheet', $needs ? 'deal-buyer-data-'.$deal->id : null)
+                ->with('toast', $deal->isPrime() && $deal->fresh()->hasManagerInvoice() ? 'Покупатель указан, счёт выставлен' : 'Покупатель указан');
+        }
         // Дата договора — своей формой из строки-календаря карточки (19.10.2026).
         if ($request->has('signed_at') && ! $request->has('vehicle')) {
             $contract = $save(DealContract::for($deal), $request->validate(['signed_at' => ['required', 'date']], [], ['signed_at' => 'дата договора']), $request->user());

@@ -53,10 +53,15 @@ class PeopleController
             return response()->json(self::answer(People::row($depot->load('settlement'))));
         }
 
+        // Админ в CRM заводит покупателя менеджеру сделки (20.10.2026, владелец: «пока менеджер не укажет покупателя, мы не
+        // можем закрыть сделку»): своих покупателей у админа нет — новый встаёт в «Покупатели» менеджера и в эту сделку.
+        $forDeal = $kind === 'buyer' && self::staffForDeal($me);
         $deal = $kind === 'buyer' && $request->filled('deal')
-            ? Deal::whereKey($request->integer('deal'))->where('buyer_id', $me->id)->first() : null;
+            ? Deal::whereKey($request->integer('deal'))->unless($forDeal, fn ($q) => $q->where('buyer_id', $me->id))->first() : null;
+        abort_if($forDeal && ! $deal?->buyer?->isManager(), 403);
+        $owner = $forDeal ? $deal->buyer : $me;
         $invite = fn () => match ($kind) {
-            'buyer' => $issue->buyer($me, $deal?->id),
+            'buyer' => $issue->buyer($owner, $deal?->id),
             'contractor' => $issue->contractor($me, $data['first_name'] ?? null),
             default => $issue($me, ['role' => $kind, 'expires_at' => now()->addWeek()->format('Y-m-d H:i')]),
         };
@@ -81,12 +86,18 @@ class PeopleController
     public static function allows(User $me, string $kind): bool
     {
         return match ($kind) {
-            'buyer' => $me->isManager() && ! $me->isSuperBuyer(),
+            'buyer' => ($me->isManager() && ! $me->isSuperBuyer()) || self::staffForDeal($me),
             'contractor', 'client' => $me->isLogist() && Surface::current() === Surface::Logistics,
             'depot' => ($me->isLogist() || $me->leadsLogistics()) && Surface::current() === Surface::Logistics,
             'logist', 'driver' => $me->isAdmin(),
             default => false,
         };
+    }
+
+    /** Админ в CRM: покупателя заводит не себе, а менеджеру сделки (`deal` обязателен). */
+    private static function staffForDeal(User $me): bool
+    {
+        return $me->isAdmin() && Surface::current() === Surface::Crm;
     }
 
     /** Строка нового человека — та же разметка, что у списка шторки. */
