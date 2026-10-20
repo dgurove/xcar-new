@@ -37,7 +37,7 @@
 @if ($can)
     {{-- Постоянная между визитами: морф после подтверждения ценой не закрывает только что открытую шторку. --}}
     <div class="contents" id="telegram-connect" data-turbo-permanent data-controller="sheet telegram" data-telegram-mode-value="link"
-        data-telegram-moments-value='@json($moments)' data-telegram-intro-value='@json($intro)'
+        data-telegram-moments-value='@json($moments)' data-telegram-intro-value='@json($intro)' @if (request()->boolean('reach')) data-telegram-force-value="1" @endif
         @if ($foreign)
             data-telegram-foreign-value="1"
         @else

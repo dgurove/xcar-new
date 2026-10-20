@@ -16,7 +16,7 @@ import { request } from '../lib/http';
 export default class extends Controller {
     static targets = ['step', 'scene', 'label', 'cancel', 'title', 'stop'];
     static values = {
-        mode: String, token: String, moments: Array, app: String, web: String, foreign: Boolean, intro: { type: Array, default: ['/offers', '/deals'] },
+        mode: String, token: String, moments: Array, app: String, web: String, foreign: Boolean, force: Boolean, intro: { type: Array, default: ['/offers', '/deals'] },
         liveEvent: { type: String, default: 'live:telegram' }, openEvent: { type: String, default: 'telegram:open' }, stateUrl: { type: String, default: '/account/telegram/state' },
     };
 
@@ -39,6 +39,12 @@ export default class extends Controller {
     // Один раз при входе и только на главных экранах: дать странице встать и не лезть поверх другой шторки.
     intro() {
         clearTimeout(this.introTimer);
+        // Ссылка из «Инструкции для подключения» (`?reach=1`) — сразу, мимо момента: человек пришёл ровно за этим.
+        if (this.forceValue && new URLSearchParams(location.search).has('reach')) {
+            this.forceValue = false;
+            this.introTimer = setTimeout(() => !document.querySelector('dialog:modal') && this.open(), 800);
+            return;
+        }
         // Где шторка открывается сама — с сервера: на сайте списки менеджера, в CRM у модератора — «Предложения» (/).
         if (!this.may('intro') || !this.introValue.includes(location.pathname)) return;
         this.introTimer = setTimeout(() => !document.querySelector('dialog:modal') && this.open('intro'), 1500);

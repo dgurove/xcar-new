@@ -40,6 +40,7 @@
                     @endif
                 </x-slot:acts>
             </x-ui.contact>
+            @if ($me->isAdmin())<x-users.reach :user="$user"/>@endif
             @if ($me->isAdmin() && !$user->isApproved() && !$user->is($me))
                 <div class="mt-4 flex lg:justify-center"><x-admin.user-access :user="$user" :base="$base"/></div>
             @endif

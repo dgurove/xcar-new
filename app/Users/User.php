@@ -641,7 +641,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      * управляющих не было ни Telegram, ни пушей — уведомления лежали только в колокольчике). Кому она: логистика и
      * парковка без админов CRM; «×» — `reach_hidden`: `never` или дата, до которой не предлагать.
      */
-    public function offersReach(): bool
+    public function offersReach(bool $force = false): bool
     {
         if ($this->is_demo || Impersonation::active() || $this->isAdmin()
             || ! ($this->isLogist() || $this->isContractor() || $this->isDriver() || $this->isParking() || $this->isParkAdmin())) {
@@ -649,7 +649,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         }
         $hidden = ($this->notification_settings ?? [])['reach_hidden'] ?? null;
 
-        return $hidden !== 'never' && (! $hidden || now()->greaterThan($hidden));
+        // `?reach=1` — ссылка из «Инструкции для подключения» (`x-users.reach`): показать, даже если скрыли.
+        return $force || ($hidden !== 'never' && (! $hidden || now()->greaterThan($hidden)));
     }
 
     /** Подписанная ссылка «не присылать на почту» — работает без входа. */

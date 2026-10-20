@@ -7,6 +7,8 @@ use App\Live\Topics;
 use App\Notifications\Categories;
 use App\Notifications\NoticeLink;
 use App\Notifications\TestNotice;
+use App\Push\Subscription;
+use App\Push\WebPushChannel;
 use App\Users\Impersonation;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -110,6 +112,8 @@ class NotificationController
     public function test(Request $request)
     {
         $request->user()->notify(new TestNotice);
+        // Пуш — на каждое устройство, мимо фильтра приложения: подписку логистики и парковки «Проверить» раньше не задевало.
+        Subscription::where('user_id', $request->user()->id)->get()->each(fn (Subscription $sub) => WebPushChannel::test($sub));
 
         return back()->with('toast', 'Отправили пробное уведомление');
     }

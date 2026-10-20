@@ -1,0 +1,41 @@
+/* Окно «Уведомления на это устройство» (x-push.offer): шаги и кнопки — те же, что у подключения Telegram (`tg-step`,
+   `tg-lead`, `tg-done`), своё — сцена: экран, на который сверху выезжает уведомление в том виде, в каком придёт
+   (иконка приложения, имя, «сейчас», заголовок и строка), за ним — второе стопкой. Кнопка лаймовая: это наш глагол. */
+
+@layer components {
+  :root { --pu-wall: linear-gradient(160deg, #dfe9c4 0%, #c9dcb0 45%, #b7c9d6 100%); --pu-note: rgb(255 255 255 / .92); --pu-ink: #1d1d1b; --pu-meta: #6b6b6b; }
+  .dark { --pu-wall: linear-gradient(160deg, #2b3416 0%, #1c2618 45%, #142029 100%); --pu-note: rgb(44 44 46 / .95); --pu-ink: #f2f2f2; --pu-meta: #9a9a9e; }
+
+  .pu-scene { position: relative; height: 7.25rem; padding: .875rem; border-radius: var(--radius-l); background: var(--pu-wall); overflow: hidden; }
+  .pu-note { position: relative; z-index: 1; display: flex; gap: .625rem; padding: .625rem .75rem; border-radius: 14px; background: var(--pu-note); color: var(--pu-ink); font-family: var(--font-ui); }
+  .pu-note--back { position: absolute; z-index: 0; left: 1.5rem; right: 1.5rem; top: 1.375rem; height: 3.75rem; padding: 0; opacity: .55; transform: translateY(1.125rem) scale(.94); }
+  .pu-icon { width: 2.25rem; height: 2.25rem; flex-shrink: 0; border-radius: 9px; }
+  .pu-app { display: flex; justify-content: space-between; gap: .5rem; color: var(--pu-meta); font-size: 11px; line-height: 1.3; text-transform: uppercase; letter-spacing: .02em; }
+  .pu-title { display: block; margin-top: .125rem; font-size: var(--text-sm); font-weight: 600; line-height: 1.3; }
+  .pu-body { display: block; font-size: var(--text-sm); line-height: 1.35; color: var(--pu-meta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Открыли — уведомление выезжает сверху с пружиной, второе подтягивается под него. */
+  .pu-scene.is-playing .pu-note:not(.pu-note--back) { animation: pu-drop .6s .25s var(--ease-spring) both; }
+  .pu-scene.is-playing .pu-note--back { animation: pu-back .5s .7s var(--ease-out) both; }
+  @keyframes pu-drop { from { opacity: 0; transform: translateY(-130%); } }
+  @keyframes pu-back { from { opacity: 0; transform: translateY(.25rem) scale(.9); } }
+
+  /* Колокол в лаймовом круге: качается — просим разрешить; кольца — ждём пробное; серый — запрещено. */
+  .pu-ask { display: flex; width: 4.5rem; height: 4.5rem; margin: 1rem auto .25rem; align-items: center; justify-content: center; border-radius: 999px; background: var(--color-accent); color: #fff; position: relative; }
+  .pu-ask > svg { animation: pu-ring 1.6s var(--ease-out) infinite; transform-origin: 50% 10%; }
+  .pu-ask--off { background: var(--color-surface-3); color: var(--color-ink-muted); }
+  .pu-ask--off > svg { animation: none; }
+  .pu-ask--ring::before, .pu-ask--ring::after { content: ''; position: absolute; inset: 0; border-radius: 999px; background: var(--color-accent); opacity: .25; animation: tg-ring 1.8s var(--ease-out) infinite; }
+  .pu-ask--ring::after { animation-delay: .9s; }
+  .pu-ask--ring > svg { position: relative; z-index: 1; }
+  @keyframes pu-ring { 0%, 60%, 100% { transform: rotate(0); } 10% { transform: rotate(14deg); } 20% { transform: rotate(-12deg); } 30% { transform: rotate(8deg); } 40% { transform: rotate(-5deg); } }
+
+  /* Шаги «где разрешить» — нумерованные строки одной группой. */
+  .pu-steps { display: flex; flex-direction: column; border-radius: var(--radius-m, 12px); background: var(--color-surface-2); counter-reset: pu; }
+  .pu-steps li { display: flex; gap: .75rem; align-items: baseline; padding: .625rem .875rem; font-size: var(--text-sm); line-height: 1.4; counter-increment: pu; }
+  .pu-steps li + li { border-top: 1px solid var(--color-line, rgb(0 0 0 / .06)); }
+  .pu-steps li::before { content: counter(pu); flex-shrink: 0; width: 1.25rem; height: 1.25rem; border-radius: 999px; background: var(--color-accent); color: #fff; font-size: 11px; font-weight: 600; line-height: 1.25rem; text-align: center; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pu-scene.is-playing .pu-note, .pu-scene.is-playing .pu-note--back, .pu-ask > svg, .pu-ask--ring::before, .pu-ask--ring::after { animation: none; }
+  }
+}

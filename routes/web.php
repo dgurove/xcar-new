@@ -52,6 +52,8 @@ Route::get('/sw.js', [PwaController::class, 'worker']);
 Route::match(['get', 'post'], '/mail/unsubscribe/{user}', [NotificationController::class, 'unsubscribe'])->middleware('signed')->name('mail.unsubscribe');
 Route::post('/push/subscription', [PushController::class, 'store'])->middleware('auth');
 Route::delete('/push/subscription', [PushController::class, 'destroy'])->middleware('auth');
+Route::post('/push/test', [PushController::class, 'test'])->middleware(['auth', 'throttle:6,1']);
+Route::post('/push/confirm', [PushController::class, 'confirm'])->middleware('auth');
 
 // Без стены: обращение (и гостю по cookie), юридические страницы.
 Route::get('/contacts', [EnquiryController::class, 'show']);

@@ -2948,6 +2948,7 @@ html.kb-open { --home-gap: 0px; }
 
 @import "./hero.css";
 @import "./telegram.css";
+@import "./push.css";
 @import "./lock.css";
 
 @layer components {

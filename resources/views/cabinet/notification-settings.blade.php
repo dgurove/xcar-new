@@ -13,14 +13,18 @@
             <div class="list">
                 @if ($push)
                     {{-- Пуш — про это устройство, не про аккаунт: тумблером управляет push_controller, не форма. --}}
-                    <label class="row row-switch" data-controller="push">
-                        <x-ui.row-icon name="bell"/>
-                        <span class="min-w-0 flex-1">
-                            <span class="block font-medium">На этот телефон</span>
-                            <span class="row-sub text-danger" data-push-target="state"></span>
-                        </span>
-                        <input type="checkbox" class="switch" data-push-target="toggle" data-action="change->push#toggle">
-                    </label>
+                    {{-- Включили — «Пришло?» строками ниже (x-push.ask). --}}
+                    <div class="contents" data-controller="push">
+                        <label class="row row-switch">
+                            <x-ui.row-icon name="bell"/>
+                            <span class="min-w-0 flex-1">
+                                <span class="block font-medium">На это устройство</span>
+                                <span class="row-sub text-danger" data-push-target="state" hidden></span>
+                            </span>
+                            <input type="checkbox" class="switch" data-push-target="toggle" data-action="change->push#toggle">
+                        </label>
+                        <x-push.ask/>
+                    </div>
                 @endif
                 {{-- Звонок важных карточек в открытом приложении (banner_controller) — на всех устройствах сразу. --}}
                 <label class="row row-switch">

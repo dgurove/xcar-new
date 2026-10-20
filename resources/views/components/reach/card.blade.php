@@ -1,7 +1,7 @@
 {{-- «Не пропускайте вывозы / заявки» — над списком логистики и парковки (20.10.2026: у логиста Татьяны не было ни Telegram,
      ни пушей, уведомления лежали только в колокольчике). Две строки — каждая своя кнопка: Telegram (шторка
      x-telegram.connect) и пуши на это устройство (push_controller в режиме строки: нет Web Push или уже подписан — строки
-     нет, запретил — подсказка вместо кнопки). Обе ушли — карточки нет (reach_controller). «×» — «Больше не предлагать?»:
+     нет, запретил — подсказка вместо кнопки; «Включить» — окно x-push.offer). Обе ушли — карточки нет (reach_controller). «×» — «Больше не предлагать?»:
      навсегда или через неделю (`User::offersReach`). --}}
 @props(['title'])
 @php
@@ -9,7 +9,7 @@
     $telegram = $user?->canLinkTelegram() ?? false;
     $push = (bool) config('xcar.vapid.public');
 @endphp
-@if ($user?->offersReach() && ($telegram || $push))
+@if ($user?->offersReach(request()->boolean('reach')) && ($telegram || $push))
     <section class="mt-4" data-controller="reach" @unless ($telegram) hidden @endunless>
         <div class="list-head flex items-center justify-between">
             <span>{{ $title }}</span>
@@ -24,13 +24,15 @@
                 </button>
             @endif
             @if ($push)
-                <div class="row gap-3" data-reach-row hidden data-controller="push" data-push-row-value="true">
-                    <x-ui.row-icon name="bell"/>
-                    <span class="min-w-0 flex-1">
-                        <span class="block">На этот телефон</span>
-                        <span class="row-sub text-danger" data-push-target="state" hidden></span>
-                    </span>
-                    <button type="button" class="btn btn-s btn-accent shrink-0 !h-8 rounded-full !px-3.5" data-push-target="on" data-action="push#enable">Включить</button>
+                <div class="contents" data-reach-row hidden data-controller="push" data-push-row-value="true">
+                    <div class="row gap-3">
+                        <x-ui.row-icon name="bell"/>
+                        <span class="min-w-0 flex-1">
+                            <span class="block">На это устройство</span>
+                            <span class="row-sub text-danger" data-push-target="state" hidden></span>
+                        </span>
+                        <button type="button" class="btn btn-s btn-accent shrink-0 !h-8 rounded-full !px-3.5" data-push-target="on" data-controller="emit" data-action="emit#send" data-emit-event-param="push:open">Включить</button>
+                    </div>
                 </div>
             @endif
         </div>

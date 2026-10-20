@@ -55,7 +55,7 @@
 
     {{-- Подвал — у сайта для гостя; у вошедшего экран приложения, документы в кабинете (Nav::cabinet). --}}
     @if ($site && !$installed && ! auth()->check())<x-ui.footer/>@endif
-    @auth<x-ui.docs/><x-telegram.connect/><x-users.credentials/>@endauth
+    @auth<x-ui.docs/><x-telegram.connect/><x-push.offer/><x-users.credentials/>@endauth
     {{-- «✨ Распознать» — одно окно на CRM и парковку, его открывает любая кнопка x-mail.scan-button. --}}
     @if (auth()->check() && \App\Support\Surface::current() !== \App\Support\Surface::Site)<x-mail.scan-window/>@endif
     <x-ui.tabbar/>
