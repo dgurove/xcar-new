@@ -15,13 +15,14 @@
     $deciding = $t->state === \App\Logistics\TransportState::New;
     // Шаг вне своего столбца — только когда он не тот же, что у всей вкладки («выбрать исполнителя», «у логиста»): в выдаче лупы.
     $stepHere = $has('step') || ! in_array($t->state, [\App\Logistics\TransportState::New, \App\Logistics\TransportState::Logist], true);
+    // Пустой второй строки не бывает: шаг пишется, когда «куда» нет.
     // Себя исполнитель в строке не видит; у логиста без исполнителя — «у логиста».
     $who = $t->isExecutedBy($me) ? null : $t->executor;
     $logist = ! $t->executor && $t->logist && $t->logist_id !== $me->id ? $t->logist : null;
     $late = $t->isLate();
     $manager = $sale?->manager;
     // Строка — маршрут (20.10.2026, `Logistics\Route`): ключ — `route_id`, «куда» — цель маршрута (последний отрезок),
-    // межрегион — если он у любого отрезка, вторым этажом — «отрезок 2 из 3» и «дальше без исполнителя».
+    // межрегион — если он у любого отрезка (столбец «Кому везти» на ПК), «дальше без исполнителя» — точкой у названия.
     $legs = $t->relationLoaded('routeLegs') ? $t->routeLegs : collect([$t]);
     $goal = $legs->count() > 1 ? $legs->last() : $t;
     $key = $t->route_id ?? $t->id;
@@ -44,13 +45,13 @@
 <tr data-detail-key="{{ $key }}" id="transport-{{ $key }}" data-search-row @class(['is-dim' => $sale?->waiting && ! ($binding && \App\Offers\Binding::panics($binding))])>
     @if ($checkable)<td class="pick-cell">@if ($deciding)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-transport-{{ $t->id }}" data-turbo-permanent name="transports[]" value="{{ $t->id }}" data-pick-target="box" data-action="pick#sync"></span></label>@endif</td>@endif
     <td class="grow">
-        <x-ui.row-link :key="$key" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($far)<span class="row-signal" title="Между регионами" aria-label="Между регионами"><x-ui.icon name="route" class="size-4"/></span>@endif @if ($ahead)<span class="row-signal" title="Дальше без исполнителя" aria-label="Дальше без исполнителя"><span class="size-2 rounded-full bg-urgent"></span></span>@endif @if ($binding)<x-offer.binding :offer="$binding" tag class="ml-1.5 sm:hidden"/>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$key" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($ahead)<span class="row-signal" title="Дальше без исполнителя" aria-label="Дальше без исполнителя"><span class="size-2 rounded-full bg-urgent"></span></span>@endif @if ($binding)<x-offer.binding :offer="$binding" icon class="sm:hidden"/>@endif</span></x-ui.row-link>
         {{-- Вторая строка — одна линия (20.10.2026, владелец: «строки — чтобы быстро найти, а не печатать всю информацию»): что
              дальше цветным словом целиком и куда — режется «…». Номер убытка, путь через стоянки, кто вывозит — в карточке и
-             столбцах ПК; межрегион и «дальше без исполнителя» — значками у названия. --}}
+             столбцах ПК, межрегион — чипом-фильтром и в карточке; «дальше без исполнителя» — оранжевой точкой у названия. --}}
         <span class="cell-sub cell-sub--one">
             @if ($sale && $deciding)<span class="sm:hidden shrink-0 {{ $sale->tone }}">{{ $sale->word }}</span>
-            @elseif ($stepHere)<span @class(['shrink-0', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
+            @elseif ($stepHere || (! $manager && ! $to))<span @class(['shrink-0', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
             @if ($manager)<span class="sm:hidden min-w-0 truncate">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden min-w-0 truncate">→ {{ $to }}</span>@endif
         </span>
     </td>

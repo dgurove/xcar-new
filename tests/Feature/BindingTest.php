@@ -156,10 +156,11 @@ class BindingTest extends TestCase
 
         $this->actingAs($this->admin)->get('http://crm.xcar.localhost/offers/'.$this->offer->fresh()->number)->assertOk()
             ->assertSee('binding-panic', false)->assertSee('Нет покупателя');
+        // Строка — красным таймером у названия (20.10.2026), полный срок — в карточке.
         $this->actingAs($this->admin)->get('http://logistics.xcar.localhost/transports?preset=all')->assertOk()
-            ->assertSee('Обязывающее до')->assertSee('binding-panic', false);
+            ->assertSee('Обязывающее до')->assertSee('aria-label="Срок обязывающего"', false);
         $this->actingAs($this->admin)->get('http://logistics.xcar.localhost/transports?preset=all&binding=panic&sort=binding')->assertOk()
-            ->assertSee('binding-panic', false);
+            ->assertSee('aria-label="Срок обязывающего"', false);
     }
 
     public function test_header_alarm_until_cause_removed(): void
@@ -226,8 +227,8 @@ class BindingTest extends TestCase
         $this->assertSame('2026-10-21 18:00', $pos->fresh()->deadline_at->format('Y-m-d H:i'));
         $this->assertSame('2026-10-21 18:00', Binding::stageDeadline($this->offer->fresh(), $deal, null, Carbon::parse('2026-10-30'))->format('Y-m-d H:i'));
 
-        // «Работа → Сделки»: столбца нет, горит — короткая метка у названия.
-        $this->actingAs($this->admin)->get('http://crm.xcar.localhost/work/deals?vid=table')->assertOk()->assertSee('binding-tag', false)->assertDontSee('Обязывающее до');
+        // «Работа → Сделки»: столбца нет, горит — красный таймер у названия.
+        $this->actingAs($this->admin)->get('http://crm.xcar.localhost/work/deals?vid=table')->assertOk()->assertSee('aria-label="Срок обязывающего"', false)->assertDontSee('Обязывающее до');
 
         // Заплатили поставщику — срок больше не грозит.
         $deal->forceFill(['supplier_paid_at' => now()])->save();

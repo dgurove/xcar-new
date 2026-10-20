@@ -21,10 +21,10 @@
 @endphp
 <tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
     <td class="grow">
-        <x-ui.row-link :key="$deal->id"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}<x-car.keys :count="$offer->keys_count"/>@if ($burning)<x-offer.binding :offer="$offer" tag class="ml-1.5"/>@endif</span></x-ui.row-link>
-        <span class="cell-sub" data-controller="fitline">
-            <span class="fit-core sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" copy/>@if ($active && $position)<x-route.term :position="$position"/>@endif</span>
-        </span>
+        <x-ui.row-link :key="$deal->id"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}<x-car.keys :count="$offer->keys_count"/>@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</span></x-ui.row-link>
+        {{-- На телефоне второй строкой — только срок шага (20.10.2026, как в «Вывозе»: номер убытка ужимал строку до 9 px и
+             срезал «просрочено 9 д»); номер — столбцом на ПК и в карточке. Без срока — вендор с номером. --}}
+        <span class="cell-sub sm:hidden">@if ($active && $position)<x-route.term :position="$position"/>@else<x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/>@endif</span>
     </td>
     <td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
     <td class="cell-dim nums hidden xl:table-cell">{{ $offer->number }}</td>

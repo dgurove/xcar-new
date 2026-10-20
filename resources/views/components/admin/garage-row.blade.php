@@ -22,7 +22,7 @@
 @endphp
 <tr data-detail-key="{{ $offer->number }}" id="garage-{{ $offer->number }}">
     <td class="grow">
-        <x-ui.row-link :key="$offer->number"><span class="cell-title">{{ $offer->titleWithYear() }}@if ($binding)<x-offer.binding :offer="$offer" tag class="ml-1.5"/>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$offer->number"><span class="cell-title">{{ $offer->titleWithYear() }}@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</span></x-ui.row-link>
         <span class="cell-sub"><span><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span>@if ($hasRef)<span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>@endif</span>
     </td>
     <td class="hidden sm:table-cell"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" cell/></td>

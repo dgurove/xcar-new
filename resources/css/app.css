@@ -744,7 +744,8 @@ html.kb-open { --home-gap: 0px; }
   /* Серый чип в потоке: факт, таймер, ссылка-справка. */
   .chip { @apply inline-flex items-center gap-1 rounded-(--radius-s) bg-surface-3 px-2 py-1 text-sm leading-none; }
   /* Человек чипом: аватар слева, имя. */
-  .chip.person { @apply max-w-full items-baseline gap-1.5 rounded-full py-0.5 pr-2.5 pl-0.5; }
+  /* Аватар и имя — по центру (20.10.2026: по базовой линии имя вставало вровень с низом картинки и уезжало вверх). */
+  .chip.person { @apply max-w-full items-center gap-1.5 rounded-full py-0.5 pr-2.5 pl-0.5; }
   .chip.person-current { @apply bg-accent-soft text-accent-text; }
   /* Предложение менеджера — чип-кнопка; выбранное — акцентом с галочкой. */
   .offer-chip { @apply cursor-pointer transition-colors; }
@@ -828,8 +829,7 @@ html.kb-open { --home-gap: 0px; }
   /* Мерцание — белой вуалью по прозрачности, а не заливкой: прозрачность анимирует видеокарта, заливка перерисовывалась
      каждый кадр, пока тревога горит (аудит 20.10.2026). Вуаль — ::before: число тревоги идёт позже и стоит поверх. */
   .binding-panic::before, .header-btn.alarm-btn::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; pointer-events: none; animation: binding-pulse 1.6s ease-in-out infinite; }
-  .binding-tag::before { animation: none; content: none; }
-  .binding-tag { border-radius: 999px; padding: .05rem .5rem; font-size: var(--text-xs); line-height: 1.35; white-space: nowrap; vertical-align: .05em; }
+  .binding-tag { display: inline-flex; align-items: center; gap: .2rem; color: var(--color-danger); font-size: var(--text-sm); font-weight: 500; line-height: 1; white-space: nowrap; }
   @keyframes binding-pulse { 0%, 100% { opacity: 0; } 50% { opacity: .3; } }
   @media (prefers-reduced-motion: reduce) { .binding-panic::before, .header-btn.alarm-btn::before { animation: none; } }
   /* Тревога в шапке: красная, мерцает заливкой; число рядом с сиреной. На телефоне, пока она есть, тема уступает место. */
@@ -1392,8 +1392,11 @@ html.kb-open { --home-gap: 0px; }
   .cell-title > .cell-name ~ *, .cell-title > .cat-icon { flex-shrink: 0; }
   /* «Вывоз» логистики (18.10.2026, владелец: «таблица и так листается вбок, нелогично резать только названия»): название
      целиком, столбец шире, таблица листается. */
-  #transports-table td.grow { max-width: none; }
-  #transports-table .cell-title > .cell-name { overflow: visible; text-overflow: clip; }
+  /* На телефоне строка — две линии в ширину экрана (20.10.2026): там название режется «…», а не наезжает на значки. */
+  @media (width >= 640px) {
+    #transports-table td.grow { max-width: none; }
+    #transports-table .cell-title > .cell-name { overflow: visible; text-overflow: clip; }
+  }
   /* Дата и аватар создателя — в первой строке правого столбца краткой таблицы предложений, вплотную слева от цены (10.10.2026,
      владелец: слева всегда номер убытка, под ценой — подтверждения). */
   .num-meta { display: inline-flex; align-items: center; gap: .375rem; margin-right: .5rem; vertical-align: middle; font-size: var(--text-sm); color: var(--color-ink-muted); }

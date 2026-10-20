@@ -6,7 +6,8 @@ import { watch, unwatch } from '../lib/fit-batch';
 // (от начала строки до его конца); то, что после него (ошибки данных, парковка), может уйти за край. Замер — общим
 // тактом всех строк (lib/fit-batch).
 export default class extends Controller {
-    static values = { min: { type: Number, default: 9 } };
+    // Не мельче 11 — нижней ступени шкалы (20.10.2026: 9 px в «Сделках» читались с трудом).
+    static values = { min: { type: Number, default: 11 } };
 
     connect() {
         this.item = { element: this.element, measure: () => this.measure() };
