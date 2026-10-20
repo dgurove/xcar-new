@@ -5,9 +5,9 @@ namespace App\Offers\Actions;
 use App\Garage\Car as GarageCar;
 use App\Garage\Events\GarageChanged;
 use App\Offers\AudienceRules;
+use App\Offers\Binding;
 use App\Offers\DealState;
 use App\Offers\Offer;
-use App\Offers\Binding;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Users\User;
@@ -42,8 +42,9 @@ final class ReturnToSale
         if ($car?->isSold()) {
             throw ValidationException::withMessages(['state' => 'Менеджер уже продал ТС из гаража: сначала снимите продажу']);
         }
-        if ($car?->costs()->exists()) {
-            throw ValidationException::withMessages(['state' => 'По ТС в гараже есть расходы: сначала уберите их']);
+        // У покупателя с гаражом расходы — его (20.10.2026): машину у него забрать можно, пока он не платил.
+        if ($car?->forBuyer() ? $car->buyerHasPaid() : $car?->costs()->exists()) {
+            throw ValidationException::withMessages(['state' => $car->forBuyer() ? 'Покупатель уже платил: сначала верните оплату' : 'По ТС в гараже есть расходы: сначала уберите их']);
         }
 
         if ($error = Binding::closeError($offer, $closeAt)) {

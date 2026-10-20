@@ -184,6 +184,7 @@ class OfferEvent extends Model
             'payout' => 'Выплата менеджеру '.$sum('amount'),
             'void' => 'Аннулирован документ '.$sum('amount'),
             'unsold' => 'Не продана',
+            'buyer_price' => 'Цена покупателю: '.(isset($p['was']) ? $sum('was').' → ' : '').$sum('amount'),
             default => 'Гараж',
         };
     }

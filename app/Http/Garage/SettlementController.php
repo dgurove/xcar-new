@@ -16,6 +16,7 @@ use App\Garage\Actions\ClearGarageSold;
 use App\Garage\Actions\IssueGaragePayout;
 use App\Garage\Actions\MarkGarageSold;
 use App\Garage\Actions\MoveCar;
+use App\Garage\Actions\SetBuyerPrice;
 use App\Garage\Actions\SettleGarageCar;
 use App\Garage\Car;
 use App\Garage\CarState;
@@ -67,6 +68,17 @@ class SettlementController
         return back()->with('toast', 'Не продана');
     }
 
+    /** Цена покупателю с гаражом — правит сотрудник, пока за счёт не платили (`SetBuyerPrice`). */
+    public function buyerPrice(Request $request, Offer $offer, SetBuyerPrice $set)
+    {
+        $car = $this->staffCar($request, $offer);
+        $request->merge(['buyer_price' => Money::rubles($request->input('buyer_price'))]);
+        $price = $request->validate(['buyer_price' => ['required', 'integer', 'min:1']], ['buyer_price.required' => 'Цена для покупателя'])['buyer_price'];
+        $set($car, $price, $request->user());
+
+        return back()->with('toast', 'Цена покупателю '.Money::rub($price));
+    }
+
     /** Счёт с вознаграждением: платит менеджер (как раньше) или его покупатель — плательщик, как у сделки. */
     public function settle(Request $request, Offer $offer, SettleGarageCar $settle)
     {
@@ -96,7 +108,7 @@ class SettlementController
     {
         $car = $this->staffCar($request, $offer);
         // Покупатель уже оплатил — дальше ждёт выплата менеджеру: «Выплатили» отмечает её.
-        $invoice = $car->payoutInvoice ?? $car->invoice;
+        $invoice = $car->payoutInvoice ?? $car->invoice ?? $car->holderInvoice();
         abort_unless($invoice, 404);
         $request->merge(['amount' => Money::parse($request->input('amount'))]);
         $data = $request->validate([

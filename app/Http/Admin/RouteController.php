@@ -117,9 +117,11 @@ class RouteController
     public function pickup(Request $request, Offer $offer, OpenPickup $open, AssignExecutor $assign, SetRoute $route)
     {
         $request->validate(['channel' => ['nullable', Rule::enum(Channel::class)]]);
-        $pick = AssignExecutor::fromRequest($request);
-        // Окно «Кто вывозит» — и куда везти, дальность, комментарий (18.10.2026); «Вывезти» без окна их не шлёт.
-        $data = $pick ? $request->validate(SetRoute::rules(), SetRoute::messages()) : null;
+        $pick = AssignExecutor::fromRequest($request, self: true);
+        // Окно «Кто вывозит» — и куда везти, дальность, комментарий (18.10.2026); «Вывезти» без окна их не шлёт. Забирает
+        // сам — везёт к себе, точка встаёт сама (`AssignExecutor`).
+        $self = $pick && $pick[0] === Channel::Manager;
+        $data = $pick && ! $self ? $request->validate(SetRoute::rules(), SetRoute::messages()) : null;
         $by = $request->user();
         $t = DB::transaction(function () use ($offer, $pick, $by, $open, $assign, $route, $data) {
             $t = Transport::openFor($offer) ?? $open($offer, $by, quiet: $pick !== null);
@@ -128,7 +130,7 @@ class RouteController
             }
             $t = $assign($t, $pick[0], $pick[1], $by, $pick[2]);
 
-            return $route($t->fresh(), $data, $by);
+            return $data === null ? $t : $route($t->fresh(), $data, $by);
         });
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Вывоз: '.($t->carrier() ?? 'ждёт исполнителя'));

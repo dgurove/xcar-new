@@ -163,6 +163,17 @@ class Car extends Model
             : null;
     }
 
+    /**
+     * Покупатель уже платил или сообщил об оплате своего счёта: цену не правим и машину у него не забираем, пока деньги не
+     * вернули (зачёт и аннулированные — не в счёт).
+     */
+    public function buyerHasPaid(): bool
+    {
+        $invoice = $this->holderInvoice()?->load(['payments', 'claims']);
+
+        return $invoice !== null && ($invoice->claims->isNotEmpty() || $invoice->payments->contains(fn ($p) => ! $p->source->isSoft() && ! $p->voided_at));
+    }
+
     /** Покупатель с гаражом оплатил свой счёт целиком: отметил «Продана» — и расчёт закрыт. */
     public function buyerPaid(): bool
     {

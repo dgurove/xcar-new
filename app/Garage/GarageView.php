@@ -25,8 +25,10 @@ final class GarageView
         $holderDue = $asBuyer && $holderInvoice && $holderInvoice->remaining() - $holderInvoice->claimed() > 0;
         $n = $offer->number;
         $invoice = $car->invoice;
-        // Ждёт денег сейчас: выплата менеджеру (покупатель уже заплатил) или сам счёт.
-        $current = $car->payoutInvoice ?? $invoice;
+        // Ждёт денег сейчас: выплата менеджеру (покупатель уже заплатил) или сам счёт; у покупателя с гаражом — его счёт.
+        $current = $car->payoutInvoice ?? $invoice ?? $holderInvoice;
+        // Правит сотрудник, пока покупатель не платил: цену, «Вернуть в продажу», «Отдали по ошибке» (20.10.2026).
+        $buyerPaid = $buyerCar && $car->buyerHasPaid();
         $unpaid = $current && $current->remaining() > 0;
         $frozen = $car->isFrozen();
         // Расходы: сотрудник — с принятия (наш эвакуатор), менеджер — пока машина у него.
@@ -47,6 +49,7 @@ final class GarageView
         $sale = array_values(array_filter(match (true) {
             $buyerCar && $car->state === CarState::Selling => [['post', "/garage/cars/{$n}/sold", 'Продана', 'Отметить, что ТС продана?']],
             $asBuyer && $holderDue => [['emit', 'pay', 'Оплатить']],
+            $staff && $buyerCar && $unpaid => [['emit', 'paid', 'Поступило']],
             $buyerCar => [],
             ! $staff && $car->state === CarState::Selling => [['emit', 'selling', 'Продаю']],
             ! $staff && $unpaid && ! $current->isOwed() && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0 => [['emit', 'pay', 'Оплатить']],
@@ -62,12 +65,14 @@ final class GarageView
             $staff && $car->state === CarState::Sold && ! $invoice ? ['form', 'DELETE', "/garage/cars/{$n}/sold", 'Не продана', 'Снять итог продажи?'] : null,
             // Покупатель с гаражом: в продаже, а счёт ещё не оплачен — «Оплатить» рядом с «Продана», в «⋯».
             $asBuyer && $holderDue && $car->state === CarState::Selling ? ['emit', 'pay', 'Оплатить'] : null,
-            $staff && $unpaid ? ['form', 'DELETE', "/garage/cars/{$n}/invoice", 'Аннулировать', 'Аннулировать документ? Расходы и итог снова можно будет поправить'] : null,
+            $staff && $unpaid && ! $buyerCar ? ['form', 'DELETE', "/garage/cars/{$n}/invoice", 'Аннулировать', 'Аннулировать документ? Расходы и итог снова можно будет поправить'] : null,
+            $staff && $buyerCar && $car->state !== CarState::Settled && ! $buyerPaid ? ['emit', 'buyer-price', 'Изменить цену покупателю'] : null,
         ]));
         $morePrep = array_values(array_filter([
             // «Вернуть в продажу» с переоценкой (`ReturnToSale`, шторка `x-offer.resale-sheet`) — только в CRM, и сделку тоже снимает.
-            $staff && Surface::current() === Surface::Crm && ! $car->isSold() && $car->costs->isEmpty() ? ['emit', 'resale', 'Вернуть в продажу'] : null,
-            $staff && ! $car->isSold() && ! $car->dealOpen() && $car->costs->isEmpty() ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', 'Вернуть ТС в черновики?'] : null,
+            // У покупателя с гаражом расходы — его, забрать машину они не мешают; мешает только его оплата.
+            $staff && Surface::current() === Surface::Crm && ! $car->isSold() && ($buyerCar ? ! $buyerPaid : $car->costs->isEmpty()) ? ['emit', 'resale', 'Вернуть в продажу'] : null,
+            $staff && ! $car->isSold() && ! $car->dealOpen() && ($buyerCar ? ! $buyerPaid : $car->costs->isEmpty()) ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', $buyerCar ? 'Забрать ТС у покупателя и вернуть в черновики? Счёт аннулируется' : 'Вернуть ТС в черновики?'] : null,
             $picks ? ['form', 'POST', "/garage/cars/{$n}/pickup", 'Нужен вывоз', 'Попросить логистов забрать ТС?'] : null,
         ]));
         $more = [...$moreSale, ...$morePrep];
@@ -76,7 +81,7 @@ final class GarageView
 
         return [
             'car' => $car, 'offer' => $offer, 'n' => $n, 'user' => $user, 'staff' => $staff,
-            's' => Settlement::of($car), 'invoice' => $invoice, 'buyerCar' => $buyerCar, 'asBuyer' => $asBuyer, 'holderInvoice' => $holderInvoice, 'holderDue' => $holderDue, 'current' => $current, 'unpaid' => $unpaid,
+            's' => Settlement::of($car), 'invoice' => $invoice, 'buyerCar' => $buyerCar, 'buyerPaid' => $buyerPaid, 'asBuyer' => $asBuyer, 'holderInvoice' => $holderInvoice, 'holderDue' => $holderDue, 'current' => $current, 'unpaid' => $unpaid,
             'canAdd' => $canAdd, 'prep' => $prep, 'sale' => $sale, 'buttons' => $buttons, 'more' => $more, 'moreSale' => $moreSale, 'morePrep' => $morePrep,
             // Куда сотрудник может вернуть машину кнопкой в пути: пройденные этапы работы с ней.
             // «Готова» после закрытой сделки — та же продажа (`MoveCar`), туда не возвращают.

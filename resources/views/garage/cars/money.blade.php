@@ -29,10 +29,15 @@
          ним нет. --}}
     @php $hi = $holderInvoice; $pdf = $hi?->getFirstMedia('file'); @endphp
     <div class="list">
-        <div class="row flex-col items-start gap-1 py-4">
-            <span class="text-sm text-ink-muted">Покупателю за</span>
-            <span class="nums text-[32px] leading-none font-bold">{{ Money::exact($car->buyer_price) }}</span>
-        </div>
+        @php $editable = $car->state !== \App\Garage\CarState::Settled && ! ($buyerPaid ?? false); @endphp
+        {{-- Нажатие — «Цена покупателю»: правим, пока он не платил. --}}
+        <{{ $editable ? 'button type=button data-controller=emit data-action=emit#send data-emit-event-param=buyer-price:open' : 'div' }} class="row w-full items-center gap-3 py-4 text-left">
+            <span class="flex min-w-0 flex-1 flex-col items-start gap-1">
+                <span class="text-sm text-ink-muted">Покупателю за</span>
+                <span class="nums text-[32px] leading-none font-bold">{{ Money::exact($car->buyer_price) }}</span>
+            </span>
+            @if ($editable)<x-ui.chevron/>@endif
+        </{{ $editable ? 'button' : 'div' }}>
         @if ($price)<div class="{{ $row }}"><span>Закупочная</span><span class="nums">{{ Money::rub($price) }}</span></div>@endif
         @if ($ours > 0)<div class="{{ $row }}"><span>Наши расходы</span><span class="nums">{{ Money::exact($ours) }}</span></div>@endif
         @if ($s['profit'] !== null)<div class="{{ $row }}"><span>Прибыль</span><span class="nums {{ $s['profit'] < 0 ? 'text-danger' : '' }}">{{ Money::exact($s['profit']) }}</span></div>@endif

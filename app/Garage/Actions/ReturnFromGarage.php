@@ -21,8 +21,9 @@ final class ReturnFromGarage
 
     public function __invoke(Car $car, User $by): void
     {
-        if ($car->isSold() || $car->costs()->exists()) {
-            throw ValidationException::withMessages(['car' => 'По ТС уже есть расходы или продажа']);
+        // У покупателя с гаражом его расходы — его: забрать машину мешает только его оплата (20.10.2026).
+        if ($car->isSold() || ($car->forBuyer() ? $car->buyerHasPaid() : $car->costs()->exists())) {
+            throw ValidationException::withMessages(['car' => $car->forBuyer() && ! $car->isSold() ? 'Покупатель уже платил: сначала верните оплату' : 'По ТС уже есть расходы или продажа']);
         }
         // Сделка со страховой ещё идёт — её отменяет «Отказываюсь» или отмена сделки в CRM, а не «Отдали по ошибке».
         if ($car->dealOpen()) {

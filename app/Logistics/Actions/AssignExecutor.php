@@ -37,6 +37,10 @@ final class AssignExecutor
         if (! $t->isOpen() || $t->state->picked()) {
             throw ValidationException::withMessages(['channel' => 'ТС уже забрали: можно только «Привёз» или отмена']);
         }
+        // «Сам» из CRM (20.10.2026): кто — держатель гаража или менеджер сделки, человека форма не шлёт.
+        if ($kind === Channel::Manager && ! $who) {
+            $who = Choices::managerOf($t);
+        }
         self::guard($kind, $who);
         if ($kind === Channel::Manager && ! ($who && $who->is(Choices::managerOf($t)))) {
             throw ValidationException::withMessages(['executor_id' => 'Вывозит только менеджер, которому подтвердили сделку']);
@@ -110,14 +114,20 @@ final class AssignExecutor
      * `executor_id` — тоже), «Документы СДЭКом» — `cdek[вид]` (формы без галки — null: умолчание по виду). Вида нет — null:
      * задача просто заводится.
      *
+     * `$self` — дорожка «Вывоз» в CRM: там можно вернуть «забирает сам» (20.10.2026, владелец про гараж покупателя: «он сам
+     * может забирать, а можем мы для него, чаще всего сам»), человек — держатель гаража или менеджер сделки.
+     *
      * @return array{0: Channel, 1: ?User, 2: ?bool}|null
      */
-    public static function fromRequest(Request $request): ?array
+    public static function fromRequest(Request $request, bool $self = false): ?array
     {
         $kind = Channel::tryFrom((string) $request->input('channel'));
-        // Менеджера формой не назначают: «забирает сам» решает «Принять», и это уже не логистика (17.10.2026).
-        if (! $kind || $kind === Channel::Manager) {
+        // В логистике менеджера формой не назначают: «забирает сам» — не логистика (17.10.2026).
+        if (! $kind || ($kind === Channel::Manager && ! $self)) {
             return null;
+        }
+        if ($kind === Channel::Manager) {
+            return [$kind, null, false];
         }
         $id = $request->input('who.'.$kind->value) ?? $request->input('executor_id');
         if (! $id || ! ($who = User::find((int) $id))) {

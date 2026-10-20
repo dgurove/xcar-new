@@ -5,11 +5,14 @@ namespace Tests\Feature;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
+use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
 use App\Garage\Actions\AddCost;
 use App\Garage\Car;
 use App\Garage\CarState;
 use App\Garage\GaragePayer;
+use App\Logistics\Channel;
+use App\Logistics\Transport;
 use App\Offers\Actions\AgreeDeal;
 use App\Offers\DealState;
 use App\Offers\Offer;
@@ -126,6 +129,39 @@ class GarageBuyerTest extends TestCase
         $this->assertNull($car->fresh()->sold_price);
         app(RecordPayment::class)($invoice->fresh(), $this->admin, 900000, null, PaymentSource::Bank);
         $this->assertSame(CarState::Settled, $car->fresh()->state);
+    }
+
+    public function test_admin_edits_price_and_pickup(): void
+    {
+        $this->buyer->update(['garage_enabled' => true]);
+        $offer = $this->draft();
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
+            'to' => 'garage', 'whom' => 'buyer', 'manager_id' => $this->buyer->id, 'buyer_price' => '900 000', 'where' => 'owner', 'pickup' => 'manager',
+        ])->assertSessionHasNoErrors();
+        $car = Car::where('offer_id', $offer->id)->firstOrFail();
+        $n = $offer->fresh()->number;
+        app(AgreeDeal::class)($car->deal->fresh(), $this->admin);
+
+        // Цена правится: счёт на прежнюю гаснет, новый — на новую.
+        $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/buyer-price', ['buyer_price' => '950 000'])->assertSessionHasNoErrors();
+        $live = Invoice::where('deal_id', $car->deal_id)->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->get();
+        $this->assertCount(1, $live);
+        $this->assertSame(950000.0, (float) $live->first()->total);
+        // Заплатил — цену не поправить и машину не забрать.
+        app(RecordPayment::class)($live->first()->fresh(), $this->admin, 100000, null, PaymentSource::Bank);
+        $this->actingAs($this->admin)->put(self::CRM.'/garage/cars/'.$n.'/buyer-price', ['buyer_price' => '800 000'])->assertSessionHasErrors('buyer_price');
+        $this->assertSame(950000, $car->fresh()->buyer_price);
+
+        // Забирает сам → логистика → снова сам.
+        $t = Transport::openFor($offer->fresh());
+        $this->assertSame(Channel::Manager, $t->channel);
+        $this->assertSame($this->buyer->id, $t->executor_id);
+        $driver = User::create(['name' => 'Иван Водитель', 'phone' => '79000000009', 'roles' => [Role::Driver], 'approved_at' => now()]);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$n.'/pickup', ['channel' => 'staff', 'who' => ['staff' => $driver->id], 'reach' => 'local', 'destination' => 'keeper'])->assertSessionHasNoErrors();
+        $this->assertSame($driver->id, $t->fresh()->executor_id);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$n.'/pickup', ['channel' => 'manager'])->assertSessionHasNoErrors();
+        $this->assertSame(Channel::Manager, $t->fresh()->channel);
+        $this->assertSame($this->buyer->id, $t->fresh()->executor_id);
     }
 
     public function test_super_buyer_garage_bid_only_with_toggle(): void

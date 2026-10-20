@@ -144,6 +144,21 @@
     </div>
 @endif
 
+@if ($staff && ($buyerCar ?? false) && $car->state !== \App\Garage\CarState::Settled && ! ($buyerPaid ?? false))
+    {{-- Цена покупателю (20.10.2026): правим, пока он не платил; счёт на прежнюю гаснет и встаёт на новую сам. --}}
+    <div {!! $wrap('buyer-price') !!}>
+        <x-ui.sheet id="buyer-price-{{ $n }}" title="Цена покупателю">
+            <form method="post" action="/garage/cars/{{ $n }}/buyer-price" class="flex flex-col gap-3">
+                @csrf @method('put')
+                <div class="fields">
+                    <x-ui.field name="buyer_price" label="Цена, ₽" :value="old('buyer_price', $car->buyer_price)" :id="'buyer-price-'.$n.'-field'" required/>
+                </div>
+                <x-ui.sheet-foot type="submit" variant="primary">Сохранить</x-ui.sheet-foot>
+            </form>
+        </x-ui.sheet>
+    </div>
+@endif
+
 @if ($asBuyer ?? false)
     @if ($holderDue)
         {{-- Покупатель с гаражом платит свой счёт сделки — той же шторкой, что в «Оплатах» кабинета. --}}
