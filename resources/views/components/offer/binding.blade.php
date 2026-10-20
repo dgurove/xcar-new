@@ -21,7 +21,7 @@
 @endphp
 @if (! $level)
 @elseif ($plain)
-    <span {{ $attributes->merge(['class' => $hot ? 'font-semibold text-danger' : '']) }}>{{ $date }}@if ($hot)<span class="block text-sm font-normal">{{ mb_strtolower($who) }}, {{ $word }}</span>@endif</span>
+    <span {{ $attributes->merge(['class' => $hot ? 'text-danger' : '']) }}>{{ $date }}@if ($hot)<span class="block text-sm">{{ mb_strtolower($who) }}, {{ $word }}</span>@endif</span>
 @elseif ($icon)
     {{-- Сигнал в строке на телефоне (20.10.2026): красный таймер у названия, слова — подсказкой и в карточке. --}}
     @if ($hot)<span {{ $attributes->merge(['class' => 'row-signal text-danger']) }} title="{{ $who }}, обязывающее {{ $past ? $word : 'до '.$date.', '.$word }}" aria-label="Срок обязывающего"><x-ui.icon name="timer" class="size-4"/></span>@endif

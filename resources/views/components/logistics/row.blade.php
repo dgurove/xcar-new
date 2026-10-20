@@ -58,7 +58,7 @@
     @if ($has('client'))<td class="hidden sm:table-cell"><span @class(['text-ink-muted' => ! $t->client])>{{ $t->client?->name ?? 'XCar' }}</span></td>@endif
     @if ($has('vendor'))<td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref" cell/></td>@endif
     @if ($has('sale'))<td class="hidden sm:table-cell"><span class="{{ $sale?->tone }}">{{ $sale?->word }}</span></td>@endif
-    @if ($has('binding'))<td @class(['hidden sm:table-cell nums whitespace-nowrap', 'font-semibold text-danger' => $binding && \App\Offers\Binding::panics($binding), 'text-ink-muted' => ! ($binding && \App\Offers\Binding::panics($binding))])>{{ $binding?->binding_until ? \App\Offers\Binding::date($binding->binding_until) : '' }}</td>@endif
+    @if ($has('binding'))<td @class(['hidden sm:table-cell nums whitespace-nowrap', 'text-danger' => $binding && \App\Offers\Binding::panics($binding), 'text-ink-muted' => ! ($binding && \App\Offers\Binding::panics($binding))])>{{ $binding?->binding_until ? \App\Offers\Binding::date($binding->binding_until) : '' }}</td>@endif
     @if ($has('to'))<td class="hidden sm:table-cell">@if ($manager)<x-ui.person :user="$manager"/>@elseif ($to)<span class="text-ink-muted">{{ $to }}</span>@endif @if ($far)<span class="block text-sm text-ink-dim">между регионами</span>@endif</td>@endif
     @if ($has('city'))<td class="col-detail-hide hidden 2xl:table-cell">@if ($city = $t->city())<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $city }}</x-ui.place>@endif</td>@endif
     @if ($has('step'))<td class="hidden sm:table-cell"><span class="{{ $late ? 'text-danger' : $t->state->tone() }}">{{ $late ? 'не вывезли в срок' : $t->next() }}</span></td>@endif
