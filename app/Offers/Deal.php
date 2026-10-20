@@ -40,14 +40,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
 #[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at', 'prepaid_at', 'supplier_paid_at',
-    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at'])]
+    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id'])]
 class Deal extends Model
 {
     use HidesDemo;
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime'];
+        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -80,6 +80,20 @@ class Deal extends Model
     public function buyer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'buyer_id');
+    }
+
+    /**
+     * Продана на аукционе (Совкомбанк, 20.10.2026): менеджера нет, покупатель аукциона — контрагент `auctionBuyer`, платит
+     * нам по счёту ПРАЙМ одной строкой, без вознаграждения, паспорта и ДКП (`SellAtAuction`).
+     */
+    public function isAuction(): bool
+    {
+        return $this->auction_at !== null;
+    }
+
+    public function auctionBuyer(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'buyer_party_id');
     }
 
     /** Сделка супер-покупателя: он покупает сам, без вознаграждения; покупатель и плательщик по договору — он же. */
@@ -557,7 +571,8 @@ class Deal extends Model
     /** Сделки в разделе «Сделки» сайта: админу все, менеджеру — его; админ, который ещё и менеджер, на сайте менеджер. */
     public function scopeOf(Builder $q, User $user): Builder
     {
-        return $user->isAdmin() && ! $user->isManager() ? $q : $q->where('buyer_id', $user->id);
+        // Продажи на аукционе — только в CRM: на сайте у них нет ни менеджера, ни страницы.
+        return $user->isAdmin() && ! $user->isManager() ? $q->whereNull('deals.auction_at') : $q->where('buyer_id', $user->id);
     }
 
     /**

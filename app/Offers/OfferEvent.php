@@ -67,7 +67,8 @@ class OfferEvent extends Model
             },
             OfferEventType::Updated => self::updatedText($p),
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
-            OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
+            OfferEventType::StateChanged => ! empty($p['auction']) ? ($p['to'] === OfferState::Delivered->value ? 'Продана на аукционе' : 'Продажа на аукционе отменена')
+                : OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
             OfferEventType::BidPlaced => ! empty($p['garage']) ? 'Подтверждение в гараж' : 'Подтверждение '.Money::plain($p['amount'] ?? 0),
             OfferEventType::BidAccepted => match (true) {
                 isset($p['buyer_price']) => 'В гараж покупателю за '.Money::rub($p['buyer_price']),

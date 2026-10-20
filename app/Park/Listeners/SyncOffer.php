@@ -71,6 +71,12 @@ final class SyncOffer
 
             return;
         }
+        // Продана на аукционе (20.10.2026): выдали покупателю аукциона — машина у него, маршрут уже закрыт.
+        if ($offer->state === \App\Offers\OfferState::Delivered && \App\Offers\Deal::where('offer_id', $offer->id)->where('state', \App\Offers\DealState::Done)->whereNotNull('auction_at')->exists()) {
+            ($this->setPlace)($offer, CarPlace::Buyer, $by);
+
+            return;
+        }
         $exit = $offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff, $offer->deal)->first(fn ($x) => mb_strtolower($x->label) === 'автомобиль передан');
         if ($exit) {
             ($this->take)($offer, $exit, Actor::Staff, $by);

@@ -331,6 +331,9 @@
                 <x-logistics.assign-form :transport="$t" :action="'/transports/'.$id.'/executor'" :prefix="'executor-'.$id">@method('put')</x-logistics.assign-form>
             </x-ui.sheet>
         </div>
+        @if (($sale = $t->saleOffer()) && $t->isPickup() && \App\Offers\Actions\SellAtAuction::allows($sale, auth()->user()))
+            <x-offer.auction-sale-sheet :offer="$sale" :action="'/transports/'.$id.'/auction'"/>
+        @endif
         <div data-controller="sheet" data-action="cancel-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'cancel-'.$id" title="Отменить вывоз">
                 <form method="post" action="/transports/{{ $id }}/cancel" class="flex flex-col gap-4">

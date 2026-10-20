@@ -56,7 +56,7 @@
             $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
             if ($deal->namesBuyer() && $deal->amount !== null) $rows[] = ['Цена продажи', Money::rub($deal->amount), $dd.' font-medium', true];
         } else {
-            $rows[] = ['Цена подтверждения', Money::rub($deal->amount), $dd.' font-medium', true];
+            $rows[] = [$deal->isAuction() ? 'Цена на аукционе' : 'Цена подтверждения', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-medium', true];
         }
         // Закупочная — закреплённая с подтверждения менеджера (её он видит); поставщик скинул после — своей строкой, нам.
         $rows[] = [$deal->supplier_cost !== null ? 'Закупочная у менеджера' : 'Закупочная', $deal->cost === null ? 'не указана' : Money::rub($deal->cost), $dd, false];
@@ -71,7 +71,7 @@
         } elseif ($deal->margin() !== null) {
             $rows[] = ['Разница', Money::rub($deal->margin()), $dd.($deal->margin() < 0 ? ' text-danger' : ''), false];
         }
-        if (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['Вознаграждение', $deal->commission ? Money::rub($deal->commission) : 'нет', $dd, false];
+        if (! $deal->isAuction() && (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null))) $rows[] = ['Вознаграждение', $deal->commission ? Money::rub($deal->commission) : 'нет', $dd, false];
         $ours = $deal->ours() === null ? null : $deal->ours() + $deal->supplierGain();
         if ($ours !== null) $rows[] = ['Нам', Money::rub($ours), $dd.' text-lg font-semibold'.($ours < 0 ? ' text-danger' : ''), true];
         $rest = $compact ? array_filter($rows, fn ($r) => ! $r[3]) : [];
@@ -90,7 +90,7 @@
     @endif
     <div class="mt-3 flex flex-wrap items-center gap-1.5">
         {{-- Схема и режим вознаграждения — текстом, состояние словом, «Ещё счёт» — действием (10.10.2026). --}}
-        <span class="text-sm text-ink-muted">{{ $deal->schemeOf()->label() }}@if ($deal->commission && $deal->isPrime()), {{ mb_strtolower($deal->commission_mode->label()) }}@endif</span>
+        <span class="text-sm text-ink-muted">{{ $deal->schemeOf()->label() }}@if ($deal->isAuction() && $invoices->isEmpty()), счёт вне системы@endif @if ($deal->commission && $deal->isPrime()), {{ mb_strtolower($deal->commission_mode->label()) }}@endif</span>
         @if (! in_array($state, [CommissionState::Hidden, CommissionState::Withheld]))<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.$fee->paid_at->translatedFormat('j M') : '' }}</x-ui.state>@endif
         @if ($deal->commission && ! $deal->withholds() && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
         @if ($deal->isActive())

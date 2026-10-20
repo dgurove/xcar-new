@@ -18,6 +18,8 @@
     $manager = $t->channel === \App\Logistics\Channel::Manager;
     $dest = $t->routeLabel();
 @endphp
+{{-- Забрал аукцион (20.10.2026) — ни исполнителя, ни «куда»: шаг один, «Забрал аукцион». --}}
+@if ($t->channel !== \App\Logistics\Channel::Auction)
 @if ($t->logist && ! $brief)
     {!! $row('Логист', $mine($t->logist), null, $logist) !!}
 @endif
@@ -31,4 +33,5 @@
 @endif
 @if ($t->comment)
     <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Комментарий</span><span class="block whitespace-pre-line break-words">{{ $t->comment }}</span></span></div>
+@endif
 @endif

@@ -194,6 +194,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // «На аукцион» (13.10.2026): отправить сейчас или по истечении срока; DELETE — отменить или убрать с аукциона.
         Route::post('/offers/{offer}/auction', [OfferController::class, 'auction']);
         Route::delete('/offers/{offer}/auction', [OfferController::class, 'auctionCancel']);
+        Route::post('/offers/{offer}/auction/sold', [OfferController::class, 'auctionSold']);
+        Route::delete('/offers/{offer}/auction/sold', [OfferController::class, 'auctionUnsold']);
         // «Предложено из заявок на приём» (13.10.2026): принять черновик или отклонить — ТС остаётся на парковке.
         Route::post('/offers/{offer}/proposal', [OfferController::class, 'acceptProposal']);
         Route::delete('/offers/{offer}/proposal', [OfferController::class, 'declineProposal']);

@@ -18,6 +18,7 @@ use App\Logistics\Actions\SetRoute;
 use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Actions\StepBack;
 use App\Logistics\Channel;
+use App\Offers\Actions\SellAtAuction;
 use App\Logistics\Client;
 use App\Logistics\FileAccess;
 use App\Logistics\Listeners\RefreshLogistics;
@@ -366,6 +367,15 @@ class TransportController
         });
 
         return back()->with('toast', Str::ucfirst($transport->fresh()->carrier() ?? 'ждёт исполнителя'));
+    }
+
+    /** «Аукцион» в «Кто вывозит» (20.10.2026): машину забрал покупатель аукциона — та же «Продана на аукционе», что в CRM. */
+    public function auction(Request $request, Transport $transport, SellAtAuction $sell)
+    {
+        abort_unless($request->user()->canManageCrm() && ($offer = $transport->saleOffer()), 404);
+        $sell($offer, $request->user(), $request->validate(SellAtAuction::rules(), SellAtAuction::messages()));
+
+        return back()->with('toast', 'Продана на аукционе, забрал аукцион');
     }
 
     /** «Куда везти» строкой карточки: точку правит любой, кто ведёт задачу, и исполнитель; дальность и комментарий — ведущие и логист. */

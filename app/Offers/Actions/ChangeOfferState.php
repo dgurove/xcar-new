@@ -31,9 +31,9 @@ use Illuminate\Validation\ValidationException;
  */
 final class ChangeOfferState
 {
-    public function __invoke(Offer $offer, OfferState $next, ?User $by, bool $followRoute = true, ?Carbon $at = null, bool $batch = false): Offer
+    public function __invoke(Offer $offer, OfferState $next, ?User $by, bool $followRoute = true, ?Carbon $at = null, bool $batch = false, bool $auction = false): Offer
     {
-        return DB::transaction(function () use ($offer, $next, $by, $followRoute, $at, $batch) {
+        return DB::transaction(function () use ($offer, $next, $by, $followRoute, $at, $batch, $auction) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             // Слот могли убрать или перенести в последнюю секунду — тогда часы опоздали, публиковать нечего.
             if ($at && ! $offer->slot_at?->equalTo($at)) {
@@ -49,7 +49,11 @@ final class ChangeOfferState
             if ($from === $next) {
                 return $offer;
             }
-            if (! $from->allows($next)) {
+            // Продана на аукционе (`SellAtAuction`): черновик, галерея или продажа закрываются сразу, сделкой без менеджера;
+            // отмена (`UndoAuctionSale`) — обратно в черновик. Руками «Выдан» так не поставить: нужна идущая сделка аукциона.
+            $auction = $auction && (($next === OfferState::Delivered && in_array($from, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true)
+                && $offer->deal()->first()?->isAuction()) || ($from === OfferState::Delivered && $next === OfferState::Draft));
+            if (! $auction && ! $from->allows($next)) {
                 throw ValidationException::withMessages(['state' => "Из «{$from->label()}» нельзя в «{$next->label()}»"]);
             }
             // Машину из гаража уводит только «Отдали по ошибке»: иначе строка гаража с расходами осталась бы без хозяина.
@@ -124,7 +128,7 @@ final class ChangeOfferState
             }
             // Кто видит — до событий: уведомление о публикации берёт наступившие волны.
             app(SyncViewers::class)($offer);
-            $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => $next->value]);
+            $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => $next->value] + ($auction ? ['auction' => true] : []));
             if ($galleryClosed) {
                 $offer->log(OfferEventType::Gallery, $by);
             }

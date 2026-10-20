@@ -1,7 +1,8 @@
 {{-- Дорожки редактора (06.10.2026, владелец: «как три параллельных маршрута»): одно событие — одно место.
      «Продажа» — вся коммерческая жизнь: маршрут со страховой, у гаражной машины дальше её продажа и расчёт.
      «Вывоз» — задача логистики: где машина физически, кто вывозит (у сделки — и кто забирает у владельца, с контактом).
-     Третья — «Гараж» (подготовка, расходы), «Сделка» (кто взял, резерв) или «Подтверждения»; у гаража и сделки она
+     Третья — «Гараж» (подготовка, расходы), «Сделка» (кто взял, резерв), «Продана на аукционе» (кто купил, отмена, деньги)
+     или «Подтверждения»; у гаража и сделки она
      одинаково кончается деньгами и ДКП (`admin.offers.deal-cards`; заметка и «Показ» — справа под «Ценами», 12.10.2026, 07.10.2026: «гараж — это тоже как сделка»).
      На ПК в ряд в основной колонке (колонок столько, сколько дорожек: две от 34rem, три от 52rem ширины колонки —
      `@container/lanes` в редакторе), на телефоне — столбиком в том же порядке. --}}
@@ -12,6 +13,7 @@
     $salePos = $offer->position(Track::Sale);
     $third = match (true) {
         (bool) $g => 'garage',
+        (bool) $deal?->isAuction() => 'auction',
         (bool) $deal => 'deal',
         $bids->isNotEmpty() || $offer->state === OfferState::Open => 'bids',
         // Черновик в галерее: интерес и «+ Интерес» за менеджера (13.10.2026).
@@ -22,7 +24,8 @@
     // чьи машины вывозим всегда (Совкомбанк).
     $pickupLane = $offer->pickup() || (! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)
         && ($g || $deal || $offer->vendor?->pickup_on_arrival));
-    $saleLane = $salePos || $g;
+    // Продана на аукционе — маршрута со страховой больше нет: всё в карточке «Продана на аукционе».
+    $saleLane = ($salePos && ! $deal?->isAuction()) || $g;
     $count = (int) $saleLane + (int) $pickupLane + (int) ($third !== null);
     // Хвост пути продажи у гаражной машины: в продаже, продана, расчёт — с кнопками на текущем шаге.
     $tail = $g ? view('garage.cars.path', $g + ['set' => 'sale', 'bare' => true, 'buttonsHere' => $g['sale']])->render() : '';
@@ -65,6 +68,11 @@
                 @if ($offer->interests->isNotEmpty())
                     @include('admin.offers.interests')
                 @endif
+            </div>
+        @elseif ($third === 'auction')
+            <div class="flex min-w-0 flex-col gap-4">
+                @include('admin.offers.auction-card')
+                <x-deal.money :deal="$deal" id="money"/>
             </div>
         @elseif ($third === 'deal')
             <div class="flex min-w-0 flex-col gap-4">

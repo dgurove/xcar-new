@@ -9,7 +9,10 @@
      (дальность обязательна, точка — `x-logistics.route-fields` с «Пока неизвестно») и комментарий тому, кто везёт
      (`SetRoute`). Пачкой (`route` false) — без точки и комментария: у машин они разные. В CRM у машины с держателем
      (гараж, менеджер сделки) — ещё «Иван И. сам» (20.10.2026, владелец про гараж покупателя: «он сам может забирать, а можем
-     мы для него»): вернуть «забирает сам» после логистики; куда везти тогда не спрашиваем — к нему. --}}
+     мы для него»): вернуть «забирает сам» после логистики; куда везти тогда не спрашиваем — к нему. У вывоза машины вендора
+     по комиссии (Совкомбанк, 20.10.2026), пока её не везут, админу — «Аукцион»: покупатель аукциона забрал сам, это не
+     назначение, а «Продана на аукционе» своей шторкой (`x-offer.auction-sale-sheet`: в логистике — рядом с шторкой «Назначить
+     вывоз» карточки задачи, в CRM — у редактора и окошка). --}}
 @props(['transport' => null, 'offer' => null, 'action', 'prefix' => 'assign', 'route' => true])
 @php
     use App\Logistics\Choices;
@@ -32,6 +35,11 @@
         Channel::Partner->value => count($partners) ? Channel::Partner->short() : null,
     ]);
     $pickup = ! $transport || $transport->isPickup();
+    $sale = $pickup ? ($offer ?? $transport?->saleOffer()) : null;
+    $auction = $sale && ! $transport?->state->picked() && \App\Offers\Actions\SellAtAuction::allows($sale, auth()->user());
+    if ($auction) {
+        $options[Channel::Auction->value] = Channel::Auction->short();
+    }
     // Галка вида: что прислали с ошибкой, иначе как у задачи (если вид тот же), иначе — только логисту.
     $cdekOn = fn (string $k) => old("cdek.$k") !== null ? (bool) old("cdek.$k") : ($transport?->channel?->value === $k ? $transport->docs_by_cdek : $k === Channel::Logist->value);
 @endphp
@@ -59,6 +67,11 @@
             </div>
             @if ($pickup)<input type="hidden" name="cdek[partner]" value="0"><x-ui.check name="cdek[partner]" :checked="$cdekOn('partner')">Документы СДЭКом</x-ui.check>@endif
         </div>
+        @if ($auction)
+            <div class="contents" data-reveal-target="pane" data-reveal-key="auction" @if ($kind !== 'auction') hidden @endif>
+                <x-ui.button type="button" variant="primary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="auction-sale-{{ $sale->number }}:open">Продана на аукционе</x-ui.button>
+            </div>
+        @endif
     @else
         <x-ui.empty>Пока некому: позовите логиста или сотрудника ссылкой в «Пользователях»</x-ui.empty>
     @endif
@@ -76,6 +89,6 @@
         </div>
     @endif
     @if ($options)
-        <x-ui.button type="submit" variant="primary" block>{{ $transport?->channel && $transport->channel !== Channel::Manager ? 'Сохранить' : 'Назначить' }}</x-ui.button>
+        <x-ui.button type="submit" variant="primary" block class="assign-submit">{{ $transport?->channel && $transport->channel !== Channel::Manager ? 'Сохранить' : 'Назначить' }}</x-ui.button>
     @endif
 </form>

@@ -206,6 +206,7 @@
             @endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
             @if ($resale || ($admin && $offer->onAuction()))<x-offer.resale-sheet :offer="$offer"/>@endif
+            @if ($admin && \App\Offers\Actions\SellAtAuction::allows($offer, auth()->user()))<x-offer.auction-sale-sheet :offer="$offer"/>@endif
             @if ($publishItems && ! $publishButton)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
             @if ($askMenu)<x-offer.estimate-ask :offer="$offer" :managers="$managers" :trigger="false"/>@endif
             @if ($giveMenu)<x-offer.give-sheet :offer="$offer"/>@endif

@@ -272,6 +272,7 @@
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
     @if ($resale || ($admin && $offer->onAuction()))<x-offer.resale-sheet :offer="$offer"/>@endif
+    @if ($admin && \App\Offers\Actions\SellAtAuction::allows($offer, auth()->user()))<x-offer.auction-sale-sheet :offer="$offer"/>@endif
     @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
     @php $deletable = ! $fromMail && $offer->isDeletableBy(auth()->user()); @endphp
     <x-ui.action-bar>

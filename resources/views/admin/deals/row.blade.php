@@ -6,6 +6,7 @@
     $offer = $deal->offer;
     $position = $offer->position();
     [$word, $tone] = match (true) {
+        $deal->isAuction() && $deal->state === \App\Offers\DealState::Done => ['Продана на аукционе', 'text-accent-text'],
         $deal->state !== \App\Offers\DealState::Active => [$deal->state->label(), $deal->state === \App\Offers\DealState::Done ? 'text-accent-text' : 'text-danger'],
         (bool) $position => [$position->stage->block?->name ?? $position->stage->name, $position->isOverdue() ? 'text-urgent' : 'text-ink-muted'],
         default => [$offer->crmTab(), 'text-ink-muted'],
@@ -19,12 +20,12 @@
         <div class="row-sub">
             <x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" copy/>
             <span class="nums">№ {{ $offer->number }}</span>
-            @if ($person && $deal->buyer)<span>{{ $deal->buyer->name }}</span>@endif
+            @if ($deal->isAuction())<span>Аукцион</span>@elseif ($person && $deal->buyer)<span>{{ $deal->buyer->name }}</span>@endif
         </div>
         @if ($deal->state === \App\Offers\DealState::Active && $position)<x-route.clock :position="$position" side="staff" class="mt-0.5 line-clamp-2 sm:truncate"/>@endif
     </div>
     <div class="shrink-0 text-right">
-        <div class="nums">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</div>
+        <div class="nums">{{ $deal->isGarage() ? 'В гараж' : ($deal->amount === null ? '' : \App\Support\Money::rub($deal->amount)) }}</div>
         <x-offer.margin :m="$deal->marginMark()" class="!ml-0 block"/>
         <div class="max-w-40 truncate text-sm sm:max-w-64 {{ $tone }} @if ($deal->state === \App\Offers\DealState::Active && $position) max-sm:hidden @endif">{{ $word }}</div>
     </div>

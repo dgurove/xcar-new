@@ -2,7 +2,7 @@
      (19.10.2026, владелец: «непонятно, что от тебя хотят в этом окне», «к унификации»): кнопками, а не пунктами «Действий».
      Слот («Публикация») — когда выйдет, «Опубликовать сейчас», «Перенести» (шторка слотов), «Убрать из слота»; на аукционе —
      «Вернуть в продажу» (шторка `x-offer.resale-sheet`) и «В черновики»; архив — «Вернуть в черновики» и красным «Удалить
-     навсегда». Этих пунктов в «Действиях» тогда нет. --}}
+     навсегда». На аукционе первой — «Продана на аукционе» (шторка `x-offer.auction-sale-sheet`, 20.10.2026). Этих пунктов в «Действиях» тогда нет. --}}
 @php
     use App\Offers\{OfferState, Slots};
     $kind = match (true) {
@@ -26,7 +26,10 @@
     @elseif ($kind === 'auction')
         <h2 class="text-base font-medium">На аукционе{{ $offer->auction_at ? ' с '.$offer->auction_at->translatedFormat('j M') : '' }}</h2>
         <div class="flex flex-wrap gap-2">
-            <button type="button" class="btn btn-s btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="resale:open">Вернуть в продажу</button>
+            @if (\App\Offers\Actions\SellAtAuction::allows($offer, auth()->user()))
+                <button type="button" class="btn btn-s btn-accent basis-full" data-controller="emit" data-action="emit#send" data-emit-event-param="auction-sale-{{ $n }}:open">Продана на аукционе</button>
+            @endif
+            <button type="button" class="btn btn-s btn-quiet min-w-0 flex-1" data-controller="emit" data-action="emit#send" data-emit-event-param="resale:open">Вернуть в продажу</button>
             <form method="post" action="/offers/{{ $n }}/auction" class="flex">@csrf @method('delete')<button class="btn btn-s btn-quiet">В черновики</button></form>
         </div>
     @else

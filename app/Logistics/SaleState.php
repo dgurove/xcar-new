@@ -20,19 +20,20 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final readonly class SaleState
 {
-    /** Ключ продажи: park (перевод парковки), none (продажи нет), garage, deal, open, draft, off (снята). Демо-сделки не в счёт — их прячет `HidesDemo`. */
+    /** Ключ продажи: park (перевод парковки), none (продажи нет), garage, deal, sold (продана: сделка закрыта, аукцион), open, draft, off (снята). Демо-сделки не в счёт — их прячет `HidesDemo`. */
     public const KEY_SQL = "(case when transports.origin = 'park' then 'park' else coalesce((select case
         when exists (select 1 from garage_cars g where g.offer_id = o.id) then 'garage'
         when exists (select 1 from deals d where d.offer_id = o.id and d.state = 'active' and not d.is_demo) then 'deal'
+        when o.state = 'delivered' then 'sold'
         when o.state = 'open' then 'open'
         when o.state in ('draft', 'gallery') then 'draft'
         else 'off' end from offers o where o.car_id = transports.car_id order by o.id desc limit 1), 'none') end)";
 
     /** Чип «Продажа» — корзины без пересечений: покупатель есть (сделка, гараж) · в продаже · не в продаже · снята · перевод. */
-    public const BUCKET_SQL = '(case '.self::KEY_SQL." when 'deal' then 'buyer' when 'garage' then 'buyer' when 'none' then 'draft' else ".self::KEY_SQL.' end)';
+    public const BUCKET_SQL = '(case '.self::KEY_SQL." when 'deal' then 'buyer' when 'garage' then 'buyer' when 'sold' then 'buyer' when 'none' then 'draft' else ".self::KEY_SQL.' end)';
 
     /** Порядок «Продажа»: покупатель есть — выше, дальше в продаже, не в продаже, снята, перевод. */
-    public const RANK_SQL = '(case '.self::KEY_SQL." when 'garage' then 4 when 'deal' then 4 when 'open' then 2 when 'draft' then 1 when 'none' then 1 when 'off' then 0 else -1 end)";
+    public const RANK_SQL = '(case '.self::KEY_SQL." when 'garage' then 4 when 'deal' then 4 when 'sold' then 3 when 'open' then 2 when 'draft' then 1 when 'none' then 1 when 'off' then 0 else -1 end)";
 
     /** Кому везти — менеджер: держатель гаража, иначе покупатель идущей сделки, если он менеджер (`Choices::managerOf`). */
     public const MANAGER_SQL = "(select coalesce(
@@ -74,12 +75,13 @@ final readonly class SaleState
             ! $o => 'none',
             $o->garageCar !== null => 'garage',
             $o->deal !== null => 'deal',
+            $o->state === OfferState::Delivered => 'sold',
             $o->state === OfferState::Open => 'open',
             in_array($o->state, [OfferState::Draft, OfferState::Gallery], true) => 'draft',
             default => 'off',
         };
         $manager = in_array($key, ['garage', 'deal'], true) ? Choices::managerOf($o) : null;
-        $buyer = in_array($key, ['garage', 'deal'], true);
+        $buyer = in_array($key, ['garage', 'deal', 'sold'], true);
         $deciding = $t->state === TransportState::New;
         $hold = $key === 'deal' ? $o->deal->setRelation('offer', $o)->pickupHold() : null;
         // Сколько ждёт — с поступления заявки, а не с публикации (18.10.2026, владелец: «ищем покупателя 2д 14ч»; срок
@@ -89,6 +91,7 @@ final readonly class SaleState
             'park' => 'перевод парковки',
             'garage' => 'гараж',
             'deal' => $hold ? 'сделка, '.$hold : 'сделка',
+            'sold' => 'продана',
             'open' => 'ищем покупателя'.$since,
             'none', 'draft' => 'не опубликовано'.$since,
             default => 'снята с продажи',

@@ -387,8 +387,6 @@ html.kb-open { --home-gap: 0px; }
   /* Отступной ответ шага («Я передумал»): тихой строкой под главной кнопкой, палец — 44 px. */
   /* «Отдать в гараж» по сценарию «Кому» (19.10.2026): «Себе» — ТС «Уже у нас», «Везёт в гараж» нет (везёт логистика:
      сервер без менеджера так и делает); ТС уже у менеджера или у нас — везти нечего. */
-  /* «Кто вывозит» → «Иван И. сам» (20.10.2026): везёт к себе — «Куда везти» не спрашиваем. */
-  .assign-form:has(input[name="channel"][value="manager"]:checked) .assign-route { display: none; }
   .give-garage .give-to-self, .give-garage .give-to-buyer { display: none; }
   .give-garage:has(input[name="whom"][value="self"]:checked) .give-to-self,
   .give-garage:has(input[name="whom"][value="buyer"]:checked) .give-to-buyer { display: inline; }
@@ -4167,3 +4165,9 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .mail-boxes { @apply w-full sm:inline-grid sm:w-auto; }
   .letter-box { color: var(--color-ink-dim); font-size: var(--text-xs); }
 }
+
+/* «Кто вывозит» вне слоёв: обёртка «Куда везти» — утилита `contents`, а утилиты сильнее слоя компонентов (20.10.2026: правило
+   у «Иван И. сам» так и не срабатывало). «Иван И. сам» — везёт к себе, «Куда везти» не спрашиваем; «Аукцион» — не
+   назначение, а продажа своей шторкой: ни «Куда везти», ни «Назначить». */
+.assign-form:has(input[name="channel"][value="manager"]:checked) .assign-route,
+.assign-form:has(input[name="channel"][value="auction"]:checked) :is(.assign-route, .assign-submit) { display: none; }

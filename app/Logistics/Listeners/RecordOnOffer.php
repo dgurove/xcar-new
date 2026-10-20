@@ -42,6 +42,8 @@ final class RecordOnOffer
             'delivered' => 'привёз'.(($d = $t->destinationLabel()) ? ', '.$d : '')
                 .($t->delivered_at?->lt(now()->subMinutes(5)) ? ', '.Ago::day($t->delivered_at, time: true) : ''),
             'cancelled' => 'отменён'.($t->cancel_reason ? ': '.$t->cancel_reason : ''),
+            'auction' => 'забрал аукцион',
+            'auction_undone' => 'снова нужен',
             default => str_starts_with($e->step, 'undo:') ? 'отменили «'.(TransportEvent::STEPS[substr($e->step, 5)] ?? 'шаг').'»' : null,
         };
         if ($text) {

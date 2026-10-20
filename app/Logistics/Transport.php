@@ -336,6 +336,7 @@ class Transport extends Model
     public function carrier(): ?string
     {
         return match (true) {
+            $this->channel === Channel::Auction => 'забрал аукцион',
             (bool) $this->executor => 'вывозит '.$this->executor->shortName(),
             (bool) $this->logist => 'у логиста '.$this->logist->shortName(),
             default => null,
@@ -425,6 +426,7 @@ class Transport extends Model
     public function next(): string
     {
         return match (true) {
+            $this->channel === Channel::Auction => 'забрал аукцион',
             $this->state === TransportState::New => 'выбрать исполнителя',
             $this->state === TransportState::Logist && $this->from_depot_id => 'на стоянке '.($this->fromDepot?->name ?? 'логиста'),
             $this->state === TransportState::Logist => 'ждёт исполнителя логиста',
@@ -448,6 +450,10 @@ class Transport extends Model
     public function steps(): array
     {
         $s = $this->state;
+        // Покупатель аукциона забрал сам (`AuctionPickup`) — один шаг, ни исполнителя, ни созвона.
+        if ($this->channel === Channel::Auction) {
+            return [['key' => 'picked', 'title' => 'Забрал аукцион', 'status' => 'done', 'at' => $this->picked_at, 'hint' => null]];
+        }
         $cancelled = $s === TransportState::Cancelled;
         $status = fn (bool $done, bool $current) => $done ? 'done' : ($current && ! $cancelled ? 'current' : 'later');
         $steps = [];

@@ -70,7 +70,7 @@
                 </button>
             </div>
         @endif
-        @if (! $manager)
+        @if (! $manager && $t->channel !== Channel::Auction)
             <x-logistics.legs :t="$t" class="mb-4"/>
             <div class="list mb-4">
                 <x-logistics.facts :t="$t" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>

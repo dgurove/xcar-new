@@ -21,7 +21,9 @@ use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\ResolveProposal;
 use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\ScheduleOffer;
+use App\Offers\Actions\SellAtAuction;
 use App\Offers\Actions\SendToAuction;
+use App\Offers\Actions\UndoAuctionSale;
 use App\Offers\Actions\ShowInGallery;
 use App\Offers\Actions\UnlistParkOffer;
 use App\Offers\Actions\UnscheduleOffer;
@@ -926,6 +928,24 @@ class OfferController
         $was = $planned ? 'Отправка на аукцион отменена' : 'В черновиках: '.$offer->crmTab();
 
         return redirect("/offers/{$offer->number}")->with('toast', $was)->with(self::gone($request, $offer));
+    }
+
+    /**
+     * «Продана на аукционе» (20.10.2026, Совкомбанк): шторка `x-offer.auction-sale-sheet` — покупатель, цена, когда, «Счёт
+     * выставлен вне системы»; сделка без менеджера закрывается сразу (`SellAtAuction`).
+     */
+    public function auctionSold(Request $request, Offer $offer, SellAtAuction $sell)
+    {
+        $sell($offer, $request->user(), $request->validate(SellAtAuction::rules(), SellAtAuction::messages()));
+
+        return redirect("/offers/{$offer->number}")->with('toast', 'Продана на аукционе')->with(self::gone($request, $offer));
+    }
+
+    public function auctionUnsold(Request $request, Offer $offer, UndoAuctionSale $undo)
+    {
+        $offer = $undo($offer, $request->user());
+
+        return redirect("/offers/{$offer->number}")->with('toast', 'Продажа на аукционе отменена')->with(self::gone($request, $offer));
     }
 
     /**

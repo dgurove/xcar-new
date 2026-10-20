@@ -12,6 +12,7 @@
     $offer->setRelation('deal', $active ? $deal : null);
     $burning = $active && \App\Offers\Binding::matters($offer) && \App\Offers\Binding::panics($offer);
     [$word, $tone] = match (true) {
+        $deal->isAuction() && $deal->state === DealState::Done => ['Продана на аукционе', 'text-accent-text'],
         ! $active => [$deal->state->label(), $deal->state === DealState::Done ? 'text-accent-text' : 'text-danger'],
         // Письмо поставщику не ушло или он ответил — ход наш, этап горит, как просроченный (11.10.2026).
         (bool) $position => [$position->stage->block?->name ?? $position->stage->name, $position->isOverdue() || in_array($position->letterStatus(), ['unsent', 'replied', 'failed', 'bounced'], true) ? 'text-urgent' : ''],
@@ -27,11 +28,11 @@
     </td>
     <td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
     <td class="cell-dim nums hidden xl:table-cell">{{ $offer->number }}</td>
-    <td class="hidden sm:table-cell">@if ($deal->buyer)<span class="flex items-center gap-2" title="{{ $deal->buyer->name }}"><x-ui.avatar :user="$deal->buyer" :size="22"/><span class="hidden truncate xl:inline">{{ $deal->buyer->name }}</span></span>@endif</td>
+    <td class="hidden sm:table-cell">@if ($deal->isAuction())<span class="text-ink-muted">Аукцион</span>@elseif ($deal->buyer)<span class="flex items-center gap-2" title="{{ $deal->buyer->name }}"><x-ui.avatar :user="$deal->buyer" :size="22"/><span class="hidden truncate xl:inline">{{ $deal->buyer->name }}</span></span>@endif</td>
     <td class="hidden sm:table-cell"><span class="block max-w-52 truncate {{ $tone }}">{{ $word }}</span></td>
     <td class="hidden sm:table-cell">@if ($active && $position)<x-route.term :position="$position"/>@endif</td>
     <td class="num nums">
-        {{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}
+        {{ $deal->isGarage() ? 'В гараж' : ($deal->amount === null ? '' : \App\Support\Money::rub($deal->amount)) }}
         <x-offer.margin :m="$deal->marginMark()" class="cell-sub max-sm:!ml-0"/>
         <span class="cell-sub ml-auto max-w-40 truncate sm:hidden {{ $tone }}">{{ $word }}</span>
     </td>

@@ -12,7 +12,8 @@ use App\Cars\HasLabels;
  * — наши люди ООО «ПРАЙМ» (`Role::Driver`: Иван, Сергей…) — исполнитель сразу;
  * — другой менеджер («вывозит логистика — может быть кто угодно из других менеджеров, кроме менеджера сделки») —
  *   исполнитель сразу, как наши;
- * — менеджер сделки забирает сам: решает «Принять», это не логистика (`Transport::scopeInLogistics`).
+ * — менеджер сделки забирает сам: решает «Принять», это не логистика (`Transport::scopeInLogistics`);
+ * — аукцион (Совкомбанк, 20.10.2026): покупатель аукциона забрал сам, ставит только «Продана на аукционе» (`AuctionPickup`).
  * Исполнитель (`executor_id`) — всегда тот, кто едет; логист им не бывает.
  */
 enum Channel: string
@@ -23,6 +24,7 @@ enum Channel: string
     case Manager = 'manager';
     case Staff = 'staff';
     case Partner = 'partner';
+    case Auction = 'auction';
 
     public function label(): string
     {
@@ -31,6 +33,7 @@ enum Channel: string
             self::Manager => 'Менеджер сделки',
             self::Staff => 'Наши',
             self::Partner => 'Другой менеджер',
+            self::Auction => 'Аукцион',
         };
     }
 
@@ -41,6 +44,7 @@ enum Channel: string
             self::Logist => 'Логист',
             self::Manager, self::Partner => 'Менеджер',
             self::Staff => 'Наши',
+            self::Auction => 'Аукцион',
         };
     }
 }

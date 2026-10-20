@@ -119,6 +119,12 @@ final class TransportNotice extends Notice
         return new self($t, 'Вывоз отменён: '.$t->title(), $t->cancel_reason, true, true);
     }
 
+    /** Покупатель аукциона забрал сам (20.10.2026) — логисту и исполнителю, что уже взяли задачу: ехать не нужно. */
+    public static function auctionYours(Transport $t): self
+    {
+        return new self(null, 'Вывоз не нужен: '.$t->title(), 'забрал покупатель аукциона', true, true, '/transports');
+    }
+
     public static function cancelledYoursMany(int $n, ?string $reason): self
     {
         return new self(null, 'Отменено вывозов: '.$n, $reason, true, true, '/transports?preset=all');

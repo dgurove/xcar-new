@@ -106,6 +106,8 @@ final class AssignExecutor
             Channel::Staff => $who?->isDriver() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите сотрудника на вывозе']),
             Channel::Partner => $who?->isManager() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите менеджера']),
             Channel::Manager => $who ?: throw ValidationException::withMessages(['executor_id' => 'Кто именно']),
+            // Аукцион назначают не формой, а продажей: «Продана на аукционе» (`SellAtAuction`).
+            Channel::Auction => throw ValidationException::withMessages(['channel' => 'Отметьте продажу на аукционе']),
         };
     }
 
@@ -123,7 +125,7 @@ final class AssignExecutor
     {
         $kind = Channel::tryFrom((string) $request->input('channel'));
         // В логистике менеджера формой не назначают: «забирает сам» — не логистика (17.10.2026).
-        if (! $kind || ($kind === Channel::Manager && ! $self)) {
+        if (! $kind || $kind === Channel::Auction || ($kind === Channel::Manager && ! $self)) {
             return null;
         }
         if ($kind === Channel::Manager) {
