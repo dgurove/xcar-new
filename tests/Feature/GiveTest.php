@@ -138,6 +138,7 @@ class GiveTest extends TestCase
         $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', ['to' => 'garage', 'whom' => 'self', 'where' => 'owner'])
             ->assertSessionHasNoErrors();
         $this->assertSame(CarState::Waiting, Car::where('offer_id', $offer->id)->firstOrFail()->state);
+        $this->actingAs($this->admin)->get(self::CRM.'/offers/'.$offer->number)->assertOk()->assertSee('Уже вывезли');
         $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/pickup/backdate', ['picked_at' => now()->subMonths(4)->format('Y-m-d\TH:i'), 'destination' => 'other', 'to_address' => 'Москва, Шоссе Энтузиастов'])
             ->assertSessionHasNoErrors();
         $this->assertSame(CarState::Repair, Car::where('offer_id', $offer->id)->firstOrFail()->state);
@@ -146,6 +147,7 @@ class GiveTest extends TestCase
         $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$other->number.'/give', ['to' => 'garage', 'whom' => 'self', 'where' => 'arrived'])
             ->assertSessionHasNoErrors();
         $this->assertNull(Transport::openFor($other->fresh()));
+        $this->actingAs($this->admin)->get(self::CRM.'/offers/'.$other->number)->assertOk()->assertSee('Ещё не вывезли');
         $this->actingAs($this->admin)->post(self::CRM.'/garage/cars/'.$other->number.'/waiting')->assertSessionHasNoErrors();
         $this->assertSame(CarState::Waiting, Car::where('offer_id', $other->id)->firstOrFail()->state);
         $this->assertSame(\App\Offers\CarPlace::Owner, $other->fresh()->car_place);
