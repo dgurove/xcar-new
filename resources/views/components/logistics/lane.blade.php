@@ -65,8 +65,8 @@
             {{-- Менеджер забирает сам — одной строкой; нажатие — то же окно «Назначить вывоз», где его меняют на логиста или наших. --}}
             <div class="list mb-4">
                 <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">
-                    <span class="min-w-0 flex-1"><span class="block">Забирает сам</span><span class="row-sub">{{ $t->executor?->shortName() }}</span></span>
-                    <span class="shrink-0 text-accent-text">Передать в логистику</span><x-ui.chevron/>
+                    {{-- Действие — второй строкой: справа рядом с именем в узкой колонке оно ломало строку по словам. --}}
+                    <span class="min-w-0 flex-1"><span class="block">Забирает сам</span><span class="block text-sm text-accent-text">Передать в логистику</span></span><x-ui.chevron/>
                 </button>
             </div>
         @endif

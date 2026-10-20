@@ -111,8 +111,9 @@
                         </div>
                     </details>
                 @elseif ($step['state'] === Path::CURRENT)
-                    <div class="step-head">
-                        <span class="step-title">{{ $blockName($block) }}</span>
+                    {{-- «···» — справа от названия и в узкой колонке: длинное название переносится, а не выталкивает кнопку. --}}
+                    <div class="step-head !flex-nowrap !items-start">
+                        <span class="step-title min-w-0 flex-1">{{ $blockName($block) }}</span>
                         @if ($breaks->isNotEmpty() || $undo || $extend)
                             <div class="contents" data-controller="menu">
                                 <button type="button" class="btn btn-s btn-quiet btn-round -my-1 ml-auto shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
