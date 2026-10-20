@@ -15,7 +15,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Продана. Менеджер жмёт «Продаю» из «В продаже» и пишет только цену — её не отклоняем, нам в Telegram:
  * назначить вознаграждение и выставить счёт. Сотрудник вносит итог с любого рабочего этапа — когда сделка со
- * страховой закрыта.
+ * страховой закрыта. Покупатель с гаражом (20.10.2026, владелец: «только отметка») — «Продана» без суммы: он
+ * платит свою цену счётом, сколько выручил — не наше; счёт уже оплачен — расчёт закрыт сразу.
  */
 final class MarkGarageSold
 {
@@ -32,8 +33,9 @@ final class MarkGarageSold
             throw ValidationException::withMessages(['sold_price' => 'Продать можно ТС в продаже']);
         }
 
+        $buyer = $car->forBuyer();
         $car->moveTo(CarState::Sold, [
-            'sold_price' => $data['sold_price'],
+            'sold_price' => $buyer ? null : $data['sold_price'],
             'sold_at' => $data['sold_at'] ?? now(),
             'buyer_name' => $staff ? ($data['buyer_name'] ?? null) : null,
             'buyer_phone' => $staff ? ($data['buyer_phone'] ?? null) : null,
@@ -46,8 +48,11 @@ final class MarkGarageSold
             DealContract::for($deal)->update(['price' => (int) $data['sold_price']]);
             app(SyncDealInvoices::class)($deal->fresh(), $by);
         }
+        if ($buyer && $car->buyerPaid()) {
+            $car->moveTo(CarState::Settled, ['settled_at' => now()], $by);
+        }
         GarageChanged::dispatch($car);
-        if (! $staff) {
+        if (! $staff && ! $buyer) {
             NotifyOwner::dispatch(new GarageSelling($car->load(['offer', 'manager', 'costs'])));
         }
 

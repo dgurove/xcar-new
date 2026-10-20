@@ -2,6 +2,7 @@
 
 namespace App\Garage;
 
+use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Offers\Binding;
@@ -22,7 +23,7 @@ use Illuminate\Support\Carbon;
  * Машина в гараже: предложение, выведенное из продажи менеджеру на ремонт.
  * Всё про саму ТС — в предложении; здесь кому отдали, за сколько, расходы и чем кончилось.
  */
-#[Fillable(['offer_id', 'deal_id', 'manager_id', 'state', 'stage_at', 'history', 'taken_at', 'cost', 'sold_at', 'sold_price', 'buyer_name', 'buyer_phone', 'commission', 'settled_at', 'invoice_id', 'invoice_to', 'payout_invoice_id', 'note', 'created_by'])]
+#[Fillable(['offer_id', 'deal_id', 'manager_id', 'state', 'stage_at', 'history', 'taken_at', 'cost', 'sold_at', 'sold_price', 'buyer_name', 'buyer_phone', 'commission', 'settled_at', 'invoice_id', 'invoice_to', 'payout_invoice_id', 'note', 'created_by', 'buyer_price'])]
 class Car extends Model
 {
     protected $table = 'garage_cars';
@@ -40,7 +41,7 @@ class Car extends Model
             'state' => CarState::class,
             'history' => 'array',
             'taken_at' => 'datetime', 'stage_at' => 'datetime', 'sold_at' => 'datetime', 'settled_at' => 'datetime',
-            'cost' => 'int', 'sold_price' => 'int', 'commission' => 'int',
+            'cost' => 'int', 'sold_price' => 'int', 'commission' => 'int', 'buyer_price' => 'int',
         ];
     }
 
@@ -139,10 +140,48 @@ class Car extends Model
         return $price ? (int) $price : null;
     }
 
-    /** Закупочная тому, кто смотрит: сотруднику — `price()`, менеджеру — закреплённая `managerPrice()`. */
+    /**
+     * Цена тому, кто смотрит: сотруднику — закупочная `price()`, менеджеру — закреплённая `managerPrice()`, покупателю с
+     * гаражом — его цена `buyer_price` (20.10.2026, владелец: «покупатель нигде ни в коем случае не должен видеть
+     * закупочные цены»).
+     */
     public function priceFor(bool $staff): ?int
     {
-        return $staff ? $this->price() : $this->managerPrice();
+        return match (true) {
+            $staff => $this->price(),
+            $this->forBuyer() => $this->buyer_price,
+            default => $this->managerPrice(),
+        };
+    }
+
+    /** Счёт покупателю с гаражом на его цену — счёт сделки (`SyncDealInvoices`), последний живой; у остальных — нет. */
+    public function holderInvoice(): ?Invoice
+    {
+        return $this->forBuyer() && $this->deal_id
+            ? Invoice::where('deal_id', $this->deal_id)->where('direction', 'issued')->where('kind', ChargeKind::Sale)
+                ->where('state', '!=', InvoiceState::Void)->latest('id')->first()
+            : null;
+    }
+
+    /** Покупатель с гаражом оплатил свой счёт целиком: отметил «Продана» — и расчёт закрыт. */
+    public function buyerPaid(): bool
+    {
+        return $this->forBuyer() && $this->holderInvoice()?->state === InvoiceState::Paid;
+    }
+
+    /** Подпись цены тому, кто смотрит: покупателю — «Цена», остальным — «Закупочная». */
+    public function priceLabel(bool $staff): string
+    {
+        return ! $staff && $this->forBuyer() ? 'Цена' : 'Закупочная';
+    }
+
+    /**
+     * Машина у покупателя (или супер-покупателя) с гаражом по тумблеру: цена — `buyer_price` счётом ПРАЙМ, поставщику
+     * платим мы, расчёта и вознаграждения нет; закупочной ему не видно нигде. Одна дверь для всех веток гаража.
+     */
+    public function forBuyer(): bool
+    {
+        return (bool) $this->manager?->holdsAsBuyer();
     }
 
     /** Расходы рядом с закупочной — без строки «Оплата поставщику»: это та же цена, второй раз её не пишем. */
@@ -153,16 +192,18 @@ class Car extends Model
         return round($costs->reject(fn ($c) => $c->isSupplier())->when($payer, fn ($c) => $c->where('payer', $payer))->sum('amount'), 2);
     }
 
-    /** Вложено в машину: отдали за плюс все расходы. */
+    /** Вложено в машину: отдали за плюс все расходы; у машины покупателя — только наши (его расходы — его). */
     public function invested(): float
     {
-        return round((float) $this->base() + $this->spent(), 2);
+        return round((float) $this->base() + ($this->forBuyer() ? $this->spent(Payer::Xcar) : $this->spent()), 2);
     }
 
-    /** Прибыль: цена продажи минус вложенное; не продана — null. */
+    /** Прибыль: цена продажи минус вложенное; не продана — null. У машины покупателя — его цена минус вложенное нами. */
     public function profit(): ?float
     {
-        return $this->sold_price === null ? null : round($this->sold_price - $this->invested(), 2);
+        $price = $this->forBuyer() ? $this->buyer_price : $this->sold_price;
+
+        return $price === null ? null : round($price - $this->invested(), 2);
     }
 
     /** Сколько дней машина в гараже; проданная — по день продажи. */

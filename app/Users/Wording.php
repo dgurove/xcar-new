@@ -25,7 +25,7 @@ final class Wording
 
     public static function for(?User $user, ?string $text): ?string
     {
-        return $text !== null && $user?->isSuperBuyer() ? self::buyer($text) : $text;
+        return $text !== null && $user?->holdsAsBuyer() ? self::buyer($text) : $text;
     }
 
     /** «Счёт выставлен менеджеру» → «Счёт выставлен покупателю». */

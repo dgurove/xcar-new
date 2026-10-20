@@ -28,7 +28,8 @@ final class PassTurnOnInvoice
         }
         $deal = Deal::with('buyer')->find($invoice->deal_id);
         $position = Position::where('offer_id', $deal?->offer_id)->where('track', Track::Sale)->with('stage.exits')->first();
-        if (! $deal?->isActive() || ! $position?->stage->isPayStep()) {
+        // Покупатель с гаражом платит свою цену долгом (20.10.2026): его счёт с нашим маршрутом со страховой не связан.
+        if (! $deal?->isActive() || ! $position?->stage->isPayStep() || $deal->forGarageBuyer()) {
             return;
         }
 

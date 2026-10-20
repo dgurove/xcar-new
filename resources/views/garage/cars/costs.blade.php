@@ -3,11 +3,14 @@
      07.10.2026: поля строками (.fields), кнопка .sheet-foot; «Убрать» ниже отдельной формой, отступ шире подложки кнопки. --}}
 @php
     // «Оплата поставщику» — закреплённая закупочная (`CloseGarageDeal` из `deal->cost`): видна и менеджеру (16.10.2026).
-    $costs = $car->costs;
+    // Покупателю с гаражом — только его расходы: что платили мы (эвакуатор, ремонт) и оплата поставщику входят в его цену и
+    // видны только в CRM (20.10.2026).
+    $costs = ($asBuyer ?? false) ? $car->costs->where('payer', \App\Garage\Payer::Manager)->reject(fn ($c) => $c->isSupplier())->values() : $car->costs;
+    $total = ($asBuyer ?? false) ? $costs->sum('amount') : $car->spent();
 @endphp
 @if ($costs->isNotEmpty() || ($staff && $canAdd))
     <section>
-        <h2 class="list-head lg:pt-0">Расходы@if ($costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($car->spent()) }}</span>@endif
+        <h2 class="list-head lg:pt-0">Расходы@if ($costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($total) }}</span>@endif
             @if ($staff && $canAdd)
                 <button type="button" class="btn btn-s btn-quiet ml-auto self-center" data-controller="emit" data-action="emit#send" data-emit-event-param="cost-new:open"><x-ui.icon name="plus" class="size-4"/>Расход</button>
             @endif

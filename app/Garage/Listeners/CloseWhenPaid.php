@@ -23,7 +23,9 @@ final class CloseWhenPaid
         $car = Car::where('state', CarState::Sold)->where(fn ($q) => $q
             ->where(fn ($m) => $m->where('invoice_id', $e->invoice->id)->where(fn ($t) => $t->whereNull('invoice_to')->orWhere('invoice_to', 'manager')))
             ->orWhere('payout_invoice_id', $e->invoice->id))->first();
-        if ($car) {
+        // Покупатель с гаражом оплатил свой счёт (счёт сделки), а ТС уже продана — расчёт закрыт (20.10.2026).
+        $car ??= $e->invoice->deal_id ? Car::where('state', CarState::Sold)->where('deal_id', $e->invoice->deal_id)->first() : null;
+        if ($car && ($car->invoice_id === $e->invoice->id || $car->payout_invoice_id === $e->invoice->id || $car->buyerPaid())) {
             $car->moveTo(CarState::Settled, ['settled_at' => now()], $e->by);
             GarageChanged::dispatch($car);
         }

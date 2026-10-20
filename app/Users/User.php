@@ -4,6 +4,8 @@ namespace App\Users;
 
 use App\Billing\Party;
 use App\Chats\Chat;
+use App\Garage\Car;
+use App\Garage\CarState;
 use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Media\MediaUrl;
@@ -38,7 +40,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -80,6 +82,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'list_prefs' => 'array',
             'contact_fields' => 'array',
             'buyer_show_vin' => 'bool',
+            'garage_enabled' => 'bool',
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
@@ -128,6 +131,13 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
         return $q->where(fn ($w) => $w->where('users.name', 'ilike', $like)->orWhere('users.login', 'ilike', $like)->orWhere('users.email', 'ilike', $like)
             ->when(strlen($digits) >= 3, fn ($w) => $w->orWhere('users.phone', 'like', Term::like($digits))));
+    }
+
+    /** Покупатели и супер-покупатели с гаражом по тумблеру (`garageBuyer`), кому его можно отдать: «Отдать → Покупателю». */
+    public static function garageBuyers(): Builder
+    {
+        return self::query()->where('garage_enabled', true)->where('is_demo', false)->whereNull('rejected_at')
+            ->withRole(Role::Buyer, Role::SuperBuyer)->where(fn ($q) => $q->whereJsonDoesntContain('roles', Role::Manager->value));
     }
 
     public function scopeWithRole(Builder $query, Role ...$roles): Builder
@@ -225,10 +235,29 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->hasRole(Role::SuperBuyer);
     }
 
-    /** Свои сделки и деньги по ним на сайте: менеджер и супер-покупатель (`ability:hasDeals`). */
+    /**
+     * Свои сделки и деньги по ним на сайте: менеджер, супер-покупатель (`ability:hasDeals`) и покупатель с гаражом — у его
+     * машины в гараже своя сделка со счётом (20.10.2026).
+     */
     public function hasDeals(): bool
     {
-        return $this->isManager() || $this->isSuperBuyer();
+        return $this->isManager() || $this->isSuperBuyer() || ($this->holdsAsBuyer() && $this->canGarage());
+    }
+
+    /**
+     * Покупатель или супер-покупатель, которому админ включил гараж (20.10.2026, владелец: «у покупателей гаража быть не
+     * должно, но тумблером — чтобы мы могли им тачки отдавать»). Машину ему отдают по своей цене (`garage_cars.buyer_price`),
+     * закупочную он не видит нигде; поставщику платим мы, расчёта и вознаграждения нет.
+     */
+    public function garageBuyer(): bool
+    {
+        return $this->garage_enabled && ($this->isBuyer() || $this->isSuperBuyer()) && ! $this->is_demo;
+    }
+
+    /** Держатель гаража — покупатель, а не менеджер: ему цена, а не закупочная, и чат с площадкой. */
+    public function holdsAsBuyer(): bool
+    {
+        return ($this->isBuyer() || $this->isSuperBuyer()) && ! $this->isManager();
     }
 
     /**
@@ -243,7 +272,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Чат по предложению: по роли, а покупателю — только со своим менеджером. */
     public function canChat(): bool
     {
-        return $this->roleCan('canChat') && (! $this->isBuyer() || $this->manager_id);
+        // Покупатель без менеджера пишет только по машине у себя в гараже — с площадкой (20.10.2026).
+        return $this->roleCan('canChat') && (! $this->isBuyer() || $this->manager_id || $this->canGarage());
     }
 
     /** Закупки по роли; демо-кабинету закрыты — закупки настоящие. */
@@ -252,10 +282,18 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->roleCan('canSeePurchases') && ! $this->is_demo;
     }
 
-    /** Гараж по роли; демо-кабинету его нет — гаражных машин у него не бывает. */
+    /**
+     * Гараж по роли, а покупателю — по тумблеру (`garageBuyer`); выключили тумблер — новых машин не отдают, начатые он
+     * доводит до расчёта. Демо-кабинету гаража нет.
+     */
     public function canGarage(): bool
     {
-        return $this->roleCan('canGarage') && ! $this->is_demo;
+        if ($this->is_demo) {
+            return false;
+        }
+
+        return $this->roleCan('canGarage') || $this->garageBuyer()
+            || ($this->holdsAsBuyer() && once(fn () => Car::where('manager_id', $this->id)->where('state', '!=', CarState::Settled)->exists()));
     }
 
     /** Менеджер покупателя — тот, чью пригласительную ссылку он открыл. */

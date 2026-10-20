@@ -34,15 +34,16 @@ class SettlementController
     {
         $car = $this->car($request, $offer);
         $request->merge(['sold_price' => Money::rubles($request->input('sold_price'))]);
+        // Покупатель с гаражом — только отметка, без суммы (20.10.2026).
         $data = $request->validate([
-            'sold_price' => ['required', 'integer', 'min:1'],
+            'sold_price' => $car->forBuyer() ? ['prohibited'] : ['required', 'integer', 'min:1'],
             'sold_at' => ['nullable', 'date', 'before_or_equal:today'],
             'buyer_name' => ['nullable', 'string', 'max:120'],
             'buyer_phone' => ['nullable', 'string', 'max:32'],
         ]);
         $sold($car, ['sold_at' => now()] + array_filter($data), $request->user());
 
-        return back()->with('toast', 'Продана за '.Money::rub($data['sold_price']));
+        return back()->with('toast', $car->forBuyer() ? 'Продана' : 'Продана за '.Money::rub($data['sold_price']));
     }
 
     /**

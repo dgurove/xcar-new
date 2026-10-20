@@ -4,7 +4,7 @@
      что с деньгами по продаже — на странице машины; шире — «В гараже с», сотруднику ещё «Менеджер»; подробная показывает их и на телефоне. Нажатие — страница машины или вывоза
      (`row-go`: карточки рядом у гаража нет). --}}
 @props(['offer', 'href', 'word', 'tone' => 'text-ink-muted', 'when' => null, 'value' => null, 'caption' => null, 'who' => null, 'car' => null, 'staff' => false])
-@php use App\Support\Money; $spent = $car?->extraSpent() ?? 0; $price = $car?->priceFor($staff); @endphp
+@php use App\Support\Money; $spent = $car?->extraSpent(! $staff && $car->forBuyer() ? \App\Garage\Payer::Manager : null) ?? 0; $price = $car?->priceFor($staff); @endphp
 <tr id="garage-{{ $offer->number }}">
     <td class="grow">
         <a href="{{ $href }}" class="row-link"><span class="cell-title">{{ $offer->titleWithYear() }}<x-car.keys :count="$offer->keys_count"/></span></a>

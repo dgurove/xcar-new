@@ -18,6 +18,11 @@ final class GarageView
     {
         $offer = $car->offer;
         $staff = $user->isAdmin();
+        // Машина у покупателя с гаражом (20.10.2026): его цена счётом сделки, без расчёта и выплаты; «Продана» — отметкой.
+        $buyerCar = $car->forBuyer();
+        $asBuyer = $buyerCar && ! $staff;
+        $holderInvoice = $buyerCar ? $car->holderInvoice() : null;
+        $holderDue = $asBuyer && $holderInvoice && $holderInvoice->remaining() - $holderInvoice->claimed() > 0;
         $n = $offer->number;
         $invoice = $car->invoice;
         // Ждёт денег сейчас: выплата менеджеру (покупатель уже заплатил) или сам счёт.
@@ -40,6 +45,9 @@ final class GarageView
             default => [],
         }));
         $sale = array_values(array_filter(match (true) {
+            $buyerCar && $car->state === CarState::Selling => [['post', "/garage/cars/{$n}/sold", 'Продана', 'Отметить, что ТС продана?']],
+            $asBuyer && $holderDue => [['emit', 'pay', 'Оплатить']],
+            $buyerCar => [],
             ! $staff && $car->state === CarState::Selling => [['emit', 'selling', 'Продаю']],
             ! $staff && $unpaid && ! $current->isOwed() && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0 => [['emit', 'pay', 'Оплатить']],
             $staff && $car->state === CarState::Selling => [['emit', 'sold', 'Продана']],
@@ -52,6 +60,8 @@ final class GarageView
         // Редкое — в «⋯» своей дорожки: снять итог и аннулировать — у продажи, «Отдали по ошибке» — у гаража.
         $moreSale = array_values(array_filter([
             $staff && $car->state === CarState::Sold && ! $invoice ? ['form', 'DELETE', "/garage/cars/{$n}/sold", 'Не продана', 'Снять итог продажи?'] : null,
+            // Покупатель с гаражом: в продаже, а счёт ещё не оплачен — «Оплатить» рядом с «Продана», в «⋯».
+            $asBuyer && $holderDue && $car->state === CarState::Selling ? ['emit', 'pay', 'Оплатить'] : null,
             $staff && $unpaid ? ['form', 'DELETE', "/garage/cars/{$n}/invoice", 'Аннулировать', 'Аннулировать документ? Расходы и итог снова можно будет поправить'] : null,
         ]));
         $morePrep = array_values(array_filter([
@@ -66,7 +76,7 @@ final class GarageView
 
         return [
             'car' => $car, 'offer' => $offer, 'n' => $n, 'user' => $user, 'staff' => $staff,
-            's' => Settlement::of($car), 'invoice' => $invoice, 'current' => $current, 'unpaid' => $unpaid,
+            's' => Settlement::of($car), 'invoice' => $invoice, 'buyerCar' => $buyerCar, 'asBuyer' => $asBuyer, 'holderInvoice' => $holderInvoice, 'holderDue' => $holderDue, 'current' => $current, 'unpaid' => $unpaid,
             'canAdd' => $canAdd, 'prep' => $prep, 'sale' => $sale, 'buttons' => $buttons, 'more' => $more, 'moreSale' => $moreSale, 'morePrep' => $morePrep,
             // Куда сотрудник может вернуть машину кнопкой в пути: пройденные этапы работы с ней.
             // «Готова» после закрытой сделки — та же продажа (`MoveCar`), туда не возвращают.
@@ -74,7 +84,7 @@ final class GarageView
                 && ($s !== CarState::Ready || $car->papersPending()))) : [],
             // Деньги плашкой — как только есть закупочная, до продажи крупно она: сотруднику нынешняя, менеджеру закреплённая
             // при подтверждении (16.10.2026). Считать нечего — плашки нет: «0 ₽» крупно ничего не говорит.
-            'money' => $car->isSold() || $car->priceFor($staff) || ($staff ? $car->spent() > 0 : $car->extraSpent() > 0),
+            'money' => $car->isSold() || $car->priceFor($staff) || ($staff ? $car->spent() > 0 : $car->extraSpent($asBuyer ? Payer::Manager : null) > 0),
             'step' => $step,
             // Для пути: на каком шаге маршрута сделка и ждут ли ответа менеджера.
             'asks' => ! $staff && ($step['requirement'] ?? null),

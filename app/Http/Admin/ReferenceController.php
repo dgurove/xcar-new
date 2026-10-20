@@ -110,6 +110,16 @@ class ReferenceController
         return response()->json($users->map(fn ($u) => ['id' => $u->id, 'label' => $u->name, 'hint' => $u->phone ? $u->phoneFormatted() : null]));
     }
 
+    /** Покупатели с гаражом по тумблеру — «Отдать → В гараж → Покупателю» (20.10.2026); подпись — роль и чей покупатель. */
+    public function garageBuyers(Request $request)
+    {
+        $users = User::garageBuyers()->search(trim((string) $request->query('q', '')))->with('manager:id,name')
+            ->orderBy('name')->limit(20)->get(['id', 'name', 'phone', 'roles', 'manager_id']);
+
+        return response()->json($users->map(fn ($u) => ['id' => $u->id, 'label' => $u->name,
+            'hint' => $u->isSuperBuyer() ? 'супер-покупатель' : ($u->manager ? 'покупатель '.$u->manager->shortName() : 'покупатель')]));
+    }
+
     public function models(Request $request)
     {
         $models = CarModel::query()->where('brand_id', $request->query('brand'))->search((string) $request->query('q', ''), prefix: true)

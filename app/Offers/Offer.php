@@ -295,10 +295,22 @@ class Offer extends Model
         return $this->hasMany(Bid::class)->where('state', BidState::Active)->orderByRaw('amount desc nulls last')->orderBy('id');
     }
 
-    /** Может ли человек забрать машину себе в гараж подтверждением: галка у предложения и менеджер с гаражом. */
+    /**
+     * Может ли человек забрать машину себе в гараж подтверждением: галка у предложения и менеджер с гаражом; супер-покупатель
+     * — с гаражом по тумблеру (20.10.2026) и только где поставщику можем платить мы (`garageToBuyer`).
+     */
     public function garageAllowedFor(?User $user): bool
     {
-        return $this->garage_allowed && $user !== null && $user->isManager() && $user->canGarage();
+        return $this->garage_allowed && $user !== null && ($user->isManager() ? $user->canGarage() : $user->garageBuyer() && $user->canBid() && $this->garageToBuyer());
+    }
+
+    /**
+     * Покупателю в гараж можно: поставщику у него всегда платим мы (20.10.2026), а для этого нужна гаражная ветка маршрута
+     * (у Т-Страхования её нет). Совкомбанк — «взяли под себя» той же веткой.
+     */
+    public function garageToBuyer(): bool
+    {
+        return $this->garageBranch();
     }
 
     /**

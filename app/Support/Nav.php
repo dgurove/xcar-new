@@ -143,9 +143,10 @@ final class Nav
             ];
         }
 
-        // Супер-покупатель: предложения, галерея и свои сделки — покупателей и гаража у него нет.
+        // Супер-покупатель: предложения, галерея и свои сделки — покупателей нет, гараж — только по тумблеру (20.10.2026).
         if ($user?->isSuperBuyer()) {
-            return [self::item('Предложения', '/offers'), self::item('Галерея', '/gallery'), self::item('Сделки', '/deals')];
+            return array_values(array_filter([self::item('Предложения', '/offers'), self::item('Галерея', '/gallery'), self::item('Сделки', '/deals'),
+                $user->canGarage() ? self::item('Гараж', '/garage') : null]));
         }
 
         // Проверяющий: только посмотреть предложения.
@@ -155,11 +156,13 @@ final class Nav
 
         // Покупатель: только то, что открыл менеджер, и его интерес.
         if ($user?->isBuyer()) {
-            return [
+            return array_values(array_filter([
                 self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery'),
                 self::item('Интерес', '/account/interests'),
-            ];
+                // Гараж покупателю — по тумблеру в CRM (20.10.2026): машины, что ему отдали.
+                $user->canGarage() ? self::item('Гараж', '/garage') : null,
+            ]));
         }
 
         if ($user?->isApproved()) {
@@ -330,6 +333,13 @@ final class Nav
             // Супер-покупатель оставляет интерес в галерее — его список здесь же (у менеджера интерес — в «Покупателях»).
             if ($user->isSuperBuyer()) {
                 $links[] = self::link('Интерес', '/account/interests', icon: 'flag');
+            }
+            // Покупатель с гаражом (20.10.2026): «Оплаты» — его счета за машины гаража, остальное кабинета — как было.
+            if ($user->isBuyer()) {
+                $links[] = self::link('Интерес', '/account/interests', icon: 'flag');
+                if (ContractDataController::opensFor($user)) {
+                    $links[] = self::link('Данные для договора', '/account/contract', icon: 'file');
+                }
             }
         } elseif ($user->isAdmin()) {
             $links[] = self::link('Пользователи', '/account/users', icon: 'users');
@@ -615,10 +625,18 @@ final class Nav
             $badges['/account/money'] = Cache::remember("nav.money:{$user->id}", 30,
                 fn () => (new ManagerLedger($user))->rows()->filter(fn ($r) => $r->money->needsAction())->count());
         }
-        if ($user->isSuperBuyer()) {
-            // Что ждут от него по сделкам — на табе «Сделки», как у менеджера.
-            $badges['/deals/asks'] = max(0, Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->count() - array_sum(self::paidPayAsks($user)));
-            $badges['/deals'] = $badges['/deals/asks'];
+        if ($user->holdsAsBuyer()) {
+            // Что ждут от него по сделкам — на табе «Сделки», как у менеджера; по гаражной — на табе «Гараж» (20.10.2026).
+            $asks = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->join('deals', 'deals.id', '=', 'requirements.deal_id')
+                ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
+            $paid = self::paidPayAsks($user);
+            if ($user->isSuperBuyer()) {
+                $badges['/deals/asks'] = max(0, (int) $asks->deals - $paid['deals']);
+                $badges['/deals'] = $badges['/deals/asks'];
+            }
+            if ($user->canGarage()) {
+                $badges['/garage'] = max(0, (int) $asks->garage - $paid['garage']);
+            }
         }
         if ($user->isAdmin() && ! $user->isManager()) {
             // Админу «Сделки» горят тем же, что «Работа → Сделки» в CRM: просрочено или ход наш.

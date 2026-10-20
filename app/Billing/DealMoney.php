@@ -54,6 +54,11 @@ final class DealMoney
         $state = $deal->commissionState();
         // Гаражная сделка цены подтверждения не знает: её счёт (Каркаде, платит менеджер) — от закупочной.
         $label = $deal->isGarage() ? 'В гараж' : 'Цена подтверждения';
+        // Покупатель с гаражом закупочной не видит нигде (20.10.2026): его число — его цена.
+        $base = $deal->forGarageBuyer() ? (float) $deal->garageCar?->buyer_price : (float) $deal->base();
+        if ($deal->forGarageBuyer()) {
+            $label = 'Цена';
+        }
         $date = fn ($at) => $at?->translatedFormat('j M');
 
         if ($deal->state === DealState::Cancelled) {
@@ -99,17 +104,17 @@ final class DealMoney
         // Счёта ещё не может быть — поставщик не ответил (у Совкомбанка — до «Забрал»): серым, когда встанет, а не оранжевое
         // «Укажите покупателя» (11.10.2026: в «Сделках» — «Ждём XCar», а в «Оплатах» — «ваш ход»).
         if ($issued->isEmpty() && $deal->isActive() && ($notYet = $deal->invoiceNotYet()) !== null) {
-            return new self('Счёт '.$notYet, (float) $deal->base(), 'plain', 'open', $staff ? mb_strtolower($label) : $label);
+            return new self('Счёт '.$notYet, $base, 'plain', 'open', $staff ? mb_strtolower($label) : $label);
         }
         if ($issued->isEmpty() && $deal->isActive() && in_array($gap = $deal->invoiceGap(), ['buyer', 'passport'], true)) {
             return $staff
-                ? new self($gap === 'passport' ? 'Ждём паспорт покупателя' : 'Ждём покупателя', (float) $deal->base(), 'plain', 'open', mb_strtolower($label))
-                : new self($gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя', (float) $deal->base(), 'urgent', 'open', $label);
+                ? new self($gap === 'passport' ? 'Ждём паспорт покупателя' : 'Ждём покупателя', $base, 'plain', 'open', mb_strtolower($label))
+                : new self($gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя', $base, 'urgent', 'open', $label);
         }
         if ($issued->isEmpty()) {
             return $deal->state === DealState::Done
-                ? new self('Сделка закрыта', (float) $deal->base(), 'muted', 'closed', $label)
-                : new self('Счёт ещё не выставлен', (float) $deal->base(), 'muted', 'open', $label);
+                ? new self('Сделка закрыта', $base, 'muted', 'closed', $label)
+                : new self('Счёт ещё не выставлен', $base, 'muted', 'open', $label);
         }
 
         $mine = $staff ? 'вознаграждение' : 'Ваше вознаграждение';
@@ -125,7 +130,7 @@ final class DealMoney
             CommissionState::Paid => new self(($staff ? 'Выплатили ' : 'Выплачено ').$date($fee->paid_at), (float) $deal->commission, 'muted', 'closed', $mine),
             // Его счета оплачены, выплата ещё не выставлена (ждёт счёт вендора или очередь) — это не «закрыто».
             CommissionState::Awaiting => new self($staff ? 'Выплата после оплаты всех счетов' : 'Выплатим после оплаты всех счетов', (float) $deal->commission, 'muted', 'payout', $mine),
-            default => new self('Счёт оплачен', (float) $deal->base(), 'muted', 'closed', $label),
+            default => new self('Счёт оплачен', $base, 'muted', 'closed', $label),
         };
     }
 

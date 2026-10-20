@@ -49,7 +49,8 @@ final class SyncDealInvoices
     public function __invoke(Deal $deal, User $by): void
     {
         $this->adopt($deal);
-        if (! $deal->agreed()) {
+        // Покупатель с гаражом у Совкомбанка: «да» поставщика там нет вовсе — счёт на его цену сразу, долгом (20.10.2026).
+        if (! $deal->agreed() && ! ($deal->forGarageBuyer() && $deal->isCommission())) {
             return;
         }
         $deal->loadMissing(['offer', 'buyer', 'contract.buyer']);
@@ -118,6 +119,13 @@ final class SyncDealInvoices
     /** @return array{party: Party, lines: list<array>, offset: float}|null */
     private function prime(Deal $deal): ?array
     {
+        // Покупатель с гаражом — одна строка на его цену, какой бы ни была схема: закупочной в счёте нет (20.10.2026).
+        if ($deal->forGarageBuyer()) {
+            $price = $deal->garageCar()->value('buyer_price');
+
+            return $price ? ['party' => Party::forUser($deal->buyer), 'offset' => 0.0,
+                'lines' => [['title' => 'Транспортное средство '.$deal->offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]] : null;
+        }
         if (! $deal->isPrime() || $deal->cost === null || ! $deal->buyer) {
             return null;
         }
@@ -172,7 +180,7 @@ final class SyncDealInvoices
             ->with(['payments', 'claims', 'charges'])->get();
         $total = $want ? round(array_sum(array_map(fn ($l) => $l['price'] * $l['qty'], $want['lines'])), 2) : null;
         // Сверяем строки, а не итог: у плательщика с «НДС сверху» итог больше строк.
-        $seller = $kind === ChargeKind::Sale ? $deal->seller() : Seller::Prime;
+        $seller = $kind === ChargeKind::Sale && ! $deal->forGarageBuyer() ? $deal->seller() : Seller::Prime;
         // Сменили схему ПРАЙМ ↔ Р.О.С. — счёт другого продавца перевыставляется.
         $fits = fn (Invoice $i) => $want && $i->seller === $seller && $i->party_id === $want['party']->id && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $total) < 0.01
             && abs($i->payments->where('source', PaymentSource::Offset)->sum('amount') - $want['offset']) < 0.01;

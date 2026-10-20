@@ -69,7 +69,11 @@ class OfferEvent extends Model
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
             OfferEventType::StateChanged => OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
             OfferEventType::BidPlaced => ! empty($p['garage']) ? 'Подтверждение в гараж' : 'Подтверждение '.Money::plain($p['amount'] ?? 0),
-            OfferEventType::BidAccepted => isset($p['garage']) ? 'В гараж, поставщику платит '.mb_strtolower(GaragePayer::tryFrom($p['garage'])?->label() ?? '') : 'Подтверждение принято',
+            OfferEventType::BidAccepted => match (true) {
+                isset($p['buyer_price']) => 'В гараж покупателю за '.Money::rub($p['buyer_price']),
+                isset($p['garage']) => 'В гараж, поставщику платит '.mb_strtolower(GaragePayer::tryFrom($p['garage'])?->label() ?? ''),
+                default => 'Подтверждение принято',
+            },
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
             OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
             OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : (! empty($p['placed_by']) ? 'Интерес, внесён за менеджера' : 'Интерес'),

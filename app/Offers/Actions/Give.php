@@ -61,6 +61,7 @@ final class Give
             $manager = $bid?->user ?? $g->manager;
             $garage = $bid ? $bid->isGarage() : $g->garage;
             $this->check($offer, $manager, $garage, $bid ? $bid->amount : $g->amount, $bid !== null);
+            $this->checkBuyer($offer, $manager, $garage, $g->buyerPrice);
 
             $bid ??= $manager ? PlaceBid::record($offer, $manager, $by, $garage ? null : $g->amount, null, $garage ? BidKind::Garage : BidKind::Buyer) : null;
             // Закупочная менеджера — какой она была, когда он подтверждал (15.10.2026); нынешняя, если другая, — закупочная
@@ -86,7 +87,8 @@ final class Give
             $deal = $this->deal($offer, $g, $bid, $manager, $garage, $cost);
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid?->id, 'amount' => $deal->amount, 'commission' => $deal->commission,
                 'mode' => $deal->commission_mode?->value, 'garage' => $deal->garage_payer?->value, 'manager' => $bid ? null : $manager?->id,
-                'scheme' => $deal->scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $deal->share], fn ($v) => $v !== null));
+                'scheme' => $deal->scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $deal->share,
+                'buyer_price' => $garage && $manager?->holdsAsBuyer() ? $g->buyerPrice : null], fn ($v) => $v !== null));
             $deal->setRelation('offer', $offer);
             // Покупатель по договору у супер-покупателя — он сам, выбирать некого; вознаграждения у его сделки нет — его
             // снимает сама сделка (`Deal::booted`).
@@ -94,7 +96,7 @@ final class Give
                 DealContract::for($deal);
             }
             if ($garage) {
-                ($this->reserve)($deal, $by);
+                ($this->reserve)($deal, $by, $manager?->holdsAsBuyer() ? $g->buyerPrice : null);
             }
 
             $offer = $previous && $offer->state === OfferState::Sold ? $this->handOver($offer, $previous, $deal, $by) : $this->enterDeal($offer, $deal, $by);
@@ -108,6 +110,10 @@ final class Give
             }
             if ($g->pickup) {
                 ($this->pickup)($offer, $deal->fresh(), $g->pickup, $by, $g->where, $previous);
+            }
+            // Покупателю с гаражом у Совкомбанка счёт на его цену — сразу (`SyncDealInvoices`): ждать «да» там нечего.
+            if ($garage && $manager?->holdsAsBuyer() && $deal->isCommission()) {
+                app(SyncDealInvoices::class)($deal->fresh(), $by);
             }
             if ($bid) {
                 BidAccepted::dispatch($bid, $by);
@@ -135,8 +141,8 @@ final class Give
             return;
         }
         if ($garage) {
-            if ($manager && ! $manager->isManager()) {
-                throw ValidationException::withMessages(['manager_id' => 'В гараж ТС берёт менеджер']);
+            if ($manager && ! $manager->isManager() && ! $manager->garageBuyer()) {
+                throw ValidationException::withMessages(['manager_id' => 'В гараж ТС берёт менеджер или покупатель с гаражом']);
             }
 
             return;
@@ -151,6 +157,26 @@ final class Give
         }
     }
 
+    /**
+     * Покупателю в гараж (20.10.2026): только с его ценой и где поставщику платим мы — и супер-покупателю, что сам нажал
+     * «В гараж» (его подтверждение без суммы, цену вписывает админ при «Принять»).
+     */
+    private function checkBuyer(Offer $offer, ?User $holder, bool $garage, ?int $price): void
+    {
+        if (! $garage || ! $holder?->holdsAsBuyer()) {
+            return;
+        }
+        if (! $holder->garageBuyer()) {
+            throw ValidationException::withMessages(['manager_id' => 'Гараж покупателю не включён']);
+        }
+        if (! $offer->garageToBuyer()) {
+            throw ValidationException::withMessages(['give' => 'У этого поставщика покупателю в гараж не отдать: платить поставщику некому']);
+        }
+        if (! $price || $price < 1) {
+            throw ValidationException::withMessages(['buyer_price' => 'Цена для покупателя']);
+        }
+    }
+
     private function deal(Offer $offer, Giving $g, ?Bid $bid, ?User $manager, bool $garage, ?int $cost): Deal
     {
         $scheme = DealScheme::resolve($offer, $g->scheme);
@@ -158,7 +184,8 @@ final class Give
         if ($garage) {
             // Без менеджера — «взяли под себя»: поставщику платим мы. Совкомбанк (менеджер платит ПРАЙМ по счёту) и маршрут
             // без гаражной ветки (Т-Страхование) — платит менеджер, путём обычной сделки (`Offer::garagePayerFixed`).
-            $payer = ! $manager ? GaragePayer::Us : ($offer->garagePayerFixed() ?? $g->payer ?? GaragePayer::Us);
+            // Покупателю — всегда мы: расчёта у него нет, он платит свою цену счётом ПРАЙМ (20.10.2026).
+            $payer = ! $manager || $manager->holdsAsBuyer() ? GaragePayer::Us : ($offer->garagePayerFixed() ?? $g->payer ?? GaragePayer::Us);
             [$commission, $mode] = [null, CommissionMode::Payout];
             // Наша доля — только у «платит менеджер»: он платит её по ссылке сразу (05.10.2026). Совкомбанк: доли нет —
             // машина уходит без оплаты, нашу часть даёт продажа (`Deal::namesBuyer`).

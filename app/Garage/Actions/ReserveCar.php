@@ -15,12 +15,13 @@ use App\Users\User;
  */
 final class ReserveCar
 {
-    public function __invoke(Deal $deal, ?User $by = null): Car
+    /** `$buyerPrice` — машина у покупателя с гаражом: его цена (`Car::forBuyer`), закупочной он не видит. */
+    public function __invoke(Deal $deal, ?User $by = null, ?int $buyerPrice = null): Car
     {
         $legacy = Car::where('offer_id', $deal->offer_id)->whereNull('deal_id')->first();
         if ($legacy && ! $legacy->isSold()) {
             // Закупочная — у сделки (`Car::base`), своя колонка у строки со сделкой пуста.
-            $legacy->update(['deal_id' => $deal->id, 'manager_id' => $deal->buyer_id, 'cost' => null]);
+            $legacy->update(['deal_id' => $deal->id, 'manager_id' => $deal->buyer_id, 'cost' => null, 'buyer_price' => $buyerPrice]);
             GarageChanged::dispatch($legacy);
 
             return $legacy;
@@ -36,6 +37,7 @@ final class ReserveCar
             'stage_at' => now(),
             'history' => [[CarState::Waiting->value, now()->toIso8601String()]],
             'created_by' => $by?->id,
+            'buyer_price' => $buyerPrice,
         ]);
         GarageChanged::dispatch($car);
 

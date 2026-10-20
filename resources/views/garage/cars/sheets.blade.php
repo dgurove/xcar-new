@@ -144,7 +144,14 @@
     </div>
 @endif
 
-@if (! $staff && $unpaid && ! $current->isOwed() && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0)
+@if ($asBuyer ?? false)
+    @if ($holderDue)
+        {{-- Покупатель с гаражом платит свой счёт сделки — той же шторкой, что в «Оплатах» кабинета. --}}
+        <div {!! $wrap('pay') !!}>
+            <x-billing.pay-sheet :invoices="collect([$holderInvoice])" :action="'/account/money/deals/'.$car->deal_id.'/pay'" pdf="/account/invoices/{id}/pdf" :open="$errors->any()"/>
+        </div>
+    @endif
+@elseif (! $staff && $unpaid && ! $current->isOwed() && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0)
     <div {!! $wrap('pay') !!}>
         <x-billing.pay-sheet :invoices="collect([$invoice])" :action="'/garage/cars/'.$n.'/checkout'" :pdf="'/garage/cars/'.$n.'/invoice/pdf'" :buyers="$user->buyers()->orderBy('name')->get()" :open="$errors->any()" :other-name="$car->buyer_name"/>
     </div>

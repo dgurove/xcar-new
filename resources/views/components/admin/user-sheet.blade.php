@@ -29,6 +29,7 @@
             <div class="fields">
                 <x-ui.field name="manager_id" label="Менеджер" :options="$managers->mapWithKeys(fn ($m) => [$m->id => $m->name])" :value="$user->manager_id"/>
             </div>
+            <x-admin.garage-toggle :user="$user"/>
         @else
             <div class="fields">
                 <x-ui.field name="phone" label="Телефон" type="tel" :value="$user->phoneFormatted()"/>
@@ -58,6 +59,9 @@
             @endif
             <div data-managers class="flex flex-col gap-3">
                 <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" :user="$user" name="manager"/>
+            </div>
+            <div data-super class="flex flex-col gap-3">
+                <x-admin.garage-toggle :user="$user"/>
             </div>
             <div data-crm class="flex flex-col gap-3">
                 <x-admin.crm-access-fields :areas="$user->access ?? []" :user="$user"/>

@@ -6,7 +6,7 @@
     <div @class(['contents' => $bar || $menuOnly, 'flex flex-wrap items-center gap-2' => ! $bar && ! $menuOnly])>
         @foreach ($buttons as $i => $b)
             @if ($b[0] === 'post')
-                <form method="post" action="{{ $b[1] }}" class="contents">@csrf<button type="submit" class="btn {{ $i ? 'btn-quiet' : 'btn-accent' }} {{ $size }}">{{ $b[2] }}</button></form>
+                <form method="post" action="{{ $b[1] }}" class="contents" @if ($b[3] ?? null) data-turbo-confirm="{{ $b[3] }}" @endif>@csrf<button type="submit" class="btn {{ $i ? 'btn-quiet' : 'btn-accent' }} {{ $size }}">{{ $b[2] }}</button></form>
             @elseif ($b[0] === 'link')
                 <a href="{{ $b[1] }}" class="btn {{ $i ? 'btn-quiet' : 'btn-accent' }} {{ $size }}">{{ $b[2] }}</a>
             @else

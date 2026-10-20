@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Admin\AlarmController;
 use App\Http\Admin\BankController;
 use App\Http\Admin\BidController;
 use App\Http\Admin\ChatController;
@@ -35,6 +36,7 @@ use App\Http\Admin\VendorController;
 use App\Http\Admin\WatermarkController;
 use App\Http\Admin\WorkflowController;
 use App\Http\Cabinet\InviteController;
+use App\Http\Cabinet\PassportScanController;
 use App\Http\Cabinet\ProfileController;
 use App\Http\Garage\CarController as GarageCarController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
@@ -57,7 +59,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // Поиск в шапке — модератору тоже: свои черновики (`Search\Search::for` сам решает, кому какие группы).
     Route::get('/search', SearchController::class);
     // «Горит» — срок обязывающего (19.10.2026): ведущим логистику, админам и модераторам.
-    Route::get('/alarms', [\App\Http\Admin\AlarmController::class, 'index'])->middleware('ability:leadsLogistics');
+    Route::get('/alarms', [AlarmController::class, 'index'])->middleware('ability:leadsLogistics');
     Route::get('/offers', fn () => redirect('/'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
     Route::post('/offers', [OfferController::class, 'store']);
     // Из писем: та же почта с вшитой выборкой «надо завести» — раньше `/offers/{offer}`, иначе from-mail примут за номер.
@@ -225,6 +227,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/confirmations', [BidController::class, 'storeFor']);
         Route::post('/offers/{offer}/interests', [InterestController::class, 'store']);
         Route::get('/reference/managers', [ReferenceController::class, 'managers']);
+        Route::get('/reference/garage-buyers', [ReferenceController::class, 'garageBuyers']);
         Route::post('/confirmations/{bid}/decline', [BidController::class, 'decline']);
         Route::post('/interests/{interest}', [InterestController::class, 'update']);
 
@@ -244,8 +247,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
         // Скан паспорта покупателя, которого админ указывает за менеджера (20.10.2026) — та же загрузка, что в кабинете.
-        Route::post('/parties/{party}/passport/{page}', [\App\Http\Cabinet\PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
-        Route::get('/parties/{party}/passport/live', [\App\Http\Cabinet\PassportScanController::class, 'live']);
+        Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
+        Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);
         Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
         Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         // Оплаты — вкладки «По ссылкам / Нам должны / Мы должны» (07.10.2026); карточка счёта — общая со стоянкой.

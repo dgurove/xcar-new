@@ -387,8 +387,10 @@ html.kb-open { --home-gap: 0px; }
   /* Отступной ответ шага («Я передумал»): тихой строкой под главной кнопкой, палец — 44 px. */
   /* «Отдать в гараж» по сценарию «Кому» (19.10.2026): «Себе» — ТС «Уже у нас», «Везёт в гараж» нет (везёт логистика:
      сервер без менеджера так и делает); ТС уже у менеджера или у нас — везти нечего. */
-  .give-garage .give-to-self { display: none; }
-  .give-garage:has(input[name="whom"][value="self"]:checked) .give-to-self { display: inline; }
+  .give-garage .give-to-self, .give-garage .give-to-buyer { display: none; }
+  .give-garage:has(input[name="whom"][value="self"]:checked) .give-to-self,
+  .give-garage:has(input[name="whom"][value="buyer"]:checked) .give-to-buyer { display: inline; }
+  .give-garage:has(input[name="whom"][value="buyer"]:checked) .give-to-manager,
   .give-garage:has(input[name="whom"][value="self"]:checked) .give-to-manager,
   .give-garage:has(input[name="whom"][value="self"]:checked) .give-carry,
   .give-garage:has(input[name="where"][value="arrived"]:checked) .give-carry { display: none; }
@@ -589,6 +591,7 @@ html.kb-open { --home-gap: 0px; }
   .invite-form:has(select[name="role"] option:checked:not([value="manager"])) [data-managers] { display: none !important; }
   .user-form:has(input[name="roles[]"][value="moderator"]:not(:checked)) [data-crm] { display: none !important; }
   .user-form:has(input[name="roles[]"][value="manager"]:not(:checked)) [data-managers] { display: none !important; }
+  .user-form:has(input[name="roles[]"][value="super_buyer"]:not(:checked)) [data-super] { display: none !important; }
   /* «Кому передать покупателей» — только когда «Менеджер» сняли. */
   .user-form:has(input[name="roles[]"][value="manager"]:checked) [data-transfer] { display: none !important; }
   .row-sub { @apply mt-1 flex flex-wrap items-center gap-1.5 text-sm text-ink-muted; }

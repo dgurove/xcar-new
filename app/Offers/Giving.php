@@ -34,6 +34,8 @@ final readonly class Giving
         public ?string $pickup = null,
         public string $where = 'owner',
         public bool $loss = false,
+        // Цена покупателю с гаражом (20.10.2026): машину он берёт по ней счётом ПРАЙМ, закупочной не видит.
+        public ?int $buyerPrice = null,
     ) {}
 
     /** Принять готовое подтверждение: кому, куда и цена — из него. */

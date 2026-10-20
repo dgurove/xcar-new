@@ -24,6 +24,28 @@
     // Состояние выплаты менеджеру — словом выплаты, а не счёта («Выставлен» про наш долг ему не говорит ничего).
     $payoutWord = fn ($i) => $i->state === \App\Billing\InvoiceState::Paid ? 'выплачено' : 'ждёт выплаты'.($i->remaining() > 0 ? ' до '.$i->due_at->translatedFormat('j M') : '');
 @endphp
+@if ($staff && ($buyerCar ?? false))
+    {{-- Машина у покупателя с гаражом — сотруднику (20.10.2026): закупочная, его цена, его счёт и наша прибыль; расчёта с
+         ним нет. --}}
+    @php $hi = $holderInvoice; $pdf = $hi?->getFirstMedia('file'); @endphp
+    <div class="list">
+        <div class="row flex-col items-start gap-1 py-4">
+            <span class="text-sm text-ink-muted">Покупателю за</span>
+            <span class="nums text-[32px] leading-none font-bold">{{ Money::exact($car->buyer_price) }}</span>
+        </div>
+        @if ($price)<div class="{{ $row }}"><span>Закупочная</span><span class="nums">{{ Money::rub($price) }}</span></div>@endif
+        @if ($ours > 0)<div class="{{ $row }}"><span>Наши расходы</span><span class="nums">{{ Money::exact($ours) }}</span></div>@endif
+        @if ($s['profit'] !== null)<div class="{{ $row }}"><span>Прибыль</span><span class="nums {{ $s['profit'] < 0 ? 'text-danger' : '' }}">{{ Money::exact($s['profit']) }}</span></div>@endif
+        @if ($mine > 0)<div class="{{ $row }}"><span>Расходы покупателя</span><span class="nums">{{ Money::exact($mine) }}</span></div>@endif
+        @if ($hi)
+            <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="{{ \App\Support\Surface::Crm->url('/work/money/invoices/'.$hi->id) }}" data-turbo="false" @endif class="{{ $row }}">
+                <span class="min-w-0"><span class="block">Счёт {{ $hi->label() }}</span><span class="row-sub">{{ $hi->state->label() }}@if ($hi->remaining() > 0), осталось {{ Money::rub($hi->remaining()) }}@endif</span></span>
+            </{{ $pdf ? 'a' : 'div' }}>
+        @elseif ($car->deal && ($when = $car->deal->invoiceNotYet()))
+            <div class="{{ $row }}"><span>Счёт</span><span class="text-ink-muted">{{ $when }}</span></div>
+        @endif
+    </div>
+@else
 <div class="list">
     <div class="row flex-col items-start gap-1 py-4">
         <span class="text-sm text-ink-muted">{{ $label }}</span>
@@ -83,3 +105,4 @@
         </div>
     @endif
 </div>
+@endif

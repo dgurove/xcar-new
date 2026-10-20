@@ -2,7 +2,9 @@
 
 namespace App\Billing\Listeners;
 
+use App\Billing\ChargeKind;
 use App\Billing\Events\PaymentClaimed;
+use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
 use App\Offers\OfferEventType;
 use App\Workflow\Actions\TakeExit;
@@ -23,7 +25,8 @@ final class AdvanceOnClaim
     {
         $invoice = $e->payment->invoice;
         $deal = $invoice->deal;
-        if (! $deal || ! $deal->isActive()) {
+        // Покупатель с гаражом платит свою цену долгом (20.10.2026): его счёт с нашим маршрутом со страховой не связан.
+        if (! $deal || ! $deal->isActive() || $deal->forGarageBuyer()) {
             return;
         }
         // Р.О.С. (Альфа с НДС): дальше — наш перевод этих денег Альфе. По одной заявке «оплатил» шаг не идёт — иначе
@@ -32,7 +35,7 @@ final class AdvanceOnClaim
             return;
         }
         // Сообщил об оплате одного счёта, а другой (машина или доля) ещё не оплачен и не заявлен — шаг ждёт.
-        $open = $deal->issuedInvoices()->where('kind', '!=', \App\Billing\ChargeKind::Reward)->where('state', \App\Billing\InvoiceState::Issued)->with('claims')->get();
+        $open = $deal->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->where('state', InvoiceState::Issued)->with('claims')->get();
         if ($open->contains(fn ($i) => $i->claims->isEmpty() && $i->remaining() > 0)) {
             return;
         }

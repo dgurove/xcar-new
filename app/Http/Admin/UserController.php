@@ -9,6 +9,7 @@ use App\Billing\ManagerLedger;
 use App\Billing\Party;
 use App\Billing\PartyRules;
 use App\Chats\Chat;
+use App\Garage\Car;
 use App\Http\Cabinet\InviteController;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\Bid;
@@ -326,7 +327,8 @@ class UserController
             || Deal::where('buyer_id', $user->id)->exists()
             || DB::table('offer_managers')->where('user_id', $user->id)->exists()
             || $user->buyers()->exists()
-            || Chat::where('user_id', $user->id)->where('messages_count', '>', 0)->exists();
+            || Chat::where('user_id', $user->id)->where('messages_count', '>', 0)->exists()
+            || Car::where('manager_id', $user->id)->exists();
     }
 
     /** Решение по ждущему или уже допущенному: открыть с выбранной ролью или закрыть доступ. */
@@ -353,7 +355,8 @@ class UserController
                 'last_name' => ['required', 'string', 'max:60'],
                 'manager_id' => ['required', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))],
             ]);
-            $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name'])]);
+            // Гараж покупателю — тумблером (20.10.2026): чтобы ему можно было отдать ТС.
+            $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name']), 'garage_enabled' => $request->boolean('garage_enabled')]);
             $transfer($user, User::find($data['manager_id']));
 
             return back()->with('toast', 'Сохранено');
@@ -432,6 +435,8 @@ class UserController
         // Галки областей — модератору сверх черновиков (почта CRM).
         $data['access'] = in_array(Role::Moderator, $data['roles'], true) ? array_values(array_intersect(CrmArea::values(), (array) $request->input('crm_areas', []))) : [];
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
+        // Гараж по тумблеру — только у супер-покупателя (у покупателя — своя ветка `update`), остальным гараж даёт роль.
+        $data['garage_enabled'] = in_array(Role::SuperBuyer, $data['roles'], true) && $request->boolean('garage_enabled');
 
         return $data;
     }

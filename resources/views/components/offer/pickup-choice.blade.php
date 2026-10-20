@@ -19,14 +19,14 @@
             <span class="field-label">Где ТС</span>
             <div class="flex flex-wrap gap-2">
                 <label class="choice"><input type="radio" name="where" value="owner" @checked(old('where', 'owner') === 'owner')><span>У страховой</span></label>
-                <label class="choice"><input type="radio" name="where" value="arrived" @checked(old('where') === 'arrived')><span><span class="give-to-manager">Уже у менеджера</span><span class="give-to-self">Уже у нас</span></span></label>
+                <label class="choice"><input type="radio" name="where" value="arrived" @checked(old('where') === 'arrived')><span><span class="give-to-manager">{{ $manager?->holdsAsBuyer() ? 'Уже у покупателя' : 'Уже у менеджера' }}</span><span class="give-to-buyer">Уже у покупателя</span><span class="give-to-self">Уже у нас</span></span></label>
             </div>
         </div>
         <div class="give-carry">
             <div class="flex flex-col gap-1.5">
                 <span class="field-label">Везёт в гараж</span>
                 <div class="flex flex-wrap gap-2">
-                    <label class="choice"><input type="radio" name="pickup" value="manager" @checked($pick === 'manager')><span>{{ $manager ? $manager->shortName().' сам' : 'Менеджер сам' }}</span></label>
+                    <label class="choice"><input type="radio" name="pickup" value="manager" @checked($pick === 'manager')><span>@if ($manager){{ $manager->shortName() }} сам@else<span class="give-to-manager">Менеджер сам</span><span class="give-to-buyer">Покупатель сам</span>@endif</span></label>
                     <label class="choice"><input type="radio" name="pickup" value="us" @checked($pick === 'us')><span>Логистика</span></label>
                 </div>
             </div>

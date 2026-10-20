@@ -13,10 +13,13 @@ use App\Billing\Seller;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
 use App\Logistics\Channel;
+use App\Park\Pass;
+use App\Park\VehicleState;
 use App\Support\Demo\HidesDemo;
 use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\DealFormat;
+use App\Workflow\Outcome;
 use App\Workflow\Requirement;
 use App\Workflow\Stage;
 use App\Workflow\Track;
@@ -246,7 +249,7 @@ class Deal extends Model
         // Машина стоит на нашей парковке — её выдают по пропуску сделки (18.10.2026). «Ждём на парковке» не держит: страховая
         // бывает и не привозит, а сделку тогда было бы не закрыть никогда.
         $park = $this->isGarage() ? null : $this->offer?->parkVehicle()->first();
-        if ($park?->state === \App\Park\VehicleState::Stored) {
+        if ($park?->state === VehicleState::Stored) {
             return 'Сначала заберите автомобиль с парковки';
         }
         $pickup = $this->isGarage() ? null : $this->offer?->pickup();
@@ -299,11 +302,11 @@ class Deal extends Model
     /** Пропуска на нашу парковку по этой сделке (`SyncParkRelease`). */
     public function passes(): HasMany
     {
-        return $this->hasMany(\App\Park\Pass::class);
+        return $this->hasMany(Pass::class);
     }
 
     /** Исход ведёт в конец сделки «Сделка закрыта» (оффер — «Выдан»). */
-    public static function closes(?\App\Workflow\Outcome $exit): bool
+    public static function closes(?Outcome $exit): bool
     {
         return $exit?->to?->offer_state === OfferState::Delivered;
     }
@@ -362,6 +365,11 @@ class Deal extends Model
     /** Договор собираем мы: ДКП собственника или ПРАЙМ (в том числе с менеджером гаражной); «страховой» — нет. */
     public function hasContract(): bool
     {
+        // Покупатель с гаражом — только счёт на его цену, договора мы не собираем (20.10.2026).
+        if ($this->forGarageBuyer()) {
+            return false;
+        }
+
         return $this->isDkp() || ($this->isPrime() && (! $this->isGarage() || $this->isGarageManager() || $this->namesBuyer()));
     }
 
@@ -523,6 +531,15 @@ class Deal extends Model
     public function isGarage(): bool
     {
         return $this->garage_payer !== null;
+    }
+
+    /**
+     * Гаражная покупателя с гаражом по тумблеру (20.10.2026): поставщику платим мы, он платит нам свою цену
+     * (`garage_cars.buyer_price`) счётом ПРАЙМ — долгом, вне зависимости от вывоза; расчёта и вознаграждения нет.
+     */
+    public function forGarageBuyer(): bool
+    {
+        return $this->isGarage() && (bool) $this->buyer?->holdsAsBuyer();
     }
 
     /** Гаражная, и поставщику платим мы: маршрут идёт гаражной веткой. */

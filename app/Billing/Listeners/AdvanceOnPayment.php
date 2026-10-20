@@ -57,7 +57,8 @@ final class AdvanceOnPayment
     private function advance(?Deal $deal, ?User $by): void
     {
         $offer = $deal?->offer;
-        if (! $offer || ! $deal->isActive()) {
+        // Покупатель с гаражом платит свою цену долгом (20.10.2026): его счёт с нашим маршрутом со страховой не связан.
+        if (! $offer || ! $deal->isActive() || $deal->forGarageBuyer()) {
             return;
         }
         $offer->unsetRelation('positions');

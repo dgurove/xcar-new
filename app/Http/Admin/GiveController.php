@@ -40,7 +40,7 @@ class GiveController
 
     private function give(Request $request, Offer $offer, ?Bid $bid, Give $give)
     {
-        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['amount', 'commission', 'owner_price', 'share'])));
+        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['amount', 'commission', 'owner_price', 'share', 'buyer_price'])));
         $garage = $bid ? $bid->isGarage() : $request->input('to') === 'garage';
         $amount = $bid ? $bid->amount : ($request->integer('amount') ?: null);
         $data = $request->validate([
@@ -54,12 +54,13 @@ class GiveController
             'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.max(1, (int) $amount)],
             'payer' => ['nullable', Rule::enum(GaragePayer::class)],
             'share' => ['nullable', 'integer', 'min:1'],
+            'buyer_price' => ['nullable', 'integer', 'min:1'],
             'pickup' => ['nullable', Rule::in(Giving::PICKUP)],
             'where' => ['nullable', Rule::in(array_keys(Giving::WHERE))],
         ]);
         // «Кому → Менеджеру» без менеджера — не «взяли под себя» молча (19.10.2026): под себя — только явным «Себе».
-        if ($garage && ! $bid && $request->input('whom') === 'manager' && empty($data['manager_id'])) {
-            throw ValidationException::withMessages(['manager_id' => 'Выберите менеджера']);
+        if ($garage && ! $bid && in_array($request->input('whom'), ['manager', 'buyer'], true) && empty($data['manager_id'])) {
+            throw ValidationException::withMessages(['manager_id' => $request->input('whom') === 'buyer' ? 'Выберите покупателя' : 'Выберите менеджера']);
         }
         if ($request->input('whom') === 'self') {
             $data['manager_id'] = null;
@@ -71,7 +72,8 @@ class GiveController
         }
         $money = ['scheme' => $scheme, 'ownerPrice' => $data['owner_price'] ?? null, 'commission' => $data['commission'] ?? null,
             'mode' => CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout, 'payer' => GaragePayer::tryFrom($data['payer'] ?? ''),
-            'share' => $data['share'] ?? null, 'pickup' => $data['pickup'] ?? null, 'where' => $data['where'] ?? 'owner', 'loss' => $request->boolean('loss')];
+            'share' => $data['share'] ?? null, 'pickup' => $data['pickup'] ?? null, 'where' => $data['where'] ?? 'owner', 'loss' => $request->boolean('loss'),
+            'buyerPrice' => $data['buyer_price'] ?? null];
         $giving = $bid ? Giving::bid($bid, ...$money)
             : new Giving($offer, isset($data['manager_id']) ? User::find($data['manager_id']) : null, $garage, $amount, ...$money);
 

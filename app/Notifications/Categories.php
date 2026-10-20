@@ -35,6 +35,10 @@ final class Categories
         if ($user->hasRole(Role::Buyer)) {
             $add(['on' => ['offers' => 'Новые предложения для вас', 'chats' => 'Чаты'], 'always' => []]);
         }
+        // Покупатель с гаражом (20.10.2026): по машинам гаража — сделка и его счёт, как у супер-покупателя.
+        if ($user->holdsAsBuyer() && $user->canGarage()) {
+            $add(['on' => [], 'always' => ['Сделки: ваш ход и сроки', 'Счета']]);
+        }
         // Модератору — только новые цепочки «Из писем», и то с галкой почты: денег, сделок и чатов у него нет.
         if ($user->hasRole(Role::Moderator) && $user->canCrmMail()) {
             $add(['on' => ['letters' => 'Новые из писем'], 'always' => []]);

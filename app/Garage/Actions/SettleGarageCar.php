@@ -37,6 +37,9 @@ final class SettleGarageCar
     /** @param  Party|array|null  $buyer  кто платит вместо менеджера: контрагент или поля нового (kind, name, inn, phone) */
     public function __invoke(Car $car, User $by, ?int $commission = null, Party|array|null $buyer = null): ?Invoice
     {
+        if ($car->forBuyer()) {
+            throw ValidationException::withMessages(['car' => 'У покупателя расчёта нет: он платит свою цену счётом']);
+        }
         if ($car->sold_price === null) {
             throw ValidationException::withMessages(['car' => 'Сначала внесите итог продажи']);
         }
