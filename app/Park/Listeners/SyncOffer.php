@@ -72,7 +72,7 @@ final class SyncOffer
             return;
         }
         // Продана на аукционе (20.10.2026): выдали покупателю аукциона — машина у него, маршрут уже закрыт.
-        if ($offer->state === \App\Offers\OfferState::Delivered && \App\Offers\Deal::where('offer_id', $offer->id)->where('state', \App\Offers\DealState::Done)->whereNotNull('auction_at')->exists()) {
+        if ($offer->state === \App\Offers\OfferState::Delivered && \App\Offers\Deal::where('offer_id', $offer->id)->auctionSold()->exists()) {
             ($this->setPlace)($offer, CarPlace::Buyer, $by);
 
             return;

@@ -6,6 +6,7 @@ use App\Garage\Actions\CloseGarageDeal;
 use App\Garage\Car as GarageCar;
 use App\Offers\BidState;
 use App\Offers\DealAudience;
+use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
@@ -52,7 +53,9 @@ final class ChangeOfferState
             // Продана на аукционе (`SellAtAuction`): черновик, галерея или продажа закрываются сразу, сделкой без менеджера;
             // отмена (`UndoAuctionSale`) — обратно в черновик. Руками «Выдан» так не поставить: нужна идущая сделка аукциона.
             $auction = $auction && (($next === OfferState::Delivered && in_array($from, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true)
-                && $offer->deal()->first()?->isAuction()) || ($from === OfferState::Delivered && $next === OfferState::Draft));
+                && $offer->deal()->first()?->isAuction()) || ($from === OfferState::Delivered && $next === OfferState::Draft
+                && Deal::where('offer_id', $offer->id)->whereNotNull('auction_at')->where('state', DealState::Cancelled)->exists()
+                && ! Deal::where('offer_id', $offer->id)->where('state', DealState::Done)->whereNull('auction_at')->exists()));
             if (! $auction && ! $from->allows($next)) {
                 throw ValidationException::withMessages(['state' => "Из «{$from->label()}» нельзя в «{$next->label()}»"]);
             }

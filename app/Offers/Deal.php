@@ -91,6 +91,12 @@ class Deal extends Model
         return $this->auction_at !== null;
     }
 
+    /** Состоявшиеся продажи на аукционе. */
+    public function scopeAuctionSold(Builder $q): Builder
+    {
+        return $q->where('deals.state', DealState::Done)->whereNotNull('deals.auction_at');
+    }
+
     public function auctionBuyer(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'buyer_party_id');

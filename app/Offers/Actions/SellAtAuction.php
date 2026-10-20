@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Billing\Acquiring\PayLink;
 use App\Billing\Actions\IssueDealInvoice;
 use App\Billing\ChargeKind;
 use App\Billing\Party;
@@ -72,6 +73,9 @@ final class SellAtAuction
     {
         $price = Money::rubles($data['price'] ?? null) ?: null;
         $outside = (bool) ($data['outside'] ?? false);
+        if (filled($data['buyer_phone'] ?? null) && ! Phone::normalize($data['buyer_phone'])) {
+            throw ValidationException::withMessages(['buyer_phone' => 'Телефон в формате +7']);
+        }
         if (! $outside && ! $price) {
             throw ValidationException::withMessages(['price' => 'Цена на аукционе']);
         }
@@ -82,6 +86,10 @@ final class SellAtAuction
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             if (! self::allows($offer, $by)) {
                 throw ValidationException::withMessages(['offer' => 'Отметить продажу на аукционе сейчас нельзя']);
+            }
+            // Машину везёт отрезок не от владельца (со стоянки логиста, перевод парковки) — сначала его довезти или отменить.
+            if (($open = \App\Logistics\Transport::openFor($offer)) && ! $open->isPickup()) {
+                throw ValidationException::withMessages(['offer' => 'ТС везут со стоянки логиста: сначала отмените или довезите этот отрезок']);
             }
             $party = $this->party($data);
             $deal = Deal::create(['offer_id' => $offer->id, 'buyer_id' => null, 'amount' => $price, 'cost' => $offer->floor_price,
@@ -118,7 +126,7 @@ final class SellAtAuction
     /** Покупатель аукциона: организация — по ИНН среди наших контрагентов, иначе новая; человек — всегда новый. */
     private function party(array $data): ?Party
     {
-        $name = trim(preg_replace('/\s+/u', ' ', (string) ($data['buyer_name'] ?? '')));
+        $name = PayLink::squash((string) ($data['buyer_name'] ?? ''));
         if ($name === '') {
             return null;
         }

@@ -29,7 +29,6 @@ final class RecordHistory
             // «Уже вывезли» задним числом — с датой, когда привезли на самом деле.
             'delivered' => ['delivered', ['to' => $t->destinationLabel(), 'day' => $t->delivered_at?->lt(now()->subMinutes(5)) ? Ago::day($t->delivered_at, time: true) : null]],
             'cancelled' => ['cancelled', ['reason' => $t->cancel_reason]],
-            'auction' => ['auction', []],
             'auction_undone' => ['auction_undone', []],
             default => [null, []],
         };

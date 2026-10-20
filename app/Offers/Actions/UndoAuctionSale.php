@@ -38,9 +38,15 @@ final class UndoAuctionSale
         if ($offer->state !== OfferState::Delivered) {
             return null;
         }
-        $deal = Deal::where('offer_id', $offer->id)->where('state', DealState::Done)->whereNotNull('auction_at')->latest('id')->first();
+        $deal = Deal::where('offer_id', $offer->id)->auctionSold()->latest('id')->first();
 
-        return $deal && ! self::paid($deal) ? $deal : null;
+        return $deal && ! self::paid($deal) && ! self::gone($offer, $deal) ? $deal : null;
+    }
+
+    /** ТС уже у покупателя физически: выдали с парковки или довезли и отдали — отменять нечего. */
+    private static function gone(Offer $offer, Deal $deal): bool
+    {
+        return Vehicle::where('car_id', $offer->car_id)->where('state', VehicleState::Released)->where('released_at', '>=', $deal->auction_at->copy()->startOfDay())->exists();
     }
 
     private static function paid(Deal $deal): bool
@@ -58,7 +64,7 @@ final class UndoAuctionSale
         return DB::transaction(function () use ($offer, $by) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             if (! ($deal = self::dealOf($offer))) {
-                throw ValidationException::withMessages(['offer' => 'По счёту уже платили: сначала верните оплату']);
+                throw ValidationException::withMessages(['offer' => 'По счёту уже платили или ТС уже выдали покупателю']);
             }
             foreach ($deal->invoices()->get() as $invoice) {
                 if ($invoice->state === InvoiceState::Issued) {
@@ -77,7 +83,12 @@ final class UndoAuctionSale
             // Вывоз, что закрыла продажа, снова ждёт исполнителя.
             $t = Transport::where('car_id', $offer->car_id)->where('channel', Channel::Auction->value)->latest('id')->first();
             if ($t && ! Transport::openFor($offer)) {
-                $t->update(['channel' => null, 'state' => TransportState::New, 'assigned_at' => null, 'picked_at' => null, 'delivered_at' => null]);
+                // Как было до продажи: исполнитель, логист, цена; без записи — снова «Без исполнителя».
+                $prev = $t->events()->where('type', 'auction')->latest('id')->first()?->payload['was'] ?? [];
+                $t->update(['channel' => $prev['channel'] ?? null, 'state' => $prev['state'] ?? TransportState::New->value,
+                    'executor_id' => $prev['executor_id'] ?? null, 'logist_id' => $prev['logist_id'] ?? null, 'cost' => $prev['cost'] ?? null,
+                    'distance_km' => $prev['distance_km'] ?? null, 'docs_by_cdek' => $prev['docs_by_cdek'] ?? false,
+                    'assigned_at' => $prev['assigned_at'] ?? null, 'picked_at' => null, 'delivered_at' => null]);
                 TransportMoved::dispatch($t, $by, 'auction_undone');
             }
             // Выдачу покупателю аукциона на парковке — снять.
