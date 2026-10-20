@@ -7,11 +7,13 @@ use App\Logistics\Choices;
 use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
 use App\Logistics\Events\TransportRequested;
+use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
 use App\Notifications\PickupTakenNotice;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Events\Dispatcher;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
@@ -87,17 +89,27 @@ final class NotifyLogistics
         if ($e->batch || $t->channel === Channel::Manager) {
             return;
         }
+        // Трек — исполнителю и логисту задачи: исполнители логиста обычно по ссылке без приложения, трек пересылает он.
         if ($e->step === 'docs_sent') {
-            $t->executor?->notify(TransportNotice::docsSent($t));
+            Notification::send(collect([$t->executor, $t->logist])->filter()->unique('id'), TransportNotice::docsSent($t));
 
             return;
         }
         if (! in_array($e->step, ['agreed', 'picked', 'delivered', 'cancelled'], true)) {
             return;
         }
+        // Отмену логист и исполнитель узнают в Telegram (20.10.2026: водителя могли уже отправить); ведущим — лентой.
+        $own = $e->step === 'cancelled' ? self::workers($t, $e->by) : collect();
+        Notification::send($own, TransportNotice::cancelledYours($t));
         // Заявка логиста от своего заказчика — только ему (владелец 18.10.2026: «видит только она»).
         $to = ($t->isOrder() ? collect() : User::logisticsLeads()->get())->push($t->logist)->filter()
-            ->unique('id')->reject(fn (User $u) => $u->is($e->by));
+            ->unique('id')->reject(fn (User $u) => $u->is($e->by) || $own->contains('id', $u->id));
         Notification::send($to, TransportNotice::moved($t, $e->step));
+    }
+
+    /** Кто везёт задачу: логист и исполнитель, кроме нажавшего. */
+    public static function workers(Transport $t, ?User $by): Collection
+    {
+        return collect([$t->logist, $t->executor])->filter()->unique('id')->reject(fn (User $u) => $by && $u->is($by))->values();
     }
 }

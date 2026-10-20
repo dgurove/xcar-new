@@ -110,6 +110,26 @@ final class TransportNotice extends Notice
         return new self(null, 'Отменено вывозов: '.$n, $reason, false, false, '/transports?preset=all');
     }
 
+    /**
+     * Вывоз сняли — логисту и исполнителю задачи, в Telegram (20.10.2026: Татьяна могла уже отправить водителя, а отмена
+     * уходила только ведущим). Пачкой — одно на человека с числом.
+     */
+    public static function cancelledYours(Transport $t): self
+    {
+        return new self($t, 'Вывоз отменён: '.$t->title(), $t->cancel_reason, true, true);
+    }
+
+    public static function cancelledYoursMany(int $n, ?string $reason): self
+    {
+        return new self(null, 'Отменено вывозов: '.$n, $reason, true, true, '/transports?preset=all');
+    }
+
+    /** «Куда везти» поменял не тот, кто везёт, — логисту и исполнителю, у кого задача уже в работе. */
+    public static function rerouted(Transport $t): self
+    {
+        return new self($t, 'Куда везти: '.$t->title(), $t->routeLabel() ?? 'пока неизвестно', true, true);
+    }
+
     /** «Уже вывезли» пачкой — другим ведущим одной строкой. */
     public static function backdatedMany(int $n): self
     {

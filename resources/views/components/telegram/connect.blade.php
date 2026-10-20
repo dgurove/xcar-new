@@ -11,9 +11,21 @@
     $foreign = $can && ! $user->linksOwnTelegram();
     $start = $can && ! $foreign ? \App\Telegram\StartLink::link($user) : null;
     $moments = $can ? $user->telegramMoments() : [];
-    // Сама шторка — на сайте в списках менеджера, в CRM у модератора на «Предложениях»; с почтой ему есть что получать.
-    $intro = $user?->isModerator() ? ['/'] : ['/offers', '/deals'];
+    // Сама шторка — на сайте в списках менеджера, в CRM у модератора на «Предложениях»; с почтой ему есть что получать;
+    // в логистике и на парковке — на главном списке (20.10.2026: логисту её не показывали ни разу).
+    $surface = \App\Support\Surface::current();
+    $carrier = $user && ($user->isLogist() || $user->isContractor() || $user->isDriver());
+    $intro = match (true) {
+        $surface === \App\Support\Surface::Logistics && $carrier => ['/transports'],
+        $surface === \App\Support\Surface::Park => ['/requests', '/'],
+        (bool) $user?->isModerator() => ['/'],
+        default => ['/offers', '/deals'],
+    };
     [$head, $lead] = match (true) {
+        // Логистика и парковка — по хосту: у человека бывает и роль сайта, а шторка — про то, что он сейчас делает.
+        $surface === \App\Support\Surface::Logistics && (bool) $user?->isLogist() => ['Вывозы в Telegram', 'Новые вывозы в ваших регионах и когда пора назначить исполнителя'],
+        $surface === \App\Support\Surface::Logistics && $carrier => ['Вывозы в Telegram', 'Новое поручение и трек документов сразу в бот'],
+        $surface === \App\Support\Surface::Park => ['Заявки в Telegram', 'Новые заявки на приём и выдачу сразу в бот'],
         // Покупателю — машины от менеджера и его ответы (12.10.2026); сама шторка — при входе и после интереса.
         (bool) $user?->isBuyer() => ['Новые машины в Telegram', ($user->manager?->shortName() ?? 'Менеджер').' откроет вам автомобиль или ответит в чате, сообщение придёт сразу'],
         (bool) $user?->hasDeals() => ['Узнавайте о сделках первым', 'Когда выбрали вас, нужен ваш ответ или пришли деньги. Без рассылок'],

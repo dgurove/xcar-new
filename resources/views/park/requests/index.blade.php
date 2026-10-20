@@ -13,6 +13,7 @@
             <a href="/requests/new" class="btn btn-s btn-accent btn-round shrink-0" aria-label="Новая заявка"><x-ui.icon name="plus" class="size-5"/></a>
         </x-slot:actions>
     </x-ui.toolbar>
+    <x-reach.card title="Не пропускайте заявки"/>
     {{-- Сделали в карточке последнюю заявку — тост вместо следующей (`detail#advance`). --}}
     <span data-advance-done hidden>Заявок больше нет</span>
     <div id="requests" class="mt-6 {{ ListView::isTable($view) ? '' : ListView::containerClass($view) }}" data-controller="endless ticker">@include('park.requests.list')</div>

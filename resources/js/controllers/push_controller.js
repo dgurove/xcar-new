@@ -2,13 +2,16 @@ import { Controller } from '@hotwired/stimulus';
 import { post, request } from '../lib/http';
 import { markPush, vapidKey } from '../push-sync';
 
-// Уведомления на телефон: разрешение, подписка, отправка ключей на сервер.
+// Уведомления на телефон: разрешение, подписка, отправка ключей на сервер. Строка карточки «Не пропускайте…»
+// (`row`, x-reach.card) видна, только пока включать есть что: браузер умеет и подписки нет; запретил — подсказка
+// вместо кнопки. После каждой отрисовки — push:render, карточка решает, осталось ли в ней что-то.
 export default class extends Controller {
     static targets = ['on', 'off', 'state', 'toggle'];
+    static values = { row: Boolean };
 
     async connect() {
         this.supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-        if (!this.supported) { this.element.hidden = true; return; }
+        if (!this.supported) { this.element.hidden = true; this.dispatch('render'); return; }
         const reg = await navigator.serviceWorker.ready;
         this.sub = await reg.pushManager.getSubscription();
         this.render();
@@ -16,11 +19,17 @@ export default class extends Controller {
 
     render() {
         const granted = Notification.permission === 'granted' && this.sub;
-        if (this.hasOnTarget) this.onTarget.hidden = !!granted;
+        const denied = Notification.permission === 'denied';
+        if (this.rowValue) this.element.hidden = !!granted;
+        if (this.hasOnTarget) this.onTarget.hidden = !!granted || (this.rowValue && denied);
         if (this.hasOffTarget) this.offTarget.hidden = !granted;
         // Тумблер в строке настроек: одно поле вместо пары кнопок.
-        if (this.hasToggleTarget) { this.toggleTarget.checked = !!granted; this.toggleTarget.disabled = Notification.permission === 'denied'; }
-        if (this.hasStateTarget) this.stateTarget.textContent = Notification.permission === 'denied' ? 'Уведомления запрещены в настройках телефона' : '';
+        if (this.hasToggleTarget) { this.toggleTarget.checked = !!granted; this.toggleTarget.disabled = denied; }
+        if (this.hasStateTarget) {
+            this.stateTarget.textContent = denied ? (this.rowValue ? 'Запрещены в браузере: настройки сайта → Уведомления' : 'Уведомления запрещены в настройках телефона') : '';
+            this.stateTarget.hidden = !denied;
+        }
+        this.dispatch('render');
     }
 
     toggle(event) {

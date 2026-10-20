@@ -23,12 +23,19 @@ class TelegramController
     /**
      * Шторка подключения показалась сама или карточку скрыли — отметка, чтобы не навязываться (User::telegramMoments):
      * intro — больше никогда, bid — не раньше чем через неделю и не больше трёх раз, card — скрыта на 30 дней.
-     * За человека не пишем: админ, вошедший за менеджера, шторки не видит.
+     * reach — карточка «Не пропускайте…» логистики и парковки (`User::offersReach`): `never` или неделя; она и про пуши,
+     * поэтому пишется и у подключённого Telegram. За человека не пишем: админ, вошедший за менеджера, шторки не видит.
      */
     public function seen(Request $request)
     {
         $user = $request->user();
         $moment = $request->string('moment')->toString();
+        if ($moment === 'reach' && ! Impersonation::active()) {
+            $user->update(['notification_settings' => ['reach_hidden' => $request->input('for') === 'never'
+                ? 'never' : now()->addWeek()->toIso8601String()] + ($user->notification_settings ?? [])]);
+
+            return $request->expectsJson() ? response()->noContent() : back();
+        }
         if (! Impersonation::active() && ! $user->telegram_chat_id && in_array($moment, ['intro', 'bid', 'card'], true)) {
             $s = $user->notification_settings ?? [];
             match ($moment) {

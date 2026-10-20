@@ -30,9 +30,10 @@ final class TickCommand extends Command
             ->where(fn ($q) => $q->whereNull('late_noticed_at')->orWhereColumn('late_noticed_at', '<', 'pickup_at'))
             ->with(['executor', 'logist', 'car'])->get()
             ->each(function (Transport $t) {
-                // Заявку логиста от его заказчика админы не видят: просрочка — ему и исполнителю.
-                $to = $t->isOrder() ? collect([$t->logist]) : User::logisticsLeads()->get();
-                Notification::send($to->push($t->executor)->filter()->unique('id'), TransportNotice::late($t));
+                // Заявку логиста от его заказчика админы не видят: просрочка — ему и исполнителю. Логисту — всегда: его
+                // исполнители обычно по ссылке, без приложения (20.10.2026).
+                $to = $t->isOrder() ? collect() : User::logisticsLeads()->get();
+                Notification::send($to->push($t->logist)->push($t->executor)->filter()->unique('id'), TransportNotice::late($t));
                 $t->update(['late_noticed_at' => now()]);
             });
 

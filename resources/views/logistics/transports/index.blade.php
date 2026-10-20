@@ -12,6 +12,7 @@
             </x-slot:actions>
         @endif
     </x-ui.toolbar>
+    <x-reach.card title="Не пропускайте вывозы"/>
     <div id="transports" class="mt-4" @if ($pick) data-controller="pick" @endif>
         @if ($transports->isEmpty())
             <x-ui.empty class="mt-6">{{ match ($preset) { 'new' => 'Всем вывозам выбран исполнитель', 'logist' => 'Логист всех назначил', 'work', 'moving' => 'Вывозов в работе нет', default => 'Вывозов нет' } }}</x-ui.empty>

@@ -15,6 +15,7 @@ use App\Logistics\Actions\Docs;
 use App\Logistics\Actions\LogistAssign;
 use App\Logistics\Actions\PickUp;
 use App\Logistics\Actions\SetRoute;
+use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Actions\StepBack;
 use App\Logistics\Channel;
 use App\Logistics\Client;
@@ -273,12 +274,20 @@ class TransportController
         abort_unless($request->user()->leadsLogistics(), 404);
         $reason = $request->validate(['reason' => ['nullable', 'string', 'max:500']])['reason'] ?? null;
         $n = 0;
-        $back = $this->many($request, function (Transport $t) use ($cancel, $request, $reason, &$n) {
+        $own = [];
+        $back = $this->many($request, function (Transport $t) use ($cancel, $request, $reason, &$n, &$own) {
             $cancel($t, $request->user(), $reason, batch: true);
             $n++;
+            foreach (NotifyLogistics::workers($t, $request->user()) as $u) {
+                $own[$u->id] = [$u, ($own[$u->id][1] ?? 0) + 1];
+            }
         }, 'Отменено', 'Вывоз отменён');
         if ($n) {
-            Notification::send(User::logisticsLeads()->whereKeyNot($request->user()->id)->get(), TransportNotice::cancelledMany($n, $reason));
+            Notification::send(User::logisticsLeads()->whereKeyNot($request->user()->id)->whereKeyNot(array_keys($own))->get(), TransportNotice::cancelledMany($n, $reason));
+        }
+        // Логисту и исполнителю снятых задач — своё число в Telegram (20.10.2026).
+        foreach ($own as [$u, $count]) {
+            $u->notify(TransportNotice::cancelledYoursMany($count, $reason));
         }
 
         return $back;
@@ -363,7 +372,12 @@ class TransportController
     public function route(Request $request, Transport $transport, SetRoute $route)
     {
         $this->visible($request, $transport);
+        $was = $transport->routeLabel();
         $route($transport, $request->validate(SetRoute::rules(SetRoute::full($transport, $request->user())), SetRoute::messages()), $request->user());
+        // Точку поменял не тот, кто везёт, — логисту и исполнителю, у кого задача уже в работе (20.10.2026).
+        if ($transport->routeLabel() !== $was && $transport->isOpen()) {
+            Notification::send(NotifyLogistics::workers($transport, $request->user()), TransportNotice::rerouted($transport));
+        }
 
         return back()->with('toast', 'Куда: '.($transport->fresh()->routeLabel() ?? 'пока неизвестно'));
     }

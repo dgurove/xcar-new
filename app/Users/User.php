@@ -636,6 +636,22 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         ]));
     }
 
+    /**
+     * Карточка «Не пропускайте вывозы / заявки» над списком логистики и парковки (`x-reach.card`, 20.10.2026: у логиста и
+     * управляющих не было ни Telegram, ни пушей — уведомления лежали только в колокольчике). Кому она: логистика и
+     * парковка без админов CRM; «×» — `reach_hidden`: `never` или дата, до которой не предлагать.
+     */
+    public function offersReach(): bool
+    {
+        if ($this->is_demo || Impersonation::active() || $this->isAdmin()
+            || ! ($this->isLogist() || $this->isContractor() || $this->isDriver() || $this->isParking() || $this->isParkAdmin())) {
+            return false;
+        }
+        $hidden = ($this->notification_settings ?? [])['reach_hidden'] ?? null;
+
+        return $hidden !== 'never' && (! $hidden || now()->greaterThan($hidden));
+    }
+
     /** Подписанная ссылка «не присылать на почту» — работает без входа. */
     /** «Забыл пароль» — с боевого ящика: системный мейлер на проде выключен. */
     public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void

@@ -3,6 +3,7 @@
 namespace App\Telegram;
 
 use App\Support\Money;
+use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Support\HtmlString;
 
@@ -17,6 +18,12 @@ final class Preview
 {
     public static function for(User $user): array
     {
+        // В логистике — как `TransportNotice::assigned`: логисту поручение в регионе, исполнителю — ему самому.
+        if (Surface::current() === Surface::Logistics && ($user->isLogist() || $user->isContractor() || $user->isDriver())) {
+            return $user->isLogist()
+                ? ['title' => 'Вывоз в регионе: Kia Rio, 2021', 'lines' => ['Казань, ул. Победы, 12'], 'button' => 'Открыть']
+                : ['title' => 'Вам вывоз: Kia Rio, 2021', 'lines' => ['Казань, ул. Победы, 12, владелец Иван П.'], 'button' => 'Открыть'];
+        }
         if (! $user->usesSite()) {
             return ['title' => 'На выдачу: Kia Rio, 2021', 'lines' => ['Заберёт Иван П. +7 900 000-00-00'], 'button' => 'Открыть'];
         }

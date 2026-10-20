@@ -11,6 +11,7 @@ use App\Logistics\Channel;
 use App\Logistics\Reach;
 use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
+use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
@@ -184,5 +185,22 @@ class TransportStepsTest extends TestCase
         $this->assertSame(Reach::Local, $t->reach);
         $this->assertSame('Везём к нам', $t->comment);
         $this->assertSame('Куда: Казань, Победы 1, внутри региона', TransportEvent::where('transport_id', $t->id)->where('type', 'route')->latest('id')->first()->what());
+    }
+
+    /** 20.10.2026: отмена и смена «куда» до логиста и исполнителя не доходили — водителя могли уже отправить. */
+    public function test_cancel_and_reroute_reach_logist_and_executor(): void
+    {
+        $t = $this->viaTanya();
+        $title = fn (string $start) => fn (TransportNotice $n) => str_starts_with($n->title(), $start);
+
+        $this->actingAs($this->admin)->put(self::LOG.'/transports/'.$t->id.'/route', ['reach' => 'local', 'destination' => 'yard:'.$this->yard->id])->assertSessionHasNoErrors();
+        Notification::assertSentTo([$this->tanya, $this->ivan], TransportNotice::class, $title('Куда везти:'));
+
+        $other = Offer::create(['vendor_id' => $this->offer->vendor_id, 'claim_ref' => '483512/2024', 'floor_price' => 400000]);
+        $second = app(OpenPickup::class)($other->fresh(), $this->admin);
+        app(AssignExecutor::class)($second, Channel::Logist, $this->tanya, $this->admin);
+        $this->actingAs($this->admin)->post(self::LOG.'/transports/cancel', ['transports' => [$t->id, $second->id], 'reason' => 'продали'])->assertSessionHasNoErrors();
+        Notification::assertSentTo($this->tanya, TransportNotice::class, fn (TransportNotice $n) => $n->title() === 'Отменено вывозов: 2');
+        Notification::assertSentTo($this->ivan, TransportNotice::class, fn (TransportNotice $n) => $n->title() === 'Отменено вывозов: 1');
     }
 }
