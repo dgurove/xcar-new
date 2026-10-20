@@ -35,11 +35,6 @@
     $to = $manager && in_array($goal->destination, [null, \App\Logistics\Point::Keeper], true) && $goal->reach === null ? null : $goalLabel;
     $manager = $to ? null : $manager;
     $far = $legs->contains(fn ($l) => $l->reach === \App\Logistics\Reach::Intercity);
-    // Путь через стоянки (20.10.2026): «Киров Север → Москва-Юг → Парковка …», пройденные точки тусклым, текущая — цветом текста.
-    $path = $legs->count() > 1
-        ? $legs->slice(0, -1)->map(fn ($l) => ['name' => $l->depot?->name ?? 'стоянка', 'passed' => $l->state === \App\Logistics\TransportState::Delivered && $l->seq < $t->seq])
-            ->push(['name' => $goalLabel ?? 'пока неизвестно', 'passed' => false])->values()
-        : null;
     $ahead = ($lead || $t->hasLogist($me)) && $legs->contains(fn ($l) => $l->seq > $t->seq && $l->state === \App\Logistics\TransportState::Planned && ! $l->executor_id);
     $ref = $t->car?->claim_ref;
     $vendorId = $t->vendorId();
@@ -49,17 +44,14 @@
 <tr data-detail-key="{{ $key }}" id="transport-{{ $key }}" data-search-row @class(['is-dim' => $sale?->waiting && ! ($binding && \App\Offers\Binding::panics($binding))])>
     @if ($checkable)<td class="pick-cell">@if ($deciding)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-transport-{{ $t->id }}" data-turbo-permanent name="transports[]" value="{{ $t->id }}" data-pick-target="box" data-action="pick#sync"></span></label>@endif</td>@endif
     <td class="grow">
-        <x-ui.row-link :key="$key" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($binding)<x-offer.binding :offer="$binding" tag class="ml-1.5 sm:hidden"/>@endif</span></x-ui.row-link>
-        <span class="cell-sub">
-            @if ($staff && ($vendorId || $ref))<span class="sm:hidden"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref"/></span>@endif
-            @if ($has('client'))<span class="sm:hidden">{{ $t->client?->name ?? 'XCar' }}</span>@endif
-            @if ($sale && $deciding)<span class="sm:hidden whitespace-nowrap {{ $sale->tone }}">{{ $sale->word }}</span>
-            @elseif ($stepHere)<span @class(['whitespace-nowrap', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
-            @if ($path)<span>@foreach ($path as $p)<span @class(['text-ink-dim' => $p['passed']])>→ {{ $p['name'] }}</span>@if (! $loop->last) @endif @endforeach</span>
-            @elseif ($manager)<span class="sm:hidden whitespace-nowrap">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden">→ {{ $to }}</span>@endif
-            @if ($far)<span class="sm:hidden whitespace-nowrap">между регионами</span>@endif
-            @if ($ahead)<span class="whitespace-nowrap text-urgent">дальше без исполнителя</span>@endif
-            @if ($has('who') && ($who || $logist))<span class="sm:hidden">{{ $who ? $who->shortName() : 'у логиста '.$logist->shortName() }}</span>@endif
+        <x-ui.row-link :key="$key" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($far)<span class="row-signal" title="Между регионами" aria-label="Между регионами"><x-ui.icon name="route" class="size-4"/></span>@endif @if ($ahead)<span class="row-signal" title="Дальше без исполнителя" aria-label="Дальше без исполнителя"><span class="size-2 rounded-full bg-urgent"></span></span>@endif @if ($binding)<x-offer.binding :offer="$binding" tag class="ml-1.5 sm:hidden"/>@endif</span></x-ui.row-link>
+        {{-- Вторая строка — одна линия (20.10.2026, владелец: «строки — чтобы быстро найти, а не печатать всю информацию»): что
+             дальше цветным словом целиком и куда — режется «…». Номер убытка, путь через стоянки, кто вывозит — в карточке и
+             столбцах ПК; межрегион и «дальше без исполнителя» — значками у названия. --}}
+        <span class="cell-sub cell-sub--one">
+            @if ($sale && $deciding)<span class="sm:hidden shrink-0 {{ $sale->tone }}">{{ $sale->word }}</span>
+            @elseif ($stepHere)<span @class(['shrink-0', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
+            @if ($manager)<span class="sm:hidden min-w-0 truncate">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden min-w-0 truncate">→ {{ $to }}</span>@endif
         </span>
     </td>
     @if ($has('client'))<td class="hidden sm:table-cell"><span @class(['text-ink-muted' => ! $t->client])>{{ $t->client?->name ?? 'XCar' }}</span></td>@endif

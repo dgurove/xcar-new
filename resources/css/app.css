@@ -1366,6 +1366,13 @@ html.kb-open { --home-gap: 0px; }
      текст не режется, переносится; само название (данные) режется по-прежнему. */
   .table td.grow > .cell-sub { white-space: normal; }
   .cell-sub { margin-top: 0; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  /* Вторая строка в одну линию (строка «Вывоза», 20.10.2026): своя фраза целиком, данные извне режутся «…». */
+  .table td.grow > .cell-sub.cell-sub--one { display: flex; gap: .5rem; white-space: nowrap; overflow: hidden; }
+  /* На телефоне таблица — в ширину экрана: строка без переноса не распирает ячейку (на ПК ширину столбца даёт название). */
+  @media (width < 640px) {
+    .table td.grow > .cell-sub.cell-sub--one, .table td.grow:has(> .cell-sub--one) .cell-title { contain: inline-size; }
+  }
+  .row-signal { display: inline-flex; align-items: center; margin-left: .375rem; color: var(--color-ink-muted); vertical-align: -.125em; }
   /* Ровный шаг строк ячейки: у каждой своя высота строки, а иконка типа, логотип и плашка номера её не распирают —
      иначе расстояние от первой строки до второй было не таким, как от второй до третьей. */
   .cell-title { line-height: 1.25rem; }
