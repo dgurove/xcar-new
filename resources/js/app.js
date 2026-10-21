@@ -1,7 +1,7 @@
 // Оболочка: Turbo делает из серверных страниц приложение, Stimulus отвечает за
 // поведение на месте. Контроллеры лежат в ./controllers/<имя>_controller.js
 // и подключаются по имени файла: photos_controller.js → data-controller="photos".
-import './reload-guard';
+import { why as reloadWhy } from './reload-guard';
 import * as Turbo from '@hotwired/turbo';
 import { Application } from '@hotwired/stimulus';
 import { touchPrefetch, prefetch } from './touch-prefetch';
@@ -700,12 +700,36 @@ function activePillIntoView() {
 
 // Экран из кэша воркера (запуск с иконки) старше 5 с — тихий replace-morph:
 // свежие карточки, csrf-token, темы live; выход — воркер забывает экраны.
+// Экран из кэша — прошлой сборки, а свежий уже другой (21.10.2026, Макаров и Тужиков: после выкладки «Предложения» на
+// iPhone перезагружались по кругу, а брошенные запросы по 1 МБ висели на сервере до 500): Turbo сам перезагрузил бы
+// страницу, но воркер снова отдал бы ту же старую копию — запись свежей не успевала. Копия этой страницы стирается из
+// кэша воркера до перезагрузки, и она приходит из сети.
+function freshBuild() {
+    const mine = document.querySelector('meta[name="build"]')?.content;
+    const here = location.pathname + location.search;
+    const check = async (event) => {
+        const response = event.detail.fetchResponse?.response;
+        const url = response ? new URL(response.url) : null;
+        if (!url || url.pathname + url.search !== here) return;
+        document.removeEventListener('turbo:before-fetch-response', check);
+        const build = response.headers.get('X-Build');
+        if (!mine || !build || build === mine) return;
+        event.preventDefault();
+        try {
+            for (const key of await caches.keys()) if (key.startsWith('pages-')) await (await caches.open(key)).delete(location.href);
+        } catch {}
+        reloadWhy('build');
+        location.reload();
+    };
+    document.addEventListener('turbo:before-fetch-response', check);
+}
+
 function stalePage() {
     const nav = performance.getEntriesByType('navigation')[0];
     if (['navigate', 'reload'].includes(nav?.type) && !window.reloadStorm) {
         const at = Number(document.querySelector('meta[name="rendered-at"]')?.content || 0) * 1000;
         if (at && Date.now() - at > 5_000 && navigator.onLine !== false) {
-            setTimeout(() => { window.xcarRefreshedAt = Date.now(); Turbo.visit(location.href, { action: 'replace' }); }, 300);
+            setTimeout(() => { window.xcarRefreshedAt = Date.now(); freshBuild(); Turbo.visit(location.href, { action: 'replace' }); }, 300);
         }
     }
     document.addEventListener('turbo:submit-start', (event) => {
