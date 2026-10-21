@@ -9,7 +9,7 @@ import { getJson } from '../lib/http';
 // снятых меньше, чем отмеченных, — исключение `!22,5` («кроме»: на другой вкладке и с новыми вендорами значит то же),
 // «Выбрать все» / «Исключить все» — одна кнопка. Один выбор (single) — радио: отправляется сразу.
 export default class extends Controller {
-    static targets = ['value', 'box', 'submit', 'item', 'all'];
+    static targets = ['value', 'box', 'submit', 'item', 'all', 'quick', 'day'];
     static values = { single: Boolean, wait: { type: Number, default: 150 } };
 
     connect() {
@@ -23,6 +23,10 @@ export default class extends Controller {
     }
 
     tick(event) {
+        if (event.target.matches?.('[data-facets-target~="quick"], [data-facets-target~="day"]')) {
+            this.period(event.target);
+            return;
+        }
         if (!event.target.matches?.('[data-facets-target="box"]')) return;
         if (this.singleValue) {
             this.element.requestSubmit();
@@ -59,6 +63,29 @@ export default class extends Controller {
             this.submitTarget.disabled = true;
             return;
         }
+        this.submitTarget.setAttribute('aria-busy', 'true');
+        this.later();
+    }
+
+    // Чип дат (`Facet::dates`): быстрый вариант снимает свои края и наоборот; в скрытое поле — `7d` или `с~по`.
+    period(target) {
+        if (this.clearing) return;
+        if (target.matches('[data-facets-target~="quick"]')) {
+            this.clearing = true;
+            for (const day of this.dayTargets) {
+                day.value = '';
+                day.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            this.clearing = false;
+            this.valueTarget.value = target.value;
+        } else {
+            this.quickTargets.forEach((q) => { q.checked = false; });
+            const [from, to] = this.dayTargets.map((d) => d.value);
+            this.valueTarget.value = from || to ? `${from}~${to}` : '';
+        }
+        this.later.cancel();
+        this.pending?.abort();
+        this.seq++;
         this.submitTarget.setAttribute('aria-busy', 'true');
         this.later();
     }

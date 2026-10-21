@@ -74,6 +74,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/from-mail/{candidate}/scan/apply', [ScanController::class, 'apply']);
     });
     Route::get('/offers/twins', [OfferController::class, 'twins']);
+    // Окно «Выгрузка» над списком: вкладка, чипы и лупа — файлом или данными для буфера (`format=json`).
+    Route::get('/offers/export', [OfferController::class, 'export']);
     // «Оценить → Из текста»: оценочные из сообщения — модератору тоже, он ставит закупочную.
     Route::post('/offers/valuations/preview', [OfferValuationController::class, 'preview']);
     Route::post('/offers/valuations', [OfferValuationController::class, 'apply']);

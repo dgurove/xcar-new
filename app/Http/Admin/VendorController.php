@@ -8,10 +8,10 @@ use App\Offers\Actions\SendClaimRequest;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\AudienceRules;
 use App\Offers\Binding;
+use App\Offers\Export\OffersXlsx;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Tag;
-use App\Offers\VendorOffersExport;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\Facets\Option;
@@ -32,7 +32,6 @@ use App\Workflow\Position;
 use App\Workflow\Track;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
@@ -171,14 +170,12 @@ class VendorController
         return view('admin.vendors.show', $data);
     }
 
-    /** «Скачать» в «Предложениях» вендора: то, что на экране, с теми же чипами и поиском, файлом. */
+    /** Окно «Выгрузка» в «Предложениях» вендора: то, что на экране, с теми же чипами и поиском — файлом или в буфер. */
     public function export(Request $request, Vendor $vendor)
     {
         [$q] = $this->offersQuery($request, $vendor);
-        $offers = $q->get();
 
-        return response()->streamDownload(fn () => VendorOffersExport::write($offers, 'php://output'), $vendor->name.' предложения '.now()->format('d.m.Y').'.xlsx',
-            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+        return OffersXlsx::respond($request, $request->user(), 'vendor', $q, $vendor->name.' предложения');
     }
 
     /**
@@ -234,10 +231,10 @@ class VendorController
             // Срок обязывающего (19.10.2026): горит, вышел, есть, нет — те же корзины, что в логистике.
             Facet::column('binding', 'Срок обязывающего', ['вид', 'вида', 'видов'], Binding::bucketCase())->natural()
                 ->labels(fn (array $keys) => collect(Binding::BUCKETS)->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all()),
-            Facet::column('month', 'Заведено', ['месяц', 'месяца', 'месяцев'], "to_char(offers.created_at, 'YYYY-MM')")->natural()
-                ->labels(fn (array $keys) => collect($keys)->sortDesc()->mapWithKeys(fn ($k) => [$k => new Option($k, Carbon::parse($k.'-01')->isoFormat('MMMM YYYY'))])->all()),
+            // «Заведено» — промежуток дат, как в «Предложениях» CRM (21.10.2026, был чип месяцев); не запоминается.
+            Facet::dates('created', 'Заведено', 'offers.created_at'),
         );
-        ListPrefs::sync($request, 'crm-vendor-offers', keep: $facets->keys());
+        ListPrefs::sync($request, 'crm-vendor-offers', keep: array_values(array_diff($facets->keys(), OfferController::ONCE)));
         $sort = Sort::from($request->query('sort'), self::OFFER_SORTS, '-created');
         $q = Offer::where('offers.vendor_id', $vendor->id)->with(['bids:id,offer_id,state', 'claimRequest:id,created_at'])
             ->withCount(['bids', 'interests'])->withMax('bids as best_bid', 'amount')->selectRaw(ClaimRequest::LETTER_SQL.' as by_letter');

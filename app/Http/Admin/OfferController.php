@@ -37,6 +37,7 @@ use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
 use App\Offers\Margin;
 use App\Offers\MigtorgDiff;
+use App\Offers\Export\OffersXlsx;
 use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
@@ -75,7 +76,7 @@ class OfferController
      */
     public const PRESETS = [
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
-        'closed' => 'Приём закрыт', 'bids' => 'Есть подтверждения', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
+        'closed' => 'Приём закрыт', 'bids' => 'Есть подтверждения', 'all' => 'Все', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
 
     /**
@@ -87,10 +88,13 @@ class OfferController
     /** Вкладки, где порядок — когда предложение в них попало (`offers.tab_at`) и столбец даты — оно же. */
     public const BY_TAB = ['nofloor', 'unpriced', 'priced', 'archive', 'auction'];
 
-    /** Вкладки человека: подтверждения, «Приём закрыт», «Из таблицы Кати» и «На аукцион» видит только админ (срок приёма модератору не виден). */
+    /**
+     * Вкладки человека: подтверждения, «Приём закрыт», «Все», «Из таблицы Кати» и «На аукцион» видит только админ (срок
+     * приёма модератору не виден, сделки и гараж ему не открываются).
+     */
     public static function presets(User $user): array
     {
-        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'closed' => true, 'legacy' => true, 'auction' => true]);
+        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'closed' => true, 'all' => true, 'legacy' => true, 'auction' => true]);
     }
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
@@ -189,66 +193,14 @@ class OfferController
         if ($detail->framed()) {
             return $detail->response();
         }
-        $admin = $request->user()->canManageCrm();
+        $presets = self::presets($request->user());
         // У каждой вкладки своя ссылка у всех; без вкладки в адресе — на вкладку человека по умолчанию (модератору
         // «Без закупочной цены», админу «Без продажной цены»). Поиск лупой вкладки не знает — его не уводим.
-        $presets = self::presets($request->user());
         if (! array_key_exists((string) $request->query('preset'), $presets) && blank($request->query('q'))) {
             return redirect($request->fullUrlWithQuery(['preset' => self::home($request->user())]));
         }
-        $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : self::home($request->user());
-        $step = in_array($preset, self::STEPS, true);
-        // «Без цены» — без сортировки и вида, чипы есть (владелец 04.10.2026: «не хватает фильтров»), по умолчанию — без
-        // Каркаде. «Рекомендуем» — переключатель у опубликованных.
-        $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
-            // «Новые» (опубликовано за сутки) и «Горящие» (приём закрывается за 12 ч) — как пилюли каталога, голубой и рыжей
-            // точкой и своим цветом включённого (12.10.2026, владелец); подтверждения и сроки видит только админ.
-            'published', 'closed', 'bids' => [
-                ...self::facets(),
-                ...($admin ? [
-                    Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent'),
-                    Facet::toggle('fresh', 'Новые', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.published_at', '>=', now()->subHours(Offer::NEW_HOURS)))->dot('fresh'),
-                    Facet::toggle('ending', 'Горящие', fn ($o) => CatalogQuery::ending($o))->dot('hot'),
-                    Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss'),
-                ] : []),
-                Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true)),
-            ],
-            // Продажная у самой закупочной или ниже (`Offers\Margin`, 14.10.2026) — чип, пока такие есть.
-            'priced', 'slots' => [
-                ...self::facets(),
-                ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')] : []),
-            ],
-            default => self::facets(),
-        }, ...($admin ? [
-            // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
-            // «Есть подтверждения» — подтверждение есть, а принять не успели (`undecided`).
-            Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger'),
-        ] : []))->always();
-        $askedSort = $request->query('sort');
-        ListPrefs::sync($request, 'crm-offers', keep: $facets->keys());
-        self::forgetBindingSort($request, $askedSort);
-        $cols = self::columns($preset, $request->user());
-        $sort = self::sortFor($request, $preset, $cols, $admin);
-        // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.
-        $searching = $facets->searching();
-        // Вендор ни разу не выбирали — все, кроме Каркаде (их десятки из закупки, оценивают отдельно), на любой вкладке:
-        // фильтр при переключении вкладок не меняется (владелец 04.10.2026). Сняли чип — ListPrefs помнит пустое, и
-        // умолчание больше не встаёт. В ссылки вкладок оно не едет: после чипов параметр убирается (ниже).
-        $carcadeHidden = ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request, $preset);
-
-        // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
-        $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['settlement', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
-            ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
-        // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
-        Binding::select($q);
-
-        if ($searching) {
-            $q->searchCrm(trim((string) $request->query('q')))->orderByDesc('updated_at');
-        } else {
-            self::scopeFor($preset, $q, $admin);
-            self::order($q, $preset, $sort, $admin);
-        }
-        $facets->apply($q);
+        ['q' => $q, 'facets' => $facets, 'preset' => $preset, 'admin' => $admin, 'step' => $step, 'sort' => $sort, 'searching' => $searching,
+            'carcadeHidden' => $carcadeHidden] = $this->listQuery($request);
         // Числа вкладок — с тем же выбором, что и список (и «кроме Каркаде» по умолчанию).
         $counts = self::counts($request->user(), $facets, $carcadeHidden);
         if ($carcadeHidden) {
@@ -305,6 +257,84 @@ class OfferController
             'arrive' => AutoScan::states($offers->getCollection()->filter(fn (Offer $o) => $o->state === OfferState::Draft && ! $o->moderator_id)),
             'ghosts' => $preset === 'legacy' && ! $searching && self::ghostsShown($facets) ? LegacyClaim::ghosts()->get() : collect(),
         ]);
+    }
+
+    /**
+     * Список вкладки — одно место для экрана и окна «Выгрузка» (`export`): вкладка, чипы с памятью, «кроме Каркаде» по
+     * умолчанию, поиск лупой мимо вкладки и чипов, порядок.
+     *
+     * @return array{q: Builder, facets: Facets, preset: string, admin: bool, step: bool, sort: Sort, searching: bool, carcadeHidden: bool}
+     */
+    private function listQuery(Request $request): array
+    {
+        $admin = $request->user()->canManageCrm();
+        $presets = self::presets($request->user());
+        $preset = array_key_exists((string) $request->query('preset'), $presets) ? (string) $request->query('preset') : self::home($request->user());
+        $step = in_array($preset, self::STEPS, true);
+        // «Без цены» — без сортировки и вида, чипы есть (владелец 04.10.2026: «не хватает фильтров»), по умолчанию — без
+        // Каркаде. «Рекомендуем» — переключатель у опубликованных.
+        $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
+            // «Новые» (опубликовано за сутки) и «Горящие» (приём закрывается за 12 ч) — как пилюли каталога, голубой и рыжей
+            // точкой и своим цветом включённого (12.10.2026, владелец); подтверждения и сроки видит только админ.
+            'published', 'closed', 'bids' => [
+                ...self::facets(),
+                ...($admin ? [
+                    Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent'),
+                    Facet::toggle('fresh', 'Новые', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.published_at', '>=', now()->subHours(Offer::NEW_HOURS)))->dot('fresh'),
+                    Facet::toggle('ending', 'Горящие', fn ($o) => CatalogQuery::ending($o))->dot('hot'),
+                    Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss'),
+                ] : []),
+                Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true)),
+            ],
+            // Продажная у самой закупочной или ниже (`Offers\Margin`, 14.10.2026) — чип, пока такие есть.
+            'priced', 'slots' => [
+                ...self::facets(),
+                ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')] : []),
+            ],
+            // Внутри «Всех» без «Где сейчас» не сузить: черновики, продажа, сделки, гараж.
+            'all' => [...self::facets(), Facet::column('state', 'Где сейчас', ['состояние', 'состояния', 'состояний'], 'offers.state')->enum(OfferState::class)->natural()],
+            default => self::facets(),
+        }, ...($admin ? [
+            // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
+            // «Есть подтверждения» — подтверждение есть, а принять не успели (`undecided`).
+            Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger'),
+        ] : []))->always();
+        $askedSort = $request->query('sort');
+        ListPrefs::sync($request, 'crm-offers', keep: array_values(array_diff($facets->keys(), self::ONCE)));
+        self::forgetBindingSort($request, $askedSort);
+        $cols = self::columns($preset, $request->user());
+        $sort = self::sortFor($request, $preset, $cols, $admin);
+        // Поиск лупой идёт по всему разделу — мимо вкладки и чипов.
+        $searching = $facets->searching();
+        // Вендор ни разу не выбирали — все, кроме Каркаде (их десятки из закупки, оценивают отдельно), на любой вкладке:
+        // фильтр при переключении вкладок не меняется (владелец 04.10.2026). Сняли чип — ListPrefs помнит пустое, и
+        // умолчание больше не встаёт. В ссылки вкладок оно не едет: после чипов параметр убирается (ниже).
+        $carcadeHidden = ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request, $preset);
+
+        // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
+        $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['settlement', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
+            ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
+        // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
+        Binding::select($q);
+
+        if ($searching) {
+            $q->searchCrm(trim((string) $request->query('q')))->orderByDesc('updated_at');
+        } else {
+            self::scopeFor($preset, $q, $admin);
+            self::order($q, $preset, $sort, $admin);
+        }
+        $facets->apply($q);
+
+        return compact('q', 'facets', 'preset', 'admin', 'step', 'sort', 'searching', 'carcadeHidden');
+    }
+
+    /** Окно «Выгрузка» над списком: то, что на экране (вкладка, чипы, лупа), — файлом или в буфер (21.10.2026). */
+    public function export(Request $request)
+    {
+        ['q' => $q, 'preset' => $preset, 'searching' => $searching] = $this->listQuery($request);
+
+        return OffersXlsx::respond($request, $request->user(), 'crm', $q->with('bids:id,offer_id,state'),
+            'Предложения '.($searching ? 'поиск' : mb_strtolower(self::PRESETS[$preset])));
     }
 
     /** Вендор Каркаде: на проде он «Carcade», локально «Каркаде» — как его ищет миграция закупок. */
@@ -364,6 +394,8 @@ class OfferController
             'closed' => $q->where('offers.state', OfferState::Open)->where('offers.bids_close_at', '<=', now())
                 ->when($admin, fn ($o) => $o->whereDoesntHave('bids', $bids)),
             'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
+            // «Все» (21.10.2026, владелец: «все, в том числе завершённые и перешедшие в сделку, короче все кроме архивных»).
+            'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
             default => $q->whereIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
         };
     }
@@ -463,6 +495,7 @@ class OfferController
             // В «Опубликованных» у админа подтверждений нет по определению — столбца тоже.
             'published', 'closed' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
             'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
+            // «Все» и «Архив»: где предложение сейчас — словом вкладки (`Offer::crmTab`: «Сделки», «Гараж»).
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
 
@@ -518,11 +551,18 @@ class OfferController
         return ! $facets || ! array_any($facets->keys(), fn ($k) => $facets->excluded($k) === null && $facets->selected($k) !== []);
     }
 
-    /** Чипы списка предложений — те же у галереи. */
+    /**
+     * Чипы списка предложений — те же у галереи. «Заведено» — промежуток дат (21.10.2026): не запоминается (`ONCE`) —
+     * забытый прятал бы строки.
+     */
     public static function facets(): array
     {
-        return [Common::vendor('offers.vendor_id')->none('Без вендора'), Common::city('offers.settlement_id'), Common::category(Car::sql('offers', 'category'))];
+        return [Common::vendor('offers.vendor_id')->none('Без вендора'), Common::city('offers.settlement_id'), Common::category(Car::sql('offers', 'category')),
+            Facet::dates('created', 'Заведено', 'offers.created_at')];
     }
+
+    /** Чипы на этот раз: в `ListPrefs` не идут. */
+    public const ONCE = ['created'];
 
     public function store(Request $request, CreateOffer $create)
     {

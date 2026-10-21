@@ -101,7 +101,7 @@ final class Facets
     public function excluded(string $key): ?array
     {
         $raw = $this->request->query($key);
-        if (! is_string($raw) || ! str_starts_with($raw, '!') || ! isset($this->facets[$key]) || $this->facets[$key]->toggle || $this->facets[$key]->single) {
+        if (! is_string($raw) || ! str_starts_with($raw, '!') || ! isset($this->facets[$key]) || $this->facets[$key]->toggle || $this->facets[$key]->single || $this->facets[$key]->dates) {
             return null;
         }
 
@@ -124,6 +124,9 @@ final class Facets
         }
         if ($this->facets[$key]->toggle) {
             return $raw === '0' ? [] : ['1'];
+        }
+        if ($this->facets[$key]->dates) {
+            return Facet::period($raw) ? [$raw] : [];
         }
         if ($this->facets[$key]->single) {
             return $raw === $this->facets[$key]->default ? [] : [$raw];
@@ -228,6 +231,9 @@ final class Facets
 
                 return (object) ['facet' => $f, 'options' => [], 'selected' => $selected, 'label' => $f->title, 'count' => $n];
             }
+            if ($f->dates) {
+                return $this->periodChip($f, $selected);
+            }
             $sub = clone $this->base;
             $this->applyTo($sub, $key);
             $counts = $f->counts($sub, $this->countExpr);
@@ -291,6 +297,36 @@ final class Facets
 
             return (object) ['facet' => $f, 'options' => array_values($options), 'selected' => $selected, 'on' => $on, 'value' => $out !== null ? '!'.implode(',', $out) : implode(',', $selected), 'label' => $label];
         })->filter()->values();
+    }
+
+    /**
+     * Чип промежутка дат: быстрые варианты с числом строк при прочих чипах (одним запросом), выбранное — его подписью.
+     * Свой промежуток — без варианта, полями «С» / «По».
+     */
+    private function periodChip(Facet $f, array $selected): object
+    {
+        $sub = clone $this->base;
+        $this->applyTo($sub, $f->key);
+        $sql = [];
+        $bindings = [];
+        foreach (array_keys(Facet::PERIODS) as $k) {
+            [$from, $to] = Facet::period($k);
+            $sql[] = 'count(*) filter (where '.implode(' and ', array_filter([$from ? "{$f->dates} >= ?" : null, $to ? "{$f->dates} < ?" : null])).") as \"{$k}\"";
+            array_push($bindings, ...array_filter([$from, $to]));
+        }
+        $row = (array) Facet::bare($sub->toBase())->selectRaw(implode(', ', $sql), $bindings)->first();
+        $raw = $selected[0] ?? null;
+        $options = [];
+        foreach (Facet::PERIODS as $k => $label) {
+            $o = new Option($k, $label);
+            $o->count = (int) ($row[$k] ?? 0);
+            $o->selected = $raw === $k;
+            $options[] = $o;
+        }
+        [$from, $to] = $raw && ! isset(Facet::PERIODS[$raw]) ? Facet::period($raw) : [null, null];
+
+        return (object) ['facet' => $f, 'options' => $options, 'selected' => $selected, 'on' => $raw !== null, 'value' => (string) $raw,
+            'label' => $raw ? (string) Facet::periodLabel($raw) : $f->title, 'from' => $from?->format('Y-m-d'), 'to' => $to?->subDay()->format('Y-m-d')];
     }
 
     /** Адрес с заменой: '' остаётся в адресе — это «снять и забыть» для ListPrefs. */

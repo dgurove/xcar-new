@@ -982,6 +982,24 @@ html.kb-open { --home-gap: 0px; }
   @media (hover: hover) { .facet-all:hover { @apply text-accent; } }
   .facet-submit { @apply sticky bottom-0 -mx-1 bg-surface px-1 pb-1 pt-2; }
   .facet-submit [aria-busy] .nums { opacity: .5; }
+  /* «С» и «По» чипа дат — в одну строку, подпись слева от поля. */
+  .facet-days { @apply mb-3 grid grid-cols-2 gap-2; }
+  .facet-day { @apply flex min-w-0 items-center gap-2; }
+  .facet-day > :last-child { @apply min-w-0 flex-1; }
+  /* Окно «Выгрузка» (`x-offer.export-sheet`): столбцы — пилюлями-галками (отмеченная — лаймовая, как выбранная пилюля),
+     образец первых строк — таблицей в плашке, вбок листается сам, страница — нет. */
+  .export-cols { @apply mb-4 flex flex-wrap gap-2; }
+  .pill.export-col { @apply bg-surface-2; }
+  .pill.export-col:has(input:checked) { @apply bg-accent font-medium text-white; }
+  .export-col:has(input:focus-visible) { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 60%, transparent); }
+  @media (hover: hover) { .export-col:hover:has(input:checked) { @apply bg-accent-hover; } }
+  .export-sample { @apply mb-1 min-h-24 text-sm; }
+  .export-scroll { @apply -mx-1 overflow-x-auto px-1; }
+  .export-table { @apply w-full border-collapse; }
+  .export-table th { @apply whitespace-nowrap pb-1.5 pr-4 text-left text-xs font-normal text-ink-dim; }
+  .export-table td { @apply whitespace-nowrap border-t border-line py-1.5 pr-4; }
+  .export-table :is(th, td):last-child { @apply pr-0; }
+  .sheet.sheet-export:popover-open { width: 30rem; }
   /* Пока список сужен набранным, скрытые строки просто не рисуются — без анимации и скачка. */
   [data-live-hidden] { display: none !important; }
 

@@ -21,6 +21,30 @@
         <button type="button" class="pill !pr-2.5" data-action="sheet#open" aria-controls="{{ $id }}" @if ($on) aria-current="true" @endif>{{ $chip->label }}<x-ui.icon name="chevron-down" class="size-4"/></button>
     @endif
     <x-ui.sheet :id="$id" :title="$f->title" anchor :class="! $f->single && count($chip->options) > 8 ? 'sheet-steady-phone' : ''">
+        @if ($f->dates)
+            {{-- Промежуток дат (`Facet::dates`): быстрые варианты строками-радио, свои края — «С» и «По» календарём. Поля дат
+                 вне формы (`form` без формы): в адрес уходит одно значение — `7d` или `2026-10-01~2026-10-15`. --}}
+            <form method="get" action="{{ $facets->action() }}" data-turbo-action="replace" data-turbo-prefetch="false" data-controller="facets" data-action="change->facets#tick">
+                @foreach ($facets->carry($key) as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
+                <input type="hidden" name="{{ $key }}" value="{{ $chip->value }}" data-facets-target="value">
+                <div class="list mb-3">
+                    @foreach ($chip->options as $o)
+                        <label class="row row-check">
+                            <span class="min-w-0 flex-1 truncate">{{ $o->label }}</span>
+                            <span class="nums text-sm text-ink-dim">{{ $o->count }}</span>
+                            <span class="check"><input type="radio" name="{{ $id }}-quick" value="{{ $o->key }}" form="{{ $id }}-none" @checked($o->selected) data-facets-target="quick"></span>
+                        </label>
+                    @endforeach
+                </div>
+                <div class="facet-days">
+                    <div class="facet-day"><span class="text-sm text-ink-dim">С</span><x-ui.date :name="$id.'-from'" :value="$chip->from" placeholder="Дата" form="{{ $id }}-none" data-facets-target="day"/></div>
+                    <div class="facet-day"><span class="text-sm text-ink-dim">По</span><x-ui.date :name="$id.'-to'" :value="$chip->to" placeholder="Дата" form="{{ $id }}-none" data-facets-target="day"/></div>
+                </div>
+                <div class="facet-submit">
+                    <button type="submit" class="btn btn-accent w-full" data-facets-target="submit">Показать <span class="nums">{{ $facets->total() }}</span></button>
+                </div>
+            </form>
+        @else
         <form method="get" action="{{ $facets->action() }}" data-turbo-action="replace" data-turbo-prefetch="false" data-controller="facets" data-action="change->facets#tick" @if ($f->single) data-facets-single-value="true" @endif>
             @foreach ($facets->carry($key) as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
             @unless ($f->single)<input type="hidden" name="{{ $key }}" value="{{ $chip->value ?? implode(',', $chip->selected) }}" data-facets-target="value">@endunless
@@ -66,5 +90,6 @@
                 </div>
             @endunless
         </form>
+        @endif
     </x-ui.sheet>
 </div>

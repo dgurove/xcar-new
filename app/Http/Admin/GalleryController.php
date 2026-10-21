@@ -36,7 +36,7 @@ class GalleryController
         $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? (string) $request->query('preset') : 'live';
         $searching = filled($request->query('q'));
         $facets = Facets::for($request, 'crm-gallery', ...OfferController::facets());
-        ListPrefs::sync($request, 'crm-gallery', keep: $facets->keys());
+        ListPrefs::sync($request, 'crm-gallery', keep: array_values(array_diff($facets->keys(), OfferController::ONCE)));
         $sort = Sort::from($request->query('sort'), self::SORTS, $preset === 'interest' ? '-last' : '-fresh');
 
         $q = self::base();

@@ -1,9 +1,9 @@
 {{-- «Предложения» вендора в CRM (15.10.2026): все его предложения за всё время, архив тоже. Чипы «Отклик» (галки: подтверждения, интерес,
-     без отклика — через «или»), «Где сейчас», «Запрос», «Письмо», «Заведено»; ежедневная отправка номеров — пилюля «Запросы»; лупа, сортировка заголовками; «Скачать» — то, что на экране, файлом
-     (`VendorOffersExport`). Строка ведёт в редактор предложения. --}}
+     без отклика — через «или»), «Где сейчас», «Запрос», «Письмо», «Заведено»; ежедневная отправка номеров — пилюля «Запросы»; лупа, сортировка заголовками; «Выгрузка» — то, что на экране, выбранными столбцами файлом или
+     в буфер (`x-offer.export-sheet`). Строка ведёт в редактор предложения. --}}
 <x-ui.toolbar :sort="$sort" name="vendor-offers" :facets="$facets" search="Номер, марка, VIN, убыток">
     <x-slot:actions>
-        <a href="{{ $base }}/offers/export?{{ http_build_query(request()->except(['pill', 'page'])) }}" class="btn btn-s btn-quiet btn-round shrink-0" download data-turbo="false" aria-label="Скачать таблицей" title="Скачать таблицей"><x-ui.icon name="download" class="size-5"/></a>
+        <x-offer.export-sheet :url="$base.'/offers/export'" list="vendor" id="vendor-offers-export"/>
     </x-slot:actions>
 </x-ui.toolbar>
 <div class="mt-4" id="list">
