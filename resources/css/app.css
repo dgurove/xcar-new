@@ -3524,10 +3524,16 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   /* Кадры блоками по стадии (PhotoBlocks): подпись блока слева над лентой, кнопки справа; с подписью ряд виден всегда. */
   .photo-blocks { display: flex; flex-direction: column; gap: .875rem; }
   .photo-block-title { @apply mr-auto self-center text-sm text-ink-muted; }
-  /* «Развернуть»: лента — плиткой, плитка «добавить» — первой клеткой; перетаскивание то же. */
+  /* «Развернуть»: лента — плиткой, плитка «добавить» — первой клеткой; перетаскивание то же. На телефоне — квадраты по
+     5.5rem, от 640 — клетки 4:3 от 7.5rem (21.10.2026, владелец: «криво на компьютере» — квадраты по 90 px выходили мельче
+     кадров свёрнутой ленты и резали фото 4:3). */
   .photo-row.is-open { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); }
   .photo-row.is-open .photo-strip { display: contents; }
   .photo-row.is-open :is(.photo-cell, .photo-add) { aspect-ratio: 1 / 1; height: auto; width: auto; min-width: 0; }
+  @media (min-width: 640px) {
+    .photo-row.is-open { grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); }
+    .photo-row.is-open :is(.photo-cell, .photo-add) { aspect-ratio: 4 / 3; }
+  }
   .photo-row.is-open .photo-cell img { height: 100%; width: 100%; max-width: none; object-fit: cover; }
   .photo-strip { @apply -mr-4 flex min-w-0 flex-1 snap-x gap-1 overflow-x-auto pr-4 sm:mr-0 sm:pr-0 sm:pb-1; scrollbar-width: none; }
   @media (hover: hover) { .photo-strip { scrollbar-width: thin; } }

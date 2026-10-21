@@ -55,6 +55,7 @@ export default class extends Controller {
         const Sortable = await loadSortable();
         if (!grid.isConnected) return;
         this.sortable?.destroy();
+        if (this.onExpand) window.removeEventListener('photos:expand', this.onExpand);
         this.sortable = Sortable.create(grid, {
             animation: 150,
             delay: 150,
@@ -84,7 +85,14 @@ export default class extends Controller {
     allTargetConnected() { this.syncAll(); }
 
     // «Развернуть» / «Свернуть»: лента кадров плиткой. Выбор один на устройство — у всех лент сразу.
-    expandTargetConnected() { this.syncExpand(); }
+    expandTargetConnected() {
+        this.syncExpand();
+        // Выбор один на устройство: нажали у одной ленты — перестраиваются все ленты страницы (блоки по стадиям).
+        if (!this.onExpand) {
+            this.onExpand = () => this.syncExpand();
+            window.addEventListener('photos:expand', this.onExpand);
+        }
+    }
 
     get expanded() { try { return localStorage.getItem('photos:open') === '1'; } catch { return false; } }
 
@@ -100,6 +108,7 @@ export default class extends Controller {
     expand() {
         try { localStorage.setItem('photos:open', this.expanded ? '0' : '1'); } catch {}
         this.syncExpand();
+        window.dispatchEvent(new CustomEvent('photos:expand'));
     }
 
     syncAll() {
