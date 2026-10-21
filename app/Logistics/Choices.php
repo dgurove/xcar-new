@@ -28,14 +28,23 @@ final class Choices
     }
 
     /**
-     * Менеджеры, что могут вывезти как исполнители логистики (17.10.2026, владелец), — все, кроме менеджера этой сделки (он
-     * забирает сам, через «Принять»). @return array<int, string>
+     * Свои исполнители (`Channel::Partner`): менеджеры (17.10.2026, владелец) и прямые исполнители XCar — `Role::Contractor`
+     * без логиста (21.10.2026: покупатель с гаражом, что возит и чужие машины); все, кроме того, чья это машина (он забирает
+     * сам). @return array<int, string>
      */
     public static function partners(Transport|Offer|null $of = null): array
     {
         $own = $of ? self::managerOf($of)?->id : null;
 
-        return array_diff_key(once(fn () => User::withRole(Role::Manager)->whereNull('rejected_at')->orderBy('name')->pluck('name', 'id')->all()), [$own => true]);
+        return array_diff_key(once(fn () => User::query()->whereNull('rejected_at')
+            ->where(fn ($q) => $q->withRole(Role::Manager)->orWhere(fn ($c) => $c->withRole(Role::Contractor)->whereNull('logist_id')))
+            ->orderBy('name')->pluck('name', 'id')->all()), [$own => true]);
+    }
+
+    /** Может ли человек быть своим исполнителем (`Channel::Partner`): менеджер или исполнитель без логиста. */
+    public static function partnerable(User $user): bool
+    {
+        return $user->isManager() || ($user->isContractor() && ! $user->logist_id);
     }
 
     /**

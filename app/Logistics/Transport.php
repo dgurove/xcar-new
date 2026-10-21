@@ -434,7 +434,7 @@ class Transport extends Model
             $this->state === TransportState::New => 'выбрать исполнителя',
             $this->state === TransportState::Logist && $this->from_depot_id => 'на стоянке '.($this->fromDepot?->name ?? 'логиста'),
             $this->state === TransportState::Logist => 'ждёт исполнителя логиста',
-            $this->state === TransportState::Assigned && $this->channel === Channel::Manager => 'забирает сам',
+            $this->state === TransportState::Assigned && $this->isSelfPickup() => 'забирает сам',
             $this->state === TransportState::Assigned && $this->isPickup() => 'позвонить владельцу',
             $this->state === TransportState::Assigned => 'забрать',
             $this->state === TransportState::Agreed && $this->docs_by_cdek && $this->docs_sent_at === null => 'ждёт отправки документов',
@@ -481,7 +481,7 @@ class Transport extends Model
                 default => null,
             }];
         // Менеджер забирает сам — созвона и документов у логистики нет: «Автомобиль забрал» он жмёт в своей сделке.
-        if ($this->isPickup() && $this->channel !== Channel::Manager) {
+        if ($this->isPickup() && ! $this->isSelfPickup()) {
             $agreed = $this->agreed_at !== null;
             // Забрали — созвон и документы уже позади, даже если их не отмечали (задачи до 17.10.2026, админ за исполнителя).
             $steps[] = ['key' => 'call', 'title' => $agreed || $s->picked() ? 'Созвонились' : 'Созвон с владельцем', 'status' => $status($agreed || $s->picked(), $assigned && ! $agreed),
@@ -499,7 +499,7 @@ class Transport extends Model
         // Забирать рано (Альфа — после оплаты, Каркаде — до согласия поставщика): у шага «Забрать» словом, а не голой кнопкой.
         $hold = $s->picked() ? null : $this->saleOffer()?->deal?->pickupHold();
         // Менеджер везёт к себе сам: его «Автомобиль забрал» и есть «привёз» (`SelfPickup`) — один шаг, без «Привёз».
-        if ($this->channel === Channel::Manager) {
+        if ($this->isSelfPickup()) {
             $steps[0]['title'] = $assigned ? 'Забирает '.($this->executor?->shortName() ?? 'менеджер') : $steps[0]['title'];
             $steps[] = ['key' => 'picked', 'title' => $s->picked() ? 'Забрал' : 'Забрать', 'status' => $status($s->picked(), $s === TransportState::Assigned),
                 'at' => $this->delivered_at ?? $this->picked_at, 'hint' => $hold];
@@ -620,7 +620,20 @@ class Transport extends Model
      */
     public function scopeInLogistics(Builder $q): Builder
     {
-        return $q->where(fn ($w) => $w->whereNull('channel')->orWhere('channel', '!=', Channel::Manager->value));
+        // Держатель — исполнитель вывоза (21.10.2026): свою машину он везёт задачей логистики (`isSelfPickup`).
+        return $q->where(fn ($w) => $w->whereNull('channel')->orWhere('channel', '!=', Channel::Manager->value)
+            ->orWhereIn('executor_id', User::withRole(\App\Users\Role::Contractor)->select('id')));
+    }
+
+    /**
+     * «Сам» вне логистики: менеджер сделки или держатель гаража везёт свою машину и отмечает «Автомобиль забрал» у себя
+     * (`SelfPickup`). Держатель с ролью «Исполнитель вывоза» (21.10.2026, владелец: покупатель с гаражом сам вывозит, «в
+     * логистике он ещё как исполнитель должен быть») — тот же канал, но задача логистики: созвон, «Забрал» с фото по ссылке
+     * `/trip`, поручение ему, видна в таблице. Привезёт к себе — «Забрал» и есть «привёз» (`PickUp`, `Point::Keeper`).
+     */
+    public function isSelfPickup(): bool
+    {
+        return $this->channel === Channel::Manager && ! $this->executor?->isContractor();
     }
 
     /**

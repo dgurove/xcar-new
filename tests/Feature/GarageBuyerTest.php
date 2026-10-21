@@ -164,6 +164,54 @@ class GarageBuyerTest extends TestCase
         $this->assertSame($this->buyer->id, $t->fresh()->executor_id);
     }
 
+    /**
+     * Покупатель с гаражом — ещё и исполнитель вывоза (21.10.2026, 756998: Лобус сам вывозит, чинит и продаёт): галка в
+     * шторке, свою машину везёт «сам», но задача — логистики (видна ему, ссылка `/trip`), а прямого исполнителя XCar
+     * ставят и на чужие вывозы («Свой исполнитель»).
+     */
+    public function test_buyer_contractor_carries_own_car_in_logistics_and_others(): void
+    {
+        $manager = $this->buyer->manager_id;
+        $this->actingAs($this->admin)->put(self::CRM.'/settings/users/'.$this->buyer->id, [
+            'first_name' => 'Пётр', 'last_name' => 'Покупателев', 'manager_id' => $manager, 'garage_enabled' => '1', 'contractor' => '1',
+        ])->assertSessionHasNoErrors();
+        $buyer = $this->buyer->fresh();
+        $this->assertTrue($buyer->isBuyer() && $buyer->isContractor() && $buyer->garageBuyer());
+
+        $offer = $this->draft();
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
+            'to' => 'garage', 'whom' => 'buyer', 'manager_id' => $buyer->id, 'buyer_price' => '900 000', 'where' => 'owner', 'pickup' => 'manager',
+        ])->assertSessionHasNoErrors();
+        $t = Transport::openFor($offer->fresh());
+        $this->assertSame(Channel::Manager, $t->channel);
+        $this->assertFalse($t->isSelfPickup());
+        $this->assertTrue(Transport::visibleTo($buyer)->whereKey($t->id)->exists(), 'своя задача видна ему в логистике');
+        $this->assertNotNull($t->trip_code);
+        $this->get('http://logistics.xcar.localhost/trip/'.$t->trip_code)->assertOk();
+
+        // Чужая машина — «Свой исполнитель».
+        $other = $this->draft();
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$other->number.'/pickup', [
+            'channel' => 'partner', 'who' => ['partner' => $buyer->id], 'reach' => 'local', 'destination' => 'other', 'to_address' => 'Москва',
+        ])->assertSessionHasNoErrors();
+        $o = Transport::openFor($other->fresh());
+        $this->assertSame(Channel::Partner, $o->channel);
+        $this->assertSame($buyer->id, $o->executor_id);
+    }
+
+    /** «Уже у покупателя», когда ТС уже вывезли (617472, «Уже вывезли» к Ананьеву): сразу «Подготовка», а не «Ждёт ТС». */
+    public function test_arrived_when_already_picked_up_starts_prep(): void
+    {
+        $this->buyer->update(['garage_enabled' => true]);
+        $offer = $this->draft();
+        app(\App\Workflow\Actions\SetCarPlace::class)($offer, \App\Offers\CarPlace::Elsewhere, $this->admin);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
+            'to' => 'garage', 'whom' => 'buyer', 'manager_id' => $this->buyer->id, 'buyer_price' => '900 000', 'where' => 'arrived', 'pickup' => 'manager',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(CarState::Repair, Car::where('offer_id', $offer->id)->firstOrFail()->state);
+        $this->assertSame(\App\Offers\CarPlace::Keeper, $offer->fresh()->car_place);
+    }
+
     public function test_super_buyer_garage_bid_only_with_toggle(): void
     {
         $super = User::create(['name' => 'Сергей Супер', 'phone' => '79000000004', 'roles' => [Role::SuperBuyer], 'approved_at' => now()]);

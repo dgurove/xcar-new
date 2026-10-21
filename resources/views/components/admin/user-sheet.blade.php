@@ -30,6 +30,7 @@
                 <x-ui.field name="manager_id" label="Менеджер" :options="$managers->mapWithKeys(fn ($m) => [$m->id => $m->name])" :value="$user->manager_id"/>
             </div>
             <x-admin.garage-toggle :user="$user"/>
+            <x-ui.check name="contractor" :checked="$user->isContractor()" id="contractor-{{ $user->id }}">Исполнитель вывоза</x-ui.check>
         @else
             <div class="fields">
                 <x-ui.field name="phone" label="Телефон" type="tel" :value="$user->phoneFormatted()"/>

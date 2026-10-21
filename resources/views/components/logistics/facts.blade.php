@@ -15,7 +15,7 @@
             : '<div class="row items-center gap-4">'.$body.'</div>';
     };
     $mine = fn (?\App\Users\User $u) => $u && $me && $u->is($me) ? 'вы' : $u?->shortName();
-    $manager = $t->channel === \App\Logistics\Channel::Manager;
+    $manager = $t->isSelfPickup();
     $dest = $t->routeLabel();
 @endphp
 {{-- Забрал аукцион (20.10.2026) — ни исполнителя, ни «куда»: шаг один, «Забрал аукцион». --}}

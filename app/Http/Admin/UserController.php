@@ -57,9 +57,11 @@ class UserController
     /**
      * Роли, которые админ CRM отмечает галками (ролей у человека может быть несколько); заводят людей только ссылкой.
      * Роли парковки (управляющий, администратор парковки) тут не правятся — их ведёт парковка (`Park\UserController`),
-     * CRM их сохраняет как есть (владелец 08.10.2026: админ CRM не админ парковки).
+     * CRM их сохраняет как есть (владелец 08.10.2026: админ CRM не админ парковки). «Исполнитель» (21.10.2026, владелец: покупатель
+     * с гаражом сам вывозит машину — «в логистике он ещё как исполнитель должен быть») — галкой у любого, и у покупателя: без
+     * логиста он прямой исполнитель XCar (`Channel::Partner`), у логиста — её, `logist_id` CRM не трогает.
      */
-    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer, Role::SuperBuyer, Role::Logist, Role::Driver];
+    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer, Role::SuperBuyer, Role::Logist, Role::Driver, Role::Contractor];
 
     /** Роли, которые ведёт парковка. */
     public const PARK_ROLES = [Role::ParkAdmin, Role::Parking];
@@ -94,7 +96,7 @@ class UserController
                 'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
                 'managers' => $q->withRole(Role::Manager)->withCount('buyers'),
                 'park' => $q->withRole(Role::Parking),
-                'logistics' => $q->withRole(Role::Logist, Role::Driver),
+                'logistics' => $q->where(fn ($w) => $w->withRole(Role::Logist, Role::Driver)->orWhere(fn ($c) => $c->withRole(Role::Contractor)->whereNull('logist_id'))),
                 // Супер-покупатели — здесь же, у них вместо менеджера «супер-покупатель» в строке.
                 'buyers' => $q->withRole(Role::Buyer, Role::SuperBuyer)->reorder('created_at', 'desc'),
                 'visitors' => $q->withRole(Role::Visitor)->whereNotNull('approved_at'),
@@ -122,7 +124,7 @@ class UserController
             'staff' => User::withRole(Role::Admin, Role::Moderator)->count(),
             'managers' => User::withRole(Role::Manager)->count(),
             'park' => User::withRole(Role::Parking)->count(),
-            'logistics' => User::withRole(Role::Logist, Role::Driver)->count(),
+            'logistics' => User::where(fn ($w) => $w->withRole(Role::Logist, Role::Driver)->orWhere(fn ($c) => $c->withRole(Role::Contractor)->whereNull('logist_id')))->count(),
             'buyers' => User::withRole(Role::Buyer, Role::SuperBuyer)->count(),
             'invites' => Invite::whereNull('disabled_at')->where(fn ($w) => $w->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
             'waiting' => User::whereNull('approved_at')->whereNull('rejected_at')->withRole(Role::Visitor)->count(),
@@ -355,8 +357,10 @@ class UserController
                 'last_name' => ['required', 'string', 'max:60'],
                 'manager_id' => ['required', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))],
             ]);
-            // Гараж покупателю — тумблером (20.10.2026): чтобы ему можно было отдать ТС.
-            $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name']), 'garage_enabled' => $request->boolean('garage_enabled')]);
+            // Гараж покупателю — тумблером (20.10.2026): чтобы ему можно было отдать ТС; «Исполнитель вывоза» (21.10.2026) — второй
+            // ролью: свою машину он везёт сам, и задачу видит в логистике.
+            $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name']), 'garage_enabled' => $request->boolean('garage_enabled'),
+                'roles' => $request->boolean('contractor') ? [Role::Buyer, Role::Contractor] : [Role::Buyer]]);
             $transfer($user, User::find($data['manager_id']));
 
             return back()->with('toast', 'Сохранено');
@@ -422,9 +426,9 @@ class UserController
         $data['login'] = $data['login'] ?? null;
         // Ролей бывает несколько; себе админ «Админ» не снимет — остаётся при любых галках.
         $roles = array_map(fn ($r) => Role::from($r), (array) ($data['roles'] ?? []));
-        // Супер-покупатель — покупатель, а не сотрудник: с другими ролями не совмещается.
-        if (in_array(Role::SuperBuyer, $roles, true) && (count($roles) > 1 || $parkRoles || $self)) {
-            throw ValidationException::withMessages(['roles' => 'Супер-покупатель не совмещается с другими ролями']);
+        // Супер-покупатель — покупатель, а не сотрудник: с другими ролями не совмещается, кроме исполнителя вывоза.
+        if (in_array(Role::SuperBuyer, $roles, true) && (array_diff(array_map(fn (Role $r) => $r->value, $roles), [Role::SuperBuyer->value, Role::Contractor->value]) || $parkRoles || $self)) {
+            throw ValidationException::withMessages(['roles' => 'Супер-покупатель совмещается только с исполнителем вывоза']);
         }
         if ($self && ! in_array(Role::Admin, $roles, true)) {
             $roles[] = Role::Admin;

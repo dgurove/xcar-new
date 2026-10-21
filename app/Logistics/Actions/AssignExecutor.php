@@ -45,9 +45,9 @@ final class AssignExecutor
         if ($kind === Channel::Manager && ! ($who && $who->is(Choices::managerOf($t)))) {
             throw ValidationException::withMessages(['executor_id' => 'Вывозит только менеджер, которому подтвердили сделку']);
         }
-        // Другой менеджер — исполнитель логистики; менеджер этой сделки забирает сам («Принять»), не через логистику.
+        // Свой исполнитель — чужую машину; менеджер сделки или держатель гаража свою забирает сам («… сам»).
         if ($kind === Channel::Partner && $who && $who->is(Choices::managerOf($t))) {
-            throw ValidationException::withMessages(['executor_id' => $who->shortName().' — менеджер этой сделки: забирает сам, через «Принять»']);
+            throw ValidationException::withMessages(['executor_id' => $who->shortName().' — это его машина: выберите «'.$who->shortName().' сам»']);
         }
 
         // Маршрут через стоянки (20.10.2026, `Logistics\Route`) ведёт логист: отдать его другому виду — сначала убрать стоянки.
@@ -117,7 +117,7 @@ final class AssignExecutor
         match ($kind) {
             Channel::Logist => $who?->isLogist() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите логиста']),
             Channel::Staff => $who?->isDriver() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите сотрудника на вывозе']),
-            Channel::Partner => $who?->isManager() ?: throw ValidationException::withMessages(['executor_id' => 'Выберите менеджера']),
+            Channel::Partner => $who && Choices::partnerable($who) ?: throw ValidationException::withMessages(['executor_id' => 'Выберите менеджера или исполнителя']),
             Channel::Manager => $who ?: throw ValidationException::withMessages(['executor_id' => 'Кто именно']),
             // Аукцион назначают не формой, а продажей: «Продана на аукционе» (`SellAtAuction`).
             Channel::Auction => throw ValidationException::withMessages(['channel' => 'Отметьте продажу на аукционе']),

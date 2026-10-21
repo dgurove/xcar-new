@@ -175,7 +175,7 @@
         {{-- Ход лесенкой — тот же, что в CRM. --}}
         <div class="steps mt-5">
             @foreach ($t->steps() as $s)
-                @continue(in_array($s['key'], ['logist', 'executor'], true) && $t->state !== S::New && $t->channel !== Channel::Manager)
+                @continue(in_array($s['key'], ['logist', 'executor'], true) && $t->state !== S::New && ! $t->isSelfPickup())
                 <div class="step step--{{ $s['status'] }}">
                     <span class="step-dot">@if ($s['status'] === 'done')<x-ui.icon name="check" class="size-3"/>@endif</span>
                     <div class="step-body">
@@ -263,7 +263,7 @@
         @endif
 
         {{-- Ссылка исполнителю (18.10.2026): страница задачи без входа — «Созвонились», «Забрал» с фото, «Привёз». --}}
-        @if ($open && $t->tripUrl() && ($admin || $mine) && ! $t->isExecutedBy($me) && $t->channel !== Channel::Manager)
+        @if ($open && $t->tripUrl() && ($admin || $mine) && ! $t->isExecutedBy($me) && ! $t->isSelfPickup())
             <h3 class="list-head mt-5">Исполнителю {{ $t->executor?->shortName() }}</h3>
             <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $t->tripUrl() }}" data-copy-title-value="Вывоз {{ $t->title() }}" data-copy-done-value="Задача и ссылка в буфере">
                 <textarea hidden data-copy-target="message">{{ \App\Logistics\TripText::for($t) }}</textarea>

@@ -61,7 +61,7 @@ final class NotifyLogistics
             $deal = $offer->deal()->first();
             $manager->notify(new PickupTakenNotice($t, $offer, $deal?->href() ?? '/deals'));
         }
-        if ($t->channel === Channel::Manager) {
+        if ($t->isSelfPickup()) {
             return;
         }
         $to = $t->executor ?? ($t->channel === Channel::Logist ? $t->logist : null);
@@ -86,7 +86,7 @@ final class NotifyLogistics
     {
         $t = $e->transport;
         // Пачкой — сводку шлёт контроллер; менеджер забрал сам — это не логистика, его шаг пишет сделка.
-        if ($e->batch || $t->channel === Channel::Manager) {
+        if ($e->batch || $t->isSelfPickup()) {
             return;
         }
         // Трек — исполнителю и логисту задачи: исполнители логиста обычно по ссылке без приложения, трек пересылает он.

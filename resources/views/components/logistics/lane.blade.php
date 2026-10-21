@@ -17,7 +17,7 @@
         && $offer->parkVehicle?->state !== \App\Park\VehicleState::Stored;
     $sheet = 'pickup-'.$offer->number;
     $keys = $offer->car?->keys_count;
-    $manager = $t?->channel === Channel::Manager;
+    $manager = (bool) $t?->isSelfPickup();
     // Кто и куда меняются окном «Назначить вывоз», пока ТС не забрали; исполнителя логиста ставит логист. Забирает менеджер
     // сделки — тоже: 19.10.2026 (ГАЗель 807360) такой вывоз нельзя было передать в логистику — окна не было ни тут, ни там.
     $changeable = $open && ! $t->taken();
