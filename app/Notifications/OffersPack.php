@@ -9,8 +9,9 @@ use App\Users\User;
 
 /**
  * Пачка предложений без ленты — «Опубликовано N» (`NewOffersNotice`) и «Приём до 17:00: N непросмотренных»
- * (`UnreadClosingNotice`): пуш, кроме тихих часов, карточка со звуком, что уходит сама, и основной бот Telegram (21.10.2026),
- * кроме подписчика бота предложений — тот пишет о новых сам. Категория `offers` выключает всё разом.
+ * (`UnreadClosingNotice`), «Через 30 минут закончится приём» (`FavoriteClosingNotice`): пуш, кроме тихих часов, карточка
+ * со звуком и основной бот Telegram (21.10.2026), кроме подписчика бота предложений — тот пишет о новых сам. Категория
+ * `offers` выключает всё разом.
  */
 trait OffersPack
 {
@@ -20,11 +21,17 @@ trait OffersPack
             return [];
         }
         $via = $user->quietHours() ? [BannerChannel::class] : [WebPushChannel::class, BannerChannel::class];
-        if ($user->wantsTelegram($this->category()) && ! Subscriber::listens($user)) {
+        if ($user->wantsTelegram($this->category()) && ! ($this->skipsOffersBot() && Subscriber::listens($user))) {
             $via[] = TelegramChannel::class;
         }
 
         return $via;
+    }
+
+    /** Подписчику бота предложений основной бот о новом не пишет: тот пишет сам. Об избранном бот молчит — пишем. */
+    protected function skipsOffersBot(): bool
+    {
+        return true;
     }
 
     public function category(): string

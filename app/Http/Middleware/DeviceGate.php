@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Users\Access\Enroll;
 use App\Users\Access\Lock;
+use App\Users\Access\TelegramEntry;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,7 +30,9 @@ class DeviceGate
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($this->page($request) && $request->isMethod('GET') && Lock::lite($request->user()) && Lock::token($request) === null) {
+        // Вход по кнопке Telegram — не устройство (`TelegramEntry`): его страница прежнее не выкидывает.
+        if ($this->page($request) && $request->isMethod('GET') && Lock::lite($request->user()) && Lock::token($request) === null
+            && ! ($request->hasSession() && $request->session()->has(TelegramEntry::SESSION))) {
             ($this->enroll)($request, $request->user());
         }
         $state = Lock::state($request);

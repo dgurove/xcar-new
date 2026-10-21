@@ -58,6 +58,23 @@
             @if ($pill === 'money')
                 @include('admin.users.money')
             @else
+            @if ($response)
+                {{-- Отклик на предложения (21.10.2026, владелец: «менеджеры не видят, когда приходят новые машины»). --}}
+                <section class="mb-8">
+                    <h2 class="text-xl">Отклик за {{ \App\Users\ManagerResponse::DAYS }} дней</h2>
+                    <div class="list mt-4">
+                        <div class="row"><span class="min-w-0 flex-1">Открылось предложений</span><span class="nums">{{ $response->seen }}</span></div>
+                        <div class="row"><span class="min-w-0 flex-1">Открыл</span><span class="nums">{{ $response->opened }}</span>@if ($response->shareLabel())<span class="w-20 text-right {{ $response->low() ? 'text-danger' : 'text-ink-muted' }}">{{ $response->shareLabel() }}</span>@endif</div>
+                        <div class="row"><span class="min-w-0 flex-1">Подтвердил</span><span class="nums">{{ $response->bids }}</span></div>
+                        @if ($response->medianSeconds !== null)
+                            <div class="row"><span class="min-w-0 flex-1">Обычно открывает через</span><span class="text-ink-muted">{{ \App\Support\Ago::duration($response->medianSeconds) }}</span></div>
+                        @endif
+                        @if ($user->seenLabel())
+                            <div class="row"><span class="min-w-0 flex-1">Был</span><span class="text-ink-muted">{{ $user->seenLabel() }}</span></div>
+                        @endif
+                    </div>
+                </section>
+            @endif
             <section>
                 <h2 class="text-xl">Чаты @if ($chats->isNotEmpty())<span class="nums text-ink-dim">{{ $chats->count() }}</span>@endif</h2>
                 @if ($chats->isEmpty())

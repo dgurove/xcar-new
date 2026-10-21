@@ -142,7 +142,7 @@ final class Notify
      */
     public function offerPublished(OfferPublished $e): void
     {
-        OfferViewer::where('offer_id', $e->offer->id)->update(['notified_at' => null, 'closing_reminded_at' => null]);
+        OfferViewer::where('offer_id', $e->offer->id)->update(['notified_at' => null, 'closing_reminded_at' => null, 'last_reminded_at' => null]);
         if (! $e->slot) {
             app(NotifyViewers::class)($e->offer);
         }

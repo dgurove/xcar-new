@@ -17,6 +17,7 @@ use App\Park\City;
 use App\Push\Subscription;
 use App\Search\Term;
 use App\Support\Demo\HidesDemo;
+use App\Support\Nav;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Telegram\Bot;
@@ -756,10 +757,20 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return app()->runningInConsole() || $surface ? $count() : once($count);
     }
 
-    /** Бейдж приложения: непрочитанные уведомления и сообщения в чатах вместе; у парковки чатов нет. */
+    /**
+     * Число на значке приложения (и «(3)» в названии вкладки). На сайте — только новые сообщения в чатах и сделки, где ход
+     * за ним (21.10.2026, владелец: «если там будет слишком много, взгляд замылится»; уведомления ленты и новые предложения —
+     * не сюда): `/deals/asks` и гаражные просьбы `/garage` из `Nav::badges`. В CRM — уведомления и чаты; у парковки и
+     * логистики чатов нет.
+     */
     public function badgeCount(?Surface $surface = null): int
     {
         $here = $surface ?? Surface::current();
+        if ($here === Surface::Site) {
+            $badges = Nav::badges($this, Surface::Site);
+
+            return $this->unreadChats(platform: false) + ($badges['/deals/asks'] ?? 0) + ($badges['/garage'] ?? 0);
+        }
 
         // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).
         // На парковке и в логистике чатов нет — их непрочитанное в значок приложения не идёт.

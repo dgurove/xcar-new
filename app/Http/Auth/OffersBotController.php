@@ -5,10 +5,9 @@ namespace App\Http\Auth;
 use App\Telegram\Offers\Handler;
 use App\Telegram\Offers\LoginUrl;
 use App\Telegram\Offers\Subscriber;
-use App\Users\Access\Lock;
+use App\Users\Access\TelegramEntry;
 use App\Users\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -27,10 +26,9 @@ final class OffersBotController
         // Одна подпись — один вход: адрес остаётся в истории браузера.
         if ($tgId && Cache::add('offers-bot:login:'.$request->query('hash'), true, 86400)) {
             $user = Subscriber::where('chat_id', $tgId)->first()?->user;
-            // Менеджеру под замком кнопка входом не служит: вход в браузере Telegram выкинул бы его приложение.
-            if ($user && Handler::eligible($user) && ! $user->isRejected() && Auth::id() !== $user->id && ! (Lock::single() && $user->underLock())) {
-                Auth::login($user, true);
-                $request->session()->regenerate();
+            // Вход — как у кнопок основного бота: не новое устройство, приложение не выходит (`TelegramEntry`, 21.10.2026).
+            if ($user && Handler::eligible($user)) {
+                TelegramEntry::login($request, $user);
             }
         }
 

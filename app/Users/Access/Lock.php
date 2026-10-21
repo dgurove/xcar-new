@@ -102,7 +102,12 @@ final class Lock
             $user->telegram_chat_id === null => [self::LINK, null],
             $device?->owns($token) => [$device->isOpen() ? self::OPEN : self::FROZEN, $device],
             default => [self::ENROLL, $device],
-        } : [is_string($token) && $token !== '' && ! $device?->owns($token) ? self::KICKED : null, $device];
+        } : [match (true) {
+            is_string($token) && $token !== '' && ! $device?->owns($token) => self::KICKED,
+            // Вход по кнопке Telegram устройства не заводит (`TelegramEntry`) и живёт 12 часов.
+            ($token === null || $token === '') && TelegramEntry::expired($request) => self::KICKED,
+            default => null,
+        }, $device];
         $request->attributes->set(self::MEMO, [$user->id, $result]);
 
         return $result;

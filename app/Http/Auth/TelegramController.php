@@ -5,14 +5,17 @@ namespace App\Http\Auth;
 use App\Notifications\TelegramChannel;
 use App\Notifications\TestNotice;
 use App\Telegram\Actions\UnlinkChat;
+use App\Telegram\Offers\LoginUrl;
 use App\Telegram\StartLink;
 use App\Users\Access\DeviceKey;
 use App\Users\Access\Enroll;
 use App\Users\Access\Lock;
+use App\Users\Access\TelegramEntry;
 use App\Users\Impersonation;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Telegram у аккаунта: отметки шторки подключения, состояние, тумблер, пробное сообщение, отключить и вход через бота.
@@ -47,6 +50,24 @@ class TelegramController
         }
 
         return $request->expectsJson() ? response()->noContent() : back();
+    }
+
+    /**
+     * Кнопка уведомления в Telegram (`TelegramChannel::button`, `login_url`): подпись Telegram — вход (`TelegramEntry`),
+     * дальше — на свой путь. Подпись одна — вход один: адрес остаётся в истории браузера. Не сошлось, не привязан — просто
+     * на путь, там обычный вход.
+     */
+    public function go(Request $request)
+    {
+        $to = (string) $request->query('to', '/');
+        $path = str_starts_with($to, '/') && ! str_starts_with($to, '//') && ! str_contains($to, '\\') ? $to : '/';
+        $tgId = LoginUrl::verify($request->query(), (string) config('xcar.telegram.token'));
+        if ($tgId && Cache::add('telegram:login:'.$request->query('hash'), true, 86400)
+            && ($user = User::where('telegram_chat_id', $tgId)->first())) {
+            TelegramEntry::login($request, $user);
+        }
+
+        return redirect($path);
     }
 
     /** Шторка ждёт «Запустить»: событие хаба могло не дойти — вернувшись на вкладку, она спрашивает сама. */

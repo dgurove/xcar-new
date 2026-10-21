@@ -7,6 +7,6 @@
 <turbo-stream action="replace" targets="[data-alarm-button='wide']"><template><x-alarm.button wide/></template></turbo-stream>
 @endif
 @auth
-{{-- Число для значка приложения: уведомления и чаты вместе (pwa_controller читает meta). --}}
-<turbo-stream action="replace" targets="meta[name='badge-count']"><template><meta name="badge-count" content="{{ ($badges['/account/notifications'] ?? 0) + ($badges['/account/chats'] ?? 0) }}"></template></turbo-stream>
+{{-- Число для значка приложения — одна дверь `User::badgeCount` (pwa_controller читает meta). --}}
+<turbo-stream action="replace" targets="meta[name='badge-count']"><template><meta name="badge-count" content="{{ auth()->user()->badgeCount() }}"></template></turbo-stream>
 @endauth

@@ -37,6 +37,7 @@ use App\Users\Actions\TransferBuyer;
 use App\Users\BuyerGroup;
 use App\Users\CrmArea;
 use App\Users\Invite;
+use App\Users\ManagerResponse;
 use App\Users\Role;
 use App\Users\User;
 use App\Users\UserGroup;
@@ -112,11 +113,14 @@ class UserController
             $q->search($term);
         }
         $facets->apply($q);
-        $sort = Sort::from($request->query('sort'), self::SORTS, in_array($preset, ['waiting', 'buyers', 'rejected'], true) && ! $searching ? '-created' : 'name');
+        // У менеджеров — ещё «Отклик» (21.10.2026): кто реже всех открывает предложения — сверху.
+        $sorts = $preset === 'managers' ? self::SORTS + ['response' => ['Отклик', 'asc']] : self::SORTS;
+        $sort = Sort::from($request->query('sort'), $sorts, in_array($preset, ['waiting', 'buyers', 'rejected'], true) && ! $searching ? '-created' : 'name');
         $dir = $sort->dir();
         match ($sort->key) {
             'created' => $q->reorder($preset === 'rejected' && ! $searching ? 'rejected_at' : 'created_at', $dir),
             'seen' => $q->reorder()->orderByRaw("seen_at {$dir} nulls last"),
+            'response' => $q->reorder()->orderByRaw(ManagerResponse::shareSql()." {$dir} nulls last"),
             default => $q->reorder('name', $dir),
         };
         $q->orderBy('users.id');
@@ -143,6 +147,7 @@ class UserController
             'pills' => $pills,
             'counts' => $counts,
             'managers' => User::withRole(Role::Manager)->orderBy('name')->get(),
+            'responses' => $preset === 'managers' ? ManagerResponse::all() : [],
             // Все ссылки — и админские, и менеджерские: админ видит, кто кого зовёт.
             'invites' => $preset === 'invites' ? InviteController::listFor($request->user()) : collect(),
             'groupKind' => $kind,
@@ -204,6 +209,8 @@ class UserController
             'chats' => $chats,
             'deals' => $user->hasDeals() ? Deal::where('buyer_id', $user->id)->with(['offer', 'offer.media', 'buyer'])->latest()->get() : collect(),
             'buyersCount' => $user->isManager() ? $user->buyers()->count() : 0,
+            // Отклик на предложения за две недели — менеджеру и супер-покупателю (21.10.2026).
+            'response' => $user->hasRole(Role::Manager, Role::SuperBuyer) ? (ManagerResponse::of($user) ?? new ManagerResponse(0, 0, 0, null)) : null,
             'interests' => $user->isBuyer() ? $user->interests()->with(['offer', 'offer.media'])->latest()->get() : collect(),
             'seen' => $user->isBuyer() ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : null,
             'managers' => $me->isAdmin() ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),

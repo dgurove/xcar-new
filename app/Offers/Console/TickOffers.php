@@ -31,7 +31,7 @@ class TickOffers extends Command
 
     protected $signature = 'offers:tick';
 
-    protected $description = 'Часы предложений: слот 16:00, черновики в галерею, исходы по времени, просрочки, напоминания, «приём закрыт» владельцу, следующие волны показа, новые предложения пачкой после 5 минут тишины, напоминания об оценке, на аукцион без подтверждений, черновики из писем, мягкие напоминания менеджеру о шагах без срока, паника по сроку обязывающего предложения, за 3 часа до конца приёма — о непросмотренных';
+    protected $description = 'Часы предложений: слот 16:00, черновики в галерею, исходы по времени, просрочки, напоминания, «приём закрыт» владельцу, следующие волны показа, новые предложения пачкой после 5 минут тишины, напоминания об оценке, на аукцион без подтверждений, черновики из писем, мягкие напоминания менеджеру о шагах без срока, паника по сроку обязывающего предложения, за 3 часа до конца приёма — об избранном и непросмотренных, за 30 минут — об избранном';
 
     public function handle(PublishDueSlots $slots, TickStages $tick, NotifyBidsClosed $closed, NotifyViewers $waves, NotifyNewOffers $digest, ShowInGallery $gallery, RemindEstimates $estimates, AutoOffer $auto, SendToAuction $auction, StagesDigest $hot, RemindStalled $stalled, BindingAlarm $binding, RemindUnreadClosing $unread): int
     {
@@ -39,7 +39,7 @@ class TickOffers extends Command
             // Утренняя сводка «Горит» — раз в день с 10:00 (`StagesDigest`).
             $hot();
             // Слот — первым: выпущенные им предложения тем же тиком уходят менеджерам одним уведомлением (волны).
-            $counts = ['slot' => $slots(), 'gallery' => $gallery->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'waves' => $waves->due(), 'digest' => $digest(), 'unread' => $unread(), 'estimates' => $estimates->due(), 'stalled' => $stalled(), 'binding' => $binding()]
+            $counts = ['slot' => $slots(), 'gallery' => $gallery->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'waves' => $waves->due(), 'digest' => $digest(), 'unread' => $unread(), 'favorites' => $unread->last(), 'estimates' => $estimates->due(), 'stalled' => $stalled(), 'binding' => $binding()]
                 // Письмо-предложение не завелось черновиком при приходе (выкладка); документы черновиков из писем дочитать —
                 // раз в пять минут, как у парковки: проход читает письма всех их веток.
                 + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0]

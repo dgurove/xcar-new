@@ -10,14 +10,16 @@
     $carrier = $user->isLogist() || $user->isContractor() || $user->isDriver();
     $surface = $carrier ? Surface::Logistics : (($user->isParking() || $user->isParkAdmin()) ? Surface::Park : null);
     $url = $surface?->url($surface === Surface::Logistics ? '/transports?reach=1' : '/requests?reach=1');
-    $none = ! $user->telegram_chat_id && $subs->isEmpty();
+    // Устройство, на котором пробное «не пришло» или доставка упала, — не канал (21.10.2026).
+    $working = $subs->reject(fn ($s) => $s->failed_at || ($s->silent_at && (! $s->confirmed_at || $s->silent_at->gt($s->confirmed_at))));
+    $none = ! $user->telegram_chat_id && $working->isEmpty();
     $text = 'Чтобы не пропускать '.($surface === Surface::Park ? 'заявки' : 'вывозы').": откройте ссылку, нажмите «Подключить Telegram», а на компьютере и телефоне ещё «Включить» уведомления и ответьте «Да», когда придёт пробное";
 @endphp
 <section class="mt-5">
     <h2 class="list-head">Уведомления</h2>
     <div class="list">
         @if ($none)
-            <div class="row text-danger">Не доходят: нет Telegram и уведомлений на устройствах</div>
+            <div class="row text-danger">Не доходят: нет Telegram и рабочих уведомлений на устройствах</div>
         @endif
         <div class="row">
             <span class="min-w-0 flex-1">Telegram</span>

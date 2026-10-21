@@ -51,6 +51,12 @@ final class Ago
         return str_replace([' д', ' ч', ' мин'], ['д', 'ч', 'мин'], self::span(max(60, (int) floor($from->diffInSeconds(now(), false)))));
     }
 
+    /** Длительность тем же видом: «1 ч 48 мин», «2 д 4 ч» — «обычно открывает через» (`ManagerResponse`). */
+    public static function duration(int $seconds): string
+    {
+        return self::span(max(60, $seconds));
+    }
+
     private static function span(int $s): string
     {
         [$d, $h, $m] = [intdiv($s, 86400), intdiv($s % 86400, 3600), intdiv($s % 3600, 60)];

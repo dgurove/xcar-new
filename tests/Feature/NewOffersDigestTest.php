@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Live\BannerChannel;
+use App\Notifications\FavoriteClosingNotice;
 use App\Notifications\NewOffersNotice;
 use App\Notifications\TelegramChannel;
 use App\Notifications\UnreadClosingNotice;
@@ -270,5 +271,33 @@ class NewOffersDigestTest extends TestCase
 
         app(RemindUnreadClosing::class)();
         Notification::assertSentToTimes($this->a, UnreadClosingNotice::class, 1);
+    }
+
+    public function test_favorites_at_three_hours_and_last_thirty_minutes(): void
+    {
+        Notification::fake();
+        $this->a->forceFill(['telegram_chat_id' => 9001])->save();
+        DB::table('offer_bot_chats')->insert(['user_id' => $this->a->id, 'chat_id' => 9001, 'created_at' => now(), 'updated_at' => now()]);
+        [$liked, $alsoLiked, $withBid, $unread] = [$this->offer(), $this->offer(), $this->offer(), $this->offer()];
+        foreach ([$liked, $alsoLiked, $withBid] as $o) {
+            DB::table('favorites')->insert(['user_id' => $this->a->id, 'offer_id' => $o->id, 'created_at' => now()]);
+            DB::table('offer_reads')->insert(['user_id' => $this->a->id, 'offer_id' => $o->id, 'read_at' => now()]);
+        }
+        DB::table('bids')->insert(['offer_id' => $withBid->id, 'user_id' => $this->a->id, 'amount' => 600000, 'state' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+
+        Carbon::setTestNow($unread->bids_close_at->copy()->subHours(3)->addMinute());
+        app(RemindUnreadClosing::class)();
+        Notification::assertSentToTimes($this->a, UnreadClosingNotice::class, 1);
+        Notification::assertSentTo($this->a, UnreadClosingNotice::class, fn (UnreadClosingNotice $n) => str_ends_with($n->title(), '2 в избранном')
+            && str_starts_with((string) $n->text(), 'Ещё 1 вы не открывали') && $n->href() === '/offers?view=ending&unread=0');
+
+        Carbon::setTestNow($unread->bids_close_at->copy()->subMinutes(30)->addMinute());
+        app(RemindUnreadClosing::class)->last();
+        app(RemindUnreadClosing::class)->last();
+        // Громко, одним на оба, и подписчику бота предложений — бот об избранном молчит.
+        Notification::assertSentToTimes($this->a, FavoriteClosingNotice::class, 1);
+        Notification::assertSentTo($this->a, FavoriteClosingNotice::class, fn (FavoriteClosingNotice $n, array $via) => $n->important()
+            && $n->title() === 'Через 30 минут закончится приём: 2 из избранного' && in_array(TelegramChannel::class, $via, true));
+        Notification::assertNotSentTo($this->b, FavoriteClosingNotice::class);
     }
 }

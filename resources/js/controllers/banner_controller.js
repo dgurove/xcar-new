@@ -10,7 +10,7 @@ import { chime, unlockChime } from '../lib/chime';
 // вкладках (notices-read). Закрытие в одной вкладке закрывает и в остальных (BroadcastChannel); важные переживают
 // перезагрузку вкладки (sessionStorage).
 // Узел постоянный (data-turbo-permanent): переходы Turbo карточки не трогают. Здесь же — число непрочитанного в
-// названии вкладки (meta badge-count: уведомления и чаты).
+// названии вкладки (meta badge-count: `User::badgeCount` — на сайте чаты и ход по сделкам).
 const TTL = 6000;
 const KEEP = 'xcar.banners';
 
