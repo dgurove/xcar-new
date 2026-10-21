@@ -120,7 +120,7 @@ class CatalogController
         Showing::remember($user, $offers->pluck('id')->all());
         // Всё просмотрено, а в продаже есть — пустой экран говорит это и ведёт на весь список.
         $allSeen = $unread && blank($filters['q'] ?? null) && $offers->isEmpty() && $urgent->isEmpty() && $exclusive->isEmpty()
-            && $facets->applyTo(Offer::siteList($user))->exists();
+            && $facets->applyTo(Offer::siteList($user), 'unread')->exists();
         $view = ListView::pick($request, $offers->total(), shelves: true);
 
         return view('site.catalog', [

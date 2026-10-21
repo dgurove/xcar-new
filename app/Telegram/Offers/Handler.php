@@ -97,7 +97,8 @@ final class Handler
         }
         $sub = Subscriber::with(['user', 'offer'])->where('chat_id', $chatId)->first() ?? $this->recognize($chatId, $msg['from'] ?? []);
         if (! $sub || ! self::eligible($sub->user)) {
-            $this->stranger($chatId, $msg['from'] ?? [], $sub?->user);
+            // Привязан к основному боту, но этот бот ему не служит (покупатель), — не «войдите», а куда ему.
+            $this->stranger($chatId, $msg['from'] ?? [], $sub?->user ?? User::where('telegram_chat_id', (int) ($msg['from']['id'] ?? 0))->first());
 
             return;
         }
@@ -169,7 +170,7 @@ final class Handler
     }
 
     /**
-     * Подключил «Войти через XCar» (`TelegramConnectController`) или узнали по ссылке и основному боту: подписка, «Готово»,
+     * Ссылка привязки (`/start L…`, из приложения или «Войти через XCar») или узнали по основному боту: подписка, «Готово»,
      * меню; основной бот ещё не подключён — кнопка на него (21.10.2026, владелец: «рекомендуем подписаться на оба»).
      */
     public function connected(User $user, int $chatId): void
@@ -234,7 +235,7 @@ final class Handler
             return;
         }
         $this->bot->quietly(fn () => $this->bot->say($chatId, ConnectLink::intro(),
-            Keys::inline([[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::OFFERS, $from + ['id' => $chatId])]]])));
+            Keys::inline([[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::OFFERS)]]])));
     }
 
     // ———————————————————————————————— меню
@@ -301,15 +302,25 @@ final class Handler
         $more = max(0, Feed::left($user) - 1);
         Feed::mark($user, $offer);
         $sub->moveTo(Subscriber::FEED, $offer->id);
-        $caption = Card::caption($offer, $user, $more);
         $buttons = Card::buttons($offer, $this->bot->logsIn());
-        // Запрет шеринга у предложения — и в Telegram не переслать и не сохранить.
-        $extra = $offer->shareLockedFor($user) ? ['protect_content' => 'true'] : [];
         $photo = $offer->mainPhoto();
+        // Как при шеринге (21.10.2026, владелец: «просто пересылать клиентам»): заголовок с кнопкой, следом PDF кадров с
+        // подписью для клиента (`PdfCard`). Шеринг закрыт — по-старому одно фото, и в Telegram не переслать и не сохранить.
+        if ($photo && ! $offer->shareLockedFor($user)) {
+            $head = $this->bot->quietly(fn () => $this->bot->say($sub->chat_id, Card::header($offer, $more), $buttons));
+            $doc = $head ? $this->bot->quietly(fn () => PdfCard::send($this->bot, (int) $sub->chat_id, $offer, $user)) : null;
+            // Ушло из продажи — оба сообщения удалят (`Offers\Jobs\RetractOfferNotices`).
+            if ($head) {
+                Feed::remember($user, $offer, (int) $sub->chat_id, (int) $head, $doc ? (int) $doc : null);
+            }
+
+            return;
+        }
+        $caption = Card::caption($offer, $user, $more);
+        $extra = $offer->shareLockedFor($user) ? ['protect_content' => 'true'] : [];
         $sent = $this->bot->quietly(fn () => $photo
             ? PhotoCache::send($this->bot, $sub->chat_id, $photo, $caption, $buttons, $extra)
             : $this->bot->say($sub->chat_id, $caption, $buttons, $extra));
-        // Ушло из продажи — карточку удалят (`Offers\Jobs\RetractOfferNotices`).
         if ($sent) {
             Feed::remember($user, $offer, (int) $sub->chat_id, (int) $sent);
         }

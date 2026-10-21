@@ -46,10 +46,12 @@ class DeviceGate
             }
             // Без смены remember_token: «запомнить меня» на новом устройстве человека остаётся рабочим. Причина — в
             // сессию при любом запросе: фрейм и fetch получают 401, и клиент сам уходит на /login, где её и покажут.
+            // Вход по кнопке Telegram живёт 12 часов (`TelegramEntry`) — причина своя, не «другое устройство».
+            $reason = TelegramEntry::expired($request) ? 'Вход из Telegram закончился, войдите снова' : 'Вы вошли на другом устройстве';
             Auth::guard()->logoutCurrentDevice();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-            $request->session()->flash('status', 'Вы вошли на другом устройстве');
+            $request->session()->flash('status', $reason);
             Cookie::queue(Cookie::forget(Lock::COOKIE, '/', config('session.domain')));
 
             return $this->page($request) ? redirect('/login') : response()->json(['state' => $state], 401);

@@ -4,32 +4,23 @@ namespace App\Telegram;
 
 use App\Support\Surface;
 use App\Users\User;
-use Illuminate\Support\Facades\URL;
 
 /**
  * «Войти через XCar» из бота (21.10.2026, владелец: «скинул ссылку на бота — и менеджеры залогинились в свои аккаунты»;
- * по номеру телефона не ищем — в Telegram он часто другой): подписанная ссылка на `xcar.ru/telegram/connect` — какой бот,
- * id в Telegram, имя и @username того, кто нажал. Живёт 30 минут, подключает один раз (`TelegramConnectController`);
- * вход — обычный вход xcar. Id личного чата у обоих ботов один — второй бот узнаёт человека сам.
+ * по номеру телефона не ищем — в Telegram он часто другой). Кнопка ведёт на `xcar.ru/telegram/connect?bot=…`: там вход
+ * xcar, а после него — ссылка обратно в бот с подписанной привязкой аккаунта (`StartLink::link`). Привязывается тот
+ * Telegram, из которого её откроют: id в нашей ссылке ничего бы не доказал — её можно переслать, и к аккаунту встал бы
+ * чужой Telegram. Id личного чата у обоих ботов один — второй бот узнаёт человека сам.
  */
 final class ConnectLink
 {
-    public const MINUTES = 30;
-
     public const MAIN = 'main';
 
     public const OFFERS = 'offers';
 
-    /** @param  array{id?: int, first_name?: string, last_name?: string, username?: string}  $from  поле `from` сообщения */
-    public static function url(string $bot, array $from): string
+    public static function url(string $bot): string
     {
-        // Подпись — без хоста и схемы (за прокси запрос приходит по http): адрес на сайт — `Surface::Site`.
-        return Surface::Site->url(URL::temporarySignedRoute('telegram.connect', now()->addMinutes(self::MINUTES), array_filter([
-            'bot' => $bot,
-            'tg' => (int) ($from['id'] ?? 0),
-            'name' => trim(($from['first_name'] ?? '').' '.($from['last_name'] ?? '')) ?: null,
-            'u' => $from['username'] ?? null,
-        ], fn ($v) => $v !== null && $v !== ''), absolute: false));
+        return Surface::Site->url('/telegram/connect?bot='.($bot === self::OFFERS ? self::OFFERS : self::MAIN));
     }
 
     /** Кому из ботов можно подключить этого человека — та же дверь, что «Подключить Telegram» в приложении, без «ещё не привязан». */

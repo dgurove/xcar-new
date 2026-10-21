@@ -43,11 +43,15 @@ use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
 use App\Notifications\CollapseNotices;
 use App\Notifications\Notify;
+use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Listeners\AdvanceOnReply;
 use App\Offers\Listeners\MarkSupplierLetter;
 use App\Offers\Listeners\RetractWhenGone;
 use App\Offers\Listeners\SyncHandover;
+use App\Offers\Offer;
+use App\Offers\OfferState;
+use App\Offers\Share\Jobs\PrepareSharePdf;
 use App\Park\Actions\SendPickupLink;
 use App\Park\Events\VehicleSold;
 use App\Park\Listeners\SyncOffer;
@@ -129,6 +133,14 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(MediaHasBeenAddedEvent::class, StampOnAdd::class);
         // Машина поменялась (поля из любой двери, файлы) — её экраны перечитываются на всех хостах.
         Event::listen(CarChanged::class, RefreshCar::class);
+        // PDF шеринга по умолчанию — заранее, для сайта и бота предложений (21.10.2026): вышло в продажу или у открытого
+        // сменились кадры.
+        Event::listen(OfferPublished::class, fn (OfferPublished $e) => PrepareSharePdf::dispatch($e->offer->id));
+        Event::listen(CarChanged::class, function (CarChanged $e) {
+            if (in_array('photos', $e->fields, true) && ($id = Offer::where('car_id', $e->carId)->where('state', OfferState::Open)->value('id'))) {
+                PrepareSharePdf::dispatch($id);
+            }
+        });
         Event::listen(MediaHasBeenAddedEvent::class, fn (MediaHasBeenAddedEvent $e) => RefreshCar::media($e->media, added: true));
         Event::listen('eloquent.saved: '.Media::class, fn (Media $m) => RefreshCar::media($m));
         Event::listen('eloquent.deleted: '.Media::class, fn (Media $m) => RefreshCar::media($m, gone: true));

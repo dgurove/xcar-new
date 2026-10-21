@@ -10,7 +10,8 @@ use App\Support\Surface;
 use App\Users\User;
 
 /**
- * Карточка предложения в боте — подпись к главному фото слово в слово как у владельца (03.10.2026):
+ * Карточка предложения в боте. С 21.10.2026 — заголовок (`header`) и PDF для пересылки (`PdfCard`); подпись ниже —
+ * только когда шеринг закрыт: одно фото с ней, слово в слово как у владельца (03.10.2026):
  *
  *   Поступило новое предложение (и ещё 16)
  *
@@ -23,6 +24,16 @@ use App\Users\User;
  */
 final class Card
 {
+    /**
+     * Заголовок карточки для пересылки (21.10.2026): «Поступило новое предложение (и ещё 2)» или «🔥 Срочно, приём до …» —
+     * и больше ничего; машина и цена для клиента — в подписи PDF следом (`PdfCard`).
+     */
+    public static function header(Offer $offer, int $more): string
+    {
+        return e(($offer->isUrgent() ? '🔥 Срочно, приём до '.$offer->bids_close_at->translatedFormat('j M, H:i') : 'Поступило новое предложение')
+            .($more > 0 ? ' (и ещё '.$more.')' : ''));
+    }
+
     public static function caption(Offer $offer, User $user, int $more): string
     {
         $title = $offer->titleWithYear().($offer->settlement ? ', '.$offer->settlement->name : '');

@@ -567,9 +567,10 @@ final class Nav
             ], fn ($v) => $v !== null), 'fresh' => [
                 // Не просмотренные в продаже (21.10.2026, владелец: «менеджеры не видят, когда приходят новые машины») — как
                 // чип каталога; гаснет, как только открыл (`ReadOffer`). У сотрудников счётчики общие — им новые за сутки.
-                '/offers' => $user->isAdmin() && ! $user->isManager()
-                    ? CatalogQuery::fresh(clone $open, $user)->count()
-                    : CatalogQuery::unread(Offer::visibleTo($user)->onSale(), $user)->count(),
+                // Покупателю — по-прежнему новые за сутки: решали про менеджеров.
+                '/offers' => $user->hasRole(Role::Manager, Role::SuperBuyer)
+                    ? CatalogQuery::unread(Offer::visibleTo($user)->onSale(), $user)->count()
+                    : CatalogQuery::fresh(clone $open, $user)->count(),
                 '/gallery' => (clone $gallery)->where('gallery_from', '>', $day)->count(),
             ]];
         });
@@ -587,6 +588,24 @@ final class Nav
             ->filter(fn (Requirement $r) => $r->deal?->isActive() && $r->stage?->isPayStep() && $r->deal->fullyPaid());
 
         return ['deals' => $paid->filter(fn ($r) => $r->deal->garage_payer === null)->count(), 'garage' => $paid->filter(fn ($r) => $r->deal->garage_payer !== null)->count()];
+    }
+
+    /**
+     * Что ждут от него по сделкам: обычным — «Сделки», гаражным — «Гараж». Просьба «Оплатите счёт», а счета сделки уже
+     * оплачены (маршрут не догнал), — не считается: строка «Сделок» её не показывает (11.10.2026). Им же — значок приложения
+     * (`User::badgeCount`), без остальных счётчиков таб-бара.
+     *
+     * @return array{deals: int, garage: int}
+     */
+    public static function asks(User $user): array
+    {
+        return self::perRequest("nav.asks:{$user->id}", function () use ($user) {
+            $asks = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->join('deals', 'deals.id', '=', 'requirements.deal_id')
+                ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
+            $paid = self::paidPayAsks($user);
+
+            return ['deals' => max(0, (int) $asks->deals - $paid['deals']), 'garage' => max(0, (int) $asks->garage - $paid['garage'])];
+        });
     }
 
     private static function count(User $user, Surface $surface): array
@@ -619,15 +638,11 @@ final class Nav
             $badges['/buyers'] = $badges['/buyers/interest'];
             $badges['/account/buyers'] = $badges['/buyers'];
             // Просьбы по гаражной сделке (страховая ещё идёт) — на табе «Гараж»: там её и ведут.
-            $asks = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->join('deals', 'deals.id', '=', 'requirements.deal_id')
-                ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
-            // Просьба «Оплатите счёт», а счета сделки уже оплачены (маршрут не догнал) — строка «Сделок» её не показывает
-            // («Оплата получена»), бейдж тоже не считает: иначе на пилюле 5, а оранжевых строк 4 (11.10.2026).
-            $paid = self::paidPayAsks($user);
-            $badges['/deals/asks'] = max(0, (int) $asks->deals - $paid['deals']);
+            $asks = self::asks($user);
+            $badges['/deals/asks'] = $asks['deals'];
             $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];
             // Вывоз, порученный ему, горит в логистике (17.10.2026), не здесь.
-            $badges['/garage'] = max(0, (int) $asks->garage - $paid['garage']);
+            $badges['/garage'] = $asks['garage'];
         }
         if ($user->hasDeals()) {
             // «Оплаты» в кабинете горят тем, что ждёт его: оплатить, просрочено, указать покупателя (11.10.2026: в «Оплатах»
@@ -639,15 +654,13 @@ final class Nav
         }
         if ($user->holdsAsBuyer()) {
             // Что ждут от него по сделкам — на табе «Сделки», как у менеджера; по гаражной — на табе «Гараж» (20.10.2026).
-            $asks = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->join('deals', 'deals.id', '=', 'requirements.deal_id')
-                ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
-            $paid = self::paidPayAsks($user);
+            $asks = self::asks($user);
             if ($user->isSuperBuyer()) {
-                $badges['/deals/asks'] = max(0, (int) $asks->deals - $paid['deals']);
+                $badges['/deals/asks'] = $asks['deals'];
                 $badges['/deals'] = $badges['/deals/asks'];
             }
             if ($user->canGarage()) {
-                $badges['/garage'] = max(0, (int) $asks->garage - $paid['garage']);
+                $badges['/garage'] = $asks['garage'];
             }
         }
         if ($user->isAdmin() && ! $user->isManager()) {

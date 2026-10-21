@@ -45,6 +45,7 @@ use App\Media\Console\Restamp;
 use App\Media\Console\TuneWatermarks;
 use App\Media\Console\UnmarkPhotos;
 use App\Offers\Console\AutoDraftsCommand;
+use App\Offers\Share\Console\PreparePdfs;
 use App\Offers\Console\DealAgreementFixCommand;
 use App\Offers\Console\BindingFromDocsCommand;
 use App\Offers\Console\DealCarDocsCommand;
@@ -96,6 +97,7 @@ return Application::configure(basePath: dirname(__DIR__))
         TelegramAvatars::class,
         CreateUser::class,
         TickOffers::class,
+        PreparePdfs::class,
         AutoDraftsCommand::class,
         ScrubReplyNoticesCommand::class,
         FillFromLettersCommand::class,

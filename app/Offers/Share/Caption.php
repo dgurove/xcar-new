@@ -88,6 +88,36 @@ final class Caption
         return self::rows($rows);
     }
 
+    /**
+     * Текст для пересылки клиенту — подпись PDF в боте предложений (21.10.2026, владелец: «как при шеринге, без VIN и меток»):
+     * машина, город, характеристики одной строкой через «; », цена продажи и «с НДС». Склейка — та же, что у
+     * `share_controller.js` (`caption`); заявленной, номера, срока и ссылки нет.
+     */
+    public static function forward(Offer $offer, ?User $user): string
+    {
+        $lines = [];
+        $group = null;
+        $price = null;
+        foreach (self::fields($offer, $user) as $f) {
+            if (! in_array($f['key'], ['model', 'city', 'specs', 'fuel', 'engine', 'mileage', 'price'], true)) {
+                continue;
+            }
+            if ($f['key'] === 'price') {
+                $price = $f['value'];
+            } elseif ($f['group'] && $f['group'] === $group) {
+                $lines[count($lines) - 1] .= '; '.$f['value'];
+            } else {
+                $lines[] = $f['value'];
+            }
+            $group = $f['group'];
+        }
+        if ($price) {
+            $lines[] = $price.self::vatMark($offer);
+        }
+
+        return implode("\n", $lines);
+    }
+
     /** Адрес предложения на сайте — для текста и «Скопировать ссылку». */
     public static function link(Offer $offer): ?string
     {

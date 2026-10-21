@@ -263,17 +263,18 @@ final class UpdateHandler
             return;
         }
         // Уже подключён к боту предложений (id личного чата у ботов один) — узнаём без второго входа (21.10.2026).
+        // Только у кого основной ещё не привязан: иначе уведомления молча переехали бы с его прежнего Telegram сюда.
         $known = Subscriber::where('chat_id', $chatId)->first()?->user;
-        if ($known && ConnectLink::allows($known)) {
+        if ($known && $known->telegram_chat_id === null && ConnectLink::allows($known)) {
             $this->connected($known, $chatId, data_get($message, 'from.username'));
 
             return;
         }
         // Незнакомый: два бота и вход через XCar (21.10.2026, владелец: «скинул ссылку на бота — и менеджеры залогинились»).
-        $this->reply($chatId, ConnectLink::intro(), [[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::MAIN, (array) ($message['from'] ?? []))]]]);
+        $this->reply($chatId, ConnectLink::intro(), [[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::MAIN)]]]);
     }
 
-    /** Подключил «Войти через XCar» (`TelegramConnectController`) или узнали по боту предложений: привязка и первое слово о деле. */
+    /** Ссылка привязки (`/start L…`, из приложения или «Войти через XCar») или узнали по боту предложений: привязка и первое слово о деле. */
     public function connected(User $user, int $chatId, ?string $username): void
     {
         app(LinkChat::class)($user, $chatId, $username);

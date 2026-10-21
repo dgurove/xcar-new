@@ -53,11 +53,11 @@ final class Feed
             ->where(fn ($q) => $q->whereNull('bids_close_at')->orWhere('bids_close_at', '>', now()))->exists();
     }
 
-    /** Какое сообщение — карточка этого предложения у человека: ушло из продажи — её удалят. */
-    public static function remember(User $user, Offer $offer, int $chatId, int $messageId): void
+    /** Какие сообщения — карточка этого предложения у человека (заголовок и PDF): ушло из продажи — их удалят. */
+    public static function remember(User $user, Offer $offer, int $chatId, int $messageId, ?int $docId = null): void
     {
         DB::connection('pgsql_async')->table('offer_bot_seen')->where('user_id', $user->id)->where('offer_id', $offer->id)
-            ->update(['chat_id' => $chatId, 'message_id' => $messageId]);
+            ->update(['chat_id' => $chatId, 'message_id' => $messageId, 'doc_message_id' => $docId]);
     }
 
     /** Показали (`reaction` пусто) или отреагировали: ➡️ next, 📌 pin, 💤 sleep (⏭️ skip — `skipAll`; ask — до 18.10.2026). */

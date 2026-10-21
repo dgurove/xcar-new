@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Telegram\ConnectLink;
+use App\Telegram\StartLink;
 use App\Telegram\UpdateHandler;
 use App\Users\Role;
 use App\Users\User;
@@ -13,9 +14,10 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * «Войти через XCar» из бота (21.10.2026, владелец: «скинул ссылку на бота — и менеджеры залогинились в свои аккаунты»):
- * незнакомому — два бота и кнопка; страница подключает после входа, ссылка — один раз и 30 минут; бот предложений —
- * только менеджеру; основной бот узнаёт подписчика бота предложений без второго входа.
+ * «Войти через XCar» из бота (21.10.2026): незнакомому — два бота и кнопка; страница после входа даёт ссылку привязки
+ * своего аккаунта обратно в бот — привязывается тот, кто её открыл, а не id из ссылки (её можно переслать); покупателю —
+ * в основной бот; основной бот узнаёт подписчика бота предложений, но не перепривязывает уже привязанного. Ошибка здесь
+ * молчалива и дорога — чужой Telegram получал бы сделки и входил бы в аккаунт, — поэтому тест.
  */
 class TelegramConnectTest extends TestCase
 {
@@ -36,7 +38,6 @@ class TelegramConnectTest extends TestCase
         $this->manager = User::create(['name' => 'Иван Подключаев', 'phone' => '79000000055', 'roles' => [Role::Manager], 'approved_at' => now()]);
     }
 
-    /** Тексты, что боты отправили в чат. */
     private function sent(int $chat): string
     {
         return collect(Http::recorded())->map(fn ($pair) => $pair[0])
@@ -50,56 +51,51 @@ class TelegramConnectTest extends TestCase
             'from' => ['id' => $chat, 'first_name' => 'Иван', 'username' => 'ivan'], 'text' => $text]]);
     }
 
-    private function path(string $bot, int $tg = 777): string
-    {
-        $url = ConnectLink::url($bot, ['id' => $tg, 'first_name' => 'Иван', 'username' => 'ivan']);
-
-        return parse_url($url, PHP_URL_PATH).'?'.parse_url($url, PHP_URL_QUERY);
-    }
-
     public function test_stranger_gets_two_bots_and_login_button(): void
     {
         $this->start(777, '/start hi');
         $sent = $this->sent(777);
         $this->assertStringContainsString('У XCar два бота', $sent);
         $this->assertStringContainsString('@xcar_offers_test_bot', $sent);
-        $this->assertStringContainsString('Войти через XCar', $sent);
         $this->assertStringContainsString('connect?bot=main', $sent);
     }
 
-    public function test_connect_after_login_links_once(): void
+    public function test_page_gives_own_link_and_bot_links_whoever_opens_it(): void
     {
-        $path = $this->path(ConnectLink::MAIN);
-        $this->get($path)->assertRedirect('/login');
+        $this->get('/telegram/connect?bot=main')->assertRedirect('/login');
 
-        $this->actingAs($this->manager)->get($path)->assertOk()->assertSee('Иван @ivan')->assertSee('Иван Подключаев');
-        $this->actingAs($this->manager)->post($path)->assertOk()->assertSee('Telegram подключён');
-        $this->assertSame(777, (int) $this->manager->fresh()->telegram_chat_id);
-        $this->assertStringContainsString('готово', $this->sent(777));
-        // И предложит бот предложений — менеджер на него не подписан.
-        $this->assertStringContainsString('Подключить @xcar_offers_test_bot', $this->sent(777));
-
-        $this->actingAs($this->manager)->post($path)->assertStatus(410);
-        $this->travel(ConnectLink::MINUTES + 1)->minutes();
-        $this->actingAs($this->manager)->get($path)->assertStatus(410);
-    }
-
-    public function test_offers_bot_connects_manager_but_not_buyer(): void
-    {
-        $this->actingAs($this->manager)->post($this->path(ConnectLink::OFFERS))->assertOk();
-        $this->assertSame(777, (int) DB::table('offer_bot_chats')->where('user_id', $this->manager->id)->value('chat_id'));
+        $page = $this->actingAs($this->manager)->get('/telegram/connect?bot=main')->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('~t\.me/xcar_test_bot\?start=(L[\w-]+)~', $page);
+        preg_match('~start=(L[\w-]+)~', $page, $m);
+        $this->assertSame(['link', $this->manager->id, false], StartLink::parse($m[1]));
+        // Ничего не привязано, пока ссылку не открыли в Telegram.
         $this->assertNull($this->manager->fresh()->telegram_chat_id);
 
-        $buyer = User::create(['name' => 'Покупатель', 'phone' => '79000000056', 'roles' => [Role::Buyer], 'manager_id' => $this->manager->id, 'approved_at' => now()]);
-        $this->actingAs($buyer)->post($this->path(ConnectLink::OFFERS, 778))->assertOk();
-        $this->assertFalse(DB::table('offer_bot_chats')->where('user_id', $buyer->id)->exists());
+        $this->start(777, '/start '.$m[1]);
+        $this->assertSame(777, (int) $this->manager->fresh()->telegram_chat_id);
+        $this->assertStringContainsString('готово', $this->sent(777));
+        $this->assertStringContainsString('Подключить @xcar_offers_test_bot', $this->sent(777));
     }
 
-    public function test_main_bot_recognizes_offers_subscriber(): void
+    public function test_buyer_from_offers_bot_is_sent_to_main_bot(): void
+    {
+        $buyer = User::create(['name' => 'Покупатель', 'phone' => '79000000056', 'roles' => [Role::Buyer], 'manager_id' => $this->manager->id, 'approved_at' => now()]);
+        $this->actingAs($buyer)->get('/telegram/connect?bot=offers')->assertOk()->assertSee('t.me/xcar_test_bot?start=L', false);
+        $this->actingAs($this->manager)->get('/telegram/connect?bot=offers')->assertOk()->assertSee('t.me/xcar_offers_test_bot?start=L', false);
+    }
+
+    public function test_main_bot_recognizes_offers_subscriber_only_if_unlinked(): void
     {
         DB::table('offer_bot_chats')->insert(['user_id' => $this->manager->id, 'chat_id' => 888, 'created_at' => now(), 'updated_at' => now()]);
         $this->start(888);
         $this->assertSame(888, (int) $this->manager->fresh()->telegram_chat_id);
-        $this->assertStringContainsString('готово', $this->sent(888));
+
+        // Уже привязан к другому Telegram — не перепривязываем молча.
+        $other = User::create(['name' => 'Второй', 'phone' => '79000000057', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $other->forceFill(['telegram_chat_id' => 5005])->save();
+        DB::table('offer_bot_chats')->insert(['user_id' => $other->id, 'chat_id' => 999, 'created_at' => now(), 'updated_at' => now()]);
+        $this->start(999);
+        $this->assertSame(5005, (int) $other->fresh()->telegram_chat_id);
+        $this->assertStringContainsString('Войти через XCar', $this->sent(999));
     }
 }

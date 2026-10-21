@@ -2,6 +2,8 @@
 
 namespace App\Media\Actions;
 
+use App\Cars\Car;
+use App\Cars\Events\CarChanged;
 use App\Media\PhotoIngest;
 use App\Media\Watermark;
 use Illuminate\Http\Request;
@@ -31,6 +33,10 @@ final class RotatePhoto
         $this->turn(Watermark::cleanPath($media), $angle);
         $media->size = (int) filesize($media->getPath());
         $media->touch();
+        // Кадр машины повернули — экраны и готовый PDF шеринга перечитываются, как после любой смены кадров.
+        if ($media->model_type === Car::class) {
+            CarChanged::dispatch((int) $media->model_id, ['photos']);
+        }
     }
 
     /** Сколько четвертей прислал клиент: 1–3, иначе одна. */

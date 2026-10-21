@@ -2,6 +2,8 @@
 
 namespace App\Offers\Share;
 
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -23,7 +25,27 @@ final class SharePdf
 
     public const DISK = 'cache';
 
+    /** Сколько кадров в PDF по умолчанию — и в «Поделиться» на сайте, и в боте предложений (21.10.2026, владелец: «первые 10»). */
+    public const PREPARED = 10;
+
     public function __construct(private PdfWriter $writer) {}
+
+    /**
+     * Готовый PDF по умолчанию: первые 10 видимых кадров без знака — так «Поделиться» отмечает сам, и так шлёт бот
+     * предложений. Собирают его заранее (`Jobs\PrepareSharePdf` при публикации и смене кадров), кэш тот же, что у `build`.
+     */
+    public function prepared(Subject $subject): string
+    {
+        return $this->build($subject, $subject->model->visiblePhotos()->take(self::PREPARED)->pluck('id')->all(), false);
+    }
+
+    /** Ключ готового PDF по умолчанию — им бот помнит `file_id` в Telegram (`OffersBot::document`). */
+    public function preparedKey(Subject $subject): ?string
+    {
+        $media = $subject->model->visiblePhotos()->take(self::PREPARED);
+
+        return $media->isEmpty() ? null : $this->key($subject, $media->values(), false);
+    }
 
     /** @param  list<int>  $mediaIds */
     public function build(Subject $subject, array $mediaIds, bool $watermark): string
@@ -32,14 +54,28 @@ final class SharePdf
         if ($media->isEmpty()) {
             throw new RuntimeException('Не выбрано ни одной фотографии');
         }
-        // Строка знака — в ключе: у машины закупки она своя в CRM (ДЛ) и на xcar (номер в закупке).
-        $key = substr(sha1($subject->cacheDir().':'.$media->pluck('id')->implode(',').':'.($watermark ? $this->stamp($subject) : 0).':'.$media->max('updated_at')), 0, 16);
+        $key = $this->key($subject, $media, $watermark);
         // Готовый PDF — кэш: пересобирается из фото, storage:gc стирает старые.
         $path = $subject->cacheDir()."/{$key}.pdf";
         $disk = Storage::disk(self::DISK);
         if ($disk->exists($path)) {
             return $disk->path($path);
         }
+        // Задача заранее и человек могут собирать один файл разом: второй ждёт первого и берёт готовый.
+        return Cache::lock('share-pdf:'.$key, 120)->block(90, function () use ($subject, $media, $watermark, $path, $disk) {
+            return $disk->exists($path) ? $disk->path($path) : $this->write($subject, $media, $watermark, $path);
+        });
+    }
+
+    /** Строка знака — в ключе: у машины закупки она своя в CRM (ДЛ) и на xcar (номер в закупке). */
+    private function key(Subject $subject, Collection $media, bool $watermark): string
+    {
+        return substr(sha1($subject->cacheDir().':'.$media->pluck('id')->implode(',').':'.($watermark ? $this->stamp($subject) : 0).':'.$media->max('updated_at')), 0, 16);
+    }
+
+    private function write(Subject $subject, Collection $media, bool $watermark, string $path): string
+    {
+        $disk = Storage::disk(self::DISK);
 
         $photos = [];
         foreach ($media as $m) {
@@ -52,7 +88,11 @@ final class SharePdf
                 Log::warning('Фотография не попала в PDF', ['media' => $m->id, 'error' => $e->getMessage()]);
             }
         }
-        $disk->put($path, $this->writer->write($photos, $watermark ? $this->stamp($subject) : null));
+        // Целиком или никак: недописанный файл не отдаётся ни сайту, ни боту.
+        $disk->makeDirectory(dirname($path));
+        $tmp = $disk->path($path).'.'.getmypid().'.tmp';
+        file_put_contents($tmp, $this->writer->write($photos, $watermark ? $this->stamp($subject) : null));
+        rename($tmp, $disk->path($path));
         $this->prune($subject->cacheDir(), $path);
 
         return $disk->path($path);

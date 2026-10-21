@@ -74,6 +74,10 @@ final class RetractOfferNotices implements ShouldQueue
         foreach ($seen->whereIn('user_id', $gone->keys()) as $card) {
             // Убрали (удалили или старше 48 ч — переписали подпись) — строка «показано» уходит целиком: вернётся машина в
             // продажу, бот покажет её снова. Не вышло — строка остаётся, следующая смена состояния попробует ещё.
+            // PDF для пересылки (`PdfCard`) — вторым сообщением карточки: убрать и его.
+            if ($card->doc_message_id ?? null) {
+                $bot->retract((int) $card->chat_id, (int) $card->doc_message_id);
+            }
             if ($bot->retract((int) $card->chat_id, (int) $card->message_id)) {
                 DB::table('offer_bot_seen')->where('user_id', $card->user_id)->where('offer_id', $offer->id)->delete();
             }

@@ -39,12 +39,12 @@
             @if ($photos->isNotEmpty())
                 <div class="-mb-1 flex items-center justify-between">
                     <span class="text-sm text-ink-muted">Фото</span>
-                    <button type="button" class="pill pill-plain" data-share-target="all" data-action="share#toggleAll">{{ $photos->take(30)->count() <= 6 ? 'Снять все' : 'Выбрать все' }}</button>
+                    <button type="button" class="pill pill-plain" data-share-target="all" data-action="share#toggleAll">{{ $photos->take(30)->count() <= \App\Offers\Share\SharePdf::PREPARED ? 'Снять все' : 'Выбрать все' }}</button>
                 </div>
                 <div class="grid grid-cols-4 gap-1.5">
                     @foreach ($photos->take(30) as $i => $media)
                         <label class="relative aspect-[4/3] cursor-pointer overflow-hidden rounded-(--radius-s) bg-surface-3">
-                            <input type="checkbox" class="peer sr-only" value="{{ $media->id }}" data-share-target="photo" @checked($i < 6) data-action="share#photosChanged">
+                            <input type="checkbox" class="peer sr-only" value="{{ $media->id }}" data-share-target="photo" @checked($i < \App\Offers\Share\SharePdf::PREPARED) data-action="share#photosChanged">
                             <img src="{{ \App\Media\MediaUrl::for($media, 'thumb') }}" alt="" class="size-full object-cover opacity-40 peer-checked:opacity-100" loading="lazy">
                             <span class="absolute right-1 top-1 hidden size-5 items-center justify-center rounded-full bg-accent text-white peer-checked:flex"><x-ui.icon name="check" class="size-3.5"/></span>
                         </label>

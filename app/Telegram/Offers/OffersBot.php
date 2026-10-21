@@ -75,6 +75,23 @@ final class OffersBot extends Bot
         return ['id' => (int) ($result['message_id'] ?? 0), 'file_id' => $sizes ? (string) end($sizes)['file_id'] : null];
     }
 
+    /**
+     * Документ с подписью (PDF карточки, `PdfCard`): по `file_id` или файлом — тогда `file_id` в ответе.
+     *
+     * @param  array{0: string, 1: string}|string  $document  file_id или [содержимое, имя]
+     * @return array{id: int, file_id: ?string}
+     */
+    public function document(int $chatId, array|string $document, string $caption, array $extra = []): array
+    {
+        $payload = ['chat_id' => $chatId, 'caption' => $caption, 'parse_mode' => 'HTML'] + $extra;
+        $response = is_string($document)
+            ? $this->call('sendDocument', $payload + ['document' => $document])
+            : $this->call('sendDocument', $payload, ['document' => $document]);
+        $result = $response->throw()->json('result');
+
+        return ['id' => (int) ($result['message_id'] ?? 0), 'file_id' => $result['document']['file_id'] ?? null];
+    }
+
     /** «Печатает» / «отправляет фото» — пока грузится кадр, который Telegram ещё не видел. */
     public function action(int $chatId, string $action): void
     {
@@ -132,15 +149,19 @@ final class OffersBot extends Bot
             return true;
         } catch (Throwable) {
         }
-        try {
-            $this->call('editMessageCaption', ['chat_id' => $chatId, 'message_id' => $messageId, 'caption' => 'Ушло из продажи',
-                'reply_markup' => json_encode(['inline_keyboard' => []])])->throw();
+        // Фото и PDF — подписью, заголовок карточки (текст) — текстом.
+        foreach (['editMessageCaption' => 'caption', 'editMessageText' => 'text'] as $method => $field) {
+            try {
+                $this->call($method, ['chat_id' => $chatId, 'message_id' => $messageId, $field => 'Ушло из продажи',
+                    'reply_markup' => json_encode(['inline_keyboard' => []])])->throw();
 
-            return true;
-        } catch (Throwable $e) {
-            Log::warning('Бот предложений: карточка не убралась', ['chat' => $chatId, 'message' => $messageId, 'error' => $e->getMessage()]);
-
-            return false;
+                return true;
+            } catch (Throwable $e) {
+                $error = $e->getMessage();
+            }
         }
+        Log::warning('Бот предложений: карточка не убралась', ['chat' => $chatId, 'message' => $messageId, 'error' => $error ?? null]);
+
+        return false;
     }
 }

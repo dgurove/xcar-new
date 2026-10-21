@@ -56,10 +56,10 @@ final class ManagerResponse
         return array_map(fn (array $row) => new self(...$row), self::rows());
     }
 
-    /** Доля открытых по человеку — подзапросом для сортировки списка: `(select share from (…) r where r.user_id = users.id)`. */
-    public static function shareSql(): string
+    /** Сводка одним подзапросом — список «Менеджеры» присоединяет её для сортировки «Отклик» (`leftJoinSub`). */
+    public static function sql(): string
     {
-        return '(select r.opened::float / nullif(r.seen, 0) from ('.self::SQL.') r where r.user_id = users.id)';
+        return self::SQL;
     }
 
     // Открыл — смотрел на сайте хоть раз или подтвердил (подтвердить, не открыв, можно из бота предложений); медиана —

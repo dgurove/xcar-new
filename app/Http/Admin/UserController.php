@@ -120,7 +120,9 @@ class UserController
         match ($sort->key) {
             'created' => $q->reorder($preset === 'rejected' && ! $searching ? 'rejected_at' : 'created_at', $dir),
             'seen' => $q->reorder()->orderByRaw("seen_at {$dir} nulls last"),
-            'response' => $q->reorder()->orderByRaw(ManagerResponse::shareSql()." {$dir} nulls last"),
+            // Сводка присоединяется один раз, а не считается на каждую строку.
+            'response' => $q->leftJoinSub(ManagerResponse::sql(), 'resp', 'resp.user_id', '=', 'users.id')
+                ->reorder()->orderByRaw("resp.opened::float / nullif(resp.seen, 0) {$dir} nulls last"),
             default => $q->reorder('name', $dir),
         };
         $q->orderBy('users.id');

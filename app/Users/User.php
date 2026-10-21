@@ -767,9 +767,11 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     {
         $here = $surface ?? Surface::current();
         if ($here === Surface::Site) {
-            $badges = Nav::badges($this, Surface::Site);
+            // Только эти два запроса, а не весь таб-бар: значок считается и на каждый пуш в очереди.
+            $asks = Nav::asks($this);
 
-            return $this->unreadChats(platform: false) + ($badges['/deals/asks'] ?? 0) + ($badges['/garage'] ?? 0);
+            return $this->unreadChats(platform: false) + ($this->isManager() || $this->isSuperBuyer() ? $asks['deals'] : 0)
+                + ($this->isManager() || ($this->holdsAsBuyer() && $this->canGarage()) ? $asks['garage'] : 0);
         }
 
         // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).
