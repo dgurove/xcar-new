@@ -20,7 +20,7 @@ final readonly class Giving
      * Кто забирает или везёт: «Не определено» (21.10.2026, владелец: откуда и к кому — знаем, кто повезёт — ещё нет; вывоз
      * заводится тихо, решают потом окном «Кто вывозит»), менеджер сделки сам или логистика (исполнителя выберет админ).
      */
-    public const PICKUP = ['later', 'manager', 'us'];
+    public const PICKUP = ['later', 'manager', 'us', 'taken'];
 
     public function __construct(
         public Offer $offer,
@@ -39,6 +39,9 @@ final readonly class Giving
         public bool $loss = false,
         // Цена покупателю с гаражом (20.10.2026): машину он берёт по ней счётом ПРАЙМ, закупочной не видит.
         public ?int $buyerPrice = null,
+        // Уже вывезли (21.10.2026, владелец: «не хватает указания даты на случай, если уже вывезли»): «Уже у …» в гараж или
+        // «Уже забрал» в сделку — когда; вывоз закрывается этой датой (`Logistics\Actions\Backdate`).
+        public ?\Illuminate\Support\Carbon $arrivedAt = null,
     ) {}
 
     /** Принять готовое подтверждение: кому, куда и цена — из него. */

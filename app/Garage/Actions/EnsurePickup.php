@@ -5,15 +5,18 @@ namespace App\Garage\Actions;
 use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
 use App\Logistics\Actions\AssignExecutor;
+use App\Logistics\Actions\Backdate;
 use App\Logistics\Actions\OpenPickup;
 use App\Logistics\Channel;
 use App\Logistics\Point;
+use App\Logistics\Transport;
 use App\Offers\Actions\AssignDealPickup;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
 use App\Park\VehicleState;
 use App\Users\User;
 use App\Workflow\Actions\SetCarPlace;
+use Illuminate\Support\Carbon;
 
 /**
  * У гаражной машины вывоз есть всегда (06.10.2026): где она физически — это он, а не этап гаража. С 17.10.2026 это задача
@@ -24,10 +27,13 @@ use App\Workflow\Actions\SetCarPlace;
  */
 final class EnsurePickup
 {
-    public function __construct(private OpenPickup $open, private AssignExecutor $assign, private SetCarPlace $place) {}
+    public function __construct(private OpenPickup $open, private AssignExecutor $assign, private SetCarPlace $place, private Backdate $backdate) {}
 
-    /** `$later` — «Не определено» (21.10.2026): кто повезёт, решат потом; задача тихо и с меткой. */
-    public function __invoke(Offer $offer, User $by, ?User $evacuator = null, string $where = 'owner', bool $later = false): Offer
+    /**
+     * `$later` — «Не определено» (21.10.2026): кто повезёт, решат потом; задача тихо и с меткой. `$at` — когда ТС уже
+     * привезли (`arrived`, 21.10.2026): вывоз закрывается «Привёз» этой датой (`Backdate`), и висящий «Без исполнителя» тоже.
+     */
+    public function __invoke(Offer $offer, User $by, ?User $evacuator = null, string $where = 'owner', bool $later = false, ?Carbon $at = null): Offer
     {
         $offer = $offer->fresh(['parkVehicle', 'garageCar.manager']);
         $car = $offer->garageCar;
@@ -37,6 +43,15 @@ final class EnsurePickup
         // Без менеджера («взяли под себя») — куда везти, решают при назначении: «к нам» без адреса — не место (18.10.2026).
         $to = $car->manager_id ? Point::Keeper : null;
         if ($where === 'arrived') {
+            // Вывоз уже заведён (Совкомбанк — сам по письму) или названа дата — закрыть его «Привёз» к держателю (без
+            // менеджера — «к нам»): история вывоза с датой, место и подготовка встают, как после «Привёз».
+            $open = Transport::openFor($offer);
+            if (($open && ! $open->taken()) || ($at && ! $open && ! $offer->pickedUp())) {
+                $t = $open ?? ($this->open)($offer, $by, $to, quiet: true);
+                ($this->backdate)($t, ['picked_at' => ($at ?? now())->format('Y-m-d H:i'), 'destination' => ($to ?? Point::Ours)->value], $by);
+                $offer = $offer->fresh(['garageCar']);
+                $car = $offer->garageCar;
+            }
             ($this->place)($offer, $to?->place() ?? CarPlace::WithUs, $by);
             if ($car->state === CarState::Waiting) {
                 $car->moveTo(CarState::Repair, by: $by);

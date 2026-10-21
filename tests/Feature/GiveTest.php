@@ -91,6 +91,31 @@ class GiveTest extends TestCase
         $this->assertTrue($offer->isVisibleTo($this->roman));
     }
 
+    /** Уже вывезли (21.10.2026): «Уже забрал» в сделку и «Уже у нас» в гараж — вывоз закрыт «Привёз» названной датой. */
+    public function test_already_taken_closes_pickup_with_date(): void
+    {
+        $offer = $this->draft(1200000);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
+            'to' => 'deal', 'manager_id' => $this->roman->id, 'amount' => '1 150 000', 'commission' => '30 000', 'mode' => 'payout', 'scheme' => 'prime',
+            'pickup' => 'taken', 'arrived_at' => '2026-10-15T12:00',
+        ])->assertSessionHasNoErrors();
+        $t = Transport::where('car_id', $offer->car_id)->latest('id')->firstOrFail();
+        $this->assertSame(\App\Logistics\TransportState::Delivered, $t->state);
+        $this->assertSame($this->roman->id, $t->executor_id);
+        $this->assertSame('2026-10-15 12:00', $t->delivered_at->format('Y-m-d H:i'));
+        $this->assertSame(\App\Offers\CarPlace::Keeper, $offer->fresh()->car_place);
+
+        // Гараж «Себе», а вывоз уже висит «Без исполнителя» — закрывается датой, подготовка сразу.
+        $other = $this->draft(null);
+        $open = app(\App\Logistics\Actions\OpenPickup::class)($other->fresh(), $this->admin);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$other->number.'/give', [
+            'to' => 'garage', 'whom' => 'self', 'where' => 'arrived', 'arrived_at' => '2026-06-25T12:00',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(\App\Logistics\TransportState::Delivered, $open->fresh()->state);
+        $this->assertSame('2026-06-25', $open->fresh()->delivered_at->format('Y-m-d'));
+        $this->assertSame(CarState::Repair, Car::where('offer_id', $other->id)->firstOrFail()->state);
+    }
+
     public function test_draft_without_price_goes_only_to_garage(): void
     {
         $offer = $this->draft(null);

@@ -57,7 +57,11 @@ class GiveController
             'buyer_price' => ['nullable', 'integer', 'min:1'],
             'pickup' => ['nullable', Rule::in(Giving::PICKUP)],
             'where' => ['nullable', Rule::in(array_keys(Giving::WHERE))],
-        ]);
+            'arrived_at' => ['nullable', 'date', 'before_or_equal:now'],
+        ], ['arrived_at.before_or_equal' => 'Не позже, чем сейчас']);
+        // Дата — только когда ТС уже не у владельца: «Уже у …» в гараж или «Уже забрал» в сделку.
+        $already = ($garage && ($data['where'] ?? null) === 'arrived') || (! $garage && ($data['pickup'] ?? null) === 'taken');
+        $arrivedAt = $already && ! empty($data['arrived_at']) ? \Illuminate\Support\Carbon::parse($data['arrived_at']) : null;
         // «Кому → Менеджеру» без менеджера — не «взяли под себя» молча (19.10.2026): под себя — только явным «Себе».
         if ($garage && ! $bid && in_array($request->input('whom'), ['manager', 'buyer'], true) && empty($data['manager_id'])) {
             throw ValidationException::withMessages(['manager_id' => $request->input('whom') === 'buyer' ? 'Выберите покупателя' : 'Выберите менеджера']);
@@ -73,7 +77,7 @@ class GiveController
         $money = ['scheme' => $scheme, 'ownerPrice' => $data['owner_price'] ?? null, 'commission' => $data['commission'] ?? null,
             'mode' => CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout, 'payer' => GaragePayer::tryFrom($data['payer'] ?? ''),
             'share' => $data['share'] ?? null, 'pickup' => $data['pickup'] ?? null, 'where' => $data['where'] ?? 'owner', 'loss' => $request->boolean('loss'),
-            'buyerPrice' => $data['buyer_price'] ?? null];
+            'buyerPrice' => $data['buyer_price'] ?? null, 'arrivedAt' => $arrivedAt];
         $giving = $bid ? Giving::bid($bid, ...$money)
             : new Giving($offer, isset($data['manager_id']) ? User::find($data['manager_id']) : null, $garage, $amount, ...$money);
 

@@ -109,7 +109,7 @@ final class Give
                 }
             }
             if ($g->pickup) {
-                ($this->pickup)($offer, $deal->fresh(), $g->pickup, $by, $g->where, $previous);
+                ($this->pickup)($offer, $deal->fresh(), $g->pickup, $by, $g->where, $previous, $g->arrivedAt);
             }
             // Покупателю с гаражом у Совкомбанка счёт на его цену — сразу (`SyncDealInvoices`): ждать «да» там нечего.
             if ($garage && $manager?->holdsAsBuyer() && $deal->isCommission()) {

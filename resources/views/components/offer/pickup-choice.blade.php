@@ -5,7 +5,8 @@
      всегда «Логистика», менеджер — только если вывоз уже поручен ему. У гаража «Везёт в гараж» по-прежнему менеджер. Гараж: ещё «Где ТС» (04.10.2026: бывает, менеджер её уже вывез — тогда
      подготовка сразу) и «Везёт в гараж»; вывоз у гаражной есть всегда. Забрали уже или ТС на нашей парковке — ничего.
      21.10.2026, владелец: «знаю, к кому повезут и откуда, а кто повезёт — ещё нет» — первым «Не определено» (`later`),
-     у сделки оно и по умолчанию; у гаража по умолчанию по-прежнему менеджер. --}}
+     у сделки оно и по умолчанию; у гаража по умолчанию по-прежнему менеджер. «Когда» (21.10.2026, владелец: «не хватает
+     даты на случай, если уже вывезли») — при «Уже у …» в гараж и «Уже забрал» в сделку: вывоз закрывается этой датой. --}}
 @props(['offer', 'garage' => false, 'manager' => null])
 @php
     $t = \App\Logistics\Transport::openFor($offer);
@@ -14,7 +15,11 @@
     $pick = old('pickup', $byManager ? 'manager' : ($garage ? 'us' : 'later'));
     $shows = $garage ? ! $offer->pickedUp() && $offer->parkVehicle?->state !== \App\Park\VehicleState::Stored : $offer->pickupChoosable();
 @endphp
+@php
+    $when = old('arrived_at', now()->format('Y-m-d\TH:i'));
+@endphp
 @if ($shows)
+    <div class="pickup-choice contents">
     @if ($garage)
         {{-- Гараж «Себе» (`.give-garage` с «Кому» = «Себе», 19.10.2026): «Уже у нас», а «Везёт в гараж» нет — только логистика. --}}
         <div class="flex flex-col gap-1.5">
@@ -41,9 +46,14 @@
             <label class="choice"><input type="radio" name="pickup" value="later" @checked($pick === 'later')><span>Не определено</span></label>
             <label class="choice"><input type="radio" name="pickup" value="manager" @checked($pick === 'manager')><span>{{ $manager?->shortName() ?? 'Менеджер' }}</span></label>
             <label class="choice"><input type="radio" name="pickup" value="us" @checked($pick === 'us')><span>Логистика</span></label>
+            <label class="choice"><input type="radio" name="pickup" value="taken" @checked($pick === 'taken')><span>Уже забрал</span></label>
         </div>
     </div>
     @endif
+    <div class="give-when fields">
+        <x-ui.field name="arrived_at" :id="'arrived-at-'.$offer->id.($garage ? '-g' : '-d')" label="Когда" type="datetime-local" :value="$when" :max="now()->format('Y-m-d\TH:i')"/>
+    </div>
+    </div>
 @elseif ($garage)
     <input type="hidden" name="where" value="arrived">
 @endif
