@@ -48,6 +48,7 @@ Route::get('/manifest.webmanifest', [PwaController::class, 'manifest']);
 Route::get('/offline', [PwaController::class, 'offline']);
 Route::post('/offline/loop', [PwaController::class, 'loop'])->middleware('throttle:6,1');
 Route::get('/sw.js', [PwaController::class, 'worker']);
+Route::get('/icons.svg', [PwaController::class, 'icons']);
 // «Не присылать на почту» из письма: подписанная ссылка, без входа.
 Route::match(['get', 'post'], '/mail/unsubscribe/{user}', [NotificationController::class, 'unsubscribe'])->middleware('signed')->name('mail.unsubscribe');
 Route::post('/push/subscription', [PushController::class, 'store'])->middleware('auth');

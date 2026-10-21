@@ -2,7 +2,7 @@
      (сетка областей: media, body, extra, star, aside, place, action). Закладка, цена и город —
      прямые дети карточки: закладка в правом верхнем углу, под ней цена, внизу кнопка, город
      слева вровень с кнопкой. Якорь живых обновлений: id и data-offer-number. Витрина; в CRM — x-offer.crm-card. --}}
-@props(['offer', 'context' => null, 'estimate' => null, 'only' => false])
+@props(['offer', 'context' => null, 'estimate' => null, 'only' => false, 'cover' => false])
 @php
     $user = auth()->user();
     $n = $offer->number;
@@ -10,8 +10,9 @@
     $price = \App\Offers\PriceView::for($offer, $user);
     $prices = $price->visible;
     $href = $context?->offerUrl($offer) ?? "/offers/{$n}";
-    // Главный кадр — первый видимый: у лота Мигторга их под сотню, перебираем раз.
-    $photos = $offer->visiblePhotos()->take(6)->values();
+    // Главный кадр — первый видимый: у лота Мигторга их под сотню, перебираем раз. В ленте (`cover`, 21.10.2026) — только
+    // обложка: остальные кадры там не листаются, а в разметке стоили 5 картинок, точки и стрелки на плитку.
+    $photos = $offer->visiblePhotos()->take($cover ? 1 : 6)->values();
     $canBid = ($user?->bidsOnSite() ?? false) && ($offer->bidsOpen() || $offer->canBidInDeal($user));
     // Интерес уже отмечен? У покупателя, а в галерее у всех (08.10.2026). Каталог грузит его одним запросом, иначе — точечно.
     $myInterest = $user && ($user->isBuyer() || $gallery) ? ($offer->relationLoaded('interests') ? $offer->interests->firstWhere('user_id', $user->id) : $offer->interests()->where('user_id', $user->id)->first()) : null;
@@ -43,7 +44,7 @@
         : $offer->bids()->where('user_id', $user->id)->whereIn('state', [\App\Offers\BidState::Active, \App\Offers\BidState::Accepted])->first()) : null;
 @endphp
 <article id="offer-{{ $n }}" data-offer-number="{{ $n }}" @if ($user) data-viewed-key="{{ $n }}" @endif @if ($offer->viewed) data-viewed @endif {{ $attributes->merge(['class' => 'card group'.($tone ? ' card--'.$tone : '')]) }}>
-    <x-ui.card-media :photos="$photos" :href="$href" :eager="$eager"/>
+    <x-ui.card-media :photos="$photos" :href="$href" :eager="$eager" :sizes="$cover ? \App\Support\ListView::sizes(\App\Support\ListView::SHELF) : null"/>
     @if ($user && ! $estimate)<x-offer.favorite :offer="$offer"/>@endif
     @if (!$gallery && ! $estimate && $canShow)
         {{-- Кружок режима выбора: в разметке всегда, виден только когда лента в режиме (selection). --}}

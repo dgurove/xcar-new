@@ -13,7 +13,7 @@
         <div class="mt-6" data-controller="ticker">
             <x-ui.shelf title="Ждут решения" :count="$estimated->count()" id="catalog-estimated">
                 @foreach ($estimated as $offer)
-                    <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>
+                    <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()" cover/>
                 @endforeach
             </x-ui.shelf>
         </div>

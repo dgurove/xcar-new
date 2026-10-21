@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Http\Pwa\PwaController;
+use App\Support\Icons;
 use App\Support\Surface;
 use Closure;
 use Illuminate\Http\Request;
@@ -10,15 +11,17 @@ use Illuminate\Http\Request;
 /** Поверхность по хосту. На CRM, стоянке и в гараже отвечают только их маршруты и общие пути: вход, кабинет, чаты, live, PWA, редирект со старого /admin. */
 class ResolveSurface
 {
-    private const SHARED = ['login', 'logout', 'lock', 'register', 'password', 'passkey', 'up', 'media', 'live', 'chats', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'deals', 'admin', 'mail', 'files'];
+    private const SHARED = ['login', 'logout', 'lock', 'register', 'password', 'passkey', 'up', 'media', 'live', 'chats', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'deals', 'admin', 'mail', 'files'];
 
     /** Что открыто на чужом хосте тому, кому туда нельзя: выйти и служебное. */
-    private const ANYONE = ['login', 'logout', 'password', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'admin'];
+    private const ANYONE = ['login', 'logout', 'password', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'icons.svg', 'admin'];
 
     public function handle(Request $request, Closure $next)
     {
         $surface = Surface::fromHost($request->getHost());
         app()->instance(Surface::class, $surface);
+        // Страницы в браузере — значки ссылкой на спрайт `/icons.svg` (21.10.2026); письма и PDF без запроса — путём внутри.
+        Icons::$sprite = true;
 
         if ($surface !== Surface::Site) {
             $first = explode('/', $request->path())[0];

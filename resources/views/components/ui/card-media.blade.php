@@ -5,7 +5,12 @@
     $sizes ??= \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request(), shelves: true));
     $extra = $link === null ? '' : ' '.$link;
 @endphp
-@if ($photos->isNotEmpty())
+@if ($photos->count() === 1)
+    {{-- Один кадр (и обложка ленты, 21.10.2026) — листать нечего: без контроллера кадров. --}}
+    <div class="card-media">
+        <a href="{{ $href }}"{!! $extra !!} class="card-strip"><x-offer.photo :media="$photos->first()" :sizes="$sizes" :eager="$eager"/></a>
+    </div>
+@elseif ($photos->isNotEmpty())
     <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
         <a href="{{ $href }}"{!! $extra !!} class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
             @foreach ($photos as $i => $frame)

@@ -252,6 +252,10 @@ html.kb-open { --home-gap: 0px; }
 }
 
 @layer base {
+  /* Значок спрайтом (`Support\Icons`, 21.10.2026): краска классом, а не атрибутами у каждого из сотен значков; слой base —
+     как у атрибутов, любое правило компонента или утилита (`fill-current`) сильнее. */
+  .i { fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+  .i-s { fill: currentColor; }
   /* Треугольник у <summary>: `list-none` его прячет везде, кроме Safari — там нужен свой псевдоэлемент (07.10.2026: на iPhone
      у «Расклада» и «Ещё N» стоял чёрный ▶ рядом с нашей стрелкой). */
   summary.list-none::-webkit-details-marker { display: none; }

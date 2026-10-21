@@ -72,7 +72,7 @@
                     <div class="mb-6" data-controller="ticker">
                         <x-ui.shelf title="Срочно" tone="urgent" :count="$urgent->count()" id="catalog-urgent" :data-selection-target="$selecting ? 'list' : null" :data-action="$selecting ? 'click->selection#tap:capture change->selection#change' : null">
                             @foreach ($urgent as $offer)
-                                <x-offer.card :offer="$offer" :context="$context"/>
+                                <x-offer.card :offer="$offer" :context="$context" cover/>
                             @endforeach
                         </x-ui.shelf>
                     </div>
@@ -93,7 +93,7 @@
                     <div class="mb-6" data-controller="ticker">
                         <x-ui.shelf title="Нужно оценить" :count="$toEstimate->count()" id="catalog-estimates">
                             @foreach ($toEstimate as $offer)
-                                <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>
+                                <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()" cover/>
                             @endforeach
                         </x-ui.shelf>
                     </div>
@@ -121,7 +121,7 @@
                     <div class="mb-6" data-controller="ticker">
                         <x-ui.shelf title="Открыты только Вам" tone="only" :count="$exclusive->count()" id="catalog-only" :data-selection-target="$selecting ? 'list' : null" :data-action="$selecting ? 'click->selection#tap:capture change->selection#change' : null">
                             @foreach ($exclusive as $offer)
-                                <x-offer.card :offer="$offer" :context="$context" only/>
+                                <x-offer.card :offer="$offer" :context="$context" only cover/>
                             @endforeach
                         </x-ui.shelf>
                     </div>
@@ -151,7 +151,7 @@
                         @foreach ($offers->getCollection()->groupBy(fn ($o) => \App\Offers\CloseGroups::label($o, $gallery)) as $label => $pack)
                             <x-ui.shelf :title="$label" :count="$groupSizes[$label] ?? $pack->count()">
                                 @foreach ($pack as $offer)
-                                    <x-offer.card :offer="$offer" :context="$context"/>
+                                    <x-offer.card :offer="$offer" :context="$context" cover/>
                                 @endforeach
                             </x-ui.shelf>
                         @endforeach

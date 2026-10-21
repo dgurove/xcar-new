@@ -2,6 +2,7 @@
 
 namespace App\Http\Pwa;
 
+use App\Support\Icons;
 use App\Support\Surface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -90,6 +91,15 @@ class PwaController
     }
 
     /** Воркер с версией из хэша сборки: новая выкладка — новый кэш, без правки руками. */
+    /**
+     * Спрайт значков (`Support\Icons`, 21.10.2026): один файл на все страницы — значок в разметке только ссылка `<use>`.
+     * Адрес с версией (`Icons::url`), поэтому навсегда в кэше.
+     */
+    public function icons()
+    {
+        return response(Icons::sprite(standalone: true), 200, ['Content-Type' => 'image/svg+xml', 'Cache-Control' => 'public, max-age=31536000, immutable']);
+    }
+
     public function worker()
     {
         // Локально воркер снимает себя: однопоточный `php -S` рвёт его запросы после пересборки, и страница остаётся без стилей.

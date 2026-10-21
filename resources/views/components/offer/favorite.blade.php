@@ -4,7 +4,8 @@
 @props(['offer', 'variant' => 'star'])
 @php $on = $offer->isFavoriteOf(auth()->user()); $label = $on ? 'Убрать из избранного' : 'В избранное'; @endphp
 <form method="post" action="/offers/{{ $offer->number }}/favorites" id="fav-{{ $offer->number }}{{ $variant === 'star' ? '' : '-'.$variant }}" class="contents" data-queue data-controller="favorite" data-action="turbo:submit-start->favorite#press turbo:submit-end->favorite#settle" @guest data-turbo="false" @endguest>
-    @csrf
+    {{-- Вошедшему токен шлёт Turbo заголовком из meta (и очередь `net.js` при повторе) — поле в каждой из сотен плиток лишнее. --}}
+    @guest @csrf @endguest
     @if ($variant === 'pill')
         <button {{ $attributes->merge(['class' => 'pill '.($on ? 'pill-soft' : 'pill-plain')]) }} aria-label="{{ $label }}">
             <x-ui.icon name="bookmark" class="size-4 {{ $on ? 'fill-accent text-accent' : '' }}"/><span>{{ $on ? 'В избранном' : 'Избранное' }}</span>

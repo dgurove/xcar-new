@@ -19,7 +19,13 @@ final class Pdf
         $options = (new Options)->setIsRemoteEnabled(false)->setDefaultFont('Onest')->setDefaultPaperSize('a4')->setDefaultPaperOrientation($orientation)
             ->setTempDir($dir)->setFontCache($dir)->setChroot([$dir, resource_path('fonts/pdf'), public_path('images'), ...$chroot]);
         $pdf = new Dompdf($options);
-        $pdf->loadHtml(view($view, $data + ['pdf' => true])->render());
+        // В PDF ссылки на спрайт dompdf не читает — значки путём внутри.
+        [$sprite, Icons::$sprite] = [Icons::$sprite, false];
+        try {
+            $pdf->loadHtml(view($view, $data + ['pdf' => true])->render());
+        } finally {
+            Icons::$sprite = $sprite;
+        }
 
         return $pdf;
     }
