@@ -26,6 +26,12 @@
     // Сворачивание и «Показ» — от дела, а не от одного состояния: у машины в сделке или гараже ТС и цены свёрнуты всегда
     // (07.10.2026, владелец: «гараж — это тоже как сделка»).
     $published = $offer->state !== OfferState::Draft || $deal || $garage;
+    // Черновик с заведённой машиной (вендор, номер убытка, марка, модель) — тоже текстом с «Изменить» (21.10.2026, владелец:
+    // «всегда полями, а хочу текстом, когда машина уже заполнена»). Полями — пустой черновик и черновик из писем, пока
+    // читалка вписывает поля (`$fromMail`): свёрнутый текст не видел бы вписанного.
+    $carDone = ! $empty && ! $fromMail && $offer->vendor_id && $offer->brand_id && $offer->model_id
+        && ($offer->claim_ref || $offer->vendor?->claim_ref_optional);
+    $foldCar = $published || $carDone ? true : null;
     // Чат сделки — карточкой первой в правой колонке (`x-deal.chat-card`, 07.10.2026); в «Чатах» и пилюле — остальные.
     $dealChat = $deal?->buyer;
     $isDealChat = fn ($c) => $dealChat && $c->user_id === $deal->buyer_id && ! $c->manager_id;
@@ -134,11 +140,11 @@
             @csrf @method('put')
 
             {{-- Машина — те же блоки, что на парковке (`x-car.blocks`, 19.10.2026: «ТС одна сущность»): «Транспортное
-                 средство», «ПТС и СТС», «Характеристики»; продаже своё — «Осмотр». С публикации — «Изменить / Готово»,
+                 средство», «ПТС и СТС», «Характеристики»; продаже своё — «Осмотр». С публикации (и у черновика с заведённой машиной) — «Изменить / Готово»,
                  как в Контактах iOS: текстом, «Изменить» ставит поля, «Готово» сохраняет. Поля всё время в форме, скрытые:
                  сохранение «Показа» шлёт их как есть. Черновик — сразу поля; ошибка или расхождение Мигторга раскрывает
                  свой блок. --}}
-            <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" :fold="$published ? true : null" :hints="$hints"
+            <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" :fold="$foldCar" :hints="$hints"
                 :required="$published ? [] : ['vendor_id', 'claim_ref', 'brand_id']">
                 <x-slot:top>
                     <x-mail.reader-diffs form="offer-form" class="mb-3"/>
@@ -147,7 +153,7 @@
                     @endif
                 </x-slot:top>
             </x-car.blocks>
-            @include('admin.offers.fields.sale', ['fold' => $published ? true : null])
+            @include('admin.offers.fields.sale', ['fold' => $foldCar])
         </form>
 
         {{-- Дорожки — от ширины своей колонки (`@container/lanes`): от 52rem три в линию, уже — две, ещё уже — столбиком. --}}
