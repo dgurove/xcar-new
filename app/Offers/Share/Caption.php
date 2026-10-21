@@ -50,7 +50,8 @@ final class Caption
             ['fuel', 'Топливо', $offer->fuel?->label(), true, 'tech'],
             ['engine', 'Двигатель', $offer->engine_volume ? implode(', ', array_filter([Units::liters($offer->engine_volume), Units::hp($offer->engine_power)])) : null, true, 'tech'],
             ['mileage', 'Пробег', Units::km($offer->mileage, plain: true), true, 'tech'],
-            ['tags', 'Метки', $offer->tags ? implode(', ', $offer->tags) : null, true],
+            // Метки на xcar по умолчанию сняты (21.10.2026, владелец), в CRM — как были.
+            ['tags', 'Метки', $offer->tags ? implode(', ', $offer->tags) : null, $crm],
             // Строкой с глаголом, а не голой датой (владелец 04.10.2026): в тексте без подписей «07.10.2026 17:00» ни о чём не говорит.
             ['until', 'Приём подтверждений до', $offer->bids_close_at ? 'Подтвердить до '.$offer->bids_close_at->translatedFormat('d.m.Y H:i') : null, false],
             // Заявленная — «от», по умолчанию включена (владелец 05.10.2026): «779 000 → 920 000». Закупочной в тексте нет ни у кого:
