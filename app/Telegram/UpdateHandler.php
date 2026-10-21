@@ -16,6 +16,7 @@ use App\Support\Plural;
 use App\Support\Surface;
 use App\Telegram\Actions\DecideLogin;
 use App\Telegram\Actions\LinkChat;
+use App\Telegram\Actions\LogoutTelegram;
 use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
@@ -233,6 +234,16 @@ final class UpdateHandler
     {
         $chatId = (int) data_get($message, 'chat.id', 0);
         if ($chatId === 0 || data_get($message, 'chat.type', 'private') !== 'private') {
+            return;
+        }
+        if (preg_match('~^/logout(?:@\w+)?$~', trim((string) ($message['text'] ?? ''))) === 1) {
+            $out = app(LogoutTelegram::class)($chatId);
+            $this->reply($chatId, match (true) {
+                $out === LogoutTelegram::LOCKED => 'Выйти нельзя, пока вход в XCar только через Telegram',
+                $out instanceof User => 'Вы вышли из аккаунта '.e($out->name),
+                default => 'Вы не вошли',
+            }, $out === LogoutTelegram::LOCKED ? null : [[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::MAIN)]]]);
+
             return;
         }
         // Ссылка из приложения — `L…`, `K…`, `I…`; прочее (`?start=hi` из приглашения владельца) — как голый /start.

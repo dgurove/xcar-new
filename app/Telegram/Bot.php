@@ -231,6 +231,15 @@ class Bot
         $this->call('setMyShortDescription', ['short_description' => $short])->throw();
     }
 
+    /** Меню команд у поля ввода — одно на оба бота: главное меню и выход из аккаунта (21.10.2026). */
+    public function setCommands(): void
+    {
+        $this->call('setMyCommands', ['commands' => json_encode([
+            ['command' => 'start', 'description' => 'Главное меню'],
+            ['command' => 'logout', 'description' => 'Выйти из аккаунта'],
+        ], JSON_UNESCAPED_UNICODE)])->throw();
+    }
+
     /** Всплывашка на нажатие; Telegram принимает не больше 200 знаков. */
     public function answer(string $queryId, string $text): void
     {

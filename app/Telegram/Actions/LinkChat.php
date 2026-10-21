@@ -5,10 +5,14 @@ namespace App\Telegram\Actions;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Telegram\Chat;
+use App\Telegram\Offers\Subscriber;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
-/** Чат Telegram — к аккаунту. Один чат — один аккаунт: у прежнего владельца чата привязка снимается. */
+/**
+ * Чат Telegram — к аккаунту. Один чат — один аккаунт в обоих ботах (21.10.2026): у прежнего владельца чата привязка
+ * снимается, и подписка этого Telegram на бот предложений под чужим аккаунтом — тоже (бот предложений узнает этого сам).
+ */
 final class LinkChat
 {
     public function __construct(private Publisher $publish) {}
@@ -22,6 +26,7 @@ final class LinkChat
             Chat::where('user_id', $user->id)->whereKeyNot($chatId)->update(['user_id' => null]);
             Chat::updateOrCreate(['id' => $chatId], ['user_id' => $user->id, 'username' => $username ?: null]);
         });
+        Subscriber::where('chat_id', $chatId)->where('user_id', '!=', $user->id)->delete();
         // Своего аватара нет — фото профиля Telegram (11.10.2026).
         if (! $user->getFirstMedia('avatar')) {
             \App\Users\Jobs\TakeTelegramAvatar::dispatch($user->id);

@@ -8,6 +8,8 @@ use App\Offers\Favorite;
 use App\Offers\Offer;
 use App\Support\Plural;
 use App\Support\Surface;
+use App\Telegram\Actions\LogoutTelegram;
+use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Bot;
 use App\Telegram\ConnectLink;
 use App\Telegram\StartLink;
@@ -90,6 +92,11 @@ final class Handler
         $chatId = (int) $msg['chat']['id'];
         $text = trim((string) ($msg['text'] ?? ''));
 
+        if (preg_match('~^/logout(?:@\w+)?$~', $text) === 1) {
+            $this->logout($chatId);
+
+            return;
+        }
         if (preg_match('~^/start(?:@\w+)?(?:\s+(\S+))?$~', $text, $m) === 1) {
             $this->start($chatId, $msg['from'] ?? [], $m[1] ?? null);
 
@@ -181,7 +188,8 @@ final class Handler
             return;
         }
         $sub = $this->subscribe($user, $chatId, resubscribe: true);
-        $name = e($user->firstName());
+        // Полным именем: видно, под каким аккаунтом бот (21.10.2026).
+        $name = e($user->name);
         $main = $user->telegram_chat_id === null ? app(Bot::class)->startUrl('hi') : null;
         $this->bot->quietly(fn () => $this->bot->say($chatId, ($user->isAdmin()
             // Вопросов из бота с 18.10.2026 нет (💬 убран) — обещать их админу нечего.
@@ -202,8 +210,10 @@ final class Handler
 
     private function subscribe(User $user, int $chatId, bool $resubscribe): Subscriber
     {
-        // Один чат — один аккаунт: чат, бывший у другого, переходит к этому.
+        // Один чат — один аккаунт, и в обоих ботах (21.10.2026): чат, бывший у другого, переходит к этому; основной бот
+        // этого Telegram под чужим аккаунтом отвязывается — на /start он узнает этого сам.
         Subscriber::where('chat_id', $chatId)->where('user_id', '!=', $user->id)->delete();
+        User::where('telegram_chat_id', $chatId)->whereKeyNot($user->id)->get()->each(fn (User $other) => app(UnlinkChat::class)($other));
         $sub = Subscriber::firstOrNew(['user_id' => $user->id]);
         $fresh = ! $sub->exists;
         $sub->forceFill(['chat_id' => $chatId, 'blocked_at' => null] + ($resubscribe ? ['muted_at' => null] : [])
@@ -213,6 +223,17 @@ final class Handler
         ($this->publish)(Topics::user($user), 'offers-bot', ['state' => 'linked']);
 
         return $sub;
+    }
+
+    /** `/logout` — выйти из аккаунта в обоих ботах (`LogoutTelegram`). */
+    private function logout(int $chatId): void
+    {
+        $out = app(LogoutTelegram::class)($chatId);
+        $this->bot->quietly(fn () => $this->bot->say($chatId, match (true) {
+            $out === LogoutTelegram::LOCKED => 'Выйти нельзя, пока вход в XCar только через Telegram',
+            $out instanceof User => 'Вы вышли из аккаунта '.e($out->name),
+            default => 'Вы не вошли',
+        }, $out === LogoutTelegram::LOCKED ? null : Keys::inline([[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::OFFERS)]]])));
     }
 
     /** Кому бот служит: допущенные менеджеры и админы, без демо и закрытых. */

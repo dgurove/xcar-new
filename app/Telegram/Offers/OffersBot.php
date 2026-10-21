@@ -116,7 +116,7 @@ final class OffersBot extends Bot
     public function profile(string $description, string $short): void
     {
         $this->setProfile($description, $short);
-        $this->call('setMyCommands', ['commands' => json_encode([['command' => 'start', 'description' => 'Главное меню']], JSON_UNESCAPED_UNICODE)])->throw();
+        $this->setCommands();
     }
 
     /** Тихо: сбой отправки не должен ронять разбор обновления — в лог, дальше. */

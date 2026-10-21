@@ -28,6 +28,7 @@ final class SetProfile extends Command
             return self::SUCCESS;
         }
         $bot->setProfile(self::DESCRIPTION, self::SHORT);
+        $bot->setCommands();
         $this->info('Описание бота записано');
 
         return self::SUCCESS;

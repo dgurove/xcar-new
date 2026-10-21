@@ -98,4 +98,20 @@ class TelegramConnectTest extends TestCase
         $this->assertSame(5005, (int) $other->fresh()->telegram_chat_id);
         $this->assertStringContainsString('Войти через XCar', $this->sent(999));
     }
+
+    public function test_one_account_per_telegram_and_logout_from_both(): void
+    {
+        $other = User::create(['name' => 'Тестовый Менеджер', 'phone' => '79000000058', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        // Бот предложений у этого Telegram — под чужим аккаунтом; основной привязали к своему — чужая подписка ушла.
+        DB::table('offer_bot_chats')->insert(['user_id' => $other->id, 'chat_id' => 777, 'created_at' => now(), 'updated_at' => now()]);
+        $this->start(777, '/start '.StartLink::link($this->manager));
+        $this->assertSame(777, (int) $this->manager->fresh()->telegram_chat_id);
+        $this->assertFalse(DB::table('offer_bot_chats')->where('chat_id', 777)->exists());
+
+        DB::table('offer_bot_chats')->insert(['user_id' => $this->manager->id, 'chat_id' => 777, 'created_at' => now(), 'updated_at' => now()]);
+        $this->start(777, '/logout');
+        $this->assertNull($this->manager->fresh()->telegram_chat_id);
+        $this->assertFalse(DB::table('offer_bot_chats')->where('chat_id', 777)->exists());
+        $this->assertStringContainsString('Вы вышли из аккаунта Иван Подключаев', $this->sent(777));
+    }
 }
