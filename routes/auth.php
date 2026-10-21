@@ -8,6 +8,7 @@ use App\Http\Auth\LoginController;
 use App\Http\Auth\OffersBotController;
 use App\Http\Auth\PasskeyController;
 use App\Http\Auth\PasswordController;
+use App\Http\Auth\TelegramConnectController;
 use App\Http\Auth\TelegramController;
 use Illuminate\Support\Facades\Route;
 
@@ -50,6 +51,9 @@ Route::middleware('auth')->group(function () {
 // Ссылка на новый пароль от менеджера или админа: вошедшего контроллер сам выводит — ссылка должна сработать с любого телефона.
 // Кнопка «Открыть в XCar» из бота предложений: подпись Telegram — вход, затем страница; без подписи — просто страница.
 Route::get('/telegram/go', [TelegramController::class, 'go'])->middleware('throttle:30,1');
+// «Войти через XCar» из бота: подписанная ссылка (`ConnectLink`), вход обычный — оттуда обратно.
+Route::get('/telegram/connect', [TelegramConnectController::class, 'show'])->name('telegram.connect')->middleware('throttle:30,1');
+Route::post('/telegram/connect', [TelegramConnectController::class, 'store'])->middleware(['auth', 'throttle:10,1']);
 Route::get('/telegram/open/{target}', [OffersBotController::class, 'open'])->where('target', '[a-z0-9]+')->middleware('throttle:30,1');
 Route::post('/account/offers-bot/hide', [OffersBotController::class, 'hide'])->middleware(['auth', 'throttle:20,1']);
 Route::get('/account/offers-bot/state', [OffersBotController::class, 'state'])->middleware('auth');

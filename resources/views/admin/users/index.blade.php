@@ -37,6 +37,26 @@
             </div>
         </div>
     @endif
+    {{-- Пригласить менеджеров в оба бота (21.10.2026, владелец: «скинул ссылку на бота — и менеджеры залогинились»): в боте
+         «Запустить» и «Войти через XCar» (`ConnectLink`). --}}
+    @php
+        $mainBot = app(\App\Telegram\Bot::class)->startUrl('hi');
+        $offersBot = app(\App\Telegram\Offers\OffersBot::class)->startUrl('hi');
+    @endphp
+    @if ($groupKind === \App\Users\UserGroup::MANAGERS && ! request('q') && $mainBot && $offersBot)
+        <div>
+            <div class="list-head pt-0">Telegram</div>
+            <div class="list">
+                <div class="row" data-controller="copy" data-copy-text-value="В каждом нажмите «Запустить», затем «Войти через XCar»" data-copy-title-value="Боты XCar" data-copy-done-value="Текст в буфере">
+                    <textarea hidden data-copy-target="message">Подключите ботов XCar, чтобы не пропускать новые машины и сделки:&#10;1. {{ $mainBot }} ваши сделки, ваш ход, оплаты и чаты&#10;2. {{ $offersBot }} новые предложения</textarea>
+                    <x-ui.row-icon name="send"/>
+                    <span class="min-w-0 flex-1 font-medium">Пригласить в ботов Telegram</span>
+                    <button type="button" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5" data-action="copy#copy" data-copy-fallback>Скопировать</button>
+                    <button type="button" class="btn btn-s btn-accent shrink-0 !h-8 rounded-full !px-3.5" data-action="copy#share" data-copy-target="share">Отправить</button>
+                </div>
+            </div>
+        </div>
+    @endif
     @if ($groupKind && ! request('q'))<x-admin.user-groups :groups="$groups" :kind="$groupKind"/>@endif
     @if ($preset === 'invites')
         <x-invites.list :invites="$invites" admin :managers="$managers" :fresh="$fresh"/>

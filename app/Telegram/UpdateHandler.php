@@ -20,6 +20,9 @@ use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
 use App\Telegram\Messages\PaymentClaimed;
+use App\Telegram\Offers\Handler;
+use App\Telegram\Offers\OffersBot;
+use App\Telegram\Offers\Subscriber;
 use App\Users\Access\AccessCode;
 use App\Users\Access\DecideCode;
 use App\Users\User;
@@ -232,14 +235,15 @@ final class UpdateHandler
         if ($chatId === 0 || data_get($message, 'chat.type', 'private') !== 'private') {
             return;
         }
-        if (preg_match('~^/start(?:@\w+)?\s+(\S+)$~', trim((string) ($message['text'] ?? '')), $m) === 1) {
+        // Ссылка из приложения — `L…`, `K…`, `I…`; прочее (`?start=hi` из приглашения владельца) — как голый /start.
+        if (preg_match('~^/start(?:@\w+)?\s+([LKI]\S*)$~', trim((string) ($message['text'] ?? '')), $m) === 1) {
             $this->start($chatId, $m[1], data_get($message, 'from.username'));
 
             return;
         }
         // Нераспознанное — молча (решение владельца 30.09.2026: «Бот на связи» на каждое слово раздражал);
         // на голый /start — кто на связи: это первое, что человек нажимает в боте.
-        if (preg_match('~^/start(?:@\w+)?$~', trim((string) ($message['text'] ?? ''))) !== 1) {
+        if (preg_match('~^/start(?:@\w+)?(?:\s+\S+)?$~', trim((string) ($message['text'] ?? ''))) !== 1) {
             return;
         }
         $owner = $this->bot->ownerChatId();
@@ -247,13 +251,49 @@ final class UpdateHandler
         if ($chatId === $owner) {
             return;
         }
+        if ($owner === null) {
+            $this->reply($chatId, "Ваш chat_id: <code>{$chatId}</code>\nВпишите его в TELEGRAM_OWNER_CHAT_ID и перезапустите приложение", null);
+
+            return;
+        }
         $linked = User::where('telegram_chat_id', $chatId)->first();
-        [$text, $keyboard] = match (true) {
-            $owner === null => ["Ваш chat_id: <code>{$chatId}</code>\nВпишите его в TELEGRAM_OWNER_CHAT_ID и перезапустите приложение", null],
-            $linked !== null => ['Привязан к аккаунту '.e($linked->name).' на xcar.ru', [[$this->open()]]],
-            default => ['Служебный бот xcar.ru', [[$this->profile()]]],
-        };
-        $this->reply($chatId, $text, $keyboard);
+        if ($linked) {
+            $this->reply($chatId, 'Привязан к аккаунту '.e($linked->name).' на xcar.ru', [[$this->open()], ...$this->offersBot($linked)]);
+
+            return;
+        }
+        // Уже подключён к боту предложений (id личного чата у ботов один) — узнаём без второго входа (21.10.2026).
+        $known = Subscriber::where('chat_id', $chatId)->first()?->user;
+        if ($known && ConnectLink::allows($known)) {
+            $this->connected($known, $chatId, data_get($message, 'from.username'));
+
+            return;
+        }
+        // Незнакомый: два бота и вход через XCar (21.10.2026, владелец: «скинул ссылку на бота — и менеджеры залогинились»).
+        $this->reply($chatId, ConnectLink::intro(), [[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::MAIN, (array) ($message['from'] ?? []))]]]);
+    }
+
+    /** Подключил «Войти через XCar» (`TelegramConnectController`) или узнали по боту предложений: привязка и первое слово о деле. */
+    public function connected(User $user, int $chatId, ?string $username): void
+    {
+        app(LinkChat::class)($user, $chatId, $username);
+        [$line, $button] = $this->welcome($user);
+        $this->reply($chatId, '<b>'.e($user->firstName()).', готово</b>'."\n".$line, [[$button], ...$this->offersBot($user)]);
+    }
+
+    /**
+     * Кнопка «Подключить @xcar_offers_bot» — тому, кому бот предложений служит и кто на него ещё не подписан.
+     *
+     * @return list<list<array{text: string, url: string}>>
+     */
+    private function offersBot(User $user): array
+    {
+        $url = app(OffersBot::class)->startUrl('hi');
+        if (! $url || ! Handler::eligible($user) || Subscriber::where('user_id', $user->id)->whereNull('blocked_at')->exists()) {
+            return [];
+        }
+
+        return [[['text' => 'Подключить @'.app(OffersBot::class)->username(), 'url' => $url]]];
     }
 
     private function start(int $chatId, string $payload, ?string $username): void
@@ -281,9 +321,7 @@ final class UpdateHandler
 
             return;
         }
-        app(LinkChat::class)($user, $chatId, $username);
-        [$line, $button] = $this->welcome($user);
-        $this->reply($chatId, '<b>'.e($user->firstName()).', готово</b>'."\n".$line, [[$button]]);
+        $this->connected($user, $chatId, $username);
     }
 
     /**

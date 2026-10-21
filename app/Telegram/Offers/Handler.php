@@ -8,6 +8,8 @@ use App\Offers\Favorite;
 use App\Offers\Offer;
 use App\Support\Plural;
 use App\Support\Surface;
+use App\Telegram\Bot;
+use App\Telegram\ConnectLink;
 use App\Telegram\StartLink;
 use App\Users\User;
 use Illuminate\Support\Facades\Cache;
@@ -95,7 +97,7 @@ final class Handler
         }
         $sub = Subscriber::with(['user', 'offer'])->where('chat_id', $chatId)->first() ?? $this->recognize($chatId, $msg['from'] ?? []);
         if (! $sub || ! self::eligible($sub->user)) {
-            $this->stranger($chatId);
+            $this->stranger($chatId, $msg['from'] ?? [], $sub?->user);
 
             return;
         }
@@ -159,16 +161,33 @@ final class Handler
             default => Subscriber::where('chat_id', $chatId)->first()?->user ?? User::where('telegram_chat_id', (int) ($from['id'] ?? 0))->first(),
         };
         if (! $user || ! self::eligible($user)) {
-            $this->stranger($chatId);
+            $this->stranger($chatId, $from, $user);
+
+            return;
+        }
+        $this->connected($user, $chatId);
+    }
+
+    /**
+     * Подключил «Войти через XCar» (`TelegramConnectController`) или узнали по ссылке и основному боту: подписка, «Готово»,
+     * меню; основной бот ещё не подключён — кнопка на него (21.10.2026, владелец: «рекомендуем подписаться на оба»).
+     */
+    public function connected(User $user, int $chatId): void
+    {
+        if (! self::eligible($user)) {
+            $this->stranger($chatId, [], $user);
 
             return;
         }
         $sub = $this->subscribe($user, $chatId, resubscribe: true);
         $name = e($user->firstName());
-        $this->bot->quietly(fn () => $this->bot->say($chatId, $user->isAdmin()
+        $main = $user->telegram_chat_id === null ? app(Bot::class)->startUrl('hi') : null;
+        $this->bot->quietly(fn () => $this->bot->say($chatId, ($user->isAdmin()
             // Вопросов из бота с 18.10.2026 нет (💬 убран) — обещать их админу нечего.
             ? "Готово, {$name}"
-            : "Готово, {$name}. Каждый день в 16:00 пришлю новые предложения"));
+            : "Готово, {$name}. Каждый день в 16:00 пришлю новые предложения")
+            .($main ? "\nСделки, ваш ход, оплаты и чаты: @".app(Bot::class)->username() : ''),
+            $main ? Keys::inline([[['text' => 'Подключить @'.app(Bot::class)->username(), 'url' => $main]]]) : null));
         $this->menu($sub);
     }
 
@@ -201,10 +220,21 @@ final class Handler
         return $user !== null && ($user->isManager() || $user->isAdmin()) && $user->isApproved() && ! $user->isRejected() && ! $user->is_demo;
     }
 
-    private function stranger(int $chatId): void
+    /**
+     * Незнакомый (21.10.2026): два бота и «Войти через XCar» (`ConnectLink`). Знакомый, которому бот не служит (покупатель),
+     * — что бот для менеджеров, и кнопка основного бота.
+     */
+    private function stranger(int $chatId, array $from, ?User $user = null): void
     {
-        $this->bot->quietly(fn () => $this->bot->say($chatId, 'Это бот для менеджеров XCar. Подключите его на xcar.ru в «Предложениях»',
-            Keys::inline([[['text' => 'Открыть XCar', 'url' => Surface::Site->url('/offers')]]])));
+        $main = app(Bot::class)->startUrl('hi');
+        if ($user) {
+            $this->bot->quietly(fn () => $this->bot->say($chatId, 'Это бот для менеджеров XCar. Ваши уведомления приходят в @'.app(Bot::class)->username(),
+                $main ? Keys::inline([[['text' => 'Открыть @'.app(Bot::class)->username(), 'url' => $main]]]) : null));
+
+            return;
+        }
+        $this->bot->quietly(fn () => $this->bot->say($chatId, ConnectLink::intro(),
+            Keys::inline([[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::OFFERS, $from + ['id' => $chatId])]]])));
     }
 
     // ———————————————————————————————— меню

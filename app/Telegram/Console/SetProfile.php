@@ -11,7 +11,8 @@ use Illuminate\Console\Command;
  */
 final class SetProfile extends Command
 {
-    public const DESCRIPTION = 'Уведомления xcar.ru по вашим сделкам: выбрали ваше подтверждение, ваш ход, счета и выплаты. Без рассылок';
+    /** Второй бот — о новых предложениях (21.10.2026, владелец: «рекомендуем подписаться на оба»); вход — «Войти через XCar». */
+    public const DESCRIPTION = 'Уведомления XCar по вашим сделкам: выбрали ваше подтверждение, ваш ход, оплаты и сообщения чатов. Новые предложения присылает @xcar_offers_bot. Нажмите «Запустить» и войдите через XCar';
 
     public const SHORT = 'Сделки xcar.ru в Telegram';
 
