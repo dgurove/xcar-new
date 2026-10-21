@@ -156,6 +156,30 @@ class GarageBuyerTest extends TestCase
         $this->assertMatchesRegularExpression('/753(\s|&nbsp;|\x{00A0})?210/u', $this->actingAs($this->buyer->fresh())->get(self::SITE.'/garage/cars/'.$n)->getContent());
     }
 
+    /** Покупатель без менеджера — только свой гараж: ни предложений, ни галереи, шторка сохраняет «Без менеджера» (21.10.2026). */
+    public function test_buyer_without_manager_sees_only_garage(): void
+    {
+        $this->buyer->update(['manager_id' => null, 'garage_enabled' => true]);
+        $this->assertTrue($this->buyer->fresh()->onlyGarage());
+        $offer = $this->draft();
+        $this->give($offer)->assertSessionHasNoErrors();
+        $gallery = Offer::create(['vendor_id' => $this->vendor->id, 'asking_price' => 500000, 'gallery_from' => now(), 'gallery_until' => now()->addDay()]);
+
+        $buyer = $this->buyer->fresh();
+        foreach (['/offers', '/gallery', '/account/interests'] as $path) {
+            $this->actingAs($buyer)->get(self::SITE.$path)->assertRedirect('/garage');
+        }
+        $this->actingAs($buyer)->get(self::SITE.'/garage')->assertOk();
+        $this->actingAs($buyer)->get(self::SITE.'/garage/cars/'.$offer->fresh()->number)->assertOk();
+        $this->assertFalse(Offer::visibleTo($buyer)->whereKey($gallery->id)->exists());
+        $this->assertFalse($buyer->canInterestIn($gallery->fresh()));
+
+        $this->actingAs($this->admin)->put(self::CRM.'/settings/users/'.$buyer->id, [
+            'first_name' => 'Пётр', 'last_name' => 'Покупателев', 'manager_id' => '', 'garage_enabled' => '1',
+        ])->assertSessionHasNoErrors();
+        $this->assertNull($buyer->fresh()->manager_id);
+    }
+
     public function test_admin_edits_price_and_pickup(): void
     {
         $this->buyer->update(['garage_enabled' => true, 'garage_price_shown' => true]);

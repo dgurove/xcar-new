@@ -155,6 +155,9 @@ final class Nav
         }
 
         // Покупатель: только то, что открыл менеджер, и его интерес.
+        if ($user?->onlyGarage()) {
+            return [self::item('Гараж', '/garage')];
+        }
         if ($user?->isBuyer()) {
             return array_values(array_filter([
                 self::item('Предложения', '/offers'),

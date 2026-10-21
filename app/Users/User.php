@@ -198,6 +198,9 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function canInterestIn(Offer $offer): bool
     {
         if ($offer->isGallery()) {
+            if ($this->onlyGarage()) {
+                return false;
+            }
             // Админ на сайте видит галерею как менеджер (08.10.2026) — и интерес оставляет так же.
             return $this->hasRole(Role::Manager, Role::Buyer, Role::SuperBuyer, Role::Visitor, Role::Admin);
         }
@@ -262,6 +265,16 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function seesGaragePrice(): bool
     {
         return ! $this->holdsAsBuyer() || $this->garage_price_shown;
+    }
+
+    /**
+     * Покупатель без менеджера (21.10.2026, владелец про Лобуса: «не супер-покупатель, а покупатель, которому дали доступ к
+     * продаже одной конкретной тачки»): ему отдали машину в гараж — и всё. Ни предложений, ни галереи, ни интереса, только
+     * «Гараж» (`Nav`, `SiteWall`, `Offer::scopeVisibleTo`).
+     */
+    public function onlyGarage(): bool
+    {
+        return $this->hasRole(Role::Buyer) && ! $this->manager_id && ! $this->hasRole(Role::Manager, Role::SuperBuyer, Role::Admin);
     }
 
     /** Держатель гаража — покупатель, а не менеджер: ему цена, а не закупочная, и чат с площадкой. */

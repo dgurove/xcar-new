@@ -27,6 +27,10 @@ class SiteWall
         if ($home = Surface::onlyFor($user)) {
             return $request->expectsJson() ? abort(403) : redirect()->away($home->url());
         }
+        // Покупатель без менеджера — только свой гараж (21.10.2026): предложения, галерея и интерес ему пусты.
+        if ($user->isApproved() && $user->onlyGarage() && $request->isMethod('GET') && $request->is('/', 'offers', 'gallery', 'account/interests')) {
+            return redirect('/garage');
+        }
         if ($user->isApproved()) {
             return $next($request);
         }

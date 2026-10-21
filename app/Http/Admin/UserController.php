@@ -355,14 +355,18 @@ class UserController
             $data = $request->validate([
                 'first_name' => ['required', 'string', 'max:60'],
                 'last_name' => ['required', 'string', 'max:60'],
-                'manager_id' => ['required', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))],
+                // Без менеджера — покупатель одной машины в гараже (21.10.2026, `User::onlyGarage`); у кого менеджер был, без
+                // него не оставить — его покупатели и показы держатся на менеджере.
+                'manager_id' => [$user->manager_id ? 'required' : 'nullable', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))],
             ]);
             // Гараж покупателю — тумблером (20.10.2026): чтобы ему можно было отдать ТС; «Исполнитель вывоза» (21.10.2026) — второй
             // ролью: свою машину он везёт сам, и задачу видит в логистике.
             $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name']), 'garage_enabled' => $request->boolean('garage_enabled'),
                 'garage_price_shown' => $request->boolean('garage_price_shown'),
                 'roles' => $request->boolean('contractor') ? [Role::Buyer, Role::Contractor] : [Role::Buyer]]);
-            $transfer($user, User::find($data['manager_id']));
+            if ($data['manager_id'] ?? null) {
+                $transfer($user, User::find($data['manager_id']));
+            }
 
             return back()->with('toast', 'Сохранено');
         }

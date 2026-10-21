@@ -55,8 +55,11 @@ class GalleryAccessTest extends TestCase
         $offer = $this->galleryOffer();
         $this->assertTrue($offer->isGallery());
 
+        $manager = $this->user('Менеджер покупателя', Role::Manager);
         foreach ([Role::Admin, Role::Manager, Role::Buyer, Role::Visitor, Role::Reviewer] as $role) {
             $user = $this->user('Тест '.$role->value, $role);
+            // Покупатель без менеджера — только гараж (21.10.2026), галерея — покупателю менеджера.
+            $role === Role::Buyer && $user->update(['manager_id' => $manager->id]);
             $this->assertTrue(Offer::visibleTo($user)->whereKey($offer->id)->exists(), $role->value);
         }
         // Гость — ничего, как было.

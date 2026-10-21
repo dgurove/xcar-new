@@ -671,9 +671,12 @@ class Offer extends Model
                         ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->manager_id)->where('opens_at', '<=', now())));
                 }
             }
-            // Галерея — всем авторизованным, без волн и показов (владелец 08.10.2026: «чтобы все могли оставлять интерес»).
-            $any = true;
-            $w->orWhere(fn ($g) => $g->inGallery());
+            // Галерея — всем авторизованным, без волн и показов (владелец 08.10.2026: «чтобы все могли оставлять интерес»);
+            // покупателю без менеджера — нет: у него только своя машина в гараже (21.10.2026).
+            if (! $user->onlyGarage()) {
+                $any = true;
+                $w->orWhere(fn ($g) => $g->inGallery());
+            }
         });
 
         return $any ? $q : $q->whereRaw('false');
