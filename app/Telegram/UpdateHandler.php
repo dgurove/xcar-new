@@ -246,11 +246,8 @@ final class UpdateHandler
         if (preg_match('~^/start(?:@\w+)?(?:\s+\S+)?$~', trim((string) ($message['text'] ?? ''))) !== 1) {
             return;
         }
+        // Владельцу — тот же ответ, что всем (21.10.2026: молчание на /start выглядело как сломанный бот).
         $owner = $this->bot->ownerChatId();
-        // Владельцу объяснять нечего — «Бот на связи» ему не нужен.
-        if ($chatId === $owner) {
-            return;
-        }
         if ($owner === null) {
             $this->reply($chatId, "Ваш chat_id: <code>{$chatId}</code>\nВпишите его в TELEGRAM_OWNER_CHAT_ID и перезапустите приложение", null);
 
