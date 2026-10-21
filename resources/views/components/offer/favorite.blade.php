@@ -1,5 +1,5 @@
 {{-- Закладка. star — кружок на кадре карточки; compact — иконка с подписью в ряду действий;
-     pill — пилюля среди других пилюль (карточка строки). Turbo-форма: ответ — стрим, который
+     pill — пилюля среди других пилюль; bar — круглая кнопка полосы окошка строки рядом с «Поделиться» (21.10.2026). Turbo-форма: ответ — стрим, который
      заменяет форму и счётчик в шапке. --}}
 @props(['offer', 'variant' => 'star'])
 @php $on = $offer->isFavoriteOf(auth()->user()); $label = $on ? 'Убрать из избранного' : 'В избранное'; @endphp
@@ -9,6 +9,10 @@
     @if ($variant === 'pill')
         <button {{ $attributes->merge(['class' => 'pill '.($on ? 'pill-soft' : 'pill-plain')]) }} aria-label="{{ $label }}">
             <x-ui.icon name="bookmark" class="size-4 {{ $on ? 'fill-accent text-accent' : '' }}"/><span>{{ $on ? 'В избранном' : 'Избранное' }}</span>
+        </button>
+    @elseif ($variant === 'bar')
+        <button {{ $attributes->merge(['class' => 'bar-btn'.($on ? ' text-accent-text' : '')]) }} aria-label="{{ $label }}" title="{{ $label }}" aria-pressed="{{ $on ? 'true' : 'false' }}">
+            <x-ui.icon name="bookmark" class="size-5 {{ $on ? 'fill-current' : '' }}"/>
         </button>
     @elseif ($variant === 'compact')
         <button {{ $attributes->merge(['class' => 'group inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-2.5 pr-3 text-sm font-medium transition-colors sm:gap-2 sm:pl-3 sm:pr-4 '.($on ? 'bg-accent-soft text-accent-text' : 'text-ink-muted hover:bg-surface-2 hover:text-ink')]) }} aria-label="{{ $label }}">

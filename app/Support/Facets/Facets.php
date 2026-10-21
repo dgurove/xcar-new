@@ -167,13 +167,13 @@ final class Facets
         return $q;
     }
 
-    /** Тот же выбор на другом запросе — счётчики пилюль; $except — чип, который не учитывать. */
-    public function applyTo(Builder|Relation $q, ?string $except = null): Builder|Relation
+    /** Тот же выбор на другом запросе — счётчики пилюль; $except — чип (или чипы), который не учитывать. */
+    public function applyTo(Builder|Relation $q, string|array|null $except = null): Builder|Relation
     {
         $b = $q instanceof Relation ? $q->getQuery() : $q;
         if (! $this->searching()) {
             foreach ($this->facets as $key => $f) {
-                if ($key !== $except) {
+                if (! in_array($key, (array) $except, true)) {
                     $this->narrow($b, $key, $f);
                 }
             }
@@ -309,9 +309,11 @@ final class Facets
         $this->applyTo($sub, $f->key);
         $sql = [];
         $bindings = [];
+        // Считать тем же, что строка списка (`countBy`: у почты — дело): `count(*)` → `count(*) filter (…)`.
+        $count = $this->countExpr;
         foreach (array_keys(Facet::PERIODS) as $k) {
             [$from, $to] = Facet::period($k);
-            $sql[] = 'count(*) filter (where '.implode(' and ', array_filter([$from ? "{$f->dates} >= ?" : null, $to ? "{$f->dates} < ?" : null])).") as \"{$k}\"";
+            $sql[] = "{$count} filter (where ".implode(' and ', array_filter([$from ? "{$f->dates} >= ?" : null, $to ? "{$f->dates} < ?" : null])).") as \"{$k}\"";
             array_push($bindings, ...array_filter([$from, $to]));
         }
         $row = (array) Facet::bare($sub->toBase())->selectRaw(implode(', ', $sql), $bindings)->first();

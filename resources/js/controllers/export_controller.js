@@ -1,12 +1,15 @@
 import { Controller } from '@hotwired/stimulus';
 import { copyText } from '../lib/clipboard.js';
+import { debounce } from '../lib/debounce';
 import { getJson } from '../lib/http.js';
+import { plural } from '../lib/plural.js';
 
-// Окно «Выгрузка» (`x-offer.export-sheet`): при открытии берёт все строки списка по всем столбцам тем же адресом, что у
-// страницы (`?format=json`, чипы и вкладка — из адреса, набранный поиск — из поля лупы), и дальше всё у себя: образец —
-// первые строки выбранных столбцов, «Скопировать» — без заголовков, один столбец строками, несколько — через табуляцию
-// (вставка в Excel раскладывает по столбцам; владелец 21.10.2026), в том же нажатии (иначе iOS не пускает в буфер).
-// «Excel» — файл выбранных столбцов (`cols=`). Выбор помнит браузер по списку.
+// Окно «Выгрузка» (`x-offer.export-sheet`): строки выбранных столбцов — тем же адресом, что у страницы (`?format=json&cols=`,
+// чипы и вкладка — из адреса, набранный поиск — из поля лупы), заново при каждом открытии и смене столбцов: список живой,
+// строки уходят и приходят. Образец — первые строки; «Скопировать» — без заголовков, один столбец строками, несколько —
+// через табуляцию (вставка в Excel раскладывает по столбцам; владелец 21.10.2026), в том же нажатии из уже пришедших
+// данных (иначе iOS не пускает в буфер), пока они идут — кнопка ждёт. «Excel» — файл (`x-ui.doc`, шторка документов),
+// данных окна ему не нужно. Выбор помнит браузер по списку.
 const SAMPLE = 5;
 
 export default class extends Controller {
@@ -14,7 +17,9 @@ export default class extends Controller {
     static values = { url: String, list: String };
 
     connect() {
-        this.data_ = null;
+        this.rows_ = null;
+        this.seq = 0;
+        this.later = debounce(() => this.load(), 200);
         try {
             const saved = JSON.parse(localStorage.getItem(this.memoryKey()) || 'null');
             if (Array.isArray(saved) && saved.length) {
@@ -26,40 +31,54 @@ export default class extends Controller {
         this.sync();
     }
 
+    disconnect() {
+        this.later.cancel();
+        this.pending?.abort();
+    }
+
     memoryKey() {
         return 'export:' + this.listValue;
     }
 
-    // Адрес выгрузки: параметры списка со страницы, без карточки и страницы; лупа адрес не меняет — её поле отдельно.
+    keys() {
+        return this.boxTargets.filter((b) => b.checked).map((b) => b.value);
+    }
+
+    // Параметры списка со страницы, без карточки и страницы; лупа адрес не меняет — её поле отдельно.
     query() {
         const params = new URLSearchParams(location.search);
         for (const key of ['peek', 'page', 'pill']) params.delete(key);
         const q = document.querySelector('.toolbar[data-searching] input[name="q"]')?.value.trim();
         if (q) params.set('q', q);
+        const keys = this.keys();
+        if (keys.length) params.set('cols', keys.join(','));
         return params;
     }
 
-    async load() {
-        const params = this.query();
-        const key = params.toString();
-        if (this.data_ && this.loadedFor === key) return;
-        this.data_ = null;
-        this.loadedFor = key;
+    open() {
         this.sync();
+        this.load();
+    }
+
+    async load() {
+        this.later.cancel();
+        this.pending?.abort();
+        const seq = ++this.seq;
+        this.rows_ = null;
+        this.sync();
+        if (!this.keys().length) return;
+        this.pending = new AbortController();
+        const params = this.query();
         params.set('format', 'json');
-        const data = await getJson(this.urlValue + '?' + params);
-        if (this.loadedFor !== key) return;
+        const data = await getJson(this.urlValue + '?' + params, { signal: this.pending.signal, quiet: true });
+        if (seq !== this.seq) return;
         if (!data) {
-            this.loadedFor = null;
             this.sampleTarget.textContent = 'Не загрузилось, откройте ещё раз';
             return;
         }
-        this.data_ = data;
+        this.cols_ = data.cols;
+        this.rows_ = data.rows;
         this.sync();
-    }
-
-    keys() {
-        return this.boxTargets.filter((b) => b.checked).map((b) => b.value);
     }
 
     pick() {
@@ -68,7 +87,9 @@ export default class extends Controller {
         } catch {
             // Выбор просто не запомнится.
         }
+        this.rows_ = null;
         this.sync();
+        this.later();
     }
 
     all() {
@@ -77,42 +98,45 @@ export default class extends Controller {
         this.pick();
     }
 
-    // Строки выбранных столбцов из данных окна.
-    rows() {
-        const index = this.keys().map((k) => this.data_.cols.indexOf(k)).filter((i) => i >= 0);
-        return this.data_.rows.map((row) => index.map((i) => row[i] ?? ''));
-    }
-
     sync() {
         const keys = this.keys();
         this.allTarget.textContent = keys.length === this.boxTargets.length ? 'Снять все' : 'Выбрать все';
-        const ready = !!this.data_ && keys.length > 0 && this.data_.rows.length > 0;
-        this.copyTarget.disabled = !ready;
-        this.fileTarget.setAttribute('aria-disabled', ready ? 'false' : 'true');
-        const params = this.query();
-        if (keys.length) params.set('cols', keys.join(','));
-        this.fileTarget.href = this.urlValue + '?' + params;
-        if (!this.data_) return;
-        this.renderSample(keys);
+        this.copyTarget.disabled = !this.rows_?.length;
+        this.fileTarget.setAttribute('aria-disabled', keys.length ? 'false' : 'true');
+        this.fileTarget.href = this.urlValue + '?' + this.query();
+        if (!keys.length) {
+            this.sampleTarget.textContent = 'Отметьте хотя бы один столбец';
+            return;
+        }
+        if (!this.rows_) {
+            this.skeleton();
+            return;
+        }
+        this.renderSample();
     }
 
-    renderSample(keys) {
+    skeleton() {
+        if (this.sampleTarget.querySelector('.skeleton')) return;
+        this.sampleTarget.replaceChildren(...['w-3/4', 'w-2/3', 'w-1/2'].map((w, i) => Object.assign(document.createElement('div'), { className: `skeleton h-4 ${w}${i ? ' mt-2' : ''}` })));
+    }
+
+    renderSample() {
         const box = this.sampleTarget;
         box.replaceChildren();
-        const total = this.data_.rows.length;
-        if (!total || !keys.length) {
-            box.textContent = total ? 'Отметьте хотя бы один столбец' : 'В списке нет строк';
+        const total = this.rows_.length;
+        if (!total) {
+            box.textContent = 'В списке нет строк';
             return;
         }
         const labels = new Map(this.boxTargets.map((b) => [b.value, b.dataset.label]));
         const table = document.createElement('table');
         table.className = 'export-table';
         const head = table.createTHead().insertRow();
-        for (const k of keys) head.appendChild(Object.assign(document.createElement('th'), { textContent: labels.get(k) }));
+        for (const k of this.cols_) head.appendChild(Object.assign(document.createElement('th'), { textContent: labels.get(k) }));
         const body = table.createTBody();
-        for (const row of this.rows().slice(0, SAMPLE)) {
+        for (const row of this.rows_.slice(0, SAMPLE)) {
             const tr = body.insertRow();
-            for (const v of row) tr.insertCell().textContent = String(v);
+            for (const v of row) tr.insertCell().textContent = v ?? '';
         }
         const scroll = document.createElement('div');
         scroll.className = 'export-scroll';
@@ -127,19 +151,18 @@ export default class extends Controller {
         }
     }
 
+    // Табуляция и перевод строки внутри значения порвали бы столбцы при вставке — пробелом.
     copy() {
-        if (!this.data_) return;
-        const rows = this.rows();
-        const n = rows.length;
-        copyText(rows.map((r) => r.join('\t')).join('\n'), `В буфере ${n} ${plural(n, ['строка', 'строки', 'строк'])}`);
+        if (!this.rows_?.length) return;
+        const n = this.rows_.length;
+        const text = this.rows_.map((r) => r.map((v) => String(v ?? '').replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n');
+        copyText(text, `В буфере ${n} ${plural(n, ['строка', 'строки', 'строк'])}`);
     }
 
     file(event) {
-        if (this.fileTarget.getAttribute('aria-disabled') === 'true') event.preventDefault();
+        if (this.fileTarget.getAttribute('aria-disabled') === 'true') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
     }
-}
-
-function plural(n, [one, few, many]) {
-    const a = n % 10, b = n % 100;
-    return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
 }

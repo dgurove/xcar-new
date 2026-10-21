@@ -2,17 +2,13 @@ import { Controller } from '@hotwired/stimulus';
 import { getJson } from '../lib/http';
 import { nums, rub } from '../lib/money';
 import { reducedMotion as calm } from '../lib/motion';
+import { plural } from '../lib/plural.js';
 
 // «Оценить → Из текста» (x-offer.valuation-sheet): вставленное сообщение уходит на разбор сразу, а этапы идут один за
 // другим и показывают, что сделано: лишние строки текста схлопываются, номера и суммы подсвечиваются, находятся
 // предложения, ненайденные отходят, оценочные и закупочные бегут счётчиком, в конце рисуется галка. Итог — группы
 // строк с галками и «Всё верно, сохранить (N)». Без анимаций (prefers-reduced-motion) — то же самое сразу.
 const sleep = (ms) => new Promise((r) => setTimeout(r, calm() ? 0 : ms));
-const plural = (n, one, few, many) => {
-    const m10 = n % 10;
-    const m100 = n % 100;
-    return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
-};
 
 export default class extends Controller {
     static targets = ['paste', 'text', 'work', 'lines', 'done', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'summary'];
@@ -48,7 +44,7 @@ export default class extends Controller {
         // 1. Лишнее уходит, номера и суммы остаются.
         await this.clean(data.lines);
         if (!counts.refs) return this.fail('Номеров убытка в тексте не нашли');
-        this.mark('clean', 'done', `${counts.refs} ${plural(counts.refs, 'номер', 'номера', 'номеров')}`);
+        this.mark('clean', 'done', `${counts.refs} ${plural(counts.refs, ['номер', 'номера', 'номеров'])}`);
 
         // 2. Предложения.
         this.mark('match', 'run');
@@ -72,7 +68,7 @@ export default class extends Controller {
         // 4–5. Оценочные, затем закупочные — счётчиком.
         this.mark('value', 'run');
         await this.countUp(rows, '[data-v]', 'value', false);
-        this.mark('value', 'done', counts.take ? `${counts.take} ${plural(counts.take, 'предложение', 'предложения', 'предложений')}` : '');
+        this.mark('value', 'done', counts.take ? `${counts.take} ${plural(counts.take, ['предложение', 'предложения', 'предложений'])}` : '');
         this.mark('floor', 'run');
         rows.forEach((r) => r.classList.add('show-floor'));
         await this.countUp(rows, '[data-f]', 'floor', true);
@@ -83,7 +79,7 @@ export default class extends Controller {
         rows.forEach((r) => r.classList.remove('is-pending'));
         this.count();
         await sleep(600);
-        this.summaryTarget.textContent = [`${counts.refs} ${plural(counts.refs, 'номер', 'номера', 'номеров')} в тексте`, `нашли ${counts.found}`, counts.missing ? `нет в CRM ${counts.missing}` : null,
+        this.summaryTarget.textContent = [`${counts.refs} ${plural(counts.refs, ['номер', 'номера', 'номеров'])} в тексте`, `нашли ${counts.found}`, counts.missing ? `нет в CRM ${counts.missing}` : null,
             counts.no_vin ? `без VIN ${counts.no_vin}` : null, counts.no_city ? `без города ${counts.no_city}` : null].filter(Boolean).join(', ');
         if (!calm()) await this.workTarget.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).finished.catch(() => {});
         this.workTarget.hidden = true;

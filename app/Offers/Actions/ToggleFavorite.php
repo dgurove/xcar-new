@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Offers\Favorite;
 use App\Offers\Offer;
+use App\Support\Nav;
 use App\Users\User;
 
 final class ToggleFavorite
@@ -12,13 +13,10 @@ final class ToggleFavorite
     public function __invoke(Offer $offer, User $by): bool
     {
         $existing = Favorite::where(['user_id' => $by->id, 'offer_id' => $offer->id])->first();
-        if ($existing) {
-            $existing->delete();
+        $existing ? $existing->delete() : Favorite::create(['user_id' => $by->id, 'offer_id' => $offer->id]);
+        // Число «Избранного» в шапке кэшируется на полминуты — следующая страница не должна показать прежнее.
+        Nav::forget($by);
 
-            return false;
-        }
-        Favorite::create(['user_id' => $by->id, 'offer_id' => $offer->id]);
-
-        return true;
+        return ! $existing;
     }
 }

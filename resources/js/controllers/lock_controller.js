@@ -3,6 +3,7 @@ import * as Turbo from '@hotwired/turbo';
 import { serverNow } from './timer_controller';
 import { proof } from '../device-key';
 import { post, request } from '../lib/http';
+import { plural } from '../lib/plural.js';
 
 // Замок менеджера (07.10.2026, x-lock.panel, Access\Lock). Состояние и конец окна приносит каждая страница (meta lock).
 //   open   — пилюля справа сверху считает до конца окна; нажатие — продлить заранее (renew): окно поверх, экран цел.
@@ -375,9 +376,4 @@ export default class extends Controller {
         if (date) window.clockOffset = date - Date.now();
         return r;
     }
-}
-
-function plural(n, [one, few, many]) {
-    const a = n % 10, b = n % 100;
-    return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
 }

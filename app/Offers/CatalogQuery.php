@@ -273,7 +273,10 @@ final class CatalogQuery
         }, ARRAY_FILTER_USE_BOTH);
     }
 
-    /** Пилюли для тулбара: «Рекомендуем» пока есть отмеченные, «Горящие» только в каталоге и не покупателю, «Избранное» только вошедшему. */
+    /**
+     * Пилюли для тулбара: «Рекомендуем» пока есть отмеченные, «Горящие» только в каталоге и не покупателю. «Избранное» —
+     * не пилюля (21.10.2026): раздел — кнопкой в шапке, прежние `?view=favorite` уводит туда `CatalogController`.
+     */
     public static function allowedViews(?User $user, bool $gallery, int $recommended = 0, int $urgent = 0): array
     {
         return array_filter(self::VIEWS, fn ($_, $key) => match ($key) {
@@ -281,7 +284,7 @@ final class CatalogQuery
             'urgent' => ! $gallery && $urgent > 0,
             'recommended' => $recommended > 0,
             'ending' => ! $gallery && ! $user?->isBuyer(),
-            'favorite' => $user !== null,
+            'favorite' => false,
             default => true,
         }, ARRAY_FILTER_USE_BOTH);
     }

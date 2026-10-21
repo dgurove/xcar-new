@@ -333,7 +333,7 @@ class OfferController
     {
         ['q' => $q, 'preset' => $preset, 'searching' => $searching] = $this->listQuery($request);
 
-        return OffersXlsx::respond($request, $request->user(), 'crm', $q->with('bids:id,offer_id,state'),
+        return OffersXlsx::respond($request, $request->user(), 'crm', $q,
             'Предложения '.($searching ? 'поиск' : mb_strtolower(self::PRESETS[$preset])));
     }
 
@@ -520,11 +520,12 @@ class OfferController
                 $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
             }
             if ($facets) {
-                $facets->applyTo($q, match (true) {
-                    $key === 'bids' && $carcadeDefault => 'vendor',
-                    in_array($key, self::OPEN, true) => null,
-                    default => 'recommended',
-                });
+                // «Где сейчас» — чип только «Всех»: другие вкладки сами по состоянию, иначе их числа обнулялись бы.
+                $facets->applyTo($q, [...match (true) {
+                    $key === 'bids' && $carcadeDefault => ['vendor'],
+                    in_array($key, self::OPEN, true) => [],
+                    default => ['recommended'],
+                }, ...($key === 'all' ? [] : ['state'])]);
             }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки. Черновик из письма встаёт туда из
             // призрака, и число не меняется, — пилюле отдельно число черновиков: выросло — она вспыхивает (flip.js).

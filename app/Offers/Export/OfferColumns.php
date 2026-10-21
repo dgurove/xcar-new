@@ -56,8 +56,8 @@ final class OfferColumns
             'vin' => fn (Offer $o) => $o->vin,
             'city' => fn (Offer $o) => $o->settlement?->title(),
             'state' => fn (Offer $o) => $o->crmTab(),
-            'floor' => fn (Offer $o) => $o->floor_price,
-            'price' => fn (Offer $o) => $o->asking_price,
+            'floor' => fn (Offer $o) => $o->floor_price ? (int) $o->floor_price : null,
+            'price' => fn (Offer $o) => $o->asking_price ? (int) $o->asking_price : null,
             'bids' => fn (Offer $o) => (int) $o->bids_count ?: null,
             'best' => fn (Offer $o) => $o->best_bid ? (int) $o->best_bid : null,
             'interests' => fn (Offer $o) => (int) $o->interests_count ?: null,
@@ -97,11 +97,23 @@ final class OfferColumns
         return $keys ?: array_column(array_filter($all, fn ($c) => $c['on']), 'key');
     }
 
-    /** Что нужно запросу для столбцов: подтверждения (любые, хоть отклонённые), интерес, лучшая цена, кто завёл, запрос вендору. */
-    public static function load(Builder $q): Builder
+    /**
+     * Что нужно запросу для выбранных столбцов — и только то, чего у списка ещё нет: «Предложения» вендора уже несут
+     * подтверждения (любые), интерес, лучшую цену и запрос (`VendorController::offersQuery`), CRM — город.
+     *
+     * @param  list<string>  $keys
+     */
+    public static function load(string $list, Builder $q, array $keys): Builder
     {
-        return $q->with(['vendor:id,name', 'moderator:id,name', 'bids:id,offer_id,state', 'claimRequest:id,created_at'])
-            ->withCount(['bids', 'interests'])->withMax('bids as best_bid', 'amount');
+        $has = fn (string ...$k) => array_intersect($k, $keys) !== [];
+
+        return $q->when($has('vendor'), fn ($q) => $q->with('vendor:id,name'))
+            ->when($has('author'), fn ($q) => $q->with('moderator:id,name'))
+            ->when($list === 'vendor' && $has('city'), fn ($q) => $q->with('settlement'))
+            ->when($list === 'crm' && $has('state'), fn ($q) => $q->with('bids:id,offer_id,state'))
+            ->when($list === 'crm' && $has('requested'), fn ($q) => $q->with('claimRequest:id,created_at'))
+            ->when($list === 'crm' && $has('bids'), fn ($q) => $q->withCount('bids'))
+            ->when($list === 'crm' && $has('best'), fn ($q) => $q->withMax('bids as best_bid', 'amount'));
     }
 
     /**

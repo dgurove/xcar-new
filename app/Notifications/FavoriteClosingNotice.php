@@ -28,12 +28,12 @@ final class FavoriteClosingNotice extends Notice
 
     public function href(): string
     {
-        return $this->offer ? "/offers/{$this->offer->number}" : '/offers?view=favorite';
+        return $this->offer ? "/offers/{$this->offer->number}" : '/account/favorites';
     }
 
     public function subject(): string
     {
-        return '/offers?view=favorite';
+        return '/account/favorites';
     }
 
     public function offerNumber(): ?int

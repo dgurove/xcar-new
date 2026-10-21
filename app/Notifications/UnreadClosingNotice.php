@@ -45,7 +45,7 @@ final class UnreadClosingNotice extends Notice
     {
         return match (true) {
             $this->offer !== null => "/offers/{$this->offer->number}",
-            $this->favorites > 0 && $this->unread === 0 => '/offers?view=favorite',
+            $this->favorites > 0 && $this->unread === 0 => '/account/favorites',
             // Избранное уже открывали — «Не просмотренные» его спрятали бы.
             $this->favorites > 0 => '/offers?view=ending&unread=0',
             default => '/offers?view=ending',

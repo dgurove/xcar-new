@@ -1,8 +1,8 @@
 {{-- Карточка строки таблицы предложений на сайте (фрейм detail) — решение без страницы:
      лента фото, метки, цена как видит человек, факты; действия — подтвердить ценой
      (быстрые кнопки полной цены и скидок, поле, комментарий; своя цена и «Отозвать»),
-     проявить интерес / узнать цену («Передумал» после), избранное, чат и «Показать
-     покупателям» — ссылками на страницу; ниже описание. Формы отвечают в карточка
+     проявить интерес / узнать цену («Передумал» после), чат и «Показать
+     покупателям» — ссылками на страницу; избранное — в полосе у «Поделиться»; ниже описание. Формы отвечают в карточка
      (DetailBack), строка — свежей из row. --}}
 @php
     use App\Offers\{OfferState, InterestState};
@@ -32,7 +32,9 @@
             @if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif
             @if ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>@elseif ($bids && !$gallery && !$offer->bidsOpen())<span class="text-ink-muted">приём закрыт</span>@endif
         </x-slot:line>
+        {{-- Избранное — рядом с «Поделиться» в полосе окошка (21.10.2026, владелец: в окошке его не находили). --}}
         <x-slot:tools>
+            @if (auth()->check() && ($offer->isGallery() || $offer->state !== \App\Offers\OfferState::Draft))<x-offer.favorite :offer="$offer" variant="bar"/>@endif
             @if ($user?->canShare())@include('admin.offers.share-button', ['class' => 'bar-btn'])@endif
         </x-slot:tools>
         <x-slot:aside>
@@ -66,7 +68,6 @@
             @elseif ($bids && !$gallery && !$offer->bidsOpen() && $offer->state !== OfferState::Draft)
                 <span class="text-sm text-ink-muted">Приём подтверждений закрыт</span>
             @endif
-            @if (auth()->check() && ($offer->isGallery() || $offer->state !== \App\Offers\OfferState::Draft))<x-offer.favorite :offer="$offer" variant="pill"/>@endif
             @if ($canChat)<a href="/account/chats/offer/{{ $offer->number }}" class="pill pill-plain"><x-ui.icon name="chat" class="size-4"/> Чат@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>@endif
             @if ($user?->isManager() && $offer->state === OfferState::Open && \App\Offers\Showing::pickable($user))@php $seen = \App\Offers\Showing::countsFor($user, [$offer->id])[$offer->id] ?? 0; @endphp<a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="pill pill-plain"><x-ui.icon name="users" class="size-4"/> @if ($seen)Открыто <span class="nums">{{ $seen }}</span>@else Открыть покупателям@endif</a>@endif
             {{-- Покупателю — его менеджер: кто и как позвонить, одной пилюлей. --}}

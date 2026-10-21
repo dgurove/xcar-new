@@ -489,7 +489,14 @@ final class Nav
         $key = "nav.counts:{$surface->value}:".($user->isAdmin() && ! $user->isManager() ? 'staff' : $user->id);
 
         // Кэш в базе — за страницу его читают по два-три раза: из него один раз на запрос.
-        return self::perRequest($key, fn () => self::countsCached($user, $surface, $key));
+        $counts = self::perRequest($key, fn () => self::countsCached($user, $surface, $key));
+        // Избранное у каждого своё, а кэш админов общий: без этого админ видел в шапке число закладок того, кто посчитал первым.
+        if (str_ends_with($key, ':staff') && isset($counts['totals']['/account/favorites'])) {
+            $counts['totals']['/account/favorites'] = self::perRequest('nav.favorites:'.$user->id,
+                fn () => Offer::visibleTo($user)->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id))->count());
+        }
+
+        return $counts;
     }
 
     private static function countsCached(User $user, Surface $surface, string $key): array

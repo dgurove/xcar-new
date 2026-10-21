@@ -36,6 +36,11 @@ class CatalogController
             return $detail->response();
         }
         $user = $request->user();
+        // Пилюли «Избранное» в каталоге нет (21.10.2026, владелец: «бесполезен, в шапке есть кнопка избранного») — прежние
+        // ссылки уведомлений ведут на сам раздел.
+        if (! $gallery && $request->query('view') === 'favorite') {
+            return redirect('/account/favorites');
+        }
         // «Не просмотренные» (21.10.2026) — первым чипом у вошедшего в каталоге; не запоминается: каждый заход снова включён.
         $since = ! $gallery && $user ? CatalogQuery::since($request, enter: true) : null;
         $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...[...($since ? [CatalogQuery::unreadFacet($user, $since)] : []), ...CatalogQuery::facets()]);

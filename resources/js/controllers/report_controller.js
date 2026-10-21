@@ -1,12 +1,9 @@
 import { Controller } from '@hotwired/stimulus';
+import { plural } from '../lib/plural.js';
 
 // Форма отчёта о приёме (x-park.report-form): кнопка называет, что уйдёт («Отправить 24 фото и 3 документа»),
 // у «Добавить» и слотов — сколько выбрано файлов; фраза письма сама меняется «фотоотчет» ↔ «фотоотчет и скан-копии»,
 // пока её не правили руками.
-const plural = (n, [one, few, many]) => {
-    const m10 = n % 10, m100 = n % 100;
-    return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? few : many;
-};
 
 export default class extends Controller {
     static targets = ['photo', 'newPhotos', 'newLabel', 'photoCount', 'doc', 'scan', 'file', 'slot', 'slotNote', 'text', 'submit'];
