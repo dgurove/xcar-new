@@ -73,17 +73,26 @@ final class LinkThread
         return $threads->count();
     }
 
-    /** Письмо о другой машине, чем эта: VIN письма далёк от её VIN или марка другая (`ScanFields::otherCar`). */
+    /**
+     * Письмо о другой машине, чем эта: VIN письма далёк от её VIN или марка другая (`ScanFields::otherCar`). Только у
+     * письма об одной машине: «выдать ТС А и Б» несёт два номера и VIN одной из них.
+     */
     public static function otherCar(Offer|Vehicle $car, Message $message): bool
     {
+        if (count(array_filter($message->keys(), fn ($k) => str_starts_with($k, 'code:'))) > 1) {
+            return false;
+        }
         $fields = $message->fields();
 
         return ScanFields::otherCar($car->vin, $car->brand_id, $fields['vin']['value'] ?? null, $fields['brand']['value'] ?? null);
     }
 
-    /** Ветка о другой машине: в её номерах есть VIN, и ни один не близок к VIN машины. */
+    /** Ветка о другой машине: номер убытка у неё один, VIN есть, и ни один не близок к VIN машины. */
     private static function otherThread(Offer|Vehicle $car, Thread $thread): bool
     {
+        if (count(array_filter($thread->keys ?? [], fn ($k) => str_starts_with($k, 'code:'))) > 1) {
+            return false;
+        }
         $vins = array_map(fn ($k) => substr($k, 4), array_filter($thread->keys ?? [], fn ($k) => str_starts_with($k, 'vin:')));
 
         return $vins && collect($vins)->every(fn ($vin) => ScanFields::otherCar($car->vin, null, $vin, null));
