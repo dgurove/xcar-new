@@ -6,6 +6,7 @@ use App\Mail\Extraction\Code;
 use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\Keys;
 use App\Mail\Extraction\Patterns;
+use App\Mail\Extraction\ScanFields;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
 use App\Mail\Scope;
@@ -22,6 +23,10 @@ use App\Park\VehicleState;
  * по номеру убытка и VIN во всём письме вместе с цитатой: ответ «RE:» без номера в теме несёт его в цитате исходного,
  * а машина уже заведена — ошибиться некуда. Либо руками. Одна дверь: как бы ни привязали, файлы ветки едут в
  * медиатеку машины (ImportThreadFiles).
+ *
+ * Номер убытка — не тождество, если письмо само говорит о другой машине (21.10.2026, Совкомбанк прислал Rexton темой
+ * «по делу 687805-2026» — номером прицепа Krone, — и фото, акт и договор Rexton легли к Krone): VIN письма дальше двух
+ * знаков от VIN машины или другая марка (`ScanFields::otherCar`) — по номеру не привязываем, письмо ждёт в «Из писем».
  */
 final class LinkThread
 {
@@ -48,7 +53,7 @@ final class LinkThread
     {
         $keys = Keys::ofVehicle($vehicle);
         $threads = Thread::withoutGlobalScope(City::SCOPE)->withAnyKey($keys)->whereNull('vehicle_id')->whereNull('unlinked_at')
-            ->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->get();
+            ->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->get()->reject(fn (Thread $t) => self::otherThread($vehicle, $t));
         foreach ($threads as $thread) {
             $this($thread, $vehicle, $files);
         }
@@ -60,12 +65,28 @@ final class LinkThread
     {
         $keys = Keys::ofOffer($offer);
         $threads = Thread::withoutGlobalScope(City::SCOPE)->withAnyKey($keys)->whereNull('offer_id')->whereNull('unlinked_at')
-            ->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->get();
+            ->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->get()->reject(fn (Thread $t) => self::otherThread($offer, $t));
         foreach ($threads as $thread) {
             $this($thread, $offer);
         }
 
         return $threads->count();
+    }
+
+    /** Письмо о другой машине, чем эта: VIN письма далёк от её VIN или марка другая (`ScanFields::otherCar`). */
+    public static function otherCar(Offer|Vehicle $car, Message $message): bool
+    {
+        $fields = $message->fields();
+
+        return ScanFields::otherCar($car->vin, $car->brand_id, $fields['vin']['value'] ?? null, $fields['brand']['value'] ?? null);
+    }
+
+    /** Ветка о другой машине: в её номерах есть VIN, и ни один не близок к VIN машины. */
+    private static function otherThread(Offer|Vehicle $car, Thread $thread): bool
+    {
+        $vins = array_map(fn ($k) => substr($k, 4), array_filter($thread->keys ?? [], fn ($k) => str_starts_with($k, 'vin:')));
+
+        return $vins && collect($vins)->every(fn ($vin) => ScanFields::otherCar($car->vin, null, $vin, null));
     }
 
     /** Отвязать руками: ссылка обнуляется, автопривязка по номеру или VIN эту ветку больше не трогает; файлы и blobs остаются. */
@@ -88,7 +109,7 @@ final class LinkThread
         }
         $codes = array_unique([...$this->keyed($message, 'code'), ...array_map(fn ($c) => (string) Code::key($c), $this->matcher->findAll($this->whole($message)))]);
         foreach ($codes as $code) {
-            if ($offer = Offer::whereCar('claim_ref_key', $code)->first()) {
+            if (($offer = Offer::whereCar('claim_ref_key', $code)->first()) && ! self::otherCar($offer, $message)) {
                 $this($thread, $offer);
 
                 return $offer;
@@ -127,6 +148,7 @@ final class LinkThread
         $vehicle = null;
         if ($code = $fields['code']['value'] ?? null) {
             $vehicle = $live()->whereCar('claim_ref_key', Vehicle::keyFor($code))->first();
+            $vehicle = $vehicle && self::otherCar($vehicle, $message) ? null : $vehicle;
         }
         $vehicle ??= ($vin = $this->vin($message)) ? $live()->whereCar('vin', $vin)->first() : null;
         $vehicle ??= ($plate = Patterns::plateKey($fields['plate']['value'] ?? null)) ? $live()->whereCar('plate', $plate)->first() : null;

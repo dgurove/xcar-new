@@ -30,7 +30,7 @@ final class FillFromLetter
     /** `$read` — ставить чтение документов (`AutoScan`); разовая сверка без записи его не ставит. */
     public function __invoke(Offer $offer, Message $message, bool $read = true): void
     {
-        if (! $message->isFromVendor() || ! self::about($offer, $message)) {
+        if (! $message->isFromVendor() || ! self::about($offer, $message) || \App\Mail\Actions\LinkThread::otherCar($offer, $message)) {
             return;
         }
         $data = [];

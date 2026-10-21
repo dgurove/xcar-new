@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Mail\Account;
+use App\Mail\Actions\LinkThread;
 use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Thread;
@@ -75,6 +76,19 @@ class FillFromLetterTest extends TestCase
         app(FillFromLetter::class)($offer, $this->letter(['vin' => 'LJXED3F15RTP11721', 'year' => '2024'], code: 'aut26111111'));
 
         $this->assertNull($offer->fresh()->vin);
+    }
+
+    /** Тот же номер убытка, а VIN письма — другой машины (21.10.2026, Rexton под номером Krone): не привязываем и не пишем. */
+    public function test_letter_with_same_claim_but_other_vin_is_not_linked_nor_written(): void
+    {
+        $offer = $this->offer(['vin' => 'WKESD000000909181']);
+        $letter = $this->letter(['vin' => 'KPT40B1XSSP112874', 'insured_phone' => '+79150821065']);
+        app(FillFromLetter::class)($offer, $letter);
+        $this->assertNull($offer->fresh()->insured_phone);
+        $this->assertNull($offer->fresh()->contact_email);
+
+        $this->assertNull(app(LinkThread::class)->auto($letter));
+        $this->assertNull($letter->thread->fresh()->offer_id);
     }
 
     public function test_published_offer_gets_only_contact(): void
