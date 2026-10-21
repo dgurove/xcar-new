@@ -50,7 +50,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
     'destination', 'reach', 'to_yard_id', 'depot_id', 'from_depot_id', 'previous_id', 'route_id', 'seq', 'current', 'pickup_note', 'cost', 'distance_km', 'state', 'invoice_id', 'garage_cost_id', 'created_by', 'assigned_at',
     'agreed_at', 'picked_at', 'delivered_at', 'cancelled_at', 'cancel_reason', 'late_noticed_at', 'region_id', 'nudged_at',
     'client_id', 'client_price', 'client_paid_at', 'executor_cost', 'executor_paid_at', 'from_contact', 'from_phone', 'to_contact',
-    'to_phone', 'comment', 'trip_code'])]
+    'to_phone', 'comment', 'trip_code', 'undecided'])]
 class Transport extends Model
 {
     /** Шаг сменился — напоминание по нему снова возможно (`logistics:tick`). */
@@ -67,6 +67,10 @@ class Transport extends Model
         static::saving(function (self $t) {
             if (! $t->exists || $t->isDirty(['car_id', 'origin', 'from_address'])) {
                 $t->region_id = $t->regionFor();
+            }
+            // «Не определено» (21.10.2026) — только пока никого не назначили: любой выбор метку снимает.
+            if ($t->undecided && ($t->channel || $t->state !== TransportState::New)) {
+                $t->undecided = false;
             }
             if ($t->exists && $t->isDirty(self::STEP) && ! $t->isDirty('nudged_at')) {
                 $t->nudged_at = null;
@@ -91,6 +95,7 @@ class Transport extends Model
             'destination' => Point::class,
             'reach' => Reach::class,
             'current' => 'bool',
+            'undecided' => 'bool',
             'seq' => 'int',
             'cost' => 'decimal:2',
             'client_price' => 'decimal:2',
@@ -425,6 +430,7 @@ class Transport extends Model
     {
         return match (true) {
             $this->channel === Channel::Auction => 'забрал аукцион',
+            $this->state === TransportState::New && $this->undecided => 'кто вывозит, не определено',
             $this->state === TransportState::New => 'выбрать исполнителя',
             $this->state === TransportState::Logist && $this->from_depot_id => 'на стоянке '.($this->fromDepot?->name ?? 'логиста'),
             $this->state === TransportState::Logist => 'ждёт исполнителя логиста',
@@ -470,7 +476,7 @@ class Transport extends Model
             default => 'Исполнитель',
         }, 'status' => $status($assigned || $s->picked(), ! $assigned && ! $s->picked()), 'at' => $this->assigned_at,
             'hint' => match (true) {
-                ! $assigned && $s === TransportState::New => 'выбрать исполнителя',
+                ! $assigned && $s === TransportState::New => $this->undecided ? 'не определено' : 'выбрать исполнителя',
                 ! $assigned && $s === TransportState::Logist => 'назначает логист',
                 default => null,
             }];

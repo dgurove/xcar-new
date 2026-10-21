@@ -42,6 +42,9 @@ final class OpenPickup
 
         $t = DB::transaction(function () use ($offer, $by, $to, $quiet) {
             $fields = ['state' => TransportState::New, 'destination' => $to ?? ($offer->garageCar()->exists() ? Point::Keeper : null)];
+            // Машина стоит у менеджера без его сделки (`held_by`, 21.10.2026) — забирать у него: он и контакт на месте.
+            $held = $offer->car_place === CarPlace::Keeper ? $offer->heldBy : null;
+            $fields += ['from_contact' => $held?->name, 'from_phone' => $held?->phone];
             $t = Transport::where('car_id', $offer->car_id)->where('origin', 'sale')->where('kind', TransportKind::Pickup)
                 ->where('state', TransportState::Cancelled)->whereNull('picked_at')->latest('id')->first();
             if ($t) {

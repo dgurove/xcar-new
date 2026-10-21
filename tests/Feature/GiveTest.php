@@ -202,4 +202,67 @@ class GiveTest extends TestCase
         $this->assertNull($offer->deal);
         $this->assertSame(OfferState::Draft, $offer->stage()->offer_state ?? OfferState::Draft);
     }
+
+    /** «Не определено» (21.10.2026): вывоз заведён тихо, без исполнителя и с меткой; назначили — метки нет. */
+    public function test_pickup_undecided_until_someone_is_assigned(): void
+    {
+        $offer = $this->draft(1200000);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
+            'to' => 'deal', 'manager_id' => $this->roman->id, 'amount' => '1 150 000', 'scheme' => 'prime', 'pickup' => 'later',
+        ])->assertSessionHasNoErrors();
+
+        $t = Transport::openFor($offer->fresh());
+        $this->assertNull($t->channel);
+        $this->assertTrue($t->undecided);
+        $this->assertSame('кто вывозит, не определено', $t->next());
+
+        $t->update(['channel' => Channel::Logist, 'state' => \App\Logistics\TransportState::Logist]);
+        $this->assertFalse($t->fresh()->undecided);
+    }
+
+    /**
+     * Иван взял в гараж, привёз, чинить не стал (21.10.2026): «Вернуть в продажу» оставляет машину у него — новый
+     * покупатель забирает у него, «Забрал» сам не жмётся; машина уехала — метка гаснет.
+     */
+    public function test_garage_car_back_on_sale_stays_with_its_manager(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $offer = $this->draft(null);
+        $brand = \App\Cars\Brand::create(['slug' => 'kia', 'name' => 'Kia']);
+        $offer->update(['brand_id' => $brand->id, 'model_id' => \App\Cars\CarModel::create(['brand_id' => $brand->id, 'slug' => 'rio', 'name' => 'Rio'])->id]);
+        $im = imagecreatetruecolor(400, 300);
+        ob_start();
+        imagejpeg($im);
+        $offer->fresh()->addMediaFromString((string) ob_get_clean())->usingFileName('kadr.jpg')->toMediaCollection('photos');
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
+            'to' => 'garage', 'manager_id' => $this->roman->id, 'payer' => 'manager', 'share' => '50 000', 'pickup' => 'manager', 'where' => 'arrived',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(\App\Offers\CarPlace::Keeper, $offer->fresh()->car_place);
+
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->fresh()->number.'/resale', [
+            'asking_price' => '1 300 000', 'floor_price' => '900 000', 'stays' => '1', 'inspection_address' => 'Кострома, Советская, 1',
+        ])->assertSessionHasNoErrors();
+        $offer = $offer->fresh();
+        $this->assertSame(OfferState::Open, $offer->state);
+        $this->assertSame($this->roman->id, $offer->held_by);
+        $this->assertSame('Кострома, Советская, 1', $offer->inspection_address);
+        $this->assertNull(Car::where('offer_id', $offer->id)->first());
+        $this->assertFalse($offer->pickedUp());
+        $this->actingAs($this->roman)->get('http://xcar.localhost/garage')->assertOk()->assertSee('продаёт XCar');
+
+        $petr = User::create(['name' => 'Пётр Сидоров', 'phone' => '79000000003', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
+            'to' => 'deal', 'manager_id' => $petr->id, 'amount' => '1 250 000', 'scheme' => 'prime', 'pickup' => 'manager',
+        ])->assertSessionHasNoErrors();
+        $offer = $offer->fresh();
+        $t = Transport::openFor($offer);
+        $this->assertSame($petr->id, $t->executor_id);
+        $this->assertSame('Роман Корабельников', $t->ownerName());
+        $handover = \App\Offers\Handover::for($offer->deal);
+        $this->assertSame('У '.$this->roman->shortName(), $handover->where);
+        $this->assertSame('Роман Корабельников', $handover->name);
+
+        $offer->update(['car_place' => \App\Offers\CarPlace::Moving]);
+        $this->assertNull($offer->fresh()->held_by);
+    }
 }

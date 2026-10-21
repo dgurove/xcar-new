@@ -134,8 +134,11 @@ final class Handover
         // Везём мы (логистика с другим исполнителем) — шаг догонит вывоз, ему не ехать.
         $weTow = $pickup !== null && ! $picks;
         $picks = $picks || $atSupplier || ($saleExit !== null && ! $weTow);
+        // Стоит у другого менеджера без его сделки (`held_by`, 21.10.2026): забирать у него, звонить ему.
+        $held = $place === CarPlace::Keeper && $offer->held_by && $offer->held_by !== $deal->buyer_id ? $offer->heldBy : null;
         $where = match (true) {
-            $place === CarPlace::Keeper => $offer->keeper()?->id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
+            $place === CarPlace::Keeper && $held => 'У '.$held->shortName(),
+            $place === CarPlace::Keeper => $offer->standsWith()?->id === $deal->buyer_id ? 'У вас' : CarPlace::WithUs->label(),
             $place === CarPlace::WithUs => CarPlace::WithUs->label(),
             $place === CarPlace::Elsewhere => CarPlace::Elsewhere->label(),
             $place === CarPlace::Ours || $atYard => 'На парковке',
@@ -160,7 +163,11 @@ final class Handover
             $fields['phone'] ??= $keeper->phone;
         }
         $phone2 = null;
-        if ($owner && ! $withBuyer && ! $atYard) {
+        if ($held) {
+            $fields['name'] ??= $held->name;
+            $fields['phone'] ??= $held->phone;
+        }
+        if ($owner && ! $withBuyer && ! $atYard && ! $held) {
             $fields['name'] ??= $offer->insured_name;
             $fields['phone'] ??= $offer->insured_phone;
             $phone2 = Phone::normalize($offer->insured_phone2);
@@ -216,7 +223,7 @@ final class Handover
     private static function carrierLine(Transport $t): string
     {
         if (! $t->channel) {
-            return 'Вывоз заказан, ждём исполнителя';
+            return $t->undecided ? 'Кто забирает, решаем' : 'Вывоз заказан, ждём исполнителя';
         }
 
         return Str::ucfirst($t->carrier() ?? 'ждёт исполнителя').($t->pickup_at ? ', вывоз '.$t->pickup_at->translatedFormat('j M') : '');

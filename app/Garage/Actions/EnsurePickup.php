@@ -8,6 +8,7 @@ use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\OpenPickup;
 use App\Logistics\Channel;
 use App\Logistics\Point;
+use App\Offers\Actions\AssignDealPickup;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
 use App\Park\VehicleState;
@@ -25,7 +26,8 @@ final class EnsurePickup
 {
     public function __construct(private OpenPickup $open, private AssignExecutor $assign, private SetCarPlace $place) {}
 
-    public function __invoke(Offer $offer, User $by, ?User $evacuator = null, string $where = 'owner'): Offer
+    /** `$later` — «Не определено» (21.10.2026): кто повезёт, решат потом; задача тихо и с меткой. */
+    public function __invoke(Offer $offer, User $by, ?User $evacuator = null, string $where = 'owner', bool $later = false): Offer
     {
         $offer = $offer->fresh(['parkVehicle', 'garageCar.manager']);
         $car = $offer->garageCar;
@@ -45,13 +47,14 @@ final class EnsurePickup
         }
         // Везёт сам менеджер — только к себе, и это не логистика: тихо (`OpenPickup` quiet).
         $self = $evacuator && $car->manager_id === $evacuator->id;
-        $t = ($this->open)($offer, $by, $to, quiet: $self);
+        $t = ($this->open)($offer, $by, $to, quiet: $self || $later);
         if ($to && $t->destination !== $to) {
             $t->update(['destination' => $to]);
         }
         if ($self && ! $t->isExecutedBy($evacuator)) {
             ($this->assign)($t, Channel::Manager, $evacuator, $by);
         }
+        AssignDealPickup::undecided($t, $later && ! $self);
 
         return $offer;
     }

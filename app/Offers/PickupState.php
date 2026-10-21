@@ -45,10 +45,13 @@ final class PickupState
         };
     }
 
-    /** Стоит «у менеджера»: у держателя гаража, иначе у менеджера сделки (`Offer::keeper`) — своему «у вас», другим по имени. */
+    /**
+     * Стоит «у менеджера»: у оставившего её без сделки, у держателя гаража, иначе у менеджера сделки (`Offer::standsWith`) —
+     * своему «у вас», другим по имени.
+     */
     private static function keeper(Offer $offer, ?User $viewer): array
     {
-        $keeper = $offer->keeper();
+        $keeper = $offer->standsWith();
 
         return [match (true) {
             $viewer && $keeper?->id === $viewer->id => 'стоит у вас',

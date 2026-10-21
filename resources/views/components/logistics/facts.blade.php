@@ -25,7 +25,7 @@
 @endif
 {{-- Маршрут из отрезков (`x-logistics.route`, 20.10.2026) сам показывает исполнителей и «куда» — здесь их нет. --}}
 @if (! $manager && ! $brief && ! $route)
-    {!! $row('Исполнитель', $mine($t->executor) ?? ($t->logist && ! ($me && $t->hasLogist($me)) ? 'выбирает логист' : 'не выбран'), null, $who, $t->executor ? '' : 'text-urgent') !!}
+    {!! $row('Исполнитель', $mine($t->executor) ?? ($t->logist && ! ($me && $t->hasLogist($me)) ? 'выбирает логист' : ($t->undecided ? 'не определено' : 'не выбран')), null, $who, $t->executor ? '' : 'text-urgent') !!}
 @endif
 @if (($t->isPickup() || $t->from_depot_id) && ! $t->isOrder() && ! $route)
     {!! $row('Куда везти', $dest ?? 'пока неизвестно', $t->reach ? $t->reach->label() : null, $where, $dest ? '' : 'text-urgent') !!}

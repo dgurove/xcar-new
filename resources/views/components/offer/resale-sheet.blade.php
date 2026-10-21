@@ -5,7 +5,9 @@
      подтверждение менеджера остаётся ждать среди прочих. В черновики — состояние Draft: подтверждение отклоняется. У машины
      в гараже — только «Вернуть в продажу», без сегмента. Открывает событие resale:open (пункт «···» редактора, «Действий»
      карточки, красная строка карточки сделки и гаража) — шторка стоит вне меню: поповер прячет вложенное. Черновик на
-     аукционе («Вернуть в продажу…», 13.10.2026) — как гараж, без сегмента и без второго вопроса: шторка и есть вопрос. --}}
+     аукционе («Вернуть в продажу…», 13.10.2026) — как гараж, без сегмента и без второго вопроса: шторка и есть вопрос.
+     Машина стоит у менеджера (21.10.2026, Иван Заикин: взял в гараж, привёз, чинить не стал — продают другому) — «Где стоит»:
+     «Стоит у Иван З.» (`offers.held_by`) с городом и адресом осмотра — его, новый покупатель забирает у него. --}}
 @props(['offer'])
 @php
     use App\Support\Money;
@@ -14,6 +16,7 @@
     $isDeal = ! $garage && $offer->state === \App\Offers\OfferState::Sold;
     $auction = $offer->onAuction();
     $closeAt = old('bids_close_at', \App\Offers\Binding::clampClose($offer, \App\Offers\Slots::closeFor(now()))->format('Y-m-d\TH:i'));
+    $holder = $offer->car_place === \App\Offers\CarPlace::Keeper ? $offer->standsWith() : null;
     $confirm = $garage
         ? 'ТС уйдёт из гаража менеджера, гаражная сделка отменится, неоплаченные счета аннулируются'
         : 'Сделка отменится, подтверждение менеджера останется среди подтверждений, неоплаченные счета сделки аннулируются';
@@ -35,6 +38,16 @@
                             <x-ui.field name="asking_price" :id="'resale-asking-'.$n" label="Цена продажи, ₽" :value="old('asking_price', $offer->asking_price ? Money::nums($offer->asking_price) : null)" required/>
                         </div>
                     </div>
+                    @if ($holder)
+                        <div>
+                            <h3 class="list-head">Стоит у {{ $holder->shortName() }}</h3>
+                            <input type="hidden" name="stays" value="1">
+                            <div class="fields">
+                                <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" :value="old('settlement_id', $offer->settlement_id)" :text="$offer->settlement?->title()" :id="'resale-city-'.$n"/>
+                                <x-ui.field name="inspection_address" :id="'resale-address-'.$n" label="Адрес" :value="old('inspection_address', $offer->inspection_address)"/>
+                            </div>
+                        </div>
+                    @endif
                     <div>
                         <h3 class="list-head">Показ</h3>
                         <div class="fields">

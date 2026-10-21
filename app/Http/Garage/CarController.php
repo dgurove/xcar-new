@@ -35,8 +35,14 @@ class CarController
             ->orderBy('stage_at')
             ->get();
 
+        // Стоят у менеджера без его сделки (`held_by`, 21.10.2026): чинить не стал, продаёт XCar — забирать будут у него.
+        $user = $request->user();
+        $held = Offer::whereNotNull('held_by')->when(! $user->isAdmin(), fn ($q) => $q->where('held_by', $user->id))
+            ->with(['media', 'heldBy'])->orderBy('id')->get();
+
         return view('garage.cars.index', [
             'cars' => $cars,
+            'held' => $held,
             // Закупочной у менеджера нет (15.10.2026) — и сортировки по ней.
             'sort' => Sort::from($request->query('sort'), $request->user()->isAdmin() ? self::SORTS : array_diff_key(self::SORTS, ['price' => 1]), 'stage'),
         ]);

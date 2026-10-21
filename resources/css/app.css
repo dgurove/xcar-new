@@ -3985,7 +3985,10 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
     .chat-split .chat-rows-list { border-radius: 0; padding: 0 .5rem .5rem; }
     .chat-split .chat-rows-body > .chat-rows-list:first-child { padding-top: .5rem; }
     .chat-split .chat-list-head + .chat-rows-body > .chat-rows-list:first-child { padding-top: 0; }
-    .chat-split .chat-rows-body { gap: 0; }
+    /* Листается колонка `.chat-rows`, а не её дети: сжатые под высоту колонки, они обрезали строки (overflow:hidden у списка
+       ради скругления) — листать было нечего (21.10.2026, «список чатов не листается»). */
+    .chat-split .chat-rows-body { gap: 0; flex-shrink: 0; }
+    .chat-split .chat-rows-list { flex-shrink: 0; }
     .chat-rows nav, .chat-rows .empty { margin: 1rem; }
     /* Шапка колонки липнет к её верху: список листается под ней. */
     .chat-split .chat-list-head { position: sticky; top: 0; z-index: 2; padding: .75rem .75rem .5rem; background: var(--color-surface); }

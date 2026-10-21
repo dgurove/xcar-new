@@ -950,17 +950,20 @@ class OfferController
 
     /**
      * «Вернуть в продажу» из сделки или гаража с новыми ценами (шторка `x-offer.resale-sheet`): закупочная, заявленная
-     * (пусто — от закупочной) и цена продажи; сделка отменяется, строка гаража уходит (`ReturnToSale`).
+     * (пусто — от закупочной) и цена продажи; сделка отменяется, строка гаража уходит (`ReturnToSale`). Машина у менеджера —
+     * «Стоит у …» (`stays`, 21.10.2026): остаётся у него, город и адрес осмотра — его.
      */
     public function resale(Request $request, Offer $offer, ReturnToSale $return)
     {
         $data = $request->validate(['floor_price' => ['nullable', 'string', 'max:20'], 'publish_price' => ['nullable', 'string', 'max:20'],
-            'asking_price' => ['required', 'string', 'max:20'], 'bids_close_at' => ['nullable', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json']],
+            'asking_price' => ['required', 'string', 'max:20'], 'bids_close_at' => ['nullable', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json'],
+            'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500']],
             ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас']);
         $money = fn (?string $v) => Money::rubles($v) ?: null;
         $prices = array_map($money, array_intersect_key($data, array_flip(['floor_price', 'publish_price', 'asking_price'])) + ['floor_price' => null, 'publish_price' => null]);
         $audience = $request->has('audience_rules') ? (json_decode((string) $request->input('audience_rules'), true) ?: []) : null;
-        $offer = $return($offer, $request->user(), $prices, filled($data['bids_close_at'] ?? null) ? Carbon::parse($data['bids_close_at']) : null, $audience);
+        $offer = $return($offer, $request->user(), $prices, filled($data['bids_close_at'] ?? null) ? Carbon::parse($data['bids_close_at']) : null, $audience,
+            stays: $request->boolean('stays'), where: array_intersect_key($data, array_flip(['settlement_id', 'inspection_address'])));
 
         return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number)->with(self::gone($request, $offer));
     }

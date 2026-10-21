@@ -6,6 +6,7 @@ use App\Garage\Car as GarageCar;
 use App\Garage\Events\GarageChanged;
 use App\Offers\AudienceRules;
 use App\Offers\Binding;
+use App\Offers\CarPlace;
 use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -22,6 +23,9 @@ use Illuminate\Validation\ValidationException;
  * гаснут), строка гаража стирается; цены — `UpdateOffer`, публикация — `ChangeOfferState` (срок приёма — новый).
  * Гаражная машина, по которой менеджер уже тратил или продал её, — не молча: сначала разбирают расходы и продажу.
  * Так же — черновик с аукциона («Вернуть в продажу…», 13.10.2026): цены, срок приёма и «Кому показывать» одной шторкой.
+ * Машина уже стоит у менеджера (21.10.2026, Иван Заикин: взял в гараж, привёз, чинить не стал — «отдать другому в
+ * продажу») — `$stays`: она остаётся у него (`offers.held_by`), новая сделка забирает её у него; город и адрес осмотра —
+ * его (`$where`).
  */
 final class ReturnToSale
 {
@@ -31,8 +35,9 @@ final class ReturnToSale
      * @param  array{floor_price?: ?int, publish_price?: ?int, asking_price?: ?int}  $prices
      * @param  ?CarbonInterface  $closeAt  до когда приём (шторка «Отменить сделку → В продажу»); пусто — через 3 дня в 17:00
      * @param  ?array  $audience  волны «Кому показывать» (`AudienceRules`); null — не трогать, [] — как у вендора
+     * @param  array{settlement_id?: ?int, inspection_address?: ?string}  $where  где машина стоит, когда она остаётся у менеджера
      */
-    public function __invoke(Offer $offer, User $by, array $prices, ?CarbonInterface $closeAt = null, ?array $audience = null): Offer
+    public function __invoke(Offer $offer, User $by, array $prices, ?CarbonInterface $closeAt = null, ?array $audience = null, bool $stays = false, array $where = []): Offer
     {
         $auction = $offer->onAuction();
         if (! $auction && ! in_array($offer->state, [OfferState::Sold, OfferState::Garage], true)) {
@@ -51,7 +56,10 @@ final class ReturnToSale
             throw ValidationException::withMessages(['bids_close_at' => $error]);
         }
 
-        return DB::transaction(function () use ($offer, $by, $prices, $car, $closeAt, $audience, $auction) {
+        // Кто держит машину — до того, как сделка и строка гаража уйдут: потом его не узнать.
+        $holder = $stays && $offer->car_place === CarPlace::Keeper ? $offer->standsWith() : null;
+
+        return DB::transaction(function () use ($offer, $by, $prices, $car, $closeAt, $audience, $auction, $holder, $where) {
             // Гаражная сделка — и закончившаяся (машина уже в гараже), как у «Отдали по ошибке»: машины у менеджера больше
             // нет, «завершённой» сделки без неё в его истории не остаётся. Строка гаража уходит здесь же: `CancelDeal`
             // молча снимает только ждущую машину без расходов.
@@ -70,7 +78,14 @@ final class ReturnToSale
             if ($audience !== null) {
                 $data['audience_rules'] = AudienceRules::normalize($audience) ?: null;
             }
+            if ($holder) {
+                $data += array_intersect_key($where, array_flip(['settlement_id', 'inspection_address']));
+            }
             ($this->update)($offer, $data, $by, reprice: true);
+            if ($holder) {
+                Offer::whereKey($offer->id)->update(['held_by' => $holder->id]);
+                $offer->log(OfferEventType::Note, $by, ['text' => 'Стоит у '.$holder->shortName().', забирать у него']);
+            }
 
             // Приём — выбранный срок, иначе заново, как у публикации (через 3 дня в 17:00, `ChangeOfferState`).
             Offer::whereKey($offer->id)->update(['bids_close_at' => $closeAt?->isFuture() ? $closeAt : null]);

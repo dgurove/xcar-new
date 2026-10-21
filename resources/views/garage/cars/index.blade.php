@@ -3,7 +3,8 @@
      внутри дольше стоящие первыми; «Рассчитались» — ниже. Вывозы, порученные менеджеру, — в логистике (17.10.2026). Строка — кадр,
      название, этап цветным словом с днями (ждут ответа — «ваш ход» и что сделать) и главное число справа (`CarLine`).
      До продажи главное число — закупочная (13.10.2026, владелец: её видят все). Сотрудник видит всех и чьи. Нажатие —
-     страница машины. --}}
+     страница машины. «Стоят у вас» (21.10.2026) — машины, что стоят у менеджера без его сделки (`offers.held_by`): продаёт
+     XCar, забирать будут у него. --}}
 @php
     use App\Garage\CarLine;
     use App\Garage\CarState;
@@ -25,8 +26,12 @@
     $carRow = fn ($car) => ['offer' => $car->offer, 'href' => '/garage/cars/'.$car->offer->number, 'word' => $lines[$car->id]->word,
         'tone' => $lines[$car->id]->tone, 'when' => $lines[$car->id]->when, 'value' => $lines[$car->id]->value,
         'caption' => $lines[$car->id]->caption, 'who' => $lines[$car->id]->who];
+    // Стоят у менеджера без его сделки (21.10.2026): чинить не стал, продаёт XCar — строка без денег и этапов, ведёт на ТС.
+    $heldRows = $held->map(fn ($o) => ['offer' => $o, 'href' => $o->isVisibleTo($user) ? '/offers/'.$o->number : '/garage', 'word' => 'продаёт XCar', 'tone' => 'text-ink-muted',
+        'when' => null, 'value' => null, 'caption' => null, 'who' => $staff ? $o->heldBy?->shortName() : null, 'car' => null]);
     $groups = array_filter([
         '' => $open->map(fn ($c) => $carRow($c) + ['car' => $c]),
+        ($staff ? 'Стоят у менеджеров' : 'Стоят у вас') => $heldRows,
         'Рассчитались' => $closed->map(fn ($c) => $carRow($c) + ['car' => $c]),
     ], fn ($g) => $g->isNotEmpty());
 @endphp

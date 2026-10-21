@@ -69,7 +69,7 @@ final class TickCommand extends Command
         if ($today->hour < 10 || ! Cache::add('logistics:digest:'.$today->toDateString(), true, now()->addDays(2))) {
             return;
         }
-        $waiting = Transport::where('state', TransportState::New)->where('created_at', '<', now()->subDay())->count();
+        $waiting = Transport::where('state', TransportState::New)->where('undecided', false)->where('created_at', '<', now()->subDay())->count();
         $silent = self::stuck()->reject->isOrder()->count();
         if ($waiting + $silent > 0) {
             Notification::send(User::logisticsLeads()->get(), TransportNotice::stale($waiting, $silent));

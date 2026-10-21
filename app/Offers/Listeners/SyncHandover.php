@@ -89,7 +89,7 @@ final class SyncHandover
 
             return;
         }
-        if (! $deal?->isActive() || $offer->car_place !== CarPlace::Keeper || $offer->keeper()?->id !== $deal->buyer_id) {
+        if (! $deal?->isActive() || $offer->car_place !== CarPlace::Keeper || $offer->standsWith()?->id !== $deal->buyer_id) {
             if ($deal && $e->to->isPickupStep()) {
                 $this->turn($offer, $deal);
             }

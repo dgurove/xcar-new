@@ -56,7 +56,7 @@ use Illuminate\Support\Facades\DB;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'deal_show_until', 'binding_until', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category',
+    'garage_allowed', 'deal_show_until', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category',
 ])]
 class Offer extends Model
 {
@@ -92,6 +92,13 @@ class Offer extends Model
         static::saving(fn (self $o) => $o->offsetUnset('viewed'));
         // `binding_panic` — вычисленное списком (`Binding::select`).
         static::saving(fn (self $o) => $o->offsetUnset('binding_panic'));
+        // Стоит у менеджера без его сделки (`held_by`, 21.10.2026) — пока машина на месте: уехала (забрали, привезли,
+        // выдали с парковки) — метка гаснет.
+        static::saving(function (self $o) {
+            if ($o->held_by && $o->isDirty('car_place') && ! $o->isDirty('held_by')) {
+                $o->held_by = null;
+            }
+        });
         static::saving(function (self $o) {
             // У продажи свой вендор: «АльфаСтрахование СПб» парковки здесь — «АльфаСтрахование».
             if ($o->isDirty('vendor_id')) {
@@ -465,9 +472,29 @@ class Offer extends Model
         return Choices::managerOf($this);
     }
 
+    /**
+     * Менеджер, у которого машина стоит, хотя его сделки уже нет (21.10.2026, Иван Заикин: взял в гараж, привёз, чинить не
+     * стал — продают другому, а забирать у него). Ставит «Вернуть в продажу» (`ReturnToSale`), гасит уезд машины.
+     */
+    public function heldBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'held_by');
+    }
+
+    /** У кого машина сейчас стоит «у менеджера»: у оставившего её (`held_by`), иначе у держателя гаража или покупателя. */
+    public function standsWith(): ?User
+    {
+        return $this->held_by ? $this->heldBy : $this->keeper();
+    }
+
     /** ТС уже забрали у владельца: кто вывозит — менять поздно. */
     public function pickedUp(): bool
     {
+        // Стоит у менеджера без сделки — для новой сделки он и есть «владелец»: вывоз от него ещё впереди.
+        if ($this->held_by && $this->car_place === CarPlace::Keeper) {
+            return (bool) Transport::openFor($this)?->taken();
+        }
+
         return in_array($this->car_place, [CarPlace::Moving, CarPlace::Keeper, CarPlace::WithUs, CarPlace::Ours, CarPlace::Elsewhere, CarPlace::Depot, CarPlace::Buyer], true)
             || (bool) $this->pickup()?->taken();
     }
