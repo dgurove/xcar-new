@@ -1,5 +1,5 @@
 {{-- Подписка на бот предложений @xcar_offers_bot — та же шторка, что подключение Telegram (telegram_controller, шаги
-     «предложение → ожидание → готово»), со своими событиями. В сцене чата — то, что придёт в 16:00: анонс с цифрами
+     «предложение → ожидание → готово»), со своими событиями. В сцене чата — то, что придёт после публикации: анонс с цифрами
      и клавиатура «👍 1» «💤 2». Открывает строка в начале каталога (offers-bot:open). --}}
 @php
     $user = auth()->user();
@@ -22,15 +22,14 @@
                 <div class="tg-message">
                     <span class="tg-typing" aria-hidden="true"><i></i><i></i><i></i></span>
                     <div class="tg-bubble">
-                        Опубликовано 17 предложений, показать их?<br><br>1. Показать<br>2. Напомнить через 1 ч
-                        <span class="tg-bubble-meta nums">16:00</span>
+                        Появились новые предложения: 17, показать их?<br><br>1. Показать<br>2. Напомнить через 1 ч
                     </div>
                     <div class="grid grid-cols-2 gap-1"><div class="tg-key">👍 1</div><div class="tg-key">💤 2</div></div>
                 </div>
             </div>
             <div class="tg-lead">
                 <h2 class="text-lg">Предложения в Telegram</h2>
-                <p>Каждый день в 16:00, листайте по одному</p>
+                <p>Новые машины сразу после публикации, листайте по одному и пересылайте клиентам</p>
             </div>
             <div class="flex flex-col gap-1">
                 @if ($foreign)<p class="tg-stop" data-telegram-target="stop" hidden>Вы вошли как {{ $user->firstName() }}. Подписывается менеджер сам, со своего телефона</p>@endif
@@ -56,7 +55,7 @@
             <div class="tg-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-9" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
             <div class="tg-lead">
                 <h2 class="text-lg">Готово, {{ $user->firstName() }}</h2>
-                <p>В 16:00 бот пришлёт новые предложения</p>
+                <p>Бот пришлёт новые предложения, как только они выйдут</p>
             </div>
             <button type="button" class="btn btn-accent w-full" data-action="telegram#finish">Отлично</button>
         </div>

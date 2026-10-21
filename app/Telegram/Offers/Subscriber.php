@@ -59,7 +59,7 @@ final class Subscriber extends Model
         return $q->whereNull('blocked_at');
     }
 
-    /** Получает рассылки 13:00 и 16:00: не отписался и не остановил. */
+    /** Получает анонсы новых: не отписался и не остановил. */
     public function scopeListening(Builder $q): Builder
     {
         return $q->whereNull('blocked_at')->whereNull('muted_at');

@@ -3025,7 +3025,7 @@ fixed-низ просто `bottom: 0`; новое значение iOS чита�
   закупке уведомления нет (13.10.2026, владелец), `announced_at` только отметка.
 - **Бот предложений @xcar_offers_bot** (03.10.2026, «Дайвинчик» для менеджеров, `app/Telegram/Offers`,
   `notes/bot-predlozheniy-2026-10-03.md`): `OffersBot extends Bot` (свой конфиг `xcar.telegram.offers`, без журнала
-  CRM), сервис compose `offers-bot` — длинный опрос, часы (`Announce`: 13:00, анонс вышедшего слотом, «напомнить»)
+  CRM), сервис compose `offers-bot` — длинный опрос, часы (`Announce`: анонс вышедшего, «напомнить»; утреннего «В 16:00 будет опубликовано…» и «в 16:00» в текстах нет с 21.10.2026 — владелец: пояса разные, публикуют сразу)
   и дорожки по чатам (`offers-bot:lane`), кадры — один раз и дальше по `file_id` (`PhotoCache`), состояние —
   `pgsql_async`. Разговор — `Handler` (тексты владельца дословно), лента — `Feed`, карточка — `Card`, вопросы 💬 —
   в чат по предложению (`Questions`, `PostMessage(viaBot:)`, `ChatNotice::via` → `OffersBotChannel`, реплай админа
