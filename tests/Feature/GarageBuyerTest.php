@@ -89,7 +89,7 @@ class GarageBuyerTest extends TestCase
 
     public function test_buyer_garage_shows_only_his_price(): void
     {
-        $this->buyer->update(['garage_enabled' => true]);
+        $this->buyer->update(['garage_enabled' => true, 'garage_price_shown' => true]);
         $offer = $this->draft();
         $this->give($offer)->assertSessionHasNoErrors()->assertRedirect();
 
@@ -131,9 +131,34 @@ class GarageBuyerTest extends TestCase
         $this->assertSame(CarState::Settled, $car->fresh()->state);
     }
 
-    public function test_admin_edits_price_and_pickup(): void
+    /** Без галки «Показывать цену покупателя» — только цена продажи: ни его цены, ни счёта, ни уведомления о нём (21.10.2026). */
+    public function test_without_price_toggle_buyer_sees_sale_price_only(): void
     {
         $this->buyer->update(['garage_enabled' => true]);
+        $offer = $this->draft();
+        $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
+            'to' => 'garage', 'whom' => 'buyer', 'manager_id' => $this->buyer->id, 'buyer_price' => '753 210', 'where' => 'arrived',
+        ])->assertSessionHasNoErrors();
+        $car = Car::where('offer_id', $offer->id)->firstOrFail();
+        app(AgreeDeal::class)($car->deal->fresh(), $this->admin);
+        $this->assertNotNull(Invoice::where('deal_id', $car->deal_id)->first());
+
+        $n = $offer->fresh()->number;
+        foreach (['/garage', '/garage/cars/'.$n, '/account/money', '/garage?vid=table'] as $path) {
+            $html = $this->actingAs($this->buyer)->get(self::SITE.$path)->assertOk()->getContent();
+            $this->assertClean($html);
+            $this->assertDoesNotMatchRegularExpression('/753(\s|&nbsp;|\x{00A0})?210/u', $html, $path);
+        }
+        $this->assertStringContainsString('Цена продажи', $this->actingAs($this->buyer)->get(self::SITE.'/garage/cars/'.$n)->getContent());
+        $this->assertSame(0, DatabaseNotification::where('notifiable_id', $this->buyer->id)->where('data', 'like', '%753%')->count());
+
+        $this->buyer->update(['garage_price_shown' => true]);
+        $this->assertMatchesRegularExpression('/753(\s|&nbsp;|\x{00A0})?210/u', $this->actingAs($this->buyer->fresh())->get(self::SITE.'/garage/cars/'.$n)->getContent());
+    }
+
+    public function test_admin_edits_price_and_pickup(): void
+    {
+        $this->buyer->update(['garage_enabled' => true, 'garage_price_shown' => true]);
         $offer = $this->draft();
         $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
             'to' => 'garage', 'whom' => 'buyer', 'manager_id' => $this->buyer->id, 'buyer_price' => '900 000', 'where' => 'owner', 'pickup' => 'manager',

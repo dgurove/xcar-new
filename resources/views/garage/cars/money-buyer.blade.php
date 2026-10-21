@@ -7,8 +7,16 @@
     $left = $holderInvoice ? $holderInvoice->remaining() : 0;
     $claimed = $holderInvoice && $left > 0 ? $holderInvoice->claimed() : 0;
     $mine = $car->extraSpent(\App\Garage\Payer::Manager);
+    // Без галки «Показывать цену покупателя» (21.10.2026) — только цена продажи: ни его цены, ни счёта.
+    $hide = $car->hidesBuyerPrice();
 @endphp
 <div class="list">
+    @if ($hide)
+    <div class="row flex-col items-start gap-1 py-4">
+        <span class="text-sm text-ink-muted">Цена продажи</span>
+        <span class="nums text-[32px] leading-none font-bold">{{ Money::exact($car->offer?->asking_price) }}</span>
+    </div>
+    @else
     <div class="row flex-col items-start gap-1 py-4">
         <span class="text-sm text-ink-muted">{{ $left > 0 ? 'К оплате' : 'Цена' }}</span>
         <span class="nums text-[32px] leading-none font-bold {{ $holderInvoice?->isOverdue() ? 'text-danger' : '' }}">{{ Money::exact($left > 0 ? $left : $car->buyer_price) }}</span>
@@ -27,6 +35,7 @@
         </{{ $pdf ? 'a' : 'div' }}>
     @elseif ($car->deal && ($when = $car->deal->invoiceNotYet()))
         <div class="row justify-between"><span>Счёт</span><span class="text-ink-muted">{{ $when }}</span></div>
+    @endif
     @endif
     @if ($mine > 0)<div class="row justify-between"><span>Ваши расходы</span><span class="nums">{{ Money::exact($mine) }}</span></div>@endif
 </div>

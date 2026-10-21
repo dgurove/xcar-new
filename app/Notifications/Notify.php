@@ -426,6 +426,10 @@ final class Notify
             return;
         }
         $i->load(['party', 'deal.offer', 'deal.buyer']);
+        // Покупателю с гаражом без галки цены счёт не показываем (`User::seesGaragePrice`).
+        if ($i->deal?->isGarage() && ! $i->deal->buyer?->seesGaragePrice()) {
+            return;
+        }
         $i->deal?->buyer?->notify(MoneyNotice::invoiceIssued($i));
     }
 

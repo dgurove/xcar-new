@@ -44,6 +44,8 @@ final class ManagerLedger
             $this->all = Deal::where('buyer_id', $this->manager->id)
                 ->where(fn ($q) => $q->where('state', DealState::Active)->orWhereHas('invoices'))
                 ->where(fn ($q) => $q->whereNull('garage_payer')->orWhereHas('invoices'))
+                // Покупателю с гаражом без галки цены — гаражных расчётов нет: он видит только цену продажи (21.10.2026).
+                ->when(! $this->staff && ! $this->manager->seesGaragePrice(), fn ($q) => $q->whereNull('garage_payer'))
                 ->with(['offer', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
             $this->all->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d, $this->staff)));
         }

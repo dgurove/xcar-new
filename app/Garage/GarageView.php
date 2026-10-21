@@ -22,7 +22,7 @@ final class GarageView
         $buyerCar = $car->forBuyer();
         $asBuyer = $buyerCar && ! $staff;
         $holderInvoice = $buyerCar ? $car->holderInvoice() : null;
-        $holderDue = $asBuyer && $holderInvoice && $holderInvoice->remaining() - $holderInvoice->claimed() > 0;
+        $holderDue = $asBuyer && ! $car->hidesBuyerPrice() && $holderInvoice && $holderInvoice->remaining() - $holderInvoice->claimed() > 0;
         $n = $offer->number;
         $invoice = $car->invoice;
         // Ждёт денег сейчас: выплата менеджеру (покупатель уже заплатил) или сам счёт; у покупателя с гаражом — его счёт.

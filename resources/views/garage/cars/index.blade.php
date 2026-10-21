@@ -51,7 +51,7 @@
                         <th class="grow">Марка, модель</th>
                         @if ($staff)<th class="hidden md:table-cell">Менеджер</th>@endif
                         <th class="num hidden lg:table-cell col-detail-hide">В гараже с</th>
-                        <x-ui.th :sort="$sort" key="price" class="num hidden sm:table-cell">{{ $user->holdsAsBuyer() ? 'Цена' : 'Закупочная' }}</x-ui.th>
+                        <x-ui.th :sort="$sort" key="price" class="num hidden sm:table-cell">{{ $user->holdsAsBuyer() ? ($user->seesGaragePrice() ? 'Цена' : 'Цена продажи') : 'Закупочная' }}</x-ui.th>
                         <th class="num hidden sm:table-cell">Расходы</th>
                         <th class="num hidden sm:table-cell">Цена продажи</th>
                         <th class="num sm:hidden">Сумма</th>

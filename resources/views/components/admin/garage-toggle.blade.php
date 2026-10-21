@@ -3,3 +3,5 @@
      сам жмёт «В гараж» в подтверждении. Выключили — новых не отдаём, начатые он доводит (`User::canGarage`). --}}
 @props(['user'])
 <x-ui.check name="garage_enabled" :checked="$user->garage_enabled" id="garage-{{ $user->id }}">Гараж</x-ui.check>
+{{-- Своя цена и счёт в гараже — только с галкой (21.10.2026, владелец: «пока не показывай, пусть продажные видят»). --}}
+<x-ui.check name="garage_price_shown" :checked="$user->garage_price_shown" id="garage-price-{{ $user->id }}">Показывать цену покупателя</x-ui.check>

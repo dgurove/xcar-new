@@ -274,13 +274,16 @@ class Invoice extends Model implements HasMedia
     {
         return $q->where(fn ($k) => $k->whereNull('billing_invoices.kind')->orWhere('billing_invoices.kind', '!=', ChargeKind::Reward->value))->where(fn ($w) => $w
             ->when($user->party_id, fn ($x) => $x->where('party_id', $user->party_id), fn ($x) => $x->whereRaw('false'))
-            ->orWhereHas('deal', fn ($d) => $d->where('buyer_id', $user->id)));
+            ->orWhereHas('deal', fn ($d) => $d->where('buyer_id', $user->id)))
+            // Покупателю с гаражом без галки цены — ни одного гаражного счёта, и своим плательщиком тоже (21.10.2026).
+            ->when(! $user->seesGaragePrice(), fn ($x) => $x->where(fn ($g) => $g->whereNull('billing_invoices.deal_id')->orWhereHas('deal', fn ($d) => $d->whereNull('garage_payer'))));
     }
 
     public function isVisibleToManager(User $user): bool
     {
         return $this->kind !== ChargeKind::Reward
-            && (($user->party_id && $this->party_id === $user->party_id) || ($this->deal_id && $this->deal?->buyer_id === $user->id));
+            && (($user->party_id && $this->party_id === $user->party_id) || ($this->deal_id && $this->deal?->buyer_id === $user->id))
+            && ($user->seesGaragePrice() || ! $this->deal?->isGarage());
     }
 
     public function isOwed(): bool

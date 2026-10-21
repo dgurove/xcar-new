@@ -80,6 +80,9 @@ final class CarLine
     {
         // Покупатель с гаражом (20.10.2026): его цена, а пока его счёт не оплачен — остаток; закупочной ему нет.
         if (! $staff && $car->forBuyer()) {
+            if ($car->hidesBuyerPrice()) {
+                return [$car->offer?->asking_price, 'цена продажи'];
+            }
             $due = $car->holderInvoice();
 
             return $due && $due->remaining() > 0 ? [$due->remaining(), 'к оплате'] : [$car->buyer_price, 'цена'];

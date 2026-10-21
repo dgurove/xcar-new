@@ -149,7 +149,7 @@ class Car extends Model
     {
         return match (true) {
             $staff => $this->price(),
-            $this->forBuyer() => $this->buyer_price,
+            $this->forBuyer() => $this->hidesBuyerPrice() ? $this->offer?->asking_price : $this->buyer_price,
             default => $this->managerPrice(),
         };
     }
@@ -183,7 +183,17 @@ class Car extends Model
     /** Подпись цены тому, кто смотрит: покупателю — «Цена», остальным — «Закупочная». */
     public function priceLabel(bool $staff): string
     {
-        return ! $staff && $this->forBuyer() ? 'Цена' : 'Закупочная';
+        return match (true) {
+            $staff || ! $this->forBuyer() => 'Закупочная',
+            $this->hidesBuyerPrice() => 'Цена продажи',
+            default => 'Цена',
+        };
+    }
+
+    /** Покупателю с гаражом без галки «Показывать цену покупателя» — только цена продажи (`User::seesGaragePrice`). */
+    public function hidesBuyerPrice(): bool
+    {
+        return $this->forBuyer() && ! $this->manager->seesGaragePrice();
     }
 
     /**

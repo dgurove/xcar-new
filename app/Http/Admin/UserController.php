@@ -360,6 +360,7 @@ class UserController
             // Гараж покупателю — тумблером (20.10.2026): чтобы ему можно было отдать ТС; «Исполнитель вывоза» (21.10.2026) — второй
             // ролью: свою машину он везёт сам, и задачу видит в логистике.
             $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name']), 'garage_enabled' => $request->boolean('garage_enabled'),
+                'garage_price_shown' => $request->boolean('garage_price_shown'),
                 'roles' => $request->boolean('contractor') ? [Role::Buyer, Role::Contractor] : [Role::Buyer]]);
             $transfer($user, User::find($data['manager_id']));
 
@@ -441,6 +442,7 @@ class UserController
         $data['notification_settings'] = array_merge($user?->notification_settings ?? [], ['mail' => $request->boolean('mail')]);
         // Гараж по тумблеру — только у супер-покупателя (у покупателя — своя ветка `update`), остальным гараж даёт роль.
         $data['garage_enabled'] = in_array(Role::SuperBuyer, $data['roles'], true) && $request->boolean('garage_enabled');
+        $data['garage_price_shown'] = in_array(Role::SuperBuyer, $data['roles'], true) && $request->boolean('garage_price_shown');
 
         return $data;
     }

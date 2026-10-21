@@ -40,7 +40,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -83,6 +83,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'contact_fields' => 'array',
             'buyer_show_vin' => 'bool',
             'garage_enabled' => 'bool',
+            'garage_price_shown' => 'bool',
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
@@ -252,6 +253,15 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function garageBuyer(): bool
     {
         return $this->garage_enabled && ($this->isBuyer() || $this->isSuperBuyer()) && ! $this->is_demo;
+    }
+
+    /**
+     * Покупатель с гаражом видит свою цену и счёт только галкой «Показывать цену покупателя» (21.10.2026, владелец: «скрой
+     * им пока что закупочные, пусть лучше продажные видят»); без неё — цену продажи предложения, счёта и оплаты нет.
+     */
+    public function seesGaragePrice(): bool
+    {
+        return ! $this->holdsAsBuyer() || $this->garage_price_shown;
     }
 
     /** Держатель гаража — покупатель, а не менеджер: ему цена, а не закупочная, и чат с площадкой. */
