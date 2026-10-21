@@ -112,6 +112,9 @@ final class Facets
     public function selected(string $key): array
     {
         $raw = $this->request->query($key);
+        if (($this->facets[$key] ?? null)?->byDefault) {
+            return $raw === '0' ? [] : ['1'];
+        }
         if (! is_string($raw) || $raw === '' || ! isset($this->facets[$key])) {
             return [];
         }
@@ -134,9 +137,10 @@ final class Facets
         return $this->excluded($key) !== null || $this->selected($key) !== [];
     }
 
+    /** Выбрано не по умолчанию: включённый сам «Не просмотренные» — не выбор, «Сбросить» из-за него нет. */
     public function active(): bool
     {
-        return array_any($this->keys(), fn ($k) => $this->on($k));
+        return array_any($this->keys(), fn ($k) => $this->on($k) !== $this->facets[$k]->byDefault);
     }
 
     /**
@@ -302,7 +306,21 @@ final class Facets
     /** Ссылка «Сбросить»: все выбранные чипы — пустыми; $also — что снять с ними заодно (пилюля, поиск). */
     public function resetUrl(array $also = []): string
     {
-        return $this->url(array_fill_keys(array_filter($this->keys(), fn ($k) => $this->on($k)), '') + $also);
+        $set = [];
+        foreach ($this->keys() as $k) {
+            if ($this->on($k) !== $this->facets[$k]->byDefault) {
+                // Включённый по умолчанию возвращается без параметра, остальные — пустыми («забыть» для ListPrefs).
+                $set[$k] = $this->facets[$k]->byDefault ? null : '';
+            }
+        }
+
+        return $this->url($set + $also);
+    }
+
+    /** Ссылка переключателя: включённый по умолчанию выключают `0`, включают — без параметра. */
+    public function toggleUrl(Facet $f, bool $on): string
+    {
+        return $this->url([$f->key => $f->byDefault ? ($on ? '0' : null) : ($on ? '' : '1')]);
     }
 
     /** @return array<string, string> параметры адреса, которые форма шторки чипа несёт скрытыми полями */

@@ -12,6 +12,7 @@ use App\Offers\Actions\NotifyNewOffers;
 use App\Offers\Actions\NotifyViewers;
 use App\Offers\Actions\PublishDueSlots;
 use App\Offers\Actions\RemindEstimates;
+use App\Offers\Actions\RemindUnreadClosing;
 use App\Offers\Actions\SendToAuction;
 use App\Offers\Actions\ShowInGallery;
 use App\Offers\Offer;
@@ -30,15 +31,15 @@ class TickOffers extends Command
 
     protected $signature = 'offers:tick';
 
-    protected $description = 'Часы предложений: слот 16:00, черновики в галерею, исходы по времени, просрочки, напоминания, «приём закрыт» владельцу, следующие волны показа, новые предложения пачкой после 5 минут тишины, напоминания об оценке, на аукцион без подтверждений, черновики из писем, мягкие напоминания менеджеру о шагах без срока, паника по сроку обязывающего предложения';
+    protected $description = 'Часы предложений: слот 16:00, черновики в галерею, исходы по времени, просрочки, напоминания, «приём закрыт» владельцу, следующие волны показа, новые предложения пачкой после 5 минут тишины, напоминания об оценке, на аукцион без подтверждений, черновики из писем, мягкие напоминания менеджеру о шагах без срока, паника по сроку обязывающего предложения, за 3 часа до конца приёма — о непросмотренных';
 
-    public function handle(PublishDueSlots $slots, TickStages $tick, NotifyBidsClosed $closed, NotifyViewers $waves, NotifyNewOffers $digest, ShowInGallery $gallery, RemindEstimates $estimates, AutoOffer $auto, SendToAuction $auction, StagesDigest $hot, RemindStalled $stalled, BindingAlarm $binding): int
+    public function handle(PublishDueSlots $slots, TickStages $tick, NotifyBidsClosed $closed, NotifyViewers $waves, NotifyNewOffers $digest, ShowInGallery $gallery, RemindEstimates $estimates, AutoOffer $auto, SendToAuction $auction, StagesDigest $hot, RemindStalled $stalled, BindingAlarm $binding, RemindUnreadClosing $unread): int
     {
-        return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves, $digest, $gallery, $estimates, $auto, $auction, $hot, $stalled, $binding) {
+        return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves, $digest, $gallery, $estimates, $auto, $auction, $hot, $stalled, $binding, $unread) {
             // Утренняя сводка «Горит» — раз в день с 10:00 (`StagesDigest`).
             $hot();
             // Слот — первым: выпущенные им предложения тем же тиком уходят менеджерам одним уведомлением (волны).
-            $counts = ['slot' => $slots(), 'gallery' => $gallery->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'waves' => $waves->due(), 'digest' => $digest(), 'estimates' => $estimates->due(), 'stalled' => $stalled(), 'binding' => $binding()]
+            $counts = ['slot' => $slots(), 'gallery' => $gallery->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'waves' => $waves->due(), 'digest' => $digest(), 'unread' => $unread(), 'estimates' => $estimates->due(), 'stalled' => $stalled(), 'binding' => $binding()]
                 // Письмо-предложение не завелось черновиком при приходе (выкладка); документы черновиков из писем дочитать —
                 // раз в пять минут, как у парковки: проход читает письма всех их веток.
                 + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0]

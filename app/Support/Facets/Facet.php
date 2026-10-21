@@ -48,6 +48,9 @@ final class Facet
     /** Переключатель считает себя сам по выборке списка с прочими чипами (число как у пилюли). */
     public bool $selfCount = false;
 
+    /** Переключатель включён, пока его не выключили (`?unread=0`): «Не просмотренные» каталога, 21.10.2026. */
+    public bool $byDefault = false;
+
     /** Переключатель с числом («Без ставки 4»): нуль — переключателя нет, пока он не включён. */
     public ?Closure $tally = null;
 
@@ -165,6 +168,22 @@ final class Facet
     {
         $this->dot = $tone;
         $this->selfCount = true;
+
+        return $this;
+    }
+
+    /** Число у переключателя — по выборке списка с прочими чипами, без точки цветом. */
+    public function countSelf(): self
+    {
+        $this->selfCount = true;
+
+        return $this;
+    }
+
+    /** Включён без параметра в адресе, выключенный — `0`; «Сбросить» возвращает включённым. */
+    public function byDefault(): self
+    {
+        $this->byDefault = true;
 
         return $this;
     }

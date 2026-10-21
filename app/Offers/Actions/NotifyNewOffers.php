@@ -3,14 +3,16 @@
 namespace App\Offers\Actions;
 
 use App\Notifications\NewOffersNotice;
+use App\Offers\CatalogQuery;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Users\Role;
 use App\Users\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
- * «3 новых предложения» менеджеру и супер-покупателю — пачкой, когда у него 5 минут не открывалось новых (16.10.2026,
+ * «Опубликовано 3 предложения» менеджеру и супер-покупателю — пачкой, когда у него 5 минут не открывалось новых (16.10.2026,
  * владелец: «уведомлять надо, но не захламлять раздел уведомлений»). Счётчик у каждого свой: момент, когда предложение
  * стало видно именно ему, — `offer_viewers.notified_at` (его ставит `NotifyViewers`); посчитанное — до
  * `users.offers_digest_at`. Ровный поток (импорт раз в 4 минуты) паузы не дал бы никогда: самое раннее неотправленное
@@ -52,15 +54,22 @@ final class NotifyNewOffers
                 continue;
             }
             $ids = array_map('intval', explode(',', trim($row->offers, '{}')));
-            // Ушедшее за эти минуты (сняли, сдвинули волну, закрылся приём) не считается.
-            $offers = Offer::visibleTo($user)->onSale()->whereIn('offers.id', $ids)->orderByDesc('offers.published_at')->get();
+            // Ушедшее за эти минуты (сняли, сдвинули волну, закрылся приём) и уже открытое на сайте не считается.
+            $offers = CatalogQuery::unread(Offer::visibleTo($user)->onSale()->whereIn('offers.id', $ids), $user)->orderByDesc('offers.published_at')->get();
             if ($offers->isEmpty()) {
                 continue;
             }
-            $user->notify(new NewOffersNotice($offers->count(), $offers->take(2)->map(fn (Offer $o) => $o->title())->all(), $offers->count() === 1 ? $offers->first() : null));
+            $user->notify(new NewOffersNotice($offers->count(), self::brands($offers), $offers->count() === 1 ? $offers->first() : null));
             $sent++;
         }
 
         return $sent;
+    }
+
+    /** @return list<string> марки пачки без повторов: чаще встречающиеся первыми, при равенстве — свежие */
+    public static function brands(Collection $offers): array
+    {
+        return $offers->map(fn (Offer $o) => $o->carRecord()->brand?->name)->filter()->countBy()
+            ->sortDesc()->keys()->map(fn ($b) => (string) $b)->all();
     }
 }

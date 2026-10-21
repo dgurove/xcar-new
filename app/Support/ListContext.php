@@ -52,6 +52,10 @@ final class ListContext
     public function backUrl(): string
     {
         $query = array_diff_key($this->query(), ['list' => 1]);
+        // «Не просмотренные» включены и без параметра: адрес каталога без него — живые новые въезжают сверху.
+        if (($query['unread'] ?? null) === '1') {
+            unset($query['unread']);
+        }
 
         return ($this->isGallery() ? '/gallery' : '/offers').($query ? '?'.http_build_query($query) : '');
     }

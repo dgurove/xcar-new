@@ -441,7 +441,7 @@ final class Nav
 
         return self::perRequest("nav.badges:{$user->id}:{$surface->value}",
             function () use ($user, $surface) {
-                // Бейдж раздела — сумма: у «Предложений» менеджера и «Нужно оценить», и новые за 12 часов.
+                // Бейдж раздела — сумма: у «Предложений» менеджера и «Нужно оценить», и не просмотренные в продаже.
                 $badges = self::count($user, $surface);
                 foreach (self::counts($user, $surface)['fresh'] as $path => $n) {
                     $badges[$path] = ($badges[$path] ?? 0) + $n;
@@ -475,6 +475,12 @@ final class Nav
     public static function totals(?User $user, ?Surface $surface = null): array
     {
         return $user ? self::counts($user, $surface ?? Surface::current())['totals'] : [];
+    }
+
+    /** Свои счётчики сайта — заново: человек открыл предложение, и «не просмотренных» стало меньше (`ReadOffer`). */
+    public static function forget(User $user): void
+    {
+        Cache::forget('nav.counts:'.Surface::Site->value.':'.$user->id);
     }
 
     private static function counts(User $user, Surface $surface): array
@@ -559,8 +565,11 @@ final class Nav
                 // Как список «Избранного»: только то, что человеку сейчас видно.
                 '/account/favorites' => Offer::visibleTo($user)->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id))->count(),
             ], fn ($v) => $v !== null), 'fresh' => [
-                // Как пилюля «Новые»: открылось этому человеку (волна, показ) за сутки.
-                '/offers' => CatalogQuery::fresh(clone $open, $user)->count(),
+                // Не просмотренные в продаже (21.10.2026, владелец: «менеджеры не видят, когда приходят новые машины») — как
+                // чип каталога; гаснет, как только открыл (`ReadOffer`). У сотрудников счётчики общие — им новые за сутки.
+                '/offers' => $user->isAdmin() && ! $user->isManager()
+                    ? CatalogQuery::fresh(clone $open, $user)->count()
+                    : CatalogQuery::unread(Offer::visibleTo($user)->onSale(), $user)->count(),
                 '/gallery' => (clone $gallery)->where('gallery_from', '>', $day)->count(),
             ]];
         });

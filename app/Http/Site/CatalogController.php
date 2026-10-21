@@ -36,13 +36,17 @@ class CatalogController
             return $detail->response();
         }
         $user = $request->user();
-        $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...CatalogQuery::facets());
-        ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: $facets->keys(), sort: false);
+        // «Не просмотренные» (21.10.2026) — первым чипом у вошедшего в каталоге; не запоминается: каждый заход снова включён.
+        $since = ! $gallery && $user ? CatalogQuery::since($request, enter: true) : null;
+        $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...[...($since ? [CatalogQuery::unreadFacet($user, $since)] : []), ...CatalogQuery::facets()]);
+        ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: array_values(array_diff($facets->keys(), ['unread'])), sort: false);
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
         $prices = ! $gallery && ($user?->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
-        // Сужено — чем угодно, кроме сортировки: запомненная сортировка (ListPrefs) список не сужает.
-        $narrowed = (bool) array_diff_key($filters, ['sort' => 1]);
+        // Сужено — чем угодно, кроме сортировки и «Не просмотренных»: запомненная сортировка (ListPrefs) список не сужает,
+        // а непросмотренное — сам список захода.
+        $narrowed = (bool) array_diff_key($filters, ['sort' => 1, 'unread' => 1]);
+        $unread = $since && $facets->on('unread');
 
         // Чипы кладёт Facets (ему нужна база без них — для вариантов и чисел), остальное — CatalogQuery.
         $query = $facets->apply(CatalogQuery::for($user, array_diff_key($filters, array_flip($facets->keys())) + ['sort' => $sort], $gallery));
@@ -114,6 +118,9 @@ class CatalogController
                 ->sortBy(fn (Offer $o) => [$o->openEstimates->first()?->isGiven() ? 1 : 0, $o->openEstimates->first()?->due_at?->timestamp])->values()
             : collect();
         Showing::remember($user, $offers->pluck('id')->all());
+        // Всё просмотрено, а в продаже есть — пустой экран говорит это и ведёт на весь список.
+        $allSeen = $unread && blank($filters['q'] ?? null) && $offers->isEmpty() && $urgent->isEmpty() && $exclusive->isEmpty()
+            && $facets->applyTo(Offer::siteList($user))->exists();
         $view = ListView::pick($request, $offers->total(), shelves: true);
 
         return view('site.catalog', [
@@ -131,7 +138,9 @@ class CatalogController
             'groupSizes' => $groups ? \App\Offers\CloseGroups::sizes($query, $gallery) : [],
             'views' => $views,
             'view' => $view,
-            'context' => ListContext::forList($gallery, $filters + ['sort' => $sort]),
+            // Стрелкам страницы предложения — и «Не просмотренные» явно: без параметра там список целиком.
+            'context' => ListContext::forList($gallery, array_merge($filters, ['sort' => $sort], $since ? ['unread' => $unread ? '1' : '0'] : [])),
+            'allSeen' => $allSeen,
             'facets' => $facets,
             'gallery' => $gallery,
             'prices' => $prices,

@@ -8,7 +8,10 @@ use App\Support\Facets\Facet;
 use App\Support\Sort;
 use App\Users\Role;
 use App\Users\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Http\Request;
 
 /**
  * Каталог: что видит человек и в каком порядке. Всё состояние — в строке
@@ -31,8 +34,14 @@ final class CatalogQuery
     /** «Новые» за 24 ч и «Горящие» за 12 ч (`Offer::NEW_HOURS`, `Offer::HOT_HOURS`); подписи без часов — владелец 12.10.2026. */
     public const VIEWS = ['' => 'Все', 'urgent' => 'Срочные', 'recommended' => 'Рекомендуем', 'fresh' => 'Новые', 'ending' => 'Горящие', 'favorite' => 'Избранное'];
 
-    /** city и category — чипы (`CatalogQuery::facets`), значения через запятую; марки, года и цены нет (03.10.2026). */
-    public const FILTERS = ['city', 'category', 'q', 'view', 'sort'];
+    /**
+     * city и category — чипы (`CatalogQuery::facets`), значения через запятую; марки, года и цены нет (03.10.2026).
+     * unread — «Не просмотренные» (`unreadFacet`): в адресе только выключенный `0`, в ссылках на предложение — и `1`.
+     */
+    public const FILTERS = ['city', 'category', 'unread', 'q', 'view', 'sort'];
+
+    /** Заход в каталог кончается после получаса без него: открытое тогда уже прячется. */
+    private const VISIT_MINUTES = 30;
 
     /**
      * Когда предложение открылось этому человеку — SQL-выражение над `offers`. Менеджеру и супер-покупателю — его волна
@@ -98,7 +107,8 @@ final class CatalogQuery
             ->select('offers.*')->selectRaw(self::openedAtSql($user).' as opened_at');
         if ($user) {
             // «Просмотрено» — открывал ли он предложение (`ReadOffer`): подзапрос по ключу пары, без чтения таблицы.
-            $q->selectRaw('exists(select 1 from offer_reads r where r.user_id = ? and r.offer_id = offers.id) as viewed', [$user->id]);
+            // Вернулось в продажу после просмотра — снова не просмотрено (`unread`).
+            $q->selectRaw("exists(select 1 from offer_reads r where r.user_id = ? and r.offer_id = offers.id and r.read_at >= coalesce(offers.published_at, '-infinity')) as viewed", [$user->id]);
         }
         if (! $gallery && ($user?->bidsOnSite() ?? false)) {
             // «Ваша цена» на карточке — своё действующее подтверждение, тем же правилом, что на странице предложения.
@@ -118,7 +128,8 @@ final class CatalogQuery
         return $gallery || ($user?->bidsOnSite() ?? false);
     }
 
-    public static function for(?User $user, array $filters = [], bool $gallery = false): Builder
+    /** @param  ?CarbonInterface  $since  начало захода в каталог — для «Не просмотренных» (`since`) */
+    public static function for(?User $user, array $filters = [], bool $gallery = false, ?CarbonInterface $since = null): Builder
     {
         $prices = ! $gallery && ($user?->canSeePrices() ?? false);
         $q = self::cards($user, $gallery);
@@ -133,6 +144,10 @@ final class CatalogQuery
         if ($search === '') {
             foreach (self::facets() as $facet) {
                 $facet->constrain($q, array_values(array_filter(explode(',', (string) ($filters[$facet->key] ?? '')))));
+            }
+            // Список каталога кладёт его чипом (`unreadFacet`), стрелкам страницы предложения он приходит в адресе.
+            if (! $gallery && $user && ($filters['unread'] ?? null) === '1') {
+                self::unread($q, $user, $since);
             }
         }
         // Лупа — по всему разделу, мимо пилюли и чипов.
@@ -184,6 +199,45 @@ final class CatalogQuery
         $since = now()->subHours(Offer::NEW_HOURS);
 
         return $gallery ? $q->where('offers.gallery_from', '>=', $since) : $q->whereRaw(self::openedAtSql($user).' >= ?', [$since]);
+    }
+
+    /**
+     * Не просмотренные (21.10.2026, владелец: «менеджеры не видят, когда приходят новые машины»): человек не открывал
+     * предложение с последней публикации. Открытое за этот заход (`$since`) остаётся с меткой «Просмотрено» — под пальцем
+     * ничего не пропадает, и стрелки страницы предложения идут тем же рядом; в следующий заход его уже нет.
+     */
+    public static function unread(Builder $q, User $user, ?CarbonInterface $since = null): Builder
+    {
+        return $q->whereNotExists(fn (QueryBuilder $r) => $r->selectRaw('1')->from('offer_reads as r')
+            ->whereColumn('r.offer_id', 'offers.id')->where('r.user_id', $user->id)
+            ->whereRaw("r.read_at >= coalesce(offers.published_at, '-infinity')")
+            ->when($since, fn (QueryBuilder $w) => $w->where('r.read_at', '<', $since)));
+    }
+
+    /** Чип «Не просмотренные»: включён каждый заход, выключают на этот раз (`?unread=0`), не запоминается. */
+    public static function unreadFacet(User $user, CarbonInterface $since): Facet
+    {
+        return Facet::toggle('unread', 'Не просмотренные', fn (Builder $q) => self::unread($q, $user, $since))->byDefault()->countSelf();
+    }
+
+    /**
+     * Начало захода в каталог — в сессии. Новый заход (`$enter`, сам список) — пришли не из каталога и не со страницы
+     * предложения (Referer) или полчаса не заходили; страницы списка, живые перечитывания и шторки — тот же заход.
+     */
+    public static function since(Request $request, bool $enter = false): CarbonInterface
+    {
+        $session = $request->hasSession() ? $request->session() : null;
+        $at = $session?->get('catalog.since');
+        $seen = $session?->get('catalog.seen');
+        $from = (string) parse_url((string) $request->header('Referer'), PHP_URL_PATH);
+        $inside = $from === '/offers' || str_starts_with($from, '/offers/');
+        $stale = ! $at || ! $seen || now()->subMinutes(self::VISIT_MINUTES)->getTimestamp() > $seen;
+        if ($stale || ($enter && ! $inside && ! $request->has('page'))) {
+            $at = now()->getTimestamp();
+        }
+        $session?->put(['catalog.since' => $at, 'catalog.seen' => now()->getTimestamp()]);
+
+        return now()->setTimestamp($at)->startOfSecond();
     }
 
     /** Горящие: приём закрывается в ближайшие 12 ч. */
@@ -238,9 +292,9 @@ final class CatalogQuery
      *
      * @return array{prev: ?int, next: ?int, index: ?int, total: int}
      */
-    public static function position(?User $user, array $filters, bool $gallery, Offer $offer): array
+    public static function position(?User $user, array $filters, bool $gallery, Offer $offer, ?CarbonInterface $since = null): array
     {
-        $numbers = self::for($user, $filters, $gallery)->pluck('number')->all();
+        $numbers = self::for($user, $filters, $gallery, $since)->pluck('number')->all();
         $i = array_search($offer->number, $numbers, true);
         if ($i === false) {
             return ['prev' => null, 'next' => null, 'index' => null, 'total' => count($numbers)];

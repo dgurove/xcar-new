@@ -65,6 +65,12 @@ final class Subscriber extends Model
         return $q->whereNull('blocked_at')->whereNull('muted_at');
     }
 
+    /** Бот предложений сам пишет ему о новых («Появились новые предложения») — основному боту повторять не нужно. */
+    public static function listens(User $user): bool
+    {
+        return self::listening()->where('user_id', $user->id)->exists();
+    }
+
     public function isSubscribed(): bool
     {
         return $this->muted_at === null;

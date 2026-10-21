@@ -6,8 +6,11 @@ use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Live\BannerChannel;
 use App\Notifications\NewOffersNotice;
+use App\Notifications\TelegramChannel;
+use App\Notifications\UnreadClosingNotice;
 use App\Offers\Actions\NotifyNewOffers;
 use App\Offers\Actions\NotifyViewers;
+use App\Offers\Actions\RemindUnreadClosing;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\OfferViewer;
@@ -25,7 +28,8 @@ use Tests\TestCase;
 
 /**
  * Новые предложения пачкой после 5 минут тишины (16.10.2026): у каждого свой счётчик по `notified_at`, срочное не
- * считается, поток не держит дольше 30 минут, в ленту не идёт.
+ * считается, поток не держит дольше 30 минут, в ленту не идёт. С 21.10.2026 — и в основной бот Telegram (кроме
+ * подписчика бота предложений), с марками; открытое на сайте не считается; за 3 часа до конца приёма — о непросмотренных.
  */
 class NewOffersDigestTest extends TestCase
 {
@@ -40,6 +44,8 @@ class NewOffersDigestTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Просмотры и бот предложений пишут в pgsql_async; в тесте это то же соединение, иначе транзакция теста строк не увидит.
+        $this->app['db']->extend('pgsql_async', fn () => $this->app['db']->connection('pgsql'));
         Carbon::setTestNow('2026-10-16 10:00:00');
         $this->a = $this->manager('Первый Менеджер');
         $this->b = $this->manager('Второй Менеджер');
@@ -119,8 +125,8 @@ class NewOffersDigestTest extends TestCase
 
         $this->tickAt('2026-10-16 10:09:00');
         Notification::assertSentToTimes($this->a, NewOffersNotice::class, 1);
-        Notification::assertSentTo($this->a, NewOffersNotice::class, fn (NewOffersNotice $n) => $n->title() === '2 новых предложения'
-            && $n->href() === '/offers?view=fresh' && $n->text() === 'Haval F2, Haval F1');
+        Notification::assertSentTo($this->a, NewOffersNotice::class, fn (NewOffersNotice $n) => $n->title() === 'Опубликовано 2 предложения'
+            && $n->href() === '/offers?view=fresh' && $n->text() === 'Haval');
 
         // Второму волна — через сутки: своё время, пачка та же.
         Notification::assertNotSentTo($this->b, NewOffersNotice::class);
@@ -130,7 +136,7 @@ class NewOffersDigestTest extends TestCase
         Notification::assertNotSentTo($this->b, NewOffersNotice::class);
         $this->tickAt('2026-10-17 10:09:00');
         Notification::assertSentToTimes($this->b, NewOffersNotice::class, 1);
-        Notification::assertSentTo($this->b, NewOffersNotice::class, fn (NewOffersNotice $n) => $n->title() === '2 новых предложения');
+        Notification::assertSentTo($this->b, NewOffersNotice::class, fn (NewOffersNotice $n) => $n->title() === 'Опубликовано 2 предложения');
         Notification::assertSentToTimes($this->a, NewOffersNotice::class, 1);
     }
 
@@ -167,8 +173,8 @@ class NewOffersDigestTest extends TestCase
             }
         }
         Notification::assertSentToTimes($this->a, NewOffersNotice::class, 1);
-        Notification::assertSentTo($this->a, NewOffersNotice::class, fn (NewOffersNotice $n) => $n->title() === '8 новых предложений'
-            && $n->text() === 'Haval F8, Haval F7 и ещё 6');
+        Notification::assertSentTo($this->a, NewOffersNotice::class, fn (NewOffersNotice $n) => $n->title() === 'Опубликовано 8 предложений'
+            && $n->text() === 'Haval');
     }
 
     public function test_not_in_the_feed(): void
@@ -208,5 +214,61 @@ class NewOffersDigestTest extends TestCase
         $this->offer(urgent: true);
         $this->tickAt('2026-10-16 10:06:00');
         $this->assertSame([['timer' => 'announce', 'chat_id' => 501]], $announces());
+    }
+
+    public function test_telegram_unless_offers_bot_listens_and_read_is_not_counted(): void
+    {
+        Notification::fake();
+        $this->a->forceFill(['telegram_chat_id' => 9001])->save();
+        $this->b->forceFill(['telegram_chat_id' => 9002])->save();
+        DB::table('offer_bot_chats')->insert(['user_id' => $this->b->id, 'chat_id' => 9002, 'created_at' => now(), 'updated_at' => now()]);
+        $first = $this->offer();
+        $this->offer();
+        Brand::create(['slug' => 'tenet', 'name' => 'Tenet']);
+        $this->tickAt('2026-10-16 10:00:00');
+        // Первый успел открыть одно на сайте — в пачке его нет.
+        DB::table('offer_reads')->insert(['user_id' => $this->a->id, 'offer_id' => $first->id, 'read_at' => now()]);
+        $this->tickAt('2026-10-16 10:05:00');
+
+        Notification::assertSentTo($this->a, NewOffersNotice::class, fn (NewOffersNotice $n, array $via) => str_starts_with($n->title(), 'Новое предложение: ')
+            && in_array(TelegramChannel::class, $via, true) && ! $n->important());
+        Notification::assertSentTo($this->b, NewOffersNotice::class, fn (NewOffersNotice $n, array $via) => $n->title() === 'Опубликовано 2 предложения'
+            && ! in_array(TelegramChannel::class, $via, true));
+    }
+
+    public function test_brands_fit_or_count(): void
+    {
+        $this->assertSame('Haval, Tenet', NewOffersNotice::brandsLine(['Haval', 'Tenet']));
+        $long = array_map(fn ($i) => 'Марка-с-длинным-именем-'.$i, range(1, 8));
+        $this->assertMatchesRegularExpression('/ и ещё \d+ (марка|марки|марок)$/u', NewOffersNotice::brandsLine($long));
+        $this->assertNull(NewOffersNotice::brandsLine([]));
+    }
+
+    public function test_closing_reminder_once_for_unread_without_bid(): void
+    {
+        Notification::fake();
+        $read = $this->offer();
+        $bid = $this->offer();
+        $left = $this->offer();
+        $this->offer(urgent: true);
+        DB::table('offer_reads')->insert(['user_id' => $this->a->id, 'offer_id' => $read->id, 'read_at' => now()]);
+        DB::table('bids')->insert(['offer_id' => $bid->id, 'user_id' => $this->a->id, 'amount' => 600000, 'state' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+
+        // За четыре часа до срока — рано.
+        Carbon::setTestNow($left->bids_close_at->copy()->subHours(4));
+        $this->assertSame(0, app(RemindUnreadClosing::class)());
+
+        Carbon::setTestNow($left->bids_close_at->copy()->subHours(3)->addMinute());
+        app(RemindUnreadClosing::class)();
+        Notification::assertSentToTimes($this->a, UnreadClosingNotice::class, 1);
+        Notification::assertSentTo($this->a, UnreadClosingNotice::class, fn (UnreadClosingNotice $n) => $n->href() === "/offers/{$left->fresh()->number}"
+            && str_starts_with($n->title(), 'Приём до '));
+        // Второй не открывал ни одного и не подтверждал — одно на все три, срочное не в счёт.
+        Notification::assertSentToTimes($this->b, UnreadClosingNotice::class, 1);
+        Notification::assertSentTo($this->b, UnreadClosingNotice::class, fn (UnreadClosingNotice $n) => str_ends_with($n->title(), '3 непросмотренных')
+            && $n->href() === '/offers?view=ending');
+
+        app(RemindUnreadClosing::class)();
+        Notification::assertSentToTimes($this->a, UnreadClosingNotice::class, 1);
     }
 }

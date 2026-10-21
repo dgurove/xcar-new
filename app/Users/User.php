@@ -14,6 +14,7 @@ use App\Offers\Actions\SyncViewers;
 use App\Offers\Interest;
 use App\Offers\Offer;
 use App\Park\City;
+use App\Push\Subscription;
 use App\Search\Term;
 use App\Support\Demo\HidesDemo;
 use App\Support\Phone;
@@ -679,8 +680,10 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     /**
      * Когда шторка подключения открывается сама (решение владельца 30.09.2026):
-     * intro — один раз за всё время при входе; bid — после подтверждения ценой (покупателю — после интереса), не чаще раза в неделю и не больше
-     * трёх раз; card — карточка в «Сделках», пока не скрыли. Отметки ставит TelegramController::seen.
+     * intro — один раз за всё время при входе; менеджеру и супер-покупателю без Telegram и без пушей — раз в сутки, пока не
+     * подключит (21.10.2026, владелец: «менеджеры не видят, когда приходят новые машины»); bid — после подтверждения ценой
+     * (покупателю — после интереса), не чаще раза в неделю и не больше трёх раз; card — карточка в «Сделках», пока не скрыли.
+     * Отметки ставит TelegramController::seen.
      *
      * @return list<'intro'|'bid'|'card'>
      */
@@ -689,9 +692,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         $s = $this->notification_settings ?? [];
         $bidAt = $s['telegram_bid_at'] ?? null;
         $hidden = $s['telegram_card_hidden'] ?? null;
+        $introAt = $s['telegram_intro'] ?? null;
+        $unreached = fn () => $this->hasRole(Role::Manager, Role::SuperBuyer) && ! $this->telegram_chat_id
+            && ! Subscription::where('user_id', $this->id)->whereNull('failed_at')->exists();
 
         return array_values(array_filter([
-            empty($s['telegram_intro']) ? 'intro' : null,
+            empty($introAt) || (now()->subDay()->greaterThan($introAt) && $unreached()) ? 'intro' : null,
             ($s['telegram_bid_n'] ?? 0) < 3 && (! $bidAt || now()->subDays(7)->greaterThan($bidAt)) ? 'bid' : null,
             ! $hidden || now()->greaterThan($hidden) ? 'card' : null,
         ]));

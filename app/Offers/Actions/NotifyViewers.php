@@ -14,6 +14,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\OfferViewer;
 use App\Purchases\Car as PurchaseCar;
+use App\Support\Nav;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Support\Collection;
@@ -49,6 +50,7 @@ final class NotifyViewers
         }
         OfferViewer::where('offer_id', $offer->id)->whereIn('user_id', $due)->update(['notified_at' => now()]);
         $managers = User::whereIn('id', $due)->get();
+        $this->badges($managers);
         // Срочное — всем одно громкое «Срочно: …» (12.10.2026), без «из закупки» и «вы отмечали интерес».
         if ($offer->isUrgent()) {
             $managers->each(fn (User $u) => $u->notify(new UrgentOfferNotice($offer, $u)));
@@ -90,6 +92,7 @@ final class NotifyViewers
         }
         $offers = Offer::whereIn('id', $rows->pluck('offer_id')->unique())->get()->keyBy('id');
         $users = User::whereIn('id', $rows->pluck('user_id')->unique())->get()->keyBy('id');
+        $this->badges($users);
         $fresh = [];
         foreach ($rows->groupBy('offer_id') as $offerId => $viewers) {
             $offer = $offers->get($offerId);
@@ -119,6 +122,15 @@ final class NotifyViewers
         $this->buyers($rows->groupBy('offer_id')->map(fn ($v) => $v->pluck('user_id')->all())->all(), $offers);
 
         return $rows->count();
+    }
+
+    /** Волна открылась — число не просмотренных на табе «Предложения» у этих людей растёт сразу (`Nav::badges`). */
+    private function badges(Collection $users): void
+    {
+        $users->each(fn (User $u) => Nav::forget($u));
+        if ($users->isNotEmpty()) {
+            $this->publish->badges($users->map(fn (User $u) => Topics::user($u))->values()->all());
+        }
     }
 
     /**

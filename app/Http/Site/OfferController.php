@@ -25,6 +25,10 @@ class OfferController
             return redirect('/offers')->with('toast', 'Оценка уже не нужна');
         }
         abort_unless($offer->isVisibleTo($user), 404);
+        // Откуда пришли: стрелки листают ровно тот список, что человек видел. Заход в каталог — до отметки «Просмотрено»:
+        // в «Не просмотренных» открытое сейчас остаётся на своём месте.
+        $context = ListContext::fromRequest($request);
+        $since = $user && $context && ! $context->isGallery() ? CatalogQuery::since($request) : null;
         ReadOffer::mark($user, $offer);
 
         $offer->load(['settlement', 'media', 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)]);
@@ -32,10 +36,8 @@ class OfferController
             app(WarmPhotos::class)($offer); // холодный слой: конверсии досчитаются в очереди
         }
 
-        // Откуда пришли: стрелки листают ровно тот список, что человек видел.
-        $context = ListContext::fromRequest($request);
         $position = $context
-            ? CatalogQuery::position($user, $context->filters, $context->isGallery(), $offer)
+            ? CatalogQuery::position($user, $context->filters, $context->isGallery(), $offer, $since)
             : ['prev' => null, 'next' => null, 'index' => null, 'total' => 0];
 
         // Открыли шторку — непрочитанное прочитано, бейдж гаснет сразу.
