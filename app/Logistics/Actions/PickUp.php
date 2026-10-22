@@ -33,6 +33,7 @@ final class PickUp
             'destination' => ['nullable', 'string', 'max:20'],
             'to_yard_id' => ['nullable', 'integer', Rule::exists('park_yards', 'id')],
             'to_address' => ['nullable', 'string', 'max:500'],
+            'to_city' => ['nullable', 'string', 'max:200'],
             'pickup_note' => ['nullable', 'string', 'max:2000'],
         ];
     }
@@ -70,7 +71,7 @@ final class PickUp
         // Отрезок маршрута до стоянки (20.10.2026, `Logistics\Route`): «куда» решено маршрутом — стоянка, не спрашиваем.
         $stop = $t->destination === Point::Depot && ! Route::isLast($t);
         [$to, $yard] = $stop ? [Point::Depot, null] : Point::read($data);
-        $address = $stop ? null : (trim((string) ($data['to_address'] ?? '')) ?: null);
+        $address = $stop ? null : Point::address($data);
         match (true) {
             $to === Point::Keeper && ! $t->saleOffer()?->keeper() => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера с гаражом']),
             $to === null, $to === Point::Ours => throw ValidationException::withMessages(['destination' => 'Куда везёте']),

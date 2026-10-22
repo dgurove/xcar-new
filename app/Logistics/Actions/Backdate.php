@@ -35,6 +35,7 @@ final class Backdate
             'destination' => ['nullable', 'string', 'max:20'],
             'to_yard_id' => ['nullable', 'integer', Rule::exists('park_yards', 'id')],
             'to_address' => ['nullable', 'string', 'max:500'],
+            'to_city' => ['nullable', 'string', 'max:200'],
             'pickup_note' => ['nullable', 'string', 'max:2000'],
         ];
     }
@@ -63,7 +64,7 @@ final class Backdate
         [$chosen, $yard] = Point::read($data);
         $yard ??= $t->to_yard_id;
         $to = $choose ? ($chosen ?? ($t->saleOffer()?->keeper() ? Point::Keeper : ($ahead->last()?->destination ?? $t->destination))) : $t->destination;
-        $address = trim((string) ($data['to_address'] ?? '')) ?: null;
+        $address = Point::address($data);
         if ($choose) {
             match (true) {
                 $to === Point::Keeper && ! $t->saleOffer()?->keeper() => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера с гаражом или сделкой']),

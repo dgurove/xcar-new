@@ -29,6 +29,7 @@ final class SetRoute
             'destination' => ['nullable', 'string', 'max:20'],
             'to_yard_id' => ['nullable', 'integer', 'exists:park_yards,id'],
             'to_address' => ['nullable', 'string', 'max:500'],
+            'to_city' => ['nullable', 'string', 'max:200'],
             'reach' => [$reach ? 'required' : 'nullable', Rule::enum(Reach::class)],
             'comment' => ['nullable', 'string', 'max:2000'],
         ];
@@ -54,7 +55,7 @@ final class SetRoute
             throw ValidationException::withMessages(['destination' => 'ТС уже привезли']);
         }
         [$to, $yard] = Point::read($data);
-        $address = trim((string) ($data['to_address'] ?? '')) ?: null;
+        $address = Point::address($data);
         match (true) {
             $to === Point::Keeper && ! Transport::keeperLabel($t->saleOffer()) => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера']),
             $to === Point::Yard && ! $yard => throw ValidationException::withMessages(['destination' => 'Какая парковка']),

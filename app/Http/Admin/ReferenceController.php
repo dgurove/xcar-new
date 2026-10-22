@@ -85,6 +85,8 @@ class ReferenceController
             'id' => $s->id,
             'label' => $s->title(),
             'hint' => $s->type === 'рег' ? 'регион' : implode(', ', array_filter([$s->districtShort(), $s->region?->short])),
+            // Регион — «Куда везти» логистики сам ставит «Внутри региона | Между регионами» по выбранному городу.
+            'region' => $s->region_id,
         ]));
     }
 

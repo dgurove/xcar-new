@@ -44,6 +44,19 @@ enum Point: string
     }
 
     /**
+     * Другой адрес из формы — с городом (22.10.2026: сначала город, потом адрес, как в приложениях такси): город, который
+     * выбрали в поле «Город», встаёт перед адресом, если в адресе его ещё нет.
+     */
+    public static function address(array $data): ?string
+    {
+        $address = trim((string) ($data['to_address'] ?? '')) ?: null;
+        $city = trim((string) ($data['to_city'] ?? ''));
+        $name = trim(explode(',', $city)[0]);
+
+        return $address && $name !== '' && ! str_contains(mb_strtolower($address), mb_strtolower($name)) ? $name.', '.$address : $address;
+    }
+
+    /**
      * Значение строки «Куда» из формы: точка и у парковки — её номер. Каждая наша парковка — своя строка
      * (`yard:5`, 18.10.2026, владелец: «„к нам“ — это куда, непонятно»); старое `yard` с полем `to_yard_id` — тоже.
      *

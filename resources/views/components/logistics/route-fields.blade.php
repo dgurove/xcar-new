@@ -1,10 +1,7 @@
 {{-- «Куда везти» строками с галкой, как в Настройках (18.10.2026): к менеджеру сделки (если он есть), каждая наша парковка
      по названию (`yard:id`, `Point::read`), другой адрес (поле), а в окне назначения ещё «Пока неизвестно» (`unknown`). Одно на окно «Кто вывозит», окно
      «Куда везти» и «Забрал» (`x-logistics.pickup-fields`). Свой `reveal`: у окна «Кто вывозит» панели вида — свои.
-     Парковки — по дальности (22.10.2026, владелец: «внутри региона» у машины из Тольятти стояли парковки Москвы и Питера):
-     «Внутри региона» — только города зоны задачи (`Reach::area`), «Между регионами» и регион неизвестен — все
-     (`region_yards_controller` по сегменту `reach` той же формы; город с выбранной строкой не прячется). Парковки —
-     группами под названием города. --}}
+     Город, потом место в нём — см. ниже. --}}
 @props(['t' => null, 'offer' => null, 'prefix' => 'route', 'unknown' => false])
 @php
     use App\Logistics\Choices;
@@ -24,29 +21,32 @@
         default => $keeper ? Point::Keeper->value : ($unknown ? '' : array_key_first($points)),
     };
     $point = (string) old('destination', $current);
-    $places = \App\Logistics\Choices::yardPlaces();
-    $area = \App\Logistics\Reach::area($t?->region_id);
-    // Парковки — группами по городу (22.10.2026, владелец: логист не знает, какая из них Москва, а какая Питер): сначала
-    // свои строки (стоянка, менеджер), дальше города с их парковками, в конце «Другой адрес» и «Пока неизвестно».
+    // Сначала город, потом место в нём (22.10.2026, владелец: «как в нормальных приложениях»; логист не знала, какая из
+    // парковок Москва, а какая Питер): поле «Город» (справочник ОКТМО), под ним наши парковки этого города, «Другой адрес»
+    // (город встаёт в адрес сам — `Point::address`) и «Пока неизвестно». Город по умолчанию — парковки, куда везут, иначе
+    // город машины. Выбрали город — дальность «Внутри региона | Между регионами» встаёт сама (`city_places_controller`).
+    $yardCities = \App\Logistics\Choices::yardCities();
+    $pickedYard = str_starts_with($point, 'yard:') ? (int) substr($point, 5) : null;
+    $city = ($pickedYard && ($id = $yardCities[$pickedYard] ?? null) ? \App\Cars\Settlement::find($id) : null) ?? $offer?->settlement;
     $yards = array_filter($points, fn ($v) => str_starts_with((string) $v, 'yard:'), ARRAY_FILTER_USE_KEY);
     $head = array_diff_key(array_filter($points, fn ($v) => ! in_array((string) $v, ['other', ''], true), ARRAY_FILTER_USE_KEY), $yards);
     $tail = array_intersect_key($points, array_flip(['other', '']));
-    $cities = collect($yards)->groupBy(fn ($label, $value) => $places[(int) substr($value, 5)]['city'] ?? 'Без города', true)->sortKeys();
     $radio = fn ($value, $label, $attrs = '') => '<label class="row row-check" '.$attrs.'><span class="min-w-0 flex-1 '.($value === '' ? 'text-ink-muted' : '').'">'.e($label).'</span>'
         .'<span class="check"><input type="radio" name="destination" value="'.e($value).'" '.($point === (string) $value ? 'checked' : '').' data-action="reveal#pick"></span></label>';
 @endphp
-<div class="flex flex-col gap-3" data-controller="reveal region-yards" data-region-yards-area-value="{{ $area }}" data-region-yards-reach-value="{{ $t?->reach?->value }}">
+<div class="flex flex-col gap-3" data-controller="reveal city-places" data-action="change->city-places#sync" data-city-places-region-value="{{ \App\Logistics\Reach::area($t?->region_id) }}">
 @if ($head)
     <div class="list">@foreach ($head as $value => $label){!! $radio((string) $value, $label) !!}@endforeach</div>
 @endif
-@foreach ($cities as $city => $list)
-    @php $cityArea = $places[(int) substr((string) $list->keys()->first(), 5)]['area'] ?? null; @endphp
-    <div @if ($cityArea) data-region-yards-target="group" data-area="{{ $cityArea }}" @endif>
-        <div class="list-cap">{{ $city }}</div>
-        <div class="list">@foreach ($list as $value => $label){!! $radio((string) $value, $label) !!}@endforeach</div>
-    </div>
-@endforeach
-<div class="list">@foreach ($tail as $value => $label){!! $radio((string) $value, $label) !!}@endforeach</div>
+<div class="fields" data-action="combobox:chosen->city-places#chosen">
+    <x-ui.combobox name="to_city_id" :id="$prefix.'-city'" text-name="to_city" label="Город" url="/reference/settlements" :value="$city?->id" :text="$city?->title()" placeholder="Начните вводить город"/>
+</div>
+<div class="list">
+    @foreach ($yards as $value => $label)
+        {!! $radio((string) $value, $label, 'data-city-places-target="place" data-city="'.($yardCities[(int) substr($value, 5)] ?? '').'"') !!}
+    @endforeach
+    @foreach ($tail as $value => $label){!! $radio((string) $value, $label) !!}@endforeach
+</div>
 <div class="fields" data-reveal-target="pane" data-reveal-key="other" @if ($point !== 'other') hidden @endif>
     <x-ui.field name="to_address" :id="$prefix.'-address'" label="Адрес" type="textarea" :value="old('to_address', $t?->to_address)"/>
 </div>

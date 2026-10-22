@@ -46,6 +46,8 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     // Справочник машин для формы заявки — тот же, что в CRM и на парковке.
     Route::post('/reference/car-text', [ReferenceController::class, 'carText']);
     Route::get('/reference/brands', [ReferenceController::class, 'brands']);
+    // Город «Куда везти» — тот же справочник ОКТМО, что в CRM и на парковке.
+    Route::get('/reference/settlements', [ReferenceController::class, 'settlements']);
     Route::post('/reference/brands', [ReferenceController::class, 'createBrand']);
     Route::get('/reference/models', [ReferenceController::class, 'models']);
     Route::post('/reference/models', [ReferenceController::class, 'createModel']);

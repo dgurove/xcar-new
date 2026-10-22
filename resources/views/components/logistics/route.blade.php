@@ -5,8 +5,8 @@
      пунктир; где машина — грузовик (стоит — у точки, едет — на линии отрезка).
      Правка — «Изменить / Готово» в заголовке (галка `data-turbo-permanent`: морф после действия режим не сбрасывает): у
      стоянок, до которых машину не довезли, «≡» (перетаскивание, `route_stops_controller` → `ReorderStops`) и «×»
-     (`RemoveStop`), нажатие на название — выбор другой (`ReplaceStop`); перед целью — «Добавить стоянку» (`AddStop` у последнего
-     отрезка). Маршрута ещё нет (ни стоянок, ни исполнителя) — режим правки сразу. Цель — окно «Куда везти» (`route-{id}`).
+     (`RemoveStop`), нажатие на название — выбор другой (`ReplaceStop`). Перед целью — «Стоянка по пути» всегда на виду
+     (`AddStop` у последнего отрезка). Маршрута ещё нет (ни стоянок, ни исполнителя) — режим правки сразу. Цель — окно «Куда везти» (`route-{id}`).
      `readonly` — CRM: смотреть, без правки и цен. --}}
 @props(['t', 'me', 'readonly' => false])
 @php
@@ -103,13 +103,15 @@
                 </li>
             @endif
         @endforeach
-        {{-- Добавить стоянку — перед целью, пока последний отрезок не привезли. --}}
+        {{-- «Стоянка по пути» — перед целью, пока последний отрезок не привезли: всегда на виду, не за «Изменить» (22.10.2026,
+             владелец: логист не понимала, как указать промежуточную стоянку, а не конечный адрес), как «Добавить остановку» в
+             картах. --}}
         @if ($edit && ($last->isOpen() || $last->state === S::Planned))
-            <li class="route-point route-point--add route-edit-only" data-fixed>
+            <li class="route-point route-point--add" data-fixed>
                 <span class="route-mark"><x-ui.icon name="plus" class="size-4"/></span>
                 <form method="post" action="/transports/{{ $last->id }}/stops" class="route-text">
                     @csrf
-                    <x-people.pick name="depot_id" kind="depot" variant="row" :people="$depots" title="Стоянка" :owner="$last->logist_id" autosubmit placeholder="Добавить стоянку"/>
+                    <x-people.pick name="depot_id" kind="depot" variant="row" :people="$depots" title="Стоянка по пути" :owner="$last->logist_id" autosubmit placeholder="Стоянка по пути"/>
                 </form>
             </li>
         @endif
