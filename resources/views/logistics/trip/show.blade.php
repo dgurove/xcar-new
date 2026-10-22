@@ -51,7 +51,7 @@
             </div>
         @endif
         @if ($t->pickup_at)
-            <div class="row justify-between gap-4"><span class="text-ink-muted">Когда</span><span class="nums">{{ $t->pickup_at->translatedFormat($t->pickup_at->format('H:i') === '00:00' ? 'j F' : 'j F, H:i') }}</span></div>
+            <div class="row justify-between gap-4"><span class="text-ink-muted">Когда</span><span class="nums">{{ $t->pickupDay('j F') }}</span></div>
         @endif
         @if ($to || $t->reach)
             <a @if ($t->isOrder() || $t->destination?->value === 'other') href="{{ $map($t->to_address) }}" target="_blank" rel="noopener" @endif class="row items-start justify-between gap-4">
@@ -136,7 +136,7 @@
             <form method="post" action="{{ $base }}/call" class="flex flex-col gap-4">
                 @csrf
                 <div class="fields">
-                    <x-ui.field name="pickup_at" id="trip-at" label="Когда вывоз" type="datetime-local" default-time="12:00" :value="old('pickup_at', $t->pickup_at?->format('Y-m-d\TH:i'))" :min="now()->format('Y-m-d\TH:i')" required/>
+                    <x-ui.field name="pickup_at" id="trip-at" label="Когда вывоз" type="date" :value="old('pickup_at', $t->pickup_at?->format('Y-m-d'))" :min="now()->format('Y-m-d')" required/>
                     <x-ui.field name="pickup_place" id="trip-place" label="Где забрать" type="textarea" :value="old('pickup_place', $from)" required/>
                     <x-ui.field name="call_note" id="trip-note" label="Детали" type="textarea" :value="old('call_note', $t->call_note)"/>
                 </div>

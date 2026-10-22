@@ -115,7 +115,7 @@ final class Handover
         }
         $owner = $picks || $saleAsks;
         if ($owner && $pickup) {
-            $fields['date'] ??= $pickup->pickup_at?->format('Y-m-d H:i');
+            $fields['date'] ??= $pickup->pickup_at?->format('Y-m-d');
             $fields['address'] ??= $pickup->pickup_place ?: null;
         }
         // «Контакт» бывает строкой «Валентин Сергеевич +7 905 …»: телефон — отдельно, чтобы по нему звонили.

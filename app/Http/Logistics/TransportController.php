@@ -33,6 +33,7 @@ use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
+use App\Http\Admin\OfferPhotoController;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Notifications\ReadNotices;
@@ -528,7 +529,7 @@ class TransportController
         $this->visible($request, $transport);
         $docs->receive($transport, $request->user());
 
-        return back()->with('toast', 'Документы у вас')->with('toast-undo', 'transport');
+        return back()->with('toast', $transport->isExecutedBy($request->user()) ? 'Документы у вас' : 'Документы получены')->with('toast-undo', 'transport');
     }
 
     public function pickup(Request $request, Transport $transport, PickUp $pickUp)
@@ -539,7 +540,7 @@ class TransportController
         return back()->with('toast', 'Вывезена: '.$transport->title())->with('toast-undo', 'transport');
     }
 
-    /** «Уже вывезли» — задним числом (ведущие логистику). */
+    /** «Уже вывезли» — задним числом (ведущие логистику и логист своей задачи). */
     public function backdate(Request $request, Transport $transport, Backdate $backdate)
     {
         $this->visible($request, $transport);
@@ -598,8 +599,8 @@ class TransportController
     public function upload(Request $request, Transport $transport, PhotoIngest $ingest)
     {
         $this->acts($request, $transport);
-        // Закрытая задача — кадры уже факт: добавляет только админ.
-        abort_if(in_array($transport->state, [TransportState::Delivered, TransportState::Cancelled], true) && ! $request->user()->leadsLogistics(), 404);
+        // Закрытая задача — кадры уже факт: добавляют ведущие и логист (22.10.2026: исполнитель шлёт ей фото потом, мессенджером).
+        abort_if(in_array($transport->state, [TransportState::Delivered, TransportState::Cancelled], true) && ! $this->keeps($request, $transport), 404);
         $request->validate(['file' => ['required', 'file', 'max:65536']]);
         $at = $request->input('stage') === 'delivery' ? 'delivery' : 'pickup';
         try {
@@ -634,8 +635,8 @@ class TransportController
     public function destroyMedia(Request $request, Transport $transport, Media $media)
     {
         $this->acts($request, $transport);
-        // Удалить кадр — пока машину не забрали; потом это факт приёма (админ может всегда).
-        abort_unless($this->owns($transport, $media) && (! $transport->state->picked() || $request->user()->leadsLogistics()), 404);
+        // Удалить кадр — пока машину не забрали; потом это факт приёма (ведущие и логист могут всегда).
+        abort_unless($this->owns($transport, $media) && (! $transport->state->picked() || $this->keeps($request, $transport)), 404);
         $at = (string) $media->getCustomProperty('at');
         $media->delete();
 
@@ -658,6 +659,32 @@ class TransportController
         $transport->unsetRelation('car');
 
         return Stream::view('logistics.transports.files-stream', ['t' => $transport]);
+    }
+
+    /**
+     * «+ Документ» в карточке задачи (22.10.2026, владелец: документы и фото исполнитель шлёт логисту почтой и мессенджерами,
+     * прикрепляет она): документом машины, сразу видным логисту (`FileAccess` — отметка `logist`), исполнителю — глазом.
+     */
+    public function paper(Request $request, Transport $transport, Publisher $publish)
+    {
+        $this->acts($request, $transport);
+        abort_unless($transport->car && $this->keeps($request, $transport), 404);
+        $request->validate(['files' => ['required', 'array', 'max:20'], 'files.*' => ['file', 'max:65536']]);
+        foreach ($request->file('files') as $file) {
+            $transport->car->addMedia($file)->usingFileName(OfferPhotoController::safeName($file->getClientOriginalName()))
+                ->withCustomProperties(['sha' => hash_file('sha256', $file->getRealPath()), 'source' => 'logistics', 'transport' => $transport->id, 'logist' => true])
+                ->toMediaCollection('papers');
+        }
+        $publish->refresh(RefreshLogistics::topics($transport), ["/transports/{$transport->id}"]);
+        $transport->unsetRelation('car');
+
+        return Stream::view('logistics.transports.files-stream', ['t' => $transport]);
+    }
+
+    /** Ведёт задачу за исполнителя: ведущие логистику и логист этой задачи. */
+    private function keeps(Request $request, Transport $transport): bool
+    {
+        return ($request->user()->leadsLogistics() && ! $transport->isOrder()) || $transport->hasLogist($request->user());
     }
 
     private function photos(Transport $transport, string $at)

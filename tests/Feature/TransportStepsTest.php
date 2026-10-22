@@ -115,6 +115,49 @@ class TransportStepsTest extends TestCase
         $this->assertNull($t->fresh()->executor_id);
     }
 
+    /**
+     * 22.10.2026 (владелец со слов Татьяны: исполнители почти ничего не нажимают, всё делает логист): логист своей задачи
+     * отмечает «Документы получены» без трека, «Забрал» без фото (их пришлют потом) и закрывает старый вывоз «Уже вывезли».
+     */
+    public function test_logist_runs_the_task_herself(): void
+    {
+        $t = $this->viaTanya();
+        $this->assertTrue($t->docs_by_cdek);
+        $this->actingAs($this->tanya)->post(self::LOG.'/transports/'.$t->id.'/call', ['pickup_at' => now()->format('Y-m-d'), 'pickup_place' => 'Казань'])->assertSessionHasNoErrors();
+        $this->assertSame('Ждём, когда отправим документы', $t->fresh()->pickupBlocker($this->tanya));
+        // Исполнитель без трека отметить не может, логист — может.
+        $this->actingAs($this->ivan)->post(self::LOG.'/transports/'.$t->id.'/docs/received')->assertSessionHasErrors('transport');
+        $this->actingAs($this->tanya)->post(self::LOG.'/transports/'.$t->id.'/docs/received')->assertSessionHasNoErrors();
+        $this->assertNotNull($t->fresh()->docs_received_at);
+        // «Забрал» без кадров — логисту можно, исполнителю нет.
+        $this->actingAs($this->tanya)->post(self::LOG.'/transports/'.$t->id.'/pickup', ['destination' => 'yard:'.$this->yard->id, 'keys' => 2])->assertSessionHasNoErrors();
+        $this->assertSame(TransportState::Moving, $t->fresh()->state);
+
+        // Другой старый вывоз — «Уже вывезли» датой без времени.
+        $old = Offer::create(['vendor_id' => $this->offer->vendor_id, 'claim_ref' => '483512/2024', 'floor_price' => 300000]);
+        $t2 = app(OpenPickup::class)($old->fresh(), $this->admin);
+        app(AssignExecutor::class)($t2, Channel::Logist, $this->tanya, $this->admin);
+        $this->actingAs($this->tanya)->post(self::LOG.'/transports/'.$t2->id.'/backdate', ['picked_at' => now()->subDays(20)->format('Y-m-d'), 'destination' => 'yard:'.$this->yard->id])->assertSessionHasNoErrors();
+        $this->assertSame(TransportState::Delivered, $t2->fresh()->state);
+        // Чужой логист — нет.
+        $other = User::create(['name' => 'Ольга Другая', 'phone' => '79000000009', 'roles' => [Role::Logist], 'approved_at' => now()]);
+        $this->expectException(ValidationException::class);
+        app(\App\Logistics\Actions\Backdate::class)($t->fresh(), ['picked_at' => now()->format('Y-m-d')], $other);
+    }
+
+    /** Вывоз — день без времени: в сам день «не вывезли в срок» нет, со следующего — есть. */
+    public function test_pickup_is_late_only_after_the_day(): void
+    {
+        $t = $this->viaTanya();
+        $this->actingAs($this->tanya)->post(self::LOG.'/transports/'.$t->id.'/call', ['pickup_at' => now()->format('Y-m-d\T10:00'), 'pickup_place' => 'Казань'])->assertSessionHasNoErrors();
+        $t->refresh();
+        $this->assertSame('00:00', $t->pickup_at->format('H:i'));
+        $this->travelTo(now()->setTime(23, 30));
+        $this->assertFalse($t->isLate());
+        $this->travelTo(now()->addDay()->setTime(9, 0));
+        $this->assertTrue($t->isLate());
+    }
+
     public function test_delivered_is_undone_only_by_admin(): void
     {
         $t = $this->viaTanya();

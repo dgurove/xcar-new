@@ -37,7 +37,7 @@
                     <x-ui.field name="from_address" label="Адрес" type="textarea" :value="$t->from_address" required data-order-form-target="from"/>
                     <x-ui.field name="from_contact" label="У кого забрать" :value="$t->from_contact"/>
                     <x-ui.field name="from_phone" label="Телефон" type="tel" :value="$t->from_phone ? \App\Support\Phone::format($t->from_phone) : null"/>
-                    <x-ui.field name="pickup_at" label="Когда" type="datetime-local" :value="$t->pickup_at?->format('Y-m-d\TH:i')" default-time="10:00"/>
+                    <x-ui.field name="pickup_at" label="Когда" type="date" :value="$t->pickup_at?->format('Y-m-d')"/>
                 </div>
             </section>
 

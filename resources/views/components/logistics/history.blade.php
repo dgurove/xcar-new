@@ -1,15 +1,17 @@
 {{-- История вывоза (18.10.2026, владелец: «кто что нажал и во сколько — Татьяна вместо исполнителя или кто-то вместо
-     Татьяны, красиво и компактно»): строка — время, что случилось, справа кто нажал (и «за исполнителя …», когда не он),
+     Татьяны, красиво и компактно»): строка — время, что случилось, под ним кто нажал (и «за исполнителя …», когда не он),
      над строками дня — дата. Последние `show` записей, остальное — «Ещё N». Лесенка над ней — где задача сейчас. --}}
 @props(['t', 'show' => 5, 'me' => null])
 @php
     // Цена логисту — наш с ним расчёт: исполнитель её не видит (ведущие и сам логист — да).
     $money = ! $me || $me->leadsLogistics() || $t->hasLogist($me);
     $events = $t->events()->with(['by', 'for'])->get()->reverse()->reject(fn ($e) => $e->type === 'cost' && ! $money)->values();
+    // Время колонкой, справа — что случилось и под ним кто (22.10.2026: «кто» третьей колонкой съедал ширину, и текст
+    // переносился по слову, налезая на него).
     $row = function ($e) {
-        return '<div class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5"><span class="nums w-11 shrink-0 text-ink-dim">'.e($e->created_at->format('H:i')).'</span>'
-            .'<span class="min-w-0 flex-1">'.e($e->what()).'</span>'
-            .($e->who() ? '<span class="ml-auto text-ink-dim">'.e($e->who()).'</span>' : '').'</div>';
+        return '<div class="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-3"><span class="nums text-ink-dim">'.e($e->created_at->format('H:i')).'</span>'
+            .'<span class="min-w-0 break-words">'.e($e->what())
+            .($e->who() ? '<span class="block text-xs text-ink-dim">'.e($e->who()).'</span>' : '').'</span></div>';
     };
     $days = fn ($list) => $list->groupBy(fn ($e) => $e->created_at->toDateString());
 @endphp

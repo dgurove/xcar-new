@@ -77,8 +77,9 @@ final class PickUp
             $to === Point::Yard && ! $yard => throw ValidationException::withMessages(['destination' => 'Какая парковка']),
             $to === Point::Depot && ! $t->depot_id => throw ValidationException::withMessages(['destination' => 'Какая стоянка']),
             $to === Point::Other && ! $address => throw ValidationException::withMessages(['to_address' => 'Адрес']),
-            // Админ отмечает факт за исполнителя и без кадров (забрали, а фото пришлют потом).
-            ! $by->leadsLogistics() && $t->photos('pickup')->isEmpty() => throw ValidationException::withMessages(['photos' => 'Добавьте фото приёма']),
+            // Админ и логист отмечают факт за исполнителя и без кадров: фото исполнитель шлёт логисту потом, почтой и
+            // мессенджером (22.10.2026), она прикрепит их в карточке.
+            ! $by->leadsLogistics() && ! $t->hasLogist($by) && $t->photos('pickup')->isEmpty() => throw ValidationException::withMessages(['photos' => 'Добавьте фото приёма']),
             default => null,
         };
 

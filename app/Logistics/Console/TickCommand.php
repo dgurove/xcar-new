@@ -26,7 +26,9 @@ final class TickCommand extends Command
 
     public function handle(): int
     {
-        Transport::inLogistics()->where('state', TransportState::Agreed)->where('pickup_at', '<', now()->subHours(2))
+        // День вывоза прошёл целиком — наутро, не ночью (22.10.2026: вывоз — день без времени, забирают когда угодно).
+        Transport::inLogistics()->where('state', TransportState::Agreed)->where('pickup_at', '<', now()->startOfDay())
+            ->when(now()->hour < 9, fn ($q) => $q->whereRaw('false'))
             ->where(fn ($q) => $q->whereNull('late_noticed_at')->orWhereColumn('late_noticed_at', '<', 'pickup_at'))
             ->with(['executor', 'logist', 'car'])->get()
             ->each(function (Transport $t) {

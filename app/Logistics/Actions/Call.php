@@ -14,7 +14,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Созвон с владельцем — первое, что делает исполнитель (17.10.2026, владелец): «Созвонились» — дата вывоза, место и
- * детали; «Перенести» — то же окно; «Не дозвонился» копит попытки со временем (их видит админ).
+ * детали; «Перенести» — то же окно; «Не дозвонился» копит попытки со временем (их видит админ). Вывоз — днём, без времени
+ * (22.10.2026, владелец со слов Татьяны: забирают в любое время договорённого дня, а «срок прошёл» в обед пугал).
  */
 final class Call
 {
@@ -36,7 +37,7 @@ final class Call
     public function agree(Transport $t, array $data, User $by): Transport
     {
         $this->guard($t, $by);
-        $at = Carbon::parse($data['pickup_at'], 'Europe/Moscow');
+        $at = Carbon::parse($data['pickup_at'], 'Europe/Moscow')->startOfDay();
         if ($at->lt(now()->startOfDay())) {
             throw ValidationException::withMessages(['pickup_at' => 'Дата вывоза уже прошла']);
         }

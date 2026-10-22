@@ -22,7 +22,7 @@
     @csrf
     {{ $slot }}
     <div class="fields">
-        <x-ui.field name="picked_at" :id="$prefix.'-at'" label="Когда" type="datetime-local" :value="old('picked_at', now()->format('Y-m-d\TH:i'))" :max="now()->format('Y-m-d\TH:i')" required/>
+        <x-ui.field name="picked_at" :id="$prefix.'-at'" label="Когда" type="date" :value="old('picked_at', now()->format('Y-m-d'))" :max="now()->format('Y-m-d')" required/>
     </div>
     @if ($pickup)
         <div>

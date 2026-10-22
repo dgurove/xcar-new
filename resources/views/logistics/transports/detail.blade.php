@@ -9,7 +9,11 @@
      строкой внизу, админу.
      Заявка логиста от его заказчика (18.10.2026): заказчик во фразе, контакты на месте, «Деньги» — цена заказчику и
      исполнителю с отметками оплаты, «Изменить» и «Повторить»; шаги за своего исполнителя логист отмечает сам. У любой задачи
-     с исполнителем — «Ссылка исполнителю»: страница без входа, текст задачи с ней — «Отправить». --}}
+     с исполнителем — «Ссылка исполнителю»: страница без входа, текст задачи с ней — «Отправить».
+     22.10.2026 (владелец со слов Татьяны: исполнители почти ничего не нажимают, всё делает логист): логист своей задачи
+     жмёт шаги сам и без «за исполнителя» в кнопках, «Документы получены» — и без трека, «Уже вывезли» — ей тоже; фото и
+     документы — одним блоком `x-logistics.files` (ленты сверху нет), цена — строкой группы, ссылка исполнителю — строкой со
+     шторкой, история — свёрнутой строкой. --}}
 @php
     use App\Logistics\Choices;
     use App\Logistics\Channel;
@@ -50,10 +54,13 @@
     };
     $blocked = $step === 'pickup' ? $t->pickupBlocker($me) : null;
     $docsForm = $me->sendsLogisticsDocs() && $t->docs_by_cdek && $t->executor_id && $open && ! $t->state->picked();
-    $backdate = $admin && $open;
-    $photosEdit = $handles && $open && ! in_array($t->state, [S::Delivered, S::Cancelled], true) && $t->executor_id;
-    // Шаг исполнителя жмёт не он (логист, админ) — кнопка так и называется: «Забрал за исполнителя» (18.10.2026).
-    $for = $t->executor && ! $t->isExecutedBy($me) ? ' за исполнителя' : '';
+    // Ведёт задачу за исполнителя: ведущие и логист своей задачи (22.10.2026: всю работу делает логист).
+    $keeps = ($admin && ! $order) || $mine;
+    $backdate = $keeps && $open;
+    // Документы СДЭКом ещё не у исполнителя — логист и ведущие отмечают «Документы получены» сами, трек не нужен.
+    $docsDue = $t->awaitsDocs() && $open && ! $t->state->picked() && $handles && ($t->docs_track || $keeps);
+    // Кнопки шагов — без «за исполнителя» (22.10.2026: так работают почти всегда); в истории «за кого» остаётся.
+    $for = '';
     // Сменить логиста или исполнителя — нажатием на шаг, в той же задаче, пока ТС не забрали: ведущим — «Кто вывозит»,
     // логисту — его исполнителя. Отменить — последний сделанный шаг (`StepBack`), в его строке.
     $changeable = $open && ! $t->state->picked() && ! $order;
@@ -70,7 +77,8 @@
 @endphp
 <x-ui.detail>
     {{-- Лента сверху — кадры машины, что видит этот человек (`Logistics\FileAccess`); глазами ими правят в блоке «Фото». --}}
-    <x-ui.row-card :title="$t->title()" :photos="\App\Logistics\FileAccess::files($t)['photos']->filter(fn ($m) => \App\Logistics\FileAccess::visible($t, $me, $m))->values()" :action="false" :blank="false">
+    {{-- Ленты кадров сверху нет (22.10.2026, «зачем фотки два раза»): кадры — в блоке «Фото» ниже. --}}
+    <x-ui.row-card :title="$t->title()" :photos="collect()" :action="false" :blank="false">
         <x-slot:row>@if ($list === 'documents')<x-logistics.doc-row :t="$t"/>@else<x-logistics.row :t="$t" :checkable="$pick" :cols="$cols" :preset="$preset"/>@endif</x-slot:row>
         @if (($me->isStaff() && ($t->vendorId() || $t->car?->claim_ref)) || $t->car?->plate || ($t->car?->vin && ($admin || $handles)))
             <x-slot:marks>
@@ -156,6 +164,16 @@
                 @endif
                 <x-logistics.facts :t="$t" :me="$me" :brief="$solo" :route="$routed" :logist="$change['logist'] ? $change['logist'].'-'.$id.':open' : null"
                     :who="$change['executor'] ? $change['executor'].'-'.$id.':open' : null" :where="! $order && $open && $handles ? 'route-'.$id.':open' : null"/>
+                {{-- Цена логисту и дальность — строкой группы (на маршруте из отрезков — у плашки отрезка). --}}
+                @if (! $order && ! $routed && ($admin || $mine) && ($t->cost || $t->distance_km))
+                    <div class="row items-center justify-between gap-4"><span class="text-sm text-ink-muted">{{ $t->cost ? 'Цена' : 'Расстояние' }}</span><span class="nums">{{ implode(', ', array_filter([$t->cost ? Money::rub((int) $t->cost) : null, $t->distance_km ? $t->distance_km.' км' : null])) }}</span></div>
+                @endif
+                {{-- Ссылка исполнителю — строкой: по ней он сам отмечает шаги, если умеет (чаще всё делает логист). --}}
+                @if ($open && $t->tripUrl() && ($admin || $mine) && ! $t->isExecutedBy($me) && ! $t->isSelfPickup())
+                    <button type="button" class="row w-full items-center justify-between gap-4 text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="trip-{{ $id }}:open">
+                        <span>Ссылка исполнителю</span><x-ui.chevron/>
+                    </button>
+                @endif
                 @if ($t->call_note)
                     <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Договорились</span><span class="block whitespace-pre-line break-words">{{ $t->call_note }}</span></span></div>
                 @endif
@@ -184,15 +202,15 @@
                             @if ($s['status'] === 'done' && $s['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($s['at'], time: true) }}</span>@endif
                         </div>
                         @if ($s['hint'])<p class="step-hint">{{ $s['hint'] }}</p>@endif
-                        {{-- Трек: копировать и смотреть у СДЭКа; получил — отметить. --}}
+                        {{-- Трек: копировать и смотреть у СДЭКа; получили — отметить (логист и ведущие — и без трека). --}}
                         @if ($s['key'] === 'docs' && $t->docs_track)
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                 <x-ui.copy-code :value="$t->docs_track" class="tag" done="Трек в буфере"/>
                                 <a href="https://www.cdek.ru/ru/tracking?order_id={{ urlencode($t->docs_track) }}" target="_blank" rel="noopener" class="text-sm text-accent-text">Где документы</a>
                             </div>
-                            @if (! $t->docs_received_at && $handles && $open)
-                                <form method="post" action="/transports/{{ $id }}/docs/received" class="mt-3" data-turbo-confirm="{{ $for ? 'Документы у исполнителя?' : 'Документы у вас?' }}">@csrf<x-ui.button size="sm">Получил документы{{ $for }}</x-ui.button></form>
-                            @endif
+                        @endif
+                        @if ($s['key'] === 'docs' && $docsDue && $step !== 'pickup')
+                            <form method="post" action="/transports/{{ $id }}/docs/received" class="mt-3" data-turbo-confirm="Документы у исполнителя?">@csrf<x-ui.button size="sm">Документы получены</x-ui.button></form>
                         @endif
                         @if ($s['key'] === 'docs' && $docsForm)
                             <div class="mt-2 text-sm text-ink-muted">
@@ -214,9 +232,11 @@
         </div>
 
         {{-- История: кто что нажал, за кого и когда (`TransportEvent`). --}}
-        @if (! $solo && $t->events()->exists())
-            <h3 class="list-head mt-5">История</h3>
-            <div class="list"><div class="row"><x-logistics.history :t="$t" :me="$me" class="w-full"/></div></div>
+        @if (! $solo && ($events = $t->events()->count()))
+            <details class="list mt-5 group">
+                <summary class="row cursor-pointer list-none items-center justify-between gap-4"><span>История <span class="nums text-ink-dim">{{ $events }}</span></span><x-ui.icon name="chevron-down" class="size-4 text-ink-dim transition-transform group-open:rotate-180"/></summary>
+                <div class="row"><x-logistics.history :t="$t" :me="$me" class="w-full"/></div>
+            </details>
         @endif
 
         {{-- Админу — документы СДЭКом или без: решение у задачи (по умолчанию — только у логиста), переключается и здесь. --}}
@@ -229,9 +249,6 @@
                     <input type="checkbox" name="docs_by_cdek" value="1" class="switch" @checked($t->docs_by_cdek)>
                 </label>
             </form>
-        @endif
-        @if (! $order && ($admin || $mine) && ($t->cost || $t->distance_km))
-            <p class="mt-3 text-sm text-ink-muted">{{ implode(', ', array_filter([$t->distance_km ? $t->distance_km.' км' : null, $t->cost ? Money::rub((int) $t->cost) : null])) }}</p>
         @endif
 
         {{-- Деньги логиста — отметкой (18.10.2026): заказчик заплатил ему, он — исполнителю. Повторное нажатие снимает. --}}
@@ -262,24 +279,6 @@
             </div>
         @endif
 
-        {{-- Ссылка исполнителю (18.10.2026): страница задачи без входа — «Созвонились», «Забрал» с фото, «Привёз». --}}
-        @if ($open && $t->tripUrl() && ($admin || $mine) && ! $t->isExecutedBy($me) && ! $t->isSelfPickup())
-            <h3 class="list-head mt-5">Исполнителю {{ $t->executor?->shortName() }}</h3>
-            <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $t->tripUrl() }}" data-copy-title-value="Вывоз {{ $t->title() }}" data-copy-done-value="Задача и ссылка в буфере">
-                <textarea hidden data-copy-target="message">{{ \App\Logistics\TripText::for($t) }}</textarea>
-                <button type="button" class="act" data-action="copy#share" data-copy-target="share"><span class="btn btn-accent btn-round"><x-ui.icon name="share"/></span>Отправить</button>
-                <button type="button" class="act" data-action="copy#copy"><span class="btn btn-quiet btn-round" data-copy-fallback><x-ui.icon name="copy"/></span>Скопировать</button>
-                <a href="{{ $t->tripUrl() }}" target="_blank" rel="noopener" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="link"/></span>Открыть</a>
-            </div>
-        @endif
-
-        {{-- Пока можно жать «Забрал», фото приёма снимают в его шторке (17.10.2026, прогон: «сначала добавьте фото в карточке»
-             гонял из шторки обратно); здесь — снятые, для просмотра (`view`, свой id — поток загрузки меняет оба). --}}
-        @if ($pickup && $step === 'pickup' && ! $blocked)
-            <x-logistics.photos :t="$t" at="pickup" view/>
-        @elseif ($pickup && ($photosEdit || $t->photos('pickup')->isNotEmpty()))
-            <x-logistics.photos :t="$t" at="pickup" :edit="$photosEdit && ! $t->state->picked()"/>
-        @endif
         @if ($t->pickup_note)<p class="mt-3 whitespace-pre-line text-sm">{{ $t->pickup_note }}</p>@endif
         @if ($t->state === S::Cancelled)<p class="mt-4 text-sm text-ink-muted">Отменён{{ $t->cancel_reason ? ': '.$t->cancel_reason : '' }}</p>@endif
 
@@ -303,7 +302,9 @@
             <x-slot:foot>
                 <div class="detail-action">
                     @if ($step)
-                    @if ($blocked)
+                    @if ($blocked && $docsDue)
+                        <form method="post" action="/transports/{{ $id }}/docs/received" class="contents" data-turbo-confirm="Документы у исполнителя?">@csrf<button class="btn btn-accent w-full">Документы получены</button></form>
+                    @elseif ($blocked)
                         <button type="button" class="btn btn-quiet w-full" disabled>{{ $blocked }}</button>
                     @elseif ($step === 'call')
                         <div class="flex gap-2">
@@ -321,6 +322,18 @@
     </x-ui.row-card>
 
     {{-- Шторки шагов. --}}
+    @if ($open && $t->tripUrl() && ($admin || $mine) && ! $t->isExecutedBy($me) && ! $t->isSelfPickup())
+        <div data-controller="sheet" data-action="trip-{{ $id }}:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="'trip-'.$id" :title="'Исполнителю '.$t->executor?->shortName()">
+                <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $t->tripUrl() }}" data-copy-title-value="Вывоз {{ $t->title() }}" data-copy-done-value="Задача и ссылка в буфере">
+                    <textarea hidden data-copy-target="message">{{ \App\Logistics\TripText::for($t) }}</textarea>
+                    <button type="button" class="act" data-action="copy#share" data-copy-target="share"><span class="btn btn-accent btn-round"><x-ui.icon name="share"/></span>Отправить</button>
+                    <button type="button" class="act" data-action="copy#copy"><span class="btn btn-quiet btn-round" data-copy-fallback><x-ui.icon name="copy"/></span>Скопировать</button>
+                    <a href="{{ $t->tripUrl() }}" target="_blank" rel="noopener" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="link"/></span>Открыть</a>
+                </div>
+            </x-ui.sheet>
+        </div>
+    @endif
     @if ($backdate)
         <div data-controller="sheet" data-action="backdate-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'backdate-'.$id" title="Уже вывезли" tall>
@@ -380,7 +393,7 @@
                 <form method="post" action="/transports/{{ $id }}/call" class="flex flex-col gap-4">
                     @csrf
                     <div class="fields">
-                        <x-ui.field name="pickup_at" :id="'call-at-'.$id" label="Когда вывоз" type="datetime-local" default-time="12:00" :value="old('pickup_at', $t->pickup_at?->format('Y-m-d\TH:i'))" :min="now()->format('Y-m-d\TH:i')" required/>
+                        <x-ui.field name="pickup_at" :id="'call-at-'.$id" label="Когда вывоз" type="date" :value="old('pickup_at', $t->pickup_at?->format('Y-m-d'))" :min="now()->format('Y-m-d')" required/>
                         <x-ui.field name="pickup_place" :id="'call-place-'.$id" label="Где забрать" type="textarea" :value="old('pickup_place', $t->pickup_place ?? $from)" required/>
                         <x-ui.field name="call_note" :id="'call-note-'.$id" label="Детали" type="textarea" :value="old('call_note', $t->call_note)"/>
                     </div>

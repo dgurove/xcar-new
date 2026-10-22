@@ -11,7 +11,7 @@
 @endphp
 @if ($view && $photos->isEmpty())<div id="transport-photos-{{ $at }}-view" hidden></div>@else
 <section id="transport-photos-{{ $at }}{{ $view ? '-view' : '' }}" data-controller="photos" data-photos-url-value="{{ $url }}" data-photos-stage-value="{{ $at }}" @unless ($edit) data-photos-readonly-value="true" @endunless {{ $attributes->class(['mt-5']) }}>
-    <h3 class="list-head">{{ $at === 'delivery' ? 'Фото при доставке' : 'Фото приёма' }}@if ($photos->isNotEmpty()) <span class="nums font-normal text-ink-dim">{{ $photos->count() }}</span>@endif</h3>
+    <h3 class="list-head">{{ $at === 'delivery' ? 'Фото при доставке' : 'Фото при вывозе' }}@if ($photos->isNotEmpty()) <span class="nums font-normal text-ink-dim">{{ $photos->count() }}</span>@endif</h3>
     @if ($edit)
         <input type="file" accept="image/*,.heic,.heif" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
         <div hidden data-photos-target="progress" class="mb-3">

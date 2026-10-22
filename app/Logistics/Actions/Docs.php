@@ -9,7 +9,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Документы исполнителю без печати (17.10.2026, владелец): их оформляет модератор (Лиза), отправляет СДЭКом и вводит
- * трек — исполнитель видит его, копирует и смотрит у СДЭКа; получил — отмечает, и только тогда «Забрал».
+ * трек — исполнитель видит его, копирует и смотрит у СДЭКа; получил — отмечает, и только тогда «Забрал». Логист отмечает
+ * «Документы получены» сам, трек не нужен (22.10.2026).
  */
 final class Docs
 {
@@ -36,7 +37,10 @@ final class Docs
         if (! $t->isHandledBy($by)) {
             throw ValidationException::withMessages(['transport' => 'Задача поручена не вам']);
         }
-        if (! $t->docs_sent_at || $t->docs_received_at) {
+        // Логист и ведущие отмечают и без трека (22.10.2026, владелец: исполнители ничего не нажимают, документы доходят
+        // мимо системы); исполнителю — только когда трек есть.
+        $vouches = $by->leadsLogistics() || $t->hasLogist($by);
+        if ($t->docs_received_at || (! $t->docs_sent_at && ! $vouches)) {
             throw ValidationException::withMessages(['transport' => $t->docs_received_at ? 'Уже отмечено' : 'Документы ещё не отправили']);
         }
         $t->update(['docs_received_at' => now()]);

@@ -375,10 +375,16 @@ class Transport extends Model
         return $this->docs_by_cdek && $this->docs_received_at === null;
     }
 
-    /** Дата вывоза прошла, а «Забрал» нет — красным у админа и исполнителя. */
+    /** День вывоза прошёл целиком, а «Забрал» нет — красным у админа и исполнителя (в сам день — нет: забирают когда угодно). */
     public function isLate(): bool
     {
-        return $this->state === TransportState::Agreed && $this->pickup_at !== null && $this->pickup_at->isPast();
+        return $this->state === TransportState::Agreed && $this->pickup_at !== null && $this->pickup_at->copy()->endOfDay()->isPast();
+    }
+
+    /** День вывоза словом — без времени (прежние записи бывают со временем, его не пишем). */
+    public function pickupDay(string $format = 'j M'): ?string
+    {
+        return $this->pickup_at?->translatedFormat($format);
     }
 
     /** Сколько раз не дозвонились. */
@@ -439,7 +445,7 @@ class Transport extends Model
             $this->state === TransportState::Assigned => 'забрать',
             $this->state === TransportState::Agreed && $this->docs_by_cdek && $this->docs_sent_at === null => 'ждёт отправки документов',
             $this->state === TransportState::Agreed && $this->awaitsDocs() => 'документы в пути',
-            $this->state === TransportState::Agreed && $this->pickup_at => 'вывоз '.$this->pickup_at->translatedFormat($this->pickup_at->format('H:i') === '00:00' ? 'j M' : 'j M, H:i'),
+            $this->state === TransportState::Agreed && $this->pickup_at => 'вывоз '.$this->pickupDay(),
             $this->state === TransportState::Agreed => 'забрать',
             default => mb_strtolower($this->state->label()),
         };
@@ -486,7 +492,7 @@ class Transport extends Model
             // Забрали — созвон и документы уже позади, даже если их не отмечали (задачи до 17.10.2026, админ за исполнителя).
             $steps[] = ['key' => 'call', 'title' => $agreed || $s->picked() ? 'Созвонились' : 'Созвон с владельцем', 'status' => $status($agreed || $s->picked(), $assigned && ! $agreed),
                 'at' => $this->agreed_at,
-                'hint' => $agreed ? implode(', ', array_filter([$this->pickup_at ? 'вывоз '.$this->pickup_at->translatedFormat($this->pickup_at->format('H:i') === '00:00' ? 'j M' : 'j M, H:i') : null, $this->pickup_place]))
+                'hint' => $agreed ? implode(', ', array_filter([$this->pickup_at ? 'вывоз '.$this->pickupDay() : null, $this->pickup_place]))
                     : ($this->missedCalls() ? 'не дозвонились '.$this->missedCalls().' '.Plural::of($this->missedCalls(), ['раз', 'раза', 'раз']) : null)];
             if ($this->docs_by_cdek) {
                 $got = $this->docs_received_at !== null;
@@ -732,8 +738,15 @@ class Transport extends Model
     public function shownLabel(): string
     {
         $at = $this->shownAt();
+        // День вывоза — без времени: забирают в любое время договорённого дня.
+        $day = $this->state === TransportState::Agreed && $this->pickup_at;
 
-        return $at ? Ago::stamp($at, time: $at->format('H:i') !== '00:00') : '';
+        // Дата без времени — днём, а не «00:00» сегодня (`Ago::stamp` сегодня пишет только время).
+        return match (true) {
+            ! $at => '',
+            $day || $at->format('H:i') === '00:00' => Ago::day($at),
+            default => Ago::stamp($at, time: true),
+        };
     }
 
     /** Дата строки: когда вывоз, иначе когда назначили, забрали, привезли. */

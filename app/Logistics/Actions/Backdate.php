@@ -46,8 +46,9 @@ final class Backdate
 
     public function __invoke(Transport $t, array $data, User $by, bool $batch = false): Transport
     {
-        if (! $by->leadsLogistics()) {
-            throw ValidationException::withMessages(['transport' => 'Отмечают админ и модераторы']);
+        // Логист своей задачи — тоже (22.10.2026, владелец: «всю работу делает она», старые вывозы закрыть ей нечем).
+        if (! $by->leadsLogistics() && ! $t->hasLogist($by)) {
+            throw ValidationException::withMessages(['transport' => 'Отмечают логист, админ и модераторы']);
         }
         if (! $t->isOpen()) {
             throw ValidationException::withMessages(['transport' => 'Вывоз '.mb_strtolower($t->state->label())]);
