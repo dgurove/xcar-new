@@ -41,6 +41,17 @@
                 </x-slot:acts>
             </x-ui.contact>
             @if ($me->isAdmin())<x-users.reach :user="$user"/>@endif
+            {{-- Регионы (22.10.2026): откуда ему показывать предложения — админ правит за менеджера. --}}
+            @if ($me->isAdmin() && ($user->isManager() || $user->isSuperBuyer()))
+                <div class="list mt-4">
+                    <a href="/settings/users/{{ $user->id }}/regions" class="row items-center gap-3">
+                        <x-ui.row-icon name="map-pin" size="s"/>
+                        <span class="min-w-0 flex-1">Регионы</span>
+                        <span class="text-ink-muted">{{ \App\Users\Actions\SetOfferRegions::label($user) }}</span>
+                        <x-ui.chevron/>
+                    </a>
+                </div>
+            @endif
             @if ($me->isAdmin() && !$user->isApproved() && !$user->is($me))
                 <div class="mt-4 flex lg:justify-center"><x-admin.user-access :user="$user" :base="$base"/></div>
             @endif

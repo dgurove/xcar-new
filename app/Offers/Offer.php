@@ -30,6 +30,8 @@ use App\Support\Surface;
 use App\Support\Units;
 use App\Support\VendorNames;
 use App\Users\Role;
+use App\Cars\Region;
+use App\Offers\Actions\SyncViewers;
 use App\Users\User;
 use App\Vendors\ClaimRequest;
 use App\Vendors\DealFormat;
@@ -106,6 +108,10 @@ class Offer extends Model
             }
             // Вендор встал черновику — его метки по умолчанию (11.10.2026).
             VendorTags::apply($o);
+            // Регион машины (22.10.2026, регионы менеджера): город продажи, иначе названный в адресе осмотра.
+            if (! $o->exists || $o->isDirty(['settlement_id', 'inspection_address'])) {
+                $o->region_id = Region::of($o->settlement_id, $o->inspection_address);
+            }
             // Шаг работы сменился — предложение пришло в новую вкладку CRM: там оно первым (`tab_at`, 15.10.2026).
             $now = $o->getAttributes();
             $was = $o->getRawOriginal();
@@ -127,6 +133,11 @@ class Offer extends Model
                 // её полей (19.10.2026: адрес — поле продажи, не машины, и правка одного адреса не доезжала никуда).
                 $car = $o->car_id;
                 DB::afterCommit(fn () => CarChanged::dispatch($car, ['inspection_address']));
+            }
+            // Регион сменился — кому её показывать, решают и регионы менеджеров (`SyncViewers`).
+            if ($o->wasChanged('region_id') && in_array($o->state, [OfferState::Open, OfferState::Gallery], true)) {
+                $id = $o->id;
+                DB::afterCommit(fn () => ($offer = self::find($id)) ? app(SyncViewers::class)($offer) : null);
             }
             // Тревога в шапке (`Binding::touch`): новый срок, ушло из продажи или вернулось.
             if ($o->wasChanged(['binding_until', 'state'])) {
@@ -675,7 +686,10 @@ class Offer extends Model
             // покупателю без менеджера — нет: у него только своя машина в гараже (21.10.2026).
             if (! $user->onlyGarage()) {
                 $any = true;
-                $w->orWhere(fn ($g) => $g->inGallery());
+                // Регионы менеджера (22.10.2026) — и в галерее: волн у неё нет, условие здесь. Машина без региона — всем.
+                $regions = $user->offerRegions();
+                $w->orWhere(fn ($g) => $g->inGallery()
+                    ->when($regions, fn ($r) => $r->where(fn ($x) => $x->whereNull('offers.region_id')->orWhereIn('offers.region_id', $regions))));
             }
         });
 

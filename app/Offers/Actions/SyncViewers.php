@@ -31,6 +31,14 @@ final class SyncViewers
             $open = array_map(fn () => 0, $open);
         }
 
+        // Регионы менеджера (22.10.2026, «убрать совсем»): машина не из его регионов — он не в волнах, и его покупатели тоже.
+        // Регион машины не известен — показываем всем.
+        if ($offer->region_id) {
+            $people['regions'] ??= DB::table('users')->whereNotNull('offer_regions')->pluck('offer_regions', 'id')
+                ->map(fn ($r) => array_map('intval', json_decode((string) $r, true) ?: []))->filter()->all();
+            $open = array_filter($open, fn ($delay, $id) => ! isset($people['regions'][$id]) || in_array($offer->region_id, $people['regions'][$id], true), ARRAY_FILTER_USE_BOTH);
+        }
+
         $opens = array_map(fn ($delay) => $base->copy()->addMinutes($delay), $open);
 
         DB::transaction(function () use ($offer, $open, $opens) {

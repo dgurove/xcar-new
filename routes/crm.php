@@ -30,6 +30,7 @@ use App\Http\Admin\TagController;
 use App\Http\Admin\TelegramChatController;
 use App\Http\Admin\TimerController;
 use App\Http\Admin\UserController;
+use App\Http\Cabinet\RegionController;
 use App\Http\Admin\UserGroupController;
 use App\Http\Admin\VendorContactController;
 use App\Http\Admin\VendorController;
@@ -343,6 +344,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::put('/users/single-device', [UserController::class, 'singleDevice']);
             Route::get('/users/{user}', [UserController::class, 'show'])->whereNumber('user');
             Route::put('/users/{user}', [UserController::class, 'update']);
+            Route::get('/users/{user}/regions', [RegionController::class, 'show']);
+            Route::put('/users/{user}/regions', [RegionController::class, 'update']);
             Route::post('/users/{user}/access', [UserController::class, 'decide']);
             Route::delete('/users/{user}', [UserController::class, 'destroy']);
             Route::post('/users/{user}/password', [UserController::class, 'passwordLink']);

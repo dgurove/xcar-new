@@ -42,7 +42,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown', 'offer_regions'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -66,7 +66,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             }
         });
         static::saved(function (self $user) {
-            if ($user->wasChanged('roles') || ($user->wasRecentlyCreated && ($user->isManager() || $user->isSuperBuyer()))) {
+            // Регионы менеджера (22.10.2026) решают, в чьи волны попадает машина, — тот же пересчёт.
+            if ($user->wasChanged(['roles', 'offer_regions']) || ($user->wasRecentlyCreated && ($user->isManager() || $user->isSuperBuyer()))) {
                 app(SyncViewers::class)->all();
             }
         });
@@ -80,6 +81,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'access' => 'array',
             'park_readonly' => 'bool',
             'notification_settings' => 'array',
+            'offer_regions' => 'array',
             'seen_at' => 'datetime',
             'list_prefs' => 'array',
             'contact_fields' => 'array',
@@ -91,6 +93,19 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'rejected_at' => 'datetime',
             'telegram_linked_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Регионы, откуда ему показывать предложения (22.10.2026, Сахиб с Урала): id регионов, пусто — вся Россия. Покупателю —
+     * регионы его менеджера: видит он то, что открыто менеджеру.
+     *
+     * @return list<int>
+     */
+    public function offerRegions(): array
+    {
+        $own = $this->hasRole(Role::Buyer) && $this->manager_id ? $this->manager?->offer_regions : $this->offer_regions;
+
+        return array_values(array_map('intval', $own ?? []));
     }
 
     public function setPhoneAttribute(?string $value): void

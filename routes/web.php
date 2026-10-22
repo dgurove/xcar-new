@@ -13,6 +13,7 @@ use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\ListsController;
 use App\Http\Cabinet\MoneyController;
 use App\Http\Cabinet\NotificationController;
+use App\Http\Cabinet\RegionController;
 use App\Http\Cabinet\PassportScanController;
 use App\Http\Cabinet\ProfileController;
 use App\Http\Cabinet\ShowingController;
@@ -149,6 +150,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/account/notifications/read', [NotificationController::class, 'readAll']);
     Route::post('/account/notifications/{id}/read', [NotificationController::class, 'toggleRead']);
     Route::post('/account/notifications/{id}/opened', [NotificationController::class, 'seen']);
+    Route::get('/account/regions', [RegionController::class, 'show']);
+    Route::put('/account/regions', [RegionController::class, 'update']);
     Route::get('/account/notifications/settings', [NotificationController::class, 'settingsPage']);
     Route::put('/account/notifications/settings', [NotificationController::class, 'settings']);
     Route::post('/account/notifications/check', [NotificationController::class, 'test'])->middleware('throttle:3,1');

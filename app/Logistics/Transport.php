@@ -260,10 +260,7 @@ class Transport extends Model
     {
         $lane = $this->lane();
         if ($lane instanceof Offer) {
-            // Регион города — из базы по `settlement_id`: связь, загруженная до смены города, отдала бы прежний.
-            $city = $lane->settlement_id ? Settlement::whereKey($lane->settlement_id)->value('region_id') : null;
-
-            return $city ?? Region::inText($lane->inspection_address ?? $this->from_address)?->id;
+            return Region::of($lane->settlement_id, $lane->inspection_address ?? $this->from_address);
         }
         $city = $lane?->city_id ? Settlement::whereKey($lane->city_id)->value('region_id') : null;
 

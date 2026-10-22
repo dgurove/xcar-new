@@ -32,6 +32,12 @@
             <div class="mt-6" id="catalog-list">
                 {{-- Подписка на бот предложений — строкой в начале списка (владелец 03.10.2026), только в каталоге. --}}
                 @unless ($gallery)<x-offers-bot.card/>@endunless
+                {{-- Регионы сужены (22.10.2026): строкой над списком, иначе непонятно, куда делись машины. --}}
+                @if (auth()->user()?->offer_regions && (auth()->user()->isManager() || auth()->user()->isSuperBuyer()))
+                    <a href="/account/regions" class="mb-4 inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
+                        <x-ui.icon name="map-pin" class="size-4"/><span>Регионы: {{ mb_lcfirst(\App\Users\Actions\SetOfferRegions::label(auth()->user())) }}</span><x-ui.icon name="chevron-right" class="size-4"/>
+                    </a>
+                @endif
                 {{-- Оценка менеджером (11.10.2026): что оценить — первой пачкой лентой, с полосой «ваш ход»; что уже оценено и ждёт
                      решения XCar — такой же лентой в самом конце списка (владелец: «Ждут решения» первым рядом и строками не просил). --}}
                 @php

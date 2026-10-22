@@ -358,6 +358,10 @@ final class Nav
         if ($user->canChat() || $user->isAdmin()) {
             $links[] = self::link('Чаты', '/account/chats', icon: 'chat');
         }
+        // Откуда показывать предложения (22.10.2026): менеджеру и супер-покупателю.
+        if ($user->isManager() || $user->isSuperBuyer()) {
+            $links[] = self::link('Регионы', '/account/regions', icon: 'map-pin');
+        }
         $links[] = self::link('Избранное', '/account/favorites', icon: 'bookmark');
         $links[] = self::link('Уведомления', '/account/notifications', icon: 'bell');
 
