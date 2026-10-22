@@ -38,3 +38,15 @@ window.reloadStorm = storm;
 
 // Turbo перезагружает страницу целиком (другая сборка, нет фрейма) — причина в следующую загрузку.
 document.addEventListener('turbo:reload', (e) => why(`turbo:${e.detail?.reason ?? '?'}`));
+
+// Кусок сборки не пришёл (22.10.2026: после выкладки прежней сборки на сервере нет, а окно открыто со старой — у
+// менеджеров на iPhone не грузилась галерея, и кадр открывался голой картинкой во весь экран без выхода): окно
+// перезагружается один раз за полминуты и берёт новую сборку. В петле (storm) — нет.
+export function reloadForBuild() {
+    if (storm) return;
+    const now = Date.now();
+    if (now - (read('chunk-reload-at', 0) || 0) < WINDOW) return;
+    write('chunk-reload-at', now);
+    why('chunk');
+    location.reload();
+}

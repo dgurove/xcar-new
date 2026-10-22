@@ -982,6 +982,12 @@ html.kb-open { --home-gap: 0px; }
   .search-head { @apply flex items-center gap-2; min-height: 2.75rem; }
   .search-head > .toolbar { @apply shrink-0; }
 
+  /* Миниатюры под кадром страницы предложения — одним рядом вбок (`x-offer.gallery`), рамка текущей не срезается краем. */
+  /* contain: ряд не распирает колонку страницы своей полной шириной — листается внутри неё. */
+  .gallery-thumbs { @apply mt-2 gap-2 overflow-x-auto p-0.5; contain: inline-size; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .gallery-thumbs::-webkit-scrollbar { display: none; }
+  .gallery-thumb { @apply aspect-[4/3] w-20 shrink-0 overflow-hidden rounded-(--radius-s) sm:w-24; }
+
   /* Заголовок — текущая вкладка, по нажатию все вкладки списком (`x-ui.tab-title`, 22.10.2026, владелец: восемь пилюль
      у «Предложений» — «сюр»). Справа в той же строке действия экрана, компактнее кнопок тулбара (владелец: «они слишком
      огромные сами по себе»): 32 px и на телефоне. Длинное название переносится, а не режется — это свой текст; меньше

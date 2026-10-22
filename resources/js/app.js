@@ -1,7 +1,7 @@
 // Оболочка: Turbo делает из серверных страниц приложение, Stimulus отвечает за
 // поведение на месте. Контроллеры лежат в ./controllers/<имя>_controller.js
 // и подключаются по имени файла: photos_controller.js → data-controller="photos".
-import { why as reloadWhy } from './reload-guard';
+import { why as reloadWhy, reloadForBuild } from './reload-guard';
 import * as Turbo from '@hotwired/turbo';
 import { Application } from '@hotwired/stimulus';
 import { touchPrefetch, prefetch } from './touch-prefetch';
@@ -105,16 +105,18 @@ window.Stimulus = application;
 // Контроллеры, нужные только на своих экранах (чат, фото, сканер QR, подпись, редактор…), — отдельными кусками:
 // грузятся, когда на странице появился их data-controller. Остальные — в основной сборке, сразу. «Кому показывать»
 // (audience) — сразу (19.10.2026): шторка открывалась раньше куска и была пустой, правка из неё до формы не доходила.
+// Галерея — сразу (22.10.2026): пока её кусок не пришёл, нажатие на кадр было ссылкой на картинку, и в приложении с экрана
+// «Домой» она открывалась во весь экран без выхода. Не пришёл кусок — окно берёт новую сборку (reloadForBuild).
 const controllerName = (path) => path.match(/\/([\w-]+)_controller\.js$/)[1].replace(/_/g, '-');
-const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,gallery,landing,login,tariff_form,car_text,drop_empty,valuation,date,export}_controller.js'], { eager: true });
+const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,landing,login,tariff_form,car_text,drop_empty,valuation,date,export}_controller.js'], { eager: true });
 for (const [path, module] of Object.entries(controllers)) application.register(controllerName(path), module.default);
-const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,gallery,landing,login,tariff_form,car_text,drop_empty,valuation,date,export}_controller.js')).map(([path, load]) => [controllerName(path), load]));
+const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,landing,login,tariff_form,car_text,drop_empty,valuation,date,export}_controller.js')).map(([path, load]) => [controllerName(path), load]));
 const loadLazy = (root) => {
     for (const [name, load] of lazy) {
         const selector = `[data-controller~="${name}"]`;
         if (!root.matches?.(selector) && !root.querySelector?.(selector)) continue;
         lazy.delete(name);
-        load().then((module) => application.register(name, module.default));
+        load().then((module) => application.register(name, module.default)).catch(() => { lazy.set(name, load); reloadForBuild(); });
     }
 };
 loadLazy(document.documentElement);

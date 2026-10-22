@@ -4,7 +4,7 @@ import { openLightbox } from '../lightbox';
 // Лента фото: свайп по snap-scroll, стрелки и ←/→, счётчик, полноэкранный просмотр (lightbox.js);
 // листание в просмотре двигает и ленту — после закрытия на странице тот же кадр.
 export default class extends Controller {
-    static targets = ['strip', 'counter', 'thumb'];
+    static targets = ['strip', 'counter', 'thumb', 'thumbs'];
     static values = { download: Boolean };
 
     connect() {
@@ -60,6 +60,13 @@ export default class extends Controller {
             t.classList.toggle('opacity-70', k !== at);
             t.classList.toggle('hover:opacity-100', k !== at);
         });
+        // Текущая миниатюра — на виду в своём ряду (прокрутка только ряда, не страницы).
+        const row = this.hasThumbsTarget ? this.thumbsTarget : null, cur = this.thumbTargets?.[at];
+        if (row && cur) {
+            const r = row.getBoundingClientRect(), c = cur.getBoundingClientRect();
+            if (c.left < r.left) row.scrollBy({ left: c.left - r.left - 8, behavior: 'smooth' });
+            else if (c.right > r.right) row.scrollBy({ left: c.right - r.right + 8, behavior: 'smooth' });
+        }
         if (!this.hasCounterTarget) return;
         this.counterTarget.textContent = `${this.index() + 1} / ${this.stripTarget.children.length}`;
     }

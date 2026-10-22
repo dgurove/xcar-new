@@ -9,12 +9,15 @@
 // На телефоне кадр — сжатая версия (mid, w960): оригинал вдвое-втрое тяжелее и на экране не отличим;
 // он подгружается, только когда кадр увеличили, и отдаётся «Скачать».
 import * as overlays from './overlays';
+import { reloadForBuild } from './reload-guard';
 
 const LONG = 1600;
 const phone = () => matchMedia('(max-width: 1023.98px)').matches;
 const sizes = new Map(); // адрес миниатюры → { w, h }
 let loaded = null;
-const load = () => (loaded ??= Promise.all([import('photoswipe'), import('photoswipe/style.css')]).then(([m]) => m.default));
+// Не пришёл кусок (окно со старой сборкой после выкладки) — не запоминать отказ навсегда, а взять новую сборку.
+const load = () => (loaded ??= Promise.all([import('photoswipe'), import('photoswipe/style.css')]).then(([m]) => m.default)
+    .catch((error) => { loaded = null; reloadForBuild(); throw error; }));
 
 const path = (d) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 export const ICONS = {
