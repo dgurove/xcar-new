@@ -991,14 +991,19 @@ html.kb-open { --home-gap: 0px; }
   /* Заголовок — текущая вкладка, по нажатию все вкладки списком (`x-ui.tab-title`, 22.10.2026, владелец: восемь пилюль
      у «Предложений» — «сюр»). Справа в той же строке действия экрана, компактнее кнопок тулбара (владелец: «они слишком
      огромные сами по себе»): 32 px и на телефоне. Длинное название переносится, а не режется — это свой текст; меньше
-     12rem ему не остаётся («Без закупочной цены» рядом с «Оценить» на телефоне) — кнопки встают строкой ниже, справа. */
+     10rem ему не остаётся — кнопки встают строкой ниже, справа (22.10.2026: четыре круглые кнопки «Без закупочной цены»
+     влезают рядом на телефоне, название — в две строки). */
   .title-row { @apply mb-4 flex flex-wrap items-start gap-x-3 gap-y-2; }
-  .tab-title { flex: 1 1 12rem; }
+  .tab-title { flex: 1 1 10rem; }
   .title-actions { @apply ml-auto flex shrink-0 items-center gap-1.5; }
   .title-actions .btn-s { height: 2rem; padding-inline: .75rem; }
   .title-actions .btn-round { width: 2rem; height: 2rem; }
   /* Заголовок — одно название, без числа и стрелки (владелец: «криво, смещает всё»): число вкладки — в списке. */
-  .tab-title-btn { @apply rounded-(--radius-s) text-left; font: inherit; color: inherit; transition: color var(--dur-fast); }
+  .tab-title-btn { @apply relative rounded-(--radius-s) text-left; font: inherit; color: inherit; transition: color var(--dur-fast); }
+  /* «›» — в поле экрана слева от названия, у самого края: видно, что это выбор, а название стоит на месте. Открыт список —
+     поворачивается вниз. */
+  .tab-title-chev { position: absolute; left: -.875rem; top: .65em; translate: 0 -50%; color: var(--color-ink-dim); transition: rotate var(--dur-fast); }
+  .tab-title:has(.tab-title-menu:popover-open) .tab-title-chev { rotate: 90deg; }
   @media (hover: hover) { .tab-title-btn:hover { color: var(--color-ink-muted); } }
   /* Строка ушла в другую вкладку (lib/bump.js) — название коротко загорается лаймом, без раздувания. */
   @media (prefers-reduced-motion: no-preference) { .tab-title-btn.is-bumped { animation: title-bump .9s cubic-bezier(.2,.8,.2,1) 1; } }
@@ -1099,6 +1104,9 @@ html.kb-open { --home-gap: 0px; }
   /* «Оценить → Из текста» (valuation_controller): этапы с кольцом и галкой, строки текста схлопываются, номера и суммы
      загораются, итог считается счётчиком, в конце большая галка рисуется обводкой. */
   .valuation-text { @apply resize-none font-mono text-sm; height: 18rem; }
+  /* Фото перетаскивают в окно — поле загорается лаймом; читаем — кнопка «Фото» бледная и не жмётся. */
+  .valuation.is-dragging .valuation-text { background: var(--color-accent-soft); }
+  .valuation [data-valuation-target="photoBtn"].is-busy { @apply pointer-events-none opacity-60; }
   .valuation-steps { @apply flex flex-col gap-2.5; }
   .valuation-step { @apply flex items-center gap-3 text-ink-dim transition-colors; }
   .valuation-step:not([data-state="wait"]) { @apply text-ink; }

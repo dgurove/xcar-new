@@ -3,7 +3,8 @@
      пилюль x-ui.toolbar: pills — ключ → подпись, counts — числа, badges — лаймовый бейдж (ключ числа в counts), bumps —
      своё число для вспышки (у «Из таблицы Кати»). Числа в меню держат `data-pill-count`, как пилюли: их тикают
      live.js и flip.js, вспыхивает само название (lib/bump.js). Бейдж в другой вкладке — точка после названия (CSS).
-     У названия ни числа, ни стрелки (владелец 22.10.2026: «криво, смещает всё»), текущая в списке — лаймовой строкой.
+     У названия ни числа, ни стрелки рядом (владелец 22.10.2026: «криво, смещает всё»); что это выбор, говорит маленькая
+     «›» в поле экрана слева — название не сдвигает (вечером того же дня). Текущая в списке — лаймовой строкой.
      Вкладки нет в адресе (поиск) — fallback. --}}
 @props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu'])
 @php
@@ -14,7 +15,7 @@
 <div {{ $attributes->merge(['class' => 'tab-title']) }} data-controller="menu">
     <h1 class="text-xl sm:text-2xl">
         <button type="button" class="tab-title-btn" data-bump data-action="menu#toggle" aria-haspopup="menu" aria-controls="{{ $id }}">
-            {{ $pills[$pill] ?? $fallback }}
+            <x-ui.icon name="chevron-right" class="tab-title-chev size-3.5"/>{{ $pills[$pill] ?? $fallback }}
         </button>
     </h1>
     <div id="{{ $id }}" class="menu tab-title-menu" popover data-menu-target="list" role="menu">

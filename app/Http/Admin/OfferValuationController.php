@@ -8,6 +8,7 @@ use App\Cars\Vin\Vin;
 use App\Offers\Actions\MatchValuations;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
+use App\Offers\ValuationPhoto;
 use App\Offers\ValuationText;
 use App\Park\Sale;
 use Illuminate\Http\Request;
@@ -23,6 +24,14 @@ use Illuminate\Support\Str;
  */
 final class OfferValuationController
 {
+    /** Фото или скриншот сообщения → текст «номер сумма» (`ValuationPhoto`); `sure` — сразу в разбор, иначе на проверку. */
+    public function photo(Request $request)
+    {
+        $file = $request->validate(['photo' => ['required', 'file', 'image', 'max:15360']])['photo'];
+
+        return response()->json(ValuationPhoto::read($file->getRealPath()));
+    }
+
     public function preview(Request $request, MatchValuations $match)
     {
         $text = (string) $request->validate(['text' => ['required', 'string', 'max:100000']])['text'];
@@ -41,6 +50,8 @@ final class OfferValuationController
             // Кому можно вписать руками: чего нет ни у предложения, ни в тексте.
             'gaps' => $found->filter(fn ($i) => $i['gaps'])->mapWithKeys(fn ($i) => [$i['offer']->id => $i['gaps']])->all(),
             'amounts' => $take->mapWithKeys(fn ($i) => [$i['offer']->id => $i['amount']])->all(),
+            // Сумма — сама закупочная (не Альфа): оценочную не пишем.
+            'direct' => $take->filter(fn ($i) => $i['direct'])->map(fn ($i) => $i['offer']->id)->values()->all(),
             // Что вписано иначе: без «Перезаписать» это поле остаётся прежним.
             'differs' => $take->filter(fn ($i) => $i['status'] === 'conflict')->mapWithKeys(fn ($i) => [$i['offer']->id => ['value' => $i['value_differs'], 'floor' => $i['floor_differs']]])->all(),
         ], now()->addMinutes(30));
@@ -91,7 +102,7 @@ final class OfferValuationController
             $set = [];
             if (in_array($offer->id, $ids, true)) {
                 $value = (int) $saved['amounts'][$offer->id];
-                $set = ['value' => $value, 'floor_price' => Sale::floorFrom($value)];
+                $set = in_array($offer->id, $saved['direct'] ?? [], true) ? ['floor_price' => $value] : ['value' => $value, 'floor_price' => Sale::floorFrom($value)];
                 // Расхождение без «Перезаписать» — вписанное остаётся; оставили оценочную — закупочная тоже прежняя.
                 $differs = $saved['differs'][$offer->id] ?? null;
                 if ($differs && ($data['keep'][$offer->id] ?? 'keep') === 'keep') {

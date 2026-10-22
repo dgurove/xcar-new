@@ -25,11 +25,15 @@
         $preset === 'legacy' => collect(['legacy' => $offers->getCollection()])->filter(fn ($list) => $list->isNotEmpty()),
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
         $preset === 'bids' && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
+        // На парковке — первыми; группы с подписью, только когда такие есть (`OfferController::PARK_GROUPS`).
+        $preset === 'unpriced' && $admin && $offers->getCollection()->contains(fn ($o) => $o->onPark())
+            => $offers->getCollection()->groupBy(fn ($o) => 'park'.($o->onPark() ? 0 : 1))->sortKeys(),
         default => collect(['' => $offers->getCollection()]),
     };
     $groupTitle = fn ($key, $list) => match (true) {
         $key === '' => null,
         $key === 'legacy' => $ghosts->isEmpty() ? null : 'Черновики',
+        str_starts_with((string) $key, 'park') => OfferController::PARK_GROUPS[(int) substr($key, 4)],
         $preset === 'slots' => $list->first()->slot_at->isPast() ? 'Выходит сейчас' : Slots::label($list->first()->slot_at),
         default => OfferController::PICK_GROUPS[$key],
     };
@@ -41,16 +45,15 @@
         <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['nofloor' => 'nofloor_given', 'unpriced' => 'unpriced_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" fallback="Предложения" id="offers-tabs"/>
         <div class="title-actions">
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
-            {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями, оно даёт
-                 только закупочную, поэтому меню — у «Без закупочной», у «Без продажной» — одна кнопка (11.10.2026). --}}
-            @if ($preset === 'unpriced' && ! $searching)
-                <a href="/?preset=unpriced&peek=first" class="btn btn-s btn-quiet shrink-0 rounded-full">Оценить</a>
-            @elseif ($preset === 'nofloor' && ! $searching)
+            {{-- «Оценить» — только в «Без закупочной»: круглой «₽» с меню (22.10.2026, владелец: в «Без продажной» кнопка не нужна
+                 — строка сама «Оценить», а кнопки должны влезть в строку заголовка). Из текста — сообщение или фото с номерами
+                 убытка и суммами. --}}
+            @if ($preset === 'nofloor' && ! $searching)
                 <div class="contents" data-controller="menu sheet">
-                    <button type="button" class="btn btn-s btn-quiet shrink-0 rounded-full" data-action="menu#toggle" aria-haspopup="menu" aria-controls="rate-menu">Оценить<x-ui.icon name="chevron-down" class="size-4"/></button>
+                    <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 text-base font-medium" data-action="menu#toggle" aria-haspopup="menu" aria-controls="rate-menu" aria-label="Оценить">₽</button>
                     <div id="rate-menu" class="menu" popover data-menu-target="list" role="menu">
-                        <a href="/?preset={{ $preset }}&peek=first" class="menu-item" role="menuitem" data-action="menu#close">По одной</a>
-                        <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close sheet#open">Из текста</button>
+                        <a href="/?preset={{ $preset }}&peek=first" class="menu-item" role="menuitem" data-action="menu#close">Оценить по одной</a>
+                        <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close sheet#open">Оценить из текста</button>
                     </div>
                     <x-offer.valuation-sheet/>
                 </div>

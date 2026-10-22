@@ -412,6 +412,14 @@ class OfferController
      */
     public const PICK_GROUPS = ['Выбрать', 'Идёт приём', 'Приём закрыт'];
 
+    /**
+     * «Без продажной цены» админа — машины на нашей парковке первыми своей группой (22.10.2026, начальник: у них приоритет),
+     * остальные — «Не у нас». На парковке — ТС той же машины ждёт приёма или стоит (`Offer::onPark`).
+     */
+    public const PARK_GROUPS = ['На парковке', 'Не у нас'];
+
+    private const PARK_GROUP = "case when exists (select 1 from park_vehicles v where v.car_id = offers.car_id and v.state in ('expected', 'stored')) then 0 else 1 end";
+
     private const PICK_GROUP = "case when bids_close_at is not null and bids_close_at <= now() and exists (select 1 from bids where bids.offer_id = offers.id and bids.state = 'active') then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
 
     /**
@@ -423,6 +431,9 @@ class OfferController
     {
         $dir = $sort->dir();
         $pick = in_array($preset, self::OPEN, true) && $admin;
+        if ($preset === 'unpriced' && $admin) {
+            $q->orderByRaw(self::PARK_GROUP);
+        }
         match (true) {
             $preset === 'slots' => $q->orderBy('slot_at'),
             $pick => $q->orderByRaw(self::PICK_GROUP),

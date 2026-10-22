@@ -37,7 +37,8 @@
                 @php
                     $conflict = $status === 'conflict';
                     $take = in_array($status, ['fill', 'check'], true);
-                    $valueChanges = (int) $o->value !== (int) $item['amount'];
+                    // Не Альфа — сумма и есть закупочная, оценочной строки нет.
+                    $valueChanges = ! $item['direct'] && (int) $o->value !== (int) $item['amount'];
                     $floorChanges = (int) $o->floor_price !== (int) $item['floor'];
                     // Спорное поле — зачёркнуто прежнее, решение — переключателем в шапке.
                     $disputeValue = $conflict && $item['value_differs'];

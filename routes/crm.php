@@ -78,6 +78,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // Окно «Выгрузка» над списком: вкладка, чипы и лупа — файлом или данными для буфера (`format=json`).
     Route::get('/offers/export', [OfferController::class, 'export']);
     // «Оценить → Из текста»: оценочные из сообщения — модератору тоже, он ставит закупочную.
+    Route::post('/offers/valuations/photo', [OfferValuationController::class, 'photo'])->middleware('throttle:10,1');
     Route::post('/offers/valuations/preview', [OfferValuationController::class, 'preview']);
     Route::post('/offers/valuations', [OfferValuationController::class, 'apply']);
     // «Из таблицы Кати» (10.10.2026): номера списком, «Завести» и «Убрать» — только админу.

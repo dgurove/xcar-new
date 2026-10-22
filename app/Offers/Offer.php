@@ -1110,6 +1110,12 @@ class Offer extends Model
     }
 
     /** ТС этого предложения ещё ждём на парковке (заявка на приём): метка «Ждём приём». */
+    /** ТС этой машины на нашей парковке — ждёт приёма или стоит (группа «На парковке» в «Без продажной цены»). */
+    public function onPark(): bool
+    {
+        return in_array($this->parkVehicle?->state, [VehicleState::Expected, VehicleState::Stored], true);
+    }
+
     public function awaitingPark(): bool
     {
         return $this->parkVehicle?->state === VehicleState::Expected;

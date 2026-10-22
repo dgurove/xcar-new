@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { getJson } from '../lib/http';
+import { shrink } from '../lib/image';
 import { nums, rub } from '../lib/money';
 import { reducedMotion as calm } from '../lib/motion';
 import { plural } from '../lib/plural.js';
@@ -11,12 +12,63 @@ import { plural } from '../lib/plural.js';
 const sleep = (ms) => new Promise((r) => setTimeout(r, calm() ? 0 : ms));
 
 export default class extends Controller {
-    static targets = ['paste', 'text', 'work', 'lines', 'done', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'summary'];
-    static values = { url: String };
+    static targets = ['paste', 'text', 'work', 'lines', 'done', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'summary', 'photoBtn', 'photoLabel'];
+    static values = { url: String, photoUrl: String };
 
-    pasted() {
+    pasted(event) {
+        // Скриншот из буфера — фото, а не текст.
+        const file = [...(event.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
+        if (file) {
+            event.preventDefault();
+            return this.read(file);
+        }
         // Текст ещё не в поле: событие paste приходит до вставки.
         setTimeout(() => this.run(), 0);
+    }
+
+    photo(event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (file) this.read(file);
+    }
+
+    dragOver(event) {
+        if (!this.pasteTarget.hidden && [...(event.dataTransfer?.items ?? [])].some((i) => i.kind === 'file')) {
+            event.preventDefault();
+            this.element.classList.add('is-dragging');
+        }
+    }
+
+    dragLeave(event) {
+        if (!this.element.contains(event.relatedTarget)) this.element.classList.remove('is-dragging');
+    }
+
+    drop(event) {
+        this.element.classList.remove('is-dragging');
+        const file = [...(event.dataTransfer?.files ?? [])].find((f) => f.type.startsWith('image/'));
+        if (!file || this.pasteTarget.hidden) return;
+        event.preventDefault();
+        this.read(file);
+    }
+
+    // Фото → текст «номер сумма» в поле (OCR на сервере, ValuationPhoto). Уверенный — сразу в разбор; спорную сумму
+    // человек видит в поле и жмёт «Разобрать» сам.
+    async read(file) {
+        if (this.busy || this.reading) return;
+        this.reading = true;
+        this.photoBtnTarget.classList.add('is-busy');
+        this.photoLabelTarget.textContent = 'Читаем фото';
+        const body = new FormData();
+        body.append('photo', await shrink(file, { max: 2400, quality: 0.92 }));
+        const data = await getJson(this.photoUrlValue, { method: 'POST', body, timeout: 60_000 });
+        this.reading = false;
+        this.photoBtnTarget.classList.remove('is-busy');
+        this.photoLabelTarget.textContent = 'Фото';
+        if (!data) return;
+        if (!data.text) return window.toast?.('На фото не нашли номеров убытка');
+        this.textTarget.value = data.text;
+        if (data.sure) this.run();
+        else window.toast?.('Проверьте суммы и нажмите «Разобрать»');
     }
 
     async run() {

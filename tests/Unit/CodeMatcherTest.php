@@ -40,4 +40,10 @@ class CodeMatcherTest extends TestCase
             $this->assertSame(['AUT-26-878170'], $matcher->findAll($subject), $subject);
         }
     }
+
+    /** С октября 2026 у Т-Страхования номера и в семь цифр (22.10.2026: AUT-26-1014182 не узнавался ни в письмах, ни в СМС). */
+    public function test_tinsurance_seven_digits(): void
+    {
+        $this->assertSame(['AUT-26-1014182', 'AUT-26-979366'], (new CodeMatcher)->findAll("AUT-26-1014182 2259000\nAUT-26-979366 207000"));
+    }
 }
