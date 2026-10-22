@@ -34,10 +34,12 @@
         default => OfferController::PICK_GROUPS[$key],
     };
 @endphp
-<x-ui.shell title="Предложения" :count="$step || $preset === 'legacy' ? null : $offers->total()" :phone-heading="false" :detail="$detail">
-    <x-ui.toolbar :sort="$sort" :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['nofloor' => 'nofloor_given', 'unpriced' => 'unpriced_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
-        <x-slot:extra>@unless ($searching || $preset === 'legacy')<x-ui.view-switch :current="$view" :views="$packable ? \App\Support\ListView::SHELVED : \App\Support\ListView::ALL"/>@endunless</x-slot:extra>
-        <x-slot:actions>
+<x-ui.shell title="Предложения" :heading="false" :detail="$detail">
+    {{-- Вкладок восемь — заголовком с вертикальным списком, а не лентой пилюль (22.10.2026, владелец); действия экрана —
+         в той же строке, сортировка, вид и лупа — в строке чипов. --}}
+    <div class="title-row">
+        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['nofloor' => 'nofloor_given', 'unpriced' => 'unpriced_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" :count="$step || $preset === 'legacy' ? null : $offers->total()" fallback="Предложения" id="offers-tabs"/>
+        <div class="title-actions">
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями, оно даёт
                  только закупочную, поэтому меню — у «Без закупочной», у «Без продажной» — одна кнопка (11.10.2026). --}}
@@ -56,7 +58,10 @@
             <x-offer.export-sheet url="/offers/export" list="crm" id="offers-export"/>
             @if (auth()->user()->canCrmMail())<a href="/offers/from-mail" class="btn btn-s btn-quiet relative shrink-0 rounded-full" aria-label="Из писем"><x-ui.icon name="mail" class="size-4"/><span class="hidden sm:inline">Из писем</span><x-ui.badge href="/offers/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>@endif
             <form method="post" action="/offers" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
-        </x-slot:actions>
+        </div>
+    </div>
+    <x-ui.toolbar :sort="$sort" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
+        <x-slot:extra>@unless ($searching || $preset === 'legacy')<x-ui.view-switch :current="$view" :views="$packable ? \App\Support\ListView::SHELVED : \App\Support\ListView::ALL"/>@endunless</x-slot:extra>
     </x-ui.toolbar>
 
     <div class="mt-6" id="list" @if ($pick) data-controller="pick" @endif>

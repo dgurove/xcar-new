@@ -978,6 +978,29 @@ html.kb-open { --home-gap: 0px; }
      одном месте на всех трёх экранах, а не прыгают (11.10.2026). */
   .search-head { @apply flex items-center gap-2; min-height: 2.75rem; }
   .search-head > .toolbar { @apply shrink-0; }
+
+  /* Заголовок — текущая вкладка, по нажатию все вкладки списком (`x-ui.tab-title`, 22.10.2026, владелец: восемь пилюль
+     у «Предложений» — «сюр»). Справа в той же строке действия экрана, компактнее кнопок тулбара (владелец: «они слишком
+     огромные сами по себе»): 32 px и на телефоне. Длинное название переносится, а не режется — это свой текст; меньше
+     12rem ему не остаётся («Без закупочной цены» рядом с «Оценить» на телефоне) — кнопки встают строкой ниже, справа. */
+  .title-row { @apply mb-4 flex flex-wrap items-start gap-x-3 gap-y-2; }
+  .tab-title { flex: 1 1 12rem; }
+  .title-actions { @apply ml-auto flex shrink-0 items-center gap-1.5; }
+  .title-actions .btn-s { height: 2rem; padding-inline: .75rem; }
+  .title-actions .btn-round { width: 2rem; height: 2rem; }
+  .tab-title-btn { @apply text-left; font: inherit; color: inherit; }
+  .tab-title-mark {
+    @apply relative ml-1.5 inline-flex size-6 items-center justify-center rounded-full bg-surface align-[.1em] text-ink-muted;
+    transition: background-color var(--dur-fast);
+  }
+  @media (hover: hover) { .tab-title-btn:hover .tab-title-mark { background: var(--color-hover); } }
+  /* Лаймовый бейдж в другой вкладке (оценки менеджеров ждут) — точкой у стрелки: числа живые, точка вместе с ними. */
+  .tab-title:has(.menu-item:not([aria-current]) .badge:not(:empty)) .tab-title-mark::after {
+    content: ''; position: absolute; top: -.125rem; inset-inline-end: -.125rem; width: .5rem; height: .5rem; border-radius: 999px;
+    background: var(--color-accent); box-shadow: 0 0 0 2px var(--color-ground);
+  }
+  .tab-title-menu { min-width: 16rem; }
+  .tab-title-menu .menu-item { font-size: var(--text-base); }
   .search-head:has(> .toolbar[data-searching]) > :first-child { display: none; }
   .search-head > .toolbar[data-searching] { @apply flex-1; }
   /* Выбранный чип — одна капсула из двух нажатий: значение (шторка) и × (снять). */

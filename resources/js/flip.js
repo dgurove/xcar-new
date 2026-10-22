@@ -1,4 +1,5 @@
 import { onMorphAttribute } from './lib/morph-guard';
+import { bump } from './lib/bump';
 // Живой морф списка (live.js → refreshPage) двигается, а не прыгает (12.10.2026, владелец: черновики из писем входят «прям
 // красиво»). Перед морфом запоминаем, где стояли видимые строки и какие были числа у пилюль и групп; после — FLIP:
 // - строки, что съехали (над ними встала новая), едут со старого места на новое, а не прыгают;
@@ -82,7 +83,7 @@ document.addEventListener('turbo:render', () => {
     }
     for (const el of document.querySelectorAll(BUMPS)) {
         const [key, n] = bumpOf(el);
-        if (bumps.has(key) && Number(n) > bumps.get(key)) flash(el);
+        if (bumps.has(key) && Number(n) > bumps.get(key)) bump(el);
     }
 });
 
@@ -96,12 +97,6 @@ function tick(el, from, to) {
         el.textContent = i >= steps ? text : String(Math.round(from + ((to - from) * i) / steps));
         if (i >= steps) clearInterval(timer);
     }, 360 / steps);
-    if (to > from) flash(el.closest('a, button') ?? el);
+    if (to > from) bump(el);
 }
 
-function flash(pill) {
-    pill.classList.remove('is-bumped');
-    void pill.offsetWidth;
-    pill.classList.add('is-bumped');
-    pill.addEventListener('animationend', () => pill.classList.remove('is-bumped'), { once: true });
-}

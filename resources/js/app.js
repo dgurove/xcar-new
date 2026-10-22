@@ -10,6 +10,7 @@ import { closeSheet } from './sheet';
 import { netGuards } from './net';
 import { live, dropKey, refreshOwn, refreshRows } from './live';
 import { onMorphAttribute, onMorphElement } from './lib/morph-guard';
+import { bump } from './lib/bump';
 import './flip';
 import { longPressMenu } from './longpress';
 import { setTheme, paintBar, chosenTheme } from './theme';
@@ -94,12 +95,7 @@ Turbo.StreamActions.count = function () {
     this.targetElements.forEach((el) => {
         const was = Number(el.textContent.replace(/\D/g, '')) || 0;
         el.textContent = n ? String(n) : '';
-        if (n <= was) return;
-        const pill = el.closest('a, button') ?? el;
-        pill.classList.remove('is-bumped');
-        void pill.offsetWidth;
-        pill.classList.add('is-bumped');
-        pill.addEventListener('animationend', () => pill.classList.remove('is-bumped'), { once: true });
+        if (n > was) bump(el);
     });
 };
 
