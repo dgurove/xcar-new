@@ -81,6 +81,7 @@ final class TransportEvent extends Model
             'picked' => 'Забрал'.(isset($p['keys']) ? ', '.$p['keys'].' '.Plural::of((int) $p['keys'], ['ключ', 'ключа', 'ключей']) : '').(isset($p['to']) ? ', '.$p['to'] : ''),
             'delivered' => 'Привёз'.(isset($p['to']) ? ', '.$p['to'] : '').(isset($p['day']) ? ', '.$p['day'] : ''),
             'cancelled' => 'Вывоз отменён'.(isset($p['reason']) ? ': '.$p['reason'] : ''),
+            'details' => 'Изменили: '.($p['what'] ?? 'данные'),
             'auction' => 'Забрал аукцион',
             'auction_undone' => 'Продажа на аукционе отменена',
             'undone' => 'Отменили «'.(self::STEPS[$p['step'] ?? ''] ?? 'шаг').'»',

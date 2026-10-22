@@ -145,6 +145,20 @@ class TransportStepsTest extends TestCase
         app(\App\Logistics\Actions\Backdate::class)($t->fresh(), ['picked_at' => now()->format('Y-m-d')], $other);
     }
 
+    /** Владельца и комментарий правит логист (у машины — её страхователь), исполнитель — нет (22.10.2026). */
+    public function test_logist_edits_owner_and_comment(): void
+    {
+        $t = $this->viaTanya();
+        $this->actingAs($this->ivan)->put(self::LOG.'/transports/'.$t->id.'/details', ['comment' => 'нет'])->assertSessionHasErrors('transport');
+        $this->actingAs($this->tanya)->put(self::LOG.'/transports/'.$t->id.'/details', ['owner_name' => 'Наталья', 'owner_phone' => '+7 927 898-17-57', 'owner_phone2' => '8 961 388 25 34'])->assertSessionHasNoErrors();
+        $this->actingAs($this->tanya)->put(self::LOG.'/transports/'.$t->id.'/details', ['comment' => 'оставляем по месту'])->assertSessionHasNoErrors();
+        $t->refresh();
+        $this->assertSame('Наталья', $t->car->insured_name);
+        $this->assertSame('79613882534', $t->ownerPhone2());
+        $this->assertSame('оставляем по месту', $t->comment);
+        $this->actingAs($this->tanya)->put(self::LOG.'/transports/'.$t->id.'/details', ['owner_phone' => 'не номер'])->assertSessionHasErrors('owner_phone');
+    }
+
     /** Вывоз — день без времени: в сам день «не вывезли в срок» нет, со следующего — есть. */
     public function test_pickup_is_late_only_after_the_day(): void
     {

@@ -27,7 +27,7 @@ final class RecordHistory
             'docs_received' => ['docs_received', []],
             'picked' => ['picked', ['keys' => $t->isPickup() ? $t->car?->keys_count : null, 'to' => $t->destinationLabel()]],
             // «Уже вывезли» задним числом — с датой, когда привезли на самом деле.
-            'delivered' => ['delivered', ['to' => $t->destinationLabel(), 'day' => $t->delivered_at?->lt(now()->subMinutes(5)) ? Ago::day($t->delivered_at, time: true) : null]],
+            'delivered' => ['delivered', ['to' => $t->destinationLabel(), 'day' => $t->delivered_at?->lt(now()->subMinutes(5)) ? Ago::day($t->delivered_at, time: $t->delivered_at->format('H:i') !== '00:00') : null]],
             'cancelled' => ['cancelled', ['reason' => $t->cancel_reason]],
             'auction_undone' => ['auction_undone', []],
             default => [null, []],

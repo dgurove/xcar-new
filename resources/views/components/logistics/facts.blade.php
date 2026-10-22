@@ -3,7 +3,7 @@
      поменять, — нажатием открывает окно (`who` — событие окна «Кто вывозит» / исполнителя, `where` — «Куда везти»; null —
      только показ). Без обёртки `.list` — встаёт в группу карточки рядом с владельцем и «Где забрать». `brief` — исполнителю
      (владелец 18.10.2026: «упростить ему интерфейс»): только куда везти и комментарий, кто он и его логист — не нужно. --}}
-@props(['t', 'me' => null, 'logist' => null, 'who' => null, 'where' => null, 'brief' => false, 'route' => false])
+@props(['t', 'me' => null, 'logist' => null, 'who' => null, 'where' => null, 'comment' => null, 'brief' => false, 'route' => false])
 @php
     $row = function (string $label, string $value, ?string $sub, ?string $event, string $tone = '') {
         $body = '<span class="min-w-0 flex-1"><span class="block text-sm text-ink-muted">'.e($label).'</span>'
@@ -30,7 +30,15 @@
 @if (($t->isPickup() || $t->from_depot_id) && ! $t->isOrder() && ! $route)
     {!! $row('Куда везти', $dest ?? 'пока неизвестно', $t->reach ? $t->reach->label() : null, $where, $dest ? '' : 'text-urgent') !!}
 @endif
-@if ($t->comment)
-    <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Комментарий</span><span class="block whitespace-pre-line break-words">{{ $t->comment }}</span></span></div>
+{{-- Комментарий — нажатием шторка (логисту и ведущим, `comment`); пустой — строка «Добавить». --}}
+@if ($t->comment || $comment)
+    @if ($comment)
+        <button type="button" class="row w-full items-center gap-4 text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $comment }}">
+            <span class="min-w-0 flex-1"><span class="block text-sm text-ink-muted">Комментарий</span><span class="block whitespace-pre-line break-words {{ $t->comment ? '' : 'text-accent-text' }}">{{ $t->comment ?? 'Добавить' }}</span></span>
+            <x-ui.chevron/>
+        </button>
+    @else
+        <div class="row"><span class="min-w-0"><span class="block text-sm text-ink-muted">Комментарий</span><span class="block whitespace-pre-line break-words">{{ $t->comment }}</span></span></div>
+    @endif
 @endif
 @endif

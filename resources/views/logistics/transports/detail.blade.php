@@ -57,6 +57,9 @@
     // Ведёт задачу за исполнителя: ведущие и логист своей задачи (22.10.2026: всю работу делает логист).
     $keeps = ($admin && ! $order) || $mine;
     $backdate = $keeps && $open;
+    // Владельца и комментарий правят логист и ведущие (22.10.2026, `SetDetails`): имя, номер, второй номер.
+    $editDetails = $keeps && $t->state !== S::Cancelled;
+    $ownContact = \App\Logistics\Actions\SetDetails::ownContact($t);
     // Документы СДЭКом ещё не у исполнителя — логист и ведущие отмечают «Документы получены» сами, трек не нужен.
     $docsDue = $t->awaitsDocs() && $open && ! $t->state->picked() && $handles && ($t->docs_track || $keeps);
     // Кнопки шагов — без «за исполнителя» (22.10.2026: так работают почти всегда); в истории «за кого» остаётся.
@@ -144,9 +147,16 @@
                         @if ($fromDepot->phone)<a href="tel:+{{ $fromDepot->phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($fromDepot->phone) }}</a>@endif
                     </div>
                 @endif
-                @if ($pickup && ($t->ownerName() || $phone || $t->ownerPhone2()))
+                @if ($pickup && ($t->ownerName() || $phone || $t->ownerPhone2() || $editDetails))
                     <div class="row items-center justify-between gap-4">
+                        @if ($editDetails)
+                            <button type="button" class="min-w-0 flex-1 text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="owner-{{ $id }}:open">
+                                <span class="block text-sm text-ink-muted">{{ $order ? 'У кого забрать' : 'Владелец' }}</span>
+                                <span class="flex items-center gap-1.5 break-words">{{ $t->ownerName() ?? 'Имени нет' }}<x-ui.icon name="edit" class="size-4 shrink-0 text-ink-dim"/></span>
+                            </button>
+                        @else
                         <span class="min-w-0"><span class="block text-sm text-ink-muted">{{ $order ? 'У кого забрать' : 'Владелец' }}</span><span class="block break-words">{{ $t->ownerName() ?? 'Имени нет' }}</span></span>
+                        @endif
                         <span class="flex shrink-0 flex-col items-end gap-1.5">@if ($phone)<a href="tel:+{{ $phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($phone) }}</a>@endif
                     @if ($t->ownerPhone2())<a href="tel:+{{ $t->ownerPhone2() }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->ownerPhone2()) }}</a>@endif</span>
                     </div>
@@ -166,7 +176,7 @@
                     </div>
                 @endif
                 <x-logistics.facts :t="$t" :me="$me" :brief="$solo" :route="$routed" :logist="$change['logist'] ? $change['logist'].'-'.$id.':open' : null"
-                    :who="$change['executor'] ? $change['executor'].'-'.$id.':open' : null" :where="! $order && $open && $handles ? 'route-'.$id.':open' : null"/>
+                    :who="$change['executor'] ? $change['executor'].'-'.$id.':open' : null" :where="! $order && $open && $handles ? 'route-'.$id.':open' : null" :comment="$editDetails ? 'comment-'.$id.':open' : null"/>
                 {{-- Цена логисту и дальность — строкой группы (на маршруте из отрезков — у плашки отрезка). --}}
                 @if (! $order && ! $routed && ($admin || $mine) && ($t->cost || $t->distance_km))
                     <div class="row items-center justify-between gap-4"><span class="text-sm text-ink-muted">{{ $t->cost ? 'Цена' : 'Расстояние' }}</span><span class="nums">{{ implode(', ', array_filter([$t->cost ? Money::rub((int) $t->cost) : null, $t->distance_km ? $t->distance_km.' км' : null])) }}</span></div>
@@ -335,6 +345,30 @@
     </x-ui.row-card>
 
     {{-- Шторки шагов. --}}
+    @if ($editDetails)
+        <div data-controller="sheet" data-action="owner-{{ $id }}:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="'owner-'.$id" :title="$order ? 'У кого забрать' : 'Владелец'">
+                <form method="post" action="/transports/{{ $id }}/details" class="flex flex-col gap-4">
+                    @csrf @method('put')
+                    <div class="fields">
+                        <x-ui.field name="owner_name" :id="'owner-name-'.$id" label="Имя" :value="old('owner_name', $t->ownerName())"/>
+                        <x-ui.field name="owner_phone" :id="'owner-phone-'.$id" label="Телефон" type="tel" :value="old('owner_phone', $phone ? Phone::format($phone) : $t->ownerPhone())"/>
+                        @unless ($ownContact)<x-ui.field name="owner_phone2" :id="'owner-phone2-'.$id" label="Второй телефон" type="tel" :value="old('owner_phone2', $t->car?->insured_phone2 ? Phone::format(Phone::normalize($t->car->insured_phone2) ?? '') : null)"/>@endunless
+                    </div>
+                    <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
+                </form>
+            </x-ui.sheet>
+        </div>
+        <div data-controller="sheet" data-action="comment-{{ $id }}:open@window->sheet#open" class="contents">
+            <x-ui.sheet :id="'comment-'.$id" title="Комментарий">
+                <form method="post" action="/transports/{{ $id }}/details" class="flex flex-col gap-4">
+                    @csrf @method('put')
+                    <div class="fields"><x-ui.field name="comment" :id="'comment-text-'.$id" label="Комментарий" type="textarea" :value="old('comment', $t->comment)"/></div>
+                    <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
+                </form>
+            </x-ui.sheet>
+        </div>
+    @endif
     @if ($open && $t->tripUrl() && ($admin || $mine) && ! $t->isExecutedBy($me) && ! $t->isSelfPickup())
         <div data-controller="sheet" data-action="trip-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'trip-'.$id" :title="'Исполнителю '.$t->executor?->shortName()">

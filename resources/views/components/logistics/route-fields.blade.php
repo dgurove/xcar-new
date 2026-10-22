@@ -2,8 +2,9 @@
      по названию (`yard:id`, `Point::read`), другой адрес (поле), а в окне назначения ещё «Пока неизвестно» (`unknown`). Одно на окно «Кто вывозит», окно
      «Куда везти» и «Забрал» (`x-logistics.pickup-fields`). Свой `reveal`: у окна «Кто вывозит» панели вида — свои.
      Парковки — по дальности (22.10.2026, владелец: «внутри региона» у машины из Тольятти стояли парковки Москвы и Питера):
-     «Внутри региона» — только парковки зоны задачи (`Reach::area`), «Между регионами» и регион неизвестен — все
-     (`region_yards_controller` по сегменту `reach` той же формы; выбранная строка не прячется). --}}
+     «Внутри региона» — только города зоны задачи (`Reach::area`), «Между регионами» и регион неизвестен — все
+     (`region_yards_controller` по сегменту `reach` той же формы; город с выбранной строкой не прячется). Парковки —
+     группами под названием города. --}}
 @props(['t' => null, 'offer' => null, 'prefix' => 'route', 'unknown' => false])
 @php
     use App\Logistics\Choices;
@@ -23,19 +24,29 @@
         default => $keeper ? Point::Keeper->value : ($unknown ? '' : array_key_first($points)),
     };
     $point = (string) old('destination', $current);
-    $areas = \App\Logistics\Choices::yardAreas();
+    $places = \App\Logistics\Choices::yardPlaces();
     $area = \App\Logistics\Reach::area($t?->region_id);
+    // Парковки — группами по городу (22.10.2026, владелец: логист не знает, какая из них Москва, а какая Питер): сначала
+    // свои строки (стоянка, менеджер), дальше города с их парковками, в конце «Другой адрес» и «Пока неизвестно».
+    $yards = array_filter($points, fn ($v) => str_starts_with((string) $v, 'yard:'), ARRAY_FILTER_USE_KEY);
+    $head = array_diff_key(array_filter($points, fn ($v) => ! in_array((string) $v, ['other', ''], true), ARRAY_FILTER_USE_KEY), $yards);
+    $tail = array_intersect_key($points, array_flip(['other', '']));
+    $cities = collect($yards)->groupBy(fn ($label, $value) => $places[(int) substr($value, 5)]['city'] ?? 'Без города', true)->sortKeys();
+    $radio = fn ($value, $label, $attrs = '') => '<label class="row row-check" '.$attrs.'><span class="min-w-0 flex-1 '.($value === '' ? 'text-ink-muted' : '').'">'.e($label).'</span>'
+        .'<span class="check"><input type="radio" name="destination" value="'.e($value).'" '.($point === (string) $value ? 'checked' : '').' data-action="reveal#pick"></span></label>';
 @endphp
 <div class="flex flex-col gap-3" data-controller="reveal region-yards" data-region-yards-area-value="{{ $area }}" data-region-yards-reach-value="{{ $t?->reach?->value }}">
-<div class="list">
-    @foreach ($points as $value => $label)
-        @php $yardArea = str_starts_with((string) $value, 'yard:') ? ($areas[(int) substr($value, 5)] ?? null) : null; @endphp
-        <label class="row row-check" @if ($yardArea) data-region-yards-target="row" data-area="{{ $yardArea }}" @endif>
-            <span class="min-w-0 flex-1 {{ $value === '' ? 'text-ink-muted' : '' }}">{{ $label }}</span>
-            <span class="check"><input type="radio" name="destination" value="{{ $value }}" @checked($point === (string) $value) data-action="reveal#pick"></span>
-        </label>
-    @endforeach
-</div>
+@if ($head)
+    <div class="list">@foreach ($head as $value => $label){!! $radio((string) $value, $label) !!}@endforeach</div>
+@endif
+@foreach ($cities as $city => $list)
+    @php $cityArea = $places[(int) substr((string) $list->keys()->first(), 5)]['area'] ?? null; @endphp
+    <div @if ($cityArea) data-region-yards-target="group" data-area="{{ $cityArea }}" @endif>
+        <div class="list-cap">{{ $city }}</div>
+        <div class="list">@foreach ($list as $value => $label){!! $radio((string) $value, $label) !!}@endforeach</div>
+    </div>
+@endforeach
+<div class="list">@foreach ($tail as $value => $label){!! $radio((string) $value, $label) !!}@endforeach</div>
 <div class="fields" data-reveal-target="pane" data-reveal-key="other" @if ($point !== 'other') hidden @endif>
     <x-ui.field name="to_address" :id="$prefix.'-address'" label="Адрес" type="textarea" :value="old('to_address', $t?->to_address)"/>
 </div>

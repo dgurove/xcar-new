@@ -1,10 +1,10 @@
 import { Controller } from '@hotwired/stimulus';
 
-// «Куда везти» (`x-logistics.route-fields`): «Внутри региона» — только парковки зоны задачи, «Между регионами» и зона
-// неизвестна — все. Дальность — сегмент `reach` той же формы (у «Забрал» его нет — берётся дальность задачи). Отмеченная
-// строка не прячется: её выбрали руками.
+// «Куда везти» (`x-logistics.route-fields`): «Внутри региона» — только города (с парковками) зоны задачи, «Между регионами» и зона
+// неизвестна — все. Дальность — сегмент `reach` той же формы (у «Забрал» его нет — берётся дальность задачи). Город с
+// отмеченной строкой не прячется: её выбрали руками.
 export default class extends Controller {
-    static targets = ['row'];
+    static targets = ['group'];
     static values = { area: Number, reach: String };
 
     connect() {
@@ -21,9 +21,9 @@ export default class extends Controller {
     sync() {
         const picked = this.form?.querySelector('input[name="reach"]:checked');
         const local = (picked ? picked.value : this.reachValue) === 'local';
-        for (const row of this.rowTargets) {
-            const checked = row.querySelector('input')?.checked;
-            row.hidden = local && this.areaValue > 0 && Number(row.dataset.area) !== this.areaValue && !checked;
+        for (const group of this.groupTargets) {
+            const checked = group.querySelector('input:checked');
+            group.hidden = local && this.areaValue > 0 && Number(group.dataset.area) !== this.areaValue && !checked;
         }
     }
 }

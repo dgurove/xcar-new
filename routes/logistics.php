@@ -74,6 +74,7 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     Route::post('/transports/{transport}/files/{media}/hide', [TransportController::class, 'fileEye']);
     Route::post('/transports/{transport}/files/{media}/eye', [TransportController::class, 'fileEye']);
     Route::post('/transports/{transport}/papers', [TransportController::class, 'paper']);
+    Route::put('/transports/{transport}/details', [TransportController::class, 'details']);
     Route::post('/transports/{transport}/pickup', [TransportController::class, 'pickup']);
     Route::post('/transports/{transport}/deliver', [TransportController::class, 'deliver']);
     Route::post('/transports/{transport}/back', [TransportController::class, 'back']);

@@ -18,6 +18,7 @@ use App\Logistics\Actions\PickUp;
 use App\Logistics\Actions\RemoveStop;
 use App\Logistics\Actions\ReorderStops;
 use App\Logistics\Actions\ReplaceStop;
+use App\Logistics\Actions\SetDetails;
 use App\Logistics\Actions\SetRoute;
 use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Actions\StepBack;
@@ -538,6 +539,15 @@ class TransportController
         $pickUp($transport, $transport->isPickup() ? $request->validate(PickUp::rules(), PickUp::messages()) : [], $request->user());
 
         return back()->with('toast', 'Вывезена: '.$transport->title())->with('toast-undo', 'transport');
+    }
+
+    /** Владелец (имя, телефон, второй телефон) и комментарий — шторками карточки (ведущие и логист, `SetDetails`). */
+    public function details(Request $request, Transport $transport, SetDetails $details)
+    {
+        $this->visible($request, $transport);
+        $details($transport, $request->validate(SetDetails::rules()), $request->user());
+
+        return back()->with('toast', 'Сохранено');
     }
 
     /** «Уже вывезли» — задним числом (ведущие логистику и логист своей задачи). */
