@@ -17,6 +17,9 @@
 // Поэтому нажатие по полю в листе фокусирует его само: лист заранее встаёт на клавиатуру (её высота — прошлый замер для
 // этого вида клавиатуры, впервые 45 % экрана), поле подтягивается своей прокруткой в видимую часть, каретка встаёт туда,
 // куда нажали, и iOS двигать уже нечего. Пришла настоящая высота — меняется только низ листа, поле стоит.
+// Страница приложения листается так же, своим #scroller (22.10.2026, lib/scroller.js), — и поле страницы на телефоне
+// фокусируется тем же путём, как у Ionic: сдвинутый iOS экран после клавиатуры и тащил таб-бар за собой.
+import { pageEdges, scroller } from './lib/scroller';
 
 const vv = window.visualViewport;
 const root = document.documentElement;
@@ -98,11 +101,14 @@ const measure = () => {
 let queued = 0;
 const update = () => { if (!queued) queued = requestAnimationFrame(() => { queued = 0; measure(); }); };
 
-// Лист, где поле держит клавиатуру: карточка строки на телефоне и шторка. Всплывашка календаря — свой лист со своим
-// местом (date_controller): шторку под ней не двигаем.
+// Лист, где поле держит клавиатуру: карточка строки на телефоне, шторка, на сенсорном экране — сама страница
+// (#scroller, поле содержимого; поиск в шапке — браузеру). Всплывашка календаря — свой лист со своим местом
+// (date_controller): шторку под ней не двигаем.
 const host = (el) => {
     if (el?.closest?.('.date-pop')) return null;
-    return el?.closest?.('dialog.sheet:modal') ?? (matchMedia('(max-width: 1023.98px)').matches ? el?.closest?.('.split-detail') : null);
+    return el?.closest?.('dialog.sheet:modal')
+        ?? (matchMedia('(max-width: 1023.98px)').matches ? el?.closest?.('.split-detail') : null)
+        ?? (matchMedia('(hover: none)').matches && el?.closest?.('#main') ? el.closest('#scroller') : null);
 };
 // Поле — в видимой части над клавиатурой (низ — bottom), в верхней трети: прокруткой своего листа, не страницы.
 const reveal = (el, bottom) => {
@@ -114,7 +120,9 @@ const reveal = (el, bottom) => {
     }
     if (!box || box === sheet.parentElement) return;
     const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
-    const top = Math.max(b.top, 0), end = Math.min(b.bottom, bottom);
+    // Страница — под липкой шапкой и над плашкой действий, лист — во всю свою высоту.
+    const page = box === scroller() ? pageEdges(bottom) : null;
+    const top = page?.top ?? Math.max(b.top, 0), end = page?.bottom ?? Math.min(b.bottom, bottom);
     if (r.top >= top + 8 && r.bottom <= end - 16) return;
     box.scrollTop += r.top - (top + (end - top) / 3);
 };
@@ -207,6 +215,8 @@ const caretAt = (el, x, y) => {
 
 export function keyboardInset() {
     window.focusField = focusField;
+    // Клавиатура ужимает окно (Android, interactive-widget=resizes-content), а не ложится поверх, как на iOS.
+    if (!ios) root.classList.add('kb-resizes');
     window.revealInSheet = revealInSheet;
     if (!vv) return;
     if (ios) {
@@ -268,21 +278,34 @@ export function keyboardInset() {
     document.addEventListener('turbo:before-frame-render', (e) => blurInside(e.target));
     // Морф поле сохраняет вместе с фокусом (чат, поиск) — только полная подмена страницы.
     document.addEventListener('turbo:before-render', (e) => { if (e.detail.renderMethod !== 'morph') blurInside(document.body); });
-    // Прокрутка «на месте» (scrollTo в ту же точку) для WebKit — не прокрутка, он ничего не пересчитывает. iOS 26 после
-    // клавиатуры оставлял нажатия по fixed-листу со сдвигом: кнопки внизу карточки («Сохранить изменения», «Скрыть все»)
-    // рисуются на месте, а нажатие попадает мимо (08.10.2026, начальник: «часто перестают работать»). Настоящий сдвиг на
-    // 1 px и обратно заставляет его пересчитать viewport и места слоёв.
+    // После клавиатуры iOS оставлял экран сдвинутым: у шелла документ не листается, но окно iOS к полю всё равно
+    // двигает — возвращаем в ноль. Прокрутка «на месте» (scrollTo в ту же точку) для WebKit — не прокрутка, он ничего не
+    // пересчитывает; iOS 26 после клавиатуры оставлял нажатия по fixed-листу со сдвигом (08.10.2026, начальник: «часто
+    // перестают работать»). Настоящий сдвиг прокрутки страницы на 1 px и обратно заставляет его пересчитать места слоёв.
     const nudge = () => {
-        const x = scrollX, y = scrollY;
-        if (root.scrollHeight - innerHeight >= 1) scrollTo(x, y > 0 ? y - 1 : y + 1);
-        requestAnimationFrame(() => { scrollTo(x, y); measure(); });
+        if (document.getElementById('scroller') && (scrollX || scrollY)) scrollTo(0, 0);
+        const box = scroller(), y = box.scrollTop;
+        if (box.scrollHeight - box.clientHeight >= 1) box.scrollTop = y > 0 ? y - 1 : y + 1;
+        requestAnimationFrame(() => { box.scrollTop = y; measure(); });
     };
-    let open = false;
+    // Пересчёт — когда клавиатура ушла совсем (видимая часть снова во всё окно): по focusout она ещё уезжает, и сдвиг
+    // посреди её ухода ничего не чинил. Последнего resize не пришло — через 700 мс.
+    let open = false, gone = 0;
     const settle = () => {
         const was = open;
         measure();
         open = state.open;
-        if (was && !open) setTimeout(nudge, 80);
+        // Клавиатура снова здесь («Далее» к следующему полю) — сдвиг посреди ввода не нужен.
+        if (open && gone) { clearTimeout(gone); gone = 0; }
+        if (was && !open) {
+            clearTimeout(gone);
+            gone = setTimeout(() => { gone = 0; nudge(); }, 700);
+        }
+        if (gone && !open && vv.height >= innerHeight - 1) {
+            clearTimeout(gone);
+            gone = 0;
+            setTimeout(nudge, 80);
+        }
     };
     vv.addEventListener('resize', () => { settle(); requestAnimationFrame(shown); });
     vv.addEventListener('scroll', update);

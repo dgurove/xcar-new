@@ -12,9 +12,11 @@ class WatermarkController
 {
     public function index()
     {
+        // Столбцы — под своими именами: pluck по выражению искал у строки свойство с текстом выражения и падал 500.
         $done = Media::query()->whereNotNull(DB::raw("custom_properties->>'unmarked'"))
-            ->groupBy(DB::raw("custom_properties->>'unmarked'"))
-            ->pluck(DB::raw('count(*)'), DB::raw("custom_properties->>'unmarked'"));
+            ->selectRaw("custom_properties->>'unmarked' as mark, count(*) as n")
+            ->groupBy('mark')
+            ->pluck('n', 'mark');
 
         return view('admin.watermarks.index', ['marks' => Watermarks::registry(), 'done' => $done]);
     }

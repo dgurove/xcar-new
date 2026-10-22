@@ -4,6 +4,7 @@ import * as overlays from '../overlays';
 import { keyboard } from '../keyboard';
 import { known, shareFile, warm } from '../docs/share';
 import { fling } from '../lib/fling';
+import { pageEdges, scrollByY } from '../lib/scroller';
 
 // Шторка документов (x-ui.docs, одна на страницу в x-ui.shell): скан заявки, СТС, Excel, письмо, фото, акт —
 // внутри интерфейса, а не в Quick Look, из которого установленное приложение на iPhone не выпускает.
@@ -570,14 +571,9 @@ export default class extends Controller {
     keepVisible(field) {
         if (!this.shown || !field.isConnected || document.activeElement !== field) return;
         const r = field.getBoundingClientRect();
-        let bottom = this.element.getBoundingClientRect().top;
-        // Видимая плашка — по коробкам и видимости: у fixed-узла offsetParent всегда null, а спрятанная клавиатурой
-        // коробку сохраняет.
-        const bar = [...document.querySelectorAll('.action-bar')].find((b) => b.getClientRects().length && getComputedStyle(b).visibility !== 'hidden');
-        if (bar) bottom = Math.min(bottom, bar.getBoundingClientRect().top);
-        const top = Math.max(document.querySelector('.header')?.getBoundingClientRect().bottom ?? 0, 0);
-        if (r.bottom > bottom - 12) scrollBy(0, r.bottom - bottom + 24);
-        else if (r.top < top + 8) scrollBy(0, r.top - top - 24);
+        const { top, bottom } = pageEdges(this.element.getBoundingClientRect().top);
+        if (r.bottom > bottom - 12) scrollByY(r.bottom - bottom + 24);
+        else if (r.top < top + 8) scrollByY(r.top - top - 24);
     }
 
     // ——— ширина на компьютере

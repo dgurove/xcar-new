@@ -67,7 +67,7 @@
             @endif
         </section>
 
-        <aside class="contents lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">
+        <aside class="contents lg:sticky lg:top-[calc(var(--stick-top)+1rem)] lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">
             {{-- Чат — как диалог мессенджера, а не кнопкой в заголовке (06.10.2026, владелец): на ПК первым в боковой
                  колонке, на телефоне — самым верхом, над задачей. --}}
             @if ($offer->chatOpenFor(auth()->user()))<div class="order-first min-w-0">@include('cabinet.deals.chat-card')</div>@endif

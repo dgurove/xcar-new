@@ -23,7 +23,7 @@
             <div class="min-w-0 lg:col-start-1 lg:row-start-1"><x-offer.gallery :photos="$photos" :alt="$car->titleWithYear()"/></div>
         @endif
 
-        <aside class="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-32 lg:self-start">
+        <aside class="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--stick-top)+3rem)] lg:self-start">
             <div @if ($asSheet) data-controller="sheet" data-sheet-inflow-value="(min-width: 1024px)" data-action="deal:open@window->sheet#open" @endif class="contents">
                 <{{ $asSheet ? 'dialog' : 'div' }} id="deal" class="{{ $asSheet ? 'sheet sheet--inflow' : 'box' }}" @if ($asSheet) data-sheet-target="dialog" data-action="click->sheet#backdrop" aria-label="Цена" @endif @if ($asSheet && $errors->any()) data-sheet-open-value="true" @endif>
                     @if ($asSheet)<div class="mb-2 flex justify-end lg:hidden"><button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>@endif

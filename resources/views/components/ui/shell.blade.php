@@ -12,7 +12,10 @@
      :phone-heading="false" — на телефоне ряд с h1 спрятан: раздел уже назван в таб-баре, его место
      занимает лента пилюль тулбара (она же якорь для имени в шапке при прокрутке).
      :detail — список с карточкой строки рядом (App\Support\Detail): всё содержимое слева, фрейм detail справа
-     колонкой на ПК и нижним листом на телефоне; пустой фрейм — список во всю ширину. --}}
+     колонкой на ПК и нижним листом на телефоне; пустой фрейм — список во всю ширину.
+     Документ не листается (22.10.2026): шапка, #scroller (содержимое и подвал) и таб-бар — три ряда колонки, листается
+     только середина. Прокрутка документа в iOS 26–27 таскала fixed-слои за собой (WebKit 297779) — таб-бар уезжал до
+     середины экрана; шапка снаружи стоит на месте, когда список отскакивает резинкой. --}}
 @props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'overHero' => false, 'narrow' => false, 'back' => null, 'phoneBack' => null, 'backRow' => true, 'phoneHeading' => true, 'desktopHeading' => true, 'cache' => 'no-preview', 'description' => null, 'index' => false, 'detail' => null])
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
@@ -26,8 +29,9 @@
     $phoneBack ??= $back === false ? null : ($back ?? \App\Support\Nav::phoneBack($path, auth()->user()));
     $back = $back === false ? null : ($back ?? \App\Support\Nav::backFor($path, auth()->user()));
 @endphp
-<x-ui.layout :title="$title" :cache="$cache" :description="$description" :index="$index" class="min-h-dvh flex flex-col">
+<x-ui.layout :title="$title" :cache="$cache" :description="$description" :index="$index" class="app-shell">
     <x-ui.header :back="$phoneBack" :heading="$overHero ? null : ($heading ?? $title)"/>
+    <div id="scroller" class="app-scroll">
 
     {{-- Запас под таб-бар и плашку действий: везде, где нет подвала (у него свой запас) — CRM, стоянка, приложение
          и вошедший на сайте в браузере (подвал только у гостя). --}}
@@ -55,6 +59,7 @@
 
     {{-- Подвал — у сайта для гостя; у вошедшего экран приложения, документы в кабинете (Nav::cabinet). --}}
     @if ($site && !$installed && ! auth()->check())<x-ui.footer/>@endif
+    </div>
     @auth<x-ui.docs/><x-telegram.connect/><x-push.offer/><x-users.credentials/>@endauth
     {{-- «✨ Распознать» — одно окно на CRM и парковку, его открывает любая кнопка x-mail.scan-button. --}}
     @if (auth()->check() && \App\Support\Surface::current() !== \App\Support\Surface::Site)<x-mail.scan-window/>@endif

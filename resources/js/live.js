@@ -1,5 +1,6 @@
 import * as Turbo from '@hotwired/turbo';
 import { onResume, RESUME } from './lib/resume';
+import { scrollTop, scrollToY } from './lib/scroller';
 
 // Живые обновления — один EventSource на весь сеанс, а не на каждую страницу:
 // Turbo меняет тело, а соединение живёт в модуле; темы перечитываются на
@@ -159,7 +160,7 @@ async function card({ number, only }) {
     const html = await r.text();
     // Новая плитка въезжает наверх, только если человек стоит в начале списка, а список — новыми сверху: иначе
     // (по сроку, с подписями пачек, таблицей) он получит N новых под кнопкой, а не плитку не на своём месте.
-    if (!present && html.includes('action="prepend"') && (list?.dataset.prepend === 'false' || window.scrollY > 200 || location.search)) {
+    if (!present && html.includes('action="prepend"') && (list?.dataset.prepend === 'false' || scrollTop() > 200 || location.search)) {
         pending();
         return;
     }
@@ -183,7 +184,7 @@ function pending() {
             const url = new URL(location.href);
             if (document.getElementById('catalog')?.dataset.prepend === 'false') { url.searchParams.set('view', 'fresh'); url.searchParams.delete('page'); }
             Turbo.visit(url.toString(), { action: 'replace' });
-            scrollTo({ top: 0, behavior: 'smooth' });
+            scrollToY(0, 'smooth');
         });
         document.body.appendChild(pill);
     }

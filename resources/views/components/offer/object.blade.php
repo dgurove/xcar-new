@@ -10,7 +10,7 @@
         </div>
     @endif
 
-    <aside class="contents lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">
+    <aside class="contents lg:sticky lg:top-[calc(var(--stick-top)+1rem)] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">
         @isset($aside)<div class="order-2 flex flex-col gap-4">{{ $aside }}</div>@endisset
         <x-offer.facts :offer="$offer" :full="$full" class="order-4"/>
         @if ($docs->isNotEmpty())

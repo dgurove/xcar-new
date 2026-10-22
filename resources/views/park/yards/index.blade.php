@@ -54,7 +54,8 @@
     @else
         <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($yards as $yard)
-                <div class="box flex min-w-0 flex-col gap-3" data-controller="sheet">
+                {{-- Шторка правки — только админу: без неё у управляющего контроллер шторки искал свой <dialog> и падал. --}}
+                <div class="box flex min-w-0 flex-col gap-3" @if ($admin) data-controller="sheet" @endif>
                     <div class="flex items-start gap-2">
                         <div class="min-w-0 flex-1">
                             <div class="font-medium">{{ $yard->name }}@unless ($yard->is_active) <x-ui.state tone="closed">закрыта</x-ui.state>@endunless</div>

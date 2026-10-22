@@ -181,9 +181,14 @@
    токены, а не элементы. Вырезы считаются на корне и наследуются: в верхнем слое (<dialog>: шторки, документы,
    просмотр фото) установленного приложения iOS сам env() отдаёт 0 — кнопки уходили под часы и на полосу «Домой».
    --safe-top / --safe-bottom — вырез под часами и полоса «Домой»;
-   --header-edge — низ шапки (к нему липнет липкое);
+   --header-edge — низ шапки на экране (под ним встают fixed-листы, полоса загрузки, кружок «потянуть — обновить»);
+   --stick-top — куда липнет липкое внутри прокрутки: у экрана приложения шапка над #scroller, его край и есть её
+   низ — 0 (блок «каркас»); вне шелла — низ шапки;
    --bottom-edge — низ свободной части: к нему садятся плашка действий, «Сохранить» страницы, лист документов поднимает его;
-   --bottom-room — сколько закрыто снизу: запас страницы и прокрутки к полю (от клавиатуры не зависит — страница не прыгает);
+   --tabbar — высота таб-бара с полосой «Домой» (от планшета и в чате его нет);
+   --bottom-room — сколько закрыто снизу от края экрана (fixed-плашки над всем этим: «Войти как», баннеры);
+   --page-room — сколько закрыто снизу у прокрутки страницы (#scroller кончается над таб-баром): запас страницы и
+   прокрутки к полю (от клавиатуры не зависит — страница не прыгает);
    --home-gap — щель у самого низа листа: под клавиатурой полосы «Домой» нет;
    --action — 1, когда на экране плашка действий (правило ниже — единственное место, где это решается);
    --hairline — толщина волосяной линии полос: на ретине половина пикселя. */
@@ -191,9 +196,12 @@
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
   --header-edge: calc(var(--spacing-header) + var(--safe-top));
+  --stick-top: var(--header-edge);
   --action: 0;
-  --bottom-edge: calc(var(--spacing-tabbar) + var(--safe-bottom));
-  --bottom-room: calc(var(--spacing-tabbar) + var(--safe-bottom) + var(--action) * var(--spacing-action));
+  --tabbar: calc(var(--spacing-tabbar) + var(--safe-bottom));
+  --bottom-edge: var(--tabbar);
+  --bottom-room: calc(var(--tabbar) + var(--action) * var(--spacing-action));
+  --page-room: calc(var(--bottom-room) - var(--tabbar));
   --home-gap: var(--safe-bottom);
   --hairline: 1px;
 }
@@ -204,7 +212,7 @@
 :root:has(.action-bar:not([hidden], .split-detail .action-bar) > .action-bar-inner > :not([hidden], [type="hidden"], template)) { --action: 1; }
 /* От планшета таб-бара нет, кнопки действий парят справа внизу. */
 @media (min-width: 768px) {
-  :root { --spacing-header: 80px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * 6rem); } /* шапка: py-2 + два ряда по 30 px + 4 px между */
+  :root { --spacing-header: 80px; --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * 6rem); } /* шапка: py-2 + два ряда по 30 px + 4 px между */
 }
 /* Плашка, спрятанная от ПК (`lg:hidden` — у страницы предложения справа своя колонка), места не берёт. */
 @media (min-width: 1024px) {
@@ -218,7 +226,7 @@ html.kb-open { --home-gap: 0px; }
   /* Лист документов снизу: плашка действий — на нём, страница докручивается выше него. */
   html.docs-open { --bottom-edge: var(--docs-h); --bottom-room: calc(var(--docs-h) + 1rem + var(--action) * var(--spacing-action)); }
   /* Экран чата — поле ввода на нижнем краю, таб-бара нет, страница не листается. */
-  :root:has(.chat-page) { --bottom-room: 0px; }
+  :root:has(.chat-page) { --tabbar: 0px; --bottom-room: 0px; }
 }
 
 /* Тёмная тема — ступени тёмной iOS: фон чёрный, группа светлее фона (#1c1c1e), внутри группы и в шторке —
@@ -262,14 +270,17 @@ html.kb-open { --home-gap: 0px; }
   html {
     /* Холст под резиновым оверскроллом iOS — цвет полосы, не страницы. */
     background-color: var(--color-bar);
-    /* Резины у корня нет: iOS тянет с документом и fixed-слои — таб-бар уезжал вверх, под ним
-       открывался холст. На body одного правила мало — WebKit слушает html. Внутренние
-       прокрутки (шторки, карточка строки, лента чата) со своим contain. */
+    /* Резины у корня нет: на body одного правила мало — WebKit слушает html. Внутренние прокрутки (шторки, карточка
+       строки, лента чата) со своим contain. */
     overscroll-behavior: none;
-    scroll-padding-top: calc(var(--header-edge) + 1rem);
-    scroll-padding-bottom: calc(var(--bottom-room) + 1rem);
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
+  }
+  /* Прокрутка к узлу — под шапкой и над нижними полосами. У экрана приложения листается #scroller, у него свои отступы
+     (блок «каркас»); здесь — страницы вне шелла (вход, анкета). */
+  html:not(:has(> body.app-shell)) {
+    scroll-padding-top: calc(var(--header-edge) + 1rem);
+    scroll-padding-bottom: calc(var(--bottom-room) + 1rem);
   }
 
   body {
@@ -1344,7 +1355,7 @@ html.kb-open { --home-gap: 0px; }
   .table td.cell-dim { font-size: var(--text-sm); color: var(--color-ink-muted); }
   /* Между столбцами на ПК — ровный шаг 1rem, у чисел чуть шире: они прижаты вправо и иначе липнут к соседу. */
   @media (min-width: 640px) { .table :is(th, td):not(:first-child) { padding-left: 1rem; } .table .num { padding-left: 1.25rem; } }
-  .table thead th { @apply sticky z-10 bg-surface; top: var(--header-edge); height: 2rem; padding-block: 0; font-size: var(--text-xs); font-weight: 400; color: var(--color-ink-dim); }
+  .table thead th { @apply sticky z-10 bg-surface; top: var(--stick-top); height: 2rem; padding-block: 0; font-size: var(--text-xs); font-weight: 400; color: var(--color-ink-dim); }
   @media (max-width: 639.98px) { .table thead { display: none; } }
   .table thead a { display: inline-block; padding-block: .5rem; }
   .table thead a[aria-current] { color: var(--color-ink); }
@@ -1367,12 +1378,12 @@ html.kb-open { --home-gap: 0px; }
   .table tbody tr:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
   .table tbody tr.table-group, .table tbody tr.table-group:hover { height: auto; cursor: default; background: var(--color-surface); }
   .table tr.table-group > th {
-    position: sticky; z-index: 9; top: var(--header-edge);
+    position: sticky; z-index: 9; top: var(--stick-top);
     padding-top: .75rem; padding-bottom: .25rem; background: var(--color-surface);
     font-size: var(--text-lg); font-weight: 500; color: var(--color-ink);
   }
   .table tbody tr.table-group:first-child > th { padding-top: .75rem; }
-  @media (min-width: 640px) { .table tr.table-group > th { top: calc(var(--header-edge) + 2rem); } }
+  @media (min-width: 640px) { .table tr.table-group > th { top: calc(var(--stick-top) + 2rem); } }
   .table tr.table-group .nums { margin-left: .25rem; font-weight: 400; color: var(--color-ink-dim); }
   /* Галочки строк («Оцененные», «Публикация», pick_controller): узкий первый столбец, круг как у .row-check; та же
      галочка у группы (слот целиком) и строкой «Выбрать все» над таблицей. Соседний столбец к ней не отступает. */
@@ -1514,7 +1525,7 @@ html.kb-open { --home-gap: 0px; }
       & .cell-extra { display: flex; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; align-items: center; gap: .25rem .375rem; font-size: var(--text-sm); }
       & .alerts-inline { display: none; }
       & .table-box { overflow-x: clip; }
-      & .table tr.table-group > th { top: var(--header-edge); }
+      & .table tr.table-group > th { top: var(--stick-top); }
     }
   }
 
@@ -2256,7 +2267,7 @@ html.kb-open { --home-gap: 0px; }
   .order-submit { display: none; }
   @media (min-width: 1024px) {
     .order-form { grid-template-columns: minmax(0, 1fr) 24rem; align-items: start; }
-    .order-side { position: sticky; top: calc(var(--spacing-header) + 1.5rem); }
+    .order-side { position: sticky; top: calc(var(--stick-top) + 1.5rem); }
     .order-submit { display: flex; }
   }
   .people-panes--only .people-new-pane { grid-column: 1; visibility: visible; }
@@ -2415,7 +2426,7 @@ html.kb-open { --home-gap: 0px; }
     .split-detail {
       @apply block rounded-(--radius-xl) bg-surface;
       position: sticky; flex: none; width: 26rem;
-      top: calc(var(--header-edge) + 2rem);
+      top: calc(var(--stick-top) + 2rem);
       height: calc(100dvh - var(--header-edge) - 3rem);
       overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; contain: layout paint;
       animation: dialog-in var(--dur) var(--ease-out);
@@ -2646,6 +2657,37 @@ html.kb-open { --home-gap: 0px; }
   }
 }
 
+/* ------------------------------------------------------------- каркас */
+
+@layer components {
+  /* Каркас экрана приложения (x-ui.shell, 22.10.2026), как у Ionic и Framework7: документ не листается — body стоит на
+     экране колонкой из трёх рядов: шапка, #scroller (содержимое, подвал), таб-бар. Прокрутка документа в iOS 26–27
+     сдвигала fixed-слои: таб-бар при листании уезжал вверх до середины экрана, и ни один токен его не держал. Шапка и
+     бар — снаружи прокрутки и стоят на месте, когда список отскакивает резинкой; липкое внутри садится на край
+     #scroller (--stick-top: 0). Позицию прокрутки в истории ведёт lib/scroller.js. */
+  html:has(> body.app-shell) { height: 100%; overflow: hidden; }
+  /* clip, а не hidden: hidden-коробку браузер всё равно листает сам (фокус, scrollIntoView, клик по табу) — колонка
+     уезжала на пиксель, и низ бара отрывался от края. */
+  .app-shell { position: fixed; inset: 0; min-height: 0; display: flex; flex-direction: column; overflow: clip; }
+  .app-scroll {
+    flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+    /* Резинка своя, как у списков iOS: инерция у края проскакивает и возвращается (на документ не передаётся). */
+    overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain;
+    scroll-padding-top: calc(var(--stick-top) + 1rem);
+    scroll-padding-bottom: calc(var(--page-room) + 1rem);
+  }
+  .app-scroll > * { flex-shrink: 0; }
+  /* Липкое садится на край своей прокрутки: у #scroller шапка над ним, у шторок и листа карточки шапки нет вовсе —
+     где бы в DOM ни стоял лист (в #main или прямо в body). */
+  .app-scroll, dialog, .split-detail { --stick-top: 0px; }
+  /* «Войти как» — запас в конце прокрутки, а не блоком под таб-баром. */
+  .app-shell > .impersonation-room { display: none; }
+  .app-shell:has(> .impersonation):not(:has(.chat-page)) > .app-scroll::after { content: ''; display: block; flex: none; height: 4rem; }
+  /* Шторка и окно замка держат фон: листать под ними нечего. */
+  @media (max-width: 767.98px) { html.sheet-open .app-scroll { overflow: hidden; } }
+  html:has(dialog.lock:modal) .app-scroll { overflow: hidden; }
+}
+
 /* ------------------------------------------------------------- шапка */
 
 @layer components {
@@ -2656,7 +2698,7 @@ html.kb-open { --home-gap: 0px; }
 
   /* Шапка — как navigation bar: волосяная линия и заголовок экрана по центру
      появляются, когда содержимое ушло под неё (.is-scrolled / .is-past-title). */
-  .header { @apply sticky top-0 z-(--z-chrome) text-ink; padding-top: var(--safe-top); }
+  .header { @apply relative z-(--z-chrome) text-ink; flex: none; padding-top: var(--safe-top); }
   .header > div { position: relative; }
   .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: var(--hairline); background: var(--color-hairline); opacity: 0; transition: opacity var(--dur-fast); }
   .header.is-scrolled::after { opacity: 1; }
@@ -2775,17 +2817,18 @@ html.kb-open { --home-gap: 0px; }
   .search-none { @apply px-3 py-4 text-center text-sm text-ink-muted; }
   .header-btn .badge, .btn .badge { position: absolute; top: -.25rem; inset-inline-end: -.25rem; }
 
-  /* Подвал — над таб-баром и плашкой действий (--bottom-room). */
-  .footer { padding-bottom: calc(2.5rem + var(--bottom-room)); }
+  /* Подвал — над плашкой действий (--page-room). */
+  .footer { padding-bottom: calc(2.5rem + var(--page-room)); }
 }
 
 /* ------------------------------------------------------------- таб-бар */
 
 @layer components {
-  /* Прикреплён к низу, 54px + полоса «Домой», полоса хрома (блок у шапки), волосяная линия сверху. Высота — не
-     --bottom-edge: тот под клавиатурой становится её высотой. */
+  /* Низ колонки .app-shell — обычный блок под прокруткой, не fixed: прикреплённый к низу таб-бар iOS 26–27 таскал за
+     прокруткой документа до середины экрана (WebKit 297779), а здесь документ не листается вовсе. 54px + полоса
+     «Домой», полоса хрома (блок у шапки), волосяная линия сверху. */
   .tabbar {
-    position: fixed; inset-inline: 0; bottom: 0; z-index: var(--z-chrome);
+    position: relative; flex: none; z-index: var(--z-chrome);
     display: flex; align-items: stretch;
     /* Ширина таба — по подписи плюс равная всем доля свободного места: тогда «Предложения» отстоит от
        левого края ровно на столько же, на сколько «Кабинет» от правого, а между словами — один шаг.
@@ -2796,9 +2839,12 @@ html.kb-open { --home-gap: 0px; }
     border-top: var(--hairline) solid var(--color-hairline);
   }
   @media (min-width: 768px) { .tabbar { display: none; } }
-  /* Клавиатура стоит — бара нет, без движения: на iOS он и так под ней. Прятать по фокусу с анимацией было нельзя —
+  /* Клавиатура стоит — бара нет, без движения: на iOS он и так под ней (visibility — колонка не пересчитывается, длинный
+     список под листом не раскладывается заново на каждое поле); там, где клавиатура ужимает окно (Android,
+     html.kb-resizes из keyboard.js), невидимый блок оставлял бы пустую полосу над ней — там он уходит из колонки. Прятать по фокусу с анимацией было нельзя —
      бар ездил на каждое поле и уход из него, пока клавиатура ещё выезжала (15.10.2026, «тулбар постоянно смещается»). */
   html.kb-open .tabbar { visibility: hidden; }
+  html.kb-open.kb-resizes .tabbar { display: none; }
   /* Плашка действий и «Сохранить» страницы — так же (телефон и повёрнутый телефон). */
   @media (max-width: 767.98px), (pointer: coarse) and (max-height: 500px) {
     html.kb-open :is(.action-bar, .save-bar--page) { visibility: hidden; }
@@ -2809,7 +2855,8 @@ html.kb-open { --home-gap: 0px; }
   .tab {
     position: relative; flex: 1 1 auto; min-width: 44px; padding-inline: 2px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-    height: var(--spacing-tabbar);
+    /* Внутри бара под волосяной линией сверху: таб в полную высоту бара вылезал за его низ. */
+    height: calc(var(--spacing-tabbar) - var(--hairline));
     color: var(--color-ink-muted);
     font-size: 11px; font-weight: 500; line-height: 1; letter-spacing: .01em;
     -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none; -webkit-touch-callout: none;
@@ -2839,8 +2886,8 @@ html.kb-open { --home-gap: 0px; }
 /* ------------------------------------------------------------- полоса действий */
 
 @layer components {
-  /* Низ экрана: запас под таб-бар и плашку действий (CRM, стоянка, сайт в приложении — без подвала), токен --bottom-room. */
-  .main-app { padding-bottom: var(--bottom-room); }
+  /* Низ страницы: запас под плашку действий (CRM, стоянка, сайт в приложении — без подвала), токен --page-room. */
+  .main-app { padding-bottom: var(--page-room); }
 
   /* На телефоне — плашка над таб-баром (с клавиатурой — на ней, с листом документов — на листе: --bottom-edge) с кнопкой
      во всю ширину, высота ровно --spacing-action — столько же берёт запас страницы; край — волосяная линия. */
@@ -3035,8 +3082,8 @@ html.kb-open { --home-gap: 0px; }
   .landing-shade { background: linear-gradient(to top, rgb(247 247 247 / .92) 0%, rgb(247 247 247 / .45) 38%, rgb(247 247 247 / 0) 70%), linear-gradient(to right, rgb(255 255 255 / .55), rgb(255 255 255 / 0) 60%); }
   /* Низ тени — цвет фона тёмной темы (--color-ground), чтобы лист с содержимым продолжал фото без шва. */
   .dark .landing-shade { background: linear-gradient(to top, rgb(0 0 0 / .95) 0%, rgb(0 0 0 / .5) 38%, rgb(0 0 0 / 0) 70%), linear-gradient(to right, rgb(0 0 0 / .6), rgb(0 0 0 / 0) 60%); }
-  .landing-hero { position: relative; z-index: 1; display: flex; align-items: flex-end; min-height: calc(100svh - var(--header-edge));
-    padding-bottom: calc(var(--bottom-room) + 12vh); }
+  .landing-hero { position: relative; z-index: 1; display: flex; align-items: flex-end; min-height: calc(100svh - var(--header-edge) - var(--tabbar));
+    padding-bottom: calc(var(--page-room) + 12vh); }
   @media (min-width: 768px) { .landing-hero { padding-bottom: 16vh; } }
   .landing-hero-body { display: flex; width: 100%; max-width: 44rem; flex-direction: column; align-items: flex-start;
     opacity: calc(1 - var(--lift, 0) * 1.4); transform: translateY(calc(var(--lift, 0) * -40px)); }
@@ -3261,7 +3308,7 @@ html.kb-open { --home-gap: 0px; }
   /* Пачка по сроку («До 17:00 сегодня 12») — заголовком во всю ширину ленты, как группа таблицы: крупно, липнет под
      шапкой, следующая наезжает на прежнюю (владелец 11.10.2026: мелкая серая подпись между большими плитками терялась). */
   .cards-group {
-    grid-column: 1 / -1; position: sticky; z-index: 5; top: var(--header-edge);
+    grid-column: 1 / -1; position: sticky; z-index: 5; top: var(--stick-top);
     display: flex; align-items: baseline; gap: .375rem; margin: .5rem -.25rem 0; padding: .5rem .25rem;
     background: var(--color-ground); font-size: var(--text-lg); font-weight: 500; color: var(--color-ink);
   }

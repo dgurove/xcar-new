@@ -1,9 +1,12 @@
-// Потянуть вниз — обновить (16.10.2026): своё, потому что резинка страницы выключена (html overscroll-behavior: none —
-// иначе iOS тащил весь экран вместе с шапкой и таб-баром), а с ней и системное обновление жестом.
+// Потянуть вниз — обновить (16.10.2026): своё — системного обновления жестом у приложения нет (документ не листается,
+// листается #scroller, lib/scroller.js). Резинку #scroller жест не трогает (слушатели пассивные): шапка стоит над
+// прокруткой, список отскакивает под ней, кружок выезжает из-под шапки в этот зазор.
 // Тянут от самого верха страницы, вниз, пальцем; под шапкой выезжает кружок со стрелкой, дотянули (64 px) — стрелка
 // разворачивается, отпустили — refresh() (морф Turbo: прокрутка и открытое остаются), кружок крутится до turbo:load.
 // Не тянется: в шторке и карточке строки, во внутренней прокрутке не у её верха, по ленте вбок, с клавиатурой — и
 // когда allowed() говорит нельзя (набранное в форме).
+import { scrollTop } from './scroller';
+
 const PULL = 64;
 const MAX = 96;
 
@@ -47,8 +50,10 @@ export function pullToRefresh(refresh, allowed) {
 
     document.addEventListener('touchstart', (e) => {
         start = null;
-        if (busy || e.touches.length !== 1 || (document.scrollingElement?.scrollTop ?? 0) > 0) return;
+        if (busy || e.touches.length !== 1 || scrollTop() > 0) return;
         const t = e.target;
+        // Тянут список: шапка и таб-бар — вне прокрутки, жест по ним не обновляет (как навбар iOS).
+        if (!t.closest?.('#scroller') && document.getElementById('scroller')) return;
         if (t.closest?.('dialog, .detail, [data-no-pull], .chat-page') || scrolledInside(t)) return;
         if (document.documentElement.classList.contains('kb-open') || !allowed()) return;
         start = { x: e.touches[0].clientX, y: e.touches[0].clientY, decided: false };

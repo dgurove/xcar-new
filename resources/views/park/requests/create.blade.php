@@ -43,7 +43,7 @@
          с открытой справа шторкой документов места на них нет, и форма встаёт над письмами. --}}
     <div class="@container">
     <div class="grid items-start gap-4 {{ $letters ? '@4xl:grid-cols-[minmax(0,1fr)_28rem]' : '' }}">
-        <div class="flex min-w-0 flex-col gap-4 {{ $letters ? '@4xl:sticky @4xl:top-24 @4xl:col-start-2 @4xl:row-start-1 @4xl:max-h-[calc(100dvh-8rem)] @4xl:overflow-y-auto @4xl:-mr-2 @4xl:pr-2' : '' }}">
+        <div class="flex min-w-0 flex-col gap-4 {{ $letters ? '@4xl:sticky @4xl:top-[calc(var(--stick-top)+1rem)] @4xl:col-start-2 @4xl:row-start-1 @4xl:max-h-[calc(100dvh-8rem)] @4xl:overflow-y-auto @4xl:-mr-2 @4xl:pr-2' : '' }}">
         @php
             // Читалка «Завести» (x-mail.reader-body): документы новой цепочки читаются сами, поля ниже заполняются по
             // ходу. Её документы — листами в блоке «Документы»; чипами над формой остаётся то, чего она не читает:

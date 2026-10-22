@@ -1,6 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import * as overlays from '../overlays';
+import { scrollTop, scrollToY } from '../lib/scroller';
 
 // Ключ памяти табов; «tab:» — прежний, в нём могли остаться чужие адреса, его не читаем.
 const KEY = 'tabs:';
@@ -11,12 +12,11 @@ document.addEventListener('turbo:load', () => {
     if (restoreScroll === undefined) return;
     const y = restoreScroll;
     restoreScroll = undefined;
-    requestAnimationFrame(() => scrollTo(0, y));
+    requestAnimationFrame(() => scrollToY(y));
 });
 
 // Бар постоянный (data-turbo-permanent): Turbo переносит живой узел, а бар новой страницы выбрасывает. Из него
-// берём числа, бейджи и текущий таб — морфом детей, чтобы не трогать сам fixed-узел: пересозданный бар iOS
-// заново раскладывала по viewport.
+// берём числа, бейджи и текущий таб — морфом детей, сам узел не пересоздаётся.
 document.addEventListener('turbo:before-render', (event) => {
     const bar = document.getElementById('tabbar');
     const next = event.detail.newBody.querySelector('#tabbar');
@@ -54,7 +54,7 @@ export default class extends Controller {
         this.forget(link);
         const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (new URL(link.href).pathname === location.pathname && location.search === '') {
-            if (scrollY > 0) scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+            if (scrollTop() > 0) scrollToY(0, reduce ? 'auto' : 'smooth');
             return;
         }
         overlays.clear().then((ok) => ok && Turbo.visit(link.href, { action: 'replace' }));
@@ -62,7 +62,7 @@ export default class extends Controller {
 
     remember(href) {
         if (!href) return;
-        try { sessionStorage.setItem(KEY + new URL(href, location.origin).pathname, JSON.stringify({ url: location.href, y: scrollY })); } catch {}
+        try { sessionStorage.setItem(KEY + new URL(href, location.origin).pathname, JSON.stringify({ url: location.href, y: scrollTop() })); } catch {}
     }
 
     recall(tab) {

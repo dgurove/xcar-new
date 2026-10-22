@@ -1,4 +1,5 @@
 import { openSheet, closeSheet, outside } from './sheet';
+import { onScroll } from './lib/scroller';
 
 // Долгое нажатие по карточке — своё меню шторкой вместо листа Safari или меню
 // Chrome: открыть, в избранное, поделиться, чат. Пункты берутся из самой
@@ -23,7 +24,7 @@ export function longPressMenu() {
     }, { passive: true });
     document.addEventListener('touchend', () => { cancel(); setTimeout(() => { fired = false; }, 700); }, { passive: true });
     document.addEventListener('touchcancel', cancel, { passive: true });
-    addEventListener('scroll', cancel, { passive: true });
+    onScroll(cancel);
     // Тап после сработавшего долгого нажатия — не переход.
     document.addEventListener('click', (e) => { if (fired && e.target.closest('.card')) { e.preventDefault(); e.stopPropagation(); fired = false; } }, true);
     document.addEventListener('contextmenu', (e) => {

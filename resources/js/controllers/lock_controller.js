@@ -4,6 +4,7 @@ import { serverNow } from './timer_controller';
 import { proof } from '../device-key';
 import { post, request } from '../lib/http';
 import { plural } from '../lib/plural.js';
+import { scrollTop, scrollToY } from '../lib/scroller';
 
 // Замок менеджера (07.10.2026, x-lock.panel, Access\Lock). Состояние и конец окна приносит каждая страница (meta lock).
 //   open   — пилюля справа сверху считает до конца окна; нажатие — продлить заранее (renew): окно поверх, экран цел.
@@ -96,7 +97,7 @@ export default class extends Controller {
                 : el instanceof HTMLSelectElement ? [...el.options].some((o) => o.selected !== o.defaultSelected) : el.value !== el.defaultValue;
             if (changed) fields.push({ action: form.getAttribute('action') || '', name: el.name, value: el.value, checked: el.checked });
         }));
-        return { url: location.href, y: scrollY, fields };
+        return { url: location.href, y: scrollTop(), fields };
     }
 
     fill(fields) {
@@ -273,7 +274,7 @@ export default class extends Controller {
         this.snapshot = null;
         this.note('');
         document.addEventListener('turbo:load', () => requestAnimationFrame(() => {
-            if (snap.y) scrollTo(0, snap.y);
+            if (snap.y) scrollToY(snap.y);
             this.fill(snap.fields);
             this.mode = null;
             if (this.dialogTarget.open) this.dialogTarget.close();

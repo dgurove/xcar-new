@@ -17,6 +17,7 @@ import { keyboardInset, focusField } from './keyboard';
 import { onHide, onResume, RESUME } from './lib/resume';
 import { scrollBehavior } from './lib/motion';
 import { pullToRefresh } from './lib/pull';
+import { keepPosition, onScroll as onPageScroll, scrollTop, scrollToY } from './lib/scroller';
 import { keepPush } from './push-sync';
 import { csrf } from './lib/http';
 
@@ -177,6 +178,7 @@ focusInvalid();
 formCheck();
 enterNext();
 relaunchScroll();
+keepPosition();
 stalePage();
 keyboardInset();
 systemTheme();
@@ -550,14 +552,14 @@ function enterNext() {
 // возвращается только на полной загрузке того же адреса, если ей меньше получаса.
 function relaunchScroll() {
     const key = () => 'scroll:' + location.href;
-    const save = () => { try { localStorage.setItem(key(), JSON.stringify({ y: scrollY, at: Date.now() })); } catch {} };
+    const save = () => { try { localStorage.setItem(key(), JSON.stringify({ y: scrollTop(), at: Date.now() })); } catch {} };
     onHide(save);
     window.addEventListener('pagehide', save);
     const nav = performance.getEntriesByType('navigation')[0];
     if (!['navigate', 'reload'].includes(nav?.type)) return;
     try {
         const saved = JSON.parse(localStorage.getItem(key()) || 'null');
-        if (saved && Date.now() - saved.at < 30 * 60 * 1000 && saved.y > 0) requestAnimationFrame(() => scrollTo(0, saved.y));
+        if (saved && Date.now() - saved.at < 30 * 60 * 1000 && saved.y > 0) requestAnimationFrame(() => scrollToY(saved.y));
         for (const k of Object.keys(localStorage)) {
             if (!k.startsWith('scroll:') && !k.startsWith('draft:')) continue;
             const at = JSON.parse(localStorage.getItem(k) || '{}').at ?? 0;
@@ -665,8 +667,8 @@ function systemTheme() {
 function headerState() {
     let observer = null;
     const header = () => document.getElementById('header');
-    const onScroll = () => header()?.classList.toggle('is-scrolled', scrollY > 4);
-    addEventListener('scroll', onScroll, { passive: true });
+    const onScroll = () => header()?.classList.toggle('is-scrolled', scrollTop() > 4);
+    onPageScroll(onScroll);
     const watch = () => {
         observer?.disconnect();
         onScroll();
