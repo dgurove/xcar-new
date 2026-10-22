@@ -74,6 +74,13 @@ final class Choices
     }
 
     /** Парковки — точкой «Куда везёт». @return array<int, string> */
+    /** @return array<int, int> парковка → зона региона (`Reach::area`) по её городу */
+    public static function yardAreas(): array
+    {
+        return once(fn () => Yard::withoutGlobalScope(City::SCOPE)->with('settlement:id,region_id')->get(['id', 'settlement_id'])
+            ->mapWithKeys(fn (Yard $y) => [$y->id => Reach::area($y->settlement?->region_id)])->filter()->all());
+    }
+
     public static function yards(): array
     {
         return once(fn () => Yard::withoutGlobalScope(City::SCOPE)->orderBy('name')->pluck('name', 'id')->all());

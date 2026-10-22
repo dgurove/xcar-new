@@ -52,7 +52,7 @@ final class TransportEvent extends Model
             'payload' => array_filter($payload, fn ($v) => $v !== null) ?: null, 'created_at' => $at ?? now()]);
     }
 
-    /** Что случилось — фразой: «Исполнитель Иван П., был Сахиб Г.», «Созвонились, вывоз 24 окт, 12:00», «Отменили «Забрал»». */
+    /** Что случилось — фразой: «Исполнитель Иван П., был Сахиб Г.», «Созвонились, вывоз 24 окт», «Отменили «Забрал»». */
     public function what(): string
     {
         $p = $this->payload ?? [];
@@ -74,7 +74,7 @@ final class TransportEvent extends Model
             'assigned' => 'Исполнитель '.$name($p['executor'] ?? null).$was(),
             'released' => 'Исполнитель снят',
             'cost' => 'Цена '.Money::rub((int) ($p['cost'] ?? 0)).(isset($p['was']) ? ', была '.Money::rub((int) $p['was']) : ''),
-            'called' => 'Созвонились'.(isset($p['at']) ? ', вывоз '.Ago::day(Carbon::parse($p['at']), time: true) : ''),
+            'called' => 'Созвонились'.(isset($p['at']) ? ', вывоз '.Ago::day(Carbon::parse($p['at'])) : ''),
             'missed' => 'Не дозвонился',
             'docs_sent' => 'Документы отправлены СДЭКом'.(isset($p['track']) ? ', трек '.$p['track'] : ''),
             'docs_received' => 'Получил документы',

@@ -1,6 +1,9 @@
 {{-- «Куда везти» строками с галкой, как в Настройках (18.10.2026): к менеджеру сделки (если он есть), каждая наша парковка
      по названию (`yard:id`, `Point::read`), другой адрес (поле), а в окне назначения ещё «Пока неизвестно» (`unknown`). Одно на окно «Кто вывозит», окно
-     «Куда везти» и «Забрал» (`x-logistics.pickup-fields`). Свой `reveal`: у окна «Кто вывозит» панели вида — свои. --}}
+     «Куда везти» и «Забрал» (`x-logistics.pickup-fields`). Свой `reveal`: у окна «Кто вывозит» панели вида — свои.
+     Парковки — по дальности (22.10.2026, владелец: «внутри региона» у машины из Тольятти стояли парковки Москвы и Питера):
+     «Внутри региона» — только парковки зоны задачи (`Reach::area`), «Между регионами» и регион неизвестен — все
+     (`region_yards_controller` по сегменту `reach` той же формы; выбранная строка не прячется). --}}
 @props(['t' => null, 'offer' => null, 'prefix' => 'route', 'unknown' => false])
 @php
     use App\Logistics\Choices;
@@ -20,11 +23,14 @@
         default => $keeper ? Point::Keeper->value : ($unknown ? '' : array_key_first($points)),
     };
     $point = (string) old('destination', $current);
+    $areas = \App\Logistics\Choices::yardAreas();
+    $area = \App\Logistics\Reach::area($t?->region_id);
 @endphp
-<div class="flex flex-col gap-3" data-controller="reveal">
+<div class="flex flex-col gap-3" data-controller="reveal region-yards" data-region-yards-area-value="{{ $area }}" data-region-yards-reach-value="{{ $t?->reach?->value }}">
 <div class="list">
     @foreach ($points as $value => $label)
-        <label class="row row-check">
+        @php $yardArea = str_starts_with((string) $value, 'yard:') ? ($areas[(int) substr($value, 5)] ?? null) : null; @endphp
+        <label class="row row-check" @if ($yardArea) data-region-yards-target="row" data-area="{{ $yardArea }}" @endif>
             <span class="min-w-0 flex-1 {{ $value === '' ? 'text-ink-muted' : '' }}">{{ $label }}</span>
             <span class="check"><input type="radio" name="destination" value="{{ $value }}" @checked($point === (string) $value) data-action="reveal#pick"></span>
         </label>

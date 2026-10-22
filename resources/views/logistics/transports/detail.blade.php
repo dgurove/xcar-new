@@ -73,6 +73,9 @@
     // Маршрут из отрезков (20.10.2026, `Logistics\Route`) — у вывоза через логиста: исполнитель и «куда» — в нём, по отрезкам.
     $routed = ! $solo && ! $order && $t->channel === Channel::Logist && $t->logist;
     $last = $t->chain()->last() ?? $t;
+    // Отменить шаг — кнопкой в самом шаге рядом с «Перенести» (22.10.2026, владелец: внизу отдельной строкой её не находили);
+    // снять логиста или исполнителя — по-прежнему строкой внизу, у них своего шага в лесенке нет.
+    $undoStep = ['called' => 'call', 'docs_sent' => 'docs', 'docs_received' => 'docs', 'picked' => 'picked', 'delivered' => 'delivered'][$undo] ?? null;
     $undoLabel = match ($undo) { 'logist' => 'Снять логиста', 'executor' => 'Снять исполнителя', null => null, default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$undo].'»' };
 @endphp
 <x-ui.detail>
@@ -171,7 +174,7 @@
                 {{-- Ссылка исполнителю — строкой: по ней он сам отмечает шаги, если умеет (чаще всё делает логист). --}}
                 @if ($open && $t->tripUrl() && ($admin || $mine) && ! $t->isExecutedBy($me) && ! $t->isSelfPickup())
                     <button type="button" class="row w-full items-center justify-between gap-4 text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="trip-{{ $id }}:open">
-                        <span>Ссылка исполнителю</span><x-ui.chevron/>
+                        <span class="flex items-center gap-3"><x-ui.icon name="link" class="size-5 text-ink-dim"/>Ссылка исполнителю</span><x-ui.chevron/>
                     </button>
                 @endif
                 @if ($t->call_note)
@@ -223,8 +226,19 @@
                                 <x-ui.button size="sm" class="self-start">{{ $t->docs_track ? 'Сохранить трек' : 'Документы отправлены' }}</x-ui.button>
                             </form>
                         @endif
-                        @if ($s['key'] === 'call' && $t->agreed_at && $executes && $open && ! $t->state->picked())
-                            <button type="button" class="mt-2 text-sm text-accent-text" data-controller="emit" data-action="emit#send" data-emit-event-param="call-{{ $id }}:open">Перенести</button>
+                        @php
+                            $move = $s['key'] === 'call' && $t->agreed_at && $executes && $open && ! $t->state->picked();
+                            $back = $undoStep === $s['key'] && $s['status'] === 'done';
+                        @endphp
+                        @if ($move || $back)
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @if ($move)<button type="button" class="btn btn-s btn-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="call-{{ $id }}:open"><x-ui.icon name="calendar" class="size-4"/>Перенести</button>@endif
+                                @if ($back)
+                                    <form method="post" action="/transports/{{ $id }}/back" class="contents" data-step-back="transport" data-turbo-confirm="{{ $undoLabel }}?" data-turbo-confirm-label="Отменить">
+                                        @csrf<button class="btn btn-s btn-quiet"><x-ui.icon name="undo" class="size-4"/>Отменить</button>
+                                    </form>
+                                @endif
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -232,11 +246,9 @@
         </div>
 
         {{-- История: кто что нажал, за кого и когда (`TransportEvent`). --}}
-        @if (! $solo && ($events = $t->events()->count()))
-            <details class="list mt-5 group">
-                <summary class="row cursor-pointer list-none items-center justify-between gap-4"><span>История <span class="nums text-ink-dim">{{ $events }}</span></span><x-ui.icon name="chevron-down" class="size-4 text-ink-dim transition-transform group-open:rotate-180"/></summary>
-                <div class="row"><x-logistics.history :t="$t" :me="$me" class="w-full"/></div>
-            </details>
+        @if (! $solo && $t->events()->exists())
+            <h3 class="list-head mt-5">История</h3>
+            <div class="list"><div class="row"><x-logistics.history :t="$t" :me="$me" class="w-full"/></div></div>
         @endif
 
         {{-- Админу — документы СДЭКом или без: решение у задачи (по умолчанию — только у логиста), переключается и здесь. --}}
@@ -284,9 +296,10 @@
 
         {{-- Назад — группой в конце, как в Настройках: отменить последний шаг (`StepBack`), ниже красным — отменить вывоз. --}}
         @php $cancels = ($admin && ! $order) || ($order && $mine) ? $open && ! $t->state->picked() : false; @endphp
-        @if ($undo || $cancels)
+        @php $undoRow = $undo && ! $undoStep; @endphp
+        @if ($undoRow || $cancels)
             <div class="list mt-5">
-                @if ($undo)
+                @if ($undoRow)
                     <form method="post" action="/transports/{{ $id }}/back" class="contents" data-step-back="transport" data-turbo-confirm="{{ $undoLabel }}?" data-turbo-confirm-label="{{ str_starts_with($undoLabel, 'Снять') ? 'Снять' : 'Отменить' }}">
                         @csrf<button class="row w-full text-left">{{ $undoLabel }}</button>
                     </form>

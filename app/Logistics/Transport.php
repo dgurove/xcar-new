@@ -443,7 +443,7 @@ class Transport extends Model
             $this->state === TransportState::Assigned && $this->isSelfPickup() => 'забирает сам',
             $this->state === TransportState::Assigned && $this->isPickup() => 'позвонить владельцу',
             $this->state === TransportState::Assigned => 'забрать',
-            $this->state === TransportState::Agreed && $this->docs_by_cdek && $this->docs_sent_at === null => 'ждёт отправки документов',
+            $this->state === TransportState::Agreed && $this->awaitsDocs() && $this->docs_sent_at === null => 'ждёт отправки документов',
             $this->state === TransportState::Agreed && $this->awaitsDocs() => 'документы в пути',
             $this->state === TransportState::Agreed && $this->pickup_at => 'вывоз '.$this->pickupDay(),
             $this->state === TransportState::Agreed => 'забрать',
@@ -498,7 +498,7 @@ class Transport extends Model
                 $got = $this->docs_received_at !== null;
                 $steps[] = ['key' => 'docs', 'title' => $got ? 'Документы получены' : ($this->docs_sent_at ? 'Документы в пути' : 'Документы СДЭКом'),
                     'status' => $status($got || $s->picked(), $assigned && ! $got), 'at' => $this->docs_received_at ?? $this->docs_sent_at,
-                    'hint' => $this->docs_track ? 'трек '.$this->docs_track : ($assigned ? 'ждём отправки' : null)];
+                    'hint' => $this->docs_track ? 'трек '.$this->docs_track : ($assigned && ! $got ? 'ждём отправки' : null)];
             }
         }
         $keys = $this->car?->keys_count;

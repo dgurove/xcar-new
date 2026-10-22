@@ -15,6 +15,15 @@ enum Reach: string
     case Local = 'local';
     case Intercity = 'intercity';
 
+    /**
+     * Один регион для «внутри региона»: Москва с областью и Петербург с Ленинградской областью — одна зона вывоза (номер
+     * региона как у машин, `regions.id`), остальные — сами по себе.
+     */
+    public static function area(?int $region): ?int
+    {
+        return [50 => 77, 47 => 78][$region] ?? $region;
+    }
+
     public function label(): string
     {
         return match ($this) {

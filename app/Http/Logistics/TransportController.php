@@ -173,7 +173,7 @@ class TransportController
             'who' => $q->orderByRaw("(select users.name from users where users.id = coalesce(transports.executor_id, transports.logist_id)) {$dir} nulls last"),
             'binding' => $q->orderByRaw(Binding::UNTIL_SQL." {$dir} nulls last"),
             // «Когда»: просроченный вывоз — первым.
-            default => $q->orderByRaw("(transports.state = 'agreed' and transports.pickup_at < now()) desc")->orderByRaw(Transport::SHOWN_SQL." {$dir} nulls last"),
+            default => $q->orderByRaw("(transports.state = 'agreed' and transports.pickup_at < ?) desc", [now()->startOfDay()])->orderByRaw(Transport::SHOWN_SQL." {$dir} nulls last"),
         };
         $q->orderByDesc('transports.id');
     }
