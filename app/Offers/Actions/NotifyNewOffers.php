@@ -55,7 +55,8 @@ final class NotifyNewOffers
             }
             $ids = array_map('intval', explode(',', trim($row->offers, '{}')));
             // Ушедшее за эти минуты (сняли, сдвинули волну, закрылся приём) и уже открытое на сайте не считается.
-            $offers = CatalogQuery::unread(Offer::visibleTo($user)->onSale()->whereIn('offers.id', $ids), $user)->orderByDesc('offers.published_at')->get();
+            // Только из его регионов (22.10.2026): остальные он найдёт фильтром сам, уведомлять о них — снова «слишком много».
+            $offers = CatalogQuery::unread(Offer::visibleTo($user)->onSale()->inRegionsOf($user)->whereIn('offers.id', $ids), $user)->orderByDesc('offers.published_at')->get();
             if ($offers->isEmpty()) {
                 continue;
             }

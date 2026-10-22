@@ -66,8 +66,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             }
         });
         static::saved(function (self $user) {
-            // Регионы менеджера (22.10.2026) решают, в чьи волны попадает машина, — тот же пересчёт.
-            if ($user->wasChanged(['roles', 'offer_regions']) || ($user->wasRecentlyCreated && ($user->isManager() || $user->isSuperBuyer()))) {
+            if ($user->wasChanged('roles') || ($user->wasRecentlyCreated && ($user->isManager() || $user->isSuperBuyer()))) {
                 app(SyncViewers::class)->all();
             }
         });

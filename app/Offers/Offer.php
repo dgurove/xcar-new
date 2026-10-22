@@ -31,7 +31,6 @@ use App\Support\Units;
 use App\Support\VendorNames;
 use App\Users\Role;
 use App\Cars\Region;
-use App\Offers\Actions\SyncViewers;
 use App\Users\User;
 use App\Vendors\ClaimRequest;
 use App\Vendors\DealFormat;
@@ -133,11 +132,6 @@ class Offer extends Model
                 // её полей (19.10.2026: адрес — поле продажи, не машины, и правка одного адреса не доезжала никуда).
                 $car = $o->car_id;
                 DB::afterCommit(fn () => CarChanged::dispatch($car, ['inspection_address']));
-            }
-            // Регион сменился — кому её показывать, решают и регионы менеджеров (`SyncViewers`).
-            if ($o->wasChanged('region_id') && in_array($o->state, [OfferState::Open, OfferState::Gallery], true)) {
-                $id = $o->id;
-                DB::afterCommit(fn () => ($offer = self::find($id)) ? app(SyncViewers::class)($offer) : null);
             }
             // Тревога в шапке (`Binding::touch`): новый срок, ушло из продажи или вернулось.
             if ($o->wasChanged(['binding_until', 'state'])) {
@@ -686,10 +680,7 @@ class Offer extends Model
             // покупателю без менеджера — нет: у него только своя машина в гараже (21.10.2026).
             if (! $user->onlyGarage()) {
                 $any = true;
-                // Регионы менеджера (22.10.2026) — и в галерее: волн у неё нет, условие здесь. Машина без региона — всем.
-                $regions = $user->offerRegions();
-                $w->orWhere(fn ($g) => $g->inGallery()
-                    ->when($regions, fn ($r) => $r->where(fn ($x) => $x->whereNull('offers.region_id')->orWhereIn('offers.region_id', $regions))));
+                $w->orWhere(fn ($g) => $g->inGallery());
             }
         });
 
@@ -712,6 +703,25 @@ class Offer extends Model
             ->where(fn ($w) => $w
                 ->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::USER)->where('audience_id', $user->id))
                 ->orWhere(fn ($g) => $g->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::GROUP)->whereIn('audience_id', $groups ?: [0]))));
+    }
+
+    /**
+     * Регионы человека (22.10.2026; с того же дня — фильтр, а не замок): только машины его регионов и машины без региона.
+     * Нет регионов — без условия. Сужают каталог, числа таб-бара и уведомления о новых; страница по ссылке открывается.
+     */
+    /** Машина из его регионов (или без региона, или регионы не выбраны) — тем же правилом, что `scopeInRegionsOf`. */
+    public function regionOpenTo(User $user): bool
+    {
+        $regions = $user->offerRegions();
+
+        return ! $regions || ! $this->region_id || in_array($this->region_id, $regions, true);
+    }
+
+    public function scopeInRegionsOf(Builder $q, ?User $user): Builder
+    {
+        $regions = $user?->offerRegions() ?? [];
+
+        return $q->when($regions, fn ($r) => $r->where(fn ($x) => $x->whereNull('offers.region_id')->orWhereIn('offers.region_id', $regions)));
     }
 
     /**

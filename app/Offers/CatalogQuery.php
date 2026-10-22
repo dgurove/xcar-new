@@ -80,14 +80,11 @@ final class CatalogQuery
         return $offer;
     }
 
-    /** Сортировка по умолчанию (10.10.2026): кто видит срок — сверху закрывающиеся раньше, покупатель — новые показы сверху. */
+    /** Сортировка по умолчанию: дата публикации, новые сверху (22.10.2026; до того — по сроку приёма). */
     public static function defaultSort(?User $user, bool $gallery = false): string
     {
-        return match (true) {
-            $gallery => '-published',
-            $user?->bidsOnSite() ?? false => 'closing',
-            default => '-opened',
-        };
+        // Новые сверху — у всех (22.10.2026, владелец: «по умолчанию по дате публикации»).
+        return '-published';
     }
 
     /**
@@ -171,7 +168,8 @@ final class CatalogQuery
         // Пачки по сроку при любой сортировке (11.10.2026, владелец): сначала порядок пачек — каталог: открытый приём по
         // сроку, закрытый и «Идёт сделка» после; галерея — по концу окна показа. Выбранная сортировка — внутри пачки;
         // «по сроку» по убыванию переворачивает и пачки.
-        if (self::grouped($user, $gallery)) {
+        // Только в «Лентах» (`packs`, 22.10.2026): в «Плитках» пачек нет, и сортировка — какая выбрана.
+        if (self::grouped($user, $gallery) && ($filters['packs'] ?? false)) {
             $packs = ltrim($sort, '-') === 'closing' ? $dir : 'asc';
             $gallery
                 ? $q->orderByRaw("offers.gallery_until {$packs} nulls last")
@@ -187,7 +185,12 @@ final class CatalogQuery
             'opened' => $q->orderByRaw("{$opened} {$dir} nulls last"),
             'price' => $q->orderByRaw("asking_price {$dir} nulls last"),
             'year' => $q->orderByRaw(Car::sql('offers', 'year')." {$dir} nulls last")->orderByDesc('published_at'),
-            default => $q->orderByDesc('sort_weight')->orderByRaw(($gallery ? 'gallery_from' : 'published_at')." {$dir} nulls last"),
+            // Горящие — первыми, ближний срок выше (22.10.2026, владелец: «по горящему ни одного подтверждения — потеряли
+            // деньги»); дальше новые сверху. Только сортировкой по умолчанию и тем, кто видит срок.
+            default => $q->when(! $gallery && $sort === '-published' && ($user?->bidsOnSite() ?? false), fn ($h) => $h
+                ->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() and offers.bids_close_at <= now() + make_interval(hours => ?) then 0 else 1 end', [OfferState::Open->value, Offer::HOT_HOURS])
+                ->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() and offers.bids_close_at <= now() + make_interval(hours => ?) then offers.bids_close_at end asc nulls last', [OfferState::Open->value, Offer::HOT_HOURS]))
+                ->orderByDesc('sort_weight')->orderByRaw(($gallery ? 'gallery_from' : 'published_at')." {$dir} nulls last"),
         };
 
         return $q->orderByDesc('id');
@@ -246,10 +249,17 @@ final class CatalogQuery
         return $q->where('offers.state', OfferState::Open)->whereBetween('offers.bids_close_at', [now(), now()->addHours(Offer::HOT_HOURS)]);
     }
 
-    /** @return list<Facet> чипы каталога и галереи: город и тип ТС */
-    public static function facets(): array
+    /**
+     * @return list<Facet> чипы каталога и галереи: город и тип ТС; у человека со своими регионами (22.10.2026) — ещё
+     *                     переключатель регионов в шторке «Города»: по умолчанию только его регионы, `regions=0` — все.
+     */
+    public static function facets(?User $user = null): array
     {
-        return [Common::city('offers.settlement_id'), Common::category(Car::sql('offers', 'category'))];
+        $regions = $user && $user->offerRegions()
+            ? [Facet::toggle('regions', 'Все регионы', fn (Builder $q) => $q->inRegionsOf($user))->byDefault()->within('city')]
+            : [];
+
+        return [Common::city('offers.settlement_id'), Common::category(Car::sql('offers', 'category')), ...$regions];
     }
 
     /** Действующая сортировка: то, что в адресе, если она разрешена, иначе по умолчанию. */

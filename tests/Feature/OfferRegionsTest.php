@@ -43,7 +43,7 @@ class OfferRegionsTest extends TestCase
         return $offer->fresh();
     }
 
-    public function test_manager_sees_only_his_regions(): void
+    public function test_regions_narrow_catalog_but_not_the_offer(): void
     {
         $sahib = User::create(['name' => 'Сахиб', 'phone' => '79000000011', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $buyer = User::create(['name' => 'Покупатель', 'phone' => '79000000012', 'roles' => [Role::Buyer], 'manager_id' => $sahib->id, 'approved_at' => now()]);
@@ -52,31 +52,27 @@ class OfferRegionsTest extends TestCase
         $ekb = $this->open('Свердловская область, г. Екатеринбург, ул. Мира, 5');
         $unknown = $this->open(null);
         $this->assertSame($this->moscow->id, $moscow->region_id);
-        $this->assertTrue($moscow->isVisibleTo($sahib));
 
         app(SetOfferRegions::class)($sahib, [$this->ural->id]);
+        $sahib = $sahib->fresh();
 
-        $this->assertFalse($moscow->fresh()->isVisibleTo($sahib->fresh()));
-        $this->assertFalse($moscow->fresh()->isVisibleTo($buyer->fresh()));
-        $this->assertTrue($ekb->fresh()->isVisibleTo($sahib->fresh()));
-        $this->assertTrue($ekb->fresh()->isVisibleTo($buyer->fresh()));
-        $this->assertTrue($unknown->fresh()->isVisibleTo($sahib->fresh()));
-        $this->assertSame('Свердл. обл.', SetOfferRegions::label($sahib->fresh()));
+        // Фильтр, а не замок (22.10.2026): по ссылке открывается, в каталоге по умолчанию — только его регионы.
+        $this->assertTrue($moscow->fresh()->isVisibleTo($sahib));
+        $list = fn (User $u) => Offer::siteList($u)->inRegionsOf($u)->pluck('offers.id')->all();
+        $this->assertNotContains($moscow->id, $list($sahib));
+        $this->assertContains($ekb->id, $list($sahib));
+        $this->assertContains($unknown->id, $list($sahib));
+        $this->assertNotContains($moscow->id, $list($buyer->fresh()));
+        $this->assertSame('Свердл. обл.', SetOfferRegions::label($sahib));
 
-        // Новая московская после выбора — тоже мимо.
-        $this->assertFalse($this->open('Тверская, 3', $city)->isVisibleTo($sahib->fresh()));
+        $page = $this->actingAs($sahib)->get('http://xcar.localhost/offers?unread=0')->assertOk();
+        $page->assertSee('offer-'.$ekb->number)->assertDontSee('offer-'.$moscow->number)->assertSee('Показывать из других регионов');
+        $this->actingAs($sahib)->get('http://xcar.localhost/offers?unread=0&regions=0')->assertOk()
+            ->assertSee('offer-'.$moscow->number)->assertSee('Все регионы');
 
-        // Галерея: волн нет, условие у неё своё.
-        $draft = Offer::create(['floor_price' => 500000, 'settlement_id' => $city]);
-        $draft->forceFill(['gallery_from' => now()->subHour(), 'gallery_until' => now()->addDay()])->save();
-        $this->assertFalse($draft->fresh()->isVisibleTo($sahib->fresh()));
-        $this->assertFalse($draft->fresh()->isVisibleTo($buyer->fresh()));
-
-        // Вся Россия — снова видно.
-        app(SetOfferRegions::class)($sahib->fresh(), Region::pluck('id')->all());
-        $this->assertNull($sahib->fresh()->offer_regions);
-        $this->assertTrue($moscow->fresh()->isVisibleTo($sahib->fresh()));
-        $this->assertTrue($draft->fresh()->isVisibleTo($sahib->fresh()));
+        // Срочное из Москвы — без звонка; «только вам» — всегда.
+        $this->assertFalse($moscow->fresh()->regionOpenTo($sahib));
+        $this->assertTrue($ekb->fresh()->regionOpenTo($sahib));
     }
 
     public function test_regions_page_saves_for_self_and_admin(): void

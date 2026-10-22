@@ -40,6 +40,7 @@ final class Announce
             where s.blocked_at is null and s.muted_at is null
               and o.state = 'open' and o.is_demo = false
               and (o.bids_close_at is null or o.bids_close_at > ?)
+              and (u.offer_regions is null or o.region_id is null or u.offer_regions @> to_jsonb(o.region_id))
               and v.notified_at <= ? and (s.announced_at is null or v.notified_at > s.announced_at)
               and not exists (select 1 from offer_bot_seen x where x.user_id = s.user_id and x.offer_id = o.id)
               and not exists (select 1 from offer_reads r where r.user_id = s.user_id and r.offer_id = o.id)

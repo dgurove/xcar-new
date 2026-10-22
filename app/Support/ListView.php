@@ -111,7 +111,7 @@ final class ListView
     {
         return self::fromRequest($request, $shelves) ?? match (true) {
             Surface::current() !== Surface::Site => self::TABLE,
-            $shelves => self::SHELF,
+            // Ленты — только по выбору человека (22.10.2026, владелец: «по умолчанию у всех плитки»).
             default => self::GRID,
         };
     }

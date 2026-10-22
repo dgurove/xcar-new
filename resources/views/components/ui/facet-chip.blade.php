@@ -15,7 +15,7 @@
     @if ($on && ! $f->single)
         <span class="pill facet-on" aria-current="true">
             <button type="button" class="facet-open" data-action="sheet#open" aria-controls="{{ $id }}">{{ $chip->label }}</button>
-            <a href="{{ $facets->url([$key => '']) }}" class="facet-x" data-turbo-action="replace" data-turbo-prefetch="false" aria-label="Снять «{{ $f->title }}»"><x-ui.icon name="x" class="size-3.5"/></a>
+            <a href="{{ ($chip->inner ?? null) && ! $chip->inner->on && ! $chip->selected ? $chip->inner->onUrl : $facets->url([$key => '']) }}" class="facet-x" data-turbo-action="replace" data-turbo-prefetch="false" aria-label="Снять «{{ $f->title }}»"><x-ui.icon name="x" class="size-3.5"/></a>
         </span>
     @else
         <button type="button" class="pill !pr-2.5" data-action="sheet#open" aria-controls="{{ $id }}" @if ($on) aria-current="true" @endif>{{ $chip->label }}<x-ui.icon name="chevron-down" class="size-4"/></button>
@@ -45,6 +45,18 @@
                 </div>
             </form>
         @else
+        {{-- Переключатель шторки (`Facet::within`, 22.10.2026): «Показывать из других регионов» в «Городе» — по умолчанию
+             выключен, видны города своих регионов; включили — все города, все отмечены. Своя GET-форма вне формы чипа. --}}
+        @if ($inner = $chip->inner ?? null)
+            <form method="get" action="{{ $facets->action() }}" data-turbo-action="replace" data-turbo-prefetch="false" class="list mb-3" data-controller="autosubmit">
+                @foreach ($facets->carry($key) as $k => $v)@continue($k === $inner->facet->key)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
+                <input type="hidden" name="{{ $inner->facet->key }}" value="{{ $inner->on ? '0' : '' }}">
+                <label class="row row-switch">
+                    <span class="min-w-0 flex-1">Показывать из других регионов</span>
+                    <input type="checkbox" class="switch" @checked(! $inner->on) data-action="change->autosubmit#submit">
+                </label>
+            </form>
+        @endif
         <form method="get" action="{{ $facets->action() }}" data-turbo-action="replace" data-turbo-prefetch="false" data-controller="facets" data-action="change->facets#tick" @if ($f->single) data-facets-single-value="true" @endif>
             @foreach ($facets->carry($key) as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
             @unless ($f->single)<input type="hidden" name="{{ $key }}" value="{{ $chip->value ?? implode(',', $chip->selected) }}" data-facets-target="value">@endunless

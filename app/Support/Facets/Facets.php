@@ -216,7 +216,12 @@ final class Facets
         }
 
         return $this->chips = collect($this->facets)->map(function (Facet $f, string $key) {
+            // Переключатель внутри шторки другого чипа (`Facet::within`) — не в ряду: его рисует тот чип.
+            if ($f->within !== null) {
+                return null;
+            }
             $selected = $this->selected($key);
+            $inner = $this->innerOf($key);
             if ($f->toggle) {
                 $n = $f->tally ? ($f->tally)() : null;
                 if ($f->selfCount) {
@@ -271,10 +276,10 @@ final class Facets
             }
             // Сужать нечего — чипа нет. Но ряд не прыгает от соседних чипов: если без них вариантов больше одного,
             // чип стоит и с одним вариантом.
-            if ($this->always && ! $selected && $out === null && $options === []) {
+            if ($this->always && ! $selected && $out === null && $options === [] && ! $inner) {
                 return null;
             }
-            if (! $this->always && ! $selected && count(array_filter($options, fn (Option $o) => $o->count > 0)) < 2
+            if (! $this->always && ! $inner && ! $selected && count(array_filter($options, fn (Option $o) => $o->count > 0)) < 2
                 && ($f->count || ! $this->active() || count(array_filter($f->counts(clone $this->base, $this->countExpr))) < 2)) {
                 return null;
             }
@@ -294,8 +299,13 @@ final class Facets
 
             // Исключение помнит, кого исключили, — шторка отправляет его тем же видом (`!22`), не списком оставшихся.
             $on = $selected !== [] || $out !== null;
+            // Внутренний переключатель снят («из других регионов») — чип говорит это сам: «Все регионы ×», × его возвращает.
+            if ($inner && ! $inner->on && ! $on) {
+                $label = $inner->offLabel;
+                $on = true;
+            }
 
-            return (object) ['facet' => $f, 'options' => array_values($options), 'selected' => $selected, 'on' => $on, 'value' => $out !== null ? '!'.implode(',', $out) : implode(',', $selected), 'label' => $label];
+            return (object) ['facet' => $f, 'options' => array_values($options), 'selected' => $selected, 'on' => $on, 'value' => $out !== null ? '!'.implode(',', $out) : implode(',', $selected), 'label' => $label, 'inner' => $inner];
         })->filter()->values();
     }
 
@@ -329,6 +339,24 @@ final class Facets
 
         return (object) ['facet' => $f, 'options' => $options, 'selected' => $selected, 'on' => $raw !== null, 'value' => (string) $raw,
             'label' => $raw ? (string) Facet::periodLabel($raw) : $f->title, 'from' => $from?->format('Y-m-d'), 'to' => $to?->subDay()->format('Y-m-d')];
+    }
+
+    /**
+     * Переключатель внутри шторки чипа `$key` (`Facet::within`): включён ли, подпись и адреса — включить и выключить; выбор
+     * самого чипа при переключении сбрасывается (все варианты снова отмечены).
+     *
+     * @return ?object{facet: Facet, on: bool, offLabel: string, onUrl: string, offUrl: string}
+     */
+    public function innerOf(string $key): ?object
+    {
+        $f = collect($this->facets)->first(fn (Facet $f) => $f->within === $key);
+        if (! $f) {
+            return null;
+        }
+
+        return (object) ['facet' => $f, 'on' => $this->on($f->key), 'offLabel' => $f->title,
+            'onUrl' => $this->url([$f->key => $f->byDefault ? null : '1', $key => '']),
+            'offUrl' => $this->url([$f->key => $f->byDefault ? '0' : '', $key => ''])];
     }
 
     /** Адрес с заменой: '' остаётся в адресе — это «снять и забыть» для ListPrefs. */

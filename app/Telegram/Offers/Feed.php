@@ -18,7 +18,8 @@ final class Feed
 {
     public static function query(User $user): Builder
     {
-        return Offer::visibleTo($user)->where('state', OfferState::Open)
+        // Регионы человека (22.10.2026) — как каталог по умолчанию: из других регионов бот не показывает.
+        return Offer::visibleTo($user)->where('state', OfferState::Open)->inRegionsOf($user)
             ->where(fn ($q) => $q->whereNull('bids_close_at')->orWhere('bids_close_at', '>', now()))
             ->whereDoesntHave('bids', fn ($b) => $b->where('user_id', $user->id))
             ->whereNotExists(fn ($q) => $q->from('offer_bot_seen')->whereColumn('offer_bot_seen.offer_id', 'offers.id')->where('offer_bot_seen.user_id', $user->id))

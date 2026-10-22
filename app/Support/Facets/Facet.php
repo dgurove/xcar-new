@@ -53,6 +53,12 @@ final class Facet
     /** Переключатель включён, пока его не выключили (`?unread=0`): «Не просмотренные» каталога, 21.10.2026. */
     public bool $byDefault = false;
 
+    /**
+     * Переключатель живёт не в ряду чипов, а сверху шторки другого чипа (ключ того чипа): «Показывать из других регионов» в
+     * «Городе» (22.10.2026).
+     */
+    public ?string $within = null;
+
     /** Переключатель с числом («Без ставки 4»): нуль — переключателя нет, пока он не включён. */
     public ?Closure $tally = null;
 
@@ -263,6 +269,13 @@ final class Facet
     }
 
     /** Включён без параметра в адресе, выключенный — `0`; «Сбросить» возвращает включённым. */
+    public function within(string $key): self
+    {
+        $this->within = $key;
+
+        return $this;
+    }
+
     public function byDefault(): self
     {
         $this->byDefault = true;

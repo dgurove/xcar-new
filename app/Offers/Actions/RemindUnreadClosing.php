@@ -59,7 +59,8 @@ final class RemindUnreadClosing
             }
             $favorites = $mine->filter(fn ($r) => $r->favorite)->pluck('offer_id')->all();
             // Видно ему и в продаже сейчас (сделка, снятие) — тем же правилом, что каталог; не избранное — ещё и не открыто.
-            $unread = CatalogQuery::unread(Offer::query()->whereIn('offers.id', $mine->pluck('offer_id')), $user)->pluck('offers.id')->all();
+            // Не избранное — только из его регионов (22.10.2026, `Offer::inRegionsOf`); избранное — своё, из любого.
+            $unread = CatalogQuery::unread(Offer::query()->whereIn('offers.id', $mine->pluck('offer_id'))->inRegionsOf($user), $user)->pluck('offers.id')->all();
             $offers = $this->onSale($user, $mine->pluck('offer_id'))
                 ->filter(fn (Offer $o) => in_array($o->id, $favorites, true) || in_array($o->id, $unread, true));
             foreach ($offers->groupBy(fn (Offer $o) => $o->bids_close_at->format('Y-m-d H:i')) as $at => $pack) {

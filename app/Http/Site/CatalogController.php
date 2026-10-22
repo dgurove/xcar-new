@@ -43,8 +43,9 @@ class CatalogController
         }
         // «Не просмотренные» (21.10.2026) — первым чипом у вошедшего в каталоге; не запоминается: каждый заход снова включён.
         $since = ! $gallery && $user ? CatalogQuery::since($request, enter: true) : null;
-        $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...[...($since ? [CatalogQuery::unreadFacet($user, $since)] : []), ...CatalogQuery::facets()]);
-        ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: array_values(array_diff($facets->keys(), ['unread'])), sort: false);
+        $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...[...($since ? [CatalogQuery::unreadFacet($user, $since)] : []), ...CatalogQuery::facets($user)]);
+        // «Не просмотренные» и регионы (22.10.2026) не запоминаются: каждый заход — снова по умолчанию.
+        ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: array_values(array_diff($facets->keys(), ['unread', 'regions'])), sort: false);
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
         $prices = ! $gallery && ($user?->canSeePrices() ?? false);
         $sort = CatalogQuery::sort($filters, $gallery, $prices, $user);
@@ -54,7 +55,9 @@ class CatalogController
         $unread = $since && $facets->on('unread');
 
         // Чипы кладёт Facets (ему нужна база без них — для вариантов и чисел), остальное — CatalogQuery.
-        $query = $facets->apply(CatalogQuery::for($user, array_diff_key($filters, array_flip($facets->keys())) + ['sort' => $sort], $gallery));
+        // Пачки по сроку — только лентами (`packs`): в «Плитках» (по умолчанию с 22.10.2026) порядок — сама сортировка.
+        $packed = CatalogQuery::grouped($user, $gallery) && ListView::pick($request, 0, shelves: true) === ListView::SHELF;
+        $query = $facets->apply(CatalogQuery::for($user, array_diff_key($filters, array_flip($facets->keys())) + ['sort' => $sort, 'packs' => $packed], $gallery));
         // «Срочно» (12.10.2026, владелец): срочные с идущим приёмом — первой лентой, ближний срок выше; из основного списка
         // уходят, как «Открыты только Вам». С тем же фильтром; в поиске и на пилюле «Срочные» — нет.
         $urgent = ! $gallery && blank($filters['q'] ?? null) && blank($filters['view'] ?? null)

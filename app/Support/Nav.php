@@ -553,8 +553,9 @@ final class Nav
             }
             // Таб «Предложения» — то же, что в каталоге (`Offer::siteList`: открытое без сделки плюс
             // сделка, открытая менеджеру): срок вышел или идёт сделка — с сайта ушло.
-            $open = Offer::siteList($user);
-            $gallery = Offer::visibleTo($user)->inGallery();
+            // Регионы человека (22.10.2026) — как каталог по умолчанию: число — то, что он увидит, открыв раздел.
+            $open = Offer::siteList($user)->inRegionsOf($user);
+            $gallery = Offer::visibleTo($user)->inGallery()->inRegionsOf($user);
 
             // Ноль — тоже число («Покупатели 0»), нет только разделов, которых у роли нет.
             return ['totals' => array_filter([
@@ -580,7 +581,7 @@ final class Nav
                 // чип каталога; гаснет, как только открыл (`ReadOffer`). У сотрудников счётчики общие — им новые за сутки.
                 // Покупателю — по-прежнему новые за сутки: решали про менеджеров.
                 '/offers' => $user->hasRole(Role::Manager, Role::SuperBuyer)
-                    ? CatalogQuery::unread(Offer::visibleTo($user)->onSale(), $user)->count()
+                    ? CatalogQuery::unread(Offer::visibleTo($user)->onSale()->inRegionsOf($user), $user)->count()
                     : CatalogQuery::fresh(clone $open, $user)->count(),
                 '/gallery' => (clone $gallery)->where('gallery_from', '>', $day)->count(),
             ]];

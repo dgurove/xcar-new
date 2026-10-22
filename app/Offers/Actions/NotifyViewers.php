@@ -53,7 +53,8 @@ final class NotifyViewers
         $this->badges($managers);
         // Срочное — всем одно громкое «Срочно: …» (12.10.2026), без «из закупки» и «вы отмечали интерес».
         if ($offer->isUrgent()) {
-            $managers->each(fn (User $u) => $u->notify(new UrgentOfferNotice($offer, $u)));
+            // Из других регионов (22.10.2026) — без звонка: в его каталоге машины по умолчанию нет.
+            $managers->filter(fn (User $u) => $offer->regionOpenTo($u))->each(fn (User $u) => $u->notify(new UrgentOfferNotice($offer, $u)));
             $this->buyers([$offer->id => $due], collect([$offer->id => $offer]));
             if ($live) {
                 $this->publish->card($offer->number, Topics::CATALOG);
@@ -101,7 +102,7 @@ final class NotifyViewers
             }
             $ids = $viewers->pluck('user_id')->all();
             if ($offer->isUrgent()) {
-                $users->only($ids)->each(fn (User $u) => $u->notify(new UrgentOfferNotice($offer, $u)));
+                $users->only($ids)->filter(fn (User $u) => $offer->regionOpenTo($u))->each(fn (User $u) => $u->notify(new UrgentOfferNotice($offer, $u)));
                 $this->publish->card($offer->number, Topics::CATALOG);
 
                 continue;
@@ -160,7 +161,9 @@ final class NotifyViewers
                 foreach ($buyers->get($managerId, collect()) as $buyer) {
                     // Срочное — каждому покупателю менеджера, и «выбранному» тоже (видно им всем).
                     if ($offer->isUrgent()) {
-                        $buyer->notify(new UrgentOfferNotice($offer, $buyer));
+                        if ($offer->regionOpenTo($buyer)) {
+                            $buyer->notify(new UrgentOfferNotice($offer, $buyer));
+                        }
 
                         continue;
                     }
