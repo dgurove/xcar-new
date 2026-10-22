@@ -282,6 +282,11 @@ class OfferController
                     Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent'),
                     Facet::toggle('fresh', 'Новые', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.published_at', '>=', now()->subHours(Offer::NEW_HOURS)))->dot('fresh'),
                     Facet::toggle('ending', 'Горящие', fn ($o) => CatalogQuery::ending($o))->dot('hot'),
+                    // Ни одного подтверждения, приём кончается за 3 часа (22.10.2026, владелец: «ни одно предложение не должно
+                    // остаться без подтверждений»).
+                    Facet::toggle('nobids', 'Без подтверждений', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.bids_close_at', '>', now())
+                        ->where('offers.bids_close_at', '<=', now()->addHours(\App\Offers\Actions\NoBidsAlarm::HOURS))
+                        ->whereDoesntHave('bids', fn ($b) => $b->whereIn('state', [\App\Offers\BidState::Active, \App\Offers\BidState::Accepted])))->dot('hot'),
                     Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss'),
                 ] : []),
                 Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true)),
@@ -817,6 +822,30 @@ class OfferController
 
         // Из «Приём закрыт» строка уходит сразу (в «Опубликованные»), числа вкладок — следом, без обновления страницы.
         return back()->with('toast', 'Приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'))->with(self::gone($request, $offer->refresh()));
+    }
+
+    /**
+     * Горит без подтверждений (22.10.2026, владелец): «Снизить цену» — новая цена продажи на ходу, приём идёт дальше;
+     * «Уведомить менеджеров» — «Ни одного подтверждения» всем, кому машина открыта (`NoBidsAlarm::notify`).
+     */
+    public function lowerPrice(Request $request, Offer $offer, UpdateOffer $update)
+    {
+        abort_unless($offer->state === OfferState::Open, 422);
+        $raw = (int) Money::rubles($request->validate(['asking_price' => ['required', 'string', 'max:20']], ['asking_price.required' => 'Впишите цену'])['asking_price']);
+        if (! $raw || $raw >= (int) $offer->asking_price) {
+            return back()->withErrors(['asking_price' => 'Ниже нынешней '.Money::rub($offer->asking_price)]);
+        }
+        $update($offer, ['asking_price' => $raw], $request->user(), ['why' => 'Горит без подтверждений']);
+
+        return back()->with('toast', 'Цена продажи '.Money::rub($raw));
+    }
+
+    public function notifyNoBids(Request $request, Offer $offer, \App\Offers\Actions\NoBidsAlarm $alarm)
+    {
+        abort_unless($offer->state === OfferState::Open && $offer->bidsOpen(), 422);
+        $n = $alarm->notify($offer);
+
+        return back()->with('toast', $n ? 'Уведомили: '.$n.' '.\App\Support\Plural::of($n, ['менеджер', 'менеджера', 'менеджеров']) : 'Уведомлять некого');
     }
 
     /**

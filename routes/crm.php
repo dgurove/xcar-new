@@ -194,6 +194,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::delete('/garage/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);
         Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
+        Route::post('/offers/{offer}/lower-price', [OfferController::class, 'lowerPrice']);
+        Route::post('/offers/{offer}/no-bids', [OfferController::class, 'notifyNoBids'])->middleware('throttle:6,1');
         Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
         // «На аукцион» (13.10.2026): отправить сейчас или по истечении срока; DELETE — отменить или убрать с аукциона.
         Route::post('/offers/{offer}/auction', [OfferController::class, 'auction']);

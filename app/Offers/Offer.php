@@ -93,6 +93,8 @@ class Offer extends Model
         static::saving(fn (self $o) => $o->offsetUnset('viewed'));
         // `binding_panic` — вычисленное списком (`Binding::select`).
         static::saving(fn (self $o) => $o->offsetUnset('binding_panic'));
+        // `any_bids` — есть ли у машины живые подтверждения (`CatalogQuery::cards`, «Сгорает!»), без колонки.
+        static::saving(fn (self $o) => $o->offsetUnset('any_bids'));
         // Стоит у менеджера без его сделки (`held_by`, 21.10.2026) — пока машина на месте: уехала (забрали, привезли,
         // выдали с парковки) — метка гаснет.
         static::saving(function (self $o) {
@@ -179,6 +181,8 @@ class Offer extends Model
             'audience_rules' => 'array',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
+            'intake_closed_at' => 'datetime',
+            'no_bids_alerted_for' => 'datetime',
             'deal_show_until' => 'datetime',
             'binding_until' => 'datetime',
             'binding_alerted_for' => 'datetime',
@@ -1272,6 +1276,20 @@ class Offer extends Model
     }
 
     /** Горящее: до закрытия приёма меньше 12 ч. */
+    /**
+     * «Сгорает!» (22.10.2026, владелец): горящее, и подтверждений нет ни у кого — кнопка плитки рыжая. Каталог даёт
+     * `any_bids` одним подзапросом, иначе — запрос.
+     */
+    public function burningUnbid(): bool
+    {
+        if (! $this->isEndingSoon()) {
+            return false;
+        }
+        $any = $this->getAttributes()['any_bids'] ?? $this->bids()->whereIn('state', [BidState::Active, BidState::Accepted])->exists();
+
+        return ! $any;
+    }
+
     public function isEndingSoon(): bool
     {
         $left = $this->secondsLeft();

@@ -108,6 +108,8 @@ final class CatalogQuery
             $q->selectRaw("exists(select 1 from offer_reads r where r.user_id = ? and r.offer_id = offers.id and r.read_at >= coalesce(offers.published_at, '-infinity')) as viewed", [$user->id]);
         }
         if (! $gallery && ($user?->bidsOnSite() ?? false)) {
+            // «Сгорает!» (22.10.2026): есть ли у машины живые подтверждения хоть у кого — одним подзапросом.
+            $q->selectRaw('exists(select 1 from bids x where x.offer_id = offers.id and x.state in (?, ?)) as any_bids', [BidState::Active->value, BidState::Accepted->value]);
             // «Ваша цена» на карточке — своё действующее подтверждение, тем же правилом, что на странице предложения.
             $q->with(['bids' => fn ($b) => $b->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])]);
         }

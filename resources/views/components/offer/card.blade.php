@@ -106,7 +106,12 @@
         @elseif ($myBid)
             <a href="{{ $href }}" class="btn btn-get btn-get-quiet nums">{{ $myBid->isGarage() ? 'В гараж' : 'Ваша цена '.\App\Support\Money::nums($myBid->amount) }}</a>
         @elseif ($canBid)
-            <a href="{{ $href }}" class="btn btn-get">Подтвердить</a>
+            {{-- Горящее без единого подтверждения (22.10.2026, владелец): рыжая «Сгорает!» вместо «Подтвердить». --}}
+            @if ($offer->burningUnbid())
+                <a href="{{ $href }}" class="btn btn-get btn-get-burning">Сгорает!</a>
+            @else
+                <a href="{{ $href }}" class="btn btn-get">Подтвердить</a>
+            @endif
         @else
             <a href="{{ $href }}" class="btn btn-get btn-get-quiet">Открыть</a>
         @endif

@@ -115,6 +115,10 @@ final class ChangeOfferState
             if ($next === OfferState::Draft) {
                 $offer->shown_floor = null;
             }
+            // Метка «приём закрыт» в «Оцененных» (`ReturnClosedToRated`) — до следующей публикации.
+            if ($next !== OfferState::Draft) {
+                $offer->intake_closed_at = null;
+            }
             $offer->state = $next;
             // Черновик ушёл дальше (в продажу, сделку, гараж) — окно галереи закрывается сейчас, как «Убрать из
             // галереи» (`ShowInGallery::hide`): из галереи ушло, интерес остался — в «Откликах» CRM и рядом с

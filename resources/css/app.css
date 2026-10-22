@@ -438,6 +438,9 @@ html.kb-open { --home-gap: 0px; }
   .btn-get { @apply rounded-full bg-accent-soft text-sm font-semibold text-accent-text; height: 2rem; padding-inline: .875rem; gap: .375rem; flex: none; }
   @media (hover: hover) { .btn-get:hover { background: color-mix(in oklab, var(--color-accent-soft), var(--color-accent) 16%); } }
   .btn-get-quiet { @apply bg-surface-3 text-ink; }
+  /* «Сгорает!» (22.10.2026): горящее без единого подтверждения — рыжая, как полоса горящего. */
+  .btn-get-burning { background: var(--color-urgent); color: #fff; }
+  @media (hover: hover) { .btn-get-burning:hover { background: color-mix(in oklab, var(--color-urgent), #000 10%); } }
   .btn-get-done { @apply bg-surface-3 text-ink-muted; }
   @media (hover: hover) { .btn-get-quiet:hover, .btn-get-done:hover { background: var(--color-line); } }
   /* Значок-действие без подложки (чат, «Показать покупателям»): значок 22 px, цель касания 44 px, от 640 — 36.
