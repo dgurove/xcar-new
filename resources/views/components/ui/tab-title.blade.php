@@ -2,10 +2,10 @@
      «Предложений» стало восемь, «если вкладок много, их логичнее вертикально размещать»). Те же ключи и ссылки, что у
      пилюль x-ui.toolbar: pills — ключ → подпись, counts — числа, badges — лаймовый бейдж (ключ числа в counts), bumps —
      своё число для вспышки (у «Из таблицы Кати»). Числа в меню держат `data-pill-count`, как пилюли: их тикают
-     live.js и flip.js, вспыхивает кружок со стрелкой (lib/bump.js). Бейдж в другой вкладке — точка у стрелки (CSS).
-     Число у названия — число вкладки из counts (тикает с меню), без него — count с `data-shell-count`, как у h1 шелла.
+     live.js и flip.js, вспыхивает само название (lib/bump.js). Бейдж в другой вкладке — точка после названия (CSS).
+     У названия ни числа, ни стрелки (владелец 22.10.2026: «криво, смещает всё»), текущая в списке — лаймовой строкой.
      Вкладки нет в адресе (поиск) — fallback. --}}
-@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'count' => null, 'fallback' => '', 'id' => 'tab-menu'])
+@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu'])
 @php
     $action = '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -13,8 +13,8 @@
 @endphp
 <div {{ $attributes->merge(['class' => 'tab-title']) }} data-controller="menu">
     <h1 class="text-xl sm:text-2xl">
-        <button type="button" class="tab-title-btn" data-action="menu#toggle" aria-haspopup="menu" aria-controls="{{ $id }}">
-            <span>{{ $pills[$pill] ?? $fallback }} <span class="whitespace-nowrap">@if (array_key_exists($pill, $counts))<span class="nums ml-1 text-base font-normal text-ink-dim" data-pill-count="{{ $pill }}">{{ $counts[$pill] ?: '' }}</span>@elseif ($count !== null)<span class="nums ml-1 text-base font-normal text-ink-dim" data-shell-count>{{ $count }}</span>@endif<span class="tab-title-mark" data-bump><x-ui.icon name="chevron-down" class="size-4"/></span></span></span>
+        <button type="button" class="tab-title-btn" data-bump data-action="menu#toggle" aria-haspopup="menu" aria-controls="{{ $id }}">
+            {{ $pills[$pill] ?? $fallback }}
         </button>
     </h1>
     <div id="{{ $id }}" class="menu tab-title-menu" popover data-menu-target="list" role="menu">

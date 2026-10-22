@@ -38,7 +38,7 @@
     {{-- Вкладок восемь — заголовком с вертикальным списком, а не лентой пилюль (22.10.2026, владелец); действия экрана —
          в той же строке, сортировка, вид и лупа — в строке чипов. --}}
     <div class="title-row">
-        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['nofloor' => 'nofloor_given', 'unpriced' => 'unpriced_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" :count="$step || $preset === 'legacy' ? null : $offers->total()" fallback="Предложения" id="offers-tabs"/>
+        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['nofloor' => 'nofloor_given', 'unpriced' => 'unpriced_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" fallback="Предложения" id="offers-tabs"/>
         <div class="title-actions">
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить»: по одной — первая строка вкладки в карточке; из текста — сообщение с оценочными стоимостями, оно даёт
