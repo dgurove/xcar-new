@@ -7,7 +7,7 @@
     <x-ui.sheet id="bid-choice-{{ $offer->number }}" :title="$staff ? 'За какого менеджера?' : 'Подтвердить предложение?'">
         <div class="flex flex-col gap-4">
             @if ($staff)
-                <div class="fields"><x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Имя или телефон"/></div>
+                <div class="fields"><x-people.pick name="manager_id" label="Менеджер" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Выбрать менеджера"/></div>
             @endif
             <button type="submit" name="kind" value="buyer" class="btn btn-accent w-full nums" data-bid-target="buyer"><span>Для покупателя<span data-bid-target="sum" hidden></span></span></button>
             @if ($garage)

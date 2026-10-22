@@ -108,7 +108,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/estimate', [EstimateController::class, 'store'])->middleware('ability:isManager');
     Route::post('/offers/{offer}/estimate/decline', [EstimateController::class, 'decline'])->middleware('ability:isManager');
     // Админ подтверждает за менеджера — выбор в шторке «За какого менеджера?».
-    Route::get('/reference/managers', [ReferenceController::class, 'managers'])->middleware('ability:isAdmin');
     Route::post('/confirmations/{bid}/withdraw', [BidController::class, 'withdraw']);
     Route::post('/offers/{offer}/interest', [InterestController::class, 'store'])->middleware('throttle:30,1');
     Route::delete('/offers/{offer}/interest', [InterestController::class, 'destroy']);

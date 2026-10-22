@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Logistics\Client;
 use App\Logistics\Depot;
 use App\Logistics\Transport;
+use App\Users\Role;
 use App\Users\User;
 use Illuminate\Support\Collection;
 
@@ -34,6 +35,24 @@ final class People
         };
 
         return ['id' => $p->id, 'name' => $p->name, 'sub' => $sub ?: null, 'user' => $p];
+    }
+
+    /**
+     * Все менеджеры строками — «Кому» в «Отдать», «За менеджера», «+ Интерес» (22.10.2026: справочник `/reference/managers`
+     * отдавал первых двадцать по имени, и Сахиба в выпадающем списке не было). Раз на запрос: на странице таких шторок несколько.
+     */
+    public static function managers(): Collection
+    {
+        return once(fn () => self::rows(User::withRole(Role::Manager)->where('is_demo', false)->whereNull('rejected_at')
+            ->with(User::withAvatar())->orderBy('name')->get()));
+    }
+
+    /** Покупатели с гаражом по тумблеру — «Отдать → В гараж → Покупателю»; подпись — супер-покупатель или чей покупатель. */
+    public static function garageBuyers(): Collection
+    {
+        return once(fn () => User::garageBuyers()->with(['manager:id,name', ...User::withAvatar()])->orderBy('name')->get()
+            ->map(fn (User $u) => self::row($u, $u->isSuperBuyer() ? 'супер-покупатель' : ($u->manager ? 'покупатель '.$u->manager->shortName() : 'покупатель')))
+            ->values());
     }
 
     /** @return Collection<int, Row> */

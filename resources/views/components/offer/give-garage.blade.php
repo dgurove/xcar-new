@@ -27,14 +27,14 @@
     @endunless
     @if ($toBuyer)
         <div class="fields" data-reveal-target="pane" data-reveal-key="buyer" @if ($whom !== 'buyer') hidden @endif>
-            <x-ui.combobox name="manager_id" label="Покупатель" url="/reference/garage-buyers" placeholder="Кому отдаём" :id="$prefix.'-garage-buyer'"/>
+            <x-people.pick name="manager_id" label="Покупатель" kind="garage-buyer" :people="\App\Support\People::garageBuyers()" title="Покупатель" placeholder="Кому отдаём"/>
             <x-ui.field name="buyer_price" label="Цена для покупателя, ₽" :value="old('buyer_price', $offer->asking_price)" :id="$prefix.'-garage-buyer-price'" required/>
         </div>
     @endif
     <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="manager" @if ($whom !== 'manager') hidden @endif>
         @unless ($bid)
             <div class="fields">
-                <x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Кому отдаём" :id="$prefix.'-garage-manager'"/>
+                <x-people.pick name="manager_id" label="Менеджер" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Кому отдаём"/>
             </div>
         @endunless
         @if ($buyerBid)

@@ -18,7 +18,7 @@
                 <x-ui.segment name="kind" :options="['buyer' => 'Для покупателя', 'garage' => 'В гараж']" :value="old('kind', 'buyer')" pick/>
             @endif
             <div class="fields">
-                <x-ui.combobox name="manager_id" label="Менеджер" url="/reference/managers" placeholder="Имя или телефон" :value="old('manager_id')" :id="$id.'-manager'"/>
+                <x-people.pick name="manager_id" label="Менеджер" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Выбрать менеджера"/>
                 <div class="contents" data-reveal-target="pane" data-reveal-key="buyer" @if (old('kind') === 'garage') hidden @endif>
                     <x-ui.field name="amount" label="Цена, ₽" :value="old('amount')"
                         :placeholder="$min ? 'Минимальная '.\App\Support\Money::nums($min) : null" id="{{ $id }}-amount"/>

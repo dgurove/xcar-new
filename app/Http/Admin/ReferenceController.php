@@ -13,8 +13,6 @@ use App\Cars\Transmission;
 use App\Cars\Vin\VinAutofill;
 use App\Support\Liters;
 use App\Support\Surface;
-use App\Users\Role;
-use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 
@@ -99,27 +97,6 @@ class ReferenceController
         $place = Settlement::free($request->validate(['name' => ['required', 'string', 'max:120']])['name']);
 
         return response()->json(['id' => $place['id'], 'label' => $place['title']]);
-    }
-
-    /** Менеджеры по имени или телефону — «Подтверждение за менеджера». */
-    public function managers(Request $request)
-    {
-        $q = trim((string) $request->query('q', ''));
-        $users = User::withRole(Role::Manager)
-            ->search($q)
-            ->orderBy('name')->limit(20)->get(['id', 'name', 'phone']);
-
-        return response()->json($users->map(fn ($u) => ['id' => $u->id, 'label' => $u->name, 'hint' => $u->phone ? $u->phoneFormatted() : null]));
-    }
-
-    /** Покупатели с гаражом по тумблеру — «Отдать → В гараж → Покупателю» (20.10.2026); подпись — роль и чей покупатель. */
-    public function garageBuyers(Request $request)
-    {
-        $users = User::garageBuyers()->search(trim((string) $request->query('q', '')))->with('manager:id,name')
-            ->orderBy('name')->limit(20)->get(['id', 'name', 'phone', 'roles', 'manager_id']);
-
-        return response()->json($users->map(fn ($u) => ['id' => $u->id, 'label' => $u->name,
-            'hint' => $u->isSuperBuyer() ? 'супер-покупатель' : ($u->manager ? 'покупатель '.$u->manager->shortName() : 'покупатель')]));
     }
 
     public function models(Request $request)

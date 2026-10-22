@@ -22,7 +22,7 @@
     @error('give')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
     @unless ($bid)
         <div class="fields">
-            <x-ui.combobox name="manager_id" label="Кому" url="/reference/managers" placeholder="Имя или телефон" :id="$prefix.'-deal-manager'" required/>
+            <x-people.pick name="manager_id" label="Кому" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Выбрать менеджера" required/>
             <x-ui.field name="amount" label="Цена менеджеру, ₽" :value="$amount ? Money::nums($amount) : null" :id="$prefix.'-amount'" required
                 data-commission-target="price" data-action="input->commission#input"/>
         </div>
