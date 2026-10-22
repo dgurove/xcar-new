@@ -662,28 +662,13 @@ function systemTheme() {
     document.addEventListener('turbo:render', paintBar);
 }
 
-// Шапка знает, что под ней: is-scrolled — страница сдвинута (линия), is-past-title —
-// h1 ушёл под шапку (заголовок собирается в центр). Только на телефоне.
+// Шапка знает, что под ней: is-scrolled — страница сдвинута (волосяная линия). Заголовка экрана в шапке нет — там всегда
+// логотип (22.10.2026, владелец).
 function headerState() {
-    let observer = null;
-    const header = () => document.getElementById('header');
-    const onScroll = () => header()?.classList.toggle('is-scrolled', scrollTop() > 4);
+    const onScroll = () => document.getElementById('header')?.classList.toggle('is-scrolled', scrollTop() > 4);
     onPageScroll(onScroll);
-    const watch = () => {
-        observer?.disconnect();
-        onScroll();
-        // Якорь — h1, а где его нет (кабинет: разделом называется пилюля) — помеченный элемент.
-        // Спрятанный на телефоне h1 (шелл, phone-heading=false) не в счёт — берётся видимый.
-        const h1 = [...document.querySelectorAll('#main h1, #main [data-title-anchor]')].find((el) => el.offsetParent !== null);
-        const h = header();
-        if (!h1 || !h) { h?.classList.remove('is-past-title'); return; }
-        observer = new IntersectionObserver(([entry]) => {
-            h.classList.toggle('is-past-title', !entry.isIntersecting && entry.boundingClientRect.top < 0);
-        }, { rootMargin: `-${h.offsetHeight}px 0px 0px 0px` });
-        observer.observe(h1);
-    };
-    document.addEventListener('turbo:load', watch);
-    document.addEventListener('turbo:render', watch);
+    document.addEventListener('turbo:load', onScroll);
+    document.addEventListener('turbo:render', onScroll);
 }
 
 // Активная пилюля ленты — в кадре, а не за краем экрана.

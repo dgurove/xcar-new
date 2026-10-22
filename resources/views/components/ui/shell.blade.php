@@ -10,7 +10,7 @@
      :back — уточнить (для обоих), :phone-back — только для телефона, :back="false" — убрать; :back-row="false" — «назад» только в шапке телефона, без ряда на десктопе.
      :desktop-heading="false" — ряд с h1 только на телефоне (кабинет: на ПК раздел называет пилюля).
      :phone-heading="false" — на телефоне ряд с h1 спрятан: раздел уже назван в таб-баре, его место
-     занимает лента пилюль тулбара (она же якорь для имени в шапке при прокрутке).
+     занимает лента пилюль тулбара.
      :detail — список с карточкой строки рядом (App\Support\Detail): всё содержимое слева, фрейм detail справа
      колонкой на ПК и нижним листом на телефоне; пустой фрейм — список во всю ширину.
      Документ не листается (22.10.2026): шапка, #scroller (содержимое и подвал) и таб-бар — три ряда колонки, листается
@@ -30,7 +30,7 @@
     $back = $back === false ? null : ($back ?? \App\Support\Nav::backFor($path, auth()->user()));
 @endphp
 <x-ui.layout :title="$title" :cache="$cache" :description="$description" :index="$index" class="app-shell">
-    <x-ui.header :back="$phoneBack" :heading="$overHero ? null : ($heading ?? $title)"/>
+    <x-ui.header :back="$phoneBack"/>
     <div id="scroller" class="app-scroll">
 
     {{-- Запас под таб-бар и плашку действий: везде, где нет подвала (у него свой запас) — CRM, стоянка, приложение

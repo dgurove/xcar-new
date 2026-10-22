@@ -1,7 +1,7 @@
 {{-- Шапка всех четырёх хостов одним видом (11.10.2026, владелец: «разные, разного размера»). Телефон: логотип по
      центру, квадраты по бокам. Десктоп: знак и два ряда капсул — справочное и разделы; «назад» здесь только на телефоне,
      на десктопе он у заголовка (x-ui.back). --}}
-@props(['back' => null, 'heading' => null])
+@props(['back' => null])
 @php
     $surface = \App\Support\Surface::current();
     $park = $surface === \App\Support\Surface::Park;
@@ -47,8 +47,6 @@
             @endif
             <span class="contents" data-theme-phone><x-ui.header-btn name="theme"/></span>
         </div>
-        {{-- Заголовок экрана собирается в шапку, когда h1 ушёл под неё (app.js → .is-past-title). --}}
-        @if ($heading)<span class="header-title" aria-hidden="true">{{ $heading }}</span>@endif
     </div>
 
     {{-- Десктоп --}}

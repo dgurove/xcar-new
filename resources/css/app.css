@@ -359,7 +359,7 @@ html.kb-open { --home-gap: 0px; }
   @keyframes pop-under  { from { transform: translateX(-30%); filter: brightness(.9); } }
   @media (prefers-reduced-motion: reduce) {
     ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
-    .sheet, .sheet::backdrop, .split-detail, .tabbar, .toast, .card-media img, .card-dot, .card-star, .card-arrow, .btn, .card, .header-title, .confirm { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    .sheet, .sheet::backdrop, .split-detail, .tabbar, .toast, .card-media img, .card-dot, .card-star, .card-arrow, .btn, .card, .confirm { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }
 
 }
@@ -2696,21 +2696,12 @@ html.kb-open { --home-gap: 0px; }
   /* Плашка, в которой видимых кнопок нет («Сохранить изменения» ждёт правки), не рисуется (то же условие — у --action). */
   .action-bar:not(:has(> .action-bar-inner > :not([hidden], [type="hidden"], template))) { display: none; }
 
-  /* Шапка — как navigation bar: волосяная линия и заголовок экрана по центру
-     появляются, когда содержимое ушло под неё (.is-scrolled / .is-past-title). */
+  /* Шапка — как navigation bar: волосяная линия появляется, когда содержимое ушло под неё (.is-scrolled). В центре —
+     всегда логотип, заголовка экрана в шапке нет никогда (22.10.2026, владелец: «всегда, без исключений»). */
   .header { @apply relative z-(--z-chrome) text-ink; flex: none; padding-top: var(--safe-top); }
   .header > div { position: relative; }
   .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: var(--hairline); background: var(--color-hairline); opacity: 0; transition: opacity var(--dur-fast); }
   .header.is-scrolled::after { opacity: 1; }
-  .header-title {
-    position: absolute; left: 50%; top: 50%; translate: -50% calc(-50% + 6px); max-width: 45%; pointer-events: none;
-    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--text-lg); font-weight: 500; line-height: 1.2;
-    opacity: 0; transition: opacity var(--dur-fast), translate var(--dur-fast) var(--ease-out);
-  }
-  .header.is-past-title .header-title { opacity: 1; translate: -50% -50%; }
-  /* Центр телефона занят логотипом на всех хостах — он уступает место заголовку. */
-  @media (max-width: 1023.98px) { .header.is-past-title .header-brand { opacity: 0; } }
-  .header-brand { transition: opacity var(--dur-fast); }
 
   /* Капсула — тон поверх полосы шапки, полупрозрачная в обеих темах. */
   .header-btn {
@@ -3099,8 +3090,6 @@ html.kb-open { --home-gap: 0px; }
   @media (hover: hover) { .landing-quiet:hover { background: rgb(255 255 255 / .9); } .dark .landing-quiet:hover { background: rgb(255 255 255 / .2); } }
   .landing-sheet { position: relative; z-index: 2; background: var(--color-ground);
     border-radius: calc(var(--radius-xl) * 1.5 * (1 - var(--dock, 0))) calc(var(--radius-xl) * 1.5 * (1 - var(--dock, 0))) 0 0; }
-  /* Заголовка экрана в шапке у лендинга нет — логотип остаётся на месте. */
-  body:has(.landing) .header.is-past-title .header-brand { opacity: 1; }
   body:has(.landing) .footer { position: relative; z-index: 2; background: var(--color-ground); }
   @media (prefers-reduced-motion: reduce) {
     .landing-bg .parking-photo, .landing-hero-body { transform: none; }
@@ -4152,7 +4141,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
 /* ------------------------------------------------------------- системный шрифт хрома */
 
 @layer components {
-  .tabbar, .header-btn, .header-title, .btn, .pill, .field-input, .field-label, .field-error, .choice span, .check,
+  .tabbar, .header-btn, .btn, .pill, .field-input, .field-label, .field-error, .choice span, .check,
   .chip, .tag, .mark, .badge, .sheet, .toast, .banner, .action-bar, .combobox-list, .swipe-btn, .net, .crumbs, .empty, .empty-line {
     font-family: var(--font-ui);
     letter-spacing: normal;
