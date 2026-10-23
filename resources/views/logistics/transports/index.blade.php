@@ -26,7 +26,7 @@
             </x-ui.table>
             @if ($transports instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator)<x-ui.pager :of="$transports"/>@endif
             @if ($pick)
-                <x-ui.action-bar data-pick-target="bar" hidden>
+                <x-ui.action-bar class="action-bar--pick" data-pick-target="bar" hidden>
                     <div class="contents" data-controller="sheet">
                         <x-ui.button type="button" variant="secondary" class="min-w-0 flex-1" data-action="sheet#open">Отменить</x-ui.button>
                         <x-ui.sheet id="transports-cancel" title="Отменить вывоз">

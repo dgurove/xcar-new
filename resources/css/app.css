@@ -209,7 +209,7 @@
 /* Плашка действий на экране — та, у которой есть видимая кнопка (как в `.action-bar:not(:has(…))` у самой плашки):
    скрытая (`hidden`, «Сохранить изменения», ждущая правки, служебные скрытые поля формы) и плашка внутри карточки строки
    (у листа свой подвал) места у страницы не берут. */
-:root:has(.action-bar:not([hidden], .split-detail .action-bar) > .action-bar-inner > :not([hidden], [type="hidden"], template)) { --action: 1; }
+:root:has(.action-bar:not([hidden], .split-detail .action-bar, .action-bar--pick) > .action-bar-inner > :not([hidden], [type="hidden"], template)) { --action: 1; }
 /* От планшета таб-бара нет, кнопки действий парят справа внизу. */
 @media (min-width: 768px) {
   :root { --spacing-header: 80px; --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * 6rem); } /* шапка: py-2 + два ряда по 30 px + 4 px между */
@@ -2930,6 +2930,13 @@ html.kb-open { --home-gap: 0px; }
     position: fixed; inset-inline: 0; z-index: var(--z-action);
     bottom: var(--bottom-edge);
     border-top: var(--hairline) solid var(--color-hairline);
+  }
+  /* Плашка выбора галочками («Отправить в продажу», «Перенести», «Назначить» логистики, 23.10.2026, владелец: на
+     iPhone при выделении кнопка пропадала) на телефоне — не fixed-слой поверх прокрутки, а последний кусок списка, что
+     липнет к низу #scroller (= верх таб-бара): fixed внутри прокручиваемой середины iOS рисует как вздумается, у липкого
+     своего слоя нет. Во всю ширину навылет за поля контейнера. Места у страницы она не берёт (--action её не считает). */
+  @media (max-width: 767.98px) {
+    .action-bar.action-bar--pick { position: sticky; bottom: 0; margin-inline: -1rem; margin-top: 1.5rem; }
   }
   /* Высота — не меньше --spacing-action (кнопка 3.5rem и по .75rem), край не входит; выше — растёт, а не вылезает на таб-бар. */
   .action-bar-inner { @apply flex items-center gap-3 py-3; min-height: var(--spacing-action); width: 100%; max-width: var(--container-site); margin-inline: auto; padding-inline: 1rem; }
