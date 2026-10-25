@@ -1,20 +1,21 @@
 {{-- «Оценить → Из текста» (владелец, 05.10.2026): вставили сообщение с оценочными стоимостями — разбор этапами
      с анимацией (valuation_controller), итог группами и «Всё верно, сохранить». Сервер — OfferValuationController.
      Фото или скриншот (22.10.2026) — кнопкой «Фото», перетаскиванием в окно или ⌘V картинки: OCR даёт текст «номер сумма»
-     в поле (`ValuationPhoto`), уверенный — сразу в разбор. --}}
+     в поле (`ValuationPhoto`), уверенный — сразу в разбор. Таблица Excel (25.10.2026, Альфа присылает файлом) — той же
+     кнопкой «Файл», перетаскиванием или вставкой: `ValuationSheet` даёт тот же текст. --}}
 @php
     $steps = ['clean' => 'Убираем лишнее', 'match' => 'Ищем предложения', 'drop' => 'Убираем ненайденные', 'value' => 'Ставим оценочные', 'floor' => 'Считаем закупочные', 'done' => 'Готово'];
 @endphp
-<x-ui.sheet id="valuation" title="Оценка из текста" tall class="sheet-valuation">
-    <div class="valuation" data-controller="valuation" data-valuation-url-value="/offers/valuations/preview" data-valuation-photo-url-value="/offers/valuations/photo"
+<x-ui.sheet id="valuation" title="Оценка из текста или файла" tall class="sheet-valuation">
+    <div class="valuation" data-controller="valuation" data-valuation-url-value="/offers/valuations/preview" data-valuation-file-url-value="/offers/valuations/file"
          data-action="dragover->valuation#dragOver dragleave->valuation#dragLeave drop->valuation#drop">
         <section class="valuation-pane" data-valuation-target="paste">
-            <textarea class="field-input valuation-text" rows="6" placeholder="Вставьте сообщение или скриншот: номер убытка, сумма, VIN, город" autocomplete="off" spellcheck="false"
+            <textarea class="field-input valuation-text" rows="6" placeholder="Вставьте сообщение, скриншот или таблицу: номер убытка, сумма, VIN, город" autocomplete="off" spellcheck="false"
                       data-valuation-target="text" data-action="paste->valuation#pasted"></textarea>
             <div class="mt-3 flex gap-2">
-                <label class="btn btn-quiet shrink-0" data-valuation-target="photoBtn">
-                    <x-ui.icon name="photo" class="size-5"/><span data-valuation-target="photoLabel">Фото</span>
-                    <input type="file" accept="image/*" class="sr-only" data-action="change->valuation#photo">
+                <label class="btn btn-quiet shrink-0" data-valuation-target="fileBtn">
+                    <x-ui.icon name="clip" class="size-5"/><span data-valuation-target="fileLabel">Файл</span>
+                    <input type="file" accept="image/*,.xlsx,.xls,.csv,.ods" class="sr-only" data-action="change->valuation#pick">
                 </label>
                 <x-ui.button type="button" class="min-w-0 flex-1" data-action="valuation#run">Разобрать</x-ui.button>
             </div>

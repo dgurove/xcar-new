@@ -11,13 +11,17 @@ import { plural } from '../lib/plural.js';
 // строк с галками и «Всё верно, сохранить (N)». Без анимаций (prefers-reduced-motion) — то же самое сразу.
 const sleep = (ms) => new Promise((r) => setTimeout(r, calm() ? 0 : ms));
 
+// Что можно прочитать файлом: картинка (OCR) или таблица Excel.
+const SHEET = /\.(xlsx|xls|csv|ods)$/i;
+const readable = (f) => f.type.startsWith('image/') || SHEET.test(f.name);
+
 export default class extends Controller {
-    static targets = ['paste', 'text', 'work', 'lines', 'done', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'summary', 'photoBtn', 'photoLabel'];
-    static values = { url: String, photoUrl: String };
+    static targets = ['paste', 'text', 'work', 'lines', 'done', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'summary', 'fileBtn', 'fileLabel'];
+    static values = { url: String, fileUrl: String };
 
     pasted(event) {
-        // Скриншот из буфера — фото, а не текст.
-        const file = [...(event.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
+        // Скриншот или файл таблицы из буфера — файл, а не текст.
+        const file = [...(event.clipboardData?.files ?? [])].find(readable);
         if (file) {
             event.preventDefault();
             return this.read(file);
@@ -26,7 +30,7 @@ export default class extends Controller {
         setTimeout(() => this.run(), 0);
     }
 
-    photo(event) {
+    pick(event) {
         const file = event.target.files?.[0];
         event.target.value = '';
         if (file) this.read(file);
@@ -45,27 +49,28 @@ export default class extends Controller {
 
     drop(event) {
         this.element.classList.remove('is-dragging');
-        const file = [...(event.dataTransfer?.files ?? [])].find((f) => f.type.startsWith('image/'));
+        const file = [...(event.dataTransfer?.files ?? [])].find(readable);
         if (!file || this.pasteTarget.hidden) return;
         event.preventDefault();
         this.read(file);
     }
 
-    // Фото → текст «номер сумма» в поле (OCR на сервере, ValuationPhoto). Уверенный — сразу в разбор; спорную сумму
-    // человек видит в поле и жмёт «Разобрать» сам.
+    // Фото или таблица → текст «номер сумма» в поле (на сервере: OCR — ValuationPhoto, Excel — ValuationSheet).
+    // Уверенный — сразу в разбор; спорную сумму человек видит в поле и жмёт «Разобрать» сам.
     async read(file) {
         if (this.busy || this.reading) return;
+        const sheet = SHEET.test(file.name);
         this.reading = true;
-        this.photoBtnTarget.classList.add('is-busy');
-        this.photoLabelTarget.textContent = 'Читаем фото';
+        this.fileBtnTarget.classList.add('is-busy');
+        this.fileLabelTarget.textContent = sheet ? 'Читаем таблицу' : 'Читаем фото';
         const body = new FormData();
-        body.append('photo', await shrink(file, { max: 2400, quality: 0.92 }));
-        const data = await getJson(this.photoUrlValue, { method: 'POST', body, timeout: 60_000 });
+        body.append('file', sheet ? file : await shrink(file, { max: 2400, quality: 0.92 }));
+        const data = await getJson(this.fileUrlValue, { method: 'POST', body, timeout: 60_000 });
         this.reading = false;
-        this.photoBtnTarget.classList.remove('is-busy');
-        this.photoLabelTarget.textContent = 'Фото';
+        this.fileBtnTarget.classList.remove('is-busy');
+        this.fileLabelTarget.textContent = 'Файл';
         if (!data) return;
-        if (!data.text) return window.toast?.('На фото не нашли номеров убытка');
+        if (!data.text) return window.toast?.(sheet ? 'В таблице не нашли номеров убытка' : 'На фото не нашли номеров убытка');
         this.textTarget.value = data.text;
         if (data.sure) this.run();
         else window.toast?.('Проверьте суммы и нажмите «Разобрать»');

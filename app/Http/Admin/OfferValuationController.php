@@ -9,6 +9,7 @@ use App\Offers\Actions\MatchValuations;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
 use App\Offers\ValuationPhoto;
+use App\Offers\ValuationSheet;
 use App\Offers\ValuationText;
 use App\Park\Sale;
 use Illuminate\Http\Request;
@@ -24,10 +25,22 @@ use Illuminate\Support\Str;
  */
 final class OfferValuationController
 {
-    /** Фото или скриншот сообщения → текст «номер сумма» (`ValuationPhoto`); `sure` — сразу в разбор, иначе на проверку. */
-    public function photo(Request $request)
+    /**
+     * Фото или скриншот сообщения (`ValuationPhoto`) или таблица Excel (`ValuationSheet`, 25.10.2026) → текст «номер
+     * сумма»; `sure` — сразу в разбор, иначе на проверку.
+     */
+    public function file(Request $request)
     {
-        $file = $request->validate(['photo' => ['required', 'file', 'image', 'max:15360']])['photo'];
+        $file = $request->validate(['file' => ['required', 'file', 'max:15360']])['file'];
+        $ext = strtolower($file->getClientOriginalExtension());
+        if (in_array($ext, ValuationSheet::EXTENSIONS, true)) {
+            try {
+                return response()->json(ValuationSheet::read($file->getRealPath()));
+            } catch (\Throwable) {
+                return response()->json(['text' => '', 'sure' => false]);
+            }
+        }
+        abort_unless(str_starts_with((string) $file->getMimeType(), 'image/'), 422, 'Нужна картинка или таблица');
 
         return response()->json(ValuationPhoto::read($file->getRealPath()));
     }

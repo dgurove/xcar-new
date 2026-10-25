@@ -47,13 +47,13 @@
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить» — только в «Без закупочной»: круглой «₽» с меню (22.10.2026, владелец: в «Без продажной» кнопка не нужна
                  — строка сама «Оценить», а кнопки должны влезть в строку заголовка). Из текста — сообщение или фото с номерами
-                 убытка и суммами. --}}
+                 убытка и суммами, таблица Excel. --}}
             @if ($preset === 'nofloor' && ! $searching)
                 <div class="contents" data-controller="menu sheet">
                     <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 text-base font-medium" data-action="menu#toggle" aria-haspopup="menu" aria-controls="rate-menu" aria-label="Оценить">₽</button>
                     <div id="rate-menu" class="menu" popover data-menu-target="list" role="menu">
                         <a href="/?preset={{ $preset }}&peek=first" class="menu-item" role="menuitem" data-action="menu#close">Оценить по одной</a>
-                        <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close sheet#open">Оценить из текста</button>
+                        <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close sheet#open">Оценить из текста или файла</button>
                     </div>
                     <x-offer.valuation-sheet/>
                 </div>
