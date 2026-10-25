@@ -1101,12 +1101,27 @@ html.kb-open { --home-gap: 0px; }
   /* Поле не совпадает с лотом Мигторга: «!» у подписи, нажатие — строка «На Мигторге: …» под полем. */
   .migtorg-diff { @apply ml-1.5 inline-flex size-4 items-center justify-center rounded-full align-[1px] text-[11px] font-semibold leading-none text-white; background: var(--color-urgent); }
   .field-note { @apply mt-1 text-sm; color: var(--color-urgent); }
-  /* «Оценить → Из текста» (valuation_controller): этапы с кольцом и галкой, строки текста схлопываются, номера и суммы
-     загораются, итог считается счётчиком, в конце большая галка рисуется обводкой. */
-  .valuation-text { @apply resize-none font-mono text-sm; height: 18rem; }
-  /* Фото перетаскивают в окно — поле загорается лаймом; читаем — кнопка «Фото» бледная и не жмётся. */
-  .valuation.is-dragging .valuation-text { background: var(--color-accent-soft); }
-  .valuation [data-valuation-target="photoBtn"].is-busy { @apply pointer-events-none opacity-60; }
+  /* «Оценить → Из текста» (valuation_controller, 25.10.2026 как в приложении): источник строками, файл карточкой с
+     кольцом хода, этапы с кольцом и галкой, строки текста схлопываются, итог — сегмент по группам и карточки, в конце
+     экран «Готово» с галкой обводкой. */
+  .valuation-body { @apply flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto; overscroll-behavior: contain; }
+  .valuation-sources .row { @apply w-full cursor-pointer; }
+  /* Перетащили файл в окно — источник загорается лаймом. */
+  .valuation.is-dragging .valuation-sources, .valuation.is-dragging .valuation-text { background: var(--color-accent-soft); }
+  .valuation-key { @apply hidden rounded-md bg-surface-3 px-1.5 py-0.5 font-sans text-xs text-ink-muted; }
+  @media (hover: hover) and (pointer: fine) { .valuation-key { @apply inline-block; } }
+  .valuation-file-icon { @apply flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-(--radius-s) bg-surface-3; }
+  .valuation-file-icon img { @apply size-full object-cover; }
+  .valuation-file-sheet { @apply text-xs font-medium; color: oklch(0.55 0.13 150); }
+  .valuation-file .valuation-mark { @apply size-6; }
+  .valuation-file[data-state="read"] .valuation-ring { border-top-color: var(--color-accent); animation: spin .8s linear infinite; }
+  .valuation-file:not([data-state="read"]) .valuation-ring { @apply hidden; }
+  .valuation-file[data-state="done"] .valuation-tick { @apply block; animation: valuation-draw .35s ease-out forwards; }
+  .valuation-file[data-state="fail"] .row-sub { color: var(--color-danger); }
+  .valuation-file[data-state="read"] .valuation-file-x, .valuation-file[data-state="done"] .valuation-file-x { @apply hidden; }
+  .valuation-file:not([data-state="done"]) .valuation-tick { @apply hidden; }
+  .valuation-note { @apply text-sm; color: var(--color-urgent); }
+  .valuation-text { @apply resize-none text-[16px] leading-snug; min-height: 6rem; max-height: 40dvh; }
   .valuation-steps { @apply flex flex-col gap-2.5; }
   .valuation-step { @apply flex items-center gap-3 text-ink-dim transition-colors; }
   .valuation-step:not([data-state="wait"]) { @apply text-ink; }
@@ -1115,67 +1130,76 @@ html.kb-open { --home-gap: 0px; }
   .valuation-ring { @apply size-4 rounded-full; border: 2px solid color-mix(in oklab, var(--color-ink) 14%, transparent); }
   .valuation-step[data-state="run"] .valuation-ring { border-top-color: var(--color-accent); animation: spin .8s linear infinite; }
   .valuation-step[data-state="done"] .valuation-ring { @apply hidden; }
-  .valuation-tick { @apply absolute inset-0 hidden size-5; fill: none; stroke: var(--color-accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; }
+  .valuation-tick { @apply absolute inset-0 hidden size-full; fill: none; stroke: var(--color-accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; }
   .valuation-step[data-state="done"] .valuation-tick { @apply block; animation: valuation-draw .35s ease-out forwards; }
   .valuation-lines { @apply mt-4 max-h-[40dvh] overflow-hidden text-sm; mask-image: linear-gradient(to bottom, #000 80%, transparent); }
   .valuation-line { @apply truncate rounded-md px-2 py-0.5 text-ink-dim transition-colors duration-300; }
   .valuation-line.is-kept { @apply text-ink; background: var(--color-accent-soft); }
-  .valuation-ok { @apply size-5 flex-none; fill: none; stroke: var(--color-accent); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+  .valuation-ok { @apply size-16 flex-none; fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
   .valuation-ok circle { stroke-dasharray: 176; stroke-dashoffset: 176; animation: valuation-draw .5s ease-out forwards; }
   .valuation-ok path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .3s .35s ease-out forwards; }
-  .valuation-group > summary { @apply cursor-pointer list-none; }
-  .valuation-group > summary::-webkit-details-marker { display: none; }
-  .valuation-sum { @apply flex shrink-0 flex-col items-end text-sm leading-snug; }
+  .valuation-done-body { @apply flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center; }
+  .valuation-done-body h3 { @apply mt-2 text-lg; }
   .valuation-row .valuation-floor { @apply text-ink-muted; }
   .valuation-row.is-pending:not(.show-floor) .valuation-floor { opacity: 0; }
   .valuation-row.show-floor .valuation-floor { transition: opacity .3s; }
-  /* Окно одной высоты: прокручивается только то, что внутри шага (строки текста, итог), плашка кнопок всегда внизу. */
+  /* Окно одной высоты: прокручивается только то, что внутри шага, плашка кнопок всегда внизу. */
   .sheet-valuation[open] { @apply flex flex-col overflow-hidden; }
   @media (min-width: 640px) { .sheet-valuation { height: min(46rem, calc(100dvh - 4rem)); } }
-  /* Пока только вставляют — шторка по содержимому, поле в шесть строк (владелец 05.10.2026: «вдвое меньше»); во весь
-     рост — с началом разбора (`is-working`, valuation_controller). */
+  /* Пока выбирают источник — шторка по содержимому; во весь рост — с началом разбора (`is-working`). */
   .sheet-valuation:not(:has(.valuation.is-working)) { height: fit-content; }
   @media (max-width: 639.98px) {
-    .sheet-valuation.sheet-tall:not(:has(.valuation.is-working)) { height: fit-content; border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-top: 1.25rem; }
+    .sheet-valuation.sheet-tall:not(:has(.valuation.is-working)) { height: fit-content; max-height: 85dvh; border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-top: 1.25rem; }
   }
   .sheet-valuation > .valuation { @apply flex min-h-0 flex-1 flex-col; }
   .valuation-pane { @apply flex min-h-0 flex-1 flex-col; }
-  .valuation-pane[hidden] { display: none; }
-  /* Этапы — по высоте содержимого; пока итога нет, строки текста под ними занимают остаток и листаются. */
+  .valuation-pane[hidden], .valuation-work[hidden], .valuation [hidden] { display: none; }
+  /* Этапы — по высоте содержимого; пока итога нет, строки текста под ними занимают остаток. */
   .valuation-work { @apply flex min-h-0 flex-none flex-col overflow-y-auto pb-3; }
-  .valuation-work[hidden] { display: none; }
   .sheet-valuation .valuation:not(:has(> [data-valuation-target="result"]:not([hidden]))) .valuation-work { @apply flex-1; }
-  .valuation-summary { @apply flex flex-none items-center gap-2 px-1 pb-3 text-sm text-ink-muted; }
-  .valuation-summary[hidden] { display: none; }
   .valuation-scroll { @apply -mx-1 min-h-0 flex-1 overflow-y-auto px-1; overscroll-behavior: contain; }
-  .valuation-scroll .valuation-group:first-child > summary { @apply pt-0; }
+  /* Сегмент групп: липнет сверху списка, на узком листается вбок, а не жмёт подписи. */
+  .valuation-tabs { @apply sticky top-0 z-[2] mb-3 flex overflow-x-auto; scrollbar-width: none; }
+  .valuation-tabs::-webkit-scrollbar { display: none; }
+  .valuation-tabs button { @apply flex min-h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm text-ink-muted; }
+  .valuation-tabs button span { @apply text-ink-dim; }
+  .valuation-tabs button[aria-selected="true"] { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
+  .valuation-all { @apply mb-2 ml-auto block text-sm text-accent-text; }
+  .valuation-what { @apply flex-none pt-3 text-center text-sm text-ink-muted; }
+  .valuation-what:empty { display: none; }
   .valuation-bar { @apply flex flex-none gap-2 pt-3; }
-  /* Карточка изменений на машину: шапка (ТС, номер убытка, галка) и строки «поле — было → станет». Новое — лаймом,
-     заменяемое — зачёркнутым; «Оставить» в споре по сумме меняет их местами (`is-keep` на карточке). */
-  .valuation-card { @apply px-4 py-2.5; }
+  /* Карточка изменений на машину: шапка (тип, ТС, вендор с номером, галка) и фраза «поле было → станет». Новое — лаймом,
+     заменяемое — зачёркнутым; «Оставить» в споре по сумме меняет их местами (`is-keep`); снятая галка — бледная. */
+  .valuation-card { @apply px-4 py-2.5 transition-opacity; }
+  .valuation-card.is-off .valuation-facts, .valuation-card.is-off .valuation-gaps { opacity: .45; }
   .valuation-card-head { @apply flex items-start gap-3 leading-snug; }
-  .valuation-fields { @apply mt-1.5 grid grid-cols-[6.5rem_minmax(0,1fr)] items-baseline gap-x-3 gap-y-0.5 text-sm leading-snug; }
-  .valuation-fields dt { @apply text-ink-muted; }
-  .valuation-fields dd { @apply flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1; }
+  .valuation-card-head .row-sub { @apply mt-0.5; }
+  /* Тип ТС — своей колонкой: номер убытка встаёт ровно под название. */
+  .valuation-cat { @apply mt-0.5 flex-none; margin-right: 0; vertical-align: 0; }
+  .valuation-row.row { @apply items-start; }
+  .valuation-facts { @apply mt-1.5 text-sm leading-snug text-ink-muted; }
+  .valuation-facts:not(:has(span)) { display: none; }
+  .valuation-facts > span { @apply inline; }
+  .valuation-facts > span:not(:last-child)::after { content: ", "; color: var(--color-ink-muted); }
+  .valuation-facts::first-letter { text-transform: uppercase; }
   .valuation-old { @apply text-ink-dim line-through; }
   .valuation-new { @apply text-accent-text; }
-  .valuation-card.is-keep dd[data-disputed] .valuation-old { @apply text-ink no-underline; }
-  .valuation-card.is-keep dd[data-disputed] .valuation-new { @apply text-ink-dim line-through; }
+  .valuation-card.is-keep [data-disputed] .valuation-old { @apply text-ink no-underline; }
+  .valuation-card.is-keep [data-disputed] .valuation-new { @apply text-ink-dim line-through; }
+  .valuation-gaps { @apply mt-2 flex flex-wrap gap-2; }
+  .valuation-gaps > * { @apply min-w-0 flex-1 basis-56; }
   .valuation-choice { @apply shrink-0 p-0.5; }
   .valuation-choice label { @apply min-h-7 px-2.5 text-xs; }
-  .valuation-input input, input.valuation-input { @apply w-full max-w-[18rem]; }
+  .valuation-input input, input.valuation-input { @apply w-full; }
   .valuation-input .field { @apply m-0; }
-  .valuation-input::placeholder, .valuation-input input::placeholder { text-transform: none; }
+  .valuation-input::placeholder, .valuation-input input::placeholder { text-transform: none; color: var(--color-danger); }
   @media (max-width: 639.98px) {
-    .valuation-fields { @apply grid-cols-[5.5rem_minmax(0,1fr)]; }
     /* Телефон: переключатель спора — узкой строкой под номером, название не съедает. */
     .valuation-card-head { @apply flex-wrap gap-y-1.5; }
     .valuation-card-head .valuation-choice { @apply w-full; }
     .valuation-choice label { @apply min-h-6; }
     .valuation-bar .btn { @apply whitespace-normal text-center leading-tight; }
   }
-  .valuation-group > summary.list-head { @apply flex items-baseline gap-3; }
-  .valuation-group > summary .facet-all { @apply ml-auto; }
   @keyframes valuation-draw { to { stroke-dashoffset: 0; } }
   @media (prefers-reduced-motion: reduce) { .valuation-tick, .valuation-ok circle, .valuation-ok path { animation: none !important; stroke-dashoffset: 0; } }
   .migtorg-field-btn { @apply flex size-9 items-center justify-center rounded-full transition-colors; background: color-mix(in oklab, #D6514A 18%, transparent); }

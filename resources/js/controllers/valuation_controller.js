@@ -5,29 +5,71 @@ import { nums, rub } from '../lib/money';
 import { reducedMotion as calm } from '../lib/motion';
 import { plural } from '../lib/plural.js';
 
-// «Оценить → Из текста» (x-offer.valuation-sheet): вставленное сообщение уходит на разбор сразу, а этапы идут один за
-// другим и показывают, что сделано: лишние строки текста схлопываются, номера и суммы подсвечиваются, находятся
-// предложения, ненайденные отходят, оценочные и закупочные бегут счётчиком, в конце рисуется галка. Итог — группы
-// строк с галками и «Всё верно, сохранить (N)». Без анимаций (prefers-reduced-motion) — то же самое сразу.
+// «Оценить → Из текста» (x-offer.valuation-sheet). Первый экран — источник: «Вставить текст» (буфер), «Таблица Excel»,
+// «Фото или скриншот»; файл встаёт карточкой с ходом чтения, перетаскивание и ⌘V — в любом месте окна. Текст уходит на
+// разбор, этапы идут один за другим: лишние строки схлопываются, номера и суммы подсвечиваются, находятся предложения,
+// ненайденные отходят, оценочные и закупочные бегут счётчиком. Итог — сегмент по группам и «Сохранить (N)»; сохранили —
+// экран «Готово». Без анимаций (prefers-reduced-motion) — то же самое сразу.
 const sleep = (ms) => new Promise((r) => setTimeout(r, calm() ? 0 : ms));
 
 // Что можно прочитать файлом: картинка (OCR) или таблица Excel.
 const SHEET = /\.(xlsx|xls|csv|ods)$/i;
 const readable = (f) => f.type.startsWith('image/') || SHEET.test(f.name);
+const size = (b) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} КБ` : `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} МБ`);
 
 export default class extends Controller {
-    static targets = ['paste', 'text', 'work', 'lines', 'done', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'summary', 'fileBtn', 'fileLabel'];
+    static targets = ['paste', 'sources', 'file', 'fileIcon', 'fileName', 'fileSub', 'editor', 'note', 'text', 'runBar',
+        'work', 'lines', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'what', 'done', 'doneTitle', 'doneSub'];
     static values = { url: String, fileUrl: String };
 
+    disconnect() {
+        this.dropThumb();
+    }
+
+    // Источник виден, пока окно открыто и разбор не начат.
+    get choosing() {
+        return this.element.closest('dialog')?.open && !this.pasteTarget.hidden && !this.reading;
+    }
+
+    // ⌘V в любом месте окна: картинка или таблица — файлом, текст — в поле и сразу в разбор.
     pasted(event) {
-        // Скриншот или файл таблицы из буфера — файл, а не текст.
+        if (!this.choosing) return;
         const file = [...(event.clipboardData?.files ?? [])].find(readable);
         if (file) {
             event.preventDefault();
             return this.read(file);
         }
-        // Текст ещё не в поле: событие paste приходит до вставки.
-        setTimeout(() => this.run(), 0);
+        if (event.target === this.textTarget) return setTimeout(() => this.run(), 0);
+        const text = event.clipboardData?.getData('text/plain')?.trim();
+        if (!text || event.target.closest?.('input, textarea, [contenteditable]')) return;
+        event.preventDefault();
+        this.showText(text);
+        this.run();
+    }
+
+    // «Вставить текст»: из буфера, если браузер даёт; не даёт или пусто — поле с клавиатурой.
+    async pasteText() {
+        let text = '';
+        try { text = (await navigator.clipboard?.readText?.())?.trim() ?? ''; } catch { /* нет доступа — руками */ }
+        this.showText(text);
+        if (text) this.run();
+        else (window.focusField ?? ((el) => el.focus()))(this.textTarget);
+    }
+
+    showText(text, note = false) {
+        this.textTarget.value = text;
+        this.sourcesTarget.hidden = true;
+        this.editorTarget.hidden = false;
+        this.noteTarget.hidden = !note;
+        this.typed();
+    }
+
+    // Поле растёт по строкам; «Разобрать» — когда есть что разбирать.
+    typed() {
+        const t = this.textTarget;
+        t.style.height = 'auto';
+        t.style.height = `${t.scrollHeight + 2}px`;
+        this.runBarTarget.hidden = this.editorTarget.hidden;
     }
 
     pick(event) {
@@ -37,7 +79,7 @@ export default class extends Controller {
     }
 
     dragOver(event) {
-        if (!this.pasteTarget.hidden && [...(event.dataTransfer?.items ?? [])].some((i) => i.kind === 'file')) {
+        if (this.choosing && [...(event.dataTransfer?.items ?? [])].some((i) => i.kind === 'file')) {
             event.preventDefault();
             this.element.classList.add('is-dragging');
         }
@@ -50,30 +92,53 @@ export default class extends Controller {
     drop(event) {
         this.element.classList.remove('is-dragging');
         const file = [...(event.dataTransfer?.files ?? [])].find(readable);
-        if (!file || this.pasteTarget.hidden) return;
+        if (!file || !this.choosing) return;
         event.preventDefault();
         this.read(file);
     }
 
-    // Фото или таблица → текст «номер сумма» в поле (на сервере: OCR — ValuationPhoto, Excel — ValuationSheet).
-    // Уверенный — сразу в разбор; спорную сумму человек видит в поле и жмёт «Разобрать» сам.
+    // Файл — карточкой: значок таблицы или миниатюра, имя, объём, кольцо хода. Сервер даёт текст «номер сумма»
+    // (OCR — ValuationPhoto, Excel — ValuationSheet): уверенный — сразу в разбор, спорный — в поле с просьбой проверить.
     async read(file) {
         if (this.busy || this.reading) return;
         const sheet = SHEET.test(file.name);
         this.reading = true;
-        this.fileBtnTarget.classList.add('is-busy');
-        this.fileLabelTarget.textContent = sheet ? 'Читаем таблицу' : 'Читаем фото';
+        this.sourcesTarget.hidden = true;
+        this.editorTarget.hidden = true;
+        this.runBarTarget.hidden = true;
+        this.fileTarget.hidden = false;
+        this.fileNameTarget.textContent = file.name || (sheet ? 'Таблица' : 'Снимок экрана');
+        this.dropThumb();
+        if (sheet) {
+            this.fileIconTarget.innerHTML = '<span class="valuation-file-sheet">XLS</span>';
+        } else {
+            this.thumb = URL.createObjectURL(file);
+            this.fileIconTarget.innerHTML = `<img src="${this.thumb}" alt="">`;
+        }
+        this.fileState('read', `${size(file.size)}, ${sheet ? 'читаем таблицу' : 'читаем текст на фото'}`);
         const body = new FormData();
         body.append('file', sheet ? file : await shrink(file, { max: 2400, quality: 0.92 }));
-        const data = await getJson(this.fileUrlValue, { method: 'POST', body, timeout: 60_000 });
+        const data = await getJson(this.fileUrlValue, { method: 'POST', body, timeout: 60_000, quiet: true });
         this.reading = false;
-        this.fileBtnTarget.classList.remove('is-busy');
-        this.fileLabelTarget.textContent = 'Файл';
-        if (!data) return;
-        if (!data.text) return window.toast?.(sheet ? 'В таблице не нашли номеров убытка' : 'На фото не нашли номеров убытка');
-        this.textTarget.value = data.text;
-        if (data.sure) this.run();
-        else window.toast?.('Проверьте суммы и нажмите «Разобрать»');
+        if (!data) return this.fileState('fail', 'Не получилось прочитать, попробуйте ещё раз');
+        if (!data.text) return this.fileState('fail', sheet ? 'В таблице нет номеров убытка' : 'На фото нет номеров убытка');
+        this.fileState('done', size(file.size));
+        if (data.sure) {
+            this.textTarget.value = data.text;
+            await sleep(350);
+            return this.run();
+        }
+        this.showText(data.text, true);
+    }
+
+    fileState(state, sub) {
+        this.fileTarget.querySelector('.valuation-file').dataset.state = state;
+        this.fileSubTarget.textContent = sub;
+    }
+
+    dropThumb() {
+        if (this.thumb) URL.revokeObjectURL(this.thumb);
+        this.thumb = null;
     }
 
     async run() {
@@ -87,7 +152,6 @@ export default class extends Controller {
         this.steps().forEach((s) => this.mark(s.dataset.step, 'wait', ''));
         this.linesTarget.replaceChildren();
         this.linesTarget.hidden = false;
-        this.doneTarget.hidden = true;
         this.failTarget.hidden = true;
 
         this.mark('clean', 'run');
@@ -131,16 +195,13 @@ export default class extends Controller {
         await this.countUp(rows, '[data-f]', 'floor', true);
         this.mark('floor', 'done');
 
-        // 6. Готово: галка, потом этапы сворачиваются в строку итога — список получает всю высоту окна.
+        // 6. Готово: галка, этапы уходят — итог получает всю высоту окна.
         this.mark('done', 'done');
         rows.forEach((r) => r.classList.remove('is-pending'));
         this.count();
         await sleep(600);
-        this.summaryTarget.textContent = [`${counts.refs} ${plural(counts.refs, ['номер', 'номера', 'номеров'])} в тексте`, `нашли ${counts.found}`, counts.missing ? `нет в CRM ${counts.missing}` : null,
-            counts.no_vin ? `без VIN ${counts.no_vin}` : null, counts.no_city ? `без города ${counts.no_city}` : null].filter(Boolean).join(', ');
         if (!calm()) await this.workTarget.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).finished.catch(() => {});
         this.workTarget.hidden = true;
-        this.doneTarget.hidden = false;
         this.busy = false;
     }
 
@@ -166,7 +227,11 @@ export default class extends Controller {
             [{ opacity: 1, height: `${el.offsetHeight}px` }, { opacity: 0, height: '0px', paddingBlock: 0 }],
             { duration: 260, delay: i * step, easing: 'ease-in', fill: 'forwards' },
         ));
-        els.filter((el) => 'keep' in el.dataset).forEach((el, i) => setTimeout(() => el.classList.add('is-kept'), i * step * 2));
+        // Номера и суммы загораются волной не дольше секунды (таблица — это 80 строк без лишнего).
+        const kept = els.filter((el) => 'keep' in el.dataset);
+        const glow = Math.min(step * 2, 1000 / Math.max(1, kept.length));
+        kept.forEach((el, i) => setTimeout(() => el.classList.add('is-kept'), i * glow));
+        if (!junk.length) await sleep(Math.min(1000, kept.length * glow));
         await Promise.all(anims.map((a) => a.finished.catch(() => {})));
         junk.forEach((el) => el.remove());
     }
@@ -205,6 +270,68 @@ export default class extends Controller {
         });
     }
 
+    overwriteAll(event) {
+        event.preventDefault();
+        this.rowsTarget.querySelectorAll('input[type=radio][value="overwrite"]').forEach((r) => { r.checked = true; });
+        this.count();
+    }
+
+    // Сегмент групп итога: видна одна.
+    tab(event) {
+        const key = event.currentTarget.dataset.group;
+        this.rowsTarget.querySelectorAll('.valuation-tabs [data-group]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.group === key)));
+        this.rowsTarget.querySelectorAll('section.valuation-group').forEach((g) => { g.hidden = g.dataset.group !== key; });
+        this.rowsTarget.scrollTop = 0;
+    }
+
+    // Что сохранится — по карточкам: галка, «Оставить / Перезаписать», VIN и город из текста и вписанные.
+    // Кнопка — сколько ТС, строка над ней — что именно: «оценка 8, VIN 5, город 4».
+    count() {
+        let price = 0, vin = 0, city = 0, cars = 0;
+        for (const card of this.rowsTarget.querySelectorAll('.valuation-card')) {
+            const box = card.querySelector('input[type=checkbox][name="offers[]"]');
+            const conflict = 'conflict' in card.dataset;
+            const keep = conflict && card.querySelector('input[value="keep"]')?.checked;
+            card.classList.toggle('is-keep', !!keep);
+            card.classList.toggle('is-off', !!box && !box.checked);
+            if (box && !box.checked) continue;
+            const p = 'priceChange' in card.dataset && !(keep && 'valueDiffers' in card.dataset);
+            const typedVin = card.querySelector('input[name^="vin["]')?.value.replace(/[^A-Za-z0-9]/g, '').length === 17;
+            const typedCity = !!card.querySelector('input[type=hidden][name^="city["]')?.value;
+            const v = 'vinFill' in card.dataset || typedVin;
+            const c = 'cityFill' in card.dataset || typedCity;
+            price += p; vin += v; city += c;
+            if (p || v || c) cars++;
+        }
+        const parts = [price ? `оценка ${price}` : null, vin ? `VIN ${vin}` : null, city ? `город ${city}` : null].filter(Boolean);
+        this.saveTarget.disabled = cars === 0;
+        this.saveTarget.textContent = cars ? `Сохранить ${cars} ТС` : 'Нечего сохранять';
+        this.whatTarget.textContent = parts.join(', ');
+    }
+
+    // Сохранение без перехода: ответ — итог словами, экран «Готово»; список под окном обновится по «Готово».
+    async save(event) {
+        event.preventDefault();
+        if (this.saving) return;
+        this.saving = true;
+        this.saveTarget.setAttribute('aria-busy', 'true');
+        const data = await getJson(this.resultTarget.action, { method: 'POST', body: new FormData(this.resultTarget) });
+        this.saving = false;
+        this.saveTarget.removeAttribute('aria-busy');
+        if (!data) return;
+        this.saved = true;
+        this.resultTarget.hidden = true;
+        this.doneTitleTarget.textContent = data.title;
+        this.doneSubTarget.textContent = data.sub ?? '';
+        this.doneTarget.hidden = false;
+    }
+
+    finish() {
+        const again = this.saved;
+        this.reset();
+        if (again) window.Turbo?.visit(location.href, { action: 'replace' });
+    }
+
     mark(step, state, count = null) {
         const li = this.element.querySelector(`[data-step="${step}"]`);
         if (!li) return;
@@ -224,40 +351,21 @@ export default class extends Controller {
         this.failTarget.hidden = false;
     }
 
-    overwriteAll(event) {
-        event.preventDefault();
-        this.rowsTarget.querySelectorAll('input[type=radio][value="overwrite"]').forEach((r) => { r.checked = true; });
-        this.count();
-    }
-
-    // Что сохранится — по карточкам: галка, «Оставить / Перезаписать» в строке суммы, VIN и город из текста и вписанные.
-    // Кнопка называет исход: «Сохранить: оценка 8, VIN 5, город 4».
-    count() {
-        let price = 0, vin = 0, city = 0;
-        for (const card of this.rowsTarget.querySelectorAll('.valuation-card')) {
-            const box = card.querySelector('input[type=checkbox][name="offers[]"]');
-            const conflict = 'conflict' in card.dataset;
-            const keep = conflict && card.querySelector('input[value="keep"]')?.checked;
-            card.classList.toggle('is-keep', !!keep);
-            if (box && !box.checked) continue;
-            if ('priceChange' in card.dataset && !(keep && 'valueDiffers' in card.dataset)) price++;
-            const typedVin = card.querySelector('input[name^="vin["]')?.value.replace(/[^A-Za-z0-9]/g, '').length === 17;
-            const typedCity = !!card.querySelector('input[type=hidden][name^="city["]')?.value;
-            if ('vinFill' in card.dataset || typedVin) vin++;
-            if ('cityFill' in card.dataset || typedCity) city++;
-        }
-        const parts = [price ? `оценка ${price}` : null, vin ? `VIN ${vin}` : null, city ? `город ${city}` : null].filter(Boolean);
-        this.saveTarget.disabled = parts.length === 0;
-        this.saveTarget.textContent = parts.length ? `Сохранить: ${parts.join(', ')}` : 'Нечего сохранять';
-    }
-
     reset() {
         this.busy = false;
+        this.saved = false;
+        this.dropThumb();
         this.element.classList.remove('is-working');
         this.textTarget.value = '';
+        this.textTarget.style.height = '';
         this.pasteTarget.hidden = false;
+        this.sourcesTarget.hidden = false;
+        this.fileTarget.hidden = true;
+        this.editorTarget.hidden = true;
+        this.runBarTarget.hidden = true;
         this.workTarget.hidden = true;
         this.resultTarget.hidden = true;
+        this.doneTarget.hidden = true;
         this.rowsTarget.replaceChildren();
     }
 }

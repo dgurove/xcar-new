@@ -96,7 +96,8 @@ final class OfferValuationController
             'vin' => ['array'], 'vin.*' => ['nullable', 'string', 'max:20'], 'city' => ['array'], 'city.*' => ['nullable', 'integer']]);
         $saved = Cache::pull("valuation:{$data['token']}");
         if (! $saved || $saved['user'] !== $request->user()->id) {
-            return back()->with('toast', 'Разбор устарел, вставьте текст ещё раз');
+            return $request->expectsJson() ? response()->json(['title' => 'Разбор устарел', 'sub' => 'Вставьте текст ещё раз'])
+                : back()->with('toast', 'Разбор устарел, вставьте текст ещё раз');
         }
         $ids = array_values(array_intersect(array_map('intval', $data['offers'] ?? []), array_keys($saved['amounts'])));
         // Вписанное руками — только там, где его не было ни у предложения, ни в тексте (`gaps`), и только годное.
@@ -144,6 +145,15 @@ final class OfferValuationController
             $update($offer, $set, $request->user(), ['source' => 'valuation', 'value' => $set['value'] ?? null, 'floor' => $set['floor_price'] ?? null]);
         }
         $parts = array_filter([$done ? 'оценено '.$done : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
+        // Окно (valuation_controller) показывает итог экраном «Готово»: крупно — оценено, ниже — остальное.
+        if ($request->expectsJson()) {
+            $rest = array_filter([$vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
+
+            return response()->json([
+                'title' => $done ? 'Оценено '.$done : ($rest ? 'Сохранено' : 'Ничего не выбрано'),
+                'sub' => $rest ? Str::ucfirst(implode(', ', $rest)) : null,
+            ]);
+        }
 
         return back()->with('toast', $parts ? Str::ucfirst(implode(', ', $parts)) : 'Ничего не выбрано');
     }
