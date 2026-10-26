@@ -13,6 +13,10 @@ use App\Mail\Extraction\Patterns;
  * от строки с номером убытка до следующей такой строки; абзацы роли не играют. Из блока берутся сумма (первая
  * денежная — с копейками, дата «22.09.26» ею не бывает), VIN и город (владелец 05.10.2026: на Мигторге VIN нет, а город
  * бывает устаревшим — здесь они от страховой): VIN дописывается в пустой, город главнее вписанного.
+ *
+ * В СМС Т-Страхования номер и сумма — одна подчёркнутая ссылка («AUT-26-1103537 739000»), и OCR теряет пробел под
+ * подчёркиванием: «AUT-26-1103537739000» шаблон номера не берёт, строка пропадала целиком (26.10.2026). Такой хвост
+ * разлепляется (`unglue`): номера с октября 2026 — семь цифр с «1», прежние — шесть с 5–9.
  */
 final class ValuationText
 {
@@ -21,6 +25,9 @@ final class ValuationText
 
     /** Без копеек — только с разрядами или от четырёх цифр подряд: «635 237», «635237». */
     private const WHOLE = '/(?<![\p{L}\d.,])(\d{1,3}(?:[ \x{A0}\x{202F}]\d{3})+|\d{4,9})(?![\p{L}\d.,])/u';
+
+    /** Номер Т-Страхования, слипшийся с суммой: «AUT-26-1103537739000», «AUT-26-919572115524». */
+    private const GLUED = '/(AUT-\d{2}-)(\d{12,14})(?!\d)/iu';
 
     /**
      * @return array{rows: list<array{ref: string, key: string, amount: ?int, vin: ?string, city: ?array{id: int, name: string, title: string}, lines: list<int>}>, lines: list<string>}
@@ -33,6 +40,7 @@ final class ValuationText
         $rows = [];
         $current = null;
         foreach ($lines as $i => $line) {
+            $line = self::unglue($line);
             // Мессенджер мог склеить всё в одну строку: строка режется перед каждым номером убытка.
             foreach (self::segments($line, $matcher) as [$ref, $rest]) {
                 if ($ref !== null) {
@@ -59,6 +67,11 @@ final class ValuationText
         $current !== null && $rows[] = $current;
 
         return ['rows' => $rows, 'lines' => $lines];
+    }
+
+    public static function unglue(string $line): string
+    {
+        return (string) preg_replace_callback(self::GLUED, fn ($m) => $m[1].substr($m[2], 0, $m[2][0] === '1' ? 7 : 6).' '.substr($m[2], $m[2][0] === '1' ? 7 : 6), $line);
     }
 
     /** @return list<array{0: ?string, 1: string}> куски строки: номер убытка (или null — продолжение блока) и текст после него */

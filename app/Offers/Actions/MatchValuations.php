@@ -7,6 +7,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Sale;
 use App\Users\User;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Пары «номер убытка — оценочная» из сообщения (`ValuationText`) против предложений CRM, которые человек правит
@@ -16,7 +17,10 @@ use App\Users\User;
  *   оставить прежнее (владелец, 05.10.2026);
  * - `check` — VIN в сообщении не тот, что у предложения: без галки, решает человек;
  * - `dispute` — тот же номер дважды с разными суммами: не берётся;
- * - `missing` — предложения с таким номером нет.
+ * - `migtorg` — предложения нет (или оно в архиве), а лот с этим номером есть на Мигторге: из окна заводится черновик
+ *   с закупочной из текста, поля и фото — с лота (`ImportMigtorgLot`; 26.10.2026, владелец: «неудобно потом по тем,
+ *   которых нет, отдельно идти создавать»);
+ * - `missing` — предложения с таким номером нет и на Мигторге тоже.
  *
  * Заодно VIN и город из текста (05.10.2026): Мигторг заполняет их как раньше, а текст от страховой главнее (владелец):
  * `vin_fill` — VIN только в пустой (другой VIN, хоть от Мигторга, — тревожный знак, `check`: перепроверить),
@@ -28,7 +32,7 @@ use App\Users\User;
  */
 final class MatchValuations
 {
-    public const ORDER = ['conflict', 'fill', 'check', 'dispute', 'same', 'missing'];
+    public const ORDER = ['conflict', 'fill', 'check', 'dispute', 'same', 'migtorg', 'missing'];
 
     /**
      * @param  list<array{ref: string, key: string, amount: ?int, vin: ?string, city?: ?array}>  $rows
@@ -45,6 +49,14 @@ final class MatchValuations
             ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])
             ->with(['vendor', 'settlement'])->get()->groupBy('claim_ref_key') : collect();
 
+        $absent = array_values(array_diff(array_keys($amounts), $offers->keys()->all()));
+        // Лот Мигторга по номеру: живой важнее ушедшего, свежий — прежнего.
+        $lots = $absent ? DB::table('migtorg_lots')->whereIn('claim_ref_key', $absent)->orderByRaw('gone_at is not null')->orderByDesc('id')
+            ->get(['id', 'claim_ref_key', 'title', 'city', 'vin'])->unique('claim_ref_key')->keyBy('claim_ref_key') : collect();
+        // Предложение по номеру в архиве — заводить второе нельзя (машина одна), его вернут в черновики.
+        $archived = $lots->isNotEmpty() ? Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $lots->keys()->all()))
+            ->whereIn('state', [OfferState::Archived, OfferState::Cancelled])->latest('id')->get()->unique('claim_ref_key')->keyBy('claim_ref_key') : collect();
+
         $out = [];
         $seen = [];
         foreach ($rows as $r) {
@@ -55,7 +67,8 @@ final class MatchValuations
             $seen[$r['key']][$r['amount']] = true;
             $found = $offers->get($r['key'], collect());
             if ($found->isEmpty()) {
-                $out[] = $r + ['status' => 'missing', 'offer' => null, 'direct' => false, 'floor' => null, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
+                $lot = $lots->get($r['key']);
+                $out[] = $r + ['status' => $lot && count($amounts[$r['key']]) === 1 ? 'migtorg' : 'missing', 'lot' => $lot, 'archived' => $archived->get($r['key']), 'offer' => null, 'direct' => false, 'floor' => null, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
 
                 continue;
             }

@@ -1145,6 +1145,9 @@ html.kb-open { --home-gap: 0px; }
   .valuation-ok path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .3s .35s ease-out forwards; }
   .valuation-done-body { @apply flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center; }
   .valuation-done-body h3 { @apply mt-2 text-lg; }
+  .valuation-done:has(.valuation-created:not([hidden])) .valuation-done-body { @apply flex-none py-6; }
+  .valuation-created { @apply mx-4 mb-4 min-h-0 overflow-y-auto; }
+  .valuation-created .row-sub { @apply flex gap-2; }
   .valuation-row .valuation-floor { @apply text-ink-muted; }
   .valuation-row.is-pending:not(.show-floor) .valuation-floor { opacity: 0; }
   .valuation-row.show-floor .valuation-floor { transition: opacity .3s; }

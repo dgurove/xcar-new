@@ -97,6 +97,8 @@
                 <h3 data-valuation-target="doneTitle"></h3>
                 <p class="text-ink-muted" data-valuation-target="doneSub"></p>
             </div>
+            {{-- Заведённые с Мигторга — строками, проявляются по одной: номер печатается, закупочная бежит. --}}
+            <div class="list valuation-created" data-valuation-target="created" hidden></div>
             <div class="valuation-bar">
                 <x-ui.button type="button" class="min-w-0 flex-1" data-action="valuation#finish sheet#close">Готово</x-ui.button>
             </div>

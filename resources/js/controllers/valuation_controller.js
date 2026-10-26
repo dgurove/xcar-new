@@ -19,7 +19,7 @@ const size = (b) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} К�
 
 export default class extends Controller {
     static targets = ['paste', 'sources', 'file', 'fileIcon', 'fileName', 'fileSub', 'editor', 'note', 'text', 'runBar',
-        'work', 'lines', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'what', 'done', 'doneTitle', 'doneSub'];
+        'work', 'lines', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'what', 'done', 'doneTitle', 'doneSub', 'created'];
     static values = { url: String, fileUrl: String };
 
     disconnect() {
@@ -175,7 +175,8 @@ export default class extends Controller {
         // 3. Ненайденные.
         this.mark('drop', 'run');
         await sleep(450);
-        this.mark('drop', 'done', counts.missing ? `нет в CRM ${counts.missing}` : 'все нашлись');
+        const absent = [counts.missing ? `нет в CRM ${counts.missing}` : null, counts.migtorg ? `с Мигторга ${counts.migtorg}` : null].filter(Boolean);
+        this.mark('drop', 'done', absent.length ? absent.join(', ') : 'все нашлись');
 
         // Строки итога появляются под этапами — дальше считаются прямо в них.
         this.rowsTarget.innerHTML = data.html;
@@ -287,8 +288,14 @@ export default class extends Controller {
     // Что сохранится — по карточкам: галка, «Оставить / Перезаписать», VIN и город из текста и вписанные.
     // Кнопка — сколько ТС, строка над ней — что именно: «оценка 8, VIN 5, город 4».
     count() {
-        let price = 0, vin = 0, city = 0, cars = 0;
+        let price = 0, vin = 0, city = 0, cars = 0, create = 0;
         for (const card of this.rowsTarget.querySelectorAll('.valuation-card')) {
+            if ('create' in card.dataset) {
+                const on = card.querySelector('input[name="create[]"]').checked;
+                card.classList.toggle('is-off', !on);
+                create += on; cars += on;
+                continue;
+            }
             const box = card.querySelector('input[type=checkbox][name="offers[]"]');
             const conflict = 'conflict' in card.dataset;
             const keep = conflict && card.querySelector('input[value="keep"]')?.checked;
@@ -303,7 +310,7 @@ export default class extends Controller {
             price += p; vin += v; city += c;
             if (p || v || c) cars++;
         }
-        const parts = [price ? `оценка ${price}` : null, vin ? `VIN ${vin}` : null, city ? `город ${city}` : null].filter(Boolean);
+        const parts = [price ? `оценка ${price}` : null, create ? `завести ${create}` : null, vin ? `VIN ${vin}` : null, city ? `город ${city}` : null].filter(Boolean);
         this.saveTarget.disabled = cars === 0;
         this.saveTarget.textContent = cars ? `Сохранить ${cars} ТС` : 'Нечего сохранять';
         this.whatTarget.textContent = parts.join(', ');
@@ -324,6 +331,44 @@ export default class extends Controller {
         this.doneTitleTarget.textContent = data.title;
         this.doneSubTarget.textContent = data.sub ?? '';
         this.doneTarget.hidden = false;
+        if (data.created?.length) await this.arrive(data.created);
+    }
+
+    // Заведённые с Мигторга входят по одной: строка проявляется, номер убытка печатается, закупочная бежит тысячами.
+    async arrive(created) {
+        const box = this.createdTarget;
+        box.replaceChildren();
+        box.hidden = false;
+        const rows = created.map((c) => {
+            const a = document.createElement('a');
+            a.className = 'row';
+            a.href = `/offers/${c.number}`;
+            a.dataset.turboFrame = '_top';
+            a.innerHTML = '<span class="min-w-0 flex-1"><span class="block truncate"></span><span class="row-sub"><span class="nums"></span><span></span></span>'
+                + '<span class="row-sub text-ink-dim">фото подтянутся с Мигторга</span></span><span class="nums text-sm"></span>';
+            const [title, ref, city] = a.querySelectorAll('.block, .row-sub .nums, .row-sub .nums + span');
+            title.textContent = c.title;
+            city.textContent = c.city ?? '';
+            a.lastElementChild.textContent = rub(c.floor);
+            box.append(a);
+            return [a, ref, a.lastElementChild, c];
+        });
+        if (calm()) { rows.forEach(([, ref, , c]) => { ref.textContent = c.ref; }); return; }
+        for (const [a, ref, floor, c] of rows) {
+            a.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out', fill: 'backwards' });
+            const typing = (async () => { for (let i = 1; i <= c.ref.length; i++) { ref.textContent = c.ref.slice(0, i); await sleep(18); } })();
+            const start = performance.now();
+            const run = new Promise((done) => {
+                const frame = (now) => {
+                    const t = Math.min(1, (now - start) / 600);
+                    floor.textContent = rub(t < 1 ? Math.ceil((c.floor * (1 - (1 - t) ** 3)) / 1000) * 1000 : c.floor);
+                    t < 1 ? requestAnimationFrame(frame) : done();
+                };
+                requestAnimationFrame(frame);
+            });
+            await sleep(140);
+            if (a === rows.at(-1)[0]) await Promise.all([typing, run]);
+        }
     }
 
     finish() {
@@ -366,6 +411,8 @@ export default class extends Controller {
         this.workTarget.hidden = true;
         this.resultTarget.hidden = true;
         this.doneTarget.hidden = true;
+        this.createdTarget.hidden = true;
+        this.createdTarget.replaceChildren();
         this.rowsTarget.replaceChildren();
     }
 }

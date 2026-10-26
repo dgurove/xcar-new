@@ -2,18 +2,26 @@
 
 namespace App\Http\Admin;
 
+use App\Cars\CarText;
 use App\Cars\Identity;
+use App\Cars\IdentityTaken;
 use App\Cars\Settlement;
 use App\Cars\Vin\Vin;
+use App\Offers\Actions\ChangeOfferState;
+use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\MatchValuations;
 use App\Offers\Actions\UpdateOffer;
+use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Offers\ValuationPhoto;
 use App\Offers\ValuationSheet;
 use App\Offers\ValuationText;
 use App\Park\Sale;
+use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -67,6 +75,10 @@ final class OfferValuationController
             'direct' => $take->filter(fn ($i) => $i['direct'])->map(fn ($i) => $i['offer']->id)->values()->all(),
             // Что вписано иначе: без «Перезаписать» это поле остаётся прежним.
             'differs' => $take->filter(fn ($i) => $i['status'] === 'conflict')->mapWithKeys(fn ($i) => [$i['offer']->id => ['value' => $i['value_differs'], 'floor' => $i['floor_differs']]])->all(),
+            // Нет в CRM, есть на Мигторге: что заводить по галке — номер, закупочная, лот, архивное предложение.
+            'create' => collect($items)->where('status', 'migtorg')->mapWithKeys(fn ($i) => [$i['key'] => [
+                'ref' => $i['ref'], 'amount' => $i['amount'], 'lot' => $i['lot']->id, 'archived' => $i['archived']?->id,
+            ]])->all(),
         ], now()->addMinutes(30));
         // Строки текста для анимации «убираем лишнее»: остаются номер, сумма, VIN и город, прочее схлопывается.
         $keep = collect($parsed['rows'])->flatMap(fn ($r) => $r['lines'])->flip();
@@ -81,6 +93,7 @@ final class OfferValuationController
                 'refs' => count($parsed['rows']),
                 'found' => collect($items)->filter(fn ($i) => $i['offer'])->unique(fn ($i) => $i['offer']->id)->count(),
                 'missing' => $by['missing'] ?? 0,
+                'migtorg' => $by['migtorg'] ?? 0,
                 'take' => $take->where('status', '!=', 'check')->count(),
                 'conflicts' => $by['conflict'] ?? 0,
                 'no_vin' => $found->filter(fn ($i) => in_array('vin', $i['gaps'], true))->unique(fn ($i) => $i['offer']->id)->count(),
@@ -90,9 +103,10 @@ final class OfferValuationController
         ]);
     }
 
-    public function apply(Request $request, UpdateOffer $update)
+    public function apply(Request $request, UpdateOffer $update, CreateOffer $create, ChangeOfferState $change)
     {
         $data = $request->validate(['token' => ['required', 'string'], 'offers' => ['array'], 'offers.*' => ['integer'], 'keep' => ['array'], 'keep.*' => ['in:keep,overwrite'],
+            'create' => ['array'], 'create.*' => ['string'],
             'vin' => ['array'], 'vin.*' => ['nullable', 'string', 'max:20'], 'city' => ['array'], 'city.*' => ['nullable', 'integer']]);
         $saved = Cache::pull("valuation:{$data['token']}");
         if (! $saved || $saved['user'] !== $request->user()->id) {
@@ -144,17 +158,64 @@ final class OfferValuationController
             }
             $update($offer, $set, $request->user(), ['source' => 'valuation', 'value' => $set['value'] ?? null, 'floor' => $set['floor_price'] ?? null]);
         }
-        $parts = array_filter([$done ? 'оценено '.$done : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
+        $created = $this->createFromMigtorg($request->user(), array_intersect_key($saved['create'] ?? [], array_flip($data['create'] ?? [])), $create, $change, $update);
+        $parts = array_filter([$done ? 'оценено '.$done : null, $created ? 'заведено с Мигторга '.count($created) : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
         // Окно (valuation_controller) показывает итог экраном «Готово»: крупно — оценено, ниже — остальное.
         if ($request->expectsJson()) {
-            $rest = array_filter([$vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
+            $rest = array_filter([$done && $created ? 'заведено с Мигторга '.count($created) : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
 
             return response()->json([
-                'title' => $done ? 'Оценено '.$done : ($rest ? 'Сохранено' : 'Ничего не выбрано'),
+                'title' => $done ? 'Оценено '.$done : ($created ? 'Заведено с Мигторга '.count($created) : ($rest ? 'Сохранено' : 'Ничего не выбрано')),
                 'sub' => $rest ? Str::ucfirst(implode(', ', $rest)) : null,
+                'created' => $created,
             ]);
         }
 
         return back()->with('toast', $parts ? Str::ucfirst(implode(', ', $parts)) : 'Ничего не выбрано');
+    }
+
+    /**
+     * Черновики по номерам, которых в CRM нет, а на Мигторге есть (26.10.2026): закупочная — сумма из текста, вендор — по
+     * виду номера (`CarText::vendorOf`), поля в пустые и кадры — с лота (`ImportMigtorgLot`). Архивное по номеру —
+     * обратно в черновики: машина одна. Номер под замком — второе нажатие дубль не заведёт; номер уже у живого
+     * предложения (завели, пока окно было открыто) или чужой группы — пропускается.
+     *
+     * @param  array<string, array{ref: string, amount: int, lot: int, archived: ?int}>  $rows
+     * @return list<array{number: int, title: string, ref: string, floor: int, city: ?string}>
+     */
+    private function createFromMigtorg(User $user, array $rows, CreateOffer $create, ChangeOfferState $change, UpdateOffer $update): array
+    {
+        $out = [];
+        foreach ($rows as $key => $row) {
+            $lot = DB::table('migtorg_lots')->find($row['lot']);
+            if (! $lot) {
+                continue;
+            }
+            $offer = Cache::lock("valuation:create:{$key}", 30)->get(function () use ($user, $key, $row, $create, $change) {
+                if (Offer::query()->whereCar(fn ($c) => $c->where('claim_ref_key', $key))->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])->exists()) {
+                    return null;
+                }
+                try {
+                    if ($row['archived'] && ($old = Offer::query()->inCrm($user)->find($row['archived']))) {
+                        $old->state === OfferState::Cancelled && $old = $change($old, OfferState::Archived, $user);
+
+                        return $old->state === OfferState::Archived ? $change($old, OfferState::Draft, $user) : null;
+                    }
+
+                    return $create($user, array_filter(['claim_ref' => $row['ref'], 'vendor_id' => CarText::vendorOf($row['ref'])]), ['source' => 'migtorg']);
+                } catch (IdentityTaken) {
+                    return null;
+                }
+            });
+            if (! $offer) {
+                continue;
+            }
+            $update($offer, ['floor_price' => (int) $row['amount']], $user, ['source' => 'valuation', 'floor' => (int) $row['amount']]);
+            ImportMigtorgLot::start($offer->refresh(), $lot);
+            $offer->refresh();
+            $out[] = ['number' => $offer->number, 'title' => $offer->titleWithYear() ?: $row['ref'], 'ref' => $row['ref'], 'floor' => (int) $row['amount'], 'city' => $offer->settlement?->title() ?? $lot->city];
+        }
+
+        return $out;
     }
 }
