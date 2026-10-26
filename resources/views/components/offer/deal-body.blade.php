@@ -14,7 +14,12 @@
     // Черновик, отданный этому менеджеру на оценку (11.10.2026): вместо цены и подтверждения — оценка.
     $estimate = $offer->state === \App\Offers\OfferState::Draft && $user?->isManager() ? \App\Offers\Estimate::openFor($offer, $user) : null;
 @endphp
-@if ($inSheet)
+@php
+    // Крестик листа — в строке цены (26.10.2026, владелец: «странно, что крестику уделена отдельная строка»); своей строкой —
+    // только у оценки (там заголовок) и без цены.
+    $closeInPrice = $inSheet && ! $estimate && $price->shown();
+@endphp
+@if ($inSheet && ! $closeInPrice)
     <div class="mb-2 flex items-center justify-end lg:hidden">@if ($estimate)<h2 class="mr-auto truncate text-lg" data-estimate-title>{{ $estimate->isCorrection() ? 'Проверьте цену' : 'Оцените цену продажи' }}</h2>@endif<button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>
 @endif
 
@@ -22,7 +27,10 @@
     <x-offer.estimate-form :offer="$offer" :estimate="$estimate"/>
 @else
 @if ($price->shown())
-    <div class="nums text-[32px] font-bold leading-tight" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
+    <div class="flex items-start gap-2">
+        <div class="nums min-w-0 flex-1 text-[32px] font-bold leading-tight" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
+        @if ($closeInPrice)<button type="button" class="sheet-close -mr-2 -mt-1 lg:hidden" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button>@endif
+    </div>
     @if ($price->declared)<div class="mt-2"><span class="nums text-sm text-ink-dim">заявленная {{ $price::money($price->declared) }}</span></div>@endif
 @elseif ($gallery)
     {{-- Покупателю — прямо про цену (12.10.2026: в галерее спрашивали «Цена?»). --}}

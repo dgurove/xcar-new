@@ -10,6 +10,10 @@ use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
 use App\Billing\Robot;
+use App\Notifications\CounterOfferedNotice;
+use App\Notifications\TelegramChannel;
+use App\Offers\Actions\AnswerCounter;
+use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Support\Plural;
@@ -77,6 +81,12 @@ final class UpdateHandler
 
             return;
         }
+        // Контрпредложение — менеджеру, отвечает он сам.
+        if ($press->topic === 'counter') {
+            $this->counter($press);
+
+            return;
+        }
         // Кнопки лежат в чатах владельца и админов, но переслать сообщение и нажать может кто угодно.
         if (! in_array($press->fromId, $this->bot->ownerChats(), true)) {
             $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
@@ -89,6 +99,56 @@ final class UpdateHandler
             'claim' => $this->claim($press),
             default => $this->bot->answer($press->queryId, 'Кнопка устарела.'),
         };
+    }
+
+    /**
+     * Ответ на контрпредложение из бота (26.10.2026): «Отказаться» — сразу, «Согласен» — переспрашивает той же строкой
+     * кнопок («Да, согласен» / «Назад»): согласие сразу открывает сделку. Нажать может только сам менеджер.
+     */
+    private function counter(Press $press): void
+    {
+        $bid = Bid::with('offer')->find($press->id);
+        $user = User::where('telegram_chat_id', $press->fromId)->first();
+        if (! $bid || ! $user || $bid->user_id !== $user->id) {
+            $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
+
+            return;
+        }
+        // Строки — до ответа: согласие переписывает цену подтверждения, и «N вместо N» стало бы бессмысленным.
+        $lines = implode("\n", array_map(fn ($l) => e((string) $l), array_filter(CounterOfferedNotice::telegramLines($bid), fn ($l) => $l !== null && $l !== '')));
+        $text = fn (string $status) => '<b>'.e(CounterOfferedNotice::telegramTitle($bid)).'</b>'."\n".$lines
+            .($status !== '' ? "\n\n".$status : '');
+        $open = fn (string $label, string $path) => [[TelegramChannel::button($label, Surface::Site->url($path))]];
+        $page = '/offers/'.$bid->offer->number;
+        if (! $bid->hasPendingCounter()) {
+            $this->bot->answer($press->queryId, 'Контрпредложение уже не действует');
+            $this->bot->edit($press->chatId, $press->messageId, $text('Уже не действует'), $open('Открыть', $page));
+
+            return;
+        }
+        if ($press->action === 'yes' || $press->action === 'back') {
+            $this->bot->answer($press->queryId, $press->action === 'yes' ? 'Подтвердите' : '');
+            $this->bot->edit($press->chatId, $press->messageId, $press->action === 'yes' ? $text('Согласиться? ТС закрепится за вами по этой цене') : $text(''),
+                [$press->action === 'yes'
+                    ? [['text' => 'Да, согласен', 'callback_data' => "counter:{$bid->id}:sure"], ['text' => 'Назад', 'callback_data' => "counter:{$bid->id}:back"]]
+                    : [['text' => 'Согласен', 'callback_data' => "counter:{$bid->id}:yes"], ['text' => 'Отказаться', 'callback_data' => "counter:{$bid->id}:no"]],
+                    ...$open('Открыть', $page)]);
+
+            return;
+        }
+        $agree = $press->action === 'sure';
+        try {
+            app(AnswerCounter::class)($bid, $user, $agree);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->bot->answer($press->queryId, (string) collect($e->errors())->flatten()->first());
+
+            return;
+        }
+        $deal = $agree ? $bid->offer->deal()->first() : null;
+        $this->bot->answer($press->queryId, $agree ? 'Сделка открыта' : 'Отказались');
+        $this->bot->edit($press->chatId, $press->messageId,
+            $text($agree ? 'Вы согласились '.now()->translatedFormat('j M, H:i').', сделка открыта' : 'Вы отказались, ваша цена в силе'),
+            $agree && $deal ? $open('Открыть сделку', $deal->href()) : $open('Открыть', $page));
     }
 
     /** «Оплачен» под просроченным счётом — оплата на весь остаток от имени владельца. */

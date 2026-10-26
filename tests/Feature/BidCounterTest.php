@@ -143,4 +143,30 @@ class BidCounterTest extends TestCase
             app(MakeCounter::class)($roman->fresh(), $this->admin, 965000);
         }
     }
+
+    public function test_answer_from_telegram_buttons(): void
+    {
+        config(['xcar.telegram.token' => 'test-token', 'xcar.mercure.hub' => '']);
+        $sent = [];
+        $n = 70;
+        \Illuminate\Support\Facades\Http::fake(['api.telegram.org/*' => function ($r) use (&$sent, &$n) {
+            $sent[] = $r->url().' '.$r->body();
+
+            return \Illuminate\Support\Facades\Http::response(['ok' => true, 'result' => ['message_id' => ++$n]]);
+        }]);
+        $this->roman->forceFill(['telegram_chat_id' => 777, 'telegram_linked_at' => now()])->save();
+        $bid = app(PlaceBid::class)($this->offer, $this->roman, 965000);
+        app(MakeCounter::class)($bid, $this->admin, 970000);
+        // Уведомление ушло в бот с кнопками ответа.
+        $this->assertTrue(collect($sent)->contains(fn ($s) => str_contains($s, 'sendMessage') && str_contains($s, 'counter%3A'.$bid->id.'%3Ayes') || str_contains($s, 'counter:'.$bid->id.':yes')));
+
+        $press = fn (string $from, string $action) => app(\App\Telegram\UpdateHandler::class)->handle(['update_id' => random_int(1, 9999), 'callback_query' => [
+            'id' => 'q', 'from' => ['id' => (int) $from], 'data' => "counter:{$bid->id}:{$action}", 'message' => ['message_id' => 1, 'chat' => ['id' => (int) $from]]]]);
+        $press('888', 'sure'); // чужой — мимо
+        $this->assertTrue($bid->fresh()->hasPendingCounter());
+        $press('777', 'yes'); // переспрашивает, сделки нет
+        $this->assertNull($this->offer->fresh()->deal);
+        $press('777', 'sure');
+        $this->assertSame(970000, $this->offer->fresh()->deal->amount);
+    }
 }

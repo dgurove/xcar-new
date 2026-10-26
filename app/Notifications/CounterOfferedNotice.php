@@ -50,8 +50,21 @@ final class CounterOfferedNotice extends Notice
     {
         $offer = $this->bid->offer;
 
-        return ['title' => 'Контрпредложение: '.$offer->titleWithYear(),
-            'lines' => Text::lines($offer, Money::rub($this->bid->counter_amount).' вместо '.Money::rub($this->bid->amount), $this->bid->counter_comment),
-            'button' => 'Ответить'];
+        return ['title' => self::telegramTitle($this->bid),
+            'lines' => self::telegramLines($this->bid),
+            // Ответ прямо из бота (`UpdateHandler::counter`): «Согласен» переспрашивает — согласие сразу открывает сделку.
+            'keyboard' => [[['text' => 'Согласен', 'callback_data' => "counter:{$this->bid->id}:yes"], ['text' => 'Отказаться', 'callback_data' => "counter:{$this->bid->id}:no"]]],
+            'button' => 'Открыть'];
+    }
+
+    public static function telegramTitle(Bid $bid): string
+    {
+        return 'Контрпредложение: '.$bid->offer->titleWithYear();
+    }
+
+    /** @return array<int, mixed> */
+    public static function telegramLines(Bid $bid): array
+    {
+        return Text::lines($bid->offer, Money::rub($bid->counter_amount).' вместо '.Money::rub($bid->amount), $bid->counter_comment);
     }
 }
