@@ -46,7 +46,7 @@
                 <x-ui.check name="to_gallery" :checked="$vendor->to_gallery">Черновики в галерею на {{ config('xcar.gallery_days') }} дня</x-ui.check>
                 <x-ui.check name="letters_to_telegram" :checked="$vendor->letters_to_telegram">Письма на deal@ админам в Telegram</x-ui.check>
                 {{-- Вывозим каждую машину (Совкомбанк, 17.10.2026): задача в логистике встаёт вместе с предложением из письма. --}}
-                <x-ui.check name="pickup_on_arrival" :checked="$vendor->pickup_on_arrival">Вывоз каждой машины из письма</x-ui.check>
+                <x-ui.check name="pickup_on_arrival" :checked="$vendor->pickup_on_arrival">Вывоз каждого ТС из письма</x-ui.check>
                 <x-ui.check name="claim_ref_optional" :checked="$vendor->claim_ref_optional">Бывает без номера убытка</x-ui.check>
                 {{-- Метки по умолчанию (11.10.2026, начальник): черновик вендора получает их сам, у одного предложения их можно
                      снять. Та же связь — «Ставится вендорам» в «Настройках → Метки». --}}

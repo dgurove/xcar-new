@@ -67,7 +67,7 @@ final class Backdate
         $address = Point::address($data);
         if ($choose) {
             match (true) {
-                $to === Point::Keeper && ! $t->saleOffer()?->keeper() => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера с гаражом или сделкой']),
+                $to === Point::Keeper && ! $t->saleOffer()?->keeper() => throw ValidationException::withMessages(['destination' => 'У ТС нет менеджера с гаражом или сделкой']),
                 $to === null => throw ValidationException::withMessages(['destination' => 'Куда привезли']),
                 $to === Point::Yard && ! $yard => throw ValidationException::withMessages(['destination' => 'Какая парковка']),
                 $to === Point::Other && ! $address => throw ValidationException::withMessages(['to_address' => 'Адрес']),

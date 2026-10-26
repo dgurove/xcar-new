@@ -29,7 +29,7 @@
             </div>
             <div class="tg-lead">
                 <h2 class="text-lg">Предложения в Telegram</h2>
-                <p>Новые машины сразу после публикации, листайте по одному и пересылайте клиентам</p>
+                <p>Новые ТС сразу после публикации, листайте по одному и пересылайте клиентам</p>
             </div>
             <div class="flex flex-col gap-1">
                 @if ($foreign)<p class="tg-stop" data-telegram-target="stop" hidden>Вы вошли как {{ $user->firstName() }}. Подписывается менеджер сам, со своего телефона</p>@endif

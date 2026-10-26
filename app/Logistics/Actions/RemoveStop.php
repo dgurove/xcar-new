@@ -29,7 +29,7 @@ final class RemoveStop
         }
         $next = Route::after($leg);
         if ($leg->destination !== Point::Depot || ! $next || $next->state !== TransportState::Planned) {
-            throw ValidationException::withMessages(['depot_id' => 'Машина уже на стоянке: убрать её нельзя']);
+            throw ValidationException::withMessages(['depot_id' => 'ТС уже на стоянке: убрать её нельзя']);
         }
         if (! ($leg->isOpen() || $leg->state === TransportState::Planned)) {
             throw ValidationException::withMessages(['depot_id' => 'Отрезок уже '.mb_strtolower($leg->state->label())]);

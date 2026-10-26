@@ -161,7 +161,7 @@ final class StepBack
         $car = $offer?->garageCar()->first();
         if ($car && $car->state !== CarState::Waiting) {
             if ($car->state !== CarState::Repair || $car->costs()->exists()) {
-                throw ValidationException::withMessages(['transport' => 'В гараже уже идёт работа с машиной: «Привёз» не отменить']);
+                throw ValidationException::withMessages(['transport' => 'В гараже уже идёт работа с ТС: «Привёз» не отменить']);
             }
             $car->moveTo(CarState::Waiting, by: $by);
             GarageChanged::dispatch($car);

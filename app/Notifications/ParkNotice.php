@@ -6,6 +6,7 @@ use App\Billing\Invoice;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
+use App\Park\Pass;
 use App\Park\Request;
 use App\Park\Vehicle;
 use App\Support\Money;
@@ -58,9 +59,9 @@ final class ParkNotice extends Notice
     }
 
     /** Письмо страховой «продано, заберёт …» по машине с живым пропуском нашей сделки — кому отдавать, решают люди. */
-    public static function insurerSoldDeal(Vehicle $v, \App\Park\Pass $pass): self
+    public static function insurerSoldDeal(Vehicle $v, Pass $pass): self
     {
-        return new self('Страховая продала машину сделки XCar: '.$v->titleWithYear(), 'По пропуску сделки ждём '.$pass->name.'. Сверьте со сделкой, прежде чем выдавать', '/cars/'.$v->id, $v->id, critical: true);
+        return new self('Страховая продала ТС сделки XCar: '.$v->titleWithYear(), 'По пропуску сделки ждём '.$pass->name.'. Сверьте со сделкой, прежде чем выдавать', '/cars/'.$v->id, $v->id, critical: true);
     }
 
     /** Получатель по сделке XCar сменился (`SyncParkRelease`): прежний пропуск погашен, заберёт другой. */

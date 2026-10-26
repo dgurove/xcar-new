@@ -24,7 +24,7 @@ final class ReplaceStop
             throw ValidationException::withMessages(['depot_id' => 'Стоянки в маршруте ставит логист']);
         }
         if (! $after || ! Route::movable($before, $after)) {
-            throw ValidationException::withMessages(['depot_id' => 'Машина уже на стоянке: менять поздно']);
+            throw ValidationException::withMessages(['depot_id' => 'ТС уже на стоянке: менять поздно']);
         }
         if ($depot->logist_id !== $before->logist_id || $depot->archived_at) {
             throw ValidationException::withMessages(['depot_id' => 'Какая стоянка']);

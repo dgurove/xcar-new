@@ -12,6 +12,8 @@ use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Reading\ReadLetter;
+use App\Notifications\Notify;
+use App\Notifications\ParkNotice;
 use App\Offers\Actions\FillFromLetter;
 use App\Offers\Actions\ShowInGallery;
 use App\Offers\Events\InsurerReplied;
@@ -29,9 +31,12 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\VendorLetter;
+use App\Users\Role;
+use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Throwable;
 
 /** Письмо разобрано: привязать к офферу, иначе — вычитать кандидата; и сказать админке. */
@@ -112,11 +117,11 @@ final class OnMessage
                 // перетирает — но людям решать, кому отдавать: парковке громко (управляющим и администраторам), в CRM — строкой
                 // в истории предложения.
                 if ($message->intent === Intent::Sold->value && ($pass = $vehicle->dealPass())) {
-                    \Illuminate\Support\Facades\Notification::send(
-                        app(\App\Notifications\Notify::class)->parkManagersOf($vehicle->city_id)
-                            ->merge(\App\Users\User::withRole(\App\Users\Role::ParkAdmin)->whereNotNull('approved_at')->get())->unique('id'),
-                        \App\Notifications\ParkNotice::insurerSoldDeal($vehicle, $pass));
-                    $vehicle->offer?->log(\App\Offers\OfferEventType::Note, null, ['text' => 'Страховая прислала «продано» по машине, а по нашей сделке ждём '.$pass->name.': сверить, кому выдавать']);
+                    Notification::send(
+                        app(Notify::class)->parkManagersOf($vehicle->city_id)
+                            ->merge(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get())->unique('id'),
+                        ParkNotice::insurerSoldDeal($vehicle, $pass));
+                    $vehicle->offer?->log(OfferEventType::Note, null, ['text' => 'Страховая прислала «продано» по ТС, а по нашей сделке ждём '.$pass->name.': сверить, кому выдавать']);
                 }
             }
             $paths[] = "/cars/{$vehicle->id}";

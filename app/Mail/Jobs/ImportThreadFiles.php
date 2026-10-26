@@ -51,18 +51,29 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
     /** Замок «эта ветка уже стоит» — не дольше задачи: не поставленная не держит его вечно. */
     public int $uniqueFor = 1800;
 
-    /** @param ?int $messageId только одно письмо (пришло в привязанную ветку); null — вся ветка */
-    public function __construct(public int $threadId, public ?int $messageId = null)
+    /**
+     * @param  ?int  $messageId  только одно письмо (пришло в привязанную ветку); null — вся ветка
+     * @param  ?int  $expected  сколько кадров ждём (`attachNow`): заглушки в ряду фото с первой секунды
+     */
+    public function __construct(public int $threadId, public ?int $messageId = null, public ?int $expected = null)
     {
         $this->onConnection('database-long')->onQueue('files')->afterCommit();
-        // В ход машины — с постановки: черновик из письма читается, когда доехали файлы всех веток (`Progress::busy`).
-        [$model] = self::target(Thread::find($threadId));
-        $model && Progress::step($model, self::task($threadId), self::QUEUED);
     }
 
-    private static function task(int $threadId): string
+    /**
+     * Задача легла в очередь (`JobQueued` — после коммита, откаченная транзакция её не ставит): в ход машины, черновик из
+     * письма читается, когда доехали файлы всех веток (`Progress::busy`).
+     */
+    public function announce(): void
     {
-        return Progress::MAIL.':'.$threadId;
+        [$model] = self::target(Thread::find($this->threadId));
+        $model && Progress::queue($model, $this->task(), self::QUEUED, $this->expected);
+    }
+
+    /** Ключ хода — как замок уникальности: задача всей ветки и задача одного письма не стирают ход друг друга. */
+    private function task(): string
+    {
+        return Progress::MAIL.':'.$this->threadId.':'.($this->messageId ?? 'all');
     }
 
     /** Замок на ветку и письмо: ждущая джоба одного письма не должна глотать джобу следующего. */
@@ -78,7 +89,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         if (! $model) {
             return;
         }
-        $task = self::task($thread->id);
+        $task = $this->task();
         // Сколько всего — из прошлого шага, пока свой счёт не начался: заглушки в ряду фото не мигают.
         $report = function (string $stage, ?int $i = null, ?int $n = null) use ($model, $task, $offer) {
             Progress::step($model, $task, $stage, $i, $n);
@@ -224,9 +235,6 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         } catch (Throwable $e) {
             Log::warning('Документы письма не прикрепились сразу', ['thread' => $thread->id, 'error' => $e->getMessage()]);
         }
-        if ($n = $importer->photosToCome($attachments)) {
-            Progress::step($model, self::task($thread->id), self::QUEUED, 0, $n);
-        }
-        self::dispatch($thread->id);
+        self::dispatch($thread->id, null, $importer->photosToCome($attachments) ?: null);
     }
 }

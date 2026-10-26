@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Cars\CarText;
 use App\Cars\Identity;
+use App\Mail\Extraction\CodeMatcher;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
@@ -54,11 +55,15 @@ final class MatchValuations
         // Номер Т-Страхования, не найденный точно, — по цифрам с любым годом: в СМС год бывает не тот. Только когда
         // совпадение одно — иначе непонятно, какая машина.
         $loose = [];
-        foreach (array_diff(array_keys($amounts), $offers->keys()->all()) as $key) {
-            if (preg_match('/^aut\d{2}(\d{6,7})$/', $key, $m)) {
-                $near = Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereRaw('claim_ref_key ~ ?', ['^aut[0-9]{2}'.$m[1].'$']))
-                    ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])->with(['vendor', 'settlement'])->limit(2)->get();
-                $near->count() === 1 && $loose[$key] = $near->first();
+        $digits = collect(array_diff(array_keys($amounts), $offers->keys()->all()))
+            ->mapWithKeys(fn ($key) => preg_match('/^aut\d{2}(\d{6,7})$/', $key, $m) ? [$key => $m[1]] : [])->all();
+        if ($digits) {
+            // Одним запросом по всем цифрам; совпадение должно быть одно — иначе непонятно, какая машина.
+            $near = Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereRaw('claim_ref_key ~ ?', ['^aut[0-9]{2}('.implode('|', array_unique($digits)).')$']))
+                ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])->with(['vendor', 'settlement'])->get()
+                ->groupBy(fn (Offer $o) => substr((string) $o->claim_ref_key, 5));
+            foreach ($digits as $key => $tail) {
+                ($near->get($tail)?->count() === 1) && $loose[$key] = $near->get($tail)->first();
             }
         }
         foreach ($loose as $key => $offer) {
@@ -72,6 +77,13 @@ final class MatchValuations
         $archived = $lots->isNotEmpty() ? Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $lots->keys()->all()))
             ->whereIn('state', [OfferState::Archived, OfferState::Cancelled])->latest('id')->get()->unique('claim_ref_key')->keyBy('claim_ref_key') : collect();
 
+        // Вендор черновика с Мигторга — по виду номера (`CarText::vendorOf` — два запроса): один раз на вид, а не на строку.
+        $vendors = [];
+        $vendorOf = function (string $ref) use (&$vendors) {
+            $pattern = CodeMatcher::patternOf($ref) ?? $ref;
+
+            return array_key_exists($pattern, $vendors) ? $vendors[$pattern] : ($vendors[$pattern] = CarText::vendorOf($ref));
+        };
         $out = [];
         $seen = [];
         foreach ($rows as $r) {
@@ -84,7 +96,7 @@ final class MatchValuations
             if ($found->isEmpty()) {
                 $lot = $lots->get($r['key']);
                 // Черновик с Мигторга получит вендора по виду номера — цены из суммы по его правилу.
-                $floor = $lot ? Pricing::fromAmount(CarText::vendorOf($r['ref']), $r['amount'])['floor_price'] : null;
+                $floor = $lot ? Pricing::fromAmount($vendorOf($r['ref']), $r['amount'])['floor_price'] : null;
                 $out[] = $r + ['status' => $lot && count($amounts[$r['key']]) === 1 ? 'migtorg' : 'missing', 'lot' => $lot, 'archived' => $archived->get($r['key']), 'offer' => null, 'direct' => false, 'floor' => $floor, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
 
                 continue;

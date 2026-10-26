@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Cache;
  * разбор писем писали ход в один ключ и стирали его друг у друга). У машины — список задач: `mail:{ветка}` (файлы письма,
  * встаёт при постановке в очередь), `archive:{файл}` (архив, брошенный в «Фото»), `migtorg` (кадры лота). Запись —
  * `{stage, i, n, at}`. Ключ — машина, а не дорожка: файлы у машины одни, ход видят и продажа, и ТС. Задача, что
- * десять минут не двигалась (убили выкладкой, ждёт повтора), не считается — кольцо не крутится вечно.
+ * десять минут не двигалась (убили выкладкой, ждёт повтора), не считается — кольцо не крутится вечно; задача, что ещё
+ * стоит в очереди (`queue`), не устаревает — работник может быть занят дольше (список живёт шесть часов).
  */
 final class Progress
 {
@@ -23,7 +24,7 @@ final class Progress
 
     public const MIGTORG = 'migtorg';
 
-    private const TTL = 1800;
+    private const TTL = 21600;
 
     private const STALE = 600;
 
@@ -33,6 +34,17 @@ final class Progress
         self::change($car, function (array $tasks) use ($task, $stage, $i, $n) {
             $was = $tasks[$task] ?? [];
             $tasks[$task] = ['stage' => $stage ?? ($was['stage'] ?? null), 'i' => $i ?? ($was['i'] ?? 0), 'n' => $n ?? ($was['n'] ?? null), 'at' => time()];
+
+            return $tasks;
+        });
+        self::announce($car, final: false);
+    }
+
+    /** Задача легла в очередь (`JobQueued`, после коммита): ждёт работника, сколько бы ни ждала. */
+    public static function queue(Offer|Vehicle|Car|int $car, string $task, string $stage, ?int $n = null): void
+    {
+        self::change($car, function (array $tasks) use ($task, $stage, $n) {
+            $tasks[$task] = ['stage' => $stage, 'i' => 0, 'n' => $n, 'at' => time(), 'queued' => true];
 
             return $tasks;
         });
@@ -87,7 +99,7 @@ final class Progress
     {
         $id = self::id($car);
 
-        return $id ? array_filter((array) Cache::get(self::key($id), []), fn ($t) => time() - ($t['at'] ?? 0) < self::STALE) : [];
+        return $id ? array_filter((array) Cache::get(self::key($id), []), fn ($t) => ! empty($t['queued']) || time() - ($t['at'] ?? 0) < self::STALE) : [];
     }
 
     private static function change(Offer|Vehicle|Car|int $car, callable $fn): void

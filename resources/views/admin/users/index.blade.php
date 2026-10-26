@@ -48,7 +48,7 @@
             <div class="list-head pt-0">Telegram</div>
             <div class="list">
                 <div class="row" data-controller="copy" data-copy-text-value="В каждом нажмите «Запустить», затем «Войти через XCar»" data-copy-title-value="Боты XCar" data-copy-done-value="Текст в буфере">
-                    <textarea hidden data-copy-target="message">Подключите ботов XCar, чтобы не пропускать новые машины и сделки:&#10;1. {{ $mainBot }} ваши сделки, ваш ход, оплаты и чаты&#10;2. {{ $offersBot }} новые предложения</textarea>
+                    <textarea hidden data-copy-target="message">Подключите ботов XCar, чтобы не пропускать новые ТС и сделки:&#10;1. {{ $mainBot }} ваши сделки, ваш ход, оплаты и чаты&#10;2. {{ $offersBot }} новые предложения</textarea>
                     <x-ui.row-icon name="send"/>
                     <span class="min-w-0 flex-1 font-medium">Пригласить в ботов Telegram</span>
                     <button type="button" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5" data-action="copy#copy" data-copy-fallback>Скопировать</button>

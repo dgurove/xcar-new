@@ -17,14 +17,15 @@ use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\MergeOffers;
+use App\Offers\Actions\NoBidsAlarm;
 use App\Offers\Actions\PurgeOffer;
 use App\Offers\Actions\ResolveProposal;
 use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Actions\SellAtAuction;
 use App\Offers\Actions\SendToAuction;
-use App\Offers\Actions\UndoAuctionSale;
 use App\Offers\Actions\ShowInGallery;
+use App\Offers\Actions\UndoAuctionSale;
 use App\Offers\Actions\UnlistParkOffer;
 use App\Offers\Actions\UnscheduleOffer;
 use App\Offers\Actions\UpdateOffer;
@@ -32,13 +33,14 @@ use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\Binding;
 use App\Offers\CatalogQuery;
+use App\Offers\Export\OffersXlsx;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
 use App\Offers\Margin;
 use App\Offers\MigtorgDiff;
-use App\Offers\Export\OffersXlsx;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
@@ -53,6 +55,7 @@ use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
+use App\Support\Plural;
 use App\Support\Sort;
 use App\Users\Role;
 use App\Users\User;
@@ -286,8 +289,8 @@ class OfferController
                     // Ни одного подтверждения, приём кончается за 3 часа (22.10.2026, владелец: «ни одно предложение не должно
                     // остаться без подтверждений»).
                     Facet::toggle('nobids', 'Без подтверждений', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.bids_close_at', '>', now())
-                        ->where('offers.bids_close_at', '<=', now()->addHours(\App\Offers\Actions\NoBidsAlarm::HOURS))
-                        ->whereDoesntHave('bids', fn ($b) => $b->whereIn('state', [\App\Offers\BidState::Active, \App\Offers\BidState::Accepted])))->dot('hot'),
+                        ->where('offers.bids_close_at', '<=', now()->addHours(NoBidsAlarm::HOURS))
+                        ->whereDoesntHave('bids', fn ($b) => $b->whereIn('state', [BidState::Active, BidState::Accepted])))->dot('hot'),
                     Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss'),
                 ] : []),
                 Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true)),
@@ -596,8 +599,12 @@ class OfferController
      */
     private function carried(User $user): array
     {
+        // Заведённый руками — «Создан» без источника: из писем, закупки, с парковки, из таблицы Кати и с Мигторга
+        // (`OpenDraft`, «Заведён …») не в счёт — после оценки Т-Страхования «+ Новый» не должен встать на её маршрут.
         $vendorId = Offer::where('moderator_id', $user->id)->whereNotNull('vendor_id')->whereDoesntHave('purchaseCar')
-            ->whereNotIn('id', Candidate::whereNotNull('offer_id')->select('offer_id'))->latest('id')->value('vendor_id');
+            ->whereNotIn('id', Candidate::whereNotNull('offer_id')->select('offer_id'))
+            ->whereDoesntHave('events', fn ($q) => $q->where('type', OfferEventType::Created)->whereNotNull('payload')->whereRaw("payload::text not in ('[]', '{}', 'null')"))
+            ->latest('id')->value('vendor_id');
 
         return $vendorId ? ['vendor_id' => $vendorId, 'prices_include_vat' => Vendor::offersVat($vendorId)] : [];
     }
@@ -829,7 +836,7 @@ class OfferController
         // от сейчас, не позже срока обязывающего (`Binding::clampClose`).
         $data = $request->validate(['minutes' => ['required_without:renew', 'integer', 'in:15,60'], 'renew' => ['nullable', 'boolean']]);
         $from = $offer->bids_close_at?->isFuture() ? $offer->bids_close_at : now();
-        $until = $request->boolean('renew') ? \App\Offers\Binding::clampClose($offer, Slots::closeFor(now())) : $from->copy()->addMinutes((int) $data['minutes']);
+        $until = $request->boolean('renew') ? Binding::clampClose($offer, Slots::closeFor(now())) : $from->copy()->addMinutes((int) $data['minutes']);
         $offer = $update($offer, ['bids_close_at' => $until], $request->user());
 
         // Из «Приём закрыт» строка уходит сразу (в «Опубликованные»), числа вкладок — следом, без обновления страницы.
@@ -852,12 +859,12 @@ class OfferController
         return back()->with('toast', 'Цена продажи '.Money::rub($raw));
     }
 
-    public function notifyNoBids(Request $request, Offer $offer, \App\Offers\Actions\NoBidsAlarm $alarm)
+    public function notifyNoBids(Request $request, Offer $offer, NoBidsAlarm $alarm)
     {
         abort_unless($offer->state === OfferState::Open && $offer->bidsOpen(), 422);
         $n = $alarm->notify($offer);
 
-        return back()->with('toast', $n ? 'Уведомили: '.$n.' '.\App\Support\Plural::of($n, ['менеджер', 'менеджера', 'менеджеров']) : 'Уведомлять некого');
+        return back()->with('toast', $n ? 'Уведомили: '.$n.' '.Plural::of($n, ['менеджер', 'менеджера', 'менеджеров']) : 'Уведомлять некого');
     }
 
     /**

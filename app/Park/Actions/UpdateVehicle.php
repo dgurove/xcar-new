@@ -46,8 +46,8 @@ final class UpdateVehicle
             ($this->transfer)($vehicle, $by);
         }
         // Оценочная у машины одна: машина в продаже — закупочная от новой оценочной, если её не вписывали рукой
-        // (`Pricing::floorFor`, владелец 04.10.2026). Машина уже в сделке или гараже — закупочную сделки правка парковки не
-        // трогает: её меняют в CRM («И в сделке»).
+        // (`Pricing::floorFor`, владелец 04.10.2026). Машина уже в сделке или гараже — правка парковки закупочную не трогает:
+        // новую закупочную поставщика вписывают в CRM (`UpdateOffer` → `UpdateDealCost`).
         if (in_array('value', $changed, true) && ($offer = $vehicle->offer) && ! $offer->costDeal()
             && ($floor = Pricing::floorFor($offer->floor_price, $diff['changes']['value'][0] ?? null, $vehicle->value))) {
             app(UpdateOffer::class)($offer, ['floor_price' => $floor], $by, ['why' => 'Оценочная на парковке']);

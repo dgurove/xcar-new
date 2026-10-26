@@ -34,7 +34,7 @@ final class ReorderStops
         }
         foreach ($stops as $k => $depot) {
             if ($order[$k] !== $depot && ! Route::movable($legs[$k], $legs[$k + 1])) {
-                throw ValidationException::withMessages(['order' => 'Машина уже на стоянке: её не переставить']);
+                throw ValidationException::withMessages(['order' => 'ТС уже на стоянке: её не переставить']);
             }
         }
         $changed = collect();

@@ -32,6 +32,7 @@ use App\Users\Access\AccessCode;
 use App\Users\Access\DecideCode;
 use App\Users\User;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -139,7 +140,7 @@ final class UpdateHandler
         $agree = $press->action === 'sure';
         try {
             app(AnswerCounter::class)($bid, $user, $agree);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->bot->answer($press->queryId, (string) collect($e->errors())->flatten()->first());
 
             return;
@@ -411,7 +412,7 @@ final class UpdateHandler
         }
         // Покупатель: машины, что откроет менеджер, и его сообщения — кнопка в ленту.
         if ($user->isBuyer()) {
-            return ['Сюда придут машины, которые откроет '.($user->manager?->shortName() ?? 'ваш менеджер').', и сообщения из чата', ['text' => 'Открыть предложения', 'url' => Surface::Site->url('/offers')]];
+            return ['Сюда придут автомобили, которые откроет '.($user->manager?->shortName() ?? 'ваш менеджер').', и сообщения из чата', ['text' => 'Открыть предложения', 'url' => Surface::Site->url('/offers')]];
         }
         if (! $user->hasDeals()) {
             return ['Сюда придут оплаты, выплаты и просроченные счета с кнопкой решения', $this->open()];

@@ -16,7 +16,8 @@ use App\Mail\Extraction\Patterns;
  *
  * В СМС Т-Страхования номер и сумма — одна подчёркнутая ссылка («AUT-26-1103537 739000»), и OCR теряет пробел под
  * подчёркиванием: «AUT-26-1103537739000» шаблон номера не берёт, строка пропадала целиком (26.10.2026). Такой хвост
- * разлепляется (`unglue`): номера с октября 2026 — семь цифр с «1», прежние — шесть с 5–9.
+ * разлепляется (`unglue`): номер — шесть или семь цифр (с октября 2026 семь, с «1»), берётся тот, при котором сумма
+ * выходит правдоподобной — шесть–восемь цифр; поровну — по первой цифре.
  */
 final class ValuationText
 {
@@ -30,11 +31,11 @@ final class ValuationText
      * Номер Т-Страхования, слипшийся с суммой: «AUT-26-1103537739000», «AUT-26-919572115524». Начало подчёркивания OCR
      * читает ещё и лишним «2 -»: «AUT-2 -26-1103537739000» (прод, 26.10.2026) — он выбрасывается.
      */
-    private const GLUED = '/AUT-(?:\d\s*-\s*)?(\d{2})-(\d{12,14})(?!\d)/iu';
+    private const GLUED = '/AUT-(?:\d\s*-\s*)?(\d{2})-(\d{12,15})(?!\d)/iu';
 
     /**
      * @return array{rows: list<array{ref: string, key: string, amount: ?int, vin: ?string, city: ?array{id: int, name: string, title: string}, lines: list<int>}>, lines: list<string>}
-     *                                                                                                                               `lines` у строки — номера строк текста, где номер, сумма, VIN и город (для анимации «убираем лишнее»)
+     *                                                                                                                                                                                   `lines` у строки — номера строк текста, где номер, сумма, VIN и город (для анимации «убираем лишнее»)
      */
     public static function parse(string $text): array
     {
@@ -74,7 +75,12 @@ final class ValuationText
 
     public static function unglue(string $line): string
     {
-        return (string) preg_replace_callback(self::GLUED, fn ($m) => 'AUT-'.$m[1].'-'.substr($m[2], 0, $m[2][0] === '1' ? 7 : 6).' '.substr($m[2], $m[2][0] === '1' ? 7 : 6), $line);
+        return (string) preg_replace_callback(self::GLUED, function ($m) {
+            $order = $m[2][0] === '1' ? [7, 6] : [6, 7];
+            $cut = collect($order)->first(fn ($n) => strlen($m[2]) - $n >= 6 && strlen($m[2]) - $n <= 8) ?? $order[0];
+
+            return 'AUT-'.$m[1].'-'.substr($m[2], 0, $cut).' '.substr($m[2], $cut);
+        }, $line);
     }
 
     /** @return list<array{0: ?string, 1: string}> куски строки: номер убытка (или null — продолжение блока) и текст после него */

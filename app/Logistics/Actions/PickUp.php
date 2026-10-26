@@ -73,7 +73,7 @@ final class PickUp
         [$to, $yard] = $stop ? [Point::Depot, null] : Point::read($data);
         $address = $stop ? null : Point::address($data);
         match (true) {
-            $to === Point::Keeper && ! $t->saleOffer()?->keeper() => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера с гаражом']),
+            $to === Point::Keeper && ! $t->saleOffer()?->keeper() => throw ValidationException::withMessages(['destination' => 'У ТС нет менеджера с гаражом']),
             $to === null, $to === Point::Ours => throw ValidationException::withMessages(['destination' => 'Куда везёте']),
             $to === Point::Yard && ! $yard => throw ValidationException::withMessages(['destination' => 'Какая парковка']),
             $to === Point::Depot && ! $t->depot_id => throw ValidationException::withMessages(['destination' => 'Какая стоянка']),

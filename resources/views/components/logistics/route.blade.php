@@ -54,7 +54,7 @@
         <li @class(['route-point route-point--start', 'is-passed' => $passed(0)]) data-fixed>
             <span class="route-mark"><span class="route-ring"></span></span>
             <span class="route-text"><span class="route-name">{{ Route::fromLabel($first) }}</span>@if ($sub = $first->fromAddress() ?? $first->city())<span class="route-sub">{{ $sub }}</span>@endif</span>
-            @if ($carAt === 0)<span class="route-car" title="Машина здесь"><x-ui.icon name="cat-truck" class="size-5"/></span>@endif
+            @if ($carAt === 0)<span class="route-car" title="ТС здесь"><x-ui.icon name="cat-truck" class="size-5"/></span>@endif
         </li>
         @foreach ($legs as $i => $leg)
             @php
@@ -69,7 +69,7 @@
             @endphp
             {{-- Отрезок — на линии между точками. --}}
             <li class="route-leg route-leg--{{ $line }}" data-fixed>
-                <span class="route-mark">@if ($moving?->is($leg))<span class="route-car route-car--moving" title="Машина в пути"><x-ui.icon name="cat-truck" class="size-5"/></span>@endif</span>
+                <span class="route-mark">@if ($moving?->is($leg))<span class="route-car route-car--moving" title="ТС в пути"><x-ui.icon name="cat-truck" class="size-5"/></span>@endif</span>
                 @if ($legEdit)
                     <button type="button" class="route-leg-body" data-controller="emit" data-action="emit#send" data-emit-event-param="logist-{{ $leg->id }}:open">{!! $inner !!}<x-ui.chevron/></button>
                 @else
@@ -91,7 +91,7 @@
                     @else
                         <span class="route-text"><span class="route-name">Стоянка {{ $depot?->name }}</span>@if ($place($depot))<span class="route-sub">{{ $place($depot) }}</span>@endif</span>
                     @endif
-                    @if ($carAt === $i + 1)<span class="route-car" title="Машина здесь"><x-ui.icon name="cat-truck" class="size-5"/></span>@endif
+                    @if ($carAt === $i + 1)<span class="route-car" title="ТС здесь"><x-ui.icon name="cat-truck" class="size-5"/></span>@endif
                     @if ($movable)
                         <span class="route-edit-only flex shrink-0 items-center">
                             <span class="route-tool" data-handle aria-label="Перетащить"><x-ui.icon name="grip" class="size-5"/></span>
@@ -126,7 +126,7 @@
             @else
                 <span class="route-text"><span class="route-name">{{ Route::toLabel($last) }}</span></span>
             @endif
-            @if ($carAt === $n)<span class="route-car" title="Машина здесь"><x-ui.icon name="cat-truck" class="size-5"/></span>@endif
+            @if ($carAt === $n)<span class="route-car" title="ТС здесь"><x-ui.icon name="cat-truck" class="size-5"/></span>@endif
         </li>
     </ol>
 </section>

@@ -41,8 +41,9 @@ final class PutOnSale
             'vendor_id' => $vehicle->vendor_id,
             'floor_price' => $car->value ? Pricing::floorFrom((int) $car->value) : null,
         ], created: ['park' => $vehicle->id], why: 'С парковки', reopenCancelled: false), $by);
+        // Отказ поставщика — не продажа: сказать как есть (было «уже продана» и для отменённой).
         if (in_array($offer->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
-            throw ValidationException::withMessages(['vehicle' => 'Эта машина уже продана: '.Identity::offerName($offer)]);
+            throw ValidationException::withMessages(['vehicle' => ($offer->state === OfferState::Cancelled ? 'По этому ТС поставщик отказал: ' : 'Это ТС уже продано: ').Identity::offerName($offer)]);
         }
         if ($outcome === OpenDraft::CREATED) {
             $vehicle->log(EventType::Linked, $by, ['number' => $offer->number]);

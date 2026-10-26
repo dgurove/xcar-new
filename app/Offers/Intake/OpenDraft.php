@@ -13,6 +13,7 @@ use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Users\User;
 use App\Vendors\Vendor;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -44,8 +45,17 @@ final class OpenDraft
     public function __invoke(DraftSource $source, ?User $by): array
     {
         $key = $source->lockKey();
+        if (! $key) {
+            return $this->open($source, $by);
+        }
+        try {
+            return Cache::lock("draft:{$key}", 30)->block(15, fn () => $this->open($source, $by));
+        } catch (LockTimeoutException $e) {
+            // Эту машину сейчас заводит другой (почта рядом с руками, медленный маршрут): что он завёл — то и есть.
+            $offer = $source->car ? $source->car->offer()->first() : Identity::offerFor($source->claimKey(), $source->vin ?? $source->fields['vin'] ?? null);
 
-        return $key ? Cache::lock("draft:{$key}", 30)->block(15, fn () => $this->open($source, $by)) : $this->open($source, $by);
+            return $offer ? [$offer, self::EXISTING] : throw $e;
+        }
     }
 
     /** @return array{0: Offer, 1: string} */

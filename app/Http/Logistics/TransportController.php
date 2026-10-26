@@ -4,6 +4,7 @@ namespace App\Http\Logistics;
 
 use App\Cars\Car;
 use App\Cars\Region;
+use App\Http\Admin\OfferPhotoController;
 use App\Live\Publisher;
 use App\Live\Stream;
 use App\Logistics\Actions\AddStop;
@@ -20,24 +21,24 @@ use App\Logistics\Actions\ReorderStops;
 use App\Logistics\Actions\ReplaceStop;
 use App\Logistics\Actions\SetDetails;
 use App\Logistics\Actions\SetRoute;
-use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Actions\StepBack;
 use App\Logistics\Channel;
-use App\Offers\Actions\SellAtAuction;
 use App\Logistics\Client;
 use App\Logistics\Depot;
 use App\Logistics\FileAccess;
+use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Listeners\RefreshLogistics;
 use App\Logistics\Reach;
+use App\Logistics\Route;
 use App\Logistics\SaleState;
 use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
-use App\Http\Admin\OfferPhotoController;
 use App\Media\Actions\RotatePhoto;
 use App\Media\PhotoIngest;
 use App\Notifications\ReadNotices;
+use App\Offers\Actions\SellAtAuction;
 use App\Offers\Binding;
 use App\Support\Detail;
 use App\Support\Facets\Common;
@@ -51,6 +52,7 @@ use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -408,7 +410,7 @@ class TransportController
     public function route(Request $request, Transport $transport, SetRoute $route)
     {
         $this->visible($request, $transport);
-        $last = \App\Logistics\Route::legs($transport)->last();
+        $last = Route::legs($transport)->last();
         if ($last && ! $last->is($transport)) {
             abort_unless($transport->hasLogist($request->user()) || $request->user()->leadsLogistics(), 404);
             $transport = $last;
@@ -440,7 +442,7 @@ class TransportController
         $t = $transport->fresh();
 
         return back()->with('toast', $t->state === TransportState::Planned
-            ? 'Отрезок '.$t->seq.': '.$t->executor?->shortName().', получит, когда машина будет на стоянке'
+            ? 'Отрезок '.$t->seq.': '.$t->executor?->shortName().', получит, когда ТС будет на стоянке'
             : Str::ucfirst($t->carrier() ?? 'ждёт исполнителя'));
     }
 
@@ -481,7 +483,7 @@ class TransportController
     }
 
     /** Отрезкам, что уже у исполнителя, сменили точки — ему и логисту, как при правке «Куда везти». */
-    private function tellRerouted(\Illuminate\Support\Collection $legs, User $by): void
+    private function tellRerouted(Collection $legs, User $by): void
     {
         foreach ($legs->filter(fn (Transport $t) => $t->isOpen() && $t->executor_id) as $t) {
             Notification::send(NotifyLogistics::workers($t, $by), TransportNotice::rerouted($t));

@@ -47,6 +47,10 @@ final class MigtorgDiff
             default => [$name],
         };
         $chosen = array_intersect_key(self::lot($offer), array_flip($from));
+        // Город — только найденный в справочнике: устаревший или кривой город лота нового пункта не заводит.
+        if (isset($chosen['city'])) {
+            unset($chosen['city']['create']);
+        }
         if (! $chosen) {
             return false;
         }

@@ -14,7 +14,7 @@
                 <x-telegram.logo class="size-10"/>
                 <span class="min-w-0 flex-1">
                     <span class="block">Предложения в Telegram</span>
-                    <span class="block text-sm text-ink-muted">Новые машины сразу, с PDF для клиента</span>
+                    <span class="block text-sm text-ink-muted">Новые ТС сразу, с PDF для клиента</span>
                 </span>
                 <span class="btn btn-s btn-telegram shrink-0 !h-8 rounded-full !px-3.5 max-sm:hidden">Подписаться</span>
             </button>

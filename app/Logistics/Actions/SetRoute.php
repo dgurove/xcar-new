@@ -57,7 +57,7 @@ final class SetRoute
         [$to, $yard] = Point::read($data);
         $address = Point::address($data);
         match (true) {
-            $to === Point::Keeper && ! Transport::keeperLabel($t->saleOffer()) => throw ValidationException::withMessages(['destination' => 'У машины нет менеджера']),
+            $to === Point::Keeper && ! Transport::keeperLabel($t->saleOffer()) => throw ValidationException::withMessages(['destination' => 'У ТС нет менеджера']),
             $to === Point::Yard && ! $yard => throw ValidationException::withMessages(['destination' => 'Какая парковка']),
             // «К нам» без адреса — не место (18.10.2026): только парковка по названию или адрес.
             $to === Point::Ours => throw ValidationException::withMessages(['destination' => 'Выберите парковку или адрес']),

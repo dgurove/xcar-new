@@ -47,7 +47,7 @@ final class AssignExecutor
         }
         // Свой исполнитель — чужую машину; менеджер сделки или держатель гаража свою забирает сам («… сам»).
         if ($kind === Channel::Partner && $who && $who->is(Choices::managerOf($t))) {
-            throw ValidationException::withMessages(['executor_id' => $who->shortName().' — это его машина: выберите «'.$who->shortName().' сам»']);
+            throw ValidationException::withMessages(['executor_id' => $who->shortName().' — это его ТС: выберите «'.$who->shortName().' сам»']);
         }
 
         // Маршрут через стоянки (20.10.2026, `Logistics\Route`) ведёт логист: отдать его другому виду — сначала убрать стоянки.

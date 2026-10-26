@@ -60,12 +60,15 @@ final class PhotoIngest
         return $this->add($model, $collection, $temp, $name, $properties, $max);
     }
 
-    /** Уже лежащий у машины файл с этим отпечатком: свой, отправленный в письме (`sent_sha`) или лист, с которого резали. */
-    private static function twin(Model $model, string $collection, string $sha): ?Media
+    /**
+     * Уже лежащий у машины файл с этим отпечатком (свой, отправленный в письме — `sent_sha`, лист, с которого резали) в той
+     * же стадии: тот же снимок в «Фото при выдаче», что лежит в «при приёме», — новый кадр выдачи, а не тот же.
+     */
+    private static function twin(Model $model, string $collection, string $sha, ?string $stage): ?Media
     {
         return method_exists($model, 'media') ? $model->media()->where('collection_name', $collection)
             ->where(fn ($q) => $q->where('custom_properties->sha', $sha)->orWhere('custom_properties->sent_sha', $sha)->orWhere('custom_properties->page_sha', $sha))
-            ->first() : null;
+            ->get()->first(fn (Media $m) => $m->getCustomProperty('stage') === $stage) : null;
     }
 
     /** Кадр (или все снимки с листа) в коллекцию; возвращает первый. */
@@ -84,7 +87,7 @@ final class PhotoIngest
             // Отпечаток исходника — тот же файл (из письма, с телефона, из архива) второй раз не ложится: возвращается лежащий.
             // Проверка здесь, а не у каждой двери (26.10.2026, приборка: ручная загрузка её не делала).
             $properties += ['sha' => hash_file('sha256', $path)];
-            if ($twin = self::twin($model, $collection, $properties['sha'])) {
+            if ($twin = self::twin($model, $collection, $properties['sha'], $properties['stage'] ?? null)) {
                 return $twin;
             }
             $bands = $collection === 'photos' ? $this->pages($path) : [];

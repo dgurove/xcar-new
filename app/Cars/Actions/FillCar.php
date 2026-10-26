@@ -51,12 +51,13 @@ final class FillCar
     /** @return list<string> поля, которые записаны */
     public function __invoke(Offer|Vehicle $lane, array $chosen, ?User $by, string $mode = self::SOURCE, array $log = []): array
     {
+        // Марка источника — один раз: новую заводит только источник со своим справочником марок (`create`: Мигторг).
+        $chosenBrand = isset($chosen['brand']) ? (! empty($chosen['brand']['create']) ? Brand::resolve((string) $chosen['brand']['value']) : Brand::known((string) $chosen['brand']['value'])) : null;
         $data = [];
         foreach ($chosen as $field => $item) {
             $value = $item['value'];
             match ($field) {
-                // Новую марку заводит только источник со своим справочником марок (`create`: Мигторг) — документы и письма нет.
-                'brand' => ($id = (! empty($item['create']) ? Brand::resolve((string) $value) : Brand::known((string) $value))?->id) ? $data['brand_id'] = $id : null,
+                'brand' => $chosenBrand ? $data['brand_id'] = $chosenBrand->id : null,
                 'model' => null,
                 'vin' => ($vin = Vin::full((string) $value)) ? $data['vin'] = $vin : null,
                 'color' => $data['color'] = Colors::normalize((string) $value) ?? (string) $value,
@@ -75,8 +76,9 @@ final class FillCar
             };
         }
         $onlyEmpty = $mode === self::EMPTY;
+        // Только в пустое — любое поле дорожки, и своё у ТС (оценочная, номер убытка, страхователь), не список.
         $keep = match ($mode) {
-            self::EMPTY => [...self::SPECS, 'brand_id', 'vin', 'year', 'color'],
+            self::EMPTY => array_keys($data),
             self::CHOSEN => [],
             default => self::SPECS,
         };
@@ -87,7 +89,6 @@ final class FillCar
         }
         $brandId = $data['brand_id'] ?? $lane->brand_id;
         // Марки документа нет в справочнике — его модель не заводится под прежней маркой («Kia H5» из документа Hongqi).
-        $chosenBrand = isset($chosen['brand']) ? (! empty($chosen['brand']['create']) ? Brand::resolve((string) $chosen['brand']['value']) : Brand::known((string) $chosen['brand']['value'])) : null;
         $model = ! (isset($chosen['brand']) && ! $chosenBrand) && isset($chosen['model']['value']);
         if ($onlyEmpty) {
             // Модель источника — только под его же маркой («Solaris» не заводится под Kia) и только в пустое.

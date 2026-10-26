@@ -4,9 +4,9 @@ namespace App\Http\Pwa;
 
 use App\Support\Icons;
 use App\Support\Surface;
+use App\Users\Access\Lock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use App\Users\Access\Lock;
 
 /** Манифест — свой на каждую поверхность: имя, стартовая страница, ярлыки, иконки. */
 class PwaController
@@ -28,7 +28,7 @@ class PwaController
             Surface::Park => ['Заявки, ТС, парковки', [
                 ['Заявки', '/requests', 'flag'], ['ТС', '/cars', 'cat-car'],
             ]],
-            Surface::Logistics => ['Перевозки машин', [
+            Surface::Logistics => ['Перевозки ТС', [
                 ['Перевозки', '/transports', 'cat-car'],
             ]],
         };
