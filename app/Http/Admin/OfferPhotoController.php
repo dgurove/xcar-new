@@ -48,18 +48,18 @@ class OfferPhotoController
                 $stage = $offer->parkVehicle ? PhotoStage::tryFrom((string) $request->input('stage')) : null;
                 foreach ($pages as $page) {
                     if (! $offer->hasFile(hash('sha256', $page['contents']))) {
-                        $ingest->fromString($offer, 'photos', $page['contents'], $page['name'], array_filter(['stage' => $stage?->value]) + ['hidden' => true]);
+                        $ingest->fromString($offer, 'photos', $page['contents'], $page['name'], array_filter(['stage' => $stage?->value]) + Hidden::incoming($offer));
                     }
                 }
             } elseif ($request->input('collection') === 'papers' || ! $this->isImage($file, $ingest)) {
                 // Отпечаток — как у документов из писем: «✨» читает один и тот же скан один раз (кеш текста по sha).
                 $offer->addMedia($file)->usingFileName(self::safeName($name))->withCustomProperties(['sha' => hash_file('sha256', $file->getRealPath())])->toMediaCollection('papers');
             } elseif (! (($uuid = Migtorg::mediaOf($name)) && $offer->media()->where('collection_name', 'photos')->where('custom_properties->migtorg', $uuid)->exists())) {
-                // Добавленное руками сначала скрыто (владелец, 04.10.2026): что показать, решают глазом или «Показать все».
+                // Скрыт ли новый кадр — одно правило (`Hidden::incoming`): в черновике виден сразу, у опубликованного — после глаза.
                 // Кадр с сайта Мигторга (уже взятый лотом — пропущен выше) сам называет лот: номер, поля и остальные кадры.
                 // Блок, куда добавили (от страховой, при приёме), — стадия кадра машины, если она на парковке.
                 $stage = $offer->parkVehicle ? PhotoStage::tryFrom((string) $request->input('stage')) : null;
-                $media = $ingest->fromPhone($offer, 'photos', $request, properties: array_filter(['stage' => $stage?->value]) + ['hidden' => true]);
+                $media = $ingest->fromPhone($offer, 'photos', $request, properties: array_filter(['stage' => $stage?->value]) + Hidden::incoming($offer));
                 ($uuid = $media->getCustomProperty('migtorg')) && ImportMigtorgLot::byPhoto($offer, $uuid, $request->user());
             }
         } catch (Throwable $e) {

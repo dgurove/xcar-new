@@ -31,8 +31,8 @@ use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
-use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\PutOnSale;
+use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\RestoreVehicle;
 use App\Park\Actions\SetDates;
 use App\Park\Actions\SetYard;
@@ -343,8 +343,8 @@ class VehicleController
             if ($papers) {
                 $vehicle->addMedia($file)->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $file->getClientOriginalName()) ?: 'dokument')->toMediaCollection('papers');
             } else {
-                // Глаз у ТС — показ в продаже: добавленное сначала скрыто (владелец, 04.10.2026).
-                $ingest->fromPhone($vehicle, 'photos', $request, properties: ['stage' => $stage->value, 'source' => 'app'] + ['hidden' => true]);
+                // Глаз у ТС — показ в продаже: скрыт, только если продажа уже опубликована (`Hidden::incoming`).
+                $ingest->fromPhone($vehicle, 'photos', $request, properties: ['stage' => $stage->value, 'source' => 'app'] + Hidden::incoming($vehicle));
             }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);

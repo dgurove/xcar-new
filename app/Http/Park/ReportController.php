@@ -2,6 +2,8 @@
 
 namespace App\Http\Park;
 
+use App\Mail\Composer;
+use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Park\Actions\MarkReportSent;
 use App\Park\Actions\SendIntakeReport;
@@ -9,10 +11,9 @@ use App\Park\IntakeReport;
 use App\Park\ReportDoc;
 use App\Park\Vehicle;
 use App\Support\Pdf;
-use App\Mail\Composer;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Spatie\Image\Enums\Fit;
 use Spatie\Image\Image;
 
@@ -57,7 +58,7 @@ class ReportController
                 return $this->back($request, 'Отчёт уже отправлен');
             }
             foreach ($request->file('new_photos', []) as $file) {
-                $photoIds[] = $ingest->fromUpload($vehicle, 'photos', $file, ['stage' => 'intake', 'source' => 'app', 'hidden' => true])->id;
+                $photoIds[] = $ingest->fromUpload($vehicle, 'photos', $file, ['stage' => 'intake', 'source' => 'app'] + Hidden::incoming($vehicle))->id;
             }
             // «Снять» — страницы одного документа, одним PDF; «Файл» — каждый файл своим документом.
             foreach ($scans as $kind => $list) {
@@ -98,6 +99,7 @@ class ReportController
         if (! MarkReportSent::done($vehicle)) {
             $mark($vehicle, $request->user(), 'Акт приёма', now(), null, ['manual' => true]);
         }
+
         return $this->back($request, 'Отчёт отмечен отправленным');
     }
 

@@ -7,10 +7,10 @@ use App\Mail\Extraction\AttachmentImporter;
 use App\Mail\Extraction\CloudShare;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
+use App\Media\Hidden;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
-use App\Offers\OfferState;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Queue\Queueable;
@@ -46,7 +46,7 @@ final class ShareReplyFiles implements ShouldQueue
             return;
         }
         $documents = ['letter' => $message->id];
-        $photos = $offer->state !== OfferState::Draft ? ['hidden' => true] : [];
+        $photos = Hidden::incoming($offer);
         // Идёт сделка — картинки ответа (во вложениях и в архиве по ссылке) это документы, а не кадры машины.
         $dealing = $offer->deal()->exists();
         if ($message->files()->isNotEmpty()) {
