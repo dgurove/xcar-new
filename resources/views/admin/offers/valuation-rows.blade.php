@@ -53,7 +53,7 @@
                             <x-ui.cat-icon :category="\App\Cars\Category::Passenger" class="valuation-cat"/>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate">{{ $lot?->title ?: $item['ref'] }}</span>
-                                <span class="row-sub"><x-vendor.ref :vendor-id="$item['vendor']" :ref="$item['ref']"/>@if ($lot?->city)<span>{{ $lot->city }}</span>@endif</span>
+                                <span class="row-sub"><x-vendor.ref :vendor-id="$item['vendor']" :ref="$item['ref']" copy/>@if ($lot?->city)<span>{{ $lot->city }}</span>@endif</span>
                             </span>
                             @if ($status === 'absent')<label class="check shrink-0" aria-label="Завести"><input type="checkbox" name="create[]" value="{{ $item['key'] }}" checked data-action="valuation#count"></label>@endif
                         </div>
@@ -74,7 +74,7 @@
                         @if ($o)<x-ui.cat-icon :category="$o->category()" class="valuation-cat"/>@endif
                         <span class="min-w-0 flex-1">
                             <span class="block truncate">{{ $o?->titleWithYear() ?? $item['ref'] }}</span>
-                            @if ($o)<span class="row-sub"><x-vendor.ref :vendor-id="$o->vendor_id" :ref="$item['ref']"/></span>@endif
+                            @if ($o)<span class="row-sub"><x-vendor.ref :vendor-id="$o->vendor_id" :ref="$item['ref']" copy/></span>@endif
                         </span>
                         <span class="nums text-sm text-ink-muted" data-v>{{ Money::nums($item['amount']) }}</span>
                     </div>
@@ -100,7 +100,7 @@
                         <x-ui.cat-icon :category="$o->category()" class="valuation-cat"/>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate">{{ $o->titleWithYear() }}</span>
-                            <span class="row-sub"><x-vendor.ref :vendor-id="$o->vendor_id" :ref="$item['ref']"/>@if ($status === 'dispute')<span class="text-urgent">номер в тексте дважды</span>@endif</span>
+                            <span class="row-sub"><x-vendor.ref :vendor-id="$o->vendor_id" :ref="$item['ref']" copy/>@if ($status === 'dispute')<span class="text-urgent">номер в тексте дважды</span>@endif</span>
                         </span>
                         @if ($take)<label class="check shrink-0" aria-label="Взять"><input type="checkbox" name="offers[]" value="{{ $o->id }}" @checked($status === 'fill') data-action="valuation#count"></label>@endif
                         @if ($conflict)<input type="hidden" name="offers[]" value="{{ $o->id }}">@include('admin.offers.valuation-keep', ['offer' => $o])@endif

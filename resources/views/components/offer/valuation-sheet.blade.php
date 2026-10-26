@@ -99,6 +99,8 @@
             </div>
             {{-- Заведённые с Мигторга — строками, проявляются по одной: номер печатается, закупочная бежит. --}}
             <div class="list valuation-created" data-valuation-target="created" hidden></div>
+            {{-- Номер убытка заведённых — с копированием, как в строках (`x-ui.copy-code`): строку собирает скрипт. --}}
+            <template data-valuation-target="copyCode"><x-ui.copy-code value="0"/></template>
             <div class="valuation-bar">
                 <x-ui.button type="button" class="min-w-0 flex-1" data-action="valuation#finish sheet#close">Готово</x-ui.button>
             </div>

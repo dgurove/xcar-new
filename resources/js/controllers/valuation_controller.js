@@ -19,7 +19,7 @@ const size = (b) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} К�
 
 export default class extends Controller {
     static targets = ['paste', 'sources', 'file', 'fileIcon', 'fileName', 'fileSub', 'editor', 'note', 'text', 'runBar',
-        'work', 'lines', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'what', 'done', 'doneTitle', 'doneSub', 'created'];
+        'work', 'lines', 'fail', 'reason', 'result', 'rows', 'token', 'save', 'what', 'done', 'doneTitle', 'doneSub', 'created', 'copyCode'];
     static values = { url: String, fileUrl: String };
 
     disconnect() {
@@ -345,7 +345,13 @@ export default class extends Controller {
             a.dataset.turboFrame = '_top';
             a.innerHTML = '<span class="min-w-0 flex-1"><span class="block truncate"></span><span class="row-sub"><span class="nums"></span><span></span></span>'
                 + '<span class="row-sub text-ink-dim">фото подтянутся с Мигторга</span></span><span class="nums text-sm"></span>';
-            const [title, ref, city] = a.querySelectorAll('.block, .row-sub .nums, .row-sub .nums + span');
+            const [title, slot, city] = a.querySelectorAll('.block, .row-sub .nums, .row-sub .nums + span');
+            // Номер — копируется нажатием (строку при этом не открывает); печатается текстом перед иконкой.
+            const code = this.copyCodeTarget.content.firstElementChild.cloneNode(true);
+            code.dataset.copyTextValue = c.ref;
+            slot.replaceWith(code);
+            const ref = code.firstChild;
+            ref.textContent = '';
             title.textContent = c.title;
             city.textContent = c.city ?? '';
             a.lastElementChild.textContent = rub(c.floor);
