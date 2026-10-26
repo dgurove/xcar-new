@@ -4,12 +4,12 @@ namespace App\Purchases\Actions;
 
 use App\Cars\Actions\JoinCars;
 use App\Cars\Identity;
-use App\Offers\Actions\CreateOffer;
+use App\Offers\Intake\DraftSource;
+use App\Offers\Intake\OpenDraft;
 use App\Offers\OfferEventType;
 use App\Purchases\Car;
 use App\Purchases\Purchase;
 use App\Users\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class MoveToOffers
 {
-    public function __construct(private CreateOffer $create, private JoinCars $join) {}
+    public function __construct(private OpenDraft $open, private JoinCars $join) {}
 
     /** @param list<array{dl: string, price: ?int}> $rows */
     public function __invoke(Purchase $purchase, array $rows, User $by): int
@@ -51,12 +51,13 @@ final class MoveToOffers
                     continue;
                 }
             }
-            DB::transaction(fn () => ($this->create)($by, [
+            // НДС цен — от вендора (`UpdateOffer`), как у любого черновика.
+            ($this->open)(new DraftSource('purchase', car: $own, fields: [
                 'settlement_id' => $car->settlement_id, 'inspection_address' => $car->address,
-                'share_locked' => $car->share_locked, 'vendor_id' => $vendor->id, 'prices_include_vat' => (bool) $vendor->offers_include_vat,
+                'share_locked' => $car->share_locked, 'vendor_id' => $vendor->id,
                 'floor_price' => $prices[mb_strtolower(trim((string) $car->dl))],
                 ...$car->offerExtras(),
-            ], ['purchase' => $purchase->number, 'dl' => $car->dl], car: $own));
+            ], created: ['purchase' => $purchase->number, 'dl' => $car->dl], why: 'Контрпредложение закупки '.$purchase->number), $by);
         }
 
         return $cars->count();

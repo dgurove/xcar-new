@@ -31,7 +31,7 @@ use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
-use App\Park\Actions\PromoteCandidate;
+use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\PutOnSale;
 use App\Park\Actions\RestoreVehicle;
 use App\Park\Actions\SetDates;
@@ -275,7 +275,7 @@ class VehicleController
         ]);
     }
 
-    public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link, PromoteCandidate $promote)
+    public function update(Request $request, Vehicle $vehicle, UpdateVehicle $update, LinkThread $link, RegisterCandidate $promote)
     {
         // Поля тождества (VehicleFields) шлёт форма дела; договор — шторка «Договор». Одна дверь на обе.
         VehicleFields::clean($request);

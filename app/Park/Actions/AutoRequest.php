@@ -24,7 +24,7 @@ use Throwable;
 
 /**
  * Письмо-заявка вендора → ТС и заявка сами (владелец 07.10.2026: «пусть заявки на приём и на эвакуацию автоматически
- * заводятся сами»). Те же двери, что «Завести» (`RequestController::store`): `CreateRequest` и `PromoteCandidate::attach`
+ * заводятся сами»). Те же двери, что «Завести» (`RequestController::store`): `CreateRequest` и `RegisterCandidate::attach`
  * — ветки к делу, файлы в дело. Марка, VIN, год, которых нет в письме, — из документов в фоне (`AutoScan`).
  * Всегда приём: эвакуации и звонка нет (владелец 10.10.2026: «тут чисто приём и всё»).
  *
@@ -37,7 +37,7 @@ final class AutoRequest
     /** Письмо старше — не новая заявка, а догнавшая история: решит человек. */
     private const FRESH_DAYS = 7;
 
-    public function __construct(private CreateRequest $create, private PromoteCandidate $promote) {}
+    public function __construct(private CreateRequest $create, private RegisterCandidate $promote) {}
 
     /** Почему цепочка не заводится сама; null — заводится. `$old` — прогон руками: возраст письма не в счёт. */
     public function blocker(Candidate $candidate, bool $old = false): ?string

@@ -63,6 +63,8 @@ class OfferEvent extends Model
                 isset($p['purchase']) => "Создан из закупки № {$p['purchase']}, ДЛ {$p['dl']}",
                 isset($p['park']) => 'Выставлен с парковки',
                 isset($p['mail']) => 'Заведён из письма',
+                isset($p['legacy']) => 'Заведён из таблицы Кати',
+                isset($p['migtorg']) => 'Заведён с Мигторга',
                 default => 'Создан',
             },
             OfferEventType::Updated => self::updatedText($p),

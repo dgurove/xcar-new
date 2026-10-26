@@ -4,9 +4,9 @@ namespace App\Park\Actions;
 
 use App\Cars\Identity;
 use App\Mail\Actions\LinkThread;
-use App\Offers\Actions\ChangeOfferState;
-use App\Offers\Actions\CreateOffer;
 use App\Offers\CarPlace;
+use App\Offers\Intake\DraftSource;
+use App\Offers\Intake\OpenDraft;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
@@ -15,7 +15,6 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Users\User;
 use App\Vendors\Vendor;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -27,36 +26,29 @@ use Illuminate\Validation\ValidationException;
  */
 final class PutOnSale
 {
-    public function __construct(private CreateOffer $create, private LinkThread $threads, private ChangeOfferState $change) {}
+    public function __construct(private OpenDraft $open, private LinkThread $threads) {}
 
     public function __invoke(Vehicle $vehicle, ?User $by): Offer
     {
         if ($vehicle->offer) {
             return $vehicle->offer;
         }
-
-        return DB::transaction(function () use ($vehicle, $by) {
-            $car = $vehicle->carRecord();
-            if ($prev = $car->offer()->first()) {
-                if (in_array($prev->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
-                    throw ValidationException::withMessages(['vehicle' => 'Эта машина уже продана: '.Identity::offerName($prev)]);
-                }
-                $prev->state === OfferState::Archived && ($this->change)($prev, OfferState::Draft, $by);
-
-                return $prev->refresh();
-            }
-            $offer = ($this->create)($by, array_filter([
-                // Без парковки — город ТС (`city_id` — населённый пункт, `Park\City`).
-                'settlement_id' => $vehicle->yard?->settlement_id ?? $vehicle->city_id,
-                'car_place' => $vehicle->state === VehicleState::Stored ? CarPlace::Ours : null,
-                'vendor_id' => $vehicle->vendor_id,
-                'prices_include_vat' => $vehicle->vendor_id ? Vendor::offersVat($vehicle->vendor_id) : null,
-                'floor_price' => $car->value ? Pricing::floorFrom((int) $car->value) : null,
-            ], fn ($v) => $v !== null), ['park' => $vehicle->id], car: $car);
+        $car = $vehicle->carRecord();
+        [$offer, $outcome] = ($this->open)(new DraftSource('park', car: $car, fields: [
+            // Без парковки — город ТС (`city_id` — населённый пункт, `Park\City`).
+            'settlement_id' => $vehicle->yard?->settlement_id ?? $vehicle->city_id,
+            'car_place' => $vehicle->state === VehicleState::Stored ? CarPlace::Ours : null,
+            'vendor_id' => $vehicle->vendor_id,
+            'floor_price' => $car->value ? Pricing::floorFrom((int) $car->value) : null,
+        ], created: ['park' => $vehicle->id], why: 'С парковки', reopenCancelled: false), $by);
+        if (in_array($offer->state, [OfferState::Cancelled, OfferState::Delivered], true)) {
+            throw ValidationException::withMessages(['vehicle' => 'Эта машина уже продана: '.Identity::offerName($offer)]);
+        }
+        if ($outcome === OpenDraft::CREATED) {
             $vehicle->log(EventType::Linked, $by, ['number' => $offer->number]);
             $this->threads->forOffer($offer->refresh());
+        }
 
-            return $offer;
-        });
+        return $offer;
     }
 }

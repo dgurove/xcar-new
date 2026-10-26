@@ -14,6 +14,7 @@ use App\Cars\Fuel;
 use App\Cars\Papers;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
+use App\Offers\CarPlace;
 use App\Offers\Flag;
 use App\Park\Yard;
 use App\Vendors\DocRequirement;
@@ -31,7 +32,7 @@ final class FieldLabels
 
     /** Поле → перечисление с `label()`. */
     private const ENUMS = ['body' => Body::class, 'transmission' => Transmission::class, 'drive' => Drive::class, 'fuel' => Fuel::class,
-        'damage_cause' => DamageCause::class, 'papers' => Papers::class, 'category' => Category::class, 'billing_cadence' => Cadence::class];
+        'damage_cause' => DamageCause::class, 'papers' => Papers::class, 'category' => Category::class, 'billing_cadence' => Cadence::class, 'car_place' => CarPlace::class];
 
     /** Списки значений перечислений. */
     private const LISTS = ['damage_zones' => DamageZone::class, 'flags' => Flag::class, 'docs_required' => DocRequirement::class];
@@ -44,7 +45,7 @@ final class FieldLabels
         'brand_id' => 'марка', 'model_id' => 'модель', 'mileage' => 'пробег', 'body' => 'кузов', 'transmission' => 'КПП', 'drive' => 'привод', 'fuel' => 'топливо',
         'engine_volume' => 'объём двигателя', 'engine_power' => 'мощность', 'damage_cause' => 'причина повреждений', 'damage_zones' => 'повреждения', 'damage_note' => 'что заметили',
         'is_runnable' => 'на ходу', 'has_keys' => 'ключи', 'papers' => 'документы', 'incident_date' => 'дата события', 'description' => 'описание',
-        'settlement_id' => 'город', 'inspection_address' => 'адрес осмотра', 'floor_price' => 'закупочная цена', 'owner_price' => 'собственнику по ДКП', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'asking_price' => 'цена продажи',
+        'car_place' => 'где ТС', 'settlement_id' => 'город', 'inspection_address' => 'адрес осмотра', 'floor_price' => 'закупочная цена', 'owner_price' => 'собственнику по ДКП', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'asking_price' => 'цена продажи',
         'min_bid_price' => 'минимальная цена', 'min_bid_share' => 'доля от цены', 'prices_include_vat' => 'НДС', 'tags' => 'метки', 'tag_colors' => 'цвета меток', 'bids_close_at' => 'срок приёма',
         'chat_enabled' => 'чат', 'share_locked' => 'запрет шеринга', 'recommended' => 'рекомендуем', 'managers_limited' => 'круг менеджеров', 'managers' => 'менеджеры', 'audience_rules' => 'кому показывать', 'audience_id' => 'шаблон показа', 'deal_audience' => 'кому показывать в сделке', 'deal_show_until' => 'сколько показывать в сделке',
         'vendor_id' => 'вендор', 'answer_by' => 'ответ до', 'insured_name' => 'страхователь', 'insured_phone' => 'телефон страхователя', 'insured_phone2' => 'ещё телефон страхователя', 'flags' => 'признаки', 'holder' => 'держатель',

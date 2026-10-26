@@ -5,23 +5,19 @@ namespace App\Mail\Actions;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Identity;
-use App\Cars\IdentityTaken;
 use App\Cars\Settlement;
 use App\Cars\Vin\VinAutofill;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Extraction\Code;
 use App\Mail\Scope;
-use App\Offers\Actions\ChangeOfferState;
-use App\Offers\Actions\CreateOffer;
-use App\Offers\Actions\UpdateOffer;
+use App\Offers\Intake\DraftSource;
+use App\Offers\Intake\OpenDraft;
 use App\Offers\Offer;
-use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Кандидат → черновик оффера: поля из писем, вендор по отправителю, все ветки кандидата привязаны —
@@ -29,36 +25,28 @@ use Illuminate\Support\Facades\DB;
  */
 final class PromoteCandidate
 {
-    public function __construct(private CreateOffer $create, private UpdateOffer $update, private LinkThread $link) {}
+    public function __construct(private OpenDraft $open, private LinkThread $link) {}
 
-    /** `$by` null — завела почта сама (`Offers\Actions\AutoOffer`), в истории «Заведён из письма». */
+    /**
+     * `$by` null — завела почта сама (`Offers\Actions\AutoOffer`), в истории «Заведён из письма». Черновик — одна дверь
+     * `OpenDraft`: предложение машины уже есть — письма к нему (архивное — снова черновик, отменённое — как есть).
+     */
     public function __invoke(Candidate $candidate, ?User $by): Offer
     {
-        if ($offer = $this->existing($candidate)) {
-            return $this->into($candidate, $offer, $by);
-        }
-        try {
-            $offer = DB::transaction(function () use ($candidate, $by) {
-                $offer = ($this->create)($by, [], $by ? [] : ['mail' => true]);
-                ($this->update)($offer, $this->data($candidate), $by, ['why' => 'Из письма']);
-                $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
+        return $this->promote($candidate, $by)[0];
+    }
 
-                return $offer;
-            });
-        } catch (IdentityTaken $e) {
-            // VIN письма — у предложения с другим номером (или номер заняли только что): это оно, черновика нет. Машина с
-            // этим VIN и другим номером только на парковке — спор, его решает человек (ошибка поля).
-            if (! $e->holder instanceof Offer) {
-                throw $e;
-            }
-
-            return $this->into($candidate, $e->holder, $by);
-        }
-        // Ветки — после транзакции: импорт файлов берёт уникальную блокировку в базе, и если прежний импорт этой ветки
+    /** @return array{0: Offer, 1: string} предложение и исход `OpenDraft` (`created`, `reopened`, `existing`) */
+    public function promote(Candidate $candidate, ?User $by): array
+    {
+        [$offer, $outcome] = ($this->open)(new DraftSource('mail', $candidate->code, $candidate->value('vin'), $this->data($candidate),
+            created: $by ? [] : ['mail' => true], why: 'Из письма', reopenCancelled: false), $by);
+        $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
+        // Ветки — после заведения: импорт файлов берёт уникальную блокировку в базе, и если прежний импорт этой ветки
         // ещё в очереди (черновик завели, отменили и завели снова), неудачная вставка блокировки обрывала транзакцию.
         $this->linkAll($candidate, $offer);
 
-        return $offer;
+        return [$offer, $outcome];
     }
 
     /**
@@ -141,18 +129,6 @@ final class PromoteCandidate
     public function existing(Candidate $candidate): ?Offer
     {
         return Identity::offerFor(Code::key($candidate->code), $candidate->value('vin'));
-    }
-
-    /** Письма — к уже заведённому; из архива по тому же номеру оно возвращается в черновики (номер — одно событие). */
-    private function into(Candidate $candidate, Offer $offer, ?User $by): Offer
-    {
-        if ($offer->state === OfferState::Archived) {
-            $offer = app(ChangeOfferState::class)($offer, OfferState::Draft, $by);
-        }
-        $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
-        $this->linkAll($candidate, $offer);
-
-        return $offer;
     }
 
     /** Мобильный Mail рвёт «T 7» на два слова и оборачивает в звёздочки. */

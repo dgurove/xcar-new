@@ -38,6 +38,7 @@ use App\Media\PhotoIngest;
 use App\Media\Thumb;
 use App\Offers\Actions\AutoOffer;
 use App\Offers\Actions\MarkSupplierRequestSent;
+use App\Offers\Intake\OpenDraft;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
@@ -336,10 +337,8 @@ class MailController
 
     private function draft(Candidate $candidate, User $by)
     {
-        $promote = app(PromoteCandidate::class);
-        $existing = $promote->existing($candidate);
-        $offer = $promote($candidate, $by);
-        if ($existing) {
+        [$offer, $outcome] = app(PromoteCandidate::class)->promote($candidate, $by);
+        if ($outcome !== OpenDraft::CREATED) {
             return redirect("/offers/{$offer->number}")->with('toast', 'Письма привязаны к предложению');
         }
         session()->put("mail-draft.{$offer->id}", $candidate->id);

@@ -20,7 +20,7 @@ use Illuminate\Support\Collection;
  * здесь — что после этого: кандидат помечен, кадр карточки больше не нужен, все его ветки привязаны, их файлы едут в дело.
  * Если такую ТС уже завели руками, второй не будет: `existing()` находит её по убытку, VIN, госномеру.
  */
-final class PromoteCandidate
+final class RegisterCandidate
 {
     public function __construct(private LinkThread $link, private MarkThreadRead $read) {}
 

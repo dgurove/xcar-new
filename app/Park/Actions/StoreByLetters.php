@@ -27,7 +27,7 @@ use Illuminate\Support\Collection;
  */
 final class StoreByLetters
 {
-    public function __construct(private RegisterFromLetters $register, private PromoteCandidate $promote) {}
+    public function __construct(private RegisterFromLetters $register, private RegisterCandidate $promote) {}
 
     /** Почему цепочка не заводится сама; null — заводится. */
     public function blocker(Candidate $candidate): ?string

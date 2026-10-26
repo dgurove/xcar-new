@@ -15,7 +15,7 @@ use App\Mail\Scope as MailScope;
 use App\Park\Actions\CreateRequest;
 use App\Park\Actions\Intake;
 use App\Park\Actions\MarkSold;
-use App\Park\Actions\PromoteCandidate;
+use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\RefuseRelease;
 use App\Park\Actions\RegisterFromLetters;
 use App\Park\Actions\Release;
@@ -119,7 +119,7 @@ class RequestController
      * Форма заявки. С `?candidate=` поля предзаполнены из письма, письма кандидата — рядом с формой:
      * сотрудник сверяет и сохраняет. Если такую ТС уже завели руками — форма открывается на неё.
      */
-    public function create(Request $request, PromoteCandidate $promote, StoreByLetters $store)
+    public function create(Request $request, RegisterCandidate $promote, StoreByLetters $store)
     {
         // Руками заводится только приём новой ТС.
         $type = RequestType::Intake;
@@ -178,7 +178,7 @@ class RequestController
         ]);
     }
 
-    public function store(Request $request, CreateRequest $create, PromoteCandidate $promote, LinkThread $link, RegisterFromLetters $register, MarkSold $markSold)
+    public function store(Request $request, CreateRequest $create, RegisterCandidate $promote, LinkThread $link, RegisterFromLetters $register, MarkSold $markSold)
     {
         VehicleFields::clean($request);
         $data = $request->validate([

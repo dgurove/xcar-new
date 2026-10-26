@@ -13,6 +13,7 @@ use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
 use App\Mail\Scan\AutoScan;
 use App\Mail\Scope;
+use App\Offers\Intake\OpenDraft;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\Pricing;
@@ -49,7 +50,7 @@ final class AutoOffer
     /** Сколько отставших цепочек часы заводят за тик: тик держит слоты и волны, а строки входят по одной, не пачкой. */
     private const CATCH_UP = 5;
 
-    public function __construct(private PromoteCandidate $promote) {}
+    public function __construct(private PromoteCandidate $promote, private UpdateOffer $update) {}
 
     /** Почему цепочка не заводится сама; null — заводится. `$old` — прогон руками: возраст письма не в счёт. */
     public function blocker(Candidate $candidate, bool $old = false): ?string
@@ -153,14 +154,14 @@ final class AutoOffer
             return null;
         }
         try {
-            $offer = ($this->promote)($candidate, null);
+            [$offer, $outcome] = $this->promote->promote($candidate, null);
         } catch (Throwable $e) {
             Log::info('Предложение из письма не завелось само', ['candidate' => $candidate->id, 'error' => $e->getMessage()]);
 
             return null;
         }
         // Номер или VIN уже у другого (и `IdentityTaken` внутри «Завести») — письма легли к нему, новой строки нет.
-        if (! $offer->wasRecentlyCreated) {
+        if ($outcome !== OpenDraft::CREATED) {
             return null;
         }
         // Номер в теме и в договоре разнится только годом, и в таблице Кати — вариант из договора: берём его (12.10.2026,
@@ -168,7 +169,7 @@ final class AutoOffer
         if (! LegacyClaim::where('claim_ref_key', $offer->claim_ref_key)->exists()) {
             $fit = collect(self::docClaims($this->letter($candidate)))->first(fn ($c) => LegacyClaim::where('claim_ref_key', Code::key($c))->exists());
             if ($fit) {
-                $offer->forceFill(['claim_ref' => $fit])->save();
+                $offer = ($this->update)($offer, ['claim_ref' => $fit], null, ['why' => 'Номер из договора, как в таблице Кати']);
             }
         }
         AutoScan::await($offer);

@@ -2,15 +2,13 @@
 
 namespace App\Http\Admin;
 
-use App\Cars\CarText;
 use App\Offers\Actions\AddLegacyClaims;
-use App\Offers\Actions\ChangeOfferState;
-use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\DeleteDraft;
 use App\Offers\Actions\RemoveLegacyClaim;
+use App\Offers\Intake\DraftSource;
+use App\Offers\Intake\OpenDraft;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
-use App\Offers\OfferState;
 use Illuminate\Http\Request;
 
 /**
@@ -30,19 +28,14 @@ final class LegacyClaimController
             ->with('legacy.published', array_map($row, $result->published));
     }
 
-    /** Завести черновик с номером из списка — и сразу в редактор; архивное по тому же номеру возвращается в черновики. */
-    public function create(Request $request, LegacyClaim $claim, CreateOffer $create, ChangeOfferState $change)
+    /**
+     * Завести черновик с номером из списка — и сразу в редактор (`OpenDraft`: вендор по виду номера, архивное и отменённое
+     * по тому же номеру — снова черновик).
+     */
+    public function create(Request $request, LegacyClaim $claim, OpenDraft $open)
     {
-        $offer = $claim->offer();
-        // Отменённое (отказ поставщика) в черновик напрямую не ходит — только через архив (`OfferState::allows`).
-        if ($offer?->state === OfferState::Cancelled) {
-            $offer = $change($offer, OfferState::Archived, $request->user());
-        }
-        if ($offer?->state === OfferState::Archived) {
-            $offer = $change($offer, OfferState::Draft, $request->user());
-        }
-        if (! $offer) {
-            $offer = $create($request->user(), array_filter(['claim_ref' => $claim->claim_ref, 'vendor_id' => CarText::vendorOf($claim->claim_ref)]));
+        [$offer, $outcome] = $open(new DraftSource('legacy', $claim->claim_ref, created: ['legacy' => true]), $request->user());
+        if ($outcome === OpenDraft::CREATED) {
             // До первого «Сохранить» внизу редактора — «Отменить» (drop).
             session()->put("legacy-draft.{$offer->id}", $claim->id);
         }

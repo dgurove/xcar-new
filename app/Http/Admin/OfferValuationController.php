@@ -2,18 +2,16 @@
 
 namespace App\Http\Admin;
 
-use App\Cars\CarText;
 use App\Cars\Identity;
 use App\Cars\IdentityTaken;
 use App\Cars\Settlement;
 use App\Cars\Vin\Vin;
-use App\Offers\Actions\ChangeOfferState;
-use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\MatchValuations;
 use App\Offers\Actions\UpdateOffer;
+use App\Offers\Intake\DraftSource;
+use App\Offers\Intake\OpenDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
-use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Offers\ValuationPhoto;
 use App\Offers\ValuationSheet;
@@ -75,7 +73,7 @@ final class OfferValuationController
             'differs' => $take->filter(fn ($i) => $i['status'] === 'conflict')->mapWithKeys(fn ($i) => [$i['offer']->id => ['value' => $i['value_differs'], 'floor' => $i['floor_differs']]])->all(),
             // Нет в CRM, есть на Мигторге: что заводить по галке — номер, закупочная, лот, архивное предложение.
             'create' => collect($items)->where('status', 'migtorg')->mapWithKeys(fn ($i) => [$i['key'] => [
-                'ref' => $i['ref'], 'amount' => $i['amount'], 'lot' => $i['lot']->id, 'archived' => $i['archived']?->id,
+                'ref' => $i['ref'], 'amount' => $i['amount'], 'lot' => $i['lot']->id,
             ]])->all(),
         ], now()->addMinutes(30));
         // Строки текста для анимации «убираем лишнее»: остаются номер, сумма, VIN и город, прочее схлопывается.
@@ -101,7 +99,7 @@ final class OfferValuationController
         ]);
     }
 
-    public function apply(Request $request, UpdateOffer $update, CreateOffer $create, ChangeOfferState $change)
+    public function apply(Request $request, UpdateOffer $update)
     {
         $data = $request->validate(['token' => ['required', 'string'], 'offers' => ['array'], 'offers.*' => ['integer'], 'keep' => ['array'], 'keep.*' => ['in:keep,overwrite'],
             'create' => ['array'], 'create.*' => ['string'],
@@ -156,7 +154,7 @@ final class OfferValuationController
             }
             $update($offer, $set, $request->user(), ['source' => 'valuation', 'value' => $set['value'] ?? null, 'floor' => $set['floor_price'] ?? null]);
         }
-        $created = $this->createFromMigtorg($request->user(), array_intersect_key($saved['create'] ?? [], array_flip($data['create'] ?? [])), $create, $change, $update);
+        $created = $this->createFromMigtorg($request->user(), array_intersect_key($saved['create'] ?? [], array_flip($data['create'] ?? [])));
         $parts = array_filter([$done ? 'оценено '.$done : null, $created ? 'заведено с Мигторга '.count($created) : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
         // Окно (valuation_controller) показывает итог экраном «Готово»: крупно — оценено, ниже — остальное.
         if ($request->expectsJson()) {
@@ -173,43 +171,32 @@ final class OfferValuationController
     }
 
     /**
-     * Черновики по номерам, которых в CRM нет, а на Мигторге есть (26.10.2026): цены из суммы — `Pricing::fromAmount`, вендор — по
-     * виду номера (`CarText::vendorOf`), поля в пустые и кадры — с лота (`ImportMigtorgLot`). Архивное по номеру —
-     * обратно в черновики: машина одна. Номер под замком — второе нажатие дубль не заведёт; номер уже у живого
-     * предложения (завели, пока окно было открыто) или чужой группы — пропускается.
+     * Черновики по номерам, которых в CRM нет, а на Мигторге есть (26.10.2026): одна дверь `OpenDraft` (замок на номер,
+     * вендор по виду номера, цены из суммы — `Pricing::fromAmount`, архивное и отменённое — снова черновик), поля и кадры —
+     * с лота (`ImportMigtorgLot`). Номер уже у живого предложения (завели, пока окно было открыто) — пропускается.
      *
-     * @param  array<string, array{ref: string, amount: int, lot: int, archived: ?int}>  $rows
+     * @param  array<string, array{ref: string, amount: int, lot: int}>  $rows
      * @return list<array{number: int, title: string, ref: string, floor: int, city: ?string}>
      */
-    private function createFromMigtorg(User $user, array $rows, CreateOffer $create, ChangeOfferState $change, UpdateOffer $update): array
+    private function createFromMigtorg(User $user, array $rows): array
     {
         $out = [];
-        foreach ($rows as $key => $row) {
+        foreach ($rows as $row) {
             $lot = DB::table('migtorg_lots')->find($row['lot']);
             if (! $lot) {
                 continue;
             }
-            $offer = Cache::lock("valuation:create:{$key}", 30)->get(function () use ($user, $key, $row, $create, $change) {
-                if (Offer::query()->whereCar(fn ($c) => $c->where('claim_ref_key', $key))->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])->exists()) {
-                    return null;
-                }
-                try {
-                    if ($row['archived'] && ($old = Offer::query()->inCrm($user)->find($row['archived']))) {
-                        $old->state === OfferState::Cancelled && $old = $change($old, OfferState::Archived, $user);
-
-                        return $old->state === OfferState::Archived ? $change($old, OfferState::Draft, $user) : null;
-                    }
-
-                    return $create($user, array_filter(['claim_ref' => $row['ref'], 'vendor_id' => CarText::vendorOf($row['ref'])]), ['source' => 'migtorg']);
-                } catch (IdentityTaken) {
-                    return null;
-                }
-            });
-            if (! $offer) {
+            try {
+                [$offer, $outcome] = app(OpenDraft::class)(new DraftSource('migtorg', $row['ref'], amount: (int) $row['amount'],
+                    created: ['migtorg' => $lot->id], why: 'Оценка из текста'), $user);
+            } catch (IdentityTaken) {
                 continue;
             }
-            $prices = Pricing::fromAmount($offer->vendor_id, (int) $row['amount']);
-            $update($offer, $prices, $user, ['source' => 'valuation', 'value' => $prices['value'] ?? null, 'floor' => $prices['floor_price']]);
+            if ($outcome === OpenDraft::EXISTING) {
+                continue;
+            }
+            // Вернулось из архива — цены из текста поверх прежних.
+            $outcome === OpenDraft::REOPENED && app(UpdateOffer::class)($offer, Pricing::fromAmount($offer->vendor_id, (int) $row['amount']), $user, ['source' => 'valuation']);
             ImportMigtorgLot::start($offer->refresh(), $lot);
             $offer->refresh();
             $out[] = ['number' => $offer->number, 'title' => $offer->titleWithYear() ?: $row['ref'], 'ref' => $row['ref'], 'floor' => (int) $offer->floor_price, 'city' => $offer->settlement?->title() ?? $lot->city];
