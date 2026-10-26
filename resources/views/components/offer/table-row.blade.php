@@ -64,6 +64,9 @@
     // Аватар у даты: во вкладке шага — кто перевёл сюда (`tab_by`, 18.10.2026), иначе — кто завёл (у черновика).
     $byTab = $cols !== null && ! $has('published') && $has('tab');
     $who = $byTab ? $offer->tabBy : $offer->moderator;
+    // Человека нет — система (26.10.2026, владелец: «пустота мне не нравится»): завела почта — конверт, Мигторг, парковка —
+    // искра. Во вкладке шага — перевела система (`tab_by` пишется с 18.10.2026, раньше пусто у всех — там не угадываем).
+    $system = ! $who && ($byTab ? (bool) $offer->tab_at?->gte('2026-10-18') : (bool) $offer->created_via);
     // VIN на Мигторге не дают — его запрашивают у страховой (05.10.2026): красным у названия, пока продажа жива.
     $noVin = blank($offer->vin) && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
     // Черновик завела почта (`AutoOffer`), файлы и документы догружаются (`AutoScan::states`): что уже знаем из письма —
@@ -122,13 +125,13 @@
          она под ценой. --}}
     @if ($cols !== null && $has('value'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->value && \App\Offers\Pricing::byValue($offer->vendor_id) ? \App\Support\Money::nums($offer->value) : '' }}</td>@endif
     {{-- Закупочная на месте цены («Без закупочной цены») — кто завёл и когда стоит при ней, как при цене. --}}
-    @if ($has('floor') && $floorSide)<td class="num nums">@if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@endif</span>@endif @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
+    @if ($has('floor') && $floorSide)<td class="num nums">@if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@elseif ($system)<x-ui.system-avatar :via="$offer->created_via" :size="16"/>@endif</span>@endif @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
     @elseif ($has('floor'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">@if ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>@endif
     @if ($has('price'))<td class="num nums arrive-late {{ $admin && ($offer->marginMark()['tone'] ?? null) === 'loss' ? 'text-danger' : '' }}">
         {{-- Краткая таблица (телефон, карточка рядом): кто завёл и когда — вплотную слева от цены (10.10.2026, начальник: с
              телефона непонятно, что когда создано и кем; слева всегда номер убытка, под ценой — подтверждения). Сегодня —
              время, иначе дата, за ней аватар. Столбец «Создано» в краткой таблице спрятан. --}}
-        @if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@endif</span>@endif
+        @if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@elseif ($system)<x-ui.system-avatar :via="$offer->created_via" :size="16"/>@endif</span>@endif
         @if ($busy && $rate)<span class="skeleton arrive-bar w-16"></span>
         @elseif ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)
@@ -149,7 +152,7 @@
     {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет. --}}
     @if ($has('created') || ($cols !== null && ($has('published') || $has('tab'))))<td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">
         {{-- Аватаром перед датой: во вкладке шага — кто перевёл сюда, иначе кто завёл черновик. --}}
-        @php $face = ($byTab || $draft) ? $who : null; @endphp
-        @if ($face)<span class="inline-flex items-center gap-2 align-middle"><x-ui.avatar :user="$face" :size="20" title="{{ $face->name }}"/>@endif{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}@if ($face)</span>@endif
+        @php $face = ($byTab || $draft) ? $who : null; $robot = ($byTab || $draft) && $system; @endphp
+        @if ($face || $robot)<span class="inline-flex items-center gap-2 align-middle">@if ($face)<x-ui.avatar :user="$face" :size="20" title="{{ $face->name }}"/>@else<x-ui.system-avatar :via="$offer->created_via" :size="20"/>@endif @endif{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}@if ($face || $robot)</span>@endif
     </td>@endif
 </tr>

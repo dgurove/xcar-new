@@ -1884,6 +1884,9 @@ html.kb-open { --home-gap: 0px; }
   /* Аватар: фото или инициалы. */
   .avatar { @apply inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-3 text-ink-muted font-semibold select-none; }
   .avatar img { @apply size-full object-cover; }
+  /* Система вместо человека (x-ui.system-avatar): лайм, белый значок. */
+  .avatar-system { background: var(--color-accent); color: #fff; }
+  .avatar-system > svg { flex-shrink: 0; }
   /* Логотип вендора — квадрат в размер шрифта перед именем (x-vendor.logo), логотип вписан целиком; крупнее — утилитой
      size-* снаружи. Буква без логотипа — от размера клетки (container query), клетка у всех одна. */
   .vendor-logo { @apply inline-flex shrink-0 items-center justify-center overflow-hidden select-none; width: 1.2em; height: 1.2em; border-radius: 23%; vertical-align: -.22em; container-type: size; }

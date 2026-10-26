@@ -8,7 +8,7 @@ use App\Mail\Extraction\Code;
 /**
  * Откуда заводится черновик (`OpenDraft`): вид двери, тождество машины, поля и сумма страховой.
  *
- * - `kind` — `mail`, `park`, `purchase`, `legacy`, `migtorg`, `manual`;
+ * - `kind` — `mail`, `park`, `purchase`, `legacy`, `migtorg`, `valuation`, `manual`;
  * - `fields` — поля предложения как для `UpdateOffer` (вендор, город, НДС — если источник их знает);
  * - `amount` — сумма страховой неизвестного рода: цены по `Pricing::fromAmount` вендора черновика;
  * - `created` — к записи «Заведён» в истории (`mail`, `park`, `purchase` + `dl`, `legacy`, `migtorg`);

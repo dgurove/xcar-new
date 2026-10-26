@@ -88,6 +88,32 @@ final class Identity
         return $offer && ! in_array($offer->state, self::CLOSED_OFFER, true) ? $offer : null;
     }
 
+    /**
+     * Номер Т-Страхования с любым годом: в СМС и на Мигторге год бывает не тот, что в CRM (AUT-26-1103537 и
+     * AUT-25-1103537 — одна машина, 26.10.2026). Ключи `aut{год}{цифры}`, которые точно не нашлись, → предложение, если
+     * по цифрам оно одно (иначе непонятно, какая машина). `$scope` сужает выборку (круг человека, живые).
+     *
+     * @param  list<string>  $keys
+     * @param  (callable(Builder): mixed)|null  $scope
+     * @return array<string, Offer>
+     */
+    public static function offersAnyYear(array $keys, ?callable $scope = null): array
+    {
+        $digits = collect($keys)->mapWithKeys(fn ($key) => preg_match('/^aut\d{2}(\d{6,7})$/', $key, $m) ? [$key => $m[1]] : [])->all();
+        if (! $digits) {
+            return [];
+        }
+        $near = Offer::query()->whereCar(fn ($c) => $c->whereRaw('claim_ref_key ~ ?', ['^aut[0-9]{2}('.implode('|', array_unique($digits)).')$']))
+            ->when($scope, $scope)->with(['vendor', 'settlement'])->get()
+            ->groupBy(fn (Offer $o) => substr((string) $o->claim_ref_key, 5));
+        $out = [];
+        foreach ($digits as $key => $tail) {
+            ($near->get($tail)?->count() === 1) && $out[$key] = $near->get($tail)->first();
+        }
+
+        return $out;
+    }
+
     /** Предложение той же машины (по номеру — любое, по VIN — живой машины). */
     public static function offerFor(?string $claimKey, ?string $vin): ?Offer
     {

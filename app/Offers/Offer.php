@@ -758,8 +758,10 @@ class Offer extends Model
             // тоже пуст.
             // Было в сделке или в гараже — модератору закрыто совсем (15.10.2026, владелец: новая закупочная «не должна
             // показываться никому — ни модераторам»): её история, цены, деньги сделки и письма deal@.
+            // Черновик с Мигторга (`MigtorgDrafts`) — всем модераторам: это их работа, которую раньше делали руками (26.10.2026).
             return $q->where(fn ($w) => $w->whereIn('moderator_id', $user->teamIds())
-                ->when($user->canCrmMail(), fn ($m) => $m->orWhere(fn ($n) => $n->autoDrafted())))
+                ->when($user->canCrmMail(), fn ($m) => $m->orWhere(fn ($n) => $n->autoDrafted()))
+                ->orWhere(fn ($n) => $n->migtorgDrafted()))
                 ->whereDoesntHave('purchaseCar')
                 ->whereNotExists(fn ($e) => $e->from('deals')->whereColumn('deals.offer_id', 'offers.id'))
                 ->whereNotExists(fn ($e) => $e->from('garage_cars')->whereColumn('garage_cars.offer_id', 'offers.id'));
@@ -784,6 +786,13 @@ class Offer extends Model
     {
         return $q->whereNull('offers.moderator_id')->whereExists(fn ($e) => $e->from('offer_events')->whereColumn('offer_events.offer_id', 'offers.id')
             ->where('offer_events.type', OfferEventType::Created)->whereRaw("(offer_events.payload->>'mail')::boolean"));
+    }
+
+    /** Заведено с Мигторга само (`Offers\Intake\MigtorgDrafts`): без автора, в истории «Заведён с Мигторга». */
+    public function scopeMigtorgDrafted(Builder $q): Builder
+    {
+        return $q->whereNull('offers.moderator_id')->whereExists(fn ($e) => $e->from('offer_events')->whereColumn('offer_events.offer_id', 'offers.id')
+            ->where('offer_events.type', OfferEventType::Created)->whereNull('offer_events.user_id')->whereRaw("jsonb_exists(offer_events.payload, 'migtorg')"));
     }
 
     /** Черновик, который завела почта и который ещё не выходил наружу: его можно снять «Не заявка», как после «Завести». */
@@ -830,13 +839,14 @@ class Offer extends Model
 
     /**
      * Удалить можно только черновик, который ни разу не выходил наружу: без подтверждений, сделки и закупки. Модератор —
-     * только заведённый им самим (владелец 04.10.2026: «свои можно, чужие нет») и заведённый почтой, если у него почта
-     * (раньше его заводил он сам), админ — любой. ТС парковки, стоявшая раньше черновика, — не его: такое снимают «Снять
+     * только заведённый им самим (владелец 04.10.2026: «свои можно, чужие нет»), заведённый почтой, если у него почта
+     * (раньше его заводил он сам), и заведённый с Мигторга, админ — любой. ТС парковки, стоявшая раньше черновика, — не его: такое снимают «Снять
      * с продажи».
      */
     public function isDeletableBy(User $user): bool
     {
-        $mine = $this->moderator_id === $user->id || ($user->canCrmMail() && $this->isAutoDraft());
+        $mine = $this->moderator_id === $user->id || ($user->canCrmMail() && $this->isAutoDraft())
+            || ($this->moderator_id === null && once(fn () => self::query()->whereKey($this->id)->migtorgDrafted()->exists()));
         if ($this->state !== OfferState::Draft || $this->published_at !== null || ! ($user->isAdmin() || ($user->isModerator() && $mine))) {
             return false;
         }

@@ -175,8 +175,7 @@ export default class extends Controller {
         // 3. Ненайденные.
         this.mark('drop', 'run');
         await sleep(450);
-        const absent = [counts.missing ? `нет в CRM ${counts.missing}` : null, counts.migtorg ? `с Мигторга ${counts.migtorg}` : null].filter(Boolean);
-        this.mark('drop', 'done', absent.length ? absent.join(', ') : 'все нашлись');
+        this.mark('drop', 'done', counts.absent ? `нет в CRM ${counts.absent}` : 'все нашлись');
 
         // Строки итога появляются под этапами — дальше считаются прямо в них.
         this.rowsTarget.innerHTML = data.html;

@@ -4,6 +4,7 @@ namespace App\Offers\Intake;
 
 use App\Cars\Actions\FillCar;
 use App\Cars\CarText;
+use App\Cars\Identity;
 use App\Cars\IdentityTaken;
 use App\Live\Publisher;
 use App\Live\Topics;
@@ -45,10 +46,18 @@ final class MigtorgDrafts
             ->whereNotExists(fn ($q) => $q->from('cars')->join('offers', 'offers.car_id', '=', 'cars.id')->whereColumn('cars.claim_ref_key', 'l.claim_ref_key'))
             ->orderBy('l.id')->get();
         $ready = Migtorg::ready();
+        // Т-Страхование: тот же убыток с другим годом в номере (AUT-25 в CRM, AUT-26 на Мигторге) — та же машина, второй не
+        // заводим; сверит человек («Это она»).
+        $anyYear = Identity::offersAnyYear($lots->pluck('claim_ref_key')->all());
         $made = [];
         foreach ($lots as $lot) {
             $vendor = self::vendorOf($lot->claim_ref);
             if (! in_array($vendor, $vendors, true)) {
+                continue;
+            }
+            if (isset($anyYear[$lot->claim_ref_key])) {
+                self::mark($lot->id);
+
                 continue;
             }
             if (count($made) >= self::PER_RUN) {

@@ -3,7 +3,8 @@
      меняется: оценочная, закупочная, VIN, город. Новое — лаймом, заменяемое — зачёркнутым. Спор по сумме — сегментом
      «Оставить / Перезаписать» в шапке: VIN и город ложатся в любом случае. Чего нет ни у предложения, ни в тексте — поле
      строкой под фразой. Группы (25.10.2026) — сегментом сверху, видна одна: «Заполним» (и споры), «Проверьте» (VIN
-     другой, номер дважды), «С Мигторга» (в CRM нет, лот есть — заведём черновик, 26.10.2026), «Уже так», «Нет в CRM». data-v / data-f — числа, которые valuation_controller прогоняет
+     другой, номер дважды), «Нет в CRM» (заведём черновик: с лотом Мигторга — его поля и фото, без лота — по номеру, лот
+     подтянется, когда появится; 26.10.2026), «Уже так». data-v / data-f — числа, которые valuation_controller прогоняет
      счётчиком. --}}
 @php
     use App\Offers\Pricing;
@@ -12,9 +13,8 @@
     $groups = collect([
         'fill' => ['Заполним', $all->whereIn('status', ['conflict', 'fill'])->sortBy(fn ($i) => ($i['status'] === 'conflict' || $i['gaps']) ? 0 : 1)->values()],
         'check' => ['Проверьте', $all->whereIn('status', ['check', 'dispute'])->values()],
-        'migtorg' => ['С Мигторга', $all->where('status', 'migtorg')->values()],
+        'absent' => ['Нет в CRM', $all->whereIn('status', ['absent', 'missing'])->values()],
         'same' => ['Уже так', $all->where('status', 'same')->values()],
-        'missing' => ['Нет в CRM', $all->where('status', 'missing')->values()],
     ])->filter(fn ($g) => $g[1]->isNotEmpty());
     $first = $groups->keys()->first();
 @endphp
@@ -37,26 +37,39 @@
                     $o = $item['offer'];
                     $status = $item['status'];
                 @endphp
-                {{-- В CRM нет, на Мигторге есть: черновик заведётся с закупочной из текста, поля и фото — с лота. --}}
-                @if ($status === 'migtorg')
-                    <div class="valuation-card valuation-row" data-valuation-row data-create data-floor="{{ $item['floor'] }}">
+                {{-- В CRM нет: черновик с закупочной из текста. Что будет с полями и фото — фразой: лот живой, снят или его нет. --}}
+                @if (in_array($status, ['absent', 'missing'], true))
+                    @php
+                        $lot = $item['lot'];
+                        $what = match (true) {
+                            (bool) $item['archived'] => 'вернём из архива',
+                            ! $lot => 'новый черновик, на Мигторге пока нет',
+                            (bool) $lot->gone_at => 'новый черновик, на Мигторге снят с торгов',
+                            default => 'новый черновик с Мигторга',
+                        };
+                    @endphp
+                    <div class="valuation-card valuation-row" data-valuation-row @if ($status === 'absent') data-create @endif data-floor="{{ $item['floor'] }}">
                         <div class="valuation-card-head">
                             <x-ui.cat-icon :category="\App\Cars\Category::Passenger" class="valuation-cat"/>
                             <span class="min-w-0 flex-1">
-                                <span class="block truncate">{{ $item['lot']->title ?: $item['ref'] }}</span>
-                                <span class="row-sub"><x-vendor.ref :vendor-id="\App\Cars\CarText::vendorOf($item['ref'])" :ref="$item['ref']"/>@if ($item['lot']->city)<span>{{ $item['lot']->city }}</span>@endif</span>
+                                <span class="block truncate">{{ $lot?->title ?: $item['ref'] }}</span>
+                                <span class="row-sub"><x-vendor.ref :vendor-id="$item['vendor']" :ref="$item['ref']"/>@if ($lot?->city)<span>{{ $lot->city }}</span>@endif</span>
                             </span>
-                            <label class="check shrink-0" aria-label="Завести"><input type="checkbox" name="create[]" value="{{ $item['key'] }}" checked data-action="valuation#count"></label>
+                            @if ($status === 'absent')<label class="check shrink-0" aria-label="Завести"><input type="checkbox" name="create[]" value="{{ $item['key'] }}" checked data-action="valuation#count"></label>@endif
                         </div>
                         <p class="valuation-facts">
-                            <span>{{ $item['archived'] ? 'вернём из архива' : 'новый черновик' }}</span>
-                            <span>закупочная <span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span></span>
+                            @if ($status === 'missing')
+                                <span class="text-urgent">номер в тексте дважды с разными суммами</span>
+                            @else
+                                <span>{{ $what }}</span>
+                                <span>закупочная <span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span></span>
+                            @endif
                         </p>
                     </div>
                     @continue
                 @endif
-                {{-- «Уже так» и «нет в CRM» — строкой: менять там нечего. --}}
-                @if (in_array($key, ['same', 'missing'], true) || ! $o)
+                {{-- «Уже так» — строкой: менять там нечего. --}}
+                @if ($key === 'same' || ! $o)
                     <div class="row valuation-row" data-valuation-row data-value="{{ $item['amount'] }}" data-floor="{{ $item['floor'] }}">
                         @if ($o)<x-ui.cat-icon :category="$o->category()" class="valuation-cat"/>@endif
                         <span class="min-w-0 flex-1">

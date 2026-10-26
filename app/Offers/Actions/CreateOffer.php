@@ -20,6 +20,8 @@ final class CreateOffer
         $car && $offer->setRelation('car', $car);
         $offer->fill($data);
         $offer->moderator_id = $by?->id;
+        // Без человека — кем заведено (почта, Мигторг, парковка): аватар системы у даты в CRM.
+        $offer->created_via = $by ? null : (array_values(array_intersect(['mail', 'migtorg', 'park'], array_keys($log)))[0] ?? null);
         $offer->save();
         $offer->log(OfferEventType::Created, $by, $log);
 

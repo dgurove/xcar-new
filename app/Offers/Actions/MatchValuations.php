@@ -4,11 +4,13 @@ namespace App\Offers\Actions;
 
 use App\Cars\CarText;
 use App\Cars\Identity;
+use App\Mail\Extraction\Code;
 use App\Mail\Extraction\CodeMatcher;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Users\User;
+use App\Vendors\Vendor;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,10 +22,10 @@ use Illuminate\Support\Facades\DB;
  * - `check` — VIN в сообщении не тот, что у предложения, или номер Т-Страхования нашёлся только без года
  *   (`ref_differs`: в СМС AUT-26-1103537, в CRM AUT-25-1103537 — 26.10.2026, владелец): без галки, решает человек;
  * - `dispute` — тот же номер дважды с разными суммами: не берётся;
- * - `migtorg` — предложения нет (или оно в архиве), а лот с этим номером есть на Мигторге: из окна заводится черновик
- *   с закупочной из текста, поля и фото — с лота (`ImportMigtorgLot`; 26.10.2026, владелец: «неудобно потом по тем,
- *   которых нет, отдельно идти создавать»);
- * - `missing` — предложения с таким номером нет и на Мигторге тоже.
+ * - `absent` — предложения нет (или оно в архиве): из окна заводится черновик с закупочной из текста (26.10.2026, владелец:
+ *   «неудобно потом по тем, которых нет, отдельно идти создавать»). Лот на Мигторге есть — поля и фото с него
+ *   (`ImportMigtorgLot`), нет — черновик по номеру, лот возьмёт `migtorg:sync`, когда появится (`ImportMigtorgLot::auto`);
+ * - `missing` — предложения нет, а сумм в тексте две разные: не заводим, непонятно, какая.
  *
  * Заодно VIN и город из текста (05.10.2026): Мигторг заполняет их как раньше, а текст от страховой главнее (владелец):
  * `vin_fill` — VIN только в пустой (другой VIN, хоть от Мигторга, — тревожный знак, `check`: перепроверить),
@@ -35,7 +37,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class MatchValuations
 {
-    public const ORDER = ['conflict', 'fill', 'check', 'dispute', 'same', 'migtorg', 'missing'];
+    public const ORDER = ['conflict', 'fill', 'check', 'dispute', 'same', 'absent', 'missing'];
 
     /**
      * @param  list<array{ref: string, key: string, amount: ?int, vin: ?string, city?: ?array}>  $rows
@@ -54,35 +56,26 @@ final class MatchValuations
 
         // Номер Т-Страхования, не найденный точно, — по цифрам с любым годом: в СМС год бывает не тот. Только когда
         // совпадение одно — иначе непонятно, какая машина.
-        $loose = [];
-        $digits = collect(array_diff(array_keys($amounts), $offers->keys()->all()))
-            ->mapWithKeys(fn ($key) => preg_match('/^aut\d{2}(\d{6,7})$/', $key, $m) ? [$key => $m[1]] : [])->all();
-        if ($digits) {
-            // Одним запросом по всем цифрам; совпадение должно быть одно — иначе непонятно, какая машина.
-            $near = Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereRaw('claim_ref_key ~ ?', ['^aut[0-9]{2}('.implode('|', array_unique($digits)).')$']))
-                ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])->with(['vendor', 'settlement'])->get()
-                ->groupBy(fn (Offer $o) => substr((string) $o->claim_ref_key, 5));
-            foreach ($digits as $key => $tail) {
-                ($near->get($tail)?->count() === 1) && $loose[$key] = $near->get($tail)->first();
-            }
-        }
+        $loose = Identity::offersAnyYear(array_values(array_diff(array_keys($amounts), $offers->keys()->all())),
+            fn ($q) => $q->inCrm($user)->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled]));
         foreach ($loose as $key => $offer) {
             $offers->put($key, collect([$offer]));
         }
         $absent = array_values(array_diff(array_keys($amounts), $offers->keys()->all()));
         // Лот Мигторга по номеру: живой важнее ушедшего, свежий — прежнего.
         $lots = $absent ? DB::table('migtorg_lots')->whereIn('claim_ref_key', $absent)->orderByRaw('gone_at is not null')->orderByDesc('id')
-            ->get(['id', 'claim_ref_key', 'title', 'city', 'vin'])->unique('claim_ref_key')->keyBy('claim_ref_key') : collect();
+            ->get(['id', 'claim_ref_key', 'title', 'city', 'vin', 'gone_at'])->unique('claim_ref_key')->keyBy('claim_ref_key') : collect();
         // Предложение по номеру в архиве — заводить второе нельзя (машина одна), его вернут в черновики.
-        $archived = $lots->isNotEmpty() ? Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $lots->keys()->all()))
+        $archived = $absent ? Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $absent))
             ->whereIn('state', [OfferState::Archived, OfferState::Cancelled])->latest('id')->get()->unique('claim_ref_key')->keyBy('claim_ref_key') : collect();
 
         // Вендор черновика с Мигторга — по виду номера (`CarText::vendorOf` — два запроса): один раз на вид, а не на строку.
         $vendors = [];
         $vendorOf = function (string $ref) use (&$vendors) {
+            $ref = (string) Code::normalize($ref);
             $pattern = CodeMatcher::patternOf($ref) ?? $ref;
 
-            return array_key_exists($pattern, $vendors) ? $vendors[$pattern] : ($vendors[$pattern] = CarText::vendorOf($ref));
+            return array_key_exists($pattern, $vendors) ? $vendors[$pattern] : ($vendors[$pattern] = Vendor::forCrm(CarText::vendorOf($ref)));
         };
         $out = [];
         $seen = [];
@@ -95,9 +88,10 @@ final class MatchValuations
             $found = $offers->get($r['key'], collect());
             if ($found->isEmpty()) {
                 $lot = $lots->get($r['key']);
-                // Черновик с Мигторга получит вендора по виду номера — цены из суммы по его правилу.
-                $floor = $lot ? Pricing::fromAmount($vendorOf($r['ref']), $r['amount'])['floor_price'] : null;
-                $out[] = $r + ['status' => $lot && count($amounts[$r['key']]) === 1 ? 'migtorg' : 'missing', 'lot' => $lot, 'archived' => $archived->get($r['key']), 'offer' => null, 'direct' => false, 'floor' => $floor, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
+                // Черновик получит вендора по виду номера — цены из суммы по его правилу.
+                $vendor = $vendorOf($r['ref']);
+                $floor = Pricing::fromAmount($vendor, $r['amount'])['floor_price'];
+                $out[] = $r + ['status' => count($amounts[$r['key']]) === 1 ? 'absent' : 'missing', 'lot' => $lot, 'vendor' => $vendor, 'archived' => $archived->get($r['key']), 'offer' => null, 'direct' => false, 'floor' => $floor, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
 
                 continue;
             }
