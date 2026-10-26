@@ -238,6 +238,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/confirmations', [BidController::class, 'storeFor']);
         Route::post('/offers/{offer}/interests', [InterestController::class, 'store']);
         Route::post('/confirmations/{bid}/decline', [BidController::class, 'decline']);
+        Route::post('/confirmations/{bid}/counter', [BidController::class, 'counter']);
+        Route::post('/confirmations/{bid}/counter/withdraw', [BidController::class, 'withdrawCounter']);
         Route::post('/interests/{interest}', [InterestController::class, 'update']);
 
         // Работа: сделки, почта и чаты под одним заголовком.

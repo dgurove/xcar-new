@@ -9,6 +9,7 @@ import { openSheet, closeSheet, outside } from './sheet';
 // Глагол — data-turbo-confirm-label у нажатой кнопки (у кнопки со своим подтверждением, как строка
 // «в документе …»), иначе у формы, иначе подпись нажатой кнопки, иначе первое слово вопроса. Опасное — btn-danger, если кнопка была
 // опасной или вопрос начинается с «Удалить»/«Отклонить»/«Отменить»/«Снять».
+// options.text — абзац под вопросом из JS; options.warn — янтарный знак над вопросом (цена ниже порога, 26.10.2026).
 // Turbo зовёт confirmSheet через Turbo.config.forms.confirm, контроллеры — сами.
 export function confirmSheet(message, options = {}) {
     const { form, submitter } = options;
@@ -31,6 +32,7 @@ export function confirmSheet(message, options = {}) {
                 <button type="button" class="btn btn-quiet btn-block sm:flex-1" data-cancel></button>
             </div>`;
         d.querySelector('h2').textContent = message;
+        if (options.warn) d.querySelector('h2').insertAdjacentHTML('beforebegin', '<span class="confirm-warn" aria-hidden="true">!</span>');
         d.querySelector('[data-ok]').textContent = label;
         d.querySelector('[data-cancel]').textContent = options.cancel || 'Отмена';
         if (options.alt) {
@@ -42,7 +44,7 @@ export function confirmSheet(message, options = {}) {
             alt.parentElement.classList.remove('sm:flex-row-reverse');
             alt.parentElement.querySelectorAll('.sm\\:flex-1').forEach((b) => b.classList.remove('sm:flex-1'));
         }
-        const text = form?.dataset.turboConfirmText;
+        const text = options.text || form?.dataset.turboConfirmText;
         if (text) { const p = d.querySelector('[data-text]'); p.textContent = text; p.hidden = false; }
         const quote = form?.dataset.turboConfirmQuote;
         if (quote) {

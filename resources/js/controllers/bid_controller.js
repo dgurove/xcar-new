@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import { nums, rub } from '../lib/money';
+import { confirmSheet } from '../confirm';
 
 // Форма подтверждения: видимое поле с разделителями, на сервер — число; кнопка
 // полной цены и скидок — готовой суммой с сервера (`Offer::bidDiscounts`: доля разницы заявленной и продажной, только
@@ -7,9 +8,12 @@ import { nums, rub } from '../lib/money';
 // Можно в гараж — отправка сначала спрашивает, куда берёт (шторка `x-offer.bid-choice`): «Для покупателя за N ₽»
 // (без цены выключена) или «В гараж на подготовку» (цена не нужна). Enter в поле тоже ведёт в шторку.
 // Админ (staff) подтверждает за менеджера: шторка всегда, сверху «Менеджер» — без него кнопки выключены.
+// Зона цены (26.10.2026, `Offer::bidZone`) — только при отправке, вопросом серверу (check): ниже порога — «Вы уверены?»
+// янтарным листом и `low_ok`, недопустимая — поле красным с тряской, на сервер не уходит. На лету не спрашиваем — порог
+// не нащупать вводом.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'submit', 'choice', 'buyer', 'sum', 'garage'];
-    static values = { asking: Number, garage: Boolean, staff: Boolean };
+    static targets = ['display', 'amount', 'submit', 'choice', 'buyer', 'sum', 'garage', 'low', 'error'];
+    static values = { asking: Number, garage: Boolean, staff: Boolean, check: String };
 
     connect() {
         this.update();
@@ -60,6 +64,7 @@ export default class extends Controller {
     }
 
     update() {
+        this.refuse(null);
         const value = Number(this.split(this.displayTarget.value)[0]) || 0;
         this.amountTarget.value = value || '';
         if (this.hasSubmitTarget) this.submitTarget.disabled = !value && !this.garageValue;
@@ -72,12 +77,65 @@ export default class extends Controller {
         }
     }
 
-    // Отправка мимо шторки (кнопка, Enter в поле) — сначала спросить, куда.
+    // Отправка мимо шторки (кнопка, Enter в поле) — сначала спросить, куда; цену для покупателя — сверить с зоной.
     guard(event) {
-        if (!(this.garageValue || this.staffValue) || !this.hasChoiceTarget) return;
-        if (this.choiceTarget.querySelector('dialog')?.open) return;
+        if (this.passing) return;
+        if ((this.garageValue || this.staffValue) && this.hasChoiceTarget && !this.choiceTarget.querySelector('dialog')?.open) {
+            event.preventDefault();
+            this.ask();
+            return;
+        }
+        if (!this.checkValue || event.submitter?.value === 'garage' || !this.amountTarget.value) return;
         event.preventDefault();
-        this.ask();
+        this.verify(event.submitter);
+    }
+
+    async verify(submitter) {
+        if (this.busy) return;
+        this.busy = true;
+        try {
+            const zone = await this.zone();
+            // Шторка «куда берёт» закрывала бы ошибку под собой — ответ зоны рисуем уже без неё.
+            if (zone !== 'ok' && this.hasChoiceTarget && this.choiceTarget.querySelector('dialog')?.open) {
+                this.application.getControllerForElementAndIdentifier(this.choiceTarget, 'sheet')?.close();
+            }
+            if (zone === 'bad') return this.refuse('Цена недопустимая');
+            if (zone === 'low') {
+                const sure = await confirmSheet('Вы уверены?', { text: 'Такая цена требует дополнительного согласования с поставщиком', label: 'Уверен', warn: true, danger: false });
+                if (!sure) return;
+                this.lowTarget.value = '1';
+            }
+            this.passing = true;
+            this.element.requestSubmit(submitter && this.element.contains(submitter) ? submitter : null);
+        } finally {
+            this.passing = false;
+            this.busy = false;
+        }
+    }
+
+    // Не ответил сервер (сеть, частые попытки) — отправляем как есть: решит store.
+    async zone() {
+        try {
+            const token = this.element.querySelector('input[name="_token"]')?.value;
+            const res = await fetch(this.checkValue, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ amount: this.amountTarget.value }) });
+            return res.ok ? (await res.json()).zone : 'ok';
+        } catch {
+            return 'ok';
+        }
+    }
+
+    refuse(message) {
+        if (!this.hasErrorTarget) return;
+        this.errorTarget.textContent = message || '';
+        this.errorTarget.hidden = !message;
+        if (message) {
+            this.displayTarget.setAttribute('aria-invalid', 'true');
+            this.displayTarget.classList.remove('is-shaking');
+            void this.displayTarget.offsetWidth;
+            this.displayTarget.classList.add('is-shaking');
+        } else if (this.displayTarget.hasAttribute('aria-invalid')) {
+            this.displayTarget.removeAttribute('aria-invalid');
+        }
     }
 
     ask() {

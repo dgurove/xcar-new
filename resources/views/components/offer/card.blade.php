@@ -104,7 +104,12 @@
         @elseif ($gallery || !$prices)
             <a href="{{ $href }}" class="btn btn-get {{ $myInterest ? 'btn-get-done' : ($offer->acceptsInterest() ? '' : 'btn-get-quiet') }}">{{ $gallery ? ($myInterest ? 'Интерес отмечен' : 'Проявить интерес') : 'Узнать цену' }}</a>
         @elseif ($myBid)
-            <a href="{{ $href }}" class="btn btn-get btn-get-quiet nums">{{ $myBid->isGarage() ? 'В гараж' : 'Ваша цена '.\App\Support\Money::nums($myBid->amount) }}</a>
+            {{-- Контрпредложение ждёт ответа (26.10.2026) — лаймовой кнопкой с ценой админа: ответ на странице. --}}
+            @if ($myBid->hasPendingCounter())
+                <a href="{{ $href }}" class="btn btn-get nums">Контрпредложение {{ \App\Support\Money::nums($myBid->counter_amount) }}</a>
+            @else
+                <a href="{{ $href }}" class="btn btn-get btn-get-quiet nums">{{ $myBid->isGarage() ? 'В гараж' : 'Ваша цена '.\App\Support\Money::nums($myBid->amount) }}</a>
+            @endif
         @elseif ($canBid)
             {{-- Горящее без единого подтверждения (22.10.2026, владелец): рыжая «Сгорает!» вместо «Подтвердить». --}}
             @if ($offer->burningUnbid())

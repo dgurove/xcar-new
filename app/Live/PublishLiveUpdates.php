@@ -21,6 +21,8 @@ use App\Logistics\Transport;
 use App\Notifications\ChatNotice;
 use App\Notifications\Notice;
 use App\Offers\Events\BidAccepted;
+use App\Offers\Events\CounterAnswered;
+use App\Offers\Events\CounterOffered;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
 use App\Offers\Events\EstimateGiven;
@@ -54,6 +56,8 @@ final class PublishLiveUpdates
             BidPlaced::class => 'bid',
             BidAccepted::class => 'bidDecided',
             BidDeclined::class => 'bidDecided',
+            CounterOffered::class => 'bidDecided',
+            CounterAnswered::class => 'bidDecided',
             InterestRegistered::class => 'interest',
             EstimatesAsked::class => 'estimate',
             EstimateGiven::class => 'estimate',
@@ -127,7 +131,7 @@ final class PublishLiveUpdates
         $this->publish->refresh(Topics::CATALOG, ["/offers/{$n}"]);
     }
 
-    public function bidDecided(BidAccepted|BidDeclined $e): void
+    public function bidDecided(BidAccepted|BidDeclined|CounterOffered|CounterAnswered $e): void
     {
         $n = $e->bid->offer->number;
         $this->publish->refresh(Topics::user($e->bid->user_id), ['/deals', "/offers/{$n}"]);

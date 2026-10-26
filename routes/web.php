@@ -102,6 +102,7 @@ Route::middleware('wall')->group(function () {
 Route::middleware(['auth', 'wall'])->group(function () {
     // Подбором суммы по «недостаточна для снятия резерва» не вычислить порог (13.10.2026): не чаще 6 раз в минуту.
     Route::post('/offers/{offer}/confirm', [BidController::class, 'store'])->middleware('throttle:6,1');
+    Route::post('/offers/{offer}/confirm/check', [BidController::class, 'check'])->middleware('throttle:20,1');
     // «Просмотрено» на карточках — маячок при открытии с карточки или строки (`ReadOffer`).
     Route::post('/offers/{offer}/read', [OfferController::class, 'read']);
     // Оценка цены продажи черновика, отданного менеджеру на оценку (11.10.2026).
@@ -109,6 +110,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/estimate/decline', [EstimateController::class, 'decline'])->middleware('ability:isManager');
     // Админ подтверждает за менеджера — выбор в шторке «За какого менеджера?».
     Route::post('/confirmations/{bid}/withdraw', [BidController::class, 'withdraw']);
+    Route::post('/confirmations/{bid}/counter/answer', [BidController::class, 'answerCounter']);
     Route::post('/offers/{offer}/interest', [InterestController::class, 'store'])->middleware('throttle:30,1');
     Route::delete('/offers/{offer}/interest', [InterestController::class, 'destroy']);
     Route::post('/offers/{offer}/favorites', [FavoriteController::class, 'toggle']);

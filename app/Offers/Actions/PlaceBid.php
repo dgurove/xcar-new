@@ -20,12 +20,15 @@ use Illuminate\Validation\ValidationException;
 final class PlaceBid
 {
     /**
-     * Ниже порога (`Offer::minBid`). Сколько — не пишем никому и никак (владелец 10.10.2026: «какой минимум писать явно
-     * нельзя, ни менеджерам, ни покупателям — либо принимаем, либо не принимаем»).
+     * Ниже допустимого (`Offer::hardMinBid`). Сколько — не пишем никому и никак (владелец 10.10.2026: «какой минимум писать
+     * явно нельзя, ни менеджерам, ни покупателям»).
      */
-    public const TOO_LOW = 'Предложенная стоимость недостаточна для снятия резерва';
+    public const TOO_LOW = 'Цена недопустимая';
 
-    public function __invoke(Offer $offer, User $by, ?int $amount, ?string $comment = null, BidKind $kind = BidKind::Buyer): Bid
+    /** Ниже порога (`Offer::minBid`) — можно, но переспрашиваем (26.10.2026); без JS форма вернётся с этой ошибкой. */
+    public const NEEDS_CONSENT = 'Такая цена требует дополнительного согласования с поставщиком — подтвердите ещё раз';
+
+    public function __invoke(Offer $offer, User $by, ?int $amount, ?string $comment = null, BidKind $kind = BidKind::Buyer, bool $lowOk = false): Bid
     {
         if (! $by->canBid()) {
             throw ValidationException::withMessages(['amount' => 'Подтверждать ценой здесь нельзя']);
@@ -35,7 +38,7 @@ final class PlaceBid
             throw ValidationException::withMessages(['amount' => 'Это предложение вам не открыто']);
         }
 
-        return DB::transaction(function () use ($offer, $by, $amount, $comment, $kind) {
+        return DB::transaction(function () use ($offer, $by, $amount, $comment, $kind, $lowOk) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             if (! $offer->bidsOpen() && ! $offer->canBidInDeal($by)) {
                 throw ValidationException::withMessages(['amount' => 'Приём подтверждений закрыт']);
@@ -46,17 +49,26 @@ final class PlaceBid
                 }
                 $amount = null;
             } else {
-                $min = $offer->minBid();
                 if (! $amount) {
                     throw ValidationException::withMessages(['amount' => 'Впишите цену']);
                 }
-                if ($min && $amount < $min) {
-                    throw ValidationException::withMessages(['amount' => self::TOO_LOW]);
-                }
+                self::checkZone($offer, $amount, $lowOk);
             }
 
             return self::record($offer, $by, $by, $amount, $comment, $kind);
         });
+    }
+
+    /** Цена подтверждения по зонам `Offer::bidZone`: недопустимую — нет, ниже порога — только с согласием. */
+    public static function checkZone(Offer $offer, int $amount, bool $lowOk): void
+    {
+        $zone = $offer->bidZone($amount);
+        if ($zone === 'bad') {
+            throw ValidationException::withMessages(['amount' => self::TOO_LOW]);
+        }
+        if ($zone === 'low' && ! $lowOk) {
+            throw ValidationException::withMessages(['amount' => self::NEEDS_CONSENT, 'low' => '1']);
+        }
     }
 
     /**

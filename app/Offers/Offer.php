@@ -1009,6 +1009,36 @@ class Offer extends Model
         return $this->asking_price;
     }
 
+    /** Ниже этого не принимаем совсем (26.10.2026): закупочная + `HARD_GAP`, но не выше `minBid` — что принималось, принимается. */
+    public const HARD_GAP = 20_000;
+
+    public function hardMinBid(): ?int
+    {
+        $floor = $this->bidFloor();
+        if (! $floor) {
+            return null;
+        }
+        $min = $this->minBid();
+
+        return $min ? min($min, $floor + self::HARD_GAP) : $floor + self::HARD_GAP;
+    }
+
+    /**
+     * Зона цены подтверждения (26.10.2026, владелец): `ok` — не ниже порога, `low` — ниже порога, но можно, с согласованием
+     * у поставщика (менеджеру — «Вы уверены?», админу — жёлтым), `bad` — недопустима. Пороги наружу не выдаём.
+     */
+    public function bidZone(int $amount): string
+    {
+        $hard = $this->hardMinBid();
+        $min = $this->minBid();
+
+        return match (true) {
+            $hard && $amount < $hard => 'bad',
+            $min && $amount < $min => 'low',
+            default => 'ok',
+        };
+    }
+
     /**
      * Быстрые скидки формы подтверждения: «−2%» и «−5%» — доля **разницы** между заявленной и продажной, а не всей
      * цены (владелец 10.10.2026: заявленная 90 000, продажи 100 000 — «−5%» это −500 ₽, а не −5 000). Скидка — до 100 ₽;

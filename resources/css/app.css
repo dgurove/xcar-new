@@ -115,6 +115,9 @@
   --color-closed-soft: #ececec;
   --color-danger: #ff0037;
   --color-danger-soft: #ffe8ec;
+  /* Ниже порога, но можно (26.10.2026): жёлтым — подтверждение у админа, «Вы уверены?» у менеджера. */
+  --color-warn: #b7791f;
+  --color-warn-soft: #fef3c7;
   --color-recommended: #229ed9;
   /* Новое — голубым, как непрочитанное в Telegram (владелец 12.10.2026; было лаймом), тот же голубой, что «Рекомендуем». */
   --color-fresh: #229ed9;
@@ -255,6 +258,8 @@ html.kb-open { --home-gap: 0px; }
   --color-closed: #a3a3a3;
   --color-closed-soft: #3a3a3c;
   --color-danger-soft: #45101b;
+  --color-warn: #fcd34d;
+  --color-warn-soft: #3f2606;
   --shadow-drop: 0 0 1px 0 rgb(0 0 0 / .5), 0 2px 6px 0 rgb(0 0 0 / .5),
                  0 16px 24px 0 rgb(0 0 0 / .6);
 }
@@ -1293,6 +1298,18 @@ html.kb-open { --home-gap: 0px; }
      заголовок группы над плашкой. */
   .list { @apply flex flex-col overflow-clip rounded-(--radius-l) bg-surface; }
   .sheet .list, .box .list, .detail-card .list { @apply bg-surface-2; }
+  /* Подтверждение светофором (26.10.2026, `Offer::bidZone`): не ниже порога — сумма зелёным, ниже — жёлтая заливка
+     строки, не выше закупочной — красная. Слов «ниже минимальной» нет — цвет и есть сигнал. */
+  .bid-row--ok .bid-amount { color: var(--color-open); }
+  .bid-row--low { background: var(--color-warn-soft); }
+  .bid-row--low .bid-amount { color: var(--color-warn); }
+  .bid-row--loss { background: var(--color-danger-soft); }
+  .bid-row--loss .bid-amount { color: var(--color-danger); }
+  /* Контрпредложение — карточка менеджера и строка админа: заливка акцента, без обводок. */
+  .counter-card { @apply rounded-(--radius-l) bg-accent-soft p-4; }
+  .confirm-warn { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: .75rem; border-radius: 9999px;
+    background: var(--color-warn-soft); color: var(--color-warn); font-weight: 600; font-size: 1.25rem; }
+  .field-input.is-shaking { animation: vin-shake .4s ease-in-out 1; }
   .list .row { border-radius: 0; background: transparent; min-height: 3.5rem; padding: .625rem 1rem; gap: .75rem; }
   .list > * + * { position: relative; }
   .list > * + *::after, .list > * + .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }

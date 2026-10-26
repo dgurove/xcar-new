@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['offer_id', 'user_id', 'placed_by', 'kind', 'amount', 'comment', 'state', 'decided_at', 'decided_by', 'cost'])]
+#[Fillable(['offer_id', 'user_id', 'placed_by', 'kind', 'amount', 'comment', 'state', 'decided_at', 'decided_by', 'cost',
+    'counter_amount', 'counter_comment', 'counter_by', 'counter_at', 'counter_state'])]
 class Bid extends Model
 {
     /**
@@ -20,7 +21,7 @@ class Bid extends Model
     protected static function booted(): void
     {
         static::saved(function (self $bid) {
-            if (($bid->wasRecentlyCreated || $bid->wasChanged(['state', 'amount'])) && ($n = Offer::whereKey($bid->offer_id)->value('number'))) {
+            if (($bid->wasRecentlyCreated || $bid->wasChanged(['state', 'amount', 'counter_state'])) && ($n = Offer::whereKey($bid->offer_id)->value('number'))) {
                 app(Publisher::class)->rowsSoon(Topics::STAFF, ['/' => [$n]]);
             }
             // Подтверждение снимает тревогу «нет покупателя» (`Binding`), отзыв — возвращает.
@@ -32,7 +33,8 @@ class Bid extends Model
 
     protected function casts(): array
     {
-        return ['state' => BidState::class, 'kind' => BidKind::class, 'amount' => 'int', 'cost' => 'int', 'decided_at' => 'datetime'];
+        return ['state' => BidState::class, 'kind' => BidKind::class, 'amount' => 'int', 'cost' => 'int', 'decided_at' => 'datetime',
+            'counter_amount' => 'int', 'counter_at' => 'datetime', 'counter_state' => CounterState::class];
     }
 
     public function offer(): BelongsTo
@@ -43,6 +45,26 @@ class Bid extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function counterBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'counter_by');
+    }
+
+    /**
+     * Контрпредложение ждёт ответа менеджера. Подтверждение заменили, отозвали, отклонили или приняли — контр гаснет сам:
+     * отдельно его не снимаем.
+     */
+    public function hasPendingCounter(): bool
+    {
+        return $this->counter_state === CounterState::Pending && $this->state === BidState::Active;
+    }
+
+    /** Отказался от контрпредложения — админу серым «отказался от N» в строке. */
+    public function counterDeclined(): bool
+    {
+        return $this->counter_state === CounterState::Declined && $this->state === BidState::Active;
     }
 
     /** Кто внёс за менеджера (`PlaceBidFor`), у обычного подтверждения — никто. */

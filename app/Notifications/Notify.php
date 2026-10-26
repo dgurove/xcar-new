@@ -26,6 +26,8 @@ use App\Offers\Actions\NotifyViewers;
 use App\Offers\Deal;
 use App\Offers\Estimate;
 use App\Offers\Events\BidAccepted;
+use App\Offers\Events\CounterAnswered;
+use App\Offers\Events\CounterOffered;
 use App\Offers\Events\BidPlaced;
 use App\Offers\Events\EstimateGiven;
 use App\Offers\Events\EstimateRejected;
@@ -82,6 +84,8 @@ final class Notify
             OfferPublished::class => 'offerPublished',
             BidPlaced::class => 'bidPlaced',
             BidAccepted::class => 'bidAccepted',
+            CounterOffered::class => 'counterOffered',
+            CounterAnswered::class => 'counterAnswered',
             EstimatesAsked::class => 'estimatesAsked',
             EstimateGiven::class => 'estimateGiven',
             EstimateRejected::class => 'estimateRejected',
@@ -170,6 +174,17 @@ final class Notify
         if ($deal) {
             $e->bid->user->notify(new BidAcceptedNotice($deal->load('offer')));
         }
+    }
+
+    /** Контрпредложение (26.10.2026): менеджеру — что предложили, админам — его ответ. */
+    public function counterOffered(CounterOffered $e): void
+    {
+        $e->bid->loadMissing('user', 'offer')->user?->notify(new CounterOfferedNotice($e->bid));
+    }
+
+    public function counterAnswered(CounterAnswered $e): void
+    {
+        Notification::send($this->staff(), new CounterAnsweredNotice($e->bid->load('offer', 'user'), $e->agreed));
     }
 
     /** Оценка менеджером (11.10.2026): просьба — менеджеру, оценка — админам, решение — снова менеджеру. */

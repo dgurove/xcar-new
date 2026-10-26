@@ -48,7 +48,7 @@ class OfferEvent extends Model
     public function adminOnly(): bool
     {
         return in_array($this->type, [OfferEventType::BidPlaced, OfferEventType::BidWithdrawn, OfferEventType::BidAccepted, OfferEventType::BidDeclined,
-            OfferEventType::Garage, OfferEventType::Estimate, OfferEventType::InsurerReplied, OfferEventType::SupplierLetter], true)
+            OfferEventType::Counter, OfferEventType::Garage, OfferEventType::Estimate, OfferEventType::InsurerReplied, OfferEventType::SupplierLetter], true)
             || ($this->type === OfferEventType::Updated && array_intersect(array_keys($this->payload['changes'] ?? []) ?: ($this->payload['fields'] ?? []),
                 ['asking_price', 'min_bid_price', 'cost', 'supplier_cost', 'deal_owner_price', 'amount', 'commission', 'share']));
     }
@@ -77,6 +77,13 @@ class OfferEvent extends Model
             },
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
             OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
+            // Контрпредложение (26.10.2026): сделали, менеджер согласился или отказался, отозвали.
+            OfferEventType::Counter => match ($p['state'] ?? 'pending') {
+                'accepted' => 'Контрпредложение '.Money::plain($p['amount'] ?? 0).' принято менеджером',
+                'declined' => 'От контрпредложения '.Money::plain($p['amount'] ?? 0).' отказались',
+                'withdrawn' => 'Контрпредложение '.Money::plain($p['amount'] ?? 0).' отозвано',
+                default => 'Контрпредложение '.Money::plain($p['amount'] ?? 0).(isset($p['manager']) ? ' — '.$p['manager'] : ''),
+            },
             OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : (! empty($p['placed_by']) ? 'Интерес, внесён за менеджера' : 'Интерес'),
             OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.($p['label'] ?? $p['exit']).'»'.(! empty($p['letter']) ? ' по письму' : '').')' : ''))
                 // Платёжка нашей оплаты поставщику («Поставщику оплачено»): «дата оплаты 19 октября 2026, номер платёжки 512».
