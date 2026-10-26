@@ -42,6 +42,7 @@ use App\Offers\Offer;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
+use App\Offers\Pricing;
 use App\Offers\Showing;
 use App\Offers\Slots;
 use App\Offers\Tag;
@@ -894,6 +895,8 @@ class OfferController
         $money = fn (?string $v) => Money::rubles($v) ?: null;
         $floor = $money($data['floor_price'] ?? null);
         $value = $money($data['value'] ?? null);
+        // Вписали только оценочную (Альфа), а закупочную браузер не досчитал — она по правилу (`Pricing`).
+        $floor ??= $value && Pricing::byValue($offer->vendor_id) ? Pricing::floorFrom($value) : null;
         if (! $floor || $offer->state !== OfferState::Draft) {
             return back()->with('detail-advance', true);
         }

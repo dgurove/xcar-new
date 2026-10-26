@@ -5,8 +5,8 @@ namespace App\Park\Actions;
 use App\Billing\Actions\IssueTransferObligation;
 use App\Cars\Vin\RememberVin;
 use App\Offers\Actions\UpdateOffer;
+use App\Offers\Pricing;
 use App\Park\EventType;
-use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Support\Changes;
 use App\Users\User;
@@ -46,10 +46,10 @@ final class UpdateVehicle
             ($this->transfer)($vehicle, $by);
         }
         // Оценочная у машины одна: машина в продаже — закупочная от новой оценочной, если её не вписывали рукой
-        // (`Sale::floorFor`, владелец 04.10.2026). Машина уже в сделке или гараже — закупочную сделки правка парковки не
+        // (`Pricing::floorFor`, владелец 04.10.2026). Машина уже в сделке или гараже — закупочную сделки правка парковки не
         // трогает: её меняют в CRM («И в сделке»).
         if (in_array('value', $changed, true) && ($offer = $vehicle->offer) && ! $offer->costDeal()
-            && ($floor = Sale::floorFor($offer->floor_price, $diff['changes']['value'][0] ?? null, $vehicle->value))) {
+            && ($floor = Pricing::floorFor($offer->floor_price, $diff['changes']['value'][0] ?? null, $vehicle->value))) {
             app(UpdateOffer::class)($offer, ['floor_price' => $floor], $by, ['why' => 'Оценочная на парковке']);
         }
 

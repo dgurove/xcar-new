@@ -41,6 +41,7 @@ use App\Offers\Actions\MarkSupplierRequestSent;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
+use App\Offers\Pricing;
 use App\Offers\SupplierRequest;
 use App\Park\Actions\MarkDoc;
 use App\Park\City;
@@ -951,7 +952,7 @@ class MailController
             'vin' => $offer->vin ?? '',
             'claim_ref' => $offer->claim_ref ?? '',
             // Закупочная с наценкой к оценочной — «Прошу согласовать реализацию за 756 000 ₽ (+10%)» (08.10.2026).
-            'floor' => Sale::floorLabel($offer->floor_price, $offer->value),
+            'floor' => Pricing::floorLabel($offer->floor_price, $offer->value),
             // Письмо поставщику — сколько получает он: наша закупка (`supplierCost`) или то, что покупатель платит ему сам
             // («Страховой напрямую»), а не цена менеджера (18.10.2026: «оплачен на сумму» уходило Альфе с ценой сделки).
             'price' => ($p = $offer->deal ? ($offer->deal->paysSelection() ? $offer->deal->supplierPayment() : $offer->deal->supplierCost()) : null) ? Money::plain($p) : ($offer->asking_price ? Money::plain($offer->asking_price) : ''),

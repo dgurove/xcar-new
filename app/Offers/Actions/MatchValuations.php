@@ -2,10 +2,11 @@
 
 namespace App\Offers\Actions;
 
+use App\Cars\CarText;
 use App\Cars\Identity;
 use App\Offers\Offer;
 use App\Offers\OfferState;
-use App\Park\Sale;
+use App\Offers\Pricing;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
@@ -28,7 +29,7 @@ use Illuminate\Support\Facades\DB;
  * `city_fill` — город в пустой или вместо другого, `gaps` — чего не будет и после сохранения (нет ни у предложения, ни в тексте):
  * их вписывают тут же. Сумма та же, а дописать есть что — строка не «Уже так», а «Заполним».
  *
- * Сумма — оценочная только у вендора, чья закупочная от неё (`rate_by_value`, Альфа). У остальных (Т-Страхование:
+ * Сумма — оценочная только у вендора, чья закупочная от неё (`Pricing::fromAmount`, `floor_by_value`, Альфа). У остальных (Т-Страхование:
  * Марина присылает СМС «AUT-26-979366 207000», 22.10.2026) это сама закупочная — `direct`: оценочная не трогается.
  */
 final class MatchValuations
@@ -82,19 +83,21 @@ final class MatchValuations
             $found = $offers->get($r['key'], collect());
             if ($found->isEmpty()) {
                 $lot = $lots->get($r['key']);
-                $out[] = $r + ['status' => $lot && count($amounts[$r['key']]) === 1 ? 'migtorg' : 'missing', 'lot' => $lot, 'archived' => $archived->get($r['key']), 'offer' => null, 'direct' => false, 'floor' => null, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
+                // Черновик с Мигторга получит вендора по виду номера — цены из суммы по его правилу.
+                $floor = $lot ? Pricing::fromAmount(CarText::vendorOf($r['ref']), $r['amount'])['floor_price'] : null;
+                $out[] = $r + ['status' => $lot && count($amounts[$r['key']]) === 1 ? 'migtorg' : 'missing', 'lot' => $lot, 'archived' => $archived->get($r['key']), 'offer' => null, 'direct' => false, 'floor' => $floor, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
 
                 continue;
             }
             foreach ($found as $offer) {
                 $vin = strtoupper((string) $offer->vin);
-                $direct = ! $offer->vendor?->rate_by_value;
-                $floor = $direct ? $r['amount'] : Sale::floorFrom($r['amount']);
+                $direct = ! Pricing::byValue($offer->vendor_id);
+                $floor = $direct ? $r['amount'] : Pricing::floorFrom($r['amount']);
                 // Вписанное расходится: оценочная другая; закупочная вписана рукой (не пустая и не посчитанная от
                 // прежней оценочной) и не та, что получится.
                 $valueDiffers = ! $direct && $offer->value !== null && (int) $offer->value !== $r['amount'];
                 $floorDiffers = $offer->floor_price !== null && (int) $offer->floor_price !== $floor
-                    && ($direct || ! ($offer->value && (int) $offer->floor_price === Sale::floorFrom((int) $offer->value)));
+                    && ($direct || ! ($offer->value && (int) $offer->floor_price === Pricing::floorFrom((int) $offer->value)));
                 $city = $r['city'] ?? null;
                 $vinFill = $vin === '' && $r['vin'] ? $r['vin'] : null;
                 // VIN из текста — у другого живого предложения: это не та машина или двойник, не записываем (`Identity`).
@@ -107,7 +110,7 @@ final class MatchValuations
                     count($amounts[$r['key']]) > 1 => 'dispute',
                     $refDiffers !== null => 'check',
                     $vinTaken || ($vin !== '' && $r['vin'] && $vin !== $r['vin']) => 'check',
-                ($direct || (int) $offer->value === $r['amount']) && (int) $offer->floor_price === $floor => $vinFill || $cityFill || $gaps ? 'fill' : 'same',
+                    ($direct || (int) $offer->value === $r['amount']) && (int) $offer->floor_price === $floor => $vinFill || $cityFill || $gaps ? 'fill' : 'same',
                     $valueDiffers || $floorDiffers => 'conflict',
                     default => 'fill',
                 };

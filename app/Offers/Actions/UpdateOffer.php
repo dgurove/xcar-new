@@ -8,16 +8,16 @@ use App\Logistics\Transport;
 use App\Mail\Actions\LinkThread;
 use App\Media\Jobs\StampPhotos;
 use App\Offers\Bid;
-use App\Offers\Binding;
 use App\Offers\BidKind;
 use App\Offers\BidState;
+use App\Offers\Binding;
 use App\Offers\DealAudience;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
-use App\Park\Sale;
+use App\Offers\Pricing;
 use App\Support\Changes;
 use App\Users\User;
 use App\Vendors\Actions\LearnSenders;
@@ -46,8 +46,8 @@ final class UpdateOffer
         // Показ сделки кончился, а его продлили — список снова видит её: уведомление всем, а не только новым.
         $showWasOver = $offer->deal_show_until !== null && $offer->dealShowOver();
         $offer->fill($data);
-        // Сменили оценочную, закупочную не трогали — закупочная от неё же, если не вписана рукой (`Sale::floorFor`).
-        if ($offer->isDirty('value') && ! $offer->isDirty('floor_price') && ($floor = Sale::floorFor($offer->floor_price, $was, $offer->value))) {
+        // Сменили оценочную, закупочную не трогали — закупочная от неё же, если не вписана рукой (`Pricing::floorFor`).
+        if ($offer->isDirty('value') && ! $offer->isDirty('floor_price') && ($floor = Pricing::floorFor($offer->floor_price, $was, $offer->value))) {
             $offer->floor_price = $floor;
         }
         // Сменили вендора, а НДС не прислали (у модератора галки нет) — НДС цен от вендора. Присланный — письмом или

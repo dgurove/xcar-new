@@ -9,6 +9,7 @@ use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Extraction\QuotationStripper;
+use App\Offers\Pricing;
 use App\Support\Phone;
 use Carbon\Carbon;
 
@@ -279,14 +280,11 @@ abstract class Template
     /** Сумма «685 713», «933333», «5 211 000,00»: разряды через пробел или слитно, копейки отрезаются. */
     public const MONEY = '(\d{1,3}(?: \d{3})+|\d{4,9})(?:[,.]\d{1,2}(?!\d))?';
 
-    /** Дешевле — не цена ТС, а обрывок («ч.1», номер дома). */
-    public const MIN_PRICE = 10_000;
-
     public static function money(string $digits): ?int
     {
         $value = (int) preg_replace('/\D/u', '', $digits);
 
-        return $value >= self::MIN_PRICE && $value <= self::MAX_PRICE ? $value : null;
+        return $value >= Pricing::MIN && $value <= self::MAX_PRICE ? $value : null;
     }
 
     protected function price(string $text): ?int

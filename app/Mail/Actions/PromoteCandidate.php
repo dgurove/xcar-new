@@ -17,6 +17,7 @@ use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Pricing;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
@@ -28,9 +29,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class PromoteCandidate
 {
-    /** Закупочная меньше — не цена, а обрывок (у 154671/2026 письмо дало «582»). */
-    public const MIN_FLOOR = 10000;
-
     public function __construct(private CreateOffer $create, private UpdateOffer $update, private LinkThread $link) {}
 
     /** `$by` null — завела почта сама (`Offers\Actions\AutoOffer`), в истории «Заведён из письма». */
@@ -42,7 +40,7 @@ final class PromoteCandidate
         try {
             $offer = DB::transaction(function () use ($candidate, $by) {
                 $offer = ($this->create)($by, [], $by ? [] : ['mail' => true]);
-                ($this->update)($offer, $this->data($candidate), $by);
+                ($this->update)($offer, $this->data($candidate), $by, ['why' => 'Из письма']);
                 $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
 
                 return $offer;
@@ -92,7 +90,7 @@ final class PromoteCandidate
             'engine_power' => $v('engine_power'),
             'color' => $v('color'),
             // «582» вместо суммы — недочитанное письмо, а не закупочная.
-            'floor_price' => (int) $v('floor_price') >= self::MIN_FLOOR ? $v('floor_price') : null,
+            'floor_price' => (int) $v('floor_price') >= Pricing::MIN ? $v('floor_price') : null,
             'owner_price' => $v('owner_price'),
             'inspection_address' => $v('location'),
             // Город письма, а нет его — место из адреса осмотра («Пермский край, д. Ванюки, …»).

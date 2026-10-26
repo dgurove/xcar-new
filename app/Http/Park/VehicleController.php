@@ -25,6 +25,7 @@ use App\Media\Hidden;
 use App\Media\PhotoBlocks;
 use App\Media\PhotoIngest;
 use App\Offers\Actions\UpdateOffer;
+use App\Offers\Pricing;
 use App\Park\Actions\CancelVehicle;
 use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\MarkDoc;
@@ -51,7 +52,6 @@ use App\Park\OutMoney;
 use App\Park\PhotoStage;
 use App\Park\Request as ParkRequest;
 use App\Park\RequestType;
-use App\Park\Sale;
 use App\Park\Tasks;
 use App\Park\Vehicle;
 use App\Park\VehicleExport;
@@ -478,7 +478,7 @@ class VehicleController
     /** «В продажу»: черновик предложения этой ТС в CRM; чип в шапке становится ссылкой на него. */
     /**
      * «В продажу» шторкой (13.10.2026, владелец: «админу важно понимать, что закупочная считается корректно»): оценочная —
-     * поправить можно, закупочная — по правилу от оценочной (`Sale::floorFrom`), равна оценочной или своя.
+     * поправить можно, закупочная — по правилу от оценочной (`Pricing::floorFrom`), равна оценочной или своя.
      */
     public function sell(Request $request, Vehicle $vehicle, PutOnSale $sell, UpdateVehicle $updateVehicle, UpdateOffer $updateOffer)
     {
@@ -492,7 +492,7 @@ class VehicleController
         $value = $rubles($data['value'] ?? null);
         $mode = $data['floor_mode'] ?? null;
         $floor = match ($mode) {
-            'rule' => $value ? Sale::floorFrom($value) : null,
+            'rule' => $value ? Pricing::floorFrom($value) : null,
             'value' => $value,
             'own' => $rubles($data['floor'] ?? null),
             default => null,
@@ -506,7 +506,7 @@ class VehicleController
         }
         $offer = $sell($vehicle->refresh(), $by);
         if ($floor && (int) $offer->floor_price !== $floor) {
-            $offer = $updateOffer($offer, ['floor_price' => $floor], $by);
+            $offer = $updateOffer($offer, ['floor_price' => $floor], $by, ['why' => 'В продажу с парковки']);
         }
 
         return back()->with('toast', $floor ? 'В продажу за '.Money::rub($floor).', черновик в CRM' : 'Черновик продажи в CRM');

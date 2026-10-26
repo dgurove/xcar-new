@@ -15,6 +15,7 @@ use App\Mail\Scan\AutoScan;
 use App\Mail\Scope;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
+use App\Offers\Pricing;
 use App\Support\Nav;
 use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
@@ -139,7 +140,7 @@ final class AutoOffer
     {
         return match (true) {
             LegacyClaim::where('claim_ref_key', Code::key($candidate->code))->exists() => 'legacy',
-            (int) $candidate->value('floor_price') >= PromoteCandidate::MIN_FLOOR => 'unpriced',
+            (int) $candidate->value('floor_price') >= Pricing::MIN => 'unpriced',
             default => 'nofloor',
         };
     }

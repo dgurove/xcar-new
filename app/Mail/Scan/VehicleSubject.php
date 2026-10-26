@@ -10,6 +10,7 @@ use App\Live\Topics;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Extraction\ScanFields;
+use App\Offers\Pricing;
 use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\Vehicle;
@@ -47,11 +48,11 @@ final class VehicleSubject implements Subject
         return Topics::PARK;
     }
 
-    /** Оценочная стоимость — только у вендора, чья ставка от неё (`rate_by_value`). */
+    /** Поля, что «✨» читает для ТС. */
     public function fields(): array
     {
         // Оценочная — всем вендорам (12.10.2026, владелец: стоимость из заявки Альфы СПб не вставала): хранение по ней
-        // считают только с «ставкой от оценочной», но продаже нужна закупочная от неё (`Sale::floorFrom`).
+        // считает лестница прайса (`from_value`), а продаже нужна закупочная от неё (`Pricing::floorFrom`).
         return array_keys(ScanFields::LABELS);
     }
 

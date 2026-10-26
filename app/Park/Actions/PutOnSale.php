@@ -9,8 +9,8 @@ use App\Offers\Actions\CreateOffer;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Pricing;
 use App\Park\EventType;
-use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Users\User;
@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * «В продажу» в деле ТС: черновик продажи этой машины (`Cars\Car`): тождество, фото и документы у них общие. Город —
  * город парковки (без неё — город ТС), вендор — парковки (у продажи он свой: `Vendor::forCrm`), закупочная — по правилу
- * от оценочной (`Sale::floorFrom`), пока её не вписали. Продажа этой машины уже была (снимали, архив) — она и
+ * от оценочной (`Pricing::floorFrom`), пока её не вписали. Продажа этой машины уже была (снимали, архив) — она и
  * возвращается в черновики, второй не заводится. Письма CRM о той же машине едут к ней. Обратно — «Убрать из продажи»
  * (`TakeOffSale`). Без человека (`by` null) — сама, `AutoSale`.
  */
@@ -51,7 +51,7 @@ final class PutOnSale
                 'car_place' => $vehicle->state === VehicleState::Stored ? CarPlace::Ours : null,
                 'vendor_id' => $vehicle->vendor_id,
                 'prices_include_vat' => $vehicle->vendor_id ? Vendor::offersVat($vehicle->vendor_id) : null,
-                'floor_price' => $car->value ? Sale::floorFrom((int) $car->value) : null,
+                'floor_price' => $car->value ? Pricing::floorFrom((int) $car->value) : null,
             ], fn ($v) => $v !== null), ['park' => $vehicle->id], car: $car);
             $vehicle->log(EventType::Linked, $by, ['number' => $offer->number]);
             $this->threads->forOffer($offer->refresh());

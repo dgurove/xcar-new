@@ -14,10 +14,10 @@ use App\Offers\Actions\UpdateOffer;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Pricing;
 use App\Offers\ValuationPhoto;
 use App\Offers\ValuationSheet;
 use App\Offers\ValuationText;
-use App\Park\Sale;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -71,8 +71,6 @@ final class OfferValuationController
             // Кому можно вписать руками: чего нет ни у предложения, ни в тексте.
             'gaps' => $found->filter(fn ($i) => $i['gaps'])->mapWithKeys(fn ($i) => [$i['offer']->id => $i['gaps']])->all(),
             'amounts' => $take->mapWithKeys(fn ($i) => [$i['offer']->id => $i['amount']])->all(),
-            // Сумма — сама закупочная (не Альфа): оценочную не пишем.
-            'direct' => $take->filter(fn ($i) => $i['direct'])->map(fn ($i) => $i['offer']->id)->values()->all(),
             // Что вписано иначе: без «Перезаписать» это поле остаётся прежним.
             'differs' => $take->filter(fn ($i) => $i['status'] === 'conflict')->mapWithKeys(fn ($i) => [$i['offer']->id => ['value' => $i['value_differs'], 'floor' => $i['floor_differs']]])->all(),
             // Нет в CRM, есть на Мигторге: что заводить по галке — номер, закупочная, лот, архивное предложение.
@@ -130,7 +128,7 @@ final class OfferValuationController
             $set = [];
             if (in_array($offer->id, $ids, true)) {
                 $value = (int) $saved['amounts'][$offer->id];
-                $set = in_array($offer->id, $saved['direct'] ?? [], true) ? ['floor_price' => $value] : ['value' => $value, 'floor_price' => Sale::floorFrom($value)];
+                $set = Pricing::fromAmount($offer->vendor_id, $value);
                 // Расхождение без «Перезаписать» — вписанное остаётся; оставили оценочную — закупочная тоже прежняя.
                 $differs = $saved['differs'][$offer->id] ?? null;
                 if ($differs && ($data['keep'][$offer->id] ?? 'keep') === 'keep') {
@@ -175,7 +173,7 @@ final class OfferValuationController
     }
 
     /**
-     * Черновики по номерам, которых в CRM нет, а на Мигторге есть (26.10.2026): закупочная — сумма из текста, вендор — по
+     * Черновики по номерам, которых в CRM нет, а на Мигторге есть (26.10.2026): цены из суммы — `Pricing::fromAmount`, вендор — по
      * виду номера (`CarText::vendorOf`), поля в пустые и кадры — с лота (`ImportMigtorgLot`). Архивное по номеру —
      * обратно в черновики: машина одна. Номер под замком — второе нажатие дубль не заведёт; номер уже у живого
      * предложения (завели, пока окно было открыто) или чужой группы — пропускается.
@@ -210,10 +208,11 @@ final class OfferValuationController
             if (! $offer) {
                 continue;
             }
-            $update($offer, ['floor_price' => (int) $row['amount']], $user, ['source' => 'valuation', 'floor' => (int) $row['amount']]);
+            $prices = Pricing::fromAmount($offer->vendor_id, (int) $row['amount']);
+            $update($offer, $prices, $user, ['source' => 'valuation', 'value' => $prices['value'] ?? null, 'floor' => $prices['floor_price']]);
             ImportMigtorgLot::start($offer->refresh(), $lot);
             $offer->refresh();
-            $out[] = ['number' => $offer->number, 'title' => $offer->titleWithYear() ?: $row['ref'], 'ref' => $row['ref'], 'floor' => (int) $row['amount'], 'city' => $offer->settlement?->title() ?? $lot->city];
+            $out[] = ['number' => $offer->number, 'title' => $offer->titleWithYear() ?: $row['ref'], 'ref' => $row['ref'], 'floor' => (int) $offer->floor_price, 'city' => $offer->settlement?->title() ?? $lot->city];
         }
 
         return $out;

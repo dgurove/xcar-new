@@ -1,18 +1,18 @@
 {{-- «В продажу» на парковке (13.10.2026, владелец: «пусть пишет оценочную и закупочную с возможностью отредактировать; для
      некоторых закупочная равна оценочной, для некоторых нет — админу важно понимать, что это корректно»). Оценочная —
-     поле; закупочная — «По правилу» (`Sale::floorFrom`: +50 000 ₽ / +10% / +200 000 ₽), «Равна оценочной» или «Своя»;
+     поле; закупочная — «По правилу» (`Pricing::floorFrom`: +50 000 ₽ / +10% / +200 000 ₽), «Равна оценочной» или «Своя»;
      суммы и кнопка «Выставить за …» пересчитывает `sale_floor_controller`. Связанное предложение уже было — его закупочная
-     и режим по ней (`Sale::floorMode`). --}}
+     и режим по ней (`Pricing::floorMode`). --}}
 @props(['vehicle', 'id'])
 @php
-    use App\Park\Sale;
+    use App\Offers\Pricing;
     use App\Support\Money;
     $value = $vehicle->value ? (int) $vehicle->value : null;
     $floor = $vehicle->offer?->floor_price ? (int) $vehicle->offer->floor_price : null;
-    $mode = old('floor_mode', Sale::floorMode($floor, $value));
+    $mode = old('floor_mode', Pricing::floorMode($floor, $value));
 @endphp
 <x-ui.sheet :id="$id" title="В продажу">
-    <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="flex flex-col gap-4" data-turbo-frame="_top" data-controller="sale-floor reveal" data-action="input->sale-floor#update change->sale-floor#update">
+    <form method="post" action="/cars/{{ $vehicle->id }}/sell" class="flex flex-col gap-4" data-turbo-frame="_top" data-controller="sale-floor reveal" data-sale-floor-rules-value="@json(Pricing::RULES)" data-action="input->sale-floor#update change->sale-floor#update">
         @csrf
         <div class="text-sm text-ink-muted">{{ $vehicle->saleLabel() }}</div>
         <div class="fields">

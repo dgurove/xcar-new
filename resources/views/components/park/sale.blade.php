@@ -59,7 +59,7 @@
             @php
                 $value = $vehicle->value ? (int) $vehicle->value : null;
                 $floor = $offer->floor_price ? (int) $offer->floor_price : null;
-                $how = match (\App\Park\Sale::floorMode($floor, $value)) { 'rule' => 'по правилу '.\Illuminate\Support\Str::between(\App\Park\Sale::floorLabel($floor, $value), '(', ')'), 'value' => 'равна оценочной', default => 'своя' };
+                $how = match (\App\Offers\Pricing::floorMode($floor, $value)) { 'rule' => 'по правилу '.\Illuminate\Support\Str::between(\App\Offers\Pricing::floorLabel($floor, $value), '(', ')'), 'value' => 'равна оценочной', default => 'своя' };
             @endphp
             <div class="list mb-4">
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Оценочная</span><span class="nums shrink-0">{{ $value ? \App\Support\Money::rub($value) : 'нет' }}</span></div>

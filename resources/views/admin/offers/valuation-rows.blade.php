@@ -6,7 +6,7 @@
      другой, номер дважды), «С Мигторга» (в CRM нет, лот есть — заведём черновик, 26.10.2026), «Уже так», «Нет в CRM». data-v / data-f — числа, которые valuation_controller прогоняет
      счётчиком. --}}
 @php
-    use App\Park\Sale;
+    use App\Offers\Pricing;
     use App\Support\Money;
     $all = collect($items);
     $groups = collect([
@@ -39,7 +39,7 @@
                 @endphp
                 {{-- В CRM нет, на Мигторге есть: черновик заведётся с закупочной из текста, поля и фото — с лота. --}}
                 @if ($status === 'migtorg')
-                    <div class="valuation-card valuation-row" data-valuation-row data-create data-floor="{{ $item['amount'] }}">
+                    <div class="valuation-card valuation-row" data-valuation-row data-create data-floor="{{ $item['floor'] }}">
                         <div class="valuation-card-head">
                             <x-ui.cat-icon :category="\App\Cars\Category::Passenger" class="valuation-cat"/>
                             <span class="min-w-0 flex-1">
@@ -50,7 +50,7 @@
                         </div>
                         <p class="valuation-facts">
                             <span>{{ $item['archived'] ? 'вернём из архива' : 'новый черновик' }}</span>
-                            <span>закупочная <span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['amount']) }}</span></span>
+                            <span>закупочная <span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span></span>
                         </p>
                     </div>
                     @continue
@@ -97,7 +97,7 @@
                             <span @if ($disputeValue) data-disputed @endif>Оценочная @if ($o->value)<s class="valuation-old nums">{{ Money::nums($o->value) }}</s> @endif<span class="valuation-new nums" data-v>{{ Money::nums($item['amount']) }}</span></span>
                         @endif
                         @if ($floorChanges && $status !== 'dispute')
-                            <span @if ($disputeFloor) data-disputed @endif title="{{ Sale::floorLabel((int) $item['floor'], $item['direct'] ? null : (int) $item['amount']) }}">закупочная @if ($o->floor_price)<s class="valuation-old nums">{{ Money::nums($o->floor_price) }}</s> @endif<span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span></span>
+                            <span @if ($disputeFloor) data-disputed @endif title="{{ Pricing::floorLabel((int) $item['floor'], $item['direct'] ? null : (int) $item['amount']) }}">закупочная @if ($o->floor_price)<s class="valuation-old nums">{{ Money::nums($o->floor_price) }}</s> @endif<span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span></span>
                         @endif
                         @if ($item['ref_differs'] ?? null)
                             <span class="text-urgent">в тексте <span class="nums">{{ $item['ref'] }}</span>, в CRM <span class="nums">{{ $item['ref_differs'] }}</span></span>

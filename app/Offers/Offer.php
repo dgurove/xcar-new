@@ -990,7 +990,7 @@ class Offer extends Model
 
     public static function declaredFrom(?int $floor): ?int
     {
-        return $floor ? (int) (ceil($floor / 1000) * 1000) : null;
+        return $floor ? Pricing::ceilThousand($floor) : null;
     }
 
     /** Нижняя граница подтверждения: заданная руками или по доле между заявленной и продажной. */

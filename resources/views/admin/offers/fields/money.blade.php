@@ -1,6 +1,6 @@
 {{-- Поля цен — одни на окошко строки (`admin/offers/price-steps`: черновик — блоком по шагам, остальное — разделом) и
      редактор (карточка «Цены», `form=offer-form`), 19.10.2026: «к унификации». Столбиком, каждое подписано и на своём месте:
-     оценочная (только у вендора `rate_by_value`, Альфа; модератору — и если уже вписана), закупочная, цена
+     оценочная (только у вендора `floor_by_value`, Альфа; модератору — и если уже вписана), закупочная, цена
      продажи (админ) — рядом в две колонки; срок обязывающего — в «Показе» (модератору — тихой строкой под ценами) (только вендор по комиссии); заявленная, минимальная и доля
      свёрнуты строкой (раскрыты, если вписаны). Метки — не здесь: в окошке под блоком, в редакторе в шапке; «С НДС» — у заголовка «Цены» (`fields/vat-check`). Модератору —
      оценочная, закупочная, НДС и срок (OfferRequest::MODERATOR). Гаражной (`garageOnly`) — только закупочная.
@@ -14,15 +14,15 @@
     $plate ??= false;
     $garageOnly ??= false;
     $admin = auth()->user()->canManageCrm();
-    $byValue = once(fn () => \App\Vendors\Vendor::where('rate_by_value', true)->pluck('id')->all());
+    $byValue = \App\Offers\Pricing::byValueIds();
     $more = $offer->publish_price || $offer->min_bid_price || $offer->min_bid_share || $errors->hasAny(['publish_price', 'min_bid_price', 'min_bid_share']);
     $input = 'field-input nums'.($plate ? ' !bg-surface' : '');
     $ring = '!ring-2 !ring-accent';
     $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0;
 @endphp
-<div class="flex flex-col gap-2" data-controller="min-bid value-floor">
+<div class="flex flex-col gap-2" data-controller="min-bid value-floor" data-value-floor-rules-value="@json(\App\Offers\Pricing::RULES)" @if ($offer->shown_floor) data-min-bid-shown-value="{{ $offer->shown_floor }}" @endif>
     <div class="flex flex-col gap-2">
-        {{-- Оценочная — только у вендора, чья закупочная от неё (`rate_by_value`, Альфа); сменили вендора — прячется сама. --}}
+        {{-- Оценочная — только у вендора, чья закупочная от неё (`floor_by_value`, Альфа); сменили вендора — прячется сама. --}}
         <div class="field" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true) || (! $admin && $offer->value)) hidden @endunless>
             <label for="{{ $idp }}value" class="field-label">Оценочная, ₽</label>
             <input type="text" id="{{ $idp }}value" name="value" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="next" class="{{ $input }}"

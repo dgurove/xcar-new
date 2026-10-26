@@ -170,7 +170,6 @@ class VendorController
             'release_without_payment' => ['boolean'],
             'release_by_qr' => ['boolean'],
             'auto_sale' => ['boolean'],
-            'rate_by_value' => ['boolean'],
             'buyer_rate_multiplier' => ['required', 'numeric', 'between:0,20'],
             'billing_cadence' => ['required', Rule::enum(Cadence::class)],
             'park_seller' => ['nullable', Rule::enum(Seller::class)],
@@ -198,7 +197,6 @@ class VendorController
             'release_without_payment' => $request->boolean('release_without_payment'),
             'release_by_qr' => $request->boolean('release_by_qr'),
             'auto_sale' => $request->boolean('auto_sale'),
-            'rate_by_value' => $request->boolean('rate_by_value'),
             // ИП — по умолчанию: пустое значение, чтобы новый продавец парковки не приходилось вписывать всем.
             'park_seller' => ($data['park_seller'] ?? null) === Seller::Park->value ? null : ($data['park_seller'] ?? null),
         ]));

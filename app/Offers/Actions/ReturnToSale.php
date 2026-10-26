@@ -73,8 +73,12 @@ final class ReturnToSale
                 $car->delete();
                 GarageChanged::dispatch($car);
             }
-            // Заявленная пустая — снова от закупочной (`Offer::declaredPrice`), поэтому null пишется как есть.
+            // Заявленная пустая — снова от закупочной (`Offer::declaredPrice`), поэтому null пишется как есть. Пустая
+            // закупочная — прежняя: стереть её шторкой нельзя (приборка 26.10.2026).
             $data = array_intersect_key($prices, array_flip(['floor_price', 'publish_price', 'asking_price']));
+            if (($data['floor_price'] ?? null) === null) {
+                unset($data['floor_price']);
+            }
             if ($audience !== null) {
                 $data['audience_rules'] = AudienceRules::normalize($audience) ?: null;
             }

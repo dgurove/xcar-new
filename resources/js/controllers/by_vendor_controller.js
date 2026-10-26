@@ -1,6 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Поле, нужное только части вендоров (оценочная стоимость — у тех, чья ставка от неё, `vendors.rate_by_value`):
+// Поле, нужное только части вендоров (оценочная стоимость — у тех, чья закупочная от неё, `vendors.floor_by_value`):
 // видно, пока в той же форме выбран такой вендор; сменили вендора — поле появляется или прячется сразу.
 export default class extends Controller {
     static values = { ids: Array };

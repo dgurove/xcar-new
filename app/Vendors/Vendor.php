@@ -43,7 +43,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'bank_name', 'bank_account', 'bank_corr', 'bank_bic', 'payment_purpose',
     'agreement_number', 'agreement_date', 'agreement_until',
     'deal_format', 'to_gallery', 'letters_to_telegram', 'pickup_on_arrival', 'claim_ref_optional', 'reward_kind', 'reward_value', 'payment_days', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
-    'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'auto_sale', 'rate_by_value', 'buyer_rate_multiplier', 'billing_cadence',
+    'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'auto_sale', 'floor_by_value', 'buyer_rate_multiplier', 'billing_cadence',
     'senders', 'parser', 'park_senders', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id', 'home_yard_id', 'park_seller',
     'intake_docs', 'intake_note', 'audience_rules', 'intake_report_docs',
 ])]
@@ -85,7 +85,7 @@ class Vendor extends Model implements HasMedia
             'release_without_payment' => 'bool',
             'release_by_qr' => 'bool',
             'auto_sale' => 'bool',
-            'rate_by_value' => 'bool',
+            'floor_by_value' => 'bool',
             'buyer_pays_late' => 'bool',
             'buyer_rate_multiplier' => 'float',
             'billing_cadence' => Cadence::class,
@@ -132,12 +132,6 @@ class Vendor extends Model implements HasMedia
     public static function forCrm(?int $id): ?int
     {
         return $id ? (once(fn () => self::whereNotNull('crm_vendor_id')->pluck('crm_vendor_id', 'id')->all())[$id] ?? $id) : null;
-    }
-
-    /** Закупочная от оценочной стоимости (`rate_by_value`, Альфа): только у такого вендора поле «Оценочная» в CRM. */
-    public static function ratesByValue(?int $id): bool
-    {
-        return $id !== null && in_array($id, once(fn () => self::where('rate_by_value', true)->pluck('id')->all()), true);
     }
 
     /** НДС цен предложений этого вендора по умолчанию — одна дверь для письма, ручного черновика и смены вендора. */

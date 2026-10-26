@@ -41,6 +41,8 @@
                 </div>
                 <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание означает покупку</x-ui.check>
                 <x-ui.check name="offers_include_vat" :checked="$vendor->offers_include_vat">Цены предложений с НДС</x-ui.check>
+                {{-- Сумма страховой — оценочная (Альфа): закупочная от неё по правилу `Offers\Pricing`, в CRM поле «Оценочная». --}}
+                <x-ui.check name="floor_by_value" :checked="$vendor->floor_by_value">Закупочная от оценочной</x-ui.check>
                 <x-ui.check name="to_gallery" :checked="$vendor->to_gallery">Черновики в галерею на {{ config('xcar.gallery_days') }} дня</x-ui.check>
                 <x-ui.check name="letters_to_telegram" :checked="$vendor->letters_to_telegram">Письма на deal@ админам в Telegram</x-ui.check>
                 {{-- Вывозим каждую машину (Совкомбанк, 17.10.2026): задача в логистике встаёт вместе с предложением из письма. --}}

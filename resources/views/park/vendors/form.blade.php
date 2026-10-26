@@ -40,8 +40,6 @@
                     <x-ui.field name="park_seller" label="Счета от" :options="\App\Billing\Seller::options()" :value="($vendor->park_seller ?? \App\Billing\Seller::Park)->value"/>
                     <x-ui.field name="home_yard_id" label="Парковка" :options="['' => 'По контакту'] + $yards->all()" :value="$vendor->home_yard_id"/>
                 </div>
-                {{-- Ставка по оценочной стоимости (договор Альфы): включено — в деле ТС поле «Оценочная стоимость». --}}
-                <x-ui.check name="rate_by_value" :checked="$vendor->rate_by_value">Ставка от оценочной стоимости</x-ui.check>
                 <x-ui.check name="buyer_pays_late" :checked="$vendor->buyer_pays_late">Опоздавший покупатель платит</x-ui.check>
                 <div class="fields" data-late><x-ui.field name="buyer_rate_multiplier" label="Множитель, × прайс" :value="\App\Support\Qty::format($vendor->buyer_rate_multiplier)"/></div>
                 <x-ui.check name="release_without_payment" :checked="$vendor->release_without_payment">Выдавать без оплаты</x-ui.check>

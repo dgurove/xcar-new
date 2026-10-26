@@ -7,6 +7,7 @@ use App\Mail\Scan\AutoScan;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
+use App\Offers\Pricing;
 use App\Park\City;
 use App\Park\EventType;
 use App\Park\RequestType;
@@ -21,7 +22,7 @@ use Throwable;
  * «Сразу в продажу» (13.10.2026, начальник): ТС вендора с `vendors.auto_sale` (АльфаСтрахование Москва и СПб), что
  * почта завела заявкой на приём, уходит в продажу сама, как кнопкой «В продажу» (`PutOnSale`), — когда документы
  * прочитаны (`AutoScan::finished`), фото доехали (`ImportThreadFiles`) и оценочная известна. Закупочную черновику
- * ставит правило от оценочной (`PutOnSale`, `Sale::floorFrom`), продажной нет — он встаёт в «Без продажной цены».
+ * ставит правило от оценочной (`PutOnSale`, `Pricing::floorFrom`), продажной нет — он встаёт в «Без продажной цены».
  * Не сработало при письме (выкладка убила задачу, оценочная прочлась вторым проходом) — подбирают часы парковки (`sweep`).
  */
 final class AutoSale

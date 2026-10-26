@@ -29,7 +29,7 @@ final class TakeEstimate
             $estimate->update(['state' => EstimateState::Taken]);
             $estimate->offer->log(OfferEventType::Estimate, $by, ['do' => 'taken', 'user' => $estimate->user_id, 'amount' => $estimate->amount]);
 
-            return ($this->update)($estimate->offer, ['asking_price' => $estimate->amount], $by);
+            return ($this->update)($estimate->offer, ['asking_price' => $estimate->amount], $by, ['why' => 'Оценка '.$estimate->user?->shortName()]);
         });
         EstimateTaken::dispatch($estimate, $by);
 

@@ -5,6 +5,7 @@ namespace App\Mail\Extraction;
 use App\Billing\WorkDays;
 use App\Cars\Colors;
 use App\Cars\Vin\VinText;
+use App\Offers\Pricing;
 use Illuminate\Support\Carbon;
 
 /**
@@ -280,7 +281,7 @@ final class DocumentFields
             '/назначает\s+цену[^0-9]{0,80}?(\d[\d ]{2,})(?:,\d{2})?/ui',
             '/максимальн(?:ая\s+ставка|ое\s+предложение)[^0-9]{0,120}?(\d[\d ]{3,})\s*(?:,\d{2})?\s*(?:руб|р\.|₽)/uis',
         ] as $pattern) {
-            if (preg_match($pattern, $text, $m) && ($n = CarWords::digits($m[1])) && $n >= 1000) {
+            if (preg_match($pattern, $text, $m) && ($n = CarWords::digits($m[1])) && $n >= Pricing::MIN) {
                 return $n;
             }
         }

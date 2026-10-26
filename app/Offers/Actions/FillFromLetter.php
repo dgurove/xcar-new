@@ -4,11 +4,12 @@ namespace App\Offers\Actions;
 
 use App\Cars\Settlement;
 use App\Cars\Vin\VinAutofill;
-use App\Mail\Actions\PromoteCandidate;
+use App\Mail\Actions\LinkThread;
 use App\Mail\Message;
 use App\Mail\Scan\AutoScan;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Pricing;
 use App\Vendors\Vendor;
 
 /**
@@ -30,7 +31,7 @@ final class FillFromLetter
     /** `$read` — ставить чтение документов (`AutoScan`); разовая сверка без записи его не ставит. */
     public function __invoke(Offer $offer, Message $message, bool $read = true): void
     {
-        if (! $message->isFromVendor() || ! self::about($offer, $message) || \App\Mail\Actions\LinkThread::otherCar($offer, $message)) {
+        if (! $message->isFromVendor() || ! self::about($offer, $message) || LinkThread::otherCar($offer, $message)) {
             return;
         }
         $data = [];
@@ -62,7 +63,7 @@ final class FillFromLetter
         $floor = (int) $message->field('floor_price');
         $vendorId = $message->field('vendor_id');
         $data += array_filter([
-            'floor_price' => ! $offer->floor_price && $floor >= PromoteCandidate::MIN_FLOOR ? $floor : null,
+            'floor_price' => ! $offer->floor_price && $floor >= Pricing::MIN ? $floor : null,
             'owner_price' => ! $offer->owner_price && (int) $message->field('owner_price') > 0 ? (int) $message->field('owner_price') : null,
             'vendor_id' => ! $offer->vendor_id && $vendorId ? (int) $vendorId : null,
             'contact_email' => blank($offer->contact_email) ? $message->field('sender') : null,

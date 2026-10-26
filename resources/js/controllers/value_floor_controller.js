@@ -1,16 +1,13 @@
 import { Controller } from '@hotwired/stimulus';
+import { floorFrom } from '../lib/floor';
 import { nums, rubles } from '../lib/money';
 
-// Оценочная → закупочная прямо в форме, по тому же правилу, что сервер (`Park\Sale::floorFrom`): до 500 000 — плюс
-// 50 000, до 2 000 000 — плюс 10 %, дальше плюс 200 000, вверх до тысячи. Закупочная пересчитывается, только пока она
-// пустая или посчитана от прежней оценочной — вписанную рукой не трогаем.
-export const floorFrom = (value) => {
-    const price = value < 500_000 ? value + 50_000 : value < 2_000_000 ? value * 1.1 : value + 200_000;
-    return Math.ceil(Math.round(price * 100) / 100 / 1000) * 1000;
-};
+// Оценочная → закупочная прямо в форме, по правилу сервера (`Offers\Pricing`, ступени — значением `rules`). Закупочная
+// пересчитывается, только пока она пустая или посчитана от прежней оценочной — вписанную рукой не трогаем.
 
 export default class extends Controller {
     static targets = ['value', 'floor'];
+    static values = { rules: Array };
 
     // Оценочной в форме может не быть (не Альфа, или она сверху карточки) — тогда считать нечего.
     connect() {
@@ -21,10 +18,10 @@ export default class extends Controller {
         if (!this.hasValueTarget || !this.hasFloorTarget) return;
         const value = rubles(this.valueTarget.value) ?? 0;
         const floor = rubles(this.floorTarget.value) ?? 0;
-        const auto = !floor || (this.was && floor === floorFrom(this.was));
+        const auto = !floor || (this.was && floor === floorFrom(this.was, this.rulesValue));
         this.was = value;
         if (!value || !auto) return;
-        this.floorTarget.value = nums(floorFrom(value));
+        this.floorTarget.value = nums(floorFrom(value, this.rulesValue));
         this.floorTarget.dispatchEvent(new Event('input', { bubbles: true }));
     }
 }

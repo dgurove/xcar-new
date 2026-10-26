@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { ceilThousand } from '../lib/floor';
 import { nums, rubles } from '../lib/money';
 
 // Серые подсказки цен, пока поле пустое: заявленная по умолчанию — закупочная вверх до тысячи (Offer::declaredFrom), минимальная — заявленная плюс
@@ -7,6 +8,9 @@ import { nums, rubles } from '../lib/money';
 const DEFAULT_SHARE = 0.6;
 
 export default class extends Controller {
+    // Закупочная, что видят менеджеры (`Offer::bidFloor`): после выхода в продажу правка закупочной заявленную не двигает.
+    static values = { shown: Number };
+
     connect() {
         this.root = this.element.closest('turbo-frame') ?? this.element.closest('main') ?? document;
         this.onInput = () => this.update();
@@ -27,8 +31,8 @@ export default class extends Controller {
     }
 
     update() {
-        const raw = this.value('floor_price');
-        const floor = raw ? Math.ceil(raw / 1000) * 1000 : null;
+        const raw = this.shownValue || this.value('floor_price');
+        const floor = raw ? ceilThousand(raw) : null;
         const from = this.value('publish_price') ?? floor;
         const asking = this.value('asking_price');
         const shareRaw = this.root.querySelector('[name="min_bid_share"]')?.value.replace(',', '.').trim();

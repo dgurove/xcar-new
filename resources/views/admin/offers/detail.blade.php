@@ -29,7 +29,7 @@
     // Закупочной нет — сначала она (вкладка «Без закупочной цены», 05.10.2026): у всех, и у модератора; у админа — на месте
     // «Оценить», цену продажи без закупочной не ставят. У Альфы первой — оценочная, закупочная от неё на лету.
     $floorFirst = $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->floor_price && ! $offer->isScheduled();
-    $byValue = $floorFirst && \App\Vendors\Vendor::ratesByValue($offer->vendor_id);
+    $byValue = $floorFirst && \App\Offers\Pricing::byValue($offer->vendor_id);
     // Рядом с «Оценить» — «В гараж»: менеджеру без цены продажи (04.10.2026), та же форма, что в листе «Отдать» (`Give`).
     $garage = $rate && $offer->state->allows(OfferState::Garage);
     // «Отдать…» в «Действиях» (18.10.2026): в сделку ценой или в гараж без публикации — у черновика с ценой и в продаже;
