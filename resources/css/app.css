@@ -2668,6 +2668,31 @@ html.kb-open { --home-gap: 0px; }
   .toast:has(.toast-action) { @apply flex items-center gap-4; }
   .toast-action { @apply rounded-full bg-white/15 px-3 py-1 text-sm font-medium; }
 
+  /* Капсула «С Мигторга N новых ТС» (x-migtorg.island, migtorg_island_controller): сверху по центру под шапкой, тоном
+     тоста (тёмная в светлой теме, светлая в тёмной). Появляется точкой и раскрывается вширь (ширину ведёт контроллер:
+     её не анимировать CSS от auto), текст проявляется следом; уходит обратно в точку. Без движения — только проявление. */
+  .island { @apply fixed z-(--z-banner) flex items-center gap-2.5 overflow-hidden rounded-full;
+    left: 50%; top: calc(var(--header-edge) + .5rem); translate: -50% 0; height: 2.75rem; max-width: calc(100vw - 2rem);
+    padding: 0 1rem 0 .375rem; background: var(--color-ink); color: var(--color-surface); white-space: nowrap;
+    touch-action: none; -webkit-user-drag: none; transform-origin: 50% 0; }
+  .island[hidden] { display: none; }
+  .island-icon { @apply relative grid size-8 shrink-0 place-items-center rounded-full;
+    background: var(--color-accent); color: #fff; }
+  /* Один всплеск кольца при появлении — «нашли». */
+  .island-icon::after { content: ''; @apply absolute inset-0 rounded-full; box-shadow: 0 0 0 0 var(--color-accent); opacity: 0; }
+  .island.is-in .island-icon::after { animation: island-ping 1.1s var(--ease-out) .25s; }
+  .island-body { @apply flex min-w-0 flex-col leading-tight; }
+  .island-title { @apply text-sm font-medium; }
+  .island-count { @apply font-semibold; }
+  .island-sub { @apply truncate text-xs; opacity: .62; }
+  .island-sub:empty { @apply hidden; }
+  .island-body > * { transition: opacity var(--dur) linear, translate var(--dur) var(--ease-out); }
+  .island:not(.is-open) .island-body > * { opacity: 0; translate: 0 3px; }
+  .island.is-bump { animation: island-bump var(--dur-slow) var(--ease-spring); }
+  @keyframes island-ping { 0% { opacity: .7; box-shadow: 0 0 0 0 var(--color-accent); } 100% { opacity: 0; box-shadow: 0 0 0 10px var(--color-accent); } }
+  @keyframes island-bump { 40% { scale: 1.05; } }
+  @media (min-width: 1024px) { .island { top: calc(var(--header-edge) + .75rem); } }
+
   /* Уведомления карточками, как в iOS и macOS (x-ui.banner, banner_controller). Телефон — сверху во всю ширину, новая
      поверх, две прежние выглядывают из-под неё; от 768 — стопка справа снизу, новая ближе к углу, над парящими
      кнопками действий. --depth ставит контроллер: 0 — новая; --top-h — её высота, прежние

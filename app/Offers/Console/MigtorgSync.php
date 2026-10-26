@@ -3,6 +3,7 @@
 namespace App\Offers\Console;
 
 use App\Mail\Extraction\Code;
+use App\Mail\Extraction\CodeMatcher;
 use App\Offers\Intake\MigtorgDrafts;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Migtorg;
@@ -29,10 +30,12 @@ class MigtorgSync extends Command
     /** Строка индекса `migtorg_lots` из строки списка или карточки (`Migtorg::row`). Не опубликованный — сразу ушедший. */
     public static function toIndex(array $lot, Carbon $now): array
     {
+        $ref = self::ref($lot['claim_ref']);
+
         return [
             'id' => $lot['id'],
-            'claim_ref' => mb_substr($lot['claim_ref'], 0, 80),
-            'claim_ref_key' => $lot['claim_ref'] !== '' ? mb_substr((string) Code::key($lot['claim_ref']), 0, 80) : null,
+            'claim_ref' => mb_substr($ref, 0, 80),
+            'claim_ref_key' => $ref !== '' ? mb_substr((string) Code::key($ref), 0, 80) : null,
             'vin' => $lot['vin'] ? mb_substr($lot['vin'], 0, 20) : null,
             'title' => mb_substr($lot['title'], 0, 160),
             'city' => isset($lot['city']) ? mb_substr($lot['city'], 0, 80) : null,
@@ -41,6 +44,23 @@ class MigtorgSync extends Command
             'gone_at' => ($lot['status'] ?? 'PUBLISHED') === 'PUBLISHED' ? null : $now,
             'data' => isset($lot['data']) ? json_encode($lot['data'], JSON_UNESCAPED_UNICODE) : null,
         ];
+    }
+
+    /**
+     * Номер дела без хвоста: Альфа пишет на Мигторге «6592/PVU/03331/26 САМАРА+», «0760/046/14575/26 ГОТС+» (26.10.2026:
+     * ключ с хвостом не совпадал ни с одним предложением — фото не шли, черновик не заводился). Первое слово — номер, если
+     * это и есть номер, который находит разбор (`CodeMatcher`); иначе строка как есть.
+     */
+    public static function ref(string $raw): string
+    {
+        $raw = trim($raw);
+        $head = preg_split('/\s+/u', $raw, 2)[0];
+        if ($head === $raw) {
+            return $raw;
+        }
+        $found = (new CodeMatcher)->findAll($raw)[0] ?? null;
+
+        return $found !== null && Code::key($found) === Code::key($head) ? $head : $raw;
     }
 
     /**
@@ -90,7 +110,8 @@ class MigtorgSync extends Command
         self::media($photos);
         $gone = DB::table('migtorg_lots')->whereNull('gone_at')->where('seen_at', '<', $now)->update(['gone_at' => $now]);
 
-        $keys = DB::table('migtorg_lots')->whereNotNull('claim_ref_key')->whereNull('offer_id')->distinct()->pluck('claim_ref_key');
+        // Подзапросом, а не списком: ключей без предложения — десятки тысяч, раз в 10 минут.
+        $keys = DB::table('migtorg_lots')->whereNotNull('claim_ref_key')->whereNull('offer_id')->select('claim_ref_key');
         $started = Offer::whereIn('state', ImportMigtorgLot::STATES)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $keys))->get()
             ->filter(fn (Offer $offer) => ImportMigtorgLot::auto($offer))->count();
         $drafted = MigtorgDrafts::run();

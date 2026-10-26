@@ -63,6 +63,8 @@
     @auth<x-ui.docs/><x-telegram.connect/><x-push.offer/><x-users.credentials/>@endauth
     {{-- «✨ Распознать» — одно окно на CRM и парковку, его открывает любая кнопка x-mail.scan-button. --}}
     @if (auth()->check() && \App\Support\Surface::current() !== \App\Support\Surface::Site)<x-mail.scan-window/>@endif
+    {{-- Новые лоты Мигторга черновиками — капсула сотрудникам CRM (админы и модераторы, тема `staff`). --}}
+    @if (auth()->user()?->isStaff() && \App\Support\Surface::current() === \App\Support\Surface::Crm)<x-migtorg.island/>@endif
     <x-ui.tabbar/>
     <x-ui.toasts/>
 </x-ui.layout>
