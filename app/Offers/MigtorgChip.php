@@ -40,7 +40,7 @@ final class MigtorgChip
         $taken = $photos->filter(fn ($m) => $m->getCustomProperty('migtorg'))->count();
         $fields = $offer->exists ? ($offer->events()->where('type', OfferEventType::Updated)->where('payload->source', 'migtorg')
             ->whereNotNull('payload->fields')->latest('id')->value('payload')['fields'] ?? []) : [];
-        $progress = $offer->exists ? ImportMigtorgLot::progress($offer->id) : null;
+        $progress = $offer->exists ? ImportMigtorgLot::progress($offer) : null;
         $state = match (true) {
             $progress !== null => 'running',
             $taken > 0 || $fields !== [] => 'done',

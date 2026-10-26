@@ -5,9 +5,11 @@ namespace App\Offers\Jobs;
 use App\Cars\Actions\FillCar;
 use App\Cars\Brand;
 use App\Cars\IdentityTaken;
+use App\Cars\Progress;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Media\Actions\UnmarkPhoto;
+use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Console\MigtorgSync;
@@ -54,18 +56,16 @@ final class ImportMigtorgLot implements ShouldQueue
     }
 
     /** Ход — своей пилюлей: ключ разбора архива и писем общий, чужая задача стёрла бы его. */
-    public static function progress(int $offerId): ?array
+    /** Ход кадров лота (`Cars\Progress`): задача, что давно не двигалась, не считается — кольцо не крутится вечно. */
+    public static function progress(Offer $offer): ?array
     {
-        $p = Cache::get("migtorg:offer:{$offerId}");
-
-        // Пять минут без движения — задачу убили (выкладка) или она ждёт повтора: не крутить кольцо вечно.
-        return $p && time() - ($p['at'] ?? 0) < 300 ? $p : null;
+        return Progress::of($offer, Progress::MIGTORG);
     }
 
     /** Ещё не скачанные кадры — заглушками в ряду фото, не больше восьми (как у кадров письма): остальное скажет строка хода. */
-    public static function pending(int $offerId): int
+    public static function pending(Offer $offer): int
     {
-        $p = self::progress($offerId);
+        $p = self::progress($offer);
 
         return ($p['n'] ?? null) ? max(0, min(8, $p['n'] - $p['i'])) : 0;
     }
@@ -156,7 +156,7 @@ final class ImportMigtorgLot implements ShouldQueue
             self::glow($offer, app(FillCar::class)($offer, $fields, null, FillCar::EMPTY, log: ['source' => 'migtorg', 'lot' => $lot->id]));
         }
         // Ход — сразу, а не когда задачу возьмёт воркер: чип крутится с нажатия, второй раз кнопку не нажать.
-        Cache::put("migtorg:offer:{$offer->id}", ['i' => 0, 'n' => null, 'at' => time()], 1800);
+        Progress::step($offer, Progress::MIGTORG, 'Забираем фото с Мигторга', 0);
         self::dispatch($offer->id, $lot->id, $manual);
     }
 
@@ -258,12 +258,11 @@ final class ImportMigtorgLot implements ShouldQueue
 
             return;
         }
-        $key = "migtorg:offer:{$offer->id}";
         $added = 0;
         $failed = 0;
         $filled = [];
         try {
-            Cache::put($key, ['i' => 0, 'n' => null, 'at' => time()], 1800);
+            Progress::step($offer, Progress::MIGTORG, 'Забираем фото с Мигторга', 0);
             try {
                 $card = $migtorg->card($this->lotId);
             } catch (RuntimeException $e) {
@@ -303,7 +302,7 @@ final class ImportMigtorgLot implements ShouldQueue
                     $this->refresh($publish, $offer);
                 }
                 foreach ($migtorg->downloadMany($batch) as $uuid => $temp) {
-                    Cache::put($key, ['i' => $added + $failed, 'n' => count($todo), 'at' => time()], 1800);
+                    Progress::step($offer, Progress::MIGTORG, null, $added + $failed, count($todo));
                     try {
                         // Не пришедший пачкой — ещё раз по одному, с паузой.
                         $temp ??= tap(tempnam(sys_get_temp_dir(), 'kadr-'), fn ($t) => $migtorg->download($uuid, $t));
@@ -313,7 +312,7 @@ final class ImportMigtorgLot implements ShouldQueue
                             // Тот же кадр принесли руками, пока шла задача (`PhotoIngest` взял оригинал) — второй не нужен.
                             continue;
                         } else {
-                            $ingest->add($offer, 'photos', $temp, 'migtorg-'.(array_search($uuid, $lotPhotos, true) + 1).'.jpg', ['migtorg' => $uuid]);
+                            $ingest->add($offer, 'photos', $temp, 'migtorg-'.(array_search($uuid, $lotPhotos, true) + 1).'.jpg', ['migtorg' => $uuid] + Hidden::incoming($offer));
                         }
                         $added++;
                     } catch (Throwable $e) {
@@ -325,7 +324,7 @@ final class ImportMigtorgLot implements ShouldQueue
                 }
             }
         } finally {
-            Cache::forget($key);
+            Progress::done($offer, Progress::MIGTORG);
         }
         Log::info("Мигторг: лот {$this->lotId} → предложение {$offer->id}: полей ".count($filled).", кадров {$added}".($failed ? ", не забрано {$failed}" : ''));
         if ($added) {

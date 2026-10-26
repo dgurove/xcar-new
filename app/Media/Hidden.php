@@ -2,6 +2,9 @@
 
 namespace App\Media;
 
+use App\Offers\Offer;
+use App\Offers\OfferState;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -11,6 +14,16 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 final class Hidden
 {
+    /**
+     * Свойства нового кадра, что приехал сам (письмо, архив, лот Мигторга): у предложения уже на витрине он скрыт, пока его
+     * не посмотрят (глаз); черновику и ТС — как есть. Одно правило для всех дверей (26.10.2026, приборка: архив и Мигторг
+     * показывали новый кадр покупателям сразу).
+     */
+    public static function incoming(Model $lane): array
+    {
+        return $lane instanceof Offer && $lane->state !== OfferState::Draft ? ['hidden' => true] : [];
+    }
+
     public static function is(Media $media): bool
     {
         return (bool) $media->getCustomProperty('hidden', false);

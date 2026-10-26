@@ -3,6 +3,7 @@
 namespace App\Mail\Scan;
 
 use App\Cars\Car;
+use App\Cars\Progress;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Extraction\DocumentText;
@@ -90,11 +91,11 @@ final class AutoScan
 
     /**
      * Задача файлов ветки кончилась (`ImportThreadFiles::handle`): у черновика из письма — читать документы, когда
-     * доехали файлы всех его веток (`ImportThreadFiles::queued`), а не первой.
+     * доехали файлы всех его веток (`Progress::busy`), а не первой.
      */
     public static function filesArrived(Offer|Vehicle|null $model): void
     {
-        if ($model instanceof Offer && Cache::get(self::key('o:'.$model->id)) && ! ImportThreadFiles::queued($model)) {
+        if ($model instanceof Offer && Cache::get(self::key('o:'.$model->id)) && ! Progress::busy($model, Progress::MAIL)) {
             self::start($model);
         }
     }
@@ -134,7 +135,7 @@ final class AutoScan
         $subject = self::subject(self::model($subject)->refresh());
         // Файлы ещё едут — читать будем после них (`filesArrived`). Другая пачка тех же файлов ещё читается — итог подведёт она.
         $offer = $subject instanceof OfferSubject;
-        if (($offer && ($mark['pass'] === 'files' || ImportThreadFiles::progressOf($subject->offer) || ImportThreadFiles::queued($subject->offer)))
+        if (($offer && ($mark['pass'] === 'files' || ImportThreadFiles::progressOf($subject->offer) || Progress::busy($subject->offer, Progress::MAIL)))
             || ScanAttachments::reading(Reader::files($subject))) {
             return;
         }
@@ -212,7 +213,7 @@ final class AutoScan
             }
             $files = Reader::files($subject);
             if (ScanAttachments::queuedFor($subject) || ScanAttachments::reading($files) || ImportThreadFiles::progressOf($model)
-                || ($model instanceof Offer && ImportThreadFiles::queued($model))) {
+                || ($model instanceof Offer && Progress::busy($model, Progress::MAIL))) {
                 continue;
             }
             $unread = $files->filter(fn (ScanFile $f) => ! DocumentText::isCached($f) && DocumentText::scannable($f) && ! ScanAttachments::lost($f->scanId()));

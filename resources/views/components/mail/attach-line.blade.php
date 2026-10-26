@@ -4,7 +4,7 @@
 @props(['model'])
 @php
     $mail = \App\Mail\Jobs\ImportThreadFiles::progressOf($model);
-    $migtorg = ! $mail && $model instanceof \App\Offers\Offer ? \App\Offers\Jobs\ImportMigtorgLot::progress($model->id) : null;
+    $migtorg = ! $mail ? \App\Cars\Progress::of($model, \App\Cars\Progress::MIGTORG) : null;
     $p = $mail ?? $migtorg;
 @endphp
 <div id="attach-line" @if ($p) data-attach-busy class="reader-head" @endif>

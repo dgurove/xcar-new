@@ -2,6 +2,7 @@
 
 namespace App\Mail\Jobs;
 
+use App\Cars\Progress;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Actions\PinThread;
@@ -11,10 +12,10 @@ use App\Mail\Extraction\CloudShare;
 use App\Mail\Extraction\Intent;
 use App\Mail\Scan\AutoScan;
 use App\Mail\Thread;
+use App\Media\Hidden;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
-use App\Offers\OfferState;
 use App\Park\Actions\AutoSale;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
@@ -22,7 +23,6 @@ use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
@@ -55,6 +55,14 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
     public function __construct(public int $threadId, public ?int $messageId = null)
     {
         $this->onConnection('database-long')->onQueue('files')->afterCommit();
+        // В ход машины — с постановки: черновик из письма читается, когда доехали файлы всех веток (`Progress::busy`).
+        [$model] = self::target(Thread::find($threadId));
+        $model && Progress::step($model, self::task($threadId), self::QUEUED);
+    }
+
+    private static function task(int $threadId): string
+    {
+        return Progress::MAIL.':'.$threadId;
     }
 
     /** Замок на ветку и письмо: ждущая джоба одного письма не должна глотать джобу следующего. */
@@ -70,11 +78,10 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         if (! $model) {
             return;
         }
-        $key = self::keyFor($model);
+        $task = self::task($thread->id);
         // Сколько всего — из прошлого шага, пока свой счёт не начался: заглушки в ряду фото не мигают.
-        $report = function (string $stage, ?int $i = null, ?int $n = null) use ($key, $offer) {
-            $was = Cache::get($key) ?? [];
-            Cache::put($key, ['stage' => $stage, 'i' => $i ?? ($was['i'] ?? 0), 'n' => $n ?? ($was['n'] ?? null)], 1800);
+        $report = function (string $stage, ?int $i = null, ?int $n = null) use ($model, $task, $offer) {
+            Progress::step($model, $task, $stage, $i, $n);
             // Черновик из письма — строка списка видит ход фото («Забираем фото, 3 из 23»).
             $offer && AutoScan::photoArrived($offer);
         };
@@ -83,7 +90,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $pin($thread);
             $report('Читаем письмо');
             $attachments = $importer->attachmentsOf($this->messageId, $this->messageId ? null : $thread->id);
-            $hidden = $offer && $offer->state !== OfferState::Draft ? ['hidden' => true] : [];
+            $hidden = $offer ? Hidden::incoming($offer) : [];
             $properties = $vehicle ? fn (Attachment $a) => self::stageOf($a) + $hidden : $hidden;
             $added = $importer->import($model, $attachments, 'photos', 'papers', $properties, $report);
             if ($offer) {
@@ -91,7 +98,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
                 $added = ['photos' => $added['photos'] + $cloud['photos'], 'documents' => $added['documents'] + $cloud['documents']];
             }
         } finally {
-            Cache::forget($key);
+            Progress::done($model, $task);
             if ($offer) {
                 // Черновик завела почта — файлы всех веток доехали, теперь документы читаются сами (`AutoScan`).
                 AutoScan::filesArrived($offer);
@@ -167,48 +174,10 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         return ['stage' => $stage->value, 'source' => 'mail'];
     }
 
-    public static function progress(int $offerId): ?array
-    {
-        return Cache::get(self::key($offerId));
-    }
-
-    /** Ключ хода разбора — его же пишет разбор архива, брошенного руками (ImportOfferArchive): пилюля в редакторе одна. */
-    public static function key(int $offerId): string
-    {
-        return "import:offer:{$offerId}";
-    }
-
-    /** Ход разбора у машины: предложение — тот же ключ, что у пилюли редактора, ТС — свой. */
-    public static function keyFor(Offer|Vehicle $model): string
-    {
-        return $model instanceof Offer ? self::key($model->id) : "import:vehicle:{$model->id}";
-    }
-
-    /** Что ещё прикрепляется: `{stage, i, n}` или null, если ничего. */
+    /** Что ещё прикрепляется к машине — письма или архив: `{stage, i, n}` или null, если ничего (`Cars\Progress`). */
     public static function progressOf(Offer|Vehicle $model): ?array
     {
-        return Cache::get(self::keyFor($model));
-    }
-
-    /**
-     * Ждёт ли в очереди задача файлов другой ветки предложения. Ход (`progressOf`) один на предложение, а задача — на
-     * ветку: первая кончившаяся стирала ход, и чтение черновика из письма начиналось до архива второй ветки. Смотрим
-     * саму очередь (не взятые задачи — взятая и есть та, что сейчас кончается): счётчик сбивался бы на уникальности
-     * задачи, вторая на ту же ветку не встаёт.
-     */
-    public static function queued(Offer $offer): bool
-    {
-        $threads = Thread::where('offer_id', $offer->id)->pluck('id');
-        if ($threads->isEmpty()) {
-            return false;
-        }
-        $conn = config('queue.connections.database-long');
-
-        // В теле задачи — сериализованная команда в JSON: «threadId\";i:123;» (между именем и значением — два знака).
-        return DB::connection($conn['connection'] ?? null)->table($conn['table'] ?? 'jobs')
-            ->where('queue', 'files')->whereNull('reserved_at')
-            ->where(fn ($q) => $threads->each(fn ($id) => $q->orWhere('payload', 'like', '%threadId__;i:'.$id.';%')))
-            ->exists();
+        return Progress::of($model, Progress::MAIL, Progress::ARCHIVE);
     }
 
     /** Заглушек «прикрепляется» в ряду фото: сколько кадров осталось, не больше восьми — остальное скажет строка хода. */
@@ -256,7 +225,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             Log::warning('Документы письма не прикрепились сразу', ['thread' => $thread->id, 'error' => $e->getMessage()]);
         }
         if ($n = $importer->photosToCome($attachments)) {
-            Cache::put(self::keyFor($model), ['stage' => self::QUEUED, 'i' => 0, 'n' => $n], 1800);
+            Progress::step($model, self::task($thread->id), self::QUEUED, 0, $n);
         }
         self::dispatch($thread->id);
     }

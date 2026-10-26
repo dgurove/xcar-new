@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Cars\Actions\FillCar;
 use App\Cars\Settlement;
-use App\Offers\Actions\ApplyCarFields;
 use App\Offers\MigtorgFields;
 use App\Offers\Offer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,12 +46,12 @@ class SettlementResolveTest extends TestCase
     {
         Queue::fake();
         $offer = Offer::create(['claim_ref' => 'AUT-26-900001']);
-        $apply = app(ApplyCarFields::class);
+        $apply = app(FillCar::class);
 
-        $apply($offer, ['city' => ['value' => 'Новая Нетуевка', 'region' => 'Ставропольский край']], null, onlyEmpty: true);
+        $apply($offer, ['city' => ['value' => 'Новая Нетуевка', 'region' => 'Ставропольский край']], null, FillCar::EMPTY);
         $this->assertNull($offer->fresh()->settlement_id, 'документы и письма свободных мест не заводят');
 
-        $apply($offer->fresh(), ['city' => ['value' => 'Новая Нетуевка', 'region' => 'Ставропольский край', 'create' => true]], null, onlyEmpty: true);
+        $apply($offer->fresh(), ['city' => ['value' => 'Новая Нетуевка', 'region' => 'Ставропольский край', 'create' => true]], null, FillCar::EMPTY);
         $place = $offer->fresh()->settlement;
         $this->assertSame(['Новая Нетуевка', 'своб', 26], [$place?->name, $place?->type, (int) $place?->region_code]);
     }

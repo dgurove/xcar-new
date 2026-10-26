@@ -68,33 +68,10 @@ final class AttachmentImporter
             if ($documentsCollection !== '' && ($sha = $archive->blob_sha ?: hash('sha256', (string) $archive->contents()))) {
                 $model->media()->where('collection_name', $documentsCollection)->where('custom_properties->sha', $sha)->get()->each->delete();
             }
-            foreach ($extracted as $file) {
-                // Кадры из архива и вырезки из листа — свойства того вложения, в котором они приехали.
-                if ($file['photo'] && ! $this->classifier->looksLikeDocument(mb_strtolower($file['name']))) {
-                    $sources[] = ['name' => $file['name'], 'contents' => $file['contents'], 'properties' => $propertiesOf($archive)];
-                } elseif ($pages = $this->pdfPhotos($file['name'], fn () => $file['contents'])) {
-                    foreach ($pages as $page) {
-                        $sources[] = ['name' => $page['name'], 'contents' => $page['contents'], 'properties' => $propertiesOf($archive)];
-                    }
-                } else {
-                    $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents'], 'mail', $documentProperties);
-                }
-            }
+            // Кадры из архива и вырезки из листа — свойства того вложения, в котором они приехали.
+            $this->unpack($model, $extracted, $documentsCollection, $documentProperties, 'mail', $propertiesOf($archive), false, $sources, $added);
         }
-        foreach ($sources as $i => $photo) {
-            $progress && $progress('Разбираем фотографии', $i, count($sources));
-            // Скан документа среди кадров (заявка Альфы картинкой, 12.10.2026) — в документы: там его прочтёт «✨» и
-            // автозаполнение, а в ленте фото машины ему не место (`DocumentScan`).
-            if ($documentsCollection !== '' && DocumentScan::is($photo['contents'])) {
-                $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $photo['name'], $photo['contents'], 'mail', $documentProperties);
-
-                continue;
-            }
-            // Лист со снимками режет сам приём (`PhotoIngest` → `PageScan`) — у всех дверей одинаково.
-            $this->guard(function () use ($model, $photosCollection, $photo, &$added) {
-                $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $photo['contents'], $photo['name'], $photo['properties']);
-            });
-        }
+        $this->placePhotos($model, $sources, $photosCollection, $documentsCollection, $documentProperties, 'mail', $progress, $added);
 
         return $added;
     }
@@ -172,18 +149,52 @@ final class AttachmentImporter
             return null;
         }
         $added = ['photos' => 0, 'documents' => 0];
-        foreach ($extracted as $i => $file) {
-            $progress && $progress('Разбираем архив', $i, count($extracted));
+        $sources = [];
+        $progress && $progress('Разбираем архив', 0, count($extracted));
+        $this->unpack($model, $extracted, $documentsCollection, $documentProperties, $source, $photoProperties, $imagesAsDocuments, $sources, $added);
+        $this->placePhotos($model, $sources, $photosCollection, $documentsCollection, $documentProperties, $source, $progress, $added);
+
+        return $added;
+    }
+
+    /**
+     * Развёрнутый архив — один путь для письма и для архива с диска (26.10.2026, приборка: у брошенного руками PDF со
+     * снимками ложился документом): кадр — в `$sources`, PDF со снимками по странице — тоже кадрами (`PdfPhotos`),
+     * остальное (PDF, СТС, Excel) — документами. `imagesAsDocuments` — картинки тоже документами (ответ страховой).
+     */
+    private function unpack(Model $model, array $extracted, string $documentsCollection, array $documentProperties, ?string $source,
+        array $photoProperties, bool $imagesAsDocuments, array &$sources, array &$added): void
+    {
+        foreach ($extracted as $file) {
             if ($file['photo'] && ! $imagesAsDocuments && ! $this->classifier->looksLikeDocument(mb_strtolower($file['name']))) {
-                $this->guard(function () use ($model, $photosCollection, $file, $photoProperties, &$added) {
-                    $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $file['contents'], $file['name'], $photoProperties);
-                });
+                $sources[] = ['name' => $file['name'], 'contents' => $file['contents'], 'properties' => $photoProperties];
+            } elseif (! $imagesAsDocuments && ($pages = $this->pdfPhotos($file['name'], fn () => $file['contents']))) {
+                foreach ($pages as $page) {
+                    $sources[] = ['name' => $page['name'], 'contents' => $page['contents'], 'properties' => $photoProperties];
+                }
             } else {
                 $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $file['name'], $file['contents'], $source, $documentProperties);
             }
         }
+    }
 
-        return $added;
+    /** Кадры к машине: скан документа среди них — в документы (`DocumentScan`), лист со снимками режет сам приём. */
+    private function placePhotos(Model $model, array $sources, string $photosCollection, string $documentsCollection, array $documentProperties,
+        ?string $source, ?callable $progress, array &$added): void
+    {
+        foreach ($sources as $i => $photo) {
+            $progress && $progress('Разбираем фотографии', $i, count($sources));
+            // Скан документа среди кадров (заявка Альфы картинкой, 12.10.2026) — в документы: там его прочтёт «✨» и
+            // автозаполнение, а в ленте фото машины ему не место.
+            if ($documentsCollection !== '' && DocumentScan::is($photo['contents'])) {
+                $added['documents'] += (int) $this->addDocumentFile($model, $documentsCollection, $photo['name'], $photo['contents'], $source, $documentProperties);
+
+                continue;
+            }
+            $this->guard(function () use ($model, $photosCollection, $photo, &$added) {
+                $added['photos'] += (int) $this->addPhoto($model, $photosCollection, $photo['contents'], $photo['name'], $photo['properties']);
+            });
+        }
     }
 
     private function addPhoto(Model $model, string $collection, string $contents, string $name, array $properties): bool

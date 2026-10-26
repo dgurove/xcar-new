@@ -244,7 +244,7 @@
 
         {{-- Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и заглушки в ряду, attach_controller
              переспрашивает их, пока строка есть. --}}
-        <x-ui.card title="Фотографии" class="order-4 @4xl:order-none @4xl:col-span-2" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach">
+        <x-ui.card title="Фотографии" class="order-4 @4xl:order-none @4xl:col-span-2" data-controller="attach" data-attach-url-value="/offers/{{ $n }}/attach" data-attach-car-value="{{ $offer->car_id }}">
             <x-mail.attach-line :model="$offer"/>
             @include('admin.offers.gallery')
         </x-ui.card>

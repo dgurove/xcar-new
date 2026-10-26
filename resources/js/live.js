@@ -18,6 +18,7 @@ import { scrollTop, scrollToY } from './lib/scroller';
 //   notices-read {subjects} — объекты открыли: их карточки закрываются
 //   toast   {message, href} — прежний вид, пока в очереди события старой выкладки
 //   badges           — счётчики таб-бара
+//   files   {car} — ход файлов машины шагнул (`Cars\Progress`): live:files для attach_controller;
 //   chat    {chat, seq, author, from, text, href, banner} — live:chat на document для chat_controller;
 //           если ни одна лента этого чата не на экране (handled) и это не своё — карточка banner
 //   chat-edit / chat-read / chat-typing {chat, ...} — тем же путём, без тоста
@@ -119,7 +120,7 @@ function open() {
     on('notices-read', ({ subjects }) => window.noticesRead?.(subjects));
     on('badges', badges);
     on('chat', chat);
-    ['telegram', 'offers-bot', 'scan', 'lock'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
+    ['telegram', 'offers-bot', 'scan', 'lock', 'files'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     ['chat-edit', 'chat-read', 'chat-typing', 'tg-chat', 'tg-chat-edit'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     source.onopen = () => {
         document.documentElement.removeAttribute('data-net');

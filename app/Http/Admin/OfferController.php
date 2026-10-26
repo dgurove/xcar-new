@@ -632,7 +632,7 @@ class OfferController
             'docs' => OfferFiles::docs($offer, $threads),
             // Все чаты по машине одной выборкой: из неё же карточка чата сделки (`x-deal.chat-card`), без второго запроса.
             'chats' => $admin ? Chat::withLast()->where('offer_id', $offer->id)->orderByDesc('last_message_at')->get() : collect(),
-            'import' => ImportThreadFiles::progress($offer->id),
+            'import' => ImportThreadFiles::progressOf($offer),
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             'managers' => $admin ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
             'showingSummary' => $admin ? Showing::summary($offer) : collect(),

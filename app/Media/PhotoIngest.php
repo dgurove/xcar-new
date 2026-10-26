@@ -60,6 +60,14 @@ final class PhotoIngest
         return $this->add($model, $collection, $temp, $name, $properties, $max);
     }
 
+    /** Уже лежащий у машины файл с этим отпечатком: свой, отправленный в письме (`sent_sha`) или лист, с которого резали. */
+    private static function twin(Model $model, string $collection, string $sha): ?Media
+    {
+        return method_exists($model, 'media') ? $model->media()->where('collection_name', $collection)
+            ->where(fn ($q) => $q->where('custom_properties->sha', $sha)->orWhere('custom_properties->sent_sha', $sha)->orWhere('custom_properties->page_sha', $sha))
+            ->first() : null;
+    }
+
     /** Кадр (или все снимки с листа) в коллекцию; возвращает первый. */
     public function add(Model $model, string $collection, string $path, string $name, array $properties = [], int $max = self::MAX_DIMENSION): Media
     {
@@ -73,8 +81,12 @@ final class PhotoIngest
             }
             $path = $this->fromHeic($path);
             $this->checkSize($path);
-            // Отпечаток исходника — чтобы тот же файл (из письма, с телефона, из архива) не лёг второй раз.
+            // Отпечаток исходника — тот же файл (из письма, с телефона, из архива) второй раз не ложится: возвращается лежащий.
+            // Проверка здесь, а не у каждой двери (26.10.2026, приборка: ручная загрузка её не делала).
             $properties += ['sha' => hash_file('sha256', $path)];
+            if ($twin = self::twin($model, $collection, $properties['sha'])) {
+                return $twin;
+            }
             $bands = $collection === 'photos' ? $this->pages($path) : [];
             if (! $bands) {
                 return $this->place($model, $collection, $path, $name, $properties, $max);

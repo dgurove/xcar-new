@@ -15,7 +15,7 @@
     $blocks = \App\Media\PhotoBlocks::of($offer->photos(), $always);
     $titled = count($blocks) > 1;
     $mainId = $offer->mainPhoto()?->id;
-    $pending = $detail ? 0 : \App\Offers\Jobs\ImportMigtorgLot::pending($offer->id) + \App\Mail\Jobs\ImportThreadFiles::pending($offer);
+    $pending = $detail ? 0 : \App\Offers\Jobs\ImportMigtorgLot::pending($offer) + \App\Mail\Jobs\ImportThreadFiles::pending($offer);
 @endphp
 <div id="{{ $root }}" class="photo-blocks">
     @foreach ($blocks as $i => ['stage' => $stage, 'photos' => $photos])

@@ -27,7 +27,7 @@ final class ImportCandidateFiles implements ShouldBeUniqueUntilProcessing, Shoul
 
     public function __construct(public int $candidateId, public int $messageId)
     {
-        $this->onConnection('database-long')->onQueue('long')->afterCommit();
+        $this->onConnection('database-long')->onQueue('files')->afterCommit();
     }
 
     public function uniqueId(): string

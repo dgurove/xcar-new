@@ -106,7 +106,7 @@
         {{-- Кадры стадиями: от страховой, при приёме, при выдаче. Та, что сейчас снимается, стоит в ленте шага. Кадры
              письма ещё прикрепляются (ImportThreadFiles) — строка хода и заглушки в «От страховой», attach_controller
              переспрашивает их. --}}
-        <div class="contents" data-controller="attach" data-attach-url-value="/cars/{{ $vehicle->id }}/attach">
+        <div class="contents" data-controller="attach" data-attach-url-value="/cars/{{ $vehicle->id }}/attach" data-attach-car-value="{{ $vehicle->car_id }}">
         <x-mail.attach-line :model="$vehicle"/>
         @foreach (PhotoStage::cases() as $one)
             {{-- От страховой и (после приёма) при приёме — всегда с добавлением, даже пустые: машина одна, кадры к ней кладут и

@@ -2,21 +2,22 @@
 
 namespace App\Offers\Jobs;
 
+use App\Cars\Progress;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Extraction\AttachmentImporter;
 use App\Mail\Jobs\ImportThreadFiles;
+use App\Media\Hidden;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 /**
  * Архив, брошенный руками в «Фотографии» предложения (портал страховой отдаёт кадры архивом): в очереди, а не в запросе —
  * сотня кадров разбирается минутами. Кадры — к фото, документы — к документам, как архив письма; ход — той же пилюлей,
- * что разбор писем (ImportThreadFiles::progress), по окончании редактор перечитывается сам.
+ * что разбор писем (`ImportThreadFiles::progressOf`), по окончании редактор перечитывается сам.
  */
 final class ImportOfferArchive implements ShouldQueue
 {
@@ -29,7 +30,7 @@ final class ImportOfferArchive implements ShouldQueue
     /** @param string $path файл на диске private; удаляется после разбора */
     public function __construct(public int $offerId, public string $path, public string $name)
     {
-        $this->onConnection('database-long')->onQueue('long')->afterCommit();
+        $this->onConnection('database-long')->onQueue('files')->afterCommit();
     }
 
     public function handle(AttachmentImporter $importer, Publisher $publish): void
@@ -41,13 +42,14 @@ final class ImportOfferArchive implements ShouldQueue
 
             return;
         }
-        $key = ImportThreadFiles::key($offer->id);
+        // Свой ход в списке задач машины — разбор писем той же машины его не стирает (`Cars\Progress`).
+        $task = Progress::ARCHIVE.':'.basename($this->path);
         try {
-            Cache::put($key, ['stage' => 'Распаковываем архив', 'i' => null, 'n' => null], 1800);
+            Progress::step($offer, $task, 'Распаковываем архив');
             $added = $importer->importArchive($offer, $file, 'photos', 'papers',
-                fn (string $stage, ?int $i = null, ?int $n = null) => Cache::put($key, ['stage' => $stage, 'i' => $i, 'n' => $n], 1800));
+                fn (string $stage, ?int $i = null, ?int $n = null) => Progress::step($offer, $task, $stage, $i, $n), photoProperties: Hidden::incoming($offer));
         } finally {
-            Cache::forget($key);
+            Progress::done($offer, $task);
             Storage::disk('private')->delete($this->path);
         }
         OfferStateChanged::dispatch($offer->fresh());
