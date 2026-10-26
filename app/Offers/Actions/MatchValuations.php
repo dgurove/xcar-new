@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
  * - `fill` — ляжет без спора: оценочной не было (или та же), закупочная пустая или посчитанная; `same` — уже так;
  * - `conflict` — в предложении вписано другое (оценочная или закупочная рукой): человек решает, перезаписать или
  *   оставить прежнее (владелец, 05.10.2026);
- * - `check` — VIN в сообщении не тот, что у предложения: без галки, решает человек;
+ * - `check` — VIN в сообщении не тот, что у предложения, или номер Т-Страхования нашёлся только без года
+ *   (`ref_differs`: в СМС AUT-26-1103537, в CRM AUT-25-1103537 — 26.10.2026, владелец): без галки, решает человек;
  * - `dispute` — тот же номер дважды с разными суммами: не берётся;
  * - `migtorg` — предложения нет (или оно в архиве), а лот с этим номером есть на Мигторге: из окна заводится черновик
  *   с закупочной из текста, поля и фото — с лота (`ImportMigtorgLot`; 26.10.2026, владелец: «неудобно потом по тем,
@@ -49,6 +50,19 @@ final class MatchValuations
             ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])
             ->with(['vendor', 'settlement'])->get()->groupBy('claim_ref_key') : collect();
 
+        // Номер Т-Страхования, не найденный точно, — по цифрам с любым годом: в СМС год бывает не тот. Только когда
+        // совпадение одно — иначе непонятно, какая машина.
+        $loose = [];
+        foreach (array_diff(array_keys($amounts), $offers->keys()->all()) as $key) {
+            if (preg_match('/^aut\d{2}(\d{6,7})$/', $key, $m)) {
+                $near = Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereRaw('claim_ref_key ~ ?', ['^aut[0-9]{2}'.$m[1].'$']))
+                    ->whereNotIn('state', [OfferState::Archived, OfferState::Cancelled])->with(['vendor', 'settlement'])->limit(2)->get();
+                $near->count() === 1 && $loose[$key] = $near->first();
+            }
+        }
+        foreach ($loose as $key => $offer) {
+            $offers->put($key, collect([$offer]));
+        }
         $absent = array_values(array_diff(array_keys($amounts), $offers->keys()->all()));
         // Лот Мигторга по номеру: живой важнее ушедшего, свежий — прежнего.
         $lots = $absent ? DB::table('migtorg_lots')->whereIn('claim_ref_key', $absent)->orderByRaw('gone_at is not null')->orderByDesc('id')
@@ -88,15 +102,17 @@ final class MatchValuations
                 $vinFill = $vinTaken ? null : $vinFill;
                 $cityFill = $city && $city['id'] !== $offer->settlement_id ? $city + ['from' => $offer->settlement?->title()] : null;
                 $gaps = array_values(array_filter([$vin === '' && ! $r['vin'] ? 'vin' : null, ! $offer->settlement_id && ! $city ? 'city' : null]));
+                $refDiffers = isset($loose[$r['key']]) ? (string) $offer->claim_ref : null;
                 $status = match (true) {
                     count($amounts[$r['key']]) > 1 => 'dispute',
+                    $refDiffers !== null => 'check',
                     $vinTaken || ($vin !== '' && $r['vin'] && $vin !== $r['vin']) => 'check',
                 ($direct || (int) $offer->value === $r['amount']) && (int) $offer->floor_price === $floor => $vinFill || $cityFill || $gaps ? 'fill' : 'same',
                     $valueDiffers || $floorDiffers => 'conflict',
                     default => 'fill',
                 };
                 $out[] = $r + ['status' => $status, 'offer' => $offer, 'direct' => $direct, 'floor' => $floor, 'value_differs' => $valueDiffers, 'floor_differs' => $floorDiffers,
-                    'vin_fill' => $vinFill, 'vin_taken' => $vinTaken, 'city_fill' => $cityFill, 'gaps' => $gaps];
+                    'vin_fill' => $vinFill, 'vin_taken' => $vinTaken, 'city_fill' => $cityFill, 'gaps' => $gaps, 'ref_differs' => $refDiffers];
             }
         }
         usort($out, fn ($a, $b) => array_search($a['status'], self::ORDER, true) <=> array_search($b['status'], self::ORDER, true));

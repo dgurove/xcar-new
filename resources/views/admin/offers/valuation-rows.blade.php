@@ -99,9 +99,12 @@
                         @if ($floorChanges && $status !== 'dispute')
                             <span @if ($disputeFloor) data-disputed @endif title="{{ Sale::floorLabel((int) $item['floor'], $item['direct'] ? null : (int) $item['amount']) }}">закупочная @if ($o->floor_price)<s class="valuation-old nums">{{ Money::nums($o->floor_price) }}</s> @endif<span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span></span>
                         @endif
+                        @if ($item['ref_differs'] ?? null)
+                            <span class="text-urgent">в тексте <span class="nums">{{ $item['ref'] }}</span>, в CRM <span class="nums">{{ $item['ref_differs'] }}</span></span>
+                        @endif
                         @if ($item['vin_taken'] ?? null)
                             <span class="text-urgent">VIN <span class="nums">{{ $item['vin'] }}</span> уже у {{ \App\Cars\Identity::offerName($item['vin_taken']) }}</span>
-                        @elseif ($status === 'check')
+                        @elseif ($status === 'check' && ! ($item['ref_differs'] ?? null))
                             <span class="text-urgent">VIN в CRM <span class="nums">{{ $o->vin }}</span>, в тексте <span class="nums">{{ $item['vin'] }}</span></span>
                         @elseif ($item['vin_fill'])
                             <span>VIN <span class="valuation-new nums">{{ $item['vin_fill'] }}</span></span>
