@@ -25,6 +25,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Tests\TestCase;
 
 /**
@@ -69,6 +70,7 @@ class AcquiringFlowTest extends TestCase
 
     public function test_failed_create_is_retried_with_the_same_key_and_gives_one_attempt(): void
     {
+        Sleep::fake(); // пауза ретрая 1,5 с — впустую
         $link = $this->link();
         $keys = [];
         Http::fake(function (Request $r) use (&$keys, $link) {
