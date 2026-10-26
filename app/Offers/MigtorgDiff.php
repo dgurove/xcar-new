@@ -2,17 +2,15 @@
 
 namespace App\Offers;
 
+use App\Cars\Actions\FillCar;
 use App\Cars\Body;
 use App\Cars\Brand;
-use App\Cars\CarModel;
 use App\Cars\Colors;
 use App\Cars\Drive;
 use App\Cars\Fuel;
-use App\Cars\Identity;
+use App\Cars\Rejections;
 use App\Cars\Settlement;
 use App\Cars\Transmission;
-use App\Cars\Vin\Vin;
-use App\Offers\Actions\UpdateOffer;
 use App\Support\Units;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
@@ -29,9 +27,9 @@ final class MigtorgDiff
     /** @return array<string, string> имя поля формы → как на Мигторге */
     public static function of(Offer $offer): array
     {
-        $rejected = (array) $offer->migtorg_rejected;
+        $rejected = Rejections::of(Rejections::car($offer->car_id), 'migtorg');
 
-        return array_filter(self::all($offer), fn ($text, $name) => ($rejected[$name] ?? null) !== $text, ARRAY_FILTER_USE_BOTH);
+        return array_filter(self::all($offer), fn ($text, $name) => ! in_array($text, $rejected[$name] ?? [], true), ARRAY_FILTER_USE_BOTH);
     }
 
     /** Взять значение Мигторга в поле. false — поля уже нет среди разниц или значение не прошло. */
@@ -41,26 +39,21 @@ final class MigtorgDiff
         if ($text === null) {
             return false;
         }
-        $lot = self::lot($offer);
-        $v = fn (string $field) => $lot[$field]['value'] ?? null;
-        $data = match ($name) {
-            'brand_id' => ['brand_id' => Brand::resolve((string) $v('brand'))->id]
-                + ($v('model') ? ['model_id' => CarModel::resolve(Brand::resolve((string) $v('brand')), (string) $v('model'))->id] : ['model_id' => null]),
-            'model_id' => $offer->brand ? ['model_id' => CarModel::resolve($offer->brand, (string) $v('model'))->id] : [],
-            'year', 'mileage', 'engine_power', 'engine_volume' => [$name => (int) $v($name)],
-            'vin' => ($vin = Vin::full((string) $v('vin'))) && ! Identity::offerByVin($vin, $offer->id) ? ['vin' => $vin] : [],
-            'color' => ['color' => Colors::normalize((string) $v('color')) ?? (string) $v('color')],
-            'transmission', 'drive', 'fuel', 'body' => [$name => (string) $v($name)],
-            'settlement_id' => ($id = Settlement::resolve((string) $v('city'), $lot['city']['region'] ?? null)['id'] ?? null) ? ['settlement_id' => $id] : [],
-            default => [],
+        // Поле разницы → поля лота: марка — с моделью, город — `city`. Записывает дверь `FillCar` (выбор человека — поверх).
+        $from = match ($name) {
+            'brand_id' => ['brand', 'model'],
+            'model_id' => ['model'],
+            'settlement_id' => ['city'],
+            default => [$name],
         };
-        if (! $data) {
+        $chosen = array_intersect_key(self::lot($offer), array_flip($from));
+        if (! $chosen) {
             return false;
         }
-        $rejected = (array) $offer->migtorg_rejected;
-        unset($rejected[$name]);
-        $offer->forceFill(['migtorg_rejected' => $rejected ?: null]);
-        app(UpdateOffer::class)($offer, $data, $by);
+        if (! app(FillCar::class)($offer, $chosen, $by, FillCar::CHOSEN)) {
+            return false;
+        }
+        Rejections::forget(Rejections::car($offer->car_id), 'migtorg', $name);
         $offer->log(OfferEventType::Note, $by, ['text' => "Взято с Мигторга: {$text}"]);
 
         return true;
@@ -72,7 +65,7 @@ final class MigtorgDiff
         if ($text === null) {
             return false;
         }
-        $offer->forceFill(['migtorg_rejected' => [...(array) $offer->migtorg_rejected, $name => $text]])->save();
+        Rejections::add(Rejections::car($offer->car_id), 'migtorg', $name, $text, $by);
         $offer->log(OfferEventType::Note, $by, ['text' => "Мигторг отклонён: {$text}"]);
 
         return true;

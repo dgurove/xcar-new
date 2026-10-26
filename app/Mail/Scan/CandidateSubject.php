@@ -25,6 +25,11 @@ final class CandidateSubject implements Subject
         return 'c:'.$this->candidate->id;
     }
 
+    public function rejectKey(): string
+    {
+        return 'candidate:'.$this->candidate->id;
+    }
+
     public function url(): string
     {
         return $this->park() ? "/requests/from-mail/{$this->candidate->id}/scan" : "/offers/from-mail/{$this->candidate->id}/scan";

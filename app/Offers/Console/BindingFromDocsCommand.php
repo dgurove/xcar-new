@@ -2,10 +2,10 @@
 
 namespace App\Offers\Console;
 
+use App\Cars\Actions\FillCar;
 use App\Mail\Extraction\DocumentFields;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Scan\OfferSubject;
-use App\Offers\Actions\ApplyCarFields;
 use App\Offers\Binding;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -16,7 +16,7 @@ use Throwable;
 /**
  * Разово (19.10.2026, владелец: «срок обязывающего предложения есть в письмах в приложенных файлах»): у живых предложений
  * без срока — срок из протоколов торгов в документах и письмах (`DocumentFields::binding`), только прочитанным текстом и
- * текстовым слоем, без OCR. В пустое поле, через `ApplyCarFields` (история «Изменён»). Без `--apply` — что встанет, списком.
+ * текстовым слоем, без OCR. В пустое поле, через `Cars\Actions\FillCar` (история «Изменён»). Без `--apply` — что встанет, списком.
  */
 class BindingFromDocsCommand extends Command
 {
@@ -24,7 +24,7 @@ class BindingFromDocsCommand extends Command
 
     protected $description = 'Срок обязывающего предложения из протоколов торгов в предложения без него';
 
-    public function handle(ApplyCarFields $apply): int
+    public function handle(FillCar $apply): int
     {
         $write = (bool) $this->option('apply');
         $found = 0;

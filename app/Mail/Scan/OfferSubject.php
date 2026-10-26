@@ -2,6 +2,8 @@
 
 namespace App\Mail\Scan;
 
+use App\Cars\Actions\FillCar;
+use App\Cars\Rejections;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Account;
@@ -10,7 +12,6 @@ use App\Mail\Extraction\ScanFields;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
-use App\Offers\Actions\ApplyCarFields;
 use App\Offers\Offer;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -36,6 +37,11 @@ final class OfferSubject implements Subject
     public function key(): string
     {
         return 'o:'.$this->offer->id;
+    }
+
+    public function rejectKey(): string
+    {
+        return Rejections::car($this->offer->car_id);
     }
 
     public function url(): string
@@ -103,12 +109,12 @@ final class OfferSubject implements Subject
     }
 
     /**
-     * Выбранное — в карточку по правилам формы (`ApplyCarFields`): характеристики — только в пустые. `$by` null — вписало
+     * Выбранное — в карточку по правилам формы (`Cars\Actions\FillCar`): характеристики — только в пустые. `$by` null — вписало
      * фоновое чтение черновика из письма (`AutoScan`): тогда и марка, VIN, год, цвет — только в пустые.
      */
     public function apply(array $chosen, ?User $by): void
     {
-        app(ApplyCarFields::class)($this->offer, $chosen, $by, onlyEmpty: $by === null);
+        app(FillCar::class)($this->offer, $chosen, $by, $by ? FillCar::CHOSEN : FillCar::EMPTY);
     }
 
     public function refresh(): void

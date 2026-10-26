@@ -2,6 +2,7 @@
 
 namespace App\Mail\Scan;
 
+use App\Cars\Rejections;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Extraction\ScanFields;
 use App\Mail\Jobs\ScanAttachments;
@@ -124,16 +125,16 @@ final class Reader
      */
     public static function reject(Subject $subject, string $field, string $text): array
     {
-        Cache::forever(self::rejectedKey($subject), array_values(array_unique([...self::rejected($subject), $field.'|'.$text])));
+        Rejections::add($subject->rejectKey(), 'docs', $field, $text, auth()->user());
 
         return self::live($subject);
     }
 
     private static function unrejected(Subject $subject, array $values): array
     {
-        $rejected = array_flip(self::rejected($subject));
+        $rejected = Rejections::of($subject->rejectKey(), 'docs');
         foreach ($values as $field => $f) {
-            $f['options'] = array_values(array_filter($f['options'], fn ($o) => ! isset($rejected[$field.'|'.$o['text']])));
+            $f['options'] = array_values(array_filter($f['options'], fn ($o) => ! in_array($o['text'], $rejected[$field] ?? [], true)));
             if ($f['options']) {
                 $values[$field] = $f;
             } else {
@@ -142,17 +143,6 @@ final class Reader
         }
 
         return $values;
-    }
-
-    /** @return list<string> */
-    private static function rejected(Subject $subject): array
-    {
-        return (array) Cache::get(self::rejectedKey($subject), []);
-    }
-
-    private static function rejectedKey(Subject $subject): string
-    {
-        return "scan:rejected:{$subject->key()}";
     }
 
     /**

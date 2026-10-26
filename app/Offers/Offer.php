@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Cars\Category;
 use App\Cars\Events\CarChanged;
 use App\Cars\OnCar;
+use App\Cars\Region;
 use App\Cars\Settlement;
 use App\Garage\Car;
 use App\Garage\GaragePayer;
@@ -12,6 +13,7 @@ use App\Http\Admin\OfferController;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Logistics\Choices;
+use App\Logistics\Route;
 use App\Logistics\Transport;
 use App\Logistics\TransportKind;
 use App\Logistics\TransportState;
@@ -30,7 +32,6 @@ use App\Support\Surface;
 use App\Support\Units;
 use App\Support\VendorNames;
 use App\Users\Role;
-use App\Cars\Region;
 use App\Users\User;
 use App\Vendors\ClaimRequest;
 use App\Vendors\DealFormat;
@@ -163,7 +164,6 @@ class Offer extends Model
     {
         return [
             'state' => OfferState::class,
-            'migtorg_rejected' => 'array',
             'car_place' => CarPlace::class,
             'insurer_deadline_at' => 'date',
             'answer_by' => 'datetime',
@@ -469,7 +469,7 @@ class Offer extends Model
     {
         $head = $this->pickupTask;
 
-        return $head && ! $head->current ? \App\Logistics\Route::current($head) : $head;
+        return $head && ! $head->current ? Route::current($head) : $head;
     }
 
     /**

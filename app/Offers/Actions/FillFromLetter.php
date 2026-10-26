@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Cars\Actions\FillCar;
 use App\Cars\Settlement;
 use App\Cars\Vin\VinAutofill;
 use App\Mail\Actions\LinkThread;
@@ -18,7 +19,7 @@ use App\Vendors\Vendor;
  * руками не трогаем никогда.
  * - Контакт и место осмотра — в любом состоянии (04.10.2026: «в письме была инфа, а менеджеру мы ничего не показываем»;
  *   менеджер видит их в «Получении автомобиля», `Handover`).
- * - У черновика — машина через `ApplyCarFields` (VIN, год, марка, модель, цвет, пробег, город, срок ответа; сторож
+ * - У черновика — машина через `Cars\Actions\FillCar` (VIN, год, марка, модель, цвет, пробег, город, срок ответа; сторож
  *   `Identity`, зеркало в ТС парковки), характеристики по VIN, закупочная, цена собственника, вендор и адрес для писем.
  *   Есть вложения — черновик читает свои документы сам (`AutoScan`), как заведённый из письма.
  * Письмо вендора — и пересылка сотрудника (`isFromVendor`). Пишет только письмо ровно этой машины: один номер убытка, и
@@ -26,7 +27,7 @@ use App\Vendors\Vendor;
  */
 final class FillFromLetter
 {
-    public function __construct(private UpdateOffer $update, private ApplyCarFields $car) {}
+    public function __construct(private UpdateOffer $update, private FillCar $car) {}
 
     /** `$read` — ставить чтение документов (`AutoScan`); разовая сверка без записи его не ставит. */
     public function __invoke(Offer $offer, Message $message, bool $read = true): void
@@ -57,7 +58,7 @@ final class FillFromLetter
         if (! isset($chosen['city']) && ($place = Settlement::inAddress((string) $message->field('location'))['name'] ?? null)) {
             $chosen['city'] = ['value' => $place];
         }
-        $written = ($this->car)($offer, $chosen, null, onlyEmpty: true, log: $log);
+        $written = ($this->car)($offer, $chosen, null, FillCar::EMPTY, log: $log);
         $offer->refresh();
 
         $floor = (int) $message->field('floor_price');

@@ -2,13 +2,13 @@
 
 namespace App\Offers\Jobs;
 
+use App\Cars\Actions\FillCar;
 use App\Cars\Brand;
 use App\Cars\IdentityTaken;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Media\Actions\UnmarkPhoto;
 use App\Media\PhotoIngest;
-use App\Offers\Actions\ApplyCarFields;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Events\OfferStateChanged;
@@ -153,7 +153,7 @@ final class ImportMigtorgLot implements ShouldQueue
     {
         DB::table('migtorg_lots')->where('claim_ref_key', $offer->claim_ref_key)->update(['offer_id' => $offer->id]);
         if ($fields = self::fieldsOf($lot)) {
-            self::glow($offer, app(ApplyCarFields::class)($offer, $fields, null, onlyEmpty: true, log: ['source' => 'migtorg', 'lot' => $lot->id]));
+            self::glow($offer, app(FillCar::class)($offer, $fields, null, FillCar::EMPTY, log: ['source' => 'migtorg', 'lot' => $lot->id]));
         }
         // Ход — сразу, а не когда задачу возьмёт воркер: чип крутится с нажатия, второй раз кнопку не нажать.
         Cache::put("migtorg:offer:{$offer->id}", ['i' => 0, 'n' => null, 'at' => time()], 1800);
@@ -244,7 +244,7 @@ final class ImportMigtorgLot implements ShouldQueue
         return 'Берём с Мигторга';
     }
 
-    public function handle(Migtorg $migtorg, PhotoIngest $ingest, Publisher $publish, ApplyCarFields $apply, UnmarkPhoto $unmark): void
+    public function handle(Migtorg $migtorg, PhotoIngest $ingest, Publisher $publish, FillCar $apply, UnmarkPhoto $unmark): void
     {
         $offer = Offer::find($this->offerId);
         if (! $offer) {
@@ -284,7 +284,7 @@ final class ImportMigtorgLot implements ShouldQueue
             DB::table('migtorg_lots')->where('id', $this->lotId)->update(['photos' => count($lotPhotos), 'data' => json_encode($row['data'], JSON_UNESCAPED_UNICODE)]);
             MigtorgSync::media([$this->lotId => $files]);
             // Поля из индекса легли в start(); карточка дописывает то, чего в списке не было. Правит система, не человек.
-            $filled = $apply($offer, MigtorgFields::of($card), null, onlyEmpty: true, log: ['source' => 'migtorg', 'lot' => $this->lotId]);
+            $filled = $apply($offer, MigtorgFields::of($card), null, FillCar::EMPTY, log: ['source' => 'migtorg', 'lot' => $this->lotId]);
             self::glow($offer, $filled);
             $offer->refresh();
             $this->refresh($publish, $offer);

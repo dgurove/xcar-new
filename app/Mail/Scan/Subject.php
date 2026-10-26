@@ -17,6 +17,9 @@ interface Subject
     /** `c:93`, `v:266`, `o:512` — в событии `scan` и в задаче. */
     public function key(): string;
 
+    /** Предмет отказов «Отклонить» (`Cars\Rejections`): машина, у цепочки без машины — сама цепочка. */
+    public function rejectKey(): string;
+
     /** Адрес окна: `/requests/from-mail/93/scan`, `/cars/266/scan`, `/offers/1043/scan`. */
     public function url(): string;
 

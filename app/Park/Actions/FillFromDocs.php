@@ -2,9 +2,11 @@
 
 namespace App\Park\Actions;
 
-use App\Cars\CarModel;
+use App\Cars\Actions\FillCar;
 use App\Cars\Colors;
+use App\Cars\Identity;
 use App\Cars\Names;
+use App\Cars\Rejections;
 use App\Cars\Vin\VinDecoder;
 use App\Cars\Vin\VinFact;
 use App\Cars\Vin\VinText;
@@ -17,7 +19,6 @@ use App\Mail\Extraction\ScanCar;
 use App\Mail\Extraction\ScanFields;
 use App\Mail\Message;
 use App\Mail\Scan\Files;
-use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Users\User;
@@ -109,8 +110,8 @@ final class FillFromDocs
 
             return $out;
         });
-        $rejected = array_flip(self::rejected($vehicle));
-        $out = array_filter($out, fn ($d, $field) => ! isset($rejected[$field.'|'.$d['value']]), ARRAY_FILTER_USE_BOTH);
+        $rejected = Rejections::of(Rejections::car($vehicle->car_id), 'docs');
+        $out = array_filter($out, fn ($d, $field) => ! in_array($d['value'], $rejected[$field] ?? [], true), ARRAY_FILTER_USE_BOTH);
         // Метка — и при попадании в кеш: расхождения, посчитанные раньше метки, иначе её бы не ставили.
         if (self::flagged($vehicle) !== (bool) $out) {
             Cache::memo()->forever(self::flagKey($vehicle->id), (bool) $out);
@@ -158,16 +159,10 @@ final class FillFromDocs
         if (($this->differences($vehicle)[$field]['value'] ?? null) !== $value) {
             return false;
         }
-        Cache::forever("park:docdiff:rejected:{$vehicle->id}", array_values(array_unique([...self::rejected($vehicle), $field.'|'.$value])));
+        Rejections::add(Rejections::car($vehicle->car_id), 'docs', $field, $value, auth()->user());
         self::forget($vehicle);
 
         return true;
-    }
-
-    /** @return list<string> */
-    private static function rejected(Vehicle $vehicle): array
-    {
-        return (array) Cache::get("park:docdiff:rejected:{$vehicle->id}", []);
     }
 
     /** Взять значение документа вместо карточки: только то, что `differences` и показывает. */
@@ -177,46 +172,18 @@ final class FillFromDocs
         if (! $diff || $diff['value'] !== $value) {
             return false;
         }
-        if ($field === 'model') {
-            $model = $vehicle->brand ? CarModel::known($vehicle->brand, $value) : null;
-            if (! $model) {
-                return false;
-            }
-            ($this->update)($vehicle, ['model_id' => $model->id], $by, $diff['sources']);
 
-            return true;
-        }
-        if ($field === 'vin' && $this->vinTaken($vehicle, $value)) {
-            return false;
-        }
-        ($this->update)($vehicle, [$field => $value], $by, $diff['sources']);
-
-        return true;
+        return (bool) app(FillCar::class)($vehicle, [$field => ['value' => $value]], $by, FillCar::CHOSEN, ['sources' => $diff['sources']]);
     }
 
-    /** Вписать план. @return array<string, mixed> что вписано */
+    /** Вписать план (только в пустое, дверью `FillCar`). @return list<string> что вписано */
     public function __invoke(Vehicle $vehicle, ?array $plan = null): array
     {
         $plan ??= $this->plan($vehicle);
-        $data = [];
-        $sources = [];
-        foreach ($plan['fill'] as $field => $item) {
-            if ($field === 'model') {
-                $model = $vehicle->brand ? CarModel::known($vehicle->brand, (string) $item['value']) : null;
-                if (! $model) {
-                    continue;
-                }
-                $data['model_id'] = $model->id;
-            } else {
-                $data[$field] = $item['value'];
-            }
-            array_push($sources, ...$item['sources']);
-        }
-        if ($data) {
-            ($this->update)($vehicle, $data, null, $sources);
-        }
+        $chosen = array_map(fn ($item) => ['value' => $item['value']], $plan['fill']);
+        $sources = array_values(array_unique(array_merge([], ...array_map(fn ($item) => $item['sources'], array_values($plan['fill'])))));
 
-        return $data;
+        return $chosen ? app(FillCar::class)($vehicle, $chosen, null, FillCar::EMPTY, ['sources' => $sources]) : [];
     }
 
     /** Значения из писем и документов ТС: поле → значение → откуда. @return array<string, array<string, list<string>>> */
@@ -276,8 +243,8 @@ final class FillFromDocs
             if (! VinText::plausible($vin)) {
                 continue;
             }
-            if ($twin = $this->vinTaken($vehicle, $vin)) {
-                $disputed[] = ['field' => 'vin', 'text' => "VIN «{$vin}» (".implode(', ', $sources).") уже у ТС {$twin->id} {$twin->titleWithYear()}"];
+            if ($twin = Identity::carByVin($vin, $vehicle->car_id)) {
+                $disputed[] = ['field' => 'vin', 'text' => "VIN «{$vin}» (".implode(', ', $sources).') уже у '.Identity::carName($twin)];
 
                 continue;
             }
@@ -335,12 +302,6 @@ final class FillFromDocs
     private function otherCar(Vehicle $vehicle, array $doc): bool
     {
         return ScanFields::otherCar($vehicle->vin, $vehicle->brand_id, $doc['vin']['value'] ?? null, $doc['brand']['value'] ?? null);
-    }
-
-    /** VIN уже стоит у другой ТС: второй раз его не пишем — письма и предложения ищут машину по VIN. */
-    public function vinTaken(Vehicle $vehicle, string $vin): ?Vehicle
-    {
-        return Vehicle::withoutGlobalScope(City::SCOPE)->whereCar('vin', strtoupper($vin))->where('car_id', '!=', $vehicle->car_id)->whereNull('cancelled_at')->first();
     }
 
     private function clean(string $field, mixed $value): ?string

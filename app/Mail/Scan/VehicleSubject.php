@@ -2,13 +2,11 @@
 
 namespace App\Mail\Scan;
 
-use App\Cars\Brand;
-use App\Cars\CarModel;
-use App\Cars\Colors;
+use App\Cars\Actions\FillCar;
+use App\Cars\Rejections;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Extraction\DocumentText;
-use App\Mail\Extraction\Patterns;
 use App\Mail\Extraction\ScanFields;
 use App\Offers\Pricing;
 use App\Park\Actions\FillFromDocs;
@@ -18,7 +16,6 @@ use App\Park\VehicleFields;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Validator;
 
 /**
  * «✨» у заведённой ТС: файлы всех писем её веток, наших пересылок тоже; что выбрал человек — в карточку через
@@ -31,6 +28,11 @@ final class VehicleSubject implements Subject
     public function key(): string
     {
         return 'v:'.$this->vehicle->id;
+    }
+
+    public function rejectKey(): string
+    {
+        return Rejections::car($this->vehicle->car_id);
     }
 
     public function url(): string
@@ -102,38 +104,11 @@ final class VehicleSubject implements Subject
      * словарём, VIN — не тот, что уже у другой ТС. Сменили марку без модели — модель прежней марки снимается.
      * Не прошедшее правила поле пропускается, остальное пишется. `$by` null — вписало фоновое чтение (`AutoScan`).
      */
+    /** Выбранное — дверью `FillCar` (правила `VehicleFields`, VIN другой машины не пишется); без человека — только в пустое. */
     public function apply(array $chosen, ?User $by): void
     {
-        $data = [];
-        $sources = [];
-        foreach ($chosen as $field => $item) {
-            $sources = [...$sources, ...($item['from'] ?? [])];
-            $value = $item['value'];
-            match ($field) {
-                'brand' => ($id = Brand::known((string) $value)?->id) ? $data['brand_id'] = $id : null,
-                'model' => null,
-                'plate' => $data['plate'] = Patterns::plateKey((string) $value),
-                'vin' => $data['vin'] = strtoupper((string) $value),
-                'color' => $data['color'] = Colors::normalize((string) $value) ?? (string) $value,
-                default => $data[$field] = $value,
-            };
-        }
-        $brandId = $data['brand_id'] ?? $this->vehicle->brand_id;
-        // Марки документа нет в справочнике — его модель не заводится под прежней маркой («Kia H5» из документа Hongqi).
-        $unknown = isset($chosen['brand']) && ! Brand::known((string) $chosen['brand']['value']);
-        if (! $unknown && isset($chosen['model']['value']) && ($brand = Brand::find($brandId))) {
-            $data['model_id'] = CarModel::resolve($brand, (string) $chosen['model']['value'])->id;
-        } elseif ($brandId !== $this->vehicle->brand_id) {
-            $data['model_id'] = null;
-        }
-        if (isset($data['vin']) && app(FillFromDocs::class)->vinTaken($this->vehicle, $data['vin'])) {
-            unset($data['vin']);
-        }
-        $errors = Validator::make($data, array_intersect_key(VehicleFields::rules(identity: false), $data))->errors();
-        $data = array_diff_key($data, array_flip($errors->keys()));
-        if ($data) {
-            app(UpdateVehicle::class)($this->vehicle, $data, $by, $sources ?: ['документ']);
-        }
+        $sources = array_values(array_unique(array_merge(...array_map(fn ($item) => $item['from'] ?? [], array_values($chosen)) ?: [[]])));
+        app(FillCar::class)($this->vehicle, $chosen, $by, $by ? FillCar::CHOSEN : FillCar::EMPTY, ['sources' => $sources ?: ['документ']]);
     }
 
     public function refresh(): void

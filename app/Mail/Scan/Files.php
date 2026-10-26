@@ -5,6 +5,7 @@ namespace App\Mail\Scan;
 use App\Mail\Extraction\AttachmentClassifier;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Message;
+use App\Media\DocumentScan;
 use App\Support\Docs;
 use Illuminate\Support\Collection;
 
@@ -40,7 +41,7 @@ final class Files
     {
         $files = collect($messages)->flatMap(fn (Message $m) => $m->files());
         // Вердикт «скан или фото» — одним запросом на все вложения (88 запросов на карточку ТС, аудит 20.10.2026).
-        \App\Media\DocumentScan::prime($files->pluck('blob_sha'));
+        DocumentScan::prime($files->pluck('blob_sha'));
 
         return $files->concat($papers)
             ->filter(fn (ScanFile $f) => DocumentText::scannable($f))
