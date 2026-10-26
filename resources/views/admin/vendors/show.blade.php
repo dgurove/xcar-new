@@ -44,6 +44,8 @@
                 {{-- Сумма страховой — оценочная (Альфа): закупочная от неё по правилу `Offers\Pricing`, в CRM поле «Оценочная». --}}
                 <x-ui.check name="floor_by_value" :checked="$vendor->floor_by_value">Закупочная от оценочной</x-ui.check>
                 <x-ui.check name="to_gallery" :checked="$vendor->to_gallery">Черновики в галерею на {{ config('xcar.gallery_days') }} дня</x-ui.check>
+                {{-- Новый лот с номером этого вендора — черновик сам (`Offers\Intake\MigtorgDrafts`, 26.10.2026). --}}
+                <x-ui.check name="drafts_from_migtorg" :checked="$vendor->drafts_from_migtorg">Черновики с Мигторга</x-ui.check>
                 <x-ui.check name="letters_to_telegram" :checked="$vendor->letters_to_telegram">Письма на deal@ админам в Telegram</x-ui.check>
                 {{-- Вывозим каждую машину (Совкомбанк, 17.10.2026): задача в логистике встаёт вместе с предложением из письма. --}}
                 <x-ui.check name="pickup_on_arrival" :checked="$vendor->pickup_on_arrival">Вывоз каждого ТС из письма</x-ui.check>

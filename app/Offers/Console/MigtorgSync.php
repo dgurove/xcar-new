@@ -3,6 +3,7 @@
 namespace App\Offers\Console;
 
 use App\Mail\Extraction\Code;
+use App\Offers\Intake\MigtorgDrafts;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Migtorg;
 use App\Offers\Offer;
@@ -14,6 +15,7 @@ use Throwable;
 /**
  * Номера дел всех лотов Мигторга — открытым списком (5 запросов на всё), затем поля и фото тем предложениям, чей номер
  * убытка нашёлся. Так ловятся предложения из любой двери (форма, письма, закупки) и лоты, вышедшие позже предложения.
+ * Новый лот вендора с «Черновики с Мигторга» — черновик сам (`MigtorgDrafts`).
  */
 class MigtorgSync extends Command
 {
@@ -91,7 +93,8 @@ class MigtorgSync extends Command
         $keys = DB::table('migtorg_lots')->whereNotNull('claim_ref_key')->whereNull('offer_id')->distinct()->pluck('claim_ref_key');
         $started = Offer::whereIn('state', ImportMigtorgLot::STATES)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $keys))->get()
             ->filter(fn (Offer $offer) => ImportMigtorgLot::auto($offer))->count();
-        $this->line('Лотов: '.count($rows).", ушли: {$gone}, взяты предложениями: {$started}");
+        $drafted = MigtorgDrafts::run();
+        $this->line('Лотов: '.count($rows).", ушли: {$gone}, взяты предложениями: {$started}, новых черновиков: {$drafted}");
 
         return self::SUCCESS;
     }

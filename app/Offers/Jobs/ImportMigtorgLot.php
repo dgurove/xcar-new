@@ -22,6 +22,7 @@ use App\Offers\OfferState;
 use App\Users\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -155,9 +156,29 @@ final class ImportMigtorgLot implements ShouldQueue
         if ($fields = self::fieldsOf($lot)) {
             self::glow($offer, app(FillCar::class)($offer, $fields, null, FillCar::EMPTY, log: ['source' => 'migtorg', 'lot' => $lot->id]));
         }
+        // Карточка лота — запрос со входом: сама система ходит за ней только днём, как человек (`morning`); нажатие — сразу.
+        $wait = $manual ? null : self::morning();
+        if ($wait) {
+            Progress::queue($offer, Progress::MIGTORG, 'Фото с Мигторга — с 8:00');
+            self::dispatch($offer->id, $lot->id)->delay($wait);
+
+            return;
+        }
         // Ход — сразу, а не когда задачу возьмёт воркер: чип крутится с нажатия, второй раз кнопку не нажать.
         Progress::step($offer, Progress::MIGTORG, 'Забираем фото с Мигторга', 0);
         self::dispatch($offer->id, $lot->id, $manual);
+    }
+
+    /** Ночь по Москве (23:00–8:00) — когда начать утром, с разбросом в полчаса; днём — null. */
+    public static function morning(): ?Carbon
+    {
+        $now = now('Europe/Moscow');
+        if ($now->hour >= 8 && $now->hour < 23) {
+            return null;
+        }
+        $at = ($now->hour >= 23 ? $now->copy()->addDay() : $now->copy())->setTime(8, 0);
+
+        return $at->addSeconds(random_int(0, 1800));
     }
 
     /**
