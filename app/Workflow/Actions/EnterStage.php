@@ -92,7 +92,7 @@ final class EnterStage
         $waits = $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null);
         $deadline = match (true) {
             $awaitsLetter => Stage::letterDeadline($now),
-            // Ход менеджера «Укажите покупателя / паспорт» — часы оплаты сразу (27.10.2026, владелец: «5 дней на оплату вне
+            // Ход менеджера «Укажите покупателя / паспорт» — часы оплаты сразу (27.10.2026, владелец: «на оплату вне
             // зависимости, указал он покупателя или нет»). Гаражная без цены продаёт сама — часов нет.
             $needsBuyer && $deal->invoiceGap() !== 'price' => $to->deadlineFor($offer, $now),
             $noInvoice || $carried => null,

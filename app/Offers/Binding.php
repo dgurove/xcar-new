@@ -261,7 +261,7 @@ final class Binding
     public static function stageDeadline(Offer $offer, ?Deal $deal, ?WaitsFor $waits, ?Carbon $own, ?Stage $stage = null): ?Carbon
     {
         $until = $offer->binding_until;
-        // Шаг оплаты — срок менеджера (5 дней от «Забрал», `Deal::payDue`, 27.10.2026), не наш срок оплаты поставщику: у
+        // Шаг оплаты — срок менеджера (14 дней от «Забрал», `Deal::payDue`, 27.10.2026), не наш срок оплаты поставщику: у
         // старых сделок срок обязывающего давно прошёл, и менеджер «был должен» с марта.
         if (! $until || $stage?->isPayStep() || ! $deal?->isActive() || $waits === WaitsFor::Supplier || $deal->setRelation('offer', $offer)->supplierPaid()) {
             return $own;

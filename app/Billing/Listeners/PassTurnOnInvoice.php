@@ -34,7 +34,7 @@ final class PassTurnOnInvoice
         }
 
         // Ход наш (выставить) или менеджера «Укажите покупателя» (ПРАЙМ) — счёт встал: «Оплатите счёт» с часами. Часы
-        // менеджера уже шли — не сбрасываются: 5 дней от «Забрал», указал он покупателя или нет (27.10.2026); мы выставили
+        // менеджера уже шли — не сбрасываются: 14 дней от «Забрал», указал он покупателя или нет (27.10.2026); мы выставили
         // поздно — от счёта.
         if ($e instanceof InvoiceIssued && in_array($position->waits_for, [WaitsFor::Us, WaitsFor::Manager], true)) {
             $keep = $position->waits_for === WaitsFor::Manager && $position->deadline_at;

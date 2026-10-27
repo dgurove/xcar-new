@@ -230,6 +230,8 @@ class GarageByConfirmationTest extends TestCase
         $this->assertSame('Покупаев Пётр Петрович', $invoice->party->name);
         $this->assertEqualsWithDelta(1400000, $invoice->total, 0.01);
         $this->assertTrue($deal->fresh()->buyerPaysReward());
+        // Договор — на ту же сумму, что счёт (27.10.2026).
+        $this->assertSame(1400000, $deal->fresh()->contract->price);
         $this->assertNull($offer->fresh()->position(Track::Sale)->waits_for);
 
         app(RecordPayment::class)($invoice->fresh(), $admin, 1400000, now(), PaymentSource::Bank);

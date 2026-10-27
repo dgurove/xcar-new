@@ -45,7 +45,7 @@ final class MarkGarageSold
         if ($car->settledByDeal()) {
             $deal = $car->deal;
             $deal->update(['amount' => (int) $data['sold_price']]);
-            DealContract::for($deal)->update(['price' => (int) $data['sold_price']]);
+            DealContract::for($deal)->update(['price' => DealContract::priceFor($deal->fresh())]);
             app(SyncDealInvoices::class)($deal->fresh(), $by);
         }
         if ($buyer && $car->buyerPaid()) {

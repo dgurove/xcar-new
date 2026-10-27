@@ -14,6 +14,7 @@ use App\Billing\PaymentSource;
 use App\Billing\Seller;
 use App\Notifications\Notify;
 use App\Offers\Deal;
+use App\Offers\DealContract;
 use App\Offers\DealState;
 use App\Offers\OfferEventType;
 use App\Support\Money;
@@ -54,6 +55,10 @@ final class SyncDealInvoices
             return;
         }
         $deal->loadMissing(['offer', 'buyer', 'contract.buyer']);
+        // Гаражная Совкомбанка: цена договора идёт за счётом — плательщик, цена и вознаграждение меняются по ходу (27.10.2026).
+        if ($deal->namesBuyer() && $deal->contract && $deal->contract->price !== ($price = DealContract::priceFor($deal))) {
+            $deal->contract->update(['price' => $price]);
+        }
         DB::transaction(function () use ($deal, $by) {
             $this->slot($deal, $by, ChargeKind::Selection, $this->selection($deal));
             $this->slot($deal, $by, ChargeKind::Sale, $this->prime($deal));

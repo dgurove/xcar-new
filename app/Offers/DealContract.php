@@ -84,12 +84,14 @@ class DealContract extends Model
     }
 
     /** Цена договора по деньгам сделки: собственнику (ДКП), закупочная (гаражная), иначе цена подтверждения (у гаражной
-     *  Совкомбанка — цена продажи, которую назвал менеджер). */
+     *  Совкомбанка — цена продажи, которую назвал менеджер; платит покупатель — минус вознаграждение, как в счёте,
+     *  27.10.2026, `Deal::buyerPaysReward`). */
     public static function priceFor(Deal $deal): ?int
     {
         return match (true) {
             $deal->isDkp() => $deal->ownerPrice(),
             $deal->isGarage() && ! $deal->namesBuyer() => $deal->cost,
+            $deal->buyerPaysReward() && $deal->amount !== null => max(0, (int) $deal->amount - (int) $deal->commission),
             default => $deal->amount,
         };
     }
