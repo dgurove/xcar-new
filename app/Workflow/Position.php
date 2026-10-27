@@ -207,12 +207,18 @@ class Position extends Model
     /** `needsUs()` одним SQL-условием над `offer_positions` — для скоупа, сортировок и подзапросов. */
     // coalesce — пустой payload даёт null, и «не наш ход» (`whereNot`) терял такие позиции. Подписи согласия — `Outcome::TAKES`.
     // Ход наш на шаге получения под логистикой (`carried`) — не наш: этап с исходом менеджера «Автомобиль забрал».
+    // Метки письма — только на этапе письма (`Stage::isLetterStep`), «менеджер не ответил» — только пока ход его
+    // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026).
     public const NEEDS_US_SQL = "coalesce((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
-            and not exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id and x.actor = 'manager' and lower(x.label) = 'автомобиль забрал'))
-        or offer_positions.payload ?? 'reply_at' or offer_positions.payload ?? 'letter_bounced'
-        or (offer_positions.payload ?? 'letter_failed' and not offer_positions.payload ?? 'letter_at')
-        or (offer_positions.overdue_at is not null and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
-            and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю'))), false)";
+            and not (coalesce(offer_positions.waits_for, '') = 'us' and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
+                and x.actor = 'manager' and lower(x.label) = 'автомобиль забрал')))
+        or (exists (select 1 from workflow_stages s where s.id = offer_positions.stage_id and s.template_id is not null and s.waits_for = 'supplier')
+            and (offer_positions.payload ?? 'reply_at' or offer_positions.payload ?? 'letter_bounced'
+                or (offer_positions.payload ?? 'letter_failed' and not offer_positions.payload ?? 'letter_at')))
+        or (offer_positions.overdue_at is not null
+            and coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'manager'
+            and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
+                and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю'))), false)";
 
     /** Позиции, где нужно наше действие, — `needsUs()` в SQL. */
     public function scopeNeedsUs($q)

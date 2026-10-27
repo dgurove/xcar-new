@@ -5,12 +5,9 @@
     $person ??= true;
     $offer = $deal->offer;
     $position = $offer->position();
-    [$word, $tone] = match (true) {
-        $deal->isAuction() && $deal->state === \App\Offers\DealState::Done => ['Продана на аукционе', 'text-accent-text'],
-        $deal->state !== \App\Offers\DealState::Active => [$deal->state->label(), $deal->state === \App\Offers\DealState::Done ? 'text-accent-text' : 'text-danger'],
-        (bool) $position => [$position->stage->block?->name ?? $position->stage->name, $position->needsUs() ? 'text-urgent' : 'text-ink-muted'],
-        default => [$offer->crmTab(), 'text-ink-muted'],
-    };
+    // Слово этапа — `DealLine` (одно на таблицу и строки); у идущей без своего тона — рыжим, когда ход наш.
+    $line = \App\Offers\DealLine::of($deal, $position, \App\Billing\DealDebt::of($deal));
+    [$word, $tone] = [$line->word, $line->tone ?: ($position?->needsUs() ? 'text-urgent' : 'text-ink-muted')];
 @endphp
 {{-- Сделка живёт в CRM: с сайта (карточка человека /account/users) — с хостом, иначе 404. --}}
 <a href="{{ \App\Support\Surface::current() === \App\Support\Surface::Crm ? '/work/deals/'.$deal->id : \App\Support\Surface::Crm->url('/work/deals/'.$deal->id) }}" class="row" data-search-row>

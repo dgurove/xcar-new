@@ -691,10 +691,11 @@ final class Nav
     }
 
     /** Сделки, где просрочено или ход наш: обычные — у «Сделок», гаражные — у «Гаража». */
-    private static function hotDeals(bool $garage): int
+    /** Наш ход по сделкам: null — все (CRM «Сделки» с 27.10.2026 показывают и гаражные), true — только гаражные. */
+    private static function hotDeals(?bool $garage = null): int
     {
         return Position::where('track', 'sale')
-            ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active)->when($garage, fn ($g) => $g->whereNotNull('garage_payer'), fn ($g) => $g->whereNull('garage_payer')))
+            ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active)->when($garage, fn ($g) => $g->whereNotNull('garage_payer')))
             ->needsUs()
             ->count();
     }
@@ -728,7 +729,7 @@ final class Nav
                 '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
                 // Горит то же, что «Ваш ход» в списке; гаражные сделки — у «Гаража», не у «Сделок» (13.10.2026).
-                '/work/deals' => self::hotDeals(garage: false),
+                '/work/deals' => self::hotDeals(),
                 '/work/garage' => self::hotDeals(garage: true),
                 // Деньги горят делом в «Оплатах»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки нет.
                 '/work/money' => MoneyController::todo(),

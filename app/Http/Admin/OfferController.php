@@ -331,6 +331,11 @@ class OfferController
             ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
         // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
         Binding::select($q);
+        // «Все» и поиск — где машина после продажи: этап сделки, менеджер, срок оплаты, гараж (`DealLine::forOffer`).
+        if ($admin && ($preset === 'all' || $searching)) {
+            $q->with(['deal.buyer', 'deal.invoices.claims', 'lastDeal.buyer', 'garageCar.manager', 'positions.stage.block', 'positions.stage.exits.to',
+                ...User::withAvatar('deal.buyer.media'), ...User::withAvatar('lastDeal.buyer.media'), ...User::withAvatar('garageCar.manager.media')]);
+        }
 
         if ($searching) {
             $q->searchCrm(trim((string) $request->query('q')))->orderByDesc('updated_at');
@@ -521,7 +526,8 @@ class OfferController
             $has('vendor') ? new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', rem: max(8.5, $refCh * .55 + 3)) : null,
             // Номер предложения есть во всех вкладках (10.10.2026); у черновика пусто.
             new Column('number', '№', from: 'sm', aside: true, cell: 'cell-dim nums', rem: 7),
-            $has('city') ? new Column('city', 'Город', from: 'sm', aside: true, rem: max(5, $cityCh * .5 + 2.5)) : null,
+            // Во «Все» город — только на широком: место отдано этапу сделки и менеджеру в «Состоянии» (27.10.2026).
+            $has('city') ? new Column('city', 'Город', from: $preset === 'all' ? '2xl' : 'sm', aside: true, rem: max(5, $cityCh * .5 + 2.5)) : null,
             // Без «Состояния» запас ширины забирает пустой столбец перед числами, а не промежутки между столбцами.
             $has('state')
                 ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', fill: true, sort: 'closing', rem: 10)

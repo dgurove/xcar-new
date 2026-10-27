@@ -7,8 +7,7 @@
     $until = $offer->binding_until;
     $past = $until->isPast();
     $deal = $offer->deal;
-    $stage = $deal ? $offer->position()?->stage : null;
-    $step = $stage ? ($stage->block?->name ?? $stage->name) : $offer->crmTab();
+    $step = $deal ? \App\Offers\DealLine::of($deal)->word : $offer->crmTab();
     $term = $past ? \App\Support\Ago::overdue($until) : \App\Support\Ago::left($until);
     $who = $deal?->buyer?->shortName();
 @endphp

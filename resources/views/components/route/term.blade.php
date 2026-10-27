@@ -2,8 +2,10 @@
      Обычным цветом (не серым) — только когда нужно наше действие (`Position::needsUs`, 27.10.2026, владелец: «рыжим только если от нас конкретно
      что-то требуется»): «поставщик ответил», «отправить письмо», «выставить счёт», «осталось 3 ч», «просрочено 4 д». Ждём
      других — серым, кого и сколько: «ждём ответа 7 д», «ждём менеджера, просрочено 2 д». Кто ждёт и когда
-     ушло письмо — в окне (`x-route.clock`, путь), не в строке. --}}
-@props(['position'])
+     ушло письмо — в окне (`x-route.clock`, путь), не в строке. clock=false — без часов чужого хода: на шаге оплаты срок
+     говорит столбец «Оплата» сделок (`DealDebt`), второй раз его не пишем. waiting=false — без «ждём менеджера, »: во
+     вкладке «Ждём менеджера» это и так сказано, а в каждой строке раздвигало таблицу. --}}
+@props(['position', 'clock' => true, 'waiting' => true])
 @php
     use App\Workflow\WaitsFor;
     $invoice = $position->awaitsInvoice();
@@ -29,9 +31,10 @@
         $who === WaitsFor::Us && (bool) $position->deadline_at => ['осталось '.$left(), true],
         $who === WaitsFor::Us && $position->stage->timerMode() === 'stopwatch' => ['идёт '.$timer('since', $position->block_entered_at), true],
         $who === WaitsFor::Us => ['наш ход', true],
-        $wait && $position->deadline_at && $overdue => [$wait.', просрочено '.$timer('since', $position->deadline_at), false],
-        $wait && (bool) $position->deadline_at => [$wait.', осталось '.$left(), false],
-        (bool) $wait => [$wait, false],
+        $wait && ! $clock => [$waiting ? $wait : null, false],
+        $wait && $position->deadline_at && $overdue => [($waiting ? $wait.', ' : '').'просрочено '.$timer('since', $position->deadline_at), false],
+        $wait && (bool) $position->deadline_at => [($waiting ? $wait.', ' : '').'осталось '.$left(), false],
+        (bool) $wait => [$waiting ? $wait : null, false],
         default => [null, false],
     };
 @endphp

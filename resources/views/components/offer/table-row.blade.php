@@ -29,13 +29,17 @@
     $mark = $admin && ! $gallery ? $offer->crmTone() : null;
     // Приём закрылся, а подтверждения есть — ход наш: «выбрать» оранжевым; без них — «приём закрыт».
     $pick = $admin && $offer->state === OfferState::Open && ! $timer && $offer->bids_close_at;
-    $stateWord = $offer->crmTab();
     // В поиске (список смешанный) про строку важнее всего, где она: вкладкой, без часов и «выбрать».
     $mixed = (bool) $table->context('mixed');
     $checkable = $table->has('pick');
     // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $offer->loadMissing(['parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar']);
+    // После продажи — не слово вкладки «Сделки», а этап сделки и менеджер (`DealLine`, 27.10.2026, владелец: «видно, у кого
+    // она в сделке и какой этап»): «Оплата, просрочено 3 д» красным, «Гараж: в продаже». Цвет — только просрочка.
+    $line = $admin && in_array($offer->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage], true) ? \App\Offers\DealLine::forOffer($offer) : null;
+    $stateWord = $line?->word ?? $offer->crmTab();
+    $tone = $line ? $line->tone : $tone;
     $draft = $offer->state === OfferState::Draft;
     $unpriced = $draft && ! $offer->asking_price;
     // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
@@ -97,7 +101,7 @@
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
             <span class="fit-core sm:hidden @if ($busy) arrive-type @endif"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>
             @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
-            @if ($mixed)<span class="sm:hidden {{ $tone }}">{{ $stateWord }}</span>
+            @if ($mixed || $line)<span class="sm:hidden {{ $tone }}">{{ $stateWord }}@if ($line?->who)<span class="text-ink-muted">, {{ $line->who }}</span>@endif</span>
             @elseif ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($slot && $has('state'))<span class="sm:hidden text-accent-text">{{ $slot }}</span>
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
@@ -126,7 +130,9 @@
         @break
         @case('state')
     <td class="{{ $col->classes() }}">
-        @if ($mixed)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $stateWord }}</span>
+        {{-- Кто ведёт — аватаром перед этапом (имя — подсказкой): именем строка не влезала в ширину. --}}
+        @if ($line)<span class="inline-flex max-w-full items-center gap-1.5 align-middle" @if ($line->who) title="{{ $line->who }}" @endif>@if ($line->person)<x-ui.avatar :user="$line->person" :size="22"/>@endif<span class="{{ $tone }}">{{ $stateWord }}</span></span>
+        @elseif ($mixed)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $stateWord }}</span>
         @elseif ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
         @elseif ($slot)<span class="text-accent-text">{{ $slot }}</span>
         {{-- Во вкладке «Опубликованные» «выбрать» говорит заголовок группы — в строке когда закрылся приём. --}}

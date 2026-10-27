@@ -1,7 +1,7 @@
 @php
     $view = \App\Support\ListView::pick(request(), $deals->total());
     // Столбцы — одно описание на шапку, строки и заголовки групп (`DealController::table`).
-    $table = \App\Http\Admin\DealController::table($groups !== null);
+    $table = \App\Http\Admin\DealController::table($groups !== null, $stages !== null, $facets->searching() ? null : $preset);
 @endphp
 <x-ui.shell title="Сделки" :heading="false" :detail="$detail">
     <x-admin.work-titles current="deals" :count="$deals->total()"/>
@@ -27,7 +27,25 @@
     @elseif ($deals->isEmpty())
         <x-ui.empty class="mt-6">Сделок нет</x-ui.empty>
     @else
-        @if (\App\Support\ListView::isTable($view))
+        {{-- Кто сколько должен (27.10.2026, `DealDebt::totals`): во «Все» и с чипом «Оплата»; «просрочено» включает чип. --}}
+        @if ($debt && $debt['owed'] > 0)
+            <div class="mt-5 flex flex-wrap items-baseline gap-x-5 gap-y-1">
+                <span>Должны нам <span class="nums font-semibold">{{ \App\Support\Money::rub($debt['owed']) }}</span></span>
+                @if ($debt['overdue'] > 0)
+                    <a href="{{ $facets->url(['pay' => 'late']) }}" class="text-danger" data-turbo-action="replace" data-turbo-prefetch="false">просрочено <span class="nums font-semibold">{{ \App\Support\Money::rub($debt['overdue']) }}</span></a>
+                @endif
+            </div>
+        @endif
+        @if ($stages !== null)
+            {{-- «Все» — воронка: группы по этапу в порядке маршрута (`DealController::stages`). --}}
+            <x-ui.table id="deals" class="mt-6" :view="$view" :titles="$deals->getCollection()->map(fn ($d) => $d->offer?->titleWithYear())" :rest="66">
+                <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
+                @foreach ($stages as $key => $stage)
+                    <x-table.group :table="$table" :key="'stage:'.$stage['title']" :title="$stage['title']" :count="$stage['rows']->count()"/>
+                    @foreach ($stage['rows'] as $deal)<x-deal.table-row :deal="$deal" :table="$table"/>@endforeach
+                @endforeach
+            </x-ui.table>
+        @elseif (\App\Support\ListView::isTable($view))
             <x-ui.table id="deals" class="mt-6" :view="$view" :titles="$deals->getCollection()->map(fn ($d) => $d->offer?->titleWithYear())" :rest="66">
                 <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
                 @foreach ($deals as $deal)<x-deal.table-row :deal="$deal" :table="$table"/>@endforeach
