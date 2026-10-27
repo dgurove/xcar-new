@@ -49,7 +49,7 @@ final class Stock extends Route
             ],
             'claimed' => $claimed,
             'invoice' => [
-                'name' => 'Счёт выставлен менеджеру', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY, 'asks' => 'document',
+                'name' => 'Счёт выставлен менеджеру', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
                 'ask_title' => 'Оплатите счёт', 'ask_text' => 'Оплатите счёт и приложите платёжное поручение',
                 'exits' => [['Платёжное поручение приложено', 'manager', 'payment_check']],
             ],

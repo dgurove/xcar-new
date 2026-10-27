@@ -43,7 +43,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class SyncDealInvoices
 {
-    private const DAYS = 3;
+    // Срок оплаты менеджером — 14 дней (27.10.2026, владелец: «5 дней мало, обычно 14», и «у остальных тоже»).
+    private const DAYS = 14;
 
     public function __construct(private IssueInvoice $issue, private VoidInvoice $void, private RecordPayment $record, private InvoicePdf $pdf, private ApplyDealCredits $credits) {}
 
@@ -217,7 +218,7 @@ final class SyncDealInvoices
     /**
      * Срок счёта. Подбор не гаражной сделки — без срока, пока маршрут не дошёл до шага оплаты (06.10.2026, владелец: до
      * договора с покупателем менеджер нам не должник): срок поставит сам шаг (`StartSelectionDue`). На шаге оплаты — его
-     * часы; маршрут без шага оплаты — три дня, как было.
+     * часы; маршрут без шага оплаты — 14 дней.
      */
     private function dueFor(Deal $deal, ChargeKind $kind): ?Carbon
     {

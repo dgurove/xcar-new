@@ -41,7 +41,7 @@ final class StartSelectionDue
             return;
         }
         $e->offer->unsetRelation('positions');
-        $due = $e->offer->position(Track::Sale)?->deadline_at ?? Carbon::now()->addDays(3);
+        $due = $e->offer->position(Track::Sale)?->deadline_at ?? Carbon::now()->addDays(14);
         Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('kind', ChargeKind::Selection)
             ->where('state', InvoiceState::Issued)->whereNull('due_at')->update(['due_at' => $due->toDateString()]);
     }

@@ -237,7 +237,7 @@ abstract class Route
     {
         return [
             'invoice'.$suffix => [
-                'name' => 'Счёт выставлен менеджеру', 'block' => 'payment'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY, 'asks' => 'document',
+                'name' => 'Счёт выставлен менеджеру', 'block' => 'payment'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
                 'ask_title' => 'Оплатите счёт', 'ask_text' => 'Оплатите по ссылке под счётом картой, СБП или SberPay: оплата отметится сама. Или по реквизитам из счёта, тогда приложите платёжное поручение',
                 'exits' => [['Платёжное поручение приложено', 'manager', 'payment_check'.$suffix]],
             ],
@@ -257,7 +257,7 @@ abstract class Route
     {
         return [
             'selection_pay' => [
-                'name' => 'Оплата подбора', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY, 'asks' => 'document',
+                'name' => 'Оплата подбора', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
                 'ask_title' => 'Оплатите подбор', 'ask_text' => 'Оплатите по ссылке под счётом картой, СБП или SberPay: оплата отметится сама. Или по реквизитам из счёта, тогда приложите платёжное поручение',
                 'exits' => [['Платёжное поручение приложено', 'manager', 'selection_check']],
             ],

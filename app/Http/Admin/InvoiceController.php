@@ -35,7 +35,7 @@ class InvoiceController
             'parties' => Party::where('is_self', false)->orderBy('name')->pluck('name', 'id')->put('new', 'Новый плательщик'),
             'vendorParty' => $vendorParty,
             'existing' => $deal->invoices()->with('party')->get(),
-            'due' => $position?->deadline_at?->toDateString() ?? now()->addDays(3)->toDateString(),
+            'due' => $position?->deadline_at?->toDateString() ?? now()->addDays(14)->toDateString(),
             'kinds' => [ChargeKind::Sale->value => ChargeKind::Sale->label(), ChargeKind::Selection->value => ChargeKind::Selection->label(), ChargeKind::Reward->value => ChargeKind::Reward->label(), ChargeKind::Other->value => ChargeKind::Other->label()],
             // База по виду: продажа — цена подтверждения, подбор — разница, вознаграждение — по условиям вендора.
             'bases' => [
