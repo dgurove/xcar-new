@@ -10,6 +10,7 @@ use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\DealFormat;
 use App\Vendors\Vendor;
+use App\Workflow\Stage;
 use App\Workflow\WaitsFor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -257,10 +258,12 @@ final class Binding
      * шаг, где ход наш или менеджера, кончается не позже срока обязывающего; шаг без своего срока получает его. Где ждём
      * поставщика — его срок не трогаем. Менеджер видит это обычной датой шага — без вендора и цены.
      */
-    public static function stageDeadline(Offer $offer, ?Deal $deal, ?WaitsFor $waits, ?Carbon $own): ?Carbon
+    public static function stageDeadline(Offer $offer, ?Deal $deal, ?WaitsFor $waits, ?Carbon $own, ?Stage $stage = null): ?Carbon
     {
         $until = $offer->binding_until;
-        if (! $until || ! $deal?->isActive() || $waits === WaitsFor::Supplier || $deal->setRelation('offer', $offer)->supplierPaid()) {
+        // Шаг оплаты — срок менеджера (5 дней от «Забрал», `Deal::payDue`, 27.10.2026), не наш срок оплаты поставщику: у
+        // старых сделок срок обязывающего давно прошёл, и менеджер «был должен» с марта.
+        if (! $until || $stage?->isPayStep() || ! $deal?->isActive() || $waits === WaitsFor::Supplier || $deal->setRelation('offer', $offer)->supplierPaid()) {
             return $own;
         }
 

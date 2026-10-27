@@ -24,18 +24,26 @@
                 @endforeach
             </x-ui.table>
         @endif
+    @elseif ($debts !== null)
+        {{-- «Оплата» — кто сколько должен нам и когда (27.10.2026, `DealController::debts`): итог, группы по менеджеру. --}}
+        @if ($debts['groups']->isEmpty())
+            <x-ui.empty class="mt-6">Никто ничего не должен</x-ui.empty>
+        @else
+            <div class="mt-5 flex flex-wrap items-baseline gap-x-5 gap-y-1">
+                <span>Должны нам <span class="nums font-semibold">{{ \App\Support\Money::rub($debts['owed']) }}</span></span>
+                @if ($debts['overdue'] > 0)<span class="text-danger">просрочено <span class="nums font-semibold">{{ \App\Support\Money::rub($debts['overdue']) }}</span></span>@endif
+            </div>
+            <x-ui.table id="deals" class="mt-4" view="table" :titles="$debts['groups']->flatMap(fn ($g) => $g['rows'])->map(fn ($r) => $r['deal']->offer?->titleWithYear())" :rest="40">
+                <x-slot:head><x-table.head :table="$table"/></x-slot:head>
+                @foreach ($debts['groups'] as $key => $group)
+                    <x-table.group :table="$table" :key="$key" :title="$group['title']" :count="$group['rows']->count()"><span class="ml-auto nums text-sm">@if ($group['overdue'] >= $group['owed'])<span class="text-danger">{{ \App\Support\Money::rub($group['owed']) }} просрочено</span>@else{{ \App\Support\Money::rub($group['owed']) }}@if ($group['overdue'] > 0)<span class="text-danger">, из них просрочено {{ \App\Support\Money::rub($group['overdue']) }}</span>@endif @endif</span></x-table.group>
+                    @foreach ($group['rows'] as $row)<x-deal.pay-row :deal="$row['deal']" :debt="$row['debt']" :table="$table"/>@endforeach
+                @endforeach
+            </x-ui.table>
+        @endif
     @elseif ($deals->isEmpty())
         <x-ui.empty class="mt-6">Сделок нет</x-ui.empty>
     @else
-        {{-- Кто сколько должен (27.10.2026, `DealDebt::totals`): во «Все» и с чипом «Оплата»; «просрочено» включает чип. --}}
-        @if ($debt && $debt['owed'] > 0)
-            <div class="mt-5 flex flex-wrap items-baseline gap-x-5 gap-y-1">
-                <span>Должны нам <span class="nums font-semibold">{{ \App\Support\Money::rub($debt['owed']) }}</span></span>
-                @if ($debt['overdue'] > 0)
-                    <a href="{{ $facets->url(['pay' => 'late']) }}" class="text-danger" data-turbo-action="replace" data-turbo-prefetch="false">просрочено <span class="nums font-semibold">{{ \App\Support\Money::rub($debt['overdue']) }}</span></a>
-                @endif
-            </div>
-        @endif
         @if ($stages !== null)
             {{-- «Все» — воронка: группы по этапу в порядке маршрута (`DealController::stages`). --}}
             <x-ui.table id="deals" class="mt-6" :view="$view" :titles="$deals->getCollection()->map(fn ($d) => $d->offer?->titleWithYear())" :rest="66">

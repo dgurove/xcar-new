@@ -212,16 +212,17 @@ final class SyncDealInvoices
     private function dueFor(Deal $deal, ChargeKind $kind): ?Carbon
     {
         $default = Carbon::now()->addDays(self::DAYS);
-        if ($kind !== ChargeKind::Selection || $deal->isGarage()) {
+        if ($deal->forGarageBuyer()) {
             return $default;
         }
         $deal->offer->unsetRelation('positions');
         $position = $deal->offer->position(Track::Sale);
-        if (! $position) {
-            return $default;
+        // На шаге оплаты — срок шага от «Забрал» (`Deal::payDue`, 27.10.2026): счёт и строка «Сделок» говорят одну дату.
+        if ($position?->stage->isPayStep()) {
+            return $deal->payDue() ?? $position->deadline_at ?? $default;
         }
-        if ($position->stage->isPayStep()) {
-            return $position->deadline_at ?? $default;
+        if ($kind !== ChargeKind::Selection || $deal->isGarage() || ! $position) {
+            return $default;
         }
         $stages = Stage::where('workflow_id', $position->stage->workflow_id)->with('exits')->get();
 

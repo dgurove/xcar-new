@@ -39,9 +39,11 @@ class DealController
     // «Ваш ход» вместо «Горит» (27.10.2026, владелец: рыжее только когда от нас что-то нужно; чужая просрочка — не наш ход).
     // «Все» вместо «В работе» (27.10.2026, владелец: «в работе то, что есть в других вкладках, — бред», «очень не хватает
     // „Все“»): все идущие, группами по этапу. Гаражные — тоже сделки, скрываются чипом «Гараж».
-    public const PRESETS = ['us' => 'Ваш ход', 'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'all' => 'Все', 'done' => 'Закончены'];
+    // «Оплата» (27.10.2026, владелец: «не понимаю, кто сколько должен заплатить и когда») — кто сколько должен нам: группы
+    // по менеджеру с суммой и просрочкой (`DealController::debts`, `Billing\DealDebt`).
+    public const PRESETS = ['us' => 'Ваш ход', 'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'pay' => 'Оплата', 'all' => 'Все', 'done' => 'Закончены'];
 
-    public const SORTS = ['deadline' => ['Срок', 'asc'], 'pay' => ['Срок оплаты', 'asc'], 'binding' => ['Срок обязывающего', 'asc'], 'fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
+    public const SORTS = ['deadline' => ['Срок', 'asc'], 'binding' => ['Срок обязывающего', 'asc'], 'fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
 
     public function index(Request $request)
     {
@@ -66,9 +68,6 @@ class DealController
                 ->labels(fn (array $keys) => array_intersect_key(['late' => new Option('late', 'Просрочено'), 'ok' => new Option('ok', 'В срок')], array_flip($keys))),
             // Срок обязывающего горит, а поставщику не заплачено (19.10.2026, `Offers\Binding`).
             Facet::toggle('binding', 'Горит обязывающее', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger'),
-            // Оплата — что с нашими счетами сделки (`DealDebt`): просрочена, срок в три дня, ждём, оплачено, счёта нет.
-            Facet::column('pay', 'Оплата', ['оплата', 'оплаты', 'оплат'], DealDebt::bucketSql())
-                ->labels(fn (array $keys) => collect(DealDebt::BUCKETS)->only($keys)->map(fn ($label, $k) => new Option($k, $label))->all()),
             Facet::column('garage', 'Гараж', ['вид', 'вида', 'видов'], "(case when deals.garage_payer is null then 'deal' else 'garage' end)")
                 ->labels(fn (array $keys) => array_intersect_key(['deal' => new Option('deal', 'Без гаража'), 'garage' => new Option('garage', 'Гаражные')], array_flip($keys))),
         );
@@ -82,7 +81,7 @@ class DealController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
         // Гаражные — тоже сделки (27.10.2026, владелец: «в сделках их стоит отображать»; с 13.10 их здесь не было).
-        $q = Deal::query()->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'buyer', 'openRequirement', 'invoices.claims']);
+        $q = Deal::query()->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract']);
         if ($searching) {
             // Лупа — по всем сделкам: номер предложения, VIN, марка, убыток, менеджер.
             $term = trim((string) $request->query('q'));
@@ -93,24 +92,19 @@ class DealController
         }
         $facets->apply($q);
         // Числа пилюль — с чипами (10.10.2026: «Горит» без числа, а таб «Работа» горел им же — владелец не понимал, откуда 26).
-        $counts = collect(['us', 'manager', 'supplier', 'all'])->mapWithKeys(fn (string $p) => [$p => self::scope($facets->applyTo(Deal::query()), $p)->count()])->all();
+        $counts = collect(['us', 'manager', 'supplier', 'pay', 'all'])->mapWithKeys(fn (string $p) => [$p => self::scope($facets->applyTo(Deal::query()), $p)->count()])->all();
         $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $q->orderBy('created_at', $dir),
             'amount' => $q->orderByRaw("amount {$dir} nulls last"),
             'binding' => $q->orderByRaw("(select binding_until from offers where offers.id = deals.offer_id) {$dir} nulls last"),
-            'pay' => $q->orderByRaw(DealDebt::dueSql()." {$dir} nulls last"),
             // По сроку — сначала ответ поставщика (как непрочитанное письмо), потом прочий наш ход, потом остальное.
-            // У «Ждём менеджера» первыми — просроченные оплаты: их ход, но деньги ждём мы.
-            default => $q->when($preset === 'manager', fn ($q) => $q->orderByRaw('exists (select 1 from billing_invoices where '.DealDebt::OPEN_SQL.' and billing_invoices.due_at < current_date) desc'))
-                ->orderByRaw(self::turnRank())->orderByRaw("(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) {$dir} nulls last"),
+            default => $q->orderByRaw(self::turnRank())->orderByRaw("(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) {$dir} nulls last"),
         };
         $q->orderByDesc('deals.id');
-        // Итог «должны / просрочено» — во «Все» и с чипом «Оплата» (`DealDebt::totals`, те же сделки, что в списке); до
-        // `Rows::only` — живое перечитывание строки итог не сужает.
-        $debt = ($preset !== 'us' || $searching) && ($preset === 'all' || $facets->on('pay')) ? DealDebt::totals($q) : null;
         Rows::only($q, 'deals.id');
         $groups = $preset === 'us' && ! $searching ? self::todo($q->get(), $sort->key === 'deadline') : null;
+        $debts = $preset === 'pay' && ! $searching ? self::debts($q->get()) : null;
         // Таблица — вся на одной странице; строками — постранично.
         $table = ListView::isTable(ListView::pick($request, 0));
         $deals = $table ? ListView::paginate($request, $q) : $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString();
@@ -119,7 +113,7 @@ class DealController
             'groups' => $groups,
             // «Все» таблицей — группами по этапу.
             'stages' => $preset === 'all' && ! $searching && $table ? self::stages($deals->getCollection()) : null,
-            'debt' => $debt,
+            'debts' => $debts,
             'deals' => $deals,
             'preset' => $preset,
             'counts' => $counts,
@@ -159,6 +153,24 @@ class DealController
     }
 
     /**
+     * «Оплата» — кто сколько должен (27.10.2026): группы по менеджеру (аукцион — своей группой), у группы сумма и просрочено;
+     * первыми — у кого больше просрочено, внутри — просроченные, дальше по сроку. Весь список одной страницей.
+     * @return array{owed: float, overdue: float, groups: Collection<string, array>}
+     */
+    private static function debts(Collection $deals): array
+    {
+        $rows = $deals->map(fn (Deal $deal) => ['deal' => $deal, 'debt' => DealDebt::of($deal)])->filter(fn ($r) => $r['debt'] && ! $r['debt']->paid());
+        $groups = $rows->groupBy(fn ($r) => $r['deal']->isAuction() ? 'auction' : 'manager:'.$r['deal']->buyer_id)->map(fn (Collection $rows) => [
+            'title' => $rows->first()['deal']->isAuction() ? 'Аукцион' : ($rows->first()['deal']->buyer?->name ?? 'Без менеджера'),
+            'owed' => $rows->sum(fn ($r) => $r['debt']->owed),
+            'overdue' => $rows->sum(fn ($r) => $r['debt']->overdue),
+            'rows' => $rows->sortBy(fn ($r) => [$r['debt']->late() ? 0 : 1, $r['debt']->due?->getTimestamp() ?? PHP_INT_MAX])->values(),
+        ])->sortBy([['overdue', 'desc'], ['owed', 'desc']]);
+
+        return ['owed' => $groups->sum('owed'), 'overdue' => $groups->sum('overdue'), 'groups' => $groups];
+    }
+
+    /**
      * «Все» — воронка (27.10.2026): группы по этапу (блок маршрута, одноимённые у разных вендоров — одна группа) в
      * порядке маршрута; видно, где сделки стоят. Сделка без шага продажи — последней группой. @return Collection<string, array>
      */
@@ -186,15 +198,19 @@ class DealController
         $title = new Column('title', 'Марка, модель', grow: true);
         $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm');
 
-        return $todo
-            ? Table::of($title, $vendor, new Column('manager', 'Менеджер', from: 'sm'), new Column('wait', 'Ждёт', from: 'sm', fill: true), new Column('action', num: true))
-            : new Table([$title, $vendor, new Column('number', '№', from: '2xl', dim: true, class: 'nums'), new Column('manager', 'Менеджер', from: 'sm'),
+        return match (true) {
+            $todo => Table::of($title, $vendor, new Column('manager', 'Менеджер', from: 'sm'), new Column('wait', 'Ждёт', from: 'sm', fill: true), new Column('action', num: true)),
+            // «Оплата» — что с оплатой, сколько должен и срок (`x-deal.pay-row`); менеджер — заголовком группы.
+            $preset === 'pay' => Table::of($title, $vendor, new Column('status', 'Что с оплатой', from: 'sm', fill: true),
+                new Column('owed', 'Должен', num: true, class: 'nums'), new Column('due', 'Срок', from: 'sm', num: true)),
+            default => new Table([$title, $vendor, new Column('number', '№', from: '2xl', dim: true, class: 'nums'), new Column('manager', 'Менеджер', from: 'sm'),
                 // «Все» сгруппированы по этапу — этап говорит заголовок группы, столбца нет (и таблица влезает с «Оплатой»).
                 $staged ? null : new Column('stage', 'Этап', from: 'sm', fill: true),
                 new Column('term', 'Что сейчас', from: 'sm', sort: 'deadline', fill: $staged),
                 // Оплата — сколько должны нам и до какого числа (27.10.2026); на телефоне — под суммой.
-                new Column('pay', 'Оплата', from: 'sm', num: true, sort: 'pay', class: 'nums'),
-                new Column('amount', 'Сумма', num: true, sort: 'amount', class: 'nums')], ['preset' => $preset]);
+                new Column('pay', 'Оплата', from: 'sm', num: true, class: 'nums'),
+                new Column('amount', 'Сумма', num: true, sort: 'amount', class: 'nums')], ['preset' => $preset]),
+        };
     }
 
     /** 0 — поставщик ответил, 1 — прочий наш ход, 2 — ждём других. */
@@ -219,6 +235,7 @@ class DealController
             'supplier' => $sale(fn ($p) => $p->waiting(WaitsFor::Supplier)->whereNot(fn ($n) => $n->needsUs())),
             // Чей ход — позиции (`Position::waiting`): этап оплаты без счёта ждёт нас, а не менеджера.
             'manager' => $sale(fn ($p) => $p->waiting(WaitsFor::Manager)->whereNot(fn ($n) => $n->needsUs())),
+            'pay' => $q->whereRaw(DealDebt::OWES_SQL),
             'done' => $q->whereIn('state', [DealState::Done, DealState::Cancelled]),
             default => $q->where('state', DealState::Active), // all
         };

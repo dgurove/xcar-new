@@ -92,6 +92,9 @@ final class EnterStage
         $waits = $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null);
         $deadline = match (true) {
             $awaitsLetter => Stage::letterDeadline($now),
+            // Ход менеджера «Укажите покупателя / паспорт» — часы оплаты сразу (27.10.2026, владелец: «5 дней на оплату вне
+            // зависимости, указал он покупателя или нет»). Гаражная без цены продаёт сама — часов нет.
+            $needsBuyer && $deal->invoiceGap() !== 'price' => $to->deadlineFor($offer, $now),
             $noInvoice || $carried => null,
             default => $to->deadlineFor($offer, $now),
         };
@@ -101,7 +104,7 @@ final class EnterStage
             'entered_at' => $now,
             'block_entered_at' => $from && $from->block_id === $to->block_id && $position?->block_entered_at ? $position->block_entered_at : $now,
             // Пока поставщику не заплачено — не позже срока обязывающего предложения (`Binding::stageDeadline`).
-            'deadline_at' => $track === Track::Sale ? Binding::stageDeadline($offer, $deal, $waits ?? $to->waits_for, $deadline) : $deadline,
+            'deadline_at' => $track === Track::Sale ? Binding::stageDeadline($offer, $deal, $waits ?? $to->waits_for, $deadline, $to) : $deadline,
             'reminded_at' => null,
             'overdue_at' => null,
             'payload' => $payload ?: null,

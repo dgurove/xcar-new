@@ -57,7 +57,7 @@ final class Sovcombank extends Route
                     'exits' => [['Автомобиль забрал', 'manager', 'invoice'], ['Автомобиль передан', 'staff', 'invoice']],
                 ],
                 'invoice' => [
-                    'name' => 'Оплата по счёту ПРАЙМ', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY, 'asks' => 'document',
+                    'name' => 'Оплата по счёту ПРАЙМ', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY, 'asks' => 'document',
                     'ask_title' => 'Оплатите счёт', 'ask_text' => 'Оплатите счёт ПРАЙМ по реквизитам и приложите платёжное поручение',
                     'exits' => [['Платёжное поручение приложено', 'manager', 'payment_check']],
                 ],

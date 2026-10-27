@@ -150,7 +150,7 @@ final class UpdateOffer
             && ($pos = Position::where('offer_id', $offer->id)->where('track', Track::Sale)->with('stage')->first())) {
             $own = $pos->deadline_at && ! ($oldBinding && $pos->deadline_at->eq($oldBinding)) ? $pos->deadline_at
                 : ($pos->waits_for ? null : $pos->stage?->deadlineFor($offer, $pos->entered_at));
-            $new = Binding::stageDeadline($offer, $deal, $pos->waitsFor(), $own);
+            $new = Binding::stageDeadline($offer, $deal, $pos->waitsFor(), $own, $pos->stage);
             if ($new?->toDateTimeString() !== $pos->deadline_at?->toDateTimeString()) {
                 $pos->update(['deadline_at' => $new, 'reminded_at' => null, 'overdue_at' => null]);
             }

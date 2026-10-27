@@ -611,6 +611,21 @@ class Deal extends Model
         return $this->amount ?? $this->cost;
     }
 
+    /**
+     * Срок оплаты менеджером (27.10.2026, владелец: «5 дней на оплату вне зависимости, указал он покупателя или нет»): вход
+     * на шаг оплаты (у Совкомбанка — «Забрал») плюс срок этапа. Одна дата для счёта (`SyncDealInvoices::dueFor`), часов шага
+     * (`EnterStage`, `PassTurnOnInvoice`) и долга в «Сделках» (`DealDebt`). Не на шаге оплаты — null.
+     */
+    public function payDue(): ?\Illuminate\Support\Carbon
+    {
+        $position = $this->offer?->position();
+        if (! $position?->entered_at || ! $position->stage->isPayStep()) {
+            return null;
+        }
+
+        return $position->stage->deadlineFor($this->offer, $position->entered_at);
+    }
+
     /** Сделки в разделе «Сделки» сайта: админу все, менеджеру — его; админ, который ещё и менеджер, на сайте менеджер. */
     public function scopeOf(Builder $q, User $user): Builder
     {
