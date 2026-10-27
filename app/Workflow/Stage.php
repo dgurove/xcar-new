@@ -128,6 +128,12 @@ class Stage extends Model
         return $this->loadedExits()->contains(fn (Outcome $e) => $e->actor === Actor::Manager && mb_strtolower($e->label) === 'автомобиль забрал');
     }
 
+    /** «Собираем заявку поставщику» (Каркаде): исход «Заявка отправлена» жмёт само письмо заявки по всем сделкам вендора. */
+    public function isRequestStep(): bool
+    {
+        return $this->loadedExits()->contains(fn (Outcome $e) => mb_strtolower($e->label) === 'заявка отправлена');
+    }
+
     /**
      * Сделка ещё согласуется: поставщик может отказать («Поставщик согласовал» / «Поставщик отказал» — у Каркаде и на
      * «Собираем заявку поставщику», пока заявка не ушла) или ждём согласия менеджера «Беру в работу». Счетов на таком этапе

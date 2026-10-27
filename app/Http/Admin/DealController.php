@@ -26,6 +26,7 @@ use App\Workflow\Track;
 use App\Workflow\Position;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -71,7 +72,7 @@ class DealController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
         // Гаражные сделки живут во вкладке «Гараж» (13.10.2026, владелец), здесь их нет ни в списке, ни в лупе, ни в числах.
-        $q = Deal::query()->whereNull('garage_payer')->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'buyer', 'openRequirement']);
+        $q = Deal::query()->whereNull('garage_payer')->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'buyer', 'openRequirement']);
         if ($searching) {
             // Лупа — по всем сделкам: номер предложения, VIN, марка, убыток, менеджер.
             $term = trim((string) $request->query('q'));
@@ -93,8 +94,10 @@ class DealController
         };
         $q->orderByDesc('deals.id');
         Rows::only($q, 'deals.id');
+        $groups = $preset === 'us' && ! $searching ? self::todo($q->get(), $sort->key === 'deadline') : null;
 
         return view('admin.deals.index', [
+            'groups' => $groups,
             // Таблица — вся на одной странице; строками — постранично.
             'deals' => ListView::isTable(ListView::pick($request, 0)) ? ListView::paginate($request, $q) : $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
             'preset' => $preset,
@@ -103,6 +106,35 @@ class DealController
             'facets' => $facets,
             'detail' => $detail,
         ]);
+    }
+
+    /**
+     * «Ваш ход» — список дел (27.10.2026, владелец: «не видно, что нужно сделать, а что просто просрочено»): группы по тому,
+     * что сделать (`Position::todo`), внутри — кто дольше ждёт; у заявки поставщику кнопка одна на группу (письмо на все
+     * сделки вендора). Весь список одной страницей: дел — десятки. @return Collection<string, array>
+     */
+    private static function todo(Collection $deals, bool $byWait): Collection
+    {
+        $rows = $deals->map(function (Deal $deal) {
+            $position = $deal->offer?->position();
+            $position?->setRelation('offer', $deal->offer)->setRelation('deal', $deal);
+
+            return ['deal' => $deal, 'todo' => $position?->todo()];
+        })->filter(fn ($r) => $r['todo']);
+
+        return $rows->groupBy(fn ($r) => $r['todo']['key'])->map(function (Collection $rows, string $key) use ($byWait) {
+            $first = $rows->first();
+            $group = ['title' => $first['todo']['title'], 'rank' => $first['todo']['rank'], 'button' => null,
+                'rows' => $byWait ? $rows->sortBy(fn ($r) => $r['todo']['since']?->getTimestamp() ?? PHP_INT_MAX)->values() : $rows->values()];
+            if (str_starts_with($key, 'request:')) {
+                $vendor = $first['deal']->offer->vendor;
+                $group['title'] .= $vendor ? ': '.$vendor->name : '';
+                // Без числа: в письмо идут и гаражные сделки вендора, которых здесь нет, — «(8)» над шестью строками путало.
+                $group['button'] = ['label' => 'Отправить заявку', 'letters' => '/work/mail/new?request='.$vendor?->id.'&then=close'];
+            }
+
+            return $group;
+        })->sortBy([['rank', 'asc'], ['title', 'asc']]);
     }
 
     /** 0 — поставщик ответил, 1 — прочий наш ход, 2 — ждём других. */

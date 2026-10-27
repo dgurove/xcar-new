@@ -1,5 +1,5 @@
 {{-- Срок шага одним коротким словом — для строки таблицы сотрудника (13.10.2026, владелец: «это таблица, а не эссе»).
-     Рыжим — только когда нужно наше действие (`Position::needsUs`, 27.10.2026, владелец: «рыжим только если от нас конкретно
+     Обычным цветом (не серым) — только когда нужно наше действие (`Position::needsUs`, 27.10.2026, владелец: «рыжим только если от нас конкретно
      что-то требуется»): «поставщик ответил», «отправить письмо», «выставить счёт», «осталось 3 ч», «просрочено 4 д». Ждём
      других — серым, кого и сколько: «ждём ответа 7 д», «ждём менеджера, просрочено 2 д». Кто ждёт и когда
      ушло письмо — в окне (`x-route.clock`, путь), не в строке. --}}
@@ -23,6 +23,7 @@
         in_array($letter, ['unsent', 'failed'], true) => ['отправить письмо', true],
         $letter === 'bounced' => ['не доставлено', true],
         $who === WaitsFor::Manager && $position->consentLate() => ['менеджер не ответил', true],
+        $position->carried() => ['везёт логистика', false],
         $letter === 'sent' => ['ждём ответа '.$timer('since', $position->letterAt()), false],
         $who === WaitsFor::Us && $position->deadline_at && $overdue => ['просрочено '.$timer('since', $position->deadline_at), true],
         $who === WaitsFor::Us && (bool) $position->deadline_at => ['осталось '.$left(), true],
@@ -34,4 +35,5 @@
         default => [null, false],
     };
 @endphp
-@if ($text)<span {{ $attributes->class(['whitespace-nowrap', 'text-urgent' => $hot, 'text-ink-muted' => ! $hot]) }}>{!! $text !!}</span>@endif
+{{-- Наше — обычным цветом, чужое — серым; рыжего нет: дела списком — во «Ваш ход» (27.10.2026). Просрочено нами — красным. --}}
+@if ($text)<span {{ $attributes->class(['whitespace-nowrap', 'text-danger' => $hot && $overdue && $who === WaitsFor::Us, 'text-ink' => $hot && ! ($overdue && $who === WaitsFor::Us), 'text-ink-muted' => ! $hot]) }}>{!! $text !!}</span>@endif

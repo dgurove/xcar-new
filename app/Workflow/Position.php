@@ -84,8 +84,52 @@ class Position extends Model
      */
     public function needsUs(): bool
     {
-        return $this->waitsFor() === WaitsFor::Us || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
+        return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
             || $this->consentLate();
+    }
+
+    /**
+     * Шаг «Менеджер забирает автомобиль», а везёт логистика (`SyncHandover::turn` ставит ход наш, чтобы у менеджера не было
+     * часов «Заберите»). В CRM делать нечего — шаг пройдёт сам по «Привёз» (27.10.2026, владелец: Volvo «идёт 8 д» в «Ваш ход»).
+     */
+    public function carried(): bool
+    {
+        return $this->waits_for === WaitsFor::Us && $this->track === Track::Sale && $this->stage->isPickupStep();
+    }
+
+    /**
+     * Что сделать нам — для «Ваш ход» в «Сделках» (27.10.2026, владелец: «не видно, что нужно сделать, а что просто
+     * просрочено»): группа (`key`, `title` глаголом, `rank` — порядок групп), с какого момента ждёт (`since`) и кнопка
+     * строки (`letters` — окно писем, `href` — ссылка, `tel`). Заявка Каркаде — кнопка у группы, одна на вендора.
+     * Не наш ход — null. @return array{key: string, title: string, rank: int, since: ?Carbon, button: ?array}|null
+     */
+    public function todo(): ?array
+    {
+        if (! $this->needsUs()) {
+            return null;
+        }
+        $offer = $this->offer;
+        $since = $this->block_entered_at ?? $this->entered_at;
+        $letter = $this->awaitsInvoice() ? null : $this->letterStatus();
+        $todo = fn (string $key, string $title, int $rank, ?Carbon $at = null, ?array $button = null) => ['key' => $key, 'title' => $title, 'rank' => $rank, 'since' => $at ?? $since, 'button' => $button];
+        $write = fn (string $label) => ($url = $offer->vendorLetterUrl($this->stage)) ? ['label' => $label, 'letters' => $url] : null;
+
+        if ($this->awaitsInvoice()) {
+            $gap = $this->gap();
+            $action = self::gapAction($gap, $this->deal);
+
+            return $todo('gap:'.$gap, $action['button'], 2, button: ['label' => $action['button'], 'href' => $action['url']]);
+        }
+
+        return match (true) {
+            $letter === 'replied' => $todo('reply', 'Разобрать ответ поставщика', 0, $this->replyAt(), ['label' => 'Открыть письмо', 'letters' => '/offers/'.$offer->number.'/letters']),
+            $letter === 'bounced' => $todo('bounced', 'Письмо поставщику не дошло', 1, button: $write('Написать снова')),
+            in_array($letter, ['unsent', 'failed'], true) => $todo('letter', 'Написать поставщику', 1, button: $write('Написать')),
+            $this->consentLate() => $todo('consent', 'Менеджер не ответил, берёт ли', 3, $this->deadline_at,
+                ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Позвонить', 'tel' => $phone] : null),
+            $this->stage->isRequestStep() => $todo('request:'.$offer->vendor_id, 'Отправить заявку поставщику', 4),
+            default => $todo('stage:'.$this->stage->name, $this->stage->name, 5),
+        };
     }
 
     /**
@@ -162,7 +206,9 @@ class Position extends Model
 
     /** `needsUs()` одним SQL-условием над `offer_positions` — для скоупа, сортировок и подзапросов. */
     // coalesce — пустой payload даёт null, и «не наш ход» (`whereNot`) терял такие позиции. Подписи согласия — `Outcome::TAKES`.
-    public const NEEDS_US_SQL = "coalesce(coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
+    // Ход наш на шаге получения под логистикой (`carried`) — не наш: этап с исходом менеджера «Автомобиль забрал».
+    public const NEEDS_US_SQL = "coalesce((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
+            and not exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id and x.actor = 'manager' and lower(x.label) = 'автомобиль забрал'))
         or offer_positions.payload ?? 'reply_at' or offer_positions.payload ?? 'letter_bounced'
         or (offer_positions.payload ?? 'letter_failed' and not offer_positions.payload ?? 'letter_at')
         or (offer_positions.overdue_at is not null and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id

@@ -7,7 +7,22 @@
 
     <div id="list">
 
-    @if ($deals->isEmpty())
+    @if ($groups !== null)
+        {{-- «Ваш ход» — список дел группами «что сделать» (`DealController::todo`), а не таблица сроков (27.10.2026). --}}
+        @if ($groups->isEmpty())
+            <x-ui.empty class="mt-6">Ничего не ждёт нас</x-ui.empty>
+        @else
+            <x-ui.table id="deals" class="mt-6" view="table" :titles="$groups->flatMap(fn ($g) => $g['rows'])->map(fn ($r) => $r['deal']->offer?->titleWithYear())" :rest="50">
+                <x-slot:head>
+                    <tr><th class="grow title-cap">Марка, модель</th><th class="hidden sm:table-cell">Вендор, № убытка</th><th class="hidden sm:table-cell">Менеджер</th><th class="fill hidden sm:table-cell">Ждёт</th><th class="num"></th></tr>
+                </x-slot:head>
+                @foreach ($groups as $key => $group)
+                    <tr class="table-group" data-search-group><th colspan="5"><span class="todo-group"><span class="table-group-name">{{ $group['title'] }} <span class="nums">{{ $group['rows']->count() }}</span></span>@if ($group['button'])<x-deal.todo-button :button="$group['button']" group/>@endif</span></th></tr>
+                    @foreach ($group['rows'] as $row)<x-deal.todo-row :deal="$row['deal']" :todo="$row['todo']"/>@endforeach
+                @endforeach
+            </x-ui.table>
+        @endif
+    @elseif ($deals->isEmpty())
         <x-ui.empty class="mt-6">Сделок нет</x-ui.empty>
     @else
         @if (\App\Support\ListView::isTable($view))

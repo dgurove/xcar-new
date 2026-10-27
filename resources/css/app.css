@@ -1473,6 +1473,9 @@ html.kb-open { --home-gap: 0px; }
   .table tbody tr.table-group:first-child > th { padding-top: .75rem; }
   @media (min-width: 640px) { .table tr.table-group > th { top: calc(var(--stick-top) + 2rem); } }
   .table tr.table-group .nums { margin-left: .25rem; font-weight: 400; color: var(--color-ink-dim); }
+  /* Группа дел «Ваш ход» (`admin/deals/index`): глагол с числом слева, кнопка группы справа («Отправить заявку (6)»). */
+  .table tr.table-group .todo-group { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+  .table tr.table-group .todo-group > .btn { margin-left: auto; font-size: var(--text-sm); }
   /* Галочки строк («Оцененные», «Публикация», pick_controller): узкий первый столбец, круг как у .row-check; та же
      галочка у группы (слот целиком) и строкой «Выбрать все» над таблицей. Соседний столбец к ней не отступает. */
   /* Число у пилюли обновляется потоком (оценили — «Без цены» минус один); ноль — пусто. */
