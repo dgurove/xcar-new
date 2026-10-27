@@ -489,7 +489,8 @@ final class Nav
     private static function counts(User $user, Surface $surface): array
     {
         // Счётчики админа общие на всех админов; админ, который ещё и менеджер, на сайте видит свои — ключ его.
-        $key = "nav.counts:{$surface->value}:".($user->isAdmin() && ! $user->isManager() ? 'staff' : $user->id);
+        // Админ-модератор (Катя) — своя вкладка по умолчанию, и число у таба своё.
+        $key = "nav.counts:{$surface->value}:".($user->isAdmin() && ! $user->isManager() && ! $user->isModerator() ? 'staff' : $user->id);
 
         // Кэш в базе — за страницу его читают по два-три раза: из него один раз на запрос.
         $counts = self::perRequest($key, fn () => self::countsCached($user, $surface, $key));
