@@ -2,8 +2,9 @@
      телефоне под ним логотип вендора с номером убытка (копируется) и срок шага; от 640 они своими столбцами —
      вендор с убытком, менеджер аватаром (имя и № — от 1536), этап обычным цветом, «что сейчас» коротким словом (`x-route.term`:
      рыжим — только наш ход). Поставщик ответил — как непрочитанное письмо: лаймовая точка и полужирное название (27.10.2026).
-     Справа сумма, на телефоне под ней этап словом. Кто ждёт и что с письмом — фразой в карточке сделки рядом (x-ui.row-link). --}}
-@props(['deal'])
+     Справа сумма, на телефоне под ней этап словом. Кто ждёт и что с письмом — фразой в карточке сделки рядом (x-ui.row-link).
+     Столбцы — `DealController::table` (шапка `x-table.head` по тому же описанию). --}}
+@props(['deal', 'table'])
 @php
     use App\Offers\DealState;
     $offer = $deal->offer;
@@ -22,22 +23,24 @@
     };
 @endphp
 <tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
-    <td class="grow">
-        <x-ui.row-link :key="$deal->id"><span @class(['cell-title', 'font-medium' => $replied])>@if ($replied)<span class="card-tone card-tone--reply" aria-label="Поставщик ответил"></span>@endif<x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}<x-car.keys :count="$offer->keys_count"/>@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</span></x-ui.row-link>
-        {{-- На телефоне второй строкой — только срок шага (20.10.2026, как в «Вывозе»: номер убытка ужимал строку до 9 px и
-             срезал «просрочено 9 д»); номер — столбцом на ПК и в карточке. Без срока — вендор с номером. --}}
-        {{-- Этап — тут же, после срока (27.10.2026, владелец: справа он резался «Согласование с постав…», а название — «Changan
-             UNI-K, 2…»); не влез — переносится, справа на телефоне только сумма. --}}
+    <td class="{{ $table->cls('title') }}">
+        {{-- Слот и @if — не вплотную (CLAUDE.md): условие внутри слота. --}}
+        <x-cell.title :key="$deal->id" :offer="$offer" :strong="$replied">
+            <x-slot:before>@if ($replied)<span class="card-tone card-tone--reply" aria-label="Поставщик ответил"></span>@endif</x-slot:before>
+            @if ($burning)<x-offer.binding :offer="$offer" icon/>@endif
+        </x-cell.title>
+        {{-- На телефоне второй строкой — срок шага и этап (20.10.2026, как в «Вывозе»; 27.10.2026 — этап здесь, а не справа:
+             там он резался). Не влез — переносится. --}}
         <span class="cell-sub sm:hidden">@if ($active && $position)<x-route.term :position="$position"/> <span class="inline-block whitespace-nowrap text-ink-muted">{{ mb_lcfirst($word) }}</span>@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
     </td>
-    <td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
-    <td class="cell-dim nums hidden 2xl:table-cell">{{ $offer->number }}</td>
-    <td class="hidden sm:table-cell">@if ($deal->isAuction())<span class="text-ink-muted">Аукцион</span>@elseif ($deal->buyer)<span class="flex items-center gap-2" title="{{ $deal->buyer->name }}"><x-ui.avatar :user="$deal->buyer" :size="22"/><span class="hidden truncate 2xl:inline">{{ $deal->buyer->name }}</span></span>@endif</td>
-    <td class="hidden sm:table-cell"><span class="block max-w-52 truncate {{ $tone }}">{{ $word }}</span></td>
-    <td class="hidden sm:table-cell">@if ($active && $position)<x-route.term :position="$position"/>@endif</td>
-    <td class="num nums">
+    @if ($table->has('vendor'))<td class="{{ $table->cls('vendor') }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>@endif
+    @if ($table->has('number'))<td class="{{ $table->cls('number') }}">{{ $offer->number }}</td>@endif
+    @if ($table->has('manager'))<td class="{{ $table->cls('manager') }}">@if ($deal->isAuction())<span class="text-ink-muted">Аукцион</span>@else<x-cell.person :user="$deal->buyer"/>@endif</td>@endif
+    @if ($table->has('stage'))<td class="{{ $table->cls('stage') }}"><span class="block max-w-52 truncate {{ $tone }}">{{ $word }}</span></td>@endif
+    @if ($table->has('term'))<td class="{{ $table->cls('term') }}">@if ($active && $position)<x-route.term :position="$position"/>@endif</td>@endif
+    <td class="{{ $table->cls('amount') }}">
         {{ $deal->isGarage() ? 'В гараж' : ($deal->amount === null ? '' : \App\Support\Money::rub($deal->amount)) }}
-        {{-- Только «в минус» (27.10.2026, владелец: «+251 000» в строке ни к чему и сдвигает сумму); этап — целиком, не «…». --}}
+        {{-- Только «в минус» (27.10.2026, владелец: «+251 000» в строке ни к чему и сдвигает сумму). --}}
         @if (($deal->marginMark()['tone'] ?? null) === 'loss')<x-offer.margin :m="$deal->marginMark()" class="cell-sub max-sm:!ml-0"/>@endif
     </td>
 </tr>

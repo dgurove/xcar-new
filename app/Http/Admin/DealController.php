@@ -19,6 +19,8 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Sort;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -135,6 +137,22 @@ class DealController
 
             return $group;
         })->sortBy([['rank', 'asc'], ['title', 'asc']]);
+    }
+
+    /**
+     * Столбцы «Сделок» — одно описание для шапки, строк и групп (`Support\Table`). todo — «Ваш ход» списком дел: что сделать
+     * говорит группа, у строки — сколько ждёт и кнопка; иначе — таблица со сроком шага и суммой.
+     */
+    public static function table(bool $todo = false): Table
+    {
+        $title = new Column('title', 'Марка, модель', grow: true);
+        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm');
+
+        return $todo
+            ? Table::of($title, $vendor, new Column('manager', 'Менеджер', from: 'sm'), new Column('wait', 'Ждёт', from: 'sm', fill: true), new Column('action', num: true))
+            : Table::of($title, $vendor, new Column('number', '№', from: '2xl', dim: true, class: 'nums'), new Column('manager', 'Менеджер', from: 'sm'),
+                new Column('stage', 'Этап', from: 'sm', fill: true), new Column('term', 'Что сейчас', from: 'sm', sort: 'deadline'),
+                new Column('amount', 'Сумма', num: true, sort: 'amount', class: 'nums'));
     }
 
     /** 0 — поставщик ответил, 1 — прочий наш ход, 2 — ждём других. */

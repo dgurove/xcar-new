@@ -1,8 +1,9 @@
 {{-- Карточка строки списка (во фрейме detail, x-ui.detail), сверху вниз: полоса (ручка листа на телефоне, кнопки
      слева стрелки по строкам и «3 из 20», справа кнопки строки tools («Поделиться»), «Открыть страницу», «Закрыть»), лента фото (тап — во весь экран), название с
      метками и ценой справа (aside), характеристики строкой текста, ряд действий (actions: главное лаймовое + чипы; без него —
-     «Открыть»), дальше тело — формы, характеристики, описание. Ответ после формы несёт потоки Turbo: свежая строка
-     таблицы (row — <tr> с тем же data-detail-key), тост из flash, «следующий без цены» (session detail-advance).
+     «Открыть»), дальше тело — формы, характеристики, описание. Ответ после формы несёт потоки Turbo: тост из flash,
+     «следующий без цены» (session detail-advance). Строки списка карточка не рисует никогда (27.10.2026): её перечитывает
+     сам список (`live.js` refreshOwn → patch, тот же вид с X-Live-Rows) — иначе строка менялась на чужую раскладку.
      photo — одно фото вместо ленты (старые карточки); :photo="false" — без кадра вовсе (ветка почты).
      media — свой ряд кадров вместо ленты (карточка предложения CRM: кадры правят прямо тут).
      foot — подвал под телом, вне прокрутки («Сохранить изменения» формы карточки — всегда на экране).
@@ -10,7 +11,7 @@
      line — фраза положения под метками (город, где ТС, сроки), куски — элементами, запятые ставит CSS.
      blank=false — нет фото, нет и ленты (без серой заглушки с машинкой: парковка, 10.10.2026).
      head=false — без шапки с названием и метками: тело рисует свою (карточки «Оплат»: сумма крупно по центру). --}}
-@props(['offer' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'row' => null, 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
+@props(['offer' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
     <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
@@ -59,4 +60,4 @@
 @if (($errors ?? null)?->any())<p class="field-error mt-3">{{ $errors->first() }}</p>@endif
 </div>
 @if ($foot)<div class="detail-foot">{{ $foot }}</div>@endif
-<x-ui.detail-streams :row="$row"/>
+<x-ui.detail-streams/>

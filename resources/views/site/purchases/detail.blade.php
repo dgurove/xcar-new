@@ -39,6 +39,5 @@
             @endif
         </x-slot:actions>
         @if ($car->description)<p class="mt-3 whitespace-pre-line text-sm text-ink-muted">{{ \App\Support\VendorNames::strip($car->description) }}</p>@endif
-        <x-slot:row><x-purchase.site-table-row :car="$car" :purchase="$purchase" :query="$query"/></x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

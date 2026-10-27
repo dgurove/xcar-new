@@ -75,6 +75,5 @@
         </x-slot:actions>
         <x-offer.my-note :offer="$offer" bare class="mt-3"/>
         @if ($offer->publicDescription())<p class="mt-3 whitespace-pre-line text-sm text-ink-muted">{{ $offer->publicDescription() }}</p>@endif
-        <x-slot:row><x-offer.site-table-row :offer="$offer" :context="$context"/></x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

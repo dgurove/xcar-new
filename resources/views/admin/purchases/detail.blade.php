@@ -60,6 +60,5 @@
             <p class="mt-3 text-sm text-ink-dim">Менеджеры цены не предложили</p>
         @endif
         @if ($car->description)<p class="mt-4 whitespace-pre-line text-sm text-ink-muted">{{ $car->description }}</p>@endif
-        <x-slot:row><x-purchase.table-row :car="$car" :purchase="$purchase"/></x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

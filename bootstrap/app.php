@@ -94,6 +94,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
+        \App\Live\Console\ListsCheck::class,
         TelegramAvatars::class,
         CreateUser::class,
         TickOffers::class,

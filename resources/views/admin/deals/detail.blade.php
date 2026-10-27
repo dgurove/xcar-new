@@ -67,6 +67,5 @@
         @if ($deal->isActive() && ! $deal->isGarage() && auth()->user()->canManageCrm())
             <x-slot:foot><x-ui.save-bar :form="'deal-show-'.$offer->number"/></x-slot:foot>
         @endif
-        <x-slot:row><x-deal.table-row :deal="$deal"/></x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

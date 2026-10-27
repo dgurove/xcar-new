@@ -278,6 +278,8 @@ export const refreshOwn = (keys) => refreshRows(keys.filter(Boolean), { own: tru
 // Убрать строку по ключу (поток `drop` ответа карточки): как ушедшую при живом обновлении — число группы и итог экрана.
 export function dropKey(key) {
     const olds = rowsOf(document, String(key));
+    // Плитку в пачке числом не поправить (подписи лент — по всему списку): убрать сразу, числа — страницей целиком.
+    if (olds.some((el) => !el.matches('tr'))) { olds.forEach((el) => el.remove()); refreshPage(); return; }
     olds.forEach(dropRow);
     if (olds.length) document.querySelectorAll('[data-shell-count]').forEach((el) => {
         const n = Number(el.textContent.replace(/\D/g, ''));
@@ -331,6 +333,9 @@ async function patch(keys, own = false) {
     for (const key of keys) {
         const olds = rowsOf(document, key), next = rowsOf(doc, key);
         if (next.length ? olds.length !== next.length : olds.some((el) => !el.matches('tr'))) { refreshPage(); return; }
+        // Строка сменила группу («Написать поставщику» → «Разобрать ответ», другой слот, другая парковка) — на месте её не
+        // поправить: заголовки, числа и порядок групп — страница целиком (27.10.2026: строка стояла под чужим заголовком).
+        if (next.some((el, i) => groupOf(el) !== groupOf(olds[i]))) { refreshPage(); return; }
         plan.push([olds, next]);
     }
     let gone = 0;
@@ -366,13 +371,30 @@ function morphRow(el, next) {
     if (selected) el.setAttribute('aria-selected', selected);
 }
 
-// Строка таблицы ушла: число у заголовка её группы на одну меньше, пустая группа уходит вместе с заголовком.
-function dropRow(el) {
+// Заголовок группы строки таблицы — ближний `tr.table-group` выше неё.
+function headOf(el) {
     let head = el.previousElementSibling;
     while (head && !head.matches('.table-group')) head = head.previousElementSibling;
+    return head;
+}
+
+// Группа строки: ключ заголовка (`x-table.group` пишет `data-group`), у старых заголовков — их название без чисел; у
+// плитки — пачка `[data-group]` вокруг неё. Без групп — пусто, и сравнивать нечего.
+function groupOf(el) {
+    if (!el) return null;
+    if (el.matches('tr')) {
+        const head = headOf(el);
+        if (head) return head.dataset.group ?? head.querySelector('.table-group-name')?.textContent.replace(/\d+/g, '').trim() ?? '';
+    }
+    return el.parentElement?.closest('[data-group]')?.dataset.group ?? null;
+}
+
+// Строка таблицы ушла: число у заголовка её группы на одну меньше, пустая группа уходит вместе с заголовком.
+function dropRow(el) {
+    const head = el.matches('tr') ? headOf(el) : null;
     const next = el.nextElementSibling;
     el.remove();
-    const count = head?.querySelector('.nums');
+    const count = head?.querySelector('[data-count]') ?? head?.querySelector('.nums');
     if (!count || !/^\d+$/.test(count.textContent.trim())) return;
     const left = Number(count.textContent) - 1;
     if (left > 0) count.textContent = String(left);

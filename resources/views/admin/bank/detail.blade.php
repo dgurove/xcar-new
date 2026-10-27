@@ -48,7 +48,6 @@
         @elseif ($tx->state === \App\Billing\Bank\Transaction::UNMATCHED)
             <div class="mt-4 text-sm text-ink-muted">Открытых счетов на такую сумму нет</div>
         @endif
-        <x-slot:row><x-bank.table-row :tx="$tx"/></x-slot:row>
     </x-ui.row-card>
     {{-- Привязали или «не наше» — строка уходит из «Не привязаны»: страница перечитывается морфом. --}}
     @if (session('toast'))<turbo-stream action="reload"></turbo-stream>@endif

@@ -38,6 +38,5 @@
                 <div class="flex items-baseline gap-2 py-1.5 text-accent-text"><span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}</span><span class="nums text-ink-muted">{{ $p->paid_at->translatedFormat('j M') }}</span><span class="nums shrink-0">− {{ Money::rub($p->amount) }}</span></div>
             @endforeach
         </div>
-        <x-slot:row><x-billing.table-row :invoice="$i"/></x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>
