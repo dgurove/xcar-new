@@ -21,6 +21,8 @@ export default class extends Controller {
     }
 
     paint() {
+        // Листа с содержимым может не быть (главная xcar.ru — только «Войти»): нечему подходить к шапке.
+        if (!this.hasSheetTarget) return;
         const bar = this.header?.offsetHeight ?? 0;
         const top = this.sheetTarget.getBoundingClientRect().top - bar;
         // Скругление начинает таять за 120 px до шапки.
