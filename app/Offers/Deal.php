@@ -614,7 +614,8 @@ class Deal extends Model
     /**
      * Срок оплаты менеджером (27.10.2026, владелец: «5 дней на оплату вне зависимости, указал он покупателя или нет»): вход
      * на шаг оплаты (у Совкомбанка — «Забрал») плюс срок этапа. Одна дата для счёта (`SyncDealInvoices::dueFor`), часов шага
-     * (`EnterStage`, `PassTurnOnInvoice`) и долга в «Сделках» (`DealDebt`). Не на шаге оплаты — null.
+     * (`EnterStage`, `PassTurnOnInvoice`) и долга в «Сделках» (`DealDebt`). Не на шаге оплаты — null. Гаражная Совкомбанка
+     * стоит на шаге оплаты с «Забрал», а платить ей нечего до продажи — срок от «Продаю», не продана — null.
      */
     public function payDue(): ?\Illuminate\Support\Carbon
     {
@@ -622,8 +623,16 @@ class Deal extends Model
         if (! $position?->entered_at || ! $position->stage->isPayStep()) {
             return null;
         }
+        $from = $position->entered_at;
+        if ($this->namesBuyer()) {
+            $sold = $this->garageCar?->sold_at;
+            if (! $sold) {
+                return null;
+            }
+            $from = $sold->max($from);
+        }
 
-        return $position->stage->deadlineFor($this->offer, $position->entered_at);
+        return $position->stage->deadlineFor($this->offer, $from);
     }
 
     /** Сделки в разделе «Сделки» сайта: админу все, менеджеру — его; админ, который ещё и менеджер, на сайте менеджер. */

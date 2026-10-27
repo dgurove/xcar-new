@@ -12,8 +12,9 @@ use Carbon\CarbonInterface;
  * Что сделка должна нам — «Сделки» CRM (27.10.2026, владелец: «нам надо понимать, кто сколько должен и какой срок оплаты»;
  * в тот же день: «я всё ещё не понимаю, кто сколько должен заплатить и когда» — на «Оплате» стояли 55 сделок, а счёт был у
  * двух). Долг — открытые наши счета (`DealMoney::payable`: без выплат менеджеру и счёта вендору за вознаграждение) или, пока
- * счёта нет, ожидаемый платёж: сделка на шаге оплаты, ход за менеджером или за нами, сумма — цена сделки, у гаражной
- * Совкомбанка без цены — закупочная (владелец: «закупочную, сразу»), срок — 5 дней от «Забрал» (`Deal::payDue`). Из уже
+ * счёта нет, ожидаемый платёж: сделка на шаге оплаты, ход за менеджером или за нами, сумма — цена сделки, срок — 5 дней
+ * от «Забрал» (`Deal::payDue`). Гаражная Совкомбанка до продажи не должна ничего (владелец: «счёт не выставляется, пока он не
+ * нашёл покупателя» — тогда счёт ПРАЙМ покупателю): её здесь нет, после «Продаю» срок — 5 дней от продажи. Из уже
  * загруженных `invoices.claims` / `invoices.party` — без запросов на строку. SQL-зеркало — `OWES_SQL` (число вкладки «Оплата»).
  */
 final class DealDebt
@@ -25,6 +26,8 @@ final class DealDebt
     /** Сделка должна нам: открытый счёт или ожидаемый платёж (то же правило, что `of`). */
     public const OWES_SQL = "(exists (select 1 from billing_invoices where ".self::OPEN_SQL.")
         or (deals.state = 'active' and coalesce(deals.amount, deals.cost) > 0
+            and not (deals.garage_payer = 'manager' and deals.amount is null and exists (select 1 from offers o join vendors v on v.id = o.vendor_id
+                where o.id = deals.offer_id and v.deal_format = 'commission'))
             and not exists (select 1 from billing_invoices i where i.deal_id = deals.id and i.direction = 'issued' and i.state <> 'void' and i.kind <> 'reward')
             and exists (select 1 from offer_positions p where p.offer_id = deals.offer_id and p.track = 'sale' and p.waits_for in ('us', 'manager')
                 and exists (select 1 from workflow_exits x where x.stage_id = p.stage_id and x.actor = 'manager' and lower(x.label) like 'платёжное поручение%'))))";
@@ -75,7 +78,7 @@ final class DealDebt
     {
         $position = $deal->isActive() ? $deal->offer?->position() : null;
         $amount = (float) $deal->base();
-        if (! $position || $amount <= 0 || ! in_array($position->waits_for, [WaitsFor::Us, WaitsFor::Manager], true) || ! $position->stage->isPayStep()) {
+        if (! $position || ($deal->namesBuyer() && $deal->amount === null) || $amount <= 0 || ! in_array($position->waits_for, [WaitsFor::Us, WaitsFor::Manager], true) || ! $position->stage->isPayStep()) {
             return null;
         }
         $gap = $deal->invoiceGap();
@@ -84,7 +87,6 @@ final class DealDebt
         [$status, $ours] = match ($gap) {
             'buyer' => ['счёта нет: не указал покупателя', false],
             'passport' => ['счёта нет: нет паспорта покупателя', false],
-            'price' => ['гараж: закупочная, счёта нет', false],
             default => ['счёта нет: '.mb_lcfirst(Position::gapAction(in_array($gap, ['share', 'commission', 'ros_requisites'], true) ? $gap : 'invoice', $deal)['button']), true],
         };
 
