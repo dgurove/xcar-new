@@ -56,19 +56,47 @@ class DealController
         $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
         // Гаражные сделки живут в «Гараже» (решение владельца 03.10.2026), здесь — только ждущее решения «В гараж».
         // Ход менеджера — просьба к нему или этап, где ждут его (ПРАЙМ без покупателя — без просьбы): просроченное, потом остальное.
-        $open = 'requirements r where r.deal_id = deals.id and r.done_at is null';
-        $turn = "offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id and p.track = '".Track::Sale->value."' and coalesce(p.waits_for, s.waits_for) = '".WaitsFor::Manager->value."'";
+        $turn = Deal::MANAGER_TURN_SQL;
         $deals = self::deals($me)->where('state', DealState::Active)
-            ->orderByRaw("case when exists(select 1 from {$open} and r.due_at < now()) or exists(select 1 from {$turn} and p.deadline_at < now()) then 0"
-                ." when exists(select 1 from {$open}) or exists(select 1 from {$turn}) then 1 else 2 end")
-            ->orderByRaw("(select min(r.due_at) from {$open}) asc nulls last")
-            ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id')->paginate(30);
+            ->orderByRaw("case when {$turn} then 0 else 1 end")
+            ->orderByRaw('(select min(r.due_at) from requirements r where r.deal_id = deals.id and r.done_at is null) asc nulls last')
+            ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id');
+        // Админу — все сделки площадки строками, постранично; менеджеру — свои разделами «чей ход» одной страницей.
+        $staff = $me->isAdmin() && ! $me->isManager();
+        $deals = $staff ? $deals->paginate(30) : $deals->get();
+        $sections = $staff ? null : self::sections($deals);
 
         // Админ подтверждения решает в CRM — строки «Мои подтверждения» у него нет.
         $bids = $me->hasDeals() ? self::waiting($me)->count() : 0;
         $archived = self::deals($me)->where('state', '!=', DealState::Active)->notSuperseded()->count();
 
-        return view('cabinet.deals.index', ['deals' => $deals, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
+        return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
+    }
+
+    /**
+     * Разделы «Сделок» менеджера (27.10.2026, владелец: свои дела терялись рыжей строкой среди «Ждём поставщика»): «Ваш ход» —
+     * что сделать (`Deal::managerTask`), просроченное и ближний срок первыми; дальше — чей ход сейчас. Пустые не рисуются.
+     *
+     * @return array<string, array{title: string, deals: \Illuminate\Support\Collection}>
+     */
+    private static function sections($deals): array
+    {
+        $tasks = $deals->mapWithKeys(fn (Deal $d) => [$d->id => $d->managerTask()]);
+        [$mine, $rest] = $deals->partition(fn (Deal $d) => $tasks[$d->id] !== null);
+        $mine = $mine->sortBy(fn (Deal $d) => $tasks[$d->id]['due']?->getTimestamp() ?? PHP_INT_MAX)->values();
+        $who = fn (Deal $d) => match ($d->offer->position()?->waitsFor()) {
+            WaitsFor::Supplier => 'supplier',
+            WaitsFor::Us => 'us',
+            default => 'other',
+        };
+        $rest = $rest->groupBy($who);
+
+        return array_filter([
+            'mine' => ['title' => 'Ваш ход', 'deals' => $mine],
+            'supplier' => ['title' => 'Ждём поставщика', 'deals' => $rest->get('supplier', collect())],
+            'us' => ['title' => 'Ждём XCar', 'deals' => $rest->get('us', collect())],
+            'other' => ['title' => 'Идёт сделка', 'deals' => $rest->get('other', collect())],
+        ], fn ($s) => $s['deals']->isNotEmpty());
     }
 
     /**
@@ -94,7 +122,7 @@ class DealController
     /** Сделки экрана: без гаражных, с тем, что нужно строке. */
     private static function deals(User $me)
     {
-        return Deal::with(['offer', 'offer.media', 'offer.positions.stage.block', 'openRequirement'])
+        return Deal::with(['offer', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'openRequirement'])
             ->when(! $me->hasDeals(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer');
     }
 

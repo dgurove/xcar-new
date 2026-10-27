@@ -1,4 +1,4 @@
-{{-- Сделки менеджера — только сделки в работе (где ход менеджера — первыми, просьба прямо в строке). Подтверждения — в
+{{-- Сделки менеджера — только сделки в работе, разделами «Ваш ход» / «Ждём поставщика» / «Ждём XCar» (27.10.2026). Подтверждения — в
      «Моих подтверждениях», закончившееся — в архиве: входы строками в конце (11.10.2026). Админу — все сделки, без
      подтверждений и без пилюль: вместо них заголовок. --}}
 @php
@@ -27,7 +27,19 @@
         <x-ui.empty href="/offers" link="В предложения">{{ $archived ? 'Сейчас сделок в работе нет' : 'Пока ни одной сделки' }}</x-ui.empty>
     @endif
 
-    @if ($deals->isNotEmpty())
+    {{-- Менеджеру — разделами «чей ход» (27.10.2026): «Ваш ход» первым — что сделать и до когда, ниже — кого ждём. --}}
+    @if ($sections)
+        @foreach ($sections as $key => $section)
+            <section>
+                <h2 class="list-head">{{ $section['title'] }} <span class="nums">{{ $section['deals']->count() }}</span>@if ($loop->first)<span class="ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="deals-list"/></span>@endif</h2>
+                <div class="list">
+                    @foreach ($section['deals'] as $deal)
+                        @include('cabinet.deals.row', ['deal' => $deal, 'sectioned' => true])
+                    @endforeach
+                </div>
+            </section>
+        @endforeach
+    @elseif ($deals->isNotEmpty())
         <section>
             <h2 class="list-head">В работе <span class="nums">{{ $deals->total() }}</span>@unless ($titled)<span class="ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="deals-list"/></span>@endunless</h2>
             <div class="list">

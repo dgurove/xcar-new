@@ -31,13 +31,23 @@ final class CarLine
         $current = $car->payoutInvoice ?? $car->invoice;
         // Ход менеджера в сделке со страховой — только самому менеджеру и только на сайте.
         $asks = ! $crm && $car->manager_id === $viewer->id ? $car->deal?->openRequirement : null;
-        $tone = $asks ? 'text-urgent' : self::tone($car->state->tone());
+        // Своё дело — обычным цветом и полужирным, просрочено — красным; состояние — серым, не лаймом: лайм — глагол
+        // (27.10.2026, владелец: «глянь так же с точки зрения менеджера и покупателя»).
+        $mine = 'font-medium text-ink';
+        $tone = $asks ? ($asks->due_at?->isPast() ? 'font-medium text-danger' : $mine) : self::tone($car->state->tone());
         // Ждёт машину — словом вывоза: «забрать» (везёт сам — его ход), «стоит у вас», «готовим документы».
         [$pickWord, $pickTone] = $car->isWaiting() ? PickupState::of($offer, $crm ? null : $viewer) : [null, null];
         if (! $crm && $pickTone === 'urgent') {
-            $tone = 'text-urgent';
+            $tone = $mine;
+        }
+        // Покупателю с гаражом его дело — оплатить свой счёт (сумма «к оплате» справа слова не говорила).
+        $pay = ! $crm && ! $asks && ! $viewer->isAdmin() && $car->forBuyer() && $car->manager_id === $viewer->id && ! $car->hidesBuyerPrice()
+            && ($due = $car->holderInvoice()) && $due->remaining() > 0 && ! $car->buyerHasPaid();
+        if ($pay) {
+            $tone = $due->isOverdue() ? 'font-medium text-danger' : $mine;
         }
         $word = match (true) {
+            $pay => 'оплатите счёт',
             (bool) $asks => 'ваш ход: '.mb_strtolower($asks->title),
             $pickWord !== null => 'ждёт ТС, '.$pickWord,
             default => mb_strtolower($car->state->label()),
@@ -70,7 +80,6 @@ final class CarLine
     {
         return match ($tone) {
             'urgent' => 'text-urgent',
-            'open' => 'text-accent-text',
             'closed' => 'text-ink-dim',
             default => 'text-ink-muted',
         };

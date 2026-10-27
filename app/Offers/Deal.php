@@ -118,6 +118,43 @@ class Deal extends Model
         return $this->hasOne(Requirement::class)->whereNull('done_at')->latestOfMany();
     }
 
+    /**
+     * Ход менеджера в SQL — для «Ваш ход» в «Сделках» сайта и бейджа (`Nav::asks`): открытая просьба или этап продажи ждёт его
+     * (ПРАЙМ без покупателя — без просьбы). То же правило в PHP — `managerTask()`.
+     */
+    public const MANAGER_TURN_SQL = "(exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
+        or exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
+            and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager'))";
+
+    /**
+     * Что сделать менеджеру по идущей сделке (27.10.2026, владелец: «глянь так же с точки зрения менеджера»): просьба шага,
+     * а без неё — ход его словами («Укажите покупателя», имя шага для менеджера). Просьба «Оплатите», а счета уже
+     * оплачены (маршрут не догнал), — не дело. Одно место для строки, раздела «Ваш ход» и бейджа.
+     *
+     * @return array{title: string, due: ?\Illuminate\Support\Carbon}|null
+     */
+    public function managerTask(): ?array
+    {
+        if (! $this->isActive()) {
+            return null;
+        }
+        $position = $this->offer?->position();
+        if ($req = $this->openRequirement) {
+            return $position?->stage->isPayStep() && $this->fullyPaid() ? null : ['title' => $req->title, 'due' => $req->due_at];
+        }
+        if (! $position || $position->waitsFor() !== WaitsFor::Manager || $position->awaitsInvoice()) {
+            return null;
+        }
+        $gap = $position->stage->isPayStep() && $this->hasContract() ? $this->invoiceGap() : null;
+
+        return ['title' => match ($gap) {
+            'buyer' => 'Укажите покупателя',
+            'passport' => 'Приложите паспорт покупателя',
+            'price' => 'Укажите цену продажи',
+            default => $position->stage->managerTitle(),
+        }, 'due' => $position->deadline_at];
+    }
+
     /** Договор купли-продажи: собственника (ДКП) или ПРАЙМ с покупателем менеджера (`DealContract`). */
     public function contract(): HasOne
     {

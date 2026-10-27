@@ -16,6 +16,10 @@
     $gap = $mine && $position->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
     $ask = $mine ? match ($gap) { 'buyer' => 'Укажите покупателя', 'passport' => 'Приложите паспорт покупателя', 'price' => 'Укажите цену продажи', default => $position->stage->managerTitle() } : null;
     $staff = auth()->user()->isAdmin() && $deal->buyer_id !== auth()->id();
+    // В разделах (27.10.2026) — что сделать обычным цветом и срок (вышел — красным), у чужого хода — этап и с какого дня;
+    // справа только сумма: кого ждём, говорит раздел.
+    $sectioned = ($sectioned ?? false) && $active;
+    $task = $sectioned ? $deal->managerTask() : null;
     // Оранжевое — только просрочка того, кто смотрит: менеджеру — его ход, админу — любая (11.10.2026).
     $alarm = ! $paidUp && ($req?->due_at?->isPast() || ($position?->isOverdue() && ($staff || $position->waitsFor() === \App\Workflow\WaitsFor::Manager)));
 @endphp
@@ -33,7 +37,14 @@
         </span>
         {{-- В архиве исход называет раздел («Закончены», «Отменены») — у строки только когда. --}}
         @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span>@endunless
-        @if ($req)
+        @if ($task)
+            @php $late = $task['due']?->isPast(); @endphp
+            <span class="mt-1 block text-sm"><span class="font-medium">{{ \App\Users\Wording::mine($task['title']) }}</span>@if ($late)<span class="text-danger">, просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true"></span></span>@elseif ($task['due'])<span class="text-ink-muted">, <span class="nums whitespace-nowrap">до {{ $task['due']->translatedFormat('j M, H:i') }}</span></span>@endif</span>
+        @elseif ($sectioned && $paidUp)
+            <span class="mt-1 block text-sm text-ink-muted">Оплата получена</span>
+        @elseif ($sectioned && $position)
+            <span class="mt-1 block text-sm text-ink-muted">{{ \App\Users\Wording::mine($position->stage->block?->name ?? $position->stage->name) }}@if ($position->block_entered_at) <span class="nums whitespace-nowrap">с {{ \App\Support\Ago::day($position->block_entered_at) }}</span>@endif</span>
+        @elseif ($req)
             <span class="mt-1 block text-sm font-medium text-urgent">{{ \App\Users\Wording::mine($req->title) }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), <span class="nums whitespace-nowrap">до {{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</span>
         @elseif ($paidUp)
             <span class="mt-1 block text-sm text-ink-muted">Оплата получена</span>
@@ -45,7 +56,8 @@
     </span>
     <span class="flex max-w-[45%] shrink-0 flex-col items-end gap-1.5 max-sm:!hidden">
         <span class="nums font-medium">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span>
-        @if (! $active)
+        @if ($sectioned)
+        @elseif (! $active)
             <span class="nums text-sm text-ink-muted">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span>
         @else
             {{-- Этап в покое серый: лайм — глагол. Оранжевым становится просрочка. --}}

@@ -602,7 +602,7 @@ final class Nav
     }
 
     /**
-     * Что ждут от него по сделкам: обычным — «Сделки», гаражным — «Гараж». Просьба «Оплатите счёт», а счета сделки уже
+     * Сколько сделок ждут его (`Deal::MANAGER_TURN_SQL`, строки раздела «Ваш ход»): обычные — «Сделки», гаражные — «Гараж». Просьба «Оплатите счёт», а счета сделки уже
      * оплачены (маршрут не догнал), — не считается: строка «Сделок» её не показывает (11.10.2026). Им же — значок приложения
      * (`User::badgeCount`), без остальных счётчиков таб-бара.
      *
@@ -611,8 +611,11 @@ final class Nav
     public static function asks(User $user): array
     {
         return self::perRequest("nav.asks:{$user->id}", function () use ($user) {
-            $asks = Requirement::where('requirements.user_id', $user->id)->whereNull('requirements.done_at')->join('deals', 'deals.id', '=', 'requirements.deal_id')
-                ->selectRaw('count(*) filter (where deals.garage_payer is null) as deals, count(*) filter (where deals.garage_payer is not null) as garage')->first();
+            // Гаражу — по-прежнему просьбы: строка гаража пишет «ваш ход» только по ним (цену продажи Совкомбанка называет «Продаю»).
+            // Сделки, а не просьбы (27.10.2026: «Укажите покупателя» — ход без просьбы — в число не входил, бейдж 1 при двух делах).
+            $asks = Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->whereRaw(Deal::MANAGER_TURN_SQL)
+                ->selectRaw('count(*) filter (where garage_payer is null) as deals, count(*) filter (where garage_payer is not null and exists (select 1 from requirements r
+                    where r.deal_id = deals.id and r.done_at is null)) as garage')->first();
             $paid = self::paidPayAsks($user);
 
             return ['deals' => max(0, (int) $asks->deals - $paid['deals']), 'garage' => max(0, (int) $asks->garage - $paid['garage'])];
