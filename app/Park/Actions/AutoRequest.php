@@ -16,6 +16,7 @@ use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\VehicleFields;
 use App\Support\Nav;
+use App\Vendors\Contact;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -83,6 +84,9 @@ final class AutoRequest
             'letter_at' => $letter->date_at,
             'letter_id' => $letter->id,
             'by_mail' => true,
+            // Парковка — у контакта вендора, от кого письмо (питерский эксперт ВСК — Краснопутиловская): иначе заявка без
+            // парковки встаёт в город вендора по умолчанию, у ВСК — Москва, и питерский управляющий её не видит (27.10.2026).
+            'yard_id' => Contact::yardFor($letter->from_email)?->id,
         ];
         try {
             $request = ($this->create)(null, RequestType::Intake, $vehicle, $data);

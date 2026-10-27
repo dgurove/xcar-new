@@ -267,14 +267,14 @@
                 @if ($canManage && ($state->isBefore() || UnwindVehicle::allowed($vehicle)))
                     <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="{{ $hadLetters ? 'Отменить заявку? ТС исчезнет, письма вернутся в «Из писем»' : 'Отменить заявку? ТС и заявка исчезнут' }}">@csrf @method('delete')<x-ui.button variant="secondary" block>Отменить заявку</x-ui.button></form>
                 @endif
-                @if ($state === VehicleState::Stored)
+                @if (in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
                     @php $elsewhere = $canManage ? \App\Park\City::transferTargets($vehicle) : []; @endphp
                     @if ($elsewhere)
                         {{-- Перевод в другой город (Питер → база в Москве): ТС та же, город меняется — управляющий этого города её больше не видит. --}}
                         <form method="post" action="/cars/{{ $vehicle->id }}/transfer" class="flex flex-col gap-2" data-turbo-confirm="Перевести ТС в другой город? Здесь она перестанет числиться">@csrf
                             <div class="fields">
                                 <x-ui.field name="to" label="В другой город" :options="$elsewhere"/>
-                                <x-ui.field name="day" label="Когда" type="date" :value="now()->toDateString()" :min="$vehicle->accepted_at?->toDateString()" :max="now()->toDateString()"/>
+                                @if ($state === VehicleState::Stored)<x-ui.field name="day" label="Когда" type="date" :value="now()->toDateString()" :min="$vehicle->accepted_at?->toDateString()" :max="now()->toDateString()"/>@else<input type="hidden" name="day" value="{{ now()->toDateString() }}">@endif
                             </div>
                             <x-ui.button variant="ghost" block>Перевести</x-ui.button>
                         </form>

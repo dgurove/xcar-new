@@ -58,7 +58,7 @@ class Vendor extends Model implements HasMedia
         // Сменили парковку по умолчанию — город ТС вендора без своей парковки следует за ней (`Park\City`).
         static::saved(function (self $v) {
             if ($v->wasChanged('home_yard_id')) {
-                $city = City::ofVendor($v->id) ?? City::main();
+                $city = City::vendorCity($v->id);
                 Vehicle::withoutGlobalScope(City::SCOPE)->whereNull('yard_id')->where('vendor_id', $v->id)
                     ->whereNotIn('state', [VehicleState::Released, VehicleState::Cancelled])->update(['city_id' => $city]);
             }
