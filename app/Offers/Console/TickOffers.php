@@ -9,6 +9,7 @@ use App\Offers\Actions\AutoOffer;
 use App\Offers\Actions\BindingAlarm;
 use App\Offers\Actions\NoBidsAlarm;
 use App\Offers\Actions\NotifyBidsClosed;
+use App\Notifications\Batch;
 use App\Offers\Actions\NotifyNewOffers;
 use App\Offers\Actions\NotifyViewers;
 use App\Offers\Actions\PublishDueSlots;
@@ -45,7 +46,9 @@ class TickOffers extends Command
                 // Письмо-предложение не завелось черновиком при приходе (выкладка); документы черновиков из писем дочитать —
                 // раз в пять минут, как у парковки: проход читает письма всех их веток.
                 + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0]
-                + ['expired' => $this->expired()];
+                + ['expired' => $this->expired()]
+                // Массовое сотрудникам — пачкой (`Notifications\Batch`): созревшие уходят одним уведомлением.
+                + ['batches' => Batch::flush()];
             $this->line(collect($counts)->filter()->map(fn ($n, $k) => "{$k}: {$n}")->implode(', ') ?: 'тихо');
 
             return self::SUCCESS;

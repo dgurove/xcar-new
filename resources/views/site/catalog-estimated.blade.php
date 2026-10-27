@@ -3,10 +3,10 @@
 @if ($estimated->isNotEmpty())
     @if (\App\Support\ListView::isTable($view))
         <x-ui.table id="catalog-estimated" :view="$view" class="mt-6">
-            <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
-            <tr class="table-group"><th colspan="99" scope="colgroup">Ждут решения <span class="nums">{{ $estimated->count() }}</span></th></tr>
+            <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
+            <x-table.group :table="$columns" key="estimated" title="Ждут решения" :count="$estimated->count()"/>
             @foreach ($estimated as $offer)
-                <x-offer.site-table-row :offer="$offer" :deadline="$deadline" :estimate="$offer->openEstimates->first()"/>
+                <x-offer.site-table-row :offer="$offer" :table="$columns" :estimate="$offer->openEstimates->first()"/>
             @endforeach
         </x-ui.table>
     @else

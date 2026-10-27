@@ -18,7 +18,32 @@ use App\Users\User;
  */
 final class TransportNotice extends Notice
 {
-    private function __construct(private ?Transport $transport, private string $title, private ?string $text, private bool $critical, private bool $telegram, private ?string $path = null) {}
+    private function __construct(private ?Transport $transport, private string $title, private ?string $text, private bool $critical, private bool $telegram, private ?string $path = null,
+        private ?string $batch = null, private bool $quiet = false) {}
+
+    /**
+     * Ведущим логистику (админы, модераторы) — пачкой (`Notifications\Batch`, 27.10.2026: «Привёз: …» по одному на машину —
+     * 37 за неделю каждому); ход задачи — ещё и тихо, строкой ленты: везёт логист, ведущим знать, а не бежать.
+     */
+    public function forLeads(string $batch, bool $quiet = false): self
+    {
+        return new self($this->transport, $this->title, $this->text, $this->critical, $this->telegram, $this->path, $batch, $quiet);
+    }
+
+    public function batchKey(): ?string
+    {
+        return $this->batch;
+    }
+
+    public function batchLine(): string
+    {
+        return $this->transport?->title() ?? $this->title;
+    }
+
+    public function quiet(): bool
+    {
+        return $this->quiet;
+    }
 
     /** Новый вывоз — админам: выбрать, кто вывозит. */
     public static function requested(Transport $t): self

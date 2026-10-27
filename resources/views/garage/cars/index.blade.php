@@ -45,21 +45,12 @@
         <x-ui.empty class="mt-2">В гараже пусто</x-ui.empty>
     @elseif (ListView::isTable($view))
         <div data-controller="row-go" data-action="click->row-go#go">
-            <x-ui.table id="garage-table" :view="$view" :titles="collect($groups)->flatten(1)->map(fn ($r) => $r['offer']->titleWithYear())">
-                <x-slot:head>
-                    <tr>
-                        <th class="grow">Марка, модель</th>
-                        @if ($staff)<th class="hidden md:table-cell">Менеджер</th>@endif
-                        <th class="num hidden lg:table-cell col-detail-hide">В гараже с</th>
-                        <x-ui.th :sort="$sort" key="price" class="num hidden sm:table-cell">{{ $user->holdsAsBuyer() ? ($user->seesGaragePrice() ? 'Цена' : 'Цена продажи') : 'Закупочная' }}</x-ui.th>
-                        <th class="num hidden sm:table-cell">Расходы</th>
-                        <th class="num hidden sm:table-cell">Цена продажи</th>
-                        <th class="num sm:hidden">Сумма</th>
-                    </tr>
-                </x-slot:head>
+            @php $columns = \App\Http\Garage\CarController::table($user, $staff); @endphp
+            <x-ui.table id="garage-table" :view="$view" :titles="collect($groups)->flatten(1)->map(fn ($r) => $r['offer']->titleWithYear())" :rest="$columns->rest()">
+                <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
                 @foreach ($groups as $head => $rows)
-                    @if ($head)<tr class="table-group"><th colspan="{{ $staff ? 7 : 6 }}"><span class="table-group-name">{{ $head }} <span class="nums">{{ $rows->count() }}</span></span></th></tr>@endif
-                    @foreach ($rows as $row)<x-garage.table-row :staff="$staff" :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null" :car="$row['car'] ?? null"/>@endforeach
+                    @if ($head)<x-table.group :table="$columns" :key="'g'.md5($head)" :title="$head" :count="$rows->count()"/>@endif
+                    @foreach ($rows as $row)<x-garage.table-row :table="$columns" :staff="$staff" :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null" :car="$row['car'] ?? null"/>@endforeach
                 @endforeach
             </x-ui.table>
         </div>

@@ -9,6 +9,8 @@
     $title = $gallery ? 'Галерея' : 'Предложения';
     // Столбец «Приём» — тем, кто подтверждает ценой, и в галерее (там окно показа).
     $deadline = $gallery || ($user?->bidsOnSite() ?? false);
+    // Столбцы всех таблиц экрана — одно описание (шапки, строки, заголовки пачек).
+    $columns = \App\Http\Site\CatalogController::table($deadline, $sorting ?? null);
 @endphp
 <x-ui.shell :title="$title" :heading="false" :trail="$trail" :detail="$detail">
 
@@ -62,10 +64,10 @@
                 @if ($urgent->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
                     <x-ui.table id="catalog-urgent" :view="$view" class="mb-6">
-                        <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
-                        <tr class="table-group"><th colspan="99" scope="colgroup"><x-ui.icon name="fire" fill class="mr-1 inline size-4 align-[-2px] text-fire"/>Срочно <span class="nums">{{ $urgent->count() }}</span></th></tr>
+                        <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
+                        <x-table.group :table="$columns" key="urgent" title="Срочно" :count="$urgent->count()"><x-slot:before><x-ui.icon name="fire" fill class="mr-1 inline size-4 align-[-2px] text-fire"/></x-slot:before></x-table.group>
                         @foreach ($urgent as $offer)
-                            <x-offer.site-table-row :offer="$offer" :context="$context" :deadline="$deadline"/>
+                            <x-offer.site-table-row :offer="$offer" :context="$context" :table="$columns"/>
                         @endforeach
                     </x-ui.table>
                     @else
@@ -81,10 +83,10 @@
                 @if ($toEstimate->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
                     <x-ui.table id="catalog-estimates" :view="$view" class="mb-6">
-                        <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
-                        <tr class="table-group"><th colspan="99" scope="colgroup">Нужно оценить <span class="nums">{{ $toEstimate->count() }}</span></th></tr>
+                        <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
+                        <x-table.group :table="$columns" key="estimate" title="Нужно оценить" :count="$toEstimate->count()"/>
                         @foreach ($toEstimate as $offer)
-                            <x-offer.site-table-row :offer="$offer" :deadline="$deadline" :estimate="$offer->openEstimates->first()"/>
+                            <x-offer.site-table-row :offer="$offer" :table="$columns" :estimate="$offer->openEstimates->first()"/>
                         @endforeach
                     </x-ui.table>
                     @else
@@ -104,10 +106,10 @@
                 @if ($exclusive->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
                     <x-ui.table id="catalog-only" :view="$view" class="mb-6">
-                        <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
-                        <tr class="table-group"><th colspan="99" scope="colgroup"><span class="card-tone card-tone--only"></span>Открыты только Вам <span class="nums">{{ $exclusive->count() }}</span></th></tr>
+                        <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
+                        <x-table.group :table="$columns" key="only" title="Открыты только Вам" :count="$exclusive->count()"><x-slot:before><span class="card-tone card-tone--only"></span></x-slot:before></x-table.group>
                         @foreach ($exclusive as $offer)
-                            <x-offer.site-table-row :offer="$offer" :context="$context" :deadline="$deadline" only/>
+                            <x-offer.site-table-row :offer="$offer" :context="$context" :table="$columns" only/>
                         @endforeach
                     </x-ui.table>
                     @elseif ($view === \App\Support\ListView::LIST)
@@ -137,11 +139,14 @@
                 @else
                     @if (\App\Support\ListView::isTable($view))
                     <x-ui.table id="catalog" :view="$view" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="false">
-                        <x-slot:head><x-offer.site-table-head :sort="$sorting" :deadline="$deadline"/></x-slot:head>
+                        <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)
-                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer, $gallery)))@php $group = $label; @endphp<tr class="table-group"><th colspan="99" scope="colgroup">{{ $label }} <span class="nums">{{ $groupSizes[$label] ?? '' }}</span></th></tr>@endif
-                            <x-offer.site-table-row :offer="$offer" :context="$context" :deadline="$deadline"/>
+                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer, $gallery)))
+                                @php $group = $label; @endphp
+                                <x-table.group :table="$columns" :key="'c'.md5($label)" :title="$label" :count="$groupSizes[$label] ?? null"/>
+                            @endif
+                            <x-offer.site-table-row :offer="$offer" :context="$context" :table="$columns"/>
                         @endforeach
                     </x-ui.table>
                     @elseif ($shelves)

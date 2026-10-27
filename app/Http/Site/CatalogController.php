@@ -14,6 +14,8 @@ use App\Support\ListView;
 use App\Support\Sort;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 class CatalogController
 {
@@ -156,5 +158,22 @@ class CatalogController
             'manager' => $user?->isBuyer() ? $user->manager : null,
             'estimates' => $estimates,
         ]);
+    }
+
+    /**
+     * Таблица предложений на сайте (каталог, галерея, избранное) — одно описание на шапку, строки `x-offer.site-table-row` и
+     * заголовки пачек. deadline — столбец «Приём» (тем, кто подтверждает ценой, и в галерее); «Прошло» — с тех пор, как
+     * предложение открылось человеку, где есть сортировка «Новые показы».
+     */
+    public static function table(bool $deadline, ?Sort $sort = null): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true, cap: false),
+            new Column('number', '№', from: 'sm', dim: true, cell: 'nums', rem: 7),
+            $deadline ? new Column('deadline', 'Приём', from: 'sm', sort: 'closing', rem: 7) : null,
+            new Column('city', 'Город', from: 'lg', aside: true, dim: true, rem: 8),
+            new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 9),
+            new Column('since', 'Прошло', from: 'sm', num: true, aside: true, sort: $sort?->has('opened') ? 'opened' : 'published', cell: 'cell-dim', rem: 5),
+        );
     }
 }

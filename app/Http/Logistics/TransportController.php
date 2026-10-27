@@ -59,6 +59,8 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 /**
  * Logistics XCar — вывоз (17.10.2026): задачи списком, карточка рядом (ПК — колонкой, телефон — листом снизу). Админ
@@ -117,7 +119,7 @@ class TransportController
             'detail' => $detail, 'transports' => $transports, 'preset' => $preset, 'pills' => $pills, 'counts' => $counts, 'home' => $home, 'sort' => $sort,
             'facets' => $facets,
             'pick' => self::pickable($user, $preset),
-            'cols' => self::columns($user, $preset),
+            'columns' => self::table($user, $preset),
         ]);
     }
 
@@ -179,6 +181,32 @@ class TransportController
             default => $q->orderByRaw("(transports.state = 'agreed' and transports.pickup_at < ?) desc", [now()->startOfDay()])->orderByRaw(Transport::SHOWN_SQL." {$dir} nulls last"),
         };
         $q->orderByDesc('transports.id');
+    }
+
+    /**
+     * Таблица «Вывоза» — столбцы `columns()` одним описанием (`Support\Table`): шапка, строки `x-logistics.row` и их классы.
+     * «Поступила» рядом с «Когда» — только от 1536 у ведущих.
+     */
+    public static function table(User $user, string $preset): Table
+    {
+        $keys = self::columns($user, $preset);
+        $when = in_array('when', $keys, true);
+        $make = fn (string $k) => match ($k) {
+            'pick' => new Column('pick', pick: true, rem: 2.5),
+            'title' => new Column('title', 'Марка, модель', grow: true, sort: 'title', cap: false),
+            'client' => new Column('client', 'Заказчик', from: 'sm', rem: 8),
+            'vendor' => new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', rem: 10),
+            'sale' => new Column('sale', 'Продажа', from: 'sm', sort: 'sale', rem: 9),
+            'binding' => new Column('binding', 'Обязывающее до', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', rem: 7),
+            'to' => new Column('to', 'Кому везти', from: 'sm', rem: 9),
+            'city' => new Column('city', 'Город', from: '2xl', aside: true, sort: 'city', rem: 7),
+            'step' => new Column('step', 'Что дальше', from: 'sm', rem: 9),
+            'who' => new Column('who', 'Исполнитель', from: 'sm', sort: 'who', rem: 8),
+            'created' => new Column('created', 'Поступила', from: $when ? '2xl' : null, num: true, aside: $when, sort: 'created', cell: 'nums whitespace-nowrap cell-dim', rem: 6.5),
+            'when' => new Column('when', 'Когда', num: true, sort: 'when', cell: 'nums whitespace-nowrap cell-dim', rem: 6.5),
+        };
+
+        return new Table(array_map($make, $keys));
     }
 
     /**

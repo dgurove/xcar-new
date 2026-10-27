@@ -9,6 +9,7 @@ use App\Logistics\Events\TransportMoved;
 use App\Logistics\Events\TransportRequested;
 use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
+use App\Notifications\Batch;
 use App\Notifications\PickupTakenNotice;
 use App\Users\Role;
 use App\Users\User;
@@ -36,7 +37,7 @@ final class NotifyLogistics
     /** Новый вывоз без исполнителя — админам. */
     public function requested(TransportRequested $e): void
     {
-        DB::afterCommit(fn () => Notification::send(User::logisticsLeads()->get(), TransportNotice::requested($e->transport)));
+        DB::afterCommit(fn () => Batch::send(User::logisticsLeads()->get(), TransportNotice::requested($e->transport)->forLeads('transport-requested')));
     }
 
     /**
@@ -102,9 +103,12 @@ final class NotifyLogistics
         $own = $e->step === 'cancelled' ? self::workers($t, $e->by) : collect();
         Notification::send($own, TransportNotice::cancelledYours($t));
         // Заявка логиста от своего заказчика — только ему (владелец 18.10.2026: «видит только она»).
-        $to = ($t->isOrder() ? collect() : User::logisticsLeads()->get())->push($t->logist)->filter()
-            ->unique('id')->reject(fn (User $u) => $u->is($e->by) || $own->contains('id', $u->id));
-        Notification::send($to, TransportNotice::moved($t, $e->step));
+        $skip = fn (User $u) => $u->is($e->by) || $own->contains('id', $u->id);
+        // Логисту — сразу, как было; ведущим — тихо и пачкой (27.10.2026).
+        $logist = collect([$t->logist])->filter()->reject($skip);
+        $leads = ($t->isOrder() ? collect() : User::logisticsLeads()->get())->reject($skip)->reject(fn (User $u) => $logist->contains('id', $u->id));
+        Notification::send($logist, TransportNotice::moved($t, $e->step));
+        Batch::send($leads, TransportNotice::moved($t, $e->step)->forLeads('transport-moved', quiet: true));
     }
 
     /** Кто везёт задачу: логист и исполнитель, кроме нажавшего. */

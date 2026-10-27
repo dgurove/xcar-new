@@ -5,6 +5,8 @@ namespace App\Http\Logistics;
 use App\Logistics\Transport;
 use App\Support\Detail;
 use Illuminate\Http\Request;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 /**
  * Документы на вывоз (17.10.2026, владелец: «их оформляет Лиза, вводит трек-номер и отправляет СДЭКом исполнителю»):
@@ -27,5 +29,16 @@ class DocumentController
             ->with($with)->latest('docs_sent_at')->get();
 
         return view('logistics.documents.index', ['detail' => $detail, 'waiting' => $waiting, 'sent' => $sent]);
+    }
+
+    /** Таблица «Документов» — одно описание на шапку и строки `x-logistics.doc-row`; дата справа — назначен или отправлены. */
+    public static function table(bool $waiting): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true, cap: false),
+            new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10),
+            new Column('to', 'Кому', from: 'sm', rem: 12),
+            new Column('at', $waiting ? 'Назначен' : 'Отправлены', num: true, cell: 'nums whitespace-nowrap cell-dim', rem: 7),
+        );
     }
 }

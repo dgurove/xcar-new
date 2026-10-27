@@ -11,12 +11,26 @@
     $tone = $late ? 'text-danger' : 'text-ink-muted';
 @endphp
 <tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
-    <td class="{{ $table->cls('title') }}">
+    @foreach ($table->columns as $key => $col)
+        @switch($key)
+        @case('title')
+    <td class="{{ $col->classes() }}">
         <x-cell.title :key="$deal->id" :offer="$offer"/>
         <span class="cell-sub sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/>@if ($wait) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
     </td>
-    <td class="{{ $table->cls('vendor') }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
-    <td class="{{ $table->cls('manager') }}"><x-cell.person :user="$deal->buyer" from="xl"/></td>
-    <td class="{{ $table->cls('wait', 'whitespace-nowrap '.$tone) }}">{!! $wait !!}</td>
-    <td class="{{ $table->cls('action') }}">@if ($todo['button'])<x-deal.todo-button :button="$todo['button']"/>@endif</td>
+        @break
+        @case('vendor')
+    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
+        @break
+        @case('manager')
+    <td class="{{ $col->classes() }}"><x-cell.person :user="$deal->buyer" from="xl"/></td>
+        @break
+        @case('wait')
+    <td class="{{ $col->classes() }} whitespace-nowrap {{ $tone }}">{!! $wait !!}</td>
+        @break
+        @case('action')
+    <td class="{{ $col->classes() }}">@if ($todo['button'])<x-deal.todo-button :button="$todo['button']"/>@endif</td>
+        @break
+        @endswitch
+    @endforeach
 </tr>

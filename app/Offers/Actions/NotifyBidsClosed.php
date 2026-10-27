@@ -6,6 +6,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\BidsClosed;
+use App\Telegram\Messages\BidsClosedPack;
 use App\Telegram\Messages\SlotClosing;
 use Illuminate\Support\Facades\DB;
 
@@ -32,17 +33,20 @@ final class NotifyBidsClosed
         return $offers->count();
     }
 
+    /**
+     * Закрылись по сроку — одно сообщение на момент закрытия (27.10.2026: в 17:00 закрывается пачка, было по сообщению на
+     * каждое — 107 за час): одно — `BidsClosed`, несколько — `BidsClosedPack`.
+     */
     public function __invoke(): int
     {
-        $sent = 0;
-        foreach (Offer::where('state', OfferState::Open)->where('bids_close_at', '<=', now())
+        $offers = Offer::where('state', OfferState::Open)->where('bids_close_at', '<=', now())
             ->where(fn ($q) => $q->whereNull('bids_closed_notified_for')->orWhereColumn('bids_closed_notified_for', '!=', 'bids_close_at'))
-            ->lazyById() as $offer) {
-            DB::table('offers')->where('id', $offer->id)->update(['bids_closed_notified_for' => $offer->bids_close_at]);
-            NotifyOwner::dispatch(new BidsClosed($offer));
-            $sent++;
+            ->with('bids')->orderBy('id')->get();
+        foreach ($offers->groupBy(fn (Offer $o) => $o->bids_close_at->format('Y-m-d H:i')) as $group) {
+            DB::table('offers')->whereIn('id', $group->pluck('id'))->update(['bids_closed_notified_for' => DB::raw('bids_close_at')]);
+            NotifyOwner::dispatch($group->count() === 1 ? new BidsClosed($group->first()) : new BidsClosedPack($group->values()));
         }
 
-        return $sent;
+        return $offers->count();
     }
 }

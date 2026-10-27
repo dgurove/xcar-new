@@ -38,6 +38,7 @@ use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
 use App\Offers\Handover;
+use App\Offers\OfferState;
 use App\Offers\Jobs\RetractEstimateNotices;
 use App\Offers\OfferViewer;
 use App\Park\City;
@@ -323,10 +324,12 @@ final class Notify
             }
         }
         // Сотрудникам (19.01.2027: 598 уведомлений о сроках за неделю, по 28 в день на админа) — «скоро» только когда ход наш,
-        // чужой ход (менеджер, поставщик) — лишь «срок вышел»; утром — одна строка «Горит» (`StagesDigest`).
+        // чужой ход (менеджер, поставщик) — лишь «срок вышел»; утром — одна строка «Горит» (`StagesDigest`). Пачкой (`Batch`,
+        // 27.10.2026: за час 106 штук). Предложение ещё в продаже — это «Выбор подтверждения» после конца приёма: его говорят
+        // «Приём закрыт» (Telegram) и вкладка «Есть подтверждения», сроком не дублируем.
         $waits = $e->position->waitsFor();
-        if ($waits === WaitsFor::Us || ($e->overdue && $waits !== WaitsFor::Nobody)) {
-            Notification::send($this->staff(), new StageDueNotice($e->offer, $e->position, $e->overdue));
+        if ($e->offer->state !== OfferState::Open && ($waits === WaitsFor::Us || ($e->overdue && $waits !== WaitsFor::Nobody))) {
+            Batch::send($this->staff(), new StageDueNotice($e->offer, $e->position, $e->overdue));
         }
     }
 
@@ -409,7 +412,7 @@ final class Notify
         }
         $v = $e->vehicle->load(['vendor', 'yard']);
         $released = $e instanceof VehicleReleased;
-        Notification::send(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get(), ParkNotice::handled($v, $e->by, $released));
+        Batch::send(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get(), ParkNotice::handled($v, $e->by, $released));
         NotifyOwner::dispatch(new ParkHandled($v, $e->by, $released), park: true);
     }
 
@@ -420,7 +423,7 @@ final class Notify
 
     public function parkIdle(VehicleIdle $e): void
     {
-        Notification::send($this->parkStaff()->filter->isParkAdmin(), ParkNotice::idle($e->vehicle, $e->days));
+        Batch::send($this->parkStaff()->filter->isParkAdmin(), ParkNotice::idle($e->vehicle, $e->days));
     }
 
     /**

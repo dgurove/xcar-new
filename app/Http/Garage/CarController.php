@@ -21,6 +21,8 @@ use App\Support\Sort;
 use App\Support\Surface;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 class CarController
 {
@@ -152,5 +154,22 @@ class CarController
             // Кто платил — выбирает только сотрудник (`AddCost`, `UpdateCost`); от менеджера поле не берётся.
             'paid_by' => ['nullable', Rule::enum(Payer::class)],
         ]);
+    }
+
+    /**
+     * Таблица гаража на сайте — одно описание на шапку, строки `x-garage.table-row` и заголовки групп. Сотруднику — ещё
+     * «Менеджер»; подпись цены — какую видит держатель (покупателю с гаражом — его цена или цена продажи).
+     */
+    public static function table(\App\Users\User $user, bool $staff): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true, cap: false),
+            $staff ? new Column('manager', 'Менеджер', from: 'md', dim: true, rem: 8) : null,
+            new Column('taken', 'В гараже с', from: 'lg', num: true, aside: true, cell: 'nums cell-dim', rem: 5.5),
+            new Column('price', $user->holdsAsBuyer() ? ($user->seesGaragePrice() ? 'Цена' : 'Цена продажи') : 'Закупочная', from: 'sm', num: true, sort: 'price', cell: 'nums', rem: 7),
+            new Column('spent', 'Расходы', from: 'sm', num: true, cell: 'nums', rem: 5.5),
+            new Column('sold', 'Цена продажи', from: 'sm', num: true, cell: 'nums', rem: 7),
+            new Column('sum', 'Сумма', num: true, phone: true, cell: 'nums'),
+        );
     }
 }

@@ -24,7 +24,18 @@ use Carbon\CarbonInterface;
 final class ParkNotice extends Notice
 {
     public function __construct(private string $title, private ?string $text, private string $path, private ?int $vehicleId = null, private bool $critical = false,
-        private string $category = 'park', private bool $telegram = true) {}
+        private string $category = 'park', private bool $telegram = true, private ?string $batch = null, private ?string $line = null) {}
+
+    /** Простой и «управляющий принял / выдал» администраторам — пачкой (`Batch`, 27.10.2026): по одному на ТС — спам. */
+    public function batchKey(): ?string
+    {
+        return $this->batch;
+    }
+
+    public function batchLine(): string
+    {
+        return $this->line ?? $this->title;
+    }
 
     public static function letter(Candidate $c): self
     {
@@ -80,12 +91,13 @@ final class ParkNotice extends Notice
     public static function handled(Vehicle $v, User $by, bool $released): self
     {
         return new self($by->shortName().' '.($released ? 'выдал' : 'принял').': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->yard?->name, $v->ref])),
-            '/cars/'.$v->id, $v->id, telegram: false);
+            '/cars/'.$v->id, $v->id, telegram: false, batch: 'park-handled', line: $by->shortName().' '.($released ? 'выдал' : 'принял').' '.$v->titleWithYear());
     }
 
     public static function idle(Vehicle $v, int $days): self
     {
-        return new self('Стоит '.$days.' дн: '.$v->titleWithYear(), ($v->vendor?->name ?? '').($v->yard ? ', '.$v->yard->name : ''), '/cars/'.$v->id, $v->id, telegram: false);
+        return new self('Стоит '.$days.' дн: '.$v->titleWithYear(), ($v->vendor?->name ?? '').($v->yard ? ', '.$v->yard->name : ''), '/cars/'.$v->id, $v->id, telegram: false,
+            batch: 'park-idle', line: $v->titleWithYear().', '.$days.' дн');
     }
 
     /** Покупатель заполнил анкету: прочитать ответ страховой и подтвердить. */

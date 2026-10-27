@@ -50,6 +50,17 @@ final class StageDueNotice extends Notice
         return 'deals';
     }
 
+    /** Сотрудникам — пачкой (`Batch`, 27.10.2026): сроки у сделок выходят разом, по одному уведомлению на каждую — спам. */
+    public function batchKey(): ?string
+    {
+        return $this->dealId === null ? ($this->overdue ? 'stage-overdue' : 'stage-due') : null;
+    }
+
+    public function batchLine(): string
+    {
+        return $this->what().' — '.$this->offer->titleWithYear();
+    }
+
     /** Покупателю сделки — всегда; сотруднику сроки этапов можно выключить. */
     public function critical(): bool
     {

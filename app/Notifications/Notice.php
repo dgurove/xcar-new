@@ -55,6 +55,20 @@ abstract class Notice extends Notification implements ShouldQueue
         return $this->subject();
     }
 
+    /**
+     * Вид пачки (`Batch`): массовое сотрудникам копится и уходит одним сводным («Срок вышел: 7 шагов»). null — сразу.
+     */
+    public function batchKey(): ?string
+    {
+        return null;
+    }
+
+    /** Строка этого уведомления в сводном: обычно название машины. */
+    public function batchLine(): string
+    {
+        return $this->title();
+    }
+
     /** Тихое — только обновляет строку объекта в ленте: без пуша, почты и Telegram (шаг сделки, где менеджер не нужен). */
     public function quiet(): bool
     {
@@ -202,7 +216,7 @@ abstract class Notice extends Notification implements ShouldQueue
 
     /**
      * Куда: выключенная категория — никуда; лента всегда; тихое — только в ленту; пуш — не в тихие часы;
-     * почта — если есть адрес и не выключена; Telegram — если привязан и уведомление туда просится.
+     * почта — если есть адрес и не выключена (сотруднику — только важное и сводки); Telegram — если привязан и уведомление туда просится.
      */
     public function via(User $user): array
     {
@@ -216,7 +230,8 @@ abstract class Notice extends Notification implements ShouldQueue
         if (! $user->quietHours()) {
             $via[] = WebPushChannel::class;
         }
-        if ($user->email && $user->wantsMail()) {
+        // Сотрудникам письмом — только важное и сводки (27.10.2026: каждая строка ленты уходила письмом админу).
+        if ($user->email && $user->wantsMail() && (! $user->isStaff() || $this->critical() || $this->important() || $this instanceof BatchNotice)) {
             // Уведомления стоянки — через её ящик, если он есть; остальное — системный мейлер.
             $via[] = str_starts_with($this->category(), 'park') && MailboxChannel::account() ? MailboxChannel::class : 'mail';
         }
