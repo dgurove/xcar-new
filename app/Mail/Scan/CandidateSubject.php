@@ -80,7 +80,40 @@ final class CandidateSubject implements Subject
     {
         $this->candidate->loadMissing('messages.attachments');
 
-        return Files::of($this->candidate->messages);
+        return self::own($this->candidate, Files::of($this->candidate->messages));
+    }
+
+    /**
+     * Цепочка одного номера из письма о нескольких машинах (27.10.2026: «110927-26 и 110945-26 Мерседес Актрос + Когель»)
+     * читает только свои документы: файл с номером другой машины в имени («ДОГОВОР КОМИССИИ 110945-25.docx») — не её, файл
+     * без номера — той машины, чей файл с номером шёл перед ним (вендор кладёт документы машины подряд). Номер в имени —
+     * цифры дела без года.
+     *
+     * @param  Collection<int, ScanFile>  $files
+     * @return Collection<int, ScanFile>
+     */
+    public static function own(Candidate $candidate, Collection $files): Collection
+    {
+        $codes = $candidate->messages->flatMap(fn ($m) => $m->keys())->filter(fn ($k) => str_starts_with($k, 'code:'))->unique()->values();
+        if ($codes->count() < 2 || ! $codes->contains($candidate->key)) {
+            return $files;
+        }
+        // «code:1109452026» → «110945»: цифры номера без года в конце.
+        $number = fn (string $key) => preg_replace('/(19|20)\d{2}$/', '', substr($key, 5));
+        $mine = $number($candidate->key);
+        $others = $codes->reject(fn ($k) => $k === $candidate->key)->map($number)->filter()->all();
+        $owner = null;
+
+        return $files->filter(function (ScanFile $f) use ($mine, $others, &$owner) {
+            $name = $f->scanName();
+            if ($mine !== '' && str_contains($name, $mine)) {
+                $owner = 'mine';
+            } elseif (collect($others)->contains(fn ($n) => str_contains($name, $n))) {
+                $owner = 'other';
+            }
+
+            return $owner !== 'other';
+        })->values();
     }
 
     public function current(): array
