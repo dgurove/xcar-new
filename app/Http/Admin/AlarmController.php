@@ -11,6 +11,9 @@ use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
 use App\Support\Surface;
 use Illuminate\Http\Request;
+use App\Live\Rows;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 /**
  * Экран «Горит» (19.10.2026, начальник: «зашёл — сразу видишь, что горит, в чём дело, провалился — потушил»): машины с
@@ -44,6 +47,7 @@ final class AlarmController
             $q->searchCrm(trim((string) $request->query('q')));
         }
         $facets->apply($q);
+        Rows::offers($q);
         $all = $q->orderBy('offers.binding_until')->limit(300)->get();
         $group = fn ($list) => $list->groupBy(fn (Offer $o) => Binding::reason($o))
             ->sortBy(fn ($rows, string $reason) => array_search($reason, array_keys(Binding::REASONS), true));
@@ -59,5 +63,17 @@ final class AlarmController
             // В логистике — задача вывоза машины, иначе предложение в CRM.
             'href' => fn (Offer $o) => isset($tasks[$o->car_id]) ? '/transports/'.$tasks[$o->car_id] : Surface::Crm->url('/offers/'.$o->number),
         ]);
+    }
+
+    /** Таблица «Горит» — одно описание на шапку, строки `x-alarm.row` и заголовки причин. */
+    public static function table(): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true),
+            new Column('step', 'Этап', from: 'sm', rem: 12),
+            new Column('manager', 'Менеджер', from: 'sm', rem: 9),
+            new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10),
+            new Column('term', 'Срок', num: true, cell: 'nums', rem: 8),
+        );
     }
 }

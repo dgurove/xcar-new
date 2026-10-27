@@ -8,9 +8,9 @@
      В галерее вместо подтверждений — интерес. Нажатие — карточка; data-todo — у человека по строке есть дело,
      по ним карточка идёт «Дальше» («Оценить»). checkable — галочка первым столбцом («Оцененные», «Публикация»; group — ключ
      слота для галочки группы); не готовое к продаже вместо галочки получает красное «нет фото» второй строкой, срок
-     страховой раньше ближайшего слота — тоже красным. cols — столбцы вкладки (OfferController::columns, null — все):
-     без «Состояния» «парковка с …» уходит второй строкой под название. --}}
-@props(['offer', 'gallery' => false, 'checkable' => false, 'group' => null, 'cols' => null, 'arrive' => null])
+     страховой раньше ближайшего слота — тоже красным. table — столбцы вкладки (`OfferController::table`): ячейки идут в
+     его порядке и с его классами, шапка и группы — по тому же описанию; в поиске (`mixed`) — все столбцы. --}}
+@props(['offer', 'table', 'gallery' => false, 'group' => null, 'arrive' => null])
 @php
     use App\Offers\OfferState;
     $n = $offer->number;
@@ -30,8 +30,9 @@
     // Приём закрылся, а подтверждения есть — ход наш: «выбрать» оранжевым; без них — «приём закрыт».
     $pick = $admin && $offer->state === OfferState::Open && ! $timer && $offer->bids_close_at;
     $stateWord = $offer->crmTab();
-    // В поиске (столбцы не заданы — список смешанный) про строку важнее всего, где она: вкладкой, без часов и «выбрать».
-    $mixed = $cols === null;
+    // В поиске (список смешанный) про строку важнее всего, где она: вкладкой, без часов и «выбрать».
+    $mixed = (bool) $table->context('mixed');
+    $checkable = $table->has('pick');
     // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.
     $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
     $offer->loadMissing(['parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar']);
@@ -47,22 +48,22 @@
     // Закупочной нет — «Заполнить» в её ячейке (вкладка «Без закупочной цены», дело модератора); там же столбца цены нет,
     // и на телефоне справа стоит закупочная.
     $nofloor = $unpriced && ! $offer->floor_price && ! $offer->isScheduled();
-    $floorSide = $cols !== null && ! in_array('price', $cols, true);
+    $floorSide = (bool) $table->context('floorSide');
     // data-todo — у человека по строке есть дело (OfferController::todo): по таким карточка идёт «Дальше».
     $todo = auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user());
     // Поставлено в слот — «выйдет сегодня в 16:00» на месте состояния.
     $slot = $offer->isScheduled() ? 'выйдет '.\App\Offers\Slots::phrase($offer->slot_at) : null;
     // Чего не хватает для продажи — у оценённого черновика: галочки у такого нет.
     $missing = $checkable && $draft && ! $slot ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
-    $has = fn (string $k) => $cols === null || in_array($k, $cols, true);
-    $when = match (true) {
-        $cols !== null && $has('published') => $offer->published_at,
-        $cols !== null && $has('tab') => $offer->tab_at,
-        $has('created') => $offer->created_at,
+    $has = fn (string $k) => $table->has($k);
+    $when = match ($table->context('when')) {
+        'published' => $offer->published_at,
+        'tab' => $offer->tab_at,
+        'created' => $offer->created_at,
         default => null,
     };
     // Аватар у даты: во вкладке шага — кто перевёл сюда (`tab_by`, 18.10.2026), иначе — кто завёл (у черновика).
-    $byTab = $cols !== null && ! $has('published') && $has('tab');
+    $byTab = $table->context('when') === 'tab';
     $who = $byTab ? $offer->tabBy : $offer->moderator;
     // Человека нет — система (26.10.2026, владелец: «пустота мне не нравится»): завела почта — конверт, Мигторг, парковка —
     // искра. Во вкладке шага — перевела система (`tab_by` пишется с 18.10.2026, раньше пусто у всех — там не угадываем).
@@ -77,8 +78,14 @@
     $late = $checkable && $draft && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($todo) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif @class(['arrive arrive--offer' => $arrive, 'arrive--'.$arriving => $busy, 'arrive--busy' => $busy])>
-    @if ($checkable)<td class="pick-cell">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>@endif
-    <td class="grow">
+    {{-- Ячейки — в порядке и с классами описания (`OfferController::table`): шапка и группы сходятся с ними всегда. --}}
+    @foreach ($table->columns as $key => $col)
+        @switch($key)
+        @case('pick')
+    <td class="{{ $col->classes() }}">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>
+        @break
+        @case('title')
+    <td class="{{ $col->classes() }}">
         @if ($busy && ! $offer->brand_id)
         <x-ui.row-link :key="$n"><span class="cell-title"><span class="skeleton arrive-bar w-40 max-w-full"></span></span></x-ui.row-link>
         @else
@@ -94,7 +101,7 @@
             @elseif ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($slot && $has('state'))<span class="sm:hidden text-accent-text">{{ $slot }}</span>
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
-            @elseif ($pick && $cols !== null && ! $count)<span class="sm:hidden nums text-ink-muted">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
+            @elseif ($pick && ! $mixed && ! $count)<span class="sm:hidden nums text-ink-muted">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
             @endif
             {{-- Черновик висит в галерее (08.10.2026) — видно и в шагах работы, с числом интереса. --}}
             @if (! $gallery && $offer->isGallery())<span class="text-accent-text nums">в галерее@if ($offer->interests_count), {{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}@endif</span>@endif
@@ -102,32 +109,48 @@
             @if ($late)<span class="text-danger nums">страховая до {{ $offer->insurer_deadline_at->translatedFormat('j M') }}</span>@endif
         </span>
     </td>
+        @break
+        @case('vendor')
     {{-- Вендор и номер убытка одним столбцом, как в «Наличии»: логотип (имя — подсказкой), номер с копированием. --}}
-    @if ($has('vendor'))<td class="hidden sm:table-cell"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<span @class(['arrive-type' => $busy])><x-ui.copy-code :value="$offer->claim_ref"/></span>@endif</span></td>@endif
-    <td class="cell-dim col-detail-hide hidden nums sm:table-cell">@if (\App\Offers\OfferNumber::isPublic($offer))<x-ui.copy-code :value="(string) $offer->number"/>@endif</td>
+    <td class="{{ $col->classes() }}"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<span @class(['arrive-type' => $busy])><x-ui.copy-code :value="$offer->claim_ref"/></span>@endif</span></td>
+        @break
+        @case('number')
+    <td class="{{ $col->classes() }}">@if (\App\Offers\OfferNumber::isPublic($offer))<x-ui.copy-code :value="(string) $offer->number"/>@endif</td>
+        @break
+        @case('city')
     {{-- Город — именем без номера региона: столбец узкий, регион виден в карточке. --}}
-    @if ($has('city'))<td class="col-detail-hide hidden sm:table-cell arrive-late">@if ($busy && ! $offer->settlement)<span class="skeleton arrive-bar w-16"></span>@elseif ($offer->settlement)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $offer->settlement->name }}</x-ui.place>@endif</td>@endif
-    @if (! $has('state'))<td class="hidden sm:table-cell"></td>
-    @else
-    <td class="hidden sm:table-cell">
+    <td class="{{ $col->classes() }} arrive-late">@if ($busy && ! $offer->settlement)<span class="skeleton arrive-bar w-16"></span>@elseif ($offer->settlement)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $offer->settlement->name }}</x-ui.place>@endif</td>
+        @break
+        @case('gap')
+    <td class="{{ $col->classes() }}"></td>
+        @break
+        @case('state')
+    <td class="{{ $col->classes() }}">
         @if ($mixed)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $stateWord }}</span>
         @elseif ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
         @elseif ($slot)<span class="text-accent-text">{{ $slot }}</span>
         {{-- Во вкладке «Опубликованные» «выбрать» говорит заголовок группы — в строке когда закрылся приём. --}}
-        @elseif ($pick && $cols !== null)<span class="nums {{ $count ? 'text-urgent' : 'text-ink-muted' }}">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
-        @elseif ($pick)<span class="{{ $count ? 'text-urgent' : 'text-ink-muted' }}">{{ $count ? 'Выбрать' : 'Приём закрыт' }}</span>
+        @elseif ($pick)<span class="nums {{ $count ? 'text-urgent' : 'text-ink-muted' }}">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
         @else<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $offer->crmTab() }}</span>@endif
     </td>
-    @endif
+        @break
+        @case('bids')
     {{-- «2 до 5 440 000, 1 в гараж». --}}
-    @if ($admin && $has('bids'))<td class="num nums hidden sm:table-cell {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">@if ($gallery){{ $count ?: '' }}@else{{ $priceBids ?: '' }}@if ($priceBids && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif{{ $priceBids && $garageBids ? ',' : '' }}@if ($garageBids)<span class="ml-1 whitespace-nowrap">{{ $garageBids }} <span class="text-sm">в гараж</span></span>@endif @endif</td>@endif
-    {{-- Закупочная, справа от неё цена продажи (у черновика без неё — чип «Оценить»); на телефоне столбца закупочной нет —
-         она под ценой. --}}
-    @if ($cols !== null && $has('value'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">{{ $offer->value && \App\Offers\Pricing::byValue($offer->vendor_id) ? \App\Support\Money::nums($offer->value) : '' }}</td>@endif
+    <td class="{{ $col->classes() }} {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">@if ($gallery){{ $count ?: '' }}@else{{ $priceBids ?: '' }}@if ($priceBids && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif{{ $priceBids && $garageBids ? ',' : '' }}@if ($garageBids)<span class="ml-1 whitespace-nowrap">{{ $garageBids }} <span class="text-sm">в гараж</span></span>@endif @endif</td>
+        @break
+        @case('value')
+    <td class="{{ $col->classes() }}">{{ $offer->value && \App\Offers\Pricing::byValue($offer->vendor_id) ? \App\Support\Money::nums($offer->value) : '' }}</td>
+        @break
+        @case('floor')
+    @if ($floorSide)
     {{-- Закупочная на месте цены («Без закупочной цены») — кто завёл и когда стоит при ней, как при цене. --}}
-    @if ($has('floor') && $floorSide)<td class="num nums">@if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@elseif ($system)<x-ui.system-avatar :via="$offer->created_via" :size="16"/>@endif</span>@endif @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
-    @elseif ($has('floor'))<td class="cell-dim num nums col-detail-hide hidden sm:table-cell">@if ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>@endif
-    @if ($has('price'))<td class="num nums arrive-late {{ $admin && ($offer->marginMark()['tone'] ?? null) === 'loss' ? 'text-danger' : '' }}">
+    <td class="{{ $col->classes() }}">@if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@elseif ($system)<x-ui.system-avatar :via="$offer->created_via" :size="16"/>@endif</span>@endif @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
+    @else
+    <td class="{{ $col->classes() }}">@if ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
+    @endif
+        @break
+        @case('price')
+    <td class="{{ $col->classes() }} arrive-late {{ $admin && ($offer->marginMark()['tone'] ?? null) === 'loss' ? 'text-danger' : '' }}">
         {{-- Краткая таблица (телефон, карточка рядом): кто завёл и когда — вплотную слева от цены (10.10.2026, начальник: с
              телефона непонятно, что когда создано и кем; слева всегда номер убытка, под ценой — подтверждения). Сегодня —
              время, иначе дата, за ней аватар. Столбец «Создано» в краткой таблице спрятан. --}}
@@ -148,11 +171,16 @@
         @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin" class="cell-sub max-sm:!ml-0"/>@endif
         @if ($count)<span class="cell-sub sm:hidden nums {{ $gallery ? '!text-accent-text' : '!text-urgent' }}">{{ $countWord }}</span>
         @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span class="cell-sub sm:hidden" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
-    </td>@endif
-    {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет. --}}
-    @if ($has('created') || ($cols !== null && ($has('published') || $has('tab'))))<td class="num nums col-detail-hide hidden whitespace-nowrap !text-xs !text-ink-dim sm:table-cell">
-        {{-- Аватаром перед датой: во вкладке шага — кто перевёл сюда, иначе кто завёл черновик. --}}
+    </td>
+        @break
+        @case('when')
+    {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет.
+         Аватаром перед датой: во вкладке шага — кто перевёл сюда, иначе кто завёл черновик. --}}
+    <td class="{{ $col->classes() }}">
         @php $face = ($byTab || $draft) ? $who : null; $robot = ($byTab || $draft) && $system; @endphp
         @if ($face || $robot)<span class="inline-flex items-center gap-2 align-middle">@if ($face)<x-ui.avatar :user="$face" :size="20" title="{{ $face->name }}"/>@else<x-ui.system-avatar :via="$offer->created_via" :size="20"/>@endif @endif{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}@if ($face || $robot)</span>@endif
-    </td>@endif
+    </td>
+        @break
+        @endswitch
+    @endforeach
 </tr>

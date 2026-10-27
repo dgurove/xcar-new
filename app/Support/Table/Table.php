@@ -13,10 +13,14 @@ final class Table
     /** @var array<string, Column> */
     public readonly array $columns;
 
-    public function __construct(Column ...$columns)
+    /**
+     * @param  list<Column|null>  $columns  `null` — столбца нет (по условию)
+     * @param  array<string, mixed>  $context  что строке нужно знать о таблице сверх столбцов (поиск — список смешанный)
+     */
+    public function __construct(array $columns, public readonly array $context = [])
     {
         $keyed = [];
-        foreach ($columns as $c) {
+        foreach (array_filter($columns) as $c) {
             $keyed[$c->key] = $c;
         }
         $this->columns = $keyed;
@@ -25,7 +29,23 @@ final class Table
     /** Столбцы по условию: `null` в списке — столбца нет. */
     public static function of(?Column ...$columns): self
     {
-        return new self(...array_values(array_filter($columns)));
+        return new self($columns);
+    }
+
+    public function column(string $key): ?Column
+    {
+        return $this->columns[$key] ?? null;
+    }
+
+    public function context(string $key, mixed $default = null): mixed
+    {
+        return $this->context[$key] ?? $default;
+    }
+
+    /** Сколько rem у столбцов кроме названия (`x-ui.table :rest`): название забирает остальное. */
+    public function rest(): float
+    {
+        return array_sum(array_map(fn (Column $c) => $c->grow ? 0 : $c->rem, $this->columns));
     }
 
     public function has(string $key): bool

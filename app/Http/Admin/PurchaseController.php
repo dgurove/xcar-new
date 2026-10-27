@@ -36,6 +36,8 @@ use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 class PurchaseController
 {
@@ -419,5 +421,17 @@ class PurchaseController
         $unchoose($offer, $request->user());
 
         return back()->with('toast', 'Выбор отменён');
+    }
+
+    /** Таблица машин закупки (CRM) — одно описание на шапку и строки `x-purchase.table-row`. */
+    public static function table(): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true, cap: false),
+            new Column('dl', 'ДЛ', from: 'sm', sort: 'dl', cell: 'cell-dim', rem: 7),
+            new Column('listing', 'Размещение', from: 'sm', num: true, cell: 'cell-dim nums', rem: 6.5),
+            new Column('offers', 'Предложения', from: 'sm', num: true, sort: 'best', cell: 'nums', rem: 8),
+            new Column('final', 'Наша цена', num: true, sort: 'final', cell: 'nums', rem: 6.5),
+        );
     }
 }

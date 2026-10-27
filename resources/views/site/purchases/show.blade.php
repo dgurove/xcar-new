@@ -24,17 +24,10 @@
             <x-ui.empty :href="'/purchases/'.$purchase->number.($group ? '?group='.$group->value : '')" link="Сбросить фильтры">По этим условиям ничего не нашлось</x-ui.empty>
         @else
             @if (\App\Support\ListView::isTable($view))
-            <x-ui.table id="cars" :view="$view">
-                <x-slot:head>
-                    <tr>
-                        <x-ui.th :sort="$sort" key="brand" class="grow">Марка, модель</x-ui.th>
-                        <x-ui.th :sort="$sort" key="number" class="cell-dim hidden sm:table-cell">№</x-ui.th>
-                        @if (count($kinds) > 1)<th class="cell-dim hidden sm:table-cell">Тип</th>@endif
-                        <th class="cell-dim col-detail-hide hidden sm:table-cell">Город</th>
-                        <th class="num">Цена</th>
-                    </tr>
-                </x-slot:head>
-                @foreach ($cars as $car)<x-purchase.site-table-row :car="$car" :purchase="$purchase" :query="$qs" :show-kind="count($kinds) > 1"/>@endforeach
+            @php $columns = \App\Http\Site\PurchaseController::table(count($kinds) > 1); @endphp
+            <x-ui.table id="cars" :view="$view" :rest="$columns->rest()">
+                <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
+                @foreach ($cars as $car)<x-purchase.site-table-row :car="$car" :purchase="$purchase" :query="$qs" :table="$columns"/>@endforeach
             </x-ui.table>
             @else
             <div class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker">

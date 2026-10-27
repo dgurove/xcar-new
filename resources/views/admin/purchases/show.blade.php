@@ -88,17 +88,10 @@
     @if ($cars->isEmpty())
         <x-ui.empty class="mt-4">Ничего не нашлось</x-ui.empty>
     @elseif (\App\Support\ListView::isTable($view))
-        <x-ui.table id="cars" class="mt-4" :view="$view">
-            <x-slot:head>
-                <tr>
-                    <th class="grow">Марка, модель</th>
-                    <x-ui.th :sort="$sort" key="dl" class="cell-dim hidden sm:table-cell">ДЛ</x-ui.th>
-                    <th class="num hidden sm:table-cell">Размещение</th>
-                    <x-ui.th :sort="$sort" key="best" class="num hidden sm:table-cell">Предложения</x-ui.th>
-                    <x-ui.th :sort="$sort" key="final" class="num">Наша цена</x-ui.th>
-                </tr>
-            </x-slot:head>
-            @foreach ($cars as $car)<x-purchase.table-row :car="$car" :purchase="$purchase"/>@endforeach
+        @php $columns = \App\Http\Admin\PurchaseController::table(); @endphp
+        <x-ui.table id="cars" class="mt-4" :view="$view" :rest="$columns->rest()">
+            <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
+            @foreach ($cars as $car)<x-purchase.table-row :car="$car" :purchase="$purchase" :table="$columns"/>@endforeach
         </x-ui.table>
     @elseif ($view === \App\Support\ListView::GRID)
     <div class="mt-4 cards cards--grid" data-controller="ticker">

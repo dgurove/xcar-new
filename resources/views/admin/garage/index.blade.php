@@ -15,21 +15,12 @@
     @if ($groups->isEmpty())
         <x-ui.empty class="mt-6">В гараже пусто</x-ui.empty>
     @elseif (ListView::isTable($view))
-        <x-ui.table id="garage-table" class="mt-4" :view="$view" :titles="$groups->flatten()->map(fn ($c) => $c->offer->titleWithYear())">
-            <x-slot:head>
-                <tr>
-                    <th class="grow">Марка, модель</th>
-                    <th class="hidden sm:table-cell">Вендор, № убытка</th>
-                    <th class="num hidden xl:table-cell col-detail-hide">В гараже с</th>
-                    <x-ui.th :sort="$sort" key="price" class="num hidden sm:table-cell">Закупочная</x-ui.th>
-                    <th class="num hidden sm:table-cell">Расходы</th>
-                    <th class="num hidden sm:table-cell">Цена продажи</th>
-                    <th class="num sm:hidden">Сумма</th>
-                </tr>
-            </x-slot:head>
-            @foreach ($groups as $cars)
-                <tr class="table-group"><th colspan="7"><span class="table-group-name">{{ $cars->first()->manager?->name ?? 'Взяли под себя' }} <span class="nums">{{ $cars->count() }}</span></span></th></tr>
-                @foreach ($cars as $car)<x-admin.garage-row :car="$car"/>@endforeach
+        @php $columns = \App\Http\Admin\GarageController::table(); @endphp
+        <x-ui.table id="garage-table" class="mt-4" :view="$view" :titles="$groups->flatten()->map(fn ($c) => $c->offer->titleWithYear())" :rest="$columns->rest()">
+            <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
+            @foreach ($groups as $who => $cars)
+                <x-table.group :table="$columns" :key="'m'.($cars->first()->manager_id ?? 0)" :title="$cars->first()->manager?->name ?? 'Взяли под себя'" :count="$cars->count()"/>
+                @foreach ($cars as $car)<x-admin.garage-row :car="$car" :table="$columns"/>@endforeach
             @endforeach
         </x-ui.table>
     @elseif ($view === ListView::GRID)

@@ -14,6 +14,10 @@ final class Column
      * @param  bool  $phone  только на телефоне (до 640): число строки, которое на ПК стоит своими столбцами
      * @param  string|null  $sort  ключ сортировки списка (`Support\Sort`) — заголовок нажимается
      * @param  bool  $aside  прячется, пока карточка стоит справа (`col-detail-hide`)
+     * @param  string  $class  классы ячеек и заголовка; $cell — только ячеек (мелкий серый текст даты, цвет числа)
+     * @param  float  $rem  сколько места столбец занимает (rem) — из них `Table::rest`, остальное забирает название
+     * @param  bool  $cap  у растущего столбца — шириной в самое длинное название (`title-cap`, `x-ui.table :titles`),
+     *                     запас забирает `fill`; без него название забирает всю ширину (гараж, оплаты, закупки)
      */
     public function __construct(
         public readonly string $key,
@@ -28,10 +32,13 @@ final class Column
         public readonly bool $aside = false,
         public readonly ?string $sort = null,
         public readonly string $class = '',
+        public readonly string $cell = '',
+        public readonly float $rem = 0,
+        public readonly bool $cap = true,
     ) {}
 
-    /** Классы `td` и `th` столбца. */
-    public function classes(): string
+    /** Классы ячейки столбца; head — заголовка (без `cell`). */
+    public function classes(bool $head = false): string
     {
         return trim(implode(' ', array_filter([
             $this->grow ? 'grow' : null,
@@ -51,6 +58,7 @@ final class Column
                 default => null,
             },
             $this->class ?: null,
+            $head ? null : ($this->cell ?: null),
         ])));
     }
 }

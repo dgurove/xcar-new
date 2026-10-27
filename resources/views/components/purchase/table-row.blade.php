@@ -3,7 +3,7 @@
      столбцом он повторял её. Логотипа лизинговой перед ДЛ нет — у всей таблицы он один, это закупка одного вендора. Справа наша
      цена или лаймовое «оценить», под ней предложения менеджеров числом. Нажатие — карточка, в нём и оценка;
      data-todo — без нашей цены, по ним карточка идёт «Дальше». Ушедшая в предложение — справа его номер. --}}
-@props(['car', 'purchase'])
+@props(['car', 'purchase', 'table'])
 @php
     use App\Purchases\ImportState;
     use App\Support\Money;
@@ -14,18 +14,32 @@
     $note = $flag ? mb_strtolower($flag) : (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true) ? 'фото едут' : (! $car->is_published ? 'скрыта' : null));
 @endphp
 <tr data-detail-key="{{ $car->ref }}" data-search-row id="car-{{ $car->id }}" class="{{ $car->is_published ? '' : 'text-ink-muted' }}" @if (!$car->price_final && !$car->offer) data-todo @endif>
-    <td class="grow">
+    @foreach ($table->columns as $key => $col)
+        @switch($key)
+        @case('title')
+    <td class="{{ $col->classes() }}">
         <x-ui.row-link :key="$car->ref"><span class="cell-title"><x-ui.cat-icon :category="$car->kind->category()"/>{{ $car->titleWithYear() }}</span></x-ui.row-link>
         <span class="cell-sub">
             @if ($note)<span class="{{ $flag ? 'text-urgent' : '' }}">{{ $note }}</span>@endif
             <span class="sm:hidden">{{ $car->dl }}</span>
         </span>
     </td>
-    <td class="cell-dim hidden sm:table-cell">{{ $car->dl }}</td>
-    <td class="cell-dim num nums hidden sm:table-cell">{{ $car->price_listing ? Money::nums($car->price_listing) : '' }}</td>
-    <td class="num nums hidden sm:table-cell">@if ($offers->isNotEmpty()){{ $offers->count() }} <span class="ml-1 text-sm text-ink-muted">до {{ Money::nums($best) }}</span>@endif</td>
-    <td class="num nums">
+        @break
+        @case('dl')
+    <td class="{{ $col->classes() }}">{{ $car->dl }}</td>
+        @break
+        @case('listing')
+    <td class="{{ $col->classes() }}">{{ $car->price_listing ? Money::nums($car->price_listing) : '' }}</td>
+        @break
+        @case('offers')
+    <td class="{{ $col->classes() }}">@if ($offers->isNotEmpty()){{ $offers->count() }} <span class="ml-1 text-sm text-ink-muted">до {{ Money::nums($best) }}</span>@endif</td>
+        @break
+        @case('final')
+    <td class="{{ $col->classes() }}">
         @if ($car->offer)<span class="text-accent-text">№ {{ $car->offer?->number }}</span>@elseif ($car->price_final){{ Money::nums($car->price_final) }}@else<span class="text-accent-text">оценить</span>@endif
         @if ($offers->isNotEmpty())<span class="cell-sub sm:hidden">{{ $offers->count() }} предл.</span>@endif
     </td>
+        @break
+        @endswitch
+    @endforeach
 </tr>

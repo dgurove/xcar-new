@@ -24,18 +24,46 @@ final class ListsCheck extends Command
     protected $description = 'Сверяет строки списков: страница против X-Live-Rows, ячейки против шапки';
 
     /**
-     * Реестр: [поверхность, адрес, кто смотрит — роль]. Новый список — сюда.
+     * Реестр: [поверхность, адрес, кто смотрит — роль; у менеджера — тот, у кого больше сделок]. Новый список — сюда.
+     * `{purchase}` — номер последней закупки.
      *
      * @return list<array{0: Surface, 1: string, 2: Role}>
      */
     private function lists(): array
     {
-        $deals = array_map(fn ($p) => [Surface::Crm, '/work/deals?preset='.$p, Role::Admin], ['us', 'manager', 'supplier', 'active', 'done']);
+        $crm = fn (string $path) => [Surface::Crm, $path, Role::Admin];
+        $offers = ['nofloor', 'unpriced', 'priced', 'slots', 'published', 'closed', 'bids', 'all', 'archive', 'legacy', 'auction'];
 
         return [
-            ...$deals,
-            [Surface::Crm, '/work/deals?preset=active&vid=wide', Role::Admin],
+            ...array_map(fn ($p) => $crm('/work/deals?preset='.$p), ['us', 'manager', 'supplier', 'active', 'done']),
+            $crm('/work/deals?preset=active&vid=wide'),
+            ...array_map(fn ($p) => $crm('/?preset='.$p.'&vid=table'), $offers),
+            $crm('/gallery?preset=live&vid=table'), $crm('/gallery?preset=interest&vid=table'),
+            $crm('/alarms'),
+            ...array_map(fn ($p) => $crm('/work/garage?preset='.$p.'&vid=table'), ['work', 'sold', 'settled', 'all']),
+            ...array_map(fn ($t) => $crm('/work/money?tab='.$t), ['links', 'owed', 'payouts']),
+            $crm('/purchases/{purchase}?vid=table'),
+            [Surface::Park, '/requests', Role::ParkAdmin],
+            [Surface::Park, '/cars?preset=stored', Role::ParkAdmin],
+            [Surface::Park, '/cars?preset=out', Role::ParkAdmin],
+            [Surface::Park, '/money', Role::ParkAdmin],
+            ...array_map(fn ($p) => [Surface::Logistics, '/transports?preset='.$p, Role::Admin], ['new', 'logist', 'work', 'moving', 'done', 'all']),
+            [Surface::Logistics, '/documents', Role::Admin],
+            [Surface::Site, '/offers?vid=table', Role::Manager],
+            [Surface::Site, '/gallery?vid=table', Role::Manager],
+            [Surface::Site, '/account/favorites?vid=table', Role::Manager],
+            [Surface::Site, '/garage?vid=table', Role::Manager],
+            [Surface::Site, '/purchases/{purchase}?vid=table', Role::Manager],
+            [Surface::Site, '/offers?vid=table', Role::Buyer],
         ];
+    }
+
+    /** Кто смотрит список: менеджер — с большим числом сделок (у него есть что показать), остальные — первый по роли. */
+    private function viewer(Role $role): ?User
+    {
+        return $role === Role::Manager
+            ? User::withRole($role)->orderByRaw('(select count(*) from deals where deals.buyer_id = users.id) desc')->first()
+            : User::withRole($role)->orderBy('id')->first();
     }
 
     public function handle(Kernel $kernel): int
@@ -46,7 +74,8 @@ final class ListsCheck extends Command
             if (($only = $this->option('only')) && ! str_contains($path, $only)) {
                 continue;
             }
-            $user = $this->option('user') ? User::findOrFail($this->option('user')) : User::withRole($role)->orderBy('id')->first();
+            $user = $this->option('user') ? User::findOrFail($this->option('user')) : $this->viewer($role);
+            $path = str_replace('{purchase}', (string) \App\Purchases\Purchase::latest('id')->value('number'), $path);
             $page = $this->fetch($kernel, $surface, $path, $user);
             if ($page === null) {
                 $this->error("{$path}: страница не открылась");

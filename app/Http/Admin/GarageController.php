@@ -16,6 +16,8 @@ use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\Sort;
 use Illuminate\Http\Request;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 /**
  * «Работа → Гараж»: у кого что стоит в гараже и во что обошлось — группами по менеджеру, этап и дни на нём в строке.
@@ -91,5 +93,22 @@ class GarageController
 
         // Письма по машине — как в карточке сделки и предложения (`OfferFiles::letters`): с почтой — тем, у кого она есть.
         return view('admin.garage.detail', ['garageView' => $view] + (request()->user()->canCrmMail() ? OfferFiles::letters($offer, request()->user()) : ['letters' => 0]));
+    }
+
+    /**
+     * Таблица «Работы → Гаража» — одно описание на шапку, строки `x-admin.garage-row` и заголовки менеджеров. На телефоне
+     * вместо денежных столбцов — одно главное число этапа («Сумма»).
+     */
+    public static function table(): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true, cap: false),
+            new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10),
+            new Column('taken', 'В гараже с', from: 'xl', num: true, aside: true, cell: 'nums cell-dim', rem: 5.5),
+            new Column('price', 'Закупочная', from: 'sm', num: true, sort: 'price', cell: 'nums', rem: 6.5),
+            new Column('spent', 'Расходы', from: 'sm', num: true, cell: 'nums', rem: 5.5),
+            new Column('sold', 'Цена продажи', from: 'sm', num: true, cell: 'nums', rem: 7),
+            new Column('sum', 'Сумма', num: true, phone: true, cell: 'nums'),
+        );
     }
 }

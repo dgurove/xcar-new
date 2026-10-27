@@ -7,15 +7,6 @@
     use App\Offers\Slots;
     $table = \App\Support\ListView::isTable($view);
     $admin = auth()->user()->canManageCrm();
-    // Сколько rem у столбцов кроме названия — чтобы название занимало остальное (x-ui.table :rest).
-    // Замерено по живым строкам (04.10.2026); «Вендор, № убытка» — по самому длинному номеру (цифра ≈ .55rem, логотип и
-    // поля 3rem), не меньше подписи столбца.
-    $refCh = (int) $offers->getCollection()->max(fn ($o) => mb_strlen((string) $o->claim_ref));
-    $cityCh = (int) $offers->getCollection()->max(fn ($o) => mb_strlen((string) $o->settlement?->name));
-    $restOf = ['vendor' => max(8.5, $refCh * .55 + 3), 'city' => max(5, $cityCh * .5 + 2.5), 'state' => 10, 'bids' => 7, 'value' => 5.5, 'floor' => 5.5, 'price' => 6, 'created' => 7.5, 'tab' => 7.5, 'published' => 6.5];
-    // + столбец «№» (номер предложения, есть во всех вкладках, 10.10.2026): десять цифр.
-    $rest = ($cols === null ? array_sum($restOf) : array_sum(array_intersect_key($restOf, array_flip($cols)))) + 7 + ($pick ? 2.5 : 0);
-    $span = ($cols === null ? 8 + ($admin ? 1 : 0) : count($cols) + 1 + (in_array('state', $cols, true) ? 0 : 1)) + 1 + ($pick ? 1 : 0);
     // Группы: «Публикация» — по слоту, «Опубликованные» и «Есть подтверждения» у админа — по тому, что делать. Остальное
     // одной группой.
     $groups = match (true) {
@@ -90,17 +81,19 @@
                 <div class="pick-all"><label class="row-check gap-3"><span class="check"><input type="checkbox" id="pick-all-{{ $preset }}" data-turbo-permanent data-pick-target="all" data-action="pick#pickAll"></span><span>Выбрать все</span></label></div>
             @endif
             @if ($table)
-                <x-ui.table id="offers" :view="$view" :titles="$offers->getCollection()->map(fn ($o) => mb_strlen($o->titleWithYear()) + ($o->recommended ? 3 : 0) + (\App\Support\CarLinks::shows($o, auth()->user()) ? 3 : 0) + (blank($o->vin) && in_array($o->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery, \App\Offers\OfferState::Open], true) ? 7 : 0))" :rest="$rest">
-                    <x-slot:head><x-offer.table-head :pick="$pick" :cols="$cols" :sort="$sort"/></x-slot:head>
+                <x-ui.table id="offers" :view="$view" :titles="$offers->getCollection()->map(fn ($o) => mb_strlen($o->titleWithYear()) + ($o->recommended ? 3 : 0) + (\App\Support\CarLinks::shows($o, auth()->user()) ? 3 : 0) + (blank($o->vin) && in_array($o->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery, \App\Offers\OfferState::Open], true) ? 7 : 0))" :rest="$columns->rest()">
+                    <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
                     @foreach ($groups as $key => $list)
                         @if ($title = $groupTitle($key, $list))
-                            <tr class="table-group"><th colspan="{{ $span }}"><span class="table-group-name">@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif{{ $title }} <span class="nums" data-count="group-{{ $key }}">{{ $list->count() }}</span></span></th></tr>
+                            <x-table.group :table="$columns" :key="$key" :title="$title" :count="$list->count()" :count-key="'group-'.$key">
+                                <x-slot:before>@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif</x-slot:before>
+                            </x-table.group>
                         @endif
-                        @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :cols="$cols" :checkable="$pick" :group="$preset === 'slots' ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
+                        @foreach ($list as $offer)<x-offer.table-row :offer="$offer" :table="$columns" :group="$preset === 'slots' ? $key : null" :arrive="$arrive[$offer->id] ?? null"/>@endforeach
                     @endforeach
                     @if ($ghosts->isNotEmpty())
-                        <tr class="table-group"><th colspan="{{ $span }}"><span class="table-group-name">Не заведены <span class="nums" data-count="ghosts">{{ $ghosts->count() }}</span></span></th></tr>
-                        @foreach ($ghosts as $claim)<x-offer.legacy-row :claim="$claim" :cols="$cols"/>@endforeach
+                        <x-table.group :table="$columns" key="ghosts" title="Не заведены" :count="$ghosts->count()" count-key="ghosts"/>
+                        @foreach ($ghosts as $claim)<x-offer.legacy-row :claim="$claim" :table="$columns"/>@endforeach
                     @endif
                 </x-ui.table>
             @else

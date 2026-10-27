@@ -57,6 +57,8 @@ use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Sort;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -257,7 +259,8 @@ class OfferController
             'facets' => $facets,
             // Галочки и отправка — админу, в «Оцененных» и «Публикации».
             'pick' => self::pickable($request->user(), $preset, $searching),
-            'cols' => self::columns($preset, $request->user(), $searching),
+            // Столбцы таблицы — одно описание на шапку, строки и группы.
+            'columns' => self::table($preset, $request->user(), $searching, $offers->getCollection()),
             'counts' => $counts,
             // Черновик завела почта и файлы с документами ещё догружаются — строка входит живьём (`AutoScan::states`,
             // `arrive_controller`), как заявка на парковке.
@@ -487,6 +490,51 @@ class OfferController
         }
 
         return $offer->active_bids_count ? 0 : 2;
+    }
+
+    /**
+     * Таблица предложений — столбцы вкладки одним описанием (`Support\Table`): шапка, строки (`x-offer.table-row`, призраки
+     * «Из таблицы Кати» `x-offer.legacy-row`) и заголовки групп читают его, а не пересчитывают сами. В поиске — все столбцы
+     * (список смешанный: `context('mixed')`). Ширина номера убытка и города — по самому длинному в выборке.
+     */
+    public static function table(?string $preset, User $user, bool $searching, ?\Illuminate\Support\Collection $rows = null): Table
+    {
+        $cols = self::columns($preset, $user, $searching);
+        $all = $cols === null;
+        $has = fn (string $k) => $all || in_array($k, $cols, true);
+        $rows ??= collect();
+        $refCh = (int) $rows->max(fn ($o) => mb_strlen((string) $o->claim_ref));
+        $cityCh = (int) $rows->max(fn ($o) => mb_strlen((string) $o->settlement?->name));
+        // Дата справа: в «Опубликованных» — когда вышло, во вкладках шага — когда пришло во вкладку, иначе — когда заведено.
+        $when = match (true) {
+            ! $all && $has('published') => ['published', 'Вышло', 6.5],
+            ! $all && $has('tab') => ['tab', 'Во вкладке', 7.5],
+            $has('created') => ['created', 'Создано', 7.5],
+            default => null,
+        };
+        // Без цены продажи («Без закупочной цены») закупочная встаёт на её место: видна всегда, с карточкой рядом тоже.
+        $floorSide = ! $all && ! $has('price');
+
+        return new Table([
+            self::pickable($user, $preset, $searching) ? new Column('pick', pick: true, rem: 2.5) : null,
+            new Column('title', 'Марка, модель', grow: true),
+            $has('vendor') ? new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', rem: max(8.5, $refCh * .55 + 3)) : null,
+            // Номер предложения есть во всех вкладках (10.10.2026); у черновика пусто.
+            new Column('number', '№', from: 'sm', aside: true, cell: 'cell-dim nums', rem: 7),
+            $has('city') ? new Column('city', 'Город', from: 'sm', aside: true, rem: max(5, $cityCh * .5 + 2.5)) : null,
+            // Без «Состояния» запас ширины забирает пустой столбец перед числами, а не промежутки между столбцами.
+            $has('state')
+                ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', fill: true, sort: 'closing', rem: 10)
+                : new Column('gap', from: 'sm', fill: true),
+            // Подтверждения принимает только админ — модератору столбца нет.
+            $has('bids') && $user->canManageCrm() ? new Column('bids', 'Подтверждения', from: 'sm', num: true, sort: 'bids', cell: 'nums', rem: 7) : null,
+            ! $all && $has('value') ? new Column('value', 'Оценочная', from: 'sm', num: true, aside: true, cell: 'cell-dim nums', rem: 5.5) : null,
+            ! $has('floor') ? null : ($floorSide
+                ? new Column('floor', 'Закупочная', num: true, sort: 'floor', cell: 'nums', rem: 5.5)
+                : new Column('floor', 'Закупочная', from: 'sm', num: true, aside: true, sort: 'floor', cell: 'cell-dim nums', rem: 5.5)),
+            $has('price') ? new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 6) : null,
+            $when ? new Column('when', $when[1], from: 'sm', num: true, aside: true, sort: $when[0], cell: 'nums whitespace-nowrap !text-xs !text-ink-dim', rem: $when[2]) : null,
+        ], ['mixed' => $all, 'when' => $when[0] ?? null, 'floorSide' => $floorSide]);
     }
 
     /**

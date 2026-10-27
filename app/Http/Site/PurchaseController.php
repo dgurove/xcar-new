@@ -18,6 +18,8 @@ use App\Support\Money;
 use App\Support\Sort;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 /** Закупка — ведомость: человек проходит машины подряд и по каждой называет цену. Цен поставщика тут нет. */
 class PurchaseController
@@ -148,5 +150,17 @@ class PurchaseController
         };
 
         return $q;
+    }
+
+    /** Таблица машин закупки на сайте — одно описание на шапку и строки `x-purchase.site-table-row`; тип — когда их несколько. */
+    public static function table(bool $kinds): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true, sort: 'brand', cap: false),
+            new Column('number', '№', from: 'sm', sort: 'number', cell: 'cell-dim nums', rem: 6),
+            $kinds ? new Column('kind', 'Тип', from: 'sm', cell: 'cell-dim', rem: 6) : null,
+            new Column('city', 'Город', from: 'sm', aside: true, cell: 'cell-dim', rem: 8),
+            new Column('price', 'Цена', num: true, cell: 'nums', rem: 6.5),
+        );
     }
 }

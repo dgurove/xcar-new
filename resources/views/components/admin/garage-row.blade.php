@@ -5,7 +5,7 @@
      вендор, «Закупочная», «Расходы», «Цена продажи»; шире — «В гараже с». Строка в одну линию: кто платил расходы и
      что с деньгами по продаже — в карточке. Нажатие — карточка с путём, деньгами и расходами. Срок обязывающего, пока сделка не
      заплатила поставщику, — меткой у названия, только когда горит. --}}
-@props(['car'])
+@props(['car', 'table'])
 @php
     use App\Support\Money;
     $offer = $car->offer;
@@ -21,14 +21,32 @@
     $binding = $sale && \App\Offers\Binding::matters($offer);
 @endphp
 <tr data-detail-key="{{ $offer->number }}" id="garage-{{ $offer->number }}">
-    <td class="grow">
+    @foreach ($table->columns as $key => $col)
+        @switch($key)
+        @case('title')
+    <td class="{{ $col->classes() }}">
         <x-ui.row-link :key="$offer->number"><span class="cell-title">{{ $offer->titleWithYear() }}@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</span></x-ui.row-link>
         <span class="cell-sub"><span><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span>@if ($hasRef)<span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>@endif</span>
     </td>
-    <td class="hidden sm:table-cell"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" cell/></td>
-    <td class="num nums cell-dim hidden xl:table-cell col-detail-hide">{{ $car->taken_at?->translatedFormat('j M') }}</td>
-    <td class="num nums hidden sm:table-cell">@if ($price){{ Money::nums($price) }}@endif</td>
-    <td class="num nums hidden sm:table-cell">@if ($spent > 0){{ Money::nums($spent) }}@endif</td>
-    <td class="num nums hidden sm:table-cell">@if ($car->sold_price){{ Money::nums($car->sold_price) }}@endif</td>
-    <td class="num nums sm:hidden">@if ($line->caption){{ Money::nums($line->value) }}<span class="cell-sub">{{ $line->caption }}</span>@endif</td>
+        @break
+        @case('vendor')
+    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" cell/></td>
+        @break
+        @case('taken')
+    <td class="{{ $col->classes() }}">{{ $car->taken_at?->translatedFormat('j M') }}</td>
+        @break
+        @case('price')
+    <td class="{{ $col->classes() }}">@if ($price){{ Money::nums($price) }}@endif</td>
+        @break
+        @case('spent')
+    <td class="{{ $col->classes() }}">@if ($spent > 0){{ Money::nums($spent) }}@endif</td>
+        @break
+        @case('sold')
+    <td class="{{ $col->classes() }}">@if ($car->sold_price){{ Money::nums($car->sold_price) }}@endif</td>
+        @break
+        @case('sum')
+    <td class="{{ $col->classes() }}">@if ($line->caption){{ Money::nums($line->value) }}<span class="cell-sub">{{ $line->caption }}</span>@endif</td>
+        @break
+        @endswitch
+    @endforeach
 </tr>

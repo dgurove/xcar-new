@@ -8,17 +8,16 @@
         @if (! $total)
             <x-ui.empty>Ничего не горит</x-ui.empty>
         @endif
+        @php $columns = \App\Http\Admin\AlarmController::table(); @endphp
         @foreach (['over' => ['Сгорели', 'text-danger', $over], 'burning' => ['Вот-вот сгорят', 'text-urgent', $burning]] as $key => [$title, $tone, $groups])
             @continue($groups->isEmpty())
             <section data-search-group>
                 <h2 class="detail-section {{ $tone }}">{{ $title }} <span class="nums font-normal text-ink-dim">{{ $groups->flatten()->count() }}</span></h2>
-                <x-ui.table :id="'alarms-'.$key" :titles="$groups->flatten()->map->titleWithYear()" :rest="40">
-                    <x-slot:head>
-                        <tr><th class="grow title-cap">Марка, модель</th><th class="hidden sm:table-cell">Этап</th><th class="hidden sm:table-cell">Менеджер</th><th class="hidden sm:table-cell">Вендор, № убытка</th><th class="num">Срок</th></tr>
-                    </x-slot:head>
+                <x-ui.table :id="'alarms-'.$key" :titles="$groups->flatten()->map->titleWithYear()" :rest="$columns->rest()">
+                    <x-slot:head><x-table.head :table="$columns"/></x-slot:head>
                     @foreach ($groups as $reason => $rows)
-                        <tr class="table-group"><th colspan="5"><span class="table-group-name">{{ \App\Offers\Binding::REASONS[$reason] }} <span class="nums">{{ $rows->count() }}</span></span></th></tr>
-                        @foreach ($rows as $offer)<x-alarm.row :offer="$offer" :href="$crm ? null : $href($offer)"/>@endforeach
+                        <x-table.group :table="$columns" :key="$key.'-'.$reason" :title="\App\Offers\Binding::REASONS[$reason]" :count="$rows->count()"/>
+                        @foreach ($rows as $offer)<x-alarm.row :offer="$offer" :table="$columns" :href="$crm ? null : $href($offer)"/>@endforeach
                     @endforeach
                 </x-ui.table>
             </section>
