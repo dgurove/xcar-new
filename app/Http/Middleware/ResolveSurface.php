@@ -47,9 +47,7 @@ class ResolveSurface
 
         $response = $next($request);
         // CRM и стоянка — не для поисковиков; для сайта решается отдельно, когда всё завершим.
-        // Исключение — лендинг парковки для гостя: его ищут страховые.
-        $landing = $surface === Surface::Park && $request->path() === '/' && ! $request->user();
-        if ($surface !== Surface::Site && ! $landing && method_exists($response, 'header')) {
+        if ($surface !== Surface::Site && method_exists($response, 'header')) {
             $response->header('X-Robots-Tag', 'noindex, nofollow');
         }
         // Сборка страницы — воркеру: экран другой сборки из кэша он выбрасывает (sw.js, петля перезагрузок 10.10.2026).
