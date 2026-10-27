@@ -85,6 +85,7 @@ class UserController
     /** Только люди парковки и не сам себя: свою роль администратор не снимет — иначе парковкой некому управлять. */
     private function guard(Request $request, User $user): void
     {
-        abort_unless($user->hasRole(Role::ParkAdmin, Role::Parking) && ! $user->is($request->user()), 404);
+        // Главного администратора (`User::isOwner`) другой администратор парковки не правит.
+        abort_unless($user->hasRole(Role::ParkAdmin, Role::Parking) && ! $user->is($request->user()) && ! $user->isOwner(), 404);
     }
 }

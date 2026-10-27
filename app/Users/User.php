@@ -530,6 +530,15 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->isParking() && $this->park_readonly && ! $this->isParkAdmin();
     }
 
+    /**
+     * Главный администратор (27.10.2026, владелец): входит «Войти как» и за администраторов, а за него — никто; правят его
+     * карточку, закрывают доступ и удаляют только он сам. Роль ставится только в базе — в шторке её нет (`Role::Owner`).
+     */
+    public function isOwner(): bool
+    {
+        return $this->hasRole(Role::Owner);
+    }
+
     /** Принимает и выдаёт: вся роль «Парковка» (и приёмщик) и администратор парковки — `ability:parkHandles`. */
     public function parkHandles(): bool
     {

@@ -67,6 +67,9 @@ class UserController
     /** Роли, которые ведёт парковка. */
     public const PARK_ROLES = [Role::ParkAdmin, Role::Parking];
 
+    /** Роли, которых в шторке нет и которые сохранение не трогает: парковки (их ведёт парковка) и главного администратора. */
+    private const KEPT_ROLES = [...self::PARK_ROLES, Role::Owner];
+
     /** Один экран на двух хостах: в CRM /settings/users, в кабинете сайта /account/users. */
     public static function base(): string
     {
@@ -271,6 +274,8 @@ class UserController
     /** Ссылка на новый пароль — админ выдаёт кому угодно: сотруднику без почты, менеджеру, покупателю. */
     public function passwordLink(Request $request, User $user, IssuePasswordLink $issue)
     {
+        // Главного администратора правит только он сам (`User::isOwner`).
+        abort_if($user->isOwner() && ! $user->is($request->user()), 404);
         abort_unless($request->user()->isAdmin(), 404);
 
         return back()->with('password_link', ['user' => $user->id, 'url' => $issue($user, $request->user())]);
@@ -282,6 +287,8 @@ class UserController
      */
     public function unlinkTelegram(Request $request, User $user, UnlinkChat $unlink, RevokeDevices $revoke)
     {
+        // Главного администратора правит только он сам (`User::isOwner`).
+        abort_if($user->isOwner() && ! $user->is($request->user()), 404);
         abort_unless($request->user()->isAdmin(), 404);
         $unlink($user);
         $revoke($user);
@@ -320,6 +327,8 @@ class UserController
      */
     public function destroy(Request $request, User $user, DecideAccess $decide)
     {
+        // Главного администратора правит только он сам (`User::isOwner`).
+        abort_if($user->isOwner() && ! $user->is($request->user()), 404);
         abort_unless($request->user()->isAdmin() && ! $user->is($request->user()), 404);
         if (self::traces($user)) {
             return back()->with('toast', 'За '.$user->shortName().' есть история, можно только закрыть доступ');
@@ -345,13 +354,15 @@ class UserController
     /** Решение по ждущему или уже допущенному: открыть с выбранной ролью или закрыть доступ. */
     public function decide(Request $request, User $user, DecideAccess $decide)
     {
+        // Главного администратора правит только он сам (`User::isOwner`).
+        abort_if($user->isOwner() && ! $user->is($request->user()), 404);
         abort_unless($request->user()->isAdmin() && ! $user->is($request->user()), 404);
         if ($request->boolean('reject')) {
             $decide->reject($user, $request->user());
 
             return back()->with('toast', $user->wasChanged('approved_at') ? 'Доступ закрыт' : 'Отклонён');
         }
-        $role = Role::from($request->validate(['role' => ['required', Rule::enum(Role::class)]])['role']);
+        $role = Role::from($request->validate(['role' => ['required', Rule::enum(Role::class)->except(Role::Owner)]])['role']);
         $decide->approve($user, $role, $request->user());
 
         return back()->with('toast', "Доступ открыт: {$role->label()}");
@@ -359,6 +370,8 @@ class UserController
 
     public function update(Request $request, User $user, TransferBuyer $transfer, SyncViewers $sync)
     {
+        // Главного администратора правит только он сам (`User::isOwner`).
+        abort_if($user->isOwner() && ! $user->is($request->user()), 404);
         abort_unless($request->user()->isAdmin(), 404);
         if ($user->isBuyer()) {
             $data = $request->validate([
@@ -417,7 +430,7 @@ class UserController
         ]);
         // У себя роль не меняется — селект отключён и в запрос не попадает.
         $self = $user?->is($request->user()) ?? false;
-        $parkRoles = array_values(array_filter(self::PARK_ROLES, fn (Role $r) => (bool) $user?->hasRole($r)));
+        $parkRoles = array_values(array_filter(self::KEPT_ROLES, fn (Role $r) => (bool) $user?->hasRole($r)));
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:60'],
             'last_name' => ['required', 'string', 'max:60'],
