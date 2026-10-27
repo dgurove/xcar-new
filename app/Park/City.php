@@ -9,6 +9,7 @@ use App\Mail\Account;
 use App\Mail\Candidate;
 use App\Mail\Scope;
 use App\Users\User;
+use App\Vendors\Contact;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -105,6 +106,28 @@ final class City
 
         return match (count($cities)) {
             0 => self::main(),
+            1 => $cities[0],
+            default => null,
+        };
+    }
+
+    /**
+     * Город заявки из письма (27.10.2026, владелец: «один и тот же отправитель может прислать и для Питера, и для Москвы»):
+     * парковка, вписанная у контакта отправителя руками, — её город; иначе история отправителя — ТС его заявок стояли в
+     * одном городе — он, в разных — null (не уверены, видна всем); писем от него ещё не было — город вендора (`vendorCity`).
+     */
+    public static function senderCity(?string $email, ?int $vendorId): ?int
+    {
+        if ($yard = Contact::yardFor($email)) {
+            return $yard->settlement_id ? (int) $yard->settlement_id : self::vendorCity($vendorId);
+        }
+        $email = mb_strtolower(trim((string) $email));
+        $cities = $email === '' ? [] : DB::table('park_vehicles')->join('park_requests', 'park_requests.vehicle_id', '=', 'park_vehicles.id')
+            ->join('mail_messages', 'mail_messages.id', '=', 'park_requests.letter_id')->whereRaw('lower(mail_messages.from_email) = ?', [$email])
+            ->whereNotNull('park_vehicles.yard_id')->whereNotNull('park_vehicles.city_id')->distinct()->pluck('park_vehicles.city_id')->map(fn ($c) => (int) $c)->all();
+
+        return match (count($cities)) {
+            0 => self::vendorCity($vendorId),
             1 => $cities[0],
             default => null,
         };
