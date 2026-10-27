@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:10,1');
-    // Регистрации без приглашения нет: страница объясняет, где взять ссылку.
-    Route::view('/register', 'auth.invite-only')->name('register');
+    // Саморегистрации нет: заходят по приглашению (`/i/{code}`); старые ссылки — на вход.
+    Route::redirect('/register', '/login', 301)->name('register');
     Route::get('/password', [PasswordController::class, 'forgot'])->name('password.request');
     Route::post('/password', [PasswordController::class, 'send'])->middleware('throttle:5,1');
     Route::get('/password/{token}', [PasswordController::class, 'reset'])->name('password.reset');

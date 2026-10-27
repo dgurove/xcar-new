@@ -10,6 +10,7 @@ use App\Mail\CandidateStage;
 use App\Mail\CandidateState;
 use App\Mail\Direction;
 use App\Mail\Extraction\Code;
+use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\Extractor;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
@@ -46,6 +47,9 @@ use Throwable;
  */
 final class ChainBuilder
 {
+    /** @var list<Candidate> цепочки, которые письмо о нескольких машинах завело сверх первой (`place`) */
+    private array $born = [];
+
     public function __construct(private ReadLetter $reader, private ArchiveThread $archive, private CloseChain $close, private FreezeMessages $freeze) {}
 
     /**
@@ -73,14 +77,19 @@ final class ChainBuilder
         // Новая цепочка — людям: парковке сначала заводится заявка (`AutoRequest`, вне замка ящика — там импорт файлов),
         // CRM — черновик (`AutoOffer`, когда уверены, что это предложение), и уведомление уже о них; иначе «Новое из
         // писем» модераторам (Notify::candidateArrived). История ящика — молча.
+        $born = $this->born;
+        $this->born = [];
         if ($fresh && ! $quiet && $candidate) {
-            try {
-                $candidate->scope === Scope::Park ? app(AutoRequest::class)($candidate) : app(AutoOffer::class)($candidate);
-            } catch (Throwable $e) {
-                // Не завелась сама — цепочка ждёт человека в «Из писем», а письмо всё равно принято.
-                report($e);
+            // Письмо о нескольких машинах завело несколько цепочек — каждой то же, что одной.
+            foreach ([$candidate, ...$born] as $one) {
+                try {
+                    $one->scope === Scope::Park ? app(AutoRequest::class)($one) : app(AutoOffer::class)($one);
+                } catch (Throwable $e) {
+                    // Не завелась сама — цепочка ждёт человека в «Из писем», а письмо всё равно принято.
+                    report($e);
+                }
+                CandidateArrived::dispatch($one->fresh());
             }
-            CandidateArrived::dispatch($candidate->fresh());
         }
 
         return $fresh ? $candidate?->fresh() : $candidate;
@@ -102,13 +111,15 @@ final class ChainBuilder
             if (! $force && ! $this->starts($message, $park, $fields)) {
                 return null;
             }
-            $candidate = Candidate::create([
+            // Письмо о нескольких машинах («110927-26 и 110945-26 Мерседес Актрос + Когель», 27.10.2026: тягач и прицеп
+            // встали одной цепочкой) — цепочка на каждый номер, как и у писем по уже заведённым («выдать ТС А и Б»).
+            $matches = collect(count($codes) > 1 ? $codes : [Candidate::strongest($keys) ?? 'message:'.$message->id])->map(fn (string $key) => Candidate::create([
                 // Состояние явно: умолчание базы в модель не возвращается, и `AutoRequest` видел у новой цепочки пустое
                 // состояние вместо «ждёт» — заявки заводили только часы через пять минут.
-                'scope' => $scope, 'state' => CandidateState::New, 'key' => Candidate::strongest($keys) ?? 'message:'.$message->id, 'message_id' => $message->id, 'thread_id' => $message->thread_id,
+                'scope' => $scope, 'state' => CandidateState::New, 'key' => $key, 'message_id' => $message->id, 'thread_id' => $message->thread_id,
                 'subject' => $message->subject, 'extracted' => $fields, 'messages_count' => 0, 'last_message_at' => $message->date_at ?? now(),
-            ]);
-            $matches = collect([$candidate]);
+            ]));
+            $this->born = $matches->slice(1)->values()->all();
             $fresh = true;
         } elseif (count($codes) > 1) {
             // «Выдать ТС А и Б» — письмо о нескольких машинах: каждой в цепочку, но цепочки не сливаются.
@@ -188,13 +199,21 @@ final class ChainBuilder
         }
         $first = $theirs->first() ?? $messages->first();
         $keys = $messages->flatMap(fn (Message $m) => $m->keys())->unique()->values()->all();
+        $codes = array_values(array_filter($keys, fn ($k) => str_starts_with($k, 'code:')));
+        $own = count($codes) > 1 && in_array($candidate->key, $codes, true) ? $candidate->key : null;
+        // Номер такой цепочки — тот из темы, чей ключ её: общего номера у письма о двух машинах нет.
+        if ($own && ! isset($fields['code'])) {
+            $code = collect((new CodeMatcher)->findAll($first->subject))->first(fn ($c) => 'code:'.Code::key($c) === $own);
+            $code && $fields['code'] = ['value' => $code, 'source' => 'subject'];
+        }
         $stages = $this->stages($live);
         $last = $stages ? end($stages)['stage'] : CandidateStage::Intake->value;
         $latestTheirs = $theirs->last();
 
         $candidate->forceFill([
             'code' => isset($fields['code']['value']) ? Code::normalize($fields['code']['value']) : null,
-            'key' => Candidate::strongest([...$keys, 'thread:'.$first->thread_id]) ?? 'message:'.$first->id,
+            // Цепочка одного номера из письма о нескольких машинах держит свой номер: сильнейший из писем — общий для всех.
+            'key' => $own ?? Candidate::strongest([...$keys, 'thread:'.$first->thread_id]) ?? 'message:'.$first->id,
             'vendor_id' => $fields['vendor_id']['value'] ?? null,
             'message_id' => $first->id, 'thread_id' => $first->thread_id, 'subject' => $first->subject,
             'extracted' => $fields,

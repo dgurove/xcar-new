@@ -1878,7 +1878,7 @@ fixed-слои, так же у Ionic и Framework7): `x-ui.shell` — `body.app-
   (по умолчанию), следующий слот 16:00 МСК или **«Другой день…»** (13.10.2026: наш календарь `x-ui.date` с временем, по умолчанию 16:00, другое
   время — свой слот; `Slots::DAY`, в форме `when=day` и `day`, дальше `day:Y-m-dTH:i`, прошедшее — ближайший слот; `Slots::when` одной дверью; пункт «Действий» карточки и
   «···» редактора — шторка `x-offer.day-sheet`, событие `publish-day:open`; строка в `x-offer.publish-sheet`) (`Offers\Slots`, `ScheduleOffer`, шторка `x-offer.publish-sheet`,
-  пачкой из «Оцененных» — та же шторка с `form="offers-pick"`, пункты `x-offer.publish-items`, капсула `x-offer.slot-menu`,
+  пачкой из «Оцененных» — та же шторка с `form="offers-pick"`, пункты `x-offer.publish-items`,
   вкладка «Публикация»); «Сейчас» пачкой (`ScheduleOffer(batch:)` → `OfferPublished(slot: true)`) — менеджеру одно
   «Опубликовано N» тиком часов, бот молчит;
   `offers.slot_at` у черновика или галереи — «выйдет», у открытого — «вышло слотом в этот раз», любой другой переход

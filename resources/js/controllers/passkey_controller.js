@@ -13,7 +13,9 @@ export default class extends Controller {
 
     async connect() {
         const w = await lib();
-        if (!w.browserSupportsWebAuthn()) return;
+        // На входе кнопка в разметке сразу (27.10.2026, владелец: «страница моргает» — блок появлялся после загрузки
+        // скрипта и сдвигал форму); не умеет браузер — убрать. В профиле блок скрыт, пока не проверили.
+        if (!w.browserSupportsWebAuthn()) { this.element.hidden = true; return; }
         this.element.hidden = false;
         if (this.hasButtonTarget) this.buttonTarget.querySelector('[data-label]').textContent = this.label();
         if (this.modeValue === 'login' && document.querySelector('input[autocomplete$="webauthn"]') && await w.browserSupportsWebAuthnAutofill()) {

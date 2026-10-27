@@ -180,66 +180,6 @@ final class DealMoney
             : new self(($staff ? 'Выплатили ' : 'Выплачено ').$date($payout->paid_at), (float) $payout->total, 'muted', 'closed', $staff ? 'выплатили' : 'Вам выплачено');
     }
 
-    /**
-     * Путь денег сделки точками на линии (`x-money.track`, `.steps`): подтверждение → счёт → оплата → вознаграждение.
-     * Пройденное — с датой, текущее — со словом, что сейчас происходит, будущее — серым. Вознаграждения нет
-     * или менеджер его удерживает сам — шага выплаты нет.
-     *
-     * @return list<array{title: string, at: ?CarbonInterface, state: string, hint: ?string, tone: ?string}>
-     */
-    public static function track(Deal $deal): array
-    {
-        $step = fn (string $title, string $state, $at = null, ?string $hint = null, ?string $tone = null) => compact('title', 'state', 'at', 'hint', 'tone');
-        $invoices = $deal->relationLoaded('invoices') ? $deal->invoices : $deal->invoices()->with(['claims', 'payments'])->get();
-        $issued = $invoices->reject(fn (Invoice $i) => $i->isOwed())->sortBy('issued_at')->values();
-        $fee = $invoices->first(fn (Invoice $i) => $i->isAgentFee());
-        $steps = [$step('Подтверждение принято', 'done', $deal->created_at)];
-
-        if ($deal->state === DealState::Cancelled) {
-            $steps[] = $step('Сделка отменена', 'danger', $deal->closed_at ?? $deal->updated_at);
-
-            return $steps;
-        }
-        if ($issued->isEmpty()) {
-            $steps[] = $step('Счёт', 'current', null, 'Готовим счёт');
-            $steps[] = $step('Оплата', 'todo');
-        } else {
-            $first = $issued->first();
-            $steps[] = $step('Счёт '.$first->label().' выставлен', 'done', $first->issued_at);
-            $unpaid = $issued->first(fn (Invoice $i) => $i->state === InvoiceState::Issued);
-            if (! $unpaid) {
-                $steps[] = $step('Счёт оплачен', 'done', $issued->max('paid_at'));
-            } elseif ($unpaid->claimed() > 0) {
-                $steps[] = $step('Оплата', 'current', null, 'Сообщили об оплате, ждём поступления', 'urgent');
-            } elseif (($link = $unpaid->openLink()) && $link->attempts()->exists()) {
-                // Ссылка есть у каждого счёта (заводится с ним) — в путь идёт, только когда плательщик её открывал.
-                [$line, $tone] = $link->stateLine();
-                $steps[] = $step('Оплата', 'current', null, 'По ссылке: '.$line, $tone === 'danger' ? 'danger' : 'urgent');
-            } elseif ($unpaid->isOverdue()) {
-                $steps[] = $step('Оплата', 'current', null, $unpaid->overdueLabel(true), 'danger');
-            } else {
-                // Подбор по ДКП выставлен без срока: срок встаёт с шага оплаты (`StartSelectionDue`).
-                $when = $unpaid->due_at ? 'до '.$unpaid->due_at->translatedFormat('j M') : $unpaid->laterLabel(true);
-                $steps[] = $step('Оплата', 'current', null, ($unpaid->paidMoney() > 0 ? 'Оплачено '.Money::rub($unpaid->paidMoney()).', остаток ' : 'Ждём оплату ').$when);
-            }
-        }
-
-        $state = $deal->commissionState();
-        if ($deal->commission && $state !== CommissionState::Hidden) {
-            $steps[] = match ($state) {
-                // Оставил себе — когда счёт, из которого он его вычел, оплачен; до того шаг впереди, без даты.
-                CommissionState::Withheld => $issued->every(fn (Invoice $i) => $i->state !== InvoiceState::Issued)
-                    ? $step('Оставили себе вознаграждение', 'done', $issued->max('paid_at'))
-                    : $step('Вознаграждение', 'todo', null, 'Оставите себе при оплате'),
-                CommissionState::Paid => $step('Вознаграждение выплачено', 'done', $fee?->paid_at),
-                CommissionState::Payable => $step('Выплата вознаграждения', 'current', null, ($fee?->due_at ? 'До '.$fee->due_at->translatedFormat('j M') : null), 'accent'),
-                default => $step('Выплата вознаграждения', 'todo'),
-            };
-        }
-
-        return $steps;
-    }
-
     public function needsAction(): bool
     {
         // «Укажите покупателя» — тоже его ход, наверх вместе с «Оплатить».
