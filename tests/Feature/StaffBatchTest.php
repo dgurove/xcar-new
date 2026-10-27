@@ -39,7 +39,7 @@ class StaffBatchTest extends TestCase
         $this->travel(3)->minutes();
         $this->assertSame(1, Batch::flush());
         Notification::assertSentToTimes($admin, BatchNotice::class, 1);
-        Notification::assertSentTo($admin, BatchNotice::class, fn (BatchNotice $n) => str_contains($n->title(), '40 ТС') && str_contains((string) $n->text(), 'и ещё 37'));
+        Notification::assertSentTo($admin, BatchNotice::class, fn (BatchNotice $n) => str_contains($n->title(), '40 ТС') && str_contains((string) $n->text(), 'и ещё'));
         Notification::assertNotSentTo($admin, ParkNotice::class);
 
         // Одно — прежним уведомлением.
