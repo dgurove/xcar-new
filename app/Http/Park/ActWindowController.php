@@ -36,7 +36,9 @@ class ActWindowController
 
         $vehicle->load(['vendor', 'yard', 'media', 'requests']);
         $user = $request->user();
-        $common = ['vehicle' => $vehicle, 'advance' => $advance, 'self' => $url($step, array_filter(['pass' => $request->query('pass')])), 'canManage' => $user->canManagePark()];
+        $common = ['vehicle' => $vehicle, 'advance' => $advance, 'self' => $url($step, array_filter(['pass' => $request->query('pass')])), 'canManage' => $user->canManagePark(),
+            // Приёмщик (27.10.2026): принимает и выдаёт, деньги — только наличные с покупателя (`User::parkHandles|parkMoney`).
+            'handles' => $user->parkHandles(), 'money' => $user->parkMoney()];
 
         if ($step === 'report') {
             if (! $vehicle->accepted_at || MarkReportSent::done($vehicle)) {
@@ -57,7 +59,8 @@ class ActWindowController
                 'yards' => $yards->pluck('name', 'id'),
                 'yardRows' => $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]),
                 // Марку и модель приём требует (`VehicleFields`): письмо их не дало — поля тут же.
-                'gaps' => $user->canManagePark() && (! $vehicle->brand_id || ! $vehicle->model_id),
+                // Приёмщику тоже: без марки и модели ТС не принять.
+                'gaps' => $user->parkHandles() && (! $vehicle->brand_id || ! $vehicle->model_id),
                 'letter' => self::billable($vehicle),
                 'then' => $url('report'),
             ]);

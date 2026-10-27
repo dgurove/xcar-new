@@ -217,6 +217,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             if ($this->onlyGarage()) {
                 return false;
             }
+
             // Админ на сайте видит галерею как менеджер (08.10.2026) — и интерес оставляет так же.
             return $this->hasRole(Role::Manager, Role::Buyer, Role::SuperBuyer, Role::Visitor, Role::Admin);
         }
@@ -479,7 +480,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     /**
      * Управляющий: вся парковка на всех парковках — заявки, приём, выдача, оплаты, счета, закрытие месяца, почта,
-     * контакты вендоров и реквизиты плательщиков. Не он — помощник «только приёмка» (`isParkHelper`).
+     * контакты вендоров и реквизиты плательщиков. Не он — приёмщик (`isParkHelper`): принимает и выдаёт, денег не видит.
      * Настройки парковки (прайс, правила вендоров, парковки, свои реквизиты, люди) — `isParkAdmin`; продажа — `isAdmin`.
      */
     public function canManagePark(): bool
@@ -519,10 +520,29 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->hasRole(Role::ParkAdmin);
     }
 
-    /** Помощник на воротах («только приёмка»): заявки, приём и выдача; без оплат, почты, вендоров и правки ТС. */
+    /**
+     * Приёмщик (`park_readonly`, 27.10.2026, владелец: Роман в Москве и Никита в Питере «просто принимают и выдают»):
+     * заявки, приём, выдача (QR, без QR, подтверждение покупателя, отказ), отчёт о приёме вендору; денег не видит —
+     * только «получить N ₽ наличными» при выдаче. Без «Оплат», почты разделом, вендоров, правки ТС и отмен.
+     */
     public function isParkHelper(): bool
     {
         return $this->isParking() && $this->park_readonly && ! $this->isParkAdmin();
+    }
+
+    /** Принимает и выдаёт: вся роль «Парковка» (и приёмщик) и администратор парковки — `ability:parkHandles`. */
+    public function parkHandles(): bool
+    {
+        return $this->isParkAdmin() || $this->isParking();
+    }
+
+    /**
+     * Видит деньги парковки: ставки, начисления, долги, счета, «Оплаты», выгрузку, «Условия», договор комиссии — управляющий
+     * и администратор, не приёмщик (`ability:parkMoney`). Одна дверь для видов и маршрутов.
+     */
+    public function parkMoney(): bool
+    {
+        return $this->canManagePark();
     }
 
     /** Личная заметка к ТС на xcar.ru (18.10.2026): менеджеру, покупателю, супер-покупателю и админу; демо и проверяющему — нет. */

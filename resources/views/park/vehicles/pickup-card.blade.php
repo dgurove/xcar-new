@@ -20,9 +20,10 @@
         @elseif ($canManage)
             <form method="post" action="/cars/{{ $vehicle->id }}/pickup-link/create">@csrf<button type="submit" class="row w-full justify-between text-left"><span>Создать ссылку</span><x-ui.icon name="plus" class="size-5 shrink-0 text-ink-dim"/></button></form>
         @endif
-        @if ($canManage)
+        {{-- Отправить страховой — и приёмщику (27.10.2026); создать и отключить ссылку — управляющему. --}}
+        @if ($handles ?? $canManage)
             <form method="post" action="/cars/{{ $vehicle->id }}/pickup-link" data-turbo-confirm="Отправить страховой ссылку для покупателя?">@csrf<button type="submit" class="row w-full justify-between text-left"><span>{{ $sentAt ? 'Отправить страховой ещё раз' : 'Отправить страховой' }}</span><x-ui.icon name="send" class="size-5 shrink-0 text-ink-dim"/></button></form>
-            @if ($link)
+            @if ($link && $canManage)
                 <form method="post" action="/cars/{{ $vehicle->id }}/pickup-link/renew" data-turbo-confirm="Отключить эту ссылку? По ней анкета больше не откроется{{ $pass?->isLive() ? ', пропуск '.$pass->name.' погаснет' : '' }}">@csrf<button type="submit" class="row w-full justify-between text-left text-danger"><span>Отключить и выдать новую</span><x-ui.icon name="refresh" class="size-5 shrink-0"/></button></form>
             @endif
         @endif

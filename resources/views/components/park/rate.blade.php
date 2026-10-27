@@ -1,17 +1,17 @@
 {{-- Ставка машины — кусок фразы с шторкой (12.10.2026, владелец: «единоразово: для этой машины ставка такая»; `Park\VehicleRate`):
      «300 ₽/сут», своя — «300 ₽/сут, своя», нет — оранжевое «ставки нет». Нажатие — шторка «Ставка»: тип ТС, своя ставка
-     (пусто — по тарифу, тариф подсказкой в поле), почему своя, оценочная. Править — `canManagePark`, остальным текст.
+     (пусто — по тарифу, тариф подсказкой в поле), почему своя, оценочная. Видит и правит — `parkMoney`, приёмщику ничего.
      Шторка со своей формой: ставить только вне другой формы (форма приёма шлёт те же поля сама). --}}
 @props(['vehicle', 'key' => 'card'])
 @php
     use App\Park\VehicleRate;
-    $shown = VehicleRate::shown($vehicle);
-    $can = auth()->user()?->canManagePark() ?? false;
+    // Ставка — деньги: приёмщику (`User::parkMoney`, 27.10.2026) её нет ни текстом, ни шторкой.
+    $can = auth()->user()?->parkMoney() ?? false;
+    $shown = $can ? VehicleRate::shown($vehicle) : ['text' => null, 'own' => false];
     $label = $shown['text'] ? $shown['text'].($shown['own'] ? ', своя' : '') : 'ставки нет';
     $id = 'rate-'.$vehicle->id.'-'.$key;
 @endphp
 @if (! $can)
-    <span {{ $attributes->class(['nums', 'text-urgent' => ! $shown['text']]) }}>{{ $label }}</span>
 @else
 <span class="contents" data-controller="sheet">
     <button type="button" {{ $attributes->class(['nums underline decoration-dotted decoration-ink-dim underline-offset-4', 'text-urgent' => ! $shown['text']]) }} data-action="sheet#open">{{ $label }}</button>

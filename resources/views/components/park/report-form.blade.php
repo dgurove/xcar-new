@@ -71,7 +71,7 @@
 
             <div class="sheet-foot flex flex-col items-center gap-1">
                 <button type="submit" class="btn btn-accent w-full" data-report-target="submit">Отправить отчёт</button>
-                @if (auth()->user()?->canManagePark())
+                @if (auth()->user()?->parkHandles())
                     <button type="submit" form="report-sent-{{ $vehicle->id }}" class="act-quiet">Уже отправили с другой почты</button>
                 @endif
             </div>
@@ -81,13 +81,13 @@
     {{-- Ящика парковки для отправки нет — отчёт ушёл другим путём: только отметка. --}}
     <section {{ $attributes->merge(['class' => 'report']) }}>
         <p class="text-sm text-ink-muted">Ящик парковки для отправки не подключён</p>
-        @if (auth()->user()?->canManagePark())
+        @if (auth()->user()?->parkHandles())
             <div class="sheet-foot mt-4"><button type="submit" form="report-sent-{{ $vehicle->id }}" class="btn btn-accent w-full">Уже отправили с другой почты</button></div>
         @endif
     </section>
 @endif
-{{-- Вне формы отчёта (формы не вкладываются), кнопка — в её подвале; отметку ставит тот, кто ведёт парковку, не помощник. --}}
-@if (auth()->user()?->canManagePark())
+{{-- Вне формы отчёта (формы не вкладываются), кнопка — в её подвале; отметку ставит и приёмщик (27.10.2026). --}}
+@if (auth()->user()?->parkHandles())
     <form method="post" action="/cars/{{ $vehicle->id }}/report-sent" id="report-sent-{{ $vehicle->id }}" hidden data-turbo-confirm="Отчёт уже ушёл с другой почты?" data-turbo-confirm-label="Уже отправили">
         @csrf @if ($advance)<input type="hidden" name="advance" value="1">@endif
     </form>

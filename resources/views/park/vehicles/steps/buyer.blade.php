@@ -15,7 +15,8 @@
             </button>
         @endif
     </div>
-    @if ($canManage)
+    {{-- Подтверждает и приёмщик (27.10.2026): он и выдаёт по QR. --}}
+    @if ($handles ?? $canManage)
         <div class="mt-3 flex flex-col gap-1">
             <button type="submit" form="buyer-confirm-form" class="btn btn-s btn-accent w-full" data-turbo-confirm="Страховая подтвердила покупателя {{ $pass->name }}?">Страховая подтвердила</button>
             <button type="button" class="btn btn-s btn-ghost self-center text-danger" data-controller="emit" data-action="emit#send" data-emit-event-param="buyer-reject:open">Не покупатель</button>

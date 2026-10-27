@@ -127,7 +127,9 @@ class VehicleController
         Rows::only($vehicles, 'park_vehicles.id');
         $page = ListView::paginate($request, $vehicles, whole: ListView::fromRequest($request, $grouped || $byMonth) === ListView::SHELF);
         // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
-        $totals = Accrual::cachedTotals($page->getCollection());
+        // Приёмщику (`User::parkMoney`, 27.10.2026) денег нет: не считаются вовсе — ни столбцов, ни сумм, ни сортировки по ним.
+        $money = $request->user()->parkMoney();
+        $totals = $money ? Accrual::cachedTotals($page->getCollection()) : [];
         // «Больше набежало» — по посчитанному: в базе этой суммы нет. Таблица целиком на одной странице,
         // так что сортировка в памяти честная; у карточек — в пределах страницы.
         // Висящие задачи (`Park\Tasks`) — одним запросом на страницу: слово в «Статусе» и сортировка «Задачи».
@@ -147,7 +149,8 @@ class VehicleController
         $data = [
             'vehicles' => $page,
             'sort' => $sort,
-            'debts' => Ledger::debtsByVehicle($page->pluck('id')->all()),
+            'debts' => $money ? Ledger::debtsByVehicle($page->pluck('id')->all()) : [],
+            'money' => $money,
             'totals' => $totals,
             'grouped' => $grouped,
             'flat' => $flat,
@@ -225,7 +228,7 @@ class VehicleController
             'vehicle' => $vehicle, 'yards' => $yards->pluck('name', 'id'),
             // Свободные места парковок — шторке «Переставить» в карточке (spots_controller); приём и выдача — окном действия.
             'yardRows' => $vehicle->state === VehicleState::Stored ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],
-            'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
+            'total' => $request->user()->parkMoney() ? (Accrual::totals([$vehicle])[$vehicle->id] ?? null) : null,
             // Из «Заявок» (заявку передали явно) главное — задача: кадры одной лентой, без блоков по стадиям над ней.
             'fromRequests' => $fromRequests, 'listed' => $listed,
             // Строка заявки, которую почта завела и документы ещё читаются, остаётся силуэтом с ходом, как в списке.
@@ -237,7 +240,7 @@ class VehicleController
                 && ! $vehicle->events->contains(fn ($e) => $e->type === EventType::ReportSent && ($e->payload['what'] ?? null) === 'Акт выдачи')
                 ? $vehicle->reportUrl('release', "/cars/{$vehicle->id}") : null,
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
-            'debt' => Ledger::vehicleDebt($vehicle),
+            'debt' => $request->user()->parkMoney() ? Ledger::vehicleDebt($vehicle) : 0,
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
             // «✨» и расхождения с документами — тем, кто правит ТС, и только когда письма есть.
             // Выданной сверять уже нечего: машины на парковке нет.
@@ -312,8 +315,10 @@ class VehicleController
     /** Страховая продала ТС: дата и кому выдать — руками или поправить то, что вынул разбор письма. `clear` — не продано. */
     public function sold(Request $request, Vehicle $vehicle, MarkSold $sold)
     {
-        abort_unless($request->user()->canManagePark(), 404);
+        // Кто заберёт — и приёмщик (покупатель приехал на ворота); снять выдачу и срок за счёт вендора — управляющий.
+        abort_unless($request->user()->parkHandles(), 404);
         if ($request->boolean('clear')) {
+            abort_unless($request->user()->canManagePark(), 403);
             // Заявка на выдачу, которую завело «продано», снимается вместе с продажей.
             $sold->clear($vehicle, $request->user(), 'Выдача снята');
             $vehicle->log(EventType::Updated, $request->user(), ['fields' => ['sold_at']]);
@@ -326,7 +331,7 @@ class VehicleController
         $phone = ! empty($data['pickup_phone']) ? Phone::format(Phone::normalize($data['pickup_phone']) ?? $data['pickup_phone']) : null;
         $sold($vehicle, $request->user(), Carbon::parse($data['sold_at']), $data['pickup_name'] ?? null, $phone);
         // Срок хранения за счёт вендора приходит письмом и живёт только руками: пустое поле его снимает.
-        if ($vehicle->vendor?->buyer_pays_late) {
+        if ($vehicle->vendor?->buyer_pays_late && $request->user()->parkMoney()) {
             $vehicle->update(['buyer_free_until' => $data['buyer_free_until'] ?? null]);
         }
 
@@ -610,8 +615,8 @@ class VehicleController
                 Facet::column('month', 'Месяц', ['месяц', 'месяца', 'месяцев'], "to_char(park_vehicles.released_at, 'YYYY-MM')")->natural()
                     ->labels(fn (array $keys) => collect($keys)->filter(fn ($k) => preg_match('/^\d{4}-\d{2}$/', $k))->sortDesc()
                         ->mapWithKeys(fn ($k) => [$k => new Option($k, mb_convert_case(Carbon::createFromFormat('!Y-m', $k)->translatedFormat('F Y'), MB_CASE_TITLE))])->all()),
-                Facet::column('money', 'Деньги', ['состояние', 'состояния', 'состояний'], OutMoney::sql())->natural()
-                    ->labels(fn (array $keys) => collect(OutMoney::LABELS)->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()),
+                ...($request->user()->parkMoney() ? [Facet::column('money', 'Деньги', ['состояние', 'состояния', 'состояний'], OutMoney::sql())->natural()
+                    ->labels(fn (array $keys) => collect(OutMoney::LABELS)->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all())] : []),
             );
         }
 
@@ -622,11 +627,12 @@ class VehicleController
             Common::category(Car::sql('park_vehicles', 'category'), 'Без типа'),
             // «Без ставки» — пока такие ТС есть: у них не заполнены тип или стоимость, либо у вендора нет прайса.
             // Правят их в карточке строки. Число — в границах выбранных парковок, как и прочие числа.
-            Facet::toggle('gap', 'Без ставки', function ($v) use ($request, &$noRate, &$facets) {
+            // Приёмщику ставок нет — и чипа о них тоже.
+            ...($request->user()->parkMoney() ? [Facet::toggle('gap', 'Без ставки', function ($v) use ($request, &$noRate, &$facets) {
                 $v->whereIn('park_vehicles.id', $noRate ??= $this->noRate($request, $facets->selected('yard')));
             })->tone('pill-danger')->counted(function () use ($request, &$noRate, &$facets) {
                 return count($noRate ??= $this->noRate($request, $facets->selected('yard')));
-            }),
+            })] : []),
         );
     }
 
@@ -654,7 +660,8 @@ class VehicleController
             ->when($state === VehicleState::Released, fn ($v) => $v->addSelect(DB::raw(OutMoney::sql().' as money_state')))
             ->search($q);
         $facets->apply($vehicles);
-        $sort = Sort::from($request->query('sort'), self::SORTS, $state === VehicleState::Released ? '-out' : 'accepted');
+        $sorts = $request->user()?->parkMoney() ? self::SORTS : array_diff_key(self::SORTS, array_flip(['rate', 'amount']));
+        $sort = Sort::from($request->query('sort'), $sorts, $state === VehicleState::Released ? '-out' : 'accepted');
         $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $vehicles->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir()),

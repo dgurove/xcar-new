@@ -482,6 +482,8 @@ class MailController
         $offer = $sale && $request->query('offer') ? OfferNumber::find((string) $request->query('offer')) : null;
         $vehicle = ! $sale && $request->query('car') ? Vehicle::find($request->query('car')) : null;
         // Счёт за хранение вендору: ТС счёта, шаблон «Счёт за хранение», PDF счёта и акта, адресат — бухгалтерия вендора.
+        // Счёт в письме — деньги: приёмщику парковки (`User::parkMoney`) не подставляется (27.10.2026).
+        abort_if(! $sale && $request->query('invoice') && ! $request->user()->parkMoney(), 404);
         $invoice = ! $sale && $request->query('invoice') ? Invoice::with(['vehicle', 'party'])->find($request->query('invoice')) : null;
         if ($invoice?->vehicle) {
             $vehicle = $invoice->vehicle;
@@ -670,13 +672,13 @@ class MailController
                 $vehicle->log(EventType::ReportSent, $request->user(), ['what' => str_starts_with($act, 'akt-vydachi') ? 'Акт выдачи' : 'Акт приёма', 'thread' => $message->thread_id]);
             }
             // Ушёл счёт — отметка на нём и в ленте ТС.
-            if (! empty($data['invoice']) && ($invoice = Invoice::where('vehicle_id', $vehicle->id)->find($data['invoice']))) {
+            if (! empty($data['invoice']) && $request->user()->parkMoney() && ($invoice = Invoice::where('vehicle_id', $vehicle->id)->find($data['invoice']))) {
                 $invoice->update(['sent_at' => now()]);
                 $vehicle->log(EventType::ReportSent, $request->user(), ['what' => 'Счёт '.$invoice->label(), 'thread' => $message->thread_id]);
             }
         }
         // Ушёл счёт-реестр — отметка на нём и отчёт в ленте каждой его ТС.
-        if ($this->scope === Scope::Park && ! empty($data['invoice']) && ($registry = Invoice::whereNull('vehicle_id')->whereNotNull('month')->find($data['invoice']))) {
+        if ($this->scope === Scope::Park && ! empty($data['invoice']) && $request->user()->parkMoney() && ($registry = Invoice::whereNull('vehicle_id')->whereNotNull('month')->find($data['invoice']))) {
             $registry->update(['sent_at' => now()]);
             foreach ($registry->registryVehicles() as $v) {
                 $v->log(EventType::ReportSent, $request->user(), ['what' => 'Реестр '.$registry->label(), 'thread' => $message->thread_id]);

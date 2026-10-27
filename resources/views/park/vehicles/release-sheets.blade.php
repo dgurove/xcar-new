@@ -1,8 +1,8 @@
 {{-- Шторки выдачи: «Покупатель» (кто заберёт, sold:open) — у дела и в окне действия; «Покупатель отказался»
      (refusal:open) и «Выдать без QR» (without-qr:open) — только в окне выдачи (`$window`, события с приставкой act-). Поле
      причины без QR привязано к форме выдачи окна — `$formId`. Нужны `$vehicle`, `$req`, `$canManage`, `$byQr`. --}}
-@php use App\Park\{RequestType, VehicleState}; $state = $vehicle->state; $ev = ($window ?? false) ? 'act-' : ''; @endphp
-    @if ($canManage && ($state === VehicleState::Stored || $vehicle->sold_at))
+@php use App\Park\{RequestType, VehicleState}; $state = $vehicle->state; $ev = ($window ?? false) ? 'act-' : ''; $handles ??= $canManage; $money ??= $canManage; @endphp
+    @if ($handles && ($state === VehicleState::Stored || $vehicle->sold_at))
         <div data-controller="sheet" data-action="{{ $ev }}sold:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="$ev.'sold'" title="Покупатель">
                 {{-- Страховая продала ТС: дата письма, кому выдать; дальше дни за счёт вендора и покупатель по множителю. --}}
@@ -14,18 +14,18 @@
                         <x-ui.field name="pickup_name" label="Кто заберёт" :value="$vehicle->pickup_name"/>
                         {{-- Срок из письма страховой: опоздал — дальше сутки идут покупателю по множителю вендора.
                              Поле только у вендоров с этим правилом (ВСК): у остальных платит страховая, сколько бы ни стояло. --}}
-                        @if ($vehicle->vendor?->buyer_pays_late)<x-ui.field name="buyer_free_until" label="За счёт вендора до" type="date" :value="$vehicle->buyer_free_until?->toDateString()"/>@endif
+                        @if ($money && $vehicle->vendor?->buyer_pays_late)<x-ui.field name="buyer_free_until" label="За счёт вендора до" type="date" :value="$vehicle->buyer_free_until?->toDateString()"/>@endif
                     </div>
                     <div class="sheet-foot flex gap-2">
                         <x-ui.button class="flex-1">{{ $vehicle->sold_at ? 'Сохранить' : 'Записать' }}</x-ui.button>
-                        @if ($vehicle->sold_at)<x-ui.button variant="ghost" name="clear" value="1" data-turbo-confirm="Снять выдачу?">Снять выдачу</x-ui.button>@endif
+                        @if ($vehicle->sold_at && $canManage)<x-ui.button variant="ghost" name="clear" value="1" data-turbo-confirm="Снять выдачу?">Снять выдачу</x-ui.button>@endif
                     </div>
                 </form>
             </x-ui.sheet>
         </div>
     @endif
 
-    @if (($window ?? false) && $canManage && $vehicle->sold_at && $state === VehicleState::Stored && $req?->type === RequestType::Release)
+    @if (($window ?? false) && $handles && $vehicle->sold_at && $state === VehicleState::Stored && $req?->type === RequestType::Release)
         <div data-controller="sheet" data-action="{{ $ev }}refusal:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="$ev.'refusal'" title="Покупатель отказался">
                 {{-- Приехал, посмотрел и не взял: продажа снимается, ТС снова просто стоит, дальше письмо вендору. --}}
@@ -38,7 +38,7 @@
         </div>
     @endif
 
-    @if (($window ?? false) && $canManage && ($byQr ?? false) && $state === VehicleState::Stored && (! $req || $req->type === RequestType::Release))
+    @if (($window ?? false) && $handles && ($byQr ?? false) && $state === VehicleState::Stored && (! $req || $req->type === RequestType::Release))
         <div data-controller="sheet" data-action="{{ $ev }}without-qr:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="$ev.'without-qr'" title="Выдать без QR-кода?">
                 {{-- Крайний случай: причина от 20 знаков уходит в историю ТС, в акт и владельцу в Telegram. Поле связано с

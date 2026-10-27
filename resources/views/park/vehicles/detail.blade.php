@@ -14,7 +14,9 @@
     // Выданная — итог дела: кому и как выдали (событие выдачи), сколько стояла, хранение и деньги словом (OutMoney).
     $released = $state === VehicleState::Released ? $vehicle->events->firstWhere('type', \App\Park\EventType::Released) : null;
     $handedTo = $released ? ($vehicle->pickup_name ?: ($released->payload['to'] ?? null)) : null;
-    $money = \App\Park\OutMoney::of($vehicle);
+    // Приёмщику (`User::parkMoney`) денег нет: ни хранения словом, ни ставки, ни долга (сумм ему не считает и контроллер).
+    $seesMoney = auth()->user()->parkMoney();
+    $money = $seesMoney ? \App\Park\OutMoney::of($vehicle) : null;
     $gaps = ! $vehicle->brand_id || ! $vehicle->model_id || $vehicle->vinProblem() || ! $vehicle->year || ! $vehicle->color;
 @endphp
 <x-ui.detail>
@@ -88,7 +90,7 @@
             @if ($vehicle->yard)<span class="{{ $seg }}">@if ($stored && ! ($fromRequests ?? false))<x-park.place-move :vehicle="$vehicle" :chevron="false" :class="$dotted"/>@else<x-ui.place>{{ $vehicle->yard->name }}</x-ui.place>@endif<span class="whitespace-pre text-ink-muted">{{ ($stored || $out) && $vehicle->accepted_at ? ', ' : '' }}</span></span>@endif
             @if (($stored || $out) && $vehicle->accepted_at)<span class="{{ $seg }}"><span class="whitespace-pre text-ink-muted">с </span>@if ($admin)<x-park.date-edit :vehicle="$vehicle" field="accepted_at" :class="'nums '.$dotted"/>@else<span class="nums">{{ $day('accepted_at') }}</span>@endif<span class="whitespace-pre">{{ $out ? ' ' : '' }}</span></span>@endif
             {{-- Ставка — тем же куском фразы, шторкой (12.10.2026, `x-park.rate`): «300 ₽/сут», своя, «ставки нет». --}}
-            @if ($stored && ! ($fromRequests ?? false))<span class="{{ $seg }}">@if ($vehicle->yard || $vehicle->accepted_at)<span class="whitespace-pre text-ink-muted">, </span>@endif<x-park.rate :vehicle="$vehicle"/></span>@endif
+            @if ($stored && $seesMoney && ! ($fromRequests ?? false))<span class="{{ $seg }}">@if ($vehicle->yard || $vehicle->accepted_at)<span class="whitespace-pre text-ink-muted">, </span>@endif<x-park.rate :vehicle="$vehicle"/></span>@endif
             @if ($out)
                 <span class="{{ $seg }}"><span class="whitespace-pre text-ink-muted">по </span>@if ($admin)<x-park.date-edit :vehicle="$vehicle" field="released_at" :class="'nums '.$dotted"/>@else<span class="nums">{{ $day('released_at') }}</span>@endif<span class="whitespace-pre text-ink-muted">{{ $vehicle->accepted_at && $vehicle->daysStored() !== null ? ', ' : '' }}</span></span>
                 @if ($vehicle->accepted_at && $vehicle->daysStored() !== null)<span class="nums text-ink-muted">{{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
@@ -166,6 +168,6 @@
         @endif
         {{-- Свежая строка списка под тем же ключом: в «Заявках» ключ — номер заявки, и строка — её (`x-park.request-row`); строка
              «Наличия» с номером ТС подменяла заявку машиной, и та переставала открываться. Закрытую заявку убирает `detail-gone`. --}}
-        <x-slot:row>@if ($listed ?? null)<x-park.request-row :req="$listed" :arrive="$arrive ?? null"/>@else<x-park.table-row :vehicle="$vehicle" :total="$total"/>@endif</x-slot:row>
+        <x-slot:row>@if ($listed ?? null)<x-park.request-row :req="$listed" :arrive="$arrive ?? null"/>@else<x-park.table-row :vehicle="$vehicle" :total="$total" :money="$seesMoney"/>@endif</x-slot:row>
     </x-ui.row-card>
 </x-ui.detail>

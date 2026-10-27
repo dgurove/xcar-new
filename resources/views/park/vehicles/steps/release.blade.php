@@ -6,6 +6,9 @@
     // В окне действия (`park/act/release`) шторки свои — события с приставкой, чтобы не открыть заодно шторки дела под окном.
     $win = $window ?? false;
     $ev = $win ? 'act-' : '';
+    // Приёмщик (27.10.2026) выдаёт сам — QR, без QR, отказ, «кто заберёт», — а из денег видит только наличные с покупателя.
+    $handles ??= $canManage;
+    $money ??= $canManage;
 @endphp
 {{-- Шаг «Выдача». По QR первым — «Сканировать QR» (сначала убедиться, что приехал покупатель), его место занимает
      итог скана. Дальше одна плашка: когда (по умолчанию сейчас) и деньги строками. «Кому» и «Кто получил» не
@@ -41,37 +44,40 @@
             <span class="min-w-0"><span class="block truncate">{{ $who }}</span>@if ($vehicle->pickup_phone)<span class="nums block text-sm text-ink-muted">{{ $vehicle->pickup_phone }}</span>@endif</span>
             @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
         </div>
-    @elseif (! $qr && $canManage)
+    @elseif (! $qr && $handles)
         <div class="row justify-between">
             <span class="text-ink-muted">Кто заберёт</span>
             <button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}sold:open">Указать</button>
         </div>
     @endif
-    {{-- Держат выдачу только неоплаченное покупателем и наличные с него; страховая сторона платит счётом. --}}
-    @if ($releaseDebt > 0)
+    {{-- Держат выдачу только неоплаченное покупателем и наличные с него; страховая сторона платит счётом. Приёмщику —
+         только «получить наличными N ₽» и «Получил»; выставленный и не оплаченный счёт — словами, без суммы и обхода. --}}
+    @if ($releaseDebt > 0 && $money)
         <div class="row justify-between"><span class="text-danger">Не оплачено</span><span class="nums text-danger">{{ Money::rub($releaseDebt) }}</span></div>
+    @elseif ($releaseDebt > 0 && $debtBlocks)
+        <div class="row"><span class="text-danger">Выдача после оплаты счёта — позвоните управляющему</span></div>
     @endif
     @if ($cashDue > 0)
-        <label class="row justify-between cursor-pointer"><span class="min-w-0"><span class="block">Наличными с покупателя</span><span class="nums block text-sm text-danger">{{ Money::rub($cashDue) }}</span></span><input type="checkbox" switch name="cash" value="1" @checked(old('cash')) class="switch shrink-0" aria-label="Принял наличными"></label>
+        <label class="row justify-between cursor-pointer"><span class="min-w-0"><span class="block">Получить наличными с покупателя</span><span class="nums block text-sm text-danger">{{ Money::rub($cashDue) }}</span></span><input type="checkbox" switch name="cash" value="1" @checked(old('cash')) class="switch shrink-0" aria-label="Получил наличными"></label>
     @endif
-    @if ($hold > 0)
+    @if ($hold > 0 && $money)
         @if ($debtBlocks && $canManage)
             <label class="row justify-between cursor-pointer"><span>Выдать с долгом</span><input type="checkbox" switch name="force" value="1" @checked(old('force')) class="switch shrink-0"></label>
         @elseif (! $debtBlocks)
             <div class="row justify-between"><span class="text-ink-muted">Вендору можно выдавать без оплаты</span></div>
         @endif
     @endif
-    @if ($vendorDue > 0)
+    @if ($vendorDue > 0 && $money)
         <div class="row justify-between"><span class="text-ink-muted">Вендору выставим счётом</span><span class="nums text-ink-muted">{{ Money::rub($vendorDue) }}</span></div>
     @endif
 </div>
 <x-park.photos :vehicle="$vehicle" :stage="PhotoStage::Release" nested :collapsed="! $win" edit class="mt-3"/>
 <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-    @if ($vehicle->sold_at && $canManage)
+    @if ($vehicle->sold_at && $handles)
         {{-- Редкий исход — маленькой серой, как «Выдать без QR», а не второй кнопкой ростом с «Выдать» (10.10.2026). --}}
         <button type="button" class="btn btn-s btn-quiet self-center sm:ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}refusal:open">Покупатель отказался</button>
     @endif
-    @if ($qr && $canManage)
+    @if ($qr && $handles)
         <button type="button" class="btn btn-s btn-quiet self-center sm:ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}without-qr:open">Выдать без QR</button>
     @endif
 </div>

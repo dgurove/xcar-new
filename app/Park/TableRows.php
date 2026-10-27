@@ -18,13 +18,14 @@ use Illuminate\Support\Facades\Cache;
 final class TableRows
 {
     /** @param  Collection<int, Vehicle>  $vehicles @return array<int, string> id ТС => HTML строки */
-    public static function render(Collection $vehicles, array $totals, array $debts, bool $place, bool $out = false): array
+    public static function render(Collection $vehicles, array $totals, array $debts, bool $place, bool $out = false, bool $money = true): array
     {
         if ($vehicles->isEmpty()) {
             return [];
         }
         // Значок связи (x-ui.links) — только админу: строка админа и управляющего — разные строки кэша.
-        $common = Accrual::mark('park_tariffs').'|'.self::templates().'|'.(int) (auth()->user()?->isAdmin() ?? false);
+        // Строка приёмщика (без денег, `User::parkMoney`) — своя строка кэша.
+        $common = Accrual::mark('park_tariffs').'|'.self::templates().'|'.(int) (auth()->user()?->isAdmin() ?? false).'|'.(int) $money;
         $docs = FillFromDocs::flags($vehicles);
         $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.row:'.md5(implode('|', [
             // Машина (`Cars\Car`: марка, VIN, номер — их правят и из CRM) и её продажа со сделкой (значок связи) — свои
@@ -41,7 +42,7 @@ final class TableRows
         foreach ($vehicles as $v) {
             $html = $cached[$keys[$v->id]] ?? null;
             if ($html === null) {
-                $html = view('components.park.table-row', ['vehicle' => $v, 'total' => $totals[$v->id] ?? null, 'debt' => $debts[$v->id] ?? 0, 'place' => $place, 'out' => $out])->render();
+                $html = view('components.park.table-row', ['vehicle' => $v, 'total' => $totals[$v->id] ?? null, 'debt' => $debts[$v->id] ?? 0, 'place' => $place, 'out' => $out, 'money' => $money])->render();
                 $fresh[$keys[$v->id]] = $html;
             }
             $rows[$v->id] = $html;

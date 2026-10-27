@@ -5,7 +5,7 @@
      парковку пишем словом. Вендор — логотипом перед названием, пока его столбца (вместе с номером убытка) не видно, — до 640. Нажатие — карточка рядом. 
      Выданная (`out`, пилюля «Выданы») — свои столбцы, архив дела: принята, выдана (под датой — сколько стояла), хранение
      за весь срок и под ним деньги словом (`OutMoney`); ставки, статуса и «что не так» у неё нет. --}}
-@props(['vehicle', 'total' => null, 'debt' => 0, 'place' => false, 'out' => false])
+@props(['vehicle', 'total' => null, 'debt' => 0, 'place' => false, 'out' => false, 'money' => true])
 @php
     use App\Park\VehicleState;
     use App\Support\Money;
@@ -14,7 +14,9 @@
     $rate = $total['rate'] ?? null;
     $amount = $total['amount'] ?? 0;
     $status = \App\Park\Status::of($vehicle);
-    $money = $out ? \App\Park\OutMoney::of($vehicle) : null;
+    // Приёмщику (`money` false, 27.10.2026) столбцов денег нет: ни ставки, ни начисленного, ни «хранения» у выданных.
+    $sees = $money;
+    $money = $sees && $out ? \App\Park\OutMoney::of($vehicle) : null;
     $hasAlerts = ! $out && collect(\App\Park\Alerts::of($vehicle))->reject(fn ($a) => $a['label'] === 'Нет типа' || (! $place && $a['label'] === 'Нет парковки'))->isNotEmpty();
 @endphp
 <tr data-detail-key="{{ $vehicle->id }}" data-search-row id="vehicle-{{ $vehicle->id }}">
@@ -43,11 +45,13 @@
             @if ($vehicle->released_at)<time class="block" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ $vehicle->released_at->translatedFormat('j M') }}</time>@endif
             @if ($days !== null)<span class="cell-sub">{{ $days }}&nbsp;д</span>@endif
         </td>
+        @if ($sees)
         <td class="num nums">
             @if ($amount > 0)<span class="block">{{ Money::rub($amount) }}</span>@endif
             @if ($debt > 0)<span class="cell-sub text-urgent">не оплачено {{ Money::nums($debt) }}</span>
             @elseif ($money && ($money !== 'unbilled' || $amount > 0))<span class="cell-sub {{ \App\Park\OutMoney::TONES[$money] }}">{{ mb_strtolower(\App\Park\OutMoney::LABELS[$money]) }}</span>@endif
         </td>
+        @endif
     @else
         <td class="hidden sm:table-cell"><span @class(['status-cell', 'is-act' => $status['act'], 'is-late' => $status['late']])>{{ $status['label'] }}</span></td>
         <td class="num nums col-detail-hide hidden text-ink-muted lg:table-cell">{{ $vehicle->accepted_at?->translatedFormat('j M Y') }}</td>
@@ -59,11 +63,13 @@
             @endif
         </td>
         {{-- Своя ставка — с пометкой «своя» (12.10.2026), нет ставки — оранжевое «нет»: правят шторкой «Ставка» в окошке. --}}
+        @if ($sees)
         <td class="num nums hidden sm:table-cell">@if ($rate){{ Money::rub($rate) }}/д@if ($vehicle->storage_rate !== null)<span class="cell-sub">своя</span>@endif @elseif ($state === VehicleState::Stored)<span class="text-urgent">нет</span>@endif</td>
         <td class="num nums">
             @if ($amount > 0)<span class="block">{{ Money::rub($amount) }}</span>@endif
             @if ($debt > 0)<span class="cell-sub text-danger">долг {{ Money::nums($debt) }}</span>
             @elseif ($rate)<span class="cell-sub sm:hidden">{{ Money::rub($rate) }}/д{{ $vehicle->storage_rate !== null ? ', своя' : '' }}</span>@endif
         </td>
+        @endif
     @endif
 </tr>

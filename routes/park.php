@@ -51,7 +51,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/requests/{req}', [RequestController::class, 'show']);
     Route::post('/requests/{req}/intake', [RequestController::class, 'intake']);
     Route::post('/requests/{req}/release', [RequestController::class, 'release']);
-    Route::post('/requests/{req}/refuse', [RequestController::class, 'refuse'])->middleware('park.manage');
+    Route::post('/requests/{req}/refuse', [RequestController::class, 'refuse'])->middleware('ability:parkHandles');
 
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/export', [VehicleController::class, 'export'])->middleware('park.manage');
@@ -76,7 +76,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/intake', [RequestController::class, 'intakeCar']);
     Route::post('/cars/{vehicle}/release', [RequestController::class, 'releaseCar']);
     Route::post('/cars/{vehicle}/report', [ReportController::class, 'store']);
-    Route::post('/cars/{vehicle}/report-sent', [ReportController::class, 'sent'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/report-sent', [ReportController::class, 'sent'])->middleware('ability:parkHandles');
     // «✨ Распознать» в деле ТС — то же окно, что у цепочки «Из писем» (ScanController, Scan\VehicleSubject).
     Route::get('/cars/{vehicle}/scan', [ScanController::class, 'vehicleShow'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/scan', [ScanController::class, 'vehicleScan'])->middleware('park.manage');
@@ -89,12 +89,13 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/sell', [VehicleController::class, 'sell'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/unsell', [VehicleController::class, 'unsell'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/cancel', [VehicleController::class, 'cancel'])->middleware('park.manage');
-    Route::post('/cars/{vehicle}/sold', [VehicleController::class, 'sold'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/sold', [VehicleController::class, 'sold'])->middleware('ability:parkHandles');
     // Выдача по QR: проверка кода при выдаче, подтверждение покупателя, ссылка страховой ещё раз.
-    Route::post('/cars/{vehicle}/pass-check', [PassController::class, 'check'])->middleware(['park.manage', 'throttle:60,1']);
-    Route::post('/cars/{vehicle}/buyer/confirm', [PassController::class, 'confirm'])->middleware('park.manage');
-    Route::post('/cars/{vehicle}/buyer/reject', [PassController::class, 'reject'])->middleware('park.manage');
-    Route::post('/cars/{vehicle}/pickup-link', [PassController::class, 'link'])->middleware(['park.manage', 'throttle:5,1']);
+    // Выдача по QR — и приёмщику (27.10.2026): проверка кода, подтверждение покупателя, ссылка страховой ещё раз.
+    Route::post('/cars/{vehicle}/pass-check', [PassController::class, 'check'])->middleware(['ability:parkHandles', 'throttle:60,1']);
+    Route::post('/cars/{vehicle}/buyer/confirm', [PassController::class, 'confirm'])->middleware('ability:parkHandles');
+    Route::post('/cars/{vehicle}/buyer/reject', [PassController::class, 'reject'])->middleware('ability:parkHandles');
+    Route::post('/cars/{vehicle}/pickup-link', [PassController::class, 'link'])->middleware(['ability:parkHandles', 'throttle:5,1']);
     Route::post('/cars/{vehicle}/pickup-link/create', [PassController::class, 'create'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/pickup-link/renew', [PassController::class, 'renew'])->middleware(['park.manage', 'throttle:5,1']);
     Route::delete('/cars/{vehicle}', [VehicleController::class, 'destroy'])->middleware('park.manage');

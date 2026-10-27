@@ -24,7 +24,7 @@ class UserController
     public const PILLS = ['people' => 'Люди', 'invites' => 'Ссылки'];
 
     /** Роль на парковке словом — одна на человека: админ парковки, управляющий или помощник. */
-    public const KINDS = ['admin' => 'Администратор парковки', 'manager' => 'Управляющий', 'helper' => 'Помощник'];
+    public const KINDS = ['admin' => 'Администратор парковки', 'manager' => 'Управляющий', 'helper' => 'Приёмщик'];
 
     public function index(Request $request)
     {

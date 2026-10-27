@@ -15,8 +15,8 @@ use App\Mail\Scope as MailScope;
 use App\Park\Actions\CreateRequest;
 use App\Park\Actions\Intake;
 use App\Park\Actions\MarkSold;
-use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\RefuseRelease;
+use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\RegisterFromLetters;
 use App\Park\Actions\Release;
 use App\Park\Actions\StoreByLetters;
@@ -256,15 +256,23 @@ class RequestController
 
     /**
      * Поля ТС приходят той же формой, что и этап заявки: одна кнопка сохраняет всё.
-     * Правит их только `park.manage` — «только приёмке» форма показывает их чипами.
+     * Правит их `park.manage`; приёмщик — только марку и модель, если письмо их не дало.
      */
     private function saveVehicle(Request $request, Vehicle $vehicle): void
     {
-        if (! $request->user()->canManagePark() || ! $request->has('vehicle_form')) {
+        if (! $request->user()->parkHandles() || ! $request->has('vehicle_form')) {
             return;
         }
         VehicleFields::clean($request);
         $data = VehicleFields::only($request->validate(VehicleFields::rules()));
+        // Приёмщик правит только марку и модель, которых не дало письмо (без них не принять), — не тождество и не ставку.
+        if (! $request->user()->canManagePark()) {
+            $data = array_intersect_key(array_filter($data, fn ($v) => $v !== null && $v !== ''), array_flip(['brand_id', 'model_id']));
+            $data && app(UpdateVehicle::class)($vehicle, $data, $request->user());
+            $vehicle->refresh();
+
+            return;
+        }
         // Своя ставка — поле редактора у принятой ТС (`VehicleRate`), в тождество не входит.
         $rate = array_intersect_key(VehicleRate::from($request), array_flip(['storage_rate']));
         app(UpdateVehicle::class)($vehicle, $data + $rate, $request->user());
@@ -361,7 +369,7 @@ class RequestController
     /** Покупатель приехал и не взял: продажа снимается, ТС остаётся стоять, вендору уходит письмо об отказе. */
     public function refuse(Request $request, ParkRequest $req, RefuseRelease $refuse)
     {
-        abort_unless($request->user()->canManagePark(), 404);
+        abort_unless($request->user()->parkHandles(), 404);
         $reason = $request->validate(['reason' => ['required', 'string', 'max:500']])['reason'];
         $refuse($req->vehicle, $request->user(), $reason);
         if ($request->header('Turbo-Frame') === self::WINDOW) {

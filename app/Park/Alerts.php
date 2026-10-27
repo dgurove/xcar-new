@@ -30,8 +30,10 @@ final class Alerts
     {
         $state = $vehicle->state;
         $out = [];
-        // Ставки нет — сутки не считаются: это первое, что надо починить (лестница прайса из памяти запроса).
-        if ($vehicle->accepted_at && in_array($state, [VehicleState::Stored, VehicleState::Released], true) && ! Accrual::hasRate($vehicle)) {
+        // Ставки нет — сутки не считаются: это первое, что надо починить (лестница прайса из памяти запроса). Дело
+        // управляющего: приёмщику (`User::parkMoney`) тегов о ставке нет.
+        $money = auth()->user()?->parkMoney() ?? true;
+        if ($money && $vehicle->accepted_at && in_array($state, [VehicleState::Stored, VehicleState::Released], true) && ! Accrual::hasRate($vehicle)) {
             $out[] = ['label' => self::whyNoRate($vehicle), 'tone' => 'urgent'];
         }
         // Город не определён (`CityGuess`) — видят все города, пока не решат или не примут.

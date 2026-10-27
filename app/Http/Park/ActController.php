@@ -13,6 +13,9 @@ class ActController
     {
         $vehicle->load(['vendor.party', 'ownerParty', 'yard.settlement', 'media', 'inspections']);
         if (in_array($kind, ['contract', 'handover'], true)) {
+            // Договор комиссии и акт к нему — с назначенной ценой: приёмщику денег не открываем (27.10.2026).
+            abort_unless(request()->user()?->parkMoney(), 404);
+
             return view('billing.docs.commission', ['vehicle' => $vehicle, 'kind' => $kind, 'self' => Seller::Park->party()]);
         }
         abort_if($kind === 'release' && ! $vehicle->released_at && ! $vehicle->lastInspection(InspectionKind::Release), 404);

@@ -7,8 +7,10 @@
     use App\Park\Actions\{UndoIntake, UndoRelease, UnwindVehicle};
     use App\Support\{Money, Surface};
     $state = $vehicle->state;
-    // Деньги дела (счета, начисления, долг) — тем, кому они открыты на парковке (галка «Деньги» у управляющего).
-    $money = auth()->user()->canManagePark();
+    // Деньги дела (счета, начисления, долг, ставка) — управляющему и администратору, не приёмщику (`User::parkMoney`).
+    $money = auth()->user()->parkMoney();
+    // Принять, выдать, «Покупатель» — и приёмщику (`User::parkHandles`, 27.10.2026).
+    $handles = auth()->user()->parkHandles();
     $open = $req !== null;
     $cur = App\Park\Timeline::current($steps);
     // Блок кадров стоит в ленте того шага, на котором их снимают, и справа на всех остальных: видны всегда.
@@ -44,8 +46,8 @@
             @endif
             @if ($vehicle->sold_at)
                 <p class="mt-1 text-sm">
-                    <span class="nums text-urgent">На выдачу с {{ $vehicle->sold_at->translatedFormat('j M') }}</span>@if ($vehicle->pickup_name || $canManage)<span class="text-ink-muted">, </span>@endif
-                    @if ($dealPass)<span>заберёт {{ $vehicle->pickup_name }}, по сделке XCar</span>@elseif ($canManage)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif
+                    <span class="nums text-urgent">На выдачу с {{ $vehicle->sold_at->translatedFormat('j M') }}</span>@if ($vehicle->pickup_name || $handles)<span class="text-ink-muted">, </span>@endif
+                    @if ($dealPass)<span>заберёт {{ $vehicle->pickup_name }}, по сделке XCar</span>@elseif ($handles)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif
                     @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="nums ml-1 whitespace-nowrap text-accent-text">{{ $vehicle->pickup_phone }}</a>@endif
                 </p>
             @endif
@@ -240,9 +242,9 @@
         </div>
     @endif
     @if ($state === VehicleState::Stored)@include('park.vehicles.move-sheet')@endif
-    @include('park.vehicles.release-sheets', ['formId' => null])
+    @include('park.vehicles.release-sheets', ['formId' => null, 'handles' => $handles, 'money' => $money])
 
-    @if ($canManage && ($pass ?? null)?->isLive() && ! $pass->isConfirmed())
+    @if ($handles && ($pass ?? null)?->isLive() && ! $pass->isConfirmed())
         <div data-controller="sheet" data-action="buyer-reject:open@window->sheet#open" class="contents">
             <x-ui.sheet id="buyer-reject" title="Не покупатель">
                 {{-- Страховая не подтвердила: пропуск гаснет, та же ссылка снова открывает пустую анкету. Сверху — чья
