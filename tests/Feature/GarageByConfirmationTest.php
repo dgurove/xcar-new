@@ -156,8 +156,9 @@ class GarageByConfirmationTest extends TestCase
     /**
      * Совкомбанк (10.10.2026, владелец: «в гараж совком ваще забирается без оплаты, потом уже при продаже менеджер
      * предлагает цену и мы определяем его комиссию»): после принятия счетов нет, машина едет к менеджеру; довезли — она на
-     * подготовке, а сделка ждёт цену. «Продаю» ценой, покупатель от менеджера, вознаграждение от нас — счёт ПРАЙМ на цену
-     * продажи покупателю; закрыли сделку — расчёт по машине закрыт, расхода на закупочную нет.
+     * подготовке, а сделка ждёт цену. «Продаю» ценой, покупатель от менеджера, вознаграждение от нас — счёт ПРАЙМ
+     * покупателю на цену продажи минус вознаграждение (27.10.2026, владелец: «вознаграждение покупатель отдаёт менеджеру
+     * сам, мы его не выплачиваем»); закрыли сделку — расчёт по машине закрыт, расхода на закупочную и выплаты нет.
      */
     public function test_sovcombank_garage_picks_up_without_payment_and_sells_through_deal(): void
     {
@@ -227,15 +228,16 @@ class GarageByConfirmationTest extends TestCase
         $this->passportFor($deal->fresh()->contract->buyer);
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame('Покупаев Пётр Петрович', $invoice->party->name);
-        $this->assertEqualsWithDelta(1500000, $invoice->total, 0.01);
+        $this->assertEqualsWithDelta(1400000, $invoice->total, 0.01);
+        $this->assertTrue($deal->fresh()->buyerPaysReward());
         $this->assertNull($offer->fresh()->position(Track::Sale)->waits_for);
 
-        app(RecordPayment::class)($invoice->fresh(), $admin, 1500000, now(), PaymentSource::Bank);
+        app(RecordPayment::class)($invoice->fresh(), $admin, 1400000, now(), PaymentSource::Bank);
         $this->drive($offer, Track::Sale, $admin, fn (Offer $o) => $o->state !== OfferState::Sold, $manager);
         $this->assertSame(DealState::Done, $deal->fresh()->state);
         $this->assertSame(CarState::Settled, $car->fresh()->state);
         $this->assertFalse($car->fresh()->costs()->where('kind', Cost::SUPPLIER)->exists());
-        $this->assertSame(1, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->where('state', '!=', 'void')->count());
+        $this->assertSame(0, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->where('state', '!=', 'void')->count());
 
         // «Взяли под себя» (платим мы, без менеджера) — не она: машину оплачиваем и оформляем сами, расчёт по машине свой.
         $ours = (new Deal(['garage_payer' => GaragePayer::Us]))->setRelation('offer', $offer->fresh());

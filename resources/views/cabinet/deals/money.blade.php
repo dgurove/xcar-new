@@ -19,6 +19,8 @@
     $sale = $live->first(fn ($i) => $i->kind === ChargeKind::Sale);
     $state = $deal->commissionState();
     $feeWord = match (true) {
+        // Гаражная Совкомбанка, платит покупатель: вознаграждение — с него, не от нас (27.10.2026).
+        $deal->buyerPaysReward() => 'получите от покупателя',
         $deal->paysSelection() || $deal->withholds() => $live->contains(fn ($i) => $i->state === InvoiceState::Issued) ? 'оставляете себе' : 'оставили себе',
         $state === CommissionState::Paid => 'выплачено',
         $state === CommissionState::Payable => 'к выплате',

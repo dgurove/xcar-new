@@ -119,6 +119,9 @@ final class DealMoney
 
         $mine = $staff ? 'вознаграждение' : 'Ваше вознаграждение';
         // Вознаграждение — его прибыль: оставленное себе (ДКП, страховой, удержал из счёта) — зелёным.
+        if ($deal->buyerPaysReward() && $deal->commission) {
+            return new self($staff ? 'Берёт с покупателя' : 'Получите от покупателя', (float) $deal->commission, 'profit', 'closed', $mine);
+        }
         if (($deal->paysSelection() || $deal->withholds()) && $deal->commission) {
             return new self($staff ? 'Оставил себе' : 'Оставили себе', (float) $deal->commission, 'profit', 'closed', $mine);
         }

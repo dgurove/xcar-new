@@ -159,8 +159,11 @@ final class SyncDealInvoices
         // Супер-покупатель (`isDirect`) закупочную не видит нигде: ему одна строка на цену сделки, без разбивки на
         // «Транспортное средство» по закупочной и «Агентское вознаграждение» — разница выдала бы её. Так же покупателю
         // менеджера, когда платит он (13.10.2026): счёт с разбивкой показал бы ему закупочную и долю менеджера.
+        // Гаражная Совкомбанка, платит покупатель — без вознаграждения менеджера: его покупатель отдаёт ему сам (27.10.2026).
         if ($deal->isDirect() || ! $managerPays) {
-            return ['party' => $party, 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->amount, 'kind' => ChargeKind::Sale->value]]];
+            $price = $deal->buyerPaysReward() ? max(0, (int) $deal->amount - (int) $deal->commission) : (int) $deal->amount;
+
+            return ['party' => $party, 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]];
         }
         $fee = max(0, (int) $deal->amount - (int) $deal->cost);
         $lines = [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]];
