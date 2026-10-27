@@ -26,7 +26,9 @@
         <x-ui.row-link :key="$deal->id"><span @class(['cell-title', 'font-medium' => $replied])>@if ($replied)<span class="card-tone card-tone--reply" aria-label="Поставщик ответил"></span>@endif<x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}<x-car.keys :count="$offer->keys_count"/>@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</span></x-ui.row-link>
         {{-- На телефоне второй строкой — только срок шага (20.10.2026, как в «Вывозе»: номер убытка ужимал строку до 9 px и
              срезал «просрочено 9 д»); номер — столбцом на ПК и в карточке. Без срока — вендор с номером. --}}
-        <span class="cell-sub sm:hidden">@if ($active && $position)<x-route.term :position="$position"/>@else<x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/>@endif</span>
+        {{-- Этап — тут же, после срока (27.10.2026, владелец: справа он резался «Согласование с постав…», а название — «Changan
+             UNI-K, 2…»); не влез — переносится, справа на телефоне только сумма. --}}
+        <span class="cell-sub sm:hidden">@if ($active && $position)<x-route.term :position="$position"/> <span class="inline-block whitespace-nowrap text-ink-muted">{{ mb_lcfirst($word) }}</span>@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
     </td>
     <td class="hidden sm:table-cell"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
     <td class="cell-dim nums hidden 2xl:table-cell">{{ $offer->number }}</td>
@@ -35,7 +37,7 @@
     <td class="hidden sm:table-cell">@if ($active && $position)<x-route.term :position="$position"/>@endif</td>
     <td class="num nums">
         {{ $deal->isGarage() ? 'В гараж' : ($deal->amount === null ? '' : \App\Support\Money::rub($deal->amount)) }}
-        <x-offer.margin :m="$deal->marginMark()" class="cell-sub max-sm:!ml-0"/>
-        <span class="cell-sub ml-auto max-w-40 truncate sm:hidden {{ $tone }}">{{ $word }}</span>
+        {{-- Только «в минус» (27.10.2026, владелец: «+251 000» в строке ни к чему и сдвигает сумму); этап — целиком, не «…». --}}
+        @if (($deal->marginMark()['tone'] ?? null) === 'loss')<x-offer.margin :m="$deal->marginMark()" class="cell-sub max-sm:!ml-0"/>@endif
     </td>
 </tr>

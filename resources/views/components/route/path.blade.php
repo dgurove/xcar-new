@@ -18,7 +18,10 @@
     // «Подтверждение принято» — не кнопка: в сделку ведёт только «Принять» у подтверждения.
     // Деньги сделки на этапах оплаты; её же ветка решает, какие кнопки видны (гараж «платим мы» — гаражные).
     $deal = $offer->deal?->isActive() ? $offer->deal : null;
-    $label = fn ($x) => $x->label;
+    // Исход, что ведёт на согласие менеджера (Альфа), — «Спросить менеджера» (27.10.2026, владелец: «Поставщик согласовал»
+    // читали как «сразу в работу», а это только вопрос менеджеру). Подпись исхода в маршруте не меняется — по ней узнают шаг.
+    $asks = fn ($x) => $x->actor === Actor::Staff && $x->to?->asksConsent();
+    $label = fn ($x) => $asks($x) ? 'Спросить менеджера' : $x->label;
     $exits = $stage->exitsFor(Actor::Staff, $deal)->reject(fn ($x) => $x->acceptsBid());
     // Имена блоков как есть: кто вывозит, видно строкой над путём («Стоит у Сергей К.» имя не склоняет).
     $blockName = fn ($block) => $block->name;
@@ -267,7 +270,8 @@
                                     </div>
                                 @else
                                     {{-- Закрыть сделку, пока автомобиль не забрали (18.10.2026), — только переспросив. --}}
-                                    @php $confirm = \App\Offers\Deal::closes($exit) && $offer->deal?->closeBlocker() ? 'Автомобиль ещё не забрали. Закрыть сделку?' : $exit->confirm; @endphp
+                                    @php $confirm = \App\Offers\Deal::closes($exit) && $offer->deal?->closeBlocker() ? 'Автомобиль ещё не забрали. Закрыть сделку?'
+                                        : ($asks($exit) ? 'Поставщик согласовал? Спросим менеджера, берёт ли он — ответ до 17:00 завтра. Поставщику пока ничего не уходит' : $exit->confirm); @endphp
                                     <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
                                         @csrf<x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                     </form>
