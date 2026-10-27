@@ -5,16 +5,20 @@
      Дочитали — строка обычная, `arrive_controller` проявляет её. Откуда заявка (`x-park.request-source`: адрес и время
      письма, или кто завёл) — с первой секунды, и у силуэта: на ПК столбцами «Пришла» и «От кого», в краткой таблице
      третьим этажом «кто — время». --}}
-@props(['req', 'arrive' => null])
+@props(['req', 'table', 'arrive' => null])
 @php
     $v = $req->vehicle;
     $state = $arrive['state'] ?? null;
     $busy = in_array($state, ['ghost', 'reading'], true);
+    $source = $req->source();
 @endphp
 {{-- `data-todo` — заявка, которую можно сделать прямо в карточке (приём; выдача стоящей ТС): сделанная уходит, карточка
      переходит к следующей (`detail#advance`). --}}
 <tr data-detail-key="{{ $req->id }}" id="request-{{ $req->id }}" @if ($req->isOpen() && ($req->type === \App\Park\RequestType::Intake || $v->state === \App\Park\VehicleState::Stored)) data-todo @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $state }}" data-arrive-subject-value="v:{{ $v->id }}" @endif @class(['arrive' => $arrive, 'arrive--'.$state => $busy])>
-    <td class="grow">
+    @foreach ($table->columns as $key => $col)
+        @switch($key)
+        @case('title')
+    <td class="{{ $col->classes() }}">
         @if ($busy)
             <x-ui.row-link :key="$req->id"><span class="cell-title"><span class="skeleton arrive-bar w-40 max-w-full"></span></span></x-ui.row-link>
             <span class="cell-sub">
@@ -36,17 +40,29 @@
             <x-park.request-source :req="$req" class="cell-source"/>
         @endif
     </td>
+        @break
+        @case('came')
     {{-- На ПК «откуда» — двумя столбцами: время цветом текста (по нему список и упорядочен), кто — тише. --}}
-    @php $source = $req->source(); @endphp
-    <td class="hidden sm:table-cell nums whitespace-nowrap req-came">{{ $source['when'] }}</td>
-    <td class="cell-dim hidden sm:table-cell req-from">@if ($source['email'])<x-mail.address :email="$source['email']"/>@else<span class="truncate">{{ $source['name'] }}</span>@endif</td>
-    <td class="cell-dim hidden sm:table-cell">
+    <td class="{{ $col->classes() }}">{{ $source['when'] }}</td>
+        @break
+        @case('from')
+    <td class="{{ $col->classes() }}">@if ($source['email'])<x-mail.address :email="$source['email']"/>@else<span class="truncate">{{ $source['name'] }}</span>@endif</td>
+        @break
+        @case('ref')
+    <td class="{{ $col->classes() }}">
         @if ($busy)
             <span class="skeleton arrive-bar w-28"></span>
         @else
             <span class="vendor-ref">@if ($v->vendor)<button type="button" class="vendor-tip" data-tip="{{ $v->vendor->name }}" aria-label="{{ $v->vendor->name }}"><x-vendor.logo :vendor="$v->vendor"/></button>@endif @if ($v->ref)<x-ui.copy-code :value="$v->ref"/>@endif</span>
         @endif
     </td>
-    <td class="hidden sm:table-cell">{{ $req->type->label() }}</td>
-    <td class="cell-dim col-detail-hide hidden lg:table-cell">{{ ($req->yard ?? $v->yard)?->name }}</td>
+        @break
+        @case('type')
+    <td class="{{ $col->classes() }}">{{ $req->type->label() }}</td>
+        @break
+        @case('yard')
+    <td class="{{ $col->classes() }}">{{ ($req->yard ?? $v->yard)?->name }}</td>
+        @break
+        @endswitch
+    @endforeach
 </tr>

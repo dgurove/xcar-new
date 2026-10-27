@@ -38,11 +38,13 @@ final class TableRows
             json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place, $docs[$v->id], $out, $v->getAttribute('money_state'), $v->getAttribute('task_keys')]),
         ]))])->all();
         $cached = Cache::many(array_values($keys));
+        // Столбцы — то же описание, что у шапки списка: выданные и деньги входят в ключ строки выше.
+        $table = \App\Http\Park\VehicleController::table($out, $money);
         $rows = $fresh = [];
         foreach ($vehicles as $v) {
             $html = $cached[$keys[$v->id]] ?? null;
             if ($html === null) {
-                $html = view('components.park.table-row', ['vehicle' => $v, 'total' => $totals[$v->id] ?? null, 'debt' => $debts[$v->id] ?? 0, 'place' => $place, 'out' => $out, 'money' => $money])->render();
+                $html = view('components.park.table-row', ['vehicle' => $v, 'table' => $table, 'total' => $totals[$v->id] ?? null, 'debt' => $debts[$v->id] ?? 0, 'place' => $place])->render();
                 $fresh[$keys[$v->id]] = $html;
             }
             $rows[$v->id] = $html;
@@ -64,7 +66,7 @@ final class TableRows
         // госномер и значок связи стояли в старом порядке). Процесс живёт до выкладки — хэш считается раз.
         static $hash;
 
-        return $hash ??= md5(implode(',', array_map(fn ($path) => @md5_file($path) ?: '', [app_path('Park/Status.php'), ...array_map(fn ($f) => resource_path("views/components/{$f}.blade.php"),
+        return $hash ??= md5(implode(',', array_map(fn ($path) => @md5_file($path) ?: '', [app_path('Park/Status.php'), app_path('Support/Table/Column.php'), app_path('Http/Park/VehicleController.php'), ...array_map(fn ($f) => resource_path("views/components/{$f}.blade.php"),
             ['park/table-row', 'park/alerts', 'park/ref', 'ui/plate', 'ui/copy-code', 'ui/icon', 'ui/links', 'vendor/logo', 'vendor/name'])])));
     }
 }

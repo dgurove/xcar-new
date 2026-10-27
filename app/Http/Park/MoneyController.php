@@ -26,6 +26,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 /** Деньги стоянки: счета с пресетами, карточка строки, карточка счёта, долги по контрагентам, месяц. */
 class MoneyController
@@ -190,5 +192,18 @@ class MoneyController
     private static function month(Request $request): Carbon
     {
         return $request->query('month') && preg_match('/^\d{4}-\d{2}$/', $request->query('month')) ? Carbon::createFromFormat('!Y-m', $request->query('month'))->startOfMonth() : now()->subMonth()->startOfMonth();
+    }
+
+    /** Таблица счетов парковки — одно описание на шапку и строки `x-billing.table-row`. */
+    public static function table(): Table
+    {
+        return Table::of(
+            new Column('title', 'Контрагент', grow: true, cap: false),
+            new Column('number', '№', from: 'sm', sort: 'fresh', dim: true, rem: 6),
+            new Column('what', 'За что', from: 'lg', aside: true, dim: true, rem: 12),
+            new Column('due', 'Срок', from: 'sm', sort: 'due', rem: 6),
+            new Column('amount', 'Сумма', num: true, sort: 'amount', cell: 'nums', rem: 6.5),
+            new Column('rest', 'Остаток', from: 'sm', num: true, sort: 'rest', cell: 'cell-dim nums', rem: 6.5),
+        );
     }
 }

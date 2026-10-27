@@ -77,6 +77,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 class VehicleController
 {
@@ -735,5 +737,24 @@ class VehicleController
         $vehicle->unsetRelation('media');
 
         return Stream::view('park.vehicles.papers-stream', ['vehicle' => $vehicle]);
+    }
+
+    /**
+     * Таблица «Наличия» — одно описание на шапку, строки (`x-park.table-row`, кэш `TableRows`) и заголовки парковок и
+     * месяцев. Выданные — свои столбцы (архив дела); приёмщику (`User::parkMoney`) денежных нет.
+     */
+    public static function table(bool $out, bool $money): Table
+    {
+        $title = new Column('title', 'Марка, модель', grow: true, sort: 'name', cap: false);
+        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', rem: 10);
+        $accepted = new Column('accepted', 'Принята', from: 'lg', num: true, aside: true, sort: 'accepted', cell: 'nums text-ink-muted', rem: 6.5);
+
+        return $out
+            ? Table::of($title, $vendor, $accepted, new Column('released', 'Выдана', num: true, sort: 'out', cell: 'nums', rem: 5),
+                $money ? new Column('storage', 'Хранение', num: true, sort: 'amount', cell: 'nums', rem: 7) : null)
+            : Table::of($title, $vendor, new Column('status', 'Статус', from: 'sm', sort: 'tasks', rem: 9), $accepted,
+                new Column('days', 'Дней', num: true, sort: 'days', cell: 'nums', rem: 4),
+                $money ? new Column('rate', 'Ставка', from: 'sm', num: true, sort: 'rate', cell: 'nums', rem: 5.5) : null,
+                $money ? new Column('amount', 'Начислено', num: true, sort: 'amount', cell: 'nums', rem: 7) : null);
     }
 }

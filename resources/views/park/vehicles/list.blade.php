@@ -20,42 +20,20 @@
     $groupName = fn ($key, $group) => $byMonth
         ? ($key ? mb_convert_case(\Illuminate\Support\Carbon::createFromFormat('Y-m', $key)->translatedFormat('F Y'), MB_CASE_TITLE) : 'Без даты')
         : ($key ? $group->first()->yard->name : 'Без парковки');
-    // Шапка сортирует нажатием (x-ui.th) — каждый столбец (12.10.2026, владелец: «как в CRM»).
+    // Шапка сортирует нажатием (x-ui.th) — каждый столбец (12.10.2026, владелец: «как в CRM»); столбцы — одно описание.
+    $columns = \App\Http\Park\VehicleController::table($out, $money ?? true);
 @endphp
 @if ($vehicles->isEmpty())
     <x-ui.empty class="py-6">{{ $q !== '' ? 'Ничего не нашлось' : 'ТС нет' }}</x-ui.empty>
 @else
     @if (ListView::isTable($view))
-        <x-ui.table id="vehicles" :view="$view" data-controller="table-scroll group-fold" data-group-fold-name-value="park-fold">
-            <x-slot:head>
-                @if ($out)
-                <tr>
-                    <x-ui.th :sort="$sort" key="name" class="grow">Марка, модель</x-ui.th>
-                    <x-ui.th :sort="$sort" key="vendor" class="hidden sm:table-cell">Вендор, № убытка</x-ui.th>
-                    <x-ui.th :sort="$sort" key="accepted" class="num col-detail-hide hidden lg:table-cell">Принята</x-ui.th>
-                    <x-ui.th :sort="$sort" key="out" class="num">Выдана</x-ui.th>
-                    @if ($money ?? true)<x-ui.th :sort="$sort" key="amount" class="num">Хранение</x-ui.th>@endif
-                </tr>
-                @else
-                <tr>
-                    <x-ui.th :sort="$sort" key="name" class="grow">Марка, модель</x-ui.th>
-                    <x-ui.th :sort="$sort" key="vendor" class="hidden sm:table-cell">Вендор, № убытка</x-ui.th>
-                    <x-ui.th :sort="$sort" key="tasks" class="hidden sm:table-cell">Статус</x-ui.th>
-                    <x-ui.th :sort="$sort" key="accepted" class="num col-detail-hide hidden lg:table-cell">Принята</x-ui.th>
-                    <x-ui.th :sort="$sort" key="days" class="num">Дней</x-ui.th>
-                    {{-- Ставка и начисленное — управляющему; приёмщику денег нет (`User::parkMoney`). --}}
-                    @if ($money ?? true)
-                    <x-ui.th :sort="$sort" key="rate" class="num hidden sm:table-cell">Ставка</x-ui.th>
-                    <x-ui.th :sort="$sort" key="amount" class="num">Начислено</x-ui.th>
-                    @endif
-                </tr>
-                @endif
-            </x-slot:head>
+        <x-ui.table id="vehicles" :view="$view" :rest="$columns->rest()" data-controller="table-scroll group-fold" data-group-fold-name-value="park-fold">
+            <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
             @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, ($q !== '' || $byMonth || $flat) && auth()->user()?->seesYards(), $out, $money ?? true); @endphp
             @foreach ($groups as $key => $group)
                 @if ($grouped || $byMonth)
                     {{-- Заголовок группы сворачивает её (12.10.2026, владелец): память по парковке или месяцу в браузере. --}}
-                    <tr class="table-group is-foldable" data-group-fold-target="head" data-fold-key="{{ $byMonth ? 'm' : 'y' }}{{ $key }}" data-action="click->group-fold#toggle"><th colspan="{{ ($out ? 5 : 7) - (($money ?? true) ? 0 : ($out ? 1 : 2)) }}"><span class="table-group-name">{{ $groupName($key, $group) }} <span class="nums">{{ $group->count() }}</span></span><x-ui.icon name="chevron-down" class="fold-chevron size-4"/></th></tr>
+                    <x-table.group :table="$columns" :key="($byMonth ? 'm' : 'y').$key" :title="$groupName($key, $group)" :count="$group->count()" class="is-foldable" data-group-fold-target="head" data-fold-key="{{ $byMonth ? 'm' : 'y' }}{{ $key }}" data-action="click->group-fold#toggle"><x-ui.icon name="chevron-down" class="fold-chevron size-4"/></x-table.group>
                 @endif
                 @foreach ($group as $vehicle){!! $rows[$vehicle->id] !!}@endforeach
             @endforeach

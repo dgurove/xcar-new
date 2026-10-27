@@ -42,6 +42,8 @@ use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 
 class RequestController
 {
@@ -397,5 +399,18 @@ class RequestController
             'keys_count' => ['nullable', 'integer', 'between:0,9'],
             'docs' => ['nullable', 'array'], 'docs.*' => [Rule::in(array_keys(Inspection::DOCS))],
         ];
+    }
+
+    /** Таблица заявок — одно описание на шапку и строки `x-park.request-row`: откуда пришла, номер убытка, тип, парковка. */
+    public static function table(): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true, cap: false),
+            new Column('came', 'Пришла', from: 'sm', sort: 'fresh', cell: 'nums whitespace-nowrap req-came', rem: 6),
+            new Column('from', 'От кого', from: 'sm', dim: true, cell: 'req-from', rem: 11),
+            new Column('ref', '№ убытка', from: 'sm', dim: true, rem: 10),
+            new Column('type', 'Тип', from: 'sm', sort: 'type', rem: 5),
+            new Column('yard', 'Парковка', from: 'lg', aside: true, dim: true, rem: 9),
+        );
     }
 }

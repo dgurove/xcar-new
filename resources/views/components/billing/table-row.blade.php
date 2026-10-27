@@ -1,7 +1,7 @@
 {{-- Строка таблицы счетов. Ячейка в два этажа: контрагент, под ним срок светофором («до 25 сен», «оплачен»),
      номер и за что; от 640 номер, «за что» и срок встают своими столбцами. «Мы должны» — словом, у всех ширин.
      Справа сумма (у частично оплаченного — остаток), под ней на телефоне «из N». Нажатие — карточка. --}}
-@props(['invoice'])
+@props(['invoice', 'table'])
 @php
     use App\Billing\InvoiceState;
     use App\Support\Money;
@@ -12,7 +12,10 @@
     $left = $i->remaining();
 @endphp
 <tr data-detail-key="{{ $i->id }}" data-search-row id="invoice-{{ $i->id }}">
-    <td class="grow">
+    @foreach ($table->columns as $key => $col)
+        @switch($key)
+        @case('title')
+    <td class="{{ $col->classes() }}">
         <x-ui.row-link :key="$i->id"><span class="cell-title"><x-vendor.name :party="$i->party"/></span></x-ui.row-link>
         <span class="cell-sub">
             @if ($i->isOwed())<span class="text-urgent">мы должны</span>@endif
@@ -21,12 +24,25 @@
             <span class="sm:hidden">{{ $what }}</span>
         </span>
     </td>
-    <td class="cell-dim hidden sm:table-cell">{{ $i->label() }}</td>
-    <td class="cell-dim col-detail-hide hidden lg:table-cell"><span class="block max-w-56 truncate">{{ $what }}</span></td>
-    <td class="hidden sm:table-cell {{ $tone }}">{{ $due }}</td>
-    <td class="num nums">
+        @break
+        @case('number')
+    <td class="{{ $col->classes() }}">{{ $i->label() }}</td>
+        @break
+        @case('what')
+    <td class="{{ $col->classes() }}"><span class="block max-w-56 truncate">{{ $what }}</span></td>
+        @break
+        @case('due')
+    <td class="{{ $col->classes() }} {{ $tone }}">{{ $due }}</td>
+        @break
+        @case('amount')
+    <td class="{{ $col->classes() }}">
         {{ Money::nums($i->isPartial() ? $left : $i->total) }}
         @if ($i->isPartial())<span class="cell-sub sm:hidden">из {{ Money::nums($i->total) }}</span>@endif
     </td>
-    <td class="cell-dim num nums hidden sm:table-cell">@if ($left > 0 && $i->state === InvoiceState::Issued){{ Money::nums($left) }}@endif</td>
+        @break
+        @case('rest')
+    <td class="{{ $col->classes() }}">@if ($left > 0 && $i->state === InvoiceState::Issued){{ Money::nums($left) }}@endif</td>
+        @break
+        @endswitch
+    @endforeach
 </tr>

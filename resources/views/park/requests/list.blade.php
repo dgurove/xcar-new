@@ -9,11 +9,10 @@
 @if ($requests->isEmpty())
     <x-ui.empty class="py-6">{{ request('q') || request('vendor') || request('yard') ? 'Ничего не нашлось' : 'Всё сделано' }}</x-ui.empty>
 @elseif (ListView::isTable($view))
-    <x-ui.table id="requests-table" :view="$view">
-        <x-slot:head>
-            <tr><th class="grow">Марка, модель</th><x-ui.th :sort="$sort" key="fresh" class="hidden sm:table-cell">Пришла</x-ui.th><th class="cell-dim hidden sm:table-cell">От кого</th><th class="cell-dim hidden sm:table-cell">№ убытка</th><x-ui.th :sort="$sort" key="type" class="hidden sm:table-cell">Тип</x-ui.th><th class="cell-dim col-detail-hide hidden lg:table-cell">Парковка</th></tr>
-        </x-slot:head>
-        @foreach ($requests as $r)<x-park.request-row :req="$r" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach
+    @php $columns = \App\Http\Park\RequestController::table(); @endphp
+    <x-ui.table id="requests-table" :view="$view" :rest="$columns->rest()">
+        <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
+        @foreach ($requests as $r)<x-park.request-row :req="$r" :table="$columns" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach
     </x-ui.table>
 @else
     @foreach ($requests as $r)<x-park.request-card :req="$r" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach
