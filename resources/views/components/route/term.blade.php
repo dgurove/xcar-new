@@ -22,6 +22,7 @@
         $letter === 'replied' => ['поставщик ответил', true],
         in_array($letter, ['unsent', 'failed'], true) => ['отправить письмо', true],
         $letter === 'bounced' => ['не доставлено', true],
+        $who === WaitsFor::Manager && $position->consentLate() => ['менеджер не ответил', true],
         $letter === 'sent' => ['ждём ответа '.$timer('since', $position->letterAt()), false],
         $who === WaitsFor::Us && $position->deadline_at && $overdue => ['просрочено '.$timer('since', $position->deadline_at), true],
         $who === WaitsFor::Us && (bool) $position->deadline_at => ['осталось '.$left(), true],

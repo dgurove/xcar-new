@@ -52,6 +52,9 @@
     // Согласие менеджера (Альфа): поставщик уже согласовал — блок «Согласование с поставщиком» и «Ваш ход»
     // сбивали с толку, будто ждём поставщика (10.10.2026, владелец). Шапка — что случилось и вопрос, рядом только часы.
     $consent = $deal->isActive() && $requirement && $position?->stage->asksConsent();
+    // До согласия ждём поставщика (27.10.2026, владелец: менеджер не знает, что будет дальше): одной строкой — что дальше
+    // спросим его. О письмах поставщика ни слова.
+    $consentAhead = $deal->isActive() && ! $consent && ! $deal->agreed() && $position?->stage->loadMissing('exits.to.exits')->exits->contains(fn ($e) => $e->to?->asksConsent());
 @endphp
 <div class="flex flex-col gap-6">
     @if ($deal->state !== DealState::Active && ! $deal->isGarage())
@@ -94,6 +97,8 @@
                 @endif
             @elseif ($noInvoice)
                 <p class="mt-3 font-medium">Готовим счёт</p>
+            @elseif ($consentAhead)
+                <p class="mt-3 text-sm text-ink-muted">Дальше спросим, берёте ли вы в работу, — здесь и в Telegram</p>
             @endif
 
             @if ($contractStep ?? false)

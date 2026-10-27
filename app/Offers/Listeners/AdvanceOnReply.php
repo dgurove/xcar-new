@@ -5,6 +5,7 @@ namespace App\Offers\Listeners;
 use App\Mail\Composer;
 use App\Mail\Message;
 use App\Notifications\InsurerReplyNotice;
+use App\Notifications\YourTurnNotice;
 use App\Offers\Deal;
 use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
@@ -71,7 +72,32 @@ final class AdvanceOnReply
         }
         // Сдвинулся шаг — его ход в том же уведомлении: «Ваш ход» по этому шагу `Notify` не шлёт (`StageEntered::$letter`).
         $turn = $moved ? Requirement::where('deal_id', $deal->id)->whereNull('done_at')->latest('id')->first() : null;
+        // До согласования менеджер о письмах поставщика не знает ничего (27.10.2026, владелец: «не должен видеть письмо и не
+        // должен знать, что оно пришло»): только его ход, если шаг сдвинулся (Альфа: «Согласие менеджера»).
+        if (! $deal->refresh()->agreed()) {
+            if ($turn) {
+                $deal->buyer->notify(new YourTurnNotice($turn->load('offer')));
+            }
+
+            return;
+        }
         $deal->buyer->notify(new InsurerReplyNotice($deal, $contact, $turn));
+    }
+
+    /**
+     * Ответ поставщика в любой ветке предложения — offer@, пересылка сотрудника, а не только deal@ (27.10.2026: Альфа отвечает
+     * когда как, сделки висели неделями «ждём поставщика»): шаг письма ждёт его — ход наш, «поставщик ответил». Менеджеру —
+     * ничего. Наше письмо могло уйти не из приложения (личная почта) — ответ всё равно считается.
+     */
+    public static function mark(Deal $deal, Message $message): void
+    {
+        $position = $deal->offer->unsetRelation('positions')->position(Track::Sale);
+        if (! $deal->isActive() || ! $position || ! in_array($position->letterStatus(), ['sent', 'unsent'], true)
+            || $message->date_at?->lt($deal->created_at)) {
+            return;
+        }
+        $position->update(['waits_for' => WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null,
+            'payload' => [...($position->payload ?? []), 'reply_at' => ($message->date_at ?? now())->toIso8601String()]]);
     }
 
     public function entered(StageEntered $e): void

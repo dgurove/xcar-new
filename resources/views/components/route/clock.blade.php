@@ -35,7 +35,8 @@
         @else @if ($letters && isset($position->payload['letter_id']))<button type="button" class="underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $letters }}?at={{ $position->payload['letter_id'] }}">Письмо ушло {{ $position->letterAt()->translatedFormat('j M, H:i') }}</button>@else Письмо ушло {{ $position->letterAt()->translatedFormat('j M, H:i') }}@endif, ответа нет <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->letterAt()->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif
     </p>
 @elseif ($foreign && ! $bare)
-    @if ($who)<p {{ $attributes->merge(['class' => 'text-sm text-ink-muted']) }}>{{ $who }}</p>@endif
+    {{-- С какого числа ждём (27.10.2026: BMW X6 22 дня «ждём поставщика» без даты — непонятно, давно ли). --}}
+    @if ($who)<p {{ $attributes->merge(['class' => 'text-sm text-ink-muted']) }}>{{ $who }}@if ($position->block_entered_at) с <span class="nums">{{ \App\Support\Ago::day($position->block_entered_at) }}</span>@endif</p>@endif
 @elseif ($who && ! ($bare && ! $position->deadline_at))
     <p {{ $attributes->merge(['class' => 'text-sm '.($overdue || ($invoice && $side !== 'manager') || ($side === 'manager' && ! $foreign) ? 'text-urgent' : 'text-ink-muted')]) }}>
         @if ($bare)@if ($overdue)Просрочено на <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@else Осталось <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@endif

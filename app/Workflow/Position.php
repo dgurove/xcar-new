@@ -84,7 +84,17 @@ class Position extends Model
      */
     public function needsUs(): bool
     {
-        return $this->waitsFor() === WaitsFor::Us || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true);
+        return $this->waitsFor() === WaitsFor::Us || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
+            || $this->consentLate();
+    }
+
+    /**
+     * Менеджер не дал согласия в срок (27.10.2026, владелец: «горит у нас, решаем сами» — позвонить, отдать резерву, отменить).
+     * Ход остаётся его: кнопки «Беру в работу» / «Я передумал» живы, у него — красным «просрочено».
+     */
+    public function consentLate(): bool
+    {
+        return $this->overdue_at !== null && $this->waitsFor() === WaitsFor::Manager && $this->stage->asksConsent();
     }
 
     /** Служебные ключи позиции (письмо поставщику) — не поля этапа: на экране их нет. */
@@ -151,10 +161,12 @@ class Position extends Model
     }
 
     /** `needsUs()` одним SQL-условием над `offer_positions` — для скоупа, сортировок и подзапросов. */
-    // coalesce — пустой payload даёт null, и «не наш ход» (`whereNot`) терял такие позиции.
+    // coalesce — пустой payload даёт null, и «не наш ход» (`whereNot`) терял такие позиции. Подписи согласия — `Outcome::TAKES`.
     public const NEEDS_US_SQL = "coalesce(coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
         or offer_positions.payload ?? 'reply_at' or offer_positions.payload ?? 'letter_bounced'
-        or (offer_positions.payload ?? 'letter_failed' and not offer_positions.payload ?? 'letter_at'), false)";
+        or (offer_positions.payload ?? 'letter_failed' and not offer_positions.payload ?? 'letter_at')
+        or (offer_positions.overdue_at is not null and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
+            and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю'))), false)";
 
     /** Позиции, где нужно наше действие, — `needsUs()` в SQL. */
     public function scopeNeedsUs($q)

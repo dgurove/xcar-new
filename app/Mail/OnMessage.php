@@ -10,6 +10,7 @@ use App\Mail\Chains\ChainBuilder;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\Intent;
+use App\Offers\Listeners\AdvanceOnReply;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Reading\ReadLetter;
 use App\Notifications\Notify;
@@ -88,6 +89,9 @@ final class OnMessage
                 && $message->date_at?->gte($deal->created_at) && InsurerReplies::counts($message)
                 && ! $offer->events()->where('type', OfferEventType::InsurerReplied)->where('payload->letter', $message->id)->exists()) {
                 InsurerReplied::dispatch($deal, $message);
+            } elseif ($deal && $message->account->scope === Scope::Offers && $message->direction === Direction::In
+                && ($message->isFromVendor() || $message->isForwardedByStaff()) && ! Intent::silent($message->intent)) {
+                AdvanceOnReply::mark($deal, $message);
             }
         }
         $this->toTelegram($message, $linked instanceof Offer ? $linked : $thread?->offer);

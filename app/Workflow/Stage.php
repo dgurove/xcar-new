@@ -233,12 +233,13 @@ class Stage extends Model
         return implode(' ', array_filter([$d ? $d.' д' : null, $h ? $h.' ч' : null, $m ? $m.' мин' : null])) ?: '0 мин';
     }
 
-    /** Срок этапа для оффера, если войти в него сейчас: свой, конец приёма подтверждений или срок страховой. */
+    /** Срок этапа для оффера, если войти в него сейчас: свой, конец приёма подтверждений, срок страховой или 17:00 завтра. */
     public function deadlineFor(Offer $offer, Carbon $now): ?Carbon
     {
         return match ($this->deadline_source) {
             DeadlineSource::BidsClose => $offer->bids_close_at,
             DeadlineSource::InsurerDeadline => $offer->insurer_deadline_at?->copy()->endOfDay(),
+            DeadlineSource::NextDay17 => $now->copy()->setTimezone('Europe/Moscow')->addDay()->setTime(17, 0)->setTimezone(config('app.timezone')),
             DeadlineSource::Own => $this->deadlineFrom($now),
         };
     }

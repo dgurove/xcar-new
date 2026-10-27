@@ -18,9 +18,10 @@
     $contractStep = $deal->isActive() && $deal->hasContract() && $requirement && ($pickupSteps || ($requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep()));
     // ПРАЙМ без покупателя: задача и есть выбор покупателя — он в ней, а не вторым блоком с той же кнопкой.
     $needsBuyer = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() && in_array($deal->invoiceGap(), ['buyer', 'passport'], true);
-    // Каркаде, пока поставщик не согласовал заявку (11.10.2026): «Выбрать покупателя» и ДКП рано — лот ещё могут не отдать
-    // (владелец 09.10: «рано спрашивать у менеджера, покупает ли»). Блок встанет после ответа поставщика.
-    $tooEarly = $deal->isActive() && ! $deal->agreed() && $offer->vendor?->deal_format === \App\Vendors\DealFormat::Wholesale;
+    // Пока покупка не согласована (11.10.2026 — Каркаде, 27.10.2026 — у всех: BMW X6 Альфы 22 дня просила «Выбрать
+    // покупателя» и ДКП, хотя поставщик ещё не ответил, а менеджер не сказал «Беру»): «Выбрать покупателя» и ДКП рано.
+    // Блок встанет после согласования (`Deal::agreed`).
+    $tooEarly = $deal->isActive() && ! $deal->agreed();
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/></x-slot:badge>

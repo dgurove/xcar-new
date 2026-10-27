@@ -261,6 +261,10 @@ final class Notify
             && str_starts_with(mb_strtolower(trim($e->exit->label)), 'поставщик согласовал') && $deal->refresh()->agreed_at) {
             $this->pickupOpened($deal->setRelation('offer', $e->offer));
         }
+        // Менеджер дал согласие (Альфа) — сотрудникам ответить поставщику «актуально» (27.10.2026).
+        if ($deal && $e->exit?->takes() && $e->to->isLetterStep()) {
+            Notification::send($this->staff(), new ConsentGivenNotice($deal->load(['offer', 'buyer'])));
+        }
         // Шаг сдвинуло письмо страховой — менеджеру пишет «Страховая ответила» с этим ходом (`AdvanceOnReply`).
         if (! $deal?->buyer || $e->letter) {
             return;

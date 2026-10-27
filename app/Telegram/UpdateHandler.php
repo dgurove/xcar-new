@@ -12,6 +12,7 @@ use App\Billing\PaymentState;
 use App\Billing\Robot;
 use App\Notifications\CounterOfferedNotice;
 use App\Notifications\TelegramChannel;
+use App\Notifications\YourTurnNotice;
 use App\Offers\Actions\AnswerCounter;
 use App\Offers\Bid;
 use App\Offers\Deal;
@@ -31,6 +32,8 @@ use App\Telegram\Offers\Subscriber;
 use App\Users\Access\AccessCode;
 use App\Users\Access\DecideCode;
 use App\Users\User;
+use App\Workflow\Actions\AnswerRequirement;
+use App\Workflow\Requirement;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -85,6 +88,12 @@ final class UpdateHandler
         // Контрпредложение — менеджеру, отвечает он сам.
         if ($press->topic === 'counter') {
             $this->counter($press);
+
+            return;
+        }
+        // Согласие взять сделку — менеджеру, отвечает он сам.
+        if ($press->topic === 'turn') {
+            $this->turn($press);
 
             return;
         }
@@ -150,6 +159,58 @@ final class UpdateHandler
         $this->bot->edit($press->chatId, $press->messageId,
             $text($agree ? 'Вы согласились '.now()->translatedFormat('j M, H:i').', сделка открыта' : 'Вы отказались, ваша цена в силе'),
             $agree && $deal ? $open('Открыть сделку', $deal->href()) : $open('Открыть', $page));
+    }
+
+    /**
+     * Согласие менеджера из бота (27.10.2026, владелец: «в боте сразу кнопки»): «Беру в работу» и «Передумал» переспрашивают
+     * той же строкой кнопок — первое необратимо (дальше письмо поставщику «актуально»), второе отменяет сделку. Ответ — тот
+     * же `AnswerRequirement`, что кнопка на странице сделки. Нажать может только сам менеджер.
+     */
+    private function turn(Press $press): void
+    {
+        $r = Requirement::with(['offer', 'deal', 'stage'])->find($press->id);
+        $user = User::where('telegram_chat_id', $press->fromId)->first();
+        if (! $r || ! $user || $r->user_id !== $user->id) {
+            $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
+
+            return;
+        }
+        $lines = implode("\n", array_map(fn ($l) => e((string) $l), array_filter(YourTurnNotice::telegramLines($r), fn ($l) => $l !== null && $l !== '')));
+        $text = fn (string $status) => '<b>'.e(YourTurnNotice::telegramTitle($r)).'</b>'."\n".$lines.($status !== '' ? "\n\n".$status : '');
+        $open = [[TelegramChannel::button('Открыть сделку', Surface::Site->url($r->deal?->href() ?? "/deals/{$r->deal_id}"))]];
+        if (! $r->isOpen()) {
+            $this->bot->answer($press->queryId, 'Уже отвечено');
+            $this->bot->edit($press->chatId, $press->messageId, $text('Уже отвечено: '.mb_lcfirst((string) ($r->answer['exit'] ?? ''))), $open);
+
+            return;
+        }
+        if (in_array($press->action, ['take', 'drop', 'back'], true)) {
+            $ask = ['take' => 'Беру в работу? После этого отказаться нельзя', 'drop' => 'Передумали? Сделка отменится'][$press->action] ?? '';
+            $this->bot->answer($press->queryId, $ask !== '' ? 'Подтвердите' : '');
+            $this->bot->edit($press->chatId, $press->messageId, $text($ask), [
+                $press->action === 'back'
+                    ? YourTurnNotice::consentButtons($r)
+                    : [['text' => $press->action === 'take' ? 'Да, беру' : 'Да, передумал', 'callback_data' => "turn:{$r->id}:sure{$press->action}"], ['text' => 'Назад', 'callback_data' => "turn:{$r->id}:back"]],
+                ...$open]);
+
+            return;
+        }
+        $which = ['suretake' => 'take', 'suredrop' => 'drop'][$press->action] ?? null;
+        $exit = $which ? YourTurnNotice::consentExit($r, $which) : null;
+        if (! $exit) {
+            $this->bot->answer($press->queryId, 'Кнопка устарела.');
+
+            return;
+        }
+        try {
+            app(AnswerRequirement::class)($r, $exit, $user);
+        } catch (ValidationException $e) {
+            $this->bot->answer($press->queryId, (string) collect($e->errors())->flatten()->first());
+
+            return;
+        }
+        $this->bot->answer($press->queryId, $exit->label);
+        $this->bot->edit($press->chatId, $press->messageId, $text($exit->label.' — '.now()->translatedFormat('j M, H:i')), $open);
     }
 
     /** «Оплачен» под просроченным счётом — оплата на весь остаток от имени владельца. */

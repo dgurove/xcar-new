@@ -26,11 +26,11 @@
             {{-- Один исход — во всю ширину, два — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
             <div @class(['gap-3', 'grid' => $moves->count() <= 2, 'grid-cols-2' => $moves->count() === 2, 'flex flex-wrap' => $moves->count() > 2])>
                 @foreach ($moves as $exit)
-                    <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="\App\Users\Wording::mine($exit->confirm)" class="min-w-0 px-4">{{ \App\Users\Wording::mine($exit->label) }}</x-ui.button>
+                    <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="\App\Users\Wording::mine($exit->confirm) ?: ($exit->takes() ? 'Берёте в работу? После этого отказаться нельзя' : null)" class="min-w-0 px-4">{{ \App\Users\Wording::mine($exit->label) }}</x-ui.button>
                 @endforeach
             </div>
             @foreach ($retreats as $exit)
-                <button name="exit" value="{{ $exit->id }}" class="retreat-link" data-turbo-confirm="{{ \App\Users\Wording::mine($exit->confirm) ?: 'Отказаться от сделки?' }}">{{ \App\Users\Wording::mine($exit->label) }}</button>
+                <button name="exit" value="{{ $exit->id }}" class="retreat-link" data-turbo-confirm="{{ \App\Users\Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}">{{ \App\Users\Wording::mine($exit->label) }}</button>
             @endforeach
         </form>
     @endunless
