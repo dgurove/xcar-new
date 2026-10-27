@@ -3390,6 +3390,8 @@ html.kb-open { --home-gap: 0px; }
   .card-tone--fresh { background: var(--color-fresh); }
   .card-tone--urgent { background: var(--color-fire); }
   .card-tone--hot { background: var(--color-urgent); }
+  /* Поставщик ответил по сделке — как непрочитанное письмо (27.10.2026). */
+  .card-tone--reply { background: var(--color-accent); }
   .card-tone--only, .card-tone--loss, .card-tone--danger, .card-tone--binding { background: var(--color-danger); }
   /* Выбранная пилюля «Новые» / «Горящие» (каталог, переключатели CRM) — своим цветом, а не лаймом (владелец 12.10.2026);
      точка на ней — цветом надписи. */

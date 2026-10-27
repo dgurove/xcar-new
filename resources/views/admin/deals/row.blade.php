@@ -8,7 +8,7 @@
     [$word, $tone] = match (true) {
         $deal->isAuction() && $deal->state === \App\Offers\DealState::Done => ['Продана на аукционе', 'text-accent-text'],
         $deal->state !== \App\Offers\DealState::Active => [$deal->state->label(), $deal->state === \App\Offers\DealState::Done ? 'text-accent-text' : 'text-danger'],
-        (bool) $position => [$position->stage->block?->name ?? $position->stage->name, $position->isOverdue() ? 'text-urgent' : 'text-ink-muted'],
+        (bool) $position => [$position->stage->block?->name ?? $position->stage->name, $position->needsUs() ? 'text-urgent' : 'text-ink-muted'],
         default => [$offer->crmTab(), 'text-ink-muted'],
     };
 @endphp

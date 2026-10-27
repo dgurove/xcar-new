@@ -40,7 +40,6 @@ use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
-use App\Workflow\WaitsFor;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -692,7 +691,7 @@ final class Nav
     {
         return Position::where('track', 'sale')
             ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active)->when($garage, fn ($g) => $g->whereNotNull('garage_payer'), fn ($g) => $g->whereNull('garage_payer')))
-            ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)))
+            ->needsUs()
             ->count();
     }
 
@@ -724,7 +723,7 @@ final class Nav
                 '/offers/from-mail' => Boxes::registerCount(Scope::Offers),
                 '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
-                // Горит то же, что «Горит» в списке; гаражные сделки — у «Гаража», не у «Сделок» (13.10.2026).
+                // Горит то же, что «Ваш ход» в списке; гаражные сделки — у «Гаража», не у «Сделок» (13.10.2026).
                 '/work/deals' => self::hotDeals(garage: false),
                 '/work/garage' => self::hotDeals(garage: true),
                 // Деньги горят делом в «Оплатах»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки нет.

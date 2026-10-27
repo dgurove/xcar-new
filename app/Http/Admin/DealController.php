@@ -23,6 +23,7 @@ use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
 use App\Workflow\Track;
+use App\Workflow\Position;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
@@ -31,7 +32,8 @@ use Illuminate\Validation\Rule;
 
 class DealController
 {
-    public const PRESETS = ['active' => 'В работе', 'hot' => 'Горит', 'manager' => 'Ждём менеджера', 'done' => 'Закончены'];
+    // «Ваш ход» вместо «Горит» (27.10.2026, владелец: рыжее только когда от нас что-то нужно; чужая просрочка — не наш ход).
+    public const PRESETS = ['us' => 'Ваш ход', 'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'active' => 'В работе', 'done' => 'Закончены'];
 
     public const SORTS = ['deadline' => ['Срок', 'asc'], 'binding' => ['Срок обязывающего', 'asc'], 'fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
 
@@ -62,7 +64,9 @@ class DealController
         $askedSort = $request->query('sort');
         ListPrefs::sync($request, 'crm-deals', keep: $facets->keys());
         OfferController::forgetBindingSort($request, $askedSort);
-        $preset = $request->query('preset', 'active');
+        $preset = $request->query('preset', 'us');
+        // Старые ссылки («Горит» утренней сводки) — на «Ваш ход».
+        $preset = $preset === 'hot' ? 'us' : (array_key_exists($preset, self::PRESETS) ? $preset : 'us');
         $searching = $facets->searching();
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
@@ -78,13 +82,14 @@ class DealController
         }
         $facets->apply($q);
         // Числа пилюль — с чипами (10.10.2026: «Горит» без числа, а таб «Работа» горел им же — владелец не понимал, откуда 26).
-        $counts = collect(['active', 'hot', 'manager'])->mapWithKeys(fn (string $p) => [$p => self::scope($facets->applyTo(Deal::query()->whereNull('garage_payer')), $p)->count()])->all();
+        $counts = collect(['us', 'manager', 'supplier', 'active'])->mapWithKeys(fn (string $p) => [$p => self::scope($facets->applyTo(Deal::query()->whereNull('garage_payer')), $p)->count()])->all();
         $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $q->orderBy('created_at', $dir),
             'amount' => $q->orderByRaw("amount {$dir} nulls last"),
             'binding' => $q->orderByRaw("(select binding_until from offers where offers.id = deals.offer_id) {$dir} nulls last"),
-            default => $q->orderByRaw("(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) {$dir} nulls last"),
+            // По сроку — сначала ответ поставщика (как непрочитанное письмо), потом прочий наш ход, потом остальное.
+            default => $q->orderByRaw(self::turnRank())->orderByRaw("(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) {$dir} nulls last"),
         };
         $q->orderByDesc('deals.id');
         Rows::only($q, 'deals.id');
@@ -100,14 +105,28 @@ class DealController
         ]);
     }
 
-    /** Пилюля списка: «Горит» — просрочено или ход наш (им же горит заголовок «Сделки», `Nav::staffCounts`), «Ждём менеджера» — его ход. */
+    /** 0 — поставщик ответил, 1 — прочий наш ход, 2 — ждём других. */
+    private static function turnRank(): string
+    {
+        $sale = "select 1 from offer_positions where offer_positions.offer_id = deals.offer_id and offer_positions.track = 'sale'";
+
+        return "(case when exists ({$sale} and offer_positions.payload ?? 'reply_at') then 0
+            when exists ({$sale} and ".Position::NEEDS_US_SQL.') then 1 else 2 end)';
+    }
+
+    /**
+     * Пилюля списка: «Ваш ход» — нужно наше действие (`Position::needsUs`; им же число у заголовка «Сделки», `Nav::staffCounts`),
+     * «Ждём менеджера» / «Ждём поставщика» — их ход, сколько бы ни было просрочено.
+     */
     private static function scope($q, string $preset)
     {
+        $sale = fn ($f) => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $f($p->where('track', 'sale')));
+
         return match ($preset) {
-            'hot' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->where(fn ($w) => $w
-                ->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)))),
+            'us' => $sale(fn ($p) => $p->needsUs()),
+            'supplier' => $sale(fn ($p) => $p->waiting(WaitsFor::Supplier)->whereNot(fn ($n) => $n->needsUs())),
             // Чей ход — позиции (`Position::waiting`): этап оплаты без счёта ждёт нас, а не менеджера.
-            'manager' => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->waiting(WaitsFor::Manager)),
+            'manager' => $sale(fn ($p) => $p->waiting(WaitsFor::Manager)->whereNot(fn ($n) => $n->needsUs())),
             'done' => $q->whereIn('state', [DealState::Done, DealState::Cancelled]),
             default => $q->where('state', DealState::Active),
         };

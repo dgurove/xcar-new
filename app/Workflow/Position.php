@@ -78,6 +78,15 @@ class Position extends Model
         };
     }
 
+    /**
+     * Нужно ли наше действие (27.10.2026, владелец: «рыжим только если от нас конкретно что-то требуется»): ход наш,
+     * письмо поставщику не ушло, не доставлено или он ответил. Чужая просрочка — не наш ход. SQL-зеркало — `scopeNeedsUs`.
+     */
+    public function needsUs(): bool
+    {
+        return $this->waitsFor() === WaitsFor::Us || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true);
+    }
+
     /** Служебные ключи позиции (письмо поставщику) — не поля этапа: на экране их нет. */
     public const LETTER_KEYS = ['letter_id', 'letter_at', 'reply_at', 'letter_failed', 'letter_bounced'];
 
@@ -139,6 +148,18 @@ class Position extends Model
     public function deal(): HasOne
     {
         return $this->hasOne(Deal::class, 'offer_id', 'offer_id')->where('state', DealState::Active);
+    }
+
+    /** `needsUs()` одним SQL-условием над `offer_positions` — для скоупа, сортировок и подзапросов. */
+    // coalesce — пустой payload даёт null, и «не наш ход» (`whereNot`) терял такие позиции.
+    public const NEEDS_US_SQL = "coalesce(coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
+        or offer_positions.payload ?? 'reply_at' or offer_positions.payload ?? 'letter_bounced'
+        or (offer_positions.payload ?? 'letter_failed' and not offer_positions.payload ?? 'letter_at'), false)";
+
+    /** Позиции, где нужно наше действие, — `needsUs()` в SQL. */
+    public function scopeNeedsUs($q)
+    {
+        return $q->whereRaw(self::NEEDS_US_SQL);
     }
 
     /** Позиции, где ход за этим участником, — тем же правилом, что `waitsFor()`, в SQL. */

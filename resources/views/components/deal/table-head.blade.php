@@ -3,9 +3,9 @@
 <tr>
     <th class="grow title-cap">Марка, модель</th>
     <th class="hidden sm:table-cell">Вендор, № убытка</th>
-    <th class="cell-dim hidden xl:table-cell">№</th>
+    <th class="cell-dim hidden 2xl:table-cell">№</th>
     <th class="hidden sm:table-cell">Менеджер</th>
     <th class="fill hidden sm:table-cell">Этап</th>
-    <x-ui.th :sort="$sort" key="deadline" class="hidden sm:table-cell">Срок</x-ui.th>
+    <x-ui.th :sort="$sort" key="deadline" class="hidden sm:table-cell">Что сейчас</x-ui.th>
     <x-ui.th :sort="$sort" key="amount" class="num">Сумма</x-ui.th>
 </tr>
