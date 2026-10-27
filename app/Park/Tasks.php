@@ -4,6 +4,7 @@ namespace App\Park;
 
 use App\Mail\Extraction\Intent;
 use App\Support\Facets\Facet;
+use App\Support\Facets\Option;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -39,7 +40,7 @@ final class Tasks
         return match ($key) {
             'release' => "park_vehicles.state = 'stored' and exists (select 1 from park_requests r where r.vehicle_id = park_vehicles.id and r.type = 'release' and r.state in ({$open}))",
             'buyer' => "park_vehicles.state = 'stored' and exists (select 1 from vendors vd where vd.id = park_vehicles.vendor_id and vd.release_by_qr)"
-                ." and exists (select 1 from park_passes p where p.vehicle_id = park_vehicles.id and p.submitted_at is not null and p.confirmed_at is null and p.revoked_at is null and p.used_at is null)",
+                .' and exists (select 1 from park_passes p where p.vehicle_id = park_vehicles.id and p.submitted_at is not null and p.confirmed_at is null and p.revoked_at is null and p.used_at is null)',
             'inspect' => "park_vehicles.state <> 'cancelled' and ".$waiting("t.last_intent = '".Intent::Inspect->value."'"),
             'docs' => "park_vehicles.state <> 'cancelled' and ".$waiting("t.last_intent = '".Intent::Docs->value."'"),
             'reply' => "park_vehicles.state <> 'cancelled' and ".$waiting("(t.last_intent is null or t.last_intent not in ({$special}))"),
@@ -57,7 +58,7 @@ final class Tasks
                 ->each(fn ($k) => $w->orWhereRaw(self::sql($k)))),
             fn (Builder $q) => self::counts($q),
         )->natural()->labels(fn (array $keys) => collect(self::LABELS)->only($keys)
-            ->map(fn ($label, $key) => new \App\Support\Facets\Option($key, $label))->all());
+            ->map(fn ($label, $key) => new Option($key, $label))->all());
     }
 
     /** @return array<string, int> задача → сколько ТС в списке её ждут (нулевых нет) */

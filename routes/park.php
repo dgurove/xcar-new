@@ -101,6 +101,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/move', [VehicleController::class, 'move']);
     Route::post('/cars/{vehicle}/rate', [VehicleController::class, 'rate'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/transfer', [VehicleController::class, 'transfer'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/city', [VehicleController::class, 'city']);
     Route::post('/cars/{vehicle}/yard', [VehicleController::class, 'yard']);
     Route::post('/cars/{vehicle}/dates', [VehicleController::class, 'dates'])->middleware('ability:isParkAdmin');
     Route::post('/cars/{vehicle}/restore', [VehicleController::class, 'restore'])->middleware('park.manage');

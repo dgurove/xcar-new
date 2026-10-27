@@ -20,5 +20,6 @@
     <span class="fact">{{ $vehicle->cancel_reason }}</span>
 @endif
 @unless ($only)
-    @foreach (\App\Park\Alerts::of($vehicle, docs: false) as $alert)<x-ui.state :tone="$alert['tone']">{{ $alert['label'] }}</x-ui.state>@endforeach
+    {{-- «Город не определён» в деле — строкой с кнопкой ниже (`x-park.city-pick`), тегом здесь не повторяется. --}}
+    @foreach (collect(\App\Park\Alerts::of($vehicle, docs: false))->reject(fn ($a) => $a['label'] === 'Город не определён') as $alert)<x-ui.state :tone="$alert['tone']">{{ $alert['label'] }}</x-ui.state>@endforeach
 @endunless

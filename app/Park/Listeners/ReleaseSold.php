@@ -2,8 +2,10 @@
 
 namespace App\Park\Listeners;
 
+use App\Offers\Actions\SyncParkRelease;
 use App\Park\Actions\CreateRequest;
 use App\Park\Events\VehicleAccepted;
+use App\Park\RequestState;
 use App\Park\RequestType;
 
 /**
@@ -20,10 +22,10 @@ final class ReleaseSold
         // Машину сделки XCar привезли — выдача и пропуск по сделке, если её уже можно забирать.
         // Сделка — идущая у предложения или та, чей пропуск жив (гаражная уже закрыта, а машину только привезли).
         if ($deal = $vehicle?->dealPass()?->deal ?? $vehicle?->offer?->deal) {
-            app(\App\Offers\Actions\SyncParkRelease::class)($deal, $e->by);
+            app(SyncParkRelease::class)($deal, $e->by);
             $vehicle->refresh();
         }
-        if (! $vehicle?->sold_at || $vehicle->requests()->where('type', RequestType::Release)->whereIn('state', \App\Park\RequestState::open())->exists()) {
+        if (! $vehicle?->sold_at || $vehicle->requests()->where('type', RequestType::Release)->whereIn('state', RequestState::open())->exists()) {
             return;
         }
         ($this->create)($e->by, RequestType::Release, $vehicle, ['contact_name' => $vehicle->pickup_name, 'contact_phone' => $vehicle->pickup_phone]);

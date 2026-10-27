@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Mail\Message;
+use App\Offers\Deal;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -65,7 +66,7 @@ class Pass extends Model
     /** Пропуск по сделке XCar (18.10.2026): выдан нами, подтверждён самой сделкой — анкеты и страховой у него нет. */
     public function deal(): BelongsTo
     {
-        return $this->belongsTo(\App\Offers\Deal::class);
+        return $this->belongsTo(Deal::class);
     }
 
     public function isDeal(): bool

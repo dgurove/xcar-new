@@ -7,6 +7,7 @@ use App\Live\Topics;
 use App\Mail\Chains\NodeTitle;
 use App\Mail\Message;
 use App\Mail\Thread;
+use App\Offers\Deal;
 use App\Users\User;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -27,6 +28,9 @@ class Request extends Model
         // Заявку закрыли или завели — строка «Заявок» уходит или входит у всех, кто их открыл (18.10.2026). После коммита.
         static::saved(fn (self $r) => $r->wasRecentlyCreated || $r->wasChanged('state')
             ? app(Publisher::class)->rowsSoon(Topics::PARK, ['/requests' => [$r->id]]) : null);
+        // Заявка из письма — у ТС появилось письмо: город по нему (`CityGuess`: адрес, контакт, отправитель).
+        static::saved(fn (self $r) => $r->letter_id && ($r->wasRecentlyCreated || $r->wasChanged('letter_id'))
+            ? Vehicle::withoutGlobalScope(City::SCOPE)->find($r->vehicle_id)?->recity() : null);
     }
 
     protected function casts(): array
@@ -85,7 +89,7 @@ class Request extends Model
     /** Сделка XCar, по которой выдача (`SyncParkRelease`). */
     public function deal(): BelongsTo
     {
-        return $this->belongsTo(\App\Offers\Deal::class);
+        return $this->belongsTo(Deal::class);
     }
 
     public function doneBy(): BelongsTo

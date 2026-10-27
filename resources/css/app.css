@@ -2671,6 +2671,11 @@ html.kb-open { --home-gap: 0px; }
   .toast:has(.toast-action) { @apply flex items-center gap-4; }
   .toast-action { @apply rounded-full bg-white/15 px-3 py-1 text-sm font-medium; }
 
+  /* «Город не определён» (x-park.city-pick): строка текста и кнопки справа, на телефоне кнопки под текстом. */
+  .city-pick { @apply flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-(--radius-l) bg-surface-2 px-3 py-2.5; }
+  .city-pick-text { @apply text-sm text-urgent; }
+  .city-pick-acts { @apply flex flex-wrap gap-2; }
+
   /* Капсула «С Мигторга N новых ТС» (x-migtorg.island, migtorg_island_controller): сверху по центру под шапкой, тоном
      тоста (тёмная в светлой теме, светлая в тёмной). Появляется точкой и раскрывается вширь (ширину ведёт контроллер:
      её не анимировать CSS от auto), текст проявляется следом; уходит обратно в точку. Без движения — только проявление. */

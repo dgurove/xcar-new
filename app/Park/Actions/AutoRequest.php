@@ -11,7 +11,6 @@ use App\Mail\CandidateState;
 use App\Mail\Message;
 use App\Mail\Scan\AutoScan;
 use App\Mail\Scope;
-use App\Park\City;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\RequestType;
@@ -19,7 +18,6 @@ use App\Park\VehicleFields;
 use App\Support\Nav;
 use App\Vendors\Contact;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -95,11 +93,6 @@ final class AutoRequest
             Log::info('Заявка из письма не завелась сама', ['candidate' => $candidate->id, 'error' => $e->getMessage()]);
 
             return null;
-        }
-        // Город новой ТС — по отправителю (`City::senderCity`), а не по вендору: у ВСК письма и из Москвы, и из Питера
-        // (27.10.2026: питерская заявка встала в Москву). Не уверены — пусто, видна всем городам.
-        if (! $vehicle && ! $request->vehicle->yard_id) {
-            DB::table('park_vehicles')->where('id', $request->vehicle_id)->update(['city_id' => City::senderCity($letter->from_email, $request->vehicle->vendor_id)]);
         }
         $this->promote->attach($candidate, $request->vehicle);
         Nav::forgetStaffCounts();

@@ -4,10 +4,14 @@ namespace App\Park\Listeners;
 
 use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
+use App\Logistics\Actions\SelfPickup;
+use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Offers\CarPlace;
+use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
+use App\Offers\OfferState;
 use App\Park\Events\VehicleAccepted;
 use App\Park\Events\VehicleReleased;
 use App\Park\Events\VehicleRestored;
@@ -72,7 +76,7 @@ final class SyncOffer
             return;
         }
         // Продана на аукционе (20.10.2026): выдали покупателю аукциона — машина у него, маршрут уже закрыт.
-        if ($offer->state === \App\Offers\OfferState::Delivered && \App\Offers\Deal::where('offer_id', $offer->id)->auctionSold()->exists()) {
+        if ($offer->state === OfferState::Delivered && Deal::where('offer_id', $offer->id)->auctionSold()->exists()) {
             ($this->setPlace)($offer, CarPlace::Buyer, $by);
 
             return;
@@ -87,8 +91,8 @@ final class SyncOffer
         // Только если выдали по пропуску этой сделки: выдача страховой, её покупателю или вендору — не «у менеджера».
         $byDeal = $deal?->buyer && $e->vehicle->passes()->where('deal_id', $deal->id)->whereNotNull('used_at')->exists();
         $t = $byDeal ? Transport::openFor($offer) : null;
-        if ($t && $t->isPickup() && ! $t->state->picked() && in_array($t->channel, [null, \App\Logistics\Channel::Manager], true)) {
-            app(\App\Logistics\Actions\SelfPickup::class)($offer->fresh(), $deal->buyer, $by);
+        if ($t && $t->isPickup() && ! $t->state->picked() && in_array($t->channel, [null, Channel::Manager], true)) {
+            app(SelfPickup::class)($offer->fresh(), $deal->buyer, $by);
         } elseif ($byDeal && ! $t) {
             // С нашей парковки по пропуску сделки, вывоза не было (машину на парковке логистика не возит): у менеджера.
             ($this->setPlace)($offer, CarPlace::Keeper, $by);

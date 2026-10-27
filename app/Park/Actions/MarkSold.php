@@ -3,6 +3,7 @@
 namespace App\Park\Actions;
 
 use App\Mail\Message;
+use App\Notifications\ParkPassRevokedNotice;
 use App\Park\Events\VehicleSold;
 use App\Park\EventType;
 use App\Park\RequestState;
@@ -48,7 +49,7 @@ final class MarkSold
                 : ['fields' => ['sold_at', 'pickup_name']]);
             // Открытую выдачу — запросом, а не загруженной связью: она бывает устаревшей, и `CreateRequest` тогда бросал
             // «заявка уже есть», откатывая всю продажу (выдача по сделке XCar зовёт продажу с уже загруженными заявками).
-            if ($fresh && $vehicle->state === VehicleState::Stored && ! $vehicle->requests()->where('type', RequestType::Release)->whereIn('state', \App\Park\RequestState::open())->exists()) {
+            if ($fresh && $vehicle->state === VehicleState::Stored && ! $vehicle->requests()->where('type', RequestType::Release)->whereIn('state', RequestState::open())->exists()) {
                 ($this->create)($by, RequestType::Release, $vehicle,
                     ['contact_name' => $name, 'contact_phone' => $phone, 'thread_id' => $message?->thread_id, 'letter_at' => $message?->date_at, 'letter_id' => $message?->id]);
             }
@@ -81,7 +82,7 @@ final class MarkSold
             $vehicle->revokePass($reason);
         });
         if ($dealPass?->deal?->buyer && $dealPass->deal->isActive()) {
-            DB::afterCommit(fn () => $dealPass->deal->buyer->notify(new \App\Notifications\ParkPassRevokedNotice($dealPass->deal, $reason)));
+            DB::afterCommit(fn () => $dealPass->deal->buyer->notify(new ParkPassRevokedNotice($dealPass->deal, $reason)));
         }
     }
 

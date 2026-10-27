@@ -358,7 +358,8 @@ final class Notify
         if ($c->scope === Scope::Park) {
             // Заявку уже завела почта — уведомление о ней, со ссылкой на дело, а не в «Из писем».
             $request = $c->vehicle_id ? ParkRequest::where('vehicle_id', $c->vehicle_id)->whereIn('state', RequestState::open())->latest('id')->first() : null;
-            Notification::send($this->parkManagers(City::ofCandidate($c)), $request ? ParkNotice::arrived($request) : ParkNotice::letter($c));
+            // Город — ТС заявки или своей цепочки (`Park\CityGuess`); не уверены — управляющим всех городов.
+            Notification::send($this->parkManagers($request ? $request->vehicle?->city_id : $c->city_id), $request ? ParkNotice::arrived($request) : ParkNotice::letter($c));
 
             return;
         }

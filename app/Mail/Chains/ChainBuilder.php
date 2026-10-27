@@ -26,6 +26,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Actions\AutoRequest;
 use App\Park\City;
+use App\Park\CityGuess;
 use App\Park\Events\CandidateArrived;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -201,7 +202,12 @@ final class ChainBuilder
             'proposed' => $latestTheirs && $latestTheirs->id !== $first->id ? $latestTheirs->fields() : null,
             'messages_count' => $messages->count(), 'last_message_at' => $messages->max('date_at') ?? now(),
             'stages' => $stages, 'stage' => $last,
-        ])->saveQuietly();
+        ]);
+        // Город цепочки парковки — по её письмам (`Park\CityGuess`): адрес, контакт, отправитель, вендор; решение человека остаётся.
+        if ($candidate->scope === Scope::Park && $candidate->city_source !== CityGuess::MANUAL) {
+            [$candidate->city_id, $candidate->city_source] = CityGuess::letters($theirs, $candidate->vendor_id);
+        }
+        $candidate->saveQuietly();
 
         // Ветки писем — за цепочкой (секция в почте), кроме уже привязанных к ТС или предложению.
         Thread::whereIn('id', $messages->pluck('thread_id')->filter()->unique())->whereNull('candidate_id')->whereNull('vehicle_id')->whereNull('offer_id')

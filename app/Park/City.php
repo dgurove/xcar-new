@@ -9,7 +9,6 @@ use App\Mail\Account;
 use App\Mail\Candidate;
 use App\Mail\Scope;
 use App\Users\User;
-use App\Vendors\Contact;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -19,9 +18,9 @@ use Illuminate\Support\Facades\DB;
  * Город парковки — граница того, что видит управляющий (владелец 09.10.2026: у Питера свой управляющий, он видит только
  * свою парковку и письма питерской Альфы, московские — только Москву, весь парк — администраторы парковки).
  *
- * Город ТС хранится (`park_vehicles.city_id`, `Vehicle::saving`): город её парковки, без парковки — парковки вендора по
- * умолчанию (`vendors.home_yard_id`), иначе основной — Москва. Ветка и цепочка «Из писем» — город своей ТС, без неё —
- * вендора; счёт — ТС или вендора-плательщика реестра. Человек с городом (`users.park_city_id`) видит только его: области
+ * Город ТС и цепочки «Из писем» хранится с источником (`city_id`, `city_source`) и решается одной дверью `CityGuess`:
+ * парковка, решение человека, адрес в письме, контакт, история отправителя, вендор; пусто — не уверены, видна всем.
+ * Ветка — город своей ТС или цепочки, без них — вендора (`vendorIds`); счёт — по ТС своих строк. Человек с городом (`users.park_city_id`) видит только его: области
  * `SCOPE` у ТС, заявок, веток, цепочек и счетов включаются им самим (`viewing`); очереди, расписание и разбор писем
  * идут без вошедшего — для них города нет.
  */
@@ -75,19 +74,6 @@ final class City
         return self::$paused === 0 && Auth::hasUser() ? self::of(Auth::user()) : null;
     }
 
-    /** Город ТС по её парковке и вендору — то, что пишет `Vehicle::saving`. */
-    public static function forVehicle(Vehicle $v): ?int
-    {
-        if ($v->yard_id && ($city = Yard::withoutGlobalScope(self::SCOPE)->whereKey($v->yard_id)->value('settlement_id'))) {
-            return (int) $city;
-        }
-        if (! $v->yard_id && $v->city_id && ! $v->isDirty('vendor_id')) {
-            return (int) $v->city_id;
-        }
-
-        return self::vendorCity($v->vendor_id);
-    }
-
     /**
      * Город писем вендора без своей парковки у отправителя (27.10.2026, владелец: «если не уверены, к какому городу заявка,
      * — пусть и там и там»): парковка вендора по умолчанию; без неё — город, где его ТС стояли; стояли в разных (ВСК —
@@ -111,28 +97,6 @@ final class City
         };
     }
 
-    /**
-     * Город заявки из письма (27.10.2026, владелец: «один и тот же отправитель может прислать и для Питера, и для Москвы»):
-     * парковка, вписанная у контакта отправителя руками, — её город; иначе история отправителя — ТС его заявок стояли в
-     * одном городе — он, в разных — null (не уверены, видна всем); писем от него ещё не было — город вендора (`vendorCity`).
-     */
-    public static function senderCity(?string $email, ?int $vendorId): ?int
-    {
-        if ($yard = Contact::yardFor($email)) {
-            return $yard->settlement_id ? (int) $yard->settlement_id : self::vendorCity($vendorId);
-        }
-        $email = mb_strtolower(trim((string) $email));
-        $cities = $email === '' ? [] : DB::table('park_vehicles')->join('park_requests', 'park_requests.vehicle_id', '=', 'park_vehicles.id')
-            ->join('mail_messages', 'mail_messages.id', '=', 'park_requests.letter_id')->whereRaw('lower(mail_messages.from_email) = ?', [$email])
-            ->whereNotNull('park_vehicles.yard_id')->whereNotNull('park_vehicles.city_id')->distinct()->pluck('park_vehicles.city_id')->map(fn ($c) => (int) $c)->all();
-
-        return match (count($cities)) {
-            0 => self::vendorCity($vendorId),
-            1 => $cities[0],
-            default => null,
-        };
-    }
-
     /** @return array<int, list<int>> вендор → города, где его ТС стояли на парковке */
     private static function vendorCities(): array
     {
@@ -151,32 +115,12 @@ final class City
         return $city ? (int) $city : null;
     }
 
-    /** Город цепочки «Из писем»: её ТС, иначе вендора (`vendorCity`; null — не уверены, видна всем городам). */
-    public static function ofCandidate(Candidate $c): ?int
-    {
-        $vehicle = $c->vehicle_id ? Vehicle::withoutGlobalScope(self::SCOPE)->whereKey($c->vehicle_id)->value('city_id') : null;
-
-        return $vehicle ? (int) $vehicle : self::vendorCity($c->vendor_id);
-    }
-
     /** Город счёта: его ТС, иначе вендора-плательщика реестра, иначе основной. */
     public static function ofInvoice(Invoice $i): ?int
     {
         $vehicle = $i->vehicle_id ? Vehicle::withoutGlobalScope(self::SCOPE)->whereKey($i->vehicle_id)->value('city_id') : null;
 
         return $vehicle ? (int) $vehicle : (self::ofVendor(Vendor::where('party_id', $i->party_id)->value('id')) ?? self::main());
-    }
-
-    /**
-     * Вендоры, чьи реестры счетов — города: с парковкой по умолчанию в нём, для основного — и без неё. Реестр не ТС: «не
-     * уверены» к нему не относится, московский реестр ВСК питерскому управляющему не нужен.
-     */
-    public static function homeVendorIds(int $city): \Illuminate\Database\Query\Builder
-    {
-        return DB::table('vendors')->leftJoin('park_yards', 'park_yards.id', '=', 'vendors.home_yard_id')
-            ->where(fn ($w) => $w->where('park_yards.settlement_id', $city)
-                ->when($city === self::main(), fn ($m) => $m->orWhereNull('vendors.home_yard_id')))
-            ->select('vendors.id');
     }
 
     /** Вендоры, чьи письма относятся к городу (`vendorCity`): его город или не уверены — тогда ко всем. @return list<int> */
@@ -258,24 +202,25 @@ final class City
                 ->when($city === self::main(), fn ($m) => $m->orWhereNull($t->qualifyColumn('vendor_id'))))));
     }
 
-    /** Цепочки «Из писем» парковки — своей ТС, без неё — вендора города; цепочки CRM этой областью не трогаются. */
+    /**
+     * Цепочки «Из писем» парковки — своей ТС, без неё — свой город (`mail_candidates.city_id`, ставит свёртка через
+     * `CityGuess`; пусто — не уверены, видна всем); цепочки CRM этой областью не трогаются.
+     */
     public static function candidates(Builder $q, int $city): void
     {
         $c = $q->getModel();
         $q->where(fn ($w) => $w->where($c->qualifyColumn('scope'), '!=', Scope::Park->value)
             ->orWhereIn($c->qualifyColumn('vehicle_id'), Vehicle::query()->select('id'))
             ->orWhere(fn ($n) => $n->whereNull($c->qualifyColumn('vehicle_id'))->where(fn ($v) => $v
-                ->whereIn($c->qualifyColumn('vendor_id'), self::vendorIds($city))
-                ->when($city === self::main(), fn ($m) => $m->orWhereNull($c->qualifyColumn('vendor_id'))))));
+                ->where($c->qualifyColumn('city_id'), $city)->orWhereNull($c->qualifyColumn('city_id')))));
     }
 
-    /** Счета: своей ТС, реестр — вендора города, без ТС и вендора (покупатель, комитент) — по ТС строк счёта. */
+    /** Счета: своей ТС, без ТС (реестр, покупатель, комитент) — по ТС своих строк: реестр видит город его машин. */
     public static function invoices(Builder $q, int $city): void
     {
         $i = $q->getModel();
         $q->where(fn ($w) => $w->whereIn($i->qualifyColumn('vehicle_id'), Vehicle::query()->select('id'))
-            ->orWhere(fn ($n) => $n->whereNull($i->qualifyColumn('vehicle_id'))->where(fn ($r) => $r
-                ->whereIn($i->qualifyColumn('party_id'), Vendor::whereIn('id', self::homeVendorIds($city))->whereNotNull('party_id')->select('party_id'))
-                ->orWhereIn($i->qualifyColumn('id'), Charge::whereIn('vehicle_id', Vehicle::query()->select('id'))->whereNotNull('invoice_id')->select('invoice_id')))));
+            ->orWhere(fn ($n) => $n->whereNull($i->qualifyColumn('vehicle_id'))
+                ->whereIn($i->qualifyColumn('id'), Charge::whereIn('vehicle_id', Vehicle::query()->select('id'))->whereNotNull('invoice_id')->select('invoice_id'))));
     }
 }

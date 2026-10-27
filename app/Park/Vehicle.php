@@ -20,6 +20,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Search\CarWords;
 use App\Search\Term;
+use App\Support\Nav;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Users\User;
@@ -53,9 +54,10 @@ class Vehicle extends Model
     {
         // Управляющий с городом видит только ТС своего города (`City`); город ТС — по парковке и вендору.
         static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::vehicles($q, $city) : null);
+        // Город — одна дверь `CityGuess` (27.10.2026): парковка и решение человека не перетираются догадкой.
         static::saving(function (self $v) {
-            if (! $v->city_id || $v->isDirty(['yard_id', 'vendor_id'])) {
-                $v->city_id = City::forVehicle($v);
+            if (! $v->exists || $v->isDirty(['yard_id', 'vendor_id', 'city_source'])) {
+                [$v->city_id, $v->city_source] = CityGuess::vehicle($v);
             }
         });
         // ТС вендора на парковке — вендор становится её вендором (раздел «Вендоры» парковки).
@@ -420,6 +422,16 @@ class Vehicle extends Model
     public function damages(): array
     {
         return array_values(array_filter(array_map(fn ($z) => DamageZone::labelOf($z), $this->damage_zones ?? [])));
+    }
+
+    /** Город заново (пришло письмо заявки, сменилась парковка вендора): решение человека и парковка остаются. */
+    public function recity(): void
+    {
+        [$city, $source] = CityGuess::vehicle($this);
+        if ($city !== ($this->city_id === null ? null : (int) $this->city_id) || $source !== $this->city_source) {
+            $this->forceFill(['city_id' => $city, 'city_source' => $source])->save();
+            Nav::forgetStaffCounts();
+        }
     }
 
     public function log(EventType $type, ?User $by = null, array $payload = []): VehicleEvent

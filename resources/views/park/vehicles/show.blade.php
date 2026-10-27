@@ -32,6 +32,7 @@
                 <x-park.sale :vehicle="$vehicle"/>
                 @if ($debt > 0 && $money)<a href="/money?preset=all&car={{ $vehicle->id }}" class="fact nums !text-danger">долг {{ Money::rub($debt) }}</a>@endif
             </div>
+            <x-park.city-pick :vehicle="$vehicle" class="mt-2"/>
             @php
                 // Выдача по сделке XCar (18.10.2026): получателя решает менеджер в сделке — здесь не правится; сделка идёт, а
                 // забирать ещё нельзя — словом, чтобы парковка знала, что машину ждёт наш покупатель.
@@ -267,14 +268,14 @@
                 @if ($canManage && ($state->isBefore() || UnwindVehicle::allowed($vehicle)))
                     <form method="post" action="/cars/{{ $vehicle->id }}" data-turbo-confirm="{{ $hadLetters ? 'Отменить заявку? ТС исчезнет, письма вернутся в «Из писем»' : 'Отменить заявку? ТС и заявка исчезнут' }}">@csrf @method('delete')<x-ui.button variant="secondary" block>Отменить заявку</x-ui.button></form>
                 @endif
-                @if (in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
+                @if ($state === VehicleState::Stored)
                     @php $elsewhere = $canManage ? \App\Park\City::transferTargets($vehicle) : []; @endphp
                     @if ($elsewhere)
                         {{-- Перевод в другой город (Питер → база в Москве): ТС та же, город меняется — управляющий этого города её больше не видит. --}}
                         <form method="post" action="/cars/{{ $vehicle->id }}/transfer" class="flex flex-col gap-2" data-turbo-confirm="Перевести ТС в другой город? Здесь она перестанет числиться">@csrf
                             <div class="fields">
                                 <x-ui.field name="to" label="В другой город" :options="$elsewhere"/>
-                                @if ($state === VehicleState::Stored)<x-ui.field name="day" label="Когда" type="date" :value="now()->toDateString()" :min="$vehicle->accepted_at?->toDateString()" :max="now()->toDateString()"/>@else<input type="hidden" name="day" value="{{ now()->toDateString() }}">@endif
+                                <x-ui.field name="day" label="Когда" type="date" :value="now()->toDateString()" :min="$vehicle->accepted_at?->toDateString()" :max="now()->toDateString()"/>
                             </div>
                             <x-ui.button variant="ghost" block>Перевести</x-ui.button>
                         </form>

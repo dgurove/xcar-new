@@ -9,6 +9,7 @@
     $release = $t->type === RequestType::Release && $vehicle->state === VehicleState::Stored;
 @endphp
 <section class="mt-3 flex flex-col gap-3">
+    <x-park.city-pick :vehicle="$vehicle"/>
     @if ($t->type === RequestType::Release && ! $release)<p class="text-sm text-ink-muted">Выдача после приёма</p>@endif
     <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :stages="[$taskLetterId]"/>
 </section>

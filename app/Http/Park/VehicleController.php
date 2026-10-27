@@ -34,6 +34,7 @@ use App\Park\Actions\Move;
 use App\Park\Actions\PutOnSale;
 use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\RestoreVehicle;
+use App\Park\Actions\SetCity;
 use App\Park\Actions\SetDates;
 use App\Park\Actions\SetYard;
 use App\Park\Actions\TakeOffSale;
@@ -548,6 +549,15 @@ class VehicleController
         $toast = 'Переведена: '.City::name($vehicle->city_id);
 
         return Vehicle::whereKey($vehicle->id)->exists() ? back()->with('toast', $toast) : redirect('/cars')->with('toast', $toast);
+    }
+
+    /** «Это Санкт-Петербург»: город ТС, которой система не уверена (`SetCity`). Отвечает туда же — карточка или дело. */
+    public function city(Request $request, Vehicle $vehicle, SetCity $setCity)
+    {
+        $data = $request->validate(['city' => ['required', 'integer']]);
+        $setCity($vehicle, $request->user(), (int) $data['city']);
+
+        return back()->with('toast', 'Город: '.City::name((int) $data['city']));
     }
 
     /** Парковка у ТС, заведённой без неё: со дня приёма, не перестановка. Форма шага несёт и поля ТС. */

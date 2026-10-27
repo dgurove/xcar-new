@@ -34,6 +34,10 @@ final class Alerts
         if ($vehicle->accepted_at && in_array($state, [VehicleState::Stored, VehicleState::Released], true) && ! Accrual::hasRate($vehicle)) {
             $out[] = ['label' => self::whyNoRate($vehicle), 'tone' => 'urgent'];
         }
+        // Город не определён (`CityGuess`) — видят все города, пока не решат или не примут.
+        if (! $vehicle->city_id && ! $vehicle->yard_id && in_array($state, [VehicleState::Expected, VehicleState::Stored], true)) {
+            $out[] = ['label' => 'Город не определён', 'tone' => 'urgent'];
+        }
         if ($state === VehicleState::Stored && ! $vehicle->yard_id) {
             $out[] = ['label' => 'Нет парковки', 'tone' => 'urgent'];
         }
