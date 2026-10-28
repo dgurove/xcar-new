@@ -3888,6 +3888,15 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   trix-editor:empty:not(:focus)::before { color: var(--color-ink-dim); }
   .trix-content blockquote { @apply border-l-2 border-line pl-3 text-ink-muted; }
   .trix-content a { @apply text-accent-text; }
+  /* Исходное письмо под полем ответа (`compose-fields`): свёрнуто строкой с галкой, раскрыто — цитата серым со своей
+     прокруткой. Разметку цитаты пишет `Composer::quote` для почтовых клиентов — тут её поля и цвет приводим к своим. */
+  .compose-quote > summary { @apply cursor-pointer list-none text-sm text-ink-muted; }
+  .compose-quote > summary::-webkit-details-marker { display: none; }
+  .compose-quote-chev { @apply size-4 transition-transform; }
+  .compose-quote[open] .compose-quote-chev { @apply rotate-90; }
+  .compose-quote-body { @apply mt-2 max-h-72 overflow-y-auto text-sm text-ink-muted; }
+  .compose-quote-body > br:first-child { display: none; }
+  .compose-quote-body blockquote { border-color: var(--color-line) !important; }
   trix-toolbar .trix-button--icon-heading-1, trix-toolbar .trix-button--icon-code, trix-toolbar .trix-button--icon-strike,
   trix-toolbar .trix-button--icon-decrease-nesting-level, trix-toolbar .trix-button--icon-increase-nesting-level { display: none; }
 }

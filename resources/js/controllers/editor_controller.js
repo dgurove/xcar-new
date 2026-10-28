@@ -10,6 +10,7 @@ const RU = {
 // бандла — грузится здесь, только на экране с редактором.
 export default class extends Controller {
     static targets = ['editor'];
+    static values = { focus: Boolean };
 
     async connect() {
         const { default: Trix } = await import('trix');
@@ -17,7 +18,11 @@ export default class extends Controller {
         // тиком (setTimeout в trix.esm) — сюда мы успеваем раньше.
         Object.assign(Trix.config.lang, RU);
         // Кнопка диалога ссылки берёт то же слово, что подсказка панели, — а кнопка называет исход.
-        const done = () => { const b = this.editorTarget.toolbarElement?.querySelector('[data-trix-method="setAttribute"]'); if (b) b.value = 'Готово'; };
+        const done = () => {
+            const b = this.editorTarget.toolbarElement?.querySelector('[data-trix-method="setAttribute"]'); if (b) b.value = 'Готово';
+            // Ответ на письмо: курсор сразу в начало, над подписью — пиши ответ, не выбираясь из цитаты.
+            if (this.focusValue) { (window.focusField ?? ((el) => el.focus()))(this.editorTarget); this.editorTarget.editor?.setSelectedRange([0, 0]); }
+        };
         if (this.editorTarget.editor) done(); else this.editorTarget.addEventListener('trix-initialize', done, { once: true });
         this.block = (e) => e.preventDefault();
         this.editorTarget.addEventListener('trix-file-accept', this.block);

@@ -34,7 +34,8 @@ final class Composer
             'to' => implode(', ', $to),
             'cc' => implode(', ', $cc),
             'subject' => $this->prefix(($forwarded ? Extraction\QuotationStripper::forwardedSubject($parent->text_body) : null) ?? $parent->subject, 'Re'),
-            'body' => $this->signature($account).$this->quote($parent),
+            'body' => $this->signature($account),
+            'quote' => 'reply',
         ];
     }
 
@@ -44,7 +45,8 @@ final class Composer
             'to' => '',
             'cc' => '',
             'subject' => $this->prefix($parent->subject, 'Fwd'),
-            'body' => $this->signature($parent->account->sender()).$this->quote($parent, 'Пересылаемое письмо'),
+            'body' => $this->signature($parent->account->sender()),
+            'quote' => 'forward',
             'forward' => $parent->files()->pluck('id')->all(),
         ];
     }
@@ -64,7 +66,8 @@ final class Composer
             'to' => $reply['to'] ?: ($values['to'] ?? ''),
             'cc' => $values['cc'] ?? '',
             'subject' => trim($rendered['subject']) ?: $reply['subject'],
-            'body' => $this->text($rendered['body']).$this->signature($account).$this->quote($parent),
+            'body' => $this->text($rendered['body']).$this->signature($account),
+            'quote' => 'reply',
         ];
     }
 
@@ -82,14 +85,27 @@ final class Composer
     }
 
     /**
+     * Цитата исходного письма — не в редакторе, а под ответом при отправке (28.10.2026, владелец: в поле ответа стоял текст
+     * исходного письма, курсор оказывался в цитате, и Trix ломал её разметку). Как у Gmail: пишешь только ответ, переписка
+     * приклеивается сама. `quote` — 'reply' или 'forward', пусто — без цитаты.
+     */
+    public function withQuote(string $html, Message $parent, string $mode = 'reply'): string
+    {
+        return $html.$this->quote($parent, $mode === 'forward' ? 'Пересылаемое письмо' : 'Исходное письмо');
+    }
+
+    /**
      * inline — картинки в теле письма (QR пропуска): путь в outbox => Content-ID, на который ссылается `<img src="cid:…">`.
      *
-     * @param  array{to: string, cc?: string, bcc?: string, subject: string, body: string, files?: list<string>, forward?: list<int>, inline?: array<string, string>}  $data
+     * @param  array{to: string, cc?: string, bcc?: string, subject: string, body: string, quote?: string, files?: list<string>, forward?: list<int>, inline?: array<string, string>}  $data
      */
     public function create(Account $account, array $data, ?Message $parent, ?User $by, ?Thread $thread = null): Message
     {
         $messageId = Str::uuid().'@'.(Str::after($account->email, '@') ?: 'xcar.ru');
         $html = trim((string) ($data['body'] ?? ''));
+        if ($parent && ! empty($data['quote'])) {
+            $html = $this->withQuote($html, $parent, (string) $data['quote']);
+        }
         $text = $this->parser->htmlToText($html);
         $to = $this->emails($data['to'] ?? '');
 
@@ -192,10 +208,11 @@ final class Composer
 
     private function signature(Account $account): string
     {
-        return $account->signature ? '<p></p><div>'.$account->signature.'</div>' : '<p></p>';
+        // Пустая строка над подписью — `<div><br></div>`: пустой `<p>` Trix выбрасывает, и курсор вставал в подпись.
+        return '<div><br></div>'.($account->signature ? '<div>'.$account->signature.'</div>' : '');
     }
 
-    private function quote(Message $parent, string $title = 'Исходное письмо'): string
+    public function quote(Message $parent, string $title = 'Исходное письмо'): string
     {
         $source = $parent->text_body ?: $this->parser->htmlToText((string) $parent->html_body);
         $from = $parent->from_name ? "{$parent->from_name} <{$parent->from_email}>" : (string) $parent->from_email;
@@ -205,8 +222,14 @@ final class Composer
             $from = (string) $parent->field('sender');
         }
         $header = sprintf('%s, %s, %s:', $title, $parent->date_at?->format('d.m.Y H:i') ?? '', $from);
+        // Абзацы по пустым строкам, строки внутри — через <br>; заглушки картинок «[cid:image001.png@…]» — долой.
         $lines = array_slice(preg_split('/\R/u', trim($source)) ?: [], 0, 200);
+        $lines = array_filter($lines, fn ($l) => ! preg_match('/^\s*\[cid:[^\]]*\]\S*\s*$/u', $l));
+        $paragraphs = preg_split('/\n\s*\n/u', implode("\n", $lines)) ?: [];
+        $body = implode('', array_map(fn ($p) => '<p style="margin:0 0 .8em">'.implode('<br>', array_map(fn ($l) => e($l), explode("\n", trim($p, "\n")))).'</p>',
+            array_filter($paragraphs, fn ($p) => trim($p) !== '')));
 
-        return '<blockquote>'.e($header).'<br>'.implode('<br>', array_map(fn ($l) => e($l), $lines)).'</blockquote>';
+        return '<br><blockquote style="border-left:2px solid #ccc;margin:0 0 0 .8ex;padding-left:1ex">'
+            .'<p style="margin:0 0 .8em">'.e($header).'</p>'.$body.'</blockquote>';
     }
 }

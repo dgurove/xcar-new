@@ -1027,6 +1027,7 @@ class MailController
             'bcc' => ['nullable', 'string', 'max:1000'],
             'subject' => ['nullable', 'string', 'max:255'],
             'body' => ['nullable', 'string', 'max:200000'],
+            'quote' => ['nullable', 'in:reply,forward'], // цитату исходного письма приклеивает `Composer::create`
             'files' => ['nullable', 'array'],
             'files.*' => ['string'],
             'forward' => ['nullable', 'array'],

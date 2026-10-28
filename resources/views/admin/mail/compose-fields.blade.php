@@ -33,7 +33,18 @@
                 </div>
             </div>
         @endif
-        <div class="sm:col-span-2"><x-ui.editor name="body" label="Письмо" :value="$defaults['body']"/></div>
+        <div class="sm:col-span-2"><x-ui.editor name="body" label="Письмо" :value="$defaults['body']" :focus="$parent && ($defaults['quote'] ?? null) === 'reply'"/></div>
+        {{-- Исходное письмо — не в поле ответа, а свёрнутым под ним (28.10.2026, как в Gmail): при отправке его приклеивает
+             `Composer::create`, снятая галка — ответ без цитаты. --}}
+        @if ($parent && ! empty($defaults['quote']))
+            <details class="compose-quote sm:col-span-2">
+                <summary class="flex items-center gap-2">
+                    <label class="check" onclick="event.stopPropagation()"><input type="checkbox" name="quote" value="{{ $defaults['quote'] }}" @checked(old('quote', $errors->any() ? null : $defaults['quote']) !== null)><span>{{ $defaults['quote'] === 'forward' ? 'Пересылаемое письмо' : 'Исходное письмо' }}</span></label>
+                    <x-ui.chevron class="compose-quote-chev"/>
+                </summary>
+                <div class="compose-quote-body trix-content">{!! app(\App\Mail\Composer::class)->withQuote('', $parent, $defaults['quote']) !!}</div>
+            </details>
+        @endif
     </div>
 </x-ui.card>
 

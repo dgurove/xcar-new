@@ -77,6 +77,7 @@ final class SendIntakeReport
                 'to' => $to, 'cc' => $cc,
                 'subject' => $subject.(count($parts) > 1 ? ' ч.'.($n + 1) : ''),
                 'body' => $body,
+                'quote' => $base['quote'] ?? null,
                 'files' => $chunk,
             ], $parent, $by);
         }
