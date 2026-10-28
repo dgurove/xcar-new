@@ -54,6 +54,11 @@ final class Threads
         $last = Message::where('thread_id', $thread->id)->orderByDesc('date_at')->orderByDesc('id')->first(['id', 'subject']);
         $thread->vehicle()->withoutGlobalScope(City::SCOPE)->first()
             ?->log(EventType::LetterAnswered, $by, ['message' => $last?->id, 'subject' => $last?->subject, 'thread' => $thread->id]);
+        // Ветка предложения в сделке: «Ответ не нужен» на письмо поставщика — разобрано, ждём его дальше (28.10.2026).
+        $offer = $thread->offer;
+        if ($offer?->deal?->isActive()) {
+            $offer->position(\App\Workflow\Track::Sale)?->setRelation('offer', $offer)->replyHandled();
+        }
     }
 
     public function refresh(Thread $thread): void

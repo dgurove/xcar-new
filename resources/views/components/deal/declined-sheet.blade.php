@@ -15,7 +15,7 @@
               data-turbo-confirm="Закрыть сделку: отказ поставщика?" data-turbo-confirm-text="Предложение уйдёт в архив, неоплаченные счета аннулируются, менеджеру придёт уведомление" data-turbo-confirm-label="Закрыть">
             @csrf
             <div class="sheet-chips">
-                @foreach (['Поставщик продаёт сам', 'Снял с продажи', 'Передумал продавать'] as $why)
+                @foreach (['Продал другому', 'Поставщик продаёт сам', 'Снял с продажи', 'Передумал продавать'] as $why)
                     <button type="button" class="chip" onclick="const f = this.closest('form').querySelector('textarea'); f.value = '{{ $why }}'; f.focus()">{{ $why }}</button>
                 @endforeach
             </div>

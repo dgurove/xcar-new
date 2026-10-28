@@ -79,6 +79,34 @@ class Position extends Model
     }
 
     /**
+     * Ответ поставщика разобран — снова ждём его (28.10.2026, владелец про 0385/046/07142/26: «мы им уже несколько раз
+     * написали «актуально», надо просто ждать, не понимаю, что разбирать»): наше письмо в ветке после его ответа
+     * (`MarkSupplierLetter::sent`, `$letter`) или «Ответ не нужен» в окне писем (`Threads::answered`) снимают
+     * `reply_at`; ход — поставщику, срок шага — от нашего письма или от сейчас. Ответит снова — `AdvanceOnReply::mark`.
+     * false — не было ответа на разбор (или наше письмо старше его).
+     */
+    public function replyHandled(?\App\Mail\Message $letter = null): bool
+    {
+        if ($this->letterStatus() !== 'replied') {
+            return false;
+        }
+        $at = $letter ? ($letter->sent_at ?? $letter->date_at ?? now()) : now();
+        if ($letter && $at->lt(Carbon::parse($this->payload['reply_at']))) {
+            return false;
+        }
+        $payload = array_diff_key($this->payload ?? [], array_flip(['reply_at', 'letter_failed', 'letter_bounced']));
+        $this->update([
+            'waits_for' => null,
+            'deadline_at' => $this->stage->deadlineFor($this->offer, $at->copy()),
+            'reminded_at' => null,
+            'overdue_at' => null,
+            'payload' => [...$payload, ...($letter ? ['letter_id' => $letter->id, 'letter_at' => $at->toIso8601String()] : [])],
+        ]);
+
+        return true;
+    }
+
+    /**
      * Нужно ли наше действие (27.10.2026, владелец: «рыжим только если от нас конкретно что-то требуется»): ход наш,
      * письмо поставщику не ушло, не доставлено или он ответил. Чужая просрочка — не наш ход. SQL-зеркало — `scopeNeedsUs`.
      */

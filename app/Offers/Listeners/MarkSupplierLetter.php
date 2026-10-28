@@ -35,7 +35,19 @@ final class MarkSupplierLetter
     public function sent(MessageSent $e): void
     {
         $position = self::position($e->message);
-        if (! $position || ! in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true)) {
+        if (! $position) {
+            return;
+        }
+        // Ответили поставщику на его письмо — снова ждём его (28.10.2026: «Разобрать ответ поставщика» висело после двух
+        // «Да, актуально», наше письмо при `replied` не засчитывалось).
+        if ($position->letterStatus() === 'replied') {
+            if ($position->replyHandled($e->message)) {
+                $position->offer->log(OfferEventType::SupplierLetter, $e->message->author, ['letter' => $e->message->id]);
+            }
+
+            return;
+        }
+        if (! in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true)) {
             return;
         }
         $offer = $position->offer;
