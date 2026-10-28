@@ -50,6 +50,15 @@ class BidController
         return back()->with('toast', 'Контрпредложение отправлено '.$bid->user->shortName());
     }
 
+    /** Ответ на контрпредложение за менеджера (28.10.2026): он сказал устно — «Согласен» или «Отказался». */
+    public function answerCounter(Request $request, Bid $bid, \App\Offers\Actions\AnswerCounter $answer)
+    {
+        $agree = $request->boolean('agree');
+        $answer($bid, $bid->user, $agree, $request->user());
+
+        return back()->with('toast', $agree ? 'За менеджера: согласен, ТС в сделке' : 'За менеджера: отказался');
+    }
+
     public function withdrawCounter(Request $request, Bid $bid, MakeCounter $make)
     {
         $make->withdraw($bid->offer, $bid, $request->user());

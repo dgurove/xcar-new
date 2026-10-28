@@ -16,19 +16,24 @@ use Illuminate\Validation\ValidationException;
  * Ответ менеджера на контрпредложение (26.10.2026). «Согласен» — цена подтверждения становится ценой админа и машина
  * сразу его: «Принять» от имени того, кто предложил (`AcceptBid`), деньги сделки — по умолчанию, админ правит их в сделке.
  * Цену назвал админ сам — согласия «не выше закупочной» второй раз не спрашиваем. «Отказаться» — подтверждение остаётся
- * по своей цене. Ответить можно и после конца приёма, пока машину никому не отдали.
+ * по своей цене. Ответить можно и после конца приёма, пока машину никому не отдали. `$staff` — админ отвечает за менеджера
+ * (28.10.2026, владелец: «устно подтвердил»): в «Истории» — «за менеджера», админам уведомление не нажавшему.
  */
 final class AnswerCounter
 {
     public function __construct(private AcceptBid $accept) {}
 
-    public function __invoke(Bid $bid, User $manager, bool $agree): Bid
+    public function __invoke(Bid $bid, User $manager, bool $agree, ?User $staff = null): Bid
     {
-        if ($bid->user_id !== $manager->id) {
+        if ($staff) {
+            abort_unless($staff->canManageCrm(), 403);
+            $manager = $bid->user;
+        } elseif ($bid->user_id !== $manager->id) {
             throw ValidationException::withMessages(['counter' => 'Это не ваше подтверждение']);
         }
+        $for = $staff ? ['for' => 'manager'] : [];
 
-        DB::transaction(function () use ($bid, $manager, $agree) {
+        DB::transaction(function () use ($bid, $manager, $agree, $staff, $for) {
             $offer = Offer::whereKey($bid->offer_id)->lockForUpdate()->firstOrFail();
             $bid->refresh();
             if (! $bid->hasPendingCounter()) {
@@ -37,7 +42,7 @@ final class AnswerCounter
             $amount = $bid->counter_amount;
             if (! $agree) {
                 $bid->update(['counter_state' => CounterState::Declined]);
-                $offer->log(OfferEventType::Counter, $manager, ['bid_id' => $bid->id, 'amount' => $amount, 'state' => 'declined']);
+                $offer->log(OfferEventType::Counter, $staff ?? $manager, ['bid_id' => $bid->id, 'amount' => $amount, 'state' => 'declined', ...$for]);
 
                 return;
             }
@@ -45,11 +50,11 @@ final class AnswerCounter
                 throw ValidationException::withMessages(['counter' => 'Контрпредложение уже не действует']);
             }
             $bid->update(['amount' => $amount, 'counter_state' => CounterState::Accepted]);
-            $offer->log(OfferEventType::Counter, $manager, ['bid_id' => $bid->id, 'amount' => $amount, 'state' => 'accepted']);
+            $offer->log(OfferEventType::Counter, $staff ?? $manager, ['bid_id' => $bid->id, 'amount' => $amount, 'state' => 'accepted', ...$for]);
             ($this->accept)($bid, $bid->counterBy ?? $manager, scheme: DealScheme::resolve($offer, null), loss: true);
         });
 
-        CounterAnswered::dispatch($bid->refresh(), $agree);
+        CounterAnswered::dispatch($bid->refresh(), $agree, $staff);
 
         return $bid;
     }

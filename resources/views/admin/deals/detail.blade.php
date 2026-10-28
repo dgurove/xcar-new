@@ -42,6 +42,7 @@
             @endif
             {{-- Вывоз — задача логистики с получением внутри (`x-logistics.lane`); вывоза нет — получение своим разделом. --}}
             @if ($offer->pickup())<x-logistics.lane :offer="$offer" :deal="$deal"/>@else<x-deal.handover :deal="$deal" compact/>@endif
+            <x-offer.reprice-asks :offer="$offer"/>
             <x-deal.person-link :deal="$deal"/>
             <x-deal.money :deal="$deal" compact/>
             @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif

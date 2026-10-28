@@ -228,6 +228,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Переоценка закупочной на решение (28.10.2026, `x-offer.reprice`).
         Route::post('/offers/{offer}/reprices/{reprice}', [RepriceController::class, 'apply']);
         Route::delete('/offers/{offer}/reprices/{reprice}', [RepriceController::class, 'dismiss']);
+        Route::post('/offers/{offer}/reprice-asks/{ask}', [RepriceController::class, 'answer']);
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
         Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
         Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
@@ -245,6 +246,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/confirmations/{bid}/decline', [BidController::class, 'decline']);
         Route::post('/confirmations/{bid}/counter', [BidController::class, 'counter']);
         Route::post('/confirmations/{bid}/counter/withdraw', [BidController::class, 'withdrawCounter']);
+        Route::post('/confirmations/{bid}/counter/answer', [BidController::class, 'answerCounter']);
         Route::post('/interests/{interest}', [InterestController::class, 'update']);
 
         // Работа: сделки, почта и чаты под одним заголовком.

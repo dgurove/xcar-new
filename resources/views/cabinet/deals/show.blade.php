@@ -31,6 +31,7 @@
          (`cabinet.deals.chat-card`): на ПК первым сбоку, на телефоне самым верхом. --}}
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
+            <x-offer.reprice-ask :deal="$deal" class="order-1 min-w-0"/>
             <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps])</div>
             {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
             @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isActive() || $deal->contract?->buyer_user_id))<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif

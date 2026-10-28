@@ -11,6 +11,7 @@ use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
 use App\Billing\Robot;
 use App\Notifications\CounterOfferedNotice;
+use App\Notifications\RepriceAskNotice;
 use App\Notifications\TelegramChannel;
 use App\Notifications\YourTurnNotice;
 use App\Offers\Actions\AnswerCounter;
@@ -91,6 +92,12 @@ final class UpdateHandler
 
             return;
         }
+        // Выросла закупочная — менеджеру, отвечает он сам.
+        if ($press->topic === 'reprice') {
+            $this->reprice($press);
+
+            return;
+        }
         // Согласие взять сделку — менеджеру, отвечает он сам.
         if ($press->topic === 'turn') {
             $this->turn($press);
@@ -159,6 +166,56 @@ final class UpdateHandler
         $this->bot->edit($press->chatId, $press->messageId,
             $text($agree ? 'Вы согласились '.now()->translatedFormat('j M, H:i').', сделка открыта' : 'Вы отказались, ваша цена в силе'),
             $agree && $deal ? $open('Открыть сделку', $deal->href()) : $open('Открыть', $page));
+    }
+
+    /**
+     * Ответ на выросшую закупочную из бота (28.10.2026, `RepriceAsk`): обе кнопки переспрашивают той же строкой — «Согласен»
+     * меняет его цену, «Отказываюсь» отменяет сделку или снимает подтверждение. Нажать может только сам менеджер.
+     */
+    private function reprice(Press $press): void
+    {
+        $ask = \App\Offers\RepriceAsk::with(['offer', 'deal', 'bid'])->find($press->id);
+        $user = User::where('telegram_chat_id', $press->fromId)->first();
+        if (! $ask || ! $user || $ask->user_id !== $user->id) {
+            $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
+
+            return;
+        }
+        $lines = implode("\n", array_map(fn ($l) => e((string) $l), array_filter(RepriceAskNotice::telegramLines($ask), fn ($l) => $l !== null && $l !== '')));
+        $text = fn (string $status) => '<b>'.e(RepriceAskNotice::telegramTitle($ask)).'</b>'."\n".$lines.($status !== '' ? "\n\n".$status : '');
+        $open = [[TelegramChannel::button('Открыть', Surface::Site->url($ask->deal_id ? $ask->deal->href() : '/offers/'.$ask->offer->number))]];
+        if (! $ask->alive()) {
+            $this->bot->answer($press->queryId, 'Уже не действует');
+            $this->bot->edit($press->chatId, $press->messageId, $text('Уже не действует'), $open);
+
+            return;
+        }
+        if (in_array($press->action, ['yes', 'no', 'back'], true)) {
+            $ask_ = ['yes' => 'Согласиться на новую цену?', 'no' => 'Отказаться? '.$ask->declineMeans()][$press->action] ?? '';
+            $this->bot->answer($press->queryId, $ask_ !== '' ? 'Подтвердите' : '');
+            $this->bot->edit($press->chatId, $press->messageId, $text($ask_), [
+                $press->action === 'back'
+                    ? RepriceAskNotice::buttons($ask)
+                    : [['text' => $press->action === 'yes' ? 'Да, согласен' : 'Да, отказываюсь', 'callback_data' => "reprice:{$ask->id}:sure{$press->action}"], ['text' => 'Назад', 'callback_data' => "reprice:{$ask->id}:back"]],
+                ...$open]);
+
+            return;
+        }
+        $agree = ['sureyes' => true, 'sureno' => false][$press->action] ?? null;
+        if ($agree === null) {
+            $this->bot->answer($press->queryId, 'Кнопка устарела.');
+
+            return;
+        }
+        try {
+            app(\App\Offers\Actions\AnswerReprice::class)($ask, $agree, $user);
+        } catch (ValidationException $e) {
+            $this->bot->answer($press->queryId, (string) collect($e->errors())->flatten()->first());
+
+            return;
+        }
+        $this->bot->answer($press->queryId, $agree ? 'Согласились' : 'Отказались');
+        $this->bot->edit($press->chatId, $press->messageId, $text(($agree ? 'Вы согласились' : 'Вы отказались').' — '.now()->translatedFormat('j M, H:i')), $open);
     }
 
     /**

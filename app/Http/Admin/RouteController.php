@@ -67,12 +67,49 @@ class RouteController
                 }
             }
         }
-        $offer = $take($offer, $exit, Actor::Staff, $request->user(), $payload);
+        // «За менеджера» (28.10.2026, владелец: «он мне уже устно подтвердил»): исход менеджера жмёт сотрудник — просьба
+        // закрывается его ответом, в «Истории» «за менеджера». «Уже согласился» у «Спросить менеджера» (`then_take`) — наш
+        // исход и сразу за менеджера его «Беру в работу» (у гаражной — «Забираю в гараж») одной транзакцией.
+        $offer = DB::transaction(function () use ($request, $offer, $exit, $take, $payload) {
+            if ($request->input('for') === 'manager') {
+                return $this->forManager($offer, $exit, $take, $request->user());
+            }
+            $offer = $take($offer, $exit, Actor::Staff, $request->user(), $payload);
+            if ($request->boolean('then_take') && $exit->to?->asksConsent()) {
+                $deal = $offer->deal()->first();
+                $agree = $exit->to->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $x) => $x->takes());
+                if (! $agree) {
+                    throw ValidationException::withMessages(['exit' => 'Не нашли «Беру в работу» у этой сделки']);
+                }
+                $offer = $this->forManager($offer, $agree, $take, $request->user());
+            }
+
+            return $offer;
+        });
+        if ($request->input('for') === 'manager' || $request->boolean('then_take')) {
+            return back(fallback: "/offers/{$offer->number}")->with('toast', 'За менеджера: «'.($request->boolean('then_take') ? 'Беру в работу' : $exit->label).'»')
+                ->with('toast-undo', (bool) StepBack::undoable($offer, $exit->from->workflow->track));
+        }
 
         // Туда же, откуда нажали: страница сделки, редактор или карточка строки (DetailBack), а не всегда в редактор.
         // Шаг можно отменить — в тосте «Отменить».
         return back(fallback: "/offers/{$offer->number}")->with('toast', $exit->label)
             ->with('toast-undo', (bool) StepBack::undoable($offer, $exit->from->workflow->track));
+    }
+
+    /** Исход менеджера, нажатый сотрудником: его просьба закрыта этим ответом (кнопки Telegram скажут «Уже отвечено»). */
+    private function forManager(Offer $offer, Outcome $exit, TakeExit $take, \App\Users\User $by): Offer
+    {
+        abort_unless($by->canManageCrm(), 403);
+        $exit->loadMissing('from');
+        $deal = $offer->deal()->first();
+        if ($exit->actor !== Actor::Manager || ! $deal?->buyer_id) {
+            throw ValidationException::withMessages(['exit' => 'Это не ответ менеджера']);
+        }
+        $deal->openRequirement()->where('stage_id', $exit->stage_id)->first()
+            ?->update(['done_at' => now(), 'answer' => ['exit' => $exit->label, 'closed_by' => 'staff', 'by' => $by->id]]);
+
+        return $take($offer, $exit, Actor::Manager, $by, ['for' => 'manager']);
     }
 
     /** «Вернуть на этот шаг» у пройденного блока пути: назад — только туда, где предложение уже было. */

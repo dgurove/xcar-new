@@ -37,6 +37,9 @@
         <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>
             <form method="post" action="/confirmations/{{ $bid->id }}/counter/withdraw" class="contents" data-turbo-confirm="Отозвать контрпредложение?" data-turbo-confirm-label="Отозвать">@csrf<button type="submit" class="letter-link">Отозвать</button></form>
+            {{-- Менеджер ответил устно (28.10.2026) — за него: «Согласен» сразу отдаёт ему ТС, как его собственное «Согласен». --}}
+            <form method="post" action="/confirmations/{{ $bid->id }}/counter/answer" class="contents" data-turbo-confirm="За менеджера: согласен на {{ Money::rub($bid->counter_amount) }}?" data-turbo-confirm-text="ТС сразу уйдёт ему в сделку" data-turbo-confirm-label="Согласен">@csrf<input type="hidden" name="agree" value="1"><button type="submit" class="letter-link">Согласен за менеджера</button></form>
+            <form method="post" action="/confirmations/{{ $bid->id }}/counter/answer" class="contents" data-turbo-confirm="За менеджера: отказался от {{ Money::rub($bid->counter_amount) }}?" data-turbo-confirm-label="Отказался">@csrf<input type="hidden" name="agree" value="0"><button type="submit" class="letter-link">Отказался за менеджера</button></form>
         </div>
     @elseif ($bid->counterDeclined())
         <div class="mt-1 text-sm text-ink-dim">отказался от <span class="nums">{{ Money::rub($bid->counter_amount) }}</span></div>

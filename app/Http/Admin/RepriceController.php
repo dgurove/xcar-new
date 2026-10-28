@@ -31,6 +31,16 @@ class RepriceController
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Переоценка применена');
     }
 
+    /** Ответ за менеджера про выросшую закупочную (28.10.2026): он сказал устно. */
+    public function answer(Request $request, Offer $offer, \App\Offers\RepriceAsk $ask, \App\Offers\Actions\AnswerReprice $answer)
+    {
+        abort_unless($ask->offer_id === $offer->id, 404);
+        $agree = $request->boolean('agree');
+        $answer($ask, $agree, $request->user());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $agree ? 'За менеджера: согласен' : 'За менеджера: отказался');
+    }
+
     public function dismiss(Request $request, Offer $offer, Reprice $reprice, DismissReprice $dismiss)
     {
         abort_unless($reprice->offer_id === $offer->id, 404);

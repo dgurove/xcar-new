@@ -185,7 +185,8 @@ final class Notify
 
     public function counterAnswered(CounterAnswered $e): void
     {
-        Notification::send($this->staff(), new CounterAnsweredNotice($e->bid->load('offer', 'user'), $e->agreed));
+        // Ответил за менеджера сам админ — ему не звонить.
+        Notification::send($this->staff()->reject(fn (User $u) => $u->is($e->by)), new CounterAnsweredNotice($e->bid->load('offer', 'user'), $e->agreed));
     }
 
     /** Оценка менеджером (11.10.2026): просьба — менеджеру, оценка — админам, решение — снова менеджеру. */
@@ -264,7 +265,8 @@ final class Notify
         }
         // Менеджер дал согласие (Альфа) — сотрудникам ответить поставщику «актуально» (27.10.2026).
         if ($deal && $e->exit?->takes() && $e->to->isLetterStep()) {
-            Notification::send($this->staff(), new ConsentGivenNotice($deal->load(['offer', 'buyer'])));
+            // Нажал за менеджера сам сотрудник — ему не звонить (28.10.2026).
+            Notification::send($this->staff()->reject(fn (User $u) => $u->is($e->by)), new ConsentGivenNotice($deal->load(['offer', 'buyer'])));
         }
         // Шаг сдвинуло письмо страховой — менеджеру пишет «Страховая ответила» с этим ходом (`AdvanceOnReply`).
         if (! $deal?->buyer || $e->letter) {

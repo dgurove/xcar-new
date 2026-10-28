@@ -74,6 +74,17 @@ class BidController
             : back()->with('toast', 'Вы отказались, ваша цена в силе');
     }
 
+    /** Выросла закупочная: «Согласен» — новая цена, «Отказываюсь» — сделка отменена или подтверждение снято. */
+    public function answerReprice(Request $request, \App\Offers\RepriceAsk $ask, \App\Offers\Actions\AnswerReprice $answer)
+    {
+        abort_unless($ask->user_id === $request->user()->id, 404);
+        $agree = $request->boolean('agree');
+        $answer($ask, $agree, $request->user());
+
+        return $agree ? back()->with('toast', 'Новая цена принята')
+            : redirect($ask->deal_id ? '/deals' : '/offers/'.$ask->offer->number)->with('toast', $ask->deal_id ? 'Сделка отменена' : 'Подтверждение снято');
+    }
+
     public function withdraw(Request $request, Bid $bid, WithdrawBid $withdraw)
     {
         abort_unless($bid->user_id === $request->user()->id, 403);

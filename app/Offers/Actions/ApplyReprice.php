@@ -2,13 +2,14 @@
 
 namespace App\Offers\Actions;
 
-use App\Notifications\CostChangedNotice;
+use App\Notifications\RepriceAskNotice;
 use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\Reprice;
+use App\Offers\RepriceAsk;
 use App\Support\Money;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
@@ -19,11 +20,14 @@ use Illuminate\Validation\ValidationException;
  * оставить прежнюю цену закупа или обновить; это важно технически верно реализовать»). Под замком предложения, одной
  * транзакцией:
  * - закупочная — `UpdateOffer` (`repricing`), с причиной в истории; заодно заявленная и цена продажи из шторки;
- * - подтверждение: «Обновить» — `bids.cost` = новая, менеджеру `CostChangedNotice` (без закупочной — что он видит);
- *   «Оставить» — как было, молча (у старого подтверждения без своей закупочной она закрепляется прежней);
+ * - подтверждение: «Обновить» вниз — `bids.cost` = новая молча; вверх — вопрос менеджеру (`RepriceAsk`, 28.10.2026,
+ *   владелец: «ставим перед фактом — неправильно»), цена встанет, когда он согласится (`AnswerReprice`); не видит разницы
+ *   (заявленная вписана рукой, супер-покупатель) — встаёт сразу. «Оставить» — как было, молча (у старого подтверждения без
+ *   своей закупочной она закрепляется прежней);
  * - сделка: «Обновить» — `deals.cost` = новая (у ДКП и «страховой напрямую» сумма страховой тоже, если стояла равной
- *   прежней), договор и неоплаченные счета перевыставляются (`SyncDealInvoices`), менеджеру уведомление; по счёту уже
- *   платили — только «Оставить». «Оставить» — новая ложится в `supplier_cost` (`UpdateDealCost`, как правка руками).
+ *   прежней), договор и неоплаченные счета перевыставляются (`SyncDealInvoices`) — вниз сразу, вверх — после его «Согласен»;
+ *   по счёту уже платили — только «Оставить». «Оставить» (и пока ждём ответа) — новая ложится в `supplier_cost`
+ *   (`UpdateDealCost`, как правка руками).
  * Решение обязательно по каждому: без него — ошибка, ничего не меняется.
  */
 final class ApplyReprice
@@ -59,12 +63,18 @@ final class ApplyReprice
             $data = ['floor_price' => $price] + $value + array_intersect_key($prices, array_flip(['publish_price', 'asking_price']));
             ($this->update)($offer, $data, $by, ['why' => $reprice->why()], repricing: true);
 
+            // Прежние вопросы по этим подтверждениям и сделке гаснут: решается заново по новой переоценке.
+            RepriceAsk::pending()->where('offer_id', $offer->id)->update(['state' => RepriceAsk::VOID]);
             $people = [];
             foreach ($live as $bid) {
                 if ($choices['bids'][$bid->id] === self::UPDATE && $was[$bid->id] !== $price) {
-                    $bid->update(['cost' => $price]);
-                    $notify[] = CostChangedNotice::for($bid->user, $bid->setRelation('offer', $offer), $was[$bid->id], $price);
-                    $people[] = $bid->user->shortName().' — '.Money::plain($was[$bid->id]).' → '.Money::plain($price);
+                    if ($ask = $this->ask($reprice, $offer, $bid, $was[$bid->id], $price)) {
+                        $notify[] = $ask;
+                        $people[] = $bid->user->shortName().' — спросили: '.Money::plain($was[$bid->id]).' → '.Money::plain($price);
+                    } else {
+                        $bid->update(['cost' => $price]);
+                        $people[] = $bid->user->shortName().' — '.Money::plain($was[$bid->id]).' → '.Money::plain($price);
+                    }
                 } else {
                     $bid->cost === null && $bid->update(['cost' => $was[$bid->id]]);
                     $people[] = $bid->user->shortName().' — оставлена '.Money::plain($was[$bid->id]);
@@ -74,9 +84,13 @@ final class ApplyReprice
                 $liveDeal = $liveDeal->fresh();
                 $dealWas = (int) $liveDeal->cost;
                 if ($choices['deal'] === self::UPDATE && $dealWas !== $price) {
-                    $this->updateDeal($liveDeal, $price, $by);
-                    $notify[] = CostChangedNotice::for($liveDeal->buyer, $liveDeal->fresh(), $dealWas, $price);
-                    $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — '.Money::plain($dealWas).' → '.Money::plain($price);
+                    if ($ask = $this->ask($reprice, $offer, $liveDeal, $dealWas, $price)) {
+                        $notify[] = $ask;
+                        $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — спросили: '.Money::plain($dealWas).' → '.Money::plain($price);
+                    } else {
+                        $this->updateDeal($liveDeal, $price, $by);
+                        $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — '.Money::plain($dealWas).' → '.Money::plain($price);
+                    }
                 } else {
                     $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — оставлена '.Money::plain($dealWas);
                 }
@@ -85,9 +99,29 @@ final class ApplyReprice
             $reprice->update(['state' => Reprice::APPLIED, 'to_price' => $price, 'choices' => $choices, 'decided_by' => $by->id, 'decided_at' => now()]);
             $offer->log(OfferEventType::Reprice, $by, ['reprice' => $reprice->id, 'state' => Reprice::APPLIED, 'from' => $from, 'to' => $price, 'people' => $people]);
         });
-        foreach (array_filter($notify) as [$user, $notice]) {
-            $user->notify($notice);
+        foreach ($notify as $ask) {
+            $ask->user->notify(new RepriceAskNotice($ask->load(['offer', 'deal'])));
         }
+    }
+
+    /**
+     * Закупочная выросла — вопрос тому, кто подтвердил или ведёт сделку; null — цена встаёт сразу: снизилась, или он
+     * разницы не видит (`RepriceAsk::shownFor`).
+     */
+    private function ask(Reprice $reprice, Offer $offer, Bid|Deal $on, int $from, int $to): ?RepriceAsk
+    {
+        $user = $on instanceof Bid ? $on->user : $on->buyer;
+        $shown = $to > $from ? RepriceAsk::shownFor($user, $on, $offer, $from, $to) : null;
+        if ($shown === null) {
+            return null;
+        }
+
+        return RepriceAsk::create([
+            'reprice_id' => $reprice->id, 'offer_id' => $offer->id, 'user_id' => $user->id,
+            'bid_id' => $on instanceof Bid ? $on->id : null, 'deal_id' => $on instanceof Deal ? $on->id : null,
+            'from_price' => $from, 'to_price' => $to, 'shown_from' => $shown[0], 'shown_to' => $shown[1],
+            'state' => RepriceAsk::PENDING, 'due_at' => RepriceAsk::dueFrom(now()),
+        ])->setRelation('user', $user);
     }
 
     /**
@@ -124,7 +158,7 @@ final class ApplyReprice
      * Сделка с новой закупочной: `cost`, сумма страховой у ДКП и «страховой напрямую» (если стояла равной прежней — значит,
      * её никто не вписывал отдельно), договор и счета. `supplier_cost` гаснет — закупочная поставщика и менеджера снова одна.
      */
-    private function updateDeal(Deal $deal, int $price, User $by): void
+    public function updateDeal(Deal $deal, int $price, User $by): void
     {
         $was = (int) $deal->cost;
         $deal->forceFill([

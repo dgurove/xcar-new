@@ -42,7 +42,9 @@ final class EnterStage
         $out = array_filter((array) ($payload['out'] ?? []), fn ($v) => filled($v));
         // Как назвать шаг в «Истории», если не именем выхода: «Отдал наличными» тем же выходом «Платёжное поручение приложено».
         $said = isset($payload['label']) ? (string) $payload['label'] : null;
-        unset($payload['letter'], $payload['out'], $payload['label']);
+        // Исход менеджера нажал сотрудник (`RouteController::forManager`) — «за менеджера» в «Истории».
+        $for = isset($payload['for']) ? (string) $payload['for'] : null;
+        unset($payload['letter'], $payload['out'], $payload['label'], $payload['for']);
         $to->loadMissing(['workflow', 'block', 'exits.to']);
         $track = $to->workflow->track;
         $now = Carbon::now();
@@ -137,7 +139,7 @@ final class EnterStage
         $offer->log(OfferEventType::StageEntered, $by, [
             'track' => $track->value, 'from' => $from?->name, 'to' => $to->name, 'block' => $to->block?->name, 'exit' => $exit?->label,
             'from_id' => $from?->id, 'to_id' => $to->id, ...($back ? ['back' => true] : []), ...($letter ? ['letter' => $letter] : []),
-            ...($out ? ['fields' => $out] : []), ...($said ? ['label' => $said] : []),
+            ...($out ? ['fields' => $out] : []), ...($said ? ['label' => $said] : []), ...($for ? ['for' => $for] : []),
         ]);
         StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter);
         // Машина сделки на нашей парковке: стало можно забирать — выдача, пропуск, получатель (18.10.2026, одна дверь).

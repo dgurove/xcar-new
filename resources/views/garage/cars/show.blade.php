@@ -29,6 +29,7 @@
         </x-slot:aside>
 
         @if ($step && ! $staff)
+            <x-offer.reprice-ask :deal="$step['deal']"/>
             @include('cabinet.deals.step', $step + ['withInvoices' => ! $asBuyer])
             {{-- Гаражная «платит менеджер» у ПРАЙМ: ДКП ПРАЙМ с ним самим — его данные для договора тут же. --}}
             @if ($step['deal']->hasContract())@include('cabinet.deals.contract', ['deal' => $step['deal']])@endif

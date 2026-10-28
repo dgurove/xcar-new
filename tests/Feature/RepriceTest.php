@@ -8,7 +8,8 @@ use App\Billing\PaymentSource;
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Templates\Template;
 use App\Mail\Message;
-use App\Notifications\CostChangedNotice;
+use App\Notifications\RepriceAnsweredNotice;
+use App\Notifications\RepriceAskNotice;
 use App\Notifications\RepriceNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\ApplyReprice;
@@ -128,9 +129,9 @@ class RepriceTest extends TestCase
 
         app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 433200, [$old->id => 'keep', $denis->id => 'update'], null);
         $this->assertSame(594762, $old->fresh()->cost);
-        // Денису — цена «от», какой он её видит, а не закупочная.
-        Notification::assertSentTo($this->denis, CostChangedNotice::class, fn ($n) => $n->text() === 'от 595 000 → 434 000 ₽'
-            || str_starts_with(str_replace("\u{A0}", ' ', $n->text()), 'от 595 000 → 434 000'));
+        // Закупочная снизилась — Денису молча (28.10.2026, владелец: «когда понижается, уведомлять не надо»).
+        $this->assertSame(433200, $denis->fresh()->cost);
+        Notification::assertNotSentTo($this->denis, RepriceAskNotice::class);
     }
 
     public function test_edit_not_by_crm_editor_notifies_admins(): void
@@ -190,8 +191,7 @@ class RepriceTest extends TestCase
         $this->assertSame(433200, $roman->fresh()->cost);
         $this->assertSame(594762, $denis->fresh()->cost);
         $this->assertSame(Reprice::APPLIED, $reprice->fresh()->state);
-        Notification::assertSentTo($this->roman, CostChangedNotice::class);
-        Notification::assertNotSentTo($this->denis, CostChangedNotice::class);
+        Notification::assertNotSentTo($this->roman, RepriceAskNotice::class);
     }
 
     public function test_deal_update_reissues_unpaid_and_keep_goes_to_supplier_cost(): void
@@ -205,7 +205,7 @@ class RepriceTest extends TestCase
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 500000], $this->admin);
         app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 500000, [], 'keep');
         $this->assertSame([594762, 500000], [$deal->fresh()->cost, $deal->fresh()->supplier_cost]);
-        Notification::assertNotSentTo($this->roman, CostChangedNotice::class);
+        Notification::assertNotSentTo($this->roman, RepriceAskNotice::class);
 
         // «Обновить» — закупочная и сумма страховой новые, неоплаченный подбор перевыставлен.
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 433200], $this->admin);
@@ -214,7 +214,7 @@ class RepriceTest extends TestCase
         $this->assertSame([433200, null, 433200], [$deal->cost, $deal->supplier_cost, (int) $deal->owner_price]);
         $this->assertSame(InvoiceState::Void, $first->fresh()->state);
         $this->assertEqualsWithDelta(1050000 - 433200 - 20000, $deal->issuedInvoices()->where('state', InvoiceState::Issued)->sole()->total, 0.01);
-        Notification::assertSentTo($this->roman, CostChangedNotice::class);
+        Notification::assertNotSentTo($this->roman, RepriceAskNotice::class);
 
         // Заплатили — «Обновить» сделке больше нельзя.
         app(RecordPayment::class)($deal->issuedInvoices()->where('state', InvoiceState::Issued)->sole(), $this->admin, 1000, now(), PaymentSource::Bank);
@@ -227,5 +227,68 @@ class RepriceTest extends TestCase
     {
         $stage = $this->offer->fresh()->position(Track::Sale)->stage;
         app(TakeExit::class)($this->offer->fresh(), $stage->exits->firstWhere('label', 'Автомобиль забрал'), Actor::Manager, $this->roman);
+    }
+
+    public function test_increase_asks_manager_and_agree_applies(): void
+    {
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $this->pickedUp();
+        $first = $deal->fresh()->issuedInvoices()->sole();
+
+        // Закупочная выросла, «Обновить» — цена у менеджера прежняя, ему вопрос с кнопками, у нас — ждём.
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'update');
+        $this->assertSame(594762, $deal->fresh()->cost);
+        $ask = \App\Offers\RepriceAsk::sole();
+        $this->assertTrue($ask->alive());
+        Notification::assertSentTo($this->roman, RepriceAskNotice::class, fn (RepriceAskNotice $n) => $n->critical()
+            && collect($n->toTelegram()['keyboard'][0])->pluck('text')->all() === ['Согласен', 'Отказываюсь']);
+        $this->assertSame('Ответьте про новую закупочную', $deal->fresh()->managerTask()['title']);
+        $this->actingAs($this->roman)->get('http://xcar.localhost/deals/'.$deal->id)->assertOk()->assertSee('Закупочная выросла');
+
+        // Срок вышел — горит у нас.
+        $this->travel(2)->days();
+        $position = $this->offer->fresh()->position();
+        $this->assertTrue($position->needsUs());
+        $this->assertSame('price-ask', $position->todo()['key']);
+        $this->travelBack();
+
+        // Согласен — новая закупочная, подбор перевыставлен; админам — ответ.
+        $this->actingAs($this->roman)->post('http://xcar.localhost/reprice-asks/'.$ask->id, ['agree' => 1])->assertRedirect();
+        $this->assertSame(650000, $deal->fresh()->cost);
+        $this->assertSame(InvoiceState::Void, $first->fresh()->state);
+        $this->assertSame(\App\Offers\RepriceAsk::AGREED, $ask->fresh()->state);
+        Notification::assertSentTo($this->admin, RepriceAnsweredNotice::class);
+    }
+
+    public function test_increase_declined_cancels_deal_and_withdraws_bid(): void
+    {
+        $denis = app(PlaceBid::class)($this->offer, $this->denis, 980000);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer->fresh(), $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [$denis->id => 'update'], 'update');
+        $this->assertSame(2, \App\Offers\RepriceAsk::pending()->count());
+
+        // Денис отказался из Telegram — подтверждение снято.
+        $this->denis->forceFill(['telegram_chat_id' => 555])->save();
+        $denisAsk = \App\Offers\RepriceAsk::where('bid_id', $denis->id)->sole();
+        config(['xcar.telegram.token' => 'test-token']);
+        \Illuminate\Support\Facades\Http::fake(['api.telegram.org/*' => \Illuminate\Support\Facades\Http::response(['ok' => true, 'result' => ['message_id' => 1]])]);
+        $press = fn (string $a) => app(\App\Telegram\UpdateHandler::class)->handle(['update_id' => random_int(1, 9999), 'callback_query' => [
+            'id' => 'q', 'from' => ['id' => 555], 'data' => "reprice:{$denisAsk->id}:{$a}", 'message' => ['message_id' => 1, 'chat' => ['id' => 555]]]]);
+        $press('no');
+        $this->assertTrue($denisAsk->fresh()->isPending());
+        $press('sureno');
+        $this->assertSame(\App\Offers\BidState::Withdrawn, $denis->fresh()->state);
+
+        // За Романа отказался админ — сделка отменена, ТС в продаже, в истории «за менеджера».
+        $ask = \App\Offers\RepriceAsk::where('deal_id', $deal->id)->sole();
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$this->offer->number.'/reprice-asks/'.$ask->id, ['agree' => 0])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(\App\Offers\DealState::Cancelled, $deal->fresh()->state);
+        // Без фото к продаже не готово — в черновики (с фото — в продажу).
+        $this->assertContains($this->offer->fresh()->state, [\App\Offers\OfferState::Open, \App\Offers\OfferState::Draft]);
+        $this->assertTrue($this->offer->events()->where('type', 'reprice')->get()->contains(fn ($e) => str_contains($e->text(), 'за менеджера')));
+        // Админу — только ответ Дениса: свой ответ за Романа ему не звенит.
+        Notification::assertSentToTimes($this->admin, RepriceAnsweredNotice::class, 1);
     }
 }

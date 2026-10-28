@@ -85,7 +85,21 @@ class Position extends Model
     public function needsUs(): bool
     {
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
-            || $this->consentLate() || $this->repricePending();
+            || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null;
+    }
+
+    /**
+     * Менеджер не ответил про выросшую закупочную к сроку (28.10.2026, `RepriceAsk`) — горит у нас: позвонить или ответить
+     * за него. Только сделка: подтверждения в «Сделках» нет.
+     */
+    public function priceAskLate(): ?\App\Offers\RepriceAsk
+    {
+        if ($this->track !== Track::Sale) {
+            return null;
+        }
+
+        return once(fn () => \App\Offers\RepriceAsk::pending()->where('offer_id', $this->offer_id)->whereNotNull('deal_id')
+            ->where('due_at', '<', now())->whereHas('deal', fn ($q) => $q->where('state', \App\Offers\DealState::Active))->first());
     }
 
     /** Ждёт решения переоценка закупочной (28.10.2026, `Offers\Reprice`) — наш ход, что бы ни было на этапе. */
@@ -125,6 +139,11 @@ class Position extends Model
             $action = self::gapAction($gap, $this->deal);
 
             return $todo('gap:'.$gap, $action['button'], 2, button: ['label' => $action['button'], 'href' => $action['url']]);
+        }
+
+        if ($ask = $this->priceAskLate()) {
+            return $todo('price-ask', 'Менеджер не ответил про закупочную', 0, $ask->due_at,
+                ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Позвонить', 'tel' => $phone] : ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
         if ($this->repricePending()) {
@@ -229,7 +248,9 @@ class Position extends Model
             and coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'manager'
             and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю')))
-        or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r where r.offer_id = offer_positions.offer_id and r.state = 'pending')), false)";
+        or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r where r.offer_id = offer_positions.offer_id and r.state = 'pending'))
+        or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
+            where a.offer_id = offer_positions.offer_id and a.state = 'pending' and a.due_at < now() and d.state = 'active')), false)";
 
     /** Позиции, где нужно наше действие, — `needsUs()` в SQL. */
     public function scopeNeedsUs($q)

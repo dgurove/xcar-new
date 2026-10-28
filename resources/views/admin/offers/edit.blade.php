@@ -129,6 +129,7 @@
     </div>
     @if ($admin && $offer->proposed())<x-offer.proposal :offer="$offer" class="mb-4"/>@endif
     @if ($admin && ($reprice = $offer->pendingReprice))<x-offer.reprice :offer="$offer" :reprice="$reprice" class="mb-4"/>@endif
+    <x-offer.reprice-asks :offer="$offer" class="mb-4"/>
 
     {{-- Раскладка (06.10.2026, владелец): слева «Транспортное средство», под ним дорожки в ряд (`admin.offers.lanes`:
          «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения») — в основной колонке, правую не занимают (07.10.2026);

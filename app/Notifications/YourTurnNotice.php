@@ -12,6 +12,15 @@ final class YourTurnNotice extends Notice
 {
     public function __construct(private Requirement $requirement) {}
 
+    /**
+     * Просьбу закрыли раньше, чем очередь дошла (ответили за менеджера, «Уже согласился» у «Спросить менеджера»,
+     * 28.10.2026) — не шлём: иначе ему «Беру в работу?» о том, на что уже ответили.
+     */
+    public function shouldSend(object $notifiable, string $channel): bool
+    {
+        return Requirement::whereKey($this->requirement->id)->whereNull('done_at')->exists() && parent::shouldSend($notifiable, $channel);
+    }
+
     public function title(): string
     {
         return $this->requirement->title.' — № '.$this->requirement->offer->number;

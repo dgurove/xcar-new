@@ -84,13 +84,13 @@ class OfferEvent extends Model
             OfferEventType::BidWithdrawn => 'Подтверждение отозвано',
             // Контрпредложение (26.10.2026): сделали, менеджер согласился или отказался, отозвали.
             OfferEventType::Counter => match ($p['state'] ?? 'pending') {
-                'accepted' => 'Контрпредложение '.Money::plain($p['amount'] ?? 0).' принято менеджером',
-                'declined' => 'От контрпредложения '.Money::plain($p['amount'] ?? 0).' отказались',
+                'accepted' => 'Контрпредложение '.Money::plain($p['amount'] ?? 0).' принято '.(($p['for'] ?? null) === 'manager' ? 'за менеджера' : 'менеджером'),
+                'declined' => 'От контрпредложения '.Money::plain($p['amount'] ?? 0).' отказались'.(($p['for'] ?? null) === 'manager' ? ' за менеджера' : ''),
                 'withdrawn' => 'Контрпредложение '.Money::plain($p['amount'] ?? 0).' отозвано',
                 default => 'Контрпредложение '.Money::plain($p['amount'] ?? 0).(isset($p['manager']) ? ' — '.$p['manager'] : ''),
             },
             OfferEventType::Interest => ! empty($p['withdrawn']) ? 'Интерес снят' : (! empty($p['placed_by']) ? 'Интерес, внесён за менеджера' : 'Интерес'),
-            OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.($p['label'] ?? $p['exit']).'»'.(! empty($p['letter']) ? ' по письму' : '').')' : ''))
+            OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.($p['label'] ?? $p['exit']).'»'.(! empty($p['letter']) ? ' по письму' : '').(($p['for'] ?? null) === 'manager' ? ' за менеджера' : '').')' : ''))
                 // Платёжка нашей оплаты поставщику («Поставщику оплачено»): «дата оплаты 19 октября 2026, номер платёжки 512».
                 .(! empty($p['fields']) ? ', '.collect($p['fields'])->map(fn ($v, $k) => mb_strtolower($k).' '.$v)->implode(', ') : ''),
             OfferEventType::StageOverdue => 'Срок вышел: '.($p['stage'] ?? ''),
@@ -115,6 +115,10 @@ class OfferEvent extends Model
                     .(! empty($p['people']) ? '. '.implode(', ', $p['people']) : ''),
                 'dismissed' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0)).' отклонена',
                 'superseded' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0)).' заменена новой',
+                // Вопрос менеджеру о выросшей закупочной (28.10.2026, `AnswerReprice`).
+                'agreed' => ($p['manager'] ?? 'Менеджер').' согласен на закупочную '.Money::rub((int) ($p['to'] ?? 0)).(($p['for'] ?? null) === 'manager' ? ' (за менеджера)' : ''),
+                'refused' => ($p['manager'] ?? 'Менеджер').' отказался от закупочной '.Money::rub((int) ($p['to'] ?? 0)).(! empty($p['deal']) ? ', сделка отменена' : ', подтверждение снято')
+                    .(($p['for'] ?? null) === 'manager' ? ' (за менеджера)' : ''),
                 default => 'Переоценка на решение: '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0))
                     .(($p['source'] ?? '') === 'letter' ? ' по письму поставщика' : ''),
             },

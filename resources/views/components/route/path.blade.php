@@ -23,6 +23,10 @@
     $asks = fn ($x) => $x->actor === Actor::Staff && $x->to?->asksConsent();
     $label = fn ($x) => $asks($x) ? 'Спросить менеджера' : $x->label;
     $exits = $stage->exitsFor(Actor::Staff, $deal)->reject(fn ($x) => $x->acceptsBid());
+    // «За менеджера» (28.10.2026, владелец: «он мне уже устно подтвердил»): его ответы шага — пунктами «···», нажимает
+    // админ (`RouteController::forManager`, в «Истории» — «за менеджера»).
+    $forManager = $deal?->buyer_id && auth()->user()?->canManageCrm() ? $stage->exitsFor(Actor::Manager, $deal) : collect();
+    $takeFor = $stage->asksConsent() ? $forManager->first(fn ($x) => $x->takes()) : null;
     // Имена блоков как есть: кто вывозит, видно строкой над путём («Стоит у Сергей К.» имя не склоняет).
     $blockName = fn ($block) => $block->name;
     [$breaks, $moves] = $exits->partition(fn ($x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd())->all();
@@ -99,7 +103,7 @@
                                 <div class="flex flex-wrap items-baseline gap-x-2 text-sm"><span>{{ $s['stage'] }}</span><span class="nums text-ink-dim">{{ $s['at']->translatedFormat('j M, H:i') }}</span></div>
                             @endforeach
                             @foreach ($answers as $r)
-                                <div class="text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }} <span class="nums text-ink-dim">{{ $r->done_at->translatedFormat('j M, H:i') }}</span></div>
+                                <div class="text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ \App\Users\User::find($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif <span class="nums text-ink-dim">{{ $r->done_at->translatedFormat('j M, H:i') }}</span></div>
                                 @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
                                 @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                             @endforeach
@@ -117,7 +121,7 @@
                     {{-- «···» — справа от названия и в узкой колонке: длинное название переносится, а не выталкивает кнопку. --}}
                     <div class="step-head !flex-nowrap !items-start">
                         <span class="step-title min-w-0 flex-1">{{ $blockName($block) }}</span>
-                        @if ($breaks->isNotEmpty() || $undo || $extend)
+                        @if ($breaks->isNotEmpty() || $undo || $extend || $forManager->isNotEmpty())
                             <div class="contents" data-controller="menu">
                                 <button type="button" class="btn btn-s btn-quiet btn-round -my-1 ml-auto shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
                                 <div id="{{ $menu }}" class="menu" popover data-menu-target="list" role="menu">
@@ -135,6 +139,14 @@
                                         @endforeach
                                         <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="deadline-{{ $position->id }}:open">Срок до даты…</button>
                                     @endif
+                                    @foreach ($forManager as $exit)
+                                        {{-- Уход в продажу («Я передумал») отменяет сделку — переспрашиваем; остальное — сразу. --}}
+                                        @php $retreat = $exit->isRetreat(); @endphp
+                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="contents" @if ($retreat) data-turbo-confirm="За менеджера: «{{ $exit->label }}»?" data-turbo-confirm-text="Сделка отменится, ТС вернётся в продажу" data-turbo-confirm-label="Отменить сделку" @endif>
+                                            @csrf<input type="hidden" name="for" value="manager">
+                                            <button class="menu-item w-full {{ $retreat ? 'text-danger' : '' }}" role="menuitem"><x-ui.icon name="user" class="size-4"/>За менеджера: «{{ $exit->label }}»</button>
+                                        </form>
+                                    @endforeach
                                     @foreach ($breaks as $exit)
                                         <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="contents" data-turbo-confirm="{{ $exit->confirm ?: $exit->label.'?' }}">@csrf<button class="menu-item w-full text-danger" role="menuitem">{{ $label($exit) }}</button></form>
                                     @endforeach
@@ -180,6 +192,13 @@
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
                         <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
                     @endif
+                    {{-- Согласие менеджера: чаще всего он уже сказал «да» устно — «Беру в работу» за него видной тихой кнопкой. --}}
+                    @if ($takeFor)
+                        <form method="post" action="/offers/{{ $n }}/exit/{{ $takeFor->id }}" class="mt-2">
+                            @csrf<input type="hidden" name="for" value="manager">
+                            <x-ui.button size="sm" variant="secondary">«{{ $takeFor->label }}» за менеджера</x-ui.button>
+                        </form>
+                    @endif
                     {{-- Менеджер уже приложил, но шаг ещё не отметил — файл видно сразу. --}}
                     @if ($req && $req->getMedia('files')->isNotEmpty())
                         <div class="mt-2 flex flex-col gap-1">@foreach ($req->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach</div>
@@ -195,7 +214,7 @@
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
                     @endif
                     @foreach ($answers as $r)
-                        <div class="mt-1 text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}</div>
+                        <div class="mt-1 text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ \App\Users\User::find($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif</div>
                         @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
                         @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                     @endforeach
@@ -271,10 +290,17 @@
                                 @else
                                     {{-- Закрыть сделку, пока автомобиль не забрали (18.10.2026), — только переспросив. --}}
                                     @php $confirm = \App\Offers\Deal::closes($exit) && $offer->deal?->closeBlocker() ? 'Автомобиль ещё не забрали. Закрыть сделку?'
-                                        : ($asks($exit) ? 'Поставщик согласовал? Спросим менеджера, берёт ли он — ответ до 17:00 завтра. Поставщику пока ничего не уходит' : $exit->confirm); @endphp
-                                    <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
-                                        @csrf<x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
-                                    </form>
+                                        : $exit->confirm; @endphp
+                                    @if ($asks($exit))
+                                        {{-- Спросить или «Уже согласился» — одной шторкой (`ask_consent_controller`, 28.10.2026). --}}
+                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" data-controller="ask-consent" data-action="submit->ask-consent#ask">
+                                            @csrf<input type="hidden" name="then_take" value="" data-ask-consent-target="take"><x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
+                                        </form>
+                                    @else
+                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
+                                            @csrf<x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
+                                        </form>
+                                    @endif
                                 @endif
                             @endforeach
                             @if ($stage->template_id)

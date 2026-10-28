@@ -10,5 +10,5 @@ final class CounterAnswered
 {
     use Dispatchable;
 
-    public function __construct(public Bid $bid, public bool $agreed) {}
+    public function __construct(public Bid $bid, public bool $agreed, public ?\App\Users\User $by = null) {}
 }
