@@ -72,8 +72,8 @@
             @if ($response)
                 {{-- Отклик на предложения (21.10.2026, владелец: «менеджеры не видят, когда приходят новые машины»). --}}
                 <section class="mb-8">
-                    <h2 class="text-xl">Отклик за {{ \App\Users\ManagerResponse::DAYS }} дней</h2>
-                    <div class="list mt-4">
+                    <h2 class="list-head">Отклик за {{ \App\Users\ManagerResponse::DAYS }} дней</h2>
+                    <div class="list">
                         <div class="row"><span class="min-w-0 flex-1">Открылось предложений</span><span class="nums">{{ $response->seen }}</span></div>
                         <div class="row"><span class="min-w-0 flex-1">Открыл</span><span class="nums">{{ $response->opened }}</span>@if ($response->shareLabel())<span class="w-20 text-right {{ $response->low() ? 'text-danger' : 'text-ink-muted' }}">{{ $response->shareLabel() }}</span>@endif</div>
                         <div class="row"><span class="min-w-0 flex-1">Подтвердил</span><span class="nums">{{ $response->bids }}</span></div>
@@ -86,24 +86,22 @@
                     </div>
                 </section>
             @endif
-            <section>
-                <h2 class="text-xl">Чаты @if ($chats->isNotEmpty())<span class="nums text-ink-dim">{{ $chats->count() }}</span>@endif</h2>
-                @if ($chats->isEmpty())
-                    <x-ui.empty line class="mt-2 px-0">Чатов нет</x-ui.empty>
-                @else
-                    <div class="chat-rows-list mt-4">
+            @if ($chats->isNotEmpty())
+                <section class="mb-8">
+                    <h2 class="list-head">Чаты <span class="nums text-ink-dim">{{ $chats->count() }}</span></h2>
+                    <div class="chat-rows-list">
                         @foreach ($chats as $c)
                             {{-- Чат покупателя с менеджером на сайте сотруднику не открыть — только в CRM. --}}
                             <x-chat.row :chat="$c" :me="$me" :href="$crm ? '/work/chats/'.$c->id : ($c->manager_id ? \App\Support\Surface::Crm->url('/work/chats/'.$c->id) : '/account/chats/'.$c->id)" staff/>
                         @endforeach
                     </div>
-                @endif
-            </section>
+                </section>
+            @endif
 
             @if ($deals->isNotEmpty())
-                <section class="mt-8">
-                    <h2 class="text-xl">Сделки <span class="nums text-ink-dim">{{ $deals->count() }}</span></h2>
-                    <div class="list mt-3">
+                <section class="mb-8">
+                    <h2 class="list-head">Сделки <span class="nums text-ink-dim">{{ $deals->count() }}</span></h2>
+                    <div class="list">
                         @foreach ($deals as $deal)
                             @include('admin.deals.row', ['deal' => $deal, 'person' => false])
                         @endforeach
@@ -112,9 +110,9 @@
             @endif
 
             @if ($interests->isNotEmpty())
-                <section class="mt-8">
-                    <h2 class="text-xl">Интерес <span class="nums text-ink-dim">{{ $interests->count() }}</span></h2>
-                    <div class="list mt-3">
+                <section class="mb-8">
+                    <h2 class="list-head">Интерес <span class="nums text-ink-dim">{{ $interests->count() }}</span></h2>
+                    <div class="list">
                         @foreach ($interests as $interest)
                             @php $offer = $interest->offer; $price = \App\Offers\PriceView::for($offer, $me); @endphp
                             <a href="/offers/{{ $offer->number }}" class="row">

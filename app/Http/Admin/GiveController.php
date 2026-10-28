@@ -107,7 +107,11 @@ class GiveController
             default => 'В сделку: '.$who.', '.Money::rub($deal->amount),
         };
 
-        return back()->with('toast', $toast)->with(OfferController::gone($request, $offer));
+        // Ссылка тому, кому отдали (28.10.2026): шторка `x-deal.handed`; с окном письма поставщику — после него.
+        $handed = ($url = $deal->personUrl()) ? ['name' => $who, 'title' => $offer->titleWithYear(), 'url' => $url,
+            'text' => $deal->personText(), 'wait' => (bool) $letter] : null;
+
+        return back()->with('toast', $toast)->with(OfferController::gone($request, $offer))->with('handed', $handed);
     }
 
     /** Этап продажи предложения — только номер: сравнить до и после. */

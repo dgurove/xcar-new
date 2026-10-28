@@ -679,6 +679,27 @@ class Deal extends Model
         return '/deals/'.$this->id;
     }
 
+    /**
+     * Ссылка тому, кому отдали машину (28.10.2026, владелец: «чтобы формировалась сразу ссылка на страницу сделки — я ему
+     * отправлю, и он сразу откроет»): его сделка или машина в гараже на сайте; не вошёл — вход, потом сюда же. Нет
+     * человека (гараж «под себя», аукцион) или сделку отменили — ссылки нет.
+     */
+    public function personUrl(): ?string
+    {
+        if (! $this->buyer_id || $this->is_demo || $this->isAuction() || $this->state === DealState::Cancelled) {
+            return null;
+        }
+        $href = $this->href();
+
+        return str_starts_with($href, 'http') ? $href : Surface::Site->url($href);
+    }
+
+    /** Текст к ссылке для «Отправить»: машина и куда ведёт, адрес — следом. */
+    public function personText(): string
+    {
+        return $this->offer->titleWithYear().($this->isGarage() ? ' — в вашем гараже XCar:' : ' — ваша сделка в XCar:');
+    }
+
     /** Сделку закрыл отказ поставщика (28.10.2026, `DeclineBySupplier`, этап «Отказ поставщика»): причина — `close_note`. */
     public function declinedBySupplier(): bool
     {

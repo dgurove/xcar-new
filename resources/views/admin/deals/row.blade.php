@@ -19,11 +19,11 @@
             <span class="nums">№ {{ $offer->number }}</span>
             @if ($deal->isAuction())<span>Аукцион</span>@elseif ($person && $deal->buyer)<span>{{ $deal->buyer->name }}</span>@endif
         </div>
-        @if ($deal->state === \App\Offers\DealState::Active && $position)<x-route.clock :position="$position" side="staff" class="mt-0.5 line-clamp-2 sm:truncate"/>@endif
+        @if ($deal->state === \App\Offers\DealState::Active && $position)<x-route.clock :position="$position" side="staff" class="mt-0.5"/>@endif
     </div>
     <div class="shrink-0 text-right">
         <div class="nums">{{ $deal->isGarage() ? 'В гараж' : ($deal->amount === null ? '' : \App\Support\Money::rub($deal->amount)) }}</div>
         <x-offer.margin :m="$deal->marginMark()" class="!ml-0 block"/>
-        <div class="max-w-40 truncate text-sm sm:max-w-64 {{ $tone }} @if ($deal->state === \App\Offers\DealState::Active && $position) max-sm:hidden @endif">{{ $word }}</div>
+        <div class="max-w-40 text-sm sm:max-w-64 {{ $tone }} @if ($deal->state === \App\Offers\DealState::Active && $position) max-sm:hidden @endif">{{ $word }}</div>
     </div>
 </a>
