@@ -163,7 +163,7 @@ class CatalogController
     /**
      * Таблица предложений на сайте (каталог, галерея, избранное) — одно описание на шапку, строки `x-offer.site-table-row` и
      * заголовки пачек. deadline — столбец «Приём» (тем, кто подтверждает ценой, и в галерее); «Прошло» — с тех пор, как
-     * предложение открылось человеку, где есть сортировка «Новые показы».
+     * предложение открылось человеку (его «дата публикации»).
      */
     public static function table(bool $deadline, ?Sort $sort = null): Table
     {
@@ -173,7 +173,7 @@ class CatalogController
             $deadline ? new Column('deadline', 'Приём', from: 'sm', sort: 'closing', rem: 7) : null,
             new Column('city', 'Город', from: 'lg', aside: true, dim: true, rem: 8),
             new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 9),
-            new Column('since', 'Прошло', from: 'sm', num: true, aside: true, sort: $sort?->has('opened') ? 'opened' : 'published', cell: 'cell-dim', rem: 5),
+            new Column('since', 'Прошло', from: 'sm', num: true, aside: true, sort: 'published', cell: 'cell-dim', rem: 5),
         );
     }
 }

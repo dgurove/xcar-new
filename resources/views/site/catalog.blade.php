@@ -47,7 +47,7 @@
                     @if ($offers->isEmpty() && $urgent->isEmpty() && $exclusive->isEmpty() && $estimates->isEmpty())
                         @include('site.catalog-empty')
                     @else
-                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && in_array($sort, ['-published', '-opened'], true) ? 'true' : 'false' }}" class="cards cards--grid" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && $sort === '-published' ? 'true' : 'false' }}" class="cards cards--grid" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         @if ($urgent->isNotEmpty())<div id="catalog-urgent" class="contents">@foreach ($urgent as $offer)<x-offer.card :offer="$offer" :context="$context"/>@endforeach</div>@endif
                         @if ($toEstimate->isNotEmpty())<div id="catalog-estimates" class="contents">@foreach ($toEstimate as $offer)<x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>@endforeach</div>@endif
                         @if ($exclusive->isNotEmpty())<div id="catalog-only" class="contents">@foreach ($exclusive as $offer)<x-offer.card :offer="$offer" :context="$context" only/>@endforeach</div>@endif
@@ -162,7 +162,7 @@
                         @endforeach
                     </div>
                     @else
-                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && in_array($sort, ['-published', '-opened'], true) ? 'true' : 'false' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && $sort === '-published' ? 'true' : 'false' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         {{-- По сроку — подписью над каждой пачкой слота («До 17:00 сегодня»), владелец 10.10.2026. --}}
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)

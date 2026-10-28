@@ -20,12 +20,12 @@ use Illuminate\Http\Request;
 final class CatalogQuery
 {
     /**
-     * Поля сортировки (App\Support\Sort): в адресе минус — по убыванию. «Новые показы» — когда предложение открылось
-     * этому человеку (`openedAtSql`): волна менеджера, показ покупателю.
+     * Поля сортировки (App\Support\Sort): в адресе минус — по убыванию. «Дата публикации» — когда предложение открылось
+     * этому человеку (`openedAtSql`: волна менеджера, показ покупателю; сотруднику — сама публикация): настоящую дату
+     * публикации менеджер не знает (28.10.2026, владелец — было две сортировки, «Новые показы» и «Дата публикации»).
      */
     public const SORTS = [
         'closing' => ['Закрытие приёма', 'asc'],
-        'opened' => ['Новые показы', 'desc'],
         'published' => ['Дата публикации', 'desc'],
         'price' => ['Цена', 'asc'],
         'year' => ['Год', 'desc'],
@@ -184,7 +184,6 @@ final class CatalogQuery
                 ? $q->orderByRaw("gallery_until {$dir} nulls last")->orderByDesc('sort_weight')->orderByRaw("{$opened} desc nulls last")
                 : $q->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() then 0 else 1 end', [OfferState::Open->value])
                     ->orderByRaw("offers.bids_close_at {$dir} nulls last")->orderByDesc('sort_weight')->orderByRaw("{$opened} desc nulls last"),
-            'opened' => $q->orderByRaw("{$opened} {$dir} nulls last"),
             'price' => $q->orderByRaw("asking_price {$dir} nulls last"),
             'year' => $q->orderByRaw(Car::sql('offers', 'year')." {$dir} nulls last")->orderByDesc('published_at'),
             // Горящие — первыми, ближний срок выше (22.10.2026, владелец: «по горящему ни одного подтверждения — потеряли
@@ -192,7 +191,7 @@ final class CatalogQuery
             default => $q->when(! $gallery && $sort === '-published' && ($user?->bidsOnSite() ?? false), fn ($h) => $h
                 ->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() and offers.bids_close_at <= now() + make_interval(hours => ?) then 0 else 1 end', [OfferState::Open->value, Offer::HOT_HOURS])
                 ->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() and offers.bids_close_at <= now() + make_interval(hours => ?) then offers.bids_close_at end asc nulls last', [OfferState::Open->value, Offer::HOT_HOURS]))
-                ->orderByDesc('sort_weight')->orderByRaw(($gallery ? 'gallery_from' : 'published_at')." {$dir} nulls last"),
+                ->orderByDesc('sort_weight')->orderByRaw(($gallery ? 'gallery_from' : $opened)." {$dir} nulls last"),
         };
 
         return $q->orderByDesc('id');
@@ -267,7 +266,10 @@ final class CatalogQuery
     /** Действующая сортировка: то, что в адресе, если она разрешена, иначе по умолчанию. */
     public static function sort(array $filters, bool $gallery = false, bool $prices = true, ?User $user = null): string
     {
-        return Sort::from($filters['sort'] ?? null, self::allowedSorts($gallery, $prices, $user), self::defaultSort($user, $gallery))->value();
+        // Прежняя «Новые показы» (`opened`) — та же дата публикации: запомненная и старые ссылки.
+        $asked = isset($filters['sort']) ? str_replace('opened', 'published', (string) $filters['sort']) : null;
+
+        return Sort::from($asked, self::allowedSorts($gallery, $prices, $user), self::defaultSort($user, $gallery))->value();
     }
 
     /** Сортировки для тулбара: в галерее ни цены, ни срока; покупатель не торгуется — срока у него нет. */
@@ -279,8 +281,6 @@ final class CatalogQuery
         return array_filter($sorts, fn ($_, $key) => match ($key) {
             'price' => $prices,
             'closing' => $gallery || ! $user?->isBuyer(),
-            // Новые показы — у того, кому предложения открываются волной или показом; в галерее своё «Появилось».
-            'opened' => ! $gallery && $user !== null && ! $user->isAdmin(),
             default => true,
         }, ARRAY_FILTER_USE_BOTH);
     }
