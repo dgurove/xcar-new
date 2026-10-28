@@ -52,20 +52,22 @@ final class Composer
     }
 
     /**
-     * Письмо этапа ответом на письмо вендора (05.10.2026): текст шаблона, подпись и цитата, кому и тема «Re: …» — как у
-     * ответа. Ящик — тот, с которого отвечаем ($account уже `sender()`).
+     * Письмо этапа ответом в переписку с вендором (05.10.2026): текст шаблона, подпись и цитата, тема «Re: …». Родитель —
+     * его последнее письмо, а пока он не писал — наше прошлое письмо по этой машине (`MailController::vendorLetter`): тогда
+     * адресат — из шаблона, не мы сами. Ящик — тот, с которого отвечаем ($account уже `sender()`).
      */
     public function replyWith(Message $parent, Account $account, ?Template $template = null, array $values = []): array
     {
         $reply = $this->reply($parent);
         $rendered = $template?->render($values) ?? ['subject' => '', 'body' => ''];
+        $ours = $parent->direction === Direction::Out;
 
-        // Тема шаблона главнее «Re: …» (08.10.2026: у уведомления о покупке — только номер убытка); переписка
-        // остаётся одной веткой по In-Reply-To.
+        // Тема — «Re: …» ветки, а не шаблона (28.10.2026, владелец: «Альфа потеряет — не поймут, что это ответ в ветку»;
+        // до того, с 08.10.2026, тема шаблона — только номер убытка — перебивала «Re:»). Номер убытка в теме ветки и так есть.
         return [
-            'to' => $reply['to'] ?: ($values['to'] ?? ''),
+            'to' => $ours ? ($values['to'] ?? '') : ($reply['to'] ?: ($values['to'] ?? '')),
             'cc' => $values['cc'] ?? '',
-            'subject' => trim($rendered['subject']) ?: $reply['subject'],
+            'subject' => $reply['subject'] ?: trim($rendered['subject']),
             'body' => $this->text($rendered['body']).$this->signature($account),
             'quote' => 'reply',
         ];

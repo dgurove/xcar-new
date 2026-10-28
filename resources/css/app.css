@@ -1738,9 +1738,6 @@ html.kb-open { --home-gap: 0px; }
   .money-hero { @apply flex flex-col items-center gap-0.5 pb-2 text-center; }
   /* Адрес ссылки на оплату строкой под «Оплата по ссылке» (x-billing.pay-status): во всю ширину строки, а не колонкой
      под значком QR (владелец 07.10.2026); нажатие копирует; линии между ними нет — это одна вещь. */
-  .list .row.pay-url { min-height: 0; padding-top: 0; gap: .5rem; flex-wrap: wrap; }
-  .pay-url-text { @apply basis-full break-all text-left text-sm text-accent-text; }
-  .list .row.pay-url::after { display: none; }
   /* Ссылка на оплату строкой (compact): текст жмёт шторку, справа две круглые кнопки. */
   .row.pay-link { @apply gap-2; }
   .money-hero-photo { @apply mb-2 size-16 overflow-hidden rounded-full bg-surface-3; }

@@ -5,11 +5,12 @@
      подтверждения нет — шторка сама осознанный шаг, кнопка называет исход («Деньги пришли»); вне шторки — «Записать оплату?».
      19.10.2026: поля по «Откуда» (reveal): банк — дата, № и скан платёжки, наличные — только когда, эквайринг — дата
      и № операции. Платёжку у наличных не спрашиваем (владелец). --}}
-@props(['invoice', 'action', 'sources' => \App\Billing\PaymentSource::manual(), 'sheet' => false])
+@props(['invoice', 'action', 'sources' => \App\Billing\PaymentSource::manual(), 'sheet' => false, 'source' => null])
 @php
     use App\Support\Money;
     $done = $invoice->isOwed() ? ($invoice->isAgentFee() ? 'Выплачено' : 'Перечислено') : ($sheet ? 'Деньги пришли' : 'Оплачен');
-    $source = old('source', array_key_first($sources) ?? 'bank');
+    // `source` — откуда по умолчанию: подтверждаем заявку менеджера («оплатил наличными») — её способом (28.10.2026).
+    $source = old('source', $source && array_key_exists($source, $sources) ? $source : (array_key_first($sources) ?? 'bank'));
 @endphp
 <form method="post" action="{{ $action }}" enctype="multipart/form-data" class="flex flex-col gap-3" data-controller="reveal" @unless ($sheet) data-turbo-confirm="{{ $invoice->isOwed() ? 'Записать выплату?' : 'Записать оплату?' }}" data-turbo-confirm-label="{{ $done }}" @endunless>
     @csrf

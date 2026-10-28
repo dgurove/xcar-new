@@ -52,16 +52,29 @@
         @else
         {{-- Сумма — только если ссылка не на остаток счёта: та же сумма стоит строкой выше, у счёта. --}}
         @php $other = abs($link->amount - ($i->remaining() - $i->claimed())) >= 0.01; @endphp
-        <button type="button" class="row money-line w-full text-left" data-action="sheet#open">
-            <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'urgent'" size="s"/>
-            <span class="min-w-0 flex-1">
-                <span class="block">Оплата по ссылке<span class="text-ink-muted">, {{ $pays }}</span></span>
-                <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $state }}</span>
-            </span>
-            @if ($other)<span class="nums shrink-0 text-urgent">{{ Money::rub($link->amount) }}</span>@endif
-        </button>
+        {{-- Одна строка: что с оплатой (нажатие — шторка ссылки) и, пока ссылка жива, «Скопировать» / «Отправить» справа
+             (`x-ui.share-link`, 28.10.2026: была второй строкой «Ссылка на оплату» под той же). --}}
         @if ($live)
-        <x-ui.share-link variant="row" :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :text="$text" label="Ссылка на оплату" :sub="$link->shortUrl()"/>
+            <x-ui.share-link variant="row" :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :text="$text" class="money-line">
+                <x-slot:lead>
+                    <button type="button" class="flex min-w-[9rem] flex-1 items-center gap-3 text-left" data-action="sheet#open">
+                        <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'urgent'" size="s"/>
+                        <span class="min-w-0 flex-1">
+                            <span class="block">Оплата по ссылке<span class="text-ink-muted">, {{ $pays }}</span>@if ($other) <span class="nums text-urgent">{{ Money::rub($link->amount) }}</span>@endif</span>
+                            <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $state }}</span>
+                        </span>
+                    </button>
+                </x-slot:lead>
+            </x-ui.share-link>
+        @else
+            <button type="button" class="row money-line w-full text-left" data-action="sheet#open">
+                <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'urgent'" size="s"/>
+                <span class="min-w-0 flex-1">
+                    <span class="block">Оплата по ссылке<span class="text-ink-muted">, {{ $pays }}</span></span>
+                    <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $state }}</span>
+                </span>
+                @if ($other)<span class="nums shrink-0 text-urgent">{{ Money::rub($link->amount) }}</span>@endif
+            </button>
         @endif
         @endif
         <x-ui.sheet :id="'link-'.$link->id" title="Оплата по ссылке" :open="session('open-link') === $link->id">

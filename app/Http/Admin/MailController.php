@@ -255,8 +255,8 @@ class MailController
             'counts' => array_filter($counts),
             // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
             'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window'
-                // ?compose= — редактор письма (`inWindow`): только свой адрес почты, не чужой хост.
-                : (str_starts_with((string) $request->query('compose'), $this->base.'/') ? (string) $request->query('compose') : null),
+                // ?compose= — редактор письма (`inWindow`): только новое письмо или ответ своей почты, не любой её адрес.
+                : (preg_match('#^'.preg_quote($this->base, '#').'/(new(\?|$)|\d+/reply/\d+)#', (string) $request->query('compose')) ? (string) $request->query('compose') : null),
         ]);
     }
 
@@ -612,17 +612,25 @@ class MailController
             $defaults['files'][] = $outbox->put($supplierRequest->filename(), $supplierRequest->xlsx());
         }
 
-        return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back') ?? ($invoice ? '/money/invoices/'.$invoice->id : null), 'invoice' => $invoice,
+        return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'invoice' => $invoice,
             'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base,
             // Черновик после «Принять» (BidController::accepted): отправили — окно закрывается, человек идёт дальше по списку.
             'then' => $request->query('then') === 'close' ? 'close' : null,
             'requestDeals' => $supplierRequest?->deals->pluck('id')->implode(',')]);
     }
 
-    /** Редактор без окна (прямой адрес) — почта с этим редактором в окне писем (`?compose=`, `admin/mail/index`). */
+    /**
+     * Редактор без окна (старая ссылка со страницы, открытой до выкладки; Telegram) — окно писем на той же странице, откуда
+     * пришли (28.10.2026, владелец: «перебрасывает в раздел почта, бесит»): назад с `session('letters')`, его берёт
+     * `x-mail.window` любой страницы. Пришли не со своей страницы — почта с этим окном (`?compose=`).
+     */
     private function inWindow(Request $request)
     {
-        return redirect($this->base.'?compose='.urlencode($request->getRequestUri()));
+        $uri = $request->getRequestUri();
+        $from = (string) $request->headers->get('referer');
+        $same = $from !== '' && parse_url($from, PHP_URL_HOST) === $request->getHost() && ! str_contains($from, '/mail/new') && ! str_contains($from, '/reply/');
+
+        return $same ? redirect($from)->with('letters', $uri) : redirect($this->base.'?compose='.urlencode($uri));
     }
 
     public function reply(Request $request, Thread $thread, Message $message, Composer $composer)
@@ -720,7 +728,8 @@ class MailController
             return redirect("{$this->base}/{$message->thread_id}/window")->with('toast', 'Письмо в очереди');
         }
 
-        return redirect($data['back'] ?? "{$this->base}/{$message->thread_id}")->with('toast', 'Письмо в очереди');
+        // Не из окна (форма без фрейма) — ветка письма.
+        return redirect("{$this->base}/{$message->thread_id}")->with('toast', 'Письмо в очереди');
     }
 
     /**
@@ -1063,9 +1072,15 @@ class MailController
     {
         $threads = Thread::where('offer_id', $offer->id)->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'))->pluck('id');
 
-        return $threads->isEmpty() ? null : Message::whereIn('thread_id', $threads)->where('direction', Direction::In)
-            ->with(['account.replyAccount', 'addresses', 'thread'])->orderByDesc('date_at')->orderByDesc('id')->get()
-            ->first(fn (Message $m) => $m->isFromVendor());
+        if ($threads->isEmpty()) {
+            return null;
+        }
+        $letters = Message::whereIn('thread_id', $threads)->with(['account.replyAccount', 'addresses', 'thread'])->orderByDesc('date_at')->orderByDesc('id')->get();
+
+        // Его последнее письмо, а пока он не писал — наше последнее ему (28.10.2026): «Подтверждаем актуальность» ответом
+        // на «Выражаем интерес», одной веткой «Re: …», а не новым письмом, которое у страховой потеряется.
+        return $letters->first(fn (Message $m) => $m->direction === Direction::In && $m->isFromVendor())
+            ?? $letters->first(fn (Message $m) => $m->direction === Direction::Out && $m->message_id);
     }
 
     private function sendRules(Request $request): array
@@ -1087,7 +1102,6 @@ class MailController
             'forward.*' => ['integer'],
             'offer' => ['nullable', 'integer'],
             'vehicle' => ['nullable', 'integer'],
-            'back' => ['nullable', 'string', 'max:255', 'regex:#^/(?!/)#'], // свой путь, не //host
             'invoice' => ['nullable', 'integer'],
             'request_deals' => ['nullable', 'string', 'regex:/^\d+(,\d+)*$/'],
         ], [], ['to' => 'Кому', 'cc' => 'Копия', 'subject' => 'Тема', 'body' => 'Письмо']);

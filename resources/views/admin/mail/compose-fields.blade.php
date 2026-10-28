@@ -4,7 +4,6 @@
 @if ($thread)<input type="hidden" name="thread" value="{{ $thread->id }}">@endif
 @if ($offer)<input type="hidden" name="offer" value="{{ $offer->id }}">@endif
 @if ($vehicle ?? null)<input type="hidden" name="vehicle" value="{{ $vehicle->id }}">@endif
-@if ($back ?? null)<input type="hidden" name="back" value="{{ $back }}">@endif
 @if ($invoice ?? null)<input type="hidden" name="invoice" value="{{ $invoice->id }}">@endif
 <input type="hidden" name="retry" value="{{ request()->getRequestUri() }}">
 @if ($then ?? null)<input type="hidden" name="then" value="{{ $then }}">@endif

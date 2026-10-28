@@ -464,7 +464,12 @@ function formCheck() {
     const show = (el) => {
         for (let d = el.closest('details:not([open])'); d; d = d.parentElement?.closest('details:not([open])')) d.open = true;
         const message = text(el);
-        if (!el.getClientRects().length) { window.toast?.(message, 'danger'); return; }
+        // Поле не видно — тостом, и с его названием: «Заполните поле» без него не говорило, какое.
+        if (!el.getClientRects().length) {
+            const name = el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label') || el.placeholder || '';
+            window.toast?.(name ? `${message}: ${name}` : message, 'danger');
+            return;
+        }
         const undo = [];
         const flag = (node, cls) => { if (node.classList.contains(cls)) return; node.classList.add(cls); undo.push(() => node.classList.remove(cls)); };
         const say = (box, selector, make) => {
@@ -513,11 +518,13 @@ function formCheck() {
         const form = event.target;
         if (!own(form) || event.submitter?.formNoValidate) return;
         for (const el of [...shown.keys()]) if (el.form === form || !el.isConnected) clear(el);
-        if (form.checkValidity()) return;
+        // Поля панели форматирования Trix (диалог «Адрес ссылки» — required) — не данные формы: открыли диалог ссылки и
+        // закрыли — пустое обязательное поле молча держало отправку письма тостом «Заполните поле» (28.10.2026).
+        const bad = [...form.elements].find((el) => el.willValidate && !el.validity.valid && !el.closest('trix-toolbar'));
+        if (!bad) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        const bad = [...form.elements].find((el) => el.willValidate && !el.validity.valid);
-        if (bad) show(bad);
+        show(bad);
     }, true);
     const fix = (event) => {
         const el = event.target;

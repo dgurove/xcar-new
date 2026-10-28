@@ -133,7 +133,7 @@
     <div {!! $wrap('paid') !!}>
         <x-ui.sheet id="paid" :title="$current->isOwed() ? 'Выплатили менеджеру' : 'Деньги пришли'">
             {{-- Та же форма, что «Деньги пришли» у счёта и в шаге сделки (28.10.2026): откуда, номер и скан платёжки. --}}
-            <x-billing.pay-form :invoice="$current" :action="'/garage/cars/'.$n.'/payments'" sheet/>
+            <x-billing.pay-form :invoice="$current" :action="'/garage/cars/'.$n.'/payments'" :source="$current->claims()->first()?->source->value" sheet/>
         </x-ui.sheet>
     </div>
 @endif

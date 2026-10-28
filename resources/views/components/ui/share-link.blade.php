@@ -4,11 +4,17 @@
      - hero — шторка: круглые кнопки с подписью «Отправить», «Скопировать» и свои после них (слот: «QR-код», «Открыть»);
        url — рамкой сверху (`showUrl`), text — готовое сообщение (`editable` — полем, его можно поправить), `below` — абзац под кнопками;
      - row — строка списка: значок, `label`, под ним `sub` (по умолчанию адрес без https), справа «Скопировать» кружком и
-       «Отправить» пилюлей; `lead` — своя левая часть (кнопка, что открывает шторку). --}}
+       «Отправить» пилюлей; `lead` — своя левая часть (кнопка, что открывает шторку);
+     - buttons — только эти две кнопки (в строку, у которой своя разметка: ссылка в деньгах сделки). --}}
 @props(['url', 'text' => null, 'title' => null, 'done' => null, 'variant' => 'hero', 'editable' => false, 'rows' => 3, 'showUrl' => false,
     'label' => null, 'sub' => null, 'icon' => 'link', 'lead' => null, 'below' => null])
 @php $copy = ['data-controller' => 'copy', 'data-copy-text-value' => $url, 'data-copy-title-value' => $title, 'data-copy-done-value' => $done]; @endphp
-@if ($variant === 'row')
+@if ($variant === 'buttons')
+    <span {{ $attributes->merge($copy)->class('ml-auto flex shrink-0 items-center gap-2') }}>
+        @if ($text !== null)<textarea hidden data-copy-target="message">{{ $text }}</textarea>@endif
+        @include('components.ui.share-link-buttons')
+    </span>
+@elseif ($variant === 'row')
     <div {{ $attributes->merge($copy)->class('row flex-wrap items-center gap-x-3 gap-y-2') }}>
         @if ($text !== null)<textarea hidden data-copy-target="message">{{ $text }}</textarea>@endif
         @if ($lead)
@@ -21,10 +27,7 @@
             </span>
         @endif
         {{-- В узкой колонке кнопки уходят второй линией справа, а не сжимают подпись. --}}
-        <span class="ml-auto flex shrink-0 items-center gap-2">
-            <button type="button" class="btn btn-quiet btn-round !size-8 shrink-0" data-action="copy#copy" data-copy-fallback aria-label="Скопировать"><x-ui.icon name="copy" class="size-4"/></button>
-            <button type="button" class="btn btn-s btn-accent shrink-0 !h-8 rounded-full !px-3.5" data-action="copy#share" data-copy-target="share">Отправить</button>
-        </span>
+        <span class="ml-auto flex shrink-0 items-center gap-2">@include('components.ui.share-link-buttons')</span>
     </div>
 @else
     <div {{ $attributes->merge($copy)->class('flex flex-col gap-3') }}>
