@@ -60,6 +60,7 @@
             @if ($count)<span class="{{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count }} {{ $gallery ? \App\Support\Plural::of($count, ['интерес', 'интереса', 'интересов']) : 'подтв.' }}</span>@endif
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
             @if ($admin && ! $busy)<x-offer.margin :m="$offer->marginMark()" class="!ml-0"/>@endif
+            @if ($admin && $offer->reprice_pending)<span class="text-urgent">переоценка</span>@endif
             @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
         </span>
     </div>

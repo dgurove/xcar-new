@@ -86,6 +86,8 @@
         <x-slot:actions>
             {{-- Черновик выставила ТС из «Заявок на приём» (`AutoSale`) — первым решение: «Принять» или «Отклонить». --}}
             @if ($admin && $offer->proposed())<x-offer.proposal :offer="$offer" class="w-full"/>@endif
+            {{-- Переоценка закупочной ждёт решения (28.10.2026): по письму поставщика или вписали при подтвердивших. --}}
+            @if ($admin && ($reprice = $offer->pendingReprice))<x-offer.reprice :offer="$offer" :reprice="$reprice" class="w-full"/>@endif
             {{-- Ряд кнопок над плашкой дела (12.10.2026, владелец выбрал вариант «В»): слот, сделка и чат слева, «Действия»
                  справа; ниже — плашка «Закупочная / Оценить / В гараж / Вывоз» или ответы менеджеров. --}}
             <div class="flex w-full flex-wrap items-center gap-2">

@@ -85,7 +85,13 @@ class Position extends Model
     public function needsUs(): bool
     {
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
-            || $this->consentLate();
+            || $this->consentLate() || $this->repricePending();
+    }
+
+    /** Ждёт решения переоценка закупочной (28.10.2026, `Offers\Reprice`) — наш ход, что бы ни было на этапе. */
+    public function repricePending(): bool
+    {
+        return $this->track === Track::Sale && $this->offer?->pendingReprice !== null;
     }
 
     /**
@@ -119,6 +125,10 @@ class Position extends Model
             $action = self::gapAction($gap, $this->deal);
 
             return $todo('gap:'.$gap, $action['button'], 2, button: ['label' => $action['button'], 'href' => $action['url']]);
+        }
+
+        if ($this->repricePending()) {
+            return $todo('reprice', 'Разобрать переоценку', 0, $offer->pendingReprice->created_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
         return match (true) {
@@ -208,7 +218,7 @@ class Position extends Model
     // coalesce — пустой payload даёт null, и «не наш ход» (`whereNot`) терял такие позиции. Подписи согласия — `Outcome::TAKES`.
     // Ход наш на шаге получения под логистикой (`carried`) — не наш: этап с исходом менеджера «Автомобиль забрал».
     // Метки письма — только на этапе письма (`Stage::isLetterStep`), «менеджер не ответил» — только пока ход его
-    // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026).
+    // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026). Ждущая переоценка — `repricePending`.
     public const NEEDS_US_SQL = "coalesce((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
             and not (coalesce(offer_positions.waits_for, '') = 'us' and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and lower(x.label) = 'автомобиль забрал')))
@@ -218,7 +228,8 @@ class Position extends Model
         or (offer_positions.overdue_at is not null
             and coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'manager'
             and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
-                and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю'))), false)";
+                and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю')))
+        or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r where r.offer_id = offer_positions.offer_id and r.state = 'pending')), false)";
 
     /** Позиции, где нужно наше действие, — `needsUs()` в SQL. */
     public function scopeNeedsUs($q)

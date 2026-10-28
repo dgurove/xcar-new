@@ -91,7 +91,7 @@ final class FillFromLetter
     }
 
     /** Письмо ровно об этой машине: один номер убытка — номер предложения; без номера — её VIN. */
-    private static function about(Offer $offer, Message $message): bool
+    public static function about(Offer $offer, Message $message): bool
     {
         $codes = array_values(array_filter($message->keys(), fn ($k) => str_starts_with($k, 'code:')));
         if ($codes) {

@@ -175,6 +175,7 @@
              04.10.2026: «самое важное, никогда нельзя скрывать»). Есть подтверждения — они вместо закупочной. --}}
         {{-- В минус или почти без наценки (`Offers\Margin`, 14.10.2026) — под ценой, только в CRM админу. --}}
         @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin" class="cell-sub max-sm:!ml-0"/>@endif
+        @if ($admin && $offer->reprice_pending)<span class="cell-sub !text-urgent">переоценка</span>@endif
         @if ($count)<span class="cell-sub sm:hidden nums {{ $gallery ? '!text-accent-text' : '!text-urgent' }}">{{ $countWord }}</span>
         @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span class="cell-sub sm:hidden" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>

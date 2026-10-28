@@ -30,5 +30,6 @@ enum OfferEventType: string
     case Proposal = 'proposal';
     case Requested = 'requested';
     case Counter = 'counter';
+    case Reprice = 'reprice'; // переоценка закупочной: пришла, применена, отклонена (28.10.2026, `Offers\Reprice`)
     case SupplierDeclined = 'supplier_declined'; // поставщик отказал продавать — сделка закрыта по причине (28.10.2026)
 }

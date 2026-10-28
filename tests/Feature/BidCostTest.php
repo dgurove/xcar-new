@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Offers\Actions\ApplyReprice;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\BidKind;
@@ -56,7 +57,9 @@ class BidCostTest extends TestCase
     public function test_cost_is_floor_at_each_managers_bid(): void
     {
         $early = PlaceBid::record($this->offer, $this->early, $this->early, 560000, null, BidKind::Buyer);
+        // Подтвердивший уже есть — новая закупочная встаёт переоценкой (28.10.2026), Денису оставляем прежнюю.
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 333333], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 333333, [$early->id => 'keep'], null);
         $late = PlaceBid::record($this->offer->fresh(), $this->late, $this->admin, 500000, null, BidKind::Buyer);
 
         $this->assertSame(529206, $early->refresh()->cost);

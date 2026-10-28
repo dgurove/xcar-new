@@ -50,6 +50,7 @@ use App\Offers\Console\DealAgreementFixCommand;
 use App\Offers\Console\BindingFromDocsCommand;
 use App\Offers\Console\DealCarDocsCommand;
 use App\Offers\Console\FillFromLettersCommand;
+use App\Offers\Console\RepricesFromLettersCommand;
 use App\Offers\Console\MigtorgArchive;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
@@ -102,6 +103,7 @@ return Application::configure(basePath: dirname(__DIR__))
         AutoDraftsCommand::class,
         ScrubReplyNoticesCommand::class,
         FillFromLettersCommand::class,
+        RepricesFromLettersCommand::class,
         DealCarDocsCommand::class,
         BindingFromDocsCommand::class,
         PruneEmptyDrafts::class,

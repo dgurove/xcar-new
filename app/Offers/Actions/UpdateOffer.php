@@ -18,6 +18,7 @@ use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
+use App\Offers\Reprice;
 use App\Support\Changes;
 use App\Users\User;
 use App\Vendors\Actions\LearnSenders;
@@ -38,8 +39,9 @@ final class UpdateOffer
 
     /**
      * @param  array  $log  к записи «Изменён» в историю — откуда правка (`source: migtorg`, `why: «По СМС …»`)
+     * @param  bool  $repricing  зовёт `ApplyReprice`: закупочная пишется, даже если уже есть подтвердившие
      */
-    public function __invoke(Offer $offer, array $data, ?User $by, array $log = []): Offer
+    public function __invoke(Offer $offer, array $data, ?User $by, array $log = [], bool $repricing = false): Offer
     {
         $was = $offer->value;
         // Показ сделки кончился, а его продлили — список снова видит её: уведомление всем, а не только новым.
@@ -54,8 +56,17 @@ final class UpdateOffer
         if ($offer->isDirty('vendor_id') && ! array_key_exists('prices_include_vat', $data) && $offer->vendor_id) {
             $offer->prices_include_vat = Vendor::offersVat($offer->vendor_id);
         }
+        // Новая закупочная, а подтвердившие уже есть (28.10.2026, владелец: «у тех, кто подтвердил, и в сделке — оставить
+        // прежнюю или обновить»): откуда бы ни пришла — руками, из текста, с Мигторга, — сразу не пишется, а встаёт
+        // переоценкой на решение админа (`Reprice`, шторка «Переоценка»). Остальные поля правки сохраняются.
+        $reprice = null;
+        if (! $repricing && $offer->exists && $offer->isDirty('floor_price') && $offer->getOriginal('floor_price') && $offer->floor_price
+            && Reprice::hasAffected($offer)) {
+            $reprice = (int) $offer->floor_price;
+            $offer->floor_price = $offer->getOriginal('floor_price');
+        }
         // Новая закупочная у предложения с идущей сделкой — только закупочная поставщика (`UpdateDealCost`): цена
-        // менеджера в сделке закреплена с его подтверждения (15.10.2026).
+        // менеджера в сделке закреплена с его подтверждения (15.10.2026), сменить её — «Обновить» в переоценке.
         $deal = $offer->isDirty('floor_price') && $offer->floor_price ? $offer->costDeal() : null;
         // Срок обязывающего — только у Совкомбанка (`Binding::applies`): у другого вендора не встаёт и стирается.
         if ($offer->binding_until && ! Binding::applies($offer)) {
@@ -110,6 +121,9 @@ final class UpdateOffer
                 ($this->dealCost)($deal->setRelation('offer', $offer), (int) $offer->floor_price, $by);
             }
             (new RememberVin)($offer);
+        }
+        if ($reprice) {
+            DetectReprice::open($offer, $reprice, in_array($log['source'] ?? null, Reprice::SOURCES, true) ? $log['source'] : 'manual', null, $by);
         }
         self::identityChanged($offer, $changed);
         // Гараж запретили — ждущие «В гараж» отклоняются (решение владельца 03.10.2026), принять их уже нельзя.

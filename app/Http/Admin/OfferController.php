@@ -40,6 +40,7 @@ use App\Offers\LegacyClaim;
 use App\Offers\Margin;
 use App\Offers\MigtorgDiff;
 use App\Offers\Offer;
+use App\Offers\Reprice;
 use App\Offers\OfferEventType;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
@@ -313,6 +314,8 @@ class OfferController
             // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
             // «Есть подтверждения» — подтверждение есть, а принять не успели (`undecided`).
             Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger'),
+            // Переоценка ждёт решения (28.10.2026) — оранжевой точкой, пока такие есть.
+            Facet::toggle('reprice', 'Переоценка', fn ($o) => $o->whereHas('reprices', fn ($r) => $r->where('state', Reprice::PENDING)))->dot('hot'),
         ] : []))->always();
         $askedSort = $request->query('sort');
         ListPrefs::sync($request, 'crm-offers', keep: array_values(array_diff($facets->keys(), self::ONCE)));
@@ -331,6 +334,10 @@ class OfferController
             ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
         // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
         Binding::select($q);
+        // Ждущая переоценка закупочной (28.10.2026) — меткой у цены и чипом.
+        if ($admin) {
+            $q->withExists(['reprices as reprice_pending' => fn ($r) => $r->where('state', Reprice::PENDING)]);
+        }
         // «Все» и поиск — где машина после продажи: этап сделки, менеджер, срок оплаты, гараж (`DealLine::forOffer`).
         if ($admin && ($preset === 'all' || $searching)) {
             $q->with(['deal.buyer', 'deal.invoices.claims', 'lastDeal.buyer', 'garageCar.manager', 'positions.stage.block', 'positions.stage.exits.to',

@@ -438,6 +438,17 @@ class Offer extends Model
         return $this->hasOne(Deal::class)->ofMany(['id' => 'max'], fn ($q) => $q->whereIn('state', [DealState::Active, DealState::Done]));
     }
 
+    /** Переоценки закупочной (`Reprice`): ждущая — плашка «Переоценка» в окошке и редакторе. */
+    public function reprices(): HasMany
+    {
+        return $this->hasMany(Reprice::class);
+    }
+
+    public function pendingReprice(): HasOne
+    {
+        return $this->hasOne(Reprice::class)->ofMany(['id' => 'max'], fn ($q) => $q->where('state', Reprice::PENDING));
+    }
+
     /**
      * Сделка, чья закупочная — закупочная предложения (`UpdateDealCost`, 14.10.2026): идущая, а у машины в гараже — её
      * сделка, пока менеджер машину не продал (гаражная без маршрута закрывается сразу, а «Закупочная» в гараже — её).

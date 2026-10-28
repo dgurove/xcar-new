@@ -25,6 +25,7 @@ use App\Http\Admin\PayLinkController;
 use App\Http\Admin\PurchaseCarPhotoController;
 use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
+use App\Http\Admin\RepriceController;
 use App\Http\Admin\RouteController;
 use App\Http\Admin\TagController;
 use App\Http\Admin\TelegramChatController;
@@ -224,6 +225,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/purge', [OfferController::class, 'purge']);
         Route::post('/offers/{offer}/unschedule', [OfferController::class, 'unschedule']);
         Route::post('/offers/{offer}/give', [GiveController::class, 'store']);
+        // Переоценка закупочной на решение (28.10.2026, `x-offer.reprice`).
+        Route::post('/offers/{offer}/reprices/{reprice}', [RepriceController::class, 'apply']);
+        Route::delete('/offers/{offer}/reprices/{reprice}', [RepriceController::class, 'dismiss']);
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
         Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
         Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
