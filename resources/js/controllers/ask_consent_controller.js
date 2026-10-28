@@ -9,7 +9,7 @@ export default class extends Controller {
 
     async ask(event) {
         // Наша же отправка после ответа — пропускаем (requestSubmit снова зовёт submit).
-        if (this.sending) { this.sending = false; return; }
+        if (this.sending) return;
         event.preventDefault();
         const answer = await confirmSheet('Поставщик согласовал. Спросить менеджера?', {
             form: this.element,
@@ -20,7 +20,8 @@ export default class extends Controller {
         });
         if (!answer) return;
         this.takeTarget.value = answer === 'alt' ? '1' : '';
+        // requestSubmit зовёт submit синхронно: флаг живёт ровно на эту отправку и не застревает, если её проглотили.
         this.sending = true;
-        this.element.requestSubmit();
+        try { this.element.requestSubmit(); } finally { this.sending = false; }
     }
 }

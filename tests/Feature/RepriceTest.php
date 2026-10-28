@@ -243,8 +243,8 @@ class RepriceTest extends TestCase
         $this->assertTrue($ask->alive());
         Notification::assertSentTo($this->roman, RepriceAskNotice::class, fn (RepriceAskNotice $n) => $n->critical()
             && collect($n->toTelegram()['keyboard'][0])->pluck('text')->all() === ['Согласен', 'Отказываюсь']);
-        $this->assertSame('Ответьте про новую закупочную', $deal->fresh()->managerTask()['title']);
-        $this->actingAs($this->roman)->get('http://xcar.localhost/deals/'.$deal->id)->assertOk()->assertSee('Закупочная выросла');
+        $this->assertSame('Ответьте про новую цену', $deal->fresh()->managerTask()['title']);
+        $this->actingAs($this->roman)->get('http://xcar.localhost/deals/'.$deal->id)->assertOk()->assertSee('Новая цена от поставщика');
 
         // Срок вышел — горит у нас.
         $this->travel(2)->days();
@@ -290,5 +290,21 @@ class RepriceTest extends TestCase
         $this->assertTrue($this->offer->events()->where('type', 'reprice')->get()->contains(fn ($e) => str_contains($e->text(), 'за менеджера')));
         // Админу — только ответ Дениса: свой ответ за Романа ему не звенит.
         Notification::assertSentToTimes($this->admin, RepriceAnsweredNotice::class, 1);
+    }
+
+    public function test_accepting_bid_with_open_question_moves_it_to_deal(): void
+    {
+        $bid = app(PlaceBid::class)($this->offer, $this->roman, 1050000);
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [$bid->id => 'update'], null);
+        $ask = \App\Offers\RepriceAsk::sole();
+        $this->assertSame($bid->id, $ask->bid_id);
+
+        // Приняли, пока Роман думал, — вопрос не гаснет, а переезжает на сделку; цена сделки до ответа прежняя.
+        $deal = app(AcceptBid::class)($bid->fresh(), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $ask->refresh();
+        $this->assertSame([null, $deal->id], [$ask->bid_id, $ask->deal_id]);
+        $this->assertTrue($ask->alive());
+        $this->assertSame(594762, $deal->fresh()->cost);
     }
 }

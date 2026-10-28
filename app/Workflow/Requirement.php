@@ -58,6 +58,21 @@ class Requirement extends Model implements HasMedia
         return $this->done_at === null;
     }
 
+    /**
+     * Закрыть открытую просьбу менеджера на этапе ответом, который дал не он сам (28.10.2026, одна дверь): деньги пришли
+     * (`AdvanceOnPayment`, `closed_by: payment`), заявил оплату (`AdvanceOnClaim`), ответил админ «за менеджера»
+     * (`RouteController::forManager`, `closed_by: staff`, `by`). Вид ответа читают путь CRM и «Уже отвечено» в Telegram.
+     *
+     * @param  array<string, mixed>  $answer
+     */
+    public static function closeOpen(Deal $deal, int $stageId, array $answer): ?self
+    {
+        $r = $deal->openRequirement()->where('stage_id', $stageId)->first();
+        $r?->update(['done_at' => now(), 'answer' => $answer]);
+
+        return $r;
+    }
+
     /** Просьба менеджеру сделки на этапе, со сроком позиции. Зовут вход в этап и выставленный счёт на этапе оплаты. */
     public static function askFor(Deal $deal, Stage $stage, Position $position): self
     {

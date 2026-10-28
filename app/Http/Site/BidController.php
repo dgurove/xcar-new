@@ -79,10 +79,13 @@ class BidController
     {
         abort_unless($ask->user_id === $request->user()->id, 404);
         $agree = $request->boolean('agree');
+        // Куда после отказа — до ответа: отменённая сделка и снятое подтверждение страницу уже не держат (после конца приёма
+        // предложение ему не видно — 404), гаражная — из «Гаража», а не из «Сделок».
+        $away = $ask->deal_id ? ($ask->deal?->isGarage() ? '/garage' : '/deals') : '/offers';
         $answer($ask, $agree, $request->user());
 
         return $agree ? back()->with('toast', 'Новая цена принята')
-            : redirect($ask->deal_id ? '/deals' : '/offers/'.$ask->offer->number)->with('toast', $ask->deal_id ? 'Сделка отменена' : 'Подтверждение снято');
+            : redirect($away)->with('toast', $ask->deal_id ? 'Сделка отменена' : 'Подтверждение снято');
     }
 
     public function withdraw(Request $request, Bid $bid, WithdrawBid $withdraw)

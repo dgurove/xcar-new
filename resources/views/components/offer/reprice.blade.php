@@ -1,7 +1,7 @@
 {{-- Переоценка на решение (28.10.2026, владелец: «по такому-то письму такая-то переоценка, с возможностью принять или
      отменить»; `Offers\Reprice`). Плашка наверху окошка и редактора: было → стало, откуда, «Открыть письмо», «Отклонить» и
      «Применить…». Шторка — новая цена (правится), у открытого цена продажи (заявленная пустая — идёт за закупочной), и решение по каждому, кто сейчас
-     подтвердил, и по сделке: «Оставить N | Обновить M», заранее не отмечено ничего, «Применить» — когда решено по всем
+     подтвердил, и по сделке: «Оставить N | Обновить M» (выше прежней — «Спросить M»: менеджеру вопрос, `RepriceAsk`), заранее не отмечено ничего, «Применить» — когда решено по всем
      (`reprice_controller`). Вписали закупочную в редакторе при подтвердивших — шторка открывается у автора сама, один раз. --}}
 @props(['offer', 'reprice'])
 @php
@@ -61,7 +61,7 @@
                             </div>
                             <div class="segment">
                                 <label><input type="radio" name="bids[{{ $bid->id }}]" value="keep" @checked(old('bids.'.$bid->id) === 'keep') data-action="reprice#update">Оставить&nbsp;{{ Money::nums($cost) }}</label>
-                                <label><input type="radio" name="bids[{{ $bid->id }}]" value="update" @checked(old('bids.'.$bid->id) === 'update') data-action="reprice#update">Обновить&nbsp;<span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span></label>
+                                <label><input type="radio" name="bids[{{ $bid->id }}]" value="update" @checked(old('bids.'.$bid->id) === 'update') data-action="reprice#update"><span data-reprice-target="verb" data-cost="{{ $cost }}">{{ $reprice->to_price > $cost ? 'Спросить' : 'Обновить' }}</span>&nbsp;<span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span></label>
                             </div>
                             <p class="text-sm text-danger" data-reprice-target="loss" hidden></p>
                         </div>
@@ -79,7 +79,7 @@
                                     @if ($dealLocked)
                                         Уже платили
                                     @else
-                                        Обновить&nbsp;<span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span>
+                                        <span data-reprice-target="verb" data-cost="{{ (int) $deal->cost }}">{{ $reprice->to_price > (int) $deal->cost ? 'Спросить' : 'Обновить' }}</span>&nbsp;<span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span>
                                     @endif
                                 </label>
                             </div>
@@ -87,8 +87,6 @@
                         </div>
                     @endif
                 </div>
-                {{-- Выросла — «Обновить» спрашивает менеджера (`RepriceAsk`, 28.10.2026), до ответа у него прежняя. --}}
-                <p class="px-1 text-sm text-ink-muted">«Обновить» выше прежней — сначала спросим менеджера: согласится — встанет, откажется — сделка отменится. Ниже — встанет сразу, без уведомления</p>
             @endif
             <x-ui.sheet-foot type="submit" data-reprice-target="submit">Применить переоценку</x-ui.sheet-foot>
         </form>

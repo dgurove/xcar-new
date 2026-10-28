@@ -1,4 +1,5 @@
-{{-- Закупочная выросла — вопрос менеджеру (28.10.2026, `RepriceAsk`): тем же видом, что контрпредложение (`counter-card`),
+{{-- Закупочная выросла — вопрос менеджеру (28.10.2026, `RepriceAsk`): тем же видом, что контрпредложение (`counter-card`);
+     что поменялось — тем, что он видит (`RepriceAsk::shownAs`: цена «от», закупочная ДКП и гаража, вознаграждение ПРАЙМ),
      первым в задаче сделки, гаража и над «Ваше подтверждение». «Согласен» — новая цена встаёт (договор и счета сделки
      перевыставятся), «Отказываюсь» — сделка отменяется / подтверждение снимается, с переспросом. Только его вопрос. --}}
 @props(['deal' => null, 'bid' => null])
@@ -11,14 +12,9 @@
 @endphp
 @if ($ask)
     <div {{ $attributes->class('counter-card') }}>
-        <div class="text-sm text-accent-text">Закупочная выросла</div>
-        @if ($ask->shown_to !== null)
-            <div class="nums mt-1 text-[32px] font-bold leading-tight">{{ \App\Support\Money::rub($ask->shown_to) }}</div>
-            <div class="nums mt-1 text-sm text-ink-muted">{{ $ask->bid_id ? 'цена «от»' : 'закупочная' }} была {{ \App\Support\Money::rub($ask->shown_from) }}</div>
-        @else
-            <div class="nums mt-1 text-[32px] font-bold leading-tight">+{{ \App\Support\Money::rub($ask->to_price - $ask->from_price) }}</div>
-            <div class="mt-1 text-sm text-ink-muted">к закупочной по сделке</div>
-        @endif
+        <div class="text-sm text-accent-text">{{ $ask->shownAs() === 'reward' ? 'Вознаграждение уменьшится' : 'Новая цена от поставщика' }}</div>
+        <div class="nums mt-1 text-[32px] font-bold leading-tight">{{ \App\Support\Money::rub((int) $ask->shown_to) }}</div>
+        <div class="nums mt-1 text-sm text-ink-muted">{{ mb_strtolower($ask->shownLabel()) }} {{ $ask->shownAs() === 'reward' ? 'было' : 'была' }} {{ \App\Support\Money::rub((int) $ask->shown_from) }}</div>
         <p class="mt-2 text-sm">Согласны? Ответьте до <span class="nums">{{ $ask->due_at->setTimezone('Europe/Moscow')->translatedFormat('j M, H:i') }}</span></p>
         <div class="mt-4 flex flex-col gap-2">
             <form method="post" action="/reprice-asks/{{ $ask->id }}" data-turbo-confirm="Согласиться на новую цену?" data-turbo-confirm-text="{{ $ask->deal_id ? 'Счёт и договор обновятся' : 'Ваше подтверждение останется' }}" data-turbo-confirm-label="Согласен">

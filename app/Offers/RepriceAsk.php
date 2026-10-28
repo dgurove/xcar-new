@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
  * перед фактом — нужно уведомление с вопросом, согласен он или отказывается; когда понижается — не спрашивать»). Заводит
  * `Actions\ApplyReprice` на «Обновить» вверх, отвечает `Actions\AnswerReprice` — менеджер (страница, Telegram) или админ
  * за него. До ответа у него прежняя закупочная; не ответил к `due_at` (17:00 следующего дня) — горит у нас.
- * Закупочной на xcar нет ни у кого: `shown_*` — то, что он видит (`shownFor`).
+ * Закупочной на xcar нет ни у кого: `shown_*` — то, что он видит (`shownFor`, `shownAs`).
  */
 #[Fillable(['reprice_id', 'offer_id', 'bid_id', 'deal_id', 'user_id', 'from_price', 'to_price', 'shown_from', 'shown_to', 'state', 'due_at', 'answered_at', 'answered_by'])]
 class RepriceAsk extends Model
@@ -79,6 +79,20 @@ class RepriceAsk extends Model
         return $this->bid_id ? $this->bid?->state === BidState::Active : $this->deal?->state === DealState::Active;
     }
 
+    /**
+     * Ждущие вопросы идущих сделок: offer_id → срок ответа. Списки («Сделки» CRM и менеджера, «Ваш ход», бейдж) спрашивают
+     * про каждую строку — одним запросом на веб-запрос (в очереди и консоли `once` жил бы весь процесс — там без памяти).
+     *
+     * @return \Illuminate\Support\Collection<int, Carbon>
+     */
+    public static function dealDue(): \Illuminate\Support\Collection
+    {
+        $load = fn () => self::pending()->whereNotNull('deal_id')->whereHas('deal', fn ($q) => $q->where('state', DealState::Active))
+            ->pluck('due_at', 'offer_id')->map(fn ($at) => Carbon::parse($at));
+
+        return app()->runningInConsole() ? $load() : once($load);
+    }
+
     public function late(): bool
     {
         return $this->isPending() && $this->due_at?->isPast();
@@ -93,16 +107,18 @@ class RepriceAsk extends Model
     /** Срок ответа: 17:00 следующего дня по Москве, как у «Согласия менеджера» (`DeadlineSource::NextDay17`). */
     public static function dueFrom(Carbon $now): Carbon
     {
-        return $now->copy()->setTimezone('Europe/Moscow')->addDay()->setTime(17, 0)->utc();
+        // Без ->utc(): база хранит время без пояса в поясе приложения — UTC сохранялся бы как «14:00» вместо 17:00.
+        return $now->copy()->setTimezone('Europe/Moscow')->addDay()->setTime(17, 0)->setTimezone(config('app.timezone'));
     }
 
     /**
-     * Что менеджер видит из этой переоценки, — правило прежнего уведомления о закупочной: у подтверждения — цена «от»
+     * Что менеджер видит из этой переоценки (закупочной на xcar нет ни у кого — CLAUDE.md): у подтверждения — цена «от»
      * (заявленная вписана рукой или «от» не сдвинулась — для него ничего не поменялось), у сделки ДКП, «страховой напрямую»
-     * и гаража — закупочная числом, у остальных сделок — только разница. Супер-покупателю и покупателю с гаражом закупочная
-     * не видна вовсе — его не спрашиваем. null — спрашивать не о чем, цена встаёт молча.
+     * и гаража — закупочная (она у него в «Расчёте»), у ПРАЙМ, где платит он сам, — его вознаграждение (разница цены и
+     * закупочной, строка счёта). У остальных — супер-покупателя, покупателя с гаражом, ПРАЙМ, где платит его покупатель, —
+     * для него не меняется ничего: null, цена встаёт молча.
      *
-     * @return array{0: ?int, 1: ?int}|null
+     * @return array{0: int, 1: int}|null
      */
     public static function shownFor(?User $user, Bid|Deal $on, Offer $offer, int $from, int $to): ?array
     {
@@ -116,18 +132,37 @@ class RepriceAsk extends Model
 
             return [Offer::declaredFrom($from), Offer::declaredFrom($to)];
         }
-
-        return $on->paysSelection() || $on->isGarage() ? [$from, $to] : [null, null];
-    }
-
-    /** Что выросло — словами для менеджера: «Цена «от» 900 000 → 950 000 ₽», «Закупочная …», «Закупочная выросла на 50 000 ₽». */
-    public function phrase(): string
-    {
-        if ($this->shown_from !== null && $this->shown_to !== null) {
-            return ($this->bid_id ? 'Цена «от» ' : 'Закупочная ').Money::nums($this->shown_from).' → '.Money::rub($this->shown_to);
+        if ($on->paysSelection() || $on->isGarage()) {
+            return [$from, $to];
+        }
+        $contract = $on->contract;
+        if ($on->isPrime() && ! $on->isDirect() && $on->amount !== null && (! $contract?->buyer_user_id || $contract->managerPays())) {
+            return [max(0, (int) $on->amount - $from), max(0, (int) $on->amount - $to)];
         }
 
-        return 'Закупочная выросла на '.Money::rub($this->to_price - $this->from_price);
+        return null;
+    }
+
+    /** Чем для менеджера выражена перемена: цена «от» подтверждения, закупочная сделки или его вознаграждение. */
+    public function shownAs(): string
+    {
+        return match (true) {
+            $this->bid_id !== null => 'from',
+            $this->deal && ($this->deal->paysSelection() || $this->deal->isGarage()) => 'cost',
+            default => 'reward',
+        };
+    }
+
+    /** Подпись того, что поменялось: «Цена «от»», «Закупочная», «Вознаграждение». */
+    public function shownLabel(): string
+    {
+        return ['from' => 'Цена «от»', 'cost' => 'Закупочная', 'reward' => 'Вознаграждение'][$this->shownAs()];
+    }
+
+    /** Что поменялось — словами для менеджера: «Цена «от» 900 000 → 950 000 ₽», «Вознаграждение 100 000 → 50 000 ₽». */
+    public function phrase(): string
+    {
+        return $this->shownLabel().' '.Money::nums((int) $this->shown_from).' → '.Money::rub((int) $this->shown_to);
     }
 
     /** Что будет при отказе — словами кнопки и переспроса. */

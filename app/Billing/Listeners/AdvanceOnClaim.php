@@ -9,6 +9,7 @@ use App\Billing\PaymentSource;
 use App\Offers\OfferEventType;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
+use App\Workflow\Requirement;
 use App\Workflow\Track;
 
 /**
@@ -50,8 +51,7 @@ final class AdvanceOnClaim
             return;
         }
         $said = $e->payment->source === PaymentSource::Cash ? ['label' => 'Отдал наличными'] : [];
-        $requirement = $deal->openRequirement()->where('stage_id', $position->stage_id)->first();
-        $requirement?->update(['done_at' => now(), 'answer' => ['exit' => $exit->label, ...$said, 'fields' => []]]);
+        Requirement::closeOpen($deal, $position->stage_id, ['exit' => $exit->label, ...$said, 'fields' => []]);
         ($this->take)($offer, $exit, Actor::Manager, $e->by, $said);
         $offer->log(OfferEventType::RequirementAnswered, $e->by, ['exit' => $exit->label, ...$said, 'fields' => []]);
     }

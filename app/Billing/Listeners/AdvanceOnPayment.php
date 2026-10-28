@@ -11,6 +11,7 @@ use App\Users\User;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Events\StageEntered;
+use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 
@@ -70,7 +71,7 @@ final class AdvanceOnPayment
         }
         $slip = $position?->stage->payExit($deal);
         if ($slip) {
-            $deal->openRequirement()->where('stage_id', $position->stage_id)->first()?->update(['done_at' => now(), 'answer' => ['closed_by' => 'payment']]);
+            Requirement::closeOpen($deal, $position->stage_id, ['closed_by' => 'payment']);
             // Строки «Менеджер: «Платёжное поручение приложено»» нет: деньги отметил сотрудник, пришли по ссылке или выписке —
             // менеджер ничего не отвечал (17.10.2026, прогон); его заявку об оплате ведёт `AdvanceOnClaim`. В истории — этап.
             ($this->take)($offer, $slip, Actor::Manager, $by);

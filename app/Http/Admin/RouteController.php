@@ -106,8 +106,7 @@ class RouteController
         if ($exit->actor !== Actor::Manager || ! $deal?->buyer_id) {
             throw ValidationException::withMessages(['exit' => 'Это не ответ менеджера']);
         }
-        $deal->openRequirement()->where('stage_id', $exit->stage_id)->first()
-            ?->update(['done_at' => now(), 'answer' => ['exit' => $exit->label, 'closed_by' => 'staff', 'by' => $by->id]]);
+        \App\Workflow\Requirement::closeOpen($deal, $exit->stage_id, ['exit' => $exit->label, 'closed_by' => 'staff', 'by' => $by->id]);
 
         return $take($offer, $exit, Actor::Manager, $by, ['for' => 'manager']);
     }

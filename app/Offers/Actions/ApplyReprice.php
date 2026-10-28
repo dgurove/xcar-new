@@ -105,6 +105,31 @@ final class ApplyReprice
     }
 
     /**
+     * Подтверждение с открытым вопросом о закупочной приняли (`Give`) — вопрос переезжает на сделку: что менеджер видит,
+     * считается заново (`RepriceAsk::shownFor` сделки); не видит — новая встаёт сразу, как при «Обновить» без вопроса.
+     */
+    public function carryToDeal(Bid $bid, Deal $deal, User $by, bool $costGiven): void
+    {
+        $ask = RepriceAsk::pending()->where('bid_id', $bid->id)->latest('id')->first();
+        if (! $ask) {
+            return;
+        }
+        if ($costGiven || (int) $deal->cost >= $ask->to_price) {
+            $ask->update(['state' => RepriceAsk::VOID]);
+
+            return;
+        }
+        $shown = RepriceAsk::shownFor($deal->buyer, $deal, $deal->offer, (int) $deal->cost, $ask->to_price);
+        if ($shown === null) {
+            $ask->update(['state' => RepriceAsk::VOID]);
+            $this->updateDeal($deal, $ask->to_price, $by);
+
+            return;
+        }
+        $ask->update(['bid_id' => null, 'deal_id' => $deal->id, 'from_price' => (int) $deal->cost, 'shown_from' => $shown[0], 'shown_to' => $shown[1]]);
+    }
+
+    /**
      * Закупочная выросла — вопрос тому, кто подтвердил или ведёт сделку; null — цена встаёт сразу: снизилась, или он
      * разницы не видит (`RepriceAsk::shownFor`).
      */

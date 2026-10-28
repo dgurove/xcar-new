@@ -142,8 +142,8 @@ class Deal extends Model
         }
         $position = $this->offer?->position();
         // Выросла закупочная — сначала ответ про цену (28.10.2026, `RepriceAsk`).
-        if ($ask = RepriceAsk::pending()->where('deal_id', $this->id)->latest('id')->first()) {
-            return ['title' => 'Ответьте про новую закупочную', 'due' => $ask->due_at];
+        if ($due = RepriceAsk::dealDue()->get($this->offer_id)) {
+            return ['title' => 'Ответьте про новую цену', 'due' => $due];
         }
         if ($req = $this->openRequirement) {
             return $position?->stage->isPayStep() && $this->fullyPaid() ? null : ['title' => $req->title, 'due' => $req->due_at];

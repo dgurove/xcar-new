@@ -116,7 +116,10 @@ final class Give
             if ($garage && $manager?->holdsAsBuyer() && $deal->isCommission()) {
                 app(SyncDealInvoices::class)($deal->fresh(), $by);
             }
+            // Вопрос о выросшей закупочной по этому подтверждению — теперь вопрос сделки (28.10.2026): иначе он гас молча, и
+            // сделка вставала по прежней закупочной. Вписал закупочную сам админ — спрашивать уже не о чем.
             if ($bid) {
+                app(ApplyReprice::class)->carryToDeal($bid, $deal->fresh(), $by, $g->cost !== null);
                 BidAccepted::dispatch($bid, $by);
             }
 

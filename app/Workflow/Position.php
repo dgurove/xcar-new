@@ -92,14 +92,11 @@ class Position extends Model
      * Менеджер не ответил про выросшую закупочную к сроку (28.10.2026, `RepriceAsk`) — горит у нас: позвонить или ответить
      * за него. Только сделка: подтверждения в «Сделках» нет.
      */
-    public function priceAskLate(): ?\App\Offers\RepriceAsk
+    public function priceAskLate(): ?Carbon
     {
-        if ($this->track !== Track::Sale) {
-            return null;
-        }
+        $due = $this->track === Track::Sale ? \App\Offers\RepriceAsk::dealDue()->get($this->offer_id) : null;
 
-        return once(fn () => \App\Offers\RepriceAsk::pending()->where('offer_id', $this->offer_id)->whereNotNull('deal_id')
-            ->where('due_at', '<', now())->whereHas('deal', fn ($q) => $q->where('state', \App\Offers\DealState::Active))->first());
+        return $due?->isPast() ? $due : null;
     }
 
     /** Ждёт решения переоценка закупочной (28.10.2026, `Offers\Reprice`) — наш ход, что бы ни было на этапе. */
@@ -141,8 +138,8 @@ class Position extends Model
             return $todo('gap:'.$gap, $action['button'], 2, button: ['label' => $action['button'], 'href' => $action['url']]);
         }
 
-        if ($ask = $this->priceAskLate()) {
-            return $todo('price-ask', 'Менеджер не ответил про закупочную', 0, $ask->due_at,
+        if ($due = $this->priceAskLate()) {
+            return $todo('price-ask', 'Менеджер не ответил про закупочную', 0, $due,
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Позвонить', 'tel' => $phone] : ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 

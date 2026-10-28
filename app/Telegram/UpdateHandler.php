@@ -119,8 +119,57 @@ final class UpdateHandler
     }
 
     /**
-     * Ответ на контрпредложение из бота (26.10.2026): «Отказаться» — сразу, «Согласен» — переспрашивает той же строкой
-     * кнопок («Да, согласен» / «Назад»): согласие сразу открывает сделку. Нажать может только сам менеджер.
+     * Ответ кнопкой из бота с переспросом той же строкой кнопок — одна дверь для контрпредложения, новой цены и согласия
+     * (28.10.2026: три копии одного и того же). Действие из `$asks` — вопрос и «Да, …» / «Назад» (`{тема}:{id}:sure{действие}`);
+     * «back» — исходные кнопки; «sure…» или действие без вопроса — ответ: `$answer(действие)` отдаёт [тост, строка итога,
+     * кнопки после] или null — кнопка устарела; ValidationException — его текстом в ответ на нажатие.
+     *
+     * @param  callable(string): string  $text  тело сообщения со строкой итога
+     * @param  list<array<string, string>>  $buttons  исходная строка кнопок
+     * @param  list<list<array<string, mixed>>>  $open  ряд «Открыть …»
+     * @param  array<string, array{0: string, 1: string}>  $asks  действие → [вопрос, подпись «Да, …»]
+     * @param  callable(string): ?array{0: string, 1: string, 2?: list<list<array<string, mixed>>>}  $answer
+     * @param  array<string, string>  $aliases  старые действия кнопок, что уже лежат в чатах («sure» контрпредложения)
+     */
+    private function confirmed(Press $press, string $topic, callable $text, array $buttons, array $open, array $asks, callable $answer, array $aliases = []): void
+    {
+        $action = $aliases[$press->action] ?? $press->action;
+        if ($action === 'back' || isset($asks[$action])) {
+            [$question, $yes] = $asks[$action] ?? ['', ''];
+            $this->bot->answer($press->queryId, $question !== '' ? 'Подтвердите' : '');
+            $this->bot->edit($press->chatId, $press->messageId, $text($question), [
+                $action === 'back' ? $buttons : [['text' => $yes, 'callback_data' => "{$topic}:{$press->id}:sure{$action}"], ['text' => 'Назад', 'callback_data' => "{$topic}:{$press->id}:back"]],
+                ...$open]);
+
+            return;
+        }
+        try {
+            $done = $answer(str_starts_with($action, 'sure') ? substr($action, 4) : $action);
+        } catch (ValidationException $e) {
+            $this->bot->answer($press->queryId, (string) collect($e->errors())->flatten()->first());
+
+            return;
+        }
+        if (! $done) {
+            $this->bot->answer($press->queryId, 'Кнопка устарела.');
+
+            return;
+        }
+        $this->bot->answer($press->queryId, $done[0]);
+        $this->bot->edit($press->chatId, $press->messageId, $text($done[1]), $done[2] ?? $open);
+    }
+
+    /** Строки уведомления — HTML-текстом сообщения бота: заголовок жирным, строки, ниже строка итога. */
+    private static function body(string $title, array $lines): callable
+    {
+        $lines = implode("\n", array_map(fn ($l) => e((string) $l), array_filter($lines, fn ($l) => $l !== null && $l !== '')));
+
+        return fn (string $status) => '<b>'.e($title).'</b>'."\n".$lines.($status !== '' ? "\n\n".$status : '');
+    }
+
+    /**
+     * Ответ на контрпредложение из бота (26.10.2026): «Отказаться» — сразу, «Согласен» — переспрашивает: согласие сразу
+     * открывает сделку. Нажать может только сам менеджер.
      */
     private function counter(Press $press): void
     {
@@ -132,45 +181,35 @@ final class UpdateHandler
             return;
         }
         // Строки — до ответа: согласие переписывает цену подтверждения, и «N вместо N» стало бы бессмысленным.
-        $lines = implode("\n", array_map(fn ($l) => e((string) $l), array_filter(CounterOfferedNotice::telegramLines($bid), fn ($l) => $l !== null && $l !== '')));
-        $text = fn (string $status) => '<b>'.e(CounterOfferedNotice::telegramTitle($bid)).'</b>'."\n".$lines
-            .($status !== '' ? "\n\n".$status : '');
-        $open = fn (string $label, string $path) => [[TelegramChannel::button($label, Surface::Site->url($path))]];
+        $text = self::body(CounterOfferedNotice::telegramTitle($bid), CounterOfferedNotice::telegramLines($bid));
         $page = '/offers/'.$bid->offer->number;
+        $open = [[TelegramChannel::button('Открыть', Surface::Site->url($page))]];
         if (! $bid->hasPendingCounter()) {
             $this->bot->answer($press->queryId, 'Контрпредложение уже не действует');
-            $this->bot->edit($press->chatId, $press->messageId, $text('Уже не действует'), $open('Открыть', $page));
+            $this->bot->edit($press->chatId, $press->messageId, $text('Уже не действует'), $open);
 
             return;
         }
-        if ($press->action === 'yes' || $press->action === 'back') {
-            $this->bot->answer($press->queryId, $press->action === 'yes' ? 'Подтвердите' : '');
-            $this->bot->edit($press->chatId, $press->messageId, $press->action === 'yes' ? $text('Согласиться? ТС закрепится за вами по этой цене') : $text(''),
-                [$press->action === 'yes'
-                    ? [['text' => 'Да, согласен', 'callback_data' => "counter:{$bid->id}:sure"], ['text' => 'Назад', 'callback_data' => "counter:{$bid->id}:back"]]
-                    : [['text' => 'Согласен', 'callback_data' => "counter:{$bid->id}:yes"], ['text' => 'Отказаться', 'callback_data' => "counter:{$bid->id}:no"]],
-                    ...$open('Открыть', $page)]);
+        $this->confirmed($press, 'counter', $text,
+            [['text' => 'Согласен', 'callback_data' => "counter:{$bid->id}:yes"], ['text' => 'Отказаться', 'callback_data' => "counter:{$bid->id}:no"]], $open,
+            ['yes' => ['Согласиться? ТС закрепится за вами по этой цене', 'Да, согласен']],
+            function (string $which) use ($bid, $user, $open) {
+                if (! in_array($which, ['yes', 'no'], true)) {
+                    return null;
+                }
+                $agree = $which === 'yes';
+                app(AnswerCounter::class)($bid, $user, $agree);
+                $deal = $agree ? $bid->offer->deal()->first() : null;
 
-            return;
-        }
-        $agree = $press->action === 'sure';
-        try {
-            app(AnswerCounter::class)($bid, $user, $agree);
-        } catch (ValidationException $e) {
-            $this->bot->answer($press->queryId, (string) collect($e->errors())->flatten()->first());
-
-            return;
-        }
-        $deal = $agree ? $bid->offer->deal()->first() : null;
-        $this->bot->answer($press->queryId, $agree ? 'Сделка открыта' : 'Отказались');
-        $this->bot->edit($press->chatId, $press->messageId,
-            $text($agree ? 'Вы согласились '.now()->translatedFormat('j M, H:i').', сделка открыта' : 'Вы отказались, ваша цена в силе'),
-            $agree && $deal ? $open('Открыть сделку', $deal->href()) : $open('Открыть', $page));
+                return [$agree ? 'Сделка открыта' : 'Отказались',
+                    $agree ? 'Вы согласились '.now()->translatedFormat('j M, H:i').', сделка открыта' : 'Вы отказались, ваша цена в силе',
+                    $deal ? [[TelegramChannel::button('Открыть сделку', Surface::Site->url($deal->href()))]] : $open];
+            }, ['sure' => 'sureyes']);
     }
 
     /**
-     * Ответ на выросшую закупочную из бота (28.10.2026, `RepriceAsk`): обе кнопки переспрашивают той же строкой — «Согласен»
-     * меняет его цену, «Отказываюсь» отменяет сделку или снимает подтверждение. Нажать может только сам менеджер.
+     * Ответ на новую цену из бота (28.10.2026, `RepriceAsk`): обе кнопки переспрашивают — «Согласен» меняет его цену,
+     * «Отказываюсь» отменяет сделку или снимает подтверждение. Нажать может только сам менеджер.
      */
     private function reprice(Press $press): void
     {
@@ -181,8 +220,7 @@ final class UpdateHandler
 
             return;
         }
-        $lines = implode("\n", array_map(fn ($l) => e((string) $l), array_filter(RepriceAskNotice::telegramLines($ask), fn ($l) => $l !== null && $l !== '')));
-        $text = fn (string $status) => '<b>'.e(RepriceAskNotice::telegramTitle($ask)).'</b>'."\n".$lines.($status !== '' ? "\n\n".$status : '');
+        $text = self::body(RepriceAskNotice::telegramTitle($ask), RepriceAskNotice::telegramLines($ask));
         $open = [[TelegramChannel::button('Открыть', Surface::Site->url($ask->deal_id ? $ask->deal->href() : '/offers/'.$ask->offer->number))]];
         if (! $ask->alive()) {
             $this->bot->answer($press->queryId, 'Уже не действует');
@@ -190,38 +228,22 @@ final class UpdateHandler
 
             return;
         }
-        if (in_array($press->action, ['yes', 'no', 'back'], true)) {
-            $ask_ = ['yes' => 'Согласиться на новую цену?', 'no' => 'Отказаться? '.$ask->declineMeans()][$press->action] ?? '';
-            $this->bot->answer($press->queryId, $ask_ !== '' ? 'Подтвердите' : '');
-            $this->bot->edit($press->chatId, $press->messageId, $text($ask_), [
-                $press->action === 'back'
-                    ? RepriceAskNotice::buttons($ask)
-                    : [['text' => $press->action === 'yes' ? 'Да, согласен' : 'Да, отказываюсь', 'callback_data' => "reprice:{$ask->id}:sure{$press->action}"], ['text' => 'Назад', 'callback_data' => "reprice:{$ask->id}:back"]],
-                ...$open]);
+        $this->confirmed($press, 'reprice', $text, RepriceAskNotice::buttons($ask), $open,
+            ['yes' => ['Согласиться на новую цену?', 'Да, согласен'], 'no' => ['Отказаться? '.$ask->declineMeans(), 'Да, отказываюсь']],
+            function (string $which) use ($ask, $user) {
+                if (! in_array($which, ['yes', 'no'], true)) {
+                    return null;
+                }
+                app(\App\Offers\Actions\AnswerReprice::class)($ask, $which === 'yes', $user);
 
-            return;
-        }
-        $agree = ['sureyes' => true, 'sureno' => false][$press->action] ?? null;
-        if ($agree === null) {
-            $this->bot->answer($press->queryId, 'Кнопка устарела.');
-
-            return;
-        }
-        try {
-            app(\App\Offers\Actions\AnswerReprice::class)($ask, $agree, $user);
-        } catch (ValidationException $e) {
-            $this->bot->answer($press->queryId, (string) collect($e->errors())->flatten()->first());
-
-            return;
-        }
-        $this->bot->answer($press->queryId, $agree ? 'Согласились' : 'Отказались');
-        $this->bot->edit($press->chatId, $press->messageId, $text(($agree ? 'Вы согласились' : 'Вы отказались').' — '.now()->translatedFormat('j M, H:i')), $open);
+                return [$which === 'yes' ? 'Согласились' : 'Отказались', ($which === 'yes' ? 'Вы согласились' : 'Вы отказались').' — '.now()->translatedFormat('j M, H:i')];
+            });
     }
 
     /**
      * Согласие менеджера из бота (27.10.2026, владелец: «в боте сразу кнопки»): «Беру в работу» и «Передумал» переспрашивают
-     * той же строкой кнопок — первое необратимо (дальше письмо поставщику «актуально»), второе отменяет сделку. Ответ — тот
-     * же `AnswerRequirement`, что кнопка на странице сделки. Нажать может только сам менеджер.
+     * — первое необратимо (дальше письмо поставщику «актуально»), второе отменяет сделку. Ответ — тот же
+     * `AnswerRequirement`, что кнопка на странице сделки. Нажать может только сам менеджер.
      */
     private function turn(Press $press): void
     {
@@ -232,42 +254,27 @@ final class UpdateHandler
 
             return;
         }
-        $lines = implode("\n", array_map(fn ($l) => e((string) $l), array_filter(YourTurnNotice::telegramLines($r), fn ($l) => $l !== null && $l !== '')));
-        $text = fn (string $status) => '<b>'.e(YourTurnNotice::telegramTitle($r)).'</b>'."\n".$lines.($status !== '' ? "\n\n".$status : '');
+        $text = self::body(YourTurnNotice::telegramTitle($r), YourTurnNotice::telegramLines($r));
         $open = [[TelegramChannel::button('Открыть сделку', Surface::Site->url($r->deal?->href() ?? "/deals/{$r->deal_id}"))]];
         if (! $r->isOpen()) {
             $this->bot->answer($press->queryId, 'Уже отвечено');
-            $this->bot->edit($press->chatId, $press->messageId, $text('Уже отвечено: '.mb_lcfirst((string) ($r->answer['exit'] ?? ''))), $open);
+            // Ответил за него админ — так и пишем (`Requirement::closeOpen`, `closed_by: staff`).
+            $who = ($r->answer['closed_by'] ?? null) === 'staff' ? 'Ответили за вас: ' : 'Уже отвечено: ';
+            $this->bot->edit($press->chatId, $press->messageId, $text($who.mb_lcfirst((string) ($r->answer['exit'] ?? ''))), $open);
 
             return;
         }
-        if (in_array($press->action, ['take', 'drop', 'back'], true)) {
-            $ask = ['take' => 'Беру в работу? После этого отказаться нельзя', 'drop' => 'Передумали? Сделка отменится'][$press->action] ?? '';
-            $this->bot->answer($press->queryId, $ask !== '' ? 'Подтвердите' : '');
-            $this->bot->edit($press->chatId, $press->messageId, $text($ask), [
-                $press->action === 'back'
-                    ? YourTurnNotice::consentButtons($r)
-                    : [['text' => $press->action === 'take' ? 'Да, беру' : 'Да, передумал', 'callback_data' => "turn:{$r->id}:sure{$press->action}"], ['text' => 'Назад', 'callback_data' => "turn:{$r->id}:back"]],
-                ...$open]);
+        $this->confirmed($press, 'turn', $text, YourTurnNotice::consentButtons($r), $open,
+            ['take' => ['Беру в работу? После этого отказаться нельзя', 'Да, беру'], 'drop' => ['Передумали? Сделка отменится', 'Да, передумал']],
+            function (string $which) use ($r, $user) {
+                $exit = in_array($which, ['take', 'drop'], true) ? YourTurnNotice::consentExit($r, $which) : null;
+                if (! $exit) {
+                    return null;
+                }
+                app(AnswerRequirement::class)($r, $exit, $user);
 
-            return;
-        }
-        $which = ['suretake' => 'take', 'suredrop' => 'drop'][$press->action] ?? null;
-        $exit = $which ? YourTurnNotice::consentExit($r, $which) : null;
-        if (! $exit) {
-            $this->bot->answer($press->queryId, 'Кнопка устарела.');
-
-            return;
-        }
-        try {
-            app(AnswerRequirement::class)($r, $exit, $user);
-        } catch (ValidationException $e) {
-            $this->bot->answer($press->queryId, (string) collect($e->errors())->flatten()->first());
-
-            return;
-        }
-        $this->bot->answer($press->queryId, $exit->label);
-        $this->bot->edit($press->chatId, $press->messageId, $text($exit->label.' — '.now()->translatedFormat('j M, H:i')), $open);
+                return [$exit->label, $exit->label.' — '.now()->translatedFormat('j M, H:i')];
+            });
     }
 
     /** «Оплачен» под просроченным счётом — оплата на весь остаток от имени владельца. */
