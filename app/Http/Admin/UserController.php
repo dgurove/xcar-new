@@ -385,7 +385,9 @@ class UserController
             // ролью: свою машину он везёт сам, и задачу видит в логистике.
             $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name']), 'garage_enabled' => $request->boolean('garage_enabled'),
                 'garage_price_shown' => $request->boolean('garage_price_shown'),
-                'roles' => $request->boolean('contractor') ? [Role::Buyer, Role::Contractor] : [Role::Buyer]]);
+                // Роли парковки и главного админа CRM не правит (`KEPT_ROLES`): Сергей Николаев — управляющий и покупатель с гаражом.
+                'roles' => [Role::Buyer, ...($request->boolean('contractor') ? [Role::Contractor] : []),
+                    ...array_values(array_filter(self::KEPT_ROLES, fn (Role $r) => $user->hasRole($r)))]]);
             if ($data['manager_id'] ?? null) {
                 $transfer($user, User::find($data['manager_id']));
             }
