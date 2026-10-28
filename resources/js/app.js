@@ -174,6 +174,7 @@ lazyInSnapshot();
 keepPush();
 focusInvalid();
 formCheck();
+formFree();
 enterNext();
 relaunchScroll();
 keepPosition();
@@ -410,6 +411,27 @@ function focusInvalid() {
     document.addEventListener('turbo:frame-load', (e) => { if (e.target.id !== 'detail') show(e.target); });
 }
 
+// Поля, что стоят внутри чужой формы, но не её данные (28.10.2026, разбор «Заполните поле» у письма): панель
+// форматирования Trix (её диалог ссылки — `required` поле «Адрес»: открыли ссылку и спрятали панель «Aa» — пустое
+// невидимое поле держало отправку письма, а `href` уходил вместе с письмом) и шторка выбора человека `x-people.pick`
+// внутри формы вывоза, договора, исполнителя (`data-form-free`: её «+ Новый …» с почтой и телефоном собирает свои поля
+// сам и шлёт JSON — неверная почта там держала форму-хозяина, а `_person[…]` уходили с ней мусором). Атрибут `form` на
+// несуществующий id отвязывает поле от формы: форма его не проверяет и не отправляет, сам он работает как прежде.
+// Новое такое место — `data-form-free` у обёртки, а не обход в проверке форм.
+function formFree() {
+    const FREE = ':is(trix-toolbar, [data-form-free]) :is(input, select, textarea, button)';
+    const detach = (el) => { if (!el.hasAttribute('form')) el.setAttribute('form', 'form-free'); };
+    const free = (root) => {
+        if (root.matches?.(FREE)) detach(root);
+        root.querySelectorAll?.(FREE).forEach(detach);
+    };
+    free(document);
+    // Trix строит панель уже после вставки редактора, шторки приходят потоками и фреймами.
+    new MutationObserver((records) => {
+        for (const r of records) for (const node of r.addedNodes) if (node.nodeType === 1) free(node);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+}
+
 // Своя проверка форм вместо пузыря Safari «Заполните это поле»: формам noValidate (при загрузке, новым из потоков и
 // фреймов, при касании), на отправке — checkValidity(). Первое неверное поле получает фокус и ошибку словами там же,
 // где её рисует сервер: в x-ui.field — .field-invalid и .field-error в конце поля, в строке .form-row — is-invalid и
@@ -518,9 +540,8 @@ function formCheck() {
         const form = event.target;
         if (!own(form) || event.submitter?.formNoValidate) return;
         for (const el of [...shown.keys()]) if (el.form === form || !el.isConnected) clear(el);
-        // Поля панели форматирования Trix (диалог «Адрес ссылки» — required) — не данные формы: открыли диалог ссылки и
-        // закрыли — пустое обязательное поле молча держало отправку письма тостом «Заполните поле» (28.10.2026).
-        const bad = [...form.elements].find((el) => el.willValidate && !el.validity.valid && !el.closest('trix-toolbar'));
+        // Чужие поля внутри формы (панель Trix, «+ Новый …») к ней не относятся вовсе — `formFree`.
+        const bad = [...form.elements].find((el) => el.willValidate && !el.validity.valid);
         if (!bad) return;
         event.preventDefault();
         event.stopImmediatePropagation();

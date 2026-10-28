@@ -56,7 +56,8 @@
     @if ($error && $variant === 'field')<p class="field-error">{{ $error }}</p>@endif
 
     <x-ui.sheet :id="$uid" :title="$only ? $newLabel : ($title ?? $label ?? 'Выбор')" class="sheet-steady people-sheet">
-        <div @class(['people-panes', 'people-panes--only' => $only]) data-people-pick-target="panes">
+        {{-- Шторка стоит внутри чужой формы (вывоз, договор): её списки и «+ Новый …» — не поля той формы (`formFree` в app.js). --}}
+        <div @class(['people-panes', 'people-panes--only' => $only]) data-people-pick-target="panes" data-form-free>
             @unless ($only)
             <div class="people-list-pane">
                 @if ($people->count() >= 8)
