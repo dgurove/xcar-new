@@ -22,8 +22,11 @@
         <div class="flex items-start gap-3">
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
             @unless ($lane)<h2 class="{{ $compact ? 'detail-section !mb-0' : 'box-title' }}">Получение автомобиля</h2>@endunless
-            @if ($handover->where)<x-ui.place class="text-sm">{{ $handover->where === 'У вас' ? 'У менеджера' : $handover->where }}</x-ui.place>@endif
-            @if ($handover->buyerPicks)
+            {{-- В дорожке «Вывоз» кто забирает и где — её собственные строки и лесенка: здесь бы это шло вторым и третьим разом
+                 (28.10.2026, «Едет на парковку / забирает менеджер / Едет на нашу парковку / Забирает сам»). --}}
+            @if ($handover->where && ! ($lane && ($handover->park || $offer->pickup())))<x-ui.place class="text-sm">{{ $handover->where === 'У вас' ? 'У менеджера' : $handover->where }}</x-ui.place>@endif
+            @if ($lane)
+            @elseif ($handover->buyerPicks)
                 <x-ui.state :tone="$handover->open ? 'open' : 'muted'">{{ $handover->open ? 'забирает менеджер, ему видно' : 'забирает менеджер' }}</x-ui.state>
             @elseif ($offer->pickup())
                 <x-ui.state tone="muted">{{ $offer->pickup()->carrier() ?? 'вывозит логистика' }}</x-ui.state>

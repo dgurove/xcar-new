@@ -195,7 +195,8 @@
                     @if ($takeFor)
                         <form method="post" action="/offers/{{ $n }}/exit/{{ $takeFor->id }}" class="mt-2">
                             @csrf<input type="hidden" name="for" value="manager">
-                            <x-ui.button size="sm" variant="secondary">«{{ $takeFor->label }}» за менеджера</x-ui.button>
+                            {{-- В узкой дорожке подпись переносится, а не вылезает за карточку. --}}
+                            <x-ui.button size="sm" variant="secondary" class="!h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left">«{{ $takeFor->label }}» за менеджера</x-ui.button>
                         </form>
                     @endif
                     {{-- Менеджер уже приложил, но шаг ещё не отметил — файл видно сразу. --}}
