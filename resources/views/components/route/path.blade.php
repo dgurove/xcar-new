@@ -130,10 +130,7 @@
                                     {{-- Отмена шага, которым сюда пришли (StepBack); сразу после нажатия она же — «Отменить» в тосте. --}}
                                     @if ($undo)
                                         @php $undoText = $undo['label'] ? 'Отменить «'.$undo['label'].'»' : 'Вернуть на «'.$undo['to']->name.'»'; @endphp
-                                        <form method="post" action="/offers/{{ $n }}/back" class="contents" data-step-back data-turbo-confirm="{{ $undoText }}?" data-turbo-confirm-text="Вернётся «{{ $undo['to']->name }}»" data-turbo-confirm-label="{{ $undo['label'] ? 'Отменить' : 'Вернуть' }}">
-                                            @csrf<input type="hidden" name="track" value="{{ $position->track->value }}">
-                                            <button class="menu-item w-full" role="menuitem"><x-ui.icon name="undo" class="size-4"/>{{ $undoText }}</button>
-                                        </form>
+                                        <x-ui.step-back :action="'/offers/'.$n.'/back'" :label="$undoText" :track="$position->track->value" :text="'Вернётся «'.$undo['to']->name.'»'"/>
                                     @endif
                                     @if ($extend)
                                         @foreach ([1 => 'Продлить на день', 3 => 'Продлить на 3 дня'] as $days => $extendLabel)
@@ -311,9 +308,10 @@
                                     {{-- Не ушло с нашей стороны — то же письмо ещё раз (`MailController::resend`). --}}
                                     <form method="post" action="/work/mail/messages/{{ $failedId }}/retry" class="order-first">@csrf<button class="btn btn-accent btn-s"><x-ui.icon name="send" class="size-4"/>Повторить отправку</button></form>
                                 @elseif (in_array($position->letterStatus(), ['unsent', 'bounced'], true))
-                                    <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-accent btn-s order-first"><x-ui.icon name="send" class="size-4"/>{{ $position->letterStatus() === 'bounced' ? 'Написать снова' : 'Написать поставщику' }}</a>
+                                    {{-- Письмо — окном писем, как везде (28.10.2026: ссылка уводила на отдельную страницу); ушло — в окне его ветка, закрыли — шаг перечитан. --}}
+                                    <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() === 'bounced' ? 'Написать снова' : 'Написать поставщику'" class="btn-accent btn-s order-first"/>
                                 @else
-                                    <a href="{{ $offer->vendorLetterUrl($stage) }}" class="btn btn-quiet btn-s"><x-ui.icon name="send" class="size-4"/>{{ $position->letterStatus() ? 'Написать ещё' : 'Письмо вендору' }}</a>
+                                    <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() ? 'Написать ещё' : 'Письмо вендору'" class="btn-s"/>
                                 @endif
                             @endif
                             {{-- Поставщик отвечает списком (Каркаде): отметить ответ по всем его сделкам разом. --}}

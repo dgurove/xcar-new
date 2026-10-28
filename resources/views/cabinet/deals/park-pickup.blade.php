@@ -48,11 +48,8 @@
             <div class="pass-qr mx-auto max-w-64">{!! \App\Park\PassQr::svg($pass) !!}</div>
             <div class="nums pb-4 text-center text-sm tracking-[.2em] text-ink-muted">{{ trim(chunk_split($pass->code, 5, ' ')) }}</div>
         </div>
-        <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $url }}" data-copy-title-value="Пропуск {{ $deal->offer->titleWithYear() }}" data-copy-done-value="Ссылка на пропуск в буфере">
-            <textarea hidden data-copy-target="message">{{ 'Пропуск на получение '.$deal->offer->titleWithYear()."\n".($vehicle->yard ? 'Парковка «'.$vehicle->yard->name.'», '.$vehicle->yard->fullAddress()."\n" : '').'Покажите QR на воротах:' }}</textarea>
-            <button type="button" class="act" data-action="copy#share" data-copy-target="share"><span class="btn btn-accent btn-round"><x-ui.icon name="share"/></span>Отправить</button>
-            <button type="button" class="act" data-action="copy#copy"><span class="btn btn-quiet btn-round" data-copy-fallback><x-ui.icon name="copy"/></span>Скопировать</button>
-        </div>
+        @php $passText = 'Пропуск на получение '.$deal->offer->titleWithYear()."\n".($vehicle->yard ? 'Парковка «'.$vehicle->yard->name.'», '.$vehicle->yard->fullAddress()."\n" : '').'Покажите QR на воротах:'; @endphp
+        <x-ui.share-link :url="$url" :title="'Пропуск '.$deal->offer->titleWithYear()" done="Ссылка на пропуск в буфере" :text="$passText"/>
     @endif
 </section>
 @if ($deal->isActive() && ! $pass?->used_at)

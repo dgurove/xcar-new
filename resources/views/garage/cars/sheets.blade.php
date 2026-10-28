@@ -132,14 +132,8 @@
 @if ($staff && $unpaid)
     <div {!! $wrap('paid') !!}>
         <x-ui.sheet id="paid" :title="$current->isOwed() ? 'Выплатили менеджеру' : 'Деньги пришли'">
-            <form method="post" action="/garage/cars/{{ $n }}/payments" class="flex flex-col gap-3">
-                @csrf
-                <div class="fields">
-                    <x-ui.field name="amount" label="Сколько, ₽" :value="$sum($current->remaining())" data-digits-decimals-value="2"/>
-                    <x-ui.field name="paid_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
-                </div>
-                <x-ui.sheet-foot type="submit" variant="primary">Записать</x-ui.sheet-foot>
-            </form>
+            {{-- Та же форма, что «Деньги пришли» у счёта и в шаге сделки (28.10.2026): откуда, номер и скан платёжки. --}}
+            <x-billing.pay-form :invoice="$current" :action="'/garage/cars/'.$n.'/payments'" sheet/>
         </x-ui.sheet>
     </div>
 @endif

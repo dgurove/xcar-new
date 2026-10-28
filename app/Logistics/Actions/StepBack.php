@@ -36,6 +36,17 @@ final class StepBack
 {
     public function __construct(private AssignExecutor $assign, private SetCarPlace $place, private RouteStepBack $routeBack) {}
 
+    /** Подпись отмены шага словами — одна на дорожку CRM и карточку задачи (28.10.2026: `match` жил в двух видах). */
+    public static function label(?string $step): ?string
+    {
+        return match ($step) {
+            'logist' => 'Снять логиста',
+            'executor' => 'Снять исполнителя',
+            null => null,
+            default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$step].'»',
+        };
+    }
+
     /** Последний сделанный шаг, что можно отменить (ключ `TransportEvent::STEPS`), — одно место на вид и действие. */
     public static function last(Transport $t): ?string
     {

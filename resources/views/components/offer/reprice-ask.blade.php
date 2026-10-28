@@ -11,21 +11,9 @@
     $ask = $ask?->alive() ? $ask : null;
 @endphp
 @if ($ask)
-    <div {{ $attributes->class('counter-card') }}>
-        <div class="text-sm text-accent-text">{{ $ask->shownAs() === 'reward' ? 'Вознаграждение уменьшится' : 'Новая цена от поставщика' }}</div>
-        <div class="nums mt-1 text-[32px] font-bold leading-tight">{{ \App\Support\Money::rub((int) $ask->shown_to) }}</div>
-        <div class="nums mt-1 text-sm text-ink-muted">{{ mb_strtolower($ask->shownLabel()) }} {{ $ask->shownAs() === 'reward' ? 'было' : 'была' }} {{ \App\Support\Money::rub((int) $ask->shown_from) }}</div>
-        <p class="mt-2 text-sm">Согласны? Ответьте до <span class="nums">{{ $ask->due_at->setTimezone('Europe/Moscow')->translatedFormat('j M, H:i') }}</span></p>
-        <div class="mt-4 flex flex-col gap-2">
-            <form method="post" action="/reprice-asks/{{ $ask->id }}" data-turbo-confirm="Согласиться на новую цену?" data-turbo-confirm-text="{{ $ask->deal_id ? 'Счёт и договор обновятся' : 'Ваше подтверждение останется' }}" data-turbo-confirm-label="Согласен">
-                @csrf<input type="hidden" name="agree" value="1">
-                <button type="submit" class="btn btn-accent w-full">Согласен</button>
-            </form>
-            <form method="post" action="/reprice-asks/{{ $ask->id }}" data-turbo-confirm="Отказаться?" data-turbo-confirm-text="{{ $ask->declineMeans() }}" data-turbo-confirm-label="Отказываюсь">
-                @csrf<input type="hidden" name="agree" value="0">
-                <button type="submit" class="btn btn-quiet w-full text-danger">Отказываюсь</button>
-            </form>
-        </div>
-        @error('reprice')<p class="mt-2 text-sm text-danger">{{ $message }}</p>@enderror
-    </div>
+    <x-offer.answer-card {{ $attributes }} :caption="$ask->shownAs() === 'reward' ? 'Вознаграждение уменьшится' : 'Новая цена от поставщика'"
+        :sum="$ask->shown_to" :sub="mb_strtolower($ask->shownLabel()).' '.($ask->shownAs() === 'reward' ? 'было' : 'была').' '.\App\Support\Money::rub((int) $ask->shown_from)"
+        :due="$ask->due_at" :action="'/reprice-asks/'.$ask->id" decline="Отказываюсь"
+        agree-ask="Согласиться на новую цену?" :agree-text="$ask->deal_id ? 'Счёт и договор обновятся' : 'Ваше подтверждение останется'"
+        decline-ask="Отказаться?" :decline-text="$ask->declineMeans()" error="reprice"/>
 @endif

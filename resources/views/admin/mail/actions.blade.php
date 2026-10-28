@@ -1,2 +1,3 @@
 {{-- Кнопка заголовка почты «Написать»; на телефоне — кружком со значком, разделы «Работы» рядом не режутся. На «Из писем» писать нечего: у экрана одно дело — заводить. --}}
-@unless ($forced)<a href="{{ $base }}/new" class="btn btn-s btn-accent shrink-0 rounded-full" aria-label="Написать"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></a>@endunless
+{{-- Новое письмо — окном писем, как ответ (28.10.2026): отдельной страницы редактора нет. --}}
+@unless ($forced)<button type="button" class="btn btn-s btn-accent shrink-0 rounded-full" aria-label="Написать" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $base }}/new"><x-ui.icon name="edit" class="size-4"/><span class="hidden sm:inline">Написать</span></button>@endunless

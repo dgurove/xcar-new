@@ -15,12 +15,8 @@
                     <span class="block">{{ $ask->user->shortName() }} — {{ $ask->deal_id ? 'сделка' : 'подтверждение' }}, закупочная <span class="nums">{{ \App\Support\Money::nums($ask->from_price) }} → {{ \App\Support\Money::rub($ask->to_price) }}</span></span>
                     <span class="block text-sm {{ $ask->late() ? 'text-danger' : 'text-ink-muted' }}">{{ $ask->late() ? 'не ответил, срок вышел' : 'ждём ответа' }} <span class="nums">{{ $ask->due_at->setTimezone('Europe/Moscow')->translatedFormat('j M, H:i') }}</span></span>
                 </span>
-                <form method="post" action="/offers/{{ $offer->number }}/reprice-asks/{{ $ask->id }}" class="contents" data-turbo-confirm="За менеджера: согласен на {{ \App\Support\Money::rub($ask->to_price) }}?" data-turbo-confirm-label="Согласен">
-                    @csrf<input type="hidden" name="agree" value="1"><button type="submit" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5">Согласен</button>
-                </form>
-                <form method="post" action="/offers/{{ $offer->number }}/reprice-asks/{{ $ask->id }}" class="contents" data-turbo-confirm="За менеджера: отказался?" data-turbo-confirm-text="{{ $ask->declineMeans() }}" data-turbo-confirm-label="Отказался">
-                    @csrf<input type="hidden" name="agree" value="0"><button type="submit" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5 text-danger">Отказался</button>
-                </form>
+                <x-offer.answer-for :action="'/offers/'.$offer->number.'/reprice-asks/'.$ask->id" :agree-ask="'За менеджера: согласен на '.\App\Support\Money::rub($ask->to_price).'?'"
+                    decline-ask="За менеджера: отказался?" :decline-text="$ask->declineMeans()"/>
             </div>
         @endforeach
     </div>

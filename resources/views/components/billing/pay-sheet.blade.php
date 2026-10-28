@@ -66,7 +66,7 @@
                     @php [$state] = $current->stateLine(); @endphp
                     <div>
                         <div class="list-cap">Ссылка на оплату, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</div>
-                        <x-ui.copy-link :url="$current->url()" :title="'Оплата по счёту '.$first->label()" :message="$current->message()" :rows="5"/>
+                        <x-ui.share-link :url="$current->url()" :title="'Оплата по счёту '.$first->label()" :text="$current->message()" editable :rows="5" show-url/>
                     </div>
                 @else
                     <x-ui.sheet-foot>Получить ссылку</x-ui.sheet-foot>

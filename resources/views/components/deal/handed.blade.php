@@ -12,11 +12,7 @@
                     <div class="row"><span class="shrink-0 text-ink-muted">ТС</span><span class="min-w-0 flex-1 truncate text-right">{{ $h['title'] }}</span></div>
                     <div class="row"><span class="shrink-0 text-ink-muted">Ссылка</span><span class="min-w-0 flex-1 truncate text-right">{{ preg_replace('#^https?://#', '', $h['url']) }}</span></div>
                 </div>
-                <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $h['url'] }}" data-copy-title-value="{{ $h['title'] }}" data-copy-done-value="Ссылка в буфере">
-                    <textarea hidden data-copy-target="message">{{ $h['text'] }}</textarea>
-                    <button type="button" class="act" data-action="copy#share" data-copy-target="share"><span class="btn btn-accent btn-round"><x-ui.icon name="share"/></span>Отправить</button>
-                    <button type="button" class="act" data-action="copy#copy"><span class="btn btn-quiet btn-round" data-copy-fallback><x-ui.icon name="copy"/></span>Скопировать</button>
-                </div>
+                <x-ui.share-link :url="$h['url']" :title="$h['title']" done="Ссылка в буфере" :text="$h['text']"/>
             </div>
         </x-ui.sheet>
     </div>

@@ -21,21 +21,13 @@
 <div data-controller="reveal">
     @if ($cap)<div class="list-cap">Кто платит</div>@endif
     <div class="list max-h-72 overflow-y-auto">
-        <label class="row row-check">
-            <x-ui.avatar :user="$me" :size="36"/>
-            <span class="min-w-0 flex-1"><span class="block truncate">Я сам</span>@if ($me->email)<span class="row-sub">{{ $me->email }}</span>@endif</span>
-            <span class="check"><input type="radio" name="payer" value="self" @checked($payer === 'self') data-action="{{ $go }}"></span>
-        </label>
+        <x-people.option :person="['id' => 'self', 'name' => 'Я сам'] + \App\Support\People::row($me, $me->email)" name="payer" :checked="$payer === 'self'" :action="$go" />
         @foreach ($buyers as $b)
-            <label class="row row-check">
-                <x-ui.avatar :user="$b" :size="36"/>
-                <span class="min-w-0 flex-1"><span class="block truncate">{{ $b->name }}</span>@if ($b->email)<span class="row-sub">{{ $b->email }}</span>@endif</span>
-                <span class="check"><input type="radio" name="payer" value="{{ $b->id }}" @checked($picked($b)) data-action="{{ $go }}"></span>
-            </label>
+            <x-people.option :person="\App\Support\People::row($b, $b->email)" name="payer" :checked="$picked($b)" :action="$go"/>
         @endforeach
         <label class="row row-check">
-            <x-ui.row-icon name="plus" size="s"/>
-            <span class="min-w-0 flex-1">Новый покупатель</span>
+            <x-ui.row-icon name="plus" size="s" tone="accent"/>
+            <span class="min-w-0 flex-1 font-medium text-accent-text">Новый покупатель</span>
             <span class="check"><input type="radio" name="payer" value="other" @checked($payer === 'other') data-action="reveal#pick"></span>
         </label>
     </div>

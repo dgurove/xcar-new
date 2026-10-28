@@ -69,14 +69,21 @@ final class AddPerson
         return [$user, self::credentials($user, $password)];
     }
 
-    /** Данные шторки входа: кому, где входить, телефон, пароль. */
+    /**
+     * Данные шторки входа: кому, где входить, телефон, пароль и готовое сообщение (`text`, без адреса — его кладёт
+     * `copy_controller` следом). Одна дверь для шторки `x-users.credentials` и панели «Новый …» `x-people.pick` (28.10.2026:
+     * текст жил в Blade и JS двумя копиями).
+     */
     public static function credentials(User $user, string $password): array
     {
+        $phone = Phone::format($user->phone);
+
         return [
             'name' => $user->name,
             'url' => self::loginUrl($user),
-            'phone' => Phone::format($user->phone),
+            'phone' => $phone,
             'password' => $password,
+            'text' => "Вам открыт доступ к XCar\nТелефон: {$phone}\nПароль: {$password}\nВход:",
         ];
     }
 

@@ -5,9 +5,9 @@
 <turbo-stream action="append" targets="body"><template>
     <div id="as-sheet" data-controller="sheet" class="contents" data-turbo-temporary>
         <x-ui.sheet id="as-dialog" :title="'Вход как '.$user->shortName()" open>
-            <x-ui.copy-link :url="$url" :title="'Вход как '.$user->shortName()">
-                <p class="text-sm text-ink-muted">Откройте в окне инкогнито, иначе здесь вы выйдете</p>
-            </x-ui.copy-link>
+            <x-ui.share-link :url="$url" :title="'Вход как '.$user->shortName()" show-url>
+                <x-slot:below><p class="text-sm text-ink-muted">Откройте в окне инкогнито, иначе здесь вы выйдете</p></x-slot:below>
+            </x-ui.share-link>
         </x-ui.sheet>
     </div>
 </template></turbo-stream>

@@ -16,7 +16,11 @@ export default class extends Controller {
     static values = { kind: String, url: String, name: String, deal: Number, owner: Number, autosubmit: Boolean, placeholder: String, only: Boolean, append: String, reload: Boolean };
 
     connect() {
-        if (this.hasShareBtnTarget && !navigator.share) this.shareBtnTarget.hidden = true;
+        // Системного листа нет (ПК) — «Отправить» прячется, «Скопировать» становится главной, как в `x-ui.share-link`.
+        if (this.hasShareBtnTarget && !navigator.share) {
+            this.shareBtnTarget.hidden = true;
+            if (this.hasCopyBtnTarget) this.copyBtnTarget.classList.replace('btn-quiet', 'btn-accent');
+        }
         this.dialog = this.element.querySelector('dialog');
         this.onClose = () => this.reset();
         this.dialog?.addEventListener('close', this.onClose);
@@ -163,7 +167,8 @@ export default class extends Controller {
         }
         if (!data.credentials) { this.finish(); window.toast?.(`${data.name} в списке`); return; }
         const c = data.credentials;
-        this.shareText = `Вам открыт доступ к XCar\nТелефон: ${c.phone}\nПароль: ${c.password}\nВход: ${c.url}`;
+        // Текст — с сервера (`AddPerson::credentials`), одной копией с шторкой `x-users.credentials`.
+        this.shareText = `${c.text}\n${c.url}`;
         this.doneTitleTarget.textContent = c.name;
         this.doneSubTarget.textContent = 'Отправьте данные для входа';
         this.rows([['Телефон', c.phone], ['Пароль', c.password], ['Вход', c.url.replace(/^https?:\/\//, '')]]);

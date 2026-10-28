@@ -41,15 +41,14 @@
     <div data-controller="sheet" class="contents">
         @if ($compact)
             @php $other = abs($link->amount - ($i->remaining() - $i->claimed())) >= 0.01; @endphp
-            <div class="row pay-link" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по счёту {{ $i->label() }}">
-                <textarea hidden data-copy-target="message">{{ $text }}</textarea>
-                <button type="button" class="min-w-0 flex-1 text-left" data-action="sheet#open">
-                    <span class="block">Ссылка на оплату@if ($other) <span class="nums">на {{ Money::rub($link->amount) }}</span>@endif</span>
-                    <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $pays }}, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</span>
-                </button>
-                <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="copy#copy" aria-label="Скопировать ссылку"><x-ui.icon name="copy" class="size-5"/></button>
-                <button type="button" class="btn btn-accent btn-round shrink-0" data-action="copy#share" data-copy-target="share" aria-label="Отправить ссылку"><x-ui.icon name="share" class="size-5"/></button>
-            </div>
+            <x-ui.share-link variant="row" :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :text="$text" class="pay-link">
+                <x-slot:lead>
+                    <button type="button" class="min-w-[9rem] flex-1 text-left" data-action="sheet#open">
+                        <span class="block">Ссылка на оплату@if ($other) <span class="nums">на {{ Money::rub($link->amount) }}</span>@endif</span>
+                        <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $pays }}, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</span>
+                    </button>
+                </x-slot:lead>
+            </x-ui.share-link>
         @else
         {{-- Сумма — только если ссылка не на остаток счёта: та же сумма стоит строкой выше, у счёта. --}}
         @php $other = abs($link->amount - ($i->remaining() - $i->claimed())) >= 0.01; @endphp
@@ -62,12 +61,7 @@
             @if ($other)<span class="nums shrink-0 text-urgent">{{ Money::rub($link->amount) }}</span>@endif
         </button>
         @if ($live)
-        <div class="row pay-url" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по счёту {{ $i->label() }}">
-            <textarea hidden data-copy-target="message">{{ $text }}</textarea>
-            <button type="button" class="pay-url-text" data-action="copy#copy" title="Скопировать">{{ $link->shortUrl() }}</button>
-            <button type="button" class="btn btn-s btn-quiet" data-action="copy#copy"><x-ui.icon name="copy" class="size-4"/>Скопировать</button>
-            <button type="button" class="btn btn-s btn-accent" data-action="copy#share" data-copy-target="share"><x-ui.icon name="share" class="size-4"/>Отправить</button>
-        </div>
+        <x-ui.share-link variant="row" :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :text="$text" label="Ссылка на оплату" :sub="$link->shortUrl()"/>
         @endif
         @endif
         <x-ui.sheet :id="'link-'.$link->id" title="Оплата по ссылке" :open="session('open-link') === $link->id">
@@ -77,7 +71,7 @@
                     <span class="text-ink-muted">{{ $pays }}@if ($link->payer_email), чек на {{ $link->payer_email }}@endif</span>
                 </div>
                 <x-billing.pay-qr :link="$link" :main="false"/>
-                <x-ui.copy-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :message="$text" :rows="5" :show-url="false"/>
+                <x-ui.share-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :text="$text" editable :rows="5"/>
                 <x-billing.link-attempts :link="$link"/>
                 @if ($live)
                 <details class="list">

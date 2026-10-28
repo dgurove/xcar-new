@@ -48,7 +48,7 @@
 
         @if ($invite->isActive())
             {{-- Готовый текст для мессенджера: одноразовость и срок в нём уже сказаны. --}}
-            <x-ui.copy-link :url="$invite->url()" title="Приглашение в xcar" :message="$invite->message()" class="mt-5"/>
+            <x-ui.share-link :url="$invite->url()" title="Приглашение в xcar" :text="$invite->message()" editable show-url class="mt-5"/>
         @elseif ($invite->isUsedUp())
             <p class="mt-5 text-ink-muted">Ссылка сработала</p>
         @elseif ($invite->isExpired())

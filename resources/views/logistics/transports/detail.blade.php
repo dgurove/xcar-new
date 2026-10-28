@@ -79,7 +79,7 @@
     // Отменить шаг — кнопкой в самом шаге рядом с «Перенести» (22.10.2026, владелец: внизу отдельной строкой её не находили);
     // снять логиста или исполнителя — по-прежнему строкой внизу, у них своего шага в лесенке нет.
     $undoStep = ['called' => 'call', 'docs_sent' => 'docs', 'docs_received' => 'docs', 'picked' => 'picked', 'delivered' => 'delivered'][$undo] ?? null;
-    $undoLabel = match ($undo) { 'logist' => 'Снять логиста', 'executor' => 'Снять исполнителя', null => null, default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$undo].'»' };
+    $undoLabel = \App\Logistics\Actions\StepBack::label($undo);
 @endphp
 <x-ui.detail>
     {{-- Лента сверху — кадры машины, что видит этот человек (`Logistics\FileAccess`); глазами ими правят в блоке «Фото». --}}
@@ -243,9 +243,7 @@
                             <div class="mt-2 flex flex-wrap gap-2">
                                 @if ($move)<button type="button" class="btn btn-s btn-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="call-{{ $id }}:open"><x-ui.icon name="calendar" class="size-4"/>Перенести</button>@endif
                                 @if ($back)
-                                    <form method="post" action="/transports/{{ $id }}/back" class="contents" data-step-back="transport" data-turbo-confirm="{{ $undoLabel }}?" data-turbo-confirm-label="Отменить">
-                                        @csrf<button class="btn btn-s btn-quiet"><x-ui.icon name="undo" class="size-4"/>Отменить</button>
-                                    </form>
+                                    <x-ui.step-back :action="'/transports/'.$id.'/back'" :label="$undoLabel" kind="transport" variant="inline"/>
                                 @endif
                             </div>
                         @endif
@@ -309,9 +307,7 @@
         @if ($undoRow || $cancels)
             <div class="list mt-5">
                 @if ($undoRow)
-                    <form method="post" action="/transports/{{ $id }}/back" class="contents" data-step-back="transport" data-turbo-confirm="{{ $undoLabel }}?" data-turbo-confirm-label="{{ str_starts_with($undoLabel, 'Снять') ? 'Снять' : 'Отменить' }}">
-                        @csrf<button class="row w-full text-left">{{ $undoLabel }}</button>
-                    </form>
+                    <x-ui.step-back :action="'/transports/'.$id.'/back'" :label="$undoLabel" kind="transport" variant="row"/>
                 @endif
                 @if ($cancels)
                     <button type="button" class="row row-danger w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="cancel-{{ $id }}:open">{{ $order ? 'Отменить заявку' : 'Отменить вывоз' }}</button>
@@ -371,12 +367,9 @@
     @if ($open && $t->tripUrl() && ($admin || $mine) && ! $t->isExecutedBy($me) && ! $t->isSelfPickup())
         <div data-controller="sheet" data-action="trip-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'trip-'.$id" :title="'Исполнителю '.$t->executor?->shortName()">
-                <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $t->tripUrl() }}" data-copy-title-value="Вывоз {{ $t->title() }}" data-copy-done-value="Задача и ссылка в буфере">
-                    <textarea hidden data-copy-target="message">{{ \App\Logistics\TripText::for($t) }}</textarea>
-                    <button type="button" class="act" data-action="copy#share" data-copy-target="share"><span class="btn btn-accent btn-round"><x-ui.icon name="share"/></span>Отправить</button>
-                    <button type="button" class="act" data-action="copy#copy"><span class="btn btn-quiet btn-round" data-copy-fallback><x-ui.icon name="copy"/></span>Скопировать</button>
+                <x-ui.share-link :url="$t->tripUrl()" :title="'Вывоз '.$t->title()" done="Задача и ссылка в буфере" :text="\App\Logistics\TripText::for($t)">
                     <a href="{{ $t->tripUrl() }}" target="_blank" rel="noopener" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="link"/></span>Открыть</a>
-                </div>
+                </x-ui.share-link>
             </x-ui.sheet>
         </div>
     @endif

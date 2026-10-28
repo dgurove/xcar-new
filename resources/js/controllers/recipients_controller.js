@@ -60,11 +60,13 @@ export default class extends Controller {
         this.list.forEach((r, i) => {
             const chip = document.createElement('span');
             chip.className = 'recipient' + (EMAIL.test(r.email) ? '' : ' is-bad');
-            chip.title = r.email;
+            // Тег — адресом (28.10.2026, владелец: «implementation» вместо implementation@alfastrah.ru): имя из заголовков писем
+            // бывает обрывком адреса, а письмо уходит на адрес — его и видно; имя — подсказкой.
+            chip.title = r.name ? `${r.name} <${r.email}>` : r.email;
             const label = document.createElement('button');
             label.type = 'button';
             label.className = 'recipient-label';
-            label.textContent = r.name || r.email;
+            label.textContent = r.email;
             label.addEventListener('click', () => this.edit(i));
             const x = document.createElement('button');
             x.type = 'button';

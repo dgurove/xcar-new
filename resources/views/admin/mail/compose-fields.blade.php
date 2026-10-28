@@ -1,5 +1,4 @@
-{{-- Поля письма — общие для страницы редактора и редактора в окне писем (compose-frame). --}}
-@php $inFrame = $inFrame ?? false; @endphp
+{{-- Поля письма редактора в окне писем (compose-frame) — письмо пишется только окном (28.10.2026). --}}
 @csrf
 @if ($parent)<input type="hidden" name="parent" value="{{ $parent->id }}">@endif
 @if ($thread)<input type="hidden" name="thread" value="{{ $thread->id }}">@endif
@@ -7,7 +6,7 @@
 @if ($vehicle ?? null)<input type="hidden" name="vehicle" value="{{ $vehicle->id }}">@endif
 @if ($back ?? null)<input type="hidden" name="back" value="{{ $back }}">@endif
 @if ($invoice ?? null)<input type="hidden" name="invoice" value="{{ $invoice->id }}">@endif
-@if ($inFrame)<input type="hidden" name="retry" value="{{ request()->getRequestUri() }}">@endif
+<input type="hidden" name="retry" value="{{ request()->getRequestUri() }}">
 @if ($then ?? null)<input type="hidden" name="then" value="{{ $then }}">@endif
 {{-- Заявка поставщику: сделки её файла — отправили письмо, они идут дальше «Заявка отправлена». --}}
 @if ($requestDeals ?? null)<input type="hidden" name="request_deals" value="{{ old('request_deals', $requestDeals) }}">@endif
@@ -16,8 +15,8 @@
     $names = $parent ? collect([mb_strtolower((string) $parent->from_email) => $parent->from_name])
         ->merge($parent->addresses->mapWithKeys(fn ($a) => [mb_strtolower($a->email) => $a->name]))->filter()->all() : [];
     $ccOpen = trim((string) old('cc', $defaults['cc'] ?? '')) !== '';
-    $cancel = $inFrame && $parent && str_starts_with((string) ($frame ?? ''), 'reply') ? ["{$base}/{$thread->id}/reply/{$parent->id}?cancel=1", $frame]
-        : ($inFrame && $thread ? ["{$base}/{$thread->id}/window", 'letters-frame'] : null);
+    $cancel = $parent && str_starts_with((string) ($frame ?? ''), 'reply') ? ["{$base}/{$thread->id}/reply/{$parent->id}?cancel=1", $frame]
+        : ($thread ? ["{$base}/{$thread->id}/window", 'letters-frame'] : null);
 @endphp
 {{-- Одна плашка, как в Gmail и Apple Mail (28.10.2026, владелец: «как нормальные люди бы этот редактор сделали»):
      шапка строками «От / Кому / Копия / Тема» с подписью слева, поле письма без рамки, вложения чипами, внизу «Отправить»,
@@ -47,7 +46,7 @@
             <span class="compose-label">Шаблон</span>
             <div class="flex min-w-0 flex-1 gap-2 overflow-x-auto py-1">
                 @foreach ($templates as $t)
-                    <x-ui.pill :href="request()->fullUrlWithQuery(['template' => $t->id])" :current="request()->query('template') == $t->id" :data-turbo-frame="$inFrame ? 'letters-frame' : null">{{ $t->name }}</x-ui.pill>
+                    <x-ui.pill :href="request()->fullUrlWithQuery(['template' => $t->id])" :current="request()->query('template') == $t->id" :data-turbo-frame="'letters-frame'">{{ $t->name }}</x-ui.pill>
                 @endforeach
             </div>
         </div>
@@ -90,6 +89,7 @@
         <button type="button" class="compose-tool" data-action="photos#pick" aria-label="Приложить файл" title="Приложить файл"><x-ui.icon name="clip" class="size-5"/></button>
         <button type="button" class="compose-tool compose-format" aria-label="Форматирование" title="Форматирование"
                 onclick="this.closest('.compose').toggleAttribute('data-format'); this.classList.toggle('is-on')">Aa</button>
-        @if ($cancel)<a href="{{ $cancel[0] }}" class="compose-cancel" data-turbo-frame="{{ $cancel[1] }}">Отмена</a>@endif
+        {{-- Новое письмо без ветки — «Отмена» закрывает окно (`letters:close`). --}}
+        @if ($cancel)<a href="{{ $cancel[0] }}" class="compose-cancel" data-turbo-frame="{{ $cancel[1] }}">Отмена</a>@else<button type="button" class="compose-cancel" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:close">Отмена</button>@endif
     </div>
 </div>

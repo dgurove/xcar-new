@@ -40,9 +40,9 @@
             </x-ui.contact>
             <x-ui.sheet id="password-link" title="Ссылка для нового пароля" :open="$link !== null">
                 @if ($link)
-                    <x-ui.copy-link :url="$link['url']" title="Новый пароль на xcar">
-                        <p class="flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">{{ $buyer->shortName() }}, логин <span class="nums font-medium text-ink">{{ $buyer->loginLabel() }}</span></p>
-                    </x-ui.copy-link>
+                    <x-ui.share-link :url="$link['url']" title="Новый пароль на xcar" show-url>
+                        <x-slot:below><p class="flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">{{ $buyer->shortName() }}, логин <span class="nums font-medium text-ink">{{ $buyer->loginLabel() }}</span></p></x-slot:below>
+                    </x-ui.share-link>
                 @endif
             </x-ui.sheet>
         </div>

@@ -26,7 +26,8 @@
         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         <x-ui.sheet id="invoice-actions" :title="$i->label()">
             <div class="flex flex-col gap-2">
-                @if ($mailUrl ?? null)<x-ui.button :href="$mailUrl" block><x-ui.icon name="send" class="size-4"/> {{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</x-ui.button>@endif
+                {{-- Письмо — окном писем (28.10.2026, одна дверь): шторка «Действия» закрывается, окно открывается. --}}
+                @if ($mailUrl ?? null)<button type="button" class="btn btn-accent btn-block" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="letters:open" data-emit-url-param="{{ $mailUrl }}"><x-ui.icon name="send" class="size-4"/> {{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</button>@endif
                 {{-- Документы — в шторке документов поверх окна; акт хранения — PDF, если выставлен закрытием месяца, иначе страница. --}}
                 @if ($file)<x-ui.doc :doc="['url' => $base.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="btn btn-quiet btn-block"><x-ui.icon name="file" class="size-4"/> PDF</x-ui.doc>@endif
                 @if ($i->kind === \App\Billing\ChargeKind::Storage)<x-ui.doc :doc="['url' => $base.'/act', 'type' => $i->hasMedia('act') ? 'pdf' : 'html', 'name' => $i->isRegistry() ? 'Отчёт-акт' : 'Акт хранения']" class="btn btn-ghost btn-block"/>@endif
@@ -148,4 +149,5 @@
             <x-ui.sheet id="pay" :title="$i->isOwed() ? ($fee ? 'Выплата' : 'Перечисление') : 'Оплата'"><x-billing.pay-form :invoice="$i" :action="$base.'/payments'" :sources="$sources" sheet/></x-ui.sheet>
         </div>
     @endif
+    @if ($mailUrl ?? null)<x-mail.window/>@endif
 </x-ui.shell>

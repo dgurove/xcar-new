@@ -44,14 +44,7 @@
             </div>
         @endforeach
         @if ($url && ($none || ! $user->telegram_chat_id))
-            {{-- Подпись своей строкой, кнопки под ней справа: в колонке 18rem втроём не помещались (28.10.2026). --}}
-            <div class="row flex-wrap gap-y-2" data-controller="copy" data-copy-text-value="{{ $url }}" data-copy-title-value="Уведомления XCar" data-copy-done-value="Инструкция в буфере">
-                <textarea hidden data-copy-target="message">{{ $text }}</textarea>
-                <span class="min-w-0 basis-full">Инструкция для подключения</span>
-                <span class="flex-1"></span>
-                <button type="button" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5" data-action="copy#copy">Скопировать</button>
-                <button type="button" class="btn btn-s btn-accent shrink-0 !h-8 rounded-full !px-3.5" data-action="copy#share" data-copy-target="share">Отправить</button>
-            </div>
+            <x-ui.share-link variant="row" :url="$url" title="Уведомления XCar" done="Инструкция в буфере" :text="$text" icon="bell" label="Инструкция для подключения"/>
         @endif
     </div>
 </section>

@@ -73,12 +73,9 @@
         </div>
 
         @if ($live)
-            <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $link->url() }}" data-copy-title-value="Оплата по ссылке">
-                <textarea hidden data-copy-target="message">{{ $link->message() }}</textarea>
-                <button type="button" class="act" data-action="copy#share" data-copy-target="share"><span class="btn btn-accent btn-round"><x-ui.icon name="share"/></span>Отправить</button>
-                <button type="button" class="act" data-action="copy#copy"><span class="btn btn-quiet btn-round" data-copy-fallback><x-ui.icon name="copy"/></span>Скопировать</button>
+            <x-ui.share-link :url="$link->url()" title="Оплата по ссылке" :text="$link->message()">
                 <button type="button" class="act" {!! $open('qr') !!}><span class="btn btn-quiet btn-round"><x-ui.icon name="qr"/></span>QR-код</button>
-            </div>
+            </x-ui.share-link>
         @elseif ($refund)
             <div class="acts acts-hero">
                 <form method="post" action="/work/money/acquiring/{{ $refund->id }}/refund" class="contents" data-turbo-confirm="Вернуть {{ Money::exact($refund->refundable()) }} плательщику? Оплата по счёту отменится">

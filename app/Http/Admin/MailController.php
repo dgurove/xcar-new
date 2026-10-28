@@ -254,7 +254,9 @@ class MailController
             'mailbox' => $mailbox,
             'counts' => array_filter($counts),
             // ?window=id — ссылка на ветку: список с открытым окном этой ветки.
-            'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window' : null,
+            'window' => $request->query('window') ? "{$this->base}/".(int) $request->query('window').'/window'
+                // ?compose= — редактор письма (`inWindow`): только свой адрес почты, не чужой хост.
+                : (str_starts_with((string) $request->query('compose'), $this->base.'/') ? (string) $request->query('compose') : null),
         ]);
     }
 
@@ -473,6 +475,11 @@ class MailController
 
     public function compose(Request $request, Composer $composer, StoreOutboxFile $outbox, ActPdf $act, StorageActPdf $actPdf)
     {
+        // Письмо пишется только в окне (28.10.2026, владелец: «зачем отдельной страницей, мы же делали в окне») — прямой заход
+        // по адресу (старая ссылка, Telegram) открывает почту с этим окном. Первым делом: без ящика окно скажет само.
+        if (! $request->header('Turbo-Frame')) {
+            return $this->inWindow($request);
+        }
         // Ящики, что только принимают (offer@), не пишут: с них не начинают и не отвечают.
         $accounts = Account::where('scope', $this->scope)->sending()->orderBy('title')->get();
         $account = $accounts->firstWhere('slug', $request->query('account')) ?? $accounts->first();
@@ -605,12 +612,17 @@ class MailController
             $defaults['files'][] = $outbox->put($supplierRequest->filename(), $supplierRequest->xlsx());
         }
 
-        // В окне писем (Turbo-Frame) — тот же редактор во фрейме, без оболочки.
-        return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back') ?? ($invoice ? '/money/invoices/'.$invoice->id : null), 'invoice' => $invoice,
+        return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'back' => $request->query('back') ?? ($invoice ? '/money/invoices/'.$invoice->id : null), 'invoice' => $invoice,
             'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base,
             // Черновик после «Принять» (BidController::accepted): отправили — окно закрывается, человек идёт дальше по списку.
             'then' => $request->query('then') === 'close' ? 'close' : null,
             'requestDeals' => $supplierRequest?->deals->pluck('id')->implode(',')]);
+    }
+
+    /** Редактор без окна (прямой адрес) — почта с этим редактором в окне писем (`?compose=`, `admin/mail/index`). */
+    private function inWindow(Request $request)
+    {
+        return redirect($this->base.'?compose='.urlencode($request->getRequestUri()));
     }
 
     public function reply(Request $request, Thread $thread, Message $message, Composer $composer)
@@ -631,7 +643,11 @@ class MailController
         // умолчанию — тот, что отвечает за ящик письма.
         $accounts = Account::where('scope', $this->scope)->sending()->orderBy('title')->get();
 
-        return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $sender, 'accounts' => $accounts->contains('id', $sender->id) ? $accounts : collect([$sender]), 'thread' => $thread, 'parent' => $message,
+        if (! $request->header('Turbo-Frame')) {
+            return $this->inWindow($request);
+        }
+
+        return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $sender, 'accounts' => $accounts->contains('id', $sender->id) ? $accounts : collect([$sender]), 'thread' => $thread, 'parent' => $message,
             'defaults' => $defaults, 'mode' => $mode, 'templates' => collect(), 'offer' => $thread->offer, 'vehicle' => $thread->vehicle, 'base' => $this->base]);
     }
 

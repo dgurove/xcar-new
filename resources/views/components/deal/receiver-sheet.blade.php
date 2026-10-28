@@ -19,22 +19,14 @@
         @csrf @method('PUT')
         <div class="list max-h-72 overflow-y-auto">
             @if ($manager)
-                <label class="row row-check">
-                    <x-ui.avatar :user="$manager" :size="36"/>
-                    <span class="min-w-0 flex-1"><span class="block truncate">{{ $mine ? 'Я сам' : $manager->name }}</span>@unless ($mine)<span class="row-sub">менеджер</span>@endunless</span>
-                    <span class="check"><input type="radio" name="who" value="me" @checked($who === 'me') data-action="reveal#pick"></span>
-                </label>
+                <x-people.option :person="['id' => 'me'] + ($mine ? ['name' => 'Я сам'] : []) + \App\Support\People::row($manager, $mine ? null : 'менеджер')" name="who" :checked="$who === 'me'" action="reveal#pick"/>
             @endif
             @foreach ($buyers as $b)
-                <label class="row row-check">
-                    <x-ui.avatar :user="$b" :size="36"/>
-                    <span class="min-w-0 flex-1"><span class="block truncate">{{ $b->name }}</span>@if ($b->phone)<span class="row-sub nums">{{ \App\Support\Phone::format($b->phone) }}</span>@endif</span>
-                    <span class="check"><input type="radio" name="who" value="{{ $b->id }}" @checked($who === (string) $b->id) data-action="reveal#pick"></span>
-                </label>
+                <x-people.option :person="\App\Support\People::row($b, $b->phone ? \App\Support\Phone::format($b->phone) : null)" name="who" :checked="$who === (string) $b->id" action="reveal#pick"/>
             @endforeach
             <label class="row row-check">
-                <x-ui.row-icon name="plus" size="s"/>
-                <span class="min-w-0 flex-1">Другой человек</span>
+                <x-ui.row-icon name="plus" size="s" tone="accent"/>
+                <span class="min-w-0 flex-1 font-medium text-accent-text">Другой человек</span>
                 <span class="check"><input type="radio" name="who" value="other" @checked($who === 'other') data-action="reveal#pick"></span>
             </label>
         </div>

@@ -111,12 +111,21 @@ class SettlementController
         $invoice = $car->payoutInvoice ?? $car->invoice ?? $car->holderInvoice();
         abort_unless($invoice, 404);
         $request->merge(['amount' => Money::parse($request->input('amount'))]);
+        // Поля — общей формы «Деньги пришли» (`x-billing.pay-form`, 28.10.2026): откуда, номер и скан платёжки, заметка.
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
             'paid_at' => ['nullable', 'date', 'before_or_equal:today'],
+            'source' => ['nullable', \Illuminate\Validation\Rule::enum(PaymentSource::class)],
+            'ref' => ['exclude_unless:source,bank,acquiring', 'nullable', 'string', 'max:60'],
+            'note' => ['nullable', 'string', 'max:255'],
+            'slip' => ['exclude_unless:source,bank', 'nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic'],
         ]);
         $claim = $invoice->claims()->first();
-        $record($invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, $claim?->source ?? PaymentSource::Bank, null, null, $claim);
+        $source = isset($data['source']) ? PaymentSource::from($data['source']) : ($claim?->source ?? PaymentSource::Bank);
+        $payment = $record($invoice, $request->user(), (float) $data['amount'], isset($data['paid_at']) ? Carbon::parse($data['paid_at']) : null, $source, $data['ref'] ?? null, $data['note'] ?? null, $claim);
+        if (isset($data['slip'])) {
+            $payment->addMediaFromRequest('slip')->toMediaCollection('slip');
+        }
 
         return back()->with('toast', 'Поступило '.Money::exact($data['amount']));
     }

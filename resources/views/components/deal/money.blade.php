@@ -116,9 +116,11 @@
                 <x-billing.link-row :link="$l" :car="false" :sub="$sub">
                     @if ($l->isOpen())
                         <x-slot:acts>
-                            <span class="contents" data-controller="copy" data-copy-text-value="{{ $l->url() }}">
+                            {{-- «Скопировать» и «Отправить» тем же модулем, что везде (`x-ui.share-link`), только кнопки. --}}
+                            <span class="ml-auto flex shrink-0 items-center gap-2" data-controller="copy" data-copy-text-value="{{ $l->url() }}" data-copy-title-value="Оплата по ссылке">
                                 <textarea hidden data-copy-target="message">{{ $l->message() }}</textarea>
-                                <button type="button" class="btn btn-quiet btn-round shrink-0" data-action="copy#copy" aria-label="Скопировать"><x-ui.icon name="copy" class="size-4"/></button>
+                                <button type="button" class="btn btn-quiet btn-round !size-8 shrink-0" data-action="copy#copy" data-copy-fallback aria-label="Скопировать"><x-ui.icon name="copy" class="size-4"/></button>
+                                <button type="button" class="btn btn-s btn-accent shrink-0 !h-8 rounded-full !px-3.5" data-action="copy#share" data-copy-target="share">Отправить</button>
                             </span>
                         </x-slot:acts>
                     @endif

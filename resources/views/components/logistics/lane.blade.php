@@ -23,7 +23,7 @@
     $changeable = $open && ! $t->taken();
     $undo = $t ? \App\Logistics\Actions\StepBack::last($t) : null;
     $undo = $undo && \App\Logistics\Actions\StepBack::allowed($t, auth()->user(), $undo) ? $undo : null;
-    $undoLabel = match ($undo) { 'logist' => 'Снять логиста', 'executor' => 'Снять исполнителя', null => null, default => 'Отменить «'.\App\Logistics\TransportEvent::STEPS[$undo].'»' };
+    $undoLabel = \App\Logistics\Actions\StepBack::label($undo);
     $backdate = $open && auth()->user()->leadsLogistics();
     $events = $t ? $t->events()->count() : 0;
 @endphp
@@ -41,9 +41,7 @@
                         <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="{{ $sheet }}-backdate:open"><x-ui.icon name="check" class="size-5 text-ink-muted"/>Уже вывезли</button>
                     @endif
                     @if ($undo)
-                        <form method="post" action="/offers/{{ $offer->number }}/pickup/back" data-step-back="transport" data-turbo-confirm="{{ $undoLabel }}?" data-turbo-confirm-label="{{ str_starts_with($undoLabel, 'Снять') ? 'Снять' : 'Отменить' }}">
-                            @csrf<button class="menu-item w-full" role="menuitem" data-action="menu#close"><x-ui.icon name="undo" class="size-5 text-ink-muted"/>{{ $undoLabel }}</button>
-                        </form>
+                        <x-ui.step-back :action="'/offers/'.$offer->number.'/pickup/back'" :label="$undoLabel" kind="transport"/>
                     @endif
                     @if ($changeable)
                         <button type="button" class="menu-item w-full text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="{{ $sheet }}-drop:open"><x-ui.icon name="x" class="size-5"/>Вывоз не нужен</button>
