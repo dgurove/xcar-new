@@ -1164,6 +1164,12 @@ html.kb-open { --home-gap: 0px; }
     .sheet-valuation.sheet-tall:not(:has(.valuation.is-working)) { height: fit-content; max-height: 85dvh; border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-top: 1.25rem; }
   }
   .sheet-valuation > .valuation { @apply flex min-h-0 flex-1 flex-col; }
+  /* Шторка по содержимому (`fit-content`) с детьми `flex: 1 1 0%` — Safari на iPhone считает такого ребёнка нулём, и
+     шторка складывалась до одной шапки «‹ Оценка» (28.10.2026, владелец: «форма оценки сломалась»; Chrome считал по
+     содержимому). Пока не идёт разбор, дети — по своей высоте; во весь рост и с прокруткой — с `is-working`. */
+  .sheet-valuation:not(:has(.valuation.is-working)) > .valuation,
+  .sheet-valuation:not(:has(.valuation.is-working)) .valuation-pane,
+  .sheet-valuation:not(:has(.valuation.is-working)) .valuation-body { flex: none; }
   .valuation-pane { @apply flex min-h-0 flex-1 flex-col; }
   .valuation-pane[hidden], .valuation-work[hidden], .valuation [hidden] { display: none; }
   /* Этапы — по высоте содержимого; пока итога нет, строки текста под ними занимают остаток. */

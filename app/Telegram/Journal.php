@@ -7,6 +7,7 @@ use App\Live\Topics;
 use App\Users\User;
 use Illuminate\Container\Attributes\Scoped;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -236,7 +237,9 @@ final class Journal
     private function safely(callable $record): mixed
     {
         try {
-            return $record();
+            // Своей точкой сохранения (28.10.2026): сбой журнала внутри чужой транзакции (задача, ответ на кнопку) иначе
+            // обрывал всю транзакцию Postgres, и следующие запросы падали «current transaction is aborted».
+            return DB::transaction($record);
         } catch (Throwable $e) {
             Log::warning('Telegram: журнал не записал', ['error' => $e->getMessage()]);
 

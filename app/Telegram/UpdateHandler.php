@@ -15,15 +15,18 @@ use App\Notifications\RepriceAskNotice;
 use App\Notifications\TelegramChannel;
 use App\Notifications\YourTurnNotice;
 use App\Offers\Actions\AnswerCounter;
+use App\Offers\Actions\ApplyValuations;
 use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\DealState;
+use App\Offers\ValuationText;
 use App\Support\Plural;
 use App\Support\Surface;
 use App\Telegram\Actions\DecideLogin;
 use App\Telegram\Actions\LinkChat;
 use App\Telegram\Actions\LogoutTelegram;
 use App\Telegram\Actions\UnlinkChat;
+use App\Telegram\Jobs\ValuationFromChat;
 use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
 use App\Telegram\Messages\PaymentClaimed;
@@ -35,7 +38,9 @@ use App\Users\Access\DecideCode;
 use App\Users\User;
 use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Requirement;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -83,6 +88,12 @@ final class UpdateHandler
         // Код от бота: «Продолжить» / «Войти» или «Это не я» — тоже только хозяин аккаунта.
         if ($press->topic === 'code') {
             $this->code($press);
+
+            return;
+        }
+        // «Проставить / Завести» по оценке из фото — админу, тому, кто прислал (`ValuationFromChat`).
+        if ($press->topic === 'valuation') {
+            $this->valuation($press);
 
             return;
         }
@@ -277,6 +288,58 @@ final class UpdateHandler
             });
     }
 
+    /** Фото (или картинка файлом) и текст с номерами убытка и суммами от админа — в очередь чтения; false — не это. */
+    private function valuationMessage(int $chatId, array $message): bool
+    {
+        $text = trim((string) ($message['text'] ?? $message['caption'] ?? ''));
+        $photo = $message['photo'] ?? null ? end($message['photo']) : null;
+        if (! $photo && str_starts_with((string) data_get($message, 'document.mime_type'), 'image/')) {
+            $photo = ['file_id' => data_get($message, 'document.file_id'), 'file_unique_id' => data_get($message, 'document.file_unique_id')];
+        }
+        $rows = ! $photo && $text !== '' && ! str_starts_with($text, '/') ? ValuationText::parse($text)['rows'] : [];
+        if (! $photo && ! collect($rows)->contains(fn ($r) => $r['amount'] !== null)) {
+            return false;
+        }
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (! $user?->isAdmin()) {
+            return false;
+        }
+        ValuationFromChat::dispatch($chatId, $user->id, $photo ? ['file_id' => (string) $photo['file_id'], 'file_unique_id' => (string) $photo['file_unique_id']] : null, $photo ? null : $text);
+        $this->reply($chatId, $photo ? 'Читаю фото…' : 'Разбираю…', null);
+
+        return true;
+    }
+
+    /**
+     * «Проставить N» — закупочные строк, что встают без спора (`fill`); «Завести N» — черновики по номерам, которых в CRM
+     * нет. Нажимает только тот админ, что прислал; разбор живёт сутки и срабатывает один раз.
+     */
+    private function valuation(Press $press): void
+    {
+        $user = User::where('telegram_chat_id', $press->fromId)->first();
+        $saved = Cache::get("valuation-bot:{$press->id}");
+        if (! $user?->isAdmin() || ! $saved || $saved['user'] !== $user->id) {
+            $this->bot->answer($press->queryId, $saved ? 'Эта кнопка не для вас.' : 'Разбор устарел, пришлите фото ещё раз');
+
+            return;
+        }
+        if (! in_array($press->action, ['apply', 'create'], true)) {
+            $this->bot->answer($press->queryId, 'Кнопка устарела.');
+
+            return;
+        }
+        $create = $press->action === 'create';
+        $r = app(ApplyValuations::class)($user, $saved, $create ? [] : $saved['checkable'], create: $create ? array_keys($saved['create'] ?? []) : []);
+        // Нажатая часть больше не повторяется; вторая кнопка остаётся, пока её не нажали.
+        $create ? $saved['create'] = [] : $saved['checkable'] = [];
+        Cache::put("valuation-bot:{$press->id}", $saved, now()->addDay());
+        $said = array_filter([$r['done'] ? 'Проставлено '.$r['done'] : null, $r['repriced'] ? 'на переоценку '.$r['repriced'].' — у них уже есть подтверждения' : null,
+            $r['created'] ? 'заведено '.count($r['created']) : null, $r['vin_taken'] ? 'VIN занят другим предложением: '.$r['vin_taken'] : null]);
+        $line = $said ? Str::ucfirst(implode(', ', $said)) : 'Ничего не изменилось';
+        $this->bot->answer($press->queryId, $line);
+        $this->bot->send($press->chatId, $line, null, replyTo: $press->messageId);
+    }
+
     /** «Оплачен» под просроченным счётом — оплата на весь остаток от имени владельца. */
     private function invoice(Press $press): void
     {
@@ -436,6 +499,11 @@ final class UpdateHandler
         if (preg_match('~^/start(?:@\w+)?\s+([LKI]\S*)$~', trim((string) ($message['text'] ?? '')), $m) === 1) {
             $this->start($chatId, $m[1], data_get($message, 'from.username'));
 
+            return;
+        }
+        // Скрин СМС с оценками или текст «номер сумма» от админа — закупочные (28.10.2026, `ValuationFromChat`): читается
+        // очередью, ответ — что по каждому номеру и кнопка «Проставить N».
+        if ($this->valuationMessage($chatId, $message)) {
             return;
         }
         // Нераспознанное — молча (решение владельца 30.09.2026: «Бот на связи» на каждое слово раздражал);
