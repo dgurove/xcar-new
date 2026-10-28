@@ -85,7 +85,7 @@ final class ReturnToSale
             if ($holder) {
                 $data += array_intersect_key($where, array_flip(['settlement_id', 'inspection_address']));
             }
-            ($this->update)($offer, $data, $by, reprice: true);
+            ($this->update)($offer, $data, $by);
             if ($holder) {
                 Offer::whereKey($offer->id)->update(['held_by' => $holder->id]);
                 $offer->log(OfferEventType::Note, $by, ['text' => 'Стоит у '.$holder->shortName().', забирать у него']);

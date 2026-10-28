@@ -38,9 +38,8 @@ final class UpdateOffer
 
     /**
      * @param  array  $log  к записи «Изменён» в историю — откуда правка (`source: migtorg`, `why: «По СМС …»`)
-     * @param  bool  $reprice  переоценка админом («Вернуть в продажу»): новая закупочная — и для новых подтверждений
      */
-    public function __invoke(Offer $offer, array $data, ?User $by, array $log = [], bool $reprice = false): Offer
+    public function __invoke(Offer $offer, array $data, ?User $by, array $log = []): Offer
     {
         $was = $offer->value;
         // Показ сделки кончился, а его продлили — список снова видит её: уведомление всем, а не только новым.
@@ -58,14 +57,6 @@ final class UpdateOffer
         // Новая закупочная у предложения с идущей сделкой — только закупочная поставщика (`UpdateDealCost`): цена
         // менеджера в сделке закреплена с его подтверждения (15.10.2026).
         $deal = $offer->isDirty('floor_price') && $offer->floor_price ? $offer->costDeal() : null;
-        // Вышло в продажу — новая закупочная менеджерам не видна никак (15.10.2026): подтверждения закрепляют прежнюю
-        // (`shown_floor`, `Offer::bidFloor`), от неё же заявленная, порог и скидки (`declaredPrice`). Переоценка админом —
-        // новая цена для всех.
-        if ($reprice) {
-            $offer->shown_floor = null;
-        } elseif ($offer->isDirty('floor_price') && $offer->getOriginal('floor_price') && $offer->getOriginal('state') !== OfferState::Draft) {
-            $offer->shown_floor ??= (int) $offer->getOriginal('floor_price');
-        }
         // Срок обязывающего — только у Совкомбанка (`Binding::applies`): у другого вендора не встаёт и стирается.
         if ($offer->binding_until && ! Binding::applies($offer)) {
             $offer->binding_until = null;

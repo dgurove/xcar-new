@@ -76,6 +76,8 @@ class OfferEvent extends Model
             OfferEventType::BidAccepted => match (true) {
                 isset($p['buyer_price']) => 'В гараж покупателю за '.Money::rub($p['buyer_price']),
                 isset($p['garage']) => 'В гараж, поставщику платит '.mb_strtolower(GaragePayer::tryFrom($p['garage'])?->label() ?? ''),
+                // Закупочную менеджера поправили при принятии — было и стало.
+                isset($p['cost']) => 'Подтверждение принято, закупочная менеджера '.Money::plain((int) $p['cost'][0]).' → '.Money::rub((int) $p['cost'][1]),
                 default => 'Подтверждение принято',
             },
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
@@ -106,6 +108,8 @@ class OfferEvent extends Model
             },
             // «Предложено из заявок на приём» (13.10.2026): ТС парковки выставила сама, админ принял.
             OfferEventType::Proposal => ! empty($p['accepted']) ? 'Принято из заявок на приём' : 'Предложено из заявок на приём Park XCar',
+            // Поставщик отказал продавать (28.10.2026): сделка закрыта по причине, предложение в архиве.
+            OfferEventType::SupplierDeclined => 'Поставщик отказал'.(($p['note'] ?? null) ? ': '.$p['note'] : '').(! empty($p['pickup_cancelled']) ? ', вывоз отменён' : ''),
             // Номер ушёл вендору в ежедневный запрос (15.10.2026) или метку сняли.
             OfferEventType::Requested => ! empty($p['cleared']) ? 'Номер возвращён в «К запросу»' : 'Номер отправлен вендору в запрос',
             // Прежняя запись (до 17.10.2026 вывоз поручали в CRM): «к менеджеру» / «к нам».

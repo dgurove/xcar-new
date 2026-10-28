@@ -10,14 +10,15 @@
      если другая, строкой только для админа; у идущей сделки сумма собственнику не правится (`ownerLocked`).
      18.10.2026: `priced` — цену менеджеру вписывают тут же («Отдать» без подтверждения, поле `amount` — в слоте с
      `data-commission-target="price"`): разница и «нам остаётся» считаются по ходу набора, цена не выше закупочной —
-     форма переспрашивает и шлёт согласие `loss`. --}}
+     форма переспрашивает и шлёт согласие `loss`.
+     28.10.2026: `costEditable` — закупочная менеджера полем (админ при принятии, владелец: «можешь поменять закупочную,
+     которая будет у него в сделке»): по умолчанию с подтверждения, разница, взаимозачёт и согласие `loss` идут за ней. --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false])
 @php
     use App\Offers\CommissionMode;
     use App\Offers\DealScheme;
     use App\Support\Money;
-    $margin = $cost === null ? null : (int) $amount - $cost;
     $current = old('commission', $commission);
     $id ??= 'commission-'.uniqid();
     $scheme = DealScheme::tryFrom((string) old('scheme', $scheme?->value ?? '')) ?? $scheme;
@@ -25,12 +26,14 @@
     $dkp = (bool) $scheme?->paysSelection();
     $payee = $scheme?->payeeLabel() ?? DealScheme::OwnerDkp->payeeLabel();
     $owner = old('owner_price', $ownerPrice ?? $cost);
+    $costNow = $costEditable ? (Money::rubles(old('cost')) ?: $cost) : $cost;
+    $margin = $costNow === null ? null : (int) $amount - $costNow;
 @endphp
-<form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="commission" data-commission-amount-value="{{ $amount }}" @if ($cost !== null) data-commission-cost-value="{{ $cost }}" @endif
+<form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="commission" data-commission-amount-value="{{ $amount }}" @if ($costNow !== null) data-commission-cost-value="{{ $costNow }}" @endif
     @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
     @csrf
     @if ($method !== 'post')@method($method)@endif
-    @if ($priced)<input type="hidden" name="loss" value="" data-commission-target="loss">@endif
+    @if ($priced || $costEditable)<input type="hidden" name="loss" value="" data-commission-target="loss">@endif
     {{ $slot }}
     @if ($scheme)
         <div class="flex flex-col gap-1.5">
@@ -44,11 +47,19 @@
     @endif
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
         @unless ($priced)<dt class="text-sm text-ink-dim">Цена подтверждения</dt><dd class="nums text-right font-medium">{{ Money::rub($amount) }}</dd>@endunless
-        <dt class="text-sm text-ink-dim">Закупочная</dt><dd class="nums text-right">{{ $cost === null ? 'не указана' : Money::rub($cost) }}</dd>
-        @if ($supplierCost !== null && $supplierCost !== $cost)<dt class="text-sm text-ink-dim">Закупочная поставщика</dt><dd class="nums text-right">{{ Money::rub($supplierCost) }}</dd>@endif
-        @if ($margin !== null)<dt class="text-sm text-ink-dim" data-commission-target="oursOnly" @if ($dkp) hidden @endif>Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}" data-commission-target="oursOnly margin" @if ($dkp) hidden @endif>{{ $priced && ! $amount ? '' : Money::rub($margin) }}</dd>@endif
+        @unless ($costEditable)<dt class="text-sm text-ink-dim">Закупочная</dt><dd class="nums text-right">{{ $cost === null ? 'не указана' : Money::rub($cost) }}</dd>@endunless
+        @if ($supplierCost !== null && $supplierCost !== $costNow)<dt class="text-sm text-ink-dim">Закупочная поставщика</dt><dd class="nums text-right">{{ Money::rub($supplierCost) }}</dd>@endif
+        @if ($margin !== null || $costEditable)<dt class="text-sm text-ink-dim" data-commission-target="oursOnly" @if ($dkp) hidden @endif>Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}" data-commission-target="oursOnly margin" @if ($dkp) hidden @endif>{{ $margin === null || ($priced && ! $amount) ? '' : Money::rub($margin) }}</dd>@endif
     </dl>
     <div class="fields">
+        @if ($costEditable)
+            <div class="field @error('cost') field-invalid @enderror">
+                <label for="{{ $id }}-cost" class="field-label">Закупочная менеджера, ₽</label>
+                <input type="hidden" name="cost" data-commission-target="costAmount" value="{{ $costNow }}">
+                <input id="{{ $id }}-cost" type="text" inputmode="decimal" class="field-input nums text-lg" data-commission-target="costDisplay" data-action="input->commission#input" value="{{ $costNow ? Money::nums((int) $costNow) : '' }}" autocomplete="off">
+                @error('cost')<p class="field-error">{{ $message }}</p>@enderror
+            </div>
+        @endif
         @if ($scheme)
             <div class="field @error('owner_price') field-invalid @enderror" data-commission-target="dkpOnly" @unless ($dkp) hidden @endunless>
                 <label for="{{ $id }}-owner" class="field-label"><span data-commission-target="payee">{{ $payee }}</span>, ₽</label>

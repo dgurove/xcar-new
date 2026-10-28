@@ -87,6 +87,6 @@ class Bid extends Model
     /** Закупочная, с которой менеджер подтверждал, — она закрепится в сделке (15.10.2026); старым — как у продажи сейчас. */
     public function frozenCost(): ?int
     {
-        return $this->cost ?? $this->offer->bidFloor();
+        return $this->cost ?? $this->offer->floor_price;
     }
 }

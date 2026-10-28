@@ -4,6 +4,8 @@ namespace App\Workflow\Actions;
 
 use App\Offers\Actions\AgreeDeal;
 use App\Offers\Actions\ChangeOfferState;
+use App\Offers\Actions\DeclineBySupplier;
+use App\Offers\Actions\SyncParkRelease;
 use App\Offers\Binding;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -18,6 +20,7 @@ use App\Workflow\Stage;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Поставить оффер на этап: позиция и срок, состояние или место машины, просьба к менеджеру, лента, событие.
@@ -120,6 +123,11 @@ final class EnterStage
 
         if ($track === Track::Sale && $to->offer_state && $offer->state !== $to->offer_state && $offer->state->allows($to->offer_state)) {
             $offer = ($this->changeState)($offer, $to->offer_state, $by, followRoute: false);
+            // Этап «Отказ поставщика» (единственный, что снимает предложение): сделка закрыта по причине, как кнопкой
+            // «Поставщик отказал…» (`DeclineBySupplier`, 28.10.2026).
+            if ($to->offer_state === OfferState::Cancelled && $deal) {
+                DeclineBySupplier::mark($deal->fresh(), $exit?->label);
+            }
         }
 
         if (! $noInvoice && ! $carried && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
@@ -134,9 +142,9 @@ final class EnterStage
         StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter);
         // Машина сделки на нашей парковке: стало можно забирать — выдача, пропуск, получатель (18.10.2026, одна дверь).
         if ($track === Track::Sale && $deal) {
-            \Illuminate\Support\Facades\DB::afterCommit(function () use ($deal, $by) {
+            DB::afterCommit(function () use ($deal, $by) {
                 if ($fresh = $deal->fresh()) {
-                    app(\App\Offers\Actions\SyncParkRelease::class)($fresh, $by);
+                    app(SyncParkRelease::class)($fresh, $by);
                 }
             });
         }

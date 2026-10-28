@@ -59,9 +59,12 @@
                 @if ($errors->has('state'))<x-ui.flash tone="danger">{{ $errors->first('state') }}</x-ui.flash>@endif
                 {{-- Одна красная строка — шторка «Отменить сделку»: в продажу (кому и до когда) или в черновики (12.10.2026). --}}
                 <div class="list">
+                    {{-- Поставщик отказал продавать (28.10.2026): сделка закрыта по причине, предложение в архиве. --}}
+                    <button type="button" class="row row-danger" data-controller="emit" data-action="emit#send" data-emit-event-param="declined:open">Поставщик отказал…</button>
                     <button type="button" class="row row-danger" data-controller="emit" data-action="emit#send" data-emit-event-param="resale:open">{{ $deal->isGarage() ? 'Вернуть в продажу' : 'Отменить сделку' }}</button>
                 </div>
                 <x-offer.resale-sheet :offer="$offer"/>
+                <x-deal.declined-sheet :deal="$deal"/>
             @endif
         </div>
         @if ($deal->isActive() && ! $deal->isGarage() && auth()->user()->canManageCrm())

@@ -60,7 +60,9 @@
     @if ($deal->state !== DealState::Active && ! $deal->isGarage())
         {{-- Закончилась — состояние словом с датой, без своей плашки, и на телефоне тоже (11.10.2026: там закрытая сделка
              выглядела идущей). Гаражной его пишет своя карточка суммы. --}}
-        <p><span class="font-medium {{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ $deal->state->label() }}</span>@if ($deal->closed_at) <span class="nums text-sm text-ink-muted">{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span>@endif</p>
+        <p><span class="font-medium {{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ $deal->declinedBySupplier() ? 'Поставщик отказал в продаже' : $deal->state->label() }}</span>@if ($deal->closed_at) <span class="nums text-sm text-ink-muted">{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span>@endif</p>
+        {{-- Причина отказа поставщика (28.10.2026) — своими словами сотрудника, без названия вендора. --}}
+        @if ($deal->declinedBySupplier() && $deal->close_note)<p class="text-ink-muted">{{ \App\Support\VendorNames::strip($deal->close_note) }}</p>@endif
     @endif
 
     @if ($deal->state === DealState::Active && $position)

@@ -6,9 +6,10 @@ import { nums, rub, rubles } from '../lib/money';
 // сколько менеджер отдаёт (база минус вознаграждение); ушло в минус — подпись dueLabel
 // меняется на data-negative: тогда отдаём мы. payout — сколько выплатим менеджеру, когда за машину из гаража платит
 // его покупатель: его расходы (spent) плюс вознаграждение. price — цену вписывают тут же («Отдать» без подтверждения):
-// разница и «нам остаётся» идут за ней, не выше закупочной — форма переспрашивает и шлёт согласие loss.
+// разница и «нам остаётся» идут за ней, не выше закупочной — форма переспрашивает и шлёт согласие loss. costDisplay —
+// закупочную менеджера вписывает админ при принятии (28.10.2026): разница, взаимозачёт и согласие loss идут за ней.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset', 'payee', 'price', 'margin', 'loss'];
+    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset', 'payee', 'price', 'margin', 'loss', 'costDisplay', 'costAmount'];
     static values = { margin: Number, base: Number, spent: Number, amount: Number, cost: Number };
 
     connect() {
@@ -36,7 +37,9 @@ export default class extends Controller {
     }
 
     input() {
+        if (this.hasCostDisplayTarget) this.cost();
         const priced = this.hasPriceTarget ? this.price() : true;
+        if (this.hasCostDisplayTarget && !this.hasPriceTarget) this.guard(this.amountValue);
         this.sums();
         if (!priced) {
             if (this.hasOursTarget) this.oursTarget.textContent = '';
@@ -54,18 +57,43 @@ export default class extends Controller {
                 this.marginTarget.textContent = this.money(this.marginValue);
                 this.marginTarget.classList.toggle('text-danger', this.marginValue < 0);
             }
-            const minus = p !== null && p <= this.costValue;
-            if (this.hasLossTarget) this.lossTarget.value = minus ? '1' : '';
-            if (minus) {
-                this.element.dataset.turboConfirm = `Отдать за ${rub(p)} при закупочной ${rub(this.costValue)}?`;
-                this.element.dataset.turboConfirmText = this.costValue > p ? `Сделка в минус ${rub(this.costValue - p)}` : 'Наценки нет';
-            } else {
-                delete this.element.dataset.turboConfirm;
-                delete this.element.dataset.turboConfirmText;
-            }
+            this.guard(p);
         }
 
         return p !== null;
+    }
+
+    // Закупочная менеджера полем: пусто — закупочной нет, разницы тоже.
+    cost() {
+        const typed = rubles(this.costDisplayTarget.value);
+        this.costDisplayTarget.value = typed === null ? '' : nums(typed);
+        this.costAmountTarget.value = typed === null ? '' : typed;
+        if (typed === null) {
+            delete this.element.dataset.commissionCostValue;
+            delete this.element.dataset.commissionMarginValue;
+            if (this.hasMarginTarget) this.marginTarget.textContent = '';
+            return;
+        }
+        this.costValue = typed;
+        if (this.hasPriceTarget) return;
+        this.marginValue = this.amountValue - typed;
+        if (this.hasMarginTarget) {
+            this.marginTarget.textContent = this.money(this.marginValue);
+            this.marginTarget.classList.toggle('text-danger', this.marginValue < 0);
+        }
+    }
+
+    // Цена не выше закупочной — вопрос перед отправкой и согласие loss.
+    guard(p) {
+        const minus = this.hasCostValue && p !== null && p <= this.costValue;
+        if (this.hasLossTarget) this.lossTarget.value = minus ? '1' : '';
+        if (minus) {
+            this.element.dataset.turboConfirm = `${this.hasPriceTarget ? 'Отдать' : 'Принять'} за ${rub(p)} при закупочной ${rub(this.costValue)}?`;
+            this.element.dataset.turboConfirmText = this.costValue > p ? `Сделка в минус ${rub(this.costValue - p)}` : 'Наценки нет';
+        } else {
+            delete this.element.dataset.turboConfirm;
+            delete this.element.dataset.turboConfirmText;
+        }
     }
 
     sums() {

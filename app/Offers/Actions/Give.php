@@ -64,9 +64,9 @@ final class Give
             $this->checkBuyer($offer, $manager, $garage, $g->buyerPrice);
 
             $bid ??= $manager ? PlaceBid::record($offer, $manager, $by, $garage ? null : $g->amount, null, $garage ? BidKind::Garage : BidKind::Buyer) : null;
-            // Закупочная менеджера — какой она была, когда он подтверждал (15.10.2026); нынешняя, если другая, — закупочная
-            // поставщика, только админу.
-            $cost = $bid?->frozenCost() ?? $offer->bidFloor();
+            // Закупочная менеджера — какой она была, когда он подтверждал (15.10.2026), или вписанная админом при принятии
+            // (28.10.2026); нынешняя, если другая, — закупочная поставщика, только админу.
+            $cost = $g->cost ?? $bid?->frozenCost() ?? $offer->floor_price;
             // Не выше закупочной — только с согласия (14.10.2026: сделка 3308 ушла в минус молча). Закупочную могли поднять
             // после того, как открыли шторку, — тогда переспрашиваем.
             if (! $garage && ! $g->loss && $cost && $bid->amount <= $cost) {
@@ -88,6 +88,7 @@ final class Give
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid?->id, 'amount' => $deal->amount, 'commission' => $deal->commission,
                 'mode' => $deal->commission_mode?->value, 'garage' => $deal->garage_payer?->value, 'manager' => $bid ? null : $manager?->id,
                 'scheme' => $deal->scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $deal->share,
+                'cost' => $g->cost !== null && $bid && $g->cost !== $bid->frozenCost() ? [$bid->frozenCost(), $g->cost] : null,
                 'buyer_price' => $garage && $manager?->holdsAsBuyer() ? $g->buyerPrice : null], fn ($v) => $v !== null));
             $deal->setRelation('offer', $offer);
             // Покупатель по договору у супер-покупателя — он сам, выбирать некого; вознаграждения у его сделки нет — его

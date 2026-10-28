@@ -164,6 +164,9 @@
                             @endif
                             @if ($danger->isNotEmpty() || $menuPurge || $resale)
                                 <div class="menu-group">
+                                    @if ($resale && $offer->state === OfferState::Sold && $offer->deal?->isActive())
+                                        <button type="button" class="menu-item text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="declined:open"><x-ui.icon name="x" class="size-5"/>Поставщик отказал…</button>
+                                    @endif
                                     @if ($resale)
                                         <button type="button" class="menu-item text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="resale:open"><x-ui.icon name="undo" class="size-5"/>{{ $offer->state === OfferState::Sold && ! $offer->garageCar ? 'Отменить сделку' : 'Вернуть в продажу' }}</button>
                                     @endif
@@ -206,6 +209,7 @@
             @endif
             @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
             @if ($resale || ($admin && $offer->onAuction()))<x-offer.resale-sheet :offer="$offer"/>@endif
+            @if ($resale && $offer->state === OfferState::Sold && $offer->deal?->isActive())<x-deal.declined-sheet :deal="$offer->deal"/>@endif
             @if ($admin && \App\Offers\Actions\SellAtAuction::allows($offer, auth()->user()))<x-offer.auction-sale-sheet :offer="$offer"/>@endif
             @if ($publishItems && ! $publishButton)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
             @if ($askMenu)<x-offer.estimate-ask :offer="$offer" :managers="$managers" :trigger="false"/>@endif

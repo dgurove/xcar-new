@@ -33,7 +33,18 @@
             <form method="post" action="/offers/{{ $n }}/auction" class="flex">@csrf @method('delete')<button class="btn btn-s btn-quiet">В черновики</button></form>
         </div>
     @else
-        <h2 class="text-base font-medium">{{ $offer->state === OfferState::Cancelled ? 'Снято' : 'В архиве' }}</h2>
+        @php $declined = $offer->state === OfferState::Cancelled ? $offer->declinedDeal : null; @endphp
+        @if ($declined)
+            {{-- Отказ поставщика (28.10.2026): когда, кто отметил, менеджер сделки и причина словами. --}}
+            @php $by = $offer->events()->where('type', \App\Offers\OfferEventType::SupplierDeclined)->with('user')->first(); @endphp
+            <div>
+                <h2 class="text-base font-medium text-danger">Поставщик отказал{{ $declined->closed_at ? ' '.$declined->closed_at->translatedFormat('j M') : '' }}</h2>
+                <p class="text-sm text-ink-muted">{{ collect([$declined->buyer ? 'сделка '.$declined->buyer->shortName() : null, $by?->user ? 'отметил '.$by->user->shortName() : null])->filter()->implode(', ') }}</p>
+                @if ($declined->close_note)<p class="mt-2">{{ $declined->close_note }}</p>@endif
+            </div>
+        @else
+            <h2 class="text-base font-medium">{{ $offer->state === OfferState::Cancelled ? 'Снято' : 'В архиве' }}</h2>
+        @endif
         <div class="flex flex-wrap gap-2">
             @foreach ($transitions as [$next, $label])
                 <form method="post" action="/offers/{{ $n }}/state" class="flex min-w-0 flex-1">

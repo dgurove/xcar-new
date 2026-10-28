@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * Сделка: чьё подтверждение принято и почём. Деньги — `cost` (закупочная, какой её видел менеджер, когда подтверждал,
@@ -39,7 +40,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'agreed_at', 'prepaid_at', 'supplier_paid_at',
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'prepaid_at', 'supplier_paid_at',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id'])]
 class Deal extends Model
 {
@@ -131,7 +132,7 @@ class Deal extends Model
      * а без неё — ход его словами («Укажите покупателя», имя шага для менеджера). Просьба «Оплатите», а счета уже
      * оплачены (маршрут не догнал), — не дело. Одно место для строки, раздела «Ваш ход» и бейджа.
      *
-     * @return array{title: string, due: ?\Illuminate\Support\Carbon}|null
+     * @return array{title: string, due: ?Carbon}|null
      */
     public function managerTask(): ?array
     {
@@ -617,7 +618,7 @@ class Deal extends Model
      * (`EnterStage`, `PassTurnOnInvoice`) и долга в «Сделках» (`DealDebt`). Не на шаге оплаты — null. Гаражная Совкомбанка
      * стоит на шаге оплаты с «Забрал», а платить ей нечего до продажи — срок от «Продаю», не продана — null.
      */
-    public function payDue(): ?\Illuminate\Support\Carbon
+    public function payDue(): ?Carbon
     {
         $position = $this->offer?->position();
         if (! $position?->entered_at || ! $position->stage->isPayStep()) {
@@ -676,6 +677,12 @@ class Deal extends Model
         }
 
         return '/deals/'.$this->id;
+    }
+
+    /** Сделку закрыл отказ поставщика (28.10.2026, `DeclineBySupplier`, этап «Отказ поставщика»): причина — `close_note`. */
+    public function declinedBySupplier(): bool
+    {
+        return $this->close_reason === 'supplier';
     }
 
     public function isActive(): bool

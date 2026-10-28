@@ -4,6 +4,8 @@ namespace App\Http\Admin;
 
 use App\Billing\DealDebt;
 use App\Live\Rows;
+use App\Offers\Actions\DeclineBySupplier;
+use App\Offers\Actions\SetReceiver;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\Binding;
 use App\Offers\CommissionMode;
@@ -25,8 +27,8 @@ use App\Support\Table\Table;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
-use App\Workflow\Track;
 use App\Workflow\Position;
+use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -76,7 +78,9 @@ class DealController
         OfferController::forgetBindingSort($request, $askedSort);
         $preset = $request->query('preset', 'us');
         // Старые ссылки («Горит» утренней сводки) — на «Ваш ход», «В работе» — на «Все».
-        $preset = match ($preset) { 'hot' => 'us', 'active' => 'all', default => array_key_exists($preset, self::PRESETS) ? $preset : 'us' };
+        $preset = match ($preset) {
+            'hot' => 'us', 'active' => 'all', default => array_key_exists($preset, self::PRESETS) ? $preset : 'us'
+        };
         $searching = $facets->searching();
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
@@ -155,6 +159,7 @@ class DealController
     /**
      * «Оплата» — кто сколько должен (27.10.2026): группы по менеджеру (аукцион — своей группой), у группы сумма и просрочено;
      * первыми — у кого больше просрочено, внутри — просроченные, дальше по сроку. Весь список одной страницей.
+     *
      * @return array{owed: float, overdue: float, groups: Collection<string, array>}
      */
     private static function debts(Collection $deals): array
@@ -303,12 +308,21 @@ class DealController
     }
 
     /** Кто заберёт с нашей парковки — админ за менеджера (`SetReceiver`). */
-    public function receiver(Request $request, Deal $deal, \App\Offers\Actions\SetReceiver $set)
+    public function receiver(Request $request, Deal $deal, SetReceiver $set)
     {
         $deal = $set($deal, $request->user(), $request->validate(['who' => ['required', 'string', 'max:20'], 'name' => ['nullable', 'string', 'max:160'],
             'phone' => ['nullable', 'string', 'max:32'], 'at' => ['nullable', 'date']]));
 
         return back()->with('toast', 'Заберёт '.$deal->receiver()?->labelFor(null));
+    }
+
+    /** «Поставщик отказал…» (28.10.2026): сделка закрыта по причине, предложение в архиве (`DeclineBySupplier`). */
+    public function declined(Request $request, Deal $deal, DeclineBySupplier $decline)
+    {
+        $data = $request->validate(['note' => ['required', 'string', 'max:500'], 'pickup' => ['nullable', Rule::in(['keep', 'drop'])]], [], ['note' => 'Почему']);
+        $decline($deal, $data['note'], $request->user(), dropPickup: ($data['pickup'] ?? 'keep') === 'drop');
+
+        return back()->with('toast', 'Сделка закрыта: отказ поставщика');
     }
 
     /**

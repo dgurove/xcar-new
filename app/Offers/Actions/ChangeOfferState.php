@@ -5,13 +5,13 @@ namespace App\Offers\Actions;
 use App\Garage\Actions\CloseGarageDeal;
 use App\Garage\Car as GarageCar;
 use App\Offers\BidState;
-use App\Offers\DealAudience;
+use App\Offers\Binding;
 use App\Offers\Deal;
+use App\Offers\DealAudience;
 use App\Offers\DealState;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
-use App\Offers\Binding;
 use App\Offers\OfferEventType;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
@@ -109,11 +109,6 @@ final class ChangeOfferState
                 // «Предложено из заявок на приём»: опубликовали или убрали, не нажав «Принять», — решение принято, плашка
                 // не вернётся, когда черновик снова снимут с продажи.
                 $offer->proposed_at = null;
-            }
-            // Вернулось в черновики — будет новая оценка: прежняя закупочная продажи (`shown_floor`) новые подтверждения и
-            // заявленную больше не держит (15.10.2026).
-            if ($next === OfferState::Draft) {
-                $offer->shown_floor = null;
             }
             // Метка «приём закрыт» в «Оцененных» (`ReturnClosedToRated`) — до следующей публикации.
             if ($next !== OfferState::Draft) {

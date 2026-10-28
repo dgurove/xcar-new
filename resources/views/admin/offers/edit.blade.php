@@ -278,6 +278,7 @@
     @endphp
     <x-mail.window :url="$window" :title="$offer->titleWithYear()"/>
     @if ($resale || ($admin && $offer->onAuction()))<x-offer.resale-sheet :offer="$offer"/>@endif
+    @if ($resale && $offer->state === OfferState::Sold && $offer->deal?->isActive())<x-deal.declined-sheet :deal="$offer->deal"/>@endif
     @if ($admin && \App\Offers\Actions\SellAtAuction::allows($offer, auth()->user()))<x-offer.auction-sale-sheet :offer="$offer"/>@endif
     @if ($publishItems)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
     @php $deletable = ! $fromMail && $offer->isDeletableBy(auth()->user()); @endphp
@@ -313,6 +314,9 @@
                         <x-offer.publish-items :offer="$offer" button/>
                         <x-ui.button type="button" block variant="secondary" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="publish-day:open"><x-ui.icon name="calendar" class="size-5"/> Другой день…</x-ui.button>
                         <x-ui.button type="button" block class="btn-fire" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="urgent:open"><x-ui.icon name="fire" fill class="size-5"/> Срочно…</x-ui.button>
+                    @endif
+                    @if ($resale && $offer->state === OfferState::Sold && $offer->deal?->isActive())
+                        <x-ui.button type="button" block variant="danger" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="declined:open">Поставщик отказал…</x-ui.button>
                     @endif
                     @if ($resale)
                         {{-- Сделка — одна «Отменить сделку» шторкой: в продажу или в черновики (12.10.2026); гараж — «Вернуть в продажу». --}}

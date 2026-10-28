@@ -30,7 +30,6 @@ use App\Http\Admin\TagController;
 use App\Http\Admin\TelegramChatController;
 use App\Http\Admin\TimerController;
 use App\Http\Admin\UserController;
-use App\Http\Cabinet\RegionController;
 use App\Http\Admin\UserGroupController;
 use App\Http\Admin\VendorContactController;
 use App\Http\Admin\VendorController;
@@ -39,6 +38,7 @@ use App\Http\Admin\WorkflowController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\PassportScanController;
 use App\Http\Cabinet\ProfileController;
+use App\Http\Cabinet\RegionController;
 use App\Http\Garage\CarController as GarageCarController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Mail\AttachController;
@@ -249,6 +249,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/deals/{deal}', [DealController::class, 'show']);
         Route::post('/work/deals/supplier-answer', [DealController::class, 'supplierAnswer']);
         Route::put('/work/deals/{deal}/receiver', [DealController::class, 'receiver']);
+        Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined']);
         // У кого что в гараже и во что обошлось.
         Route::get('/work/garage', [GarageController::class, 'index']);
         // Кто что вывозит: мы или менеджер, к нему, к нам или на парковку.

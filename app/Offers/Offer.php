@@ -194,7 +194,6 @@ class Offer extends Model
             'auction_planned_at' => 'datetime',
             'proposed_at' => 'datetime',
             'floor_price' => 'int',
-            'shown_floor' => 'int',
             'publish_price' => 'int',
             'asking_price' => 'int',
             'min_bid_price' => 'int',
@@ -428,6 +427,12 @@ class Offer extends Model
      * Сделка, что сейчас идёт, иначе последняя состоявшаяся — дорожка «Сделка» редактора показывает и выданную
      * (деньги, вознаграждение, ДКП остаются видны). Сорванные — только «Историей».
      */
+    /** Сделка, которую закрыл отказ поставщика (28.10.2026): архив «отказ поставщика» с причиной. */
+    public function declinedDeal(): HasOne
+    {
+        return $this->hasOne(Deal::class)->ofMany(['id' => 'max'], fn ($q) => $q->where('close_reason', 'supplier'));
+    }
+
     public function lastDeal(): HasOne
     {
         return $this->hasOne(Deal::class)->ofMany(['id' => 'max'], fn ($q) => $q->whereIn('state', [DealState::Active, DealState::Done]));
@@ -971,9 +976,8 @@ class Offer extends Model
      */
     public function declaredPrice(): ?int
     {
-        // Пустая — от закупочной, что видят менеджеры (`bidFloor`): правка закупочной после выхода в продажу заявленную
-        // не двигает, и вписывать её за админа не нужно (15.10.2026).
-        return $this->publish_price ?? self::declaredFrom($this->bidFloor());
+        // Пустая — от закупочной сейчас: правили закупочную — новые подтверждения с новой, у прежних своя (`bids.cost`).
+        return $this->publish_price ?? self::declaredFrom($this->floor_price);
     }
 
     /**
@@ -987,15 +991,6 @@ class Offer extends Model
         }
 
         return $this->declaredPrice();
-    }
-
-    /**
-     * Закупочная, с которой подтверждают (15.10.2026): после выхода в продажу правили закупочную — прежняя (`shown_floor`),
-     * новая — только закупочная поставщика у админа. Её снимает подтверждение (`bids.cost`), «Отдать в гараж» — сделка.
-     */
-    public function bidFloor(): ?int
-    {
-        return $this->shown_floor ?? $this->floor_price;
     }
 
     public static function declaredFrom(?int $floor): ?int
@@ -1024,7 +1019,7 @@ class Offer extends Model
 
     public function hardMinBid(): ?int
     {
-        $floor = $this->bidFloor();
+        $floor = $this->floor_price;
         if (! $floor) {
             return null;
         }
@@ -1139,6 +1134,8 @@ class Offer extends Model
                 ? $presets['bids'] : ($this->bidsOpen() || ! $user?->canManageCrm() ? $presets['published'] : $presets['closed']),
             OfferState::Sold, OfferState::Delivered => 'Сделки',
             OfferState::Garage => 'Гараж',
+            // Отказ поставщика (28.10.2026, владелец: «архив с пометкой»): в архиве, но словом причины, а не «Архив».
+            OfferState::Cancelled => $this->declinedDeal ? $presets['archive'].', отказ поставщика' : $presets['archive'],
             default => $presets['archive'],
         };
     }

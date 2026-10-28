@@ -20,7 +20,7 @@
     $ring = '!ring-2 !ring-accent';
     $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0;
 @endphp
-<div class="flex flex-col gap-2" data-controller="min-bid value-floor" data-value-floor-rules-value="@json(\App\Offers\Pricing::RULES)" @if ($offer->shown_floor) data-min-bid-shown-value="{{ $offer->shown_floor }}" @endif>
+<div class="flex flex-col gap-2" data-controller="min-bid value-floor" data-value-floor-rules-value="@json(\App\Offers\Pricing::RULES)">
     <div class="flex flex-col gap-2">
         {{-- Оценочная — только у вендора, чья закупочная от неё (`floor_by_value`, Альфа); сменили вендора — прячется сама. --}}
         <div class="field" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true) || (! $admin && $offer->value)) hidden @endunless>
@@ -62,7 +62,7 @@
         <details class="price-more" @if ($more) open @endif>
             <summary class="flex items-center gap-1 text-sm text-ink-muted">Заявленная, минимальная, доля <x-ui.icon name="chevron-down" class="price-more-chevron size-4"/></summary>
             <div class="mt-2 grid grid-cols-2 gap-2">
-                <x-ui.field name="publish_price" label="Заявленная, ₽" :value="$offer->publish_price" :form="$form" :id="$idp.'publish'" span="col-span-2" :placeholder="$offer->bidFloor() ? \App\Support\Money::nums(\App\Offers\Offer::declaredFrom($offer->bidFloor())) : null"/>
+                <x-ui.field name="publish_price" label="Заявленная, ₽" :value="$offer->publish_price" :form="$form" :id="$idp.'publish'" span="col-span-2" :placeholder="$offer->floor_price ? \App\Support\Money::nums(\App\Offers\Offer::declaredFrom($offer->floor_price)) : null"/>
                 <x-ui.field name="min_bid_price" label="Минимальная, ₽" :value="$offer->min_bid_price" :form="$form" :id="$idp.'min'" :placeholder="$offer->minBid() ? \App\Support\Money::nums($offer->minBid()) : null"/>
                 <x-ui.field name="min_bid_share" label="Доля до продажной" :value="$offer->min_bid_share" :form="$form" :id="$idp.'share'" placeholder="0,6"/>
             </div>

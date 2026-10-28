@@ -37,7 +37,7 @@
     $offer->loadMissing(['parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar']);
     // После продажи — не слово вкладки «Сделки», а этап сделки и менеджер (`DealLine`, 27.10.2026, владелец: «видно, у кого
     // она в сделке и какой этап»): «Оплата, просрочено 3 д» красным, «Гараж: в продаже». Цвет — только просрочка.
-    $line = $admin && in_array($offer->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage], true) ? \App\Offers\DealLine::forOffer($offer) : null;
+    $line = $admin && in_array($offer->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage, OfferState::Cancelled], true) ? \App\Offers\DealLine::forOffer($offer) : null;
     $stateWord = $line?->word ?? $offer->crmTab();
     $tone = $line ? $line->tone : $tone;
     $draft = $offer->state === OfferState::Draft;

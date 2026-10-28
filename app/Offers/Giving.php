@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Garage\GaragePayer;
 use App\Users\User;
+use Illuminate\Support\Carbon;
 
 /**
  * Что отдаём и как (`Actions\Give`, 18.10.2026): кому (менеджер; в гараж можно никому — «взяли под себя»), куда — в
@@ -41,7 +42,10 @@ final readonly class Giving
         public ?int $buyerPrice = null,
         // Уже вывезли (21.10.2026, владелец: «не хватает указания даты на случай, если уже вывезли»): «Уже у …» в гараж или
         // «Уже забрал» в сделку — когда; вывоз закрывается этой датой (`Logistics\Actions\Backdate`).
-        public ?\Illuminate\Support\Carbon $arrivedAt = null,
+        public ?Carbon $arrivedAt = null,
+        // Закупочная менеджера в сделке, вписанная админом при принятии (28.10.2026, владелец: «ты определяешь
+        // вознаграждение, но ещё можешь поменять закупочную, которая будет у него в сделке»); пусто — с подтверждения.
+        public ?int $cost = null,
     ) {}
 
     /** Принять готовое подтверждение: кому, куда и цена — из него. */

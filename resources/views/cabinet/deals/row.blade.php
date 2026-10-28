@@ -37,6 +37,7 @@
         </span>
         {{-- В архиве исход называет раздел («Закончены», «Отменены») — у строки только когда. --}}
         @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span>@endunless
+        @if ($deal->declinedBySupplier())<span class="mt-1 block text-sm text-danger">Поставщик отказал в продаже</span>@endif
         @if ($task)
             @php $late = $task['due']?->isPast(); @endphp
             <span class="mt-1 block text-sm"><span class="font-medium">{{ \App\Users\Wording::mine($task['title']) }}</span>@if ($late)<span class="text-danger">, просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true"></span></span>@elseif ($task['due'])<span class="text-ink-muted">, <span class="nums whitespace-nowrap">до {{ $task['due']->translatedFormat('j M, H:i') }}</span></span>@endif</span>

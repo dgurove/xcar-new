@@ -27,6 +27,7 @@ final class DealLine
         $position ??= $active ? $deal->offer->position() : null;
         [$word, $tone] = match (true) {
             $deal->isAuction() && $deal->state === DealState::Done => ['Продана на аукционе', 'text-accent-text'],
+            $deal->declinedBySupplier() => ['Отказ поставщика', 'text-danger'],
             ! $active => [$deal->state->label(), $deal->state === DealState::Done ? 'text-accent-text' : 'text-danger'],
             (bool) $position => self::stage($position, $debt),
             default => [$deal->offer->crmTab(), 'text-ink-muted'],
@@ -48,6 +49,9 @@ final class DealLine
         }
         if ($offer->state === OfferState::Garage && ($car = $offer->garageCar)) {
             return new self('Гараж: '.mb_strtolower($car->state->label()), 'text-ink-muted', $car->manager?->shortName() ?? 'взяли под себя', $car->manager);
+        }
+        if ($offer->state === OfferState::Cancelled && ($deal = $offer->declinedDeal)) {
+            return new self('Отказ поставщика', 'text-danger', $deal->buyer?->shortName(), $deal->buyer);
         }
         if ($offer->state === OfferState::Delivered && ($deal = $offer->lastDeal)) {
             return new self($deal->isAuction() ? 'Продана на аукционе' : 'Выдан', 'text-accent-text', $deal->isAuction() ? null : $deal->buyer?->shortName(), $deal->isAuction() ? null : $deal->buyer);

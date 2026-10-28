@@ -8,9 +8,6 @@ import { nums, rubles } from '../lib/money';
 const DEFAULT_SHARE = 0.6;
 
 export default class extends Controller {
-    // Закупочная, что видят менеджеры (`Offer::bidFloor`): после выхода в продажу правка закупочной заявленную не двигает.
-    static values = { shown: Number };
-
     connect() {
         this.root = this.element.closest('turbo-frame') ?? this.element.closest('main') ?? document;
         this.onInput = () => this.update();
@@ -31,7 +28,7 @@ export default class extends Controller {
     }
 
     update() {
-        const raw = this.shownValue || this.value('floor_price');
+        const raw = this.value('floor_price');
         const floor = raw ? ceilThousand(raw) : null;
         const from = this.value('publish_price') ?? floor;
         const asking = this.value('asking_price');
