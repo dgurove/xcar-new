@@ -85,7 +85,9 @@ final class ReturnToSale
             if ($holder) {
                 $data += array_intersect_key($where, array_flip(['settlement_id', 'inspection_address']));
             }
-            ($this->update)($offer, $data, $by);
+            // Переоценка админом в этой же шторке — решение принято здесь: закупочная пишется сразу, а не встаёт переоценкой
+            // на решение из-за подтверждения победителя, что снова ждёт (`CancelDeal keepBid`). Его закупочная — своя (`bids.cost`).
+            ($this->update)($offer, $data, $by, repricing: true);
             if ($holder) {
                 Offer::whereKey($offer->id)->update(['held_by' => $holder->id]);
                 $offer->log(OfferEventType::Note, $by, ['text' => 'Стоит у '.$holder->shortName().', забирать у него']);

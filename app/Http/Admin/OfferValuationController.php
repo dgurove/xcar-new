@@ -120,7 +120,7 @@ final class OfferValuationController
         $vins = array_diff_key($vins, array_flip($off));
         $cities = array_diff_key($cities, array_flip($off));
         $touch = array_values(array_unique([...$ids, ...array_keys($vins), ...array_keys($cities)]));
-        $done = $vinDone = $cityDone = $vinTaken = 0;
+        $done = $vinDone = $cityDone = $vinTaken = $repriced = 0;
         foreach (Offer::query()->inCrm($request->user())->whereKey($touch)->get() as $offer) {
             $set = [];
             if (in_array($offer->id, $ids, true)) {
@@ -152,15 +152,21 @@ final class OfferValuationController
                 continue;
             }
             $update($offer, $set, $request->user(), ['source' => 'valuation', 'value' => $set['value'] ?? null, 'floor' => $set['floor_price'] ?? null]);
+            // Подтвердившие уже есть — закупочная не встала, а ждёт решения переоценкой (`UpdateOffer`, 28.10.2026): это не
+            // «оценено», а «на переоценку».
+            if (isset($set['floor_price']) && (int) $offer->floor_price !== (int) $set['floor_price']) {
+                $repriced++;
+                $done = max(0, $done - 1);
+            }
         }
         $created = $this->createAbsent($request->user(), array_intersect_key($saved['create'] ?? [], array_flip($data['create'] ?? [])));
-        $parts = array_filter([$done ? 'оценено '.$done : null, $created ? 'заведено '.count($created) : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
+        $parts = array_filter([$done ? 'оценено '.$done : null, $repriced ? 'на переоценку '.$repriced : null, $created ? 'заведено '.count($created) : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
         // Окно (valuation_controller) показывает итог экраном «Готово»: крупно — оценено, ниже — остальное.
         if ($request->expectsJson()) {
-            $rest = array_filter([$done && $created ? 'заведено '.count($created) : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
+            $rest = array_filter([$repriced ? 'на переоценку '.$repriced.' — у них уже есть подтверждения' : null, $done && $created ? 'заведено '.count($created) : null, $vinDone ? 'VIN '.$vinDone : null, $cityDone ? 'город '.$cityDone : null, $vinTaken ? 'VIN занят другим предложением: '.$vinTaken : null]);
 
             return response()->json([
-                'title' => $done ? 'Оценено '.$done : ($created ? 'Заведено '.count($created) : ($rest ? 'Сохранено' : 'Ничего не выбрано')),
+                'title' => $done ? 'Оценено '.$done : ($created ? 'Заведено '.count($created) : ($repriced ? 'На переоценку '.$repriced : ($rest ? 'Сохранено' : 'Ничего не выбрано'))),
                 'sub' => $rest ? Str::ucfirst(implode(', ', $rest)) : null,
                 'created' => $created,
             ]);

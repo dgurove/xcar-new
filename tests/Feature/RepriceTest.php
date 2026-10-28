@@ -20,6 +20,7 @@ use App\Offers\CommissionMode;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Pricing;
 use App\Offers\Reprice;
 use App\Users\Role;
 use App\Users\User;
@@ -97,6 +98,49 @@ class RepriceTest extends TestCase
         Notification::assertSentTo($this->admin, RepriceNotice::class);
         // То же письмо второй раз — вторая плашка не заводится.
         $this->assertNull(app(DetectReprice::class)($this->offer->fresh(), $message));
+    }
+
+    public function test_value_vendor_letter_amount_is_value_and_floor_follows_rule(): void
+    {
+        $this->offer->vendor->update(['floor_by_value' => true]);
+        $this->offer->update(['claim_ref' => '653253/2026', 'value' => 738655, 'floor_price' => 813000]);
+        $account = DB::table('mail_accounts')->insertGetId(['slug' => 'offer', 'title' => 'offer', 'email' => 'offer@xcar.ru', 'scope' => 'offers',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $message = Message::create(['account_id' => $account, 'direction' => 'in', 'from_email' => 'expert@alfastrah.ru', 'subject' => 'RE: 653253/2026',
+            'parsed' => ['keys' => ['code:'.Code::key('653253/2026')], 'own_text' => 'Новая стоимость – 700 000 руб.']]);
+
+        $reprice = app(DetectReprice::class)($this->offer->fresh(), $message);
+        $this->assertSame([Pricing::floorFrom(700000), 700000], [$reprice->to_price, $reprice->value]);
+        app(ApplyReprice::class)($reprice, $this->admin, $reprice->to_price, [], null);
+        $this->assertSame([700000, Pricing::floorFrom(700000)], [$this->offer->fresh()->value, $this->offer->fresh()->floor_price]);
+    }
+
+    public function test_old_bid_without_own_cost_keeps_previous_and_manager_sees_declared_not_floor(): void
+    {
+        $old = app(PlaceBid::class)($this->offer, $this->roman, 1000000);
+        $old->update(['cost' => null]);
+        $denis = app(PlaceBid::class)($this->offer->fresh(), $this->denis, 980000);
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 500000], $this->admin);
+        // Вписали ещё раз до решения — прежняя переоценка заменена, в истории это видно.
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 433200], $this->admin);
+        $this->assertSame(1, Reprice::where('state', Reprice::SUPERSEDED)->count());
+        $this->assertTrue($this->offer->events()->where('type', 'reprice')->get()->contains(fn ($e) => str_contains($e->text(), 'заменена новой')));
+
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 433200, [$old->id => 'keep', $denis->id => 'update'], null);
+        $this->assertSame(594762, $old->fresh()->cost);
+        // Денису — цена «от», какой он её видит, а не закупочная.
+        Notification::assertSentTo($this->denis, CostChangedNotice::class, fn ($n) => $n->text() === 'от 595 000 → 434 000 ₽'
+            || str_starts_with(str_replace("\u{A0}", ' ', $n->text()), 'от 595 000 → 434 000'));
+    }
+
+    public function test_edit_not_by_crm_editor_notifies_admins(): void
+    {
+        app(PlaceBid::class)($this->offer, $this->roman, 1000000);
+        // Правка не админом в редакторе (модератор, парковка, «из текста») — уведомление админам: иначе молча не применится.
+        $moderator = User::create(['name' => 'Лиза', 'phone' => '79000000050', 'roles' => [Role::Moderator], 'approved_at' => now()]);
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 400000], $moderator);
+        $this->assertSame(400000, $this->offer->fresh()->pendingReprice->to_price);
+        Notification::assertSentTo($this->admin, RepriceNotice::class);
     }
 
     public function test_edit_with_confirmers_becomes_reprice_without_confirmers_writes(): void

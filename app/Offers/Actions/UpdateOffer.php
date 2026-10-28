@@ -59,11 +59,17 @@ final class UpdateOffer
         // Новая закупочная, а подтвердившие уже есть (28.10.2026, владелец: «у тех, кто подтвердил, и в сделке — оставить
         // прежнюю или обновить»): откуда бы ни пришла — руками, из текста, с Мигторга, — сразу не пишется, а встаёт
         // переоценкой на решение админа (`Reprice`, шторка «Переоценка»). Остальные поля правки сохраняются.
-        $reprice = null;
+        // Оценочная, от которой закупочная посчиталась (Альфа), уходит в переоценку вместе с ней: иначе встала бы новая
+        // оценочная при прежней закупочной.
+        $reprice = $repriceValue = null;
         if (! $repricing && $offer->exists && $offer->isDirty('floor_price') && $offer->getOriginal('floor_price') && $offer->floor_price
             && Reprice::hasAffected($offer)) {
             $reprice = (int) $offer->floor_price;
             $offer->floor_price = $offer->getOriginal('floor_price');
+            if ($offer->isDirty('value')) {
+                $repriceValue = $offer->value !== null ? (int) $offer->value : null;
+                $offer->value = $offer->getOriginal('value');
+            }
         }
         // Новая закупочная у предложения с идущей сделкой — только закупочная поставщика (`UpdateDealCost`): цена
         // менеджера в сделке закреплена с его подтверждения (15.10.2026), сменить её — «Обновить» в переоценке.
@@ -123,7 +129,7 @@ final class UpdateOffer
             (new RememberVin)($offer);
         }
         if ($reprice) {
-            DetectReprice::open($offer, $reprice, in_array($log['source'] ?? null, Reprice::SOURCES, true) ? $log['source'] : 'manual', null, $by);
+            DetectReprice::open($offer, $reprice, in_array($log['source'] ?? null, Reprice::SOURCES, true) ? $log['source'] : 'manual', null, $by, $repriceValue);
         }
         self::identityChanged($offer, $changed);
         // Гараж запретили — ждущие «В гараж» отклоняются (решение владельца 03.10.2026), принять их уже нельзя.

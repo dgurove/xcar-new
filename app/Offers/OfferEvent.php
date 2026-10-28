@@ -114,6 +114,7 @@ class OfferEvent extends Model
                 'applied' => 'Переоценка применена: закупочная '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0))
                     .(! empty($p['people']) ? '. '.implode(', ', $p['people']) : ''),
                 'dismissed' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0)).' отклонена',
+                'superseded' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0)).' заменена новой',
                 default => 'Переоценка на решение: '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0))
                     .(($p['source'] ?? '') === 'letter' ? ' по письму поставщика' : ''),
             },

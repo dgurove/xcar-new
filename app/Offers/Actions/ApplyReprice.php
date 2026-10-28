@@ -19,7 +19,8 @@ use Illuminate\Validation\ValidationException;
  * оставить прежнюю цену закупа или обновить; это важно технически верно реализовать»). Под замком предложения, одной
  * транзакцией:
  * - закупочная — `UpdateOffer` (`repricing`), с причиной в истории; заодно заявленная и цена продажи из шторки;
- * - подтверждение: «Обновить» — `bids.cost` = новая, менеджеру `CostChangedNotice`; «Оставить» — как было, молча;
+ * - подтверждение: «Обновить» — `bids.cost` = новая, менеджеру `CostChangedNotice` (без закупочной — что он видит);
+ *   «Оставить» — как было, молча (у старого подтверждения без своей закупочной она закрепляется прежней);
  * - сделка: «Обновить» — `deals.cost` = новая (у ДКП и «страховой напрямую» сумма страховой тоже, если стояла равной
  *   прежней), договор и неоплаченные счета перевыставляются (`SyncDealInvoices`), менеджеру уведомление; по счёту уже
  *   платили — только «Оставить». «Оставить» — новая ложится в `supplier_cost` (`UpdateDealCost`, как правка руками).
@@ -50,37 +51,42 @@ final class ApplyReprice
             $choices = $this->choices($live->all(), $bids, $liveDeal, $deal);
 
             $from = (int) $offer->floor_price;
-            $data = ['floor_price' => $price] + array_intersect_key($prices, array_flip(['publish_price', 'asking_price']));
+            // Закупочная каждого — до записи новой: у старых подтверждений без своей (`bids.cost` пуст, до 15.10.2026) она
+            // бралась от предложения, и «Оставить» после записи отдало бы им новую.
+            $was = $live->mapWithKeys(fn (Bid $bid) => [$bid->id => (int) ($bid->cost ?? $from)]);
+            // Оценочная из письма (Альфа) — вместе с закупочной, если её не поправили в шторке.
+            $value = $reprice->value !== null && $price === $reprice->to_price ? ['value' => $reprice->value] : [];
+            $data = ['floor_price' => $price] + $value + array_intersect_key($prices, array_flip(['publish_price', 'asking_price']));
             ($this->update)($offer, $data, $by, ['why' => $reprice->why()], repricing: true);
 
             $people = [];
             foreach ($live as $bid) {
-                $was = $bid->frozenCost();
-                if ($choices['bids'][$bid->id] === self::UPDATE && $was !== $price) {
+                if ($choices['bids'][$bid->id] === self::UPDATE && $was[$bid->id] !== $price) {
                     $bid->update(['cost' => $price]);
-                    $notify[] = [$bid->user, new CostChangedNotice($bid, (int) $was, $price)];
-                    $people[] = $bid->user->shortName().' — '.Money::plain((int) $was).' → '.Money::plain($price);
+                    $notify[] = CostChangedNotice::for($bid->user, $bid->setRelation('offer', $offer), $was[$bid->id], $price);
+                    $people[] = $bid->user->shortName().' — '.Money::plain($was[$bid->id]).' → '.Money::plain($price);
                 } else {
-                    $people[] = $bid->user->shortName().' — оставлена '.Money::plain((int) $was);
+                    $bid->cost === null && $bid->update(['cost' => $was[$bid->id]]);
+                    $people[] = $bid->user->shortName().' — оставлена '.Money::plain($was[$bid->id]);
                 }
             }
             if ($liveDeal) {
                 $liveDeal = $liveDeal->fresh();
-                $was = (int) $liveDeal->cost;
-                if ($choices['deal'] === self::UPDATE && $was !== $price) {
+                $dealWas = (int) $liveDeal->cost;
+                if ($choices['deal'] === self::UPDATE && $dealWas !== $price) {
                     $this->updateDeal($liveDeal, $price, $by);
-                    $notify[] = [$liveDeal->buyer, new CostChangedNotice($liveDeal->fresh(), $was, $price)];
-                    $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — '.Money::plain($was).' → '.Money::plain($price);
+                    $notify[] = CostChangedNotice::for($liveDeal->buyer, $liveDeal->fresh(), $dealWas, $price);
+                    $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — '.Money::plain($dealWas).' → '.Money::plain($price);
                 } else {
-                    $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — оставлена '.Money::plain($was);
+                    $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — оставлена '.Money::plain($dealWas);
                 }
             }
 
             $reprice->update(['state' => Reprice::APPLIED, 'to_price' => $price, 'choices' => $choices, 'decided_by' => $by->id, 'decided_at' => now()]);
             $offer->log(OfferEventType::Reprice, $by, ['reprice' => $reprice->id, 'state' => Reprice::APPLIED, 'from' => $from, 'to' => $price, 'people' => $people]);
         });
-        foreach ($notify as [$user, $notice]) {
-            $user?->notify($notice);
+        foreach (array_filter($notify) as [$user, $notice]) {
+            $user->notify($notice);
         }
     }
 

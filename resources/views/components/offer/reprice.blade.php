@@ -2,14 +2,15 @@
      отменить»; `Offers\Reprice`). Плашка наверху окошка и редактора: было → стало, откуда, «Открыть письмо», «Отклонить» и
      «Применить…». Шторка — новая цена (правится), у открытого цена продажи (заявленная пустая — идёт за закупочной), и решение по каждому, кто сейчас
      подтвердил, и по сделке: «Оставить N | Обновить M», заранее не отмечено ничего, «Применить» — когда решено по всем
-     (`reprice_controller`). Вписали закупочную руками при подтвердивших — шторка открывается у автора сама. --}}
+     (`reprice_controller`). Вписали закупочную в редакторе при подтвердивших — шторка открывается у автора сама, один раз. --}}
 @props(['offer', 'reprice'])
 @php
     use App\Support\Money;
     ['bids' => $bids, 'deal' => $deal] = \App\Offers\Reprice::affected($offer);
     $id = 'reprice-'.$reprice->id;
     $diff = $reprice->to_price - (int) $reprice->from_price;
-    $mine = $reprice->source !== 'letter' && $reprice->created_by === auth()->id() && $reprice->created_at->gt(now()->subSeconds(30));
+    // Админ вписал закупочную в редакторе — шторка открывается один раз, по метке `DetectReprice::open`.
+    $mine = session('reprice-open') == $reprice->id;
     $dealLocked = $deal && ! $deal->moneyEditable();
     $open = $offer->state === \App\Offers\OfferState::Open;
 @endphp
@@ -73,9 +74,15 @@
                             </div>
                             <div class="segment">
                                 <label><input type="radio" name="deal" value="keep" @checked(old('deal') === 'keep' || $dealLocked) data-action="reprice#update">Оставить&nbsp;{{ Money::nums((int) $deal->cost) }}</label>
-                                <label @if ($dealLocked) class="opacity-40" @endif><input type="radio" name="deal" value="update" @checked(old('deal') === 'update') @disabled($dealLocked) data-action="reprice#update">Обновить&nbsp;<span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span></label>
+                                {{-- По счёту уже платили — обновить нельзя: вместо цены словом, почему. --}}
+                                <label @if ($dealLocked) class="opacity-40" @endif><input type="radio" name="deal" value="update" @checked(old('deal') === 'update') @disabled($dealLocked) data-action="reprice#update">
+                                    @if ($dealLocked)
+                                        Уже платили
+                                    @else
+                                        Обновить&nbsp;<span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span>
+                                    @endif
+                                </label>
                             </div>
-                            <p class="text-sm text-ink-muted">{{ $dealLocked ? 'По счёту сделки уже платили — только оставить' : 'Обновить — счёт и договор перевыставятся, менеджеру придёт уведомление' }}</p>
                             <p class="text-sm text-danger" data-reprice-target="loss" hidden></p>
                         </div>
                     @endif

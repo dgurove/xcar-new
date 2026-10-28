@@ -27,7 +27,7 @@ class RepricesFromLettersCommand extends Command
         $found = 0;
         foreach ($letters as $letter) {
             $offer = Offer::find($letter->thread->offer_id);
-            if (! $offer || ! ($price = DetectReprice::priceIn($offer, $letter))) {
+            if (! $offer || ! ($price = DetectReprice::pricesIn($offer, $letter)['floor_price'] ?? null)) {
                 continue;
             }
             $found++;

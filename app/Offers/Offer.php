@@ -263,7 +263,8 @@ class Offer extends Model
     {
         $positions = $this->relationLoaded('positions') ? $this->positions : $this->positions()->with('stage.block', 'stage.exits.to')->get();
 
-        return $positions->firstWhere('track', $track);
+        // Позиция знает своё предложение без запроса: её проверки («ждёт переоценка», письма) читают его связи.
+        return $positions->firstWhere('track', $track)?->setRelation('offer', $this);
     }
 
     public function stage(Track $track = Track::Sale): ?Stage
