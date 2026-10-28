@@ -3891,20 +3891,21 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   /* Редактор письма как в почтовом клиенте (`compose-fields`, 28.10.2026): одна плашка, шапка строками с подписью слева
      через волосяную линию, поле письма без рамки, низ — «Отправить», скрепка, «Aa». */
   .compose { @apply relative rounded-(--radius-l) bg-surface-2; }
-  .compose-row { @apply relative flex min-h-11 flex-wrap items-start gap-x-3 border-b border-line/60 px-4 py-1; }
-  .compose-row > .compose-label { @apply pt-2.5; }
-  .compose-row > .compose-cc-toggle { @apply pt-2; }
-  .compose-label { @apply w-12 shrink-0 text-sm text-ink-muted; }
+  /* Строка — ряд высотой 36 px: подпись, значение, «Копия» и первая строка тегов стоят по его середине, теги переносятся
+     ниже тем же шагом. */
+  .compose-row { @apply relative flex flex-wrap items-start gap-x-3 border-b border-line/60 px-4 py-1; }
+  .compose-row > .compose-label, .compose-row > .compose-cc-toggle, .compose-row > .compose-value { @apply flex h-9 items-center; }
+  .compose-label { @apply w-14 shrink-0 text-ink-muted; }
   .compose-value { @apply min-w-0 flex-1 truncate; }
-  .compose-input, .compose-from { @apply min-w-0 flex-1 bg-transparent py-2 text-ink outline-none; border: 0; }
+  .compose-input, .compose-from { @apply h-9 min-w-0 flex-1 bg-transparent py-0 text-ink outline-none; border: 0; }
   .compose-from { @apply cursor-pointer appearance-none truncate pr-6; background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23888' stroke-width='1.6'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E") no-repeat right center / 1rem; }
   .compose-cc-toggle { @apply shrink-0 text-sm text-accent-text; }
-  .compose-error { @apply basis-full pb-1 pl-15; }
-  .recipients { @apply flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1.5; }
-  .recipients-input { @apply min-w-20 flex-1 bg-transparent py-0.5 text-ink outline-none; border: 0; }
-  .recipient { @apply inline-flex max-w-full items-center rounded-full bg-surface-3 text-sm text-ink; }
-  .recipient-label { @apply truncate py-1 pl-3; }
-  .recipient-x { @apply px-2 py-1 text-ink-muted hover:text-ink; }
+  .compose-error { @apply basis-full pb-1 pl-17; }
+  .recipients { @apply flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-1; }
+  .recipients-input { @apply h-7 min-w-20 flex-1 bg-transparent py-0 text-ink outline-none; border: 0; }
+  .recipient { @apply inline-flex h-7 max-w-full items-center rounded-full bg-surface-3 text-sm text-ink; }
+  .recipient-label { @apply truncate pl-3; }
+  .recipient-x { @apply grid h-full place-items-center px-2 text-ink-muted hover:text-ink; }
   .recipient.is-bad { @apply bg-danger/15 text-danger; }
   .recipients-pop { @apply absolute top-full left-14 z-(--z-pop) mt-1 flex w-80 max-w-[calc(100%-4rem)] flex-col overflow-hidden rounded-(--radius-m) bg-surface py-1 shadow-(--shadow-drop); }
   .recipients-option { @apply flex flex-col px-3 py-2 text-left; }
