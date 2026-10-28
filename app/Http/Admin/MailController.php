@@ -66,6 +66,7 @@ use App\Support\OfficePreview;
 use App\Support\Sort;
 use App\Users\User;
 use App\Vendors\Actions\BindSender;
+use App\Vendors\Contact;
 use App\Vendors\ContactRole;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
@@ -626,7 +627,11 @@ class MailController
         // Ящик, что только принимает (offer@), отвечает через свой «Отвечаем с ящика» (deal@).
         $sender = $message->account->sender();
 
-        return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $sender, 'accounts' => collect([$sender]), 'thread' => $thread, 'parent' => $message,
+        // «От» — любой ящик своей стороны, что пишет (28.10.2026, владелец: «от я бы добавил возможность выбирать»); по
+        // умолчанию — тот, что отвечает за ящик письма.
+        $accounts = Account::where('scope', $this->scope)->sending()->orderBy('title')->get();
+
+        return view($request->header('Turbo-Frame') ? 'admin.mail.compose-frame' : 'admin.mail.compose', ['frame' => $request->header('Turbo-Frame'), 'account' => $sender, 'accounts' => $accounts->contains('id', $sender->id) ? $accounts : collect([$sender]), 'thread' => $thread, 'parent' => $message,
             'defaults' => $defaults, 'mode' => $mode, 'templates' => collect(), 'offer' => $thread->offer, 'vehicle' => $thread->vehicle, 'base' => $this->base]);
     }
 
@@ -648,8 +653,9 @@ class MailController
             return redirect($retry ?: url()->previous())->withInput()->withErrors(['to' => 'Нужен хотя бы один адрес']);
         }
 
-        // Родитель — из ящика отправки или из ящика, который отвечает через него (письмо в offer@, ответ с deal@).
-        $boxes = Account::where('id', $account->id)->orWhere('reply_account_id', $account->id)->pluck('id');
+        // Родитель — письмо своей стороны: ответ можно отправить с любого её ящика («От»), с чужого ящика он уйдёт новой
+        // веткой с In-Reply-To (`Composer::create`).
+        $boxes = Account::where('scope', $this->scope)->pluck('id');
         $parent = ! empty($data['parent']) ? Message::with(['thread', 'attachments', 'account'])->whereIn('account_id', $boxes)->find($data['parent']) : null;
         $thread = ! empty($data['thread']) ? Thread::where('account_id', $account->id)->find($data['thread']) : null;
 
@@ -699,6 +705,37 @@ class MailController
         }
 
         return redirect($data['back'] ?? "{$this->base}/{$message->thread_id}")->with('toast', 'Письмо в очереди');
+    }
+
+    /**
+     * Подсказки адресатов в «Кому» и «Копии» (`x-mail.recipients`, 28.10.2026): с кем переписывалась своя сторона — недавние
+     * сверху, и контакты вендоров своей стороны. Свои ящики не подсказываются. JSON `[{email, name, vendor}]`.
+     */
+    public function addresses(Request $request)
+    {
+        $q = mb_strtolower(trim((string) $request->query('q')));
+        if (mb_strlen($q) < 2) {
+            return response()->json([]);
+        }
+        $like = '%'.addcslashes($q, '%_\\').'%';
+        $own = Account::pluck('email')->map(fn ($e) => mb_strtolower($e))->all();
+        $rows = DB::table('mail_addresses as a')->join('mail_messages as m', 'm.id', '=', 'a.message_id')
+            ->join('mail_accounts as acc', 'acc.id', '=', 'm.account_id')->where('acc.scope', $this->scope->value)
+            ->where(fn ($w) => $w->whereRaw('lower(a.email) like ?', [$like])->orWhereRaw('lower(a.name) like ?', [$like]))
+            ->whereNotIn(DB::raw('lower(a.email)'), $own)
+            ->groupBy(DB::raw('lower(a.email)'))->orderByRaw('max(m.date_at) desc')->limit(8)
+            ->get([DB::raw('lower(a.email) as email'), DB::raw("max(nullif(a.name, '')) as name")]);
+        $contacts = Contact::with('vendor:id,name')->whereNotNull('email')->whereIn('role', ContactRole::side($this->scope === Scope::Offers))
+            ->where(fn ($w) => $w->whereRaw('lower(email) like ?', [$like])->orWhereRaw('lower(name) like ?', [$like]))->limit(8)->get();
+        $out = collect();
+        foreach ($contacts as $c) {
+            $out[mb_strtolower($c->email)] = ['email' => mb_strtolower($c->email), 'name' => $c->name ?: null, 'vendor' => $c->vendor?->name];
+        }
+        foreach ($rows as $r) {
+            $out[$r->email] ??= ['email' => $r->email, 'name' => $r->name, 'vendor' => null];
+        }
+
+        return response()->json($out->values()->take(8));
     }
 
     public function file(Request $request, StoreOutboxFile $store)

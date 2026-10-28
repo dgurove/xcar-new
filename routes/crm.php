@@ -135,6 +135,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/new', [MailController::class, 'compose']);
         Route::post('/', [MailController::class, 'send']);
         Route::post('/file', [MailController::class, 'file']);
+        Route::get('/addresses', [MailController::class, 'addresses']);
         Route::post('/sync', [MailController::class, 'sync']);
         Route::get('/attachments/{attachment}', [MailController::class, 'attachment']);
         Route::get('/messages/{message}/body', [MailController::class, 'body']);
