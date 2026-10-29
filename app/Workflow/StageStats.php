@@ -20,7 +20,7 @@ final class StageStats
                 with e as (
                     select ev.offer_id, ev.created_at, ev.payload->>'to' as stage,
                            lead(ev.created_at) over (partition by ev.offer_id order by ev.id) as next_at
-                    from offer_events ev
+                    from car_events ev
                     where ev.type = 'stage_entered' and ev.payload->>'track' = 'sale' and ev.created_at > now() - interval '90 days'
                 )
                 select o.vendor_id, e.stage, count(*) as n,

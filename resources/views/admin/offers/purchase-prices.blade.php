@@ -1,8 +1,8 @@
 {{-- Оценки машины в закупке — ориентир для цены продажи: последняя цена каждого менеджера по сумме вниз
-     (`Purchases\Car::latestOfferList`), под ними админская. Окошко предложения: под «Оценить» и плашкой у оценённых. --}}
+     (`Purchases\Car::latestOfferList`), под ними наша. Группой «В закупке № N» в «Подтверждениях» окошка и редактора. --}}
 @php $named = $car->latestOfferList(); @endphp
 @if ($car->price_final || $named->isNotEmpty())
-    <dl class="mt-3 flex flex-col gap-2 text-sm">
+    <dl class="flex flex-col gap-2 px-1 text-sm">
         @foreach ($named as $one)
             <div class="flex items-center justify-between gap-3">
                 <dt class="flex min-w-0 items-center gap-2"><x-ui.avatar :user="$one->user" :size="20"/><span class="truncate">{{ $one->user->shortName() }}</span></dt>

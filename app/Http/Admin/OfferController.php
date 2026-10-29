@@ -678,7 +678,7 @@ class OfferController
         // Модератору — поля, фото, документы и история: подтверждений, интереса, сделки, маршрута, чатов и круга показа
         // он не видит, и грузить их незачем.
         $admin = $request->user()->canManageCrm();
-        $offer->load(['settlement', 'media', 'events.user', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
+        $offer->load(['settlement', 'media', 'car.events.user', ...($admin ? ['bids.user', 'purchaseCar.purchase', 'purchaseCar.offers.user', 'interests.user.manager', 'interests.placer', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
             'positions.stage.block', 'positions.stage.exits.to.block.stages', 'positions.stage.workflow', 'deal.buyer', 'dealAudience', 'lastDeal.buyer', 'lastDeal.bid'] : [])]);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {

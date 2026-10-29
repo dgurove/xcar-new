@@ -223,25 +223,14 @@
             </x-ui.card>
             @endif
 
-            {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. --}}
+            {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. История машины,
+                 а не одной продажи (29.10.2026): с закупки — кто сколько называл, наша цена — до сделки и гаража. --}}
             @php
-                // Модератору — без подтверждений, денег и цен продажи (`OfferEvent::adminOnly`, 15.10.2026).
-                $own = auth()->user()->canManageCrm() ? $offer->events : $offer->events->reject(fn ($e) => $e->adminOnly());
+                // Модератору — без подтверждений, денег, цен продажи и закупки (`OfferEvent::adminOnly`, 15.10.2026).
+                $own = auth()->user()->canManageCrm() ? $offer->car->events : $offer->car->events->reject(fn ($e) => $e->adminOnly());
                 $events = \App\Cars\LaneHistory::merge($own->take(30), \App\Cars\LaneHistory::forOffer($offer)->take(30))->take(30);
             @endphp
-            <x-ui.card title="История" class="order-6">
-                <div class="flex flex-col gap-3 text-sm">
-                    @foreach ($events->take(4) as $e)@include('admin.offers.event', ['event' => $e])@endforeach
-                    @if ($events->count() > 4)
-                        <details class="group flex flex-col gap-3">
-                            <summary class="cursor-pointer list-none text-ink-muted group-open:hidden">Ещё {{ $events->count() - 4 }}</summary>
-                            <div class="flex flex-col gap-3">
-                                @foreach ($events->slice(4) as $e)@include('admin.offers.event', ['event' => $e])@endforeach
-                            </div>
-                        </details>
-                    @endif
-                </div>
-            </x-ui.card>
+            <x-ui.card title="История" class="order-6">@include('admin.offers.history')</x-ui.card>
         </div>
 
         {{-- Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и заглушки в ряду, attach_controller

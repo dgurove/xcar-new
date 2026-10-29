@@ -801,15 +801,15 @@ class Offer extends Model
     /** Заведено почтой само (`AutoOffer`): без автора, в истории «Заведён из письма». */
     public function scopeAutoDrafted(Builder $q): Builder
     {
-        return $q->whereNull('offers.moderator_id')->whereExists(fn ($e) => $e->from('offer_events')->whereColumn('offer_events.offer_id', 'offers.id')
-            ->where('offer_events.type', OfferEventType::Created)->whereRaw("(offer_events.payload->>'mail')::boolean"));
+        return $q->whereNull('offers.moderator_id')->whereExists(fn ($e) => $e->from('car_events')->whereColumn('car_events.offer_id', 'offers.id')
+            ->where('car_events.type', OfferEventType::Created)->whereRaw("(car_events.payload->>'mail')::boolean"));
     }
 
     /** Заведено с Мигторга само (`Offers\Intake\MigtorgDrafts`): без автора, в истории «Заведён с Мигторга». */
     public function scopeMigtorgDrafted(Builder $q): Builder
     {
-        return $q->whereNull('offers.moderator_id')->whereExists(fn ($e) => $e->from('offer_events')->whereColumn('offer_events.offer_id', 'offers.id')
-            ->where('offer_events.type', OfferEventType::Created)->whereNull('offer_events.user_id')->whereRaw("jsonb_exists(offer_events.payload, 'migtorg')"));
+        return $q->whereNull('offers.moderator_id')->whereExists(fn ($e) => $e->from('car_events')->whereColumn('car_events.offer_id', 'offers.id')
+            ->where('car_events.type', OfferEventType::Created)->whereNull('car_events.user_id')->whereRaw("jsonb_exists(car_events.payload, 'migtorg')"));
     }
 
     /** Черновик, который завела почта и который ещё не выходил наружу: его можно снять «Не заявка», как после «Завести». */
@@ -1410,6 +1410,6 @@ class Offer extends Model
 
     public function log(OfferEventType $type, ?User $user = null, array $payload = []): OfferEvent
     {
-        return $this->events()->create(['type' => $type, 'user_id' => $user?->id, 'payload' => $payload]);
+        return $this->events()->create(['car_id' => $this->car_id, 'type' => $type, 'user_id' => $user?->id, 'payload' => $payload]);
     }
 }

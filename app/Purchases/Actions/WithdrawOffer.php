@@ -2,6 +2,7 @@
 
 namespace App\Purchases\Actions;
 
+use App\Offers\OfferEventType;
 use App\Purchases\Offer;
 use App\Purchases\OfferState;
 use App\Users\User;
@@ -15,5 +16,6 @@ final class WithdrawOffer
             throw ValidationException::withMessages(['offer' => 'Отозвать нечего']);
         }
         $offer->update(['state' => OfferState::Withdrawn]);
+        $offer->car->log(OfferEventType::BidWithdrawn, $by, ['amount' => $offer->amount]);
     }
 }

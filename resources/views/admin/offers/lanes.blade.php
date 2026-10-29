@@ -15,7 +15,8 @@
         (bool) $g => 'garage',
         (bool) $deal?->isAuction() => 'auction',
         (bool) $deal => 'deal',
-        $bids->isNotEmpty() || $offer->state === OfferState::Open => 'bids',
+        // Машина из закупки — цены менеджеров в закупке стоят в «Подтверждениях» и у черновика (29.10.2026).
+        $bids->isNotEmpty() || $offer->state === OfferState::Open || (auth()->user()->canManageCrm() && $offer->purchaseCar) => 'bids',
         // Черновик в галерее: интерес и «+ Интерес» за менеджера (13.10.2026).
         $offer->isGallery() || $offer->interests->isNotEmpty() => 'interest',
         default => null,

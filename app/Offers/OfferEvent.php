@@ -13,10 +13,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
-#[Fillable(['offer_id', 'user_id', 'type', 'payload'])]
+/**
+ * Строка истории машины (`car_events`, 29.10.2026: одна история от закупки до сделки). Где это было — дорожка: продажа
+ * (`offer_id`) или лот закупки (`purchase_car_id`); машина (`car_id`) — у всех, её «История» читает `Cars\Car::events`.
+ */
+#[Fillable(['car_id', 'offer_id', 'purchase_car_id', 'user_id', 'type', 'payload'])]
 class OfferEvent extends Model
 {
     const UPDATED_AT = null;
+
+    protected $table = 'car_events';
+
+    protected static function booted(): void
+    {
+        // Запись через связь предложения (`$offer->events()->create`) машину не знает — берётся у предложения.
+        static::creating(function (self $e) {
+            $e->car_id ??= $e->offer_id ? Offer::withoutGlobalScopes()->whereKey($e->offer_id)->value('car_id') : null;
+        });
+    }
 
     protected function casts(): array
     {
@@ -26,6 +40,12 @@ class OfferEvent extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Строка лота закупки, а не продажи. */
+    public function inPurchase(): bool
+    {
+        return $this->purchase_car_id !== null;
     }
 
     /**
@@ -47,7 +67,7 @@ class OfferEvent extends Model
      */
     public function adminOnly(): bool
     {
-        return in_array($this->type, [OfferEventType::BidPlaced, OfferEventType::BidWithdrawn, OfferEventType::BidAccepted, OfferEventType::BidDeclined,
+        return $this->inPurchase() || in_array($this->type, [OfferEventType::BidPlaced, OfferEventType::BidWithdrawn, OfferEventType::BidAccepted, OfferEventType::BidDeclined,
             OfferEventType::Counter, OfferEventType::Garage, OfferEventType::Estimate, OfferEventType::InsurerReplied, OfferEventType::SupplierLetter], true)
             || ($this->type === OfferEventType::Updated && array_intersect(array_keys($this->payload['changes'] ?? []) ?: ($this->payload['fields'] ?? []),
                 ['asking_price', 'min_bid_price', 'cost', 'supplier_cost', 'deal_owner_price', 'amount', 'commission', 'share']));
@@ -57,6 +77,9 @@ class OfferEvent extends Model
     public function text(): string
     {
         $p = $this->payload ?? [];
+        if ($this->inPurchase()) {
+            return self::purchaseText($this->type, $p);
+        }
 
         return match ($this->type) {
             OfferEventType::Created => match (true) {
@@ -166,6 +189,29 @@ class OfferEvent extends Model
             ($p['source'] ?? null) === 'file' => 'По файлу'.(! empty($p['file']) ? ' «'.$p['file'].'»' : '').': '.$what,
             ! empty($p['why']) => $p['why'].': '.$what,
             default => 'Изменён: '.$what,
+        };
+    }
+
+    /**
+     * Строка лота закупки (29.10.2026): лот в закупке, цена менеджера (назвал, сменил, отозвал, выбрана, не выбрана), наша
+     * цена было → стало. Кто назвал — автором строки; выбор делает админ — чья цена, в тексте.
+     */
+    private static function purchaseText(OfferEventType $type, array $p): string
+    {
+        $in = 'Закупка № '.($p['purchase'] ?? '').': ';
+        $sum = Money::rub((int) ($p['amount'] ?? 0));
+        $whose = isset($p['manager']) ? ', '.(User::find($p['manager'])?->shortName() ?? '') : '';
+        [$was, $now] = $p['changes']['price_final'] ?? [null, null];
+
+        return match ($type) {
+            OfferEventType::Created => 'В закупке № '.($p['purchase'] ?? '').(! empty($p['dl']) ? ', ДЛ '.$p['dl'] : ''),
+            OfferEventType::BidPlaced => $in.'цена '.(isset($p['was']) ? Money::plain((int) $p['was']).' → ' : '').$sum,
+            OfferEventType::BidWithdrawn => $in.'цена '.$sum.' отозвана',
+            OfferEventType::BidAccepted => $in.'выбрана цена '.$sum.$whose,
+            OfferEventType::BidDeclined => $in.'не выбрана цена '.$sum.$whose,
+            OfferEventType::Note => ! empty($p['unchosen']) ? $in.'выбор цены '.$sum.' отменён'.$whose : $in.($p['text'] ?? ''),
+            OfferEventType::Updated => $in.'наша цена '.($was ? Money::plain((int) $was).' → ' : '').($now ? Money::rub((int) $now) : 'снята'),
+            default => $in.$type->value,
         };
     }
 

@@ -44,13 +44,6 @@
         @if ($rate && ($offer->openEstimates->isNotEmpty() || $offer->declinedEstimates->isNotEmpty()))
             @include('admin.offers.estimates')
         @endif
-        {{-- Ориентир из закупки Carcade: цены менеджеров и наша. --}}
-        @if ($admin && $offer->purchaseCar)
-            <div class="flex flex-col gap-1">
-                <div class="text-sm font-medium">Закупка № {{ $offer->purchaseCar->purchase->number }}</div>
-                @include('admin.offers.purchase-prices', ['car' => $offer->purchaseCar])
-            </div>
-        @endif
     </div>
     @if ($garage)
         <input type="radio" name="_way-{{ $n }}" value="garage" class="sr-only" id="way-garage-{{ $n }}" data-action="reveal#pick" @checked($way === 'garage')>

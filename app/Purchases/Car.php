@@ -5,6 +5,8 @@ namespace App\Purchases;
 use App\Cars\OnCar;
 use App\Cars\Region;
 use App\Cars\Settlement;
+use App\Offers\OfferEvent;
+use App\Offers\OfferEventType;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Surface;
@@ -34,6 +36,25 @@ class Car extends Model
 
     /** Машина (`Cars\Car`): ДЛ, VIN, марка, характеристики и фото лота — у неё. */
     protected $with = ['car'];
+
+    protected static function booted(): void
+    {
+        // История машины (29.10.2026): лот появился в закупке, наша цена было → стало — из любой двери (файл, оценка
+        // строкой, правка лота).
+        static::created(fn (self $car) => $car->log(OfferEventType::Created, auth()->user(), ['dl' => $car->dl]));
+        static::updated(function (self $car) {
+            if ($car->wasChanged('price_final')) {
+                $car->log(OfferEventType::Updated, auth()->user(), ['changes' => ['price_final' => [$car->getOriginal('price_final'), $car->price_final]]]);
+            }
+        });
+    }
+
+    /** Строка истории машины с этого лота (`car_events`, `purchase_car_id`): номер закупки — в тексте строки. */
+    public function log(OfferEventType $type, ?User $user = null, array $payload = []): OfferEvent
+    {
+        return OfferEvent::create(['car_id' => $this->car_id, 'purchase_car_id' => $this->id, 'type' => $type, 'user_id' => $user?->id,
+            'payload' => ['purchase' => $this->purchase->number] + $payload]);
+    }
 
     /** ДЛ лота — номер машины (`claim_ref`), как номер убытка у страховой. */
     public static function carAliases(): array

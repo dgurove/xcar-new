@@ -60,5 +60,13 @@
             <p class="mt-3 text-sm text-ink-dim">Менеджеры цены не предложили</p>
         @endif
         @if ($car->description)<p class="mt-4 whitespace-pre-line text-sm text-ink-muted">{{ $car->description }}</p>@endif
+        {{-- История машины (29.10.2026) — та же, что у её предложения: закупка, перенос, продажа. --}}
+        @php $events = $car->carRecord()->events()->with('user')->limit(30)->get(); @endphp
+        @if ($events->isNotEmpty())
+            <section class="mt-4">
+                <h2 class="detail-section">История</h2>
+                @include('admin.offers.history')
+            </section>
+        @endif
     </x-ui.row-card>
 </x-ui.detail>

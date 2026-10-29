@@ -10,6 +10,7 @@ use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Patterns;
 use App\Media\HasPhotos;
 use App\Offers\Offer;
+use App\Offers\OfferEvent;
 use App\Park\Actions\FillFromDocs;
 use App\Park\City;
 use App\Park\Vehicle;
@@ -138,6 +139,15 @@ class Car extends Model implements HasMedia
     public function vehicle(): HasOne
     {
         return $this->hasOne(Vehicle::class)->withoutGlobalScope(City::SCOPE);
+    }
+
+    /**
+     * История машины (29.10.2026) — одна на все дорожки: лот закупки, продажа, сделка, гараж. Записи одной правки —
+     * одной секундой: порядок по номеру.
+     */
+    public function events(): HasMany
+    {
+        return $this->hasMany(OfferEvent::class)->latest()->latest('id');
     }
 
     /** Лоты закупок (Carcade выставляет тот же ДЛ в новой закупке — та же машина). */

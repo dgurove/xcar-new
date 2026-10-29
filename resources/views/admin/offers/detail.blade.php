@@ -227,7 +227,7 @@
                 <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages"/>
             </section>
         @endif
-        @if ($bids->isNotEmpty() || ($admin && $offer->state === OfferState::Open))
+        @if ($bids->isNotEmpty() || ($admin && ($offer->state === OfferState::Open || $offer->purchaseCar)))
             <section class="mt-4">
                 <h2 class="detail-section">Подтверждения @if ($waiting->isNotEmpty())<span class="nums font-normal text-ink-dim">{{ $waiting->count() }}</span>@endif</h2>
                 @include('admin.offers.bids')

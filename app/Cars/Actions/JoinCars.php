@@ -101,7 +101,7 @@ final class JoinCars
                 $keep = $keepVehicle && in_array($keepVehicle->id, [$a->id, $b->id], true) ? $keepVehicle : MergeVehicles::pick(collect([$a, $b]));
                 MergeVehicles::lanes($keep, $keep->is($a) ? $b : $a, $by);
             }
-            foreach (['offers', 'park_vehicles', 'purchase_cars', 'transports'] as $table) {
+            foreach (['offers', 'park_vehicles', 'purchase_cars', 'transports', 'car_events'] as $table) {
                 DB::table($table)->where('car_id', $from->id)->update(['car_id' => $into->id]);
             }
             $from = $from->fresh() ?? $from;
