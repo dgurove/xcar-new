@@ -109,7 +109,7 @@ class GalleryController
         return Table::of(
             new Column('title', 'Марка, модель', grow: true),
             new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 9),
-            new Column('city', 'Город', from: 'sm', aside: true, rem: 6),
+            new Column('city', 'Город', from: 'sm', aside: true, rem: 6, clip: true),
             new Column('from', 'Появилось', from: 'sm', num: true, aside: true, sort: 'fresh', cell: 'nums whitespace-nowrap', rem: 6.5),
             new Column('left', 'Осталось', from: 'sm', fill: true, sort: 'closing', cell: 'whitespace-nowrap', rem: 6),
             new Column('interest', 'Интерес', num: true, sort: 'interest', cell: 'nums', rem: 4.5),

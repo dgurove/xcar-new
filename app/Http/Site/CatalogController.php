@@ -172,7 +172,7 @@ class CatalogController
             new Column('title', 'Марка, модель', grow: true, cap: false),
             new Column('number', '№', from: 'sm', dim: true, cell: 'nums', rem: 7),
             $deadline ? new Column('deadline', 'Приём', from: 'sm', sort: 'closing', rem: 7) : null,
-            new Column('city', 'Город', from: 'sm', aside: true, dim: true, rem: 8),
+            new Column('city', 'Город', from: 'sm', aside: true, dim: true, rem: 8, clip: true),
             $mine ? new Column('mine', 'Ваша цена', from: 'sm', num: true, cell: 'nums', rem: 7) : null,
             new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 9),
             new Column('since', 'Прошло', from: 'sm', num: true, aside: true, sort: 'published', cell: 'cell-dim', rem: 5),

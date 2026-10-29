@@ -67,11 +67,12 @@ final class Table
      * таблицы — сетка с этими столбцами, и строка за экраном не считается вовсе (`content-visibility`, `.is-grid` в app.css).
      * Строки совпадают столбцами без общей раскладки, только если ширины не зависят от содержимого, — они из описания
      * и данных: название — шириной в самое длинное (`--title-ch`) и не уже 12rem, `fill` забирает запас, остальное — по
-     * самим значениям столбца (`Widths::of` — сервер считает один раз, браузер ничего не меряет), `rem` — когда их нет.
+     * самим значениям столбца (`Widths::of` — сервер считает один раз, браузер ничего не меряет), `rem` — когда их нет;
+     * запас ширины сетка отдаёт сначала названию (до его полной длины), остаток — `fill`.
      * Строка `--cols-*` на каждую ступень ширины (у ступени свои видимые столбцы) и на открытую карточку (краткая таблица:
      * только столбцы телефона; от 1024 ещё без `aside`).
      *
-     * @param  array<string, array{0: float, 1: float}>  $widths  ширины столбцов по данным — ядро и целиком, rem (`Widths::of`)
+     * @param  array<string, float>  $widths  ширины столбцов по данным, rem (`Widths::of`)
      */
     public function gridStyle(array $widths = []): string
     {
@@ -87,7 +88,7 @@ final class Table
 
     /**
      * @param  \Closure(Column): bool  $shown
-     * @param  array<string, array{0: float, 1: float}>  $widths
+     * @param  array<string, float>  $widths
      */
     private function tracks(\Closure $shown, array $widths, bool $open = false): string
     {
@@ -103,17 +104,8 @@ final class Table
             $c->fill && ! $open => 'minmax('.$c->rem.'rem, 1fr)',
             $c->num && $open => 'max-content',
             // Ширина — из самих значений (и шапки); `rem` описания — только когда их нет (столбца нет в строках).
-            default => isset($widths[$c->key]) ? self::track(...$widths[$c->key]) : ($c->rem > 0 ? $c->rem : 6).'rem',
+            default => ($widths[$c->key] ?? ($c->rem > 0 ? $c->rem : 6)).'rem',
         })->implode(' ');
-    }
-
-    /**
-     * Дорожка столбца: не уже ядра; есть место — до полной ширины (сетка раздаёт запас поровну, как браузер столбцам
-     * таблицы), нет — второстепенный кусок встаёт второй строкой.
-     */
-    private static function track(float $min, float $max): string
-    {
-        return $max > $min + .25 ? "minmax({$min}rem, {$max}rem)" : "{$min}rem";
     }
 
     /** Сколько столбцов — `colspan` заголовка группы. */

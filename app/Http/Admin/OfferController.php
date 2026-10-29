@@ -553,7 +553,7 @@ class OfferController
             new Column('number', '№', from: 'sm', aside: true, cell: 'cell-dim nums', rem: 7),
             // Во «Все» город — с 1024: место отдано этапу сделки и менеджеру в «Состоянии» (27.10.2026; с 29.10.2026 таблица
             // плотнее, и с 1536 — слишком поздно).
-            $has('city') ? new Column('city', 'Город', from: in_array($preset, ['all', 'done'], true) ? 'lg' : 'sm', aside: true, rem: max(5, $cityCh * .5 + 2.5)) : null,
+            $has('city') ? new Column('city', 'Город', from: in_array($preset, ['all', 'done'], true) ? 'lg' : 'sm', aside: true, clip: true, rem: max(5, $cityCh * .5 + 2.5)) : null,
             // Без «Состояния» запас ширины забирает пустой столбец перед числами, а не промежутки между столбцами.
             $has('state')
                 ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', fill: true, sort: 'closing', cell: 'whitespace-normal', rem: 10)

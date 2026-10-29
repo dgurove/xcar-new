@@ -18,6 +18,8 @@ final class Column
      * @param  float  $rem  сколько места столбец занимает (rem) — из них `Table::rest`, остальное забирает название
      * @param  bool  $cap  у растущего столбца — шириной в самое длинное название (`title-cap`, `x-ui.table :titles`),
      *                     запас забирает `fill`; без него название забирает всю ширину (гараж, оплаты, закупки)
+     * @param  bool  $clip  данные извне (город): ширина таблицы сеткой — по 97 % значений, редкое длинное режется «…»
+     *                      (`Widths::of`); системный текст флага не получает — его не режут
      */
     public function __construct(
         public readonly string $key,
@@ -35,6 +37,7 @@ final class Column
         public readonly string $cell = '',
         public readonly float $rem = 0,
         public readonly bool $cap = true,
+        public readonly bool $clip = false,
     ) {}
 
     /** Классы ячейки столбца; head — заголовка (без `cell`). */

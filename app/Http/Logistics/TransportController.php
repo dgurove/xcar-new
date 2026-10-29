@@ -200,7 +200,7 @@ class TransportController
             'binding' => new Column('binding', 'Обязывающее до', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', rem: 7),
             'to' => new Column('to', 'Кому везти', from: 'sm', rem: 9),
             // Откуда забирать — главный факт логиста (регионы): с 640, а не с 1536 (29.10.2026).
-            'city' => new Column('city', 'Город', from: 'sm', aside: true, sort: 'city', rem: 7),
+            'city' => new Column('city', 'Город', from: 'sm', aside: true, sort: 'city', rem: 7, clip: true),
             'step' => new Column('step', 'Что дальше', from: 'sm', rem: 9),
             'who' => new Column('who', 'Исполнитель', from: 'sm', sort: 'who', rem: 8),
             'created' => new Column('created', 'Поступила', from: $when ? '2xl' : null, num: true, aside: $when, sort: 'created', cell: 'nums whitespace-nowrap cell-dim', rem: 6.5),

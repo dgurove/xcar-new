@@ -816,6 +816,9 @@ html.kb-open { --home-gap: 0px; }
   /* Длинный адрес в чипе ужимается многоточием, а не растягивает страницу; в тексте и ячейке — переносится как раньше. */
   .place, .vincode { @apply inline-flex min-w-0 max-w-full items-baseline gap-1; }
   .tag.place > .place-text, .chip.place > .place-text, .mark.place > .place-text, .truncate.place > .place-text { @apply truncate; }
+  /* В ячейке таблицы место — данные извне: редкое длинное («Железногорск-Илимский») режется «…», столбец по 97 % значений
+     (`Column::$clip`, `Table\Widths`). */
+  .table td .place > .place-text { @apply truncate; }
   .place > svg, .vincode > svg { @apply size-[1em] shrink-0 text-ink-dim; }
   .tag.place { padding-left: 7px; }
   .tag.vincode { padding-right: 7px; }
