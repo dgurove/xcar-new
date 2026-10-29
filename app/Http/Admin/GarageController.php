@@ -102,8 +102,11 @@ class GarageController
     public static function table(): Table
     {
         return Table::of(
-            new Column('title', 'Марка, модель', grow: true, cap: false),
+            // Название — шириной в самое длинное (`title-cap`), остальное — «Этапу» (29.10.2026).
+            new Column('title', 'Марка, модель', grow: true),
             new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10),
+            // Этап — своим столбцом от 640 (29.10.2026), как «Что сейчас» в «Сделках»; был вторым этажом названия.
+            new Column('stage', 'Этап', from: 'sm', fill: true, rem: 11),
             new Column('taken', 'В гараже с', from: 'xl', num: true, aside: true, cell: 'nums cell-dim', rem: 5.5),
             new Column('price', 'Закупочная', from: 'sm', num: true, sort: 'price', cell: 'nums', rem: 6.5),
             new Column('spent', 'Расходы', from: 'sm', num: true, cell: 'nums', rem: 5.5),

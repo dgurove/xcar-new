@@ -82,8 +82,12 @@
         @elseif ($price->shown())@if ($price->withFrom())<span class="hidden text-ink-muted lg:inline">{{ $price::money($price->from) }} → </span>@endif{{ $price::money($price->to) }}@elseif (!$gallery)<span class="text-accent-text">Узнать</span>@endif
         {{-- Заявленная (менеджеру — закупочная для него) под ценой, пока стрелка «от → до» не влезает. --}}
         @if (! $estimate && $price->shown() && $price->withFrom())<span class="cell-sub lg:hidden">{{ $price::money($price->from) }}</span>@endif
-        @if ($myBid?->hasPendingCounter())<span class="cell-sub text-accent-text">контр {{ $price::money($myBid->counter_amount) }}</span>@elseif ($myBid)<span class="cell-sub">{{ $myBid->isGarage() ? 'в гараж' : 'ваша '.$price::money($myBid->amount) }}</span>@endif
+        {{-- Своя цена — столбцом «Ваша цена» от 640 (`mine`), на телефоне — под ценой. --}}
+        @if ($myBid?->hasPendingCounter())<span @class(['cell-sub text-accent-text', 'sm:hidden' => $table->has('mine')])>контр {{ $price::money($myBid->counter_amount) }}</span>@elseif ($myBid)<span @class(['cell-sub', 'sm:hidden' => $table->has('mine')])>{{ $myBid->isGarage() ? 'в гараж' : 'ваша '.$price::money($myBid->amount) }}</span>@endif
     </td>
+        @break
+        @case('mine')
+    <td class="{{ $col->classes() }}">@if ($myBid)<span @class(['text-accent-text' => $myBid->hasPendingCounter()])>{{ $myBid->isGarage() ? 'в гараж' : $price::money($myBid->amount) }}</span>@if ($myBid->hasPendingCounter())<span class="cell-sub text-accent-text">контр {{ $price::money($myBid->counter_amount) }}</span>@endif @endif</td>
         @break
         @case('since')
     <td class="{{ $col->classes() }}">{!! \App\Support\Ago::time($since) !!}</td>

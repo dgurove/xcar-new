@@ -201,20 +201,23 @@ class DealController
     public static function table(bool $todo = false, bool $staged = false, ?string $preset = null): Table
     {
         $title = new Column('title', 'Марка, модель', grow: true);
-        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm');
+        // Ширина у каждого столбца (29.10.2026): без неё `x-ui.table :rest` гадали числом в виде, и название то резалось, то
+        // оставляло дыру.
+        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10);
+        $manager = new Column('manager', 'Менеджер', from: 'sm', rem: 9);
 
         return match (true) {
-            $todo => Table::of($title, $vendor, new Column('manager', 'Менеджер', from: 'sm'), new Column('wait', 'Ждёт', from: 'sm', fill: true), new Column('action', num: true)),
+            $todo => Table::of($title, $vendor, $manager, new Column('wait', 'Ждёт', from: 'sm', fill: true, rem: 8), new Column('action', num: true, rem: 9)),
             // «Оплата» — что с оплатой, сколько должен и срок (`x-deal.pay-row`); менеджер — заголовком группы.
-            $preset === 'pay' => Table::of($title, $vendor, new Column('status', 'Что с оплатой', from: 'sm', fill: true),
-                new Column('owed', 'Должен', num: true, class: 'nums'), new Column('due', 'Срок', from: 'sm', num: true)),
-            default => new Table([$title, $vendor, new Column('number', '№', from: '2xl', dim: true, class: 'nums'), new Column('manager', 'Менеджер', from: 'sm'),
+            $preset === 'pay' => Table::of($title, $vendor, new Column('status', 'Что с оплатой', from: 'sm', fill: true, rem: 12),
+                new Column('owed', 'Должен', num: true, class: 'nums', rem: 7), new Column('due', 'Срок', from: 'sm', num: true, rem: 6)),
+            default => new Table([$title, $vendor, new Column('number', '№', from: '2xl', dim: true, class: 'nums', rem: 7), $manager,
                 // «Все» сгруппированы по этапу — этап говорит заголовок группы, столбца нет (и таблица влезает с «Оплатой»).
-                $staged ? null : new Column('stage', 'Этап', from: 'sm', fill: true),
-                new Column('term', 'Что сейчас', from: 'sm', sort: 'deadline', fill: $staged),
+                $staged ? null : new Column('stage', 'Этап', from: 'sm', fill: true, rem: 12),
+                new Column('term', 'Что сейчас', from: 'sm', sort: 'deadline', fill: $staged, rem: 9),
                 // Оплата — сколько должны нам и до какого числа (27.10.2026); на телефоне — под суммой.
-                new Column('pay', 'Оплата', from: 'sm', num: true, class: 'nums'),
-                new Column('amount', 'Сумма', num: true, sort: 'amount', class: 'nums')], ['preset' => $preset]),
+                new Column('pay', 'Оплата', from: 'sm', num: true, class: 'nums', rem: 7),
+                new Column('amount', 'Сумма', num: true, sort: 'amount', class: 'nums', rem: 7)], ['preset' => $preset]),
         };
     }
 

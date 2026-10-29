@@ -10,7 +10,7 @@
     // Столбец «Приём» — тем, кто подтверждает ценой, и в галерее (там окно показа).
     $deadline = $gallery || ($user?->bidsOnSite() ?? false);
     // Столбцы всех таблиц экрана — одно описание (шапки, строки, заголовки пачек).
-    $columns = \App\Http\Site\CatalogController::table($deadline, $sorting ?? null);
+    $columns = \App\Http\Site\CatalogController::table($deadline, $sorting ?? null, mine: ! $gallery && ($user?->bidsOnSite() ?? false));
 @endphp
 <x-ui.shell :title="$title" :heading="false" :trail="$trail" :detail="$detail">
 

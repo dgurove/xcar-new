@@ -37,6 +37,8 @@ class DocumentController
         return Table::of(
             new Column('title', 'Марка, модель', grow: true, cap: false),
             new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10),
+            // Где документы — своим столбцом от 640 (29.10.2026), а не вторым этажом названия; в пути — с трек-номером.
+            new Column('docs', 'Документы', from: 'sm', fill: true, rem: 12),
             new Column('to', 'Кому', from: 'sm', rem: 12),
             new Column('at', $waiting ? 'Назначен' : 'Отправлены', num: true, cell: 'nums whitespace-nowrap cell-dim', rem: 7),
         );

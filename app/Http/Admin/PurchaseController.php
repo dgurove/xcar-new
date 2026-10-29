@@ -431,6 +431,8 @@ class PurchaseController
         return Table::of(
             new Column('title', 'Марка, модель', grow: true, cap: false),
             new Column('dl', 'ДЛ', from: 'sm', sort: 'dl', cell: 'cell-dim', rem: 7),
+            // Где машина (29.10.2026): у лота город есть, а в таблице его не было.
+            new Column('city', 'Город', from: 'sm', aside: true, rem: 8),
             new Column('listing', 'Размещение', from: 'sm', num: true, cell: 'cell-dim nums', rem: 6.5),
             new Column('offers', 'Предложения', from: 'sm', num: true, sort: 'best', cell: 'nums', rem: 8),
             new Column('final', 'Наша цена', num: true, sort: 'final', cell: 'nums', rem: 6.5),

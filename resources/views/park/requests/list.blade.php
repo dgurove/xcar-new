@@ -9,7 +9,7 @@
 @if ($requests->isEmpty())
     <x-ui.empty class="py-6">{{ request('q') || request('vendor') || request('yard') ? 'Ничего не нашлось' : 'Всё сделано' }}</x-ui.empty>
 @elseif (ListView::isTable($view))
-    @php $columns = \App\Http\Park\RequestController::table(); @endphp
+    @php $columns = \App\Http\Park\RequestController::table(trim((string) request('q')) !== '' || ! \App\Park\RequestType::tryFrom((string) request('preset', \App\Park\RequestType::Intake->value))); @endphp
     <x-ui.table id="requests-table" :view="$view" :rest="$columns->rest()">
         <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
         @foreach ($requests as $r)<x-park.request-row :req="$r" :table="$columns" :arrive="$arrive[$r->vehicle_id] ?? null"/>@endforeach

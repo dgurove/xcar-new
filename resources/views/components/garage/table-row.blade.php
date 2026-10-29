@@ -1,5 +1,5 @@
-{{-- Строка таблицы гаража на сайте (10.10.2026): название в два этажа — этап цветным словом, когда и чья (`CarLine`, у
-     вывоза — слово вывоза и дни). На телефоне справа одно главное число этапа с подписью; от 640 вместо него — столбцы,
+{{-- Строка таблицы гаража на сайте (10.10.2026): этап цветным словом и когда (`CarLine`, у вывоза — слово вывоза и дни) —
+     от 640 своим столбцом «Этап» (29.10.2026), на телефоне вторым этажом названия вместе с тем, чья. На телефоне справа одно главное число этапа с подписью; от 640 вместо него — столбцы,
      каждый своё: «Закупочная» (менеджеру — закреплённая при подтверждении, 16.10.2026), расходы (без оплаты поставщику — она и есть цена), «Цена продажи» — строка в одну линию,
      что с деньгами по продаже — на странице машины; шире — «В гараже с», сотруднику ещё «Менеджер»; подробная показывает их и на телефоне. Нажатие — страница машины или вывоза
      (`row-go`: карточки рядом у гаража нет). --}}
@@ -11,11 +11,14 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         <a href="{{ $href }}" class="row-link"><span class="cell-title">{{ $offer->titleWithYear() }}<x-car.keys :count="$offer->keys_count"/></span></a>
-        <span class="cell-sub"><span><span class="{{ $tone }}">{{ $word }}</span>{{ $when ? ', '.$when : '' }}@if ($who)<span class="md:hidden">, {{ $who }}</span>@endif</span></span>
+        <span class="cell-sub"><span class="sm:hidden"><span class="{{ $tone }}">{{ $word }}</span>{{ $when ? ', '.$when : '' }}</span>@if ($who)<span class="md:hidden"><span class="sm:hidden">, </span>{{ $who }}</span>@endif</span>
     </td>
         @break
         @case('manager')
     <td class="{{ $col->classes() }}">{{ $car?->manager?->shortName() ?? $who }}</td>
+        @break
+        @case('stage')
+    <td class="{{ $col->classes() }}"><span class="whitespace-normal"><span class="{{ $tone }}">{{ $word }}</span>{{ $when ? ', '.$when : '' }}</span></td>
         @break
         @case('taken')
     <td class="{{ $col->classes() }}">{{ $car?->taken_at?->translatedFormat('j M') }}</td>

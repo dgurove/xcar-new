@@ -23,7 +23,7 @@
     <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
         @break
         @case('manager')
-    <td class="{{ $col->classes() }}"><x-cell.person :user="$deal->buyer" from="xl"/></td>
+    <td class="{{ $col->classes() }}"><x-cell.person :user="$deal->buyer" from="lg"/></td>
         @break
         @case('wait')
     <td class="{{ $col->classes() }} whitespace-nowrap {{ $tone }}">{!! $wait !!}</td>

@@ -343,17 +343,17 @@ class MoneyController
      */
     public static function table(string $tab): Table
     {
-        $created = new Column('created', 'Создано', from: 'sm', num: true, aside: true, sort: 'created', cell: 'cell-dim nums');
-        $amount = new Column('amount', 'Сумма', num: true, sort: 'amount', cell: 'nums');
+        $created = new Column('created', 'Создано', from: 'sm', num: true, aside: true, sort: 'created', cell: 'cell-dim nums', rem: 6.5);
+        $amount = new Column('amount', 'Сумма', num: true, sort: 'amount', cell: 'nums', rem: 7);
 
         return match ($tab) {
-            'links' => Table::of(new Column('title', 'Кто платит', grow: true, sort: 'payer', cap: false), new Column('car', 'ТС', from: 'sm'),
-                new Column('status', 'Статус', from: 'sm'), $created, $amount),
-            'owed' => Table::of(new Column('title', 'Плательщик', grow: true, sort: 'payer', cap: false), new Column('manager', 'Менеджер', from: 'lg', aside: true),
-                new Column('car', 'ТС', from: 'sm', cell: 'cell-dim'), new Column('number', 'Счёт', from: 'lg', aside: true, sort: 'number', cell: 'cell-dim'),
-                new Column('status', 'Статус', from: 'sm', sort: 'due'), $created, $amount),
-            default => Table::of(new Column('title', 'Менеджер', grow: true, sort: 'payer', cap: false), new Column('car', 'ТС', from: 'sm', cell: 'cell-dim'),
-                new Column('status', 'Статус', from: 'sm', sort: 'due'), $created, $amount),
+            'links' => Table::of(new Column('title', 'Кто платит', grow: true, sort: 'payer', cap: false), new Column('car', 'ТС', from: 'sm', rem: 12),
+                new Column('status', 'Статус', from: 'sm', fill: true, rem: 12), $created, $amount),
+            'owed' => Table::of(new Column('title', 'Плательщик', grow: true, sort: 'payer', cap: false), new Column('manager', 'Менеджер', from: 'lg', aside: true, rem: 9),
+                new Column('car', 'ТС', from: 'sm', cell: 'cell-dim', rem: 12), new Column('number', 'Счёт', from: 'lg', aside: true, sort: 'number', cell: 'cell-dim', rem: 6),
+                new Column('status', 'Статус', from: 'sm', sort: 'due', fill: true, rem: 12), $created, $amount),
+            default => Table::of(new Column('title', 'Менеджер', grow: true, sort: 'payer', cap: false), new Column('car', 'ТС', from: 'sm', cell: 'cell-dim', rem: 12),
+                new Column('status', 'Статус', from: 'sm', sort: 'due', fill: true, rem: 12), $created, $amount),
         };
     }
 }

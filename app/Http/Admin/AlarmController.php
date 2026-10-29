@@ -70,7 +70,7 @@ final class AlarmController
     {
         return Table::of(
             new Column('title', 'Марка, модель', grow: true),
-            new Column('step', 'Этап', from: 'sm', rem: 12),
+            new Column('step', 'Этап', from: 'sm', fill: true, rem: 12),
             new Column('manager', 'Менеджер', from: 'sm', rem: 9),
             new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10),
             new Column('term', 'Срок', num: true, cell: 'nums', rem: 8),

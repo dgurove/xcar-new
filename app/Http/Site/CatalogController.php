@@ -163,15 +163,17 @@ class CatalogController
     /**
      * Таблица предложений на сайте (каталог, галерея, избранное) — одно описание на шапку, строки `x-offer.site-table-row` и
      * заголовки пачек. deadline — столбец «Приём» (тем, кто подтверждает ценой, и в галерее); «Прошло» — с тех пор, как
-     * предложение открылось человеку (его «дата публикации»).
+     * предложение открылось человеку (его «дата публикации»). mine — «Ваша цена» своим столбцом тому, кто подтверждает
+     * ценой (29.10.2026; была второй строкой под ценой). Город — с 640 (до 1024 его не было нигде).
      */
-    public static function table(bool $deadline, ?Sort $sort = null): Table
+    public static function table(bool $deadline, ?Sort $sort = null, bool $mine = false): Table
     {
         return Table::of(
             new Column('title', 'Марка, модель', grow: true, cap: false),
             new Column('number', '№', from: 'sm', dim: true, cell: 'nums', rem: 7),
             $deadline ? new Column('deadline', 'Приём', from: 'sm', sort: 'closing', rem: 7) : null,
-            new Column('city', 'Город', from: 'lg', aside: true, dim: true, rem: 8),
+            new Column('city', 'Город', from: 'sm', aside: true, dim: true, rem: 8),
+            $mine ? new Column('mine', 'Ваша цена', from: 'sm', num: true, cell: 'nums', rem: 7) : null,
             new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 9),
             new Column('since', 'Прошло', from: 'sm', num: true, aside: true, sort: 'published', cell: 'cell-dim', rem: 5),
         );

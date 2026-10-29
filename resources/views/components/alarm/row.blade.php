@@ -25,8 +25,9 @@
     </td>
         @break
         @case('step')
-    {{-- Этап и менеджер — своими столбцами от 640 (во втором этаже названия этап резался). --}}
-    <td class="{{ $col->classes() }}"><span class="block max-w-60 truncate">{{ $step }}</span></td>
+    {{-- Этап и менеджер — своими столбцами от 640 (во втором этаже названия этап резался). Этап — свой текст: не режется,
+         переносится (29.10.2026). --}}
+    <td class="{{ $col->classes() }}"><span class="whitespace-normal">{{ $step }}</span></td>
         @break
         @case('manager')
     <td class="{{ $col->classes() }}">@if ($deal?->buyer)<span class="flex items-center gap-2" title="{{ $deal->buyer->name }}"><x-ui.avatar :user="$deal->buyer" :size="22"/><span class="truncate">{{ $who }}</span></span>@endif</td>

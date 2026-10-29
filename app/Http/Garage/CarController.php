@@ -163,8 +163,11 @@ class CarController
     public static function table(\App\Users\User $user, bool $staff): Table
     {
         return Table::of(
-            new Column('title', 'Марка, модель', grow: true, cap: false),
+            // Название — шириной в самое длинное (`title-cap`), остальное — «Этапу» (29.10.2026).
+            new Column('title', 'Марка, модель', grow: true),
             $staff ? new Column('manager', 'Менеджер', from: 'md', dim: true, rem: 8) : null,
+            // Этап — своим столбцом от 640 (29.10.2026), а не вторым этажом названия.
+            new Column('stage', 'Этап', from: 'sm', fill: true, rem: 11),
             new Column('taken', 'В гараже с', from: 'lg', num: true, aside: true, cell: 'nums cell-dim', rem: 5.5),
             new Column('price', $user->holdsAsBuyer() ? ($user->seesGaragePrice() ? 'Цена' : 'Цена продажи') : 'Закупочная', from: 'sm', num: true, sort: 'price', cell: 'nums', rem: 7),
             new Column('spent', 'Расходы', from: 'sm', num: true, cell: 'nums', rem: 5.5),

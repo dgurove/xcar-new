@@ -23,7 +23,8 @@
     // Шаг оплаты с открытым счётом: срок — в «Оплате», у «что сейчас» часов нет.
     $payDue = $debt && ! $debt->paid() && $position?->stage->isPayStep();
     [$word, $tone] = [$line->word, $payDue && $debt->late() ? 'text-danger' : $line->tone];
-    // Отказ поставщика (28.10.2026) — с причиной: «Отказ поставщика: продаёт сам» (причина — текст человека, режется «…»).
+    // Отказ поставщика (28.10.2026) — с причиной: «Отказ поставщика: продаёт сам». Этап — свой текст: не режется, а
+    // переносится (29.10.2026; было max-w-52 с «…»).
     if ($deal->declinedBySupplier() && $deal->close_note && $deal->close_note !== $word) $word .= ': '.mb_lcfirst($deal->close_note);
 @endphp
 <tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
@@ -48,10 +49,10 @@
     <td class="{{ $col->classes() }}">{{ $offer->number }}</td>
         @break
         @case('manager')
-    <td class="{{ $col->classes() }}">@if ($deal->isAuction())<span class="text-ink-muted">Аукцион</span>@else<x-cell.person :user="$deal->buyer"/>@endif</td>
+    <td class="{{ $col->classes() }}">@if ($deal->isAuction())<span class="text-ink-muted">Аукцион</span>@else<x-cell.person :user="$deal->buyer" from="lg"/>@endif</td>
         @break
         @case('stage')
-    <td class="{{ $col->classes() }}"><span class="block max-w-52 truncate {{ $tone }}" title="{{ $word }}">{{ $word }}</span></td>
+    <td class="{{ $col->classes() }}"><span class="{{ $tone }} whitespace-normal" title="{{ $word }}">{{ $word }}</span></td>
         @break
         @case('term')
     <td class="{{ $col->classes() }}">@if ($active && $position)<x-route.term :position="$position" :clock="! $payDue" :waiting="! in_array($table->context('preset'), ['manager', 'supplier'], true)"/>@endif</td>

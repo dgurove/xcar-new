@@ -1,5 +1,5 @@
 {{-- Строка таблицы машин закупки (CRM). Ячейка в два этажа: иконка типа и название, под ним ДЛ и то, что не так
-     (флаг данных, «фото едут», «скрыта»); от 640 ДЛ и размещение встают столбцами. Тип — только иконкой: словом и
+     (флаг данных, «фото едут»; скрытая — просто тусклая строка, без слова); от 640 ДЛ, город и размещение встают столбцами. Тип — только иконкой: словом и
      столбцом он повторял её. Логотипа лизинговой перед ДЛ нет — у всей таблицы он один, это закупка одного вендора. Справа наша
      цена или лаймовое «оценить», под ней предложения менеджеров числом. Нажатие — карточка, в нём и оценка;
      data-todo — без нашей цены, по ним карточка идёт «Дальше». Ушедшая в предложение — справа его номер. --}}
@@ -11,7 +11,7 @@
     $offers = $car->activeOfferList();
     $best = $offers->max('amount');
     $flag = $car->specs_state->needsAttention() ? $car->specs_state->label() : ($car->photos_state->needsAttention() ? $car->photos_state->label() : null);
-    $note = $flag ? mb_strtolower($flag) : (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true) ? 'фото едут' : (! $car->is_published ? 'скрыта' : null));
+    $note = $flag ? mb_strtolower($flag) : (in_array($car->photos_state, [ImportState::Pending, ImportState::Running], true) ? 'фото едут' : null);
 @endphp
 <tr data-detail-key="{{ $car->ref }}" data-search-row id="car-{{ $car->id }}" class="{{ $car->is_published ? '' : 'text-ink-muted' }}" @if (!$car->price_final && !$car->offer) data-todo @endif>
     @foreach ($table->columns as $key => $col)
@@ -27,6 +27,9 @@
         @break
         @case('dl')
     <td class="{{ $col->classes() }}">{{ $car->dl }}</td>
+        @break
+        @case('city')
+    <td class="{{ $col->classes() }}">@if ($city = $car->settlement?->name ?? $car->city)<x-ui.place class="text-ink-muted">{{ $city }}</x-ui.place>@endif</td>
         @break
         @case('listing')
     <td class="{{ $col->classes() }}">{{ $car->price_listing ? Money::nums($car->price_listing) : '' }}</td>
