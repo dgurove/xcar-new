@@ -413,7 +413,8 @@ class RequestController
         return Table::park(
             new Column('title', 'Марка, модель', grow: true),
             new Column('ref', '№ убытка', from: 'sm', role: ColRole::Code, rem: 13),
-            $mixed ? new Column('type', 'Тип', from: 'sm', sort: 'type', role: ColRole::State, rem: 5) : null,
+            // Тип — первым (30.10.2026, владелец), только где типы смешаны («Все», поиск): во вкладке его называет пилюля.
+            $mixed ? new Column('type', 'Тип', from: 'sm', sort: 'type', role: ColRole::Kind, rem: 6) : null,
             new Column('from', 'От кого', from: 'sm', dim: true, cell: 'req-from', role: ColRole::Who, rem: 11),
             new Column('came', 'Пришла', from: 'sm', sort: 'fresh', cell: 'nums whitespace-nowrap req-came', role: ColRole::When, rem: 7.5),
             new Column('yard', 'Парковка', from: 'sm', role: ColRole::Place, rem: 11),

@@ -19,6 +19,15 @@ enum RequestType: string
         };
     }
 
+    /** Значок типа (`x-park.request-type`): приём — стрелка к нам, выдача — от нас. */
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Intake => 'req-intake',
+            self::Release => 'req-release',
+        };
+    }
+
     public function verb(): string
     {
         return match ($this) {

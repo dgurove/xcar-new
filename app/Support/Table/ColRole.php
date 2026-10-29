@@ -13,6 +13,8 @@ namespace App\Support\Table;
 enum ColRole: int
 {
     case Pick = 0;
+    /** Тип строки, когда в списке смешаны разные (заявки парковки «Все»): первым, перед названием. */
+    case Kind = 8;
     case Title = 1;
     case Code = 2;
     case State = 3;
@@ -24,6 +26,6 @@ enum ColRole: int
     /** Правая группа — по правому краю. */
     public function right(): bool
     {
-        return $this->value >= self::Who->value;
+        return in_array($this, [self::Who, self::Place, self::Amount, self::When], true);
     }
 }

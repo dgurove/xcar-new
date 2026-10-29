@@ -1,5 +1,5 @@
-{{-- Строка таблицы заявок. Ячейка ТС в два этажа: название, под ним тип словом 
-     госномер и номер убытка; от 640 тип и номер уходят в свои столбцы. Пересказа «что делать» нет — его говорит тип. Нажатие — карточка.
+{{-- Строка таблицы заявок. Ячейка ТС в два этажа: название (в «Все» и поиске перед ним — тип цветным кругом, на ПК —
+     столбцом первым, `x-park.request-type`), под ним госномер и номер убытка; от 640 тип и номер уходят в свои столбцы. Пересказа «что делать» нет — его говорит тип. Нажатие — карточка.
      Заявку завела почта и документы ещё читаются (`AutoScan::states`, `$arrive`) — строка силуэтом: вместо
      названия и номера полосы, тип словом виден сразу; пока читаем — полоса бежит по строке и «Читаем документы, 2 из 5».
      Дочитали — строка обычная, `arrive_controller` проявляет её. Откуда заявка (`x-park.request-source`: адрес и время
@@ -11,6 +11,8 @@
     $state = $arrive['state'] ?? null;
     $busy = in_array($state, ['ghost', 'reading'], true);
     $source = $req->source();
+    // Тип — только где типы смешаны («Все», поиск): столбцом первым на ПК, кругом перед названием на телефоне.
+    $mixed = $table->has('type');
 @endphp
 {{-- `data-todo` — заявка, которую можно сделать прямо в карточке (приём; выдача стоящей ТС): сделанная уходит, карточка
      переходит к следующей (`detail#advance`). --}}
@@ -20,9 +22,8 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         @if ($busy)
-            <x-ui.row-link :key="$req->id"><span class="cell-title"><span class="skeleton arrive-bar w-40 max-w-full"></span></span></x-ui.row-link>
+            <x-ui.row-link :key="$req->id"><span class="cell-title">@if ($mixed)<x-park.request-type :type="$req->type" :word="false" class="sm:hidden"/>@endif<span class="skeleton arrive-bar w-40 max-w-full"></span></span></x-ui.row-link>
             <span class="cell-sub">
-                <span class="sm:hidden text-ink">{{ mb_strtolower($req->type->label()) }}</span>
                 @if ($state === 'reading')
                     <span class="arrive-progress spark-busy"><x-ui.spark class="size-3.5"/>{{ $arrive['what'] === 'photos' ? 'Читаем фото' : 'Читаем документы' }}, {{ $arrive['i'] }} из {{ $arrive['n'] }}</span>
                 @else
@@ -31,9 +32,8 @@
             </span>
             <x-park.request-source :req="$req" class="cell-source"/>
         @else
-            <x-ui.row-link :key="$req->id"><span class="cell-title"><span class="cell-name">{{ $v->titleWithYear() }}</span><x-car.keys :count="$v->keys_count"/><x-ui.plate :value="$v->plate" class="title-plate"/><x-ui.links :vehicle="$v"/></span></x-ui.row-link>
+            <x-ui.row-link :key="$req->id"><span class="cell-title">@if ($mixed)<x-park.request-type :type="$req->type" :word="false" class="sm:hidden"/>@endif<span class="cell-name">{{ $v->titleWithYear() }}</span><x-car.keys :count="$v->keys_count"/><x-ui.plate :value="$v->plate" class="title-plate"/><x-ui.links :vehicle="$v"/></span></x-ui.row-link>
             <span class="cell-sub" data-controller="fitline">
-                <span class="sm:hidden text-ink">{{ mb_strtolower($req->type->label()) }}</span>
                 <span class="fit-core"><x-park.ref :vehicle="$v" class="sm:hidden"/><x-ui.plate :value="$v->plate" class="sub-plate"/></span>
             </span>
             {{-- Третий этаж — только в краткой таблице (телефон, ПК с открытой карточкой); на ПК — свой столбец. --}}
@@ -58,7 +58,7 @@
     </td>
         @break
         @case('type')
-    <td class="{{ $col->classes() }}">{{ $req->type->label() }}</td>
+    <td class="{{ $col->classes() }}"><x-park.request-type :type="$req->type"/></td>
         @break
         @case('yard')
     <td class="{{ $col->classes() }}">@if ($yard = $req->yard ?? $v->yard)<x-ui.place>{{ $yard->name }}</x-ui.place>@endif</td>

@@ -17,13 +17,13 @@ final class Table
      * Порядок ролей в строке (`ColRole`): слева название, код и что с ним; справа кто, где, сколько и когда — дата самая
      * правая (владелец 30.10.2026: «даты обычно справа пишут», «номера убытка логичнее после наименований»).
      */
-    public const ORDER = [ColRole::Pick, ColRole::Title, ColRole::Code, ColRole::State, ColRole::Who, ColRole::Place, ColRole::Amount, ColRole::When];
+    public const ORDER = [ColRole::Pick, ColRole::Kind, ColRole::Title, ColRole::Code, ColRole::State, ColRole::Who, ColRole::Place, ColRole::Amount, ColRole::When];
 
     /**
      * Парковка («Заявки», «Наличие»): дата → дни → ставка → начислено вытекают друг из друга, парковка — самая правая
      * (владелец: «её проще всего визуально отличать, когда она справа»).
      */
-    public const PARK = [ColRole::Pick, ColRole::Title, ColRole::Code, ColRole::State, ColRole::Who, ColRole::When, ColRole::Amount, ColRole::Place];
+    public const PARK = [ColRole::Pick, ColRole::Kind, ColRole::Title, ColRole::Code, ColRole::State, ColRole::Who, ColRole::When, ColRole::Amount, ColRole::Place];
 
     /**
      * Столбцы встают по роли (`ORDER` или `PARK`), внутри роли — в порядке объявления; запас ширины забирает последний
@@ -48,7 +48,7 @@ final class Table
         $seen = PHP_INT_MAX;
         foreach ($list as $c) {
             $from = $c->from === null ? 0 : self::STEPS[$c->from];
-            if (! $c->role()->right() && $c->role() !== ColRole::Title && $c->role() !== ColRole::Pick && ! $c->phone && $from <= $seen) {
+            if (! $c->role()->right() && ! in_array($c->role(), [ColRole::Title, ColRole::Pick, ColRole::Kind], true) && ! $c->phone && $from <= $seen) {
                 [$fill, $seen] = [$c->key, $from];
             }
         }
