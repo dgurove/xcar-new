@@ -8,7 +8,6 @@ use App\Cars\Identity;
 use App\Cars\Names;
 use App\Cars\Rejections;
 use App\Cars\Vin\VinDecoder;
-use App\Cars\Vin\VinFact;
 use App\Cars\Vin\VinText;
 use App\Mail\Direction;
 use App\Mail\Extraction\DocumentFields;
@@ -24,6 +23,7 @@ use App\Park\VehicleState;
 use App\Users\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Пустые поля ТС — из её писем и документов (прогон 01.10.2026: у 58 из 70 машин без VIN он лежал в заявке, акте
@@ -279,7 +279,7 @@ final class FillFromDocs
             return true;
         }
         $wmi = strtoupper(substr($vin, 0, 3));
-        if (VinFact::where('brand_id', $vehicle->brand_id)->where('prefix', 'like', $wmi.'%')->exists()) {
+        if (DB::table('cars')->where('brand_id', $vehicle->brand_id)->when($vehicle->car_id, fn ($q, $id) => $q->where('id', '<>', $id))->whereRaw('substr(vin, 1, 11) like ?', [addcslashes($wmi, '%_').'%'])->exists()) {
             return true;
         }
         $result = app(VinDecoder::class)->decode($vin);

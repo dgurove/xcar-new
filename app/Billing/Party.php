@@ -190,7 +190,7 @@ class Party extends Model implements HasMedia
     }
 
     /**
-     * Контрагент вендора: создаётся из его реквизитов при первом счёте, дальше живёт своей жизнью.
+     * Контрагент вендора — его реквизиты, других нет: заводится при первом счёте или первой записи реквизитов.
      * Чтение (долги, чипы) базу не трогает: `$create = false` отдаёт незаписанный черновик без id.
      */
     public static function forVendor(Vendor $vendor, bool $create = true): self
@@ -198,14 +198,11 @@ class Party extends Model implements HasMedia
         if ($vendor->party) {
             return $vendor->party;
         }
-        // Вендор-физлицо — контрагент-человек: без ИНН и банка, с телефоном контакта.
+        // Реквизиты вендора живут только здесь (29.10.2026): новый контрагент — с именем вендора и почтой бухгалтерии,
+        // реквизиты вписывают в «Изменить» вендора или в «Реквизитах». Вендор-физлицо — контрагент-человек с телефоном контакта.
         $party = self::make($vendor->kind === Kind::Person
-            ? ['kind' => PartyKind::Person, 'name' => $vendor->name, 'phone' => $vendor->contacts->first(fn ($c) => $c->phone)?->phone, 'email' => $vendor->email(ContactRole::Accounting), 'legal_address' => $vendor->legal_address]
-            : [
-                'kind' => PartyKind::Company, 'name' => $vendor->legal_name ?: $vendor->name, 'inn' => $vendor->inn, 'kpp' => $vendor->kpp,
-                'legal_address' => $vendor->legal_address, 'bank_name' => $vendor->bank_name, 'bik' => $vendor->bank_bic, 'account' => $vendor->bank_account,
-                'corr_account' => $vendor->bank_corr, 'payment_purpose' => $vendor->payment_purpose, 'email' => $vendor->email(ContactRole::Accounting),
-            ]);
+            ? ['kind' => PartyKind::Person, 'name' => $vendor->name, 'phone' => $vendor->contacts->first(fn ($c) => $c->phone)?->phone, 'email' => $vendor->email(ContactRole::Accounting)]
+            : ['kind' => PartyKind::Company, 'name' => $vendor->name, 'email' => $vendor->email(ContactRole::Accounting)]);
         if ($create) {
             $party->save();
             $vendor->update(['party_id' => $party->id]);

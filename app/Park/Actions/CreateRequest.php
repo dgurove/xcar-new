@@ -6,7 +6,6 @@ use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Identity;
 use App\Cars\IdentityTaken;
-use App\Cars\Vin\RememberVin;
 use App\Park\Events\VehicleRestored;
 use App\Park\EventType;
 use App\Park\Request;
@@ -62,7 +61,6 @@ final class CreateRequest
                 ]);
                 // Завела почта, а не человек (`AutoRequest`) — в истории «Заведена из письма».
                 $vehicle->log(EventType::Created, $by, ! empty($data['by_mail']) ? ['by_mail' => true] : []);
-                (new RememberVin)($vehicle);
             }
 
             return Request::create([

@@ -2,7 +2,6 @@
 
 namespace App\Park\Actions;
 
-use App\Cars\Vin\RememberVin;
 use App\Mail\Candidate;
 use App\Mail\CandidateStage;
 use App\Mail\Message;
@@ -60,7 +59,6 @@ final class RegisterFromLetters
             $vehicle->log(EventType::Created, $by, $mark + ['letter_at' => $intake['at'] ?? null]);
             $day = ($acceptedAt ?? now())->toDateString();
             $vehicle->log(EventType::Accepted, $by, array_filter(['yard' => $yard?->name, 'yard_id' => $yard?->id, 'spot' => $spot, 'day' => $day]) + $mark);
-            (new RememberVin)($vehicle);
             ($this->openDocs)($vehicle);
             // Наш ответ с актом уже ушёл вендору — бумаги «отправлено» тем письмом.
             $reply = ($stored['message_id'] ?? null) ? Message::find($stored['message_id']) : null;

@@ -39,8 +39,6 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  */
 #[Fillable([
     'name', 'kind', 'is_active', 'on_park', 'notes',
-    'legal_name', 'inn', 'kpp', 'legal_address',
-    'bank_name', 'bank_account', 'bank_corr', 'bank_bic', 'payment_purpose',
     'agreement_number', 'agreement_date', 'agreement_until',
     'deal_format', 'to_gallery', 'drafts_from_migtorg', 'letters_to_telegram', 'pickup_on_arrival', 'claim_ref_optional', 'reward_kind', 'reward_value', 'payment_days', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
     'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'auto_sale', 'floor_by_value', 'buyer_rate_multiplier', 'billing_cadence',
@@ -99,13 +97,13 @@ class Vendor extends Model implements HasMedia
         ];
     }
 
-    /** Лупа вендоров: имя, юридическое имя, ИНН. */
+    /** Лупа вендоров: имя, юридическое имя и ИНН его контрагента. */
     public function scopeSearch(Builder $q, string|Term $term): Builder
     {
         $t = Term::of($term);
 
         return $t->blank() ? $q : $q->where(fn ($s) => $s->where('vendors.name', 'ilike', Term::like($t->raw))
-            ->orWhere('vendors.legal_name', 'ilike', Term::like($t->raw))->orWhere('vendors.inn', 'like', Term::like($t->raw)));
+            ->orWhereHas('party', fn ($p) => $p->where('name', 'ilike', Term::like($t->raw))->orWhere('inn', 'like', Term::like($t->raw))));
     }
 
     public function registerMediaCollections(): void

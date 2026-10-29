@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Известен ли WMI — первые три знака VIN. Справочник (`resources/vin/wmi.json`, Wikibooks) не знает российских
  * сборочных площадок последних лет: «EDE…» у Chery и Tenet, «EDA…» у Voyah и Evolute. Поэтому к нему добавляются
- * WMI из нашей базы (`vin_facts` — машины с маркой, заведённые людьми или пришедшие от Carcade): два VIN с одним WMI —
+ * WMI из нашей базы (`cars` — машины с маркой, заведённые людьми или пришедшие от Carcade): два VIN с одним WMI —
  * значит, такой производитель есть. Список базы — в кеше на сутки и в памяти процесса на пять минут (под Octane
- * проверка VIN не ходит в базу на каждый знак); новый WMI сбрасывает кеш (`RememberVin`).
+ * проверка VIN не ходит в базу на каждый знак); новый WMI сбрасывает кеш (`Car::saved`).
  */
 final class KnownWmi
 {
@@ -33,8 +33,8 @@ final class KnownWmi
     public static function learned(): array
     {
         if (self::$learned === null || time() - self::$at > 300) {
-            self::$learned = Cache::remember(self::KEY, 86400, fn () => DB::table('vin_facts')
-                ->selectRaw('upper(substr(prefix, 1, 3)) as wmi')->groupByRaw('upper(substr(prefix, 1, 3))')->havingRaw('count(*) >= 2')
+            self::$learned = Cache::remember(self::KEY, 86400, fn () => DB::table('cars')->whereNotNull('brand_id')->where('is_demo', false)->whereRaw('length(vin) = 17')
+                ->selectRaw('substr(vin, 1, 3) as wmi')->groupByRaw('substr(vin, 1, 3)')->havingRaw('count(distinct vin) >= 2')
                 ->pluck('wmi')->mapWithKeys(fn ($w) => [$w => true])->all());
             self::$at = time();
         }

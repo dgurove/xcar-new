@@ -7,7 +7,6 @@ use App\Cars\CarModel;
 use App\Cars\Colors;
 use App\Cars\Fuel;
 use App\Cars\Transmission;
-use App\Cars\Vin\RememberVin;
 use App\Mail\Extraction\CarWords;
 use App\Purchases\Car;
 use App\Purchases\Carcade;
@@ -96,7 +95,6 @@ final class FetchSpecs implements ShouldQueue
             }
         }
         $car->forceFill(['specs_state' => ImportState::Done, 'specs_error' => null, 'specs_at' => now()])->save();
-        (new RememberVin)($car);
 
         // Кадры с карточки поставщика — когда облака нет: их там 5–10, для списка хватит.
         if (! $car->cloud_url && $s['pictures'] && $car->photos()->isEmpty()) {

@@ -2,7 +2,6 @@
 
 namespace App\Purchases\Actions;
 
-use App\Cars\Vin\RememberVin;
 use App\Media\Jobs\StampPhotos;
 use App\Purchases\Car;
 
@@ -19,7 +18,6 @@ final class UpdateCar
         if ($car->wasChanged('share_locked')) {
             StampPhotos::dispatch($car->carRecord());
         }
-        (new RememberVin)($car);
 
         return $car;
     }

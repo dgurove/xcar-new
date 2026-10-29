@@ -3,6 +3,7 @@
 namespace App\Cars;
 
 use App\Cars\Events\CarChanged;
+use App\Cars\Vin\KnownWmi;
 use App\Cars\Vin\Vin;
 use App\Logistics\Transport;
 use App\Mail\Extraction\Code;
@@ -80,6 +81,10 @@ class Car extends Model implements HasMedia
         // Поля, которые сверяет «в документе иначе» у ТС парковки, поменяли из любой двери (CRM, «✨», письмо) — метка
         // пересчитается при следующем показе дела.
         static::saved(function (self $car) {
+            // Машина с маркой и новым VIN — память декодера (`VinMemory`) читает её сама; WMI, которого не знали, — список заново.
+            if ($car->brand_id && strlen((string) $car->vin) === 17 && ($car->wasRecentlyCreated || $car->wasChanged(['vin', 'brand_id']))) {
+                KnownWmi::saw($car->vin);
+            }
             if ($car->wasChanged(['vin', 'plate', 'year', 'color', 'value', 'brand_id', 'model_id'])
                 && ($vehicle = Vehicle::withoutGlobalScope(City::SCOPE)->where('car_id', $car->id)->first())) {
                 FillFromDocs::forget($vehicle);

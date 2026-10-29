@@ -92,8 +92,8 @@ final class Search
             'cars' => ['title' => 'ТС', 'rows' => $cars->top(self::CARS)] + self::more($vehicles->isNotEmpty(), 'Все ТС', '/cars?q='.urlencode($t->raw)),
             'money' => ['title' => 'Деньги', 'rows' => $manage ? self::money(Invoice::ofPark(), $t, crm: false) : []],
             // Вендоры — тому, кому их раздел открыт (`park.manage`): помощнику строка вела бы в 403.
-            'vendors' => ['title' => 'Вендоры', 'rows' => $user->canManagePark() ? Vendor::onPark()->search($t)->orderBy('name')->limit(self::ROWS)->get()
-                ->map(fn (Vendor $v) => new Hit($v->name, "/vendors/{$v->id}", array_filter([$v->inn ? 'ИНН '.$v->inn : null])))->all() : []],
+            'vendors' => ['title' => 'Вендоры', 'rows' => $user->canManagePark() ? Vendor::onPark()->search($t)->with('party')->orderBy('name')->limit(self::ROWS)->get()
+                ->map(fn (Vendor $v) => new Hit($v->name, "/vendors/{$v->id}", array_filter([$v->party?->inn ? 'ИНН '.$v->party->inn : null])))->all() : []],
             'mail' => self::mail($manage ? Scope::Park : null, $t, '/mail', $user),
         ];
     }

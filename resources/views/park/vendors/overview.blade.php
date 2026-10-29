@@ -19,7 +19,7 @@
         <x-vendor.rates :vendor="$vendor" :edit="auth()->user()->isParkAdmin() ? $base.'?pill=tariffs' : null"/>
     @endif
 
-    @php $bank = array_filter([$row('Юрлицо', $vendor->legal_name), $row('ИНН', $vendor->inn), $row('КПП', $vendor->kpp), $row('Банк', $vendor->bank_name), $row('Р/с', $vendor->bank_account), $row('БИК', $vendor->bank_bic)]); @endphp
+    @php $p = $vendor->party; $bank = $p ? array_filter([$row('Юрлицо', $p->name), $row('ИНН', $p->inn), $row('КПП', $p->kpp), $row('Банк', $p->bank_name), $row('Р/с', $p->account), $row('БИК', $p->bik)]) : []; @endphp
     <div class="list-head">Реквизиты</div>
     @if ($bank)
         <div class="list">

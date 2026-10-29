@@ -79,7 +79,6 @@ final class MergeOffers
         foreach (Rows::referencing('offers') as [$table, $column]) {
             Rows::repoint($table, $column, $drop->id, $keep->id);
         }
-        Rows::repoint('vin_facts', 'source_id', $drop->id, $keep->id, "source_type = 'offer'");
         foreach (['subject', 'href'] as $key) {
             DatabaseNotification::where("data->{$key}", '/offers/'.$dropNumber)->get()
                 ->each(fn ($n) => $n->forceFill(['data' => [$key => '/offers/'.$keep->number] + $n->data])->save());

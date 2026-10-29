@@ -60,7 +60,6 @@ final class MergeVehicles
         foreach (Rows::referencing('park_vehicles') as [$table, $column]) {
             Rows::repoint($table, $column, $drop->id, $keep->id);
         }
-        Rows::repoint('vin_facts', 'source_id', $drop->id, $keep->id, "source_type = 'park_vehicle'");
         DatabaseNotification::where('data->subject', '/cars/'.$drop->id)->get()
             ->each(fn ($n) => $n->forceFill(['data' => ['subject' => '/cars/'.$keep->id] + $n->data])->save());
         // Вторая больше ничего не держит: её запись уходит без событий — машину сливает `JoinCars`.

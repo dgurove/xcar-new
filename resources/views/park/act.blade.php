@@ -66,7 +66,7 @@
             <tr><th>Гос. номер</th><td>{{ $vehicle->plate ?? '—' }}</td></tr>
             @if ($vehicle->color)<tr><th>Цвет</th><td>{{ $vehicle->color }}</td></tr>@endif
             @if ($vehicle->category)<tr><th>Категория</th><td>{{ $vehicle->category->label() }}{{ $vehicle->oversize ? ', негабарит' : '' }}</td></tr>@endif
-            <tr><th>Заказчик</th><td>{{ $vendor?->legal_name ?? $vendor?->name ?? '—' }}{{ $vendor?->inn ? ', ИНН '.$vendor->inn : '' }}</td></tr>
+            <tr><th>Заказчик</th><td>{{ $vendor?->party?->name ?? $vendor?->name ?? '—' }}{{ $vendor?->party?->inn ? ', ИНН '.$vendor->party->inn : '' }}</td></tr>
             @if ($vehicle->contact_name || $vehicle->contact_phone)<tr><th>Страхователь</th><td>{{ trim(($vehicle->contact_name ?? '').' '.($vehicle->contact_phone ?? '')) }}</td></tr>@endif
             <tr><th>Хранитель</th><td>{{ $self->name }}{{ $self->inn ? ', ИНН '.$self->inn : '' }}</td></tr>
             <tr><th>Парковка</th><td>{{ implode(', ', array_filter([$vehicle->yard?->name ?? '—', $vehicle->yard?->settlement?->title(), $vehicle->yard?->address, $vehicle->spot ? 'место '.$vehicle->spot : null])) }}</td></tr>

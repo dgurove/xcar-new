@@ -11,17 +11,19 @@
                 <x-ui.field name="kind" label="Тип" :options="Kind::options()" :value="$vendor->kind->value"/>
             </div>
             <x-ui.check name="is_active" :checked="$vendor->is_active">Работаем</x-ui.check>
+            {{-- Реквизиты — поля его контрагента (`vendors.party_id`, 29.10.2026): других реквизитов у вендора нет. --}}
+            @php $party = $vendor->party; @endphp
             <div class="list-head">Реквизиты</div>
             <div class="fields">
-                <x-ui.field name="legal_name" label="Юрлицо" :value="$vendor->legal_name"/>
-                <x-ui.field name="inn" label="ИНН" :value="$vendor->inn"/>
-                <x-ui.field name="kpp" label="КПП" :value="$vendor->kpp"/>
-                <x-ui.field name="legal_address" label="Юр. адрес" :value="$vendor->legal_address"/>
-                <x-ui.field name="bank_name" label="Банк" :value="$vendor->bank_name"/>
-                <x-ui.field name="bank_account" label="Расчётный счёт" :value="$vendor->bank_account"/>
-                <x-ui.field name="bank_corr" label="Корр. счёт" :value="$vendor->bank_corr"/>
-                <x-ui.field name="bank_bic" label="БИК" :value="$vendor->bank_bic"/>
-                <x-ui.field name="payment_purpose" label="Назначение платежа" :value="$vendor->payment_purpose"/>
+                <x-ui.field name="party[name]" id="party-name" label="Юрлицо" :value="$party?->name"/>
+                <x-ui.field name="party[inn]" id="party-inn" label="ИНН" :value="$party?->inn"/>
+                <x-ui.field name="party[kpp]" id="party-kpp" label="КПП" :value="$party?->kpp"/>
+                <x-ui.field name="party[legal_address]" id="party-legal_address" label="Юр. адрес" :value="$party?->legal_address"/>
+                <x-ui.field name="party[bank_name]" id="party-bank_name" label="Банк" :value="$party?->bank_name"/>
+                <x-ui.field name="party[account]" id="party-account" label="Расчётный счёт" :value="$party?->account"/>
+                <x-ui.field name="party[corr_account]" id="party-corr_account" label="Корр. счёт" :value="$party?->corr_account"/>
+                <x-ui.field name="party[bik]" id="party-bik" label="БИК" :value="$party?->bik"/>
+                <x-ui.field name="party[payment_purpose]" id="party-payment_purpose" label="Назначение платежа" :value="$party?->payment_purpose"/>
             </div>
             <div class="list-head">Договор</div>
             <div class="fields">

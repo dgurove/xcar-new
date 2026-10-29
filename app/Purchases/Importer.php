@@ -5,7 +5,6 @@ namespace App\Purchases;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Settlement;
-use App\Cars\Vin\RememberVin;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
@@ -104,7 +103,6 @@ final class Importer
             }
         }
         $car->save();
-        (new RememberVin)($car);
     }
 
     private function catalog(?string $brand, ?string $model): array

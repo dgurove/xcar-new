@@ -3,7 +3,6 @@
 namespace App\Park\Actions;
 
 use App\Billing\Actions\IssueTransferObligation;
-use App\Cars\Vin\RememberVin;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Pricing;
 use App\Park\EventType;
@@ -41,7 +40,6 @@ final class UpdateVehicle
         $sources
             ? $vehicle->log(EventType::FilledFromDocs, $by, $diff + ['sources' => array_values(array_unique($sources))])
             : $vehicle->log(EventType::Updated, $by, $diff);
-        (new RememberVin)($vehicle);
         if ($by && $vehicle->accepted_at && array_intersect($changed, ['contract_kind', 'assigned_price', 'contract_no'])) {
             ($this->transfer)($vehicle, $by);
         }

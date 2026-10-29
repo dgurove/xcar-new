@@ -3,9 +3,12 @@
 namespace App\Cars\Vin;
 
 use App\Cars\CarModel;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Память декодера: что записано у машин с тем же началом VIN.
+ * Память декодера: что записано у машин с тем же началом VIN. Спрашивает сами машины (`cars`, индекс по
+ * `substr(vin, 1, 11)`): своей копии полей по дорожкам (`vin_facts`) с 29.10.2026 нет.
  *
  * Первые восемь знаков (WMI и позиции 4–8) — это завод и модельный код;
  * дальше знак года и завода, они разводят поколения (Geely Atlas Pro →
@@ -17,6 +20,17 @@ final class VinMemory
 {
     public const MIN = 8;
 
+    /** Поля, которые память берёт у машины. */
+    public const FIELDS = ['brand_id', 'model_id', 'year', 'transmission', 'drive', 'fuel', 'body', 'engine_volume', 'engine_power'];
+
+    /** Машины с маркой и полным VIN, чьё начало (первые 11 знаков) совпало с `$prefix`; `prefix` — эти 11 знаков. */
+    public static function known(string $prefix): Collection
+    {
+        return DB::table('cars')->whereNotNull('brand_id')->where('is_demo', false)->whereRaw('length(vin) = 17')
+            ->whereRaw('substr(vin, 1, 11) like ?', [addcslashes($prefix, '%_').'%'])
+            ->selectRaw('substr(vin, 1, 11) as prefix, '.implode(', ', self::FIELDS))->get();
+    }
+
     /**
      * @return array{values: array<string, mixed>, model_candidates: list<string>, count: int, depth: int}
      */
@@ -27,7 +41,7 @@ final class VinMemory
             return $empty;
         }
 
-        $facts = VinFact::query()->where('prefix', 'like', substr($vin, 0, self::MIN).'%')->get();
+        $facts = self::known(substr($vin, 0, self::MIN));
         if ($facts->isEmpty()) {
             return $empty;
         }
@@ -36,10 +50,10 @@ final class VinMemory
         foreach ($facts as $fact) {
             $depth = max($depth, $this->common($vin, $fact->prefix));
         }
-        $facts = $facts->filter(fn (VinFact $f) => $this->common($vin, $f->prefix) === $depth);
+        $facts = $facts->filter(fn (object $f) => $this->common($vin, $f->prefix) === $depth);
 
         $values = [];
-        foreach (array_diff(VinFact::FIELDS, ['year']) as $field) {
+        foreach (array_diff(self::FIELDS, ['year']) as $field) {
             $seen = $facts->pluck($field)->filter(fn ($v) => $v !== null && $v !== '')->unique();
             if ($seen->count() === 1) {
                 $values[$field] = $seen->first();

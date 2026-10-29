@@ -2,7 +2,6 @@
 
 namespace App\Offers\Actions;
 
-use App\Cars\Vin\RememberVin;
 use App\Logistics\Actions\OpenPickup;
 use App\Logistics\Transport;
 use App\Mail\Actions\LinkThread;
@@ -126,7 +125,6 @@ final class UpdateOffer
             if ($deal) {
                 ($this->dealCost)($deal->setRelation('offer', $offer), (int) $offer->floor_price, $by);
             }
-            (new RememberVin)($offer);
         }
         if ($reprice) {
             DetectReprice::open($offer, $reprice, in_array($log['source'] ?? null, Reprice::SOURCES, true) ? $log['source'] : 'manual', null, $by, $repriceValue);

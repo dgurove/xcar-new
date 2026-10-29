@@ -7,6 +7,7 @@ use App\Billing\Cadence;
 use App\Billing\Invoice;
 use App\Billing\Ledger;
 use App\Billing\Party;
+use App\Billing\PartyRules;
 use App\Billing\Seller;
 use App\Cars\Category;
 use App\Http\Admin\OfferPhotoController;
@@ -152,15 +153,8 @@ class VendorController
     public function update(Request $request, Vendor $vendor, SetLogo $setLogo)
     {
         $data = $request->validate(Vendor::rules($vendor) + [
-            'legal_name' => ['nullable', 'string', 'max:200'],
-            'inn' => ['nullable', 'digits_between:10,12'],
-            'kpp' => ['nullable', 'digits:9'],
-            'legal_address' => ['nullable', 'string', 'max:255'],
-            'bank_name' => ['nullable', 'string', 'max:120'],
-            'bank_account' => ['nullable', 'digits:20'],
-            'bank_corr' => ['nullable', 'digits:20'],
-            'bank_bic' => ['nullable', 'digits:9'],
-            'payment_purpose' => ['nullable', 'string', 'max:255'],
+            'party' => ['nullable', 'array'],
+            'party.name' => ['nullable', 'string', 'max:200'],
             'agreement_number' => ['nullable', 'string', 'max:60'],
             'agreement_date' => ['nullable', 'date'],
             'agreement_until' => ['nullable', 'date'],
@@ -183,11 +177,13 @@ class VendorController
             'intake_report_docs' => ['nullable', 'array'],
             'intake_report_docs.*' => [Rule::enum(ReportDoc::class)],
             'notes' => ['nullable', 'string', 'max:2000'],
-        ] + SetLogo::RULES);
+        ] + self::partyRules() + SetLogo::RULES);
         $senders = Vendor::parseSenders($data['park_senders'] ?? null);
         if ($taken = Vendor::takenSender($senders, Scope::Park, $vendor)) {
             return back()->withInput()->withErrors(['park_senders' => $taken]);
         }
+        $requisites = $data['party'] ?? [];
+        unset($data['party']);
         $vendor->update(array_merge($data, [
             'park_senders' => $senders,
             'intake_docs' => array_values($data['intake_docs'] ?? []),
@@ -201,9 +197,34 @@ class VendorController
             'park_seller' => ($data['park_seller'] ?? null) === Seller::Park->value ? null : ($data['park_seller'] ?? null),
         ]));
 
+        $this->saveRequisites($vendor, $requisites);
         $setLogo($vendor, $request);
 
         return back()->with('toast', 'Сохранено');
+    }
+
+    /** Реквизиты в форме вендора — поля его контрагента (`party[...]`), правила общие с «Реквизитами». */
+    private static function partyRules(): array
+    {
+        $rules = PartyRules::rules();
+
+        return collect(self::REQUISITES)->mapWithKeys(fn ($f) => ['party.'.$f => $rules[$f]])->all();
+    }
+
+    private const REQUISITES = ['inn', 'kpp', 'legal_address', 'bank_name', 'account', 'corr_account', 'bik', 'payment_purpose'];
+
+    /**
+     * Реквизиты вендора живут только в контрагенте (29.10.2026). Его ещё нет и поля пусты — не заводится; юрлицо
+     * стёрли — контрагент зовётся именем вендора (имя у него обязательное).
+     */
+    private function saveRequisites(Vendor $vendor, array $fields): void
+    {
+        $fields = array_map(fn ($v) => is_string($v) ? (trim($v) === '' ? null : trim($v)) : $v, $fields);
+        if (! $vendor->party && ! array_filter($fields)) {
+            return;
+        }
+        $party = Party::forVendor($vendor);
+        $party->update((array_key_exists('name', $fields) ? ['name' => $fields['name'] ?? $vendor->name] : []) + array_intersect_key($fields, array_flip(self::REQUISITES)));
     }
 
     public function contract(Request $request, Vendor $vendor)

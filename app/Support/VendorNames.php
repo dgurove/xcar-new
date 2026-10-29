@@ -53,8 +53,8 @@ final class VendorNames
         $roots = self::BRANDS;
         try {
             // Физлицо и свой транспорт — не бренд: имя человека из текста не вырезаем.
-            foreach (Vendor::query()->whereNotIn('kind', [Kind::Person, Kind::Own])->get(['name', 'legal_name']) as $vendor) {
-                foreach ([$vendor->name, $vendor->legal_name] as $name) {
+            foreach (Vendor::query()->whereNotIn('kind', [Kind::Person, Kind::Own])->with('party:id,name')->get(['name', 'party_id']) as $vendor) {
+                foreach ([$vendor->name, $vendor->party?->name] as $name) {
                     foreach (preg_split('/[^\p{L}\p{N}-]+/u', mb_strtolower((string) $name)) ?: [] as $word) {
                         if (mb_strlen($word) > 3 && ! in_array($word, self::PLAIN, true)) {
                             $roots[] = $word;
