@@ -29,7 +29,7 @@
     <td class="{{ $col->classes() }}">@if ($u)<span class="inline-flex items-center gap-2"><x-ui.person :user="$u"/>@if ($u->logistics_city)<span class="text-ink-muted">{{ $u->logistics_city }}</span>@endif</span>@endif</td>
         @break
         @case('at')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::stamp($at, time: true) }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($at, time: true) }}</td>
         @break
         @endswitch
     @endforeach

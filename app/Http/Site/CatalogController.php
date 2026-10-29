@@ -3,6 +3,7 @@
 namespace App\Http\Site;
 
 use App\Offers\CatalogQuery;
+use App\Offers\CloseGroups;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\Showing;
@@ -12,10 +13,11 @@ use App\Support\ListContext;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Sort;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class CatalogController
 {
@@ -145,7 +147,7 @@ class CatalogController
             'exclusive' => $offers->currentPage() === 1 ? $exclusive : collect(),
             'urgent' => $offers->currentPage() === 1 ? $urgent : collect(),
             'shelves' => $shelves,
-            'groupSizes' => $groups ? \App\Offers\CloseGroups::sizes($query, $gallery) : [],
+            'groupSizes' => $groups ? CloseGroups::sizes($query, $gallery) : [],
             'views' => $views,
             'view' => $view,
             // Стрелкам страницы предложения — и «Не просмотренные» явно: без параметра там список целиком.
@@ -169,13 +171,13 @@ class CatalogController
     public static function table(bool $deadline, ?Sort $sort = null, bool $mine = false): Table
     {
         return Table::of(
-            new Column('title', 'Марка, модель', grow: true, cap: false),
-            new Column('number', '№', from: 'sm', dim: true, cell: 'nums', rem: 7),
-            $deadline ? new Column('deadline', 'Приём', from: 'sm', sort: 'closing', rem: 7) : null,
-            new Column('city', 'Город', from: 'sm', aside: true, dim: true, rem: 8, clip: true),
+            new Column('title', 'Марка, модель', grow: true),
+            new Column('number', '№', from: 'sm', cell: 'nums', role: ColRole::Code, rem: 7),
+            new Column('city', 'Город', from: 'sm', aside: true, rem: 8, clip: true, role: ColRole::Place),
             $mine ? new Column('mine', 'Ваша цена', from: 'sm', num: true, cell: 'nums', rem: 7) : null,
             new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 9),
-            new Column('since', 'Прошло', from: 'sm', num: true, aside: true, sort: 'published', cell: 'cell-dim', rem: 5),
+            $deadline ? new Column('deadline', 'Приём', from: 'sm', sort: 'closing', role: ColRole::When, rem: 7) : null,
+            new Column('since', 'Прошло', from: 'sm', aside: true, sort: 'published', role: ColRole::When, rem: 5),
         );
     }
 }

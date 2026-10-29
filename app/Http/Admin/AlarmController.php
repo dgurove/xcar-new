@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Live\Rows;
 use App\Logistics\Transport;
 use App\Offers\Binding;
 use App\Offers\Offer;
@@ -10,10 +11,10 @@ use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
 use App\Support\Surface;
-use Illuminate\Http\Request;
-use App\Live\Rows;
+use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
+use Illuminate\Http\Request;
 
 /**
  * Экран «Горит» (19.10.2026, начальник: «зашёл — сразу видишь, что горит, в чём дело, провалился — потушил»): машины с
@@ -70,10 +71,10 @@ final class AlarmController
     {
         return Table::of(
             new Column('title', 'Марка, модель', grow: true),
-            new Column('step', 'Этап', from: 'sm', fill: true, rem: 12),
-            new Column('manager', 'Менеджер', from: 'sm', rem: 9),
-            new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10),
-            new Column('term', 'Срок', num: true, cell: 'nums', rem: 8),
+            new Column('step', 'Этап', from: 'sm', role: ColRole::State, rem: 12),
+            new Column('manager', 'Менеджер', from: 'sm', role: ColRole::Who, rem: 9),
+            new Column('vendor', 'Вендор, № убытка', from: 'sm', role: ColRole::Code, rem: 10),
+            new Column('term', 'Срок', cell: 'nums', role: ColRole::When, rem: 8),
         );
     }
 }

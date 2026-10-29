@@ -819,6 +819,8 @@ html.kb-open { --home-gap: 0px; }
   /* В ячейке таблицы место — данные извне: редкое длинное («Железногорск-Илимский») режется «…», столбец по 95 % значений
      (`Column::$clip`, `Table\Widths`). */
   .table td .place > .place-text { @apply truncate; }
+  /* Номер (убыток, ДЛ) в ячейке — тоже данные извне: редкий длинный режется «…», в буфер идёт целиком (`x-ui.copy-code`). */
+  .table td .vincode > .vincode-text { @apply min-w-0 truncate; }
   .place > svg, .vincode > svg { @apply size-[1em] shrink-0 text-ink-dim; }
   .tag.place { padding-left: 7px; }
   .tag.vincode { padding-right: 7px; }
@@ -1426,12 +1428,13 @@ html.kb-open { --home-gap: 0px; }
   /* Сколько места у названия, считает сама таблица: ширина обёртки (контейнер, cqw) минус прочие столбцы (--rest от
      x-ui.table — оценка по набору столбцов вкладки). Есть место — название целиком, нет (узкий экран, карточка рядом) —
      сжимается до 12rem, но числа за край не уезжают. */
-  .table-wrap[style*="--title-ch"] { container-type: inline-size; }
+  .table-wrap[style*="--title-"] { container-type: inline-size; }
   @media (min-width: 640px) {
     .table th.grow.title-cap {
       /* Буква названия (15px Onest) в среднем .5rem — не ch: у шапки свой мелкий шрифт; 3.5rem — иконка типа ТС и поля. */
-      --title-w: calc(var(--title-ch, 24) * .5rem + 3.5rem);
-      width: var(--title-w); min-width: min(var(--title-w), max(12rem, calc(100cqw - var(--rest, 40rem))));
+      /* Ширину по строкам считает сервер (`--title-w`, `Support\Table\Widths`); без описания столбцов — по `titles`. */
+      --title-cap-w: var(--title-w, calc(var(--title-ch, 24) * .5rem + 3.5rem));
+      width: var(--title-cap-w); min-width: min(var(--title-cap-w), max(12rem, calc(100cqw - var(--rest, 40rem))));
     }
     .table th.fill { width: 100%; }
   }
@@ -1690,6 +1693,11 @@ html.kb-open { --home-gap: 0px; }
       & .table tr > [colspan] { grid-column: 1 / -1; }
       /* Ширины таблицы (`width: 1%` у чисел, 100% у названия, `max-width: 0`) в сетке не нужны — ширину держит столбец. */
       & .table th, & .table td { width: auto !important; min-width: 0 !important; max-width: none !important; align-content: center; }
+      /* Строка — одна линия букв (30.10.2026, владелец: «текст на разной высоте»): ячейки встают по общей базовой линии, а
+         не каждая по своему центру (чип госномера и аватар выше букв сдвигали центр), и без прежних +2 px у мелкого текста —
+         на ПК в таблице всё 13 px. Шапка — по центру, как была. */
+      & .table tbody tr:not(.table-group) { align-items: baseline; }
+      & .table tbody tr:not(.table-group) > td { align-self: baseline; padding-top: .3125rem; padding-bottom: .3125rem; }
       /* Столбец не уже ядра своих значений (`Support\Table\Widths`), но второстепенный кусок («в минус …», «не оплачено …»)
          в строке, где ему не хватило места, встаёт второй строкой, а не режется: дорожка `minmax(ядро, целиком)`. */
       & .table td:not(.grow) { white-space: normal; }

@@ -4,9 +4,10 @@ namespace App\Http\Logistics;
 
 use App\Logistics\Transport;
 use App\Support\Detail;
-use Illuminate\Http\Request;
+use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
+use Illuminate\Http\Request;
 
 /**
  * Документы на вывоз (17.10.2026, владелец: «их оформляет Лиза, вводит трек-номер и отправляет СДЭКом исполнителю»):
@@ -35,12 +36,12 @@ class DocumentController
     public static function table(bool $waiting): Table
     {
         return Table::of(
-            new Column('title', 'Марка, модель', grow: true, cap: false),
-            new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10),
+            new Column('title', 'Марка, модель', grow: true),
+            new Column('vendor', 'Вендор, № убытка', from: 'sm', role: ColRole::Code, rem: 10),
             // Где документы — своим столбцом от 640 (29.10.2026), а не вторым этажом названия; в пути — с трек-номером.
-            new Column('docs', 'Документы', from: 'sm', fill: true, rem: 12),
-            new Column('to', 'Кому', from: 'sm', rem: 12),
-            new Column('at', $waiting ? 'Назначен' : 'Отправлены', num: true, cell: 'nums whitespace-nowrap cell-dim', rem: 7),
+            new Column('docs', 'Документы', from: 'sm', role: ColRole::State, rem: 12),
+            new Column('to', 'Кому', from: 'sm', role: ColRole::Who, rem: 12),
+            new Column('at', $waiting ? 'Назначен' : 'Отправлены', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 7),
         );
     }
 }

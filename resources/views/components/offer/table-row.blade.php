@@ -188,7 +188,7 @@
          Аватаром перед датой: во вкладке шага — кто перевёл сюда, иначе кто завёл черновик. --}}
     <td class="{{ $col->classes() }}">
         @php $face = ($byTab || $draft) ? $who : null; $robot = ($byTab || $draft) && $system; @endphp
-        @if ($face || $robot)<span class="inline-flex items-center gap-2 align-middle">@if ($face)<x-ui.avatar :user="$face" :size="20" title="{{ $face->name }}"/>@else<x-ui.system-avatar :via="$offer->created_via" :size="20"/>@endif @endif{{ $when?->translatedFormat($when->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}@if ($face || $robot)</span>@endif
+        @if ($face || $robot)<span class="inline-flex items-center gap-2 align-middle">@if ($face)<x-ui.avatar :user="$face" :size="20" title="{{ $face->name }}"/>@else<x-ui.system-avatar :via="$offer->created_via" :size="20"/>@endif @endif{{ \App\Support\Ago::cell($when, time: true) }}@if ($face || $robot)</span>@endif
     </td>
         @break
         @endswitch

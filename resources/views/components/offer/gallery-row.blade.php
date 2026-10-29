@@ -31,7 +31,7 @@
     <td class="{{ $col->classes() }}">@if ($offer->settlement)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $offer->settlement->name }}</x-ui.place>@endif</td>
         @break
         @case('from')
-    <td class="{{ $col->classes() }}">{{ $offer->gallery_from?->translatedFormat('j M, H:i') }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($offer->gallery_from, time: true) }}</td>
         @break
         @case('left')
     <td class="{{ $col->classes() }}">
@@ -46,7 +46,7 @@
     </td>
         @break
         @case('last')
-    <td class="{{ $col->classes() }}">{{ $last?->translatedFormat('j M, H:i') }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($last, time: true) }}</td>
         @break
         @endswitch
     @endforeach

@@ -70,6 +70,9 @@ use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Phone;
 use App\Support\Sort;
+use App\Support\Table\ColRole;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -77,8 +80,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use App\Support\Table\Column;
-use App\Support\Table\Table;
 
 class VehicleController
 {
@@ -746,23 +747,25 @@ class VehicleController
      * месяцев. Выданные — свои столбцы (архив дела); приёмщику (`User::parkMoney`) денежных нет.
      * Парковка — своим столбцом всегда (29.10.2026, управляющий вёл Excel: там место ТС в каждой строке, у нас оно было
      * заголовком группы или обрезанным хвостом названия). Подробная таблица (`wide`) — ещё и документы ТС, как его Excel и
-     * выгрузка: цвет, VIN, СТС, ПТС, полис, стоимость; набор задаём мы, человек его не настраивает.
+     * выгрузка: цвет, VIN, СТС, ПТС, полис, стоимость; набор задаём мы, человек его не настраивает. Порядок — по роли
+     * столбца, парковочный (`Table::park`, 30.10.2026): принята → дней → ставка → начислено вытекают друг из друга, парковка
+     * — самой правой.
      */
     public static function table(bool $out, bool $money, bool $wide = false): Table
     {
-        $title = new Column('title', 'Марка, модель', grow: true, sort: 'name', cap: false);
-        $yard = new Column('yard', 'Парковка', from: 'sm', sort: 'yard', rem: 8);
-        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', rem: 10);
-        $accepted = new Column('accepted', 'Принята', from: 'lg', num: true, aside: true, sort: 'accepted', cell: 'nums text-ink-muted', rem: 6.5);
-        $docs = $wide ? [new Column('color', 'Цвет', rem: 6), new Column('vin', 'VIN', cell: 'text-sm', rem: 11), new Column('sts', 'СТС', cell: 'text-sm', rem: 7),
-            new Column('pts', 'ПТС', cell: 'text-sm', rem: 8), new Column('policy', '№ полиса', cell: 'text-sm', rem: 9),
-            new Column('value', 'Стоимость', num: true, cell: 'nums', rem: 6)] : [];
+        $title = new Column('title', 'Марка, модель', grow: true, sort: 'name');
+        $yard = new Column('yard', 'Парковка', from: 'sm', sort: 'yard', role: ColRole::Place, rem: 8);
+        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: 10);
+        $accepted = new Column('accepted', 'Принята', from: 'lg', aside: true, sort: 'accepted', cell: 'nums', role: ColRole::When, rem: 6.5);
+        $docs = $wide ? [new Column('vin', 'VIN', cell: 'text-sm', role: ColRole::Code, rem: 11), new Column('sts', 'СТС', cell: 'text-sm', role: ColRole::Code, rem: 7),
+            new Column('pts', 'ПТС', cell: 'text-sm', role: ColRole::Code, rem: 8), new Column('policy', '№ полиса', cell: 'text-sm', role: ColRole::Code, rem: 9),
+            new Column('color', 'Цвет', role: ColRole::State, rem: 6), new Column('value', 'Стоимость', num: true, cell: 'nums', rem: 6)] : [];
 
         return $out
-            ? Table::of($title, $yard, $vendor, ...$docs, ...[$accepted, new Column('released', 'Выдана', num: true, sort: 'out', cell: 'nums', rem: 5),
+            ? Table::park($title, $yard, $vendor, ...$docs, ...[$accepted, new Column('released', 'Выдана', sort: 'out', cell: 'nums', role: ColRole::When, rem: 5),
                 $money ? new Column('storage', 'Хранение', num: true, sort: 'amount', cell: 'nums', rem: 7) : null])
-            : Table::of($title, $yard, $vendor, ...$docs, ...[new Column('status', 'Статус', from: 'sm', sort: 'tasks', rem: 9), $accepted,
-                new Column('days', 'Дней', num: true, sort: 'days', cell: 'nums', rem: 4),
+            : Table::park($title, $yard, $vendor, ...$docs, ...[new Column('status', 'Статус', from: 'sm', sort: 'tasks', role: ColRole::State, rem: 9), $accepted,
+                new Column('days', 'Дней', num: true, sort: 'days', cell: 'nums', role: ColRole::When, rem: 4),
                 $money ? new Column('rate', 'Ставка', from: 'sm', num: true, sort: 'rate', cell: 'nums', rem: 5.5) : null,
                 $money ? new Column('amount', 'Начислено', num: true, sort: 'amount', cell: 'nums', rem: 7) : null]);
     }

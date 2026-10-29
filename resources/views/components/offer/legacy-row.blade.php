@@ -17,7 +17,7 @@
     </td>
         @break
         @case('when')
-    <td class="{{ $col->classes() }}">{{ $claim->created_at?->translatedFormat($claim->created_at->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i') }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($claim->created_at, time: true) }}</td>
         @break
         @default
     <td class="{{ $col->classes() }}"></td>

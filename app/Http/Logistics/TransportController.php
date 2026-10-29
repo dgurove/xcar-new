@@ -49,6 +49,9 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Sort;
 use App\Support\Surface;
+use App\Support\Table\ColRole;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -59,8 +62,6 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use App\Support\Table\Column;
-use App\Support\Table\Table;
 
 /**
  * Logistics XCar — вывоз (17.10.2026): задачи списком, карточка рядом (ПК — колонкой, телефон — листом снизу). Админ
@@ -193,18 +194,18 @@ class TransportController
         $when = in_array('when', $keys, true);
         $make = fn (string $k) => match ($k) {
             'pick' => new Column('pick', pick: true, rem: 2.5),
-            'title' => new Column('title', 'Марка, модель', grow: true, sort: 'title', cap: false),
-            'client' => new Column('client', 'Заказчик', from: 'sm', rem: 8),
-            'vendor' => new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', rem: 10),
-            'sale' => new Column('sale', 'Продажа', from: 'sm', sort: 'sale', rem: 9),
-            'binding' => new Column('binding', 'Обязывающее до', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', rem: 7),
-            'to' => new Column('to', 'Кому везти', from: 'sm', rem: 9),
+            'title' => new Column('title', 'Марка, модель', grow: true, sort: 'title'),
+            'client' => new Column('client', 'Заказчик', from: 'sm', role: ColRole::Who, rem: 8),
+            'vendor' => new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: 10),
+            'sale' => new Column('sale', 'Продажа', from: 'sm', sort: 'sale', role: ColRole::State, rem: 9),
+            'binding' => new Column('binding', 'Обязывающее до', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 7),
+            'to' => new Column('to', 'Кому везти', from: 'sm', role: ColRole::Place, rem: 9),
             // Откуда забирать — главный факт логиста (регионы): с 640, а не с 1536 (29.10.2026).
-            'city' => new Column('city', 'Город', from: 'sm', aside: true, sort: 'city', rem: 7, clip: true),
-            'step' => new Column('step', 'Что дальше', from: 'sm', rem: 9),
-            'who' => new Column('who', 'Исполнитель', from: 'sm', sort: 'who', rem: 8),
-            'created' => new Column('created', 'Поступила', from: $when ? '2xl' : null, num: true, aside: $when, sort: 'created', cell: 'nums whitespace-nowrap cell-dim', rem: 6.5),
-            'when' => new Column('when', 'Когда', num: true, sort: 'when', cell: 'nums whitespace-nowrap cell-dim', rem: 6.5),
+            'city' => new Column('city', 'Город', from: 'sm', aside: true, sort: 'city', rem: 7, clip: true, role: ColRole::Place),
+            'step' => new Column('step', 'Что дальше', from: 'sm', role: ColRole::State, rem: 9),
+            'who' => new Column('who', 'Исполнитель', from: 'sm', sort: 'who', role: ColRole::Who, rem: 8),
+            'created' => new Column('created', 'Поступила', from: $when ? '2xl' : null, aside: $when, sort: 'created', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5),
+            'when' => new Column('when', 'Когда', sort: 'when', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5),
         };
 
         return new Table(array_map($make, $keys));

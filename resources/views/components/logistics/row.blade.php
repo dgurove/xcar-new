@@ -88,7 +88,7 @@
     <td class="{{ $col->classes() }}">@if ($who)<x-ui.person :user="$who"/>@elseif ($logist)<span class="text-ink-muted">у логиста {{ $logist->shortName() }}</span>@endif</td>
         @break
         @case('created')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::stamp($t->created_at, time: true) }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($t->created_at, time: true) }}</td>
         @break
         @case('when')
     <td class="{{ $col->classes() }} {{ $late ? '!text-danger' : '' }}">{{ $t->shownLabel() }}</td>

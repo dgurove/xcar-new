@@ -74,11 +74,11 @@
     <td class="{{ $col->classes() }}">@if ($status['act'] || $status['label'] !== 'на парковке')<span @class(['status-cell', 'is-act' => $status['act'], 'is-late' => $status['late']])>{{ $status['label'] }}</span>@endif</td>
         @break
         @case('accepted')
-    <td class="{{ $col->classes() }}">{{ $vehicle->accepted_at?->translatedFormat('j M Y') }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($vehicle->accepted_at) }}</td>
         @break
         @case('released')
     <td class="{{ $col->classes() }}">
-        @if ($vehicle->released_at)<time class="block" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ $vehicle->released_at->translatedFormat('j M') }}</time>@endif
+        @if ($vehicle->released_at)<time class="block" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ \App\Support\Ago::cell($vehicle->released_at) }}</time>@endif
         @if ($days !== null)<span class="cell-sub">{{ $days }}&nbsp;д</span>@endif
     </td>
         @break
@@ -92,7 +92,7 @@
         @case('days')
     <td class="{{ $col->classes() }}">
         @if ($state === VehicleState::Released && $vehicle->released_at)
-            <time class="text-ink-muted" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ $vehicle->released_at->translatedFormat('j M') }}</time>
+            <time datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ \App\Support\Ago::cell($vehicle->released_at) }}</time>
         @elseif ($days !== null)
             <span>{{ $days }}&nbsp;д</span>
         @endif

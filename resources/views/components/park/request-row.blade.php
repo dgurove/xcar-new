@@ -43,7 +43,7 @@
         @break
         @case('came')
     {{-- На ПК «откуда» — двумя столбцами: время цветом текста (по нему список и упорядочен), кто — тише. --}}
-    <td class="{{ $col->classes() }}">{{ $source['when'] }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($source['at'], time: true) }}</td>
         @break
         @case('from')
     <td class="{{ $col->classes() }}">@if ($source['email'])<x-mail.address :email="$source['email']"/>@else<span class="truncate">{{ $source['name'] }}</span>@endif</td>

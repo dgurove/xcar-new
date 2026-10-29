@@ -24,7 +24,7 @@
     <td class="{{ $col->classes() }} {{ $tone }}">{{ $state }}</td>
         @break
         @case('created')
-    <td class="{{ $col->classes() }}">{{ $time ? $link->created_at->format('H:i') : \App\Support\Ago::stamp($link->created_at, true) }}<span class="text-ink-dim">, {{ L::who($link) }}</span></td>
+    <td class="{{ $col->classes() }}">{{ $time ? $link->created_at->format('H:i') : \App\Support\Ago::cell($link->created_at, true) }}<span class="text-ink-dim">, {{ L::who($link) }}</span></td>
         @break
         @case('amount')
     <td class="{{ $col->classes() }}">

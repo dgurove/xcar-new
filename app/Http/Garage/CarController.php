@@ -19,10 +19,12 @@ use App\Offers\OfferFiles;
 use App\Support\Money;
 use App\Support\Sort;
 use App\Support\Surface;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
+use App\Users\User;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CarController
 {
@@ -160,15 +162,15 @@ class CarController
      * Таблица гаража на сайте — одно описание на шапку, строки `x-garage.table-row` и заголовки групп. Сотруднику — ещё
      * «Менеджер»; подпись цены — какую видит держатель (покупателю с гаражом — его цена или цена продажи).
      */
-    public static function table(\App\Users\User $user, bool $staff): Table
+    public static function table(User $user, bool $staff): Table
     {
         return Table::of(
             // Название — шириной в самое длинное (`title-cap`), остальное — «Этапу» (29.10.2026).
             new Column('title', 'Марка, модель', grow: true),
-            $staff ? new Column('manager', 'Менеджер', from: 'md', dim: true, rem: 8) : null,
+            $staff ? new Column('manager', 'Менеджер', from: 'md', role: ColRole::Who, rem: 8) : null,
             // Этап — своим столбцом от 640 (29.10.2026), а не вторым этажом названия.
-            new Column('stage', 'Этап', from: 'sm', fill: true, rem: 11),
-            new Column('taken', 'В гараже с', from: 'lg', num: true, aside: true, cell: 'nums cell-dim', rem: 5.5),
+            new Column('stage', 'Этап', from: 'sm', role: ColRole::State, rem: 11),
+            new Column('taken', 'В гараже с', from: 'lg', aside: true, cell: 'nums', role: ColRole::When, rem: 5.5),
             new Column('price', $user->holdsAsBuyer() ? ($user->seesGaragePrice() ? 'Цена' : 'Цена продажи') : 'Закупочная', from: 'sm', num: true, sort: 'price', cell: 'nums', rem: 7),
             new Column('spent', 'Расходы', from: 'sm', num: true, cell: 'nums', rem: 5.5),
             new Column('sold', 'Цена продажи', from: 'sm', num: true, cell: 'nums', rem: 7),

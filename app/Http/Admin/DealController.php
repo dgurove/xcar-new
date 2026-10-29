@@ -22,6 +22,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Sort;
+use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
 use App\Workflow\Actions\TakeExit;
@@ -203,18 +204,19 @@ class DealController
         $title = new Column('title', 'Марка, модель', grow: true);
         // Ширина у каждого столбца (29.10.2026): без неё `x-ui.table :rest` гадали числом в виде, и название то резалось, то
         // оставляло дыру.
-        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 10);
-        $manager = new Column('manager', 'Менеджер', from: 'sm', rem: 9);
+        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm', role: ColRole::Code, rem: 10);
+        $manager = new Column('manager', 'Менеджер', from: 'sm', role: ColRole::Who, rem: 9);
 
         return match (true) {
-            $todo => Table::of($title, $vendor, $manager, new Column('wait', 'Ждёт', from: 'sm', fill: true, rem: 8), new Column('action', num: true, rem: 9)),
+            // Кнопка шага — самой правой, за сроком «Ждёт».
+            $todo => Table::of($title, $vendor, $manager, new Column('wait', 'Ждёт', from: 'sm', role: ColRole::When, rem: 8), new Column('action', role: ColRole::When, rem: 9)),
             // «Оплата» — что с оплатой, сколько должен и срок (`x-deal.pay-row`); менеджер — заголовком группы.
-            $preset === 'pay' => Table::of($title, $vendor, new Column('status', 'Что с оплатой', from: 'sm', fill: true, rem: 12),
-                new Column('owed', 'Должен', num: true, class: 'nums', rem: 7), new Column('due', 'Срок', from: 'sm', num: true, rem: 6)),
-            default => new Table([$title, $vendor, new Column('number', '№', from: '2xl', dim: true, class: 'nums', rem: 7), $manager,
+            $preset === 'pay' => Table::of($title, $vendor, new Column('status', 'Что с оплатой', from: 'sm', role: ColRole::State, rem: 12),
+                new Column('owed', 'Должен', num: true, class: 'nums', rem: 7), new Column('due', 'Срок', from: 'sm', role: ColRole::When, rem: 6)),
+            default => new Table([$title, $vendor, new Column('number', '№', from: '2xl', class: 'nums', role: ColRole::Code, rem: 7), $manager,
                 // «Все» сгруппированы по этапу — этап говорит заголовок группы, столбца нет (и таблица влезает с «Оплатой»).
-                $staged ? null : new Column('stage', 'Этап', from: 'sm', fill: true, rem: 12),
-                new Column('term', 'Что сейчас', from: 'sm', sort: 'deadline', fill: $staged, rem: 9),
+                $staged ? null : new Column('stage', 'Этап', from: 'sm', role: ColRole::State, rem: 12),
+                new Column('term', 'Что сейчас', from: 'sm', sort: 'deadline', role: ColRole::When, rem: 9),
                 // Оплата — сколько должны нам и до какого числа (27.10.2026); на телефоне — под суммой.
                 new Column('pay', 'Оплата', from: 'sm', num: true, class: 'nums', rem: 7),
                 new Column('amount', 'Сумма', num: true, sort: 'amount', class: 'nums', rem: 7)], ['preset' => $preset]),

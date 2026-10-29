@@ -21,7 +21,7 @@
     <td class="{{ $col->classes() }}"><span class="whitespace-normal"><span class="{{ $tone }}">{{ $word }}</span>{{ $when ? ', '.$when : '' }}</span></td>
         @break
         @case('taken')
-    <td class="{{ $col->classes() }}">{{ $car?->taken_at?->translatedFormat('j M') }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($car?->taken_at) }}</td>
         @break
         @case('price')
     <td class="{{ $col->classes() }}">@if ($price){{ Money::exact($price) }}@endif</td>

@@ -3,9 +3,9 @@
 namespace App\Support\Table;
 
 /**
- * Столбец таблицы списка (`Table`): ключ, заголовок и как он стоит — с какой ширины виден, число справа, растягивается.
- * Классы ячейки и заголовка — только отсюда (`classes`), строка и шапка их не пишут сами (27.10.2026: шапка, строка и
- * `colspan` групп расходились в каждом списке).
+ * Столбец таблицы списка (`Table`): ключ, заголовок, что это за столбец (`ColRole`: из неё место в строке, выравнивание и
+ * цвет) и с какой ширины виден. Классы ячейки и заголовка — только отсюда (`classes`), строка и шапка их не пишут сами
+ * (27.10.2026: шапка, строка и `colspan` групп расходились в каждом списке).
  */
 final class Column
 {
@@ -15,9 +15,10 @@ final class Column
      * @param  string|null  $sort  ключ сортировки списка (`Support\Sort`) — заголовок нажимается
      * @param  bool  $aside  прячется, пока карточка стоит справа (`col-detail-hide`)
      * @param  string  $class  классы ячеек и заголовка; $cell — только ячеек (мелкий серый текст даты, цвет числа)
-     * @param  float  $rem  сколько места столбец занимает (rem) — из них `Table::rest`, остальное забирает название
-     * @param  bool  $cap  у растущего столбца — шириной в самое длинное название (`title-cap`, `x-ui.table :titles`),
-     *                     запас забирает `fill`; без него название забирает всю ширину (гараж, оплаты, закупки)
+     * @param  float  $rem  сколько места столбец занимает (rem), пока нет значений, — ширину по значениям считает `Widths`
+     * @param  bool  $fill  забирает запас ширины — ставит сам `Table`: последний столбец левой группы
+     * @param  ColRole|null  $role  что за столбец; пусто — по флагам: `grow` — название, `pick` — галочка, `num` — сумма,
+     *                              иначе — состояние
      * @param  bool  $clip  данные извне (город): ширина таблицы сеткой — по 95 % значений, редкое длинное режется «…»
      *                      (`Widths::of`); системный текст флага не получает — его не режут
      */
@@ -36,18 +37,36 @@ final class Column
         public readonly string $class = '',
         public readonly string $cell = '',
         public readonly float $rem = 0,
-        public readonly bool $cap = true,
         public readonly bool $clip = false,
+        public readonly ?ColRole $role = null,
     ) {}
+
+    /** Что за столбец (`ColRole`): названа — она, иначе по флагам. */
+    public function role(): ColRole
+    {
+        return $this->role ?? match (true) {
+            $this->grow => ColRole::Title,
+            $this->pick => ColRole::Pick,
+            $this->num => ColRole::Amount,
+            default => ColRole::State,
+        };
+    }
+
+    /** Тот же столбец, забирающий (или нет) запас ширины, — его выбирает `Table`. */
+    public function withFill(bool $fill): self
+    {
+        return $fill === $this->fill ? $this : clone ($this, ['fill' => $fill]);
+    }
 
     /** Классы ячейки столбца; head — заголовка (без `cell`). */
     public function classes(bool $head = false): string
     {
         return trim(implode(' ', array_filter([
             $this->grow ? 'grow' : null,
-            $this->num ? 'num' : null,
+            // Правая группа — по правому краю, как числа (`ColRole::right`); код — приглушённым.
+            $this->num || $this->role()->right() ? 'num' : null,
             $this->fill ? 'fill' : null,
-            $this->dim ? 'cell-dim' : null,
+            $this->dim || $this->role() === ColRole::Code ? 'cell-dim' : null,
             $this->pick ? 'pick-cell' : null,
             $this->aside ? 'col-detail-hide' : null,
             $this->phone ? 'sm:hidden' : null,

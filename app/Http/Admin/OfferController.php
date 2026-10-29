@@ -58,6 +58,7 @@ use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Sort;
+use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
 use App\Users\Role;
@@ -548,24 +549,21 @@ class OfferController
         return new Table([
             self::pickable($user, $preset, $searching) ? new Column('pick', pick: true, rem: 2.5) : null,
             new Column('title', 'Марка, модель', grow: true),
-            $has('vendor') ? new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', rem: max(8.5, $refCh * .55 + 3)) : null,
+            $has('vendor') ? new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: max(8.5, $refCh * .55 + 3)) : null,
             // Номер предложения есть во всех вкладках (10.10.2026); у черновика пусто.
-            new Column('number', '№', from: 'sm', aside: true, cell: 'cell-dim nums', rem: 7),
+            new Column('number', '№', from: 'sm', aside: true, cell: 'nums', role: ColRole::Code, rem: 7),
             // Во «Все» город — с 1024: место отдано этапу сделки и менеджеру в «Состоянии» (27.10.2026; с 29.10.2026 таблица
             // плотнее, и с 1536 — слишком поздно).
-            $has('city') ? new Column('city', 'Город', from: in_array($preset, ['all', 'done'], true) ? 'lg' : 'sm', aside: true, clip: true, rem: max(5, $cityCh * .5 + 2.5)) : null,
-            // Без «Состояния» запас ширины забирает пустой столбец перед числами, а не промежутки между столбцами.
-            $has('state')
-                ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', fill: true, sort: 'closing', cell: 'whitespace-normal', rem: 10)
-                : new Column('gap', from: 'sm', fill: true),
+            $has('city') ? new Column('city', 'Город', from: in_array($preset, ['all', 'done'], true) ? 'lg' : 'sm', aside: true, clip: true, role: ColRole::Place, rem: max(5, $cityCh * .5 + 2.5)) : null,
+            $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10) : null,
             // Подтверждения принимает только админ — модератору столбца нет.
             $has('bids') && $user->canManageCrm() ? new Column('bids', 'Подтверждения', from: 'sm', num: true, sort: 'bids', cell: 'nums', rem: 7) : null,
-            ! $all && $has('value') ? new Column('value', 'Оценочная', from: 'sm', num: true, aside: true, cell: 'cell-dim nums', rem: 5.5) : null,
+            ! $all && $has('value') ? new Column('value', 'Оценочная', from: 'sm', num: true, aside: true, cell: 'nums', rem: 5.5) : null,
             ! $has('floor') ? null : ($floorSide
                 ? new Column('floor', 'Закупочная', num: true, sort: 'floor', cell: 'nums', rem: 5.5)
-                : new Column('floor', 'Закупочная', from: 'sm', num: true, aside: true, sort: 'floor', cell: 'cell-dim nums', rem: 5.5)),
+                : new Column('floor', 'Закупочная', from: 'sm', num: true, aside: true, sort: 'floor', cell: 'nums', rem: 5.5)),
             $has('price') ? new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 6) : null,
-            $when ? new Column('when', $when[1], from: 'sm', num: true, aside: true, sort: $when[0], cell: 'nums whitespace-nowrap !text-xs !text-ink-dim', rem: $when[2]) : null,
+            $when ? new Column('when', $when[1], from: 'sm', aside: true, sort: $when[0], cell: 'nums whitespace-nowrap', role: ColRole::When, rem: $when[2]) : null,
         ], ['mixed' => $all, 'when' => $when[0] ?? null, 'floorSide' => $floorSide]);
     }
 

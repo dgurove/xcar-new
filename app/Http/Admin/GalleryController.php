@@ -10,10 +10,11 @@ use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Sort;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
+use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 
 /**
  * Галерея CRM (08.10.2026, владелец: «как в предложениях — просмотр опубликованных и откликов»): черновики в окне
@@ -108,12 +109,12 @@ class GalleryController
     {
         return Table::of(
             new Column('title', 'Марка, модель', grow: true),
-            new Column('vendor', 'Вендор, № убытка', from: 'sm', rem: 9),
-            new Column('city', 'Город', from: 'sm', aside: true, rem: 6, clip: true),
-            new Column('from', 'Появилось', from: 'sm', num: true, aside: true, sort: 'fresh', cell: 'nums whitespace-nowrap', rem: 6.5),
-            new Column('left', 'Осталось', from: 'sm', fill: true, sort: 'closing', cell: 'whitespace-nowrap', rem: 6),
+            new Column('vendor', 'Вендор, № убытка', from: 'sm', role: ColRole::Code, rem: 9),
+            new Column('city', 'Город', from: 'sm', aside: true, rem: 6, clip: true, role: ColRole::Place),
             new Column('interest', 'Интерес', num: true, sort: 'interest', cell: 'nums', rem: 4.5),
-            new Column('last', 'Отклик', from: 'sm', num: true, aside: true, sort: 'last', cell: 'nums whitespace-nowrap !text-xs !text-ink-dim', rem: 6.5),
+            new Column('from', 'Появилось', from: 'sm', aside: true, sort: 'fresh', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5),
+            new Column('left', 'Осталось', from: 'sm', sort: 'closing', cell: 'whitespace-nowrap', role: ColRole::When, rem: 6),
+            new Column('last', 'Отклик', from: 'sm', aside: true, sort: 'last', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5),
         );
     }
 }

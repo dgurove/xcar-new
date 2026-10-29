@@ -15,6 +15,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Sort;
+use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -155,10 +156,10 @@ class PurchaseController
     public static function table(bool $kinds): Table
     {
         return Table::of(
-            new Column('title', 'Марка, модель', grow: true, sort: 'brand', cap: false),
-            new Column('number', '№', from: 'sm', sort: 'number', cell: 'cell-dim nums', rem: 6),
-            $kinds ? new Column('kind', 'Тип', from: 'sm', cell: 'cell-dim', rem: 6) : null,
-            new Column('city', 'Город', from: 'sm', aside: true, cell: 'cell-dim', rem: 8, clip: true),
+            new Column('title', 'Марка, модель', grow: true, sort: 'brand'),
+            new Column('number', '№', from: 'sm', sort: 'number', cell: 'nums', role: ColRole::Code, rem: 6),
+            $kinds ? new Column('kind', 'Тип', from: 'sm', role: ColRole::State, rem: 6) : null,
+            new Column('city', 'Город', from: 'sm', aside: true, rem: 8, clip: true, role: ColRole::Place),
             new Column('price', 'Цена', num: true, cell: 'nums', rem: 6.5),
         );
     }

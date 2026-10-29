@@ -75,12 +75,35 @@ final class Ago
      */
     public static function stamp(?\DateTimeInterface $at, bool $time = false): string
     {
-        if (! $at) return '';
+        if (! $at) {
+            return '';
+        }
         $at = FastDate::instance($at);
-        if ($at->isToday()) return $at->format('H:i');
+        if ($at->isToday()) {
+            return $at->format('H:i');
+        }
         $day = $at->isCurrentYear() ? 'j M' : 'j M Y';
 
         return $at->translatedFormat($time ? "{$day}, H:i" : $day);
+    }
+
+    /**
+     * Дата в ячейке таблицы — одна дверь для всех списков (30.10.2026, владелец: «дату я бы писал в формате dd.mm.yyyy»):
+     * «сегодня 16:45», «вчера 14:19», раньше — «28.10.2026 11:27»; без времени — «сегодня», «вчера», «28.10.2026».
+     */
+    public static function cell(?\DateTimeInterface $at, bool $time = false): string
+    {
+        if (! $at) {
+            return '';
+        }
+        $at = FastDate::instance($at);
+        $day = match (true) {
+            $at->isToday() => 'сегодня',
+            $at->isYesterday() => 'вчера',
+            default => $at->format('d.m.Y'),
+        };
+
+        return $time ? $day.' '.$at->format('H:i') : $day;
     }
 
     /**
@@ -89,7 +112,9 @@ final class Ago
      */
     public static function day(?\DateTimeInterface $at, bool $time = false): string
     {
-        if (! $at) return '';
+        if (! $at) {
+            return '';
+        }
         $at = FastDate::instance($at);
 
         return $at->translatedFormat(($at->isCurrentYear() ? 'j M' : 'j M Y').($time ? ', H:i' : ''));

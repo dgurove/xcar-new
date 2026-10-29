@@ -30,6 +30,7 @@ use App\Support\Liters;
 use App\Support\Money;
 use App\Support\OfficePreview;
 use App\Support\Sort;
+use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
 use App\Users\Role;
@@ -429,11 +430,11 @@ class PurchaseController
     public static function table(): Table
     {
         return Table::of(
-            new Column('title', 'Марка, модель', grow: true, cap: false),
-            new Column('dl', 'ДЛ', from: 'sm', sort: 'dl', cell: 'cell-dim', rem: 7),
+            new Column('title', 'Марка, модель', grow: true),
+            new Column('dl', 'ДЛ', from: 'sm', sort: 'dl', role: ColRole::Code, rem: 7),
             // Где машина (29.10.2026): у лота город есть, а в таблице его не было.
-            new Column('city', 'Город', from: 'sm', aside: true, rem: 8, clip: true),
-            new Column('listing', 'Размещение', from: 'sm', num: true, cell: 'cell-dim nums', rem: 6.5),
+            new Column('city', 'Город', from: 'sm', aside: true, rem: 8, clip: true, role: ColRole::Place),
+            new Column('listing', 'Размещение', from: 'sm', num: true, cell: 'nums', rem: 6.5),
             new Column('offers', 'Предложения', from: 'sm', num: true, sort: 'best', cell: 'nums', rem: 8),
             new Column('final', 'Наша цена', num: true, sort: 'final', cell: 'nums', rem: 6.5),
         );

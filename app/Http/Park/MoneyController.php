@@ -22,12 +22,13 @@ use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Sort;
+use App\Support\Table\ColRole;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
-use App\Support\Table\Column;
-use App\Support\Table\Table;
 
 /** Деньги стоянки: счета с пресетами, карточка строки, карточка счёта, долги по контрагентам, месяц. */
 class MoneyController
@@ -198,12 +199,12 @@ class MoneyController
     public static function table(): Table
     {
         return Table::of(
-            new Column('title', 'Контрагент', grow: true, cap: false),
-            new Column('number', '№', from: 'sm', sort: 'fresh', dim: true, rem: 6),
-            new Column('what', 'За что', from: 'lg', aside: true, dim: true, rem: 12),
-            new Column('due', 'Срок', from: 'sm', sort: 'due', rem: 6),
+            new Column('title', 'Контрагент', grow: true),
+            new Column('number', '№', from: 'sm', sort: 'fresh', role: ColRole::Code, rem: 6),
+            new Column('what', 'За что', from: 'lg', aside: true, role: ColRole::State, rem: 12),
             new Column('amount', 'Сумма', num: true, sort: 'amount', cell: 'nums', rem: 6.5),
-            new Column('rest', 'Остаток', from: 'sm', num: true, sort: 'rest', cell: 'cell-dim nums', rem: 6.5),
+            new Column('rest', 'Остаток', from: 'sm', num: true, sort: 'rest', cell: 'nums', rem: 6.5),
+            new Column('due', 'Срок', from: 'sm', sort: 'due', role: ColRole::When, rem: 6),
         );
     }
 }
