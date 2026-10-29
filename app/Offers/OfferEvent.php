@@ -210,7 +210,7 @@ class OfferEvent extends Model
             OfferEventType::BidAccepted => $in.'выбрана цена '.$sum.$whose,
             OfferEventType::BidDeclined => $in.'не выбрана цена '.$sum.$whose,
             OfferEventType::Note => ! empty($p['unchosen']) ? $in.'выбор цены '.$sum.' отменён'.$whose : $in.($p['text'] ?? ''),
-            OfferEventType::Updated => $in.'наша цена '.($was ? Money::plain((int) $was).' → ' : '').($now ? Money::rub((int) $now) : 'снята'),
+            OfferEventType::Updated => $in.'админская цена '.($was ? Money::plain((int) $was).' → ' : '').($now ? Money::rub((int) $now) : 'снята'),
             default => $in.$type->value,
         };
     }
