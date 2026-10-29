@@ -8,48 +8,74 @@ use App\Mail\Message;
 use App\Mail\Parts;
 use App\Mail\Template;
 use App\Park\IntakeReport;
-use App\Users\User;
+use App\Park\Report;
+use App\Park\ReportDoc;
+use App\Park\Vehicle;
+use App\Support\Pdf;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Spatie\Image\Enums\Fit;
 use Spatie\Image\Image;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * Отчёт о приёме письмом (форма `x-park.report-form`): ответ в ветке заявки, фраза, отмеченные фото приёма JPEG-ами 1600
- * и сканы документов с именами, как их называли руками. Не влезает в 18 МБ — частями «ч.1, ч.2», сканы — в первой.
- * Ушло — шаг «Отчёт» сделан (`MarkReportSent`).
+ * Письма отчёта о приёме (`Park\Report`) — в очереди (`Jobs\SendIntakeReport`), а не в запросе формы: там все снимки
+ * одним запросом упирались в 64 МБ и 30 с (29.10.2026, «ошибки при отправлении»). Ответ в ветке заявки, фраза, отмеченные
+ * кадры JPEG-ами 1600 и сканы документов с именами, как их называли руками. Снимки «Снять» одного выбора (`scan`) —
+ * одним PDF, он встаёт к ТС вместо снимков. Не влезает в 18 МБ — частями «ч.1, ч.2», сканы — в первой.
+ * Файла, что отметили, у ТС нет или он не читается — ошибка, письмо без него не уходит. Шаг «Отчёт» ставит не отправка, а
+ * ушедшее письмо (`Listeners\ReportDelivery`).
  */
 final class SendIntakeReport
 {
     /** @var array<int, array{0: Media, 1: string}> кадр или скан → отпечаток ушедших байт */
     private array $sha = [];
 
-    public function __construct(private Composer $composer, private StoreOutboxFile $outbox, private MarkReportSent $mark) {}
+    public function __construct(private Composer $composer, private StoreOutboxFile $outbox) {}
 
-    /**
-     * @param  list<int>  $photoIds  кадры ТС, что уходят
-     * @param  array<string, list<int>>  $docIds  вид документа → документы ТС (`papers`)
-     * @return list<Message>
-     */
-    public function __invoke(IntakeReport $report, User $by, array $photoIds, array $docIds, string $text, string $to, string $cc = ''): array
+    /** @return list<Message> */
+    public function __invoke(Report $report): array
     {
-        $v = $report->vehicle;
+        $v = $report->vehicle()->with(['vendor', 'media', 'requests'])->firstOrFail();
+        $intake = IntakeReport::for($v, $report->parent);
+        if (! $intake) {
+            throw new RuntimeException('Нет ящика парковки для отправки');
+        }
         $media = $v->getMedia('photos')->merge($v->papers())->keyBy('id');
+        $pick = fn (array $ids, string $collection) => collect($ids)->map(function ($id) use ($media, $collection) {
+            $m = $media->get((int) $id);
+            if (! $m || $m->collection_name !== $collection) {
+                throw new RuntimeException('Файла №'.$id.' у ТС больше нет — откройте отчёт заново');
+            }
 
-        // Сканы — первыми, по видам в порядке вендора; несколько файлов вида — «акт 1», «акт 2».
+            return $m;
+        })->values();
+
+        // Сканы — первыми, по видам в порядке вендора, «Другой» последним; несколько файлов вида — «акт 1», «акт 2».
         $files = [];
-        foreach (IntakeReport::kinds($v) as $kind) {
-            $docs = collect($docIds[$kind->value] ?? [])->map(fn ($id) => $media->get((int) $id))->filter(fn ($m) => $m && $m->collection_name === 'papers')->values();
-            foreach ($docs as $i => $m) {
-                $ext = strtolower(pathinfo($m->file_name, PATHINFO_EXTENSION)) ?: 'pdf';
-                $contents = (string) file_get_contents($m->getPath());
+        $docs = $report->docs ?? [];
+        $lists = [];
+        foreach ([...IntakeReport::kinds($v), ReportDoc::Other] as $kind) {
+            $lists[$kind->value] = $this->paged($v, $kind, $pick($docs[$kind->value] ?? [], 'papers'));
+        }
+        // Снимки стали PDF — у отчёта теперь он: повтор после сбоя не ищет удалённые снимки.
+        $report->update(['docs' => array_filter(array_map(fn ($list) => $list->pluck('id')->all(), $lists))]);
+        foreach ($lists as $key => $list) {
+            $kind = ReportDoc::from($key);
+            foreach ($list as $i => $m) {
+                $contents = $this->read($m);
                 $this->sha[$m->id] = [$m, hash('sha256', $contents)];
-                $files[] = $this->outbox->put($report->fileName($kind, $i, $docs->count(), $ext), $contents);
+                $ext = strtolower(pathinfo($m->file_name, PATHINFO_EXTENSION)) ?: 'pdf';
+                $files[] = $this->outbox->put($intake->fileName($kind, $i, $list->count(), $ext, $m->file_name), $contents);
             }
         }
         $docsCount = count($files);
-        foreach (array_values(array_filter(array_map(fn ($id) => $media->get((int) $id), $photoIds), fn ($m) => $m && $m->collection_name === 'photos')) as $i => $m) {
+        foreach ($pick($report->photos ?? [], 'photos') as $i => $m) {
             $files[] = $this->photo($m, $i + 1);
+        }
+        if (! $files) {
+            throw new RuntimeException('Нечего отправлять: ни фото, ни документов');
         }
 
         // Части по объёму: сканы стоят первыми и уходят в первой.
@@ -66,20 +92,20 @@ final class SendIntakeReport
             $size += $bytes;
         }
 
-        $parent = $report->parent;
-        $base = $parent ? $this->composer->reply($parent) : $this->composer->fresh($report->account);
+        $parent = $intake->parent;
+        $base = $parent ? $this->composer->reply($parent) : $this->composer->fresh($intake->account);
         $subject = $parent ? $base['subject'] : 'Приём ТС '.$v->titleWithYear().($v->ref ? ' '.$v->ref : '');
-        $body = Template::html(trim($text) !== '' ? trim($text) : IntakeReport::text($docsCount > 0)).$base['body'];
+        $body = Template::html(trim((string) $report->text) !== '' ? trim((string) $report->text) : IntakeReport::text($docsCount > 0)).$base['body'];
 
         $sent = [];
         foreach ($parts as $n => $chunk) {
-            $sent[] = $this->composer->create($report->account, [
-                'to' => $to, 'cc' => $cc,
+            $sent[] = $this->composer->create($intake->account, [
+                'to' => $report->to, 'cc' => (string) $report->cc,
                 'subject' => $subject.(count($parts) > 1 ? ' ч.'.($n + 1) : ''),
                 'body' => $body,
                 'quote' => $base['quote'] ?? null,
                 'files' => $chunk,
-            ], $parent, $by);
+            ], $parent, $report->user, dispatch: false);
         }
         // Отпечатки отправленного — когда письма уже заведены: из «Отправленных» эти же кадры и сканы второй раз к ТС не лягут.
         foreach ($this->sha as [$m, $sha]) {
@@ -91,20 +117,66 @@ final class SendIntakeReport
                 $message->thread->update(['vehicle_id' => $v->id]);
             }
         }
-        ($this->mark)($v, $by, 'Акт приёма', now(), $sent[0]->thread_id, ['message' => $sent[0]->id, 'photos' => count($files) - $docsCount, 'docs' => $docsCount]);
+        // Письма — к отчёту до того, как их возьмёт отправка: `ReportDelivery` ищет отчёт по письму.
+        $report->update(['messages' => array_map(fn (Message $m) => $m->id, $sent), 'error' => null]);
+        foreach ($sent as $message) {
+            $this->composer->dispatch($message);
+        }
 
         return $sent;
+    }
+
+    /**
+     * Снимки «Снять» одного выбора (`scan`) — страницы одного документа: одним PDF, он встаёт к ТС вместо снимков (и в
+     * следующий отчёт уйдёт уже им). Картинка «Файлом» — своим PDF так же. Остальное — как есть.
+     *
+     * @param  Collection<int, Media>  $docs
+     * @return Collection<int, Media>
+     */
+    private function paged(Vehicle $v, ReportDoc $kind, $docs)
+    {
+        $out = collect();
+        $groups = $docs->groupBy(fn (Media $m) => str_starts_with((string) $m->mime_type, 'image/') ? ($m->getCustomProperty('scan') ?: 'one-'.$m->id) : 'file-'.$m->id);
+        foreach ($groups as $key => $group) {
+            if (str_starts_with((string) $key, 'file-')) {
+                $out->push($group->first());
+
+                continue;
+            }
+            $pdf = Pdf::render('park.report.scan', ['pages' => $group->sortBy(fn (Media $m) => [(int) $m->getCustomProperty('page'), $m->id])->map(fn (Media $m) => $m->getPath())->values()->all()],
+                chroot: array_values(array_unique($group->map(fn (Media $m) => dirname($m->getPath()))->all())));
+            $doc = $v->addMediaFromString($pdf)->usingFileName($kind->value.'-'.uniqid().'.pdf')
+                ->withCustomProperties(['report_doc' => $kind->value, 'source' => 'app'])->toMediaCollection('papers');
+            $group->each(fn (Media $m) => $m->delete());
+            $out->push($doc);
+        }
+
+        return $out;
+    }
+
+    private function read(Media $m): string
+    {
+        $contents = is_file($m->getPath()) ? file_get_contents($m->getPath()) : false;
+        if ($contents === false || $contents === '') {
+            throw new RuntimeException('Файл «'.$m->file_name.'» не читается с диска');
+        }
+
+        return $contents;
     }
 
     /** Кадр во вложение — JPEG 1600: почтовые программы страховых webp не показывают. */
     private function photo(Media $m, int $n): string
     {
+        $this->read($m);
         $tmp = tempnam(sys_get_temp_dir(), 'rep').'.jpg';
         try {
             Image::useImageDriver('gd')->loadFile($m->getPath())->fit(Fit::Max, 1600, 1600)->quality(82)->save($tmp);
             $contents = (string) file_get_contents($tmp);
         } finally {
             @unlink($tmp);
+        }
+        if ($contents === '') {
+            throw new RuntimeException('Кадр «'.$m->file_name.'» не пережался в JPEG');
         }
         $this->sha[$m->id] = [$m, hash('sha256', $contents)];
 

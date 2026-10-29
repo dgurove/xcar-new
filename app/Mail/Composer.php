@@ -7,6 +7,7 @@ use App\Users\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /** Исходящее письмо: заготовка ответа/пересылки и запись в базу с постановкой в очередь. Message-ID выписывается до отправки. */
 final class Composer
@@ -101,7 +102,8 @@ final class Composer
      *
      * @param  array{to: string, cc?: string, bcc?: string, subject: string, body: string, quote?: string, files?: list<string>, forward?: list<int>, inline?: array<string, string>}  $data
      */
-    public function create(Account $account, array $data, ?Message $parent, ?User $by, ?Thread $thread = null): Message
+    /** @param  bool  $dispatch  false — в очередь отправки письмо ставит вызвавший (`dispatch`), когда запишет его у себя */
+    public function create(Account $account, array $data, ?Message $parent, ?User $by, ?Thread $thread = null, bool $dispatch = true): Message
     {
         $messageId = Str::uuid().'@'.(Str::after($account->email, '@') ?: 'xcar.ru');
         $html = trim((string) ($data['body'] ?? ''));
@@ -154,9 +156,16 @@ final class Composer
 
             return $message;
         });
-        SendMessage::dispatch($message->id);
+        if ($dispatch) {
+            $this->dispatch($message);
+        }
 
         return $message;
+    }
+
+    public function dispatch(Message $message): void
+    {
+        SendMessage::dispatch($message->id);
     }
 
     /** @return list<string> */
@@ -173,8 +182,12 @@ final class Composer
         $position = 0;
         $inline = (array) ($data['inline'] ?? []);
         foreach ([...(array) ($data['files'] ?? []), ...array_keys($inline)] as $path) {
-            if (! str_starts_with((string) $path, 'outbox/') || ! $disk->exists($path)) {
+            if (! str_starts_with((string) $path, 'outbox/')) {
                 continue;
+            }
+            // Файла нет — письмо не заводится (29.10.2026: «Письмо пришло без вложения» — молча уходило без него).
+            if (! $disk->exists($path) || ! $disk->size($path)) {
+                throw ValidationException::withMessages(['files' => 'Файл «'.substr(basename((string) $path), 37).'» не загрузился, приложите его ещё раз']);
             }
             $message->attachments()->create([
                 'filename' => substr(basename($path), 37), // после uuid и дефиса
@@ -190,7 +203,7 @@ final class Composer
             // Пересылаемый файл не копируется: тот же blob, что у исходного письма.
             foreach ($parent->attachments()->whereIn('id', (array) $data['forward'])->get() as $original) {
                 if (($contents = $original->contents()) === null) {
-                    continue;
+                    throw ValidationException::withMessages(['files' => 'Файл «'.$original->filename.'» не достать из ящика, приложите его заново']);
                 }
                 $message->attachments()->create(['filename' => $original->filename, 'mime' => $original->mime, 'size' => strlen($contents), 'blob_sha' => Blobs::put($contents), 'pinned_at' => now(), 'position' => $position++]);
             }

@@ -18,6 +18,15 @@ enum ReportDoc: string
     case Sts = 'sts';
     case Pts = 'pts';
     case Proxy = 'proxy';
+    case StorageAct = 'storage';
+    /** Что угодно сверх списка вендора — уходит с исходным именем файла (`IntakeReport::fileName`), в настройках вендора его нет. */
+    case Other = 'other';
+
+    /** Виды для настроек вендора — без «Другого». @return list<self> */
+    public static function listed(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $k) => $k !== self::Other));
+    }
 
     public function label(): string
     {
@@ -27,6 +36,8 @@ enum ReportDoc: string
             self::Sts => 'СТС',
             self::Pts => 'ПТС / ЭПТС',
             self::Proxy => 'Доверенность',
+            self::StorageAct => 'Акт хранения',
+            self::Other => 'Другой документ',
         };
     }
 
@@ -39,6 +50,8 @@ enum ReportDoc: string
             self::Sts => 'стс',
             self::Pts => 'птс',
             self::Proxy => 'дов',
+            self::StorageAct => 'акт хранения',
+            self::Other => '',
         };
     }
 
@@ -48,6 +61,7 @@ enum ReportDoc: string
         $n = mb_strtolower(str_replace('ё', 'е', $name));
 
         return match (true) {
+            (bool) preg_match('/акт\W*хранени/u', $n) => self::StorageAct,
             (bool) preg_match('/акт\s*(прием|п\/п|\d|_|-|\s|$)|приема-передачи/u', $n) && ! str_contains($n, 'осмотр') => self::Act,
             str_contains($n, 'заявк') => self::Request,
             str_contains($n, 'стс') || str_contains($n, 'свидетельств') => self::Sts,

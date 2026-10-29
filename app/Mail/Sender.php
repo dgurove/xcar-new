@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use RuntimeException;
 use Symfony\Component\Mailer\Transport\TransportInterface;
 use Symfony\Component\Mime\Address as MimeAddress;
 use Symfony\Component\Mime\Email;
@@ -67,11 +68,11 @@ final class Sender
             $headers->addIdHeader('References', preg_split('/\s+/', $message->references_header, -1, PREG_SPLIT_NO_EMPTY) ?: []);
         }
         foreach ($message->attachments as $attachment) {
+            // Вложения нет ни у нас, ни в ящике — письмо не уходит (`Failed` с причиной), а не уходит без него (29.10.2026:
+            // Альфа: «Письмо пришло без вложения»).
             $contents = $attachment->contents();
-            if ($contents === null) {
-                Log::warning('Почта: вложения нет ни у нас, ни в ящике', ['message' => $message->id, 'attachment' => $attachment->id]);
-
-                continue;
+            if ($contents === null || $contents === '') {
+                throw new RuntimeException('Нет файла вложения «'.$attachment->filename.'» — приложите его заново');
             }
             // Картинка в теле (QR пропуска) — частью письма по Content-ID, а не файлом: так её показывают почтовики.
             if ($attachment->is_inline && $attachment->content_id) {

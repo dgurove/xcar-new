@@ -175,7 +175,7 @@ class VendorController
             'intake_docs.*' => [Rule::enum(DocRequirement::class)],
             'intake_note' => ['nullable', 'string', 'max:2000'],
             'intake_report_docs' => ['nullable', 'array'],
-            'intake_report_docs.*' => [Rule::enum(ReportDoc::class)],
+            'intake_report_docs.*' => [Rule::enum(ReportDoc::class)->except([ReportDoc::Other])],
             'notes' => ['nullable', 'string', 'max:2000'],
         ] + self::partyRules() + SetLogo::RULES);
         $senders = Vendor::parseSenders($data['park_senders'] ?? null);

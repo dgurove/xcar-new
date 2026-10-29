@@ -75,6 +75,12 @@ final class ParkNotice extends Notice
         return new self('Страховая продала ТС сделки XCar: '.$v->titleWithYear(), 'По пропуску сделки ждём '.$pass->name.'. Сверьте со сделкой, прежде чем выдавать', '/cars/'.$v->id, $v->id, critical: true);
     }
 
+    /** Отчёт о приёме не ушёл (`Park\Report`, 29.10.2026): тому, кто отправлял, со звуком — в деле «Повторить». */
+    public static function reportFailed(Vehicle $v, string $reason): self
+    {
+        return new self('Отчёт не ушёл: '.$v->titleWithYear(), $reason, '/cars/'.$v->id, $v->id, critical: true);
+    }
+
     /** Получатель по сделке XCar сменился (`SyncParkRelease`): прежний пропуск погашен, заберёт другой. */
     public static function receiverChanged(Vehicle $v): self
     {

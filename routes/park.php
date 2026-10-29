@@ -76,6 +76,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/intake', [RequestController::class, 'intakeCar']);
     Route::post('/cars/{vehicle}/release', [RequestController::class, 'releaseCar']);
     Route::post('/cars/{vehicle}/report', [ReportController::class, 'store']);
+    Route::post('/cars/{vehicle}/report/file', [ReportController::class, 'file']);
+    Route::post('/cars/{vehicle}/report/{report}/retry', [ReportController::class, 'retry']);
     Route::post('/cars/{vehicle}/report-sent', [ReportController::class, 'sent'])->middleware('ability:parkHandles');
     // «✨ Распознать» в деле ТС — то же окно, что у цепочки «Из писем» (ScanController, Scan\VehicleSubject).
     Route::get('/cars/{vehicle}/scan', [ScanController::class, 'vehicleShow'])->middleware('park.manage');

@@ -63,7 +63,7 @@
             {{-- Отчёт о приёме: какие документы уходят сканами вместе с фото (слоты формы отчёта, `x-park.report-form`). --}}
             <div class="list-head">В отчёт о приёме — документы</div>
             <div class="flex flex-wrap gap-1.5">
-                @foreach (\App\Park\ReportDoc::cases() as $doc)
+                @foreach (\App\Park\ReportDoc::listed() as $doc)
                     <label class="choice"><input type="checkbox" switch name="intake_report_docs[]" value="{{ $doc->value }}" @checked(in_array($doc->value, old('intake_report_docs', $vendor->intake_report_docs ?? []), true))><span>{{ $doc->label() }}</span></label>
                 @endforeach
             </div>

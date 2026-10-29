@@ -57,6 +57,7 @@ use App\Park\Actions\SendPickupLink;
 use App\Park\Events\VehicleAccepted;
 use App\Park\Events\VehicleSold;
 use App\Park\Listeners\ReleaseSold;
+use App\Park\Listeners\ReportDelivery;
 use App\Park\Listeners\SyncOffer;
 use App\Support\FastDate;
 use App\Users\Access\EnrollOnLogin;
@@ -126,6 +127,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);
         Event::subscribe(SyncOffer::class);
+        Event::subscribe(ReportDelivery::class);
         Event::subscribe(SyncHandover::class);
         Event::subscribe(AdvanceOnReply::class);
         Event::subscribe(MarkSupplierLetter::class);

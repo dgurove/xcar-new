@@ -77,6 +77,8 @@
                 @include('admin.mail.file-row', ['path' => $path, 'name' => substr(basename($path), 37)])
             @endforeach
         </div>
+        <div data-photos-target="failed" class="flex flex-col gap-1 empty:hidden"></div>
+        @error('files')<p class="mt-1 text-sm text-danger">{{ $message }}</p>@enderror
         <input type="file" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
         <div hidden data-photos-target="progress" class="mt-2">
             <div class="mb-1 text-sm text-ink-muted" data-label></div>

@@ -20,11 +20,31 @@ import { openSheet, closeSheet, outside } from '../sheet';
 let shown = null;
 
 export default class extends Controller {
-    static targets = ['input', 'progress', 'grid', 'all', 'expand'];
+    static targets = ['input', 'progress', 'grid', 'all', 'expand', 'failed'];
     static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, mark: Boolean };
 
     connect() {
         if (this.readonlyValue) return;
+        // Редактор письма (форма с вложениями): пока файлы грузятся или один не загрузился, письмо не уходит (29.10.2026:
+        // Альфа — «Письмо пришло без вложения», «Отправить» жали, пока файлы ещё шли). Сервер сверяет число (`files_expected`).
+        if (this.element.tagName === 'FORM') {
+            this.element.addEventListener('submit', this.guard = (e) => {
+                const failed = this.hasFailedTarget ? this.failedTarget.children.length : 0;
+                const busy = this.uploading || this.later?.length;
+                if (busy || failed) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    window.toast?.(busy ? 'Файлы ещё загружаются — дождитесь' : 'Файл не загрузился — повторите или уберите', 'danger');
+                    return;
+                }
+                let expected = this.element.querySelector('input[name="files_expected"]');
+                if (!expected) {
+                    expected = Object.assign(document.createElement('input'), { type: 'hidden', name: 'files_expected' });
+                    this.element.append(expected);
+                }
+                expected.value = String(this.element.querySelectorAll('input[name="files[]"]').length);
+            }, true);
+        }
         // Файлы можно бросить на всю карточку — не целясь в плитку.
         this.element.addEventListener('dragover', this.over = (e) => { if (hasFiles(e)) { e.preventDefault(); this.element.classList.add('is-dropping'); } });
         this.element.addEventListener('dragleave', this.leave = (e) => { if (!this.element.contains(e.relatedTarget)) this.element.classList.remove('is-dropping'); });
@@ -71,6 +91,7 @@ export default class extends Controller {
         this.element.removeEventListener('dragover', this.over);
         this.element.removeEventListener('dragleave', this.leave);
         this.element.removeEventListener('drop', this.drop);
+        if (this.guard) this.element.removeEventListener('submit', this.guard, true);
         if (this.paste) document.removeEventListener('paste', this.paste);
         this.sortable?.destroy();
         // Просмотр не гасим: ответ на действие из него подменяет карточку вместе с этим контроллером.
@@ -236,12 +257,28 @@ export default class extends Controller {
                 if (/\.(zip|7z|rar)$/i.test(file.name)) window.toast?.('Архив разбирается, кадры появятся сами');
             } catch (e) {
                 window.toast?.(e.message || 'Файл не загрузился', 'danger');
+                this.failedRow(file, e.message);
             }
         }
         this.hideProgress();
         this.uploading = false;
         // Загрузка из шторки «⋯» (документ к делу): списка на странице ещё нет — перечитать страницу.
         if (this.reloadValue) Turbo.visit(location.href, { action: 'replace' });
+    }
+
+    // Не загрузившийся файл письма — строкой красным с «Повторить» и «Убрать», а не только тостом: пока она есть, письмо
+    // не уходит (`guard`).
+    failedRow(file, message) {
+        if (!this.hasFailedTarget) return;
+        const row = document.createElement('div');
+        row.className = 'compose-file-failed';
+        const name = Object.assign(document.createElement('span'), { className: 'min-w-0 flex-1 truncate', textContent: `${file.name} — ${message || 'не загрузился'}` });
+        const again = Object.assign(document.createElement('button'), { type: 'button', className: 'btn btn-s btn-quiet', textContent: 'Повторить' });
+        const drop = Object.assign(document.createElement('button'), { type: 'button', className: 'btn btn-s btn-ghost', textContent: 'Убрать' });
+        again.addEventListener('click', () => { row.remove(); this.uploadFiles([file]); });
+        drop.addEventListener('click', () => row.remove());
+        row.append(name, again, drop);
+        this.failedTarget.append(row);
     }
 
     pendingCell(file) {

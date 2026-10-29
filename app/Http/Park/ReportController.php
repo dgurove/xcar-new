@@ -3,83 +3,140 @@
 namespace App\Http\Park;
 
 use App\Mail\Composer;
+use App\Mail\Jobs\SendMessage;
+use App\Mail\Message;
+use App\Mail\SendState;
+use App\Mail\Thread;
 use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Park\Actions\MarkReportSent;
-use App\Park\Actions\SendIntakeReport;
 use App\Park\IntakeReport;
+use App\Park\Jobs\BuildIntakeReport;
+use App\Park\Report;
 use App\Park\ReportDoc;
 use App\Park\Vehicle;
-use App\Support\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
-use Spatie\Image\Enums\Fit;
-use Spatie\Image\Image;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Throwable;
 
 /**
  * Отчёт о приёме вендору (12.10.2026): форма `x-park.report-form` — шаг «Письмо вендору» окна действия (после «Принять
- * и сформировать письмо» и по задаче «Отправить акт приёма»). Новые фото — в «Фото при приёме», снимки документа — одним PDF в документы ТС с видом; дальше
- * письмо (`SendIntakeReport`). «Уже отправили» — отчёт ушёл с личной почты.
+ * и сформировать письмо» и по задаче «Отправить акт приёма»), и «Дослать фото и документы» на письмо вендора, что их
+ * просит (`?parent=`). С 29.10.2026 (Никита: «работает через раз, Альфа не видит вложений») файлы грузятся по одному
+ * сразу при выборе (`file`: ужатые в телефоне кадры — в «Фото при приёме», снимки и файлы — в документы ТС с видом), а
+ * отправка несёт только номера: отчёт (`Park\Report`) собирает очередь (`BuildIntakeReport`), шаг «Отчёт» — когда письма
+ * ушли. «Уже отправили» — отчёт ушёл с личной почты.
  */
 class ReportController
 {
-    public function store(Request $request, Vehicle $vehicle, PhotoIngest $ingest, SendIntakeReport $send, Composer $composer)
+    public function store(Request $request, Vehicle $vehicle, Composer $composer)
     {
-        $kinds = array_map(fn (ReportDoc $k) => $k->value, IntakeReport::kinds($vehicle->loadMissing('vendor')));
+        $kinds = [...array_map(fn (ReportDoc $k) => $k->value, IntakeReport::kinds($vehicle->loadMissing('vendor'))), ReportDoc::Other->value];
         $data = $request->validate([
             'to' => ['required', 'string', 'max:500'], 'cc' => ['nullable', 'string', 'max:500'], 'text' => ['nullable', 'string', 'max:2000'],
+            'parent' => ['nullable', 'integer'],
             'photos' => ['nullable', 'array'], 'photos.*' => ['integer'],
             'docs' => ['nullable', 'array'], 'docs.*' => ['array'], 'docs.*.*' => ['integer'],
-            'new_photos' => ['nullable', 'array', 'max:30'], 'new_photos.*' => ['file', 'max:65536'],
-            'scans' => ['nullable', 'array'], 'scans.*' => ['array', 'max:12'], 'scans.*.*' => ['file', 'max:65536'],
-            'files' => ['nullable', 'array'], 'files.*' => ['array', 'max:12'], 'files.*.*' => ['file', 'max:65536'],
         ], ['to.required' => 'Кому отправить']);
         abort_unless($vehicle->accepted_at, 404);
-        // Всё проверяется до того, как что-то ляжет к ТС: иначе повтор после ошибки плодил бы вторые сканы.
         if (! $composer->emails($data['to'])) {
             return back()->withInput()->withErrors(['to' => 'Нужен адрес почты']);
         }
-        $photoIds = array_map('intval', $data['photos'] ?? []);
-        $docIds = array_map(fn ($ids) => array_map('intval', $ids), array_intersect_key($data['docs'] ?? [], array_flip($kinds)));
-        $scans = array_intersect_key($request->file('scans', []), array_flip($kinds));
-        $files = array_intersect_key($request->file('files', []), array_flip($kinds));
-        if (! $photoIds && ! $request->file('new_photos') && ! array_filter($docIds) && ! array_filter($scans) && ! array_filter($files)) {
-            return back()->withErrors(['report' => 'Отметьте фото или добавьте документ']);
+        $media = $vehicle->photos()->merge($vehicle->papers())->keyBy('id');
+        $own = fn (array $ids, string $collection) => array_values(array_unique(array_filter(array_map('intval', $ids), fn ($id) => $media->get($id)?->collection_name === $collection)));
+        $photos = $own($data['photos'] ?? [], 'photos');
+        $docs = array_filter(array_map(fn ($ids) => $own($ids, 'papers'), array_intersect_key($data['docs'] ?? [], array_flip($kinds))));
+        if (! $photos && ! $docs) {
+            return back()->withInput()->withErrors(['report' => 'Отметьте фото или добавьте документ']);
         }
+        $parent = $this->parent($vehicle, $data['parent'] ?? null);
 
-        // Один отчёт на ТС: двойное нажатие, повтор формы или старая вкладка второй раз письмо не шлют.
-        $lock = Cache::lock('park-report:'.$vehicle->id, 120);
+        // Двойное нажатие и старая вкладка второй отчёт не заводят, пока первый в пути.
+        $lock = Cache::lock('park-report:'.$vehicle->id, 30);
         if (! $lock->get()) {
             return $this->back($request, 'Отчёт уже отправляется');
         }
         try {
-            if (MarkReportSent::done($vehicle)) {
-                return $this->back($request, 'Отчёт уже отправлен');
+            if (Report::inFlight($vehicle)) {
+                return $this->back($request, 'Отчёт уже отправляется');
             }
-            foreach ($request->file('new_photos', []) as $file) {
-                $photoIds[] = $ingest->fromUpload($vehicle, 'photos', $file, ['stage' => 'intake', 'source' => 'app'] + Hidden::incoming($vehicle))->id;
-            }
-            // «Снять» — страницы одного документа, одним PDF; «Файл» — каждый файл своим документом.
-            foreach ($scans as $kind => $list) {
-                $docIds[$kind][] = $this->pdf($vehicle, ReportDoc::from($kind), $list);
-            }
-            foreach ($files as $kind => $list) {
-                foreach ($list as $file) {
-                    $docIds[$kind][] = str_starts_with((string) $file->getMimeType(), 'image/')
-                        ? $this->pdf($vehicle, ReportDoc::from($kind), [$file])
-                        : $vehicle->addMedia($file)->usingFileName($kind.'-'.uniqid().'.'.($file->getClientOriginalExtension() ?: 'pdf'))
-                            ->withCustomProperties(['report_doc' => $kind, 'source' => 'app'])->toMediaCollection('papers')->id;
-                }
-            }
-            $report = IntakeReport::for($vehicle->fresh());
-            abort_unless($report, 422, 'Нет ящика парковки для отправки');
-            $sent = $send($report, $request->user(), $photoIds, $docIds, (string) ($data['text'] ?? ''), $data['to'], (string) ($data['cc'] ?? ''));
+            $report = DB::transaction(fn () => Report::create([
+                'vehicle_id' => $vehicle->id, 'user_id' => $request->user()->id, 'parent_id' => $parent?->id,
+                'to' => $data['to'], 'cc' => $data['cc'] ?? null, 'text' => $data['text'] ?? null,
+                'photos' => $photos, 'docs' => $docs, 'state' => Report::QUEUED,
+            ]));
+            BuildIntakeReport::dispatch($report->id);
         } finally {
             $lock->release();
         }
 
-        return $this->back($request, count($sent) > 1 ? 'Отчёт ушёл '.count($sent).' письмами' : 'Отчёт в очереди');
+        return $this->back($request, 'Отчёт отправляется');
+    }
+
+    /**
+     * Файл отчёта — сразу при выборе, по одному (`report_controller`): `kind=photo` — кадр, ужатый в телефоне, в «Фото при
+     * приёме»; иначе вид документа (`ReportDoc`): снимок «Снять» — страница (`scan` — один выбор, `page` — порядок; одним PDF
+     * их склеит отправка), файл — как есть. Ответ — номер, он и уходит в форму.
+     */
+    public function file(Request $request, Vehicle $vehicle, PhotoIngest $ingest)
+    {
+        $data = $request->validate([
+            'file' => ['required', 'file', 'max:40960'],
+            'kind' => ['required', 'string'],
+            'scan' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9-]+$/'],
+            'page' => ['nullable', 'integer', 'min:0', 'max:500'],
+        ]);
+        abort_unless($vehicle->accepted_at, 404);
+        $file = $request->file('file');
+        try {
+            if ($data['kind'] === 'photo') {
+                $m = $ingest->fromPhone($vehicle, 'photos', $request, properties: ['stage' => 'intake', 'source' => 'app'] + Hidden::incoming($vehicle));
+
+                return response()->json(['id' => $m->id]);
+            }
+            $kind = ReportDoc::tryFrom($data['kind']) ?? abort(422, 'Нет такого документа');
+            $ext = strtolower($file->getClientOriginalExtension() ?: ($file->guessExtension() ?: 'pdf'));
+            $base = $kind === ReportDoc::Other
+                ? (trim((string) preg_replace('/[^\p{L}\p{N}._ -]+/u', '_', pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))) ?: 'dokument')
+                : $kind->value;
+            $m = $vehicle->addMedia($file)->usingFileName(mb_substr($base, 0, 120).'-'.uniqid().'.'.$ext)
+                ->withCustomProperties(array_filter(['report_doc' => $kind->value, 'source' => 'app', 'scan' => $data['scan'] ?? null, 'page' => $data['page'] ?? null], fn ($v) => $v !== null))
+                ->toMediaCollection('papers');
+        } catch (HttpException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            return response()->json(['message' => 'Файл не сохранился: '.$e->getMessage()], 422);
+        }
+
+        return response()->json(['id' => $m->id]);
+    }
+
+    /** «Повторить»: письма отчёта, что не ушли, — снова в отправку; не собрался — собирается заново. */
+    public function retry(Request $request, Vehicle $vehicle, Report $report)
+    {
+        abort_unless($report->vehicle_id === $vehicle->id, 404);
+        if ($report->state !== Report::FAILED) {
+            return $this->back($request, $report->state === Report::SENT ? 'Отчёт уже ушёл' : 'Отчёт уже отправляется');
+        }
+        $failed = Message::whereKey($report->messages ?? [])->where('send_state', '!=', SendState::Sent->value)->pluck('id');
+        $report->update(['state' => Report::QUEUED, 'error' => null]);
+        if ($report->messages && $failed->isNotEmpty()) {
+            Message::whereKey($failed)->update(['send_state' => SendState::Queued->value, 'send_error' => null]);
+            $failed->each(fn ($id) => SendMessage::dispatch($id));
+        } else {
+            $report->update(['messages' => null]);
+            BuildIntakeReport::dispatch($report->id);
+        }
+
+        return $this->back($request, 'Отчёт отправляется');
+    }
+
+    /** Письмо, на которое досылаем: только входящее из переписки по этой ТС на парковке. */
+    private function parent(Vehicle $vehicle, ?int $id): ?Message
+    {
+        return $id ? Message::whereKey($id)->whereIn('thread_id', Thread::where('vehicle_id', $vehicle->id)->park()->where('buyer', false)->select('id'))->first() : null;
     }
 
     /** Из окна действия — окно закрывается (из «Заявок» — к следующей заявке); иначе дело. */
@@ -101,35 +158,5 @@ class ReportController
         }
 
         return $this->back($request, 'Отчёт отмечен отправленным');
-    }
-
-    /**
-     * Страницы документа одним PDF в документы ТС с видом. Кадры — файлами во временной папке, а не base64 в HTML: так
-     * dompdf не держит десятки мегабайт строкой.
-     *
-     * @param  list<UploadedFile>  $images
-     */
-    private function pdf(Vehicle $vehicle, ReportDoc $kind, array $images): int
-    {
-        $dir = sys_get_temp_dir().'/scan-'.uniqid();
-        @mkdir($dir);
-        try {
-            $pages = [];
-            foreach (array_values($images) as $i => $image) {
-                if (! str_starts_with((string) $image->getMimeType(), 'image/')) {
-                    continue;
-                }
-                $path = "{$dir}/{$i}.jpg";
-                Image::useImageDriver('gd')->loadFile($image->getRealPath())->fit(Fit::Max, 1400, 1400)->quality(75)->save($path);
-                $pages[] = $path;
-            }
-            $pdf = Pdf::render('park.report.scan', ['pages' => $pages], chroot: [$dir]);
-        } finally {
-            array_map('unlink', glob("{$dir}/*") ?: []);
-            @rmdir($dir);
-        }
-
-        return $vehicle->addMediaFromString($pdf)->usingFileName($kind->value.'-'.uniqid().'.pdf')
-            ->withCustomProperties(['report_doc' => $kind->value, 'source' => 'app'])->toMediaCollection('papers')->id;
     }
 }

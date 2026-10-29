@@ -8,6 +8,7 @@ use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Vendors\ContactRole;
+use App\Vendors\Vendor;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -34,10 +35,11 @@ final class IntakeReport
         public readonly array $slots,
     ) {}
 
-    public static function for(Vehicle $vehicle): ?self
+    /** @param ?Message $parent ответ на это письмо («Дослать» на «Запросили документы»), иначе — на письмо заявки */
+    public static function for(Vehicle $vehicle, ?Message $parent = null): ?self
     {
         $vehicle->loadMissing(['vendor', 'media', 'requests']);
-        $parent = self::parent($vehicle);
+        $parent ??= self::parent($vehicle);
         $account = $parent?->account?->sender() ?? Account::where('scope', Scope::Park)->sending()->orderBy('title')->first();
         if (! $account) {
             return null;
@@ -49,17 +51,25 @@ final class IntakeReport
             ->sortBy(fn (Media $m) => $m->getCustomProperty('source') === 'mail' ? 1 : 0)->values();
         $papers = $vehicle->papers();
         $slots = [];
-        foreach (self::kinds($vehicle) as $kind) {
+        foreach ([...self::kinds($vehicle), ReportDoc::Other] as $kind) {
             $slots[$kind->value] = $papers->filter(fn (Media $m) => ($m->getCustomProperty('report_doc') ?? ReportDoc::ofName($m->file_name)?->value) === $kind->value)->values();
         }
 
         return new self($vehicle, $parent, $account, $to, '', $photos, $slots);
     }
 
-    /** @return list<ReportDoc> документы, что этот вендор получает сканами */
+    /**
+     * @return list<ReportDoc> документы, что этот вендор получает сканами. Список пуст у вендора парковки — берётся у его
+     *                         вендора CRM (`crm_vendor_id`, 29.10.2026: у «АльфаСтрахование СПб» его не было, и в отчётах не ушло ни одного документа).
+     */
     public static function kinds(Vehicle $vehicle): array
     {
-        return array_values(array_filter(array_map(fn ($k) => ReportDoc::tryFrom((string) $k), $vehicle->vendor?->intake_report_docs ?? [])));
+        $list = $vehicle->vendor?->intake_report_docs ?: [];
+        if (! $list && ($crm = $vehicle->vendor?->crm_vendor_id)) {
+            $list = Vendor::find($crm)?->intake_report_docs ?: [];
+        }
+
+        return array_values(array_filter(array_map(fn ($k) => ReportDoc::tryFrom((string) $k), $list), fn ($k) => $k !== ReportDoc::Other));
     }
 
     /** Письмо, на которое отвечаем: письмо заявки на приём, иначе последнее входящее в ветке ТС (не покупателю). */
@@ -81,9 +91,13 @@ final class IntakeReport
         return $docs ? 'Добрый день. Направляю Вам фотоотчет и скан-копии документов по принятому ТС.' : 'Добрый день. Направляю Вам фотоотчет принятого ТС.';
     }
 
-    /** Имя скана в письме — как называли руками: «Альфа акт 1 чанган алсвин 0367.pdf». */
-    public function fileName(ReportDoc $kind, int $index, int $count, string $ext = 'pdf'): string
+    /** Имя скана в письме — как называли руками: «Альфа акт 1 чанган алсвин 0367.pdf»; «Другой документ» — своим именем. */
+    public function fileName(ReportDoc $kind, int $index, int $count, string $ext = 'pdf', ?string $original = null): string
     {
+        if ($kind === ReportDoc::Other && $original) {
+            // Имя у ТС — с хвостом «-случайное» (`addMedia` / загрузка формы), получателю — как называли.
+            return preg_replace('/-[a-z0-9]{13,16}(\.[^.]+)$/i', '$1', $original);
+        }
         $v = $this->vehicle;
         $vendor = trim((string) preg_replace('/\s*страхование.*$/ui', '', (string) $v->vendor?->name)) ?: (string) $v->vendor?->name;
         $car = mb_strtolower(trim(($v->brand?->name_ru ?: $v->brand?->name).' '.($v->model?->name_ru ?: $v->model?->name)));

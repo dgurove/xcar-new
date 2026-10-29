@@ -683,7 +683,19 @@ class MailController
         $parent = ! empty($data['parent']) ? Message::with(['thread', 'attachments', 'account'])->whereIn('account_id', $boxes)->find($data['parent']) : null;
         $thread = ! empty($data['thread']) ? Thread::where('account_id', $account->id)->find($data['thread']) : null;
 
-        $message = $composer->create($account, $data, $parent, $request->user(), $thread);
+        // Файлы редактор грузит по одному заранее: дошло меньше, чем видел человек (ушёл, пока грузились, или один не
+        // загрузился), — письмо не уходит, а возвращается в редактор (29.10.2026: «Письмо пришло без вложения»).
+        try {
+            if (isset($data['files_expected']) && (int) $data['files_expected'] > count($data['files'] ?? [])) {
+                throw ValidationException::withMessages(['files' => 'Не все файлы загрузились: дождитесь загрузки или приложите их ещё раз']);
+            }
+            $message = $composer->create($account, $data, $parent, $request->user(), $thread);
+        } catch (ValidationException $e) {
+            if ($retry) {
+                return redirect($retry)->withErrors($e->errors())->withInput();
+            }
+            throw $e;
+        }
         if ($this->scope === Scope::Offers && ! empty($data['offer']) && $message->thread && ! $message->thread->offer_id) {
             $message->thread->update(['offer_id' => $data['offer']]);
         }
@@ -1098,6 +1110,7 @@ class MailController
             'quote' => ['nullable', 'in:reply,forward'], // цитату исходного письма приклеивает `Composer::create`
             'files' => ['nullable', 'array'],
             'files.*' => ['string'],
+            'files_expected' => ['nullable', 'integer', 'min:0'],
             'forward' => ['nullable', 'array'],
             'forward.*' => ['integer'],
             'offer' => ['nullable', 'integer'],

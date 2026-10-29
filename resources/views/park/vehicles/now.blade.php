@@ -23,7 +23,14 @@
                     @if ($text = trim($m->ownText()))<p class="truncate text-sm">{{ $text }}</p>@endif
                 </div>
                 <div class="flex gap-2">
-                    <x-mail.window-button :url="$href.'/letters?at='.$m->id.'&reply=1'" label="Ответить" icon="reply" class="btn-s btn-accent min-w-0 flex-1"/>
+                    {{-- Просят фото и документы принятой ТС — форма отчёта ответом на это письмо (29.10.2026: из пустого
+                         «Ответить» ушло письмо без вложений, Альфа: «Письмо пришло без вложения»); текстом — рядом. --}}
+                    @if ($vehicle->accepted_at && $m->intent === Intent::Docs->value)
+                        <x-park.act-button :vehicle="$vehicle" :step="'report?parent='.$m->id" label="Дослать фото и документы" class="btn-s min-w-0 flex-1"/>
+                        <x-mail.window-button :url="$href.'/letters?at='.$m->id.'&reply=1'" label="Текстом" icon="reply" class="btn-s btn-quiet"/>
+                    @else
+                        <x-mail.window-button :url="$href.'/letters?at='.$m->id.'&reply=1'" label="Ответить" icon="reply" class="btn-s btn-accent min-w-0 flex-1"/>
+                    @endif
                     @if (auth()->user()->canManagePark())
                         <form method="post" action="{{ $href }}/letters/{{ $m->id }}/done" class="flex">@csrf<button class="btn btn-s btn-quiet">Ответ не нужен</button></form>
                     @endif

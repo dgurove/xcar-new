@@ -3,6 +3,8 @@
 namespace App\Http\Park;
 
 use App\Billing\Ledger;
+use App\Mail\Message;
+use App\Mail\Thread;
 use App\Park\Actions\MarkReportSent;
 use App\Park\Pass;
 use App\Park\RequestType;
@@ -36,16 +38,19 @@ class ActWindowController
 
         $vehicle->load(['vendor', 'yard', 'media', 'requests']);
         $user = $request->user();
-        $common = ['vehicle' => $vehicle, 'advance' => $advance, 'self' => $url($step, array_filter(['pass' => $request->query('pass')])), 'canManage' => $user->canManagePark(),
+        $common = ['vehicle' => $vehicle, 'advance' => $advance, 'self' => $url($step, array_filter(['pass' => $request->query('pass'), 'parent' => $request->query('parent')])), 'canManage' => $user->canManagePark(),
             // Приёмщик (27.10.2026): принимает и выдаёт, деньги — только наличные с покупателя (`User::parkHandles|parkMoney`).
             'handles' => $user->parkHandles(), 'money' => $user->parkMoney()];
 
         if ($step === 'report') {
-            if (! $vehicle->accepted_at || MarkReportSent::done($vehicle)) {
+            // «Дослать фото и документы» на письмо вендора (`?parent=`) — и после отправленного отчёта.
+            $parent = $request->integer('parent') ? Message::whereKey($request->integer('parent'))
+                ->whereIn('thread_id', Thread::where('vehicle_id', $vehicle->id)->park()->where('buyer', false)->select('id'))->first() : null;
+            if (! $vehicle->accepted_at || (! $parent && MarkReportSent::done($vehicle))) {
                 return redirect($url('done'));
             }
 
-            return view('park.act.report', $common);
+            return view('park.act.report', $common + ['parent' => $parent]);
         }
 
         if ($step === 'intake') {

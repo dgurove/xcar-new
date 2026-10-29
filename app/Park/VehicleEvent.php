@@ -6,6 +6,7 @@ use App\Mail\Extraction\Intent;
 use App\Support\Ago;
 use App\Support\Changes;
 use App\Support\Money;
+use App\Support\Plural;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -80,7 +81,8 @@ class VehicleEvent extends Model
             EventType::Called => ! empty($p['reached']) ? 'Дозвонились: '.($p['outcome'] ?? '').(! empty($p['at']) ? ' '.$p['at'] : '') : 'Не дозвонились'.(! empty($p['again']) ? ', снова '.$p['again'] : ''),
             EventType::Sold => 'Данное ТС реализовано'.(! empty($p['who']) ? ', заберёт '.$p['who'] : ''),
             EventType::ReleaseRefused => 'От получения отказался'.(! empty($p['note']) ? ': '.$p['note'] : ''),
-            EventType::ReportSent => ($p['what'] ?? 'Отчёт').' отправлен вендору',
+            EventType::ReportSent => ($p['what'] ?? 'Отчёт').(($p['what'] ?? '') === 'Фото и документы' ? ' отправлены' : ' отправлен').' вендору'
+                .(isset($p['photos']) || isset($p['docs']) ? ': '.implode(', ', array_filter([! empty($p['photos']) ? $p['photos'].' фото' : null, ! empty($p['docs']) ? $p['docs'].' '.Plural::of((int) $p['docs'], ['документ', 'документа', 'документов']) : null])) : ''),
             EventType::Restored => 'Снова ждём'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
             EventType::IntakeUndone => 'Приём отменён'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
             EventType::ReleaseUndone => 'Выдача отменена'.(! empty($p['reason']) ? ': '.$p['reason'] : ''),
