@@ -2,6 +2,7 @@
 
 namespace App\Users\Access;
 
+use App\Support\FastAttributes;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['user_id', 'token_hash', 'twin_token_hash', 'public_key', 'label', 'ip', 'topic', 'verified_until', 'revoked_at'])]
 class Device extends Model
 {
+    use FastAttributes;
+
     protected $connection = 'pgsql_async';
 
     protected function casts(): array

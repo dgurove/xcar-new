@@ -5,6 +5,7 @@ namespace App\Workflow;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Offer;
+use App\Support\FastAttributes;
 use App\Support\Surface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,8 @@ use Illuminate\Support\Carbon;
 #[Fillable(['offer_id', 'track', 'stage_id', 'waits_for', 'entered_at', 'block_entered_at', 'deadline_at', 'reminded_at', 'overdue_at', 'payload'])]
 class Position extends Model
 {
+    use FastAttributes;
+
     protected $table = 'offer_positions';
 
     protected function casts(): array

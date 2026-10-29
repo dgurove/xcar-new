@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\Cache;
 ])]
 class Message extends Model
 {
+    use FastAttributes;
+
     protected $table = 'mail_messages';
 
     protected function casts(): array

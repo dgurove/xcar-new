@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\FastAttributes;
 use App\Users\BuyerGroup;
 use App\Users\Role;
 use App\Users\User;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\DB;
 #[Fillable(['offer_id', 'manager_id', 'user_id', 'group_id', 'show_vin', 'created_at'])]
 class Showing extends Model
 {
+    use FastAttributes;
+
     public $timestamps = false;
 
     protected function casts(): array

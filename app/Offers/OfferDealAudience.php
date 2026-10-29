@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class OfferDealAudience extends Model
 {
+    use FastAttributes;
+
     public $timestamps = false;
 
     public $incrementing = false;

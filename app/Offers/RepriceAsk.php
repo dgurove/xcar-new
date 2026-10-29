@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\FastAttributes;
 use App\Support\Money;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -20,6 +21,8 @@ use Illuminate\Support\Carbon;
 #[Fillable(['reprice_id', 'offer_id', 'bid_id', 'deal_id', 'user_id', 'from_price', 'to_price', 'shown_from', 'shown_to', 'state', 'due_at', 'answered_at', 'answered_by'])]
 class RepriceAsk extends Model
 {
+    use FastAttributes;
+
     public const PENDING = 'pending';
 
     public const AGREED = 'agreed';

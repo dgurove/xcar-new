@@ -3,6 +3,7 @@
 namespace App\Users;
 
 use App\Park\City;
+use App\Support\FastAttributes;
 use App\Support\Surface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,6 +21,8 @@ use Illuminate\Support\Str;
 #[Fillable(['manager_id', 'role', 'created_by', 'code', 'label', 'fields', 'group_id', 'max_uses', 'expires_at', 'disabled_at', 'access', 'park_readonly', 'user_group_id', 'park_city_id', 'buyer_sees', 'manual', 'deal_id'])]
 class Invite extends Model
 {
+    use FastAttributes;
+
     public const FIELDS = ['phone' => 'Телефон', 'email' => 'Почта'];
 
     protected function casts(): array

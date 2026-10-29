@@ -3,6 +3,7 @@
 namespace App\Purchases;
 
 use App\Offers\BidState;
+use App\Support\FastAttributes;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['number', 'title', 'supplier', 'vendor_id', 'state', 'offers_close_at', 'hide_priced', 'source_file', 'imported_at', 'imported_by'])]
 class Purchase extends Model
 {
+    use FastAttributes;
+
     protected function casts(): array
     {
         return ['state' => PurchaseState::class, 'offers_close_at' => 'datetime', 'imported_at' => 'datetime', 'hide_priced' => 'bool'];

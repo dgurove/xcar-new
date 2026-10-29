@@ -3,6 +3,7 @@
 namespace App\Logistics;
 
 use App\Cars\Settlement;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['logist_id', 'name', 'settlement_id', 'address', 'contact_name', 'phone', 'note', 'archived_at'])]
 class Depot extends Model
 {
+    use FastAttributes;
+
     protected $table = 'logistics_depots';
 
     protected function casts(): array

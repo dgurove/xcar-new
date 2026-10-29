@@ -3,6 +3,7 @@
 namespace App\Logistics;
 
 use App\Support\Ago;
+use App\Support\FastAttributes;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Users\User;
@@ -20,6 +21,8 @@ use Illuminate\Support\Carbon;
 #[Fillable(['transport_id', 'type', 'by_id', 'for_id', 'payload', 'created_at'])]
 final class TransportEvent extends Model
 {
+    use FastAttributes;
+
     public const UPDATED_AT = null;
 
     /** Шаги исполнителя: нажал не он — «за него». */

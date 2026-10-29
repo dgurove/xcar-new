@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Cars\Settlement;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['name', 'address', 'settlement_id', 'capacity', 'is_active', 'notes', 'rows'])]
 class Yard extends Model
 {
+    use FastAttributes;
+
     protected $table = 'park_yards';
 
     /** Управляющий с городом видит только парковки своего города (`City`); перевод в другой город берёт их без области. */

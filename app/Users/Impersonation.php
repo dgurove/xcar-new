@@ -2,6 +2,7 @@
 
 namespace App\Users;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['admin_id', 'user_id', 'token_hash', 'expires_at', 'used_at', 'ended_at', 'ip', 'user_agent', 'created_at'])]
 class Impersonation extends Model
 {
+    use FastAttributes;
     use HashedToken;
 
     public const UPDATED_AT = null;

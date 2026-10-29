@@ -10,6 +10,7 @@ use App\Mail\Jobs\RetractCandidateNotices;
 use App\Offers\Offer;
 use App\Park\City;
 use App\Park\Vehicle;
+use App\Support\FastAttributes;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,6 +31,8 @@ use Illuminate\Support\Collection;
 #[Fillable(['scope', 'code', 'key', 'vendor_id', 'message_id', 'thread_id', 'subject', 'state', 'extracted', 'proposed', 'chosen', 'offer_id', 'vehicle_id', 'messages_count', 'last_message_at', 'closed_at'])]
 class Candidate extends Model
 {
+    use FastAttributes;
+
     protected $table = 'mail_candidates';
 
     /**

@@ -4,6 +4,7 @@ namespace App\Chats;
 
 use App\Offers\Offer;
 use App\Search\Term;
+use App\Support\FastAttributes;
 use App\Support\Linkify;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +22,8 @@ use Illuminate\Support\Str;
 #[Fillable(['offer_id', 'user_id', 'manager_id', 'guest_name', 'guest_email', 'guest_token', 'messages_count', 'unread_for_user', 'unread_for_staff', 'read_seq_user', 'read_seq_staff', 'last_message_at'])]
 class Chat extends Model
 {
+    use FastAttributes;
+
     /** Как площадка называется собеседнику — в списке, баре чата, тосте и пуше. */
     public const PLATFORM = 'Администрация XCar';
 

@@ -3,6 +3,7 @@
 namespace App\Vendors;
 
 use App\Park\Yard;
+use App\Support\FastAttributes;
 use App\Support\Phone;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['vendor_id', 'name', 'title', 'role', 'email', 'phone', 'yard_id', 'always_cc', 'is_default', 'notes'])]
 class Contact extends Model
 {
+    use FastAttributes;
+
     protected $table = 'vendor_contacts';
 
     protected function casts(): array

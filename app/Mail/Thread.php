@@ -9,6 +9,7 @@ use App\Offers\Offer;
 use App\Park\City;
 use App\Park\Vehicle;
 use App\Search\Term;
+use App\Support\FastAttributes;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'buyer', 'unlinked_at', 'keys', 'candidate_id', 'archived_at', 'vendor_id'])]
 class Thread extends Model
 {
+    use FastAttributes;
+
     /** Управляющий с городом видит ветки парковки только своего города (`Park\City`); ветки CRM область не трогает. */
     protected static function booted(): void
     {

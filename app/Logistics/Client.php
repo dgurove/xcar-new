@@ -2,6 +2,7 @@
 
 namespace App\Logistics;
 
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['logist_id', 'name', 'kind', 'contact_name', 'phone', 'email', 'inn', 'address', 'note', 'archived_at'])]
 class Client extends Model
 {
+    use FastAttributes;
+
     protected $table = 'logistics_clients';
 
     public const KINDS = ['company' => 'Организация', 'person' => 'Человек'];

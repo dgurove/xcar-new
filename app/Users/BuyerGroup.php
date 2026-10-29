@@ -3,6 +3,7 @@
 namespace App\Users;
 
 use App\Offers\Showing;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['manager_id', 'name', 'position'])]
 class BuyerGroup extends Model
 {
+    use FastAttributes;
+
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');

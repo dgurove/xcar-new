@@ -2,6 +2,7 @@
 
 namespace App\Telegram;
 
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,8 @@ use Illuminate\Support\Str;
 #[Fillable(['chat_id', 'message_id', 'direction', 'kind', 'text', 'keyboard', 'reply_to', 'file_id', 'file_unique_id', 'file_name', 'file_mime', 'file_size', 'author_id', 'failed', 'edited_at', 'deleted_at', 'subject'])]
 class ChatMessage extends Model
 {
+    use FastAttributes;
+
     public const IN = 'in';
 
     public const OUT = 'out';

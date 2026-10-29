@@ -3,6 +3,7 @@
 namespace App\Cars;
 
 use App\Search\Term;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['name', 'type', 'region_code', 'region_id', 'district', 'oktmo', 'rank', 'is_federal_city'])]
 class Settlement extends Model
 {
+    use FastAttributes;
+
     /** Город — то, что ищется по одному слову без региона и типа (тема письма: «Победа» и «Восход» — посёлки, не города). */
     public const TOWN = 2;
 

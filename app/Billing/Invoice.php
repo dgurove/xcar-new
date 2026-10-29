@@ -14,6 +14,7 @@ use App\Park\City;
 use App\Park\Vehicle;
 use App\Search\Term;
 use App\Support\Demo\HidesDemo;
+use App\Support\FastAttributes;
 use App\Support\Sort;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -37,6 +38,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id'])]
 class Invoice extends Model implements HasMedia
 {
+    use FastAttributes;
     use HidesDemo;
     use InteractsWithMedia;
 

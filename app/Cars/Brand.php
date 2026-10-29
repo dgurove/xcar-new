@@ -4,6 +4,7 @@ namespace App\Cars;
 
 use App\Offers\Offer;
 use App\Search\Term;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,8 @@ use Illuminate\Support\Str;
 #[Fillable(['slug', 'name', 'name_ru', 'country', 'is_popular'])]
 class Brand extends Model
 {
+    use FastAttributes;
+
     /** Марку завели, переименовали или удалили — словарь `Names` перечитает справочник. */
     protected static function booted(): void
     {

@@ -2,6 +2,7 @@
 
 namespace App\Chats;
 
+use App\Support\FastAttributes;
 use App\Support\Linkify;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,6 +14,8 @@ use Illuminate\Support\Str;
 #[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at', 'via_bot'])]
 class Message extends Model
 {
+    use FastAttributes;
+
     public const UPDATED_AT = null;
 
     protected $table = 'chat_messages';

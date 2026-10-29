@@ -4,6 +4,7 @@ namespace App\Billing;
 
 use App\Offers\Deal;
 use App\Park\Vehicle;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['party_id', 'vehicle_id', 'deal_id', 'invoice_id', 'kind', 'title', 'qty', 'unit', 'price', 'amount', 'period_from', 'period_to', 'voided_at', 'void_reason', 'created_by'])]
 class Charge extends Model
 {
+    use FastAttributes;
+
     protected $table = 'billing_charges';
 
     protected function casts(): array

@@ -4,6 +4,7 @@ namespace App\Workflow;
 
 use App\Offers\Deal;
 use App\Offers\Offer;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 #[Fillable(['offer_id', 'deal_id', 'stage_id', 'user_id', 'title', 'text', 'asks', 'fields', 'due_at', 'done_at', 'answer'])]
 class Requirement extends Model implements HasMedia
 {
+    use FastAttributes;
     use InteractsWithMedia;
 
     protected function casts(): array

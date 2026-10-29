@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Mail\Thread;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 #[Fillable(['vehicle_id', 'kind', 'direction', 'state', 'at', 'user_id', 'media_id', 'thread_id', 'note'])]
 class Doc extends Model
 {
+    use FastAttributes;
+
     protected $table = 'park_vehicle_docs';
 
     protected function casts(): array

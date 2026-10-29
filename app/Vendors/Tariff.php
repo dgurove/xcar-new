@@ -5,6 +5,7 @@ namespace App\Vendors;
 use App\Cars\Category;
 use App\Park\Vehicle;
 use App\Park\Yard;
+use App\Support\FastAttributes;
 use App\Support\Money;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,6 +27,8 @@ use Illuminate\Support\Once;
 #[Fillable(['vendor_id', 'yard_id', 'category', 'service', 'from_day', 'from_value', 'km_included', 'price', 'vat', 'valid_from', 'valid_to', 'note'])]
 class Tariff extends Model
 {
+    use FastAttributes;
+
     protected $table = 'park_tariffs';
 
     /** Ячейки прайса (без отбора по дате) и готовые лестницы на время запроса: ставку спрашивают на каждый

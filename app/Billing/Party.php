@@ -4,6 +4,7 @@ namespace App\Billing;
 
 use App\Park\Vehicle;
 use App\Support\Demo\HidesDemo;
+use App\Support\FastAttributes;
 use App\Users\User;
 use App\Vendors\ContactRole;
 use App\Vendors\Kind;
@@ -21,6 +22,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
     'passport', 'passport_issued', 'passport_issued_at', 'passport_code', 'reg_address', 'birth_at', 'birth_place', 'phone', 'email', 'card', 'payment_purpose', 'notes', 'vat_on_top'])]
 class Party extends Model implements HasMedia
 {
+    use FastAttributes;
     use InteractsWithMedia;
 
     /** Страницы скана паспорта (11.10.2026, владелец): разворот с фото и прописка — обе обязательны покупателю-физлицу. */

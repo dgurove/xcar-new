@@ -3,6 +3,7 @@
 namespace App\Telegram;
 
 use App\Search\Term;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,8 @@ use Illuminate\Support\Str;
 #[Fillable(['id', 'user_id', 'name', 'username', 'last_message_at', 'left_at'])]
 class Chat extends Model
 {
+    use FastAttributes;
+
     protected $table = 'telegram_chats';
 
     public $incrementing = false;

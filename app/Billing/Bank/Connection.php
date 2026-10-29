@@ -2,6 +2,7 @@
 
 namespace App\Billing\Bank;
 
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'synced_at', 'last_error', 'failed_at', 'connected_by', 'connected_at'])]
 class Connection extends Model
 {
+    use FastAttributes;
+
     protected $table = 'billing_bank_connections';
 
     protected $hidden = ['client_secret', 'access_token', 'refresh_token'];

@@ -8,6 +8,7 @@ use App\Mail\Chains\NodeTitle;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Offers\Deal;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'contact_name', 'contact_phone', 'done_by', 'cancel_reason', 'letter_at', 'letter_id', 'deal_id'])]
 class Request extends Model
 {
+    use FastAttributes;
+
     protected $table = 'park_requests';
 
     /** Управляющий с городом видит заявки только ТС своего города (`City`). */

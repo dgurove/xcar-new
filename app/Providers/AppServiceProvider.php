@@ -64,6 +64,7 @@ use App\Users\Access\EnrollOnLogin;
 use App\Users\Auth\WebAuthnProvider;
 use App\Users\Passkeys;
 use App\Workflow\Events\StageEntered;
+use ArrayObject;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
@@ -93,6 +94,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Даты моделей и now() — `FastDate`: переводит «9 окт» без переводчика Carbon на каждый вызов.
         Date::use(FastDate::class);
+        $this->app->scoped(FastDate::WORDS, fn () => new ArrayObject);
         // Сканы и документы из писем пока не читаются; сюда встанет OCR или модель по API.
         $this->app->bind(AttachmentReader::class, TextAttachmentReader::class);
         // Эквайринг — ЮKassa, подключённая в СберБизнесе.

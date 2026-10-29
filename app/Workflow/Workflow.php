@@ -4,6 +4,7 @@ namespace App\Workflow;
 
 use App\Offers\Deal;
 use App\Offers\OfferState;
+use App\Support\FastAttributes;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['vendor_id', 'track', 'is_active', 'auto_start'])]
 class Workflow extends Model
 {
+    use FastAttributes;
+
     protected function casts(): array
     {
         return ['track' => Track::class, 'is_active' => 'bool', 'auto_start' => 'bool'];

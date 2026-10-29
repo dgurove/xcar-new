@@ -5,6 +5,7 @@ namespace App\Park;
 use App\Mail\Extraction\Intent;
 use App\Support\Ago;
 use App\Support\Changes;
+use App\Support\FastAttributes;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Users\User;
@@ -16,6 +17,8 @@ use Illuminate\Support\Carbon;
 #[Fillable(['vehicle_id', 'user_id', 'type', 'payload'])]
 class VehicleEvent extends Model
 {
+    use FastAttributes;
+
     public const UPDATED_AT = null;
 
     protected $table = 'park_vehicle_events';

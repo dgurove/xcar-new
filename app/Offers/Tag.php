@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 #[Fillable(['name', 'color', 'sort'])]
 class Tag extends Model
 {
+    use FastAttributes;
+
     public const COLORS = ['lime' => 'Лайм', 'orange' => 'Оранжевый', 'red' => 'Красный', 'blue' => 'Синий', 'grey' => 'Серый'];
 
     /** Цвет метки: фон и текст в светлой теме, фон и текст в тёмной. */

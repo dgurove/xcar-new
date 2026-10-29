@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Cars\DamageZone;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['vehicle_id', 'request_id', 'kind', 'at', 'user_id', 'mileage', 'fuel', 'keys_count', 'docs', 'equipment', 'repair', 'damage_zones', 'damage_note', 'transit_damage', 'missing_parts', 'replaced_units', 'signer_name'])]
 class Inspection extends Model
 {
+    use FastAttributes;
+
     protected $table = 'park_inspections';
 
     public const DOCS = ['pts' => 'ПТС', 'sts' => 'СТС', 'epts' => 'ЭПТС', 'service_book' => 'Сервисная книжка'];

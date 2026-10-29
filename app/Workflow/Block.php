@@ -4,6 +4,7 @@ namespace App\Workflow;
 
 use App\Offers\Deal;
 use App\Offers\OfferState;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,8 @@ use Illuminate\Support\Collection;
 #[Fillable(['workflow_id', 'name', 'text', 'position'])]
 class Block extends Model
 {
+    use FastAttributes;
+
     protected $table = 'workflow_blocks';
 
     public function workflow(): BelongsTo

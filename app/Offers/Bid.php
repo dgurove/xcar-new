@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Purchases\Car as PurchaseCar;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'counter_amount', 'counter_comment', 'counter_by', 'counter_at', 'counter_state'])]
 class Bid extends Model
 {
+    use FastAttributes;
+
     /**
      * Подтверждение появилось, отозвано, отклонено, принято — строка предложения переезжает между «Опубликованными», «Приём
      * закрыт» и «Есть подтверждения» (18.10.2026: отзыв и отказ внесённому сотрудником событий не слали, строка висела).

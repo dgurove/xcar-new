@@ -3,6 +3,7 @@
 namespace App\Cars;
 
 use App\Search\Term;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['brand_id', 'slug', 'name', 'name_ru', 'class', 'year_from', 'year_to'])]
 class CarModel extends Model
 {
+    use FastAttributes;
+
     /** Модель завели, переименовали или удалили — словарь `Names` перечитает справочник. */
     protected static function booted(): void
     {

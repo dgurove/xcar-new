@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Cars\Car;
 use App\Mail\Extraction\Code;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['claim_ref', 'position', 'added_by'])]
 class LegacyClaim extends Model
 {
+    use FastAttributes;
+
     public function setClaimRefAttribute(?string $value): void
     {
         $this->attributes['claim_ref'] = Code::normalize($value);

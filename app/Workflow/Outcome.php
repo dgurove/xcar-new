@@ -4,6 +4,7 @@ namespace App\Workflow;
 
 use App\Offers\Deal;
 use App\Offers\OfferState;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['stage_id', 'to_stage_id', 'label', 'actor', 'confirm', 'position', 'branch'])]
 class Outcome extends Model
 {
+    use FastAttributes;
+
     protected $table = 'workflow_exits';
 
     /** Ветка гаража: машину забирают в гараж, поставщику платим мы. */

@@ -3,6 +3,7 @@
 namespace App\Vendors;
 
 use App\Offers\Offer;
+use App\Support\FastAttributes;
 use App\Support\Plural;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['vendor_id', 'user_id', 'refs'])]
 class ClaimRequest extends Model
 {
+    use FastAttributes;
+
     /** Был отклик: подтверждение (любое, и отклонённое) или интерес. */
     public const REPLY_SQL = '(exists (select 1 from bids where bids.offer_id = offers.id) or exists (select 1 from interests where interests.offer_id = offers.id))';
 

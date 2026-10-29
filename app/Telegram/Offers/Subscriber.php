@@ -3,6 +3,7 @@
 namespace App\Telegram\Offers;
 
 use App\Offers\Offer;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class Subscriber extends Model
 {
+    use FastAttributes;
+
     public const MENU = 'menu';
 
     public const PROMPT = 'prompt';

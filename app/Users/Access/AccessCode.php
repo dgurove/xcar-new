@@ -2,6 +2,7 @@
 
 namespace App\Users\Access;
 
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['user_id', 'purpose', 'topic', 'code_hash', 'nonce', 'attempts', 'label', 'chat_id', 'message_id', 'approved_at', 'denied_at', 'used_at', 'expires_at'])]
 class AccessCode extends Model
 {
+    use FastAttributes;
+
     public const TTL = 300;
 
     /**

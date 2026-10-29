@@ -11,6 +11,7 @@ use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferEvent;
 use App\Offers\OfferEventType;
+use App\Support\FastAttributes;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -27,6 +28,8 @@ use Illuminate\Support\Carbon;
 #[Fillable(['offer_id', 'deal_id', 'manager_id', 'state', 'stage_at', 'taken_at', 'sold_at', 'sold_price', 'buyer_name', 'buyer_phone', 'commission', 'settled_at', 'invoice_id', 'invoice_to', 'payout_invoice_id', 'created_by', 'buyer_price'])]
 class Car extends Model
 {
+    use FastAttributes;
+
     protected $table = 'garage_cars';
 
     protected static function booted(): void

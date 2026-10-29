@@ -2,6 +2,7 @@
 
 namespace App\Chats;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable(['message_id', 'name', 'mime', 'size', 'path'])]
 class File extends Model
 {
+    use FastAttributes;
+
     public const UPDATED_AT = null;
 
     protected $table = 'chat_files';

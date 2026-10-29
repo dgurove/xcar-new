@@ -5,6 +5,7 @@ namespace App\Billing\Bank;
 use App\Billing\Invoice;
 use App\Billing\Payment;
 use App\Search\Term;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,6 +21,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'state', 'note', 'invoice_id', 'payment_id', 'decided_by', 'decided_at', 'payload'])]
 class Transaction extends Model
 {
+    use FastAttributes;
+
     public const MATCHED = 'matched';
 
     public const UNMATCHED = 'unmatched';

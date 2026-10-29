@@ -4,6 +4,7 @@ namespace App\Billing\Acquiring;
 
 use App\Billing\Bank\Transaction;
 use App\Billing\Payment;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['link_id', 'provider', 'external_id', 'status', 'cancel_reason', 'refund_id', 'refund_status', 'amount', 'income_amount', 'method', 'confirmation_url', 'receipt_status', 'applied', 'refunded', 'payment_id', 'payout_tx_id', 'payload', 'checked_at'])]
 class AcquiringPayment extends Model
 {
+    use FastAttributes;
+
     protected $table = 'billing_acquiring_payments';
 
     /** Сколько живёт страница оплаты у провайдера, прежде чем «Оплатить» заведёт новую попытку. */

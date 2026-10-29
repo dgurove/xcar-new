@@ -2,6 +2,7 @@
 
 namespace App\Purchases;
 
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['user_id', 'hidden_kinds'])]
 class Restriction extends Model
 {
+    use FastAttributes;
+
     protected $table = 'purchase_restrictions';
 
     protected $primaryKey = 'user_id';

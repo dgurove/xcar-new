@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Mail\Message;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['vehicle_id', 'user_id', 'parent_id', 'to', 'cc', 'text', 'photos', 'docs', 'state', 'error', 'messages', 'sent_at'])]
 class Report extends Model
 {
+    use FastAttributes;
+
     public const QUEUED = 'queued';
 
     public const SENT = 'sent';

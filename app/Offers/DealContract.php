@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Billing\Party;
 use App\Billing\Seller;
 use App\Cars\Car;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year'])]
 class DealContract extends Model
 {
+    use FastAttributes;
+
     /** Документы ТС для договора — поля машины, правит сотрудник в карточке ДКП. */
     public const VEHICLE = ['plate' => 'Госномер', 'sts' => 'СТС', 'pts' => 'ПТС или ЭПТС', 'body_no' => 'Кузов №', 'chassis_no' => 'Шасси (рама) №'];
 

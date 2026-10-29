@@ -2,6 +2,7 @@
 
 namespace App\Garage;
 
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['garage_car_id', 'title', 'amount', 'spent_at', 'payer', 'kind', 'created_by'])]
 class Cost extends Model
 {
+    use FastAttributes;
+
     protected $table = 'garage_costs';
 
     public const SUPPLIER = 'supplier';

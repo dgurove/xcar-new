@@ -88,19 +88,41 @@ foreach ($it as $file) {
 
 // Компонент, который рисуют как шаблон (`view('components.…')`, `@include`), — в `AppServiceProvider::PLAIN_COMPONENTS`
 // (29.10.2026): под Blaze файл компонента — определение функции, и такой вызов молча рисует пустоту (так пропал фрейм
-// карточки строки `x-ui.detail`).
-foreach (['app', 'resources/views', 'routes'] as $where) {
+// карточки строки `x-ui.detail`). В PHP имя вида компонента бывает только ради такого вызова — проверяется любое; имя,
+// собранное из переменной или склейкой, не проверить — оно запрещено.
+$plain = App\Providers\AppServiceProvider::PLAIN_COMPONENTS;
+foreach ([['app', '/\.php$/', true], ['routes', '/\.php$/', true], ['resources/views', '/\.blade\.php$/', false]] as [$where, $type, $php]) {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$where", FilesystemIterator::SKIP_DOTS));
     foreach ($it as $file) {
-        if (! str_ends_with($file->getFilename(), '.php')) continue;
+        $rel = str_replace("$root/", '', $file->getPathname());
+        if (! preg_match($type, $rel)) continue;
         foreach (file($file->getPathname()) as $n => $line) {
-            preg_match_all('/(?:\bview|View::make|->make|@include(?:If|When|Unless|First)?|@each)\(\s*[\'"]components\.([a-z0-9.\-]+)[\'"]/', $line, $m);
-            foreach ($m[1] as $name) {
-                if (! in_array(str_replace('.', '/', $name), App\Providers\AppServiceProvider::PLAIN_COMPONENTS, true)) {
-                    $bad[] = str_replace("$root/", '', $file->getPathname()).':'.($n + 1).": components.$name рисуют как шаблон — впишите в AppServiceProvider::PLAIN_COMPONENTS";
+            $named = $php ? '/([\'"])components\.([a-z0-9.\-]+)\1/'
+                : '/(?:\bview|View::make|->make|@include(?:If|When|Unless|First)?|@each)\(\s*([\'"])components\.([a-z0-9.\-]+)\1/';
+            $dynamic = $php ? '/"components\.[^"]*[$\{]|[\'"]components\.[\'"]\s*\./'
+                : '/(?:\bview|View::make|->make|@include(?:If|When|Unless|First)?|@each)\(\s*(?:"components\.[^"]*[$\{]|[\'"]components\.[\'"]\s*\.)/';
+            preg_match_all($named, $line, $m);
+            foreach ($m[2] as $name) {
+                if (! in_array(str_replace('.', '/', $name), $plain, true)) {
+                    $bad[] = "$rel:".($n + 1).": components.$name рисуют как шаблон — впишите в AppServiceProvider::PLAIN_COMPONENTS";
                 }
             }
+            if (preg_match($dynamic, $line)) {
+                $bad[] = "$rel:".($n + 1).': имя вида компонента собирается на ходу — под Blaze не проверить, пишите его целиком';
+            }
         }
+    }
+}
+
+// Модель без быстрого чтения полей (`Support\FastAttributes`, у дорожек машины — через `Cars\OnCar`), 29.10.2026: Eloquent
+// на каждое чтение поля склеивает список кастов и ищет мутаторы — строки таблиц стоили до 8 мс.
+$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/app", FilesystemIterator::SKIP_DOTS));
+foreach ($it as $file) {
+    if (! str_ends_with($file->getFilename(), '.php')) continue;
+    $code = file_get_contents($file->getPathname());
+    if (preg_match('/^(?:final |abstract )?class \w+ extends (?:Model|Authenticatable|Pivot|MorphPivot)\b/m', $code)
+        && ! preg_match('/^\s+use [^;]*\b(?:FastAttributes|OnCar)\b/m', $code)) {
+        $bad[] = str_replace("$root/", '', $file->getPathname()).': модель без use FastAttributes;';
     }
 }
 

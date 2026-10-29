@@ -2,6 +2,7 @@
 
 namespace App\Billing;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 #[Fillable(['invoice_id', 'party_id', 'amount', 'paid_at', 'source', 'ref', 'note', 'state', 'reject_reason', 'decided_at', 'voided_at', 'created_by', 'credit_invoice_id'])]
 class Payment extends Model implements HasMedia
 {
+    use FastAttributes;
     use InteractsWithMedia;
 
     protected $table = 'billing_payments';

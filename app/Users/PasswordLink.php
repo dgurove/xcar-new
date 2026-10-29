@@ -2,6 +2,7 @@
 
 namespace App\Users;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['user_id', 'token_hash', 'created_by', 'expires_at', 'used_at'])]
 class PasswordLink extends Model
 {
+    use FastAttributes;
     use HashedToken;
 
     public const UPDATED_AT = null;

@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Media\DocumentScan;
 use App\Mail\Extraction\AttachmentClassifier;
 use App\Mail\Scan\ScanFile;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Storage;
 #[Fillable(['message_id', 'filename', 'mime', 'size', 'path', 'section', 'encoding', 'blob_sha', 'pinned_at', 'content_id', 'is_inline', 'position'])]
 class Attachment extends Model implements ScanFile
 {
+    use FastAttributes;
+
     protected $table = 'mail_attachments';
 
     protected function casts(): array

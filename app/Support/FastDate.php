@@ -7,9 +7,9 @@ use Illuminate\Support\Carbon;
 /**
  * Даты приложения (`Date::use` в AppServiceProvider): та же Carbon, только `translatedFormat` простых форматов — «j M»,
  * «j M, H:i», «j F Y», «F Y» — без перевода на каждый вызов (29.10.2026: 17–30 мкс на дату, а в видах их 150 мест,
- * строка таблицы пишет две-три). Формат разбирается раз, слово месяца — раз на язык, формат и месяц: его отдаёт сама
- * Carbon на пробной дате того же месяца, и пробная дата, собранная заново, обязана совпасть с её ответом — иначе этот
- * формат навсегда идёт обычным путём. Дни недели, AM/PM и прочее — обычным путём.
+ * строка таблицы пишет две-три). Формат разбирается раз, слово месяца — раз на язык, формат и месяц в запросе: его
+ * отдаёт сама Carbon на пробной дате того же месяца, и пробная дата, собранная заново, обязана совпасть с её ответом —
+ * иначе этот формат идёт обычным путём. Дни недели, AM/PM и прочее — обычным путём.
  */
 class FastDate extends Carbon
 {
@@ -18,8 +18,11 @@ class FastDate extends Carbon
     /** @var array<string, list<array{0: string, 1: string}>|false> формат => части */
     private static array $plans = [];
 
-    /** @var array<string, list<string>|false> язык|формат|месяц => слова месяца по порядку */
-    private static array $words = [];
+    /**
+     * Слова месяцев живут в контейнере (`scoped`): Octane и очередь сбрасывают их между запросами и задачами — переводы,
+     * поменянные на ходу, подхватываются со следующего запроса, а не после перезапуска воркера.
+     */
+    public const WORDS = 'fast-date.words';
 
     public function translatedFormat(string $format): string
     {
@@ -29,7 +32,8 @@ class FastDate extends Carbon
         }
         $month = (int) $this->format('n');
         $locale = $this->locale();
-        $words = self::$words[$locale.'|'.$format.'|'.$month] ??= self::words($plan, $format, $month, $locale);
+        $memo = app(self::WORDS);
+        $words = $memo[$locale.'|'.$format.'|'.$month] ??= self::words($plan, $format, $month, $locale);
         if ($words === false) {
             return parent::translatedFormat($format);
         }

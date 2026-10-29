@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Garage\CarState;
 use App\Garage\GaragePayer;
 use App\Support\Changes;
+use App\Support\FastAttributes;
 use App\Support\Money;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\DB;
 #[Fillable(['car_id', 'offer_id', 'purchase_car_id', 'user_id', 'type', 'payload'])]
 class OfferEvent extends Model
 {
+    use FastAttributes;
+
     const UPDATED_AT = null;
 
     protected $table = 'car_events';

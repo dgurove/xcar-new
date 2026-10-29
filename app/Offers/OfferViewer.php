@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** Кто видит предложение и с какого момента; notified_at — уведомление о нём ушло. Считает SyncViewers. */
 class OfferViewer extends Model
 {
+    use FastAttributes;
+
     public $timestamps = false;
 
     public $incrementing = false;

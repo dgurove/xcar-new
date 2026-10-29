@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Hidden(['imap_password', 'smtp_password'])]
 class Account extends Model
 {
+    use FastAttributes;
+
     protected $table = 'mail_accounts';
 
     protected function casts(): array

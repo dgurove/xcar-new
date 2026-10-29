@@ -2,6 +2,7 @@
 
 namespace App\Cars;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,6 +14,8 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['oktmo', 'plate', 'name', 'short', 'match'])]
 class Region extends Model
 {
+    use FastAttributes;
+
     public $timestamps = false;
 
     /**

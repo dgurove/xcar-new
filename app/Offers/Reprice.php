@@ -3,6 +3,7 @@
 namespace App\Offers;
 
 use App\Mail\Message;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['offer_id', 'from_price', 'to_price', 'value', 'source', 'message_id', 'state', 'choices', 'created_by', 'decided_by', 'decided_at'])]
 class Reprice extends Model
 {
+    use FastAttributes;
+
     public const PENDING = 'pending';
 
     public const APPLIED = 'applied';

@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Support\FastAttributes;
 use App\Workflow\Stage;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['name', 'scope', 'subject', 'body'])]
 class Template extends Model
 {
+    use FastAttributes;
+
     protected $table = 'mail_templates';
 
     protected function casts(): array

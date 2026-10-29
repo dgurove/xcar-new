@@ -44,7 +44,7 @@ class GarageController
             Facet::column('stage', 'Этап', ['этап', 'этапа', 'этапов'], 'garage_cars.state')->enum(CarState::class)->natural(),
         );
         ListPrefs::sync($request, 'crm-garage', keep: $facets->keys());
-        $preset = array_key_exists($request->query('preset'), self::PRESETS) ? $request->query('preset') : 'work';
+        $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'work';
         $sort = Sort::from($request->query('sort'), self::SORTS, 'stage');
 
         $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'offer.parkVehicle', 'offer.pickupTask.executor', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.offer']);

@@ -4,6 +4,7 @@ namespace App\Park;
 
 use App\Mail\Message;
 use App\Offers\Deal;
+use App\Support\FastAttributes;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'request_message_id', 'mailed_at', 'used_at', 'used_by', 'revoked_at', 'revoke_reason', 'deal_id', 'planned_at'])]
 class Pass extends Model
 {
+    use FastAttributes;
+
     protected $table = 'park_passes';
 
     /** Crockford base32 без I, L, O, U: код читают глазами и вводят руками, путать нечего. */

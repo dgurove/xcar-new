@@ -2,6 +2,7 @@
 
 namespace App\Users;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 #[Fillable(['name', 'position', 'kind', 'with_super'])]
 class UserGroup extends Model
 {
+    use FastAttributes;
+
     public const MANAGERS = 'managers';
 
     public const MODERATORS = 'moderators';

@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['account_id', 'path', 'name', 'delimiter', 'kind', 'is_syncable', 'uid_validity', 'uid_next', 'last_uid', 'backfill_uid', 'messages_count', 'unseen_count', 'synced_at'])]
 class Folder extends Model
 {
+    use FastAttributes;
+
     protected $table = 'mail_folders';
 
     protected function casts(): array

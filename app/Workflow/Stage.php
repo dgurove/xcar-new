@@ -8,6 +8,7 @@ use App\Offers\CarPlace;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -27,6 +28,8 @@ use Illuminate\Support\Str;
 ])]
 class Stage extends Model
 {
+    use FastAttributes;
+
     protected $table = 'workflow_stages';
 
     protected function casts(): array

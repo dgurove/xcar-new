@@ -4,6 +4,7 @@ namespace App\Cars;
 
 use App\Cars\Actions\JoinCars;
 use App\Media\Hidden;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,6 +27,9 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  */
 trait OnCar
 {
+    // Быстрое чтение полей — у дорожки вместе с её `getAttribute` (он перекрывает трейтовый и зовёт `fastAttribute`).
+    use FastAttributes;
+
     /** @var array<class-string, array<string, string>> */
     private static array $carMaps = [];
 
@@ -99,7 +103,7 @@ trait OnCar
             return $this->carRecord()->getRelationValue($key);
         }
 
-        return method_exists($this, 'fastAttribute') ? $this->fastAttribute($key) : parent::getAttribute($key);
+        return $this->fastAttribute($key);
     }
 
     public function setAttribute($key, $value)

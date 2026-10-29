@@ -3,6 +3,7 @@
 namespace App\Offers;
 
 use App\Support\Ago;
+use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['offer_id', 'user_id', 'asked_by', 'state', 'due_at', 'base_price', 'amount', 'estimated_at', 'rejected_amount', 'rejected_at', 'reminded_at', 'show_declared', 'declined_at', 'wish_price', 'decline_reason'])]
 class Estimate extends Model
 {
+    use FastAttributes;
+
     protected $table = 'offer_estimates';
 
     public const HOURS = 48;

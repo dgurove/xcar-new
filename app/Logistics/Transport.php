@@ -15,6 +15,7 @@ use App\Park\Yard;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Ago;
+use App\Support\FastAttributes;
 use App\Support\Phone;
 use App\Support\Plural;
 use App\Support\Surface;
@@ -53,6 +54,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
     'to_phone', 'comment', 'trip_code', 'undecided'])]
 class Transport extends Model
 {
+    use FastAttributes;
+
     /** Шаг сменился — напоминание по нему снова возможно (`logistics:tick`). */
     private const STEP = ['state', 'executor_id', 'logist_id', 'agreed_at'];
 

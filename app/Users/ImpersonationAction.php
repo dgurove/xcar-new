@@ -2,6 +2,7 @@
 
 namespace App\Users;
 
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -9,5 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['impersonation_id', 'method', 'path', 'status', 'created_at'])]
 class ImpersonationAction extends Model
 {
+    use FastAttributes;
+
     public const UPDATED_AT = null;
 }

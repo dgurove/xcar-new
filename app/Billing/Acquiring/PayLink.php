@@ -11,6 +11,7 @@ use App\Garage\Car;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Search\Term;
+use App\Support\FastAttributes;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Users\User;
@@ -29,6 +30,8 @@ use Illuminate\Support\Carbon;
 #[Fillable(['code', 'invoice_id', 'amount', 'payer_kind', 'payer_user_id', 'payer_name', 'payer_phone', 'payer_email', 'state', 'payment_id', 'paid_at', 'canceled_at', 'error', 'error_at', 'created_by', 'auto'])]
 class PayLink extends Model
 {
+    use FastAttributes;
+
     /** Ссылку завели, оплатили, отменили — вкладка «По ссылкам» перечитывается у всех (18.10.2026). */
     protected static function booted(): void
     {
