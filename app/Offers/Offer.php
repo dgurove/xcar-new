@@ -1139,12 +1139,13 @@ class Offer extends Model
                 $this->state === OfferState::Draft && LegacyClaim::has($this->claim_ref_key) => $presets['legacy'],
                 $this->slot_at !== null => $presets['slots'],
                 $this->state === OfferState::Gallery => 'Галерея',
+                $this->intake_closed_at !== null && $user?->canManageCrm() => $presets['done'],
                 $this->asking_price > 0 => $presets['priced'],
                 $this->floor_price > 0 => $presets['unpriced'],
                 default => $presets['nofloor'],
             },
             OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : self::hasActiveBids($this->id))
-                ? $presets['bids'] : ($this->bidsOpen() || ! $user?->canManageCrm() ? $presets['published'] : $presets['closed']),
+                ? $presets['bids'] : $presets['published'],
             OfferState::Sold, OfferState::Delivered => 'Сделки',
             OfferState::Garage => 'Гараж',
             // Отказ поставщика (28.10.2026, владелец: «архив с пометкой»): в архиве, но словом причины, а не «Архив».

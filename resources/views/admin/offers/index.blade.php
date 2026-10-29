@@ -16,6 +16,7 @@
         $preset === 'legacy' => collect(['legacy' => $offers->getCollection()])->filter(fn ($list) => $list->isNotEmpty()),
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
         $preset === 'bids' && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
+        $preset === 'done' => $offers->getCollection()->groupBy(fn ($o) => 'done'.OfferController::doneGroup($o))->sortKeys(),
         // На парковке — первыми; группы с подписью, только когда такие есть (`OfferController::PARK_GROUPS`).
         $preset === 'unpriced' && $admin && $offers->getCollection()->contains(fn ($o) => $o->onPark())
             => $offers->getCollection()->groupBy(fn ($o) => 'park'.($o->onPark() ? 0 : 1))->sortKeys(),
@@ -25,6 +26,7 @@
         $key === '' => null,
         $key === 'legacy' => $ghosts->isEmpty() ? null : 'Черновики',
         str_starts_with((string) $key, 'park') => OfferController::PARK_GROUPS[(int) substr($key, 4)],
+        str_starts_with((string) $key, 'done') => OfferController::DONE_GROUPS[(int) substr($key, 4)],
         $preset === 'slots' => $list->first()->slot_at->isPast() ? 'Выходит сейчас' : Slots::label($list->first()->slot_at),
         default => OfferController::PICK_GROUPS[$key],
     };
@@ -74,7 +76,7 @@
             @endif
         @endforeach
         @if ($offers->isEmpty() && $ghosts->isEmpty())
-            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'closed' => 'Закрытого приёма нет', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
+            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Завершённых нет', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)
                 <form id="offers-pick" method="post" action="/offers/schedule" data-live-select>@csrf</form>

@@ -83,34 +83,35 @@ class OfferController
      */
     public const PRESETS = [
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
-        'closed' => 'Приём закрыт', 'bids' => 'Есть подтверждения', 'all' => 'Все', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
+        'bids' => 'Есть подтверждения', 'done' => 'Завершённые', 'all' => 'Все', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
 
     /**
-     * Опубликованное: «Опубликованные», «Приём закрыт» и «Есть подтверждения» — одни правила сортировки и чипов. «Приём
-     * закрыт» — своя вкладка с 17.10.2026 (начальник): была группой внизу «Опубликованных».
+     * Опубликованное: «Опубликованные» и «Есть подтверждения» — одни правила сортировки и чипов. Вкладки «Приём закрыт»
+     * (17.10–29.10.2026) нет: опубликовано — значит идёт приём, кончился без подтверждений — черновиком во «Завершённые»
+     * (`ReturnClosedToRated`).
      */
-    private const OPEN = ['published', 'closed', 'bids'];
+    private const OPEN = ['published', 'bids'];
 
     /** Вкладки, где порядок — когда предложение в них попало (`offers.tab_at`) и столбец даты — оно же. */
-    public const BY_TAB = ['nofloor', 'unpriced', 'priced', 'archive', 'auction'];
+    public const BY_TAB = ['nofloor', 'unpriced', 'priced', 'done', 'archive', 'auction'];
 
     /**
-     * Вкладки человека: подтверждения, «Приём закрыт», «Все», «Из таблицы Кати» и «На аукцион» видит только админ (срок
+     * Вкладки человека: подтверждения, «Завершённые», «Все», «Из таблицы Кати» и «На аукцион» видит только админ (срок
      * приёма модератору не виден, сделки и гараж ему не открываются).
      */
     public static function presets(User $user): array
     {
-        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'closed' => true, 'all' => true, 'legacy' => true, 'auction' => true]);
+        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true]);
     }
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
     private const LEGACY = [
-        'draft' => 'unpriced', 'purchase' => 'unpriced', 'slot' => 'slots', 'open' => 'published', 'recommended' => 'published',
+        'draft' => 'unpriced', 'purchase' => 'unpriced', 'closed' => 'done', 'slot' => 'slots', 'open' => 'published', 'recommended' => 'published',
     ];
 
     /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
-    private const STEPS = ['nofloor', 'unpriced', 'priced', 'slots', 'published', 'closed', 'bids'];
+    private const STEPS = ['nofloor', 'unpriced', 'priced', 'slots', 'published', 'bids'];
 
     /** Вкладки, где карточка после дела идёт к следующей строке. */
     private const TODO = ['nofloor', 'unpriced'];
@@ -181,7 +182,6 @@ class OfferController
         // Шаги работы — по тому, когда предложение сюда пришло, новые сверху (15.10.2026, владелец: оценил закупочную — и ищи
         // машину внизу «Без продажной»); опубликованные у админа — по закрытию приёма; остальное — по заведению.
         $default = match (true) {
-            $preset === 'closed' => '-closing',
             in_array($preset, self::OPEN, true) => $admin ? 'closing' : '-published',
             in_array($preset, self::BY_TAB, true) => '-tab',
             default => '-created',
@@ -287,7 +287,7 @@ class OfferController
         $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
             // «Новые» (опубликовано за сутки) и «Горящие» (приём закрывается за 12 ч) — как пилюли каталога, голубой и рыжей
             // точкой и своим цветом включённого (12.10.2026, владелец); подтверждения и сроки видит только админ.
-            'published', 'closed', 'bids' => [
+            'published', 'bids' => [
                 ...self::facets(),
                 ...($admin ? [
                     Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent'),
@@ -308,7 +308,7 @@ class OfferController
                 ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')] : []),
             ],
             // Внутри «Всех» без «Где сейчас» не сузить: черновики, продажа, сделки, гараж.
-            'all' => [...self::facets(), Facet::column('state', 'Где сейчас', ['состояние', 'состояния', 'состояний'], 'offers.state')->enum(OfferState::class)->natural()],
+            'all', 'done' => [...self::facets(), Facet::column('state', 'Где сейчас', ['состояние', 'состояния', 'состояний'], 'offers.state')->enum(OfferState::class)->natural()],
             default => self::facets(),
         }, ...($admin ? [
             // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
@@ -339,7 +339,7 @@ class OfferController
             $q->withExists(['reprices as reprice_pending' => fn ($r) => $r->where('state', Reprice::PENDING)]);
         }
         // «Все» и поиск — где машина после продажи: этап сделки, менеджер, срок оплаты, гараж (`DealLine::forOffer`).
-        if ($admin && ($preset === 'all' || $searching)) {
+        if ($admin && (in_array($preset, ['all', 'done'], true) || $searching)) {
             $q->with(['deal.buyer', 'deal.invoices.claims', 'lastDeal.buyer', 'garageCar.manager', 'positions.stage.block', 'positions.stage.exits.to',
                 ...User::withAvatar('deal.buyer.media'), ...User::withAvatar('lastDeal.buyer.media'), ...User::withAvatar('garageCar.manager.media')]);
         }
@@ -397,11 +397,11 @@ class OfferController
 
         // Черновики из таблицы Кати — только в своей вкладке, рабочим не мешают (10.10.2026; 12.10.2026 начальник снова:
         // «не отображать»).
-        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots'], true)) {
+        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots', 'done'], true)) {
             LegacyClaim::offList($q);
         }
         // Отправленные на аукцион (13.10.2026) — только во вкладке «На аукцион», рабочим и таблице Кати не мешают.
-        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots', 'legacy'], true)) {
+        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots', 'done', 'legacy'], true)) {
             $q->whereNull('offers.auction_at');
         }
 
@@ -411,15 +411,19 @@ class OfferController
             'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
                 ->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
-            'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0),
+            // Приём кончился без подтверждений — во «Завершённых» (29.10.2026, начальник), модератору — здесь же: той вкладки у него нет.
+            'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0)
+                ->when($admin, fn ($o) => $o->whereNull('offers.intake_closed_at')),
             'slots' => $q->scheduled(),
             // Идёт приём (срок не прошёл или его нет); у админа — ещё без подтверждений, они в «Есть подтверждения». Модератору
             // — всё открытое: срока приёма он не видит, «Приём закрыт» у него нет.
             'published' => $q->where('offers.state', OfferState::Open)
                 ->when($admin, fn ($o) => $o->where(fn ($c) => $c->whereNull('offers.bids_close_at')->orWhere('offers.bids_close_at', '>', now()))
                     ->whereDoesntHave('bids', $bids)),
-            'closed' => $q->where('offers.state', OfferState::Open)->where('offers.bids_close_at', '<=', now())
-                ->when($admin, fn ($o) => $o->whereDoesntHave('bids', $bids)),
+            // «Завершённые» (29.10.2026, начальник: «что не продано — в отдельную, и там что в работе»): сделка идёт или
+            // гараж — «В работе», приём кончился без подтверждений — «Не продано» (`DONE_GROUPS`).
+            'done' => $q->where(fn ($o) => $o->whereIn('offers.state', [OfferState::Sold, OfferState::Garage])
+                ->orWhere(fn ($d) => $d->where('offers.state', OfferState::Draft)->whereNull('slot_at')->whereNotNull('offers.intake_closed_at'))),
             'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
             // «Все» (21.10.2026, владелец: «все, в том числе завершённые и перешедшие в сделку, короче все кроме архивных»).
             'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
@@ -433,6 +437,11 @@ class OfferController
      * подтверждения» группы 0 и 1; «Опубликованные» — только 1, группа 2 — вкладка «Приём закрыт» (17.10.2026).
      */
     public const PICK_GROUPS = ['Выбрать', 'Идёт приём', 'Приём закрыт'];
+
+    /** «Завершённые» — группами: машина в работе (сделка, гараж) первой, ниже не проданные. */
+    public const DONE_GROUPS = ['В работе', 'Не продано'];
+
+    private const DONE_GROUP = "case when offers.state in ('sold', 'garage') then 0 else 1 end";
 
     /**
      * «Без продажной цены» админа — машины на нашей парковке первыми своей группой (22.10.2026, начальник: у них приоритет),
@@ -455,6 +464,9 @@ class OfferController
         $pick = in_array($preset, self::OPEN, true) && $admin;
         if ($preset === 'unpriced' && $admin) {
             $q->orderByRaw(self::PARK_GROUP);
+        }
+        if ($preset === 'done') {
+            $q->orderByRaw(self::DONE_GROUP);
         }
         match (true) {
             $preset === 'slots' => $q->orderBy('slot_at'),
@@ -492,6 +504,12 @@ class OfferController
     public static function pickable(User $user, ?string $preset, bool $searching): bool
     {
         return $user->canManageCrm() && ! $searching && in_array($preset, ['priced', 'slots', 'archive'], true);
+    }
+
+    /** Группа «Завершённых» (DONE_GROUPS) — то же правило, что у порядка. */
+    public static function doneGroup(Offer $offer): int
+    {
+        return in_array($offer->state, [OfferState::Sold, OfferState::Garage], true) ? 0 : 1;
     }
 
     /** Группа опубликованного (PICK_GROUPS) — то же правило, что у порядка. */
@@ -534,7 +552,7 @@ class OfferController
             // Номер предложения есть во всех вкладках (10.10.2026); у черновика пусто.
             new Column('number', '№', from: 'sm', aside: true, cell: 'cell-dim nums', rem: 7),
             // Во «Все» город — только на широком: место отдано этапу сделки и менеджеру в «Состоянии» (27.10.2026).
-            $has('city') ? new Column('city', 'Город', from: $preset === 'all' ? '2xl' : 'sm', aside: true, rem: max(5, $cityCh * .5 + 2.5)) : null,
+            $has('city') ? new Column('city', 'Город', from: in_array($preset, ['all', 'done'], true) ? '2xl' : 'sm', aside: true, rem: max(5, $cityCh * .5 + 2.5)) : null,
             // Без «Состояния» запас ширины забирает пустой столбец перед числами, а не промежутки между столбцами.
             $has('state')
                 ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', fill: true, sort: 'closing', rem: 10)
@@ -577,7 +595,7 @@ class OfferController
             'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
             // В «Опубликованных» у админа подтверждений нет по определению — столбца тоже.
-            'published', 'closed' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
+            'published' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
             'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
             // «Все» и «Архив»: где предложение сейчас — словом вкладки (`Offer::crmTab`: «Сделки», «Гараж»).
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
@@ -609,7 +627,7 @@ class OfferController
                     $key === 'bids' && $carcadeDefault => ['vendor'],
                     in_array($key, self::OPEN, true) => [],
                     default => ['recommended'],
-                }, ...($key === 'all' ? [] : ['state'])]);
+                }, ...(in_array($key, ['all', 'done'], true) ? [] : ['state'])]);
             }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки. Черновик из письма встаёт туда из
             // призрака, и число не меняется, — пилюле отдельно число черновиков: выросло — она вспыхивает (flip.js).
