@@ -9,6 +9,7 @@ use App\Offers\Binding;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Offer;
+use App\Offers\OfferEvent;
 use App\Offers\OfferEventType;
 use App\Support\Surface;
 use App\Users\User;
@@ -23,7 +24,7 @@ use Illuminate\Support\Carbon;
  * Машина в гараже: предложение, выведенное из продажи менеджеру на ремонт.
  * Всё про саму ТС — в предложении; здесь кому отдали, за сколько, расходы и чем кончилось.
  */
-#[Fillable(['offer_id', 'deal_id', 'manager_id', 'state', 'stage_at', 'history', 'taken_at', 'cost', 'sold_at', 'sold_price', 'buyer_name', 'buyer_phone', 'commission', 'settled_at', 'invoice_id', 'invoice_to', 'payout_invoice_id', 'note', 'created_by', 'buyer_price'])]
+#[Fillable(['offer_id', 'deal_id', 'manager_id', 'state', 'stage_at', 'taken_at', 'sold_at', 'sold_price', 'buyer_name', 'buyer_phone', 'commission', 'settled_at', 'invoice_id', 'invoice_to', 'payout_invoice_id', 'created_by', 'buyer_price'])]
 class Car extends Model
 {
     protected $table = 'garage_cars';
@@ -39,9 +40,8 @@ class Car extends Model
     {
         return [
             'state' => CarState::class,
-            'history' => 'array',
             'taken_at' => 'datetime', 'stage_at' => 'datetime', 'sold_at' => 'datetime', 'settled_at' => 'datetime',
-            'cost' => 'int', 'sold_price' => 'int', 'commission' => 'int', 'buyer_price' => 'int',
+            'sold_price' => 'int', 'commission' => 'int', 'buyer_price' => 'int',
         ];
     }
 
@@ -101,15 +101,11 @@ class Car extends Model
 
     /**
      * Во что машина нам встала: отдали за (закупочная), пока платили мы; платил менеджер — строкой расхода `Cost::SUPPLIER`.
-     * Закупочная одна — у сделки (14.10.2026: копия в строке гаража расходилась с ней после нового файла Carcade); своя
-     * колонка `cost` — только у отданных руками до 06.10.2026, без сделки.
+     * Закупочная одна — у сделки (14.10.2026: копия в строке гаража расходилась с ней после нового файла Carcade; своей
+     * колонки `cost` у гаража нет с 29.10.2026 — машина без сделки в гараж не попадает).
      */
     public function base(): ?int
     {
-        if (! $this->deal_id) {
-            return $this->cost;
-        }
-
         // Платим поставщику мы — по нашей закупке у него (`supplierCost`, 15.10.2026), менеджеру она не видна.
         return $this->deal?->garage_payer === GaragePayer::Us ? $this->deal->supplierCost() : null;
     }
@@ -123,7 +119,7 @@ class Car extends Model
     {
         // Платим поставщику мы — наша закупка у него; платит менеджер — закреплённая цена сделки, та же, что в строке
         // «Оплата поставщику» (15.10.2026).
-        $price = ! $this->deal_id ? $this->cost : ($this->deal?->isGarageUs() ? $this->deal->supplierCost() : $this->deal?->cost);
+        $price = $this->deal?->isGarageUs() ? $this->deal->supplierCost() : $this->deal?->cost;
 
         return $price ? (int) $price : null;
     }
@@ -131,11 +127,11 @@ class Car extends Model
     /**
      * Закупочная менеджеру (16.10.2026, владелец: «при подтверждении закрепляется закупочная на тот момент — её и
      * показывать»): закреплённая сделкой (`deals.cost` из `bids.cost`), кто бы ни платил поставщику; новая закупка у
-     * поставщика (`supplier_cost`) — только сотруднику, через `price()`. Отданная руками без сделки — своя `cost`.
+     * поставщика (`supplier_cost`) — только сотруднику, через `price()`.
      */
     public function managerPrice(): ?int
     {
-        $price = $this->deal_id ? $this->deal?->cost : $this->cost;
+        $price = $this->deal?->cost;
 
         return $price ? (int) $price : null;
     }
@@ -313,12 +309,20 @@ class Car extends Model
     }
 
     /**
-     * Перевести на этап: дни на этапе считаются от этого момента, шаг ложится в путь машины и в «Историю» предложения.
+     * Перевести на этап: дни на этапе считаются от этого момента, шаг ложится в «Историю» машины — из неё же и путь
+     * (`stages`; своей копии пути у гаража нет с 29.10.2026).
      */
     public function moveTo(CarState $state, array $attributes = [], ?User $by = null): void
     {
-        $this->update(['state' => $state, 'stage_at' => now(), 'history' => [...($this->history ?? []), [$state->value, now()->toIso8601String()]]] + $attributes);
+        $this->update(['state' => $state, 'stage_at' => now()] + $attributes);
         $this->log($by, ['do' => 'stage', 'state' => $state->value] + ($state === CarState::Sold && $this->sold_price ? ['price' => $this->sold_price] : []));
+    }
+
+    /** Этапы машины по порядку — строки «Истории» гаража `do: stage` (путь машины, `path`). */
+    public function stages(): HasMany
+    {
+        return $this->hasMany(OfferEvent::class, 'offer_id', 'offer_id')->where('type', OfferEventType::Garage)
+            ->whereRaw("payload->>'do' = 'stage'")->reorder()->orderBy('created_at')->orderBy('id');
     }
 
     /** Строка «Истории» предложения о гараже (`OfferEventType::Garage`). */
@@ -336,7 +340,7 @@ class Car extends Model
      */
     public function path(array $states): array
     {
-        $history = collect($this->history ?? [])->map(fn ($h) => [CarState::tryFrom($h[0]), Carbon::parse($h[1])])->filter(fn ($h) => $h[0]);
+        $history = $this->stages->map(fn (OfferEvent $e) => [CarState::tryFrom($e->payload['state'] ?? ''), $e->created_at])->filter(fn ($h) => $h[0]);
         $path = [];
         foreach ($states as $state) {
             $path[] = [

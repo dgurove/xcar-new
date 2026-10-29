@@ -11,21 +11,13 @@ use App\Users\User;
 /**
  * Гаражная сделка заведена — машина встаёт менеджеру в гараж «Ждёт машину» (её привезёт вывоз). Платим поставщику
  * мы — закупочная сразу «отдали за»; платит менеджер — его оплата встанет расходом, когда сделка закроется.
- * Строка гаража одна на предложение: отданная руками до 06.10.2026 без сделки получает её, этап не меняется.
+ * Строка гаража одна на предложение; первый шаг пути — строкой «Истории» машины (`Car::stages`).
  */
 final class ReserveCar
 {
     /** `$buyerPrice` — машина у покупателя с гаражом: его цена (`Car::forBuyer`), закупочной он не видит. */
     public function __invoke(Deal $deal, ?User $by = null, ?int $buyerPrice = null): Car
     {
-        $legacy = Car::where('offer_id', $deal->offer_id)->whereNull('deal_id')->first();
-        if ($legacy && ! $legacy->isSold()) {
-            // Закупочная — у сделки (`Car::base`), своя колонка у строки со сделкой пуста.
-            $legacy->update(['deal_id' => $deal->id, 'manager_id' => $deal->buyer_id, 'cost' => null, 'buyer_price' => $buyerPrice]);
-            GarageChanged::dispatch($legacy);
-
-            return $legacy;
-        }
         // Прежнюю ждущую (сделку отдали другому) снимает CancelDeal, здесь — на всякий случай.
         Car::where('offer_id', $deal->offer_id)->where('state', CarState::Waiting)->delete();
         $car = Car::create([
@@ -35,10 +27,11 @@ final class ReserveCar
             'state' => CarState::Waiting,
             'taken_at' => now(),
             'stage_at' => now(),
-            'history' => [[CarState::Waiting->value, now()->toIso8601String()]],
             'created_by' => $by?->id,
             'buyer_price' => $buyerPrice,
         ]);
+        // Первый шаг пути машины — строкой «Истории» (`Car::stages`).
+        $car->log($by, ['do' => 'stage', 'state' => CarState::Waiting->value]);
         GarageChanged::dispatch($car);
 
         return $car;

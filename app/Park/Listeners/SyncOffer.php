@@ -100,9 +100,13 @@ final class SyncOffer
     }
 
     /** У машины идёт свой вывоз в логистике — где она, решает он, а не приём на парковке. */
+    /** Где машина — у машины (`cars.place`): продажи нет — пишется ей самой, есть — дверью продажи с записью в ленту. */
     private function moveTo(Vehicle $vehicle, CarPlace $place, ?User $by): void
     {
-        if (($offer = $this->offer($vehicle)) && ! Transport::openFor($offer)) {
+        $offer = $this->offer($vehicle);
+        if (! $offer) {
+            $vehicle->carRecord()->update(['place' => $place]);
+        } elseif (! Transport::openFor($offer)) {
             ($this->setPlace)($offer, $place, $by);
         }
     }

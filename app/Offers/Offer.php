@@ -99,7 +99,8 @@ class Offer extends Model
         // Стоит у менеджера без его сделки (`held_by`, 21.10.2026) — пока машина на месте: уехала (забрали, привезли,
         // выдали с парковки) — метка гаснет.
         static::saving(function (self $o) {
-            if ($o->held_by && $o->isDirty('car_place') && ! $o->isDirty('held_by')) {
+            // Место — поле машины (`cars.place`): она пишется раньше дорожки, к этому часу место уже «изменено», а не «грязное».
+            if ($o->held_by && ($o->isDirty('car_place') || $o->carRecord()->wasChanged('place')) && ! $o->isDirty('held_by')) {
                 $o->held_by = null;
             }
         });
@@ -164,7 +165,6 @@ class Offer extends Model
     {
         return [
             'state' => OfferState::class,
-            'car_place' => CarPlace::class,
             'insurer_deadline_at' => 'date',
             'answer_by' => 'datetime',
             'tab_at' => 'datetime',
@@ -215,7 +215,8 @@ class Offer extends Model
     /** Тип ТС у предложения раньше был своей колонкой `vehicle_category` — теперь это тип машины. */
     public static function carAliases(): array
     {
-        return ['vehicle_category' => 'category'];
+        // Где машина физически — свойство машины (`cars.place`, 29.10.2026), у продажи по-прежнему `car_place`.
+        return ['vehicle_category' => 'category', 'car_place' => 'place'];
     }
 
     protected function carIsDemo(): bool
