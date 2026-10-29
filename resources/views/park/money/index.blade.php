@@ -30,7 +30,7 @@
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : 'Счетов нет' }}</x-ui.empty>
     @else
         @php $columns = \App\Http\Park\MoneyController::table(); @endphp
-        <x-ui.table id="invoices" class="mt-6" :view="$view" :rest="$columns->rest()">
+        <x-ui.table :table="$columns" id="invoices" class="mt-6" :view="$view" :rest="$columns->rest()">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
             @foreach ($invoices as $i)<x-billing.table-row :invoice="$i" :table="$columns"/>@endforeach
         </x-ui.table>

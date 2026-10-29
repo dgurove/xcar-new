@@ -63,7 +63,7 @@
                      таблицей — первыми строками с заголовком. --}}
                 @if ($urgent->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog-urgent" :view="$view" class="mb-6">
+                    <x-ui.table id="catalog-urgent" :view="$view" class="mb-6" :table="$columns">
                         <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
                         <x-table.group :table="$columns" key="urgent" title="Срочно" :count="$urgent->count()"><x-slot:before><x-ui.icon name="fire" fill class="mr-1 inline size-4 align-[-2px] text-fire"/></x-slot:before></x-table.group>
                         @foreach ($urgent as $offer)
@@ -82,7 +82,7 @@
                 @endif
                 @if ($toEstimate->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog-estimates" :view="$view" class="mb-6">
+                    <x-ui.table id="catalog-estimates" :view="$view" class="mb-6" :table="$columns">
                         <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
                         <x-table.group :table="$columns" key="estimate" title="Нужно оценить" :count="$toEstimate->count()"/>
                         @foreach ($toEstimate as $offer)
@@ -105,7 +105,7 @@
                      (новое — голубое, горящее — оранжевое). Плитками — лентой вбок, строками и таблицей — первыми строками с заголовком. --}}
                 @if ($exclusive->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog-only" :view="$view" class="mb-6">
+                    <x-ui.table id="catalog-only" :view="$view" class="mb-6" :table="$columns">
                         <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
                         <x-table.group :table="$columns" key="only" title="Открыты только Вам" :count="$exclusive->count()"><x-slot:before><span class="card-tone card-tone--only"></span></x-slot:before></x-table.group>
                         @foreach ($exclusive as $offer)
@@ -138,7 +138,7 @@
                     @include('site.catalog-estimated')
                 @else
                     @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog" :view="$view" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="false">
+                    <x-ui.table id="catalog" :view="$view" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="false" :table="$columns">
                         <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)

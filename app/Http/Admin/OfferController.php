@@ -40,12 +40,12 @@ use App\Offers\LegacyClaim;
 use App\Offers\Margin;
 use App\Offers\MigtorgDiff;
 use App\Offers\Offer;
-use App\Offers\Reprice;
 use App\Offers\OfferEventType;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
+use App\Offers\Reprice;
 use App\Offers\Showing;
 use App\Offers\Slots;
 use App\Offers\Tag;
@@ -330,7 +330,7 @@ class OfferController
         $carcadeHidden = ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request, $preset);
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
-        $q = Offer::query()->inCrm($request->user())->whereNot(fn ($o) => $o->emptyDraft())->with(['settlement', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
+        $q = Offer::query()->inCrm($request->user())->notEmptyDraft()->with(['settlement', 'vendor', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
             ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
         // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
         Binding::select($q);
@@ -379,7 +379,7 @@ class OfferController
             return false;
         }
         $carcade = self::carcadeId();
-        if (! $carcade || ! self::scopeFor($preset, Offer::visibleTo($request->user())->whereNot(fn ($o) => $o->emptyDraft()), $request->user()->canManageCrm())->where('vendor_id', $carcade)->exists()) {
+        if (! $carcade || ! self::scopeFor($preset, Offer::visibleTo($request->user())->notEmptyDraft(), $request->user()->canManageCrm())->where('vendor_id', $carcade)->exists()) {
             return false;
         }
         $request->query->set('vendor', '!'.$carcade);
@@ -527,7 +527,7 @@ class OfferController
      * «Из таблицы Кати» `x-offer.legacy-row`) и заголовки групп читают его, а не пересчитывают сами. В поиске — все столбцы
      * (список смешанный: `context('mixed')`). Ширина номера убытка и города — по самому длинному в выборке.
      */
-    public static function table(?string $preset, User $user, bool $searching, ?\Illuminate\Support\Collection $rows = null): Table
+    public static function table(?string $preset, User $user, bool $searching, ?Collection $rows = null): Table
     {
         $cols = self::columns($preset, $user, $searching);
         $all = $cols === null;
@@ -614,7 +614,7 @@ class OfferController
     /** carcadeDefault — «Кроме Каркаде» стоит умолчанием, а не выбором: число «Есть подтверждения» считается без него. */
     public static function counts(User $user, ?Facets $facets = null, bool $carcadeDefault = false): array
     {
-        $base = fn () => Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft());
+        $base = fn () => Offer::inCrm($user)->notEmptyDraft();
         $counts = [];
         foreach (array_diff(array_keys(self::presets($user)), ['archive']) as $key) {
             $q = self::scopeFor($key, $base(), $user->canManageCrm());

@@ -212,16 +212,14 @@
 }
 @media (min-resolution: 2dppx) { :root { --hairline: .5px; } }
 /* Плашка действий на экране — та, у которой есть видимая кнопка (как в `.action-bar:not(:has(…))` у самой плашки):
-   скрытая (`hidden`, «Сохранить изменения», ждущая правки, служебные скрытые поля формы) и плашка внутри карточки строки
-   (у листа свой подвал) места у страницы не берут. */
-:root:has(.action-bar:not([hidden], .split-detail .action-bar, .action-bar--pick) > .action-bar-inner > :not([hidden], [type="hidden"], template)) { --action: 1; }
+   скрытая (`hidden`, «Сохранить изменения», ждущая правки, служебные скрытые поля формы), плашка внутри карточки строки
+   (у листа свой подвал) и на ПК спрятанная от него (`lg:hidden` — у страницы предложения справа своя колонка) места у
+   страницы не берут. Считает `resources/js/lib/action-room.js` (класс `has-action`): `:root:has(…)` здесь пересчитывал
+   стили корня на каждую вставку узла на странице (29.10.2026). */
+html.has-action { --action: 1; }
 /* От планшета таб-бара нет, кнопки действий парят справа внизу. */
 @media (min-width: 768px) {
   :root { --spacing-header: 80px; --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * 6rem); } /* шапка: py-2 + два ряда по 30 px + 4 px между */
-}
-/* Плашка, спрятанная от ПК (`lg:hidden` — у страницы предложения справа своя колонка), места не берёт. */
-@media (min-width: 1024px) {
-  :root:not(:has(.action-bar:not([hidden], .lg\:hidden, .split-detail .action-bar) > .action-bar-inner > :not([hidden], [type="hidden"], template))) { --action: 0; }
 }
 /* Клавиатура (keyboard.js): под ней полосы «Домой» нет. Таб-бар, плашка действий и «Сохранить» страницы на телефоне
    под клавиатурой не рисуются (16.10.2026, владелец: как в приложениях iOS) — им не нужно гоняться за ней, пока iOS
@@ -231,7 +229,10 @@ html.kb-open { --home-gap: 0px; }
   /* Лист документов снизу: плашка действий — на нём, страница докручивается выше него. */
   html.docs-open { --bottom-edge: var(--docs-h); --bottom-room: calc(var(--docs-h) + 1rem + var(--action) * var(--spacing-action)); }
   /* Экран чата — поле ввода на нижнем краю, таб-бара нет, страница не листается. */
-  :root:has(.chat-page) { --tabbar: 0px; --bottom-room: 0px; }
+  /* `chat-open` у body ставит сервер (`x-chat.screen`, `x-telegram.dialog`), а не `:has(.chat-page)` — тот пересчитывал стили
+     на каждую вставку узла (29.10.2026). Переменные считались у корня — здесь те же, что вышли бы там. */
+  body.chat-open { --tabbar: 0px; --bottom-room: 0px; --page-room: 0px; }
+  html:not(.docs-open) body.chat-open { --bottom-edge: 0px; }
 }
 
 /* Тёмная тема — ступени тёмной iOS: фон чёрный, группа светлее фона (#1c1c1e), внутри группы и в шторке —
@@ -350,8 +351,8 @@ html.kb-open { --home-gap: 0px; }
      neighbourDirection / nav_controller: «следующее» въезжает справа, «предыдущее» — слева) и
      фото карточки, перетекающее в кадр галереи (группа hero, app.js heroTransition). Только визиты Turbo: переход между
      полными загрузками (@view-transition) снят 15.10.2026 — снимок таб-бара на входе и перезагрузке давал прыжок. */
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
-  ::view-transition-group(root) { animation-duration: 0s; }
+  html::view-transition-old(root), html::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  html::view-transition-group(root) { animation-duration: 0s; }
   html[data-nav-dir]::view-transition-old(root), html[data-nav-dir]::view-transition-new(root) {
     animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); animation-fill-mode: both;
   }
@@ -365,7 +366,7 @@ html.kb-open { --home-gap: 0px; }
   @keyframes pop-out    { to   { transform: translateX(100%); } }
   @keyframes pop-under  { from { transform: translateX(-30%); filter: brightness(.9); } }
   @media (prefers-reduced-motion: reduce) {
-    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+    html::view-transition-group(*), html::view-transition-old(*), html::view-transition-new(*) { animation: none !important; }
     .sheet, .sheet::backdrop, .split-detail, .tabbar, .toast, .card-media img, .card-dot, .card-star, .card-arrow, .btn, .card, .confirm { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }
 
@@ -871,7 +872,7 @@ html.kb-open { --home-gap: 0px; }
   @media (prefers-reduced-motion: reduce) { .header-btn.alarm-btn { animation: none; } }
   /* Карточка уведомления тревоги — красная (`Notice::alarm`), закрытая — улетает в капсулу шапки. */
   .banner.banner--alarm { background: var(--color-danger); color: #fff; }
-  .banner.banner--alarm :is(.banner-time, .banner-text, .banner-close) { color: rgb(255 255 255 / .85); }
+  .banner.banner--alarm .banner-time, .banner.banner--alarm .banner-text, .banner.banner--alarm .banner-close { color: rgb(255 255 255 / .85); }
   .banner.banner--alarm .row-icon { background: rgb(255 255 255 / .2); color: #fff; }
   /* Строка шторки тревоги — красная полоса слева, как у строки с паникой. */
   .alarm-row { position: relative; }
@@ -982,7 +983,7 @@ html.kb-open { --home-gap: 0px; }
   /* Кнопки списка в строке заголовка (телефон: «Гараж», «Долги» — слот actions у x-ui.shell): в поиске поле встаёт на
      место заголовка во всю строку. */
   @media (max-width: 767.98px) {
-    .has-back:has(.toolbar[data-searching]) > h1 { display: none; }
+    .has-back:has(.toolbar[data-searching]) > .head-title { display: none; }
     .has-back:has(.toolbar[data-searching]) > div:has(> .toolbar) { flex: 1 1 0; width: auto !important; margin-left: 0; }
   }
   /* Лупа рядом с пилюлями раздела (Покупатели): в поиске поле встаёт на их место. */
@@ -1028,7 +1029,9 @@ html.kb-open { --home-gap: 0px; }
   .tab-title-menu .menu-item[aria-current] { background: var(--color-accent-soft); color: var(--color-accent-text); }
   .tab-title-menu .menu-item[aria-current] .text-ink-dim { color: inherit; }
   .tab-title-menu .menu-item[aria-current]::after { content: none; }
-  .search-head:has(> .toolbar[data-searching]) > :first-child { display: none; }
+  /* Пилюли рядом — классом, а не `> :first-child`: `:has()` с любым ребёнком после него пересчитывал стили всей страницы на
+     каждую вставку узла (29.10.2026, «Все» в CRM — 260 мс на тост). */
+  .search-head:has(> .toolbar[data-searching]) > .search-lead { display: none; }
   .search-head > .toolbar[data-searching] { @apply flex-1; }
   /* Выбранный чип — одна капсула из двух нажатий: значение (шторка) и × (снять). */
   .pill.facet-on { @apply gap-0 p-0; }
@@ -1443,17 +1446,17 @@ html.kb-open { --home-gap: 0px; }
     .table tbody td:not(.grow) > :is(div, p, .cell-sub, .block):not(.flex, .grid, [class*="hidden"]) { display: inline !important; }
     .table tbody td:not(.grow) > :is(div, p, .cell-sub, .block):not(.flex, .grid, [class*="hidden"]) + :is(div, p, .cell-sub, .block) { margin-left: .375rem; }
     /* Чип человека, метка, пилюля — по центру строки, а не по буквам: по буквам они вылезали за линию и раздували строку. */
-    .table tbody td :is(.chip, .tag, .pill, .avatar), .table tbody td > .inline-flex { vertical-align: middle; }
+    .table tbody td .chip, .table tbody td .tag, .table tbody td .pill, .table tbody td .avatar, .table tbody td > .inline-flex { vertical-align: middle; }
     .table tbody td .chip.person { padding-block: 1px; }
   }
   .table th:first-child, .table td:first-child { padding-left: .75rem; }
   .table th:last-child, .table td:last-child { padding-right: .75rem; }
   /* Последний столбец только для телефона (`sm:hidden`, «Сумма» гаража) — на ПК край держит предпоследний. */
-  @media (min-width: 640px) { .table :is(th, td):has(+ .sm\:hidden:last-child) { padding-right: .75rem; } }
+  @media (min-width: 640px) { .table th:has(+ .sm\:hidden:last-child), .table td:has(+ .sm\:hidden:last-child) { padding-right: .75rem; } }
   .table .num { @apply text-right; width: 1%; padding-left: .625rem; }
   .table td.cell-dim { font-size: var(--text-sm); color: var(--color-ink-muted); }
   /* Между столбцами на ПК — ровный шаг 1rem, у чисел чуть шире: они прижаты вправо и иначе липнут к соседу. */
-  @media (min-width: 640px) { .table :is(th, td):not(:first-child) { padding-left: 1rem; } .table .num { padding-left: 1.25rem; } }
+  @media (min-width: 640px) { .table th:not(:first-child), .table td:not(:first-child) { padding-left: 1rem; } .table .num { padding-left: 1.25rem; } }
   .table thead th { @apply sticky z-10 bg-surface; top: var(--stick-top); height: 2rem; padding-block: 0; font-size: var(--text-xs); font-weight: 400; color: var(--color-ink-dim); }
   @media (max-width: 639.98px) { .table thead { display: none; } }
   .table thead a { display: inline-block; padding-block: .5rem; }
@@ -1463,8 +1466,8 @@ html.kb-open { --home-gap: 0px; }
   @media (hover: hover) { .table thead a:hover { color: var(--color-ink); } }
   .table tbody tr { @apply cursor-pointer; height: 3rem; }
   @media (min-width: 640px) { .table tbody tr { height: 2.25rem; } }
-  .table tbody tr + tr > * { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
-  .table tbody tr.table-group + tr > *, .table tbody tr + tr.table-group > * { border-top: 0; }
+  .table tbody tr + tr > td, .table tbody tr + tr > th { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
+  .table tbody tr.table-group + tr > td, .table tbody tr.table-group + tr > th, .table tbody tr + tr.table-group > th, .table tbody tr + tr.table-group > td { border-top: 0; }
   @media (hover: hover) { .table tbody tr:hover { background: var(--color-hover); } }
   .table tbody tr[aria-selected="true"], .table tbody tr[aria-selected="true"]:hover { background: var(--color-accent-soft); }
   /* Ещё ищем покупателя и время есть (логистика, `SaleState::waiting`) — строка приглушена; наведение и открытая — целиком. */
@@ -1496,10 +1499,15 @@ html.kb-open { --home-gap: 0px; }
     .table-wrap .table td { padding-block: .125rem; }
     .table-wrap .table tbody tr:not(.table-group) > td, .table-wrap .table .cell-title { line-height: 1.125rem; }
     .table-wrap .table tbody tr:not(.table-group) > td:is(.cell-dim, .text-sm, .text-xs, .\!text-xs) { padding-top: .125rem; }
-    .table-wrap .table :is(th, td):not(:first-child) { padding-left: .75rem; }
+    .table-wrap .table th:not(:first-child), .table-wrap .table td:not(:first-child) { padding-left: .75rem; }
     .table-wrap .table .num { padding-left: 1rem; }
     .table-wrap .table .cell-title > .title-plate { font-size: var(--text-xs); }
-    .table-wrap .table tr.table-group > th { padding-top: .5rem; font-size: var(--text-base); }
+    .table-wrap .table tr.table-group > th { padding-top: .375rem; padding-bottom: .125rem; font-size: var(--text-base); }
+    .table-wrap .table tbody tr.table-group:first-child > th { padding-top: .5rem; }
+    /* Кнопка в строке и в заголовке группы («Написать», «Позвонить», «Отправить заявку») — ростом пилюли «Оценить», 24 px:
+       кнопка 36–40 px раздувала свою строку, и таблица шла ступеньками (29.10.2026). */
+    .table-wrap .table :is(td, tr.table-group) .btn { height: 1.5rem; padding-inline: .75rem; gap: .375rem; font-size: var(--text-sm); }
+    .table-wrap .table :is(td, tr.table-group) .btn > svg { width: 1rem; height: 1rem; }
     /* Подробная «Наличия» — ещё и документы ТС: в ширину экрана не влезает, листается вбок целиком, название не уже 14rem. */
     .surface-park .table-wrap.is-wide .table-box { overflow-x: auto; overscroll-behavior-x: contain; }
     .surface-park .table-wrap.is-wide .table { width: max-content; min-width: 100%; }
@@ -1510,7 +1518,7 @@ html.kb-open { --home-gap: 0px; }
   /* Число у пилюли обновляется потоком (оценили — «Без цены» минус один); ноль — пусто. */
   [data-pill-count]:empty { display: none; }
   .table .pick-cell { width: 1%; padding-right: 0; }
-  .table .pick-cell + :is(td, th) { padding-left: .75rem !important; }
+  .table .pick-cell + td, .table .pick-cell + th { padding-left: .75rem !important; }
   .pick-cell .row-check, .pick-all .row-check, .table-group .row-check { display: inline-flex; vertical-align: middle; }
   .table-group .row-check { margin-right: .75rem; }
   .pick-all { @apply flex items-center gap-3 pb-2 text-sm text-ink-muted; padding-left: .75rem; }
@@ -1541,7 +1549,9 @@ html.kb-open { --home-gap: 0px; }
   .table td.grow .cell-title:has(> .cell-name) { display: flex; align-items: baseline; }
   /* Флекс-строки с иконкой и текстом — по буквам: значки и плашки по центру (align-self), базовая линия у текста. Иначе
      ячейка таблицы и соседний текст брали линию от иконки, буквы расходились (07.10.2026). */
-  .cell-title:has(> .cell-name) > :not(.cell-name), .ref-line > :is(svg, img, .vendor-logo), .chip.person > .avatar { align-self: center; }
+  /* Без `:has(> .cell-name)` перед `>`: такое правило пересчитывало стили всей страницы на каждую вставку узла (29.10.2026);
+     align-self работает только во flex — а flex у названия только с `.cell-name`. */
+  .cell-title > :not(.cell-name), .ref-line > :is(svg, img, .vendor-logo), .chip.person > .avatar { align-self: center; }
   .cell-title > .cell-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Иконка типа ТС перед названием не ужимается: в широкой таблице («Все» логистики) flex сжимал её до 9 px. */
   .cell-title > .cell-name ~ *, .cell-title > .cat-icon { flex-shrink: 0; }
@@ -1625,7 +1635,7 @@ html.kb-open { --home-gap: 0px; }
   @media (min-width: 640px) {
     .split[data-open] .table-wrap:not(.is-wide) {
       & .table thead { display: none; }
-      & .table :is(th, td).hidden { display: none !important; }
+      & .table th.hidden, & .table td.hidden { display: none !important; }
       & .table .sm\:hidden { display: revert !important; }
       /* revert у span — строчный: закупочная вставала справа от «Оценить», а не под ней, как на телефоне. */
       & .table td.num > .cell-sub.sm\:hidden { display: block !important; }
@@ -1654,10 +1664,54 @@ html.kb-open { --home-gap: 0px; }
   @media (min-width: 640px) and (max-width: 1023.98px) { .table-box { overflow-x: auto; overscroll-behavior-x: contain; } }
   /* Таблица, что листается вбок, сама стала прокручиваемым блоком: липкая шапка и заголовки групп отсчитывают отступ
      от неё, а не от страницы, — отступ под шапку сайта уводил их вниз, поверх строк. Внутри такой таблицы — от её верха. */
-  @media (min-width: 640px) and (max-width: 1023.98px) { .table-box .table :is(thead th, tr.table-group > th) { top: 0; } }
-  @media (min-width: 1024px) { .split[data-open] .table-box .table :is(thead th, tr.table-group > th) { top: 0; } }
+  @media (min-width: 640px) and (max-width: 1023.98px) { .table-box .table :is(thead tr, tr.table-group) > th { top: 0; } }
+  @media (min-width: 1024px) { .split[data-open] .table-box .table :is(thead tr, tr.table-group) > th { top: 0; } }
   /* То же на любой ширине, когда таблица не влезла и листается вбок (table_scroll_controller, подробная): шапка съезжала. */
-  @media (min-width: 640px) { :is(.table-box.is-scroll, .table-wrap.is-wide .table-box) .table :is(thead th, tr.table-group > th) { top: 0; } }
+  @media (min-width: 640px) { :is(.table-box.is-scroll, .table-wrap.is-wide .table-box) .table :is(thead tr, tr.table-group) > th { top: 0; } }
+
+  /* Таблица с описанием столбцов на ПК — сеткой (`is-grid`, `x-ui.table :table`, 29.10.2026: на «Все» CRM — 749 строк —
+     открыть и закрыть карточку строки стоило полсекунды, первая отрисовка — две). Каждая строка — сетка с одними и теми же
+     столбцами из описания (`Support\Table::gridStyle`: `--cols-*` на каждую ступень ширины и на краткую при открытой
+     карточке). Ширины от содержимого не зависят — поэтому строки совпадают столбцами без общей раскладки, и строку за
+     экраном браузер не считает вовсе (`content-visibility`). Подсетка не годится: строка с `content-visibility` становится
+     независимой сеткой, а пропуск по ячейкам раздувал раскладку до секунд. Вид тот же, что у таблицы: ячейка по центру
+     строки (`align-content`), строка не ниже прежней, шапка и заголовки групп липнут целой строкой. Телефон и подробная
+     (`is-wide`) — по-прежнему таблицей. */
+  @media (min-width: 640px) {
+    .table-wrap.is-grid:not(.is-wide) {
+      /* !important: класс `table` — ещё и утилита Tailwind (`display: table`), а утилиты сильнее слоя компонентов. */
+      /* Ширина — плашки; уже наименьших ширин столбцов (название 12rem, `fill` своя) не сжимается — тогда листается вбок. */
+      & .table { display: block !important; width: 100%; min-width: min-content; --cols: var(--cols-sm); }
+      & .table > thead, & .table > tbody { display: contents; }
+      & .table tr { display: grid; grid-template-columns: var(--cols); }
+      & .table tr > [colspan] { grid-column: 1 / -1; }
+      /* Ширины таблицы (`width: 1%` у чисел, 100% у названия, `max-width: 0`) в сетке не нужны — ширину держит столбец. */
+      & .table th, & .table td { width: auto !important; min-width: 0 !important; max-width: none !important; align-content: center; }
+      /* Высота строки таблицы — наименьшая; у элемента сетки она была бы точной — отсюда min-height. Размер строки за
+         экраном — ровно её высота (без `auto`: помнить прежнюю нельзя — при открытой карточке строки выше). */
+      & .table tbody tr { height: auto !important; }
+      & .table tbody tr:not(.table-group) { min-height: 1.75rem; content-visibility: auto; contain-intrinsic-size: none 1.75rem; }
+      & .table :is(thead tr, tr.table-group) > th { position: static; }
+      & .table thead tr { position: sticky; z-index: 10; top: var(--stick-top); }
+      & .table tr.table-group { position: sticky; z-index: 9; top: calc(var(--stick-top) + 2rem); }
+    }
+    /* Карточка открыта — краткая таблица: строка в два этажа, без шапки, группа липнет к верху (плашка в краткой не
+       листается вбок — `overflow-x: clip`, липкость от страницы). Числа здесь шириной по своему содержимому в каждой
+       строке (под ценой — «Оценить», дата): столбец названия — остаток, как в строке списка на телефоне. */
+    .split[data-open] .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-open); }
+    .split[data-open] .table-wrap.is-grid:not(.is-wide) .table tbody tr:not(.table-group) { min-height: 3rem; contain-intrinsic-size: none 3rem; }
+    .split[data-open] .table-wrap.is-grid:not(.is-wide) .table tr.table-group { top: var(--stick-top); }
+    /* Таблица листается вбок (не влезла) — липкость считается от неё: верх 0, как у ячеек таблицы. */
+    .table-wrap.is-grid .table-box.is-scroll .table :is(thead tr, tr.table-group) { top: 0; }
+  }
+  @media (min-width: 640px) and (max-width: 1023.98px) { .table-wrap.is-grid .table-box .table :is(thead tr, tr.table-group) { top: 0; } }
+  @media (min-width: 768px) { .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-md); } }
+  @media (min-width: 1024px) {
+    .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-lg); }
+    .split[data-open] .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-open-lg); }
+  }
+  @media (min-width: 1280px) { .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-xl); } }
+  @media (min-width: 1536px) { .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-2xl); } }
 
   /* Страницы покупателя (x-pickup.layout): колонка до 28rem на фоне страницы, знак сверху. */
   .pickup-main { @apply mx-auto flex min-h-dvh w-full max-w-md flex-col px-4; padding-top: calc(var(--safe-top) + 1.25rem); padding-bottom: calc(var(--safe-bottom) + 2rem); }
@@ -1880,7 +1934,7 @@ html.kb-open { --home-gap: 0px; }
   /* В тёмной меню висит над группами того же тона — ступенью выше, и подсветка пункта тоже. Подсветка строк
      на второй ступени (шторка, плашка, карточка строки) — третьей ступенью, иначе её не видно. */
   .dark .menu, .dark .combobox-list { background: var(--color-surface-2); }
-  .dark :is(.menu, .combobox-list, .sheet, .box, .detail-card) { --color-hover: var(--color-surface-3); }
+  .dark .menu, .dark .combobox-list, .dark .sheet, .dark .box, .dark .detail-card { --color-hover: var(--color-surface-3); }
   /* Линия — над каждым пунктом, кроме первого; пункт бывает и внутри формы (form > button). */
   .menu-item {
     @apply flex w-full items-center gap-3 px-4 text-left text-sm text-ink; min-height: 44px;
@@ -2153,7 +2207,10 @@ html.kb-open { --home-gap: 0px; }
   .scan-check { @apply absolute top-1.5 right-1.5 flex size-[22px] items-center justify-center rounded-full text-transparent; border: 1.5px solid rgb(255 255 255 / .95); background: rgb(0 0 0 / .25); transition: background-color var(--dur-fast), border-color var(--dur-fast); }
   .scan-doc:has(input:checked) .scan-check, .scan-tile:has(input:checked) .scan-check { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
   .scan-doc:has(input:checked) .scan-name { @apply text-ink; }
-  .scan-tile:not(:has(input:checked)) img, .scan-doc:not(:has(input:checked)) .scan-sheet img { opacity: .5; }
+  /* Не отмеченный — бледный. Классом `scan-img` и не от обратного: `:not(:has(…)) img` пересчитывал все картинки страницы на
+     каждую вставку узла (29.10.2026). */
+  .scan-img { opacity: .5; }
+  .scan-tile:has(input:checked) .scan-img, .scan-doc:has(input:checked) .scan-img { opacity: 1; }
   .scan-doc:has(input:focus-visible) .scan-check, .scan-tile:has(input:focus-visible) .scan-check { scale: 1.15; }
   /* Окно одной высоты на всех шагах: файлы, чтение, поля не дёргают его вверх-вниз. */
   @media (min-width: 640px) {
@@ -2170,7 +2227,8 @@ html.kb-open { --home-gap: 0px; }
      родителя: у полосы в 30 % — 433 % своей высоты, в 40 % — 350 %. */
   @keyframes scan-sweep { to { translate: 0 433%; } }
   @keyframes sweep-40 { to { translate: 0 350%; } }
-  .scan-doc--busy .scan-sheet img { opacity: .6; }
+  /* Отмеченный и читается — чуть бледнее (не отмеченный и так бледный, .5). */
+  .scan-doc--busy:has(input:checked) .scan-img { opacity: .6; }
   .scan-doc--done .scan-check { border-color: var(--color-accent); background: var(--color-accent); color: #fff; }
   .scan-doc--lost .scan-sheet, .scan-doc--empty .scan-sheet { opacity: .55; }
   /* Поле — подпись колонкой слева, как в форме; значение крупно, откуда — мелко под ним. */
@@ -2449,12 +2507,13 @@ html.kb-open { --home-gap: 0px; }
   .fields .field { position: relative; display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; column-gap: .75rem; min-height: 2.75rem; padding: 0 1rem; }
   .fields .field::after { content: ''; position: absolute; left: 1rem; right: 0; bottom: -1px; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
   .fields .field-label { @apply text-[15px] text-ink-muted; grid-column: 1; overflow-wrap: break-word; hyphens: auto; }
-  .fields .field > :is(.field-input, .vin-box, .combobox-input) { grid-column: 2; }
+  .fields .field > .field-input, .fields .field > .vin-box, .fields .field > .combobox-input { grid-column: 2; }
   .fields .field .field-input { min-height: 2.75rem; padding: 0; border-radius: 0; background-color: transparent; text-align: right; text-overflow: ellipsis; box-shadow: none; }
   .fields .field select.field-input { padding: 0 1.25rem 0 0; background-position: right 0 center; text-align-last: right; }
   .fields .field input.field-input::-webkit-date-and-time-value { text-align: right; }
-  .fields .field:has(> textarea) { align-items: start; padding-block: .625rem; row-gap: .25rem; }
-  .fields .field:has(> textarea) > *, .fields .field:has(> textarea) > .field-input { grid-column: 1 / -1; }
+  /* Поле с textarea — столбиком (подпись, поле, ошибка во всю ширину). Колонкой flex, а не `:has(…) > *` в сетке: то правило
+     пересчитывало стили всей страницы на каждую вставку узла (29.10.2026). */
+  .fields .field:has(> textarea) { display: flex; flex-direction: column; align-items: stretch; padding-block: .625rem; gap: .25rem; }
   .fields .field textarea.field-input { min-height: 3rem; text-align: left; }
   .fields .field-error { grid-column: 1 / -1; padding-bottom: .5rem; text-align: right; }
   .fields .field-invalid .field-input { box-shadow: none; --tw-ring-shadow: 0 0 #0000; }
@@ -2809,8 +2868,8 @@ html.kb-open { --home-gap: 0px; }
     html.kb-open .impersonation { display: none; }
   }
   @media (max-width: 1023.98px) {
-    body:has(.chat-page) .impersonation { bottom: auto; top: calc(var(--safe-top) + 7rem); }
-    body:has(.chat-page) .impersonation-room { display: none; }
+    body.chat-open .impersonation { bottom: auto; top: calc(var(--safe-top) + 7rem); }
+    body.chat-open .impersonation-room { display: none; }
   }
   @media (min-width: 768px) {
     .impersonation { left: 1.5rem; translate: none; bottom: 1.5rem; }
@@ -2842,10 +2901,10 @@ html.kb-open { --home-gap: 0px; }
   .app-scroll, dialog, .split-detail { --stick-top: 0px; }
   /* «Войти как» — запас в конце прокрутки, а не блоком под таб-баром. */
   .app-shell > .impersonation-room { display: none; }
-  .app-shell:has(> .impersonation):not(:has(.chat-page)) > .app-scroll::after { content: ''; display: block; flex: none; height: 4rem; }
+  .app-shell:has(> .impersonation):not(.chat-open) > .app-scroll::after { content: ''; display: block; flex: none; height: 4rem; }
   /* Шторка и окно замка держат фон: листать под ними нечего. */
   @media (max-width: 767.98px) { html.sheet-open .app-scroll { overflow: hidden; } }
-  html:has(dialog.lock:modal) .app-scroll { overflow: hidden; }
+  html.lock-open .app-scroll { overflow: hidden; }
 }
 
 /* ------------------------------------------------------------- шапка */
@@ -3074,10 +3133,10 @@ html.kb-open { --home-gap: 0px; }
   /* Карточка строки открыта справа (от 1024) — парящие кнопки списка («Удалить навсегда», «Отправить в продажу») встают
      левее неё, над своим списком, а не поверх карточки (11.10.2026). Свои кнопки карточки живут в её подвале. */
   @media (min-width: 1024px) {
-    body:has(.split[data-open]) .action-bar:not(.split-detail .action-bar) { right: max(calc(1.5rem + 27rem), calc((100% - var(--container-site)) / 2 + 1.5rem + 27rem)); }
+    html.detail-open .action-bar:not(.split-detail .action-bar) { right: max(calc(1.5rem + 27rem), calc((100% - var(--container-site)) / 2 + 1.5rem + 27rem)); }
   }
   @media (min-width: 1280px) {
-    body:has(.split[data-open]) .action-bar:not(.split-detail .action-bar) { right: max(calc(2rem + 27rem), calc((100% - var(--container-site)) / 2 + 2rem + 27rem)); }
+    html.detail-open .action-bar:not(.split-detail .action-bar) { right: max(calc(2rem + 27rem), calc((100% - var(--container-site)) / 2 + 2rem + 27rem)); }
   }
 }
 
@@ -3203,7 +3262,7 @@ html.kb-open { --home-gap: 0px; }
     /* Плашка действий — на листе (--bottom-edge), «Сохранить» видно и с открытым документом; запас страницы — его
        высота (--bottom-room). */
     html.docs-open .action-bar { z-index: var(--z-panel-over); }
-    html:has(.docs.is-settling) .action-bar { transition: bottom var(--dur) var(--ease-out); }
+    html.docs-settling .action-bar { transition: bottom var(--dur) var(--ease-out); }
   }
   @media (min-width: 1024px) {
     .docs {
@@ -3213,7 +3272,7 @@ html.kb-open { --home-gap: 0px; }
     .docs.is-closing { animation: docs-in var(--dur-fast) var(--ease-in) reverse both; }
     .docs-edge { display: block; position: absolute; inset: 0 auto 0 -4px; width: 10px; cursor: col-resize; z-index: 2; }
     .docs.is-resizing .docs-body { pointer-events: none; }
-    html:has(.docs.is-resizing) { cursor: col-resize; user-select: none; -webkit-user-select: none; }
+    html.docs-resizing { cursor: col-resize; user-select: none; -webkit-user-select: none; }
     .docs-bar { padding-top: .5rem; }
     .docs-handle { display: none; }
     html.docs-open #main { padding-right: var(--docs-w); }
@@ -3488,7 +3547,9 @@ html.kb-open { --home-gap: 0px; }
 
   /* Вся карточка — ссылка: растянутая ссылка поверх, чипы-ссылки и кнопки — над ней. */
   .card-link::after { content: ''; position: absolute; inset: 0; z-index: 0; }
-  .card:has(.card-link) a:not(.card-link), .card:has(.card-link) button, .card:has(.card-link) form { position: relative; z-index: 1; }
+  /* Над растянутой ссылкой — всё нажимаемое после неё (она первый ребёнок карточки); без `.card:has(.card-link) …` — тот
+     пересчитывал стили на вставки узлов. */
+  .card > .card-link ~ :is(a, button, form), .card > .card-link ~ * a, .card > .card-link ~ * button, .card > .card-link ~ * form { position: relative; z-index: 1; }
   .card-dot { height: .25rem; width: 1.25rem; border-radius: 999px; background: rgb(255 255 255 / .45); box-shadow: 0 0 3px rgb(0 0 0 / .55); transition: background-color .2s; }
   .card-dot--on { background: #fff; }
   .card-arrow {
@@ -3667,19 +3728,19 @@ html.kb-open { --home-gap: 0px; }
 #header { view-transition-name: header; }
 #tabbar { view-transition-name: tabbar; }
 .action-bar { view-transition-name: actionbar; }
-::view-transition-group(header), ::view-transition-group(tabbar), ::view-transition-group(actionbar) { animation-duration: 0s; }
+html::view-transition-group(header), html::view-transition-group(tabbar), html::view-transition-group(actionbar) { animation-duration: 0s; }
 
 /* Смена темы: круг от кнопки, шапка и таб-бар в это время — часть круга, а не отдельные группы. */
 html[data-theme-switch]::view-transition-old(root) { animation: none; mix-blend-mode: normal; }
 html[data-theme-switch]::view-transition-new(root) { animation: theme-circle .4s ease-in both; mix-blend-mode: normal; }
 html[data-theme-switch]::view-transition-group(root) { animation-duration: .4s; }
-html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-name: none; }
+html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-theme-switch] .action-bar { view-transition-name: none; }
 /* keyframes theme-circle с координатами кнопки пишет theme_controller в <style id="theme-circle">. */
 
 /* Кадр карточки летит в галерею и обратно (имя ставит app.js на время перехода). */
-::view-transition-group(hero) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); z-index: 2; }
-::view-transition-old(hero), ::view-transition-new(hero) { animation: none; mix-blend-mode: normal; width: 100%; height: 100%; object-fit: cover; overflow: clip; }
-::view-transition-image-pair(hero) { isolation: auto; }
+html::view-transition-group(hero) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); z-index: 2; }
+html::view-transition-old(hero), html::view-transition-new(hero) { animation: none; mix-blend-mode: normal; width: 100%; height: 100%; object-fit: cover; overflow: clip; }
+html::view-transition-image-pair(hero) { isolation: auto; }
 
 /* ------------------------------------------------------------- прочее из кита */
 
@@ -3717,10 +3778,10 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
      кадров свёрнутой ленты и резали фото 4:3). */
   .photo-row.is-open { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); }
   .photo-row.is-open .photo-strip { display: contents; }
-  .photo-row.is-open :is(.photo-cell, .photo-add) { aspect-ratio: 1 / 1; height: auto; width: auto; min-width: 0; }
+  .photo-row.is-open .photo-cell, .photo-row.is-open .photo-add { aspect-ratio: 1 / 1; height: auto; width: auto; min-width: 0; }
   @media (min-width: 640px) {
     .photo-row.is-open { grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); }
-    .photo-row.is-open :is(.photo-cell, .photo-add) { aspect-ratio: 4 / 3; }
+    .photo-row.is-open .photo-cell, .photo-row.is-open .photo-add { aspect-ratio: 4 / 3; }
   }
   .photo-row.is-open .photo-cell img { height: 100%; width: 100%; max-width: none; object-fit: cover; }
   .photo-strip { @apply -mr-4 flex min-w-0 flex-1 snap-x gap-1 overflow-x-auto pr-4 sm:mr-0 sm:pr-0 sm:pb-1; scrollbar-width: none; }
@@ -3787,8 +3848,10 @@ html[data-theme-switch] :is(#header, #tabbar, .action-bar) { view-transition-nam
   /* Палец: узкий кадр (книжный, 64 px) делил три кнопки по 21 px — «повернуть» вместо «скрыть». Плитка с кнопками на
      сенсорном экране не уже 6rem, кнопки выше (15.10.2026). */
   @media (pointer: coarse) {
-    .photo-cell:has(> .photo-actions) { min-width: 6rem; }
-    .photo-cell:has(> .photo-actions) img { width: 100%; object-fit: cover; }
+    /* Классом `photo-cell--acts` (x-ui.photos), а не `:has(> .photo-actions) img`: голый `img` после `:has()` пересчитывал
+       все картинки страницы на каждую вставку узла (29.10.2026). */
+    .photo-cell--acts { min-width: 6rem; }
+    .photo-cell--acts > img { width: 100%; object-fit: cover; }
     .photo-cell .photo-actions button { padding-block: .4375rem; }
   }
   /* Главное фото — лаймовая звезда в левом верхнем углу; нажатие по ней — выбор: у остальных кадров белые
@@ -4165,16 +4228,16 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   /* Телефон: экран чата — экран приложения. Шапки сайта, таб-бара, подвала и пилюль нет,
      бар собеседника стоит на safe-area, бар поля садится на клавиатуру (--kb). */
   @media (max-width: 1023.98px) {
-    body:has(.chat-page) .header, body:has(.chat-page) .tabbar, body:has(.chat-page) .footer,
-    body:has(.chat-page) nav:has(> .cabinet-pills), body:has(.chat-page) .chat-crm-top { display: none; }
+    body.chat-open .header, body.chat-open .tabbar, body.chat-open .footer,
+    body.chat-open nav:has(> .cabinet-pills), body.chat-open .chat-crm-top { display: none; }
     /* Ряд h1 кабинета: имя собеседника и так в баре чата. flex у него утилитой — снимается только !important. */
-    body:has(.chat-page) #main > .container-site > .has-back { display: none !important; }
+    body.chat-open #main > .container-site > .has-back { display: none !important; }
     /* Отступы контейнера — утилиты (слой выше): здесь их снимает !important. */
-    body:has(.chat-page) #main > .container-site { max-width: none; padding: 0 !important; }
-    body:has(.chat-page) .turbo-progress-bar { top: var(--safe-top); }
+    body.chat-open #main > .container-site { max-width: none; padding: 0 !important; }
+    body.chat-open .turbo-progress-bar { top: var(--safe-top); }
     /* Отступ сетки (mt-6 утилитой) экрану чата не нужен (запаса под таб-бар нет — --bottom-room): поле ввода — на нижнем
        краю, страница не листается. */
-    body:has(.chat-page) .chat-split { margin-top: 0 !important; }
+    body.chat-open .chat-split { margin-top: 0 !important; }
     .chat-page { height: calc(100dvh - var(--kb, 0px)); }
     .chat-head { padding-top: calc(.375rem + var(--safe-top)); }
     .chat-back { display: inline-flex; }
@@ -4197,7 +4260,8 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .deal-chat-avatar { position: relative; flex-shrink: 0; display: flex; }
   .deal-chat-bubble { position: absolute; right: -.25rem; bottom: -.25rem; display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 9999px; background: var(--color-accent); color: #fff; box-shadow: 0 0 0 2px var(--color-surface); }
   /* Пустая заметка — один заголовок с «Добавить», без отступа под пустым текстом. */
-  .deal-note:not([data-editing]):has(> [data-edit-card-target=view]:empty) > div:first-child { margin-bottom: 0; }
+  /* `> .box-head`, а не `> div:first-child`: голый тег после `:has()` пересчитывал все div страницы на каждую вставку узла. */
+  .deal-note:not([data-editing]):has(> [data-edit-card-target=view]:empty) > .box-head { margin-bottom: 0; }
   .chat-row { position: relative; display: flex; align-items: center; gap: .75rem; padding: .625rem .75rem; border-radius: var(--radius-m); color: var(--color-ink); }
   .chat-row + .chat-row::before { content: ''; position: absolute; top: 0; right: .75rem; left: 5rem; height: 1px; background: var(--color-line); }
   .chat-row:not(:has(.chat-row-photo)) + .chat-row::before, .chat-row + .chat-row:not(:has(.chat-row-photo))::before { left: 4.25rem; }
@@ -4469,4 +4533,4 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
    у «Иван И. сам» так и не срабатывало). «Иван И. сам» — везёт к себе, «Куда везти» не спрашиваем; «Аукцион» — не
    назначение, а продажа своей шторкой: ни «Куда везти», ни «Назначить». */
 .assign-form:has(input[name="channel"][value="manager"]:checked) .assign-route,
-.assign-form:has(input[name="channel"][value="auction"]:checked) :is(.assign-route, .assign-submit) { display: none; }
+.assign-form:has(input[name="channel"][value="auction"]:checked) .assign-route, .assign-form:has(input[name="channel"][value="auction"]:checked) .assign-submit { display: none; }

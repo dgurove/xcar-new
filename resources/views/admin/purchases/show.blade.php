@@ -2,7 +2,7 @@
 <x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/purchases']" :back-row="false" :detail="$detail">
     <div class="has-back mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
         <x-ui.back :back="['Закупки', '/purchases']"/>
-        <h1 class="text-xl sm:text-2xl">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
+        <h1 class="head-title text-xl sm:text-2xl">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
         <button type="button" class="btn btn-s btn-quiet btn-round ml-auto shrink-0 sm:order-1" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
         {{-- Состояние и срок — строкой текста, продление — лаймовыми словами (как в редакторе предложения, 10.10.2026). --}}
         <span class="flex basis-full flex-wrap items-baseline gap-x-3 gap-y-1 text-sm sm:basis-auto">
@@ -89,7 +89,7 @@
         <x-ui.empty class="mt-4">Ничего не нашлось</x-ui.empty>
     @elseif (\App\Support\ListView::isTable($view))
         @php $columns = \App\Http\Admin\PurchaseController::table(); @endphp
-        <x-ui.table id="cars" class="mt-4" :view="$view" :rest="$columns->rest()">
+        <x-ui.table :table="$columns" id="cars" class="mt-4" :view="$view" :rest="$columns->rest()">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
             @foreach ($cars as $car)<x-purchase.table-row :car="$car" :purchase="$purchase" :table="$columns"/>@endforeach
         </x-ui.table>

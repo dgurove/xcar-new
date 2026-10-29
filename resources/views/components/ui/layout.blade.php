@@ -73,7 +73,7 @@
     @endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value]) }}>
+<body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value.(request()->attributes->get('chat-page') ? ' chat-open' : '')]) }}>
     {{ $slot }}
     @if ($as = \App\Users\Impersonation::current())
         {{-- Админ в чужом кабинете: плашка на каждом экране, чтобы не забыть, за кого действуешь (место — .impersonation). --}}

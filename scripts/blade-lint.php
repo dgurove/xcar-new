@@ -126,6 +126,47 @@ foreach ($it as $file) {
     }
 }
 
+// Селектор, из-за которого браузер пересчитывает всю страницу (29.10.2026, «Все» CRM: тост — 260 мс): `:has()` у корня
+// (`html`, `body`, `:root`) и `:has()`, после которого справа `*`, псевдокласс без класса или голый тег — любая вставка узла
+// пересчитывает все такие элементы. Состояние корня — классом (CLAUDE.md, «Стили без пересчёта всей страницы»).
+foreach (glob("$root/resources/css/*.css") as $file) {
+    $rel = str_replace("$root/", '', $file);
+    $plain = preg_replace('#/\*.*?\*/#s', '', file_get_contents($file));
+    preg_match_all('/([^{};]+)\{/', $plain, $rules);
+    foreach ($rules[1] as $list) {
+        if (! str_contains($list, ':has(')) continue;
+        // Список селекторов — по запятым верхнего уровня.
+        $parts = []; $depth = 0; $cur = '';
+        foreach (str_split($list) as $ch) {
+            $depth += $ch === '(' ? 1 : ($ch === ')' ? -1 : 0);
+            if ($ch === ',' && $depth === 0) { $parts[] = $cur; $cur = ''; } else { $cur .= $ch; }
+        }
+        $parts[] = $cur;
+        foreach (array_map('trim', $parts) as $sel) {
+            if (! str_contains($sel, ':has(')) continue;
+            // `html:has(> body.app-shell)` — прямой ребёнок, вставки внутри страницы его не трогают.
+            if (preg_match('/(^|[\s>+~&])(html|body|:root)([.#\[:][^\s>+~]*)?:has\((?!>\s*[\w.-]+\))/', $sel)) {
+                $bad[] = "$rel: `:has()` у корня — состояние классом: $sel";
+                continue;
+            }
+            // Правая часть после последнего `:has(…)`: есть в ней комбинатор вне скобок — последний составной селектор
+            // должен держаться за класс, id или атрибут.
+            $at = strrpos($sel, ':has(');
+            for ($i = $at + 4, $depth = 0; $i < strlen($sel); $i++) {
+                $depth += $sel[$i] === '(' ? 1 : ($sel[$i] === ')' ? -1 : 0);
+                if ($depth === 0) break;
+            }
+            $tail = preg_replace('/\([^()]*\)/', '()', preg_replace('/\([^()]*\)/', '()', substr($sel, $i + 1)));
+            $chunks = preg_split('/\s*[\s>+~]\s*/', rtrim(ltrim($tail, ')')));
+            if (count($chunks) < 2) continue;
+            $last = end($chunks);
+            if (! preg_match('/[.#\[]/', $last)) {
+                $bad[] = "$rel: после `:has()` справа «{$last}» — нужен класс: $sel";
+            }
+        }
+    }
+}
+
 if ($bad) {
     fwrite(STDERR, "Сторож выкладки не пропускает:\n  ".implode("\n  ", $bad)."\n");
     exit(1);

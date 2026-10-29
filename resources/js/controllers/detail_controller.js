@@ -179,6 +179,7 @@ export default class extends Controller {
     }
 
     disconnect() {
+        document.documentElement.classList.remove('detail-open');
         this.frameTarget.removeEventListener('turbo:before-frame-render', this.onRender);
         this.frameTarget.removeEventListener('turbo:frame-render', this.onRendered);
         this.frameTarget.removeEventListener('turbo:fetch-request-error', this.onFail);
@@ -490,6 +491,9 @@ export default class extends Controller {
     settle(was) {
         const open = this.open;
         this.element.toggleAttribute('data-open', open);
+        // Плашка действий страницы на ПК отходит от карточки (`html.detail-open` в app.css; не `body:has(.split[data-open])`:
+        // такое правило пересчитывало стили на каждую вставку узла, 29.10.2026).
+        document.documentElement.classList.toggle('detail-open', open);
         this.frameTarget.querySelectorAll('form:not([data-turbo-frame])').forEach((f) => { f.dataset.turboFrame = 'detail'; });
         this.mark();
         // Лист только что открылся — под ним появилось место (padding снизу), и выбранная строка встаёт над листом.

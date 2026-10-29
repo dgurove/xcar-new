@@ -20,9 +20,12 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.js'],
             refresh: true,
         }),
-        tailwindcss(),
+        // CSS сжимает Tailwind, а не Vite: lightningcss Vite склеивал списки селекторов в `:is(…)`, а такое правило браузер
+        // проверяет на каждом элементе страницы — на «Все» CRM (30 тыс. узлов) это десятки мс на любой пересчёт (29.10.2026).
+        tailwindcss({ optimize: { minify: true } }),
         pdfjsAssets,
     ],
+    build: { cssMinify: false },
     server: {
         watch: { ignored: ['**/storage/framework/views/**'] },
     },

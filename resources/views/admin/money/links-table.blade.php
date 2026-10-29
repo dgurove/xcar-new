@@ -15,7 +15,7 @@
 <section class="mt-4" data-search-group>
     @if ($titled)<h2 class="list-head">{{ \App\Http\Admin\MoneyController::TABS['links'] }}</h2>@endif
     @if ($items->isNotEmpty())
-    <x-ui.table id="money-links" class="mt-2">
+    <x-ui.table id="money-links" class="mt-2" :table="$columns">
         <x-slot:head><x-table.head :table="$columns" :sort="$sortable"/></x-slot:head>
         @foreach ($days as $day => $group)
             @if ($day !== '')<x-table.group :table="$columns" :key="'d'.$group->first()->created_at->format('Ymd')" :title="$day"/>@endif

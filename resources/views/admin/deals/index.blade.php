@@ -16,7 +16,7 @@
         @if ($groups->isEmpty())
             <x-ui.empty class="mt-6">Ничего не ждёт нас</x-ui.empty>
         @else
-            <x-ui.table id="deals" class="mt-6" view="table" :titles="$groups->flatMap(fn ($g) => $g['rows'])->map(fn ($r) => $r['deal']->offer?->titleWithYear())" :rest="$table->rest()">
+            <x-ui.table :table="$table" id="deals" class="mt-6" view="table" :titles="$groups->flatMap(fn ($g) => $g['rows'])->map(fn ($r) => $r['deal']->offer?->titleWithYear())" :rest="$table->rest()">
                 <x-slot:head><x-table.head :table="$table"/></x-slot:head>
                 @foreach ($groups as $key => $group)
                     <x-table.group :table="$table" :key="$key" :title="$group['title']" :count="$group['rows']->count()">@if ($group['button'])<x-deal.todo-button :button="$group['button']" group/>@endif</x-table.group>
@@ -33,7 +33,7 @@
                 <span>Должны нам <span class="nums font-semibold">{{ \App\Support\Money::rub($debts['owed']) }}</span></span>
                 @if ($debts['overdue'] > 0)<span class="text-danger">просрочено <span class="nums font-semibold">{{ \App\Support\Money::rub($debts['overdue']) }}</span></span>@endif
             </div>
-            <x-ui.table id="deals" class="mt-4" view="table" :titles="$debts['groups']->flatMap(fn ($g) => $g['rows'])->map(fn ($r) => $r['deal']->offer?->titleWithYear())" :rest="$table->rest()">
+            <x-ui.table :table="$table" id="deals" class="mt-4" view="table" :titles="$debts['groups']->flatMap(fn ($g) => $g['rows'])->map(fn ($r) => $r['deal']->offer?->titleWithYear())" :rest="$table->rest()">
                 <x-slot:head><x-table.head :table="$table"/></x-slot:head>
                 @foreach ($debts['groups'] as $key => $group)
                     <x-table.group :table="$table" :key="$key" :title="$group['title']" :count="$group['rows']->count()"><span class="ml-auto nums text-sm">@if ($group['overdue'] >= $group['owed'])<span class="text-danger">{{ \App\Support\Money::rub($group['owed']) }} просрочено</span>@else{{ \App\Support\Money::rub($group['owed']) }}@if ($group['overdue'] > 0)<span class="text-danger">, из них просрочено {{ \App\Support\Money::rub($group['overdue']) }}</span>@endif @endif</span></x-table.group>
@@ -46,7 +46,7 @@
     @else
         @if ($stages !== null)
             {{-- «Все» — воронка: группы по этапу в порядке маршрута (`DealController::stages`). --}}
-            <x-ui.table id="deals" class="mt-6" :view="$view" :titles="$deals->getCollection()->map(fn ($d) => $d->offer?->titleWithYear())" :rest="$table->rest()">
+            <x-ui.table :table="$table" id="deals" class="mt-6" :view="$view" :titles="$deals->getCollection()->map(fn ($d) => $d->offer?->titleWithYear())" :rest="$table->rest()">
                 <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
                 @foreach ($stages as $key => $stage)
                     <x-table.group :table="$table" :key="'stage:'.$stage['title']" :title="$stage['title']" :count="$stage['rows']->count()"/>
@@ -54,7 +54,7 @@
                 @endforeach
             </x-ui.table>
         @elseif (\App\Support\ListView::isTable($view))
-            <x-ui.table id="deals" class="mt-6" :view="$view" :titles="$deals->getCollection()->map(fn ($d) => $d->offer?->titleWithYear())" :rest="$table->rest()">
+            <x-ui.table :table="$table" id="deals" class="mt-6" :view="$view" :titles="$deals->getCollection()->map(fn ($d) => $d->offer?->titleWithYear())" :rest="$table->rest()">
                 <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
                 @foreach ($deals as $deal)<x-deal.table-row :deal="$deal" :table="$table"/>@endforeach
             </x-ui.table>

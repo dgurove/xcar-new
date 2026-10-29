@@ -6,6 +6,7 @@
 @php
     $sub = collect([$chat->username ? '@'.$chat->username : null, $chat->roleLabel(), $chat->left_at ? 'остановил бота' : null])->filter()->first() ?? 'Telegram';
     $url = '/settings/telegram/'.$chat->id.'/messages';
+    request()->attributes->set('chat-page', true);
 @endphp
 <div class="chat-page">
     <div class="chat-head">

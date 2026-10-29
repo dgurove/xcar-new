@@ -31,10 +31,16 @@ export default class extends Controller {
         this.on(document, 'turbo:before-fetch-response', (e) => this.response(e));
         this.on(document, 'live:lock', (e) => this.live(e.detail || {}));
         this.timer = setInterval(() => this.tick(), 1000);
+        // Окно замка открыто — страница под ним не листается (`html.lock-open` в app.css; не `html:has(dialog.lock:modal)`:
+        // такое правило пересчитывало стили корня на каждую вставку узла, 29.10.2026).
+        this.opened = new MutationObserver(() => document.documentElement.classList.toggle('lock-open', this.dialogTarget.open));
+        this.opened.observe(this.dialogTarget, { attributes: true, attributeFilter: ['open'] });
         this.sync();
     }
 
     disconnect() {
+        this.opened.disconnect();
+        document.documentElement.classList.remove('lock-open');
         clearInterval(this.timer);
         clearInterval(this.cooling);
         this.offs.forEach((off) => off());

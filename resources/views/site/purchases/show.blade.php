@@ -25,7 +25,7 @@
         @else
             @if (\App\Support\ListView::isTable($view))
             @php $columns = \App\Http\Site\PurchaseController::table(count($kinds) > 1); @endphp
-            <x-ui.table id="cars" :view="$view" :rest="$columns->rest()">
+            <x-ui.table :table="$columns" id="cars" :view="$view" :rest="$columns->rest()">
                 <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
                 @foreach ($cars as $car)<x-purchase.site-table-row :car="$car" :purchase="$purchase" :query="$qs" :table="$columns"/>@endforeach
             </x-ui.table>

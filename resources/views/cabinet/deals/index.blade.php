@@ -15,7 +15,7 @@
 <div class="flex flex-col gap-4">
     @if (! $titled || $deals->isNotEmpty())
         <div @class(['search-head', 'max-md:hidden' => $titled])>
-            @unless ($titled)<div class="min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>@endunless
+            @unless ($titled)<div class="search-lead min-w-0 flex-1"><x-deal.tabs current="/deals"/></div>@endunless
             {{-- Телефон: пилюлям (Сделки, Покупатели, Чаты) нужна вся ширина — сортировка у заголовка «В работе». --}}
             @if ($deals->isNotEmpty())<x-ui.toolbar :sort="$sort" name="deals" @class(['max-md:hidden' => ! $titled])/>@endif
         </div>

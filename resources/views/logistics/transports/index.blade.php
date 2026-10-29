@@ -20,7 +20,7 @@
             @if ($pick)
                 <div class="pick-all"><label class="row-check gap-3"><span class="check"><input type="checkbox" id="pick-all-transports" data-turbo-permanent data-pick-target="all" data-action="pick#pickAll"></span><span>Выбрать все</span></label></div>
             @endif
-            <x-ui.table id="transports-table" :titles="collect($transports instanceof \Illuminate\Contracts\Pagination\Paginator ? $transports->items() : $transports)->map->title()">
+            <x-ui.table :table="$columns" id="transports-table" :titles="collect($transports instanceof \Illuminate\Contracts\Pagination\Paginator ? $transports->items() : $transports)->map->title()">
                 <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
                 @foreach ($transports as $t)<x-logistics.row :t="$t" :table="$columns" :preset="$preset"/>@endforeach
             </x-ui.table>

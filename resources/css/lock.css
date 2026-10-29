@@ -26,7 +26,8 @@
   /* Продление поверх живого экрана — затемнение шторки; заморозка — глухой фон: страницы под окном уже нет. */
   dialog.lock::backdrop { background: rgb(18 18 18 / .6); }
   dialog.lock.is-frozen::backdrop { background: var(--color-ground); }
-  html:has(dialog.lock:modal) { overflow: hidden; }
+  /* `lock_controller` ставит, пока окно открыто (не `html:has(dialog.lock:modal)` — пересчёт стилей на каждую вставку узла). */
+  html.lock-open { overflow: hidden; }
 
   .lock-step:not([hidden]) { display: flex; flex-direction: column; align-items: center; gap: 1rem; text-align: center; animation: tg-step var(--dur) var(--ease-out); }
   .lock-mark { width: 3.5rem; height: 3.5rem; }

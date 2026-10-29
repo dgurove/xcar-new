@@ -468,10 +468,11 @@ export default class extends Controller {
         const el = this.element;
         if (reduce.matches || Math.round(h) === this.height) { this.setHeight(h); return Promise.resolve(); }
         el.classList.add('is-settling');
+        document.documentElement.classList.add('docs-settling');
         this.setHeight(h);
         clearTimeout(this.settling);
         return new Promise((done) => {
-            this.settling = setTimeout(() => { el.classList.remove('is-settling'); done(); }, 350);
+            this.settling = setTimeout(() => { el.classList.remove('is-settling'); document.documentElement.classList.remove('docs-settling'); done(); }, 350);
         });
     }
 
@@ -597,9 +598,11 @@ export default class extends Controller {
             removeEventListener('pointermove', move);
             removeEventListener('pointerup', up);
             this.element.classList.remove('is-resizing');
+            document.documentElement.classList.remove('docs-resizing');
             store.set('docs:w', String(this.width));
         };
         this.element.classList.add('is-resizing');
+        document.documentElement.classList.add('docs-resizing');
         addEventListener('pointermove', move);
         addEventListener('pointerup', up);
     }

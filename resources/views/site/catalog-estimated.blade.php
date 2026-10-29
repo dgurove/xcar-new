@@ -2,7 +2,7 @@
      вбок, как «Нужно оценить», без полосы — делать там нечего; таблицей — строками с заголовком группы. --}}
 @if ($estimated->isNotEmpty())
     @if (\App\Support\ListView::isTable($view))
-        <x-ui.table id="catalog-estimated" :view="$view" class="mt-6">
+        <x-ui.table id="catalog-estimated" :view="$view" class="mt-6" :table="$columns">
             <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
             <x-table.group :table="$columns" key="estimated" title="Ждут решения" :count="$estimated->count()"/>
             @foreach ($estimated as $offer)

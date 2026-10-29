@@ -36,7 +36,7 @@
                                 <input type="checkbox" name="ids[]" value="{{ $a->scanId() }}" @checked(in_array($a->scanId(), $checked, true))>
                                 <span class="scan-sheet">
                                     <x-ui.file-icon :name="$a->scanName()" :mime="$a->scanMime()" class="scan-icon"/>
-                                    <img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
+                                    <img class="scan-img" src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
                                     <span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
                                 </span>
                                 <span class="scan-name">{{ $label($a) }}</span>
@@ -52,7 +52,7 @@
                         @foreach ($photos as $a)
                             <label class="scan-tile" title="{{ $a->scanName() }}">
                                 <input type="checkbox" name="ids[]" value="{{ $a->scanId() }}" data-photo @checked(in_array($a->scanId(), $checked, true))>
-                                <img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
+                                <img class="scan-img" src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
                                 <span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
                             </label>
                         @endforeach
@@ -88,7 +88,7 @@
                 <div class="scan-doc scan-doc--{{ $state }}">
                     <span class="scan-sheet">
                         <x-ui.file-icon :name="$a->scanName()" :mime="$a->scanMime()" class="scan-icon"/>
-                        <img src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
+                        <img class="scan-img" src="{{ $thumb($a) }}" alt="" loading="lazy" onerror="this.remove()">
                         @if ($state === 'busy')<span class="scan-veil spark-busy" aria-label="Читается"><x-ui.spark class="size-7"/></span>
                         @elseif ($state === 'done')<span class="scan-check"><x-ui.icon name="check" class="size-3.5"/></span>
                         @endif

@@ -56,7 +56,7 @@ final class Search
     {
         $admin = $user->canManageCrm();
         $cars = new Cars($t);
-        $offers = Offer::inCrm($user)->whereNot(fn ($o) => $o->emptyDraft())->searchCrm($t)
+        $offers = Offer::inCrm($user)->notEmptyDraft()->searchCrm($t)
             ->with(['deal.buyer', 'garageCar.manager', 'parkVehicle.yard'])->latest('updated_at')->limit(12)->get()
             ->each(fn (Offer $o) => $cars->offer($o, link: "/offers/{$o->number}", crm: true));
         if (Surface::Park->opensFor($user)) {

@@ -9,7 +9,7 @@
                 <section>
                     <h2 class="list-head">{{ $head }} <span class="nums font-normal text-ink-dim">{{ $rows->count() }}</span></h2>
                     @php $columns = \App\Http\Logistics\DocumentController::table($loop->first); @endphp
-                    <x-ui.table :id="'docs-'.$loop->index" :titles="$rows->map->title()" :rest="$columns->rest()">
+                    <x-ui.table :table="$columns" :id="'docs-'.$loop->index" :titles="$rows->map->title()" :rest="$columns->rest()">
                         <x-slot:head><x-table.head :table="$columns"/></x-slot:head>
                         @foreach ($rows as $t)<x-logistics.doc-row :t="$t" :table="$columns"/>@endforeach
                     </x-ui.table>

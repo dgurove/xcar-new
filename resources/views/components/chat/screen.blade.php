@@ -9,6 +9,8 @@
     $price = $carOpen ? \App\Offers\PriceView::for($offer, $user) : null;
     $seen = $status === false ? $other?->seenLabel() : $status;
     $crm = \App\Support\Surface::current() === \App\Support\Surface::Crm;
+    // Экран чата — экран приложения без шапки и таб-бара на телефоне: `body.chat-open` (x-ui.layout).
+    request()->attributes->set('chat-page', true);
 @endphp
 <div class="chat-page">
     <div class="chat-head" @if ($sheet) data-controller="sheet" @endif>

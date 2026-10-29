@@ -46,7 +46,7 @@
     @elseif (ListView::isTable($view))
         <div data-controller="row-go" data-action="click->row-go#go">
             @php $columns = \App\Http\Garage\CarController::table($user, $staff); @endphp
-            <x-ui.table id="garage-table" :view="$view" :titles="collect($groups)->flatten(1)->map(fn ($r) => $r['offer']->titleWithYear())" :rest="$columns->rest()">
+            <x-ui.table :table="$columns" id="garage-table" :view="$view" :titles="collect($groups)->flatten(1)->map(fn ($r) => $r['offer']->titleWithYear())" :rest="$columns->rest()">
                 <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
                 @foreach ($groups as $head => $rows)
                     @if ($head)<x-table.group :table="$columns" :key="'g'.md5($head)" :title="$head" :count="$rows->count()"/>@endif

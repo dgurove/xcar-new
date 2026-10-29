@@ -21,7 +21,7 @@
     @php $mainShown = false; @endphp
 @foreach ($photos as $media)
 @php $hidden = $hide && ($hideBy ? $hideBy($media) : \App\Media\Hidden::is($media)); @endphp
-<div class="photo-cell {{ $hidden ? 'is-hidden' : '' }}" data-id="{{ $media->id }}" data-hidden="{{ $hidden ? 1 : 0 }}">
+<div class="photo-cell {{ $hidden ? 'is-hidden' : '' }} {{ ! $readonly || $hide ? 'photo-cell--acts' : '' }}" data-id="{{ $media->id }}" data-hidden="{{ $hidden ? 1 : 0 }}">
 <img src="{{ \App\Media\MediaUrl::for($media, 'w320') }}" data-full="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" alt="" loading="lazy" data-action="click->photos#open">
 {{-- Главное — лаймовая звезда в углу; нажали — у остальных кадров контурные звёзды, нажатая становится главной. --}}
 @if ($main && !$hidden)

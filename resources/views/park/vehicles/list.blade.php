@@ -29,7 +29,7 @@
     <x-ui.empty class="py-6">{{ $q !== '' ? 'Ничего не нашлось' : 'ТС нет' }}</x-ui.empty>
 @else
     @if (ListView::isTable($view))
-        <x-ui.table id="vehicles" :view="$view" :rest="$columns->rest()" data-controller="table-scroll group-fold" data-group-fold-name-value="park-fold">
+        <x-ui.table :table="$columns" id="vehicles" :view="$view" :rest="$columns->rest()" data-controller="table-scroll group-fold" data-group-fold-name-value="park-fold">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
             @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $wide, $out, $money ?? true); @endphp
             @foreach ($groups as $key => $group)

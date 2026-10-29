@@ -13,7 +13,7 @@
 <section class="mt-4" data-search-group>
     @if ($titled)<h2 class="list-head">{{ \App\Http\Admin\MoneyController::TABS[$key] }}</h2>@endif
     @unless ($empty)
-    <x-ui.table :id="'money-'.$key" class="mt-2">
+    <x-ui.table :id="'money-'.$key" class="mt-2" :table="$columns">
         <x-slot:head><x-table.head :table="$columns" :sort="$titled ? null : $sort"/></x-slot:head>
 
         {{-- Проверить: менеджер пишет, что оплатил — «Поступило» в карточке. --}}

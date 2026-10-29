@@ -44,7 +44,7 @@
                 {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
                 <div @class(['has-back mb-4 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden md:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading, 'md:hidden' => !$desktopHeading])>
                     @if ($back)<x-ui.back :back="$back"/>@endif
-                    @if ($heading)<h1 class="text-xl sm:text-2xl">@isset($lead){{ $lead }} @endisset{{ $heading }}{{ $badge ?? '' }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim" data-shell-count>{{ $count }}</span>@endif</h1>@endif
+                    @if ($heading)<h1 class="head-title text-xl sm:text-2xl">@isset($lead){{ $lead }} @endisset{{ $heading }}{{ $badge ?? '' }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim" data-shell-count>{{ $count }}</span>@endif</h1>@endif
                     @isset($actions)<div {{ $actions->attributes->merge(['class' => 'flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2']) }}>{{ $actions }}</div>@endisset
                 </div>
             @endif
