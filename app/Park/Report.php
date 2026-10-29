@@ -8,15 +8,16 @@ use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Отчёт о приёме вендору (29.10.2026, Никита: «работает через раз, ошибки при отправлении, Альфа не видит вложений»): что
  * уходит — номера кадров и документов ТС, уже лежащих у машины (форма грузит файлы по одному заранее), кому и каким текстом.
  * `queued` — письма собирает очередь (`Jobs\SendIntakeReport`) и шлёт SMTP; `sent` — все письма отчёта ушли
  * (`Listeners\ReportDelivery`, тогда же шаг «Отчёт»); `failed` — не собрались или не ушли, причина в `error`, «Повторить».
- * `messages` — письма отчёта (частями «ч.1, ч.2»).
+ * `messages` — письма отчёта (частями «ч.1, ч.2»), `attempt` — номер сборки: задача берёт отчёт, только если номер её.
  */
-#[Fillable(['vehicle_id', 'user_id', 'parent_id', 'to', 'cc', 'text', 'photos', 'docs', 'state', 'error', 'messages', 'sent_at'])]
+#[Fillable(['vehicle_id', 'user_id', 'parent_id', 'to', 'cc', 'text', 'photos', 'docs', 'state', 'error', 'messages', 'sent_at', 'attempt'])]
 class Report extends Model
 {
     use FastAttributes;
@@ -27,7 +28,7 @@ class Report extends Model
 
     public const FAILED = 'failed';
 
-    /** Отчёт в пути дольше — задача умерла молча (выкладка посреди сборки): новый отправить можно. */
+    /** Не собран дольше — задача сборки умерла молча (выкладка посреди сборки, она живёт до 5 минут): «не ушёл, Повторить» (`ReportDelivery::settle`). */
     public const STALE_MINUTES = 15;
 
     protected $table = 'park_reports';
@@ -52,11 +53,13 @@ class Report extends Model
         return $this->belongsTo(Message::class, 'parent_id');
     }
 
-    /** Отчёт ТС, что сейчас в пути: второй, пока он идёт, не заводится (двойное нажатие, старая вкладка). */
+    /**
+     * Отчёт ТС, что сейчас в пути: второй, пока он идёт, не заводится (двойное нажатие, старая вкладка). Срока здесь нет:
+     * медленная очередь пускала второй отчёт; застрявший снимают часы (`ReportDelivery::settle`).
+     */
     public static function inFlight(Vehicle $vehicle): ?self
     {
-        return self::where('vehicle_id', $vehicle->id)->where('state', self::QUEUED)
-            ->where('updated_at', '>', now()->subMinutes(self::STALE_MINUTES))->latest('id')->first();
+        return self::where('vehicle_id', $vehicle->id)->where('state', self::QUEUED)->latest('id')->first();
     }
 
     /** Последний отчёт ТС, если он не ушёл и после него другого не было: «Не ушло — Повторить». */
@@ -67,10 +70,17 @@ class Report extends Model
         return $last?->state === self::FAILED ? $last : null;
     }
 
-    /** Отчёт этого письма (письма отчёта — `messages`). */
+    /** Отчёт этого письма (письма отчёта — `messages`, индекс GIN). */
     public static function ofMessage(Message $message): ?self
     {
         return self::whereJsonContains('messages', $message->id)->first();
+    }
+
+    /** Задача сборки берёт отчёт: свою попытку, ещё в пути и без писем — опоздавшая после «Повторить» второй комплект не соберёт. */
+    public function claim(int $attempt): bool
+    {
+        return self::whereKey($this->id)->where('state', self::QUEUED)->where('attempt', $attempt)->whereNull('messages')
+            ->update(['updated_at' => now()]) === 1;
     }
 
     public function photoCount(): int
@@ -78,8 +88,11 @@ class Report extends Model
         return count($this->photos ?? []);
     }
 
+    /** Документов: снимки одного «Снять» (`scan`) — один документ, как их склеит сборка. */
     public function docCount(): int
     {
-        return count(array_merge(...array_values($this->docs ?: [[]])));
+        $ids = array_merge(...array_values($this->docs ?: [[]]));
+
+        return $ids ? Media::whereKey($ids)->get(['id', 'custom_properties'])->unique(fn (Media $m) => $m->getCustomProperty('scan') ?: 'id'.$m->id)->count() : 0;
     }
 }

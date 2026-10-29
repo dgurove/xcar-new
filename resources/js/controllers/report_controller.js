@@ -1,6 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import { request } from '../lib/http';
 import { shrink } from '../lib/image';
+import { pool, sha } from '../lib/upload';
 import { plural } from '../lib/plural.js';
 
 // Форма отчёта о приёме (x-park.report-form). Файлы уходят на сервер сразу при выборе, по одному (29.10.2026, Никита:
@@ -18,8 +19,7 @@ export default class extends Controller {
     connect() {
         this.touched = false;
         this.pending = 0;
-        this.queue = [];
-        this.active = 0;
+        this.uploads = pool((job) => this.run(job));
         this.element.addEventListener('submit', this.guard = (e) => {
             if (!this.pending && !this.failed()) return;
             e.preventDefault();
@@ -47,6 +47,7 @@ export default class extends Controller {
             tile.className = 'report-shot is-uploading';
             const img = document.createElement('img');
             img.src = URL.createObjectURL(file);
+            img.onload = () => URL.revokeObjectURL(img.src);
             img.alt = '';
             tile.append(img);
             this.shotsTarget.insertBefore(tile, add);
@@ -99,28 +100,11 @@ export default class extends Controller {
         });
     }
 
-    // Очередь загрузки: по три сразу; экран не гаснет, пока она идёт.
+    // Очередь загрузки — общая с рядом фото (`lib/upload.js`): по три сразу, экран не гаснет.
     enqueue(job) {
         this.pending++;
-        this.queue.push(job);
         this.count();
-        this.pump();
-    }
-
-    async pump() {
-        if (!this.wake && navigator.wakeLock) this.wake = navigator.wakeLock.request('screen').catch(() => null);
-        while (this.active < 3 && this.queue.length) {
-            const job = this.queue.shift();
-            this.active++;
-            this.run(job).finally(() => {
-                this.active--;
-                this.pump();
-                if (!this.active && !this.queue.length) {
-                    this.wake?.then((w) => w?.release?.()).catch(() => {});
-                    this.wake = null;
-                }
-            });
-        }
+        this.uploads.push(job);
     }
 
     async run(job) {
@@ -137,8 +121,8 @@ export default class extends Controller {
             form.append('file', file, file.name);
             form.append('kind', job.kind);
             if (job.kind === 'photo') {
-                const sha = await this.sha(job.file);
-                if (sha) form.append('sha', sha);
+                const print = await sha(job.file);
+                if (print) form.append('sha', print);
             }
             if (job.extra?.scan) { form.append('scan', job.extra.scan); form.append('page', String(job.extra.page)); }
             node.style.setProperty('--p', '0.4');
@@ -163,22 +147,12 @@ export default class extends Controller {
             node.onclick = (ev) => {
                 ev.preventDefault();
                 node.onclick = null;
-                this.pending++;
-                this.queue.push(job);
-                this.count();
-                this.pump();
+                this.enqueue(job);
             };
         } finally {
             this.pending--;
             this.count();
         }
-    }
-
-    async sha(file) {
-        try {
-            const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
-            return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-        } catch { return ''; }
     }
 
     failed() {

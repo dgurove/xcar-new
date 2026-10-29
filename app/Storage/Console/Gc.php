@@ -6,6 +6,7 @@ use App\Cars\Car as CarRecord;
 use App\Mail\Attachment;
 use App\Mail\Blobs;
 use App\Mail\CandidateState;
+use App\Mail\SendState;
 use App\Media\Actions\CoolPhotos;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -64,7 +65,9 @@ final class Gc extends Command
 
         $this->step('PDF шеринга старше '.self::SHARE_DAYS.' дн.', fn () => $this->sweep('cache', 'share', self::SHARE_DAYS));
         $this->step('части писем из ящика старше '.self::MAIL_CACHE_DAYS.' дн.', fn () => $this->sweep('cache', 'mail', self::MAIL_CACHE_DAYS));
-        $this->step('неотправленные файлы старше '.self::OUTBOX_DAYS.' дн.', fn () => $this->sweep('cache', 'outbox', self::OUTBOX_DAYS));
+        // Файлы писем, что ещё не ушли (не ушло — «Повторить»), остаются: без них повтор падал бы той же ошибкой вечно.
+        $this->step('неотправленные файлы старше '.self::OUTBOX_DAYS.' дн.', fn () => $this->sweep('cache', 'outbox', self::OUTBOX_DAYS,
+            Attachment::whereNotNull('path')->whereIn('message_id', DB::table('mail_messages')->where('send_state', '!=', SendState::Sent->value)->whereNotNull('send_state')->select('id'))->pluck('path')->flip()->all()));
         $this->step('временные файлы старше суток', fn () => $this->sweep('cache', 'tmp', 1));
 
         $this->step('файлы писем отвязанных веток старше '.self::UNPINNED_DAYS.' дн.', function () {
@@ -179,14 +182,15 @@ final class Gc extends Command
     }
 
     /** Файлы каталога на диске старше N дней — стереть, пустые подкаталоги — тоже. */
-    private function sweep(string $disk, string $dir, int $days): string
+    /** @param  array<string, mixed>  $keep  пути, что не трогать */
+    private function sweep(string $disk, string $dir, int $days, array $keep = []): string
     {
         $storage = Storage::disk($disk);
         $deadline = now()->subDays($days)->timestamp;
         $count = 0;
         $bytes = 0;
         foreach ($storage->allFiles($dir) as $file) {
-            if ($storage->lastModified($file) >= $deadline) {
+            if (isset($keep[$file]) || $storage->lastModified($file) >= $deadline) {
                 continue;
             }
             $count++;

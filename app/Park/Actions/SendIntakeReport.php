@@ -13,11 +13,13 @@ use App\Park\ReportDoc;
 use App\Park\Vehicle;
 use App\Support\Pdf;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Spatie\Image\Enums\Fit;
 use Spatie\Image\Image;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Throwable;
 
 /**
  * Письма отчёта о приёме (`Park\Report`) — в очереди (`Jobs\SendIntakeReport`), а не в запросе формы: там все снимки
@@ -37,6 +39,7 @@ final class SendIntakeReport
     /** @return list<Message> */
     public function __invoke(Report $report): array
     {
+        $this->sha = [];
         $v = $report->vehicle()->with(['vendor', 'media', 'requests'])->firstOrFail();
         $intake = IntakeReport::for($v, $report->parent);
         if (! $intake) {
@@ -53,14 +56,23 @@ final class SendIntakeReport
         })->values();
 
         // Сканы — первыми, по видам в порядке вендора, «Другой» последним; несколько файлов вида — «акт 1», «акт 2».
+        // Снимки встают PDF-ами, но удаляются, только когда отчёт уже помнит PDF: упади сборка посреди — отчёт ссылался бы на
+        // удалённые снимки, и «Повторить» не помогал бы никогда; не собрались все — новые PDF убираются, снимки на месте.
         $files = [];
         $docs = $report->docs ?? [];
         $lists = [];
-        foreach ([...IntakeReport::kinds($v), ReportDoc::Other] as $kind) {
-            $lists[$kind->value] = $this->paged($v, $kind, $pick($docs[$kind->value] ?? [], 'papers'));
+        $made = collect();
+        $pages = collect();
+        try {
+            foreach ([...IntakeReport::kinds($v), ReportDoc::Other] as $kind) {
+                $lists[$kind->value] = $this->paged($v, $kind, $pick($docs[$kind->value] ?? [], 'papers'), $made, $pages);
+            }
+        } catch (Throwable $e) {
+            $made->each(fn (Media $m) => $m->delete());
+            throw $e;
         }
-        // Снимки стали PDF — у отчёта теперь он: повтор после сбоя не ищет удалённые снимки.
         $report->update(['docs' => array_filter(array_map(fn ($list) => $list->pluck('id')->all(), $lists))]);
+        $pages->each(fn (Media $m) => $m->delete());
         foreach ($lists as $key => $list) {
             $kind = ReportDoc::from($key);
             foreach ($list as $i => $m) {
@@ -97,28 +109,34 @@ final class SendIntakeReport
         $subject = $parent ? $base['subject'] : 'Приём ТС '.$v->titleWithYear().($v->ref ? ' '.$v->ref : '');
         $body = Template::html(trim((string) $report->text) !== '' ? trim((string) $report->text) : IntakeReport::text($docsCount > 0)).$base['body'];
 
-        $sent = [];
-        foreach ($parts as $n => $chunk) {
-            $sent[] = $this->composer->create($intake->account, [
-                'to' => $report->to, 'cc' => (string) $report->cc,
-                'subject' => $subject.(count($parts) > 1 ? ' ч.'.($n + 1) : ''),
-                'body' => $body,
-                'quote' => $base['quote'] ?? null,
-                'files' => $chunk,
-            ], $parent, $report->user, dispatch: false);
-        }
-        // Отпечатки отправленного — когда письма уже заведены: из «Отправленных» эти же кадры и сканы второй раз к ТС не лягут.
-        foreach ($this->sha as [$m, $sha]) {
-            $m->setCustomProperty('sent_sha', $sha)->save();
-        }
-        $this->sha = [];
-        foreach ($sent as $message) {
-            if ($message->thread && ! $message->thread->vehicle_id) {
-                $message->thread->update(['vehicle_id' => $v->id]);
+        // Письма, отпечатки и номера писем у отчёта — одной транзакцией: упади вторая часть — нет и первой (иначе она висела бы
+        // «в очереди» без отправки, а «Повторить» собирал бы второй комплект). В отправку — после записи: `ReportDelivery`
+        // ищет отчёт по письму.
+        $sent = DB::transaction(function () use ($parts, $intake, $report, $subject, $body, $base, $parent, $v) {
+            $sent = [];
+            foreach ($parts as $n => $chunk) {
+                $sent[] = $this->composer->create($intake->account, [
+                    'to' => $report->to, 'cc' => (string) $report->cc,
+                    'subject' => $subject.(count($parts) > 1 ? ' ч.'.($n + 1) : ''),
+                    'body' => $body,
+                    'quote' => $base['quote'] ?? null,
+                    'files' => $chunk,
+                ], $parent, $report->user, dispatch: false);
             }
-        }
-        // Письма — к отчёту до того, как их возьмёт отправка: `ReportDelivery` ищет отчёт по письму.
-        $report->update(['messages' => array_map(fn (Message $m) => $m->id, $sent), 'error' => null]);
+            // Отпечатки отправленного: из «Отправленных» эти же кадры и сканы второй раз к ТС не лягут.
+            foreach ($this->sha as [$m, $sha]) {
+                $m->setCustomProperty('sent_sha', $sha)->save();
+            }
+            foreach ($sent as $message) {
+                if ($message->thread && ! $message->thread->vehicle_id) {
+                    $message->thread->update(['vehicle_id' => $v->id]);
+                }
+            }
+            $report->update(['messages' => array_map(fn (Message $m) => $m->id, $sent), 'error' => null]);
+
+            return $sent;
+        });
+        $this->sha = [];
         foreach ($sent as $message) {
             $this->composer->dispatch($message);
         }
@@ -128,12 +146,15 @@ final class SendIntakeReport
 
     /**
      * Снимки «Снять» одного выбора (`scan`) — страницы одного документа: одним PDF, он встаёт к ТС вместо снимков (и в
-     * следующий отчёт уйдёт уже им). Картинка «Файлом» — своим PDF так же. Остальное — как есть.
+     * следующий отчёт уйдёт уже им). Картинка «Файлом» — своим PDF так же. Остальное — как есть. Новые PDF — в `$made`,
+     * снимки, что они заменили, — в `$pages`: удаляет их вызвавший, когда отчёт запомнит PDF.
      *
      * @param  Collection<int, Media>  $docs
+     * @param  Collection<int, Media>  $made
+     * @param  Collection<int, Media>  $pages
      * @return Collection<int, Media>
      */
-    private function paged(Vehicle $v, ReportDoc $kind, $docs)
+    private function paged(Vehicle $v, ReportDoc $kind, Collection $docs, Collection $made, Collection $pages): Collection
     {
         $out = collect();
         $groups = $docs->groupBy(fn (Media $m) => str_starts_with((string) $m->mime_type, 'image/') ? ($m->getCustomProperty('scan') ?: 'one-'.$m->id) : 'file-'.$m->id);
@@ -143,11 +164,19 @@ final class SendIntakeReport
 
                 continue;
             }
+            // dompdf молча рисует пустую страницу вместо картинки, которую не прочёл (HEIC, битый файл): такой скан не уходит.
+            foreach ($group as $m) {
+                $type = @getimagesize($m->getPath())[2] ?? null;
+                if (! in_array($type, [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF], true)) {
+                    throw new RuntimeException('Снимок «'.$m->file_name.'» не читается — снимите документ заново');
+                }
+            }
             $pdf = Pdf::render('park.report.scan', ['pages' => $group->sortBy(fn (Media $m) => [(int) $m->getCustomProperty('page'), $m->id])->map(fn (Media $m) => $m->getPath())->values()->all()],
                 chroot: array_values(array_unique($group->map(fn (Media $m) => dirname($m->getPath()))->all())));
             $doc = $v->addMediaFromString($pdf)->usingFileName($kind->value.'-'.uniqid().'.pdf')
                 ->withCustomProperties(['report_doc' => $kind->value, 'source' => 'app'])->toMediaCollection('papers');
-            $group->each(fn (Media $m) => $m->delete());
+            $made->push($doc);
+            $pages->push(...$group->all());
             $out->push($doc);
         }
 

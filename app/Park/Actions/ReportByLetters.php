@@ -6,6 +6,7 @@ use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Park\EventType;
+use App\Park\Report;
 use App\Park\Vehicle;
 use Illuminate\Support\Collection;
 
@@ -27,9 +28,13 @@ final class ReportByLetters
             return null;
         }
 
+        // Письма отчёта из приложения отмечает `ReportDelivery`, когда ушли все части: ч.1 отчёта, чья ч.2 ещё в пути или не
+        // ушла, шагом не считается.
+        $mine = Report::where('vehicle_id', $vehicle->id)->where('state', '!=', Report::SENT)->pluck('messages')->flatten()->filter()->all();
+
         return Message::whereIn('thread_id', Thread::park()->where('vehicle_id', $vehicle->id)->select('id'))
             ->where('intent', Intent::Accepted->value)->where('date_at', '>=', $vehicle->accepted_at->copy()->startOfDay())
-            ->orderByDesc('date_at')->get()->first(fn (Message $m) => $m->isOurs());
+            ->whereKeyNot($mine)->orderByDesc('date_at')->get()->first(fn (Message $m) => $m->isOurs());
     }
 
     public function __invoke(Vehicle $vehicle): ?Message

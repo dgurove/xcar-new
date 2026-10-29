@@ -5,7 +5,7 @@
      камера (несколько страниц → один PDF при отправке), «Файл» — загрузка. С 29.10.2026 (Никита: «работает через раз»)
      каждый файл уходит на сервер сразу при выборе, ужатым в телефоне (`report_controller`), с ходом и повтором тапом;
      «Отправить» ждёт, пока всё загрузится, и несёт только номера — письма собирает очередь (`Park\Report`). Отчёт в пути —
-     «Отправляется», не ушёл — причина и «Повторить». Подвалом листа — кнопка, что считает, что уйдёт, и тихое «Уже
+     «Отправляется» с тем, что уходит, не ушёл — причина и «Повторить». Подвалом листа — кнопка, что считает, что уйдёт, и тихое «Уже
      отправили с другой почты». advance — из «Заявок». --}}
 @props(['vehicle', 'advance' => false, 'parent' => null])
 @php
@@ -21,7 +21,8 @@
 @endphp
 @if ($report && $flight)
     <section {{ $attributes->merge(['class' => 'report']) }}>
-        <x-ui.flash>Отчёт отправляется: {{ $flight->photoCount() }} фото{{ $flight->docCount() ? ', документов '.$flight->docCount() : '' }}. Ушёл — шаг отметится сам</x-ui.flash>
+        @php $docs = $flight->docCount(); @endphp
+        <x-ui.flash>Отчёт отправляется: {{ implode(' и ', array_filter([$flight->photoCount() ? $flight->photoCount().' фото' : null, $docs ? $docs.' '.\App\Support\Plural::of($docs, ['документ', 'документа', 'документов']) : null])) }}</x-ui.flash>
     </section>
 @elseif ($report)
     <section {{ $attributes->merge(['class' => 'report act-fill']) }}>

@@ -7,6 +7,7 @@ use App\Mail\Jobs\SendMessage;
 use App\Mail\Message;
 use App\Mail\SendState;
 use App\Mail\Thread;
+use App\Mail\Threads;
 use App\Media\Hidden;
 use App\Media\PhotoIngest;
 use App\Park\Actions\MarkReportSent;
@@ -18,6 +19,8 @@ use App\Park\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
+use Spatie\Image\Image;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
@@ -65,9 +68,9 @@ class ReportController
             $report = DB::transaction(fn () => Report::create([
                 'vehicle_id' => $vehicle->id, 'user_id' => $request->user()->id, 'parent_id' => $parent?->id,
                 'to' => $data['to'], 'cc' => $data['cc'] ?? null, 'text' => $data['text'] ?? null,
-                'photos' => $photos, 'docs' => $docs, 'state' => Report::QUEUED,
+                'photos' => $photos, 'docs' => $docs, 'state' => Report::QUEUED, 'attempt' => 1,
             ]));
-            BuildIntakeReport::dispatch($report->id);
+            BuildIntakeReport::dispatch($report->id, $report->attempt);
         } finally {
             $lock->release();
         }
@@ -97,11 +100,13 @@ class ReportController
                 return response()->json(['id' => $m->id]);
             }
             $kind = ReportDoc::tryFrom($data['kind']) ?? abort(422, 'Нет такого документа');
-            $ext = strtolower($file->getClientOriginalExtension() ?: ($file->guessExtension() ?: 'pdf'));
+            $path = $this->readable($file->getRealPath(), $ingest);
+            $ext = $path !== $file->getRealPath() ? 'jpg' : strtolower($file->getClientOriginalExtension() ?: ($file->guessExtension() ?: 'pdf'));
             $base = $kind === ReportDoc::Other
                 ? (trim((string) preg_replace('/[^\p{L}\p{N}._ -]+/u', '_', pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))) ?: 'dokument')
                 : $kind->value;
-            $m = $vehicle->addMedia($file)->usingFileName(mb_substr($base, 0, 120).'-'.uniqid().'.'.$ext)
+            $adder = $path !== $file->getRealPath() ? $vehicle->addMedia($path) : $vehicle->addMedia($file);
+            $m = $adder->usingFileName(mb_substr($base, 0, 120).'-'.uniqid().'.'.$ext)
                 ->withCustomProperties(array_filter(['report_doc' => $kind->value, 'source' => 'app', 'scan' => $data['scan'] ?? null, 'page' => $data['page'] ?? null], fn ($v) => $v !== null))
                 ->toMediaCollection('papers');
         } catch (HttpException $e) {
@@ -113,22 +118,66 @@ class ReportController
         return response()->json(['id' => $m->id]);
     }
 
-    /** «Повторить»: письма отчёта, что не ушли, — снова в отправку; не собрался — собирается заново. */
-    public function retry(Request $request, Vehicle $vehicle, Report $report)
+    /**
+     * Снимок документа — картинкой, которую соберёт в PDF dompdf (JPEG, PNG, GIF): HEIC с Android (телефон его не ужал) и
+     * прочее — в JPEG здесь; не читается вовсе — ошибка сразу у плитки, а не пустая страница у вендора. Не картинка — как есть.
+     */
+    private function readable(string $path, PhotoIngest $ingest): string
+    {
+        $mime = (string) (new \finfo(FILEINFO_MIME_TYPE))->file($path);
+        if (! str_starts_with($mime, 'image/') && ! $ingest->isHeic($path)) {
+            return $path;
+        }
+        if ($ingest->isHeic($path)) {
+            return $ingest->toJpeg($path);
+        }
+        $type = @getimagesize($path)[2] ?? null;
+        if (in_array($type, [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF], true)) {
+            return $path;
+        }
+        $base = tempnam(sys_get_temp_dir(), 'scan');
+        $jpg = $base.'.jpg';
+        @unlink($base);
+        try {
+            Image::useImageDriver('gd')->loadFile($path)->quality(85)->save($jpg);
+        } catch (Throwable) {
+            @unlink($jpg);
+            throw new RuntimeException('снимок не читается, снимите заново');
+        }
+
+        return $jpg;
+    }
+
+    /**
+     * «Повторить»: собранные письма, что не ушли, — снова в отправку, если их вложения на месте. Не собран, или файла письма
+     * уже нет (вечный повтор той же ошибки) — собирается заново из файлов ТС новой попыткой (`attempt`), неушедшие письма
+     * убираются: они не уходили и не уйдут.
+     */
+    public function retry(Request $request, Vehicle $vehicle, Report $report, Threads $threads)
     {
         abort_unless($report->vehicle_id === $vehicle->id, 404);
         if ($report->state !== Report::FAILED) {
             return $this->back($request, $report->state === Report::SENT ? 'Отчёт уже ушёл' : 'Отчёт уже отправляется');
         }
-        $failed = Message::whereKey($report->messages ?? [])->where('send_state', '!=', SendState::Sent->value)->pluck('id');
-        $report->update(['state' => Report::QUEUED, 'error' => null]);
-        if ($report->messages && $failed->isNotEmpty()) {
-            Message::whereKey($failed)->update(['send_state' => SendState::Queued->value, 'send_error' => null]);
-            $failed->each(fn ($id) => SendMessage::dispatch($id));
-        } else {
-            $report->update(['messages' => null]);
-            BuildIntakeReport::dispatch($report->id);
+        // Отчёт `failed`, только когда ни одна часть не в пути (`ReportDelivery::check`): неушедшие — это не ушедшие.
+        $unsent = Message::with(['attachments', 'thread'])->whereKey($report->messages ?? [])->where('send_state', SendState::Failed->value)->get();
+        if ($unsent->isNotEmpty() && $unsent->every(fn (Message $m) => $m->attachments->every->isOnDisk())) {
+            DB::transaction(function () use ($report, $unsent) {
+                $report->update(['state' => Report::QUEUED, 'error' => null]);
+                Message::whereKey($unsent->modelKeys())->where('send_state', SendState::Failed->value)->update(['send_state' => SendState::Queued->value, 'send_error' => null]);
+            });
+            $unsent->each(fn (Message $m) => SendMessage::dispatch($m->id));
+
+            return $this->back($request, 'Отчёт отправляется');
         }
+        DB::transaction(function () use ($report, $unsent, $threads) {
+            foreach ($unsent as $m) {
+                $m->delete();
+                $m->thread && $threads->refresh($m->thread);
+            }
+            $report->update(['state' => Report::QUEUED, 'error' => null, 'messages' => null, 'attempt' => $report->attempt + 1]);
+        });
+        BuildIntakeReport::dispatch($report->id, $report->attempt);
 
         return $this->back($request, 'Отчёт отправляется');
     }

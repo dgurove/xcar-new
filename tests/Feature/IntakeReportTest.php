@@ -6,6 +6,7 @@ use App\Mail\Account;
 use App\Mail\Composer;
 use App\Mail\Events\MessageFailed;
 use App\Mail\Events\MessageSent;
+use App\Mail\Extraction\Intent;
 use App\Mail\Jobs\SendMessage;
 use App\Mail\Message;
 use App\Mail\Scope;
@@ -13,10 +14,12 @@ use App\Mail\Sender;
 use App\Mail\SendState;
 use App\Notifications\ParkNotice;
 use App\Park\Actions\MarkReportSent;
+use App\Park\Actions\ReportByLetters;
 use App\Park\Actions\SendIntakeReport;
 use App\Park\City;
 use App\Park\IntakeReport;
 use App\Park\Jobs\BuildIntakeReport;
+use App\Park\Listeners\ReportDelivery;
 use App\Park\Report;
 use App\Park\ReportDoc;
 use App\Park\Vehicle;
@@ -138,6 +141,92 @@ class IntakeReportTest extends TestCase
         $this->actingAs($this->manager)->post($this->url("/report/{$report->id}/retry"))->assertRedirect();
         $this->assertSame(Report::QUEUED, $report->fresh()->state);
         $this->assertSame(SendState::Queued, $message->fresh()->send_state);
+    }
+
+    public function test_report_counts_only_when_all_parts_left(): void
+    {
+        IntakeReport::$partBytes = 1;
+        try {
+            $ids = collect([600, 700])->map(fn ($h) => $this->actingAs($this->manager)->post($this->url('/report/file'), ['kind' => 'photo', 'file' => UploadedFile::fake()->image("a{$h}.jpg", 900, $h)])->json('id'));
+            $this->actingAs($this->manager)->post($this->url('/report'), ['to' => 'v@alfastrah.test', 'photos' => $ids->all()]);
+            $report = Report::sole();
+            (new BuildIntakeReport($report->id))->handle(app(SendIntakeReport::class));
+        } finally {
+            IntakeReport::$partBytes = 18 * 1024 * 1024;
+        }
+        $parts = Message::whereKey($report->fresh()->messages)->orderBy('id')->get();
+        $this->assertCount(2, $parts);
+
+        // Ушла ч.1 (и почта прочла её как «принята») — шаг ещё не сделан: ч.2 в пути.
+        $parts[0]->forceFill(['send_state' => SendState::Sent, 'intent' => Intent::Accepted->value, 'date_at' => now()])->save();
+        MessageSent::dispatch($parts[0]);
+        app(ReportByLetters::class)($this->vehicle->fresh());
+        $this->assertFalse(MarkReportSent::done($this->vehicle));
+        $this->assertSame(Report::QUEUED, $report->fresh()->state);
+
+        $parts[1]->forceFill(['send_state' => SendState::Sent])->save();
+        MessageSent::dispatch($parts[1]);
+        $this->assertSame(Report::SENT, $report->fresh()->state);
+        $this->assertTrue(MarkReportSent::done($this->vehicle));
+    }
+
+    public function test_dead_build_fails_and_late_job_does_not_build_twice(): void
+    {
+        $photo = $this->actingAs($this->manager)->post($this->url('/report/file'), ['kind' => 'photo', 'file' => UploadedFile::fake()->image('a.jpg', 900, 600)])->json('id');
+        $this->actingAs($this->manager)->post($this->url('/report'), ['to' => 'v@alfastrah.test', 'photos' => [$photo]]);
+        $report = Report::sole();
+        // Очередь стоит долго — отчёт в пути, второй не заводится; часы его не трогают, пока не прошло STALE_MINUTES.
+        $this->travel(Report::STALE_MINUTES - 1)->minutes();
+        $this->assertSame(0, app(ReportDelivery::class)->settle());
+        $this->assertNotNull(Report::inFlight($this->vehicle));
+
+        $this->travel(2)->minutes();
+        $this->assertSame(1, app(ReportDelivery::class)->settle());
+        $this->assertSame(Report::FAILED, $report->fresh()->state);
+        Notification::assertSentTo($this->manager, ParkNotice::class);
+
+        $this->actingAs($this->manager)->post($this->url("/report/{$report->id}/retry"));
+        $this->assertSame(2, $report->fresh()->attempt);
+        // Первая задача проснулась — отчёт уже не её: писем не собирает.
+        (new BuildIntakeReport($report->id, 1))->handle(app(SendIntakeReport::class));
+        $this->assertNull($report->fresh()->messages);
+        (new BuildIntakeReport($report->id, 2))->handle(app(SendIntakeReport::class));
+        $this->assertCount(1, $report->fresh()->messages);
+        $this->assertSame(1, Message::count());
+    }
+
+    public function test_failed_build_keeps_scan_pages(): void
+    {
+        $pages = collect([0, 1])->map(fn ($p) => $this->actingAs($this->manager)->post($this->url('/report/file'),
+            ['kind' => 'act', 'scan' => 'scan-1', 'page' => $p, 'file' => UploadedFile::fake()->image("p{$p}.jpg", 800, 1100)])->json('id'));
+        // Второй документ пропал с диска — сборка падает после того, как PDF акта уже собран.
+        $sts = $this->actingAs($this->manager)->post($this->url('/report/file'), ['kind' => 'sts', 'file' => UploadedFile::fake()->createWithContent('стс.pdf', "%PDF-1.4\n%%EOF")])->json('id');
+        $report = Report::create(['vehicle_id' => $this->vehicle->id, 'user_id' => $this->manager->id, 'to' => 'v@alfastrah.test', 'photos' => [],
+            'docs' => ['act' => $pages->all(), 'sts' => [$sts]], 'state' => Report::QUEUED, 'attempt' => 1]);
+        $this->vehicle->papers()->firstWhere('id', $sts)->delete();
+
+        (new BuildIntakeReport($report->id))->handle(app(SendIntakeReport::class));
+        $this->assertSame(Report::FAILED, $report->fresh()->state);
+        // Снимки на месте и отчёт на них же — «Повторить» есть из чего собрать; лишнего PDF у ТС нет.
+        $this->assertSame($pages->all(), $report->fresh()->docs['act']);
+        $this->assertSame(2, $this->vehicle->fresh()->papers()->where('custom_properties.report_doc', 'act')->count());
+    }
+
+    public function test_retry_rebuilds_when_letter_file_is_gone(): void
+    {
+        $photo = $this->actingAs($this->manager)->post($this->url('/report/file'), ['kind' => 'photo', 'file' => UploadedFile::fake()->image('a.jpg', 900, 600)])->json('id');
+        $this->actingAs($this->manager)->post($this->url('/report'), ['to' => 'v@alfastrah.test', 'photos' => [$photo]]);
+        $report = Report::sole();
+        (new BuildIntakeReport($report->id))->handle(app(SendIntakeReport::class));
+        $message = Message::with('attachments')->findOrFail($report->fresh()->messages[0]);
+        Storage::disk('cache')->delete($message->attachments->first()->path);
+        $message->forceFill(['send_state' => SendState::Failed, 'send_error' => 'Нет файла вложения'])->save();
+        MessageFailed::dispatch($message);
+
+        $this->actingAs($this->manager)->post($this->url("/report/{$report->id}/retry"));
+        $this->assertNull(Message::find($message->id), 'письмо без файла убрано');
+        $this->assertNull($report->fresh()->messages);
+        Queue::assertPushed(BuildIntakeReport::class, fn ($job) => $job->attempt === 2);
     }
 
     public function test_letter_never_leaves_without_attachment(): void

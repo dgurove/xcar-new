@@ -12,7 +12,8 @@ use Throwable;
 
 /**
  * Письма отчёта о приёме собираются здесь, а не в запросе формы (29.10.2026): JPEG-и кадров, PDF сканов, части по 18 МБ.
- * Не собралось — отчёт `failed` с причиной, отправлявшему уведомление, в деле «Повторить».
+ * Не собралось — отчёт `failed` с причиной, отправлявшему уведомление, в деле «Повторить». Задача несёт номер сборки
+ * (`attempt`): опоздавшая (очередь стояла, отчёт уже повторили) отчёт не берёт.
  */
 final class BuildIntakeReport implements ShouldQueue
 {
@@ -22,7 +23,7 @@ final class BuildIntakeReport implements ShouldQueue
 
     public int $tries = 1;
 
-    public function __construct(public int $reportId)
+    public function __construct(public int $reportId, public int $attempt = 1)
     {
         $this->onConnection('database-long')->onQueue('mail');
     }
@@ -30,7 +31,7 @@ final class BuildIntakeReport implements ShouldQueue
     public function handle(SendIntakeReport $send): void
     {
         $report = Report::find($this->reportId);
-        if (! $report || $report->state !== Report::QUEUED) {
+        if (! $report?->claim($this->attempt)) {
             return;
         }
         try {
@@ -41,10 +42,14 @@ final class BuildIntakeReport implements ShouldQueue
         }
     }
 
-    /** Не ушло: причина у отчёта и уведомление тому, кто отправлял. */
+    /** Не ушло: причина у отчёта и уведомление тому, кто отправлял, — один раз, даже если не ушли две части разом. */
     public static function fail(Report $report, string $reason): void
     {
-        $report->update(['state' => Report::FAILED, 'error' => mb_substr($reason, 0, 2000)]);
+        $reason = trim($reason) ?: 'причина неизвестна';
+        if (! Report::whereKey($report->id)->where('state', Report::QUEUED)->update(['state' => Report::FAILED, 'error' => mb_substr($reason, 0, 2000), 'updated_at' => now()])) {
+            return;
+        }
+        $report->forceFill(['state' => Report::FAILED, 'error' => mb_substr($reason, 0, 2000)])->syncOriginal();
         $report->user?->notify(ParkNotice::reportFailed($report->vehicle, $reason));
     }
 }

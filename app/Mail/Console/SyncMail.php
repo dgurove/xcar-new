@@ -3,6 +3,7 @@
 namespace App\Mail\Console;
 
 use App\Mail\Account;
+use App\Mail\Jobs\SendMessage;
 use App\Mail\Sync;
 use App\Support\HoldsSingleRun;
 use Illuminate\Console\Command;
@@ -25,6 +26,7 @@ class SyncMail extends Command
 
                 return self::SUCCESS;
             }
+            SendMessage::failStuck();
             $failed = false;
             foreach ($accounts as $account) {
                 try {

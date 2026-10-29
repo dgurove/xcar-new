@@ -3,6 +3,7 @@ import * as Turbo from '@hotwired/turbo';
 import { confirmSheet } from '../confirm';
 import { csrf, request } from '../lib/http';
 import { shrink } from '../lib/image';
+import { pool, sha as digest } from '../lib/upload';
 import { refreshCsrf } from '../net';
 import { loadSortable } from '../lib/sortable';
 import { openLightbox } from '../lightbox';
@@ -26,7 +27,7 @@ export default class extends Controller {
     connect() {
         if (this.readonlyValue) return;
         // Редактор письма (форма с вложениями): пока файлы грузятся или один не загрузился, письмо не уходит (29.10.2026:
-        // Альфа — «Письмо пришло без вложения», «Отправить» жали, пока файлы ещё шли). Сервер сверяет число (`files_expected`).
+        // Альфа — «Письмо пришло без вложения», «Отправить» жали, пока файлы ещё шли). Сервер письмо без файла не заводит.
         if (this.element.tagName === 'FORM') {
             this.element.addEventListener('submit', this.guard = (e) => {
                 const failed = this.hasFailedTarget ? this.failedTarget.children.length : 0;
@@ -35,14 +36,7 @@ export default class extends Controller {
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     window.toast?.(busy ? 'Файлы ещё загружаются — дождитесь' : 'Файл не загрузился — повторите или уберите', 'danger');
-                    return;
                 }
-                let expected = this.element.querySelector('input[name="files_expected"]');
-                if (!expected) {
-                    expected = Object.assign(document.createElement('input'), { type: 'hidden', name: 'files_expected' });
-                    this.element.append(expected);
-                }
-                expected.value = String(this.element.querySelectorAll('input[name="files[]"]').length);
             }, true);
         }
         // Файлы можно бросить на всю карточку — не целясь в плитку.
@@ -209,25 +203,21 @@ export default class extends Controller {
         this.uploading = true;
         this.pendingCells ??= new Map();
         this.shown = this.gridTarget.querySelectorAll('.photo-cell[data-id]').length;
-        const queue = files.map((file) => ({ file, cell: this.pendingCell(file) }));
-        const wake = await navigator.wakeLock?.request?.('screen').catch(() => null);
-        const worker = async () => {
-            for (let job = queue.shift(); job; job = queue.shift()) {
-                try {
-                    const html = await this.send(await this.prepare(job.file), (p) => job.cell.style.setProperty('--p', p), () => job.cell.classList.add('is-processing'));
-                    this.pendingCells.delete(job.cell);
-                    job.cell.remove();
-                    if (this.fresher(html)) {
-                        this.apply(html);
-                        this.restorePending();
-                    }
-                } catch (e) {
-                    job.cell.classList.replace('is-processing', 'is-failed') || job.cell.classList.add('is-failed');
-                    job.cell.title = e.message || 'Не загрузилось';
+        this.cellPool ??= pool(async (job) => {
+            try {
+                const html = await this.send(await this.prepare(job.file), (p) => job.cell.style.setProperty('--p', p), () => job.cell.classList.add('is-processing'));
+                this.pendingCells.delete(job.cell);
+                job.cell.remove();
+                if (this.fresher(html)) {
+                    this.apply(html);
+                    this.restorePending();
                 }
+            } catch (e) {
+                job.cell.classList.replace('is-processing', 'is-failed') || job.cell.classList.add('is-failed');
+                job.cell.title = e.message || 'Не загрузилось';
             }
-        };
-        try { await Promise.all(Array.from({ length: Math.min(3, queue.length) }, worker)); } finally { wake?.release?.().catch(() => {}); }
+        });
+        await this.cellPool.push(...files.map((file) => ({ file, cell: this.pendingCell(file) })));
         this.uploading = false;
         window.dispatchEvent(new CustomEvent('photos:uploaded'));
         if (other.length) await this.uploadWithBar(other);
@@ -301,15 +291,8 @@ export default class extends Controller {
     }
 
     async prepare(file) {
-        const sha = await this.sha(file);
+        const sha = await digest(file);
         return { file: this.collectionValue === 'photos' ? await shrink(file) : file, sha };
-    }
-
-    async sha(file) {
-        try {
-            const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
-            return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-        } catch { return ''; }
     }
 
     // onSent — файл ушёл целиком, дальше сервер пережимает кадр и снимает чужой знак (секунда-две на кадр).
