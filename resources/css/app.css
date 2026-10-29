@@ -1687,6 +1687,9 @@ html.kb-open { --home-gap: 0px; }
       & .table tr > [colspan] { grid-column: 1 / -1; }
       /* Ширины таблицы (`width: 1%` у чисел, 100% у названия, `max-width: 0`) в сетке не нужны — ширину держит столбец. */
       & .table th, & .table td { width: auto !important; min-width: 0 !important; max-width: none !important; align-content: center; }
+      /* Столбец не уже ядра своих значений (`Support\Table\Widths`), но второстепенный кусок («в минус …», «не оплачено …»)
+         в строке, где ему не хватило места, встаёт второй строкой, а не режется: дорожка `minmax(ядро, целиком)`. */
+      & .table td:not(.grow) { white-space: normal; }
       /* Высота строки таблицы — наименьшая; у элемента сетки она была бы точной — отсюда min-height. Размер строки за
          экраном — ровно её высота (без `auto`: помнить прежнюю нельзя — при открытой карточке строки выше). */
       & .table tbody tr { height: auto !important; }

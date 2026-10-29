@@ -66,25 +66,30 @@ final class Table
      * Столбцы сеткой на ПК (29.10.2026, «Все» CRM — 749 строк: открыть карточку строки — полсекунды): от 640 каждая строка
      * таблицы — сетка с этими столбцами, и строка за экраном не считается вовсе (`content-visibility`, `.is-grid` в app.css).
      * Строки совпадают столбцами без общей раскладки, только если ширины не зависят от содержимого, — они из описания
-     * (`rem`): название — шириной в самое длинное (`--title-ch`) и не уже 12rem, `fill` забирает запас, остальное — своей
-     * ширины, а не влезло в показанной строке — шире (`fitKeys`), всем строкам сразу. Строка `--cols-*` на каждую ступень
-     * ширины (у ступени свои видимые столбцы) и на открытую карточку (краткая таблица: только столбцы телефона; от 1024 ещё
-     * без `aside`).
+     * и данных: название — шириной в самое длинное (`--title-ch`) и не уже 12rem, `fill` забирает запас, остальное — по
+     * самим значениям столбца (`Widths::of` — сервер считает один раз, браузер ничего не меряет), `rem` — когда их нет.
+     * Строка `--cols-*` на каждую ступень ширины (у ступени свои видимые столбцы) и на открытую карточку (краткая таблица:
+     * только столбцы телефона; от 1024 ещё без `aside`).
+     *
+     * @param  array<string, array{0: float, 1: float}>  $widths  ширины столбцов по данным — ядро и целиком, rem (`Widths::of`)
      */
-    public function gridStyle(): string
+    public function gridStyle(array $widths = []): string
     {
         $vars = [];
         foreach (self::STEPS as $step => $n) {
-            $vars["--cols-{$step}"] = $this->tracks(fn (Column $c) => ! $c->phone && ($c->from === null || self::STEPS[$c->from] <= $n));
+            $vars["--cols-{$step}"] = $this->tracks(fn (Column $c) => ! $c->phone && ($c->from === null || self::STEPS[$c->from] <= $n), $widths);
         }
-        $vars['--cols-open'] = $this->tracks(fn (Column $c) => $c->from === null, open: true);
-        $vars['--cols-open-lg'] = $this->tracks(fn (Column $c) => $c->from === null && ! $c->aside, open: true);
+        $vars['--cols-open'] = $this->tracks(fn (Column $c) => $c->from === null, $widths, open: true);
+        $vars['--cols-open-lg'] = $this->tracks(fn (Column $c) => $c->from === null && ! $c->aside, $widths, open: true);
 
         return collect($vars)->map(fn ($v, $k) => "{$k}: {$v};")->implode(' ');
     }
 
-    /** @param  \Closure(Column): bool  $shown */
-    private function tracks(\Closure $shown, bool $open = false): string
+    /**
+     * @param  \Closure(Column): bool  $shown
+     * @param  array<string, array{0: float, 1: float}>  $widths
+     */
+    private function tracks(\Closure $shown, array $widths, bool $open = false): string
     {
         $cols = array_values(array_filter($this->columns, $shown));
         $fill = ! $open && collect($cols)->contains(fn (Column $c) => $c->fill);
@@ -97,23 +102,18 @@ final class Table
             $c->grow => 'minmax(12rem, 1fr)',
             $c->fill && ! $open => 'minmax('.$c->rem.'rem, 1fr)',
             $c->num && $open => 'max-content',
-            default => 'max('.($c->rem > 0 ? $c->rem : 6).'rem, var(--fit-'.self::ident($c->key).', 0px))',
+            // Ширина — из самих значений (и шапки); `rem` описания — только когда их нет (столбца нет в строках).
+            default => isset($widths[$c->key]) ? self::track(...$widths[$c->key]) : ($c->rem > 0 ? $c->rem : 6).'rem',
         })->implode(' ');
     }
 
     /**
-     * Ключи столбцов по порядку ячеек строки — `data-cols` у таблицы сеткой: `table_scroll_controller` расширяет столбец
-     * (`--fit-<ключ>`), если показанной строке не хватило ширины из описания. Название, `fill` и галочка — пусто: им
-     * многоточие и остаток ширины.
+     * Дорожка столбца: не уже ядра; есть место — до полной ширины (сетка раздаёт запас поровну, как браузер столбцам
+     * таблицы), нет — второстепенный кусок встаёт второй строкой.
      */
-    public function fitKeys(): string
+    private static function track(float $min, float $max): string
     {
-        return collect($this->columns)->map(fn (Column $c) => $c->grow || $c->fill || $c->pick ? '' : self::ident($c->key))->implode(',');
-    }
-
-    private static function ident(string $key): string
-    {
-        return preg_replace('/[^a-z0-9_-]/i', '', $key);
+        return $max > $min + .25 ? "minmax({$min}rem, {$max}rem)" : "{$min}rem";
     }
 
     /** Сколько столбцов — `colspan` заголовка группы. */

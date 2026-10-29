@@ -13,11 +13,12 @@
     // С описанием столбцов (`Support\Table`) на ПК — сеткой: строки за экраном не считаются (`Table::gridStyle`, `.is-grid`).
     // Только длинная (29.10.2026, «Заявки» в 66 строк: название — полэкрана пустоты, дата, почта и номер обрезаны): у сетки
     // ширины из описания, а не из содержимого, и шире их делает только скрипт после отрисовки. Короткую ширит браузер сам,
-    // по содержимому; сетка окупается на сотнях строк («Все» CRM, 749 — карточка открывалась полсекунды).
+    // по содержимому; сетка окупается на сотнях строк («Все» CRM, 749 — карточка открывалась полсекунды). Ширины сетки — из
+    // самих значений, на сервере (`Support\Table\Widths`): браузер при прокрутке ничего не меряет.
     $grid = $table && ! $wide && substr_count((string) $slot, 'data-detail-key=') > 200;
-    $style = trim(($titleCh ? '--title-ch: '.$titleCh.';'.($rest ? ' --rest: '.$rest.'rem;' : '') : '').($grid ? ' '.$table->gridStyle() : ''));
+    $style = trim(($titleCh ? '--title-ch: '.$titleCh.';'.($rest ? ' --rest: '.$rest.'rem;' : '') : '').($grid ? ' '.$table->gridStyle(\App\Support\Table\Widths::of((string) $slot, $table)) : ''));
 @endphp
-<div {{ $attributes->merge(['class' => 'table-wrap'.($wide ? ' is-wide' : '').($grid ? ' is-grid' : ''), 'data-controller' => 'table-scroll']) }} @if ($id) id="{{ $id }}" @endif @if ($style) style="{{ $style }}" @endif @if ($grid) data-cols="{{ $table->fitKeys() }}" @endif>
+<div {{ $attributes->merge(['class' => 'table-wrap'.($wide ? ' is-wide' : '').($grid ? ' is-grid' : ''), 'data-controller' => 'table-scroll']) }} @if ($id) id="{{ $id }}" @endif @if ($style) style="{{ $style }}" @endif>
     <div class="table-box">
         <table class="table">
             <thead>{{ $head }}</thead>
