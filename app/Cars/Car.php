@@ -41,7 +41,7 @@ class Car extends Model implements HasMedia
     public const FIELDS = ['claim_ref', 'vin', 'plate', 'brand_id', 'model_id', 'year', 'color', 'mileage', 'body', 'transmission',
         'drive', 'fuel', 'engine_volume', 'engine_power', 'category', 'oversize', 'damage_cause', 'damage_zones', 'damage_note',
         'incident_date', 'is_runnable', 'has_keys', 'keys_count', 'papers', 'pts', 'sts', 'policy_no', 'value', 'insured_name', 'insured_phone',
-        'flags', 'docs_required', 'holder', 'body_no', 'chassis_no', 'insured_phone2'];
+        'flags', 'docs_required', 'holder', 'body_no', 'chassis_no', 'insured_phone2', 'steering', 'condition'];
 
     /** Производные колонки: пишет сама машина. */
     public const DERIVED = ['claim_ref_key'];

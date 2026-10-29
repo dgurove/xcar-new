@@ -8,7 +8,6 @@ use App\Purchases\Actions\PlaceOffer;
 use App\Purchases\Actions\WithdrawOffer;
 use App\Purchases\Car;
 use App\Purchases\Group;
-use App\Purchases\Kind;
 use App\Purchases\Purchase;
 use App\Purchases\Restriction;
 use App\Support\Detail;
@@ -45,7 +44,7 @@ class PurchaseController
         $filters = $request->only(['preset', 'q', 'kind', 'sort', 'group']);
         $group = $this->group($filters);
         // Категории считаются без фильтра по категории: пилюли должны остаться, когда одна выбрана.
-        $kinds = $this->visible($purchase, $request, $group)->select('kind')->distinct()->pluck('kind')->map(fn ($k) => Kind::from($k->value ?? $k))->all();
+        $kinds = Car::kindsIn($this->visible($purchase, $request, $group));
         abort_if($group && ! $kinds, 404);
         $cars = ListView::paginate($request, $this->cars($purchase, $request, $filters));
         $total = $this->visible($purchase, $request, $group)->count();
@@ -114,8 +113,8 @@ class PurchaseController
 
     private function visible(Purchase $purchase, Request $request, ?Group $group = null): Builder
     {
-        return $purchase->carsOnSite()->getQuery()->whereNotIn('kind', Restriction::hiddenFor($request->user()) ?: [''])
-            ->when($group, fn ($q) => $q->whereIn('kind', $group->kindValues()));
+        return $purchase->carsOnSite()->getQuery()->notOfKind(Restriction::hiddenFor($request->user()))
+            ->when($group, fn ($q) => $q->ofKind($group->kindValues()));
     }
 
     private function cars(Purchase $purchase, Request $request, array $filters): Builder
@@ -130,12 +129,12 @@ class PurchaseController
             match ($filters['preset'] ?? 'all') {
                 'mine' => $q->whereHas('bids', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])),
                 'none' => $q->whereDoesntHave('bids', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])),
-                'photos' => $q->where('photos_count', '>', 0),
+                'photos' => $q->whereHas('media', fn ($m) => $m->where('collection_name', 'photos')),
                 default => null,
             };
         }
         if (! empty($filters['kind']) && $search === '') {
-            $q->where('kind', $filters['kind']);
+            $q->ofKind((string) $filters['kind']);
         }
         if ($search !== '') {
             // Номер — тот, что на экране («№ 12»), а не ДЛ: по ДЛ на xcar не ищут (`Car::search` без `crm`).

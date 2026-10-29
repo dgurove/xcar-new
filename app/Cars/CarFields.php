@@ -47,6 +47,9 @@ final class CarFields
         'fuel' => ['Топливо', 'enum', Fuel::class],
         'engine_volume' => ['Объём, л', 'liters'],
         'engine_power' => ['Мощность, л. с.', 'int'],
+        // С карточки Carcade (29.10.2026): было у лота закупки и строкой описания предложения.
+        'steering' => ['Руль', 'text'],
+        'condition' => ['Состояние', 'text'],
         'insured_name' => ['Страхователь', 'text'],
         'insured_phone' => ['Телефон', 'tel'],
     ];
@@ -55,7 +58,7 @@ final class CarFields
     public const BLOCKS = [
         'car' => ['Транспортное средство', ['vendor_id', 'claim_ref', 'vin', 'brand_id', 'model_id', 'year', 'color', 'category', 'mileage']],
         'papers' => ['ПТС и СТС', ['plate', 'pts', 'sts', 'policy_no', 'body_no', 'chassis_no']],
-        'specs' => ['Характеристики', ['body', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power']],
+        'specs' => ['Характеристики', ['body', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'steering', 'condition']],
         'owner' => ['Страхователь', ['insured_name', 'insured_phone']],
     ];
 
@@ -132,6 +135,8 @@ final class CarFields
             'fuel' => ['nullable', Rule::enum(Fuel::class)],
             'engine_volume' => ['nullable', 'integer', 'max:20000'],
             'engine_power' => ['nullable', 'integer', 'max:3000'],
+            'steering' => ['nullable', 'string', 'max:20'],
+            'condition' => ['nullable', 'string', 'max:120'],
             'insured_name' => ['nullable', 'string', 'max:80'],
             'insured_phone' => ['nullable', 'string', 'max:20'],
         ];

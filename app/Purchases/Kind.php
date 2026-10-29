@@ -6,7 +6,11 @@ use App\Cars\Category;
 use App\Cars\HasLabels;
 use Illuminate\Support\Str;
 
-/** Категория техники: код поставщика (ЛА, ЛКТ, ГТ, СТ) или полное название. */
+/**
+ * Категория техники в закупке: код поставщика (ЛА, ЛКТ, ГТ, СТ) или полное название. Своей колонки у лота нет
+ * (29.10.2026): тип ТС — у машины (`cars.category`), категория закупки — её группировка (`of`, `categories`) для пилюль,
+ * запретов менеджерам и групп витрины.
+ */
 enum Kind: string
 {
     use HasLabels;
@@ -28,7 +32,25 @@ enum Kind: string
         };
     }
 
-    /** Категория прайса стоянки. */
+    /** Категория закупки по типу ТС машины: длинномер и прицеп — грузовые, мото и без типа — прочее. */
+    public static function of(?Category $category): self
+    {
+        return match ($category) {
+            Category::Passenger => self::Passenger,
+            Category::Light => self::Light,
+            Category::Truck, Category::Long, Category::Trailer => self::Truck,
+            Category::Special => self::Special,
+            default => self::Other,
+        };
+    }
+
+    /** Типы ТС машины, что попадают в эту категорию (`null` — тип не указан). @return list<?string> */
+    public function categories(): array
+    {
+        return array_values(array_map(fn (?Category $c) => $c?->value, array_filter([...Category::cases(), null], fn (?Category $c) => self::of($c) === $this)));
+    }
+
+    /** Тип ТС машины для категории из файла поставщика; «Прочее» типа не задаёт. */
     public function category(): Category
     {
         return match ($this) {

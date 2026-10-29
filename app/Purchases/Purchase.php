@@ -60,7 +60,7 @@ class Purchase extends Model
     public function kindsFor(?User $user): array
     {
         $hidden = Restriction::hiddenFor($user);
-        $present = $this->carsOnSite()->distinct()->pluck('kind')->map(fn ($k) => $k instanceof Kind ? $k : Kind::from($k))->all();
+        $present = Car::kindsIn($this->carsOnSite()->getQuery());
 
         return array_values(array_filter($present, fn (Kind $k) => ! in_array($k->value, $hidden, true)));
     }
@@ -80,7 +80,7 @@ class Purchase extends Model
             if (! $in) {
                 continue;
             }
-            $cars = $this->carsOnSite()->whereIn('kind', $in);
+            $cars = $this->carsOnSite()->ofKind($in);
             $rated = $user ? (clone $cars)->whereHas('bids', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted]))->count() : 0;
             $cards[] = new PurchaseCard($this, $group, $cars->count(), $rated);
         }
@@ -97,8 +97,7 @@ class Purchase extends Model
         $hidden = Restriction::hiddenFor($user);
         $open = self::where('state', PurchaseState::Open)->get(['id', 'hide_priced']);
 
-        return $open->sum(fn (self $p) => $p->carsOnSite()->distinct()->pluck('kind')
-            ->map(fn ($k) => $k instanceof Kind ? $k : Kind::from($k))
+        return $open->sum(fn (self $p) => collect(Car::kindsIn($p->carsOnSite()->getQuery()))
             ->reject(fn (Kind $k) => in_array($k->value, $hidden, true))
             ->map(fn (Kind $k) => Group::of($k)->value)->unique()->count());
     }

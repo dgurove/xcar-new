@@ -20,7 +20,6 @@ class PurchaseCarPhotoController
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-        $car->update(['photos_count' => $car->photos()->count()]);
 
         return $this->gallery($car);
     }
@@ -53,7 +52,6 @@ class PurchaseCarPhotoController
     {
         $this->own($car, $media);
         $media->delete();
-        $car->update(['photos_count' => $car->photos()->count()]);
 
         return $this->gallery($car->refresh());
     }

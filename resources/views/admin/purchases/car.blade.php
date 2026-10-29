@@ -38,7 +38,8 @@
                     <div class="col-span-full flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
                         <x-ui.check name="is_published" :checked="$car->is_published">Показывать покупателям</x-ui.check>
                         <x-ui.check name="share_locked" :checked="$car->share_locked">Запретить шеринг</x-ui.check>
-                        @if ($car->encumbrance)<span class="tag">{{ $car->encumbrance }}</span>@endif
+                        {{-- Признак машины «Ограничения» (29.10.2026): файл и сайт поставщика ставят, снять — только здесь. --}}
+                        <x-ui.check name="fssp" :checked="$car->fssp">Ограничения ФССП</x-ui.check>
                         @if ($car->stage)<span class="tag">{{ $car->stage }}</span>@endif
                     </div>
                 </div>

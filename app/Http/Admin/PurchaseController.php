@@ -118,7 +118,7 @@ class PurchaseController
         // Числа — один проход по лёгкой выборке всей закупки, без поиска; перекрёстные: у каждого
         // фильтра число считается при двух других применённых, так они сходятся между собой.
         // ТС, ушедшие в предложения по контрпредложению, из закупки исключены — видны только в «В предложениях».
-        $all = $purchase->cars()->with(['bids:id,purchase_car_id,user_id,state', 'offer:id,car_id'])->get(['id', 'car_id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state']);
+        $all = $purchase->cars()->with(['bids:id,purchase_car_id,user_id,state', 'offer:id,car_id'])->withCount(Car::photosCount())->get(['id', 'car_id', 'price_final', 'is_published', 'specs_state', 'photos_state']);
         $managers = User::withRole(Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
         $match = [
             'all' => fn ($c) => true,
@@ -141,14 +141,14 @@ class PurchaseController
         $cars = $purchase->cars()->with(['settlement', 'media', 'bids.user', 'offer:id,car_id,number,state'])
             ->when($preset === 'moved', fn ($c) => $c->whereHas('offer'), fn ($c) => $c->whereDoesntHave('offer'))
             ->search($q, crm: true)
-            ->when($kind, fn ($c) => $c->where('kind', $kind));
+            ->when($kind, fn ($c) => $c->ofKind($kind));
         match ($preset) {
             'priced' => $cars->whereHas('bids', $live),
             'unpriced' => $cars->whereDoesntHave('bids', $live),
             'unfinal' => $cars->whereNull('price_final'),
             'final' => $cars->whereNotNull('price_final'),
             'attention' => $cars->where(fn ($w) => $w->whereIn('specs_state', ['failed', 'partial', 'gone'])->orWhereIn('photos_state', ['failed', 'partial', 'gone'])),
-            'nophoto' => $cars->where('photos_count', 0),
+            'nophoto' => $cars->whereDoesntHave('media', fn ($m) => $m->where('collection_name', 'photos')),
             'hidden' => $cars->where('is_published', false),
             default => null,
         };
@@ -391,6 +391,7 @@ class PurchaseController
         $data['fuel'] = $data['fuel'] ?: null;
         $data['is_published'] = $request->boolean('is_published');
         $data['share_locked'] = $request->boolean('share_locked');
+        $data['fssp'] = $request->boolean('fssp');
         $update($car, $data);
 
         return back()->with('toast', 'Сохранено');

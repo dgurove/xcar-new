@@ -71,7 +71,11 @@ final class FetchSpecs implements ShouldQueue
         $set('engine_power', $s['engine_power']);
         $set('engine_volume', $s['engine_volume']);
         $set('color', $s['color'] !== null ? (Colors::normalize($s['color'], fuzzy: false) ?? $s['color']) : null);
-        $set('keys', $s['keys']);
+        // Ключи — числом у машины (29.10.2026): «два» с сайта поставщика — 2.
+        if (($keys = Car::keysFrom($s['keys'])) !== null && ! $car->isLocked('keys_count')) {
+            $car->keys_count = $keys;
+            $car->has_keys = $keys > 0;
+        }
         $set('steering', $s['steering']);
         $set('condition', $s['condition']);
         $set('city', $s['city']);
@@ -79,8 +83,9 @@ final class FetchSpecs implements ShouldQueue
         if ($car->townReplaceable() && ($town = $car->townId())) {
             $car->settlement_id = $town;
         }
-        if ($s['fssp'] !== null) {
-            $car->fssp = $s['fssp'];
+        // «Ограничения» машины сайт поставщика ставит, но не снимает: снять может только человек.
+        if ($s['fssp']) {
+            $car->fssp = true;
         }
         // Слова «Коробка», «Топливо» — теми же правилами, что в письмах (`CarWords`).
         $set('transmission', Transmission::tryFrom((string) CarWords::transmission($s['transmission'])));

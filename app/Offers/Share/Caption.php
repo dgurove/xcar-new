@@ -79,7 +79,7 @@ final class Caption
             ['specs', 'КПП, топливо', implode(', ', array_filter([$car->transmission?->label(), $car->fuel?->label()])) ?: null, true, 'tech'],
             ['engine', 'Двигатель', $car->engine_volume ? implode(', ', array_filter([Units::liters($car->engine_volume), Units::hp($car->engine_power)])) : null, true, 'tech'],
             ['mileage', 'Пробег', Units::km($car->mileage, plain: true), false, 'tech'],
-            ['encumbrance', 'Обременения', $car->encumbrance, false],
+            ['encumbrance', 'Обременения', $car->fssp ? 'ФССП' : null, false],
             ['until', 'Приём цен до', $car->purchase?->offers_close_at?->translatedFormat('d.m.Y H:i'), false],
             ['price', 'Наша цена', $prices ? $money($car->price_listing) : null, true],
             ['link', 'Ссылка', $car->purchase ? Surface::Site->url("/purchases/{$car->purchase->number}/{$car->ref}") : null, $crm],

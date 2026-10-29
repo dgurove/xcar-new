@@ -66,7 +66,7 @@ final class Importer
             'dl' => $row['dl'], 'ref' => Car::nextRef(), 'brand_id' => $brandId, 'model_id' => $modelId,
             'brand_raw' => $row['brand'], 'model_raw' => $row['model'], 'year' => $row['year'], 'address' => $row['address'],
             'settlement_id' => $this->settlement($row['address']), 'vehicle_type' => $row['vehicle_type'], 'kind' => $row['kind'],
-            'stage' => $row['stage'], 'encumbrance' => $row['encumbrance'], 'fssp' => $this->fssp($row['encumbrance']),
+            'stage' => $row['stage'], ...($this->fssp($row['encumbrance']) ? ['fssp' => true] : []),
             'price_revalued' => $row['price_revalued'], 'price_listing' => $row['price_listing'],
             'site_url' => $row['site_url'], 'cloud_url' => $row['cloud_url'],
             'specs_state' => $row['site_url'] ? ImportState::Pending : ImportState::Skipped,
@@ -76,8 +76,11 @@ final class Importer
 
     private function update(Car $car, array $row): void
     {
-        $car->fill(['stage' => $row['stage'], 'encumbrance' => $row['encumbrance'], 'price_revalued' => $row['price_revalued'], 'price_listing' => $row['price_listing'], 'kind' => $row['kind'], 'vehicle_type' => $row['vehicle_type'] ?? $car->vehicle_type]);
-        $car->fssp ??= $this->fssp($row['encumbrance']);
+        $car->fill(['stage' => $row['stage'], 'price_revalued' => $row['price_revalued'], 'price_listing' => $row['price_listing'], 'kind' => $row['kind'], 'vehicle_type' => $row['vehicle_type'] ?? $car->vehicle_type]);
+        // Обременения из файла — признак машины «Ограничения»; файл его ставит, но не снимает.
+        if ($this->fssp($row['encumbrance'])) {
+            $car->fssp = true;
+        }
         if ($row['site_url'] && $row['site_url'] !== $car->site_url) {
             $car->fill(['site_url' => $row['site_url'], 'specs_state' => ImportState::Pending, 'specs_error' => null]);
         }

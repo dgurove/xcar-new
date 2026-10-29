@@ -142,7 +142,6 @@ final class FetchPhotos implements ShouldQueue
         // Свежим запросом: relation `media` загружена до приёма кадров и их не видит.
         $count = $car->media()->where('collection_name', 'photos')->count();
         $car->unsetRelation('media')->forceFill([
-            'photos_count' => $count,
             'cloud_leftovers' => $leftovers,
             'photos_state' => $count === 0 ? ImportState::Skipped : ($failed ? ImportState::Partial : ImportState::Done),
             'photos_error' => $count === 0 ? 'В папке нет фотографий' : ($failed ? "Не забрано кадров: {$failed}" : null),
@@ -169,6 +168,5 @@ final class FetchPhotos implements ShouldQueue
                 @unlink($temp);
             }
         }
-        $car->forceFill(['photos_count' => $car->media()->where('collection_name', 'photos')->count()])->save();
     }
 }

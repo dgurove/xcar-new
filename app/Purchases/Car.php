@@ -2,11 +2,14 @@
 
 namespace App\Purchases;
 
+use App\Cars\Category;
 use App\Cars\OnCar;
 use App\Cars\Region;
 use App\Cars\Settlement;
 use App\Offers\Bid;
 use App\Offers\BidState;
+use App\Offers\Flag;
+use App\Offers\Offer;
 use App\Offers\OfferEvent;
 use App\Offers\OfferEventType;
 use App\Search\CarWords;
@@ -16,6 +19,7 @@ use App\Support\Units;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,9 +29,9 @@ use Illuminate\Support\Facades\DB;
 
 #[Fillable([
     'purchase_id', 'dl', 'ref', 'brand_id', 'model_id', 'brand_raw', 'model_raw', 'year', 'vin', 'mileage', 'transmission', 'fuel',
-    'engine_volume', 'engine_power', 'color', 'steering', 'keys', 'settlement_id', 'address', 'city', 'condition', 'encumbrance',
+    'engine_volume', 'engine_power', 'color', 'steering', 'keys_count', 'has_keys', 'settlement_id', 'address', 'city', 'condition',
     'fssp', 'vehicle_type', 'kind', 'stage', 'price_revalued', 'price_listing', 'price_final', 'site_url', 'cloud_url', 'cloud_leftovers',
-    'specs_state', 'specs_error', 'specs_at', 'photos_state', 'photos_error', 'photos_at', 'photos_count', 'locked_fields',
+    'specs_state', 'specs_error', 'specs_at', 'photos_state', 'photos_error', 'photos_at', 'locked_fields',
     'is_published', 'description', 'share_locked', 'announced_at',
 ])]
 class Car extends Model
@@ -67,11 +71,76 @@ class Car extends Model
     protected function casts(): array
     {
         return [
-            'kind' => Kind::class,
             'specs_state' => ImportState::class, 'photos_state' => ImportState::class,
             'specs_at' => 'datetime', 'photos_at' => 'datetime', 'cloud_leftovers' => 'array', 'locked_fields' => 'array',
-            'is_published' => 'bool', 'share_locked' => 'bool', 'announced_at' => 'datetime', 'fssp' => 'bool',
+            'is_published' => 'bool', 'share_locked' => 'bool', 'announced_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Категория закупки — по типу ТС машины (29.10.2026: своей колонки у лота нет, тип один — `cars.category`). Файл
+     * поставщика ставит тип машине, только когда он пуст или другой категории: длинномер с парковки грузовым и останется.
+     */
+    protected function kind(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => Kind::of($this->carRecord()->category),
+            set: function (Kind|string|null $kind) {
+                $kind = is_string($kind) ? Kind::from($kind) : $kind;
+                $car = $this->carRecord();
+                if ($kind && $kind !== Kind::Other && Kind::of($car->category) !== $kind) {
+                    $car->category = $kind->category();
+                }
+
+                return [];
+            },
+        );
+    }
+
+    /**
+     * Ограничения ФССП — признак машины «Ограничения» (`cars.flags`, `Offers\Flag::Restricted`), а не своя колонка лота
+     * и не метка предложения (29.10.2026). Снять его может только человек: файл и сайт поставщика ставят, но не снимают.
+     */
+    protected function fssp(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => in_array(Flag::Restricted->value, $this->carRecord()->flags ?? [], true),
+            set: function (?bool $on) {
+                $car = $this->carRecord();
+                $flags = array_values(array_diff($car->flags ?? [], [Flag::Restricted->value]));
+                $car->flags = $on ? [...$flags, Flag::Restricted->value] : $flags;
+
+                return [];
+            },
+        );
+    }
+
+    /** Лоты этих категорий закупки (по типу ТС машины). @param Kind|string|list<Kind|string> $kinds */
+    public function scopeOfKind(Builder $q, Kind|string|array $kinds): Builder
+    {
+        $values = collect(is_array($kinds) ? $kinds : [$kinds])->map(fn ($k) => is_string($k) ? Kind::from($k) : $k)->flatMap->categories();
+
+        return $q->whereHas('car', fn ($c) => $c->where(fn ($w) => $w->whereIn('cars.category', $values->filter()->values())
+            ->when($values->contains(null), fn ($w) => $w->orWhereNull('cars.category'))));
+    }
+
+    /** Без лотов этих категорий (запреты менеджеру, `Restriction::hiddenFor`). @param list<string> $kinds */
+    public function scopeNotOfKind(Builder $q, array $kinds): Builder
+    {
+        return $kinds ? $q->whereNot(fn ($w) => $w->ofKind($kinds)) : $q;
+    }
+
+    /** Какие категории есть среди этих лотов — одним запросом. @return list<Kind> */
+    public static function kindsIn(Builder $lots): array
+    {
+        return (clone $lots)->join('cars as kc', 'kc.id', '=', 'purchase_cars.car_id')->reorder()->distinct()->pluck('kc.category')
+            ->map(fn ($c) => Kind::of(Category::tryFrom((string) $c)))->unique()->values()->all();
+    }
+
+    /** Кадров у машины лота: число для списков — `withCount` той же связью, что и показ. */
+    public static function photosCount(): array
+    {
+        return ['media as photos_count' => fn ($m) => $m->where('collection_name', 'photos')];
     }
 
     /**
@@ -120,7 +189,7 @@ class Car extends Model
      */
     public function offer(): HasOne
     {
-        return $this->hasOne(\App\Offers\Offer::class, 'car_id', 'car_id')->withoutGlobalScopes();
+        return $this->hasOne(Offer::class, 'car_id', 'car_id')->withoutGlobalScopes();
     }
 
     /**
@@ -171,32 +240,50 @@ class Car extends Model
         return array_filter([
             'Тип' => $this->kind->label(), 'Год' => $this->year, 'Пробег' => Units::km($this->mileage),
             'Коробка' => $this->transmission?->label(), 'Топливо' => $this->fuel?->label(), 'Объём' => Units::liters($this->engine_volume),
-            'Мощность' => Units::hp($this->engine_power), 'Цвет' => $this->color, 'Руль' => $this->steering, 'Ключи' => $this->keys,
+            'Мощность' => Units::hp($this->engine_power), 'Цвет' => $this->color, 'Руль' => $this->steering, 'Ключи' => $this->keysText(),
             // ДЛ — только в CRM (номеров убытка и ДЛ на xcar.ru нет нигде, 10.10.2026); на сайте номер — в шапке («№ 12»).
-            'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => Surface::inCrm() ? $this->dl : null, 'Где' => $this->settlement?->title() ?? $this->city ?? $this->address, 'Обременения' => Surface::inCrm() ? $this->encumbrance : \App\Support\VendorNames::strip($this->encumbrance),
+            'Состояние' => $this->condition, 'VIN' => $this->vin, 'Номер' => Surface::inCrm() ? $this->dl : null, 'Где' => $this->settlement?->title() ?? $this->city ?? $this->address,
         ], fn ($v) => $v !== null && $v !== '');
     }
 
     /**
-     * Что из карточки закупки уходит в предложение сверх одноимённых полей: VIN открыт (в закупке его видели все), адрес
-     * осмотра — скрыт, как у любого предложения (07.10.2026, владелец: «по умолчанию должен быть скрыт»), ключи — флагом,
-     * «ФССП» — меткой, а состояние, руль, ключи словом, обременения и город, которого нет в справочнике, — строками
-     * описания (своего поля у предложения для них нет).
+     * Что из карточки закупки уходит в предложение сверх машины: VIN открыт (в закупке его видели все), адрес осмотра —
+     * скрыт, как у любого предложения (07.10.2026, владелец: «по умолчанию должен быть скрыт»), город, которого нет в
+     * справочнике, — строкой описания. Руль, состояние, ключи и «Ограничения» — поля машины (29.10.2026), их предложение
+     * видит само, в описание и метки они больше не переписываются.
      */
     public function offerExtras(): array
     {
-        $lines = array_filter([
-            'Состояние' => $this->condition, 'Руль' => $this->steering, 'Ключи' => $this->keys, 'Обременения' => $this->encumbrance,
-            'Город' => $this->settlement_id ? null : $this->city,
-        ], fn ($v) => $v !== null && $v !== '');
-        $text = implode("\n", array_map(fn ($k, $v) => "{$k}: {$v}", array_keys($lines), $lines));
+        $city = $this->settlement_id || ! $this->city ? null : 'Город: '.$this->city;
 
         return array_filter([
             'show_vin' => true,
-            'has_keys' => $this->keys === null || $this->keys === '' ? null : ! in_array(mb_strtolower(trim($this->keys)), ['нет', '0', 'отсутствуют'], true),
-            'description' => trim(implode("\n\n", array_filter([$this->description, $text]))) ?: null,
-            'tags' => $this->fssp ? ['Ограничения ФССП'] : null,
+            'description' => trim(implode("\n\n", array_filter([$this->description, $city]))) ?: null,
         ], fn ($v) => $v !== null);
+    }
+
+    /** Ключи словом для страницы лота: «2», «нет»; не знаем — пусто. */
+    public function keysText(): ?string
+    {
+        return match (true) {
+            $this->keys_count !== null => $this->keys_count === 0 ? 'нет' : (string) $this->keys_count,
+            $this->has_keys === false => 'нет',
+            $this->has_keys === true => 'есть',
+            default => null,
+        };
+    }
+
+    /** Ключи из карточки поставщика («два», «1», «нет») — числом для машины; непонятное — `null`. */
+    public static function keysFrom(?string $text): ?int
+    {
+        $t = mb_strtolower(trim((string) $text));
+
+        return match (true) {
+            $t === '' => null,
+            in_array($t, ['нет', 'отсутствуют', '0'], true) => 0,
+            (bool) preg_match('/^\d$/', $t) => (int) $t,
+            default => ['один' => 1, 'одна' => 1, 'два' => 2, 'две' => 2, 'три' => 3, 'четыре' => 4][$t] ?? null,
+        };
     }
 
     public function isLocked(string $field): bool
