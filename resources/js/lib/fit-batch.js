@@ -3,7 +3,6 @@
 // вынужденных раскладок подряд при загрузке, повороте и подгрузке шрифта (15.10.2026, «постоянно всё лагает»). Теперь
 // одна очередь за кадр: сначала все сбросы, потом все замеры, потом все записи — одна раскладка на всех.
 const owners = new Map(); // наблюдаемый родитель → набор строк
-const items = new WeakMap(); // элемент строки → строка
 const queue = new Set();
 let frame = 0;
 
@@ -35,7 +34,6 @@ export function watch(item) {
     let set = owners.get(parent);
     if (!set) { set = new Set(); owners.set(parent, set); observer.observe(parent); }
     set.add(item);
-    items.set(item.element, item);
     item.parent = parent;
     queue.add(item);
     schedule();

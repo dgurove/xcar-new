@@ -315,12 +315,15 @@ export default class extends Controller {
             if (touch && Math.hypot(t.clientX - touch.x, t.clientY - touch.y) > 10) { clearTimeout(touch.timer); touch = null; }
         };
         const onTouchEnd = () => { if (touch && !touch.done) { clearTimeout(touch.timer); go(touch.r); } touch = null; };
+        // Под неподвижной мышью едут строки (прокрутка колесом) — это не наведение: карточку заранее не грузим, и таймер,
+        // поставленный до прокрутки, тоже не срабатывает (30.10.2026: 5 запросов карточки за секунду прокрутки).
         const onOver = (e) => {
             if (e.pointerType !== 'mouse') return;
-            const r = row(e);
+            const r = performance.now() - scrolledAt < 250 ? null : row(e);
             if (r === hover?.r) return;
             clearTimeout(hover?.timer);
-            hover = r ? { r, timer: setTimeout(() => go(r), 120) } : null;
+            const at = performance.now();
+            hover = r ? { r, timer: setTimeout(() => { if (scrolledAt < at) go(r); }, 120) } : null;
         };
         const el = this.element, opts = { passive: true };
         el.addEventListener('touchstart', onTouchStart, opts);

@@ -79,6 +79,9 @@ export function touchPrefetch() {
     if (matchMedia('(hover: none)').matches) {
         document.addEventListener('turbo:before-prefetch', (event) => event.preventDefault());
     }
+    // Мышь стоит, а под ней едут ссылки (прокрутка колесом) — это не наведение: страницу заранее не грузим (30.10.2026,
+    // при прокрутке уходили запросы за каждой проехавшей ссылкой).
+    document.addEventListener('turbo:before-prefetch', (event) => { if (performance.now() - scrolledAt < 250) event.preventDefault(); });
 
     // Стрелки к соседям на странице ТС — ответ уже в руках к моменту тапа. Постраничку списка — нет: это целая
     // следующая страница карточек на каждый показ, а листают её редко.

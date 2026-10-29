@@ -13,6 +13,8 @@ export default class extends Controller {
         const r = event.currentTarget.getBoundingClientRect(), w = document.documentElement.clientWidth, h = innerHeight;
         list.style.top = `${r.bottom + 6}px`;
         list.showPopover();
+        // Пункты, что грузятся по открытию (`x-ui.links`): адрес из data-src — ленивый фрейм стоил наблюдателя на строку.
+        list.querySelectorAll('turbo-frame[data-src]:not([src])').forEach((frame) => { frame.src = frame.dataset.src; });
         // У нижнего края экрана (кнопка в карточке строки) — над кнопкой.
         if (r.bottom + 6 + list.offsetHeight > h - 8) list.style.top = `${Math.max(8, r.top - 6 - list.offsetHeight)}px`;
         // Под кнопкой от её левого края; у правого края экрана — по правому. Кнопка справа (`data-align="end"`,

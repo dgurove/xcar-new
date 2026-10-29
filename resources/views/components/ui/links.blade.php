@@ -1,7 +1,9 @@
 {{-- Значок связи: машина есть ещё где-то (дело на парковке, предложение в CRM, сделка, гараж, вывоз в логистике; закупка — только пунктом) — зелёные три точки
      у названия, только админу (`CarLinks::shows`). Нажатие — меню «где ещё», пункты ведут туда (`CarLinks::for`).
-     Пункты — ленивым фреймом `/live/car-links` по открытию меню: с одной машиной на все дорожки связаны почти все строки, и
-     меню на каждой строке стоило 3–4 запроса (486 на «Вывозе», аудит 20.10.2026). Строку таблицы и карточку нажатие не открывает.
+     Пункты — фреймом `/live/car-links` по открытию меню: с одной машиной на все дорожки связаны почти все строки, и
+     меню на каждой строке стоило 3–4 запроса (486 на «Вывозе», аудит 20.10.2026). Адрес — в `data-src`, ставит его
+     `menu#toggle`: `loading="lazy"` заводил по наблюдателю пересечений на каждую строку (191 на «Все» CRM), и каждый кадр
+     прокрутки пересчитывал их все (30.10.2026). Строку таблицы и карточку нажатие не открывает.
      Пункты — не `<a>`: значок стоит внутри ссылки названия, а ссылка в ссылке ломает разбор строки (`menu#go`).
      Слот — свои пункты-действия после переходов (карточка «Наличия»: «Выставить в продажу», `x-park.sale menu`); связей
      нет, а действие есть — значок серый (`is-idle`): зелёный значит «машина есть ещё где-то». --}}
@@ -17,7 +19,7 @@
         <button type="button" class="car-links-btn{{ $linked ? '' : ' is-idle' }}" data-action="menu#toggle:stop:prevent" aria-label="Где ещё это ТС" title="Где ещё это ТС" aria-haspopup="menu" aria-controls="{{ $id }}"><x-ui.icon name="chain" class="size-full"/></button>
         <span id="{{ $id }}" class="menu car-links-menu" popover data-menu-target="list" role="menu" data-action="click->menu#close:stop">
             @if ($linked)
-                <turbo-frame id="{{ $id }}-items" loading="lazy" src="/live/car-links/{{ $offer ? 'o/'.$offer->id : ($vehicle ? 'v/'.$vehicle->id : 't/'.$transport->id) }}"><span class="menu-item"><span class="skeleton my-2 h-4 w-32"></span></span></turbo-frame>
+                <turbo-frame id="{{ $id }}-items" data-src="/live/car-links/{{ $offer ? 'o/'.$offer->id : ($vehicle ? 'v/'.$vehicle->id : 't/'.$transport->id) }}"><span class="menu-item"><span class="skeleton my-2 h-4 w-32"></span></span></turbo-frame>
             @endif
             {{ $slot }}
         </span>
