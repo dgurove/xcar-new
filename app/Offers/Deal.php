@@ -16,6 +16,7 @@ use App\Logistics\Channel;
 use App\Park\Pass;
 use App\Park\VehicleState;
 use App\Support\Demo\HidesDemo;
+use App\Support\FastAttributes;
 use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\DealFormat;
@@ -44,6 +45,7 @@ use Illuminate\Support\Carbon;
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id'])]
 class Deal extends Model
 {
+    use FastAttributes;
     use HidesDemo;
 
     protected function casts(): array

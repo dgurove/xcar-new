@@ -99,7 +99,7 @@ trait OnCar
             return $this->carRecord()->getRelationValue($key);
         }
 
-        return parent::getAttribute($key);
+        return method_exists($this, 'fastAttribute') ? $this->fastAttribute($key) : parent::getAttribute($key);
     }
 
     public function setAttribute($key, $value)

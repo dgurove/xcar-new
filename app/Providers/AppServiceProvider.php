@@ -58,6 +58,7 @@ use App\Park\Events\VehicleAccepted;
 use App\Park\Events\VehicleSold;
 use App\Park\Listeners\ReleaseSold;
 use App\Park\Listeners\SyncOffer;
+use App\Support\FastDate;
 use App\Users\Access\EnrollOnLogin;
 use App\Users\Auth\WebAuthnProvider;
 use App\Users\Passkeys;
@@ -69,18 +70,28 @@ use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laragear\WebAuthn\Assertion\Validator\AssertionValidator;
+use Livewire\Blaze\Blaze;
 use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Файлы `views/components`, которые рисуют как шаблон — `view()`, `@include`: под Blaze файл — определение функции и
+     * рисует пустоту, поэтому они — обычным Blade. Новый такой вызов без строки здесь ловит `scripts/blade-lint.php`.
+     */
+    public const PLAIN_COMPONENTS = ['ui/detail', 'park/table-row', 'offer/favorite-stream', 'offer/estimate-due', 'ui/share-link-buttons', 'ui/star', 'vendor/tariff-step'];
+
     public function register(): void
     {
+        // Даты моделей и now() — `FastDate`: переводит «9 окт» без переводчика Carbon на каждый вызов.
+        Date::use(FastDate::class);
         // Сканы и документы из писем пока не читаются; сюда встанет OCR или модель по API.
         $this->app->bind(AttachmentReader::class, TextAttachmentReader::class);
         // Эквайринг — ЮKassa, подключённая в СберБизнесе.
@@ -97,6 +108,12 @@ class AppServiceProvider extends ServiceProvider
                 Log::build(['driver' => 'single', 'path' => storage_path('logs/lazy.log')])
                     ->info(($this->app->runningInConsole() ? 'console' : request()->method().' '.request()->path()).' '.$model::class.'::'.$relation);
             });
+        }
+        // Компоненты — функциями (livewire/blaze, 29.10.2026): анонимный компонент Blade стоил 0,1–0,2 мс накладных при
+        // копеечном содержимом, а их ~19 на строку таблицы — «Без закупочной» в 667 строк собиралась 4–6 с и падала по 30 с.
+        $blaze = Blaze::optimize()->in(resource_path('views/components'));
+        foreach (self::PLAIN_COMPONENTS as $plain) {
+            $blaze->add(resource_path("views/components/{$plain}.blade.php"), compile: false);
         }
         Event::subscribe(Notify::class);
         Event::subscribe(NotifyLogistics::class);

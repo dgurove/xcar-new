@@ -16,6 +16,7 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Search\Term;
+use App\Support\FastAttributes;
 use App\Workflow\Track;
 use App\Workflow\Workflow;
 use Closure;
@@ -47,6 +48,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 ])]
 class Vendor extends Model implements HasMedia
 {
+    use FastAttributes;
     use InteractsWithMedia;
 
     /** Правка вендора (адреса отправителей, разбор) — `forSender` спрашивает базу заново. */
@@ -155,9 +157,9 @@ class Vendor extends Model implements HasMedia
 
     public function logoUrl(): ?string
     {
-        $media = (self::badges()->get($this->id) ?? $this)->getFirstMedia('logo');
+        $vendor = self::badges()->get($this->id) ?? $this;
 
-        return $media ? MediaUrl::for($media) : null;
+        return MediaUrl::first($vendor, 'logo');
     }
 
     /** Вендоры парковки: были ТС или свой прайс, или заведён на парковке. Вендоры одной продажи — только в CRM. */

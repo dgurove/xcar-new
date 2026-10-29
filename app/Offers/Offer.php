@@ -27,6 +27,7 @@ use App\Purchases\Car as PurchaseCar;
 use App\Search\CarWords;
 use App\Search\Term;
 use App\Support\Demo\HidesDemo;
+use App\Support\FastAttributes;
 use App\Support\InternalRefs;
 use App\Support\Surface;
 use App\Support\Units;
@@ -62,8 +63,10 @@ use Illuminate\Support\Facades\DB;
 ])]
 class Offer extends Model
 {
+    use FastAttributes, OnCar {
+        OnCar::getAttribute insteadof FastAttributes;
+    }
     use HidesDemo;
-    use OnCar;
 
     public const DEFAULT_SHARE = 0.6;
 

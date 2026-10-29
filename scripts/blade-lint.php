@@ -86,6 +86,24 @@ foreach ($it as $file) {
     }
 }
 
+// Компонент, который рисуют как шаблон (`view('components.…')`, `@include`), — в `AppServiceProvider::PLAIN_COMPONENTS`
+// (29.10.2026): под Blaze файл компонента — определение функции, и такой вызов молча рисует пустоту (так пропал фрейм
+// карточки строки `x-ui.detail`).
+foreach (['app', 'resources/views', 'routes'] as $where) {
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$where", FilesystemIterator::SKIP_DOTS));
+    foreach ($it as $file) {
+        if (! str_ends_with($file->getFilename(), '.php')) continue;
+        foreach (file($file->getPathname()) as $n => $line) {
+            preg_match_all('/(?:\bview|View::make|->make|@include(?:If|When|Unless|First)?|@each)\(\s*[\'"]components\.([a-z0-9.\-]+)[\'"]/', $line, $m);
+            foreach ($m[1] as $name) {
+                if (! in_array(str_replace('.', '/', $name), App\Providers\AppServiceProvider::PLAIN_COMPONENTS, true)) {
+                    $bad[] = str_replace("$root/", '', $file->getPathname()).':'.($n + 1).": components.$name рисуют как шаблон — впишите в AppServiceProvider::PLAIN_COMPONENTS";
+                }
+            }
+        }
+    }
+}
+
 if ($bad) {
     fwrite(STDERR, "Сторож выкладки не пропускает:\n  ".implode("\n  ", $bad)."\n");
     exit(1);

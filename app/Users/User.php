@@ -17,6 +17,7 @@ use App\Park\City;
 use App\Push\Subscription;
 use App\Search\Term;
 use App\Support\Demo\HidesDemo;
+use App\Support\FastAttributes;
 use App\Support\Nav;
 use App\Support\Phone;
 use App\Support\Surface;
@@ -49,6 +50,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, InteractsWithMedia, Notifiable, WebAuthnAuthentication;
 
+    use FastAttributes;
     use HidesDemo;
 
     /** Стал менеджером или перестал — круги показа опубликованных пересчитываются: правило «все» его касается. */
@@ -126,9 +128,33 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      */
     public function hasRole(Role ...$any): bool
     {
-        $roles = $this->roles ?? collect();
+        $mine = $this->roleSet();
+        foreach ($any as $r) {
+            if (isset($mine[$r->value])) {
+                return true;
+            }
+        }
 
-        return collect($any)->contains(fn (Role $r) => $roles->contains($r));
+        return false;
+    }
+
+    /** @var array{0: mixed, 1: array<string, Role>, 2: array<string, bool>}|null сырое `roles`, роли по значению, способности */
+    private ?array $roleMemo = null;
+
+    /**
+     * Роли — словарём, пока не сменилось сырое `roles` (29.10.2026): `hasRole` через коллекцию enum стоил 10–20 мкс, а
+     * строка таблицы спрашивает «админ ли» десяток раз — на 667 строках это была десятая часть страницы.
+     *
+     * @return array<string, Role>
+     */
+    private function roleSet(): array
+    {
+        $raw = $this->attributes['roles'] ?? null;
+        if ($this->roleMemo === null || $this->roleMemo[0] !== $raw) {
+            $this->roleMemo = [$raw, ($this->roles ?? collect())->keyBy(fn (Role $r) => $r->value)->all(), []];
+        }
+
+        return $this->roleMemo[1];
     }
 
     /** Люди с любой из ролей: `User::withRole(Role::Manager)`. */
@@ -168,7 +194,9 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     private function roleCan(string $ability): bool
     {
-        return ($this->roles ?? collect())->contains(fn (Role $r) => $r->{$ability}());
+        $roles = $this->roleSet();
+
+        return $this->roleMemo[2][$ability] ??= array_any($roles, fn (Role $r) => $r->{$ability}());
     }
 
     /** Роли словами через запятую: «Менеджер, Модератор». */
@@ -924,8 +952,6 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     public function avatarUrl(): ?string
     {
-        $media = $this->getFirstMedia('avatar');
-
-        return $media ? MediaUrl::for($media, 'thumb') : null;
+        return MediaUrl::first($this, 'avatar', 'thumb');
     }
 }

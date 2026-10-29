@@ -53,7 +53,11 @@ final class Binding
      */
     public static function edge(): Carbon
     {
-        return WorkDays::add(now(), self::WORKDAYS)->endOfDay();
+        // Граница зависит только от дня — раз на день, а не на каждую строку списка (перебор рабочих дней на строку).
+        static $edges = [];
+        $now = now();
+
+        return ($edges[$now->format('Y-m-d')] ??= WorkDays::add($now, self::WORKDAYS)->endOfDay())->copy();
     }
 
     /** @return 'set'|'panic'|'over'|'deal'|'undecided'|null */

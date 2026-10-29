@@ -76,7 +76,7 @@ final class Ago
     public static function stamp(?\DateTimeInterface $at, bool $time = false): string
     {
         if (! $at) return '';
-        $at = Carbon::instance($at);
+        $at = FastDate::instance($at);
         if ($at->isToday()) return $at->format('H:i');
         $day = $at->isCurrentYear() ? 'j M' : 'j M Y';
 
@@ -90,7 +90,7 @@ final class Ago
     public static function day(?\DateTimeInterface $at, bool $time = false): string
     {
         if (! $at) return '';
-        $at = Carbon::instance($at);
+        $at = FastDate::instance($at);
 
         return $at->translatedFormat(($at->isCurrentYear() ? 'j M' : 'j M Y').($time ? ', H:i' : ''));
     }

@@ -2,8 +2,10 @@
 
 namespace App\Media;
 
+use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\Conversions\Conversion;
 use Spatie\MediaLibrary\Conversions\ConversionCollection;
+use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\MediaLibrary\Support\UrlGenerator\UrlGenerator;
 use Spatie\MediaLibrary\Support\UrlGenerator\UrlGeneratorFactory;
@@ -47,15 +49,41 @@ final class MediaUrl
     {
         self::$memo ??= new WeakMap;
         $urls = self::$memo[$media] ?? [];
-        // Версия — в ключе: повернули кадр в этом же запросе — адрес новый.
-        $v = $media->updated_at?->timestamp ?? 0;
-        $key = ($conversion ?? '').'@'.$v;
+        // Версия — в ключе: повернули кадр в этом же запросе — адрес новый. Ключ — сырое `updated_at`: разбор даты Carbon
+        // на каждый адрес стоил больше самого адреса.
+        $key = ($conversion ?? '').'@'.($media->getAttributes()['updated_at'] ?? '');
         if (! isset($urls[$key])) {
+            $v = $media->updated_at?->timestamp ?? 0;
             $urls[$key] = self::url($media, $conversion).'?v='.$v;
             self::$memo[$media] = $urls;
         }
 
         return $urls[$key];
+    }
+
+    /** @var WeakMap<Model, array<string, array{0: mixed, 1: ?string}>>|null адрес первого файла коллекции у модели */
+    private static ?WeakMap $firsts = null;
+
+    /**
+     * Адрес первого файла коллекции (логотип вендора, аватар человека) — раз на модель, пока не сменился её список файлов
+     * (29.10.2026): `getFirstMedia` на каждый вызов фильтрует и сортирует коллекцию, а логотип и аватар стоят в строке
+     * таблицы по два раза — пятая часть страницы «Без закупочной».
+     */
+    public static function first(HasMedia&Model $model, string $collection, ?string $conversion = null): ?string
+    {
+        self::$firsts ??= new WeakMap;
+        $key = $collection.'|'.$conversion;
+        $memo = self::$firsts[$model] ?? [];
+        $loaded = $model->relationLoaded('media') ? $model->getRelation('media') : null;
+        if ($loaded !== null && isset($memo[$key]) && $memo[$key][0] === $loaded) {
+            return $memo[$key][1];
+        }
+        $media = $model->getFirstMedia($collection);
+        $url = $media ? self::for($media, $conversion) : null;
+        $memo[$key] = [$model->relationLoaded('media') ? $model->getRelation('media') : null, $url];
+        self::$firsts[$model] = $memo;
+
+        return $url;
     }
 
     /** Конверсии вниз и оригинал как самый широкий кандидат. */

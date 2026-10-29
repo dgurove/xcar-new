@@ -16,6 +16,7 @@ use App\Park\Actions\FillFromDocs;
 use App\Park\City;
 use App\Park\Vehicle;
 use App\Purchases\Car as PurchaseCar;
+use App\Support\FastAttributes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,6 +37,7 @@ use Spatie\MediaLibrary\HasMedia;
 #[Fillable(self::FIELDS)]
 class Car extends Model implements HasMedia
 {
+    use FastAttributes;
     use HasPhotos;
 
     /** Всё, что про машину; дорожки читают и пишут это через `OnCar`. */
