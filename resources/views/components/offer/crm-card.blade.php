@@ -29,7 +29,8 @@
     $left = $gallery || ! $admin ? null : $offer->secondsLeft();
     $timer = $left !== null && $left > 0;
     // Новое — голубой полосой, горящее — рыжей, как на витрине (12.10.2026); только админу.
-    $mark = $admin && ! $gallery ? $offer->crmTone() : null;
+    // Кружков «новое» и «горящее» в CRM нет (30.10.2026, владелец: «бесят»); остаются «в минус» и срок обязывающего.
+    $mark = $admin && ! $gallery && ! in_array($crmTone = $offer->crmTone(), ['fresh', 'hot'], true) ? $crmTone : null;
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink' };
     $count = ! $admin ? 0 : ($gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0));
     // Выбор пачкой («Оцененные», «Публикация») — галочкой в углу кадра, как в строке таблицы; не готовое к продаже —
