@@ -24,7 +24,7 @@ final class RepriceNotice extends Notice
     {
         $r = $this->reprice;
 
-        return Money::plain((int) $r->from_price).' → '.Money::rub($r->to_price).', '.$r->sourceLabel();
+        return Money::plain((int) $r->from_price, sign: false).' → '.Money::plain($r->to_price).', '.$r->sourceLabel();
     }
 
     public function href(): string

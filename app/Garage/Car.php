@@ -340,7 +340,10 @@ class Car extends Model
      */
     public function path(array $states): array
     {
-        $history = $this->stages->map(fn (OfferEvent $e) => [CarState::tryFrom($e->payload['state'] ?? ''), $e->created_at])->filter(fn ($h) => $h[0]);
+        // Журнал — у предложения: машину отдавали в гараж и раньше (строку прошлого раза удалили) — её этапы не наши.
+        $since = $this->created_at?->copy()->subSeconds(5);
+        $history = $this->stages->filter(fn (OfferEvent $e) => ! $since || $e->created_at >= $since)
+            ->map(fn (OfferEvent $e) => [CarState::tryFrom($e->payload['state'] ?? ''), $e->created_at])->filter(fn ($h) => $h[0]);
         $path = [];
         foreach ($states as $state) {
             $path[] = [

@@ -62,7 +62,8 @@ final class Importer
     {
         [$brandId, $modelId] = $this->catalog($row['brand'], $row['model']);
 
-        return $purchase->cars()->create([
+        // Закупку лоту — сразу: строка «В закупке № N» в истории машины иначе читала её заново на каждый лот файла.
+        $car = $purchase->cars()->make([
             'dl' => $row['dl'], 'ref' => Car::nextRef(), 'brand_id' => $brandId, 'model_id' => $modelId,
             'brand_raw' => $row['brand'], 'model_raw' => $row['model'], 'year' => $row['year'], 'address' => $row['address'],
             'settlement_id' => $this->settlement($row['address']), 'vehicle_type' => $row['vehicle_type'], 'kind' => $row['kind'],
@@ -71,7 +72,10 @@ final class Importer
             'site_url' => $row['site_url'], 'cloud_url' => $row['cloud_url'],
             'specs_state' => $row['site_url'] ? ImportState::Pending : ImportState::Skipped,
             'photos_state' => $row['cloud_url'] ? ImportState::Pending : ImportState::Skipped,
-        ]);
+        ])->setRelation('purchase', $purchase);
+        $car->save();
+
+        return $car;
     }
 
     private function update(Car $car, array $row): void

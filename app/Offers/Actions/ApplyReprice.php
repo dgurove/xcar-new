@@ -70,10 +70,10 @@ final class ApplyReprice
                 if ($choices['bids'][$bid->id] === self::UPDATE && $was[$bid->id] !== $price) {
                     if ($ask = $this->ask($reprice, $offer, $bid, $was[$bid->id], $price)) {
                         $notify[] = $ask;
-                        $people[] = $bid->user->shortName().' — спросили: '.Money::plain($was[$bid->id]).' → '.Money::plain($price);
+                        $people[] = $bid->user->shortName().' — спросили: '.Money::plain($was[$bid->id], sign: false).' → '.Money::plain($price);
                     } else {
                         $bid->update(['cost' => $price]);
-                        $people[] = $bid->user->shortName().' — '.Money::plain($was[$bid->id]).' → '.Money::plain($price);
+                        $people[] = $bid->user->shortName().' — '.Money::plain($was[$bid->id], sign: false).' → '.Money::plain($price);
                     }
                 } else {
                     $bid->cost === null && $bid->update(['cost' => $was[$bid->id]]);
@@ -86,10 +86,10 @@ final class ApplyReprice
                 if ($choices['deal'] === self::UPDATE && $dealWas !== $price) {
                     if ($ask = $this->ask($reprice, $offer, $liveDeal, $dealWas, $price)) {
                         $notify[] = $ask;
-                        $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — спросили: '.Money::plain($dealWas).' → '.Money::plain($price);
+                        $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — спросили: '.Money::plain($dealWas, sign: false).' → '.Money::plain($price);
                     } else {
                         $this->updateDeal($liveDeal, $price, $by);
-                        $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — '.Money::plain($dealWas).' → '.Money::plain($price);
+                        $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — '.Money::plain($dealWas, sign: false).' → '.Money::plain($price);
                     }
                 } else {
                     $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — оставлена '.Money::plain($dealWas);

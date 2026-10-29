@@ -41,7 +41,7 @@
     @endif
     {{-- Та же машина в закупке (29.10.2026, владелец: «не видно в подтверждениях, сколько за неё предлагали в закупке»):
          последняя цена каждого менеджера и наша — группой после подтверждений продажи. --}}
-    @if (auth()->user()?->canManageCrm() && $offer->purchaseCar)
+    @if (auth()->user()?->canManageCrm() && $offer->purchaseCar?->hasPrices())
         <div @class(['px-1 text-sm text-ink-dim', 'mt-2' => $offer->bids->isNotEmpty()])>В закупке № {{ $offer->purchaseCar->purchase->number }}</div>
         @include('admin.offers.purchase-prices', ['car' => $offer->purchaseCar])
     @endif

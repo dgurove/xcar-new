@@ -25,11 +25,12 @@ final class PlaceOffer
             throw ValidationException::withMessages(['amount' => 'Назовите цену']);
         }
 
-        if ($car->bids()->where('user_id', $by->id)->where('state', BidState::Accepted)->exists()) {
-            throw ValidationException::withMessages(['amount' => 'Ваша цена уже выбрана']);
-        }
-
+        // Замок на лот: два нажатия «Предложить» подряд — вторая цена заменяет первую, а не падает на `bids_one_active_lot`.
         return DB::transaction(function () use ($car, $by, $amount, $comment) {
+            Car::whereKey($car->id)->lockForUpdate()->first();
+            if ($car->bids()->where('user_id', $by->id)->where('state', BidState::Accepted)->exists()) {
+                throw ValidationException::withMessages(['amount' => 'Ваша цена уже выбрана']);
+            }
             $was = $car->bids()->where('user_id', $by->id)->where('state', BidState::Active)->value('amount');
             // Прежняя цена не отозвана, а заменена новой — как у подтверждения продажи.
             $car->bids()->where('user_id', $by->id)->where('state', BidState::Active)->update(['state' => BidState::Replaced]);

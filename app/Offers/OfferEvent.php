@@ -100,7 +100,7 @@ class OfferEvent extends Model
                 isset($p['buyer_price']) => 'В гараж покупателю за '.Money::rub($p['buyer_price']),
                 isset($p['garage']) => 'В гараж, поставщику платит '.mb_strtolower(GaragePayer::tryFrom($p['garage'])?->label() ?? ''),
                 // Закупочную менеджера поправили при принятии — было и стало.
-                isset($p['cost']) => 'Подтверждение принято, закупочная менеджера '.Money::plain((int) $p['cost'][0]).' → '.Money::rub((int) $p['cost'][1]),
+                isset($p['cost']) => 'Подтверждение принято, закупочная менеджера '.Money::plain((int) $p['cost'][0], sign: false).' → '.Money::rub((int) $p['cost'][1]),
                 default => 'Подтверждение принято',
             },
             OfferEventType::BidDeclined => 'Подтверждение отклонено',
@@ -134,15 +134,15 @@ class OfferEvent extends Model
             // Поставщик отказал продавать (28.10.2026): сделка закрыта по причине, предложение в архиве.
             // Переоценка закупочной (28.10.2026): пришла на решение, применена с выбором по каждому подтвердившему, отклонена.
             OfferEventType::Reprice => match ($p['state'] ?? 'pending') {
-                'applied' => 'Переоценка применена: закупочная '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0))
+                'applied' => 'Переоценка применена: закупочная '.Money::plain((int) ($p['from'] ?? 0), sign: false).' → '.Money::rub((int) ($p['to'] ?? 0))
                     .(! empty($p['people']) ? '. '.implode(', ', $p['people']) : ''),
-                'dismissed' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0)).' отклонена',
-                'superseded' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0)).' заменена новой',
+                'dismissed' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0), sign: false).' → '.Money::rub((int) ($p['to'] ?? 0)).' отклонена',
+                'superseded' => 'Переоценка '.Money::plain((int) ($p['from'] ?? 0), sign: false).' → '.Money::rub((int) ($p['to'] ?? 0)).' заменена новой',
                 // Вопрос менеджеру о выросшей закупочной (28.10.2026, `AnswerReprice`).
                 'agreed' => ($p['manager'] ?? 'Менеджер').' согласен на закупочную '.Money::rub((int) ($p['to'] ?? 0)).(($p['for'] ?? null) === 'manager' ? ' (за менеджера)' : ''),
                 'refused' => ($p['manager'] ?? 'Менеджер').' отказался от закупочной '.Money::rub((int) ($p['to'] ?? 0)).(! empty($p['deal']) ? ', сделка отменена' : ', подтверждение снято')
                     .(($p['for'] ?? null) === 'manager' ? ' (за менеджера)' : ''),
-                default => 'Переоценка на решение: '.Money::plain((int) ($p['from'] ?? 0)).' → '.Money::rub((int) ($p['to'] ?? 0))
+                default => 'Переоценка на решение: '.Money::plain((int) ($p['from'] ?? 0), sign: false).' → '.Money::rub((int) ($p['to'] ?? 0))
                     .(($p['source'] ?? '') === 'letter' ? ' по письму поставщика' : ''),
             },
             OfferEventType::SupplierDeclined => 'Поставщик отказал'.(($p['note'] ?? null) ? ': '.$p['note'] : '').(! empty($p['pickup_cancelled']) ? ', вывоз отменён' : ''),
@@ -196,21 +196,27 @@ class OfferEvent extends Model
      * Строка лота закупки (29.10.2026): лот в закупке, цена менеджера (назвал, сменил, отозвал, выбрана, не выбрана), наша
      * цена было → стало. Кто назвал — автором строки; выбор делает админ — чья цена, в тексте.
      */
+    /** Имя менеджера строки закупки — один запрос на человека за запрос, а не на строку ленты. */
+    private static function managerName(int $id): string
+    {
+        return once(fn () => User::find($id)?->shortName() ?? '');
+    }
+
     private static function purchaseText(OfferEventType $type, array $p): string
     {
         $in = 'Закупка № '.($p['purchase'] ?? '').': ';
         $sum = Money::rub((int) ($p['amount'] ?? 0));
-        $whose = isset($p['manager']) ? ', '.(User::find($p['manager'])?->shortName() ?? '') : '';
+        $whose = isset($p['manager']) ? ', '.self::managerName((int) $p['manager']) : '';
         [$was, $now] = $p['changes']['price_final'] ?? [null, null];
 
         return match ($type) {
             OfferEventType::Created => 'В закупке № '.($p['purchase'] ?? '').(! empty($p['dl']) ? ', ДЛ '.$p['dl'] : ''),
-            OfferEventType::BidPlaced => $in.'цена '.(isset($p['was']) ? Money::plain((int) $p['was']).' → ' : '').$sum,
+            OfferEventType::BidPlaced => $in.'цена '.(isset($p['was']) ? Money::plain((int) $p['was'], sign: false).' → ' : '').$sum,
             OfferEventType::BidWithdrawn => $in.'цена '.$sum.' отозвана',
             OfferEventType::BidAccepted => $in.'выбрана цена '.$sum.$whose,
             OfferEventType::BidDeclined => $in.'не выбрана цена '.$sum.$whose,
             OfferEventType::Note => ! empty($p['unchosen']) ? $in.'выбор цены '.$sum.' отменён'.$whose : $in.($p['text'] ?? ''),
-            OfferEventType::Updated => $in.'админская цена '.($was ? Money::plain((int) $was).' → ' : '').($now ? Money::rub((int) $now) : 'снята'),
+            OfferEventType::Updated => $in.'админская цена '.($was ? Money::plain((int) $was, sign: false).' → ' : '').($now ? Money::rub((int) $now) : 'снята'),
             default => $in.$type->value,
         };
     }

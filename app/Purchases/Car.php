@@ -337,6 +337,12 @@ class Car extends Model
         return $this->bids->groupBy('user_id')->map(fn (Collection $mine) => $mine->sortByDesc('id')->first())->sortByDesc('amount')->values();
     }
 
+    /** Есть что показать в «Подтверждениях» продажи: цена хоть одного менеджера или наша. */
+    public function hasPrices(): bool
+    {
+        return (bool) $this->price_final || $this->bids->isNotEmpty();
+    }
+
     public function bestOffer(): ?Bid
     {
         return $this->bids->firstWhere('state', BidState::Accepted) ?? $this->bids->firstWhere('state', BidState::Active);
