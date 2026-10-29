@@ -94,7 +94,8 @@ class VehicleController
      * месяцу выдачи; владелец: «нет способа посмотреть тачки, которые были выданы»). Выданные — архив дел: группами по
      * месяцу выдачи, свежие сверху, свои столбцы (`x-park.table-row out`), чипы «Месяц» и «Деньги» (`OutMoney`).
      */
-    public const PRESETS = ['stored' => 'На парковке', 'out' => 'Выданы'];
+    // «Все» (29.10.2026) — стоящие и выданные одной книгой, как Excel управляющего: у выданной дата выдачи, строка тусклая.
+    public const PRESETS = ['stored' => 'На парковке', 'out' => 'Выданы', 'all' => 'Все'];
 
     /**
      * «Наличие» — что стоит на парковках сейчас: только stored, пилюли по парковкам.
@@ -168,8 +169,8 @@ class VehicleController
         $yard = count($yards) === 1 && ctype_digit($yards[0]) ? Yard::find((int) $yards[0]) : null;
 
         return view('park.vehicles.index', $data + [
-            'presets' => self::PRESETS, 'preset' => $out ? 'out' : 'stored',
-            'counts' => ['stored' => Vehicle::where('state', VehicleState::Stored)->count(), 'out' => Vehicle::where('state', VehicleState::Released)->count()],
+            'presets' => self::PRESETS, 'preset' => $out ? 'out' : (self::preset($request) === 'all' && $q === '' ? 'all' : 'stored'),
+            'counts' => ['stored' => $stored = Vehicle::where('state', VehicleState::Stored)->count(), 'out' => $released = Vehicle::where('state', VehicleState::Released)->count(), 'all' => $stored + $released],
             'state' => $state,
             'yard' => $yard,
             'facets' => $facets,
@@ -652,12 +653,13 @@ class VehicleController
     {
         $q = trim((string) $request->query('q'));
         $preset = self::preset($request);
-        $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q !== '' ? null : ($preset === 'out' ? VehicleState::Released : VehicleState::Stored));
+        $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q !== '' || $preset === 'all' ? null : ($preset === 'out' ? VehicleState::Released : VehicleState::Stored));
         // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
         $vehicles = Vehicle::withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
             ->with(['vendor', 'yard', 'offer.deal.buyer', 'requests',
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])
             ->when($state, fn ($v, $s) => $v->where('state', $s))
+            ->when(! $state && $q === '' && $preset === 'all', fn ($v) => $v->whereIn('state', [VehicleState::Stored, VehicleState::Released]))
             // Деньги выданной словом — в строке, карточке и выгрузке, тем же выражением, что чип «Деньги».
             ->when($state === VehicleState::Released, fn ($v) => $v->addSelect(DB::raw(OutMoney::sql().' as money_state')))
             ->search($q);
@@ -742,19 +744,26 @@ class VehicleController
     /**
      * Таблица «Наличия» — одно описание на шапку, строки (`x-park.table-row`, кэш `TableRows`) и заголовки парковок и
      * месяцев. Выданные — свои столбцы (архив дела); приёмщику (`User::parkMoney`) денежных нет.
+     * Парковка — своим столбцом всегда (29.10.2026, управляющий вёл Excel: там место ТС в каждой строке, у нас оно было
+     * заголовком группы или обрезанным хвостом названия). Подробная таблица (`wide`) — ещё и документы ТС, как его Excel и
+     * выгрузка: цвет, VIN, СТС, ПТС, полис, стоимость; набор задаём мы, человек его не настраивает.
      */
-    public static function table(bool $out, bool $money): Table
+    public static function table(bool $out, bool $money, bool $wide = false): Table
     {
         $title = new Column('title', 'Марка, модель', grow: true, sort: 'name', cap: false);
+        $yard = new Column('yard', 'Парковка', from: 'sm', sort: 'yard', rem: 8);
         $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', rem: 10);
         $accepted = new Column('accepted', 'Принята', from: 'lg', num: true, aside: true, sort: 'accepted', cell: 'nums text-ink-muted', rem: 6.5);
+        $docs = $wide ? [new Column('color', 'Цвет', rem: 6), new Column('vin', 'VIN', cell: 'text-sm', rem: 11), new Column('sts', 'СТС', cell: 'text-sm', rem: 7),
+            new Column('pts', 'ПТС', cell: 'text-sm', rem: 8), new Column('policy', '№ полиса', cell: 'text-sm', rem: 9),
+            new Column('value', 'Стоимость', num: true, cell: 'nums', rem: 6)] : [];
 
         return $out
-            ? Table::of($title, $vendor, $accepted, new Column('released', 'Выдана', num: true, sort: 'out', cell: 'nums', rem: 5),
-                $money ? new Column('storage', 'Хранение', num: true, sort: 'amount', cell: 'nums', rem: 7) : null)
-            : Table::of($title, $vendor, new Column('status', 'Статус', from: 'sm', sort: 'tasks', rem: 9), $accepted,
+            ? Table::of($title, $yard, $vendor, ...$docs, ...[$accepted, new Column('released', 'Выдана', num: true, sort: 'out', cell: 'nums', rem: 5),
+                $money ? new Column('storage', 'Хранение', num: true, sort: 'amount', cell: 'nums', rem: 7) : null])
+            : Table::of($title, $yard, $vendor, ...$docs, ...[new Column('status', 'Статус', from: 'sm', sort: 'tasks', rem: 9), $accepted,
                 new Column('days', 'Дней', num: true, sort: 'days', cell: 'nums', rem: 4),
                 $money ? new Column('rate', 'Ставка', from: 'sm', num: true, sort: 'rate', cell: 'nums', rem: 5.5) : null,
-                $money ? new Column('amount', 'Начислено', num: true, sort: 'amount', cell: 'nums', rem: 7) : null);
+                $money ? new Column('amount', 'Начислено', num: true, sort: 'amount', cell: 'nums', rem: 7) : null]);
     }
 }

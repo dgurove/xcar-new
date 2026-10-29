@@ -1487,6 +1487,23 @@ html.kb-open { --home-gap: 0px; }
   /* Заголовок группы `x-table.group`: название с числом слева, кнопка группы справа («Отправить заявку»). */
   .table tr.table-group .table-group-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
   .table tr.table-group .table-group-row > .btn { margin-left: auto; font-size: var(--text-sm); }
+  /* Таблицы парковки на ПК — плотнее (29.10.2026, владелец: управляющий ушёл в Excel — «шрифт огромный, люди не слепые»,
+     на экране 22 ТС против 55): текст 13 вместо 15, строка 28 px вместо 36, шаг между столбцами 12 px. Телефон — как был. */
+  @media (min-width: 640px) {
+    .surface-park .table { font-size: var(--text-sm); }
+    .surface-park .table tbody tr:not(.table-group) { height: 1.75rem; }
+    .surface-park .table td { padding-block: .125rem; }
+    .surface-park .table tbody tr:not(.table-group) > td, .surface-park .table .cell-title { line-height: 1.125rem; }
+    .surface-park .table tbody tr:not(.table-group) > td:is(.cell-dim, .text-sm, .text-xs, .\!text-xs) { padding-top: .125rem; }
+    .surface-park .table :is(th, td):not(:first-child) { padding-left: .75rem; }
+    .surface-park .table .num { padding-left: 1rem; }
+    .surface-park .table .cell-title > .title-plate { font-size: var(--text-xs); }
+    .surface-park .table tr.table-group > th { padding-top: .5rem; font-size: var(--text-base); }
+    /* Подробная «Наличия» — ещё и документы ТС: в ширину экрана не влезает, листается вбок целиком, название не уже 14rem. */
+    .surface-park .table-wrap.is-wide .table-box { overflow-x: auto; overscroll-behavior-x: contain; }
+    .surface-park .table-wrap.is-wide .table { width: max-content; min-width: 100%; }
+    .surface-park .table-wrap.is-wide .table .grow { width: auto; min-width: 14rem; max-width: 20rem; }
+  }
   /* Галочки строк («Оцененные», «Публикация», pick_controller): узкий первый столбец, круг как у .row-check; та же
      галочка у группы (слот целиком) и строкой «Выбрать все» над таблицей. Соседний столбец к ней не отступает. */
   /* Число у пилюли обновляется потоком (оценили — «Без цены» минус один); ноль — пусто. */

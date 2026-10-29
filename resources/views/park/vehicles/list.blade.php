@@ -1,6 +1,6 @@
 {{-- Сам список «Наличия»: таблица с карточкам или карточки. Этим же куском отвечает живой поиск
-     (заголовок X-List) — он подменяет содержимое #cars целиком. На «Все» без поиска строки собраны
-     под заголовками парковок (grouped): столбца «Парковка» нет, «Без парковки» — последней группой.
+     (заголовок X-List) — он подменяет содержимое #cars целиком. Без поиска строки собраны под заголовками
+     парковок (grouped), «Без парковки» — последней группой; столбец «Парковка» есть всегда.
      Группы — строки того же tbody: карточка листает ↑/↓ по всем строкам подряд, через границы групп. --}}
 @php
     use App\Support\ListView;
@@ -21,7 +21,9 @@
         ? ($key ? mb_convert_case(\Illuminate\Support\Carbon::createFromFormat('Y-m', $key)->translatedFormat('F Y'), MB_CASE_TITLE) : 'Без даты')
         : ($key ? $group->first()->yard->name : 'Без парковки');
     // Шапка сортирует нажатием (x-ui.th) — каждый столбец (12.10.2026, владелец: «как в CRM»); столбцы — одно описание.
-    $columns = \App\Http\Park\VehicleController::table($out, $money ?? true);
+    // Подробная таблица — ещё и документы ТС (`VehicleController::table`).
+    $wide = $view === ListView::WIDE;
+    $columns = \App\Http\Park\VehicleController::table($out, $money ?? true, $wide);
 @endphp
 @if ($vehicles->isEmpty())
     <x-ui.empty class="py-6">{{ $q !== '' ? 'Ничего не нашлось' : 'ТС нет' }}</x-ui.empty>
@@ -29,7 +31,7 @@
     @if (ListView::isTable($view))
         <x-ui.table id="vehicles" :view="$view" :rest="$columns->rest()" data-controller="table-scroll group-fold" data-group-fold-name-value="park-fold">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
-            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, ($q !== '' || $byMonth || $flat) && auth()->user()?->seesYards(), $out, $money ?? true); @endphp
+            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $wide, $out, $money ?? true); @endphp
             @foreach ($groups as $key => $group)
                 @if ($grouped || $byMonth)
                     {{-- Заголовок группы сворачивает её (12.10.2026, владелец): память по парковке или месяцу в браузере. --}}

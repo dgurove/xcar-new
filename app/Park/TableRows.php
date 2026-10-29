@@ -11,14 +11,14 @@ use Illuminate\Support\Facades\Cache;
  * Готовый HTML строк таблицы «Наличия» (`x-park.table-row`): полторы сотни строк по пять-шесть компонентов в каждой
  * слабый сервер рисовал больше полусекунды. Строка берётся из кэша, пока не поменялось то, из чего она собрана:
  * сама ТС, её заявки и число веток писем (теги «что не так»), прайс («Нет тарифа»), имя и логотип вендора,
- * парковка, сумма, долг, метка «в документе иначе», вид (с парковкой словом или без, строка выданной — `out` с её деньгами)
+ * парковка и место, сумма, долг, метка «в документе иначе», вид (подробная — с документами, строка выданной — `out` с её деньгами)
  * и админ ли смотрит (значок связи). Ключ у каждой строки свой: правка одной ТС
  * перерисовывает только её. Все строки — одним чтением кэша.
  */
 final class TableRows
 {
     /** @param  Collection<int, Vehicle>  $vehicles @return array<int, string> id ТС => HTML строки */
-    public static function render(Collection $vehicles, array $totals, array $debts, bool $place, bool $out = false, bool $money = true): array
+    public static function render(Collection $vehicles, array $totals, array $debts, bool $wide = false, bool $out = false, bool $money = true): array
     {
         if ($vehicles->isEmpty()) {
             return [];
@@ -34,17 +34,17 @@ final class TableRows
             $v->offer ? $v->offer->id.':'.$v->offer->updated_at?->getTimestamp().':'.$v->offer->deal?->id : '',
             $v->threads_count, $v->waiting_count ?? 0,
             $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','), today()->toDateString(),
-            $v->vendor?->name, $v->vendor?->logoUrl(), $v->yard?->name,
-            json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $place, $docs[$v->id], $out, $v->getAttribute('money_state'), $v->getAttribute('task_keys')]),
+            $v->vendor?->name, $v->vendor?->logoUrl(), $v->yard?->name, $v->spot,
+            json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $wide, $docs[$v->id], $out, $v->getAttribute('money_state'), $v->getAttribute('task_keys')]),
         ]))])->all();
         $cached = Cache::many(array_values($keys));
         // Столбцы — то же описание, что у шапки списка: выданные и деньги входят в ключ строки выше.
-        $table = \App\Http\Park\VehicleController::table($out, $money);
+        $table = \App\Http\Park\VehicleController::table($out, $money, $wide);
         $rows = $fresh = [];
         foreach ($vehicles as $v) {
             $html = $cached[$keys[$v->id]] ?? null;
             if ($html === null) {
-                $html = view('components.park.table-row', ['vehicle' => $v, 'table' => $table, 'total' => $totals[$v->id] ?? null, 'debt' => $debts[$v->id] ?? 0, 'place' => $place])->render();
+                $html = view('components.park.table-row', ['vehicle' => $v, 'table' => $table, 'total' => $totals[$v->id] ?? null, 'debt' => $debts[$v->id] ?? 0])->render();
                 $fresh[$keys[$v->id]] = $html;
             }
             $rows[$v->id] = $html;
@@ -67,6 +67,6 @@ final class TableRows
         static $hash;
 
         return $hash ??= md5(implode(',', array_map(fn ($path) => @md5_file($path) ?: '', [app_path('Park/Status.php'), app_path('Support/Table/Column.php'), app_path('Http/Park/VehicleController.php'), ...array_map(fn ($f) => resource_path("views/components/{$f}.blade.php"),
-            ['park/table-row', 'park/alerts', 'park/ref', 'ui/plate', 'ui/copy-code', 'ui/icon', 'ui/links', 'vendor/logo', 'vendor/name'])])));
+            ['park/table-row', 'park/alerts', 'park/ref', 'ui/plate', 'ui/copy-code', 'ui/icon', 'ui/place', 'ui/links', 'vendor/logo', 'vendor/name'])])));
     }
 }
