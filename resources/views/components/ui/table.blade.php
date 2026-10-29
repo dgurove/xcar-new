@@ -4,13 +4,17 @@
      показывает все столбцы и листается вбок. titles — названия строк: столбец «Марка, модель» (title-cap) шириной в самое
      длинное из них (или число знаков — когда за названием значки), чтобы они не сокращались, пока справа есть место; сжимается он, только когда места нет; rest — сколько
      rem занимают прочие столбцы (без него — 40). Не влезла в ширину — листается вбок (table_scroll_controller). table — описание
-     столбцов (`Support\Table`): с ним на ПК таблица — сетка, и строка за экраном не считается (`Table::gridStyle`). --}}
+     столбцов (`Support\Table`): с ним на ПК длинная таблица (больше 200 строк) — сетка, и строка за экраном не считается
+     (`Table::gridStyle`). --}}
 @props(['head', 'id' => null, 'view' => null, 'titles' => null, 'rest' => null, 'table' => null])
 @php
     $titleCh = $titles ? collect($titles)->map(fn ($t) => is_int($t) ? $t : mb_strlen((string) $t))->max() : null;
     $wide = $view === \App\Support\ListView::WIDE;
     // С описанием столбцов (`Support\Table`) на ПК — сеткой: строки за экраном не считаются (`Table::gridStyle`, `.is-grid`).
-    $grid = $table && ! $wide;
+    // Только длинная (29.10.2026, «Заявки» в 66 строк: название — полэкрана пустоты, дата, почта и номер обрезаны): у сетки
+    // ширины из описания, а не из содержимого, и шире их делает только скрипт после отрисовки. Короткую ширит браузер сам,
+    // по содержимому; сетка окупается на сотнях строк («Все» CRM, 749 — карточка открывалась полсекунды).
+    $grid = $table && ! $wide && substr_count((string) $slot, 'data-detail-key=') > 200;
     $style = trim(($titleCh ? '--title-ch: '.$titleCh.';'.($rest ? ' --rest: '.$rest.'rem;' : '') : '').($grid ? ' '.$table->gridStyle() : ''));
 @endphp
 <div {{ $attributes->merge(['class' => 'table-wrap'.($wide ? ' is-wide' : '').($grid ? ' is-grid' : ''), 'data-controller' => 'table-scroll']) }} @if ($id) id="{{ $id }}" @endif @if ($style) style="{{ $style }}" @endif @if ($grid) data-cols="{{ $table->fitKeys() }}" @endif>

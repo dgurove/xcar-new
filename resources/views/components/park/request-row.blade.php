@@ -61,7 +61,7 @@
     <td class="{{ $col->classes() }}">{{ $req->type->label() }}</td>
         @break
         @case('yard')
-    <td class="{{ $col->classes() }}">{{ ($req->yard ?? $v->yard)?->name }}</td>
+    <td class="{{ $col->classes() }}">@if ($yard = $req->yard ?? $v->yard)<x-ui.place>{{ $yard->name }}</x-ui.place>@endif</td>
         @break
         @endswitch
     @endforeach

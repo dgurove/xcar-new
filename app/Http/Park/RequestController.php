@@ -404,17 +404,18 @@ class RequestController
     /**
      * Таблица заявок — одно описание на шапку и строки `x-park.request-row`: откуда пришла, номер убытка, тип, парковка.
      * «Тип» — только где типы смешаны («Все», поиск): во вкладке одного типа его называет пилюля. Парковка — с 640 и при
-     * открытой карточке, как в «Наличии» (29.10.2026).
+     * открытой карточке, как в «Наличии» (29.10.2026). Название — шириной в самое длинное (`:titles` в списке), запас
+     * ширины — последней «Парковке»: столбцы стоят плотно, а не через полэкрана пустоты (29.10.2026, владелец).
      */
     public static function table(bool $mixed = true): Table
     {
         return Table::of(
-            new Column('title', 'Марка, модель', grow: true, cap: false),
-            new Column('came', 'Пришла', from: 'sm', sort: 'fresh', cell: 'nums whitespace-nowrap req-came', rem: 6),
+            new Column('title', 'Марка, модель', grow: true),
+            new Column('came', 'Пришла', from: 'sm', sort: 'fresh', cell: 'nums whitespace-nowrap req-came', rem: 7.5),
             new Column('from', 'От кого', from: 'sm', dim: true, cell: 'req-from', rem: 11),
-            new Column('ref', '№ убытка', from: 'sm', dim: true, rem: 10),
+            new Column('ref', '№ убытка', from: 'sm', dim: true, rem: 13),
             $mixed ? new Column('type', 'Тип', from: 'sm', sort: 'type', rem: 5) : null,
-            new Column('yard', 'Парковка', from: 'sm', dim: true, rem: 9),
+            new Column('yard', 'Парковка', from: 'sm', dim: true, fill: true, rem: 11),
         );
     }
 }

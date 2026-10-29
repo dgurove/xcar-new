@@ -556,7 +556,7 @@ class OfferController
             $has('city') ? new Column('city', 'Город', from: in_array($preset, ['all', 'done'], true) ? 'lg' : 'sm', aside: true, rem: max(5, $cityCh * .5 + 2.5)) : null,
             // Без «Состояния» запас ширины забирает пустой столбец перед числами, а не промежутки между столбцами.
             $has('state')
-                ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', fill: true, sort: 'closing', rem: 10)
+                ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', fill: true, sort: 'closing', cell: 'whitespace-normal', rem: 10)
                 : new Column('gap', from: 'sm', fill: true),
             // Подтверждения принимает только админ — модератору столбца нет.
             $has('bids') && $user->canManageCrm() ? new Column('bids', 'Подтверждения', from: 'sm', num: true, sort: 'bids', cell: 'nums', rem: 7) : null,

@@ -6,8 +6,9 @@ import { Controller } from '@hotwired/stimulus';
 // Таблица сеткой (`is-grid`, `Support\Table::gridStyle`, 29.10.2026): ширина столбца из описания — наименьшая. Не влезло в
 // показанной строке (кнопка, дата с аватаром, длинный номер) — столбец шире (`--fit-<ключ>` у обёртки, ключи по порядку
 // ячеек — `data-cols`), всем строкам сразу: строки — отдельные сетки и иначе разошлись бы. Строка за экраном не считается
-// (`content-visibility`) — её меряем, когда выходит на экран. Столбец только шире, не уже: пока страница открыта, он не
-// прыгает туда-сюда при прокрутке.
+// (`content-visibility`) — её меряем, когда подходит к экрану (`IntersectionObserver`: событие
+// `contentvisibilityautostatechange` и `checkVisibility` в Safari ненадёжны — у владельца столбцы не ширились вовсе,
+// 29.10.2026). Столбец только шире, не уже: пока страница открыта, он не прыгает туда-сюда при прокрутке.
 const FIT_MAX = 384; // столбец не шире 24rem — длинное дальше режется «…»
 
 export default class extends Controller {
@@ -25,7 +26,7 @@ export default class extends Controller {
     disconnect() {
         this.observer?.disconnect();
         this.rows?.disconnect();
-        this.element.removeEventListener('contentvisibilityautostatechange', this.onShown, true);
+        this.near?.disconnect();
         cancelAnimationFrame(this.frame);
     }
 
@@ -37,8 +38,11 @@ export default class extends Controller {
         this.keys = (this.element.dataset.cols || '').split(',');
         this.fit = {};
         this.pending = new Set();
-        this.onShown = (e) => { if (!e.skipped) this.queue(e.target); };
-        this.element.addEventListener('contentvisibilityautostatechange', this.onShown, true);
+        // Строка у экрана (с запасом в экран) — меряем; дальше — пусть не считается.
+        this.near = new IntersectionObserver((list) => {
+            list.forEach((e) => { if (e.isIntersecting) this.pending.add(e.target); });
+            if (this.pending.size) this.schedule();
+        }, { rootMargin: '100% 0px' });
         // Живое обновление строки (морф, поток) — её ячейки могли стать шире.
         this.rows = new MutationObserver((list) => {
             for (const m of list) m.addedNodes.forEach((node) => node.nodeType === 1 && this.queue(node));
@@ -50,14 +54,18 @@ export default class extends Controller {
 
     queueAll() {
         // Шапка тоже: подпись со стрелкой сортировки бывает шире чисел столбца.
-        this.table.querySelectorAll('thead tr, tbody tr:not(.table-group)').forEach((tr) => this.pending.add(tr));
-        this.schedule();
+        this.table.querySelectorAll('thead tr, tbody tr:not(.table-group)').forEach((tr) => this.watch(tr));
+    }
+
+    // Строку меряет `near`, когда она у экрана (и сразу, если уже там): так и для новой строки живого обновления.
+    watch(tr) {
+        this.near.unobserve(tr);
+        this.near.observe(tr);
     }
 
     queue(node) {
         const rows = node.localName === 'tr' ? [node] : node.closest?.('tr') ? [node.closest('tr')] : [...(node.querySelectorAll?.('tr') ?? [])];
-        rows.forEach((tr) => { if (!tr.classList.contains('table-group') && tr.closest('thead, tbody')) this.pending.add(tr); });
-        if (this.pending.size) this.schedule();
+        rows.forEach((tr) => { if (!tr.classList.contains('table-group') && tr.closest('thead, tbody')) this.watch(tr); });
     }
 
     schedule() {
@@ -65,7 +73,7 @@ export default class extends Controller {
     }
 
     measure() {
-        const rows = [...this.pending].filter((tr) => tr.isConnected && tr.firstElementChild?.checkVisibility?.({ contentVisibilityAuto: true }) !== false);
+        const rows = [...this.pending].filter((tr) => tr.isConnected);
         this.pending.clear();
         const want = {};
         for (const tr of rows) {
