@@ -2,6 +2,7 @@
 
 namespace App\Purchases;
 
+use App\Offers\BidState;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Support\Collection;
@@ -27,7 +28,7 @@ final class OffersSummary
     public function __construct(public readonly Purchase $purchase)
     {
         // Только цены и люди: сводка считается по всем машинам, связи для показа догружает экран у своей страницы.
-        $this->cars = $purchase->cars()->whereDoesntHave('offer')->where('is_published', true)->with('offers.user')->orderByRaw(\App\Cars\Car::sql('purchase_cars', 'claim_ref'))->get();
+        $this->cars = $purchase->cars()->whereDoesntHave('offer')->where('is_published', true)->with('bids.user')->orderByRaw(\App\Cars\Car::sql('purchase_cars', 'claim_ref'))->get();
         $offered = $this->cars->flatMap(fn (Car $c) => $c->activeOfferList()->map->user)->unique('id');
         $managers = User::withRole(Role::Manager)->get()->concat($offered)->unique('id')->values();
         $hidden = Restriction::whereIn('user_id', $managers->pluck('id'))->pluck('hidden_kinds', 'user_id');
@@ -39,7 +40,7 @@ final class OffersSummary
                 'visible' => $visible,
                 'offered' => $mine->count(),
                 'missing' => max(0, $visible - $mine->count()),
-                'chosen' => $mine->where('state', OfferState::Chosen)->count(),
+                'chosen' => $mine->where('state', BidState::Accepted)->count(),
             ];
         }
         $this->stats = $stats;
@@ -49,7 +50,7 @@ final class OffersSummary
     /** Активные и выбранные цены этого человека по машинам закупки, в порядке файла. */
     public function offersOf(User $user): Collection
     {
-        return $this->cars->map(fn (Car $c) => $c->activeOfferList()->firstWhere('user_id', $user->id)?->setRelation('car', $c))->filter()->values();
+        return $this->cars->map(fn (Car $c) => $c->activeOfferList()->firstWhere('user_id', $user->id)?->setRelation('purchaseCar', $c))->filter()->values();
     }
 
     private ?Collection $unpriced = null;

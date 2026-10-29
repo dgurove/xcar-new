@@ -4,7 +4,7 @@
     $staff = auth()->user()?->isAdmin() ?? false;
     $mine = $staff ? null : $car->offerOf(auth()->user());
     $best = $staff ? $car->bestOffer() : null;
-    $active = $staff ? $car->offers->whereIn('state', [\App\Purchases\OfferState::Active, \App\Purchases\OfferState::Chosen]) : collect();
+    $active = $staff ? $car->bids->whereIn('state', [\App\Offers\BidState::Active, \App\Offers\BidState::Accepted]) : collect();
     $href = "/purchases/{$purchase->number}/{$car->ref}".($query ? '?'.$query : '');
     $main = $car->mainPhoto();
     $photos = $car->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
@@ -36,7 +36,7 @@
             <a href="/offers/{{ $car->offer?->number }}" class="btn btn-get btn-get-quiet nums">Предложение № {{ $car->offer?->number }}</a>
         @elseif ($staff)
             @if ($best)
-                @php $chosen = $best->state === \App\Purchases\OfferState::Chosen; @endphp
+                @php $chosen = $best->state === \App\Offers\BidState::Accepted; @endphp
                 <a href="{{ $href }}" class="btn btn-get btn-get-quiet min-w-0 shrink {{ $chosen ? 'text-accent-text' : '' }}">@if ($chosen)<x-ui.icon name="check" class="size-3.5 shrink-0"/>@endif<span class="nums">{{ \App\Support\Money::rub($best->amount) }}</span><span class="truncate font-normal opacity-80">{{ $best->user->shortName() }}{{ $active->count() > 1 ? ' +'.($active->count() - 1) : '' }}</span></a>
             @else
                 <a href="{{ $href }}" class="whitespace-nowrap text-sm text-ink-dim">Нет предложений</a>

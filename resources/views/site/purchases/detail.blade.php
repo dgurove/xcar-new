@@ -29,7 +29,7 @@
         </x-slot:aside>
         <x-slot:actions>
             @if (!$staff)
-                @if ($mine?->state === \App\Purchases\OfferState::Chosen)
+                @if ($mine?->state === \App\Offers\BidState::Accepted)
                     <span class="flash flash-accent w-full text-sm">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана, с Вами свяжутся</span>
                 @elseif ($purchase->acceptsOffers())
                     <x-offer.bid-form :my-bid="$mine" :action="'/purchases/'.$purchase->number.'/'.$car->ref.'/price'.$suffix" :withdraw="$mine ? '/purchases/prices/'.$mine->id.'/withdraw' : null" compact/>

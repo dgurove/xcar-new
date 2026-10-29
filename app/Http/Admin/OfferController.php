@@ -678,7 +678,7 @@ class OfferController
         // Модератору — поля, фото, документы и история: подтверждений, интереса, сделки, маршрута, чатов и круга показа
         // он не видит, и грузить их незачем.
         $admin = $request->user()->canManageCrm();
-        $offer->load(['settlement', 'media', 'car.events.user', ...($admin ? ['bids.user', 'purchaseCar.purchase', 'purchaseCar.offers.user', 'interests.user.manager', 'interests.placer', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
+        $offer->load(['settlement', 'media', 'car.events.user', ...($admin ? ['bids.user', 'purchaseCar.purchase', 'purchaseCar.bids.user', 'interests.user.manager', 'interests.placer', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
             'positions.stage.block', 'positions.stage.exits.to.block.stages', 'positions.stage.workflow', 'deal.buyer', 'dealAudience', 'lastDeal.buyer', 'lastDeal.bid'] : [])]);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
@@ -784,7 +784,7 @@ class OfferController
     public function detail(Request $request, Offer $offer, ?bool $gallery = null)
     {
         $admin = $request->user()->canManageCrm();
-        $offer->load(['settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'deal', 'purchaseCar.offers.user', 'purchaseCar.purchase', 'parkVehicle:id,car_id,state,yard_id,accepted_at,created_at', 'parkVehicle.yard:id,name', 'vendor.workflows', 'positions.stage', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media')] : [])])
+        $offer->load(['settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'deal', 'purchaseCar.bids.user', 'purchaseCar.purchase', 'parkVehicle:id,car_id,state,yard_id,accepted_at,created_at', 'parkVehicle.yard:id,name', 'vendor.workflows', 'positions.stage', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media')] : [])])
             ->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->loadMax('activeBids as top_bid', 'amount');
 
         return view('admin.offers.detail', OfferFiles::letters($offer, $request->user()) + [

@@ -10,4 +10,6 @@ enum BidKind: string
 {
     case Buyer = 'buyer';
     case Garage = 'garage';
+    /** Цена за лот закупки (29.10.2026): машина ещё не наша, предложения нет — `bids.purchase_car_id`. */
+    case Purchase = 'purchase';
 }

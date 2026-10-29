@@ -3,7 +3,7 @@
      экран оценки. highlight — id менеджера, чей чип идёт первым и ярким. --}}
 @props(['car', 'purchase', 'highlight' => null, 'price' => false])
 @php
-    use App\Purchases\{OfferState, ImportState};
+    use App\Purchases\ImportState;
     $n = $purchase->number;
     $offers = $car->activeOfferList()->sortBy([fn ($a, $b) => ($b->user_id === $highlight) <=> ($a->user_id === $highlight), fn ($a, $b) => $b->amount <=> $a->amount])->values();
 @endphp

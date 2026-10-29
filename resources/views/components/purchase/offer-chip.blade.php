@@ -3,8 +3,8 @@
      highlight — id менеджера, чьи чипы в режиме «по менеджерам» остаются яркими, остальные приглушены. --}}
 @props(['offer', 'car', 'highlight' => null])
 @php
-    use App\Purchases\OfferState;
-    $chosen = $offer->state === OfferState::Chosen;
+    use App\Offers\BidState;
+    $chosen = $offer->state === BidState::Accepted;
     $sum = \App\Support\Money::rub($offer->amount);
     $who = $offer->user->shortName();
 @endphp

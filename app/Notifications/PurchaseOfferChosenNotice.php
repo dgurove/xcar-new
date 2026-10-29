@@ -2,26 +2,26 @@
 
 namespace App\Notifications;
 
-use App\Purchases\Offer;
+use App\Offers\Bid;
 use App\Support\Money;
 
 final class PurchaseOfferChosenNotice extends Notice
 {
-    public function __construct(private Offer $offer) {}
+    public function __construct(private Bid $offer) {}
 
     public function title(): string
     {
-        return 'Ваша цена '.Money::plain($this->offer->amount).' за '.$this->offer->car->titleWithYear().' выбрана';
+        return 'Ваша цена '.Money::plain($this->offer->amount).' за '.$this->offer->purchaseCar->titleWithYear().' выбрана';
     }
 
     public function text(): ?string
     {
-        return $this->offer->car->purchase->publicTitle().', с вами свяжутся';
+        return $this->offer->purchaseCar->purchase->publicTitle().', с вами свяжутся';
     }
 
     public function href(): string
     {
-        return "/purchases/{$this->offer->car->purchase->number}/{$this->offer->car->ref}";
+        return "/purchases/{$this->offer->purchaseCar->purchase->number}/{$this->offer->purchaseCar->ref}";
     }
 
     public function category(): string

@@ -2,7 +2,7 @@
     $qs = http_build_query(array_filter($filters, fn ($v) => $v !== null && $v !== ''));
     $suffix = $qs ? '?'.$qs : '';
     $back = '/purchases/'.$purchase->number.$suffix;
-    $asSheet = $purchase->acceptsOffers() && $mine?->state !== \App\Purchases\OfferState::Chosen;
+    $asSheet = $purchase->acceptsOffers() && $mine?->state !== \App\Offers\BidState::Accepted;
     $facts = $car->factsList();
 @endphp
 <x-ui.shell :title="$car->titleWithYear()" :back="[$purchase->publicTitle($group), $back]" :trail="[['Главная', '/'], ['Закупки', '/purchases'], [$purchase->publicTitle($group), $back], [$car->shownNumber()]]">
@@ -28,7 +28,7 @@
                 <{{ $asSheet ? 'dialog' : 'div' }} id="deal" class="{{ $asSheet ? 'sheet sheet--inflow' : 'box' }}" @if ($asSheet) data-sheet-target="dialog" data-action="click->sheet#backdrop" aria-label="Цена" @endif @if ($asSheet && $errors->any()) data-sheet-open-value="true" @endif>
                     @if ($asSheet)<div class="mb-2 flex justify-end lg:hidden"><button type="button" class="sheet-close" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></div>@endif
                     <h2 class="box-title">Предложение</h2>
-                    @if ($mine?->state === \App\Purchases\OfferState::Chosen)
+                    @if ($mine?->state === \App\Offers\BidState::Accepted)
                         <p class="flash flash-accent mt-4">Ваша цена {{ \App\Support\Money::rub($mine->amount) }} выбрана, с Вами свяжутся</p>
                     @elseif ($purchase->acceptsOffers())
                         <form method="post" action="/purchases/{{ $purchase->number }}/{{ $car->ref }}/price{{ $suffix }}" class="mt-4 flex flex-col gap-3" data-controller="bid" data-bid-asking-value="0" data-bid-min-value="0">

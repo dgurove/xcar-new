@@ -3,23 +3,24 @@
 namespace App\Purchases\Actions;
 
 use App\Notifications\PurchaseOfferUnchosenNotice;
+use App\Offers\Bid;
+use App\Offers\BidState;
 use App\Offers\OfferEventType;
-use App\Purchases\Offer;
-use App\Purchases\OfferState;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
 /** Отменить выбор: цена снова ждёт, и все «не выбранные» по этой машине тоже — их отклонил только выбор. */
 final class UnchooseOffer
 {
-    public function __invoke(Offer $offer, User $by): Offer
+    public function __invoke(Bid $bid, User $by): Bid
     {
-        return DB::transaction(function () use ($offer, $by) {
-            $offer->car->log(OfferEventType::Note, $by, ['unchosen' => true, 'amount' => $offer->amount, 'manager' => $offer->user_id]);
-            Offer::where('car_id', $offer->car_id)->whereIn('state', [OfferState::Chosen, OfferState::Declined])->update(['state' => OfferState::Active]);
-            $offer->user->notify(new PurchaseOfferUnchosenNotice($offer->refresh()->load('car.purchase')));
+        return DB::transaction(function () use ($bid, $by) {
+            $car = $bid->purchaseCar;
+            $car->log(OfferEventType::Note, $by, ['unchosen' => true, 'amount' => $bid->amount, 'manager' => $bid->user_id]);
+            $car->bids()->whereIn('state', [BidState::Accepted, BidState::Declined])->update(['state' => BidState::Active, 'decided_at' => null, 'decided_by' => null]);
+            $bid->user->notify(new PurchaseOfferUnchosenNotice($bid->refresh()->load('purchaseCar.purchase')));
 
-            return $offer;
+            return $bid;
         });
     }
 }

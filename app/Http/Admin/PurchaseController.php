@@ -2,6 +2,8 @@
 
 namespace App\Http\Admin;
 
+use App\Offers\Bid;
+use App\Offers\BidState;
 use App\Purchases\Actions\ChangePurchaseState;
 use App\Purchases\Actions\ChooseOffer;
 use App\Purchases\Actions\CreatePurchase;
@@ -14,8 +16,6 @@ use App\Purchases\CounterReader;
 use App\Purchases\Export;
 use App\Purchases\Importer;
 use App\Purchases\Kind;
-use App\Purchases\Offer;
-use App\Purchases\OfferState;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
@@ -30,14 +30,14 @@ use App\Support\Liters;
 use App\Support\Money;
 use App\Support\OfficePreview;
 use App\Support\Sort;
+use App\Support\Table\Column;
+use App\Support\Table\Table;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use App\Support\Table\Column;
-use App\Support\Table\Table;
 
 class PurchaseController
 {
@@ -83,7 +83,7 @@ class PurchaseController
         if ($detail->framed()) {
             return $detail->response();
         }
-        $live = fn ($o) => $o->whereIn('state', [OfferState::Active, OfferState::Chosen]);
+        $live = fn ($o) => $o->whereIn('state', [BidState::Active, BidState::Accepted]);
         // Числа чипов считаются ниже одним проходом по всей закупке — шторки берут их готовыми.
         $counts = [];
         $offered = collect();
@@ -94,7 +94,7 @@ class PurchaseController
             })->single('all')->groups(self::PRESET_GROUPS)->natural()
                 ->labels(fn (array $keys) => collect(self::PRESETS)->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all()),
             Facet::custom('user', 'Менеджер', ['менеджер', 'менеджера', 'менеджеров'],
-                fn ($c, array $ids) => $c->whereHas('offers', fn ($o) => $live($o)->whereIn('user_id', Common::ints($ids))),
+                fn ($c, array $ids) => $c->whereHas('bids', fn ($o) => $live($o)->whereIn('user_id', Common::ints($ids))),
                 function () use (&$offered) {
                     return $offered->all();
                 })->labels(fn (array $ids) => User::whereIn('id', Common::ints($ids))->with(User::withAvatar())->get()
@@ -118,7 +118,7 @@ class PurchaseController
         // Числа — один проход по лёгкой выборке всей закупки, без поиска; перекрёстные: у каждого
         // фильтра число считается при двух других применённых, так они сходятся между собой.
         // ТС, ушедшие в предложения по контрпредложению, из закупки исключены — видны только в «В предложениях».
-        $all = $purchase->cars()->with(['offers:id,car_id,user_id,state', 'offer:id,car_id'])->get(['id', 'car_id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state']);
+        $all = $purchase->cars()->with(['bids:id,purchase_car_id,user_id,state', 'offer:id,car_id'])->get(['id', 'car_id', 'kind', 'price_final', 'photos_count', 'is_published', 'specs_state', 'photos_state']);
         $managers = User::withRole(Role::Manager)->orWhereIn('id', $all->flatMap(fn ($c) => $c->activeOfferList()->pluck('user_id'))->unique())->get();
         $match = [
             'all' => fn ($c) => true,
@@ -138,13 +138,13 @@ class PurchaseController
         $kinds = $all->groupBy(fn ($c) => $c->kind->value)->map(fn ($g) => $g->filter($match[$preset])->filter($byUser)->count())->all();
         $offered = $managers->mapWithKeys(fn ($u) => [(string) $u->id => $all->filter($byKind)->filter($match[$preset])->filter(fn ($c) => $c->activeOfferList()->contains('user_id', $u->id))->count()]);
 
-        $cars = $purchase->cars()->with(['settlement', 'media', 'offers.user', 'offer:id,car_id,number,state'])
+        $cars = $purchase->cars()->with(['settlement', 'media', 'bids.user', 'offer:id,car_id,number,state'])
             ->when($preset === 'moved', fn ($c) => $c->whereHas('offer'), fn ($c) => $c->whereDoesntHave('offer'))
             ->search($q, crm: true)
             ->when($kind, fn ($c) => $c->where('kind', $kind));
         match ($preset) {
-            'priced' => $cars->whereHas('offers', $live),
-            'unpriced' => $cars->whereDoesntHave('offers', $live),
+            'priced' => $cars->whereHas('bids', $live),
+            'unpriced' => $cars->whereDoesntHave('bids', $live),
             'unfinal' => $cars->whereNull('price_final'),
             'final' => $cars->whereNotNull('price_final'),
             'attention' => $cars->where(fn ($w) => $w->whereIn('specs_state', ['failed', 'partial', 'gone'])->orWhereIn('photos_state', ['failed', 'partial', 'gone'])),
@@ -157,7 +157,7 @@ class PurchaseController
         // ДЛ лота — номер его машины (`Cars\Car::claim_ref`).
         $dl = \App\Cars\Car::sql('purchase_cars', 'claim_ref');
         match ($sort->key) {
-            'best' => $cars->withMax(['offers as top_offer' => $live], 'amount')->orderByRaw("top_offer {$dir} nulls last")->orderByRaw($dl),
+            'best' => $cars->withMax(['bids as top_offer' => $live], 'amount')->orderByRaw("top_offer {$dir} nulls last")->orderByRaw($dl),
             'final' => $cars->orderByRaw("price_final {$dir} nulls last")->orderByRaw($dl),
             'fresh' => $cars->orderBy('id', $dir),
             default => $cars->orderByRaw("{$dl} {$dir}"),
@@ -360,7 +360,7 @@ class PurchaseController
     public function car(Purchase $purchase, Car $car)
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
-        $car->load(['settlement', 'media', 'offers.user']);
+        $car->load(['settlement', 'media', 'bids.user']);
 
         return view('admin.purchases.car', ['purchase' => $purchase, 'car' => $car]);
     }
@@ -369,7 +369,7 @@ class PurchaseController
     public function detail(Purchase $purchase, Car $car)
     {
         abort_unless($car->purchase_id === $purchase->id, 404);
-        $car->load(['settlement', 'media', 'offers.user', 'offer:id,car_id,number']);
+        $car->load(['settlement', 'media', 'bids.user', 'offer:id,car_id,number']);
 
         return view('admin.purchases.detail', ['purchase' => $purchase, 'car' => $car]);
     }
@@ -408,16 +408,17 @@ class PurchaseController
         return redirect("/purchases/{$purchase->number}?preset=unfinal")->with('detail-advance', true);
     }
 
-    public function choose(Request $request, Offer $offer, ChooseOffer $choose)
+    public function choose(Request $request, string $offer, ChooseOffer $choose)
     {
-        $choose($offer, $request->user());
+        $choose(Bid::price($offer), $request->user());
 
         return back()->with('toast', 'Выбрана');
     }
 
-    public function unchoose(Request $request, Offer $offer, UnchooseOffer $unchoose)
+    public function unchoose(Request $request, string $offer, UnchooseOffer $unchoose)
     {
-        abort_unless($offer->state === OfferState::Chosen, 404);
+        $offer = Bid::price($offer);
+        abort_unless($offer->state === BidState::Accepted, 404);
         $unchoose($offer, $request->user());
 
         return back()->with('toast', 'Выбор отменён');

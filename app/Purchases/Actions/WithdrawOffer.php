@@ -2,20 +2,20 @@
 
 namespace App\Purchases\Actions;
 
+use App\Offers\Bid;
+use App\Offers\BidState;
 use App\Offers\OfferEventType;
-use App\Purchases\Offer;
-use App\Purchases\OfferState;
 use App\Users\User;
 use Illuminate\Validation\ValidationException;
 
 final class WithdrawOffer
 {
-    public function __invoke(Offer $offer, User $by): void
+    public function __invoke(Bid $bid, User $by): void
     {
-        if ($offer->user_id !== $by->id || $offer->state !== OfferState::Active) {
+        if ($bid->user_id !== $by->id || $bid->state !== BidState::Active) {
             throw ValidationException::withMessages(['offer' => 'Отозвать нечего']);
         }
-        $offer->update(['state' => OfferState::Withdrawn]);
-        $offer->car->log(OfferEventType::BidWithdrawn, $by, ['amount' => $offer->amount]);
+        $bid->update(['state' => BidState::Withdrawn]);
+        $bid->purchaseCar->log(OfferEventType::BidWithdrawn, $by, ['amount' => $bid->amount]);
     }
 }

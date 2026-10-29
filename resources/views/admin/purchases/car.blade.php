@@ -1,4 +1,4 @@
-@php use App\Cars\{Transmission, Fuel}; use App\Purchases\{Kind, OfferState, ImportState}; $n = $purchase->number; @endphp
+@php use App\Cars\{Transmission, Fuel}; use App\Purchases\{Kind, ImportState}; use App\Offers\BidState; $n = $purchase->number; @endphp
 <x-ui.shell :title="$car->titleWithYear()" :back="['Закупка', '/purchases/'.$purchase->number]">
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <span class="chip">{{ str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl }}</span>
@@ -64,7 +64,7 @@
                 </div>
                 @if ($car->locked_fields)<div class="mt-2 text-sm text-ink-muted">Правлено руками: {{ implode(', ', $car->locked_fields) }}</div>@endif
             </x-ui.card>
-            @php $live = $car->activeOfferList(); $chosen = $live->firstWhere('state', OfferState::Chosen); @endphp
+            @php $live = $car->activeOfferList(); $chosen = $live->firstWhere('state', BidState::Accepted); @endphp
             @if ($live->isNotEmpty())
             <x-ui.card title="Предложения менеджеров" class="order-3">
                 <div class="flex flex-wrap items-center gap-1.5">

@@ -34,7 +34,7 @@
         @case('price')
     <td class="{{ $col->classes() }}">
         @if ($staff)
-            @if ($best)<span class="{{ $best->state === \App\Purchases\OfferState::Chosen ? 'text-accent-text' : '' }}">{{ \App\Support\Money::nums($best->amount) }}</span><span class="cell-sub">{{ $best->user->shortName() }}</span>@endif
+            @if ($best)<span class="{{ $best->state === \App\Offers\BidState::Accepted ? 'text-accent-text' : '' }}">{{ \App\Support\Money::nums($best->amount) }}</span><span class="cell-sub">{{ $best->user->shortName() }}</span>@endif
         @elseif ($mine)<span class="text-accent-text">{{ \App\Support\Money::nums($mine->amount) }}</span>
         @else<span class="text-ink-dim">Без цены</span>@endif
     </td>

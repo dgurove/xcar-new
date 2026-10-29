@@ -5,6 +5,8 @@ namespace App\Purchases;
 use App\Cars\OnCar;
 use App\Cars\Region;
 use App\Cars\Settlement;
+use App\Offers\Bid;
+use App\Offers\BidState;
 use App\Offers\OfferEvent;
 use App\Offers\OfferEventType;
 use App\Search\CarWords;
@@ -121,9 +123,14 @@ class Car extends Model
         return $this->hasOne(\App\Offers\Offer::class, 'car_id', 'car_id')->withoutGlobalScopes();
     }
 
-    public function offers(): HasMany
+    /**
+     * Цены менеджеров за машину лота — подтверждения вида «закупка» в общей таблице `bids` (29.10.2026: цена менеджера
+     * за машину одна сущность, что в закупке, что в продаже). Предложения у них нет — из подтверждений продажи их
+     * прячет глобальное условие `Bid::SALE`, здесь оно снято.
+     */
+    public function bids(): HasMany
     {
-        return $this->hasMany(Offer::class, 'car_id')->orderByDesc('amount');
+        return $this->hasMany(Bid::class, 'purchase_car_id')->withoutGlobalScope(Bid::SALE)->orderByDesc('amount');
     }
 
     /** Номер для людей: в CRM — ДЛ, на xcar — номер машины в закупке «№ 12» (ДЛ на xcar нет, владелец 10.10.2026). */
@@ -197,9 +204,9 @@ class Car extends Model
         return in_array($field, $this->locked_fields ?? [], true);
     }
 
-    public function offerOf(?User $user): ?Offer
+    public function offerOf(?User $user): ?Bid
     {
-        return $user ? $this->offers->first(fn (Offer $o) => $o->user_id === $user->id && in_array($o->state, [OfferState::Active, OfferState::Chosen], true)) : null;
+        return $user ? $this->bids->first(fn (Bid $o) => $o->user_id === $user->id && in_array($o->state, [BidState::Active, BidState::Accepted], true)) : null;
     }
 
     /**
@@ -231,7 +238,7 @@ class Car extends Model
     /** Активные и выбранные цены из уже загруженной связи, без запроса. */
     public function activeOfferList(): Collection
     {
-        return $this->offers->whereIn('state', [OfferState::Active, OfferState::Chosen])->values();
+        return $this->bids->whereIn('state', [BidState::Active, BidState::Accepted])->values();
     }
 
     /**
@@ -240,12 +247,12 @@ class Car extends Model
      */
     public function latestOfferList(): Collection
     {
-        return $this->offers->groupBy('user_id')->map(fn (Collection $mine) => $mine->sortByDesc('id')->first())->sortByDesc('amount')->values();
+        return $this->bids->groupBy('user_id')->map(fn (Collection $mine) => $mine->sortByDesc('id')->first())->sortByDesc('amount')->values();
     }
 
-    public function bestOffer(): ?Offer
+    public function bestOffer(): ?Bid
     {
-        return $this->offers->firstWhere('state', OfferState::Chosen) ?? $this->offers->firstWhere('state', OfferState::Active);
+        return $this->bids->firstWhere('state', BidState::Accepted) ?? $this->bids->firstWhere('state', BidState::Active);
     }
 
     public static function nextRef(): int

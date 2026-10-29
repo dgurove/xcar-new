@@ -2,6 +2,7 @@
 
 namespace App\Purchases;
 
+use App\Offers\BidState;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -80,7 +81,7 @@ class Purchase extends Model
                 continue;
             }
             $cars = $this->carsOnSite()->whereIn('kind', $in);
-            $rated = $user ? (clone $cars)->whereHas('offers', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [OfferState::Active, OfferState::Chosen]))->count() : 0;
+            $rated = $user ? (clone $cars)->whereHas('bids', fn ($o) => $o->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted]))->count() : 0;
             $cards[] = new PurchaseCard($this, $group, $cars->count(), $rated);
         }
 
