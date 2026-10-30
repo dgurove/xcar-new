@@ -796,7 +796,7 @@ VIN» — `users.buyer_show_vin`, `PUT /buyers/{id}/sees`); в списке — 
 Группы `BuyerGroup`; показы `Offers\Showing` (ровно одно из user/group),
 `ShowOffers`/`HideOffers`, покупателю одно уведомление на пачку, live —
 `refresh` в `user/{id}` (тему `catalog` покупатель не слушает). Интерес
-покупателя — `BuyerInterestNotice` его менеджеру. Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours`, экран `/account/notifications/settings`, отписка из письма подписанной ссылкой.
+покупателя — `BuyerInterestNotice` его менеджеру; сотрудникам об интересе уведомлений нет (30.10.2026, владелец: «уведомления — это что-то важное», интерес за день разбирает разом в «Галерея → Отклики»). Настройки уведомлений — `Notifications\Categories` (что можно выключить по роли), `Notice::category/critical`, `User::wants/quietHours`, экран `/account/notifications/settings`, отписка из письма подписанной ссылкой.
 **Лента — строка на объект** (01.10.2026, `notes/uvedomleniya-2026-10-01.md`): `Notice::subject()` — путь объекта без хоста
 (сделочные и деньги по сделке — `/deals/{id}`, чат — `/account/chats/{id}`, сотрудникам деньги — счёт), `CollapseNotices`
 убирает прежние строки темы, `ReadNoticesOnVisit` гасит их, когда человек открыл объект любым путём (через `pgsql_async`,

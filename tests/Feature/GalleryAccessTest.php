@@ -6,7 +6,9 @@ use App\Cars\Brand;
 use App\Cars\Car;
 use App\Cars\CarModel;
 use App\Http\Admin\GalleryController;
+use App\Notifications\BuyerInterestNotice;
 use App\Offers\Actions\ChangeOfferState;
+use App\Offers\Actions\RegisterInterest;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
@@ -88,5 +90,21 @@ class GalleryAccessTest extends TestCase
         $this->assertTrue($offer->events()->where('type', OfferEventType::Gallery)->exists());
         // А в продаже появилось.
         $this->assertTrue(Offer::query()->onSale()->whereKey($offer->id)->exists());
+    }
+
+    /** Интерес в галерее админам не шлётся (30.10.2026, владелец: разбирает «Отклики» за день), покупателя — его менеджеру. */
+    public function test_interest_notifies_only_buyers_manager(): void
+    {
+        $offer = $this->galleryOffer();
+        $admin = $this->user('Владелец', Role::Admin);
+        $manager = $this->user('Менеджер', Role::Manager);
+        $buyer = $this->user('Покупаев Пётр', Role::Buyer);
+        $buyer->update(['manager_id' => $manager->id]);
+
+        app(RegisterInterest::class)($offer, $manager);
+        app(RegisterInterest::class)($offer, $buyer->fresh());
+
+        Notification::assertNothingSentTo($admin);
+        Notification::assertSentTo($manager, BuyerInterestNotice::class);
     }
 }

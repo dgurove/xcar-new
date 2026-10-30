@@ -224,20 +224,17 @@ final class Notify
         RetractEstimateNotices::dispatch($e->estimateIds, $e->userIds, '/offers/'.$e->offer->number);
     }
 
-    /** Интерес покупателя — его менеджеру; интерес посетителя — сотрудникам, как раньше. */
+    /**
+     * Интерес покупателя — его менеджеру: ему связаться с покупателем. Сотрудникам об интересе не пишем (30.10.2026,
+     * владелец: «уведомления — это что-то важное», интерес за день он разбирает разом — «Галерея → Отклики»).
+     */
     public function interest(InterestRegistered $e): void
     {
         $interest = $e->interest->load('offer', 'user');
-        // Внёс сотрудник (за менеджера) или админ отметил себя — сотрудники и так знают.
-        if ($interest->placed_by || $interest->user->isAdmin()) {
+        if ($interest->placed_by || ! $interest->user->isBuyer()) {
             return;
         }
-        if ($interest->user->isBuyer()) {
-            $interest->user->manager?->notify(new BuyerInterestNotice($interest));
-
-            return;
-        }
-        Notification::send($this->staff(), new InterestNotice($interest));
+        $interest->user->manager?->notify(new BuyerInterestNotice($interest));
     }
 
     public function stageEntered(StageEntered $e): void
