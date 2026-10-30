@@ -70,8 +70,12 @@ export default class extends Controller {
 
     load(url) {
         const frame = this.frameTarget;
-        // Тот же адрес ещё грузится — не трогаем; загруженный — перечитываем: могло прийти письмо.
-        if (frame.getAttribute('src') !== url || frame.complete) {
+        // Тот же адрес ещё грузится — не трогаем; загруженный — перечитываем: могло прийти письмо. «Грузится» дольше 3 с —
+        // загрузка оборвалась (связь, закрыли окно на полпути): нажатие грузит заново, а не оставляет заготовку навсегда
+        // (30.10.2026, сотрудник парковки: «с 3–4 раза прогружается на выдачу»).
+        const stalled = performance.now() - (this.loadingAt ?? 0) > 3000;
+        if (frame.getAttribute('src') !== url || frame.complete || stalled) {
+            this.loadingAt = performance.now();
             if (frame.getAttribute('src') !== url && this.hasToolsTarget) this.toolsTarget.replaceChildren();
             frame.innerHTML = this.skeleton;
             frame.removeAttribute('src');

@@ -4,6 +4,7 @@ namespace App\Park\Actions;
 
 use App\Park\Events\VehicleReleased;
 use App\Park\EventType;
+use App\Park\Jobs\PurgeReleasedLetters;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -18,8 +19,6 @@ use Illuminate\Support\Facades\DB;
  */
 final class ReleasePast
 {
-    public function __construct(private PurgeLetters $purge) {}
-
     public function __invoke(Vehicle $vehicle, ?User $by, Carbon $at, ?string $note, array $mark): void
     {
         $at = $vehicle->accepted_at && $at->lt($vehicle->accepted_at) ? $vehicle->accepted_at->copy() : $at;
@@ -31,6 +30,8 @@ final class ReleasePast
             $vehicle->revokePass('выдана по письмам');
         });
         VehicleReleased::dispatch($vehicle, null, $by);
-        ($this->purge)($vehicle);
+        // Из писем больше ничего не хранится: кадры и документы из писем стираются, письма веток замораживаются — фоном
+        // (`PurgeReleasedLetters`): по 80 файлам выдача стояла 2 с, и строка не уходила из списка.
+        PurgeReleasedLetters::dispatch($vehicle->id);
     }
 }

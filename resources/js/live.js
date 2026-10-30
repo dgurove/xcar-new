@@ -245,9 +245,10 @@ document.addEventListener('turbo:load', () => {
 const editing = () => [...document.querySelectorAll('form[data-dirty]:not([data-live-select])')]
     .some((f) => f.checkVisibility?.() || [...f.elements].some((el) => el.type !== 'hidden' && el.checkVisibility?.()));
 
+// Идёт визит Turbo (aria-busy на <html>) — его ответ придёт и сам решит, нужно ли ждущее.
+const visiting = () => document.documentElement.hasAttribute('aria-busy') && performance.now() - visitAt < 10_000;
 const busy = () => document.visibilityState !== 'visible'
-    // Идёт визит Turbo (aria-busy на <html>) — его ответ придёт и сам решит, нужно ли ждущее.
-    || (document.documentElement.hasAttribute('aria-busy') && performance.now() - visitAt < 10_000)
+    || visiting()
     || fingers > 0 || performance.now() - movedAt < 600
     || editing() || document.querySelector('[data-searching], dialog:modal')
     || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
@@ -290,7 +291,10 @@ export function dropKey(key) {
 function flush() {
     clearTimeout(waitTimer);
     if (!waiting) return;
-    if (busy()) { if (document.visibilityState === 'visible') waitTimer = setTimeout(flush, 700); return; }
+    // Свои строки после своей формы (выдача, приём в окне поверх списка) — сразу: строка лежит под окном, человек её не
+    // трогает, а ждать закрытия окна — значит, выданная ТС висит в «На парковке» (30.10.2026, сотрудник парковки).
+    const ownRows = waiting.own && waiting.keys;
+    if (ownRows ? document.visibilityState !== 'visible' || visiting() : busy()) { if (document.visibilityState === 'visible') waitTimer = setTimeout(flush, 700); return; }
     const { request, keys, own } = waiting;
     waiting = null;
     if (keys && keys.size <= ROWS_MAX) { patching = patching.then(() => patch([...keys], own)).catch(() => {}); return; }

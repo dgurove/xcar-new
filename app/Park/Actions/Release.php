@@ -9,6 +9,7 @@ use App\Park\Events\VehicleReleased;
 use App\Park\EventType;
 use App\Park\Inspection;
 use App\Park\InspectionKind;
+use App\Park\Jobs\PurgeReleasedLetters;
 use App\Park\Pass;
 use App\Park\ReleasedTo;
 use App\Park\Request;
@@ -26,7 +27,7 @@ use Illuminate\Validation\ValidationException;
 /** Выдача — зеркало приёма: осмотр при выдаче, кому выдана, дата не раньше постановки, заявка закрывается. */
 final class Release
 {
-    public function __construct(private SettleStorage $settle, private PurgeLetters $purge, private ConfirmBuyer $confirm) {}
+    public function __construct(private SettleStorage $settle, private ConfirmBuyer $confirm) {}
 
     /**
      * `cash` — хранение по день выдачи выставляется тут же, счёт покупателю гасится наличными на месте.
@@ -102,8 +103,9 @@ final class Release
         if ($withoutQr) {
             ReleasedWithoutQr::dispatch($vehicle, $by, $withoutQr);
         }
-        // Из писем больше ничего не хранится: кадры и документы из писем стёрты, письма веток заморожены.
-        ($this->purge)($vehicle);
+        // Из писем больше ничего не хранится: кадры и документы из писем стираются, письма веток замораживаются — фоном
+        // (`PurgeReleasedLetters`): по 80 файлам выдача стояла 2 с, и строка не уходила из списка.
+        PurgeReleasedLetters::dispatch($vehicle->id);
 
         return $vehicle;
     }

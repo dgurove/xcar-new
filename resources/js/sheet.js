@@ -199,7 +199,9 @@ export function dirty(d) {
     for (const form of d.querySelectorAll('form')) {
         if (form.method.toLowerCase() === 'get' || form.hasAttribute('data-sheet-clean')) continue;
         for (const el of form.elements) {
-            if (el.disabled || el.type === 'hidden' || el.type === 'submit' || el.type === 'button') continue;
+            // Поле без имени на сервер не уходит — оно вид другого (дата словами у `x-ui.date` вписывается сама при открытии:
+            // нетронутое окно выдачи спрашивало «Не сохранять?», 30.10.2026).
+            if (el.disabled || (!el.name && el.tagName !== 'TRIX-EDITOR') || el.type === 'hidden' || el.type === 'submit' || el.type === 'button') continue;
             if (el.type === 'checkbox' || el.type === 'radio') { if (el.checked !== el.defaultChecked) return true; continue; }
             if (el.tagName === 'SELECT') {
                 const opts = [...el.options];
