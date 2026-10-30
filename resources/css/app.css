@@ -2901,6 +2901,36 @@ html.kb-open { --home-gap: 0px; }
   }
 }
 
+/* Поповер у кнопки на ПК (чип фильтра, сортировка, выгрузка — `x-ui.sheet anchor`) — плотный, как меню macOS
+   (30.10.2026, владелец: «размер окна, шрифтов и расстояний неадекватный, надо везде»): внутри была телефонная шторка —
+   строки 56 px, кнопка 56 px, заголовок 17. Вне слоёв — перебивает утилиты разметки (mb-4, text-lg, size-7). */
+.sheet:popover-open { width: 17rem; padding: .75rem; }
+.sheet:popover-open > .sheet-bar { margin-bottom: .5rem; }
+.sheet:popover-open > .sheet-bar h2 { font-size: var(--text-base); }
+.sheet:popover-open .sheet-close { width: 1.75rem; height: 1.75rem; margin-right: -.25rem; }
+.sheet:popover-open .list { margin-bottom: .5rem; }
+.sheet:popover-open .list:last-child { margin-bottom: 0; }
+.sheet:popover-open .list .row { min-height: 2.25rem; padding: .375rem .75rem; gap: .5rem; font-size: var(--text-sm); }
+.sheet:popover-open .list > * + *::after { left: .75rem; }
+.sheet:popover-open .list .row .nums { font-size: var(--text-xs); }
+.sheet:popover-open .list .row-sub { font-size: var(--text-xs); }
+.sheet:popover-open .list .row > svg { width: 1rem; height: 1rem; }
+.sheet:popover-open .list-cap { padding: .25rem .75rem .25rem; font-size: var(--text-xs); }
+.sheet:popover-open .facet-mark { width: 1.25rem; height: 1.25rem; }
+/* Размер аватара — его inline-стилем (`x-ui.avatar :size`), иначе не перебить. */
+.sheet:popover-open .avatar.facet-mark { width: 1.25rem !important; height: 1.25rem !important; font-size: 9px !important; }
+.sheet:popover-open .row-check .check input { width: 1.125rem; height: 1.125rem; }
+.sheet:popover-open .facet-tools { margin-bottom: .5rem; }
+.sheet:popover-open .facet-all { padding-block: .25rem; font-size: var(--text-sm); }
+.sheet:popover-open .field-input.field-s, .sheet:popover-open .facet-day .field-input { min-height: 2rem; font-size: var(--text-sm); }
+.sheet:popover-open .facet-submit { padding-top: .25rem; }
+.sheet:popover-open .facet-submit .btn { height: 2.25rem; font-size: var(--text-sm); border-radius: var(--radius-m); }
+.sheet:popover-open .segment { margin-bottom: .5rem; }
+.sheet:popover-open .segment a, .sheet:popover-open .segment label { min-height: 1.75rem; padding-inline: .5rem; gap: .25rem; font-size: var(--text-xs); }
+.sheet:popover-open .segment svg { flex-shrink: 0; width: .875rem; height: .875rem; }
+.sheet.sheet-sort:popover-open { width: 18rem; }
+.sheet.sheet-export:popover-open { width: 26rem; }
+
 /* ------------------------------------------------------------- каркас */
 
 @layer components {

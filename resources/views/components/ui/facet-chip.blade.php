@@ -76,9 +76,9 @@
                 <div class="list mb-3">
                     @foreach ($rows as $o)
                         <label class="row row-check" data-facets-target="item" data-name="{{ mb_strtolower($o->label.' '.$o->hint) }}">
-                            @if ($o->vendor)<x-vendor.logo :vendor="$o->vendor" class="size-7 shrink-0"/>
-                            @elseif ($o->user)<x-ui.avatar :user="$o->user" :size="28"/>
-                            @elseif ($o->category)<x-ui.cat-icon :category="$o->category" class="!m-0 size-6 shrink-0"/>
+                            @if ($o->vendor)<x-vendor.logo :vendor="$o->vendor" class="facet-mark size-7 shrink-0"/>
+                            @elseif ($o->user)<x-ui.avatar :user="$o->user" :size="28" class="facet-mark"/>
+                            @elseif ($o->category)<x-ui.cat-icon :category="$o->category" class="facet-mark !m-0 size-6 shrink-0"/>
                             @endif
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate">{{ $o->label }}</span>
