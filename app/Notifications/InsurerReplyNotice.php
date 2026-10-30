@@ -15,6 +15,11 @@ final class InsurerReplyNotice extends Notice
 {
     public function __construct(private Deal $deal, private bool $contact = false, private ?Requirement $turn = null) {}
 
+    public function label(): string
+    {
+        return 'Ответ страховой';
+    }
+
     public function title(): string
     {
         // Прислали телефон — это контакты владельца, а не просто «ответила» (10.10.2026).

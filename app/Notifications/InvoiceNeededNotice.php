@@ -15,6 +15,11 @@ final class InvoiceNeededNotice extends Notice
      *  руками (`Position::gapAction`) */
     public function __construct(private Deal $deal, private ?string $gap = null) {}
 
+    public function label(): string
+    {
+        return 'Нужен счёт';
+    }
+
     public function title(): string
     {
         return \App\Workflow\Position::gapAction($this->gap, $this->deal)['title'].': '.$this->deal->offer->titleWithYear();

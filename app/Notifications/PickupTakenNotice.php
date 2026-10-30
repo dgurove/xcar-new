@@ -13,6 +13,11 @@ final class PickupTakenNotice extends Notice
 {
     public function __construct(private Transport $transport, private Offer $offer, private string $href) {}
 
+    public function label(): string
+    {
+        return 'Вывоз передан в логистику';
+    }
+
     public function title(): string
     {
         return 'Вывоз передан в логистику: '.$this->offer->titleWithYear();

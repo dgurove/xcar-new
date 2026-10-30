@@ -11,6 +11,11 @@ final class CounterOfferedNotice extends Notice
 {
     public function __construct(private Bid $bid) {}
 
+    public function label(): string
+    {
+        return 'Контрпредложение';
+    }
+
     public function title(): string
     {
         return 'Контрпредложение '.Money::plain($this->bid->counter_amount).': № '.$this->bid->offer->number;

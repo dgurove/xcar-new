@@ -23,6 +23,34 @@ abstract class Notice extends Notification implements ShouldQueue
 
     abstract public function title(): string;
 
+    /** Вид словами для «Настройки → Доставка» («Интерес покупателя», «Срок этапа»): без него класс не загрузится. */
+    abstract public function label(): string;
+
+    /** Вид у фабрики с разными видами (деньги, парковка, вывоз): ключ и подпись — `variant()`. */
+    private ?string $variant = null;
+
+    private ?string $variantLabel = null;
+
+    /** Вид для журнала доставки (`Delivery::kind`): класс, у фабрики — ещё её вид («MoneyNotice:invoice-issued»). */
+    public function kind(): string
+    {
+        return class_basename($this).($this->variant ? ':'.$this->variant : '');
+    }
+
+    /** Фабрика называет свой вид: в статистике «Счёт выставлен», а не всё подряд «Деньги». */
+    protected function variant(string $key, string $label): static
+    {
+        $this->variant = $key;
+        $this->variantLabel = $label;
+
+        return $this;
+    }
+
+    protected function variantLabel(): ?string
+    {
+        return $this->variantLabel;
+    }
+
     public function text(): ?string
     {
         return null;
@@ -283,7 +311,7 @@ abstract class Notice extends Notification implements ShouldQueue
             $mail->line($this->textFor($user));
         }
 
-        return $mail->action('Открыть', url($this->href()))->salutation(config('app.name'))
+        return $mail->action('Открыть', NoticeLink::tracked(url($this->href()), $this, 'mail'))->salutation(config('app.name'))
             ->line(new HtmlString('<a href="'.e($user->unsubscribeUrl()).'" style="color:#808080">Не присылать на почту</a>'));
     }
 }

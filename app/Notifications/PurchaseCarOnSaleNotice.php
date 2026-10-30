@@ -13,6 +13,11 @@ final class PurchaseCarOnSaleNotice extends Notice
 {
     public function __construct(private Offer $offer) {}
 
+    public function label(): string
+    {
+        return 'ТС из закупки в продаже';
+    }
+
     public function title(): string
     {
         return 'ТС из закупки в продаже: '.$this->offer->titleWithYear();

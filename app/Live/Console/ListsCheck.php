@@ -40,6 +40,7 @@ final class ListsCheck extends Command
             ...array_map(fn ($p) => $crm('/?preset='.$p.'&vid=table'), $offers),
             $crm('/gallery?preset=live&vid=table'), $crm('/gallery?preset=interest&vid=table'),
             $crm('/alarms'),
+            $crm('/settings/deliveries'), $crm('/settings/deliveries?view=people'),
             ...array_map(fn ($p) => $crm('/work/garage?preset='.$p.'&vid=table'), ['work', 'sold', 'settled', 'all']),
             ...array_map(fn ($t) => $crm('/work/money?tab='.$t), ['links', 'owed', 'payouts']),
             $crm('/purchases/{purchase}?vid=table'),

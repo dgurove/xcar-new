@@ -311,6 +311,7 @@ final class Nav
                     ...($user->isAdmin() ? [self::link('Таймеры', '/settings/timers', icon: 'timer')] : []),
                     ...($user->isAdmin() ? [self::link('Банк', '/settings/bank', icon: 'bank')] : []),
                     ...($user->isAdmin() ? [self::link('Бот Telegram', '/settings/telegram', icon: 'send')] : []),
+                    ...($user->isAdmin() ? [self::link('Доставка', '/settings/deliveries', icon: 'bell')] : []),
                     self::link('Ящики', '/settings/mailboxes', icon: 'mail'),
                     self::link('Шаблоны', '/settings/templates', icon: 'link'),
                     self::link('Метки', '/settings/tags', icon: 'flag'),

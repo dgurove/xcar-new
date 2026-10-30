@@ -10,6 +10,11 @@ use App\Support\Money;
  */
 final class EstimateAskedNotice extends EstimateNotice
 {
+    public function label(): string
+    {
+        return 'Просьба оценить';
+    }
+
     public function title(): string
     {
         return ($this->estimate->isCorrection() ? 'Проверьте цену ' : 'Оцените ').$this->estimate->offer->titleWithYear();

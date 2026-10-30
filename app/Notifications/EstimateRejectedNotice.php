@@ -7,6 +7,11 @@ use App\Support\Money;
 /** Админ отклонил оценку: оцените ещё раз, срок прежний. */
 final class EstimateRejectedNotice extends EstimateNotice
 {
+    public function label(): string
+    {
+        return 'Оценку отклонили';
+    }
+
     public function title(): string
     {
         return ($this->estimate->isCorrection() ? 'Цену ' : 'Оценку ').$this->estimate->offer->titleWithYear().' отклонили';

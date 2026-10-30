@@ -10,6 +10,11 @@ final class DealStepNotice extends Notice
 {
     public function __construct(private Deal $deal, private Stage $stage) {}
 
+    public function label(): string
+    {
+        return 'Шаг сделки';
+    }
+
     public function title(): string
     {
         return ($this->deal->isGarage() ? 'В гараж № ' : 'Сделка № ').$this->deal->offer->number.': '.$this->stage->managerTitle();

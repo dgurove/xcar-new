@@ -19,6 +19,11 @@ final class RepriceAskNotice extends Notice
         return (bool) RepriceAsk::find($this->ask->id)?->alive() && parent::shouldSend($notifiable, $channel);
     }
 
+    public function label(): string
+    {
+        return 'Закупочная выросла';
+    }
+
     public function title(): string
     {
         return self::telegramTitle($this->ask);

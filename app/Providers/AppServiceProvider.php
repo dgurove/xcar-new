@@ -44,6 +44,7 @@ use App\Mail\OnMessage;
 use App\Media\StampOnAdd;
 use App\Notifications\CollapseNotices;
 use App\Notifications\Notify;
+use App\Notifications\RecordDelivery;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Listeners\AdvanceOnReply;
@@ -126,6 +127,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(JobQueued::class, fn (JobQueued $e) => $e->job instanceof ImportThreadFiles && $e->job->announce());
         Event::subscribe(RefreshLogistics::class);
         Event::listen(NotificationSent::class, CollapseNotices::class);
+        Event::listen(NotificationSent::class, RecordDelivery::class);
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);
         Event::subscribe(SyncOffer::class);

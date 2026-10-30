@@ -4,6 +4,11 @@ namespace App\Notifications;
 
 final class AccessOpenedNotice extends Notice
 {
+    public function label(): string
+    {
+        return 'Доступ открыт';
+    }
+
     public function title(): string
     {
         return 'Доступ открыт';

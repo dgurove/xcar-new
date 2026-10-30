@@ -16,6 +16,11 @@ final class TestNotice extends Notice
         return array_values(array_diff(parent::via($user), [WebPushChannel::class]));
     }
 
+    public function label(): string
+    {
+        return 'Пробное';
+    }
+
     public function title(): string
     {
         return 'Так выглядят уведомления xcar';

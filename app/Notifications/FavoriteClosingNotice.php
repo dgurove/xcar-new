@@ -16,6 +16,11 @@ final class FavoriteClosingNotice extends Notice
     /** @param  list<string>  $brands  марки без повторов, частые первыми */
     public function __construct(private int $count, private array $brands, private ?Offer $offer = null) {}
 
+    public function label(): string
+    {
+        return 'Избранное: 30 минут до конца';
+    }
+
     public function title(): string
     {
         return 'Через 30 минут закончится приём: '.($this->offer ? $this->offer->titleWithYear() : $this->count.' из избранного');

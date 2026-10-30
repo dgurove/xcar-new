@@ -41,7 +41,7 @@ final class ParkNotice extends Notice
     {
         $v = fn (string $f) => $c->extracted[$f]['value'] ?? null;
 
-        return new self('Письмо на приём: '.$c->title(), implode(', ', array_filter([$v('vendor'), $v('insured_phone')])), '/requests/from-mail');
+        return (new self('Письмо на приём: '.$c->title(), implode(', ', array_filter([$v('vendor'), $v('insured_phone')])), '/requests/from-mail'))->variant('letter', 'Письмо на приём');
     }
 
     /** Заявку завела почта (`AutoRequest`): марку и VIN, которых нет в письме, дочитывают документы. */
@@ -49,7 +49,7 @@ final class ParkNotice extends Notice
     {
         $v = $r->vehicle;
 
-        return new self($r->type->label().': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->ref, $r->contact_phone])), '/cars/'.$v->id, $v->id);
+        return (new self($r->type->label().': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->ref, $r->contact_phone])), '/cars/'.$v->id, $v->id))->variant('arrived', 'Заявка на приём или выдачу');
     }
 
     public static function mail(Vehicle $v, Message $m): self
@@ -58,65 +58,70 @@ final class ParkNotice extends Notice
         $intent = Intent::tryFrom((string) $m->intent);
         $title = $intent && $intent->needsReply() ? $intent->title() : 'Письмо';
 
-        return new self($title.': '.$v->titleWithYear(), ($m->from_name ?: $m->from_email).', '.($m->subject ?: 'без темы'), '/cars/'.$v->id, $v->id,
-            telegram: $intent?->needsReply() ?? false);
+        return (new self($title.': '.$v->titleWithYear(), ($m->from_name ?: $m->from_email).', '.($m->subject ?: 'без темы'), '/cars/'.$v->id, $v->id,
+            telegram: $intent?->needsReply() ?? false))->variant('mail', 'Письмо по ТС');
     }
 
     public static function sold(Vehicle $v, ?Message $m = null): self
     {
         $who = trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? ''));
 
-        return new self('На выдачу: '.$v->titleWithYear(), $who ? 'Заберёт '.$who : ($m?->subject ?: null), '/cars/'.$v->id, $v->id);
+        return (new self('На выдачу: '.$v->titleWithYear(), $who ? 'Заберёт '.$who : ($m?->subject ?: null), '/cars/'.$v->id, $v->id))->variant('sold', 'На выдачу');
     }
 
     /** Письмо страховой «продано, заберёт …» по машине с живым пропуском нашей сделки — кому отдавать, решают люди. */
     public static function insurerSoldDeal(Vehicle $v, Pass $pass): self
     {
-        return new self('Страховая продала ТС сделки XCar: '.$v->titleWithYear(), 'По пропуску сделки ждём '.$pass->name.'. Сверьте со сделкой, прежде чем выдавать', '/cars/'.$v->id, $v->id, critical: true);
+        return (new self('Страховая продала ТС сделки XCar: '.$v->titleWithYear(), 'По пропуску сделки ждём '.$pass->name.'. Сверьте со сделкой, прежде чем выдавать', '/cars/'.$v->id, $v->id, critical: true))->variant('insurer-sold-deal', 'Страховая продала ТС сделки');
     }
 
     /** Отчёт о приёме не ушёл (`Park\Report`, 29.10.2026): тому, кто отправлял, со звуком — в деле «Повторить». */
     public static function reportFailed(Vehicle $v, string $reason): self
     {
-        return new self('Отчёт не ушёл: '.$v->titleWithYear(), $reason, '/cars/'.$v->id, $v->id, critical: true);
+        return (new self('Отчёт не ушёл: '.$v->titleWithYear(), $reason, '/cars/'.$v->id, $v->id, critical: true))->variant('report-failed', 'Отчёт не ушёл');
     }
 
     /** Получатель по сделке XCar сменился (`SyncParkRelease`): прежний пропуск погашен, заберёт другой. */
     public static function receiverChanged(Vehicle $v): self
     {
-        return new self('Сменился получатель: '.$v->titleWithYear(), 'Заберёт '.trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? '')).', по сделке XCar', '/cars/'.$v->id, $v->id);
+        return (new self('Сменился получатель: '.$v->titleWithYear(), 'Заберёт '.trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? '')).', по сделке XCar', '/cars/'.$v->id, $v->id))->variant('receiver-changed', 'Сменился получатель');
     }
 
     public static function closing(CarbonInterface $month, int $count, float $sum): self
     {
-        return new self('Закрытие '.mb_strtolower($month->translatedFormat('F')).': '.$count.' '.Plural::of($count, ['счёт', 'счёта', 'счетов']).' на '.Money::rub($sum), 'Проверьте и выставьте', '/money/closing?month='.$month->format('Y-m'),
-            category: 'park_money');
+        return (new self('Закрытие '.mb_strtolower($month->translatedFormat('F')).': '.$count.' '.Plural::of($count, ['счёт', 'счёта', 'счетов']).' на '.Money::rub($sum), 'Проверьте и выставьте', '/money/closing?month='.$month->format('Y-m'),
+            category: 'park_money'))->variant('closing', 'Закрытие месяца');
     }
 
     /** Управляющий принял или выдал ТС — администраторам парковки (в Telegram им пишет `NotifyOwner`, здесь — лента и пуш). */
     public static function handled(Vehicle $v, User $by, bool $released): self
     {
-        return new self($by->shortName().' '.($released ? 'выдал' : 'принял').': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->yard?->name, $v->ref])),
-            '/cars/'.$v->id, $v->id, telegram: false, batch: 'park-handled', line: $by->shortName().' '.($released ? 'выдал' : 'принял').' '.$v->titleWithYear());
+        return (new self($by->shortName().' '.($released ? 'выдал' : 'принял').': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->yard?->name, $v->ref])),
+            '/cars/'.$v->id, $v->id, telegram: false, batch: 'park-handled', line: $by->shortName().' '.($released ? 'выдал' : 'принял').' '.$v->titleWithYear()))->variant('handled', 'Принял или выдал');
     }
 
     public static function idle(Vehicle $v, int $days): self
     {
-        return new self('Стоит '.$days.' дн: '.$v->titleWithYear(), ($v->vendor?->name ?? '').($v->yard ? ', '.$v->yard->name : ''), '/cars/'.$v->id, $v->id, telegram: false,
-            batch: 'park-idle', line: $v->titleWithYear().', '.$days.' дн');
+        return (new self('Стоит '.$days.' дн: '.$v->titleWithYear(), ($v->vendor?->name ?? '').($v->yard ? ', '.$v->yard->name : ''), '/cars/'.$v->id, $v->id, telegram: false,
+            batch: 'park-idle', line: $v->titleWithYear().', '.$days.' дн'))->variant('idle', 'Стоит дольше 30 дней');
     }
 
     /** Покупатель заполнил анкету: прочитать ответ страховой и подтвердить. */
     public static function buyerForm(Vehicle $v, string $name, CarbonInterface $on): self
     {
-        return new self('Покупатель заполнил анкету: '.$v->titleWithYear(), $name.', заберёт '.$on->translatedFormat('j M'), '/cars/'.$v->id, $v->id);
+        return (new self('Покупатель заполнил анкету: '.$v->titleWithYear(), $name.', заберёт '.$on->translatedFormat('j M'), '/cars/'.$v->id, $v->id))->variant('buyer-form', 'Анкета покупателя');
     }
 
     /** Просроченный счёт парковки — управляющему: письмо плательщику он пишет сам, автописьма нет. */
     public static function overdue(Invoice $i): self
     {
-        return new self(($i->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$i->label().' — '.$i->party->name, Money::rub($i->remaining()),
-            '/money/invoices/'.$i->id, $i->vehicle_id, true, 'park_money');
+        return (new self(($i->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$i->label().' — '.$i->party->name, Money::rub($i->remaining()),
+            '/money/invoices/'.$i->id, $i->vehicle_id, true, 'park_money'))->variant('overdue', 'Просрочен счёт парковки');
+    }
+
+    public function label(): string
+    {
+        return $this->variantLabel() ?? 'Парковка';
     }
 
     public function title(): string

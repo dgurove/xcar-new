@@ -13,6 +13,16 @@ final class StageDueNotice extends Notice
 {
     public function __construct(private Offer $offer, private Position $position, private bool $overdue, private ?int $dealId = null) {}
 
+    public function label(): string
+    {
+        return $this->overdue ? 'Срок вышел' : 'Срок подходит';
+    }
+
+    public function kind(): string
+    {
+        return parent::kind().($this->overdue ? ':overdue' : ':due');
+    }
+
     public function title(): string
     {
         return ($this->overdue ? 'Срок вышел: ' : 'Срок подходит: ').$this->what().' — № '.$this->offer->number;

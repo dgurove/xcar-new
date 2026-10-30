@@ -13,6 +13,17 @@ final class BatchNotice extends Notice
     /** @param list<string> $lines */
     public function __construct(private string $key, private array $lines, private Notice $sample) {}
 
+    /** Сводное — своим видом пачки: «Сводка: Срок вышел», «Сводка: Новые вывозы». */
+    public function label(): string
+    {
+        return 'Сводка: '.trim(str_replace('%s', '', Batch::KINDS[$this->key][0] ?? $this->key), ' :');
+    }
+
+    public function kind(): string
+    {
+        return parent::kind().':'.$this->key;
+    }
+
     public function title(): string
     {
         [$title, $forms] = Batch::KINDS[$this->key];

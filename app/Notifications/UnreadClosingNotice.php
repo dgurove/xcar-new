@@ -20,6 +20,11 @@ final class UnreadClosingNotice extends Notice
     /** @param  list<string>  $brands  марки без повторов, частые первыми */
     public function __construct(private int $unread, private int $favorites, private array $brands, private CarbonInterface $closeAt, private ?Offer $offer = null) {}
 
+    public function label(): string
+    {
+        return '3 часа до конца приёма';
+    }
+
     public function title(): string
     {
         $until = $this->closeAt->isToday() ? $this->closeAt->format('H:i') : $this->closeAt->translatedFormat('j M, H:i');

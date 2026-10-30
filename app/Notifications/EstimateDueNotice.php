@@ -5,6 +5,11 @@ namespace App\Notifications;
 /** До срока оценки шесть часов, а оценки нет — одно напоминание. */
 final class EstimateDueNotice extends EstimateNotice
 {
+    public function label(): string
+    {
+        return 'Срок оценки подходит';
+    }
+
     public function title(): string
     {
         return 'Срок оценки подходит: '.$this->estimate->offer->titleWithYear();

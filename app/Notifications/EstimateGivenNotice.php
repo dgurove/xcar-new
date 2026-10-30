@@ -12,6 +12,11 @@ final class EstimateGivenNotice extends Notice
 {
     public function __construct(private Estimate $estimate) {}
 
+    public function label(): string
+    {
+        return 'Менеджер оценил';
+    }
+
     public function title(): string
     {
         $e = $this->estimate;

@@ -4,6 +4,7 @@ namespace App\Push;
 
 use App\Notifications\Notice;
 use App\Notifications\NoticeLink;
+use App\Notifications\Sent;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Support\Facades\Log;
@@ -17,11 +18,11 @@ use Minishlink\WebPush\WebPush;
  */
 final class WebPushChannel
 {
-    public function send(User $user, Notice $notice): void
+    public function send(User $user, Notice $notice): Sent
     {
         $subs = Subscription::where('user_id', $user->id)->get();
         if ($subs->isEmpty() || ! config('xcar.vapid.public')) {
-            return;
+            return Sent::skipped('нет подписок');
         }
         // Пуш — в приложение уведомления: парковки, логистики и CRM — только на подписки своего хоста, общее — на сайт и CRM.
         $only = $notice->surface();
@@ -31,7 +32,7 @@ final class WebPushChannel
             return $only ? $host === $only : ! in_array($host, [Surface::Park, Surface::Logistics], true);
         });
         if ($subs->isEmpty()) {
-            return;
+            return Sent::skipped('нет подписок в этом приложении');
         }
         $notification = [
             'title' => $notice->titleFor($user),
@@ -47,11 +48,14 @@ final class WebPushChannel
             $surface = $sub->host ? Surface::fromHost($sub->host) : Surface::Site;
             // Путь — под приложение подписки (NoticeLink): путь сайта в CRM — «Такой страницы нет».
             $local = NoticeLink::for(['href' => $href, 'subject' => $notice->subject()], $surface);
-            $navigate = str_starts_with($local, 'http') ? $local : $surface->url($local);
+            $navigate = NoticeLink::tracked(str_starts_with($local, 'http') ? $local : $surface->url($local), $notice, 'push');
             $badge = $badges[$surface->value] ??= $user->badgeCount($surface);
             self::queue($push, $sub, $notification + ['navigate' => $navigate, 'app_badge' => $badge], $notice->important());
         }
-        self::flush($push);
+        $failed = self::flush($push, $reasons);
+        $accepted = $subs->count() - $failed;
+
+        return $accepted > 0 ? Sent::ok($accepted) : Sent::failed(implode('; ', array_unique($reasons)) ?: 'не принят', 0);
     }
 
     /**
@@ -83,9 +87,13 @@ final class WebPushChannel
         $push->queueNotification(PushSubscription::create(['endpoint' => $sub->endpoint, 'publicKey' => $sub->p256dh, 'authToken' => $sub->auth, 'contentEncoding' => 'aes128gcm']), $payload, ['TTL' => 86400, 'urgency' => 'normal']);
     }
 
-    /** Отправить и разобрать ответы: принятым — `last_sent_at`, отвалившиеся — удалить, прочие — `failed_at`. Число неудач. */
-    private static function flush(WebPush $push): int
+    /**
+     * Отправить и разобрать ответы: принятым — `last_sent_at`, отвалившиеся — удалить, прочие — `failed_at`. Число неудач,
+     * в `$reasons` — их причины для журнала.
+     */
+    private static function flush(WebPush $push, ?array &$reasons = []): int
     {
+        $reasons = [];
         $failed = 0;
         $sent = [];
         foreach ($push->flush() as $report) {
@@ -96,6 +104,7 @@ final class WebPushChannel
                 continue;
             }
             $failed++;
+            $reasons[] = $report->isSubscriptionExpired() ? 'подписка отвалилась' : mb_substr((string) $report->getReason(), 0, 60);
             if ($report->isSubscriptionExpired()) {
                 Subscription::where('endpoint', $endpoint)->delete();
             } else {

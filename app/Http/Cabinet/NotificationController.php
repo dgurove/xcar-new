@@ -5,6 +5,7 @@ namespace App\Http\Cabinet;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Notifications\Categories;
+use App\Notifications\Delivery;
 use App\Notifications\NoticeLink;
 use App\Notifications\TestNotice;
 use App\Push\Subscription;
@@ -36,13 +37,18 @@ class NotificationController
     {
         $item = $request->user()->notifications()->findOrFail($id);
         Impersonation::active() || $item->markAsRead();
+        Delivery::opened($request->user(), $id, 'feed');
 
         return redirect(NoticeLink::for($item->data));
     }
 
-    /** Тап по строке ведёт сразу на объект; прочитанность отмечается маячком с клиента, значки — во всех вкладках. */
+    /**
+     * Тап по строке ленты или карточке (`via=banner`) ведёт сразу на объект; прочитанность и открытие (`Delivery::opened`)
+     * отмечаются маячком с клиента, значки — во всех вкладках.
+     */
     public function seen(Request $request, string $id, Publisher $publish)
     {
+        Delivery::opened($request->user(), $id, $request->input('via') === 'banner' ? 'banner' : 'feed');
         $item = Impersonation::active() ? null : $request->user()->unreadNotifications()->whereKey($id)->first();
         if ($item) {
             $item->markAsRead();

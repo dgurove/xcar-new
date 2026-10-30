@@ -6,6 +6,7 @@ use App\Http\Admin\BidController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
+use App\Http\Admin\DeliveryController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
 use App\Http\Admin\GiveController;
@@ -401,6 +402,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/timers', [TimerController::class, 'index']);
             Route::put('/timers/row', [TimerController::class, 'updateRow']);
             Route::put('/timers/{stage}', [TimerController::class, 'update'])->whereNumber('stage');
+            // Доставка уведомлений (30.10.2026): что ушло людям и открыли ли — по журналу `notice_deliveries`.
+            Route::get('/deliveries', [DeliveryController::class, 'index']);
             Route::post('/workflows/{workflow}/enable', [WorkflowController::class, 'activate']);
             Route::post('/workflows/{workflow}/fill', [WorkflowController::class, 'fill']);
             Route::post('/workflows/{workflow}/order', [WorkflowController::class, 'reorder']);

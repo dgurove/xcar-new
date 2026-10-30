@@ -20,6 +20,11 @@ final class BuyerOffersNotice extends Notice
         return count($this->offerIds) === 1 ? Offer::find($this->offerIds[0]) : null;
     }
 
+    public function label(): string
+    {
+        return 'Покупателю: новые предложения';
+    }
+
     public function title(): string
     {
         $n = count($this->offerIds);

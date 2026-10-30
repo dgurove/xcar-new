@@ -11,6 +11,11 @@ final class BidPlacedNotice extends Notice
 {
     public function __construct(private Bid $bid) {}
 
+    public function label(): string
+    {
+        return 'Новое подтверждение';
+    }
+
     public function title(): string
     {
         if ($this->bid->isGarage()) {

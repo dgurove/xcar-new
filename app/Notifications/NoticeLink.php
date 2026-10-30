@@ -14,6 +14,23 @@ use App\Support\Surface;
  */
 final class NoticeLink
 {
+    /**
+     * Адрес с меткой открытия `nt=<id уведомления>.<канал>` — для пуша, Telegram и письма: перешли по нему — уведомление
+     * открыто (`TrackNoticeOpen` → `Delivery::opened`, метку из адреса снимает). Лента и карточка отмечают маячком `seen`.
+     */
+    public static function tracked(string $url, Notice $notice, string $channel): string
+    {
+        if (! $notice->id) {
+            return $url;
+        }
+        $hash = '';
+        if (($at = strpos($url, '#')) !== false) {
+            [$url, $hash] = [substr($url, 0, $at), substr($url, $at)];
+        }
+
+        return $url.(str_contains($url, '?') ? '&' : '?').'nt='.$notice->id.'.'.$channel.$hash;
+    }
+
     /** @param  array{href?: ?string, subject?: ?string}  $data  data строки ленты */
     public static function for(array $data, ?Surface $surface = null): string
     {

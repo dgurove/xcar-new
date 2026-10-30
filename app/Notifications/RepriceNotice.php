@@ -15,6 +15,11 @@ final class RepriceNotice extends Notice
 {
     public function __construct(private Reprice $reprice) {}
 
+    public function label(): string
+    {
+        return 'Переоценка';
+    }
+
     public function title(): string
     {
         return 'Переоценка: '.$this->reprice->offer->titleWithYear();

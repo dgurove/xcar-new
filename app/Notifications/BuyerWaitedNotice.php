@@ -13,6 +13,11 @@ final class BuyerWaitedNotice extends Notice
 {
     public function __construct(private User $buyer, private Offer $offer) {}
 
+    public function label(): string
+    {
+        return 'Покупатель ждал машину';
+    }
+
     public function title(): string
     {
         return $this->buyer->shortName().' ждал '.$this->offer->titleWithYear();

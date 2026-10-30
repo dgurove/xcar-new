@@ -12,6 +12,11 @@ final class OffersShownNotice extends Notice
     /** @param list<int> $offerIds */
     public function __construct(private User $manager, private array $offerIds) {}
 
+    public function label(): string
+    {
+        return 'Менеджер открыл покупателю';
+    }
+
     public function title(): string
     {
         $n = count($this->offerIds);

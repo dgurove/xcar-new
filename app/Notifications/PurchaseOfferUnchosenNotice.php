@@ -9,6 +9,11 @@ final class PurchaseOfferUnchosenNotice extends Notice
 {
     public function __construct(private Bid $offer) {}
 
+    public function label(): string
+    {
+        return 'Выбор цены в закупке снят';
+    }
+
     public function title(): string
     {
         return 'Выбор цены '.Money::plain($this->offer->amount).' за '.$this->offer->purchaseCar->titleWithYear().' отменён';

@@ -14,6 +14,11 @@ final class OfferDraftNotice extends Notice
 {
     public function __construct(private Offer $offer) {}
 
+    public function label(): string
+    {
+        return 'Черновик из письма';
+    }
+
     public function title(): string
     {
         return 'Черновик из письма: '.$this->offer->titleWithYear();

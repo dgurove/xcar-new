@@ -13,6 +13,11 @@ final class ParkPassRevokedNotice extends Notice
 {
     public function __construct(private Deal $deal, private string $reason) {}
 
+    public function label(): string
+    {
+        return 'Пропуск погашен';
+    }
+
     public function title(): string
     {
         return 'Пропуск на парковку погашен: '.$this->deal->offer->titleWithYear();

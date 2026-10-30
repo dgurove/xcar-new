@@ -34,11 +34,11 @@ final class TelegramChannel
         return ['text' => $text, 'login_url' => ['url' => Surface::Site->url('/telegram/go?to='.rawurlencode($path)), 'request_write_access' => false]];
     }
 
-    public function send(User $user, Notice $notice): void
+    public function send(User $user, Notice $notice): Sent
     {
         $message = $notice->toTelegram();
         if (! $user->telegram_chat_id || ! $message || ! $this->bot->configured()) {
-            return;
+            return Sent::skipped('Telegram не привязан');
         }
         $lines = array_filter($message['lines'], fn ($l) => $l !== null && $l !== '');
         // Шаг сделки супер-покупателю — без слова «менеджер» (`Users\Wording`); готовый HTML строки — как есть.
@@ -46,7 +46,7 @@ final class TelegramChannel
         $text = implode("\n", ['<b>'.e($say($message['title'])).'</b>', ...array_map(fn ($l) => e($say($l)), $lines)]);
         try {
             // Свои кнопки ответа (`keyboard`, контрпредложение: «Согласен» / «Отказаться») — над кнопкой на сайт.
-            $sent = $this->bot->send((int) $user->telegram_chat_id, $text, [...($message['keyboard'] ?? []), [self::button($message['button'], $notice->telegramUrl())]], $user->quietHours());
+            $sent = $this->bot->send((int) $user->telegram_chat_id, $text, [...($message['keyboard'] ?? []), [self::button($message['button'], NoticeLink::tracked($notice->telegramUrl(), $notice, 'telegram'))]], $user->quietHours());
             // О чём сообщение — чтобы удалить его у всех, когда предмет ушёл (завели цепочку «Из писем»).
             if ($sent && ($subject = $notice->telegramSubject())) {
                 $sent->update(['subject' => $subject]);
@@ -55,9 +55,13 @@ final class TelegramChannel
             if (Bot::chatGone($e)) {
                 app(UnlinkChat::class)->byChat((int) $user->telegram_chat_id);
 
-                return;
+                return Sent::failed('чат удалён, Telegram отвязан');
             }
             Log::warning('Telegram: уведомление не ушло', ['user' => $user->id, 'title' => $notice->title(), 'error' => $e->getMessage()]);
+
+            return Sent::failed($e->getMessage());
         }
+
+        return $sent ? Sent::ok() : Sent::failed('Telegram не ответил');
     }
 }

@@ -13,6 +13,11 @@ final class ConsentGivenNotice extends Notice
 {
     public function __construct(private Deal $deal) {}
 
+    public function label(): string
+    {
+        return 'Менеджер берёт сделку';
+    }
+
     public function title(): string
     {
         return ($this->deal->buyer?->name ?? 'Менеджер').' берёт '.$this->deal->offer->titleWithYear().' — ответьте поставщику';

@@ -16,6 +16,11 @@ final class NoBidsNotice extends Notice
 
     public function __construct(private Offer $offer) {}
 
+    public function label(): string
+    {
+        return 'Ни одного подтверждения';
+    }
+
     public function title(): string
     {
         return 'Ни одного подтверждения: '.$this->offer->titleWithYear();

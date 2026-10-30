@@ -16,6 +16,11 @@ final class BindingPanicNotice extends Notice
 {
     public function __construct(private Offer $offer, private ?Transport $transport = null) {}
 
+    public function label(): string
+    {
+        return 'Горит обязывающее';
+    }
+
     public function title(): string
     {
         return (Binding::of($this->offer) === 'deal' ? 'Поставщику не заплачено: ' : 'Нет покупателя: ').$this->offer->titleWithYear();

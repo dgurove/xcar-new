@@ -12,6 +12,11 @@ final class OfferPublishedNotice extends Notice
 {
     public function __construct(private Offer $offer) {}
 
+    public function label(): string
+    {
+        return 'Открыто только вам';
+    }
+
     public function title(): string
     {
         return 'Новое предложение: '.$this->offer->titleWithYear();

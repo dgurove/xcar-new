@@ -12,6 +12,11 @@ final class CounterAnsweredNotice extends Notice
 {
     public function __construct(private Bid $bid, private bool $agreed) {}
 
+    public function label(): string
+    {
+        return 'Ответ на контрпредложение';
+    }
+
     public function title(): string
     {
         return ($this->agreed ? 'Согласен на ' : 'Отказ от ').Money::plain($this->bid->counter_amount).': № '.$this->bid->offer->number;

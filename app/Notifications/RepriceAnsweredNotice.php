@@ -10,6 +10,11 @@ final class RepriceAnsweredNotice extends Notice
 {
     public function __construct(private RepriceAsk $ask) {}
 
+    public function label(): string
+    {
+        return 'Ответ про закупочную';
+    }
+
     public function title(): string
     {
         $who = $this->ask->user?->shortName() ?? 'Менеджер';

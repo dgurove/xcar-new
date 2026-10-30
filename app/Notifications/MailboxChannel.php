@@ -27,11 +27,11 @@ final class MailboxChannel
             ?? Account::where('scope', Scope::Park)->where('is_active', true)->orderBy('id')->first();
     }
 
-    public function send(User $user, Notice $notice): void
+    public function send(User $user, Notice $notice): Sent
     {
         $account = self::account();
         if (! $account || ! $user->email) {
-            return;
+            return Sent::skipped($account ? 'нет почты' : 'нет ящика парковки');
         }
         $mail = $notice->toMail($user);
         $email = (new Email)->from(new Address($account->email, $account->fromName()))->to(new Address($user->email, $user->name))
@@ -40,6 +40,10 @@ final class MailboxChannel
             Sender::transport($account)->send($email);
         } catch (Throwable $e) {
             Log::warning('notify mail: '.$e->getMessage(), ['user' => $user->id, 'title' => $notice->title()]);
+
+            return Sent::failed($e->getMessage());
         }
+
+        return Sent::ok();
     }
 }

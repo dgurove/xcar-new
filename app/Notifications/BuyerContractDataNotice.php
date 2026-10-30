@@ -12,6 +12,11 @@ final class BuyerContractDataNotice extends Notice
 {
     public function __construct(private Deal $deal) {}
 
+    public function label(): string
+    {
+        return 'Данные для договора';
+    }
+
     public function title(): string
     {
         return 'Нужны данные для договора';

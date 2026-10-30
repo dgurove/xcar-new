@@ -12,6 +12,11 @@ final class EstimateDeclinedNotice extends Notice
 {
     public function __construct(private Estimate $estimate) {}
 
+    public function label(): string
+    {
+        return 'Отказ от оценки';
+    }
+
     public function title(): string
     {
         return $this->estimate->user->shortName().': отказ от оценки, хочет '.Money::rub($this->estimate->wish_price);

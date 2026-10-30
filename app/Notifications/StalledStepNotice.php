@@ -10,6 +10,11 @@ final class StalledStepNotice extends Notice
 {
     public function __construct(private Deal $deal, private string $ask) {}
 
+    public function label(): string
+    {
+        return 'Шаг давно ждёт';
+    }
+
     public function title(): string
     {
         return $this->ask.': '.$this->deal->offer->titleWithYear();

@@ -10,6 +10,11 @@ final class ContractReadyNotice extends Notice
 {
     public function __construct(private Deal $deal) {}
 
+    public function label(): string
+    {
+        return 'ДКП готов';
+    }
+
     public function title(): string
     {
         return 'ДКП готов: '.$this->deal->offer->titleWithYear();

@@ -10,6 +10,11 @@ final class BidAcceptedNotice extends Notice
 {
     public function __construct(private Deal $deal) {}
 
+    public function label(): string
+    {
+        return 'Подтверждение принято';
+    }
+
     public function title(): string
     {
         if ($this->deal->isGarage()) {

@@ -9,6 +9,11 @@ final class BuyerJoinedNotice extends Notice
 {
     public function __construct(private User $buyer) {}
 
+    public function label(): string
+    {
+        return 'Покупатель по ссылке';
+    }
+
     public function title(): string
     {
         return $this->buyer->name.' принял приглашение';

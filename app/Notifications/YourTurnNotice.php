@@ -21,6 +21,11 @@ final class YourTurnNotice extends Notice
         return Requirement::whereKey($this->requirement->id)->whereNull('done_at')->exists() && parent::shouldSend($notifiable, $channel);
     }
 
+    public function label(): string
+    {
+        return 'Ваш ход в сделке';
+    }
+
     public function title(): string
     {
         return $this->requirement->title.' — № '.$this->requirement->offer->number;

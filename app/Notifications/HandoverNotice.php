@@ -14,6 +14,11 @@ final class HandoverNotice extends Notice
 {
     public function __construct(private Deal $deal, private Handover $handover) {}
 
+    public function label(): string
+    {
+        return 'Можно забирать';
+    }
+
     public function title(): string
     {
         return 'Можно забирать: '.$this->deal->offer->titleWithYear();

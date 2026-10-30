@@ -10,6 +10,11 @@ final class BuyerInterestNotice extends Notice
 {
     public function __construct(private Interest $interest) {}
 
+    public function label(): string
+    {
+        return 'Интерес покупателя';
+    }
+
     public function title(): string
     {
         return $this->interest->user->name.': интерес к '.$this->interest->offer->titleWithYear();

@@ -13,6 +13,11 @@ final class SupplierDeclinedNotice extends Notice
 {
     public function __construct(private Deal $deal) {}
 
+    public function label(): string
+    {
+        return 'Поставщик отказал';
+    }
+
     public function title(): string
     {
         return 'Поставщик отказал в продаже: '.$this->deal->offer->titleWithYear();

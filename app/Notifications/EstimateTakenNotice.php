@@ -7,6 +7,11 @@ use App\Support\Money;
 /** Оценку менеджера взяли ценой продажи — тихо, строкой в ленте. */
 final class EstimateTakenNotice extends EstimateNotice
 {
+    public function label(): string
+    {
+        return 'Оценку взяли';
+    }
+
     public function title(): string
     {
         return ($this->estimate->isCorrection() ? 'Взяли вашу цену ' : 'Вашу оценку взяли: ').Money::rub($this->estimate->amount);

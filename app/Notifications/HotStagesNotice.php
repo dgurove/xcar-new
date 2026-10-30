@@ -10,6 +10,11 @@ final class HotStagesNotice extends Notice
 {
     public function __construct(private int $total, private int $ours) {}
 
+    public function label(): string
+    {
+        return 'Утренняя сводка: горит';
+    }
+
     public function title(): string
     {
         return 'Горит: '.$this->total.' '.Plural::of($this->total, ['шаг', 'шага', 'шагов']).($this->ours ? ', наш ход '.$this->ours : '');

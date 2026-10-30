@@ -14,6 +14,11 @@ final class SlotPublishedNotice extends Notice
 {
     public function __construct(private int $count) {}
 
+    public function label(): string
+    {
+        return 'Слот опубликован';
+    }
+
     public function title(): string
     {
         return 'Опубликовано '.$this->count.' '.Plural::of($this->count, ['предложение', 'предложения', 'предложений']);

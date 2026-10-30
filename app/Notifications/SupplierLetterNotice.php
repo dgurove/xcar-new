@@ -13,6 +13,11 @@ final class SupplierLetterNotice extends Notice
     /** @param  'failed'|'bounced'  $what */
     public function __construct(private Offer $offer, private string $what) {}
 
+    public function label(): string
+    {
+        return 'Письмо поставщику не дошло';
+    }
+
     public function title(): string
     {
         return ($this->what === 'bounced' ? 'Письмо поставщику не доставлено: ' : 'Письмо поставщику не ушло: ').$this->offer->titleWithYear();

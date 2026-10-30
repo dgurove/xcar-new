@@ -8,6 +8,11 @@ final class PurchaseOpenedNotice extends Notice
 {
     public function __construct(private Purchase $purchase) {}
 
+    public function label(): string
+    {
+        return 'Открыта закупка';
+    }
+
     public function title(): string
     {
         return 'Открыта '.mb_strtolower($this->purchase->publicTitle());

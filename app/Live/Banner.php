@@ -22,7 +22,7 @@ final class Banner
     public static function of(Notice $notice, string $id, ?User $reader = null, bool $sound = false): array
     {
         return self::make($id, $notice->titleFor($reader), $notice->textFor($reader), $notice->href(), $notice->actor(), $notice->icon(),
-            $notice->important(), $notice->subject(), $notice->surface(), $sound, $notice->alarm());
+            $notice->important(), $notice->subject(), $notice->surface(), $sound, $notice->alarm(), notice: true);
     }
 
     /** Событие без уведомления в ленте (письмо в ящик, файлы из письма): тихо, уходит само. @return Payload */
@@ -41,10 +41,10 @@ final class Banner
     }
 
     /** @return Payload */
-    private static function make(string $id, string $title, ?string $text, ?string $href, ?User $user, string $icon, bool $important, ?string $subject, ?Surface $surface, bool $sound = false, bool $alarm = false): array
+    private static function make(string $id, string $title, ?string $text, ?string $href, ?User $user, string $icon, bool $important, ?string $subject, ?Surface $surface, bool $sound = false, bool $alarm = false, bool $notice = false): array
     {
-        $html = Blade::render('<x-ui.banner :id="$id" :title="$title" :text="$text" :href="$href" :user="$user" :icon="$icon" :important="$important" :subject="$subject" :alarm="$alarm"/>',
-            compact('id', 'title', 'text', 'href', 'user', 'icon', 'important', 'subject', 'alarm'));
+        $html = Blade::render('<x-ui.banner :id="$id" :title="$title" :text="$text" :href="$href" :user="$user" :icon="$icon" :important="$important" :subject="$subject" :alarm="$alarm" :notice="$notice"/>',
+            compact('id', 'title', 'text', 'href', 'user', 'icon', 'important', 'subject', 'alarm', 'notice'));
 
         // Адрес под каждое приложение: клиент ставит свой (путь сайта в CRM — «Такой страницы нет»).
         $hrefs = $href === null ? [] : array_combine(

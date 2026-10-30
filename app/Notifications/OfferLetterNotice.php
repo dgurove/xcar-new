@@ -15,6 +15,11 @@ final class OfferLetterNotice extends Notice
 {
     public function __construct(private Candidate $candidate) {}
 
+    public function label(): string
+    {
+        return 'Новое из писем';
+    }
+
     public function title(): string
     {
         return 'Новое из писем: '.$this->car();

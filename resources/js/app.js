@@ -817,6 +817,7 @@ function noticeSeen() {
         if (!link) return;
         const body = new FormData();
         body.append('_token', csrf());
+        if (link.dataset.noticeVia) body.append('via', link.dataset.noticeVia);
         navigator.sendBeacon(`/account/notifications/${link.dataset.notice}/opened`, body);
         // Прочитано сразу: точка гаснет (в ленте — прозрачной, чтобы текст не съехал), заголовок — обычным.
         link.querySelectorAll('.rounded-full.bg-accent').forEach((dot) => dot.classList.replace('bg-accent', 'bg-transparent'));

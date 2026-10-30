@@ -89,6 +89,11 @@ final class ChatNotice extends Notice
         return $this->forStaff ? $chat->displayName() : ($chat->manager?->shortName() ?? Chat::PLATFORM);
     }
 
+    public function label(): string
+    {
+        return 'Сообщение в чате';
+    }
+
     public function title(): string
     {
         $chat = $this->message->chat;

@@ -48,27 +48,27 @@ final class TransportNotice extends Notice
     /** Новый вывоз — админам: выбрать, кто вывозит. */
     public static function requested(Transport $t): self
     {
-        return new self($t, 'Вывоз: '.$t->title(), self::where($t), true, true);
+        return (new self($t, 'Вывоз: '.$t->title(), self::where($t), true, true))->variant('requested', 'Новый вывоз');
     }
 
     /** Поручение исполнителю или логисту. */
     public static function assigned(Transport $t, User $to): self
     {
-        return $t->channel === Channel::Logist && ! $t->isExecutedBy($to)
+        return ($t->channel === Channel::Logist && ! $t->isExecutedBy($to)
             ? new self($t, 'Вывоз в регионе: '.$t->title(), self::where($t), true, true)
-            : new self($t, 'Вам вывоз: '.$t->title(), implode(', ', array_filter([self::where($t), $t->ownerName() ? 'владелец '.$t->ownerName() : null])), true, true);
+            : new self($t, 'Вам вывоз: '.$t->title(), implode(', ', array_filter([self::where($t), $t->ownerName() ? 'владелец '.$t->ownerName() : null])), true, true))->variant('assigned', 'Вывоз поручен');
     }
 
     /** Модератору — оформить и отправить документы СДЭКом. */
     public static function docsNeeded(Transport $t): self
     {
-        return new self($t, 'Отправьте документы: '.$t->title(), implode(', ', array_filter([$t->executor?->name, $t->executor?->cdek_point])), true, true);
+        return (new self($t, 'Отправьте документы: '.$t->title(), implode(', ', array_filter([$t->executor?->name, $t->executor?->cdek_point])), true, true))->variant('docs-needed', 'Отправьте документы');
     }
 
     /** Исполнителю — трек отправленных документов. */
     public static function docsSent(Transport $t): self
     {
-        return new self($t, 'Документы отправлены СДЭКом: '.$t->title(), 'Трек '.$t->docs_track, true, true);
+        return (new self($t, 'Документы отправлены СДЭКом: '.$t->title(), 'Трек '.$t->docs_track, true, true))->variant('docs-sent', 'Документы отправлены');
     }
 
     /** Ход задачи — админам: созвонились, вывезена (ключи), привёз, отменили. */
@@ -82,13 +82,13 @@ final class TransportNotice extends Notice
             default => [$t->state->label().': '.$t->title(), $t->cancel_reason],
         };
 
-        return new self($t, $title, $text, false, $step === 'picked');
+        return (new self($t, $title, $text, false, $step === 'picked'))->variant('moved', 'Ход вывоза');
     }
 
     /** Дата вывоза прошла, «Забрал» нет — админам и исполнителю. */
     public static function late(Transport $t): self
     {
-        return new self($t, 'Не вывезли в срок: '.$t->title(), $t->carrier(), true, true);
+        return (new self($t, 'Не вывезли в срок: '.$t->title(), $t->carrier(), true, true))->variant('late', 'Не вывезли в срок');
     }
 
     /**
@@ -102,15 +102,15 @@ final class TransportNotice extends Notice
             $silent ? 'без созвона '.$silent : null,
         ]);
 
-        return new self(null, 'Вывоз ждёт: '.implode(', ', $parts), 'дольше суток', true, true);
+        return (new self(null, 'Вывоз ждёт: '.implode(', ', $parts), 'дольше суток', true, true))->variant('stale', 'Вывоз ждёт');
     }
 
     /** Сутки без шага — исполнителю «созвонитесь», логисту «назначьте исполнителя». */
     public static function callDue(Transport $t): self
     {
-        return $t->state === TransportState::Logist
+        return ($t->state === TransportState::Logist
             ? new self($t, 'Назначьте исполнителя: '.$t->title(), self::where($t), true, true)
-            : new self($t, 'Созвонитесь с владельцем: '.$t->title(), implode(', ', array_filter([$t->ownerName(), $t->ownerPhone()])), true, true);
+            : new self($t, 'Созвонитесь с владельцем: '.$t->title(), implode(', ', array_filter([$t->ownerName(), $t->ownerPhone()])), true, true))->variant('call-due', 'Назначить или созвониться');
     }
 
     /**
@@ -119,20 +119,20 @@ final class TransportNotice extends Notice
      */
     public static function assignedMany(int $n, bool $logist): self
     {
-        return $logist
+        return ($logist
             ? new self(null, 'Вывозы в регионах: '.$n, 'назначьте исполнителей и цену', true, true, '/transports?preset=logist')
-            : new self(null, 'Вам вывозов: '.$n, 'созвонитесь с владельцами', true, true, '/transports?preset=work');
+            : new self(null, 'Вам вывозов: '.$n, 'созвонитесь с владельцами', true, true, '/transports?preset=work'))->variant('assigned-many', 'Вывозы поручены');
     }
 
     public static function docsNeededMany(int $n): self
     {
-        return new self(null, 'Отправьте документы: '.$n.' '.Plural::of($n, ['вывоз', 'вывоза', 'вывозов']), null, true, true, '/documents');
+        return (new self(null, 'Отправьте документы: '.$n.' '.Plural::of($n, ['вывоз', 'вывоза', 'вывозов']), null, true, true, '/documents'))->variant('docs-needed-many', 'Отправьте документы, пачкой');
     }
 
     /** Отменили пачкой — другим админам одной строкой. */
     public static function cancelledMany(int $n, ?string $reason): self
     {
-        return new self(null, 'Отменено вывозов: '.$n, $reason, false, false, '/transports?preset=all');
+        return (new self(null, 'Отменено вывозов: '.$n, $reason, false, false, '/transports?preset=all'))->variant('cancelled-many', 'Вывозы отменены');
     }
 
     /**
@@ -141,42 +141,47 @@ final class TransportNotice extends Notice
      */
     public static function cancelledYours(Transport $t): self
     {
-        return new self($t, 'Вывоз отменён: '.$t->title(), $t->cancel_reason, true, true);
+        return (new self($t, 'Вывоз отменён: '.$t->title(), $t->cancel_reason, true, true))->variant('cancelled-yours', 'Ваш вывоз отменён');
     }
 
     /** Покупатель аукциона забрал сам (20.10.2026) — логисту и исполнителю, что уже взяли задачу: ехать не нужно. */
     public static function auctionYours(Transport $t): self
     {
-        return new self(null, 'Вывоз не нужен: '.$t->title(), 'забрал покупатель аукциона', true, true, '/transports');
+        return (new self(null, 'Вывоз не нужен: '.$t->title(), 'забрал покупатель аукциона', true, true, '/transports'))->variant('auction-yours', 'Вывоз не нужен');
     }
 
     public static function cancelledYoursMany(int $n, ?string $reason): self
     {
-        return new self(null, 'Отменено вывозов: '.$n, $reason, true, true, '/transports?preset=all');
+        return (new self(null, 'Отменено вывозов: '.$n, $reason, true, true, '/transports?preset=all'))->variant('cancelled-yours-many', 'Ваши вывозы отменены');
     }
 
     /** «Куда везти» поменял не тот, кто везёт, — логисту и исполнителю, у кого задача уже в работе. */
     public static function rerouted(Transport $t): self
     {
-        return new self($t, 'Куда везти: '.$t->title(), $t->routeLabel() ?? 'пока неизвестно', true, true);
+        return (new self($t, 'Куда везти: '.$t->title(), $t->routeLabel() ?? 'пока неизвестно', true, true))->variant('rerouted', 'Куда везти');
     }
 
     /** «Уже вывезли» пачкой — другим ведущим одной строкой. */
     public static function backdatedMany(int $n): self
     {
-        return new self(null, 'Отмечено вывезенными: '.$n, null, false, false, '/transports?preset=done');
+        return (new self(null, 'Отмечено вывезенными: '.$n, null, false, false, '/transports?preset=done'))->variant('backdated-many', 'Отмечены вывезенными');
     }
 
     /** Третий раз подряд не дозвонились — админам: решать, что дальше. */
     public static function unreachable(Transport $t): self
     {
-        return new self($t, 'Не дозвонились 3 раза: '.$t->title(), implode(', ', array_filter([$t->carrier(), $t->ownerPhone()])), true, true);
+        return (new self($t, 'Не дозвонились 3 раза: '.$t->title(), implode(', ', array_filter([$t->carrier(), $t->ownerPhone()])), true, true))->variant('unreachable', 'Не дозвонились');
     }
 
     /** Город и адрес, откуда забирать. */
     private static function where(Transport $t): ?string
     {
         return implode(', ', array_filter([Choices::regionOf($t), $t->fromAddress()])) ?: null;
+    }
+
+    public function label(): string
+    {
+        return $this->variantLabel() ?? 'Вывоз';
     }
 
     public function title(): string

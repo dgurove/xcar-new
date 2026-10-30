@@ -14,6 +14,11 @@ final class BuyerNeededNotice extends Notice
     /** $passport — покупатель указан, но у физлица нет паспорта со сканом (11.10.2026). */
     public function __construct(private Deal $deal, private bool $passport = false) {}
 
+    public function label(): string
+    {
+        return 'Укажите покупателя';
+    }
+
     public function title(): string
     {
         return ($this->passport ? 'Приложите паспорт покупателя: ' : 'Укажите покупателя: ').$this->deal->offer->titleWithYear();

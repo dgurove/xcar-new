@@ -24,6 +24,11 @@ final class NewOffersNotice extends Notice
     /** @param  list<string>  $brands  марки пачки без повторов, частые первыми */
     public function __construct(private int $count, private array $brands, private ?Offer $offer = null) {}
 
+    public function label(): string
+    {
+        return 'Новые предложения';
+    }
+
     public function title(): string
     {
         if ($this->offer) {

@@ -15,6 +15,11 @@ final class GalleryInterestOnSaleNotice extends Notice
     /** buyer — покупателю менеджера: он не подтверждает ценой, срок приёма ему ни к чему. */
     public function __construct(private Offer $offer, private bool $buyer = false) {}
 
+    public function label(): string
+    {
+        return 'В продаже, отмечали интерес';
+    }
+
     public function title(): string
     {
         return 'В продаже, вы отмечали интерес: '.$this->offer->titleWithYear();

@@ -15,6 +15,11 @@ final class UrgentOfferNotice extends Notice
 {
     public function __construct(private Offer $offer, private ?User $for = null) {}
 
+    public function label(): string
+    {
+        return 'Срочное предложение';
+    }
+
     public function title(): string
     {
         return 'Срочно: '.$this->offer->titleWithYear();

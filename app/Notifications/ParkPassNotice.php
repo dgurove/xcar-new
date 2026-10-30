@@ -14,6 +14,11 @@ final class ParkPassNotice extends Notice
 {
     public function __construct(private Deal $deal, private Vehicle $vehicle) {}
 
+    public function label(): string
+    {
+        return 'Пропуск на парковку';
+    }
+
     public function title(): string
     {
         return 'Можно забирать с парковки: '.$this->deal->offer->titleWithYear();
