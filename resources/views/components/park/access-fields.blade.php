@@ -3,4 +3,4 @@
      в ссылке и в карточке человека. --}}
 @props(['readonly' => false, 'city' => null])
 <x-park.city-field :city="$city"/>
-<x-ui.check name="park_readonly" :checked="(bool) old('park_readonly', $readonly)">Приёмщик: приём и выдача, без денег</x-ui.check>
+<x-ui.check name="park_readonly" :checked="(bool) old('park_readonly', $readonly)">Приёмщик: всё, кроме денег</x-ui.check>

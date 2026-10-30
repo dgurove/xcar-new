@@ -6,7 +6,8 @@
     $vehicle ??= null;
     // Новая ТС (заявка руками, разбор письма) — значение из письма.
     $value = $vehicle ? $vehicle->value : ($values['value'] ?? null);
-    $rate = $vehicle?->accepted_at;
+    // Своя ставка — деньги: приёмщику (`User::parkMoney`, 30.10.2026) только оценочная стоимость.
+    $rate = $vehicle?->accepted_at && (auth()->user()?->parkMoney() ?? false);
     if ($fold && $errors->hasAny(['value', 'storage_rate'])) {
         $fold = false;
     }

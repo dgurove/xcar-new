@@ -294,6 +294,11 @@ class VehicleController
         ]);
         $back = $data['back'] ?? null;
         unset($data['back']);
+        // Приёмщик правит всё, кроме денег (30.10.2026): ставка, договор и счёт — управляющему (`User::parkMoney`);
+        // оценочная стоимость — данные машины, её правят все.
+        if (! $request->user()->parkMoney()) {
+            $data = array_diff_key($data, array_flip(['storage_rate', 'storage_rate_note', 'billing_cadence', 'contract_kind', 'contract_no', 'contract_at', 'assigned_price', 'owner_party_id']));
+        }
         $update($vehicle, $data, $request->user());
         // Вписали номер, VIN или госномер — письма с ними находят дело, а цепочка о той же ТС уходит из «Из писем».
         $link->forVehicle($vehicle->refresh());

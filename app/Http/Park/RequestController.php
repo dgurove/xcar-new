@@ -259,7 +259,7 @@ class RequestController
 
     /**
      * Поля ТС приходят той же формой, что и этап заявки: одна кнопка сохраняет всё.
-     * Правит их `park.manage`; приёмщик — только марку и модель, если письмо их не дало.
+     * Правят все люди парковки (30.10.2026, и приёмщик); ставка — только с деньгами (`User::parkMoney`).
      */
     private function saveVehicle(Request $request, Vehicle $vehicle): void
     {
@@ -268,16 +268,8 @@ class RequestController
         }
         VehicleFields::clean($request);
         $data = VehicleFields::only($request->validate(VehicleFields::rules()));
-        // Приёмщик правит только марку и модель, которых не дало письмо (без них не принять), — не тождество и не ставку.
-        if (! $request->user()->canManagePark()) {
-            $data = array_intersect_key(array_filter($data, fn ($v) => $v !== null && $v !== ''), array_flip(['brand_id', 'model_id']));
-            $data && app(UpdateVehicle::class)($vehicle, $data, $request->user());
-            $vehicle->refresh();
-
-            return;
-        }
-        // Своя ставка — поле редактора у принятой ТС (`VehicleRate`), в тождество не входит.
-        $rate = array_intersect_key(VehicleRate::from($request), array_flip(['storage_rate']));
+        // Своя ставка — поле редактора у принятой ТС (`VehicleRate`), в тождество не входит; это деньги — не приёмщику.
+        $rate = $request->user()->parkMoney() ? array_intersect_key(VehicleRate::from($request), array_flip(['storage_rate'])) : [];
         app(UpdateVehicle::class)($vehicle, $data + $rate, $request->user());
         $vehicle->refresh();
     }
@@ -305,8 +297,10 @@ class RequestController
         $data = $request->validate(self::intakeRules());
         $this->saveVehicle($request, $req->vehicle);
         // Тип ТС и своя ставка из формы приёма — свои имена полей (в деле рядом редактор с той же «Категорией»).
-        if ($request->user()->canManagePark() && $request->has('intake_rate')) {
+        if ($request->hasAny(['intake_rate', 'intake_category'])) {
             $rate = VehicleRate::from(new Request(['category' => $request->input('intake_category'), 'storage_rate' => $request->input('intake_rate')]));
+            // Тип ТС — и приёмщику, ставка — деньги (`User::parkMoney`).
+            $request->user()->parkMoney() || $rate = array_diff_key($rate, array_flip(['storage_rate', 'storage_rate_note']));
             app(UpdateVehicle::class)($req->vehicle, $rate, $request->user());
         }
         $intake($req->vehicle, $request->user(), Yard::findOrFail($data['yard_id']), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, $data, $req, $data['spot'] ?? null);

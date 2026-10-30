@@ -437,7 +437,7 @@ final class Notify
 
             return;
         }
-        Notification::send($this->parkStaff(City::ofInvoice($invoice))->filter->canManagePark(), ParkNotice::overdue($invoice));
+        Notification::send($this->parkStaff(City::ofInvoice($invoice))->filter->parkMoney(), ParkNotice::overdue($invoice));
     }
 
     /** Счёт по сделке выставлен — менеджеру сделки (платит он или его покупатель — всё равно ему). */

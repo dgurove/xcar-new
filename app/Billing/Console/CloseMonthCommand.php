@@ -29,7 +29,7 @@ class CloseMonthCommand extends Command
         }
         NotifyOwner::dispatch(new ClosingReady($month, $items), park: true);
         // Закрытие месяца — управляющим и админам; управляющему и в Telegram. С городом — только строки его ТС (`Park\City`).
-        $staff = User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->get()->filter(fn (User $u) => $u->canManagePark());
+        $staff = User::parkStaff()->whereNotNull('approved_at')->whereNull('rejected_at')->get()->filter(fn (User $u) => $u->parkMoney());
         foreach ($staff->groupBy(fn (User $u) => City::of($u) ?? 0) as $city => $people) {
             $own = $city ? $items->filter(fn ($i) => (int) $i['vehicle']->city_id === (int) $city) : $items;
             if ($own->isNotEmpty()) {

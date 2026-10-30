@@ -5,7 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 
-/** Правка вендоров, площадок, реквизитов ТС, отмена и удаление — не для «только приёмки». */
+/** Работа парковки (`User::canManagePark`) — и приёмщику; деньги — `ability:parkMoney`. */
 class EnsureParkManager
 {
     public function handle(Request $request, Closure $next)

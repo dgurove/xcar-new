@@ -8,8 +8,9 @@
     <x-ui.field name="accepted_at" label="Когда" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" now/>
     {{-- Ставка — видна до «Принять» (12.10.2026, `VehicleRate`): тип ТС угадан по марке, своя ставка пусто — по тарифу. Свои
          имена: в деле рядом стоит редактор полей ТС с той же «Категорией». --}}
-    @if (auth()->user()->canManagePark())
-        <x-ui.field name="intake_category" label="Тип ТС" :options="collect(\App\Cars\Category::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all()" placeholder="—" :value="old('intake_category', $vehicle->category?->value)"/>
+    {{-- Тип ТС — всем людям парковки, своя ставка — деньги: приёмщику (`User::parkMoney`) её нет (30.10.2026). --}}
+    <x-ui.field name="intake_category" label="Тип ТС" :options="collect(\App\Cars\Category::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all()" placeholder="—" :value="old('intake_category', $vehicle->category?->value)"/>
+    @if (auth()->user()->parkMoney())
         <x-ui.field name="intake_rate" label="Своя ставка, ₽/сут"
             :value="old('intake_rate', $vehicle->storage_rate !== null ? \App\Support\Money::nums((int) round($vehicle->storage_rate)) : null)" :placeholder="\App\Park\VehicleRate::hint($vehicle)"/>
     @endif

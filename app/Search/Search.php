@@ -87,7 +87,7 @@ final class Search
         $vehicles = Vehicle::search($t)->with(['yard'])->latest('updated_at')->limit(12)->get()
             ->each(fn (Vehicle $v) => $cars->vehicle($v, link: "/cars/{$v->id}"));
         self::candidates(Scope::Park, $t)->each(fn (Candidate $c) => $cars->candidate($c, '/requests/from-mail?q='.urlencode($t->raw)));
-        $manage = $user->canManagePark() && ! $user->isParkHelper();
+        $manage = $user->parkMoney();
 
         return [
             'cars' => ['title' => 'ТС', 'rows' => $cars->top(self::CARS)] + self::more($vehicles->isNotEmpty(), 'Все ТС', '/cars?q='.urlencode($t->raw)),

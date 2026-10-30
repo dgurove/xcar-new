@@ -52,6 +52,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     /** @use HasFactory<UserFactory> */
     use HasFactory, InteractsWithMedia, Notifiable, WebAuthnAuthentication;
+
     use HidesDemo;
 
     /** Стал менеджером или перестал — круги показа опубликованных пересчитываются: правило «все» его касается. */
@@ -508,13 +509,14 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /**
-     * Управляющий: вся парковка на всех парковках — заявки, приём, выдача, оплаты, счета, закрытие месяца, почта,
-     * контакты вендоров и реквизиты плательщиков. Не он — приёмщик (`isParkHelper`): принимает и выдаёт, денег не видит.
-     * Настройки парковки (прайс, правила вендоров, парковки, свои реквизиты, люди) — `isParkAdmin`; продажа — `isAdmin`.
+     * Работа парковки — у всех её людей, и у приёмщика (30.10.2026, владелец: «всё, что не касается денег, — свобода»):
+     * заявки, приём, выдача, правка ТС и её оценочной стоимости, «✨» из документов, фото и документы, почта, вывоз,
+     * отмены, контакты вендоров. Деньги — `parkMoney`; настройки (прайс, правила вендоров, парковки, люди) —
+     * `isParkAdmin`; продажа — `isAdmin`.
      */
     public function canManagePark(): bool
     {
-        return $this->isParkAdmin() || ($this->isParking() && ! $this->park_readonly);
+        return $this->isParkAdmin() || $this->isParking();
     }
 
     /** Управляющий парковкой: только park.xcar, без продаж и настроек. */
@@ -551,8 +553,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     /**
      * Приёмщик (`park_readonly`, 27.10.2026, владелец: Роман в Москве и Никита в Питере «просто принимают и выдают»):
-     * заявки, приём, выдача (QR, без QR, подтверждение покупателя, отказ), отчёт о приёме вендору; денег не видит —
-     * только «получить N ₽ наличными» при выдаче. Без «Оплат», почты разделом, вендоров, правки ТС и отмен.
+     * всё, что не деньги (30.10.2026, владелец: «касается денег — ограничить, остальное — свобода»), денег не видит —
+     * только «получить N ₽ наличными» при выдаче: ни «Оплат», ни ставки, ни счетов, ни выгрузки с начислениями.
      */
     public function isParkHelper(): bool
     {
@@ -580,7 +582,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      */
     public function parkMoney(): bool
     {
-        return $this->canManagePark();
+        return $this->isParkAdmin() || ($this->isParking() && ! $this->park_readonly);
     }
 
     /** Личная заметка к ТС на xcar.ru (18.10.2026): менеджеру, покупателю, супер-покупателю и админу; демо и проверяющему — нет. */

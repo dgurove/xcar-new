@@ -21,6 +21,14 @@ final class Alerts
     /** Карточка ТС и её документы расходятся (`FillFromDocs::flagged`). */
     public const DOCS = 'В документе иначе';
 
+    /** Подсказка значка в строке — полной фразой, где метка коротка (`x-park.alerts plain`). */
+    private const HINTS = [self::DOCS => 'Данные ТС расходятся с документами', 'Писем нет' => 'Писем по ТС нет', 'без заявки' => 'Ждёт, а заявки нет'];
+
+    public static function hint(string $label): string
+    {
+        return self::HINTS[$label] ?? $label;
+    }
+
     /**
      * docs=false — без «В документе иначе»: в шапке дела его показывают сами поля.
      *

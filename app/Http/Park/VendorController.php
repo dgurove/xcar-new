@@ -91,10 +91,14 @@ class VendorController
     {
         abort_unless($vendor->on_park, 404);
         abort_if(($city = City::of($request->user())) && ! Vendor::ofParkCity($city)->whereKey($vendor->id)->exists(), 404);
-        // Тарифы вендора — настройки, управляющему их нет; ставки за сутки он видит в обзоре.
-        $pills = $request->user()->isParkAdmin() ? self::PILLS : array_diff_key(self::PILLS, ['tariffs' => 1]);
-        abort_if($request->query('pill') === 'tariffs' && ! isset($pills['tariffs']), 404);
-        $pill = array_key_exists($request->query('pill', ''), $pills) ? $request->query('pill') : 'overview';
+        // Тарифы вендора — настройки, управляющему их нет; ставки за сутки он видит в обзоре. Приёмщику (`User::parkMoney`,
+        // 30.10.2026) обзор и оплаты — деньги (условия хранения, ставки, долг): ему только контакты.
+        $pills = match (true) {
+            $request->user()->isParkAdmin() => self::PILLS,
+            $request->user()->parkMoney() => array_diff_key(self::PILLS, ['tariffs' => 1]),
+            default => array_intersect_key(self::PILLS, ['contacts' => 1]),
+        };
+        $pill = array_key_exists($request->query('pill', ''), $pills) ? $request->query('pill') : array_key_first($pills);
         $vendor->load(['contacts.yard', 'media']);
         $data = [
             'vendor' => $vendor,

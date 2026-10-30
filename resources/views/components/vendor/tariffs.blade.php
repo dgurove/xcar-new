@@ -19,7 +19,7 @@
         return [collect(), true];
     };
     // «Только приёмка» прайс видит, но не правит: POST /tariffs/ladder — под park.manage.
-    $manage = (bool) auth()->user()?->canManagePark();
+    $manage = (bool) auth()->user()?->parkMoney();
     $groups = [null => 'Любая категория'] + collect($categories)->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all();
 @endphp
 <div class="flex flex-col gap-4">

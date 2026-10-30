@@ -19,7 +19,8 @@ use Tests\TestCase;
 /**
  * Приёмщик парковки (27.10.2026, владелец: Роман в Москве и Никита в Питере «просто принимают и выдают», денег не видят).
  * Доступ и утечки: приёмщик выдаёт по QR и подтверждает покупателя, а ставки, начисления, счета и договор комиссии ему
- * не открываются ни страницей, ни столбцом. Управляющий видит деньги, как раньше.
+ * не открываются ни страницей, ни столбцом. Всё остальное — его (30.10.2026, владелец: «всё, что не касается денег, —
+ * свобода»): правит ТС и оценочную стоимость, но не ставку. Управляющий видит деньги, как раньше.
  */
 class ParkReceiverTest extends TestCase
 {
@@ -63,7 +64,7 @@ class ParkReceiverTest extends TestCase
             $status = $this->actingAs($this->receiver)->get(Surface::Park->url($path))->status();
             $this->assertContains($status, [403, 404], "{$path} открыт приёмщику: {$status}");
         }
-        $this->actingAs($this->receiver)->post(Surface::Park->url("/cars/{$id}/rate"), ['storage_rate' => 1])->assertStatus(403);
+        $this->assertContains($this->actingAs($this->receiver)->post(Surface::Park->url("/cars/{$id}/rate"), ['storage_rate' => 1])->status(), [403, 404]);
 
         $list = $this->actingAs($this->receiver)->get(Surface::Park->url('/cars'))->assertOk()->getContent();
         $this->assertStringNotContainsString('Начислено', $list);
@@ -76,6 +77,17 @@ class ParkReceiverTest extends TestCase
         // Управляющий — как раньше.
         $this->assertStringContainsString('Начислено', $this->actingAs($this->manager)->get(Surface::Park->url('/cars'))->getContent());
         $this->actingAs($this->manager)->get(Surface::Park->url('/money'))->assertOk();
+    }
+
+    public function test_receiver_edits_car_but_not_rate(): void
+    {
+        $this->actingAs($this->receiver)->put(Surface::Park->url("/cars/{$this->vehicle->id}"), ['value' => '1 250 000', 'storage_rate' => '1'])
+            ->assertRedirect();
+
+        $this->vehicle->refresh();
+        $this->assertSame(1250000, (int) $this->vehicle->value);
+        $this->assertEquals(300, $this->vehicle->storage_rate);
+        $this->assertTrue($this->receiver->canManagePark());
     }
 
     public function test_manager_receiver_keeps_site_and_reaches_park(): void

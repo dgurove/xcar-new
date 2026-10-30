@@ -37,11 +37,11 @@
             @if ($out && $vehicle->released_at)<span class="whitespace-nowrap sm:hidden">выдана {{ \App\Support\Ago::html($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
             @if ($vehicle->yard)<span class="sm:hidden">{{ $vehicle->yard->name }}</span>@endif
         </span>
-        {{-- Краткая таблица телефона: задача с точкой, как в столбце «Статус», и ошибки данных словами — третьей строкой. --}}
+        {{-- Краткая таблица телефона: задача с точкой, как в столбце «Статус», и значок «что не так» — третьей строкой. --}}
         @if (! $out && ($status['act'] || $hasAlerts))
             <span class="cell-extra">
                 @if ($status['act'])<span @class(['status-cell', 'is-act', 'is-late' => $status['late']])>{{ $status['label'] }}</span>@endif
-                @if ($hasAlerts)<x-park.alerts :vehicle="$vehicle" plain :place="false" :skip="['Нет типа']"/>@endif
+                @if ($hasAlerts)<x-park.alerts :vehicle="$vehicle" plain :place="false" :skip="['Нет типа']" at="phone"/>@endif
             </span>
         @endif
     </td>

@@ -63,7 +63,7 @@ final class Nav
             return array_values(array_filter([
                 self::item('Заявки', '/requests'),
                 self::item('Наличие', '/cars'),
-                $user?->canManagePark() ? self::item('Оплаты', '/money') : null,
+                $user?->parkMoney() ? self::item('Оплаты', '/money') : null,
                 $user?->canManagePark() ? self::item('Почта', '/mail') : null,
                 $user->seesYards() ? self::item('Парковки', '/yards', tab: false) : null,
                 // Вендоры управляющему — карточка и контакты; помощнику их нет.

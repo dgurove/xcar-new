@@ -54,7 +54,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{req}/refuse', [RequestController::class, 'refuse'])->middleware('ability:parkHandles');
 
     Route::get('/cars', [VehicleController::class, 'index']);
-    Route::get('/cars/export', [VehicleController::class, 'export'])->middleware('park.manage');
+    Route::get('/cars/export', [VehicleController::class, 'export'])->middleware('ability:parkMoney');
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
     Route::get('/cars/{vehicle}/letters', [VehicleController::class, 'letters']);
     // Кадры письма прикрепляются: строка хода и ряд «От страховой», пока ImportThreadFiles идёт (attach_controller).
@@ -64,7 +64,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/logistics', [LogisticsController::class, 'store'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/media', [VehicleController::class, 'upload']);
     Route::post('/cars/{vehicle}/media/order', [VehicleController::class, 'reorder']);
-    // Глаз — показ кадра в продаже: это продажа, только админу. Поворот и удаление — не помощнику.
+    // Глаз — показ кадра в продаже: это продажа, только админу. Поворот и удаление — всем людям парковки.
     Route::post('/cars/{vehicle}/media/visibility', [VehicleController::class, 'visibility'])->middleware('ability:isAdmin');
     Route::post('/cars/{vehicle}/media/{media}/hide', [VehicleController::class, 'hideMedia'])->middleware('ability:isAdmin');
     Route::post('/cars/{vehicle}/media/{media}/rotate', [VehicleController::class, 'rotateMedia'])->middleware('park.manage');
@@ -102,7 +102,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/pickup-link/renew', [PassController::class, 'renew'])->middleware(['park.manage', 'throttle:5,1']);
     Route::delete('/cars/{vehicle}', [VehicleController::class, 'destroy'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/move', [VehicleController::class, 'move']);
-    Route::post('/cars/{vehicle}/rate', [VehicleController::class, 'rate'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/rate', [VehicleController::class, 'rate'])->middleware('ability:parkMoney');
     Route::post('/cars/{vehicle}/transfer', [VehicleController::class, 'transfer'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/city', [VehicleController::class, 'city']);
     Route::post('/cars/{vehicle}/yard', [VehicleController::class, 'yard']);
@@ -110,13 +110,13 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/restore', [VehicleController::class, 'restore'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/undo-intake', [VehicleController::class, 'undoIntake'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/undo-release', [VehicleController::class, 'undoRelease'])->middleware('park.manage');
-    Route::get('/cars/{vehicle}/invoices/new', [VehicleInvoiceController::class, 'create'])->middleware('park.manage');
-    Route::post('/cars/{vehicle}/invoices', [VehicleInvoiceController::class, 'store'])->middleware('park.manage');
-    Route::post('/cars/{vehicle}/charges', [VehicleInvoiceController::class, 'charge'])->middleware('park.manage');
-    Route::delete('/cars/{vehicle}/charges/{charge}', [VehicleInvoiceController::class, 'uncharge'])->middleware('park.manage');
+    Route::get('/cars/{vehicle}/invoices/new', [VehicleInvoiceController::class, 'create'])->middleware('ability:parkMoney');
+    Route::post('/cars/{vehicle}/invoices', [VehicleInvoiceController::class, 'store'])->middleware('ability:parkMoney');
+    Route::post('/cars/{vehicle}/charges', [VehicleInvoiceController::class, 'charge'])->middleware('ability:parkMoney');
+    Route::delete('/cars/{vehicle}/charges/{charge}', [VehicleInvoiceController::class, 'uncharge'])->middleware('ability:parkMoney');
 
-    // Деньги — управляющему и админу (не помощнику): счета, долги, закрытие месяца, реквизиты плательщиков.
-    Route::middleware('park.manage')->group(function () {
+    // Деньги — управляющему и админу, не приёмщику (`User::parkMoney`): счета, долги, закрытие месяца, реквизиты плательщиков.
+    Route::middleware('ability:parkMoney')->group(function () {
         Route::get('/money', [MoneyController::class, 'index']);
         Route::get('/money/debts', [MoneyController::class, 'debts']);
         Route::get('/money/closing', [MoneyController::class, 'closing']);
@@ -154,7 +154,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
 
     // Раздел «Парковки» — тому, у кого их больше одной (`User::seesYards`): управляющему Питера его нет.
     Route::get('/yards', [YardController::class, 'index'])->middleware('ability:seesYards');
-    // Вендоры управляющему — смотреть карточку и править контакты (кому слать отчёты и счета); всё прочее — админу.
+    // Вендоры людям парковки — смотреть карточку и править контакты (кому слать отчёты и счета); тарифы — `parkMoney`, всё прочее — админу.
     Route::middleware('park.manage')->group(function () {
         Route::get('/vendors', [VendorController::class, 'index']);
         Route::get('/vendors/{vendor}', [VendorController::class, 'show']);
@@ -184,7 +184,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/tariffs', [TariffController::class, 'index']);
     });
 
-    // Почта парковки разделом — управляющему и админу; помощник пишет и отвечает из дела ТС.
+    // Почта парковки разделом — всем людям парковки (`park.manage`), и приёмщику с 30.10.2026.
     Route::get('/mail', [MailController::class, 'index'])->middleware('park.manage');
     Route::get('/mail/new', [MailController::class, 'compose']);
     Route::post('/mail', [MailController::class, 'send']);
