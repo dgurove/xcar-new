@@ -71,6 +71,11 @@
                         {{-- Всё о человеке одной строкой текста: роль, чей покупатель, логин, телефон, почта, покупатели, группы. --}}
                         <div class="row-sub">
                             <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->rolesLabel()) }}</span>
+                            {{-- Когда был (30.10.2026, владелец: управляющий две недели не заходил, а видно не было): неделя и больше — красным. --}}
+                            @if ($user->isApproved())
+                                @php $away = $user->awayDays(); @endphp
+                                <a href="{{ $base }}/{{ $user->id }}?pill=activity" class="{{ $away === null || $away >= 7 ? 'text-danger' : '' }}">{{ match (true) { $away === null => 'не заходил', $away >= 7 => 'не заходил '.$away.' '.\App\Support\Plural::of($away, ['день', 'дня', 'дней']), default => $user->seenLabel() } }}</a>
+                            @endif
                             {{-- Отклик за две недели (21.10.2026): сколько открытых ему предложений открыл; мало — красным, звонить. --}}
                             @if (($r = $responses[$user->id] ?? null) && $r->shareLabel())<span class="{{ $r->low() ? 'text-danger' : 'text-ink' }}">открыл {{ $r->shareLabel() }}</span>@endif
                             @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}?preset=buyers&manager={{ $user->manager_id }}" class="text-ink">{{ $user->manager->shortName() }}</a>@endif

@@ -34,6 +34,7 @@ use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueImpersonation;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\TransferBuyer;
+use App\Users\Activity;
 use App\Users\BuyerGroup;
 use App\Users\CrmArea;
 use App\Users\Invite;
@@ -200,12 +201,19 @@ class UserController
         // Пришли из шапки чата — «‹ Чат» вместо «‹ Пользователи».
         $chat = $request->integer('chat') ? Chat::find($request->integer('chat')) : null;
 
-        $pill = $user->hasDeals() && $request->query('pill') === 'money' ? 'money' : 'overview';
+        $pill = match (true) {
+            $user->hasDeals() && $request->query('pill') === 'money' => 'money',
+            // Активность (30.10.2026): когда заходил, что делал и откуда — `Users\Activity`.
+            $request->query('pill') === 'activity' => 'activity',
+            default => 'overview',
+        };
+        $days = in_array($request->integer('days'), Activity::PERIODS, true) ? $request->integer('days') : 30;
         $ledger = $pill === 'money' ? new ManagerLedger($user, staff: true) : null;
 
         return view('admin.users.show', [
             'user' => $user,
             'pill' => $pill,
+            'activity' => $pill === 'activity' ? new Activity($user, $days) : null,
             'position' => $ledger?->position(),
             'party' => $pill === 'money' ? Party::forUser($user, false) : null,
             // Сделки и машины гаража — те же строки, из которых сложены суммы в заголовке.

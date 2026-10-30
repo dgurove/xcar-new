@@ -1470,6 +1470,32 @@ html.kb-open { --home-gap: 0px; }
   /* Заголовок прижат к своей группе, а не висит между двумя (07.10.2026: «отступы между блоками гигантские»). */
   .list-head { @apply flex items-baseline gap-1.5 px-1 pb-2 pt-1 text-lg font-medium text-ink; }
   .list-head .nums { @apply font-normal text-ink-dim; }
+
+  /* Активность человека (30.10.2026, `admin/users/activity`): сводка — состояние крупно, три числа плашками, столбики по
+     дням (высота — действия, тёмные; серые — заходил без действий; пустой день — черта у основания); лента — по дням,
+     промежуток без заходов — строкой между ними, от трёх дней красным. */
+  .activity-status { @apply flex items-center gap-2 text-xl font-medium; }
+  .activity-status.is-away { @apply text-danger; }
+  .activity-status.is-online::before { content: ''; @apply size-2.5 shrink-0 rounded-full bg-accent; }
+  .activity-stats { @apply mt-5 grid grid-cols-2 gap-2; }
+  .activity-stat-wide { @apply col-span-2 sm:col-span-1; }
+  .activity-stat { @apply min-w-0 rounded-(--radius-l) bg-surface-2 px-3 py-2.5; }
+  .activity-stat b { @apply block truncate text-xl font-semibold; }
+  .activity-stat small { @apply text-sm font-normal text-ink-muted; }
+  .activity-stat span { @apply block text-sm text-ink-muted; }
+  .activity-chart { @apply mt-6 flex h-28 items-end gap-[2px]; }
+  .activity-day { @apply flex h-full min-w-0 flex-1 items-end justify-center rounded-[4px]; }
+  .activity-day:hover { background: var(--color-hover); }
+  .activity-day i { @apply block w-full max-w-7 rounded-t-[4px]; height: max(2px, var(--h)); background: var(--color-line); }
+  .activity-day.is-act i { background: var(--color-ink); }
+  .activity-day.is-visit i { background: var(--color-ink-dim); }
+  .activity-axis { @apply mt-2 flex items-center justify-between gap-3 text-xs text-ink-muted; }
+  .activity-legend { @apply hidden items-center gap-1.5 sm:flex; }
+  .activity-legend i { @apply ml-2 inline-block size-2.5 rounded-[3px]; background: var(--color-ink); }
+  .activity-legend i.is-visit { background: var(--color-ink-dim); }
+  .activity-gap { @apply mt-5 flex items-center justify-center gap-2 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted; }
+  .activity-gap.is-long { @apply bg-danger-soft text-danger; }
+  .activity-what { @apply mt-0.5 text-sm text-ink-muted; }
   /* Подпись группы строк, как в «Настройках» iOS: мелко и серым над плашкой, справа — состояние словом. */
   .list-cap { @apply flex items-baseline gap-2 px-4 pb-1.5 text-sm font-medium text-ink-dim; }
   /* Вознаграждение менеджера по ДКП — его прибыль (05.10.2026): строка в зелёном, сумма с мягким свечением и одним

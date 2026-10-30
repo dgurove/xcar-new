@@ -63,6 +63,7 @@ use App\Park\Listeners\SyncOffer;
 use App\Support\FastDate;
 use App\Users\Access\EnrollOnLogin;
 use App\Users\Auth\WebAuthnProvider;
+use App\Users\Listeners\RecordLogin;
 use App\Users\Passkeys;
 use App\Workflow\Events\StageEntered;
 use ArrayObject;
@@ -156,6 +157,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen([PaymentRecorded::class, PaymentVoided::class, InvoiceVoided::class], CreditDealOnManual::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);
         Event::listen(Login::class, EnrollOnLogin::class);
+        Event::listen(Login::class, RecordLogin::class);
         Event::listen(ChatMessagePosted::class, ScheduleAutoReply::class);
         Event::listen(ChatMessagePosted::class, MailGuestReply::class);
         Event::subscribe(Passkeys::class);

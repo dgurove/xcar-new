@@ -879,6 +879,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return app()->runningInConsole() ? $sum() : once($sum);
     }
 
+    /** Сколько полных дней не заходил (по отметке «в сети»); null — ни разу. Неделя и больше — красным в «Пользователях». */
+    public function awayDays(): ?int
+    {
+        return $this->seen_at ? (int) $this->seen_at->copy()->startOfDay()->diffInDays(today()) : null;
+    }
+
     /** «в сети» — был здесь только что; иначе когда: «в сети 12:40», «в сети вчера», «в сети 12 сен». */
     public function seenLabel(): ?string
     {

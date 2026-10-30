@@ -4,6 +4,7 @@ use App\Notifications\Delivery;
 use App\Offers\ReadOffer;
 use App\Users\Access\AccessCode;
 use App\Users\Actions\CloseStaleImpersonations;
+use App\Users\Visit;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('offers:tick')->everyMinute()->withoutOverlapping();
@@ -27,6 +28,7 @@ Schedule::command('storage:gc')->dailyAt('04:30');
 Schedule::command('offers:prune-drafts')->dailyAt('04:40');
 Schedule::call(fn () => ReadOffer::prune())->dailyAt('04:45')->name('offer-reads:prune');
 Schedule::call(fn () => Delivery::prune())->dailyAt('04:47')->name('notice-deliveries:prune');
+Schedule::call(fn () => Visit::prune())->dailyAt('04:48')->name('user-visits:prune');
 // Номера дел лотов Мигторга, фото совпавшим предложениям и черновики новых лотов: открытый список без входа, 5–8
 // запросов раз в 10 минут (26.10.2026: черновик Альфы и Т — как можно раньше). Ночью — раз в час (30.10.2026: КАСКО
 // выходит в будни 10–19, торги идут от 40 ч — ночной опрос раз в 10 минут ничего не находил). Обход архива

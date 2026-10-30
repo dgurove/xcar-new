@@ -59,15 +59,16 @@
         </div>
 
         <div class="min-w-0 lg:col-start-1 lg:row-start-1">
-            @if ($user->hasDeals())
-                {{-- У менеджера и супер-покупателя два экрана: обзор и деньги — как у вендора. --}}
-                <div class="mb-5 flex flex-wrap gap-1.5">
-                    <x-ui.pill :href="$base.'/'.$user->id" :current="$pill === 'overview'">Обзор</x-ui.pill>
-                    <x-ui.pill :href="$base.'/'.$user->id.'?pill=money'" :current="$pill === 'money'">Деньги</x-ui.pill>
-                </div>
-            @endif
+            {{-- Экраны человека: обзор, у менеджера и супер-покупателя деньги — как у вендора, админу активность (30.10.2026). --}}
+            <div class="mb-5 flex flex-wrap gap-1.5">
+                <x-ui.pill :href="$base.'/'.$user->id" :current="$pill === 'overview'">Обзор</x-ui.pill>
+                @if ($user->hasDeals())<x-ui.pill :href="$base.'/'.$user->id.'?pill=money'" :current="$pill === 'money'">Деньги</x-ui.pill>@endif
+                <x-ui.pill :href="$base.'/'.$user->id.'?pill=activity'" :current="$pill === 'activity'">Активность</x-ui.pill>
+            </div>
             @if ($pill === 'money')
                 @include('admin.users.money')
+            @elseif ($pill === 'activity')
+                @include('admin.users.activity', ['a' => $activity])
             @else
             @if ($response)
                 {{-- Отклик на предложения (21.10.2026, владелец: «менеджеры не видят, когда приходят новые машины»). --}}
