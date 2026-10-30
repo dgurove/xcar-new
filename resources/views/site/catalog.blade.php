@@ -32,24 +32,49 @@
             </x-ui.toolbar>
 
             <div class="mt-6" id="catalog-list">
-                {{-- Подписка на бот предложений — строкой в начале списка (владелец 03.10.2026), только в каталоге. --}}
-                @unless ($gallery)<x-offers-bot.card/>@endunless
                 {{-- Оценка менеджером (11.10.2026): что оценить — первой пачкой лентой, с полосой «ваш ход»; что уже оценено и ждёт
                      решения XCar — такой же лентой в самом конце списка (владелец: «Ждут решения» первым рядом и строками не просил). --}}
                 @php
                     $toEstimate = $estimates->reject(fn ($o) => $o->openEstimates->first()?->isGiven());
                     $estimated = $estimates->filter(fn ($o) => $o->openEstimates->first()?->isGiven());
                 @endphp
+                {{-- «Нужно оценить» — самым верхом, выше «Срочно», на любом виде и любой пилюле (30.10.2026, менеджеры: «в
+                     приложении некуда заходить, чтобы их увидеть» — в «Плитках» они стояли в общей сетке без подписи, после
+                     срочных, а на пилюлях «Новые» и «Горящие» пропадали). --}}
+                @if ($toEstimate->isNotEmpty())
+                    @if (\App\Support\ListView::isTable($view))
+                    <x-ui.table id="catalog-estimates" :view="$view" class="mb-6" :table="$columns">
+                        <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
+                        <x-table.group :table="$columns" key="estimate" title="Нужно оценить" :count="$toEstimate->count()"/>
+                        @foreach ($toEstimate as $offer)
+                            <x-offer.site-table-row :offer="$offer" :table="$columns" :estimate="$offer->openEstimates->first()"/>
+                        @endforeach
+                    </x-ui.table>
+                    @else
+                    {{-- Лентой вбок (владелец 11.10.2026: плитки во всю ширину «гигантские»): узкие плитки одной строкой, сколько бы
+                         их ни было, на любом виде списка. --}}
+                    <div class="mb-6" data-controller="ticker">
+                        <x-ui.shelf title="Нужно оценить" :count="$toEstimate->count()" id="catalog-estimates">
+                            @foreach ($toEstimate as $offer)
+                                <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()" cover/>
+                            @endforeach
+                        </x-ui.shelf>
+                    </div>
+                    @endif
+                @endif
+                {{-- Подписка на бот предложений — строкой в начале списка (владелец 03.10.2026), под «Нужно оценить», только в каталоге. --}}
+                @unless ($gallery)<x-offers-bot.card/>@endunless
                 @if ($view === \App\Support\ListView::GRID)
                     {{-- «Плитками» (15.10.2026, начальник): одна сетка без подписей пачек и лент вбок, со страницами. На первой
-                         странице — срочные, «Нужно оценить» и «Открыты только Вам» первыми, «Ждут решения» — в конце: их узнают по
+                         странице — срочные и «Открыты только Вам» первыми («Нужно оценить» — лентой над сеткой), «Ждут решения» — в конце: их узнают по
                          метке на плитке. Обёртки `contents` держат id прежних лент. --}}
-                    @if ($offers->isEmpty() && $urgent->isEmpty() && $exclusive->isEmpty() && $estimates->isEmpty())
+                    @if ($offers->isEmpty() && $urgent->isEmpty() && $exclusive->isEmpty() && $estimated->isEmpty())
+                        @if ($toEstimate->isEmpty())
                         @include('site.catalog-empty')
+                        @endif
                     @else
                     <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && $sort === '-published' ? 'true' : 'false' }}" class="cards cards--grid" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         @if ($urgent->isNotEmpty())<div id="catalog-urgent" class="contents">@foreach ($urgent as $offer)<x-offer.card :offer="$offer" :context="$context"/>@endforeach</div>@endif
-                        @if ($toEstimate->isNotEmpty())<div id="catalog-estimates" class="contents">@foreach ($toEstimate as $offer)<x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>@endforeach</div>@endif
                         @if ($exclusive->isNotEmpty())<div id="catalog-only" class="contents">@foreach ($exclusive as $offer)<x-offer.card :offer="$offer" :context="$context" only/>@endforeach</div>@endif
                         @foreach ($offers as $offer)
                             <x-offer.card :offer="$offer" :context="$context"/>
@@ -75,27 +100,6 @@
                         <x-ui.shelf title="Срочно" tone="urgent" :count="$urgent->count()" id="catalog-urgent" :data-selection-target="$selecting ? 'list' : null" :data-action="$selecting ? 'click->selection#tap:capture change->selection#change' : null">
                             @foreach ($urgent as $offer)
                                 <x-offer.card :offer="$offer" :context="$context" cover/>
-                            @endforeach
-                        </x-ui.shelf>
-                    </div>
-                    @endif
-                @endif
-                @if ($toEstimate->isNotEmpty())
-                    @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog-estimates" :view="$view" class="mb-6" :table="$columns">
-                        <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
-                        <x-table.group :table="$columns" key="estimate" title="Нужно оценить" :count="$toEstimate->count()"/>
-                        @foreach ($toEstimate as $offer)
-                            <x-offer.site-table-row :offer="$offer" :table="$columns" :estimate="$offer->openEstimates->first()"/>
-                        @endforeach
-                    </x-ui.table>
-                    @else
-                    {{-- Лентой вбок (владелец 11.10.2026: плитки во всю ширину «гигантские»): узкие плитки одной строкой, сколько бы
-                         их ни было, на любом виде списка. --}}
-                    <div class="mb-6" data-controller="ticker">
-                        <x-ui.shelf title="Нужно оценить" :count="$toEstimate->count()" id="catalog-estimates">
-                            @foreach ($toEstimate as $offer)
-                                <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()" cover/>
                             @endforeach
                         </x-ui.shelf>
                     </div>
@@ -131,7 +135,7 @@
                 @endif
                 @if ($offers->isEmpty())
                     {{-- Всё ушло в ленты сверху («Срочно», «Открыты только Вам») — «пусто» не пишем. --}}
-                    @if ($urgent->isNotEmpty() || $exclusive->isNotEmpty())
+                    @if ($urgent->isNotEmpty() || $exclusive->isNotEmpty() || $toEstimate->isNotEmpty())
                     @else
                         @include('site.catalog-empty')
                     @endif
